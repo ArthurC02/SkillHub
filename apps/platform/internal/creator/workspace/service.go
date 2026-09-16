@@ -49,7 +49,18 @@ func (s *Service) MayStoreObjects(ctx context.Context, db gen.DBTX, workspaceID 
 	if db == nil {
 		return false, errors.New("identity: object eligibility database is not configured")
 	}
-	return gen.New(db).WorkspaceAcceptsObjects(ctx, workspaceID)
+	return workspaceAcceptsObjects(ctx, gen.New(db), workspaceID)
+}
+
+func workspaceAcceptsObjects(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) (bool, error) {
+	owner, err := q.GetWorkspaceOwnerLifecycle(ctx, workspaceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return accountLifecycle{deletedAt: owner.DeletedAt, purgeStartedAt: owner.PurgeStartedAt}.standing() == nil, nil
 }
 
 func LockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
@@ -57,7 +68,7 @@ func LockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) 
 	if err := q.LockWorkspaceObjectWrite(ctx, workspaceID); err != nil {
 		return false, err
 	}
-	allowed, err := q.WorkspaceAcceptsObjects(ctx, workspaceID)
+	allowed, err := workspaceAcceptsObjects(ctx, q, workspaceID)
 	if err != nil {
 		return true, err
 	}
@@ -127,8 +138,8 @@ func (s *Service) LoginOrSignup(ctx context.Context, id ExternalIdentity) (strin
 	if err != nil {
 		return "", err
 	}
-	if user.PurgeStartedAt.Valid {
-		return "", ErrAccountPurging
+	if err := lifecycleOf(user).standing(); err != nil {
+		return "", err
 	}
 	return s.mintSession(ctx, user)
 }
@@ -220,14 +231,27 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 }
 
 func (s *Service) UserForToken(ctx context.Context, token string) (User, error) {
-	row, err := s.queries().GetSessionUser(ctx, hashToken(token))
-	return userDTO(row), err
+	row, err := s.queries().GetSessionWithUser(ctx, hashToken(token))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrSessionInvalid
+	}
+	if err != nil {
+		return User{}, err
+	}
+	if err := sessionValidity(row.SessionExpiresAt, lifecycleOf(row.User), time.Now()); err != nil {
+		return User{}, err
+	}
+	return userDTO(row.User), nil
+}
+
+func lifecycleOf(user gen.User) accountLifecycle {
+	return accountLifecycle{deletedAt: user.DeletedAt, purgeStartedAt: user.PurgeStartedAt}
 }
 
 func (s *Service) Logout(ctx context.Context, token string) error {
 	hash := hashToken(token)
-	user, err := s.queries().GetSessionUser(ctx, hash)
-	if errors.Is(err, pgx.ErrNoRows) {
+	user, err := s.UserForToken(ctx, token)
+	if errors.Is(err, ErrSessionInvalid) || errors.Is(err, ErrAccountGone) || errors.Is(err, ErrAccountPurging) {
 		return s.queries().DeleteSession(ctx, hash)
 	}
 	if err != nil {
@@ -365,14 +389,15 @@ func (s *Service) AccountStateIn(ctx context.Context, db gen.DBTX, userID pgtype
 	if db == nil {
 		return false, false, errors.New("identity: account state lookup has no database handle")
 	}
-	row, err := gen.New(db).GetUserAccountState(ctx, userID)
+	row, err := gen.New(db).GetUserLifecycle(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
 	}
 	if err != nil {
 		return false, false, err
 	}
-	return row.Present, row.Purging, nil
+	account := accountLifecycle{deletedAt: row.DeletedAt, purgeStartedAt: row.PurgeStartedAt}
+	return !account.gone(), account.purging(), nil
 }
 
 func hashToken(token string) []byte {
@@ -399,6 +424,9 @@ func (s *Service) LookupAccount(ctx context.Context, email string, operatorID pg
 	q := s.queries().WithTx(tx)
 
 	row, err := q.FindLiveUserByEmail(ctx, email)
+	if err == nil && (accountLifecycle{deletedAt: row.DeletedAt}).gone() {
+		err = pgx.ErrNoRows
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AccountLookup{}, false, nil
 	}

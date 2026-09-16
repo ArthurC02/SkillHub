@@ -282,6 +282,38 @@ func TestPurgeStartRevokesExistingSessionAndRefusesRelogin(t *testing.T) {
 	if got := countRow(t, pool, "SELECT count(*) FROM users WHERE email = $1", name+"@dev.local"); got != 1 {
 		t.Fatalf("relogin created a replacement account: %d users", got)
 	}
+	if allowed, err := a.auth.Service.MayStoreObjects(ctx, pool, mustUUID(t, alice.workspaceID)); err != nil || allowed {
+		t.Fatalf("a purging account's workspace accepts objects = %v (err %v), want refused", allowed, err)
+	}
+	if present, purging, err := a.auth.Service.AccountStateIn(ctx, pool, mustUUID(t, alice.userID)); err != nil || !present || !purging {
+		t.Fatalf("account state during purge = present %v purging %v (err %v), want present and purging", present, purging, err)
+	}
+}
+
+func TestADeletedAccountCannotBeLoggedIntoOrStoreObjects(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	name := uniqueWorklistLabel("deleted-auth-gate")
+	bob := a.login(t, name)
+	if _, err := pool.Exec(ctx, `UPDATE users SET deleted_at = now() WHERE id = $1`, mustUUID(t, bob.userID)); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `UPDATE users SET deleted_at = NULL WHERE id = $1`, mustUUID(t, bob.userID))
+	})
+
+	if _, err := a.auth.Service.LoginOrSignup(ctx, identity.ExternalIdentity{
+		Provider: "dev", ProviderUserID: name, Email: name + "@dev.local", Name: name, Login: name,
+	}); !errors.Is(err, identity.ErrAccountGone) {
+		t.Fatalf("logging in through a deleted account's identity = %v, want ErrAccountGone", err)
+	}
+	if allowed, err := a.auth.Service.MayStoreObjects(ctx, pool, mustUUID(t, bob.workspaceID)); err != nil || allowed {
+		t.Fatalf("a deleted account's workspace accepts objects = %v (err %v), want refused", allowed, err)
+	}
+	if present, _, err := a.auth.Service.AccountStateIn(ctx, pool, mustUUID(t, bob.userID)); err != nil || present {
+		t.Fatalf("a deleted account reads as present = %v (err %v)", present, err)
+	}
 }
 
 func TestAccountPurgeFencesAConcurrentDatasetUpload(t *testing.T) {

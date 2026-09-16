@@ -40,10 +40,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const findLiveUserByEmail = `-- name: FindLiveUserByEmail :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.deletion_requested_at, w.id AS workspace_id
+SELECT u.id, u.email, u.display_name, u.created_at, u.deletion_requested_at, u.deleted_at, w.id AS workspace_id
 FROM users u
 JOIN workspaces w ON w.owner_user_id = u.id
-WHERE lower(u.email) = lower($1::text) AND u.deleted_at IS NULL
+WHERE lower(u.email) = lower($1::text)
 `
 
 type FindLiveUserByEmailRow struct {
@@ -52,6 +52,7 @@ type FindLiveUserByEmailRow struct {
 	DisplayName         string
 	CreatedAt           pgtype.Timestamptz
 	DeletionRequestedAt pgtype.Timestamptz
+	DeletedAt           pgtype.Timestamptz
 	WorkspaceID         pgtype.UUID
 }
 
@@ -64,6 +65,7 @@ func (q *Queries) FindLiveUserByEmail(ctx context.Context, email string) (FindLi
 		&i.DisplayName,
 		&i.CreatedAt,
 		&i.DeletionRequestedAt,
+		&i.DeletedAt,
 		&i.WorkspaceID,
 	)
 	return i, err

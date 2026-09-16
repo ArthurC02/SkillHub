@@ -73,52 +73,40 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 	return err
 }
 
-const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at FROM users u
-JOIN sessions s ON s.user_id = u.id
-WHERE s.token_hash = $1 AND s.expires_at > now()
-  AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
+const getSessionWithUser = `-- name: GetSessionWithUser :one
+SELECT s.expires_at AS session_expires_at, u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at
+FROM sessions s
+JOIN users u ON u.id = s.user_id
+WHERE s.token_hash = $1
 `
 
-func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, error) {
-	row := q.db.QueryRow(ctx, getSessionUser, tokenHash)
-	var i User
+type GetSessionWithUserRow struct {
+	SessionExpiresAt pgtype.Timestamptz
+	User             User
+}
+
+func (q *Queries) GetSessionWithUser(ctx context.Context, tokenHash []byte) (GetSessionWithUserRow, error) {
+	row := q.db.QueryRow(ctx, getSessionWithUser, tokenHash)
+	var i GetSessionWithUserRow
 	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-		&i.DeletionRequestedAt,
-		&i.PurgeAttemptedAt,
-		&i.PurgeStartedAt,
+		&i.SessionExpiresAt,
+		&i.User.ID,
+		&i.User.Email,
+		&i.User.DisplayName,
+		&i.User.CreatedAt,
+		&i.User.UpdatedAt,
+		&i.User.DeletedAt,
+		&i.User.DeletionRequestedAt,
+		&i.User.PurgeAttemptedAt,
+		&i.User.PurgeStartedAt,
 	)
-	return i, err
-}
-
-const getUserAccountState = `-- name: GetUserAccountState :one
-SELECT (u.deleted_at IS NULL)::boolean AS present,
-       (u.purge_started_at IS NOT NULL)::boolean AS purging
-FROM users u WHERE u.id = $1
-`
-
-type GetUserAccountStateRow struct {
-	Present bool
-	Purging bool
-}
-
-func (q *Queries) GetUserAccountState(ctx context.Context, id pgtype.UUID) (GetUserAccountStateRow, error) {
-	row := q.db.QueryRow(ctx, getUserAccountState, id)
-	var i GetUserAccountStateRow
-	err := row.Scan(&i.Present, &i.Purging)
 	return i, err
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
 SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at FROM users u
 JOIN user_identities i ON i.user_id = u.id
-WHERE i.provider = $1 AND i.provider_user_id = $2 AND u.deleted_at IS NULL
+WHERE i.provider = $1 AND i.provider_user_id = $2
 `
 
 type GetUserByIdentityParams struct {
@@ -143,6 +131,22 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 	return i, err
 }
 
+const getUserLifecycle = `-- name: GetUserLifecycle :one
+SELECT deleted_at, purge_started_at FROM users WHERE id = $1
+`
+
+type GetUserLifecycleRow struct {
+	DeletedAt      pgtype.Timestamptz
+	PurgeStartedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserLifecycle(ctx context.Context, id pgtype.UUID) (GetUserLifecycleRow, error) {
+	row := q.db.QueryRow(ctx, getUserLifecycle, id)
+	var i GetUserLifecycleRow
+	err := row.Scan(&i.DeletedAt, &i.PurgeStartedAt)
+	return i, err
+}
+
 const getWorkspaceOwner = `-- name: GetWorkspaceOwner :one
 SELECT w.owner_user_id FROM workspaces w WHERE w.id = $1::uuid
 `
@@ -152,6 +156,24 @@ func (q *Queries) GetWorkspaceOwner(ctx context.Context, workspaceID pgtype.UUID
 	var owner_user_id pgtype.UUID
 	err := row.Scan(&owner_user_id)
 	return owner_user_id, err
+}
+
+const getWorkspaceOwnerLifecycle = `-- name: GetWorkspaceOwnerLifecycle :one
+SELECT u.deleted_at, u.purge_started_at
+FROM workspaces w JOIN users u ON u.id = w.owner_user_id
+WHERE w.id = $1::uuid
+`
+
+type GetWorkspaceOwnerLifecycleRow struct {
+	DeletedAt      pgtype.Timestamptz
+	PurgeStartedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetWorkspaceOwnerLifecycle(ctx context.Context, workspaceID pgtype.UUID) (GetWorkspaceOwnerLifecycleRow, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceOwnerLifecycle, workspaceID)
+	var i GetWorkspaceOwnerLifecycleRow
+	err := row.Scan(&i.DeletedAt, &i.PurgeStartedAt)
+	return i, err
 }
 
 const lockWorkspaceObjectWrite = `-- name: LockWorkspaceObjectWrite :exec
@@ -172,19 +194,4 @@ func (q *Queries) UnlockWorkspaceObjectWrite(ctx context.Context, workspaceID pg
 	var pg_advisory_unlock_shared bool
 	err := row.Scan(&pg_advisory_unlock_shared)
 	return pg_advisory_unlock_shared, err
-}
-
-const workspaceAcceptsObjects = `-- name: WorkspaceAcceptsObjects :one
-SELECT EXISTS (
-    SELECT 1 FROM workspaces w JOIN users u ON u.id = w.owner_user_id
-    WHERE w.id = $1::uuid
-      AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
-)
-`
-
-func (q *Queries) WorkspaceAcceptsObjects(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, workspaceAcceptsObjects, workspaceID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }

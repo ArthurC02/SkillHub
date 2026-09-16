@@ -187,8 +187,8 @@ scope:
   EnsureCreditAccount: user
   GetCreditBalance: user
   GetIdentityProviderIDs: user
-  GetSessionUser: user
-  GetUserAccountState: user
+  GetSessionWithUser: user
+  GetUserLifecycle: user
   GetUserByIdentity: user
   GetWorkspace: user
   GetWorkspaceCreatedAt: user

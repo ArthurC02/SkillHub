@@ -1,7 +1,7 @@
 -- name: GetUserByIdentity :one
 SELECT u.* FROM users u
 JOIN user_identities i ON i.user_id = u.id
-WHERE i.provider = $1 AND i.provider_user_id = $2 AND u.deleted_at IS NULL;
+WHERE i.provider = $1 AND i.provider_user_id = $2;
 
 -- name: CreateIdentity :exec
 INSERT INTO user_identities (user_id, provider, provider_user_id)
@@ -12,18 +12,16 @@ INSERT INTO sessions (user_id, token_hash, expires_at)
 VALUES ($1, $2, $3)
 RETURNING *;
 
--- name: GetSessionUser :one
-SELECT u.* FROM users u
-JOIN sessions s ON s.user_id = u.id
-WHERE s.token_hash = $1 AND s.expires_at > now()
-  AND u.deleted_at IS NULL AND u.purge_started_at IS NULL;
+-- name: GetSessionWithUser :one
+SELECT s.expires_at AS session_expires_at, sqlc.embed(u)
+FROM sessions s
+JOIN users u ON u.id = s.user_id
+WHERE s.token_hash = $1;
 
--- name: WorkspaceAcceptsObjects :one
-SELECT EXISTS (
-    SELECT 1 FROM workspaces w JOIN users u ON u.id = w.owner_user_id
-    WHERE w.id = sqlc.arg(workspace_id)::uuid
-      AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
-);
+-- name: GetWorkspaceOwnerLifecycle :one
+SELECT u.deleted_at, u.purge_started_at
+FROM workspaces w JOIN users u ON u.id = w.owner_user_id
+WHERE w.id = sqlc.arg(workspace_id)::uuid;
 
 -- name: LockWorkspaceObjectWrite :exec
 SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
@@ -40,7 +38,5 @@ DELETE FROM sessions WHERE expires_at <= now();
 -- name: GetWorkspaceOwner :one
 SELECT w.owner_user_id FROM workspaces w WHERE w.id = sqlc.arg(workspace_id)::uuid;
 
--- name: GetUserAccountState :one
-SELECT (u.deleted_at IS NULL)::boolean AS present,
-       (u.purge_started_at IS NOT NULL)::boolean AS purging
-FROM users u WHERE u.id = $1;
+-- name: GetUserLifecycle :one
+SELECT deleted_at, purge_started_at FROM users WHERE id = $1;
