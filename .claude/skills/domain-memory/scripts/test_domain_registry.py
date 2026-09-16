@@ -26,12 +26,16 @@ from domain_registry.contracts import validate_schema
 from domain_registry.security import scan as scan_secrets
 from domain_registry.registry import migrate_evidence, verify_evidence
 from domain_registry.revision import current_registry_revision, require_current_registry_revision
-from domain_registry.sources import confirmed_source_map, probe_sources, source_files, source_kind_for, source_policy_report, verify_source_map, write_source_map
+from domain_registry.sources import confirm_sources, discover_sources, selected_source_map, probe_sources, source_files, source_kind_for, source_policy_report, verify_source_map, write_source_map
 from domain_registry.sources import test_locations as discovered_test_locations
 from domain_registry.updates import apply_approved_updates, upsert_candidate
 from domain_registry.attestations import verify_scm
 from domain_registry.audit import append as append_audit, verify as verify_audit
 from domain_registry.evidence import citation, digest, verify
+
+
+def stored_policy_of(repo: Path) -> dict:
+    return json.loads((repo / "memory" / "domain-memory-policy.json").read_text(encoding="utf-8"))
 
 
 class DomainRegistryTest(unittest.TestCase):
@@ -57,7 +61,7 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "docs" / "kept.md").write_text("kept", encoding="utf-8")
         self.commit_all("sources")
         path = self.repo / "memory" / "source-map.json"
-        write_source_map(path, confirmed_source_map(self.repo, [self.repo / "docs"]))
+        write_source_map(path, selected_source_map(self.repo, [self.repo / "docs"]))
         self.commit_all("source map")
         return path
 
@@ -108,7 +112,7 @@ class DomainRegistryTest(unittest.TestCase):
         source = self.repo / "docs"
         source.mkdir()
         (source / "rules.md").write_text("first version\n", encoding="utf-8")
-        source_map = confirmed_source_map(self.repo, [source], confirmed_by="Test Developer")
+        source_map = selected_source_map(self.repo, [source])
         source_map_path = self.repo / "memory" / "source-map.json"
         write_source_map(source_map_path, source_map)
         self.assertEqual("current", verify_source_map(self.repo, source_map_path)["status"])
@@ -124,7 +128,7 @@ class DomainRegistryTest(unittest.TestCase):
         report = source_policy_report(self.repo, [source], policy)
         self.assertEqual(1, report["files"])
         self.assertEqual([], report["errors"])
-        source_map = confirmed_source_map(self.repo, [source], policy, confirmed_by="Test Developer")
+        source_map = selected_source_map(self.repo, [source], policy)
         self.assertEqual("current", verify_source_map(self.repo, self.write_record("source-map.json", source_map), policy)["status"])
         (source / "included.md").write_text("too many bytes", encoding="utf-8")
         self.assertEqual("invalid", verify_source_map(self.repo, self.repo / "source-map.json", policy)["status"])
@@ -261,22 +265,128 @@ class DomainRegistryTest(unittest.TestCase):
         found = source_files(self.repo, [self.repo / "docs"])
         self.assertEqual([path.name for path in found], ["kept.md"])
 
-    def test_sources_stay_agent_asserted_until_a_developer_is_named(self) -> None:
+    def test_a_freshly_selected_source_map_is_only_ever_agent_asserted(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)
         (self.repo / "docs" / "kept.md").write_text("kept", encoding="utf-8")
-        asserted = confirmed_source_map(self.repo, [self.repo / "docs"])
+        asserted = selected_source_map(self.repo, [self.repo / "docs"])
         self.assertEqual(asserted["selection_status"], "agent-asserted")
         self.assertNotIn("confirmed_by", asserted)
-        confirmed = confirmed_source_map(self.repo, [self.repo / "docs"], confirmed_by="Arthur")
+
+    def test_confirming_records_who_chose_the_sources_and_when(self) -> None:
+        path = self.committed_source_map()
+        confirmed = confirm_sources(self.repo / "memory", self.repo, "Arthur")
         self.assertEqual(confirmed["selection_status"], "developer-confirmed")
         self.assertEqual(confirmed["confirmed_by"], "Arthur")
+        self.assertTrue(confirmed["confirmed_at"].endswith("Z"))
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["selection_status"], "developer-confirmed")
+
+    def test_confirming_sources_is_written_into_the_audit_chain(self) -> None:
+        self.committed_source_map()
+        confirm_sources(self.repo / "memory", self.repo, "Arthur")
+        recorded = json.loads((self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+        self.assertEqual(recorded["operation"], "confirm-sources")
+        self.assertEqual(recorded["confirmed_by"], "Arthur")
+        self.assertEqual(recorded["selected_paths"], ["docs"])
+        self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
+
+    def test_confirming_without_a_named_developer_leaves_the_map_agent_asserted(self) -> None:
+        path = self.committed_source_map()
+        for empty in ("", "   ", "<identity>"):
+            with self.assertRaisesRegex(ValueError, "developer"):
+                confirm_sources(self.repo / "memory", self.repo, empty)
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["selection_status"], "agent-asserted")
+
+    def test_sources_that_moved_cannot_be_confirmed(self) -> None:
+        path = self.committed_source_map()
+        (self.repo / "docs" / "kept.md").write_text("changed after the developer looked", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "no longer there"):
+            confirm_sources(self.repo / "memory", self.repo, "Arthur")
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["selection_status"], "agent-asserted")
+
+    def test_initialization_does_not_take_a_developer_identity(self) -> None:
+        result = self.run_cli(
+            "init-domain-memory", "--repo-root", str(self.repo), "--output", str(self.repo / "elsewhere"),
+            "--source", str(self.repo / "docs"), "--storage-mode", "ignored", "--data-classification", "internal",
+            "--review-mode", "local-draft-only", "--source-authority", "test", "--confirmed-by", "Arthur",
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--confirmed-by", result.stderr)
+        self.assertFalse((self.repo / "elsewhere").exists())
+
+    def permit_sources(self) -> None:
+        path = self.repo / "memory" / "domain-memory-policy.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["limits"] |= {"max_file_count": 50, "max_file_bytes": 100000, "max_total_bytes": 500000}
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+    def test_a_source_map_the_policy_rejects_is_not_reported_as_moved(self) -> None:
+        self.committed_source_map()
+        with self.assertRaisesRegex(ValueError, "does not verify"):
+            confirm_sources(self.repo / "memory", self.repo, "Arthur", stored_policy_of(self.repo))
+
+    def test_the_confirm_command_moves_the_map_through_the_command_line(self) -> None:
+        self.committed_source_map()
+        self.permit_sources()
+        result = self.run_cli("confirm-sources", "--registry-root", str(self.repo / "memory"),
+                              "--repo-root", str(self.repo), "--confirmed-by", "Arthur")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Arthur", result.stdout)
+        stored = json.loads((self.repo / "memory" / "source-map.json").read_text(encoding="utf-8"))
+        self.assertEqual(stored["selection_status"], "developer-confirmed")
+
+    def test_the_confirm_command_reports_a_refusal_instead_of_a_traceback(self) -> None:
+        self.committed_source_map()
+        self.permit_sources()
+        result = self.run_cli("confirm-sources", "--registry-root", str(self.repo / "memory"),
+                              "--repo-root", str(self.repo), "--confirmed-by", "<identity>")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("ERROR", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_the_instruction_files_group_says_it_is_not_a_statement_of_the_domain(self) -> None:
+        (self.repo / "AGENTS.md").write_text("How agents work here.", encoding="utf-8")
+        group = next(g for g in discover_sources(self.repo)["source_groups"] if g["kind"] == "repository_instructions")
+        self.assertEqual(group["paths"], ["AGENTS.md"])
+        self.assertIn("not a statement of the business domain", group["authority"])
+        self.assertIn("loses its evidence", group["caution"])
+
+    def defined_term(self) -> None:
+        self.seed("vocabulary.json", [
+            {"id": "run", "name": "Run", "definition": "One execution of a Skill against a Test Case.",
+             "contexts": ["trial"]},
+        ])
+        self.allow_results(10)
+
+    def test_a_requirement_sentence_resolves_the_terms_it_names(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(self.repo / "memory", "Who starts the Evaluation once a Run succeeds?", None)
+        self.assertEqual([term["id"] for term in matches], ["run"])
+
+    def test_a_sentence_naming_no_registered_term_still_resolves_to_nothing(self) -> None:
+        self.defined_term()
+        self.assertEqual(resolve_terms(self.repo / "memory", "Who signs off on the quarterly budget?", None), [])
+
+    def test_a_word_from_the_definition_still_resolves_the_term(self) -> None:
+        self.defined_term()
+        matches = resolve_terms(self.repo / "memory", "test case", None)
+        self.assertEqual([term["id"] for term in matches], ["run"])
+
+    def test_a_file_holding_several_records_says_how_many_it_should_hold(self) -> None:
+        record = self.write_record("many.json", [{"id": "orders"}, {"id": "billing"}])
+        with self.assertRaisesRegex(ValueError, "One record per call"):
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+
+    def test_a_change_package_offered_as_a_record_is_refused(self) -> None:
+        record = self.write_record("package.json", {"registry_updates": [{"id": "orders"}]})
+        with self.assertRaisesRegex(ValueError, "not a Change Package"):
+            upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
 
     def test_an_agent_asserted_map_still_reports_whether_its_sources_moved(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)
         kept = self.repo / "docs" / "kept.md"
         kept.write_text("kept", encoding="utf-8")
         path = self.repo / "memory" / "source-map.json"
-        write_source_map(path, confirmed_source_map(self.repo, [self.repo / "docs"]))
+        write_source_map(path, selected_source_map(self.repo, [self.repo / "docs"]))
         fresh = verify_source_map(self.repo, path)
         self.assertEqual(fresh["status"], "current")
         self.assertEqual(fresh["selection_status"], "agent-asserted")
@@ -310,7 +420,7 @@ class DomainRegistryTest(unittest.TestCase):
     def test_a_map_without_a_recorded_git_state_is_probed_by_hashing(self) -> None:
         (self.repo / "docs").mkdir(exist_ok=True)
         (self.repo / "docs" / "kept.md").write_text("kept", encoding="utf-8")
-        source_map = confirmed_source_map(self.repo, [self.repo / "docs"])
+        source_map = selected_source_map(self.repo, [self.repo / "docs"])
         del source_map["git_state"]
         path = self.repo / "memory" / "source-map.json"
         write_source_map(path, source_map)
@@ -322,7 +432,7 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "apps" / "svc").mkdir(parents=True, exist_ok=True)
         (self.repo / "apps" / "other.go").write_text("other", encoding="utf-8")
         (self.repo / "apps" / "svc" / "doc.go").write_text("package svc", encoding="utf-8")
-        return confirmed_source_map(self.repo, [self.repo / "apps", self.repo / "apps" / "svc" / "doc.go"])
+        return selected_source_map(self.repo, [self.repo / "apps", self.repo / "apps" / "svc" / "doc.go"])
 
     def test_a_nested_source_owns_its_files_instead_of_its_parent(self) -> None:
         source_map = self.nested_sources()
@@ -358,7 +468,7 @@ class DomainRegistryTest(unittest.TestCase):
         decisions.mkdir(parents=True, exist_ok=True)
         decision = decisions / "boundaries.md"
         decision.write_text("Orders owns pricing.", encoding="utf-8")
-        write_source_map(self.repo / "memory" / "source-map.json", confirmed_source_map(self.repo, [decisions]))
+        write_source_map(self.repo / "memory" / "source-map.json", selected_source_map(self.repo, [decisions]))
         content = decision.read_bytes()
         record = self.write_record("context.json", {
             "id": "orders", "name": "Orders", "responsibility": "Own orders.",
@@ -814,7 +924,7 @@ class DomainRegistryTest(unittest.TestCase):
     def test_the_cite_command_reports_the_kind_of_source_the_lines_came_from(self) -> None:
         self.cited_file()
         write_source_map(self.repo / "memory" / "source-map.json",
-                         confirmed_source_map(self.repo, [self.repo / "docs" / "adr"]))
+                         selected_source_map(self.repo, [self.repo / "docs" / "adr"]))
         result = self.run_cli("cite", "--repo-root", str(self.repo), "--path", "docs/adr/boundaries.md",
                               "--start", "2", "--end", "2", "--registry-root", str(self.repo / "memory"))
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -823,7 +933,7 @@ class DomainRegistryTest(unittest.TestCase):
     def confirmed_corpus(self) -> None:
         self.cited_file()
         write_source_map(self.repo / "memory" / "source-map.json",
-                         confirmed_source_map(self.repo, [self.repo / "docs" / "adr"]))
+                         selected_source_map(self.repo, [self.repo / "docs" / "adr"]))
 
     def test_a_candidate_resting_on_an_unconfirmed_file_names_that_file(self) -> None:
         self.confirmed_corpus()

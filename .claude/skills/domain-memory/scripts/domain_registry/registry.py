@@ -282,8 +282,9 @@ def resolve_terms(root: Path, query: str, context: str | None) -> list[dict[str,
         contexts = term.get("contexts", [])
         if context is not None and context not in contexts:
             continue
-        searchable = " ".join(str(term.get(field, "")) for field in ("id", "name", "definition"))
-        if needle in searchable.casefold():
+        searchable = " ".join(str(term.get(field, "")) for field in ("id", "name", "definition")).casefold()
+        named = [str(term.get(field, "")).casefold() for field in ("id", "name")]
+        if needle in searchable or any(name and name in needle for name in named):
             matches.append(term)
     return matches[:query_result_limit(root)]
 

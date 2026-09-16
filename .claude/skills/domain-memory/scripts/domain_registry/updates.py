@@ -20,9 +20,13 @@ def review_status(asset: str, record: dict[str, Any], asset_status: str) -> str:
 
 
 def read_update(path: Path) -> dict[str, Any]:
-    value = load_json(path)
-    if not completed_identifier(value.get("id")):
-        raise ValueError(f"update record requires a completed id: {path}")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or not completed_identifier(value.get("id")):
+        raise ValueError(
+            f"{path} must hold one record object with a completed id, such as "
+            '{"id": "orders", "name": "Orders", "responsibility": "..."} — not a list of records, '
+            "not a Change Package, and not the whole asset file. One record per call."
+        )
     return value
 
 

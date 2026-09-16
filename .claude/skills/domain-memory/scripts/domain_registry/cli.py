@@ -3,7 +3,7 @@ from .common import ASSET_KEYS, load_json
 from .hitl import finalize_proposal, record_approval, submit_proposal, supersede_proposal, verify_proposal
 from .policy import AMENDABLE_FIELDS, amend_policy, policy_path, validate_policy, write_policy
 from .registry import boundary_analysis, context_model, coverage, init_registry, lookup, migrate_evidence, migrate_registry, record_by_id, resolve_terms, validate, verify_evidence
-from .sources import confirmed_source_map, discover_sources, probe_sources, verify_source_map, write_source_map
+from .sources import confirm_sources, selected_source_map, discover_sources, probe_sources, verify_source_map, write_source_map
 from .transaction import recover_interrupted_update
 from .security import scan as scan_secrets
 from .contracts import validate_schema
@@ -105,9 +105,12 @@ def main() -> int:
     memory_init_parser.add_argument("--data-classification", required=True, choices=["public", "internal", "confidential", "restricted"])
     memory_init_parser.add_argument("--review-mode", required=True, choices=["local-draft-only", "scm-verified"])
     memory_init_parser.add_argument("--source-authority", required=True)
-    memory_init_parser.add_argument("--confirmed-by")
     memory_init_parser.add_argument("--include", action="append")
     memory_init_parser.add_argument("--exclude", action="append")
+    confirm_parser = commands.add_parser("confirm-sources")
+    confirm_parser.add_argument("--registry-root", required=True, type=Path)
+    confirm_parser.add_argument("--repo-root", required=True, type=Path)
+    confirm_parser.add_argument("--confirmed-by", required=True)
     amend_parser = commands.add_parser("amend-policy")
     amend_parser.add_argument("--registry-root", required=True, type=Path)
     amend_parser.add_argument("--field", required=True, choices=sorted(AMENDABLE_FIELDS))
@@ -268,7 +271,7 @@ def main() -> int:
             return 1
         selected = [path if path.is_absolute() else repo_root / path for path in args.source]
         try:
-            preliminary = confirmed_source_map(repo_root, selected, confirmed_by=args.confirmed_by)
+            preliminary = selected_source_map(repo_root, selected)
         except ValueError as error:
             print(f"ERROR: {error}")
             return 1
@@ -279,19 +282,28 @@ def main() -> int:
             return 1
         write_policy(output, preliminary, args.storage_mode, args.data_classification, args.review_mode, args.source_authority, args.include or ["**"], args.exclude or [])
         try:
-            source_map = confirmed_source_map(repo_root, selected, load_json(policy_path(output)), confirmed_by=args.confirmed_by)
+            source_map = selected_source_map(repo_root, selected, load_json(policy_path(output)))
         except ValueError as error:
             import shutil
             shutil.rmtree(output)
             print(f"ERROR: {error}")
             return 1
         write_source_map(output / "source-map.json", source_map)
-        if args.confirmed_by:
-            print(f"Domain Memory initialized from sources confirmed by {args.confirmed_by}.")
-        else:
-            print("Domain Memory initialized. Sources are agent-asserted, not developer-confirmed: "
-                  "re-run with --confirmed-by <identity> once a developer has chosen them, "
-                  "or verify-sources will report the map as unverified.")
+        print("Domain Memory initialized. The sources are agent-asserted: you selected them, the developer has not "
+              "said they are the right corpus. Show them the selected paths and ask. When they answer, record it with "
+              "confirm-sources --confirmed-by <the identity they give you>; until then verify-sources reports the map "
+              "as unverified, which is the truth and not a problem to work around.")
+        return 0
+    if args.command == "confirm-sources":
+        registry_root = args.registry_root.resolve()
+        policy = policy_path(registry_root)
+        try:
+            source_map = confirm_sources(registry_root, args.repo_root.resolve(), args.confirmed_by,
+                                         load_json(policy) if policy.is_file() else None)
+        except ValueError as error:
+            print(f"ERROR: {error}")
+            return 1
+        print(f"Sources confirmed by {args.confirmed_by}: " + ", ".join(source_map["selected_paths"]))
         return 0
     if args.command == "amend-policy":
         change = amend_policy(args.registry_root.resolve(), args.field, args.value, args.reason)

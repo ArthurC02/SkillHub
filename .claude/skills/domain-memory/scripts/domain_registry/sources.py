@@ -1,9 +1,13 @@
 import json
 import hashlib
+from datetime import datetime, timezone
 import fnmatch
 import subprocess
 from pathlib import Path
 from typing import Any
+
+from .audit import append as append_audit
+from .common import completed_identifier
 
 
 EXCLUDED_DIRECTORIES = {".git", ".hg", ".svn", "node_modules", ".venv", "vendor", "dist", "build", "generated"}
@@ -80,7 +84,8 @@ def test_locations(root: Path) -> list[str]:
 def discover_sources(root: Path) -> dict[str, Any]:
     root = root.resolve()
     groups = [
-        {"kind": "repository_instructions", "authority": "repository-local rules", "paths": instruction_files(root)},
+        {"kind": "repository_instructions", "authority": "instructions to coding agents, not a statement of the business domain",
+         "caution": "These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.", "paths": instruction_files(root)},
         {"kind": "decisions", "authority": "current approved decisions when their status says so", "paths": existing_directories(root, ("docs/adr", "adr", "docs/architecture", "architecture"))},
         {"kind": "requirements", "authority": "intended behavior and acceptance criteria", "paths": existing_directories(root, ("docs/plans", "docs/spec", "docs/requirements", "spec", "requirements"))},
         {"kind": "contracts", "authority": "inter-process promises and compatibility", "paths": existing_directories(root, ("contracts", "openapi", "asyncapi"))},
@@ -179,7 +184,7 @@ def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
     return kinds.get(owner, "unclassified")
 
 
-def confirmed_source_map(root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None, confirmed_by: str | None = None) -> dict[str, Any]:
+def selected_source_map(root: Path, selected_paths: list[Path], policy: dict[str, Any] | None = None) -> dict[str, Any]:
     root = root.resolve()
     selected = []
     for path in selected_paths:
@@ -193,9 +198,7 @@ def confirmed_source_map(root: Path, selected_paths: list[Path], policy: dict[st
     if not selected:
         raise ValueError("at least one source path is required")
     source_map = discover_sources(root)
-    source_map["selection_status"] = "developer-confirmed" if confirmed_by else "agent-asserted"
-    if confirmed_by:
-        source_map["confirmed_by"] = confirmed_by
+    source_map["selection_status"] = "agent-asserted"
     source_map["selected_paths"] = sorted(set(selected))
     if policy:
         report = source_policy_report(root, [root / path for path in source_map["selected_paths"]], policy)
@@ -207,6 +210,40 @@ def confirmed_source_map(root: Path, selected_paths: list[Path], policy: dict[st
     source_map["source_snapshots"] = source_snapshots(root, source_map["selected_paths"], policy)
     return source_map
 
+
+def confirm_sources(root: Path, repo_root: Path, confirmed_by: str, policy: dict[str, Any] | None = None) -> dict[str, Any]:
+    path = root / "source-map.json"
+    if not path.is_file():
+        raise ValueError(f"no source map at {path}: initialize the Domain Memory before confirming its sources")
+    if not completed_identifier(confirmed_by):
+        raise ValueError(
+            "confirming sources records who chose them, so it needs the developer's own identity as they gave it. "
+            "An agent cannot confirm on their behalf, and an identity read out of a git config, a commit or a file "
+            "in the repository is not the developer answering."
+        )
+    freshness = verify_source_map(repo_root, path, policy)
+    if freshness["status"] == "stale":
+        raise ValueError(
+            "the selected sources have moved since this map was written, so confirming it would attest to a corpus "
+            "that is no longer there; refresh the map first, then confirm what the developer actually looked at: "
+            + ", ".join(source["path"] for source in freshness.get("changed_sources", []))
+        )
+    if freshness["status"] != "current":
+        raise ValueError(
+            "the source map does not verify, so there is nothing to confirm yet: "
+            + str(freshness.get("reason", freshness["status"]))
+        )
+    source_map = json.loads(path.read_text(encoding="utf-8"))
+    source_map["selection_status"] = "developer-confirmed"
+    source_map["confirmed_by"] = confirmed_by
+    source_map["confirmed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    write_source_map(path, source_map)
+    append_audit(root, {
+        "operation": "confirm-sources",
+        "confirmed_by": confirmed_by,
+        "selected_paths": source_map.get("selected_paths", []),
+    })
+    return source_map
 
 def verify_source_map(root: Path, source_map_path: Path, policy: dict[str, Any] | None = None) -> dict[str, Any]:
     source_map = json.loads(source_map_path.read_text(encoding="utf-8"))

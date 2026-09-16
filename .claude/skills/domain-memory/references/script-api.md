@@ -12,7 +12,8 @@
 | Verify audit trail | `verify-audit --registry-root <path>` | Validates the local append-only hash chain; it is tamper-evident, not an external immutable log. |
 | Recover an interrupted update | `recover-registry-update --registry-root <path> [--force]` | Restores or completes a journaled update; `--force` is required only after confirming that a crashed writer left its lock behind. |
 | Retrieve a record | `get-record --asset <asset> --id <id>` | Returns the exact stored record or fails. |
-| Resolve vocabulary | `resolve-terms --query <text> [--context <id>]` | Filters stored Vocabulary records; no match does not prove absence. |
+| Resolve vocabulary | `resolve-terms --query <text> [--context <id>]` | Matches a Vocabulary record when its name or id appears in the query, or the query appears in its name, id, or definition; a whole sentence is a valid query. No match does not prove absence. |
+| Confirm the selected sources | `confirm-sources --registry-root <root> --repo-root <repo> --confirmed-by <identity>` | Moves the source map from `agent-asserted` to `developer-confirmed`, recording who and when in the audit chain. Refused without a named developer, and refused once the sources have moved. |
 | Retrieve a Context model | `get-context --id <id>` | Returns the Context with related vocabulary, aggregates, rules, contracts, and interactions. |
 | Inspect a boundary | `analyze-boundary --source-context <id> --target-context <id>` | Lists registered direct interactions and contracts. |
 | Search an asset | `lookup --asset <asset> --query <text>` | Performs deterministic file-backed text matching. |

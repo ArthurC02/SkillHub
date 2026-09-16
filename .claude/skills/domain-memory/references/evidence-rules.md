@@ -19,4 +19,6 @@ For every conclusion, cite the path and enough location information for a review
 
 When sources conflict, list each source, the precise disagreement, and the behavior that cannot be chosen safely. Prefer no source merely because it is easier to search. Superseded decisions remain historical evidence and must not be used as current rules.
 
+A file written to instruct coding agents is not a domain source, whatever it is named and however complete its picture of the repository looks. It records how people want work done, it is rewritten whenever that changes, and it is the first thing a repository reorganizes away.
+
 A file is not authoritative because of where it sits or what it is called. A repository-specific document may be read as evidence, but a Domain Memory must not come to depend on one: prefer a citation that still resolves after that document is deleted, and record the gap when no such citation exists. Do not turn source ownership into a claim about a human approver. A repository map can identify a technical owner without establishing an organization role, approval authority, or effective period.

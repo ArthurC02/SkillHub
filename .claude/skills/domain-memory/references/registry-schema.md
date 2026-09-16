@@ -20,6 +20,20 @@ A Context may record `confirmed_absences`: a list of `{asset, reason, evidence}`
 
 A Context's abilities live in the Capability asset, one record each, and not in a field on the Context: one fact with two homes drifts, and only the asset can carry its own evidence and status.
 
+`upsert-candidate --record-file` reads one record object, not a list and not a Change Package, and writes one record per call:
+
+```json
+{
+  "id": "orders",
+  "name": "Orders",
+  "responsibility": "Own the order lifecycle.",
+  "evidence": [{ "path": "docs/adr/boundaries.md", "lines": { "start": 12, "end": 18 },
+                 "content_sha256": "sha256:...", "excerpt_sha256": "sha256:..." }]
+}
+```
+
+Build each entry in `evidence` with `cite` rather than by hand.
+
 `upsert-candidate` writes every record as a candidate whatever the submitted file says, because the command exists for machine-written records and a machine does not decide that a record has been reviewed. A record becomes reviewed only through an approved Change Package applied by `apply-approved-updates`.
 
 The supplied validator checks file shape, asset formats, status values, IDs, Context references, contract references, and optional structured evidence. Reviewed records must contain their type-specific fields, evidence, and `review` metadata. `apply-approved-updates` writes that metadata from the approved Change Package. Use `validate --require-reviewed` before a change may rely only on reviewed records. It cannot confirm that a definition, owner, rule, or approval is true; review those claims against their authority.
