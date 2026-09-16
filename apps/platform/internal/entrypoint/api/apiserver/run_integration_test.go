@@ -908,3 +908,47 @@ func TestRunArtifactDeleteUsesItsAlreadyLockedConnection(t *testing.T) {
 		t.Fatal("deleted run artifact bytes survived")
 	}
 }
+
+func TestTheDatabaseRunGuardsAcceptExactlyTheTransitionsOfTheGoStateMachine(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "run-guards-agree")
+	var snapshotID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		SELECT workspace_id, id, user_prompt, acceptance_criteria, 'run-guards-agree'
+		FROM test_cases WHERE id = $1 RETURNING id`, mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, from := range run.AllStatuses {
+		for _, to := range run.AllStatuses {
+			if from == to {
+				continue
+			}
+			if accepted := databaseAcceptsRunTransition(t, pool, f, snapshotID, from, to); accepted != run.CanTransition(from, to) {
+				t.Errorf("%s -> %s: the database accepts it = %v, the Go state machine = %v", from, to, accepted, run.CanTransition(from, to))
+			}
+		}
+	}
+}
+
+func databaseAcceptsRunTransition(t *testing.T, pool *pgxpool.Pool, f fixture, snapshotID pgtype.UUID, from, to gen.RunStatus) bool {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var runID pgtype.UUID
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status)
+		VALUES ($1, $2, $3, 'run-guards-agree', $4) RETURNING id`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, from).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	_, err = tx.Exec(ctx, `UPDATE runs SET status = $1 WHERE id = $2`, to, runID)
+	return err == nil
+}

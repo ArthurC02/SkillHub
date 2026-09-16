@@ -163,8 +163,7 @@ queries:
   LockRunArtifactManifest: run
   MarkRunArtifactsTruncated: run
   ListRunArtifacts: run
-  ListReadableRunArtifacts: run
-  CountUnreadableRunArtifacts: run
+  ListRunArtifactsWithLifecycle: run
   RecordOrphanSighting: run
   ForgetClearedOrphans: run
   CountPersistentOrphans: run

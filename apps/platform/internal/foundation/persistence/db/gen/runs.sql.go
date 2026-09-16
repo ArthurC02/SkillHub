@@ -135,32 +135,6 @@ func (q *Queries) CountRunsByDay(ctx context.Context, since pgtype.Timestamptz) 
 	return items, nil
 }
 
-const countUnreadableRunArtifacts = `-- name: CountUnreadableRunArtifacts :one
-SELECT
-  count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,
-  count(*) FILTER (WHERE deleted_at IS NULL
-                     AND (purged_at IS NOT NULL OR expires_at <= now()))::bigint AS expired
-FROM artifacts
-WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
-`
-
-type CountUnreadableRunArtifactsParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-type CountUnreadableRunArtifactsRow struct {
-	Deleted int64
-	Expired int64
-}
-
-func (q *Queries) CountUnreadableRunArtifacts(ctx context.Context, arg CountUnreadableRunArtifactsParams) (CountUnreadableRunArtifactsRow, error) {
-	row := q.db.QueryRow(ctx, countUnreadableRunArtifacts, arg.RunID, arg.WorkspaceID)
-	var i CountUnreadableRunArtifactsRow
-	err := row.Scan(&i.Deleted, &i.Expired)
-	return i, err
-}
-
 const createRun = `-- name: CreateRun :one
 INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
@@ -679,55 +653,6 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 	return items, nil
 }
 
-const listReadableRunArtifacts = `-- name: ListReadableRunArtifacts :many
-SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at, reconcile_checked_at, retention_attempted_at FROM artifacts
-WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
-  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
-ORDER BY file_name
-`
-
-type ListReadableRunArtifactsParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-func (q *Queries) ListReadableRunArtifacts(ctx context.Context, arg ListReadableRunArtifactsParams) ([]Artifact, error) {
-	rows, err := q.db.Query(ctx, listReadableRunArtifacts, arg.RunID, arg.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Artifact
-	for rows.Next() {
-		var i Artifact
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.RunID,
-			&i.Kind,
-			&i.FileName,
-			&i.ContentType,
-			&i.SizeBytes,
-			&i.ContentHash,
-			&i.ObjectKey,
-			&i.ScanStatus,
-			&i.ExpiresAt,
-			&i.CreatedAt,
-			&i.DeletedAt,
-			&i.PurgedAt,
-			&i.ReconcileCheckedAt,
-			&i.RetentionAttemptedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listRunArtifactFileNames = `-- name: ListRunArtifactFileNames :many
 SELECT file_name FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
@@ -815,6 +740,54 @@ type ListRunArtifactsParams struct {
 
 func (q *Queries) ListRunArtifacts(ctx context.Context, arg ListRunArtifactsParams) ([]Artifact, error) {
 	rows, err := q.db.Query(ctx, listRunArtifacts, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Artifact
+	for rows.Next() {
+		var i Artifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.Kind,
+			&i.FileName,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ObjectKey,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.PurgedAt,
+			&i.ReconcileCheckedAt,
+			&i.RetentionAttemptedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunArtifactsWithLifecycle = `-- name: ListRunArtifactsWithLifecycle :many
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at, reconcile_checked_at, retention_attempted_at FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
+ORDER BY file_name
+`
+
+type ListRunArtifactsWithLifecycleParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) ListRunArtifactsWithLifecycle(ctx context.Context, arg ListRunArtifactsWithLifecycleParams) ([]Artifact, error) {
+	rows, err := q.db.Query(ctx, listRunArtifactsWithLifecycle, arg.RunID, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

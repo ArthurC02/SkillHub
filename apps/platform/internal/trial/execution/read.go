@@ -137,35 +137,42 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 	if len(attempts) > 0 {
 		latestAttempt = int(attempts[len(attempts)-1].AttemptNumber)
 	}
-	rows, err := s.queries().ListReadableRunArtifacts(ctx, gen.ListReadableRunArtifactsParams{
+	rows, err := s.queries().ListRunArtifactsWithLifecycle(ctx, gen.ListRunArtifactsWithLifecycleParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
 		return EvaluationInput{}, false, err
 	}
-
-	absent, err := s.queries().CountUnreadableRunArtifacts(ctx, gen.CountUnreadableRunArtifactsParams{
-		RunID: runID, WorkspaceID: workspaceID,
-	})
-	if err != nil {
-		return EvaluationInput{}, false, err
-	}
-	artifacts := make([]EvaluationArtifact, len(rows))
-	for i, row := range rows {
-		artifacts[i] = EvaluationArtifact{
-			FileName: row.FileName, ContentType: row.ContentType,
-			SizeBytes: row.SizeBytes, ContentHash: row.ContentHash,
-		}
-	}
+	artifacts, absent := evaluationArtifacts(rows, time.Now())
 	return EvaluationInput{
-		Run:       run,
-		Artifacts: artifacts,
-		Absent: EvaluationArtifactAbsence{
-			Deleted: int(absent.Deleted),
-			Expired: int(absent.Expired),
-		},
+		Run:           run,
+		Artifacts:     artifacts,
+		Absent:        absent,
 		LatestAttempt: latestAttempt,
 	}, true, nil
+}
+
+func runArtifactReadableAt(a gen.Artifact, now time.Time) bool {
+	return !a.DeletedAt.Valid && !a.PurgedAt.Valid && a.ExpiresAt.Time.After(now)
+}
+
+func evaluationArtifacts(rows []gen.Artifact, now time.Time) ([]EvaluationArtifact, EvaluationArtifactAbsence) {
+	artifacts := []EvaluationArtifact{}
+	var absent EvaluationArtifactAbsence
+	for _, row := range rows {
+		switch {
+		case row.DeletedAt.Valid:
+			absent.Deleted++
+		case !runArtifactReadableAt(row, now):
+			absent.Expired++
+		default:
+			artifacts = append(artifacts, EvaluationArtifact{
+				FileName: row.FileName, ContentType: row.ContentType,
+				SizeBytes: row.SizeBytes, ContentHash: row.ContentHash,
+			})
+		}
+	}
+	return artifacts, absent
 }
 
 func evaluationRun(row gen.Run) EvaluationRun {

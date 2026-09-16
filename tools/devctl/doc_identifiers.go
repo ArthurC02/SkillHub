@@ -43,6 +43,7 @@ var allowedDocWords = map[string]string{
 	"MARKER":                       "shell variable in tools/sec009 (.sh is outside codeExtensions)",
 	"RunEvaluation":                "renamed to features/runs/evaluation/EvaluationPanel.tsx; 04 records past work under the old name",
 	"SnapshotInputsStillAvailable": "replaced by trial/design's snapshotInputsAvailable over GetSnapshotInputs; 04 丙-9 records it as it was",
+	"CountUnreadableRunArtifacts":  "replaced by trial/execution's evaluationArtifacts over ListRunArtifactsWithLifecycle; 03 records past work under the old name",
 }
 
 var codeExtensions = map[string]bool{

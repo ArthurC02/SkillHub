@@ -215,19 +215,10 @@ SELECT * FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
 ORDER BY file_name;
 
--- name: ListReadableRunArtifacts :many
+-- name: ListRunArtifactsWithLifecycle :many
 SELECT * FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
-  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
 ORDER BY file_name;
-
--- name: CountUnreadableRunArtifacts :one
-SELECT
-  count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,
-  count(*) FILTER (WHERE deleted_at IS NULL
-                     AND (purged_at IS NOT NULL OR expires_at <= now()))::bigint AS expired
-FROM artifacts
-WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output';
 
 -- name: RecordOrphanSighting :one
 INSERT INTO reconciler_orphan_sightings (provider, provider_run_id)
