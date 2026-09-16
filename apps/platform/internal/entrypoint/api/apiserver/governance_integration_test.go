@@ -449,7 +449,19 @@ func TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes(t *testing
 	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
 		t.Fatalf("expired legacy-unknown grant purge = %d, %v; want fail-closed deferral", n, err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_state = 'closed'
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_state = 'closed',
+		object_grants_expire_at = now() - interval '30 seconds'
+		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
+		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+		t.Fatalf("a grant closed within the clock tolerance purge = %d, %v; want a deferral", n, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_expire_at = now() - interval '2 minutes'
 		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
 		t.Fatal(err)
 	}

@@ -308,14 +308,16 @@ func (q *Queries) DeleteWorkspaceRunArtifacts(ctx context.Context, workspaceID p
 
 const deleteWorkspaceTestCases = `-- name: DeleteWorkspaceTestCases :execrows
 DELETE FROM test_cases
-WHERE test_cases.workspace_id = $1
-  AND NOT EXISTS (
-      SELECT 1 FROM test_case_snapshots s WHERE s.test_case_id = test_cases.id
-  )
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
-func (q *Queries) DeleteWorkspaceTestCases(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteWorkspaceTestCases, workspaceID)
+type DeleteWorkspaceTestCasesParams struct {
+	WorkspaceID pgtype.UUID
+	TestCaseIds []pgtype.UUID
+}
+
+func (q *Queries) DeleteWorkspaceTestCases(ctx context.Context, arg DeleteWorkspaceTestCasesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspaceTestCases, arg.WorkspaceID, arg.TestCaseIds)
 	if err != nil {
 		return 0, err
 	}
@@ -487,10 +489,6 @@ func (q *Queries) ListPlatformAuditEvents(ctx context.Context, arg ListPlatformA
 
 const listSkillsPastDeletionGrace = `-- name: ListSkillsPastDeletionGrace :many
 SELECT sk.id,
-       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-        OR EXISTS (SELECT 1 FROM skills f
-                   JOIN skill_versions v ON v.id = f.forked_from_version_id
-                   WHERE v.skill_id = sk.id))::bool AS forked,
        COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
                 '{}')::uuid[] AS version_ids
 FROM skills sk
@@ -500,7 +498,6 @@ ORDER BY sk.deleted_at, sk.id
 
 type ListSkillsPastDeletionGraceRow struct {
 	ID         pgtype.UUID
-	Forked     bool
 	VersionIds []pgtype.UUID
 }
 
@@ -513,7 +510,7 @@ func (q *Queries) ListSkillsPastDeletionGrace(ctx context.Context, cutoff pgtype
 	var items []ListSkillsPastDeletionGraceRow
 	for rows.Next() {
 		var i ListSkillsPastDeletionGraceRow
-		if err := rows.Scan(&i.ID, &i.Forked, &i.VersionIds); err != nil {
+		if err := rows.Scan(&i.ID, &i.VersionIds); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -666,10 +663,6 @@ func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, w
 
 const listWorkspacePurgeCandidates = `-- name: ListWorkspacePurgeCandidates :many
 SELECT sk.id,
-       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-        OR EXISTS (SELECT 1 FROM skills f
-                   JOIN skill_versions v ON v.id = f.forked_from_version_id
-                   WHERE v.skill_id = sk.id))::bool AS forked,
        COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
                 '{}')::uuid[] AS version_ids
 FROM skills sk
@@ -678,7 +671,6 @@ WHERE sk.workspace_id = $1
 
 type ListWorkspacePurgeCandidatesRow struct {
 	ID         pgtype.UUID
-	Forked     bool
 	VersionIds []pgtype.UUID
 }
 
@@ -691,7 +683,7 @@ func (q *Queries) ListWorkspacePurgeCandidates(ctx context.Context, workspaceID 
 	var items []ListWorkspacePurgeCandidatesRow
 	for rows.Next() {
 		var i ListWorkspacePurgeCandidatesRow
-		if err := rows.Scan(&i.ID, &i.Forked, &i.VersionIds); err != nil {
+		if err := rows.Scan(&i.ID, &i.VersionIds); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -837,12 +829,6 @@ WITH purgeable AS (
     WHERE sk.id = ANY($1::uuid[])
       AND ($2::timestamptz IS NULL
            OR (sk.deleted_at IS NOT NULL AND sk.deleted_at <= $2::timestamptz))
-      AND NOT EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            JOIN skill_versions v ON v.id = f.forked_from_version_id
-            WHERE v.skill_id = sk.id
-          )
 ),
 enqueued AS (
     INSERT INTO object_collection_queue (object_key)

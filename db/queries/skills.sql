@@ -119,3 +119,11 @@ WHERE deleted_at IS NULL
        OR (sqlc.narg(skill_id)::uuid IS NULL AND name ILIKE '%' || @name_part::text || '%'))
 ORDER BY created_at DESC, id
 LIMIT @result_limit;
+
+-- name: ListForkedSkills :many
+SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
+WHERE f.forked_from_skill_id = ANY(@skill_ids::uuid[])
+UNION
+SELECT v.skill_id FROM skills f
+JOIN skill_versions v ON v.id = f.forked_from_version_id
+WHERE v.skill_id = ANY(@skill_ids::uuid[]);

@@ -91,10 +91,7 @@ RETURNING d.id;
 
 -- name: DeleteWorkspaceTestCases :execrows
 DELETE FROM test_cases
-WHERE test_cases.workspace_id = $1
-  AND NOT EXISTS (
-      SELECT 1 FROM test_case_snapshots s WHERE s.test_case_id = test_cases.id
-  );
+WHERE workspace_id = @workspace_id AND id = ANY(@test_case_ids::uuid[]);
 
 -- name: DeleteWorkspaceRunArtifacts :many
 WITH cleanup_intents AS (
@@ -116,10 +113,6 @@ RETURNING id;
 
 -- name: ListWorkspacePurgeCandidates :many
 SELECT sk.id,
-       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-        OR EXISTS (SELECT 1 FROM skills f
-                   JOIN skill_versions v ON v.id = f.forked_from_version_id
-                   WHERE v.skill_id = sk.id))::bool AS forked,
        COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
                 '{}')::uuid[] AS version_ids
 FROM skills sk
@@ -127,10 +120,6 @@ WHERE sk.workspace_id = $1;
 
 -- name: ListSkillsPastDeletionGrace :many
 SELECT sk.id,
-       (EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-        OR EXISTS (SELECT 1 FROM skills f
-                   JOIN skill_versions v ON v.id = f.forked_from_version_id
-                   WHERE v.skill_id = sk.id))::bool AS forked,
        COALESCE((SELECT array_agg(v.id) FROM skill_versions v WHERE v.skill_id = sk.id),
                 '{}')::uuid[] AS version_ids
 FROM skills sk
@@ -146,12 +135,6 @@ WITH purgeable AS (
     WHERE sk.id = ANY(@skill_ids::uuid[])
       AND (sqlc.narg(cutoff)::timestamptz IS NULL
            OR (sk.deleted_at IS NOT NULL AND sk.deleted_at <= sqlc.narg(cutoff)::timestamptz))
-      AND NOT EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
-      AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            JOIN skill_versions v ON v.id = f.forked_from_version_id
-            WHERE v.skill_id = sk.id
-          )
 ),
 enqueued AS (
     INSERT INTO object_collection_queue (object_key)

@@ -336,6 +336,35 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 	return i, err
 }
 
+const listForkedSkills = `-- name: ListForkedSkills :many
+SELECT f.forked_from_skill_id::uuid AS skill_id FROM skills f
+WHERE f.forked_from_skill_id = ANY($1::uuid[])
+UNION
+SELECT v.skill_id FROM skills f
+JOIN skill_versions v ON v.id = f.forked_from_version_id
+WHERE v.skill_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListForkedSkills(ctx context.Context, skillIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listForkedSkills, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_id pgtype.UUID
+		if err := rows.Scan(&skill_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLiveSkillIDs = `-- name: ListLiveSkillIDs :many
 SELECT id FROM skills
 WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND takedown_at IS NULL

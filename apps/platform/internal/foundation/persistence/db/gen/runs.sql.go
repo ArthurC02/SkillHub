@@ -15,20 +15,33 @@ const accountPurgeReady = `-- name: AccountPurgeReady :one
 SELECT NOT EXISTS (
     SELECT 1 FROM runs r
     WHERE r.workspace_id = $1
-      AND (r.status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-           OR r.cleanup_status <> 'cleaned'
+      AND (r.status::text <> ALL($2::text[])
+           OR r.cleanup_status::text <> $3::text
            OR EXISTS (
                SELECT 1 FROM run_attempts a
                WHERE a.run_id = r.id
-                 -- Waits one extra minute because S3 and Postgres clocks may differ.
-                 AND (a.object_grants_state = 'legacy_unknown'
-                      OR a.object_grants_expire_at > now() - interval '1 minute')
+                 AND (a.object_grants_state = ANY($4::text[])
+                      OR a.object_grants_expire_at > now() - $5::interval)
            ))
 )
 `
 
-func (q *Queries) AccountPurgeReady(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
-	row := q.db.QueryRow(ctx, accountPurgeReady, workspaceID)
+type AccountPurgeReadyParams struct {
+	WorkspaceID           pgtype.UUID
+	TerminalStatuses      []string
+	SettledCleanupStatus  string
+	UnprovableGrantStates []string
+	ClockTolerance        pgtype.Interval
+}
+
+func (q *Queries) AccountPurgeReady(ctx context.Context, arg AccountPurgeReadyParams) (bool, error) {
+	row := q.db.QueryRow(ctx, accountPurgeReady,
+		arg.WorkspaceID,
+		arg.TerminalStatuses,
+		arg.SettledCleanupStatus,
+		arg.UnprovableGrantStates,
+		arg.ClockTolerance,
+	)
 	var not_exists bool
 	err := row.Scan(&not_exists)
 	return not_exists, err

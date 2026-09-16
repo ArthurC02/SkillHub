@@ -374,6 +374,30 @@ func (q *Queries) ListSnapshotTestCases(ctx context.Context, arg ListSnapshotTes
 	return items, nil
 }
 
+const listSnapshottedTestCases = `-- name: ListSnapshottedTestCases :many
+SELECT DISTINCT test_case_id FROM test_case_snapshots WHERE test_case_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSnapshottedTestCases(ctx context.Context, testCaseIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSnapshottedTestCases, testCaseIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var test_case_id pgtype.UUID
+		if err := rows.Scan(&test_case_id); err != nil {
+			return nil, err
+		}
+		items = append(items, test_case_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTestCaseSnapshotIDs = `-- name: ListTestCaseSnapshotIDs :many
 SELECT id FROM test_case_snapshots
 WHERE workspace_id = $1 AND test_case_id = $2
@@ -441,6 +465,30 @@ func (q *Queries) ListTestCases(ctx context.Context, arg ListTestCasesParams) ([
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceTestCaseIDs = `-- name: ListWorkspaceTestCaseIDs :many
+SELECT id FROM test_cases WHERE workspace_id = $1
+`
+
+func (q *Queries) ListWorkspaceTestCaseIDs(ctx context.Context, workspaceID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceTestCaseIDs, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

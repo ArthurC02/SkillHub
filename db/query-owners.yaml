@@ -238,6 +238,7 @@ scope:
   ListActiveRuns: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
+  ListForkedSkills: user
   ListOutboxEventsByAggregate: user
   ListRunsNeedingCleanup: user
   ListSearchDocumentsMissingBigram: user
@@ -246,6 +247,7 @@ scope:
   ListSkillVersionsInRuns: user
   ListSkillsPastDeletionGrace: user
   ListSkillsWithTestCases: user
+  ListSnapshottedTestCases: user
   ListStalledCreationSessions: user
   ListUnpublishedOutboxEvents: user
   MarkAccountPurgeStarted: user

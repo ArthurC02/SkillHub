@@ -247,15 +247,14 @@ WHERE provider = @provider AND rounds >= @persistent_after_rounds::int;
 -- name: AccountPurgeReady :one
 SELECT NOT EXISTS (
     SELECT 1 FROM runs r
-    WHERE r.workspace_id = $1
-      AND (r.status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-           OR r.cleanup_status <> 'cleaned'
+    WHERE r.workspace_id = @workspace_id
+      AND (r.status::text <> ALL(@terminal_statuses::text[])
+           OR r.cleanup_status::text <> @settled_cleanup_status::text
            OR EXISTS (
                SELECT 1 FROM run_attempts a
                WHERE a.run_id = r.id
-                 -- Waits one extra minute because S3 and Postgres clocks may differ.
-                 AND (a.object_grants_state = 'legacy_unknown'
-                      OR a.object_grants_expire_at > now() - interval '1 minute')
+                 AND (a.object_grants_state = ANY(@unprovable_grant_states::text[])
+                      OR a.object_grants_expire_at > now() - @clock_tolerance::interval)
            ))
 );
 

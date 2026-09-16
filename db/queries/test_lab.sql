@@ -129,3 +129,9 @@ SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || (sqlc.
 
 -- name: ListSkillsWithTestCases :many
 SELECT DISTINCT skill_id FROM test_cases WHERE skill_id = ANY(@skill_ids::uuid[]);
+
+-- name: ListWorkspaceTestCaseIDs :many
+SELECT id FROM test_cases WHERE workspace_id = @workspace_id;
+
+-- name: ListSnapshottedTestCases :many
+SELECT DISTINCT test_case_id FROM test_case_snapshots WHERE test_case_id = ANY(@test_case_ids::uuid[]);
