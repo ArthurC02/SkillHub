@@ -23,9 +23,6 @@ func SetRedistribution(
 	if err != nil {
 		return RedistributionBefore{}, err
 	}
-	if err := loadNewestLicense(ctx, q, root); err != nil {
-		return RedistributionBefore{}, err
-	}
 	before := RedistributionBefore{WorkspaceID: root.row.WorkspaceID, Redistribution: root.row.Redistribution}
 	to := Redistribution(value)
 	root.SetRedistribution(to, claim)

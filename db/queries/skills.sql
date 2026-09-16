@@ -1,8 +1,8 @@
 -- name: CreateSkill :one
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
                     access_restriction, redistribution, category, category_source)
-VALUES ($1, $2, $3, $4, $5, $6, coalesce(sqlc.narg('redistribution')::text, 'unknown'),
-        sqlc.narg('category')::text, sqlc.narg('category_source')::text)
+VALUES (@workspace_id, @name, @summary, @forked_from_skill_id, @forked_from_version_id,
+        @access_restriction, @redistribution, sqlc.narg('category')::text, sqlc.narg('category_source')::text)
 RETURNING *;
 
 -- name: GetSkill :one

@@ -125,6 +125,7 @@ func (SkillDeleted) eventType() string            { return outbox.SkillDeleted }
 
 type newestVersion struct {
 	exists  bool
+	number  int32
 	license LicenseClaim
 }
 
@@ -275,7 +276,10 @@ func (s *SkillRoot) AddVersion(content VersionContent) {
 	}
 	content = cloneVersionContent(content)
 	s.pending = content
-	s.record(SkillVersionAdded{ContentHash: content.contentHash, ImprovedBy: content.improvedBy})
+	s.newest = newestVersion{exists: true, number: s.newest.number + 1, license: content.licenseClaim()}
+	s.record(SkillVersionAdded{
+		VersionNumber: s.newest.number, ContentHash: content.contentHash, ImprovedBy: content.improvedBy,
+	})
 }
 
 func (s *SkillRoot) AdoptNewestSummary() {

@@ -26,8 +26,8 @@ func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (
 const createSkill = `-- name: CreateSkill :one
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
                     access_restriction, redistribution, category, category_source)
-VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text, 'unknown'),
-        $8::text, $9::text)
+VALUES ($1, $2, $3, $4, $5,
+        $6, $7, $8::text, $9::text)
 RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category, category_source
 `
 
@@ -38,7 +38,7 @@ type CreateSkillParams struct {
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
 	AccessRestriction   *string
-	Redistribution      *string
+	Redistribution      string
 	Category            *string
 	CategorySource      *string
 }

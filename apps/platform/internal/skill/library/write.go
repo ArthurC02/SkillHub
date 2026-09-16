@@ -57,6 +57,17 @@ type VersionContent struct {
 	improvedBy       *Improvement
 }
 
+func (c VersionContent) licenseClaim() LicenseClaim {
+	var claim LicenseClaim
+	if c.license != nil {
+		claim.Expression = *c.license
+	}
+	if c.licenseSource != nil {
+		claim.Source = *c.licenseSource
+	}
+	return claim
+}
+
 func (c VersionContent) ImprovedBy(by Improvement) VersionContent {
 	c.improvedBy = cloneImprovement(&by)
 	return c

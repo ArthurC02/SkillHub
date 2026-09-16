@@ -3,9 +3,8 @@ INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
     content_hash, package_object_key, manifest, license_expression, license_source
 ) VALUES (
-    $1, $2, $3,
-    (SELECT coalesce(max(version_number), 0) + 1 FROM skill_versions WHERE skill_id = $2),
-    $4, $5, $6, $7, $8
+    @workspace_id, @skill_id, @source_id, @version_number,
+    @content_hash, @package_object_key, @manifest, @license_expression, @license_source
 )
 RETURNING *;
 
@@ -42,8 +41,8 @@ WHERE skill_version_id = $1
 ORDER BY measured_at DESC
 LIMIT 1;
 
--- name: GetLatestVersionLicense :one
-SELECT license_expression, license_source
+-- name: GetNewestSkillVersion :one
+SELECT version_number, license_expression, license_source
 FROM skill_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC

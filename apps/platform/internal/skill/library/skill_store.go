@@ -30,32 +30,35 @@ func LoadSkillNamed(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, nam
 }
 
 func loadSkill(ctx context.Context, q *gen.Queries, workspaceID, skillID pgtype.UUID) (*SkillRoot, error) {
-	return skillRootOf(q.LockSkill(ctx, gen.LockSkillParams{ID: skillID, WorkspaceID: workspaceID}))
+	row, err := q.LockSkill(ctx, gen.LockSkillParams{ID: skillID, WorkspaceID: workspaceID})
+	return skillRootOf(ctx, q, row, err)
 }
 
 func loadSkillForOperator(ctx context.Context, q *gen.Queries, skillID pgtype.UUID) (*SkillRoot, error) {
-	return skillRootOf(q.LockSkillForOperatorWrite(ctx, skillID))
+	row, err := q.LockSkillForOperatorWrite(ctx, skillID)
+	return skillRootOf(ctx, q, row, err)
 }
 
-func skillRootOf(row gen.Skill, err error) (*SkillRoot, error) {
+func skillRootOf(ctx context.Context, q *gen.Queries, row gen.Skill, err error) (*SkillRoot, error) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &SkillRoot{row: row}, nil
+	root := &SkillRoot{row: row}
+	return root, loadNewestVersion(ctx, q, root)
 }
 
-func loadNewestLicense(ctx context.Context, q *gen.Queries, root *SkillRoot) error {
-	row, err := q.GetLatestVersionLicense(ctx, root.row.ID)
+func loadNewestVersion(ctx context.Context, q *gen.Queries, root *SkillRoot) error {
+	row, err := q.GetNewestSkillVersion(ctx, root.row.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	root.newest.exists = true
+	root.newest.exists, root.newest.number = true, row.VersionNumber
 	if row.LicenseExpression != nil {
 		root.newest.license.Expression = *row.LicenseExpression
 	}
@@ -99,17 +102,17 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 		root.row, err = q.CreateSkill(ctx, gen.CreateSkillParams{
 			WorkspaceID: root.row.WorkspaceID, Name: root.row.Name, Summary: root.row.Summary,
 			ForkedFromSkillID: root.row.ForkedFromSkillID, ForkedFromVersionID: root.row.ForkedFromVersionID,
-			AccessRestriction: root.row.AccessRestriction, Redistribution: &root.row.Redistribution,
+			AccessRestriction: root.row.AccessRestriction, Redistribution: root.row.Redistribution,
 			Category: root.row.Category, CategorySource: root.row.CategorySource,
 		})
 	case SkillVersionAdded:
 		content := root.pending
 		root.added, err = q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 			WorkspaceID: root.row.WorkspaceID, SkillID: root.row.ID, SourceID: content.sourceID,
-			ContentHash: content.contentHash, PackageObjectKey: content.packageObjectKey,
+			VersionNumber: e.VersionNumber, ContentHash: content.contentHash, PackageObjectKey: content.packageObjectKey,
 			Manifest: content.manifest, LicenseExpression: content.license, LicenseSource: content.licenseSource,
 		})
-		e.VersionID, e.VersionNumber = root.added.ID, root.added.VersionNumber
+		e.VersionID = root.added.ID
 		event = e
 	case SkillDescribed:
 		err = q.UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{

@@ -605,7 +605,8 @@ func seedStoredVersion(
 	}
 	if _, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
 		WorkspaceID: mustUUID(t, c.workspaceID), SkillID: mustUUID(t, skillID), SourceID: source.ID,
-		ContentHash: hash, PackageObjectKey: "packages/" + hash + ".zip", Manifest: []byte(`{}`),
+		VersionNumber: nextVersionNumber(t, pool, skillID),
+		ContentHash:   hash, PackageObjectKey: "packages/" + hash + ".zip", Manifest: []byte(`{}`),
 	}); err != nil {
 		t.Fatal(err)
 	}

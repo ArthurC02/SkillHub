@@ -16,9 +16,8 @@ INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
     content_hash, package_object_key, manifest, license_expression, license_source
 ) VALUES (
-    $1, $2, $3,
-    (SELECT coalesce(max(version_number), 0) + 1 FROM skill_versions WHERE skill_id = $2),
-    $4, $5, $6, $7, $8
+    $1, $2, $3, $4,
+    $5, $6, $7, $8, $9
 )
 RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source
 `
@@ -27,6 +26,7 @@ type CreateSkillVersionParams struct {
 	WorkspaceID       pgtype.UUID
 	SkillID           pgtype.UUID
 	SourceID          pgtype.UUID
+	VersionNumber     int32
 	ContentHash       string
 	PackageObjectKey  string
 	Manifest          []byte
@@ -39,6 +39,7 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		arg.WorkspaceID,
 		arg.SkillID,
 		arg.SourceID,
+		arg.VersionNumber,
 		arg.ContentHash,
 		arg.PackageObjectKey,
 		arg.Manifest,
@@ -62,23 +63,24 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 	return i, err
 }
 
-const getLatestVersionLicense = `-- name: GetLatestVersionLicense :one
-SELECT license_expression, license_source
+const getNewestSkillVersion = `-- name: GetNewestSkillVersion :one
+SELECT version_number, license_expression, license_source
 FROM skill_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC
 LIMIT 1
 `
 
-type GetLatestVersionLicenseRow struct {
+type GetNewestSkillVersionRow struct {
+	VersionNumber     int32
 	LicenseExpression *string
 	LicenseSource     *string
 }
 
-func (q *Queries) GetLatestVersionLicense(ctx context.Context, skillID pgtype.UUID) (GetLatestVersionLicenseRow, error) {
-	row := q.db.QueryRow(ctx, getLatestVersionLicense, skillID)
-	var i GetLatestVersionLicenseRow
-	err := row.Scan(&i.LicenseExpression, &i.LicenseSource)
+func (q *Queries) GetNewestSkillVersion(ctx context.Context, skillID pgtype.UUID) (GetNewestSkillVersionRow, error) {
+	row := q.db.QueryRow(ctx, getNewestSkillVersion, skillID)
+	var i GetNewestSkillVersionRow
+	err := row.Scan(&i.VersionNumber, &i.LicenseExpression, &i.LicenseSource)
 	return i, err
 }
 

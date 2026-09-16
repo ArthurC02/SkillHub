@@ -22,12 +22,11 @@ import (
 )
 
 func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
-	for _, subject := range []any{NewVersion{}, gen.CreateSkillVersionParams{}} {
+	for _, subject := range []any{NewVersion{}, VersionContent{}} {
 		typ := reflect.TypeOf(subject)
 		for i := range typ.NumField() {
-			if name := typ.Field(i).Name; strings.Contains(strings.ToLower(name), "version") &&
-				strings.Contains(strings.ToLower(name), "number") {
-				t.Errorf("%s.%s: version_number is allocated by CreateSkillVersion, never by the caller",
+			if name := typ.Field(i).Name; strings.Contains(strings.ToLower(name), "number") {
+				t.Errorf("%s.%s: the version number is allocated by the skill it is added to, never by the caller",
 					typ.Name(), name)
 			}
 		}
@@ -204,7 +203,7 @@ func commitVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID pgtype
 	return root.AddedVersion(), tx.Commit(ctx)
 }
 
-func TestVersionNumberIsAllocatedByTheQuery(t *testing.T) {
+func TestEachSavedVersionTakesTheNumberAfterTheNewest(t *testing.T) {
 	pool := requireRegistryDB(t)
 	ws, skillID := seedSkill(t, pool, "numbering")
 

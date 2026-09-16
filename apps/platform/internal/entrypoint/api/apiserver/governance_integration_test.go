@@ -76,11 +76,23 @@ func countRow(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) int {
 	return n
 }
 
+func nextVersionNumber(t *testing.T, pool *pgxpool.Pool, skillID string) int32 {
+	t.Helper()
+	var next int32
+	if err := pool.QueryRow(context.Background(),
+		`SELECT coalesce(max(version_number), 0) + 1 FROM skill_versions WHERE skill_id = $1`,
+		mustUUID(t, skillID)).Scan(&next); err != nil {
+		t.Fatal(err)
+	}
+	return next
+}
+
 func seedVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, hash string) gen.SkillVersion {
 	t.Helper()
 	v, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
 		WorkspaceID:      mustUUID(t, workspaceID),
 		SkillID:          mustUUID(t, skillID),
+		VersionNumber:    nextVersionNumber(t, pool, skillID),
 		ContentHash:      hash,
 		PackageObjectKey: "packages/" + hash + ".zip",
 		Manifest:         []byte(`{}`),
@@ -590,6 +602,7 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:      mustUUID(t, alice.workspaceID),
 		SkillID:          mustUUID(t, private),
+		VersionNumber:    nextVersionNumber(t, pool, private),
 		SourceID:         sourceID,
 		ContentHash:      "hash-private",
 		PackageObjectKey: "packages/hash-private.zip",
@@ -619,6 +632,7 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:      mustUUID(t, alice.workspaceID),
 		SkillID:          mustUUID(t, shared),
+		VersionNumber:    nextVersionNumber(t, pool, shared),
 		SourceID:         keptSourceID,
 		ContentHash:      "hash-shared-v2",
 		PackageObjectKey: "packages/hash-shared-v2.zip",
@@ -1349,6 +1363,7 @@ func TestOrphanCollectorRechecksAfterAnUploaderWinsThePackageLock(t *testing.T) 
 	_, err = gen.New(uploader).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:      mustUUID(t, alice.workspaceID),
 		SkillID:          mustUUID(t, skillID),
+		VersionNumber:    nextVersionNumber(t, pool, skillID),
 		ContentHash:      tag,
 		PackageObjectKey: key,
 		Manifest:         []byte(`{}`),

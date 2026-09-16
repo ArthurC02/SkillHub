@@ -284,9 +284,9 @@ func TestAGeneratedSkillTakesOnlyGeneratedContent(t *testing.T) {
 		generated bool
 		want      Event
 	}{
-		{"uploaded content on an uploaded skill", RedistributionUnknown, false, SkillVersionAdded{ContentHash: "h"}},
-		{"generated content on a generated skill", RedistributionGenerated, true, SkillVersionAdded{ContentHash: "h"}},
-		{"generated content on a skill of unknown provenance", RedistributionUnknown, true, SkillVersionAdded{ContentHash: "h"}},
+		{"uploaded content on an uploaded skill", RedistributionUnknown, false, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"}},
+		{"generated content on a generated skill", RedistributionGenerated, true, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"}},
+		{"generated content on a skill of unknown provenance", RedistributionUnknown, true, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"}},
 		{"uploaded content on a generated skill", RedistributionGenerated, false, Refused{Reason: RefusedGeneratedNameCollision}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -316,7 +316,7 @@ func TestAForkCarriesItsSourceAndItsFirstVersion(t *testing.T) {
 	}
 	assertSkillEvents(t, fork,
 		SkillCreated{Redistribution: RedistributionGenerated, ForkedFromSkillID: source.ID, ForkedFromVersionID: from.ID},
-		SkillVersionAdded{ContentHash: "source-bytes"})
+		SkillVersionAdded{VersionNumber: 1, ContentHash: "source-bytes"})
 }
 
 func TestASavedVersionLendsTheSkillItsSummary(t *testing.T) {
@@ -329,5 +329,28 @@ func TestASavedVersionLendsTheSkillItsSummary(t *testing.T) {
 	if got := s.Skill().Summary; got == nil || *got != "fixture" {
 		t.Fatalf("summary = %v, want the new version's", got)
 	}
-	assertSkillEvents(t, s, SkillVersionAdded{ContentHash: "h"}, SkillDescribed{})
+	assertSkillEvents(t, s, SkillVersionAdded{VersionNumber: 1, ContentHash: "h"}, SkillDescribed{})
+}
+
+func TestANewVersionTakesTheNumberAfterTheNewestAndBecomesTheNewest(t *testing.T) {
+	s := skillMarked(RedistributionUnknown, newestVersion{exists: true, number: 4, license: LicenseClaim{Expression: "MIT", Source: "LICENSE"}})
+	content := packageContent(t, "h", false)
+	license, source := "Apache-2.0", "manifest"
+	content.license, content.licenseSource = &license, &source
+
+	s.AddVersion(content)
+
+	assertSkillEvents(t, s, SkillVersionAdded{VersionNumber: 5, ContentHash: "h"})
+	if want := (LicenseClaim{Expression: "Apache-2.0", Source: "manifest"}); s.NewestLicense() != want {
+		t.Fatalf("newest licence = %+v, want the added version's %+v", s.NewestLicense(), want)
+	}
+}
+
+func TestARefusedVersionDoesNotTakeANumber(t *testing.T) {
+	s := skillMarked(RedistributionGenerated, newestVersion{exists: true, number: 4})
+
+	s.AddVersion(packageContent(t, "uploaded", false))
+	s.AddVersion(packageContent(t, "generated", true))
+
+	assertSkillEvents(t, s, Refused{Reason: RefusedGeneratedNameCollision}, SkillVersionAdded{VersionNumber: 5, ContentHash: "generated"})
 }

@@ -69,6 +69,7 @@ func seedLicensedVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID,
 	if _, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
 		WorkspaceID:       ws,
 		SkillID:           sk,
+		VersionNumber:     nextVersionNumber(t, pool, skillID),
 		SourceID:          sourceID,
 		ContentHash:       "sha256:" + skillID,
 		PackageObjectKey:  "packages/" + skillID + ".tar",

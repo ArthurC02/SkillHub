@@ -26,6 +26,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
@@ -379,7 +380,7 @@ func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) strin
 	summary := name + " summary"
 	q := gen.New(pool)
 	skill, err := q.CreateSkill(ctx, gen.CreateSkillParams{
-		WorkspaceID: ws, Name: name, Summary: &summary,
+		WorkspaceID: ws, Name: name, Summary: &summary, Redistribution: string(registry.RedistributionUnknown),
 	})
 	if err != nil {
 		t.Fatal(err)

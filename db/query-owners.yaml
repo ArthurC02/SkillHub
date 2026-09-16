@@ -200,7 +200,7 @@ scope:
   CountPlatformAuditEventsByDay: user
   CountRunsByDay: user
   DeclareDispatchHalt: user
-  GetLatestVersionLicense: user
+  GetNewestSkillVersion: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
   LockSkillForOperatorWrite: user
