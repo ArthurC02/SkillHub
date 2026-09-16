@@ -172,6 +172,10 @@ func TestCleanupOutcomeIsAudited(t *testing.T) {
 	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus.Value != string(gen.RunCleanupStatusCleaned) {
 		t.Errorf("cleanup_status = %+v, want cleaned", view.CleanupStatus)
 	}
+	if n := countRow(t, pool, `SELECT count(*) FROM runs WHERE id = $1 AND cleanup_at IS NOT NULL`,
+		mustUUID(t, finished.RunID)); n != 1 {
+		t.Error("the settled cleanup kept no record of when it settled")
+	}
 }
 
 const cleanupAuditSQL = `SELECT count(*) FROM audit_events WHERE action = 'run.cleanup' AND resource_id = $1`

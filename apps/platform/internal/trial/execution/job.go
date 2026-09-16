@@ -495,7 +495,7 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 		if !validArtifactFileName(artifact.FileName) {
 			return fmt.Errorf("provider returned an invalid artifact file name %q", artifact.FileName)
 		}
-		nameKey := strings.ToLower(artifact.FileName)
+		nameKey := artifactNameKey(artifact.FileName)
 		if _, duplicate := seen[nameKey]; duplicate {
 			return fmt.Errorf("provider returned duplicate artifact file name %q", artifact.FileName)
 		}
@@ -533,10 +533,15 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 	return tx.Commit(ctx)
 }
 
+const runArtifactRetention = 90 * 24 * time.Hour
+
+func artifactNameKey(fileName string) string { return strings.ToLower(fileName) }
+
 type artifactManifestQueries interface {
 	lock(context.Context, pgtype.UUID) error
 	markTruncated(context.Context, gen.MarkRunArtifactsTruncatedParams) (int64, error)
-	insert(context.Context, gen.InsertRunArtifactParams) (int64, error)
+	recordedNames(context.Context, gen.ListRunArtifactFileNamesParams) ([]string, error)
+	insert(context.Context, gen.InsertRunArtifactParams) error
 	retireIntent(context.Context, string) error
 }
 
@@ -548,7 +553,10 @@ func (s artifactManifestStore) lock(ctx context.Context, id pgtype.UUID) error {
 func (s artifactManifestStore) markTruncated(ctx context.Context, p gen.MarkRunArtifactsTruncatedParams) (int64, error) {
 	return s.q.MarkRunArtifactsTruncated(ctx, p)
 }
-func (s artifactManifestStore) insert(ctx context.Context, p gen.InsertRunArtifactParams) (int64, error) {
+func (s artifactManifestStore) recordedNames(ctx context.Context, p gen.ListRunArtifactFileNamesParams) ([]string, error) {
+	return s.q.ListRunArtifactFileNames(ctx, p)
+}
+func (s artifactManifestStore) insert(ctx context.Context, p gen.InsertRunArtifactParams) error {
 	return s.q.InsertRunArtifact(ctx, p)
 }
 func (s artifactManifestStore) retireIntent(ctx context.Context, key string) error {
@@ -569,16 +577,28 @@ func persistArtifactManifest(
 			return fmt.Errorf("record truncated artifact collection: %w", err)
 		}
 	}
+	recorded, err := q.recordedNames(ctx, gen.ListRunArtifactFileNamesParams{RunID: current.ID, WorkspaceID: current.WorkspaceID})
+	if err != nil {
+		return fmt.Errorf("read recorded artifact names: %w", err)
+	}
+	taken := make(map[string]struct{}, len(recorded))
+	for _, name := range recorded {
+		taken[artifactNameKey(name)] = struct{}{}
+	}
+	expires := pgtype.Timestamptz{Time: time.Now().UTC().Add(runArtifactRetention), Valid: true}
 	for _, a := range result.Artifacts {
+		if _, redelivered := taken[artifactNameKey(a.FileName)]; redelivered {
+			continue
+		}
 		contentType := a.ContentType
 		if contentType == "" {
 
 			contentType = "application/octet-stream"
 		}
-		if _, err := q.insert(ctx, gen.InsertRunArtifactParams{
+		if err := q.insert(ctx, gen.InsertRunArtifactParams{
 			WorkspaceID: current.WorkspaceID, RunID: current.ID,
 			FileName: a.FileName, ContentType: contentType, SizeBytes: a.SizeBytes,
-			ContentHash: a.ContentHash, ObjectKey: archiveKey,
+			ContentHash: a.ContentHash, ObjectKey: archiveKey, ExpiresAt: expires,
 		}); err != nil {
 			return fmt.Errorf("record artifact manifest row %q: %w", a.FileName, err)
 		}

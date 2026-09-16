@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -122,7 +123,11 @@ func TestArtifactTruncationAcceptsBothProviderContractGenerations(t *testing.T) 
 	}
 }
 
-type manifestQueryRecorder struct{ calls []string }
+type manifestQueryRecorder struct {
+	calls    []string
+	recorded []string
+	inserted []gen.InsertRunArtifactParams
+}
 
 func (q *manifestQueryRecorder) lock(context.Context, pgtype.UUID) error {
 	q.calls = append(q.calls, "lock")
@@ -132,9 +137,14 @@ func (q *manifestQueryRecorder) markTruncated(context.Context, gen.MarkRunArtifa
 	q.calls = append(q.calls, "mark")
 	return 1, nil
 }
-func (q *manifestQueryRecorder) insert(context.Context, gen.InsertRunArtifactParams) (int64, error) {
+func (q *manifestQueryRecorder) recordedNames(context.Context, gen.ListRunArtifactFileNamesParams) ([]string, error) {
+	q.calls = append(q.calls, "read-names")
+	return q.recorded, nil
+}
+func (q *manifestQueryRecorder) insert(_ context.Context, p gen.InsertRunArtifactParams) error {
 	q.calls = append(q.calls, "insert")
-	return 1, nil
+	q.inserted = append(q.inserted, p)
+	return nil
 }
 func (q *manifestQueryRecorder) retireIntent(context.Context, string) error {
 	q.calls = append(q.calls, "retire-intent")
@@ -148,9 +158,28 @@ func TestArtifactManifestLocksBeforeAnyWrite(t *testing.T) {
 	if err := persistArtifactManifest(context.Background(), q, current, "runs/archive", result, true); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"lock", "mark", "insert", "retire-intent"}
+	want := []string{"lock", "mark", "read-names", "insert", "retire-intent"}
 	if strings.Join(q.calls, ",") != strings.Join(want, ",") {
 		t.Fatalf("manifest operations = %v, want %v", q.calls, want)
+	}
+}
+
+func TestARedeliveredManifestRecordsOnlyNamesNotYetRecordedAndKeepsThemForTheRetention(t *testing.T) {
+	q := &manifestQueryRecorder{recorded: []string{"Report.txt"}}
+	current := gen.Run{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
+	result := &RunResult{Artifacts: []RunArtifact{{FileName: "report.txt"}, {FileName: "chart.png"}}}
+	before := time.Now()
+
+	if err := persistArtifactManifest(context.Background(), q, current, "runs/archive", result, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(q.inserted) != 1 || q.inserted[0].FileName != "chart.png" {
+		t.Fatalf("inserted = %+v, want only chart.png; report.txt was already recorded under another case", q.inserted)
+	}
+	if expires := q.inserted[0].ExpiresAt; !expires.Valid || expires.Time.Before(before.Add(runArtifactRetention)) ||
+		expires.Time.After(time.Now().Add(runArtifactRetention)) {
+		t.Fatalf("expires at %v, want %v after it was recorded", expires.Time, runArtifactRetention)
 	}
 }
 

@@ -497,17 +497,13 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 	return i, err
 }
 
-const insertRunArtifact = `-- name: InsertRunArtifact :execrows
+const insertRunArtifact = `-- name: InsertRunArtifact :exec
 INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
     object_key, expires_at
-)
-SELECT $1, $2, 'run_output', $3, $4, $5,
-       $6, $7, now() + interval '90 days'
-WHERE NOT EXISTS (
-    SELECT 1 FROM artifacts
-    WHERE run_id = $2 AND kind = 'run_output'
-      AND lower(file_name) = lower($3::text)
+) VALUES (
+    $1, $2, 'run_output', $3, $4, $5,
+    $6, $7, $8
 )
 `
 
@@ -519,10 +515,11 @@ type InsertRunArtifactParams struct {
 	SizeBytes   int64
 	ContentHash string
 	ObjectKey   string
+	ExpiresAt   pgtype.Timestamptz
 }
 
-func (q *Queries) InsertRunArtifact(ctx context.Context, arg InsertRunArtifactParams) (int64, error) {
-	result, err := q.db.Exec(ctx, insertRunArtifact,
+func (q *Queries) InsertRunArtifact(ctx context.Context, arg InsertRunArtifactParams) error {
+	_, err := q.db.Exec(ctx, insertRunArtifact,
 		arg.WorkspaceID,
 		arg.RunID,
 		arg.FileName,
@@ -530,11 +527,9 @@ func (q *Queries) InsertRunArtifact(ctx context.Context, arg InsertRunArtifactPa
 		arg.SizeBytes,
 		arg.ContentHash,
 		arg.ObjectKey,
+		arg.ExpiresAt,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	return err
 }
 
 const insertRunStatusTransition = `-- name: InsertRunStatusTransition :exec
@@ -704,6 +699,36 @@ func (q *Queries) ListReadableRunArtifacts(ctx context.Context, arg ListReadable
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunArtifactFileNames = `-- name: ListRunArtifactFileNames :many
+SELECT file_name FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
+`
+
+type ListRunArtifactFileNamesParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) ListRunArtifactFileNames(ctx context.Context, arg ListRunArtifactFileNamesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listRunArtifactFileNames, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var file_name string
+		if err := rows.Scan(&file_name); err != nil {
+			return nil, err
+		}
+		items = append(items, file_name)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1351,21 +1376,25 @@ func (q *Queries) SetRunAttemptObjectGrants(ctx context.Context, arg SetRunAttem
 const setRunCleanupStatus = `-- name: SetRunCleanupStatus :one
 UPDATE runs SET
     cleanup_status = $1,
-    cleanup_at = CASE
-        WHEN $1::run_cleanup_status IN ('cleaned', 'failed') THEN now()
-        ELSE cleanup_at END
-WHERE id = $2 AND workspace_id = $3
+    cleanup_at = coalesce($2, cleanup_at)
+WHERE id = $3 AND workspace_id = $4
 RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type SetRunCleanupStatusParams struct {
 	CleanupStatus RunCleanupStatus
+	SettledAt     pgtype.Timestamptz
 	RunID         pgtype.UUID
 	WorkspaceID   pgtype.UUID
 }
 
 func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStatusParams) (Run, error) {
-	row := q.db.QueryRow(ctx, setRunCleanupStatus, arg.CleanupStatus, arg.RunID, arg.WorkspaceID)
+	row := q.db.QueryRow(ctx, setRunCleanupStatus,
+		arg.CleanupStatus,
+		arg.SettledAt,
+		arg.RunID,
+		arg.WorkspaceID,
+	)
 	var i Run
 	err := row.Scan(
 		&i.ID,

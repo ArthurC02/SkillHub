@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -439,16 +440,13 @@ func seedRunArtifact(
 	ctx := context.Background()
 	key := "run-artifacts/" + runID + "/" + name
 	a.packages[key] = []byte("artifact bytes")
-	n, err := gen.New(pool).InsertRunArtifact(ctx, gen.InsertRunArtifactParams{
+	if err := gen.New(pool).InsertRunArtifact(ctx, gen.InsertRunArtifactParams{
 		WorkspaceID: mustUUID(t, workspaceID), RunID: mustUUID(t, runID),
 		FileName: name, ContentType: "application/octet-stream",
 		SizeBytes: 14, ContentHash: "deadbeef", ObjectKey: key,
-	})
-	if err != nil {
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+	}); err != nil {
 		t.Fatal(err)
-	}
-	if n != 1 {
-		t.Fatalf("seeding %s inserted %d rows", name, n)
 	}
 	var id string
 	if err := pool.QueryRow(ctx,

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -599,7 +600,7 @@ func TestArtifactListReportsACompletelyDroppedCollection(t *testing.T) {
 	}
 }
 
-func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) {
+func TestAManifestRedeliverySeesTheNamesTheFirstDeliveryRecordedOnlyAfterItCommits(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "artifact-manifest-redelivery")
@@ -610,6 +611,7 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 	params := gen.InsertRunArtifactParams{
 		WorkspaceID: workspaceID, RunID: runID, FileName: "Report.txt",
 		ContentType: "text/plain", SizeBytes: 1, ContentHash: "hash", ObjectKey: "runs/redelivery/archive",
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
 	}
 
 	tx1, err := pool.Begin(ctx)
@@ -621,8 +623,8 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 	if err := q1.LockRunArtifactManifest(ctx, runID); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := q1.InsertRunArtifact(ctx, params); err != nil || rows != 1 {
-		t.Fatalf("first manifest insert rows=%d err=%v", rows, err)
+	if err := q1.InsertRunArtifact(ctx, params); err != nil {
+		t.Fatalf("first manifest insert: %v", err)
 	}
 
 	started := make(chan struct{})
@@ -640,21 +642,16 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 			done <- err
 			return
 		}
-		second := params
-		second.FileName = "report.txt"
-		rows, err := q2.InsertRunArtifact(ctx, second)
-		if err == nil && rows != 0 {
-			err = fmt.Errorf("redelivery inserted %d duplicate rows", rows)
-		}
-		if err == nil {
-			err = tx2.Commit(ctx)
+		names, err := q2.ListRunArtifactFileNames(ctx, gen.ListRunArtifactFileNamesParams{RunID: runID, WorkspaceID: workspaceID})
+		if err == nil && !slices.Equal(names, []string{"Report.txt"}) {
+			err = fmt.Errorf("the redelivery read recorded names %v, want the first delivery's Report.txt", names)
 		}
 		done <- err
 	}()
 	<-started
 	select {
 	case err := <-done:
-		t.Fatalf("second insert completed before the first transaction released its manifest lock: %v", err)
+		t.Fatalf("the redelivery read names before the first transaction released its manifest lock: %v", err)
 	case <-time.After(100 * time.Millisecond):
 	}
 	if err := tx1.Commit(ctx); err != nil {
@@ -662,10 +659,6 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
-	}
-	if n := countRows(t, pool, `SELECT count(*) FROM artifacts
-		WHERE run_id = $1 AND kind = 'run_output' AND lower(file_name) = 'report.txt'`, runID); n != 1 {
-		t.Fatalf("portable manifest rows = %d, want 1", n)
 	}
 }
 

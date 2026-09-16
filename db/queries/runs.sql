@@ -94,9 +94,7 @@ RETURNING r.*;
 -- name: SetRunCleanupStatus :one
 UPDATE runs SET
     cleanup_status = @cleanup_status,
-    cleanup_at = CASE
-        WHEN @cleanup_status::run_cleanup_status IN ('cleaned', 'failed') THEN now()
-        ELSE cleanup_at END
+    cleanup_at = coalesce(sqlc.narg(settled_at), cleanup_at)
 WHERE id = @run_id AND workspace_id = @workspace_id
 RETURNING *;
 
@@ -191,18 +189,18 @@ SELECT count(*) FROM runs
 WHERE workspace_id = @workspace_id
   AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out');
 
--- name: InsertRunArtifact :execrows
+-- name: InsertRunArtifact :exec
 INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
     object_key, expires_at
-)
-SELECT @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_bytes,
-       @content_hash, @object_key, now() + interval '90 days'
-WHERE NOT EXISTS (
-    SELECT 1 FROM artifacts
-    WHERE run_id = @run_id AND kind = 'run_output'
-      AND lower(file_name) = lower(sqlc.arg(file_name)::text)
+) VALUES (
+    @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_bytes,
+    @content_hash, @object_key, @expires_at
 );
+
+-- name: ListRunArtifactFileNames :many
+SELECT file_name FROM artifacts
+WHERE run_id = @run_id AND workspace_id = @workspace_id AND kind = 'run_output';
 
 -- name: LockRunArtifactManifest :exec
 SELECT pg_advisory_xact_lock(hashtextextended(

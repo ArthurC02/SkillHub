@@ -8,6 +8,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func unreachablePool(t *testing.T) *pgxpool.Pool {
@@ -19,6 +21,19 @@ func unreachablePool(t *testing.T) *pgxpool.Pool {
 	}
 	t.Cleanup(pool.Close)
 	return pool
+}
+
+func TestOnlyASettledCleanupStampsWhenItSettled(t *testing.T) {
+	for status, settles := range map[gen.RunCleanupStatus]bool{
+		gen.RunCleanupStatusPending:    false,
+		gen.RunCleanupStatusCleaningUp: false,
+		gen.RunCleanupStatusCleaned:    true,
+		gen.RunCleanupStatusFailed:     true,
+	} {
+		if got := cleanupSettledAt(status); got.Valid != settles {
+			t.Errorf("%s stamps a settle time %v, want %v", status, got.Valid, settles)
+		}
+	}
 }
 
 func TestOrphanJudgementIsWithheldWhenTheDatabaseCannotAnswer(t *testing.T) {

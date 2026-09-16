@@ -78,7 +78,8 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		return nil
 	}
 	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
-		RunID: run.ID, WorkspaceID: run.WorkspaceID, CleanupStatus: gen.RunCleanupStatusCleaningUp,
+		CleanupStatus: gen.RunCleanupStatusCleaningUp, SettledAt: cleanupSettledAt(gen.RunCleanupStatusCleaningUp),
+		RunID: run.ID, WorkspaceID: run.WorkspaceID,
 	}); err != nil {
 		return err
 	}
@@ -147,6 +148,13 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 	return nil
 }
 
+func cleanupSettledAt(status gen.RunCleanupStatus) pgtype.Timestamptz {
+	if status == gen.RunCleanupStatusCleaned || status == gen.RunCleanupStatusFailed {
+		return stampNow()
+	}
+	return pgtype.Timestamptz{}
+}
+
 func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.RunCleanupStatus, failures []string) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -156,7 +164,7 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	q := s.queries().WithTx(tx)
 
 	updated, err := q.SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
-		RunID: run.ID, WorkspaceID: run.WorkspaceID, CleanupStatus: status,
+		CleanupStatus: status, SettledAt: cleanupSettledAt(status), RunID: run.ID, WorkspaceID: run.WorkspaceID,
 	})
 	if err != nil {
 		return err

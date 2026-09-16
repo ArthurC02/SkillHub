@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-func writeRetention(t *testing.T, sql, env string) string {
+func writeRetention(t *testing.T, retention, env string) string {
 	t.Helper()
-	return writeRetentionFull(t, sql, env, defaultWindowDoc)
+	return writeRetentionFull(t, retention, manifestSQL, env, defaultWindowDoc)
 }
 
 const defaultWindowDoc = "## 8. 附錄\n\n### 8.2 B 版：封閉測試（14 天，自己使用）\n\n內文。\n"
 
-func writeRetentionFull(t *testing.T, sql, env, window string) string {
+func writeRetentionFull(t *testing.T, retention, sql, env, window string) string {
 	t.Helper()
 	root := t.TempDir()
 	write := func(rel, body string) {
@@ -27,24 +27,25 @@ func writeRetentionFull(t *testing.T, sql, env, window string) string {
 			t.Fatal(err)
 		}
 	}
+	write(runArtifactRetentionPackage+"/job.go", retention)
+	write(runArtifactRetentionPackage+"/job_test.go", "package run\n\nimport \"time\"\n\nconst runArtifactRetention = time.Hour\n")
 	write("db/queries/runs.sql", sql)
 	write(envExampleDoc, env)
 	write(observationWindowDoc, window)
 	return root
 }
 
-func runArtifactSQL(name, expiry string) string {
-	return "-- name: ListRunArtifacts :many\n" +
-		"-- The manifest, whose rows carry the retention stamped below.\n" +
-		"SELECT * FROM artifacts WHERE run_id = $1 AND kind = 'run_output';\n" +
-		"\n" +
-		"-- name: " + name + " :execrows\n" +
-		"-- Recorded when the run settles. The retention used to be written\n" +
-		"-- now() + interval '999 days' and this sentence has outlived it.\n" +
-		"INSERT INTO artifacts (workspace_id, run_id, kind, file_name, object_key, expires_at)\n" +
-		"SELECT @workspace_id, @run_id, 'run_output', @file_name, @object_key, " + expiry + "\n" +
-		"WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE run_id = @run_id);\n"
+func retentionGo(expr string) string {
+	return "package run\n\nimport \"time\"\n\n" +
+		"// The retention used to be declared as 999 * 24 * time.Hour and this sentence has outlived it.\n" +
+		"const runArtifactRetention = " + expr + "\n"
 }
+
+const ninetyDays = "90 * 24 * time.Hour"
+
+const manifestSQL = "-- name: InsertRunArtifact :exec\n" +
+	"INSERT INTO artifacts (workspace_id, run_id, kind, file_name, object_key, expires_at)\n" +
+	"VALUES (@workspace_id, @run_id, 'run_output', @file_name, @object_key, @expires_at);\n"
 
 const allFloorsMet = "METRICS_ADDR=\n" +
 	"# Trace event retention.\n" +
@@ -55,18 +56,21 @@ const allFloorsMet = "METRICS_ADDR=\n" +
 
 func TestRetentionFloorAcceptsATreeWhereAllThreeFloorsAreMet(t *testing.T) {
 	t.Parallel()
-	root := writeRetention(t, runArtifactSQL("InsertRunArtifact", "now() + interval '90 days'"), allFloorsMet)
+	root := writeRetention(t, retentionGo(ninetyDays), allFloorsMet)
 	if problems := retentionFloorProblems(root); len(problems) != 0 {
 		t.Fatalf("a tree meeting all three floors was rejected: %v", problems)
 	}
 }
 
-func TestRetentionFloorDoesNotDependOnTheQueryName(t *testing.T) {
+func TestRetentionFloorReadsTheConstantHoweverItsArithmeticIsWritten(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"InsertRunArtifact", "RecordRunArtifact", "SomethingElseEntirely"} {
-		root := writeRetention(t, runArtifactSQL(name, "now() + interval '90 days'"), allFloorsMet)
+	for _, expr := range []string{"90 * 24 * time.Hour", "(90 * 24) * time.Hour", "2160 * time.Hour", "129600 * time.Minute"} {
+		root := writeRetention(t, retentionGo(expr), allFloorsMet)
 		if problems := retentionFloorProblems(root); len(problems) != 0 {
-			t.Fatalf("%s: %v", name, problems)
+			t.Fatalf("%s: %v", expr, problems)
+		}
+		if _, retention, _ := runArtifactRetention(root); retention != 90*24*time.Hour {
+			t.Fatalf("%s read as %v, want 90 days", expr, retention)
 		}
 	}
 }
@@ -74,29 +78,35 @@ func TestRetentionFloorDoesNotDependOnTheQueryName(t *testing.T) {
 func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name, sqlExpiry, env, window, want string
+		name, retention, env, window, want string
 	}{{
 
 		name:      "rule 2: run artifact below the re-evaluation window",
-		sqlExpiry: "now() + interval '30 days'",
+		retention: "30 * 24 * time.Hour",
+		env:       allFloorsMet,
+		want:      "rule 2 requires Run Artifact retention",
+	}, {
+
+		name:      "rule 2: one hour under the re-evaluation window",
+		retention: "2159 * time.Hour",
 		env:       allFloorsMet,
 		want:      "rule 2 requires Run Artifact retention",
 	}, {
 
 		name:      "rule 1: download retention below the observation window",
-		sqlExpiry: "now() + interval '90 days'",
+		retention: ninetyDays,
 		env:       strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h", "DOWNLOAD_ARTIFACT_RETENTION=168h", 1),
 		want:      "rule 1 requires download retention",
 	}, {
 
 		name:      "rule 1: the study got longer and nothing else moved",
-		sqlExpiry: "now() + interval '90 days'",
+		retention: ninetyDays,
 		env:       allFloorsMet,
 		window:    "### 8.2 B 版：封閉測試（60 天，自己使用）\n",
 		want:      "rule 1 requires download retention",
 	}, {
 		name:      "rule 3: analytics below one complete funnel",
-		sqlExpiry: "now() + interval '90 days'",
+		retention: ninetyDays,
 		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h", "ANALYTICS_RETENTION=720h", 1),
 		want:      "rule 3 requires analytics retention",
 	}} {
@@ -106,7 +116,7 @@ func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 			if window == "" {
 				window = defaultWindowDoc
 			}
-			root := writeRetentionFull(t, runArtifactSQL("InsertRunArtifact", tc.sqlExpiry), tc.env, window)
+			root := writeRetentionFull(t, retentionGo(tc.retention), manifestSQL, tc.env, window)
 			problems := retentionFloorProblems(root)
 			if len(problems) != 1 || !strings.Contains(problems[0], tc.want) {
 				t.Fatalf("want exactly one problem containing %q, got %v", tc.want, problems)
@@ -118,12 +128,12 @@ func TestRetentionFloorSpeaksForEachOfTheThreeRules(t *testing.T) {
 func TestRetentionFloorIsAFloorAndNotAThreshold(t *testing.T) {
 	t.Parallel()
 	at := strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h", "DOWNLOAD_ARTIFACT_RETENTION=336h", 1)
-	root := writeRetention(t, runArtifactSQL("InsertRunArtifact", "now() + interval '90 days'"), at)
+	root := writeRetention(t, retentionGo(ninetyDays), at)
 	if problems := retentionFloorProblems(root); len(problems) != 0 {
 		t.Fatalf("exactly 14 days against a 14-day window was rejected: %v", problems)
 	}
 	under := strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h", "DOWNLOAD_ARTIFACT_RETENTION=335h", 1)
-	root = writeRetention(t, runArtifactSQL("InsertRunArtifact", "now() + interval '90 days'"), under)
+	root = writeRetention(t, retentionGo(ninetyDays), under)
 	if problems := retentionFloorProblems(root); len(problems) != 1 {
 		t.Fatalf("one hour under the window was accepted: %v", problems)
 	}
@@ -131,57 +141,67 @@ func TestRetentionFloorIsAFloorAndNotAThreshold(t *testing.T) {
 
 func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
-	ninety := "now() + interval '90 days'"
+	ninety := retentionGo(ninetyDays)
 	for _, tc := range []struct {
-		name, sql, env, window, want string
+		name, retention, sql, env, window, want string
 	}{{
-		name: "no run_output INSERT at all",
-		sql:  "-- name: ListRunArtifacts :many\nSELECT * FROM artifacts;\n",
-		env:  allFloorsMet, want: "has lost its subject",
+		name:      "no retention constant at all",
+		retention: "package run\n",
+		env:       allFloorsMet, want: "has lost its subject",
 	}, {
-		name: "two statements stamp the retention",
-		sql:  runArtifactSQL("InsertRunArtifact", ninety) + runArtifactSQL("AlsoInsert", ninety),
-		env:  allFloorsMet, want: "there are now two authors of it",
+		name:      "the SQL stamps a retention of its own again",
+		retention: ninety,
+		sql: "-- name: InsertRunArtifact :exec\n" +
+			"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
+			"VALUES (@workspace_id, @run_id, 'run_output', now() + interval '90 days');\n",
+		env: allFloorsMet, want: "there are now two authors of it",
 	}, {
-		name: "the literal became a deployment parameter",
-		sql:  runArtifactSQL("InsertRunArtifact", "now() + @retention"),
-		env:  allFloorsMet, want: "rather than a literal",
+		name:      "the SQL adds a deployment parameter to now()",
+		retention: ninety,
+		sql: "-- name: InsertRunArtifact :exec\n" +
+			"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
+			"VALUES (@workspace_id, @run_id, 'run_output', now() + @retention);\n",
+		env: allFloorsMet, want: "there are now two authors of it",
 	}, {
-		name: "an interval unit with no fixed length",
-		sql:  runArtifactSQL("InsertRunArtifact", "now() + interval '3 months'"),
-		env:  allFloorsMet, want: "has no fixed length",
+		name:      "two declarations of the constant",
+		retention: ninety + "\nconst runArtifactRetention = 30 * 24 * time.Hour\n",
+		env:       allFloorsMet, want: "there are now two authors of it",
 	}, {
-		name: "TRACE_RETENTION is gone",
-		sql:  runArtifactSQL("InsertRunArtifact", ninety),
-		env:  strings.Replace(allFloorsMet, "TRACE_RETENTION=2160h\n", "", 1),
-		want: "no longer assigns TRACE_RETENTION",
+		name:      "the constant is no longer arithmetic on literals",
+		retention: "package run\n\nconst runArtifactRetention = retentionFromEnvironment\n",
+		env:       allFloorsMet, want: "something other than a positive product",
 	}, {
-		name: "DOWNLOAD_ARTIFACT_RETENTION is gone",
-		sql:  runArtifactSQL("InsertRunArtifact", ninety),
-		env:  strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h\n", "", 1),
-		want: "no longer assigns DOWNLOAD_ARTIFACT_RETENTION",
+		name:      "TRACE_RETENTION is gone",
+		retention: ninety,
+		env:       strings.Replace(allFloorsMet, "TRACE_RETENTION=2160h\n", "", 1),
+		want:      "no longer assigns TRACE_RETENTION",
 	}, {
-		name: "ANALYTICS_RETENTION is gone",
-		sql:  runArtifactSQL("InsertRunArtifact", ninety),
-		env:  strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h\n", "", 1),
-		want: "no longer assigns ANALYTICS_RETENTION",
+		name:      "DOWNLOAD_ARTIFACT_RETENTION is gone",
+		retention: ninety,
+		env:       strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h\n", "", 1),
+		want:      "no longer assigns DOWNLOAD_ARTIFACT_RETENTION",
 	}, {
-		name: "two assignments of one window",
-		sql:  runArtifactSQL("InsertRunArtifact", ninety),
-		env:  allFloorsMet + "TRACE_RETENTION=1h\n",
-		want: "cannot have two values",
+		name:      "ANALYTICS_RETENTION is gone",
+		retention: ninety,
+		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h\n", "", 1),
+		want:      "no longer assigns ANALYTICS_RETENTION",
 	}, {
-		name:   "the observation window heading is gone",
-		sql:    runArtifactSQL("InsertRunArtifact", ninety),
-		env:    allFloorsMet,
-		window: "### 8.2 B 版\n\n長度搬到別處了。\n",
-		want:   "lost half its subject",
+		name:      "two assignments of one window",
+		retention: ninety,
+		env:       allFloorsMet + "TRACE_RETENTION=1h\n",
+		want:      "cannot have two values",
 	}, {
-		name:   "two closed-beta lengths",
-		sql:    runArtifactSQL("InsertRunArtifact", ninety),
-		env:    allFloorsMet,
-		window: defaultWindowDoc + "### 8.3 C 版：封閉測試（21 天）\n",
-		want:   "cannot have two lengths",
+		name:      "the observation window heading is gone",
+		retention: ninety,
+		env:       allFloorsMet,
+		window:    "### 8.2 B 版\n\n長度搬到別處了。\n",
+		want:      "lost half its subject",
+	}, {
+		name:      "two closed-beta lengths",
+		retention: ninety,
+		env:       allFloorsMet,
+		window:    defaultWindowDoc + "### 8.3 C 版：封閉測試（21 天）\n",
+		want:      "cannot have two lengths",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -189,7 +209,11 @@ func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 			if window == "" {
 				window = defaultWindowDoc
 			}
-			problems := retentionFloorProblems(writeRetentionFull(t, tc.sql, tc.env, window))
+			sql := tc.sql
+			if sql == "" {
+				sql = manifestSQL
+			}
+			problems := retentionFloorProblems(writeRetentionFull(t, tc.retention, sql, tc.env, window))
 			if len(problems) == 0 || !strings.Contains(strings.Join(problems, "\n"), tc.want) {
 				t.Fatalf("want a problem containing %q, got %v", tc.want, problems)
 			}
@@ -203,15 +227,14 @@ func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 	})
 }
 
-func TestRetentionFloorIgnoresComments(t *testing.T) {
+func TestRetentionFloorIgnoresCommentsAndTests(t *testing.T) {
 	t.Parallel()
-	sql := "-- name: InsertRunArtifact :execrows\n" +
-		"-- This used to stamp now() + interval '30 days' and no longer does.\n" +
-		"INSERT INTO artifacts (workspace_id, run_id, kind, file_name, object_key, expires_at)\n" +
-		"SELECT @workspace_id, @run_id, 'run_output', @file_name, @object_key, now() + interval '90 days'\n" +
-		"WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE run_id = @run_id);\n"
-	if problems := retentionFloorProblems(writeRetention(t, sql, allFloorsMet)); len(problems) != 0 {
-		t.Fatalf("a comment voted on the value: %v", problems)
+	source := "package run\n\nimport \"time\"\n\n" +
+		"// const runArtifactRetention = 30 * 24 * time.Hour\n" +
+		"const runArtifactRetention = 90 * 24 * time.Hour\n"
+	root := writeRetention(t, source, allFloorsMet)
+	if problems := retentionFloorProblems(root); len(problems) != 0 {
+		t.Fatalf("a comment or a test file voted on the value: %v", problems)
 	}
 }
 

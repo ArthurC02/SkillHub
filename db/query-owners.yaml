@@ -157,6 +157,7 @@ queries:
   LockWorkspaceRunSlots: run
   CountActiveRuns: run
   InsertRunArtifact: run
+  ListRunArtifactFileNames: run
   LockRunArtifactManifest: run
   MarkRunArtifactsTruncated: run
   ListRunArtifacts: run

@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,14 +23,6 @@ var (
 
 	sqlRetentionParam = regexp.MustCompile(`now\(\)\s*\+\s*(@\w+|\$\d+|sqlc\.arg\([^)]*\))`)
 )
-
-var sqlIntervalUnits = map[string]time.Duration{
-	"second": time.Second,
-	"minute": time.Minute,
-	"hour":   time.Hour,
-	"day":    24 * time.Hour,
-	"week":   7 * 24 * time.Hour,
-}
 
 const analyticsFunnelFloor = 180 * 24 * time.Hour
 
@@ -48,7 +43,7 @@ func retentionFloorProblems(root string) []string {
 				"window (TRACE_RETENTION), but %s stamps %s while %s states TRACE_RETENTION=%s — %s "+
 				"short. A re-evaluation inside that gap reads an EMPTY artifact manifest and the judge "+
 				"decides on it, so the wrong thing is not a sentence in a report, it is the input to an "+
-				"append-only verdict (04 丙-13). Raise the literal or lower TRACE_RETENTION",
+				"append-only verdict (04 丙-13). Raise the constant or lower TRACE_RETENTION",
 			artifactWhere, artifact, envExampleDoc, trace, trace-artifact))
 	}
 
@@ -109,40 +104,54 @@ func observationWindow(root string) ([]string, time.Duration) {
 	return nil, time.Duration(days) * 24 * time.Hour
 }
 
-func runArtifactRetention(root string) (problems []string, retention time.Duration, where string) {
-	files, err := filepath.Glob(filepath.Join(root, "db", "queries", "*.sql"))
-	if err != nil || len(files) == 0 {
-		return []string{
-			"retention-floor: db/queries/*.sql matched no files; this check has lost its subject",
-		}, 0, ""
-	}
+const (
+	runArtifactRetentionPackage = "apps/platform/internal/trial/execution"
+	runArtifactRetentionName    = "runArtifactRetention"
+)
 
-	type candidate struct {
-		file, name string
-		line       int
-		code       []sqlCodeLine
+func runArtifactRetention(root string) (problems []string, retention time.Duration, where string) {
+	problems = append(problems, sqlStampedRunArtifactRetention(root)...)
+
+	files, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(runArtifactRetentionPackage), "*.go"))
+	if err != nil {
+		return append(problems, fmt.Sprintf("retention-floor: %v", err)), 0, ""
 	}
-	var found []candidate
+	type site struct {
+		where string
+		value ast.Expr
+	}
+	var found []site
+	fset := token.NewFileSet()
 	for _, file := range files {
-		data, readErr := os.ReadFile(file)
-		if readErr != nil {
-			problems = append(problems, fmt.Sprintf("retention-floor: cannot read %s: %v", file, readErr))
+		if strings.HasSuffix(file, "_test.go") {
 			continue
 		}
-		relative, relErr := filepath.Rel(root, file)
-		if relErr != nil {
-			relative = file
+		parsed, parseErr := parser.ParseFile(fset, file, nil, parser.SkipObjectResolution)
+		if parseErr != nil {
+			problems = append(problems, fmt.Sprintf("retention-floor: cannot parse %s: %v", file, parseErr))
+			continue
 		}
-		relative = filepath.ToSlash(relative)
-		for _, statement := range sqlStatements(string(data)) {
-
-			code := strings.ToLower(sqlCode(statement.code))
-			if !strings.Contains(code, "insert into artifacts") ||
-				!strings.Contains(code, "'run_output'") ||
-				!strings.Contains(code, "expires_at") {
+		for _, decl := range parsed.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok || gen.Tok != token.CONST {
 				continue
 			}
-			found = append(found, candidate{relative, statement.name, statement.line, statement.code})
+			for _, spec := range gen.Specs {
+				value := spec.(*ast.ValueSpec)
+				for i, name := range value.Names {
+					if name.Name != runArtifactRetentionName || i >= len(value.Values) {
+						continue
+					}
+					relative, relErr := filepath.Rel(root, file)
+					if relErr != nil {
+						relative = file
+					}
+					found = append(found, site{
+						where: fmt.Sprintf("%s:%d", filepath.ToSlash(relative), fset.Position(name.Pos()).Line),
+						value: value.Values[i],
+					})
+				}
+			}
 		}
 	}
 	if len(problems) > 0 {
@@ -153,56 +162,91 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 	switch len(found) {
 	case 1:
 	case 0:
-		return []string{
-			"retention-floor: no statement in db/queries/*.sql INSERTs a kind='run_output' row into " +
-				"artifacts with an expires_at; either run-output retention moved somewhere this check " +
-				"cannot see or the manifest is no longer written, and either way nothing is enforcing " +
-				"02:NFR-002a rule 2. This check has lost its subject",
-		}, 0, ""
+		return []string{fmt.Sprintf(
+			"retention-floor: no non-test file in %s declares const %s; either run-output retention moved "+
+				"somewhere this check cannot see or the manifest no longer stamps one, and either way nothing "+
+				"is enforcing 02:NFR-002a rule 2. This check has lost its subject",
+			runArtifactRetentionPackage, runArtifactRetentionName)}, 0, ""
 	default:
 		var sites []string
-		for _, c := range found {
-			sites = append(sites, fmt.Sprintf("%s:%d %s", c.file, c.line, c.name))
+		for _, f := range found {
+			sites = append(sites, f.where)
 		}
 		sort.Strings(sites)
 		return []string{fmt.Sprintf(
-			"retention-floor: %d statements stamp a retention on kind='run_output' artifacts (%s); "+
-				"02:NFR-002a rule 2 constrains one number and there are now two authors of it",
-			len(found), strings.Join(sites, ", "))}, 0, ""
+			"retention-floor: %d declarations of %s (%s); 02:NFR-002a rule 2 constrains one number and "+
+				"there are now two authors of it", len(found), runArtifactRetentionName, strings.Join(sites, ", "))}, 0, ""
 	}
 
-	statement := found[0]
-	site := fmt.Sprintf("%s (%s)", statement.file, statement.name)
-	for _, line := range statement.code {
-		m := sqlRetentionLiteral.FindStringSubmatch(line.text)
-		if m == nil {
+	duration, ok := constantDuration(found[0].value)
+	if !ok || duration <= 0 {
+		return []string{fmt.Sprintf(
+			"retention-floor: %s declares %s as something other than a positive product of integer "+
+				"literals and time units; 02:NFR-002a rule 2 compares it against TRACE_RETENTION, so this "+
+				"check has lost its subject", found[0].where, runArtifactRetentionName)}, 0, ""
+	}
+	return nil, duration, found[0].where
+}
+
+func constantDuration(expr ast.Expr) (time.Duration, bool) {
+	switch e := expr.(type) {
+	case *ast.ParenExpr:
+		return constantDuration(e.X)
+	case *ast.BasicLit:
+		if e.Kind != token.INT {
+			return 0, false
+		}
+		n, err := strconv.ParseInt(e.Value, 0, 64)
+		return time.Duration(n), err == nil
+	case *ast.SelectorExpr:
+		pkg, ok := e.X.(*ast.Ident)
+		if !ok || pkg.Name != "time" {
+			return 0, false
+		}
+		unit, ok := goDurationUnits[e.Sel.Name]
+		return unit, ok
+	case *ast.BinaryExpr:
+		if e.Op != token.MUL {
+			return 0, false
+		}
+		left, ok := constantDuration(e.X)
+		if !ok {
+			return 0, false
+		}
+		right, ok := constantDuration(e.Y)
+		return left * right, ok
+	}
+	return 0, false
+}
+
+func sqlStampedRunArtifactRetention(root string) []string {
+	files, err := filepath.Glob(filepath.Join(root, "db", "queries", "*.sql"))
+	if err != nil {
+		return []string{fmt.Sprintf("retention-floor: %v", err)}
+	}
+	var problems []string
+	for _, file := range files {
+		data, readErr := os.ReadFile(file)
+		if readErr != nil {
+			problems = append(problems, fmt.Sprintf("retention-floor: cannot read %s: %v", file, readErr))
 			continue
 		}
-		count, _ := strconv.Atoi(m[1])
-		unit, ok := sqlIntervalUnits[m[2]]
-		if !ok {
-			return []string{fmt.Sprintf(
-				"retention-floor: %s:%d stamps run-output retention as interval '%s %s', and a %s has no "+
-					"fixed length; 02:NFR-002a rule 2 compares it against a Go duration, so write it in "+
-					"days or hours",
-				statement.file, line.number, m[1], m[2], m[2])}, 0, ""
+		relative, relErr := filepath.Rel(root, file)
+		if relErr != nil {
+			relative = file
 		}
-		return nil, time.Duration(count) * unit, fmt.Sprintf("%s:%d", statement.file, line.number)
+		for _, statement := range sqlStatements(string(data)) {
+			code := strings.ToLower(sqlCode(statement.code))
+			if strings.Contains(code, "insert into artifacts") && strings.Contains(code, "'run_output'") &&
+				(sqlRetentionLiteral.MatchString(code) || sqlRetentionParam.MatchString(code)) {
+				problems = append(problems, fmt.Sprintf(
+					"retention-floor: %s (%s) stamps run-output retention in SQL while %s declares %s; "+
+						"02:NFR-002a rule 2 constrains one number and there are now two authors of it",
+					filepath.ToSlash(relative), statement.name, runArtifactRetentionPackage, runArtifactRetentionName))
+			}
+		}
 	}
-
-	if m := sqlRetentionParam.FindStringSubmatch(sqlCode(statement.code)); m != nil {
-		return []string{fmt.Sprintf(
-			"retention-floor: %s stamps run-output retention from the parameter %s rather than a literal, "+
-				"so the value now lives in a deployment and this repository can no longer compare it with "+
-				"TRACE_RETENTION. 02:NFR-002a rule 2 still binds and is now unenforceable from here: give "+
-				"the variable a name in %s next to TRACE_RETENTION and point this check at both, or record "+
-				"in 05 who compares the pair at deploy time",
-			site, m[1], envExampleDoc)}, 0, ""
-	}
-	return []string{fmt.Sprintf(
-		"retention-floor: %s writes expires_at with neither a `now() + interval '…'` literal nor a "+
-			"parameter this check recognises; run-output retention has been reworded and 02:NFR-002a "+
-			"rule 2 is comparing nothing. This check has lost its subject", site)}, 0, ""
+	return problems
 }
 
 func envRetention(root, name string) (problems []string, retention time.Duration) {
