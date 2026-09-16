@@ -15,6 +15,7 @@ type Refusal string
 
 const (
 	RefusedAlreadyTakenDown        Refusal = "already_taken_down"
+	RefusedTakedownReasonMissing   Refusal = "takedown_reason_missing"
 	RefusedEmptyRestriction        Refusal = "empty_restriction"
 	RefusedUnknownRedistribution   Refusal = "unknown_redistribution"
 	RefusedProvenanceNotAssertable Refusal = "provenance_not_assertable"
@@ -63,6 +64,8 @@ func (r Refused) err() error {
 	switch r.Reason {
 	case RefusedAlreadyTakenDown:
 		return ErrAlreadyTakenDown
+	case RefusedTakedownReasonMissing:
+		return ErrTakedownReasonRequired
 	case RefusedEmptyRestriction:
 		return ErrEmptyRestriction
 	case RefusedNoVersion:
@@ -207,6 +210,10 @@ func (s *SkillRoot) Refusal() (Refused, bool) {
 func (s *SkillRoot) TakeDown(reason string) {
 	if s.TakenDown() {
 		s.record(Refused{Reason: RefusedAlreadyTakenDown})
+		return
+	}
+	if strings.TrimSpace(reason) == "" {
+		s.record(Refused{Reason: RefusedTakedownReasonMissing})
 		return
 	}
 	s.row.TakedownAt, s.takedownReason = pgtype.Timestamptz{Valid: true}, reason

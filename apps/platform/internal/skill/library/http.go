@@ -148,15 +148,13 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(body.Reason) == "" {
-		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
-		return
-	}
-
 	skill, err := h.Svc.Takedown(r.Context(), ws, skillID, strings.TrimSpace(body.Reason))
 	switch {
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	case errors.Is(err, ErrTakedownReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	case errors.Is(err, ErrAlreadyTakenDown):
 		httpx.WriteError(w, http.StatusConflict, err.Error())

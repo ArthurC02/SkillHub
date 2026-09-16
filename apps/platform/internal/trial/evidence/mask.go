@@ -9,6 +9,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 const Placeholder = "[REDACTED]"
@@ -65,6 +68,16 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 
 	sort.Strings(fields)
 	return Result{Payload: encoded, Fields: fields}, nil
+}
+
+func (r Result) stored(event gen.InsertTraceEventParams) (gen.InsertTraceEventParams, error) {
+	fields, err := json.Marshal(r.Fields)
+	if err != nil {
+		return gen.InsertTraceEventParams{}, err
+	}
+	metrics.TraceMaskedFields.Add(float64(len(r.Fields)))
+	event.Masked, event.MaskedFields, event.Payload = true, fields, r.Payload
+	return event, nil
 }
 
 func (m *Masker) walk(node any, pointer string, fields *[]string) any {

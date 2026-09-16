@@ -1,6 +1,8 @@
 package outbox
 
 import (
+	"context"
+	"errors"
 	"os"
 	"regexp"
 	"slices"
@@ -17,6 +19,18 @@ const (
 
 func TestEventTypesMatchTheMigrationCheck(t *testing.T) {
 	assertSameSet(t, "the DB CHECK in 0067", EventTypes, migrationCheckValues(t))
+}
+
+func TestAnEventOutsideTheClosedSetIsNeverWritten(t *testing.T) {
+	for _, eventType := range []string{"", "skill.made_up", strings.ToUpper(RunQueued)} {
+		err := Insert(context.Background(), nil, NewEvent{EventType: eventType})
+		if !errors.Is(err, ErrUnknownEventType) {
+			t.Errorf("event type %q: err = %v, want ErrUnknownEventType", eventType, err)
+		}
+	}
+	if err := Insert(context.Background(), nil, NewEvent{EventType: RunQueued}); errors.Is(err, ErrUnknownEventType) {
+		t.Errorf("a closed-set event type was refused: %v", err)
+	}
 }
 
 func TestEventTypesMatchTheCatalogue(t *testing.T) {

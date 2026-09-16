@@ -1,10 +1,13 @@
 package trace
 
 import (
+	"encoding/json"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 var scannerShapes = []struct {
@@ -191,5 +194,27 @@ func TestMaskerLeavesOrdinaryUrlsAlone(t *testing.T) {
 		if masked := (&Masker{}).redact(sample); masked != sample {
 			t.Errorf("an ordinary URL was redacted: %q became %q", sample, masked)
 		}
+	}
+}
+
+func TestAStoredTraceEventCarriesTheMaskedPayloadWhateverTheCallerFilledIn(t *testing.T) {
+	secret := vendorKey
+	masked, err := (&Masker{}).Mask(json.RawMessage(`{"prompt":"` + secret + `"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stored, err := masked.stored(gen.InsertTraceEventParams{
+		EventType: "llm.call", Masked: false, Payload: []byte(`{"prompt":"` + secret + `"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !stored.Masked || strings.Contains(string(stored.Payload), secret) {
+		t.Fatalf("stored masked=%v payload=%s, want the redacted payload", stored.Masked, stored.Payload)
+	}
+	if string(stored.MaskedFields) != `["/prompt"]` || stored.EventType != "llm.call" {
+		t.Fatalf("stored fields=%s type=%q, want [\"/prompt\"] and the caller's event type", stored.MaskedFields, stored.EventType)
 	}
 }

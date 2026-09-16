@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -119,6 +120,33 @@ type sourceMeta struct {
 	GenerationInputs []byte
 
 	ImprovedBy *registry.Improvement
+}
+
+var ErrIncompleteProvenance = errors.New("ingest: the source does not record where its content came from")
+
+func (m sourceMeta) provenanceComplete() error {
+	generatorFields := []*string{m.TaskDescription, m.GeneratorModel, m.GeneratorPromptVersion}
+	switch m.Type {
+	case SourceGit:
+		if !present(m.URL) || slices.ContainsFunc(generatorFields, present) {
+			return fmt.Errorf("%w: a git source needs its URL and no generator", ErrIncompleteProvenance)
+		}
+	case SourceUpload:
+		if present(m.URL) || slices.ContainsFunc(generatorFields, present) {
+			return fmt.Errorf("%w: an upload has no URL or generator", ErrIncompleteProvenance)
+		}
+	case SourceGenerated:
+		if present(m.URL) || m.TaskDescription == nil || !present(m.GeneratorModel) || !present(m.GeneratorPromptVersion) {
+			return fmt.Errorf("%w: a generated source records its task and needs its model and prompt version", ErrIncompleteProvenance)
+		}
+	default:
+		return fmt.Errorf("%w: unknown source type %q", ErrIncompleteProvenance, m.Type)
+	}
+	return nil
+}
+
+func present(s *string) bool {
+	return s != nil && strings.TrimSpace(*s) != ""
 }
 
 func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (Result, error) {
@@ -376,6 +404,9 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, root *registry.SkillRoot, p preparedPackage, src sourceMeta, e enrichment) (registry.Version, bool, error) {
 
 	if err := s.requireProjection(); err != nil {
+		return registry.Version{}, false, err
+	}
+	if err := src.provenanceComplete(); err != nil {
 		return registry.Version{}, false, err
 	}
 

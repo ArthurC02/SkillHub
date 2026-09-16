@@ -124,22 +124,17 @@ func (s *Service) ingestOne(
 	if err != nil {
 		return fmt.Errorf("%w: payload is not a JSON object", ErrInvalid)
 	}
-	metrics.TraceMaskedFields.Add(float64(len(masked.Fields)))
 
 	var eventID pgtype.UUID
 	if err := eventID.Scan(event.EventID); err != nil {
 		return fmt.Errorf("%w: event_id must be a UUID", ErrInvalid)
-	}
-	fields, err := json.Marshal(masked.Fields)
-	if err != nil {
-		return err
 	}
 
 	lag := time.Since(event.OccurredAt)
 	lag = min(max(lag, 0), DefaultTTL)
 	metrics.TraceIngestLag.Observe(lag.Seconds())
 
-	rows, err := s.queries().InsertTraceEvent(ctx, gen.InsertTraceEventParams{
+	stored, err := masked.stored(gen.InsertTraceEventParams{
 		EventID:     eventID,
 		WorkspaceID: run.WorkspaceID,
 		RunID:       run.ID,
@@ -151,11 +146,11 @@ func (s *Service) ingestOne(
 		Status:      event.Status,
 
 		SchemaVersion: event.SchemaVersion,
-
-		Masked:       true,
-		MaskedFields: fields,
-		Payload:      masked.Payload,
 	})
+	if err != nil {
+		return err
+	}
+	rows, err := s.queries().InsertTraceEvent(ctx, stored)
 	if err != nil {
 
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
@@ -197,11 +192,6 @@ func RecordOrchestratorEvent(
 	if err != nil {
 		return err
 	}
-	fields, err := json.Marshal(masked.Fields)
-	if err != nil {
-		return err
-	}
-	metrics.TraceMaskedFields.Add(float64(len(masked.Fields)))
 
 	var eventID pgtype.UUID
 	if err := eventID.Scan(newUUID()); err != nil {
@@ -211,7 +201,7 @@ func RecordOrchestratorEvent(
 	if status != "" {
 		statusPtr = &status
 	}
-	rows, err := q.InsertTraceEvent(ctx, gen.InsertTraceEventParams{
+	stored, err := masked.stored(gen.InsertTraceEventParams{
 		EventID: eventID, WorkspaceID: workspaceID, RunID: runID,
 		Attempt: int32(attempt), Seq: seq,
 		OccurredAt:    pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
@@ -219,10 +209,11 @@ func RecordOrchestratorEvent(
 		Source:        SourceOrchestr,
 		Status:        statusPtr,
 		SchemaVersion: schemaVersionFor(eventType),
-		Masked:        true,
-		MaskedFields:  fields,
-		Payload:       masked.Payload,
 	})
+	if err != nil {
+		return err
+	}
+	rows, err := q.InsertTraceEvent(ctx, stored)
 	if err != nil {
 		return err
 	}

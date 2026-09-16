@@ -3,7 +3,9 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -185,7 +187,12 @@ func CleanupEvent(status string) (string, error) {
 	return "", fmt.Errorf("no domain event for cleanup status %q", status)
 }
 
+var ErrUnknownEventType = errors.New("outbox: event type is not in the closed set")
+
 func Insert(ctx context.Context, tx pgx.Tx, event NewEvent) error {
+	if !slices.Contains(EventTypes, event.EventType) {
+		return fmt.Errorf("%w: %q", ErrUnknownEventType, event.EventType)
+	}
 	if tx == nil {
 		return fmt.Errorf("outbox: transaction is not configured")
 	}

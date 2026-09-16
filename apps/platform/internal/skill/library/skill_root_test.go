@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -38,6 +39,24 @@ func TestTakingDownASkillHidesItOnce(t *testing.T) {
 		t.Fatal("a refused takedown brought the skill back")
 	}
 	assertSkillEvents(t, again, Refused{Reason: RefusedAlreadyTakenDown})
+}
+
+func TestATakedownWithoutAReasonIsRefusedAndLeavesTheSkillUp(t *testing.T) {
+	for name, reason := range map[string]string{"empty": "", "whitespace": " \t\n"} {
+		t.Run(name, func(t *testing.T) {
+			s := &SkillRoot{}
+
+			s.TakeDown(reason)
+
+			if s.TakenDown() {
+				t.Fatal("a takedown without a reason took the skill down")
+			}
+			assertSkillEvents(t, s, Refused{Reason: RefusedTakedownReasonMissing})
+			if refused, _ := s.Refusal(); !errors.Is(refused.err(), ErrTakedownReasonRequired) {
+				t.Fatalf("refusal maps to %v, want ErrTakedownReasonRequired", refused.err())
+			}
+		})
+	}
 }
 
 func TestAnAccessRestrictionNeedsAReasonAndLiftsWithNone(t *testing.T) {

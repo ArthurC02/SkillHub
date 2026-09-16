@@ -195,7 +195,10 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	return DeleteResult{VersionsRetained: n}, tx.Commit(ctx)
 }
 
-var ErrAlreadyTakenDown = errors.New("skill is already taken down")
+var (
+	ErrAlreadyTakenDown       = errors.New("skill is already taken down")
+	ErrTakedownReasonRequired = errors.New("reason is required")
+)
 
 func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, reason string) (gen.Skill, error) {
 	if err := s.requireProjection(); err != nil {
