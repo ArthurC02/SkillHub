@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -93,7 +93,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	}
 	objectLocked = true
 	intent, err := gen.New(conn).CreateDatasetCleanupIntent(ctx, gen.CreateDatasetCleanupIntentParams{
-		WorkspaceID: ws.ID, ObjectKey: key,
+		WorkspaceID: ws.ID, ObjectKey: key, Hold: pgconv.Interval(datasetCleanupHold),
 	})
 	if err != nil {
 		return gen.Dataset{}, err

@@ -273,9 +273,11 @@ type Governance struct {
 	TakedownReason    *string
 }
 
+const governanceLookupLimit = 20
+
 func SkillsForGovernance(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, namePart string) ([]Governance, error) {
 	rows, err := gen.New(db).FindSkillsForGovernance(ctx, gen.FindSkillsForGovernanceParams{
-		SkillID: skillID, NamePart: namePart,
+		SkillID: skillID, NamePart: namePart, ResultLimit: governanceLookupLimit,
 	})
 	if err != nil {
 		return nil, err

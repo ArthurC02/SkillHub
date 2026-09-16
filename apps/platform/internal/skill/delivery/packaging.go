@@ -12,18 +12,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 const PackagerVersion = "0.2.0"
 
 const objectCleanupTimeout = 5 * time.Second
+
+const downloadCleanupHold = time.Hour
 
 const (
 	BlockedLicenseHold        = "license_hold"
@@ -752,7 +754,7 @@ func (s *Service) persist(
 		}
 	}()
 	if _, err := q.CreateDownloadCleanupIntent(ctx, gen.CreateDownloadCleanupIntentParams{
-		WorkspaceID: ws.ID, ObjectKey: objectKey,
+		WorkspaceID: ws.ID, ObjectKey: objectKey, Hold: pgconv.Interval(downloadCleanupHold),
 	}); err != nil {
 		return Result{}, err
 	}

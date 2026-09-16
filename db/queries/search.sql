@@ -156,7 +156,7 @@ WITH vec AS (
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
       AND s.embedding IS NOT NULL
     ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
-    LIMIT 50
+    LIMIT sqlc.arg(vector_candidates)::int
 ),
 fts AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
@@ -165,7 +165,7 @@ fts AS (
       AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
-    LIMIT 50
+    LIMIT sqlc.arg(fulltext_candidates)::int
 ),
 lex AS (
     SELECT s.skill_id, s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
@@ -175,7 +175,7 @@ lex AS (
       AND sqlc.arg(bigram_query)::text <> ''
       AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
-    LIMIT 5
+    LIMIT sqlc.arg(lexical_candidates)::int
 ),
 candidates AS (
     SELECT skill_id, min(distance) AS distance, bool_or(covered) AS covered

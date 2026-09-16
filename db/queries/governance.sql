@@ -199,16 +199,16 @@ DELETE FROM user_identities WHERE user_id = $1;
 DELETE FROM sessions WHERE user_id = $1;
 
 -- name: AnonymizeWorkspacesByOwner :execrows
-UPDATE workspaces SET name = 'deleted-workspace', updated_at = now()
-WHERE owner_user_id = $1;
+UPDATE workspaces SET name = @name, updated_at = now()
+WHERE owner_user_id = @owner_user_id;
 
 -- name: AnonymizeUser :one
 UPDATE users
-SET email = 'deleted-' || id::text || '@deleted.invalid',
-    display_name = 'Deleted user',
+SET email = @email,
+    display_name = @display_name,
     deleted_at = now(),
     updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+WHERE id = @id AND deleted_at IS NULL
 RETURNING *;
 
 -- name: LockSkillForOperatorWrite :one

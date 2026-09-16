@@ -185,7 +185,11 @@ func (s *Service) Recover(ctx context.Context) error {
 	if !s.Limits.Valid() {
 		return ErrUnavailable
 	}
-	rows, err := gen.New(s.Pool).ListStalledCreationSessions(ctx, pgtype.Timestamptz{Time: time.Now().Add(-s.Limits.CallTimeout - 15*time.Second), Valid: true})
+	rows, err := gen.New(s.Pool).ListStalledCreationSessions(ctx, gen.ListStalledCreationSessionsParams{
+		States:        statesAwaitingTheModel(),
+		StalledBefore: pgtype.Timestamptz{Time: time.Now().Add(-s.Limits.CallTimeout - 15*time.Second), Valid: true},
+		BatchSize:     stalledSessionBatch,
+	})
 	if err != nil {
 		return err
 	}

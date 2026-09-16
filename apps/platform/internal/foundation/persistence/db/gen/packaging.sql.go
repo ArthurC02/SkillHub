@@ -107,21 +107,22 @@ func (q *Queries) CreateDownloadArtifactRow(ctx context.Context, arg CreateDownl
 }
 
 const createDownloadCleanupIntent = `-- name: CreateDownloadCleanupIntent :one
-INSERT INTO download_object_cleanup_intents (workspace_id, object_key)
-VALUES ($1, $2)
+INSERT INTO download_object_cleanup_intents (workspace_id, object_key, not_before)
+VALUES ($1, $2, now() + $3::interval)
 ON CONFLICT (object_key) DO UPDATE
 SET workspace_id = excluded.workspace_id,
-    not_before = now() + interval '1 hour', attempted_at = NULL
+    not_before = excluded.not_before, attempted_at = NULL
 RETURNING id, workspace_id, object_key, not_before, attempted_at, created_at
 `
 
 type CreateDownloadCleanupIntentParams struct {
 	WorkspaceID pgtype.UUID
 	ObjectKey   string
+	Hold        pgtype.Interval
 }
 
 func (q *Queries) CreateDownloadCleanupIntent(ctx context.Context, arg CreateDownloadCleanupIntentParams) (DownloadObjectCleanupIntent, error) {
-	row := q.db.QueryRow(ctx, createDownloadCleanupIntent, arg.WorkspaceID, arg.ObjectKey)
+	row := q.db.QueryRow(ctx, createDownloadCleanupIntent, arg.WorkspaceID, arg.ObjectKey, arg.Hold)
 	var i DownloadObjectCleanupIntent
 	err := row.Scan(
 		&i.ID,

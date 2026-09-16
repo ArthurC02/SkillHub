@@ -39,6 +39,12 @@ var (
 )
 
 const (
+	sessionPageSize = 50
+
+	stalledSessionBatch = 100
+)
+
+const (
 	MaxReferences = 3
 
 	MaxMessages = 98
@@ -309,7 +315,7 @@ func (s *Service) Get(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	return view(row)
 }
 func (s *Service) List(ctx context.Context, ws identity.Workspace) ([]View, error) {
-	rows, err := gen.New(s.Pool).ListCreationSessions(ctx, ws.ID)
+	rows, err := gen.New(s.Pool).ListCreationSessions(ctx, gen.ListCreationSessionsParams{WorkspaceID: ws.ID, PageSize: sessionPageSize})
 	if err != nil {
 		return nil, err
 	}

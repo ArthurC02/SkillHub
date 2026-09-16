@@ -201,6 +201,11 @@ func TestPackagingPersistsCleanupIntentBeforeObjectIO(t *testing.T) {
 		`SELECT count(*) FROM download_object_cleanup_intents WHERE object_key = $1`, store.key); got != 1 {
 		t.Fatalf("cleanup intents after failed compensation = %d, want 1", got)
 	}
+	if got := countRows(t, pool, `SELECT count(*) FROM download_object_cleanup_intents
+		WHERE object_key = $1 AND not_before BETWEEN now() + interval '59 minutes' AND now() + interval '61 minutes'`,
+		store.key); got != 1 {
+		t.Fatal("the cleanup intent is not held back for the hour an in-flight upload gets")
+	}
 }
 
 func TestPackagingDoesNotBorrowASecondDatabaseConnection(t *testing.T) {

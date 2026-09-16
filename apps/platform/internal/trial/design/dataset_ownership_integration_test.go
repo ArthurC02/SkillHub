@@ -483,6 +483,14 @@ func TestFailedUploadCompensationLeavesADurableCleanupIntent(t *testing.T) {
 	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", []byte("id,name\n1,a\n")); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("upload beyond quota returned %v, want ErrLimitExceeded", err)
 	}
+	var heldForAnHour bool
+	if err := pool.QueryRow(t.Context(), `SELECT not_before BETWEEN now() + interval '59 minutes' AND now() + interval '61 minutes'
+		FROM dataset_object_cleanup_intents WHERE object_key = $1`, store.key).Scan(&heldForAnHour); err != nil {
+		t.Fatalf("failed compensation left no cleanup intent: %v", err)
+	}
+	if !heldForAnHour {
+		t.Fatal("the cleanup intent is not held back for the hour an in-flight upload gets")
+	}
 	var intentID pgtype.UUID
 	if err := pool.QueryRow(t.Context(), `UPDATE dataset_object_cleanup_intents
 		SET not_before = now() - interval '1 second'

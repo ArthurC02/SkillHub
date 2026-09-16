@@ -62,18 +62,19 @@ func (q *Queries) CreateDataset(ctx context.Context, arg CreateDatasetParams) (D
 }
 
 const createDatasetCleanupIntent = `-- name: CreateDatasetCleanupIntent :one
-INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key)
-VALUES ($1, $2)
+INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key, not_before)
+VALUES ($1, $2, now() + $3::interval)
 RETURNING id, workspace_id, object_key, not_before, attempted_at, created_at
 `
 
 type CreateDatasetCleanupIntentParams struct {
 	WorkspaceID pgtype.UUID
 	ObjectKey   string
+	Hold        pgtype.Interval
 }
 
 func (q *Queries) CreateDatasetCleanupIntent(ctx context.Context, arg CreateDatasetCleanupIntentParams) (DatasetObjectCleanupIntent, error) {
-	row := q.db.QueryRow(ctx, createDatasetCleanupIntent, arg.WorkspaceID, arg.ObjectKey)
+	row := q.db.QueryRow(ctx, createDatasetCleanupIntent, arg.WorkspaceID, arg.ObjectKey, arg.Hold)
 	var i DatasetObjectCleanupIntent
 	err := row.Scan(
 		&i.ID,

@@ -425,7 +425,7 @@ WITH vec AS (
     WHERE s.workspace_id = ANY($10::uuid[])
       AND s.embedding IS NOT NULL
     ORDER BY s.embedding <=> $9::vector ASC
-    LIMIT 50
+    LIMIT $11::int
 ),
 fts AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
@@ -434,17 +434,17 @@ fts AS (
       AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
       AND s.tsv @@ websearch_to_tsquery('english', $7::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
-    LIMIT 50
+    LIMIT $12::int
 ),
 lex AS (
     SELECT s.skill_id, s.embedding <=> $9::vector AS distance
     FROM search_documents s
     WHERE s.workspace_id = ANY($10::uuid[])
       AND (s.enrichment_status = 'enriched' OR s.embedding IS NOT NULL)
-      AND $11::text <> ''
-      AND s.bigram @@ to_tsquery('simple', $11::text)
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $11::text)) DESC
-    LIMIT 5
+      AND $13::text <> ''
+      AND s.bigram @@ to_tsquery('simple', $13::text)
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $13::text)) DESC
+    LIMIT $14::int
 ),
 candidates AS (
     SELECT skill_id, min(distance) AS distance, bool_or(covered) AS covered
@@ -515,7 +515,10 @@ type PublicHybridSearchSkillsParams struct {
 	ResultLimit         int32
 	QueryEmbedding      *pgvector.Vector
 	CatalogWorkspaceIds []pgtype.UUID
+	VectorCandidates    int32
+	FulltextCandidates  int32
 	BigramQuery         string
+	LexicalCandidates   int32
 }
 
 type PublicHybridSearchSkillsRow struct {
@@ -551,7 +554,10 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.ResultLimit,
 		arg.QueryEmbedding,
 		arg.CatalogWorkspaceIds,
+		arg.VectorCandidates,
+		arg.FulltextCandidates,
 		arg.BigramQuery,
+		arg.LexicalCandidates,
 	)
 	if err != nil {
 		return nil, err

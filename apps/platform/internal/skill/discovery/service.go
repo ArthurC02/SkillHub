@@ -235,6 +235,12 @@ func (s *Service) catalogWorkspaceIDs(ctx context.Context) ([]pgtype.UUID, error
 	return s.CatalogWorkspaces(ctx, s.Pool)
 }
 
+const (
+	vectorCandidates   = int32(50)
+	fulltextCandidates = int32(50)
+	lexicalCandidates  = int32(5)
+)
+
 func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
 	catalogs, err := s.catalogWorkspaceIDs(ctx)
 	if err != nil {
@@ -252,6 +258,9 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		AgentRuntime:        filters.AgentRuntime,
 		CurationTier:        filters.CurationTier,
 		Category:            filters.Category,
+		VectorCandidates:    vectorCandidates,
+		FulltextCandidates:  fulltextCandidates,
+		LexicalCandidates:   lexicalCandidates,
 	})
 	if err != nil {
 		return nil, 0, err

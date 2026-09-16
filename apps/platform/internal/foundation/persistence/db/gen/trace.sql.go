@@ -30,12 +30,13 @@ SELECT count(*) FILTER (WHERE occurred_at >= $1)::bigint AS recent_events,
        coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
                          THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
 FROM trace_events
-WHERE occurred_at >= $2 AND source = 'sandbox'
+WHERE occurred_at >= $2 AND source = $3
 `
 
 type CountTraceMaskingInWindowParams struct {
 	Recent pgtype.Timestamptz
 	Since  pgtype.Timestamptz
+	Source string
 }
 
 type CountTraceMaskingInWindowRow struct {
@@ -45,7 +46,7 @@ type CountTraceMaskingInWindowRow struct {
 }
 
 func (q *Queries) CountTraceMaskingInWindow(ctx context.Context, arg CountTraceMaskingInWindowParams) (CountTraceMaskingInWindowRow, error) {
-	row := q.db.QueryRow(ctx, countTraceMaskingInWindow, arg.Recent, arg.Since)
+	row := q.db.QueryRow(ctx, countTraceMaskingInWindow, arg.Recent, arg.Since, arg.Source)
 	var i CountTraceMaskingInWindowRow
 	err := row.Scan(&i.RecentEvents, &i.EarlierEvents, &i.MaskedFields)
 	return i, err
@@ -200,7 +201,7 @@ WITH scoped AS (
     SELECT attempt, source, seq, late,
            lag(seq, 1, 0) OVER (PARTITION BY attempt, source ORDER BY seq) AS previous_seq
     FROM trace_events
-    WHERE run_id = $1 AND workspace_id = $2
+    WHERE run_id = $2 AND workspace_id = $3
 ),
 streams AS (
     SELECT attempt, source, count(*)::bigint AS received,
@@ -217,15 +218,16 @@ SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_e
            CROSS JOIN LATERAL generate_series(e.previous_seq + 1, e.seq - 1) AS candidate
            WHERE e.attempt = s.attempt AND e.source = s.source
            ORDER BY candidate
-           LIMIT 1000
+           LIMIT $1::int
        ), ARRAY[]::bigint[])::bigint[] AS missing_seq
 FROM streams s
 ORDER BY s.attempt, s.source
 `
 
 type GetTraceStreamHealthParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
+	MissingSeqReported int32
+	RunID              pgtype.UUID
+	WorkspaceID        pgtype.UUID
 }
 
 type GetTraceStreamHealthRow struct {
@@ -238,10 +240,10 @@ type GetTraceStreamHealthRow struct {
 	MissingSeq   []int64
 }
 
-// Computes stream health in the database: at most the first 1,000 missing ordinals
-// come back, while missing_count stays exact.
+// Computes stream health in the database: only the first missing ordinals up to the
+// reported cap come back, while missing_count stays exact.
 func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHealthParams) ([]GetTraceStreamHealthRow, error) {
-	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.RunID, arg.WorkspaceID)
+	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.MissingSeqReported, arg.RunID, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -317,28 +319,28 @@ func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventPara
 const listEvaluationTraceEvents = `-- name: ListEvaluationTraceEvents :many
 WITH tail AS (
     SELECT ingest_seq, occurred_at, source, attempt, seq FROM trace_events
-    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+    WHERE trace_events.run_id = $2 AND trace_events.workspace_id = $3
     ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
-    LIMIT 501
+    LIMIT $1::int + 1
 ),
 tail_kept AS (
     SELECT ingest_seq FROM tail
     ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
-    LIMIT 500
+    LIMIT $1::int
 ),
 activations AS (
     SELECT ingest_seq FROM trace_events
-    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
-      AND event_type = 'skill_activation'
+    WHERE trace_events.run_id = $2 AND trace_events.workspace_id = $3
+      AND event_type = $4::text
     ORDER BY occurred_at, source, attempt, seq
-    LIMIT 100
+    LIMIT $5::int
 ),
 errors AS (
     SELECT ingest_seq FROM trace_events
-    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
-      AND event_type = 'error'
+    WHERE trace_events.run_id = $2 AND trace_events.workspace_id = $3
+      AND event_type = $6::text
     ORDER BY occurred_at, source, attempt, seq
-    LIMIT 100
+    LIMIT $7::int
 ),
 selected AS (
     SELECT ingest_seq FROM tail_kept
@@ -347,15 +349,20 @@ selected AS (
     UNION
     SELECT ingest_seq FROM errors
 )
-SELECT trace_events.id, trace_events.workspace_id, trace_events.run_id, trace_events.seq, trace_events.occurred_at, trace_events.event_type, trace_events.source, trace_events.status, trace_events.payload, trace_events.payload_object_key, trace_events.event_id, trace_events.attempt, trace_events.schema_version, trace_events.masked, trace_events.masked_fields, trace_events.late, trace_events.ingest_seq, (SELECT count(*) > 500 FROM tail) AS evaluation_truncated
+SELECT trace_events.id, trace_events.workspace_id, trace_events.run_id, trace_events.seq, trace_events.occurred_at, trace_events.event_type, trace_events.source, trace_events.status, trace_events.payload, trace_events.payload_object_key, trace_events.event_id, trace_events.attempt, trace_events.schema_version, trace_events.masked, trace_events.masked_fields, trace_events.late, trace_events.ingest_seq, (SELECT count(*) > $1::int FROM tail) AS evaluation_truncated
 FROM selected
 JOIN trace_events USING (ingest_seq)
 ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, trace_events.seq
 `
 
 type ListEvaluationTraceEventsParams struct {
+	TailEvents            int32
 	EvaluationRunID       pgtype.UUID
 	EvaluationWorkspaceID pgtype.UUID
+	ActivationEventType   string
+	ActivationEvents      int32
+	ErrorEventType        string
+	ErrorEvents           int32
 }
 
 type ListEvaluationTraceEventsRow struct {
@@ -381,7 +388,15 @@ type ListEvaluationTraceEventsRow struct {
 
 // Returns a recent tail plus bounded early activation and error evidence, never the whole trace.
 func (q *Queries) ListEvaluationTraceEvents(ctx context.Context, arg ListEvaluationTraceEventsParams) ([]ListEvaluationTraceEventsRow, error) {
-	rows, err := q.db.Query(ctx, listEvaluationTraceEvents, arg.EvaluationRunID, arg.EvaluationWorkspaceID)
+	rows, err := q.db.Query(ctx, listEvaluationTraceEvents,
+		arg.TailEvents,
+		arg.EvaluationRunID,
+		arg.EvaluationWorkspaceID,
+		arg.ActivationEventType,
+		arg.ActivationEvents,
+		arg.ErrorEventType,
+		arg.ErrorEvents,
+	)
 	if err != nil {
 		return nil, err
 	}

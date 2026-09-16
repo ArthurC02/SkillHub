@@ -9,8 +9,8 @@ SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2;
 SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2 FOR UPDATE;
 
 -- name: ListCreationSessions :many
-SELECT * FROM creation_sessions WHERE workspace_id=$1 AND expires_at > now()
-ORDER BY updated_at DESC LIMIT 50;
+SELECT * FROM creation_sessions WHERE workspace_id = @workspace_id AND expires_at > now()
+ORDER BY updated_at DESC LIMIT @page_size;
 
 -- name: AdvanceCreationSession :one
 UPDATE creation_sessions SET state=sqlc.arg(state),snapshot=sqlc.arg(snapshot),
@@ -46,5 +46,5 @@ DELETE FROM creation_sessions WHERE expires_at <= now();
 
 -- name: ListStalledCreationSessions :many
 SELECT * FROM creation_sessions
-WHERE state IN ('working', 'queued') AND updated_at < $1
-ORDER BY updated_at LIMIT 100;
+WHERE state = ANY(@states::text[]) AND updated_at < @stalled_before
+ORDER BY updated_at LIMIT @batch_size;

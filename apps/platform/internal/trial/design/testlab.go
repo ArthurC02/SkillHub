@@ -28,6 +28,8 @@ const (
 	MaxFilesPerTestCase = 20
 
 	DatasetRetention = 90 * 24 * time.Hour
+
+	datasetCleanupHold = time.Hour
 )
 
 const (

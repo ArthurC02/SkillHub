@@ -278,12 +278,17 @@ func (q *Queries) InsertCreationReceipt(ctx context.Context, arg InsertCreationR
 }
 
 const listCreationSessions = `-- name: ListCreationSessions :many
-SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions WHERE workspace_id=$1 AND expires_at > now()
-ORDER BY updated_at DESC LIMIT 50
+SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions WHERE workspace_id = $1 AND expires_at > now()
+ORDER BY updated_at DESC LIMIT $2
 `
 
-func (q *Queries) ListCreationSessions(ctx context.Context, workspaceID pgtype.UUID) ([]CreationSession, error) {
-	rows, err := q.db.Query(ctx, listCreationSessions, workspaceID)
+type ListCreationSessionsParams struct {
+	WorkspaceID pgtype.UUID
+	PageSize    int32
+}
+
+func (q *Queries) ListCreationSessions(ctx context.Context, arg ListCreationSessionsParams) ([]CreationSession, error) {
+	rows, err := q.db.Query(ctx, listCreationSessions, arg.WorkspaceID, arg.PageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -313,12 +318,18 @@ func (q *Queries) ListCreationSessions(ctx context.Context, workspaceID pgtype.U
 
 const listStalledCreationSessions = `-- name: ListStalledCreationSessions :many
 SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions
-WHERE state IN ('working', 'queued') AND updated_at < $1
-ORDER BY updated_at LIMIT 100
+WHERE state = ANY($1::text[]) AND updated_at < $2
+ORDER BY updated_at LIMIT $3
 `
 
-func (q *Queries) ListStalledCreationSessions(ctx context.Context, updatedAt pgtype.Timestamptz) ([]CreationSession, error) {
-	rows, err := q.db.Query(ctx, listStalledCreationSessions, updatedAt)
+type ListStalledCreationSessionsParams struct {
+	States        []string
+	StalledBefore pgtype.Timestamptz
+	BatchSize     int32
+}
+
+func (q *Queries) ListStalledCreationSessions(ctx context.Context, arg ListStalledCreationSessionsParams) ([]CreationSession, error) {
+	rows, err := q.db.Query(ctx, listStalledCreationSessions, arg.States, arg.StalledBefore, arg.BatchSize)
 	if err != nil {
 		return nil, err
 	}

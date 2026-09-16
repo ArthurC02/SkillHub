@@ -79,6 +79,16 @@ func (s State) HasEnded() bool {
 	return s == StateSaved || s == StateCancelled
 }
 
+func statesAwaitingTheModel() []string {
+	var awaiting []string
+	for _, state := range AllStates() {
+		if state.AwaitsTheModel() {
+			awaiting = append(awaiting, string(state))
+		}
+	}
+	return awaiting
+}
+
 func (s State) AwaitsTheModel() bool {
 	return s == StateQueued || s == StateWorking
 }

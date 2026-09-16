@@ -118,4 +118,4 @@ WHERE deleted_at IS NULL
   AND (id = sqlc.narg(skill_id)::uuid
        OR (sqlc.narg(skill_id)::uuid IS NULL AND name ILIKE '%' || @name_part::text || '%'))
 ORDER BY created_at DESC, id
-LIMIT 20;
+LIMIT @result_limit;

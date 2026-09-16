@@ -218,6 +218,24 @@ func TestCreationJourneyPreservesConfirmedCandidateAndWorkspace(t *testing.T) {
 		t.Fatalf("finalization created %d versions", versions)
 	}
 }
+func TestTheSessionListStopsAtTheFiftyMostRecentlyUpdated(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	alice := a.login(t, "creation-list-alice")
+	newest := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
+	ctx := context.Background()
+	if _, err := testPool.Exec(ctx, `INSERT INTO creation_sessions (id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at)
+		SELECT gen_random_uuid(), workspace_id, state, revision, snapshot, created_at, updated_at - n * interval '1 second', expires_at
+		FROM creation_sessions, generate_series(1, 50) AS n WHERE id = $1`, mustUUID(t, newest.ID)); err != nil {
+		t.Fatal(err)
+	}
+	views, err := s.List(ctx, identity.Workspace{ID: mustUUID(t, alice.workspaceID)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(views) != 50 || views[0].ID != newest.ID {
+		t.Fatalf("listed %d sessions starting with %v, want the 50 most recently updated starting with %s", len(views), views, newest.ID)
+	}
+}
 func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	a, _, calls := creationFixture(t)
 	c := a.login(t, "creation-diagram")

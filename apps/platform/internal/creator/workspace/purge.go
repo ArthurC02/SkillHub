@@ -27,6 +27,15 @@ type WorkspaceObjectKeys func(ctx context.Context, db gen.DBTX, workspaceID pgty
 
 type WorkspaceQuiescence func(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error)
 
+const (
+	anonymizedWorkspaceName = "deleted-workspace"
+	anonymizedDisplayName   = "Deleted user"
+)
+
+func anonymizedEmail(userID pgtype.UUID) string {
+	return "deleted-" + uuidText(userID) + "@deleted.invalid"
+}
+
 var errAccountPurgeDeferred = errors.New("identity: account purge deferred while workspace work is active")
 
 type purgeStep struct {
@@ -207,10 +216,14 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if _, err := q.DeleteUserSessions(ctx, userID); err != nil {
 		return err
 	}
-	if _, err := q.AnonymizeWorkspacesByOwner(ctx, userID); err != nil {
+	if _, err := q.AnonymizeWorkspacesByOwner(ctx, gen.AnonymizeWorkspacesByOwnerParams{
+		Name: anonymizedWorkspaceName, OwnerUserID: userID,
+	}); err != nil {
 		return err
 	}
-	if _, err := q.AnonymizeUser(ctx, userID); err != nil {
+	if _, err := q.AnonymizeUser(ctx, gen.AnonymizeUserParams{
+		Email: anonymizedEmail(userID), DisplayName: anonymizedDisplayName, ID: userID,
+	}); err != nil {
 		return err
 	}
 

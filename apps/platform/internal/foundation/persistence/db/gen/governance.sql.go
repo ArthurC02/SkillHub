@@ -13,16 +13,22 @@ import (
 
 const anonymizeUser = `-- name: AnonymizeUser :one
 UPDATE users
-SET email = 'deleted-' || id::text || '@deleted.invalid',
-    display_name = 'Deleted user',
+SET email = $1,
+    display_name = $2,
     deleted_at = now(),
     updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+WHERE id = $3 AND deleted_at IS NULL
 RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
 `
 
-func (q *Queries) AnonymizeUser(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, anonymizeUser, id)
+type AnonymizeUserParams struct {
+	Email       string
+	DisplayName string
+	ID          pgtype.UUID
+}
+
+func (q *Queries) AnonymizeUser(ctx context.Context, arg AnonymizeUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, anonymizeUser, arg.Email, arg.DisplayName, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -39,12 +45,17 @@ func (q *Queries) AnonymizeUser(ctx context.Context, id pgtype.UUID) (User, erro
 }
 
 const anonymizeWorkspacesByOwner = `-- name: AnonymizeWorkspacesByOwner :execrows
-UPDATE workspaces SET name = 'deleted-workspace', updated_at = now()
-WHERE owner_user_id = $1
+UPDATE workspaces SET name = $1, updated_at = now()
+WHERE owner_user_id = $2
 `
 
-func (q *Queries) AnonymizeWorkspacesByOwner(ctx context.Context, ownerUserID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, anonymizeWorkspacesByOwner, ownerUserID)
+type AnonymizeWorkspacesByOwnerParams struct {
+	Name        string
+	OwnerUserID pgtype.UUID
+}
+
+func (q *Queries) AnonymizeWorkspacesByOwner(ctx context.Context, arg AnonymizeWorkspacesByOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, anonymizeWorkspacesByOwner, arg.Name, arg.OwnerUserID)
 	if err != nil {
 		return 0, err
 	}

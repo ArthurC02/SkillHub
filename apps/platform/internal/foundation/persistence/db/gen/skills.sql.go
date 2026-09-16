@@ -85,12 +85,13 @@ WHERE deleted_at IS NULL
   AND (id = $1::uuid
        OR ($1::uuid IS NULL AND name ILIKE '%' || $2::text || '%'))
 ORDER BY created_at DESC, id
-LIMIT 20
+LIMIT $3
 `
 
 type FindSkillsForGovernanceParams struct {
-	SkillID  pgtype.UUID
-	NamePart string
+	SkillID     pgtype.UUID
+	NamePart    string
+	ResultLimit int32
 }
 
 type FindSkillsForGovernanceRow struct {
@@ -104,7 +105,7 @@ type FindSkillsForGovernanceRow struct {
 }
 
 func (q *Queries) FindSkillsForGovernance(ctx context.Context, arg FindSkillsForGovernanceParams) ([]FindSkillsForGovernanceRow, error) {
-	rows, err := q.db.Query(ctx, findSkillsForGovernance, arg.SkillID, arg.NamePart)
+	rows, err := q.db.Query(ctx, findSkillsForGovernance, arg.SkillID, arg.NamePart, arg.ResultLimit)
 	if err != nil {
 		return nil, err
 	}

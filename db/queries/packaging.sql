@@ -126,11 +126,11 @@ WHERE id = $1;
 SELECT pg_advisory_xact_lock(hashtextextended(@lock_key::text, 0));
 
 -- name: CreateDownloadCleanupIntent :one
-INSERT INTO download_object_cleanup_intents (workspace_id, object_key)
-VALUES (@workspace_id, @object_key)
+INSERT INTO download_object_cleanup_intents (workspace_id, object_key, not_before)
+VALUES (@workspace_id, @object_key, now() + @hold::interval)
 ON CONFLICT (object_key) DO UPDATE
 SET workspace_id = excluded.workspace_id,
-    not_before = now() + interval '1 hour', attempted_at = NULL
+    not_before = excluded.not_before, attempted_at = NULL
 RETURNING *;
 
 -- name: DeleteDownloadCleanupIntent :exec

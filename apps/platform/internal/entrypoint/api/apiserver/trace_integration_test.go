@@ -480,6 +480,64 @@ func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
 	}
 }
 
+func TestEvaluationEvidenceKeepsTheEarliestActivationsAndErrorsBeyondTheTail(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-evidence-window-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-evidence-window-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+	ctx := context.Background()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO trace_events
+		(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
+		 schema_version, masked, masked_fields, payload, late)
+		SELECT gen_random_uuid(), $1, $2, 1, n,
+		       now() - (n * interval '1 second'),
+		       CASE WHEN n <= 600 THEN 'script_log' WHEN n <= 701 THEN 'skill_activation' ELSE 'error' END,
+		       'sandbox', '1.0', true, '[]', '{}', false
+		FROM generate_series(1, 802) AS n`, owner.workspaceID, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runs := &run.Service{Pool: pool}
+	traceSvc := &trace.Service{
+		Pool: pool,
+		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
+			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
+			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
+		},
+	}
+	view, err := traceSvc.AdvancedAll(ctx, mustUUID(t, owner.workspaceID), mustUUID(t, runID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := map[int64]bool{}
+	for _, event := range view.Events {
+		kept[event.Seq] = true
+	}
+	if len(view.Events) != 700 || !view.EvaluationTruncated {
+		t.Fatalf("evidence = %d events, truncated=%v; want the 500-event tail plus 100 activations and 100 errors", len(view.Events), view.EvaluationTruncated)
+	}
+	for _, edge := range []struct {
+		seq  int64
+		kept bool
+		what string
+	}{
+		{500, true, "the oldest event of the tail"},
+		{501, false, "the first event past the tail"},
+		{701, true, "the earliest activation"},
+		{602, true, "the hundredth activation"},
+		{601, false, "the hundred-and-first activation"},
+		{802, true, "the earliest error"},
+		{703, true, "the hundredth error"},
+		{702, false, "the hundred-and-first error"},
+	} {
+		if kept[edge.seq] != edge.kept {
+			t.Errorf("%s (seq %d) kept = %v, want %v", edge.what, edge.seq, kept[edge.seq], edge.kept)
+		}
+	}
+}
+
 func dumpStoredEvents(t *testing.T, pool *pgxpool.Pool, runID string) {
 	t.Helper()
 	path := os.Getenv("SKILLHUB_TRACE_SAMPLE_OUT")

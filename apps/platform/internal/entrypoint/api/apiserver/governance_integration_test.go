@@ -796,6 +796,13 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if strings.Contains(email, "alice-purge") || strings.Contains(name, "alice-purge") {
 		t.Fatalf("purged account is still identifiable: %s / %s", email, name)
 	}
+	if want := "deleted-" + alice.userID + "@deleted.invalid"; email != want || name != "Deleted user" {
+		t.Fatalf("purged account = %s / %s, want %s / Deleted user", email, name, want)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM workspaces WHERE owner_user_id = $1 AND name <> 'deleted-workspace'",
+		mustUUID(t, alice.userID)); c != 0 {
+		t.Fatalf("%d of the purged account's workspaces kept their name", c)
+	}
 	if c := countRow(t, pool, "SELECT count(*) FROM user_identities WHERE user_id = $1", mustUUID(t, alice.userID)); c != 0 {
 		t.Fatal("external identity survived; the account could be logged into again")
 	}

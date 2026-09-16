@@ -327,6 +327,13 @@ type UsageSummary struct {
 
 const tracePageSize = int32(1_000)
 
+const (
+	evaluationTailEvents       = int32(500)
+	evaluationActivationEvents = int32(100)
+	evaluationErrorEvents      = int32(100)
+	reportedMissingSeqs        = int32(1_000)
+)
+
 func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, after int64) (AdvancedView, error) {
 	if _, err := s.runState(ctx, workspaceID, runID); err != nil {
 		return AdvancedView{}, err
@@ -437,6 +444,9 @@ func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUI
 	}
 	rows, err := s.queries().ListEvaluationTraceEvents(ctx, gen.ListEvaluationTraceEventsParams{
 		EvaluationRunID: runID, EvaluationWorkspaceID: workspaceID,
+		TailEvents:          evaluationTailEvents,
+		ActivationEventType: TypeSkillActivation, ActivationEvents: evaluationActivationEvents,
+		ErrorEventType: TypeError, ErrorEvents: evaluationErrorEvents,
 	})
 	if err != nil {
 		return AdvancedView{}, err
@@ -470,6 +480,7 @@ func (s *Service) MaskingActivity(ctx context.Context, recent, since time.Time) 
 	row, err := s.queries().CountTraceMaskingInWindow(ctx, gen.CountTraceMaskingInWindowParams{
 		Recent: pgtype.Timestamptz{Time: recent, Valid: true},
 		Since:  pgtype.Timestamptz{Time: since, Valid: true},
+		Source: SourceSandbox,
 	})
 	return MaskingActivityFacts{
 		RecentEvents: row.RecentEvents, EarlierEvents: row.EarlierEvents, MaskedFields: row.MaskedFields,
@@ -564,7 +575,7 @@ func (s *Service) runState(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgtype.UUID) ([]StreamHealth, error) {
 	rows, err := s.queries().GetTraceStreamHealth(ctx, gen.GetTraceStreamHealthParams{
-		RunID: runID, WorkspaceID: workspaceID,
+		RunID: runID, WorkspaceID: workspaceID, MissingSeqReported: reportedMissingSeqs,
 	})
 	if err != nil {
 		return nil, err

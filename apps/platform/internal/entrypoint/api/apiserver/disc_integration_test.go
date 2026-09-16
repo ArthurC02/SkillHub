@@ -516,6 +516,24 @@ func TestZeroHitLegDoesNotParticipateInFusion(t *testing.T) {
 	}
 }
 
+func TestADocumentOnlyTheFullTextLegFindsStillReachesTheResults(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-fts-only")
+	markCatalog(t, pool, curator.workspaceID)
+	wordOnly := seedSkill(t, pool, curator.workspaceID, "slithy tove indexer")
+
+	a := newAPIWithLLM(t, pool, stubLLM(t, 17, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	body := anon.search(t, "/api/skills/search?q=slithy")
+	if body.Degraded {
+		t.Fatalf("meant to exercise the hybrid path, got the degraded one: %q", body.DegradedReason)
+	}
+	if !contains(body.ids(), wordOnly) {
+		t.Fatalf("a document without an embedding that matches the words was left out: %v", body.ids())
+	}
+}
+
 func TestPublicHybridSearchDoesNotLeakPrivateWorkspaces(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

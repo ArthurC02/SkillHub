@@ -46,8 +46,8 @@ INSERT INTO datasets (
 RETURNING *;
 
 -- name: CreateDatasetCleanupIntent :one
-INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key)
-VALUES ($1, $2)
+INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key, not_before)
+VALUES (@workspace_id, @object_key, now() + @hold::interval)
 RETURNING *;
 
 -- name: LockDatasetObjectKeySession :exec

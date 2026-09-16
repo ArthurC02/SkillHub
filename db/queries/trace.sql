@@ -18,26 +18,26 @@ WITH tail AS (
     SELECT ingest_seq, occurred_at, source, attempt, seq FROM trace_events
     WHERE trace_events.run_id = @evaluation_run_id AND trace_events.workspace_id = @evaluation_workspace_id
     ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
-    LIMIT 501
+    LIMIT sqlc.arg(tail_events)::int + 1
 ),
 tail_kept AS (
     SELECT ingest_seq FROM tail
     ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
-    LIMIT 500
+    LIMIT sqlc.arg(tail_events)::int
 ),
 activations AS (
     SELECT ingest_seq FROM trace_events
     WHERE trace_events.run_id = @evaluation_run_id AND trace_events.workspace_id = @evaluation_workspace_id
-      AND event_type = 'skill_activation'
+      AND event_type = @activation_event_type::text
     ORDER BY occurred_at, source, attempt, seq
-    LIMIT 100
+    LIMIT @activation_events::int
 ),
 errors AS (
     SELECT ingest_seq FROM trace_events
     WHERE trace_events.run_id = @evaluation_run_id AND trace_events.workspace_id = @evaluation_workspace_id
-      AND event_type = 'error'
+      AND event_type = @error_event_type::text
     ORDER BY occurred_at, source, attempt, seq
-    LIMIT 100
+    LIMIT @error_events::int
 ),
 selected AS (
     SELECT * FROM tail_kept
@@ -46,14 +46,14 @@ selected AS (
     UNION
     SELECT * FROM errors
 )
-SELECT trace_events.*, (SELECT count(*) > 500 FROM tail) AS evaluation_truncated
+SELECT trace_events.*, (SELECT count(*) > sqlc.arg(tail_events)::int FROM tail) AS evaluation_truncated
 FROM selected
 JOIN trace_events USING (ingest_seq)
 ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, trace_events.seq;
 
 -- name: GetTraceStreamHealth :many
--- Computes stream health in the database: at most the first 1,000 missing ordinals
--- come back, while missing_count stays exact.
+-- Computes stream health in the database: only the first missing ordinals up to the
+-- reported cap come back, while missing_count stays exact.
 WITH scoped AS (
     SELECT attempt, source, seq, late,
            lag(seq, 1, 0) OVER (PARTITION BY attempt, source ORDER BY seq) AS previous_seq
@@ -75,7 +75,7 @@ SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_e
            CROSS JOIN LATERAL generate_series(e.previous_seq + 1, e.seq - 1) AS candidate
            WHERE e.attempt = s.attempt AND e.source = s.source
            ORDER BY candidate
-           LIMIT 1000
+           LIMIT @missing_seq_reported::int
        ), ARRAY[]::bigint[])::bigint[] AS missing_seq
 FROM streams s
 ORDER BY s.attempt, s.source;
@@ -224,4 +224,4 @@ SELECT count(*) FILTER (WHERE occurred_at >= @recent)::bigint AS recent_events,
        coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
                          THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
 FROM trace_events
-WHERE occurred_at >= @since AND source = 'sandbox';
+WHERE occurred_at >= @since AND source = @source;
