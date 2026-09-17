@@ -13,7 +13,7 @@ import (
 
 const countRunsNeedingCleanup = `-- name: CountRunsNeedingCleanup :one
 SELECT count(*) FROM runs
-WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+WHERE finished_at IS NOT NULL
   AND cleanup_status <> 'cleaned'
 `
 

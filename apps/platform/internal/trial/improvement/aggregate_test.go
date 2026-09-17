@@ -158,8 +158,8 @@ func seedNamedRun(t *testing.T, pool *pgxpool.Pool, tag string) material {
 			SELECT workspace_id, id, 'do the thing', '[]'::jsonb, $1 FROM tc
 			RETURNING id, workspace_id
 		)
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, status, provider)
-		SELECT snap.workspace_id, v.id, snap.id, 'succeeded', 'test' FROM snap, v
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, status, provider, finished_at)
+		SELECT snap.workspace_id, v.id, snap.id, 'succeeded', 'test', now() FROM snap, v
 		RETURNING id, workspace_id`, tag).Scan(&run.ID, &run.WorkspaceID)
 	if err != nil {
 		t.Fatalf("seed run: %v", err)

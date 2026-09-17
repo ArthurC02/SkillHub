@@ -713,8 +713,8 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  status, cleanup_status)
-		VALUES ($1, $2, $3, 'purge-test', 'succeeded', 'cleaned') RETURNING id`,
+		                  status, cleanup_status, finished_at)
+		VALUES ($1, $2, $3, 'purge-test', 'succeeded', 'cleaned', now()) RETURNING id`,
 		mustUUID(t, alice.workspaceID), sharedVer.ID, snapshotID).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}

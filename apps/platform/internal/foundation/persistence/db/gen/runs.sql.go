@@ -50,7 +50,7 @@ func (q *Queries) AccountPurgeReady(ctx context.Context, arg AccountPurgeReadyPa
 const countActiveRuns = `-- name: CountActiveRuns :one
 SELECT count(*) FROM runs
 WHERE workspace_id = $1
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+  AND finished_at IS NULL
 `
 
 func (q *Queries) CountActiveRuns(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
@@ -553,7 +553,7 @@ func (q *Queries) InsertRunStatusTransition(ctx context.Context, arg InsertRunSt
 const listActiveRuns = `-- name: ListActiveRuns :many
 WITH candidates AS (
     SELECT id FROM runs
-    WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+    WHERE finished_at IS NULL
 	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - $1::interval)
     ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
     LIMIT $2 FOR UPDATE SKIP LOCKED
@@ -912,8 +912,7 @@ func (q *Queries) ListRunStatusTransitions(ctx context.Context, arg ListRunStatu
 const listRunsNeedingCleanup = `-- name: ListRunsNeedingCleanup :many
 WITH candidates AS (
     SELECT id FROM runs
-    WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-      AND cleanup_status <> 'cleaned'
+    WHERE cleanup_status <> 'cleaned'
       AND finished_at < now() - $1::interval
 	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - $2::interval)
     ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id

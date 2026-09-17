@@ -934,6 +934,74 @@ func TestTheDatabaseRunGuardsAcceptExactlyTheTransitionsOfTheGoStateMachine(t *t
 	}
 }
 
+func TestTheDatabaseRefusesARunWhoseFinishTimeDisagreesWithItsStatus(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "run-finish-agrees")
+	var snapshotID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		SELECT workspace_id, id, user_prompt, acceptance_criteria, 'run-finish-agrees'
+		FROM test_cases WHERE id = $1 RETURNING id`, mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range run.AllStatuses {
+		for _, finished := range []bool{true, false} {
+			_, err := pool.Exec(ctx, `
+				INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, finished_at)
+				VALUES ($1, $2, $3, 'run-finish-agrees', $4, $5)`,
+				mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, status,
+				pgtype.Timestamptz{Time: time.Now(), Valid: finished})
+			if accepted, want := err == nil, finished == run.IsTerminal(status); accepted != want {
+				t.Errorf("%s with a finish time = %v: accepted = %v, want %v (%v)", status, finished, accepted, want, err)
+			}
+		}
+	}
+}
+
+func TestTheCleanupBacklogCountsOnlyFinishedRunsNotYetCleaned(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "cleanup-backlog")
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var snapshotID pgtype.UUID
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		SELECT workspace_id, id, user_prompt, acceptance_criteria, 'cleanup-backlog'
+		FROM test_cases WHERE id = $1 RETURNING id`, mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	q := gen.New(tx)
+	before, err := q.CountRunsNeedingCleanup(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, seeded := range []struct{ status, cleanup string }{
+		{"running", "pending"}, {"failed", "pending"}, {"succeeded", "cleaned"},
+	} {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, cleanup_status, finished_at)
+			VALUES ($1, $2, $3, 'cleanup-backlog', $4, $5, $6)`,
+			mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, seeded.status, seeded.cleanup,
+			finishedAtFor(seeded.status)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	after, err := q.CountRunsNeedingCleanup(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after-before != 1 {
+		t.Fatalf("backlog grew by %d, want 1: only the finished run still waiting for cleanup counts", after-before)
+	}
+}
+
 func databaseAcceptsRunTransition(t *testing.T, pool *pgxpool.Pool, f fixture, snapshotID pgtype.UUID, from, to gen.RunStatus) bool {
 	t.Helper()
 	ctx := context.Background()
@@ -944,11 +1012,24 @@ func databaseAcceptsRunTransition(t *testing.T, pool *pgxpool.Pool, f fixture, s
 	defer func() { _ = tx.Rollback(ctx) }()
 	var runID pgtype.UUID
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status)
-		VALUES ($1, $2, $3, 'run-guards-agree', $4) RETURNING id`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, from).Scan(&runID); err != nil {
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, status, finished_at)
+		VALUES ($1, $2, $3, 'run-guards-agree', $4, $5) RETURNING id`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, from, finishedAtFor(string(from))).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
-	_, err = tx.Exec(ctx, `UPDATE runs SET status = $1 WHERE id = $2`, to, runID)
+	_, err = tx.Exec(ctx, `UPDATE runs SET status = $1, finished_at = $2 WHERE id = $3`, to, finishedAtFor(string(to)), runID)
 	return err == nil
+}
+
+func finishedAtFor(status string) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: time.Now(), Valid: run.IsTerminal(gen.RunStatus(status))}
+}
+
+func finishedAtOn(t *testing.T, status, at string) pgtype.Timestamptz {
+	t.Helper()
+	finished, err := time.Parse(time.RFC3339, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pgtype.Timestamptz{Time: finished, Valid: run.IsTerminal(gen.RunStatus(status))}
 }

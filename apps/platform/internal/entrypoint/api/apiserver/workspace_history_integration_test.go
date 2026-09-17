@@ -398,9 +398,9 @@ func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, created_at)
-		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5)`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, at,
+		                  runtime_snapshot, policy_snapshot, status, created_at, finished_at)
+		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, at, finishedAtOn(t, status, at),
 	); err != nil {
 		t.Fatal(err)
 	}

@@ -67,7 +67,7 @@ RETURNING *;
 -- name: ListActiveRuns :many
 WITH candidates AS (
     SELECT id FROM runs
-    WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+    WHERE finished_at IS NULL
 	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - @recheck_after::interval)
     ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
     LIMIT @batch_size FOR UPDATE SKIP LOCKED
@@ -79,8 +79,7 @@ RETURNING r.*;
 -- name: ListRunsNeedingCleanup :many
 WITH candidates AS (
     SELECT id FROM runs
-    WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-      AND cleanup_status <> 'cleaned'
+    WHERE cleanup_status <> 'cleaned'
       AND finished_at < now() - @settled_for::interval
 	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - @recheck_after::interval)
     ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id
@@ -186,7 +185,7 @@ SELECT pg_advisory_xact_lock(hashtextextended(@workspace_id::text, 0));
 -- name: CountActiveRuns :one
 SELECT count(*) FROM runs
 WHERE workspace_id = @workspace_id
-  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out');
+  AND finished_at IS NULL;
 
 -- name: InsertRunArtifact :exec
 INSERT INTO artifacts (

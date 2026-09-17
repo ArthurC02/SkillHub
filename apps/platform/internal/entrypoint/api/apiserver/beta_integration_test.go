@@ -60,10 +60,10 @@ func seedBetaRun(t *testing.T, pool *pgxpool.Pool, f fixture, status string, fai
 	}
 	err = pool.QueryRow(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, failure_class)
-		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5)
+		                  runtime_snapshot, policy_snapshot, status, failure_class, finished_at)
+		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)
 		RETURNING id::text`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, failureClass,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, failureClass, finishedAtFor(status),
 	).Scan(&runID)
 	if err != nil {
 		t.Fatal(err)

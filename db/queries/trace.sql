@@ -130,7 +130,7 @@ SELECT id, workspace_id, status, finished_at FROM runs WHERE id = $1;
 
 -- name: CountRunsNeedingCleanup :one
 SELECT count(*) FROM runs
-WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+WHERE finished_at IS NOT NULL
   AND cleanup_status <> 'cleaned';
 
 -- name: CountTraceMaskingInWindow :one
