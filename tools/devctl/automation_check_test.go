@@ -24,7 +24,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
 		"image-version", "embedding-dims", "goldenset-mirror",
 
-		"capability-table",
+		"capability-table", "env-declared",
 
 		"doc-links",
 		"adr-citations",
