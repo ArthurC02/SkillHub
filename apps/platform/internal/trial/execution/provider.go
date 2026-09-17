@@ -38,6 +38,7 @@ const (
 	errClassCapabilityMismatch = "capability_mismatch"
 
 	errClassBudgetExhausted = "budget_exhausted"
+	errClassProviderLost    = "provider_lost"
 	errClassTimeout         = "timeout"
 	errClassCancelled       = "cancelled"
 )

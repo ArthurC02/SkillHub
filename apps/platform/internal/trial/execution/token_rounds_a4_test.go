@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func TestThePermissionSummarySaysWhatTheTokenCeilingDependsOn(t *testing.T) {
@@ -27,7 +29,7 @@ func TestThePermissionSummarySaysWhatTheTokenCeilingDependsOn(t *testing.T) {
 
 func TestTheTokenCeilingAbortMessageSaysTheRoundsDependOnToolCalls(t *testing.T) {
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{300_001, 0}}}).start(t), 300_000, 60_000)
-	reason := d.tokenCeilingBreach(context.Background(), anAttempt(t))
+	reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)})
 	if reason == "" {
 		t.Fatal("a run past its input ceiling was allowed to continue")
 	}
@@ -42,7 +44,7 @@ func TestTheTokenCeilingAbortMessageSaysTheRoundsDependOnToolCalls(t *testing.T)
 
 func TestTheOutputCeilingAbortMessageCarriesTheSameClause(t *testing.T) {
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{1_000, 60_001}}}).start(t), 300_000, 60_000)
-	reason := d.tokenCeilingBreach(context.Background(), anAttempt(t))
+	reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)})
 	if !strings.Contains(reason, "工具呼叫") {
 		t.Errorf("output-ceiling abort message = %q, want the same rounds clause as the input one", reason)
 	}

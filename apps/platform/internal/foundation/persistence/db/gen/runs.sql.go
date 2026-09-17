@@ -47,6 +47,21 @@ func (q *Queries) AccountPurgeReady(ctx context.Context, arg AccountPurgeReadyPa
 	return not_exists, err
 }
 
+const clearAttemptProviderUnreachable = `-- name: ClearAttemptProviderUnreachable :exec
+UPDATE run_attempts SET provider_unreachable_since = NULL
+WHERE id = $1 AND workspace_id = $2 AND provider_unreachable_since IS NOT NULL
+`
+
+type ClearAttemptProviderUnreachableParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) ClearAttemptProviderUnreachable(ctx context.Context, arg ClearAttemptProviderUnreachableParams) error {
+	_, err := q.db.Exec(ctx, clearAttemptProviderUnreachable, arg.ID, arg.WorkspaceID)
+	return err
+}
+
 const countActiveRuns = `-- name: CountActiveRuns :one
 SELECT count(*) FROM runs
 WHERE workspace_id = $1
@@ -194,7 +209,7 @@ INSERT INTO run_attempts (
 ) VALUES (
     $1, $2, $3, $4, $5, $6
 )
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state, provider_unreachable_since
 `
 
 type CreateRunAttemptParams struct {
@@ -230,6 +245,7 @@ func (q *Queries) CreateRunAttempt(ctx context.Context, arg CreateRunAttemptPara
 		&i.FinishedAt,
 		&i.ObjectGrantsExpireAt,
 		&i.ObjectGrantsState,
+		&i.ProviderUnreachableSince,
 	)
 	return i, err
 }
@@ -273,7 +289,7 @@ UPDATE run_attempts
 SET finished_at = $1, error_class = $2, error_message = $3,
     object_grants_state = $4, object_grants_expire_at = $5
 WHERE id = $6 AND workspace_id = $7
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state, provider_unreachable_since
 `
 
 type FinishRunAttemptParams struct {
@@ -311,6 +327,7 @@ func (q *Queries) FinishRunAttempt(ctx context.Context, arg FinishRunAttemptPara
 		&i.FinishedAt,
 		&i.ObjectGrantsExpireAt,
 		&i.ObjectGrantsState,
+		&i.ProviderUnreachableSince,
 	)
 	return i, err
 }
@@ -834,7 +851,7 @@ func (q *Queries) ListRunArtifactsWithLifecycle(ctx context.Context, arg ListRun
 }
 
 const listRunAttempts = `-- name: ListRunAttempts :many
-SELECT id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state FROM run_attempts
+SELECT id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state, provider_unreachable_since FROM run_attempts
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY attempt_number
 `
@@ -867,6 +884,7 @@ func (q *Queries) ListRunAttempts(ctx context.Context, arg ListRunAttemptsParams
 			&i.FinishedAt,
 			&i.ObjectGrantsExpireAt,
 			&i.ObjectGrantsState,
+			&i.ProviderUnreachableSince,
 		); err != nil {
 			return nil, err
 		}
@@ -1235,6 +1253,25 @@ func (q *Queries) LockWorkspaceRunSlots(ctx context.Context, workspaceID string)
 	return err
 }
 
+const markAttemptProviderUnreachable = `-- name: MarkAttemptProviderUnreachable :one
+UPDATE run_attempts
+SET provider_unreachable_since = coalesce(provider_unreachable_since, now())
+WHERE id = $1 AND workspace_id = $2
+RETURNING provider_unreachable_since
+`
+
+type MarkAttemptProviderUnreachableParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) MarkAttemptProviderUnreachable(ctx context.Context, arg MarkAttemptProviderUnreachableParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, markAttemptProviderUnreachable, arg.ID, arg.WorkspaceID)
+	var provider_unreachable_since pgtype.Timestamptz
+	err := row.Scan(&provider_unreachable_since)
+	return provider_unreachable_since, err
+}
+
 const markOutboxEventsPublished = `-- name: MarkOutboxEventsPublished :execrows
 UPDATE outbox_events SET published_at = now()
 WHERE event_id = ANY($1::uuid[]) AND published_at IS NULL
@@ -1382,7 +1419,7 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 const setAttemptProviderRunID = `-- name: SetAttemptProviderRunID :one
 UPDATE run_attempts SET provider_run_id = $1, started_at = $2
 WHERE id = $3 AND workspace_id = $4
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state, provider_unreachable_since
 `
 
 type SetAttemptProviderRunIDParams struct {
@@ -1414,6 +1451,7 @@ func (q *Queries) SetAttemptProviderRunID(ctx context.Context, arg SetAttemptPro
 		&i.FinishedAt,
 		&i.ObjectGrantsExpireAt,
 		&i.ObjectGrantsState,
+		&i.ProviderUnreachableSince,
 	)
 	return i, err
 }

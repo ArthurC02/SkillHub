@@ -498,19 +498,20 @@ type RunArtifactUploadIntent struct {
 }
 
 type RunAttempt struct {
-	ID                   pgtype.UUID
-	RunID                pgtype.UUID
-	WorkspaceID          pgtype.UUID
-	AttemptNumber        int32
-	Provider             string
-	ProviderRunID        *string
-	ErrorClass           *string
-	ErrorMessage         *string
-	CreatedAt            pgtype.Timestamptz
-	StartedAt            pgtype.Timestamptz
-	FinishedAt           pgtype.Timestamptz
-	ObjectGrantsExpireAt pgtype.Timestamptz
-	ObjectGrantsState    string
+	ID                       pgtype.UUID
+	RunID                    pgtype.UUID
+	WorkspaceID              pgtype.UUID
+	AttemptNumber            int32
+	Provider                 string
+	ProviderRunID            *string
+	ErrorClass               *string
+	ErrorMessage             *string
+	CreatedAt                pgtype.Timestamptz
+	StartedAt                pgtype.Timestamptz
+	FinishedAt               pgtype.Timestamptz
+	ObjectGrantsExpireAt     pgtype.Timestamptz
+	ObjectGrantsState        string
+	ProviderUnreachableSince pgtype.Timestamptz
 }
 
 type RunPermissionConfirmation struct {

@@ -180,7 +180,7 @@ func (r *Run) AssignProvider(provider string, runtimeSnapshot []byte) {
 	switch {
 	case IsTerminal(r.row.Status):
 		r.refuse(RefusedFinished)
-	case !alreadyPinned(r.row):
+	case !alreadyPinned(r.row) || r.row.Provider != provider:
 		r.row.Provider, r.row.RuntimeSnapshot = provider, slices.Clone(runtimeSnapshot)
 		r.record(ProviderAssigned{Provider: provider})
 	}

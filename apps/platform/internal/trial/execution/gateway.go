@@ -81,22 +81,29 @@ func RunBudgetUSD() float64 {
 
 func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAttemptID }
 
-func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, runAttemptID, ttl, map[string]string{"run_id": runID, "run_attempt_id": runAttemptID})
+func (g *Gateway) Issue(
+	ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64,
+) (*ModelGatewayGrant, error) {
+	return g.issue(ctx, runAttemptID, ttl, maxBudgetUSD,
+		map[string]string{"run_id": runID, "run_attempt_id": runAttemptID})
 }
 
 func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, attemptID, ttl, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
+	return g.issue(ctx, attemptID, ttl, 0, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
 }
-func (g *Gateway) issue(ctx context.Context, runAttemptID string, ttl time.Duration, metadata map[string]string) (*ModelGatewayGrant, error) {
-
+func (g *Gateway) issue(
+	ctx context.Context, runAttemptID string, ttl time.Duration, maxBudgetUSD float64, metadata map[string]string,
+) (*ModelGatewayGrant, error) {
 	if ttl <= 0 {
 		ttl = time.Hour
+	}
+	if maxBudgetUSD <= 0 {
+		maxBudgetUSD = g.MaxBudgetUSD
 	}
 	body := map[string]any{
 		"key_alias":  keyAlias(runAttemptID),
 		"duration":   strconv.Itoa(int(ttl.Seconds())) + "s",
-		"max_budget": g.MaxBudgetUSD,
+		"max_budget": maxBudgetUSD,
 		"tpm_limit":  g.TPMLimit,
 
 		"metadata": metadata,
@@ -117,7 +124,7 @@ func (g *Gateway) issue(ctx context.Context, runAttemptID string, ttl time.Durat
 	return &ModelGatewayGrant{
 		BaseURL:      g.SandboxBaseURL,
 		VirtualKey:   out.Key,
-		MaxBudgetUSD: g.MaxBudgetUSD,
+		MaxBudgetUSD: maxBudgetUSD,
 		TPMLimit:     g.TPMLimit,
 		ExpiresAt:    time.Now().UTC().Add(ttl),
 	}, nil

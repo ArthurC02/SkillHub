@@ -70,7 +70,9 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 - 成本：所有 Attempt 共用同一筆 Run 預算；新 Attempt 的模型預算是 Run 預算扣掉先前 Attempt 已記錄的花費，重跑不會讓一個 Run 花超過它的預算。
 - 行為：沙箱唯一能對外產生的效果是經模型閘道的呼叫，重跑不會重複任何外部寫入；前一個 Attempt 事後才送回的 Artifact 落在它自己的授權範圍，不會混進新 Attempt。
 
-每個 Run 最多改派一次，第二次遺失以 `provider_error` 結束。Run 記錄的 Provider 以最後被接受的 Attempt 為準，每個 Attempt 各自記錄自己的 Provider；遺失的 Provider 上殘留的 sandbox 由孤兒掃描回收。
+「失聯持續一段時間」以 Attempt 上記錄的「Provider 從何時開始不回應」判斷（`ProviderLostAfter`，90 秒）；Provider 再度回應就清掉這個記錄，下一次中斷重新計時。Provider 回報不認得這個 Attempt 不必等，立刻算遺失。
+
+每個 Run 最多改派一次，第二次遺失以 `provider_error` 結束。改派時遺失的 Provider 被排除在這個 Run 的選擇之外；沒有其他相容 Provider 時，Run 以無可用 Provider 結束並寫明被排除的是誰。Run 記錄的 Provider 與 Runtime 快照以最後被接受的 Attempt 為準（同一個 Provider 重送不覆寫既有快照），每個 Attempt 各自記錄自己的 Provider；遺失的 Provider 上殘留的 sandbox 由孤兒掃描回收。成本的執行方式：新 Attempt 的模型金鑰額度是 Run 預算扣掉先前 Attempt 已花的金額，Token 上限也以整個 Run 的用量計算；先前花費讀不到就不改派，Run 以 Provider 失敗結束——寧可少跑一次，也不要讓一個 Run 花超過它的預算。
 
 驗證方式：Fake Provider 需通過完整生命週期契約測試；SelfHostedProvider 與其他 Provider 實作共用同一組核心測試；替換 Provider 時不修改 Skill、Test Case、Evaluation 的核心 Schema。
 

@@ -143,7 +143,7 @@ func TestARunPastItsTokenCeilingIsStoppedAndToldWhy(t *testing.T) {
 	}
 	d := driverWithCeiling(t, (&spendLogStub{calls: calls}).start(t), 300_000, 60_000)
 
-	reason := d.tokenCeilingBreach(context.Background(), anAttempt(t))
+	reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)})
 	if reason == "" {
 		t.Fatal("a run 310400 input tokens into a 300000 ceiling was allowed to continue")
 	}
@@ -155,7 +155,7 @@ func TestARunPastItsTokenCeilingIsStoppedAndToldWhy(t *testing.T) {
 
 func TestARunPastItsOutputCeilingIsStoppedToo(t *testing.T) {
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{1_000, 60_001}}}).start(t), 300_000, 60_000)
-	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason == "" {
+	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason == "" {
 		t.Fatal("a run past its output ceiling was allowed to continue")
 	}
 }
@@ -163,7 +163,7 @@ func TestARunPastItsOutputCeilingIsStoppedToo(t *testing.T) {
 func TestARunInsideItsTokenCeilingIsLeftAlone(t *testing.T) {
 
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{300_000, 60_000}}}).start(t), 300_000, 60_000)
-	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason != "" {
+	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
 		t.Fatalf("a run exactly at its ceiling was stopped: %q", reason)
 	}
 }
@@ -174,14 +174,14 @@ func TestAnUnreadableGatewayDoesNotKillAHealthyRun(t *testing.T) {
 	}))
 	defer srv.Close()
 	d := driverWithCeiling(t, &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}, 300_000, 60_000)
-	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason != "" {
+	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
 		t.Fatalf("a broken gateway management API terminated a run: %q", reason)
 	}
 }
 
 func TestNoGatewayMeansNoCeilingToEnforce(t *testing.T) {
 	d := driverWithCeiling(t, nil, 300_000, 60_000)
-	if reason := d.tokenCeilingBreach(context.Background(), anAttempt(t)); reason != "" {
+	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
 		t.Fatalf("a deployment with no model gateway stopped a run over tokens: %q", reason)
 	}
 }

@@ -293,7 +293,7 @@ func TestCancelIsRecordedOnceAndNeverOnAFinishedRun(t *testing.T) {
 	})
 }
 
-func TestAProviderIsAssignedOnceAndNeverToAFinishedRun(t *testing.T) {
+func TestAProviderIsAssignedUntilAnotherOneTakesTheRunOver(t *testing.T) {
 	t.Run("an unassigned run", func(t *testing.T) {
 		r := runIn(gen.RunStatusQueued)
 		r.AssignProvider("fake_sandbox", []byte(`{"provider":"fake_sandbox"}`))
@@ -302,13 +302,22 @@ func TestAProviderIsAssignedOnceAndNeverToAFinishedRun(t *testing.T) {
 			t.Fatalf("run = %q %s, want the provider and its snapshot", r.Row().Provider, r.Row().RuntimeSnapshot)
 		}
 	})
-	t.Run("a run already assigned", func(t *testing.T) {
+	t.Run("the same provider dispatching again", func(t *testing.T) {
 		r := runIn(gen.RunStatusProvisioning)
+		r.row.Provider, r.row.RuntimeSnapshot = "first", []byte(`{"provider":"first","attempt":1}`)
+		r.AssignProvider("first", []byte(`{"provider":"first","attempt":2}`))
+		assertRunEvents(t, r)
+		if string(r.Row().RuntimeSnapshot) != `{"provider":"first","attempt":1}` {
+			t.Fatalf("snapshot = %s, want the runtime the first attempt matched", r.Row().RuntimeSnapshot)
+		}
+	})
+	t.Run("a run reassigned to another provider", func(t *testing.T) {
+		r := runIn(gen.RunStatusRunning)
 		r.row.Provider, r.row.RuntimeSnapshot = "first", []byte(`{"provider":"first"}`)
 		r.AssignProvider("second", []byte(`{"provider":"second"}`))
-		assertRunEvents(t, r)
-		if r.Row().Provider != "first" {
-			t.Fatalf("provider = %q, want the first assignment kept", r.Row().Provider)
+		assertRunEvents(t, r, ProviderAssigned{Provider: "second"})
+		if r.Row().Provider != "second" || string(r.Row().RuntimeSnapshot) != `{"provider":"second"}` {
+			t.Fatalf("run = %q %s, want the provider now carrying it", r.Row().Provider, r.Row().RuntimeSnapshot)
 		}
 	})
 	t.Run("a finished run", func(t *testing.T) {

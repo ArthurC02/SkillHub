@@ -45,6 +45,8 @@ type Fake struct {
 
 	DispatchStatuses []int
 
+	pollStatus int
+
 	OnDispatch func(runID string, attempt int)
 
 	Plan Plan
@@ -151,6 +153,12 @@ func (f *Fake) capability(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
+func (f *Fake) SetPollStatus(status int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.pollStatus = status
+}
+
 func (f *Fake) SetFreeSlots(free int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -230,6 +238,10 @@ func (f *Fake) create(runID, attemptID string, attempt int, createdAt time.Time)
 func (f *Fake) getRun(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.pollStatus >= 400 {
+		writeJSON(w, f.pollStatus, map[string]string{"error": "this provider is not answering"})
+		return
+	}
 	fr, ok := f.runs[r.PathValue("id")]
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no run with this handle"})

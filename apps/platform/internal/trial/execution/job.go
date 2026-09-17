@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"mime"
 	"path"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -121,15 +122,17 @@ func (d *driver) execute(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	live, err := d.liveAttempt(ctx)
+	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return err
 	}
-	switch {
+	switch live := liveAttempt(attempts); {
 	case live != nil:
 
-		return d.follow(ctx, *live)
+		return d.follow(ctx, attempts, *live)
 	case d.cur.Status == gen.RunStatusQueued || d.cur.Status == gen.RunStatusProvisioning:
+		return d.dispatch(ctx)
+	case reassignableAfter(attempts):
 		return d.dispatch(ctx)
 	case d.cur.Status == gen.RunStatusEvaluating:
 
@@ -163,6 +166,11 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform, err.Error())
 	}
 
+	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
+	if err != nil {
+		return err
+	}
+
 	halts := d.svc.haltsFailClosed(ctx)
 	if halts.dispatchPaused(d.svc.providers()) {
 		slog.Warn("dispatch paused; leaving the run queued",
@@ -174,7 +182,13 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
 	}
 
-	placements, err := d.svc.providers().Place(ctx, req, halts.byTarget)
+	budget, err := d.budgetForNextAttempt(ctx, attempts)
+	if err != nil {
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider, err.Error())
+	}
+
+	avoid := lostProviders(attempts, halts.byTarget)
+	placements, err := d.svc.providers().Place(ctx, req, avoid)
 	switch {
 	case errors.Is(err, ErrNoFreeSlot):
 		return d.waitForSlot()
@@ -182,7 +196,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
 	}
 	if d.cur.Status == gen.RunStatusQueued {
-		yield, err := d.svc.turnBelongsToAnother(ctx, d.cur, placements, halts.byTarget)
+		yield, err := d.svc.turnBelongsToAnother(ctx, d.cur, placements, avoid)
 		if err != nil {
 			return err
 		}
@@ -220,7 +234,7 @@ dispatching:
 		attempt := started.LatestAttempt()
 		lastAttemptID = attempt.ID
 
-		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, policy)
+		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, policy, budget)
 		if err != nil {
 
 			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
@@ -281,7 +295,7 @@ dispatching:
 			failures++
 			continue
 		}
-		return d.follow(ctx, attempt)
+		return d.follow(ctx, append(slices.Clone(attempts), attempt), attempt)
 	}
 
 	message := "dispatch failed"
@@ -291,7 +305,7 @@ dispatching:
 	return d.finish(ctx, lastAttemptID, gen.RunStatusFailed, failureProvider, message)
 }
 
-func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
+func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt gen.RunAttempt) error {
 	provider := d.provider
 	if provider == nil || provider.Name != attempt.Provider {
 		provider = d.svc.providers().Lookup(attempt.Provider)
@@ -309,16 +323,28 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 	pr, err := provider.GetRun(ctx, handle)
 	switch {
 	case err == nil:
+		d.providerAnswered(ctx, attempt)
 		if err := d.mapState(ctx, attempt, pr); err != nil {
 			return err
 		}
 		if pr.State.Terminal() {
 			return d.settle(ctx, attempt, pr)
 		}
+	case providerForgotAttempt(err):
+		return d.providerLost(ctx, attempt, provider.Name+" no longer knows this attempt")
 	case !retryable(err):
 		d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
 	default:
+		silentSince, markErr := d.providerSilentSince(ctx, attempt)
+		if markErr != nil {
+			return markErr
+		}
+		silent := time.Since(silentSince)
+		if silent >= ProviderLostAfter {
+			return d.providerLost(ctx, attempt,
+				fmt.Sprintf("%s has not answered for %s: %s", provider.Name, silent.Round(time.Second), err))
+		}
 		slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	}
 
@@ -340,7 +366,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 		return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	if reason := d.tokenCeilingBreach(ctx, attempt); reason != "" {
+	if reason := d.tokenCeilingBreach(ctx, attempts); reason != "" {
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
@@ -675,19 +701,13 @@ func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errC
 	}
 }
 
-func (d *driver) liveAttempt(ctx context.Context) (*gen.RunAttempt, error) {
-	attempts, err := d.svc.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
-		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
-	})
-	if err != nil {
-		return nil, err
-	}
+func liveAttempt(attempts []gen.RunAttempt) *gen.RunAttempt {
 	for i := len(attempts) - 1; i >= 0; i-- {
 		if attempts[i].ProviderRunID != nil && !attempts[i].FinishedAt.Valid {
-			return &attempts[i], nil
+			return &attempts[i]
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 func (d *driver) cancelRequested(ctx context.Context) (bool, error) {
@@ -776,22 +796,17 @@ func (d *driver) waitForTurn() error {
 
 const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
 
-func (d *driver) tokenCeilingBreach(ctx context.Context, attempt gen.RunAttempt) string {
+func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttempt) string {
 	limits := runLimits(d.cur).TokenBudget
 	if d.svc.Gateway == nil || (limits.MaxInputTokens <= 0 && limits.MaxOutputTokens <= 0) {
 		return ""
 	}
-	since := time.Now().UTC().Add(-time.Hour)
-	if attempt.CreatedAt.Valid {
-		since = attempt.CreatedAt.Time.UTC()
-	}
-
-	used, err := d.svc.Gateway.AttemptUsage(ctx, pgconv.UUIDString(attempt.ID), since)
+	used, err := d.svc.usageOf(ctx, attempts)
 	if err != nil {
 
 		metrics.RunTokenUsageUnreadable.Inc()
-		slog.Warn("could not read this attempt's token usage; the token ceiling is not being enforced for it",
-			"run_id", pgconv.UUIDString(d.cur.ID), "run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
+		slog.Warn("could not read this run's token usage; the token ceiling is not being enforced for it",
+			"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		return ""
 	}
 	switch {

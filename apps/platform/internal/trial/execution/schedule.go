@@ -345,7 +345,8 @@ type runtimeSnapshot struct {
 }
 
 func (s *Service) buildRunRequest(
-	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile, policy policySnapshot,
+	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile,
+	policy policySnapshot, budgetUSD float64,
 ) (RunRequest, error) {
 	if s.ReadVersion == nil {
 		return RunRequest{}, errRegistryReadNotConfigured
@@ -384,7 +385,7 @@ func (s *Service) buildRunRequest(
 
 	var gatewayGrant *ModelGatewayGrant
 	if s.Gateway != nil {
-		gatewayGrant, err = s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), ttl)
+		gatewayGrant, err = s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), ttl, budgetUSD)
 		if err != nil {
 			return RunRequest{}, err
 		}

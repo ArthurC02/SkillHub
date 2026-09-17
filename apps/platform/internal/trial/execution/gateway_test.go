@@ -26,7 +26,7 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 		AdminBaseURL: srv.URL, adminKey: "sk-master-test", SandboxBaseURL: "http://gateway:4000",
 		Model: "gpt-5.4-mini", MaxBudgetUSD: 0.5, TPMLimit: 1000, HTTP: srv.Client(),
 	}
-	grant, err := g.Issue(context.Background(), "run-1", "attempt-1", 30*time.Minute)
+	grant, err := g.Issue(context.Background(), "run-1", "attempt-1", 30*time.Minute, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 	}))
 	defer srv.Close()
 	g := &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}
-	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute); err == nil {
+	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0); err == nil {
 		t.Fatal("a gateway that returned no key was treated as success")
 	}
 }

@@ -186,6 +186,16 @@ SELECT count(*) FROM runs
 WHERE workspace_id = @workspace_id
   AND finished_at IS NULL;
 
+-- name: MarkAttemptProviderUnreachable :one
+UPDATE run_attempts
+SET provider_unreachable_since = coalesce(provider_unreachable_since, now())
+WHERE id = @id AND workspace_id = @workspace_id
+RETURNING provider_unreachable_since;
+
+-- name: ClearAttemptProviderUnreachable :exec
+UPDATE run_attempts SET provider_unreachable_since = NULL
+WHERE id = @id AND workspace_id = @workspace_id AND provider_unreachable_since IS NOT NULL;
+
 -- name: ListUnfinishedRuns :many
 SELECT * FROM runs
 WHERE finished_at IS NULL
