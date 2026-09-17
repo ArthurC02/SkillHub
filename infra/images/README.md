@@ -545,8 +545,8 @@ docker run --rm -v "$(pwd)/infra/images/runtime-agent-sdk:/work" -w /work \
 
 `04` 丙-158：三個應用程式服務（`apps/platform`、`apps/llm`、`apps/web`）原本沒有映像，
 CI 的 `images` job 是空殼，平台自己「建得起來、部署得動」這件事從未被證明過。本節是三份
-Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明；**CI 端要接
-GHCR push 仍是協調者的工作**（本批範圍只到映像與本機驗證，不動 `.github/workflows/`）。
+Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。CI 的 `images` job 每次 build 三個，
+只在 main 推到 GHCR，tag 是 commit SHA。
 
 ### 三個映像各裝什麼
 

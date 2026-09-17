@@ -117,7 +117,7 @@
 
 ### 2.2 Migration 套用（順序是硬的）
 
-**部署 schema 必須到目前 HEAD `0053`。** 下列十一份互相依賴；不要再以手抄的「缺幾份」判斷目前版本：
+**部署 schema 必須到 repo 的 HEAD（`ls db/migrations | tail -1`）。** 下列十一份互相依賴；不要以手抄的「缺幾份」判斷目前版本：
 
 > **2026-09-03 訂正，因為這一節安靜地過期了。** 本節寫成時 HEAD 是 `0034`，而**「目前 HEAD ＝ 一個手抄的數字」這種寫法每次 migration 都會過期一次，且過期時不會有任何東西變紅**。今天是 `0053`（`0035`～`0053` 共十九份，見下方迴圈）。判斷版本請跑 `ls db/migrations/ | tail -1`，不要讀這份文件裡的數字。<br>**同批訂正的是更容易漏的那一半**：`0042`（精選層）與 `0053`（分類）都**只加欄位、不帶值**，值由 `tools/content/` 的回填腳本寫入，而**回填要等 §2.4 種入之後才有列可以更新**。回填清單因此從本節移到 §2.4，只留 schema。
 
@@ -136,9 +136,12 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0031_trace_event_i
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0032_run_state_and_trace_stream_guards.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0033_evaluation_model_usage.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0034_trace_incremental_reads.sql
-# 0035～0053：本節寫成時還不存在，一份一個交易、同樣是數字序
-for f in db/migrations/003[5-9]_*.sql db/migrations/00[45][0-9]_*.sql; do
-  psql -v ON_ERROR_STOP=1 --single-transaction -f "$f" || break
+# 0035 到 HEAD：一份一個交易、數字序。DEPLOYED ＝ 這個資料庫已經套用到的最後一份
+DEPLOYED=0034
+for f in db/migrations/[0-9][0-9][0-9][0-9]_*.sql; do
+  n=$(basename "$f"); n=${n%%_*}
+  [ "$((10#$n))" -le "$((10#$DEPLOYED))" ] && continue
+  psql -v ON_ERROR_STOP=1 --single-transaction -f "$f" || { echo "stopped at $f"; break; }
 done
 # 資料回填不在這裡：它要等 §2.4 種入之後才有列可以更新
 
@@ -147,16 +150,20 @@ psql -Atqc "SELECT to_regclass('public.evaluation_model_usage')"
 psql -Atqc "SELECT to_regprocedure('public.enforce_run_status_transition()')"
 psql -Atqc "SELECT to_regprocedure('public.enforce_trace_stream_seq()')"
 psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
+# HEAD 0078 的產物（應為 1）；HEAD 前進時換成新 HEAD 的產物
+psql -Atqc "SELECT count(*) FROM pg_constraint WHERE conname = 'runs_finished_exactly_when_terminal'"
 # 三個「只有欄位、值由 §2.4 的回填寫入」的欄位是否都在（應為 3；不是 3 就是上面的迴圈沒跑完）
 psql -Atqc "SELECT count(*) FROM information_schema.columns
              WHERE table_name = 'skills'
                AND column_name IN ('redistribution', 'curation_tier', 'category')"
 ```
 
-**套用之後必須做的三件事**：
+**套用前後必須做的事**：
 
 - [ ] **重建 `cmd/api`／`cmd/worker`／`sandboxd` 到 HEAD** 並帶齊環境變數（見 §2.3）。舊二進位在新 schema 上會以難看的方式失敗（丙-8 記錄的正是反過來的那一半）。
 - [ ] **`0024`～`0034` 套用並通過上述 schema HEAD smoke check 後，`EVAL-013` 的 B 輪回歸解除**（丙-8）：依 [`../m3/report-judge-regression.md` §13.4](../m3/report-judge-regression.md) 的五個 `test_case_id` 走 `PATCH /test-cases/{id}` 改 Prompt → 走既有 Run 路徑重發 5 筆 → `judge_regression.py --rubric` 重評。**第 ⑤ 步之前先確認新 Run 進得了 `skill_runtime_compatibility`**，否則 harness 取到的仍是 M2 的舊 Run，而且不會有任何提示。成本約 $0.3～0.5。
+- [ ] **既有資料庫跨過 `0049`～`0051`**：照 [account-purge-write-fence-rollout.md](../../../runbooks/account-purge-write-fence-rollout.md) 先停掉舊版 API／Worker／Maintenance 再套用，不可混部滾動更新。全新資料庫沒有舊程序，這一格不適用
+- [ ] **跨過 `0059` 之後**：照 [purge-role-cutover.md](../../../runbooks/purge-role-cutover.md) 讓 `cmd/maintenance` 以 `skillhub_purge` 角色連線（`SKILLHUB_PURGE_DATABASE_URL`）。未設時清除工作以 API 角色執行並印一行 log，不會失敗，所以不會有人發現
 - [ ] **`0027` 套用前，dev 上的打包路徑只會回 `license_unknown`**（`redistribution` 欄位不存在 ⇒ fail-closed）。這是正確行為，不是故障——回填前的實測已記在 §14.2 末段。
 
 ### 2.3 部署設定（未設會安靜地關掉功能）
@@ -168,13 +175,34 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 | `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；**且 `maintenance rotate-partitions` 整個 job 拒絕執行**（§2.6） | **PDM-006 追認**（[產品分析與稽核邊界](../../../adr/README.md#產品分析與稽核邊界)提案 180 天） |
 | `TRACE_RETENTION` | **`maintenance rotate-partitions` 整個 job 拒絕執行**（兩個保存期在任何語句之前一起讀）⇒ **`trace_events` 與 `analytics_events` 的月分割既不會被預先建立，也不會被丟棄**。Trace 寫入本身不受影響，事件照收，只是全部落進 `trace_events_default`（§2.6） | **PDM-006 追認**（`0004` 註解寫的 90 天是提案，至今沒有任何東西在執行它） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
-| `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
+| `RUN_QUOTA` | **未設＝以 PDM-010 的四個值強制**；只有字面值 `off` 會關掉次數額度，同時 `GET /me/quota` 不掛載、preflight 不帶配額區塊 | 封測設 `off`（負責人裁定封測不限制次數；每 Run 的閘道預算、TPM 與 token 上限照常強制） |
 | `RATE_LIMIT`（2026-08-24 新增） | **只有 `off` 會關掉它**；未設或填任何其他值（含填一個數字）都是啟用預設 60/min、burst 30。方向與上面幾列**相反**：未設＝有保護 | 保持未設 |
 | `FEEDBACK_RETENTION`（2026-08-29 新增） | **fail-closed，比照 `AUDIT_RETENTION`**：未設或非法時 `maintenance purge-feedback` 拒絕啟動 ⇒ `feedback_reports` 的自由文字**沒有保存期、沒有清除**。這是本 repo 唯一一個「在收、卻沒有期限也沒有 sweep」的資料類別，而它收的是受測者用自己的話寫的東西 | **PDM-006 追認**（與其餘保存期同一批） |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
 | `LITELLM_API_KEY` | **這裡放的必須是一把由 master key 簽發的 Virtual Key，帶 `max_budget` 與模型白名單；放 master key 是部署缺陷。** master key 不只是「一把預算很大的 key」，它是閘道**管理 API 的管理員憑證**——可以簽發 Virtual Key、讀取全部 key 的 spend、（`STORE_MODEL_IN_DB` 開啟時）改動模型路由。把它交給 `apps/llm`，等於讓一個處理**不受信任套件內容與使用者 prompt** 的行程持有整個模型出口的管理權，而[模型閘道與可觀測性](../../../adr/README.md#模型閘道與可觀測性)的決策段逐字寫著「Python 服務與 Sandbox 只持有 Virtual Key」。**repo 裡每一份記錄過實跑的文件都是直接把 master key 填進來的**（m3 的兩份報告、`generate_integration_test.go` 的重現指令、`04` 丙-56），所以這一列是**部署期一定要撞到的一件事**，不是提醒 | 部署時由 master key 簽發；`LITELLM_MASTER_KEY` 只留在閘道那一側 |
 | `SKILLHUB_MODEL_GATEWAY_*` | 沙箱被派到 `--network none`，Run 全部失敗 | 既有 |
-| 物件儲存設定 | `ErrNoStore` ⇒ 打包 503 | 既有 |
+| `OBJSTORE_ENDPOINT`／`OBJSTORE_ACCESS_KEY`／`OBJSTORE_SECRET_KEY`／`OBJSTORE_BUCKET`／`OBJSTORE_SSL` | `ErrNoStore` ⇒ 打包 503；`OBJSTORE_SSL` 未設＝明文連線 | 部署的物件儲存；走公網時 `OBJSTORE_SSL=1` |
+| `APP_URL` | 沒有 `COOKIE_INSECURE=1` 時，未設或不是合法網址 ⇒ **`cmd/api` 拒絕啟動**（同源寫入檢查沒有來源可比對） | 公開網址，`https://` 開頭 |
+| `DEV_LOGIN`／`COOKIE_INSECURE`／`DEV_CORS_ORIGIN`／`IMPORT_ALLOW_INSECURE`／`IMPORT_EXTRA_HOSTS` | `.env.example` 填的是開發值。`APP_URL` 是 https 時任一有設 ⇒ **`cmd/api` 拒絕啟動** | 全部不設 |
+| `GITHUB_CLIENT_ID`／`GITHUB_CLIENT_SECRET`／`OAUTH_REDIRECT_URL` | **沒有任何登入方式**（公開部署拒絕 dev login） | GitHub OAuth App；callback 是 `<APP_URL>/auth/github/callback` |
+| `GENERATE_SKILL_EXPOSED`／`CREATION_EXPOSED` | 未設＝不曝光，**這正是封測要的**：M5 的生成入口不得對封測使用者出現（`01` §10 ⛔） | **保持未設**；只有字面值 `on` 會打開 |
+| `LLM_SERVICE_URL`／`LLM_SERVICE_TOKEN` | 搜尋只剩 FTS、評估判定一律 `undetermined`；**種入之前就要設**，種進去的內容不會事後補索引 | `apps/llm` 的內部位址；同一把隨機 token 給 `cmd/api`、`cmd/worker` 與 `apps/llm` |
+| `SKILLHUB_TRACE_INGEST_URL`／`SKILLHUB_TRACE_INGEST_SECRET` | Run 的 Trace 收不到（`cmd/api` 只印一行 warning） | `cmd/api` 與 `cmd/worker` 設同一組；URL 必須是沙箱節點連得到的 API 位址 |
+| `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>` | 沒有 provider ⇒ 每個 Run 都派不出去 | `name=https://節點位址`；`<NAME>` 是大寫的 provider 名稱，值等於該節點 `sandboxd` 的 `SKILLHUB_SANDBOX_TOKEN` |
+
+**完整變數清單是 [`.env.example`](../../../../.env.example)**：`automation-check` 的 `env-declared` 保證每個服務讀的變數都列在裡面，`capability-table` 保證每一列都說得出它擋著什麼。本表只列不設會安靜壞掉、或設錯會變危險的。
+
+**沙箱節點（`sandboxd`）另有一組，全部在該節點上設**：
+
+- [ ] `SKILLHUB_SANDBOX_TOKEN` 必填（未設拒絕啟動），值與平台側 `SKILLHUB_SANDBOX_TOKEN_<NAME>` 相同
+- [ ] `SKILLHUB_SANDBOX_RUNTIME=runsc`。**只有設了它，下面這些拒絕啟動的檢查才會生效**：`SKILLHUB_SANDBOX_IMAGE` 必須是 `@sha256:` digest、`SKILLHUB_SANDBOX_DEV_CMD` 與 `SKILLHUB_CLEAN_MODE` 必須未設、`SKILLHUB_SANDBOX_P02_TARGETS` 必須列出沙箱不得連到的位址（控制平面的 Postgres、API、物件儲存、雲端 metadata）
+- [ ] `SKILLHUB_SANDBOX_NETWORK` 有設時 `SKILLHUB_SANDBOX_EGRESS_ALLOW` 必填，指向由 `infra/egress/allowlist.yaml` render 出來的規則（§2.1 的 `unset` 陷阱）
+
+**映像與啟動順序**：
+
+- [ ] 三個服務映像由 CI 在 main 推到 GHCR，tag 是 commit SHA：`ghcr.io/arthurc02/skillhub-platform`、`skillhub-web`、`skillhub-llm`。**三個取同一個 SHA**，且那個 SHA 的 CI 是綠的（`devctl ci-status <sha>`）；platform 映像裡有 `api`／`worker`／`maintenance`／`reindex` 四個指令
+- [ ] 順序：Postgres 與物件儲存 → §2.2 migration → `apps/llm` → `cmd/worker` → `cmd/api` → web。**worker 必須在跑**：月分割的建立在 worker，不在 cron
+- [ ] TLS 終止、Postgres 每日備份與一次還原演練、secrets 的存放方式：**本檢查表沒有做法**，是 [`04` 甲-5](../../04-backlog-and-handoffs.md) ② 的範圍。三件任一沒做就上線，要寫下是誰接受了這個風險
 
 **⚠️ 反向代理下速率限制會退化成「全體共用一個桶」**（2026-08-24，`04` 丙-54）：限制器以 `RemoteAddr` 分桶，**刻意不讀 `X-Forwarded-For`**（客戶端能設的標頭就是客戶端能選的桶）。所以只要前面擺了 TLS 終止層或任何代理，**十二位受測者共用 60/min、burst 30，而且是一起被 429**。部署時二選一：①在代理那一層做限制、②只在代理與 API 之間是可信網段時，才在代理上設定把真實來源 IP 傳進來並改讀它（**要先改程式，今天不讀**）。IPv6 已按 /64 分桶（單一配置有 2^64 個位址，按位址分桶等於沒有限制）。
 
@@ -182,9 +210,10 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 
 ### 2.4 策展內容種入
 
-- [ ] 先確認 dev／生產上**哪個帳號持有目錄 Workspace**（`workspaces.is_catalog` 沒有端點，由建目錄時的 SQL 設定）
-- [ ] `python tools/content/import_seed.py`（45 筆目錄）→ 驗 **45/45 imported**
-- [ ] `python tools/content/seed_testcases.py --api <url> --user <目錄策展帳號> --dry-run` → 驗 **15 筆都解析得到 Skill**
+- [ ] **種入要用一個只綁 loopback 的臨時 `cmd/api`**。三支種入腳本都用 dev login，而公開部署拒絕 `DEV_LOGIN=1`。在部署主機上用同一組 `DATABASE_URL`、`OBJSTORE_*`、`LLM_SERVICE_*` 另起一個：`API_ADDR=127.0.0.1:18080`、`APP_URL` 與 `BETA_ALLOWLIST` 不設、`COOKIE_INSECURE=1`、`DEV_LOGIN=1`，腳本一律帶 `--api http://127.0.0.1:18080`。**種完就停掉它**；之後公開的 `cmd/api` 不接受 dev login，種入帳號因此無法從外面登入
+- [ ] `python tools/content/import_seed.py --api http://127.0.0.1:18080`（45 筆目錄，登入帳號 `seed-importer`）→ 驗 **45/45 imported**
+- [ ] 把種入帳號的 Workspace 標成目錄（沒有端點做這件事）：`UPDATE workspaces w SET is_catalog = true FROM user_identities i WHERE i.user_id = w.owner_user_id AND i.provider = 'dev' AND i.provider_user_id = 'seed-importer'` → 驗 `UPDATE 1`
+- [ ] `python tools/content/seed_testcases.py --api http://127.0.0.1:18080 --user seed-importer --dry-run` → 驗 **15 筆都解析得到 Skill**
 - [ ] 拿掉 `--dry-run` 重跑 → 驗 **15 建立、67 條驗收條件、5 筆帶 rubric、22 個 rubric item 逐筆指得到真的驗收條件、每筆 2 個 Dataset**
 - [ ] 再跑一次驗冪等 → **15 筆 `exists_skipped`，零寫入**
 
@@ -197,14 +226,19 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 ```bash
 psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.sql
-python tools/content/curate_seed.py --user <目錄擁有者> --operator <OPERATOR_USER_IDS 裡的帳號>
+psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/restrict-anthropic-sa-display.sql
+python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-importer --operator <臨時 cmd/api 的 OPERATOR_USER_IDS 裡的帳號>
+(cd apps/platform && go run ./cmd/reindex)   # 或 platform 映像的 reindex 指令
 ```
 
 | 腳本 | 需先套用 | 驗什麼（數字對不上就停下） | 不跑會怎樣 |
 | --- | --- | --- | --- |
 | `backfill-redistribution.sql` | `0027` | **`UPDATE 90`**，分佈 **41 `allowed`／4 `blocked`／0 `unknown`**（4 筆 blocked ＝ `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx`）。該分佈已在一個乾淨的拋棄式部署上獨立複現過（[README.md §14.2](README.md)） | 全部停留在 `unknown` ⇒ fail-closed，**每一筆都打不出包**（打包的授權閘門看的就是這個欄位） |
 | `curate_seed.py` | `0076` | **15 筆全部回 `curated`**，每筆印出被審的版本；有 `skill_absent` 就是種入沒完成（只看目錄擁有者自己的 Skill，Fork 不在其中） | 目錄全是 `已索引`，**首頁的「精選（N）」書架與 `?tier=curated` 都是空的**，`01` §8 的三層策略在畫面上不成立 |
-| `backfill-category.sql` | `0053` | 目錄列 **文件 10／寫作 10／資料 25**（腳本末尾附驗證查詢；Fork 一併回填，總數因此 ≥ 45） | **首頁四個分類 chip 全是 `0`、`?category=` 篩不出任何東西**，而它們不會報錯——空目錄與沒回填長得一模一樣 |
+| `backfill-category.sql` | `0053` | 目錄列 **文件 10／寫作 10／資料 25**（`SELECT category, count(*) FROM skills s JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog WHERE s.deleted_at IS NULL GROUP BY 1`；Fork 另外回填，不在這個數裡） | **首頁四個分類 chip 全是 `0`、`?category=` 篩不出任何東西**，而它們不會報錯——空目錄與沒回填長得一模一樣 |
+
+| `restrict-anthropic-sa-display.sql` | `0023` | **`UPDATE 4`**（`docx`／`pdf`／`pptx`／`xlsx`，全新部署還沒有 Fork） | 那四筆的檔案可以下載、可以試跑，授權終判前的保全動作等於沒做。單筆的設定與解除走 operator 端點；這支 SQL 用在一次涵蓋目錄項與既有 Fork |
+| `cmd/reindex` | 上面全部 | 印出 `search projection rebuilt`，且 `SELECT category, count(*) FROM search_documents GROUP BY 1` 與上面的分類分佈一致 | 列表與搜尋讀的是 `search_documents` 投影，手跑的 SQL 應用程式看不到：**分類 chip 與精選書架照舊是回填前的值** |
 
 **兩支刻意不在這一批**：
 
@@ -246,6 +280,14 @@ python tools/content/curate_seed.py --user <目錄擁有者> --operator <OPERATO
 - [ ] 驗至少一個 `documents` 類精選 Skill **可下載**（[beta-design.md §8](beta-design.md) 第 11 項；那四筆受限讓該類最好的樣本不可下載，PDM-002 早已要求補 2–3 個 OSI 授權的替代品，**那是 `documents` 類的必要條件不是加分項**）
 
 - [ ] **跑一次 `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey`，並把閘道回報的實際金額寫進這一格**（**2026-09-10 新增，`05` R-72 裁定 (b)**）。它是唯一一支走完整條路的測試——套件進物件儲存 → preflight → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷。**它不在 CI 也不排程**（排程要把閘道金鑰複製進 CI secret，撞鐵律 11），所以它的保證就是這一格。執行配方在 [automation.md](../../../development/automation.md)〈什麼時候要跑它〉的上一節，**不在此複述**。**這條線斷掉的樣子是「派送成功、Run 永遠不完成」**——`web` 與 `platform` 兩個 job 會全綠，所以沒有跑過就勾這一格，等於用一個看不見的紅燈換一個看得見的綠燈。上一次實跑：2026-09-10，$0.021103
+
+**安全面逐項驗一次（公開網址，未登入與受測者帳號各一）**：
+
+- [ ] `POST /auth/dev/login` 不是 2xx（路由沒有掛載）；首頁與搜尋無結果頁**沒有**生成或互動創作入口
+- [ ] 從別的網域對任一寫入端點發請求被拒（同源檢查），回應沒有 `Access-Control-Allow-Origin`
+- [ ] `apps/llm` 與 `sandboxd` 從公網連不到；沙箱內連 §2.3 的 `P02_TARGETS` 全部失敗
+- [ ] `apps/llm` 持有的是 Virtual Key：`LITELLM_API_KEY` 是由 master key 簽發、帶 `max_budget` 的 key，不是 master key 本身（§2.3）
+- [ ] `TraceMaskingStopped` 由 Alertmanager 實際送達一次（§2.5）
 
 ### 2.8 仍待定值或部署驗證的技術債
 
@@ -289,7 +331,7 @@ python tools/content/curate_seed.py --user <目錄擁有者> --operator <OPERATO
 - [ ] §2 與 §3 全部成立（尤其 `SEC-009` 45 項全 pass、0 unknown）
 - [ ] 12 個 GitHub 帳號填入 `BETA_ALLOWLIST` 並重啟；**驗 `beta.roster` audit event 真的寫成了**（寫不成 ⇒ 誰都進不來）
 - [ ] 未受邀者的路徑走一次：可搜尋、可看詳情、Fork／Run／下載回 403 並指向 `POST /feedback`
-- [ ] 配額走一次：剩餘次數看得到、用完會擋、重置時間顯示得出來
+- [ ] 配額：`RUN_QUOTA=off` 時 `GET /me/quota` 回 404、畫面上沒有任何剩餘次數。**有一天打開 `RUN_QUOTA` 時才改走**：剩餘次數看得到、用完會擋、重置時間顯示得出來
 - [ ] 停派送開關走一次：`PUT /admin/dispatch/halt` → 建立 Run 回 503 → `DELETE` 解除 → 恢復（**解除不會自己發生**）
 
 ---
