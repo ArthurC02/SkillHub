@@ -1,7 +1,7 @@
 # ADR-004：Sandbox 隔離與執行安全
 
 - 狀態：Accepted
-- 相關：[資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[Repo 結構、CI 與驗證層](./ADR-013-repository-layout-ci-and-verification-tiers.md)、[開發自動化與依賴治理](./ADR-014-developer-automation-and-dependency-governance.md)、[淨測試模式](./ADR-022-clean-test-mode.md)
+- 相關：[資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[Repo 結構、CI 與驗證層](./ADR-013-repository-layout-ci-and-verification-tiers.md)、[開發自動化與依賴治理](./ADR-014-developer-automation-and-dependency-governance.md)、[淨測試模式](./ADR-022-clean-test-mode.md)、[外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)
 
 ## 背景
 
@@ -46,7 +46,7 @@ License 辨識規則與其對打包的阻擋效果屬[打包、授權溯源與�
 
 ### 決策 4：Provider 架構與最低安全基線
 
-Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProvider`）提供，疊加以下最低基線；後續決策（gVisor、拓撲、Egress）是在這個基線之上加強，不是取代：
+Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProvider`）提供，疊加以下最低基線；後續決策（gVisor、拓撲、Egress）是在這個基線之上加強，不是取代。基線是對任何 Provider Adapter 的要求，不是對某一種技術的要求：換成 MicroVM 或受管沙箱服務時，同一份基線照樣要成立。
 
 **計算隔離**：每次 Run 獨立環境與暫存工作區；非 root、非特權身分；不允許 privileged mode 與 Host PID／IPC／Network namespace；不掛載 Docker 或容器管理 Socket；基礎檔案系統唯讀，只開放明確暫存與輸出路徑；套用系統呼叫／capabilities 最小權限；限制 CPU、記憶體、磁碟、程序數、檔案描述符與最大執行時間；不支援 GPU、特權程序、巢狀容器或長時間背景服務。
 
@@ -61,6 +61,8 @@ Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProv
 以 gVisor（`runsc`）作為使用者態核心攔截層，疊加在決策 4 的基線之上。選擇理由：一般雲端 VM 即可執行，不需裸機或巢狀虛擬化；沿用容器映像與工具鏈；比加固容器（runc＋seccomp）多一層核心攻擊面隔離，比 MicroVM 的維運與部署平台限制輕。
 
 節點編排採**每台 VM 一個主機服務**：每台節點跑 Docker Engine（`daemon.json` 註冊 `runsc` runtime、`icc: false`、`iptables: true`，Run 容器接在預設 bridge），節點上唯一的服務是 `sandboxd`，由 systemd 以非 root 使用者（附 docker 群組）執行並套 systemd 的沙箱化選項；容器只有 Run 的 gVisor 容器與 `sandboxd` 的常駐 P-02 探針。`sandboxd` 不放進容器：它要操作 dockerd，放進容器就得把 `docker.sock` 以可寫 bind mount 掛進去——那正是節點准入 C-01b 擋下的形狀，而且換不到任何隔離，握有 `docker.sock` 就等於握有主機 root。`sandboxd` 的執行檔由 CI 建成映像、以 commit SHA 發佈，節點從釘 digest 的映像取出。不引入 Kubernetes 或任何叢集排程器——調度決策已經在控制平面（依可用 slot 與 egress 模式選節點），第二個排程器只會與它衝突；也不引入 Nomad 等替代叢集技術。
+
+gVisor、Docker Engine 與 systemd 是自建 Provider 內部的 Adapter。`sandboxd` 的執行邏輯只依賴自己的驅動 Port（啟動、等待、停止、移除、讀取 Trace 與 Artifact、探測出口），容器執行期是這個 Port 的一個實作：換成 MicroVM 是新增一個驅動，換成受管沙箱服務是在控制平面新增一個 Provider Adapter。能力宣告由驅動依它實際做到的事回報（例如每個 Run 是否有專屬工作區、資源上限是否被強制），`sandboxd` 不替驅動統一宣稱；控制平面依隔離強度與這些值選節點，不看產品名。
 
 節點以 IaC 建置（cloud-init＋Egress 允許清單），無狀態、不接受手動修改，改動即重建：建置腳本在已建置過的節點上拒絕重跑。節點上的 repo 是**部分 checkout**，只取該角色 `checkout-paths` 列出的部署檔；完整 repo 帶著測試 fixture 裡的資料庫連線字串，會讓節點准入 P-05 失敗，也把節點用不到的程式碼放上一台跑不受信任內容的機器。`sandboxd` 啟動前先確認 nftables 規則已載入、bridge 流量經過 netfilter、`runsc` 已註冊，任一不成立就不啟動。節點入站只開 `sandboxd` 服務埠且來源限控制平面 IP，其餘全部 DROP；SSH 走供應商 console，不作為部署流程的一部分。
 
@@ -100,7 +102,9 @@ Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProv
 
 `sandboxd` 在接受一次 Run 時，逐項比對平台送來的 egress 允許清單與節點實際渲染的清單，不相符即以既有的能力不符錯誤拒絕，避免接上一張到不了目的地的網路而讓 Run 空等到逾時。
 
-記錄目的地 IP:port、協定、方向、決策（accept／drop）、位元組數、時間與 Run 的關聯鍵；不記錄內容、Header、URL 或任何 payload；保存 90 天。三個來源都寫進節點的 journal：被放行的連線在結束時由 conntrack 事件記下兩個方向的封包與位元組數（節點開啟 `nf_conntrack_acct`，沒開 `sandboxd` 不啟動，記錄程序停了 `sandboxd` 跟著停）；被擋的嘗試由 forward 鏈的 `log prefix` 寫進核心日誌；`sandboxd` 在每個 Run 啟動時記下 `run_id` 與它拿到的 bridge 位址，Run 的關聯鍵就是「同一個位址、落在那個 Run 的存活時間內」。節點每七天換新，本機 journal 不能當保存處，所以節點以 `systemd-journal-upload` 把整份 journal 推到控制平面的 `systemd-journal-remote`，控制平面每日刪掉最後寫入超過 90 天的檔，存量逼近 4 GB 上限（到上限會先丟最舊的、未滿 90 天的記錄）時告警。推送走私有網路上的明文 HTTP，與派送 Run 的 9000 埠同一個上限：私有網路上的其他主機能偽造或讀到記錄，所以 19532 只對沙箱節點開。
+記錄目的地 IP:port、協定、方向、決策（accept／drop）、位元組數、時間與 Run 的關聯鍵；不記錄內容、Header、URL 或任何 payload；保存 90 天。記錄的格式由平台定義在 `contracts/events/`，分兩種：出口記錄（來源位址、目的地、協定、兩個方向的封包與位元組數、放行或阻擋、時間）與 Run 位址記錄（`run_id`、Attempt、位址、起訖時間）。查詢以「同一個位址、落在那個 Run 的存活時間內」把兩者接起來；runbook、告警與測試只讀這個格式。
+
+產生與搬運記錄的工具都是 Adapter，換掉它們不改格式與查法。現行的 Adapter：被放行的連線在結束時由 conntrack 事件取得兩個方向的封包與位元組數（節點開啟 `nf_conntrack_acct`，沒開 `sandboxd` 不啟動，記錄程序停了 `sandboxd` 跟著停）；被擋的嘗試來自 forward 鏈的 `log prefix`；Run 位址記錄由 `sandboxd` 在 Run 啟動時寫出。節點每七天換新，本機不能當保存處，所以記錄經 `systemd-journal-upload` 推到控制平面的 `systemd-journal-remote`；控制平面每日刪掉最後寫入超過 90 天的檔，存量逼近 4 GB 上限（到上限會先丟最舊的、未滿 90 天的記錄）時告警。推送走私有網路上的明文 HTTP，與派送 Run 的 9000 埠同一個上限：私有網路上的其他主機能偽造或讀到記錄，所以 19532 只對沙箱節點開。
 
 不受信任執行環境若被用於挖礦、掃描或濫用流量，底層雲端供應商的處置可能偏向直接停機而非事先通知；除本節的 default-deny Egress 外，另需事前與供應商溝通用途，並建立濫用偵測與自動封停 Run 的流程。
 

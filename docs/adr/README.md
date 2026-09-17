@@ -97,3 +97,7 @@
 ## 帳號清除與 Credit
 
 [ADR-023](./ADR-023-account-purge-and-credit.md)｜帳號清除涵蓋的範圍，以及 Credit 的計量與扣款。
+
+## 外部系統的 Port 與 Adapter
+
+[ADR-024](./ADR-024-ports-and-adapters-for-external-systems.md)｜外部系統怎麼接進來、領域擁有什麼，以及換掉一個外部系統時要動哪些地方。

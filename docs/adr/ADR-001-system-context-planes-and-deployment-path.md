@@ -62,7 +62,7 @@ flowchart LR
     Events --> Control
 ```
 
-不受信任工作負載不得在 Web／API 程序內執行；執行平面不得直接查詢控制平面的關聯式資料庫，只透過任務契約、短效物件存取與事件與控制平面互動。核心領域不得依賴特定 Sandbox SDK：Provider Adapter 依賴核心定義的 Port／Contract，而不是核心領域依賴 Provider。對應到目前實際跑的四個行程：`apps/web`（體驗平面）只對 `apps/platform` 的 API 說話，契約在 `contracts/openapi/public.yaml`；`apps/platform`（控制平面，含 API 行程與 Go Worker）是唯一控制平面，狀態全在同一個 PostgreSQL；Go Worker 是唯一的佇列消費者，以內部 HTTP 呼叫 `apps/llm`（能力提供者）與 `apps/sandbox`（執行平面，Sandbox Provider）；執行平面永遠碰不到核心資料庫。
+不受信任工作負載不得在 Web／API 程序內執行；執行平面不得直接查詢控制平面的關聯式資料庫，只透過任務契約、短效物件存取與事件與控制平面互動。核心領域不得依賴特定 Sandbox SDK：Provider Adapter 依賴核心定義的 Port／Contract，而不是核心領域依賴 Provider；這條依賴方向適用於所有外部系統，通則見 [ADR-024](./ADR-024-ports-and-adapters-for-external-systems.md)。對應到目前實際跑的四個行程：`apps/web`（體驗平面）只對 `apps/platform` 的 API 說話，契約在 `contracts/openapi/public.yaml`；`apps/platform`（控制平面，含 API 行程與 Go Worker）是唯一控制平面，狀態全在同一個 PostgreSQL；Go Worker 是唯一的佇列消費者，以內部 HTTP 呼叫 `apps/llm`（能力提供者）與 `apps/sandbox`（執行平面，Sandbox Provider）；執行平面永遠碰不到核心資料庫。
 
 **驗證方式**：架構測試確認 Web/API 不包含執行使用者 Script 的路徑；網路政策確認 Sandbox 無法直接連核心資料庫與內部控制服務；契約測試可用模擬 Provider 完成 Run 全生命週期。
 

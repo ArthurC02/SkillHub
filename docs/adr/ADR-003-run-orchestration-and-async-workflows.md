@@ -1,7 +1,7 @@
 # ADR-003：Run 編排與非同步工作流程
 
 - 狀態：Accepted
-- 相關：[新 ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[新 ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[新 ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[新 ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[新 ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[新 ADR-023 帳號清除與 Credit](./ADR-023-account-purge-and-credit.md)
+- 相關：[新 ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[新 ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[新 ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[新 ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[新 ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[新 ADR-023 帳號清除與 Credit](./ADR-023-account-purge-and-credit.md)、[ADR-024 外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)
 
 ## 背景
 
@@ -12,6 +12,8 @@ Skill Hub 需要在不綁死單一 Sandbox 供應商的前提下執行 Run，而
 ### 決策 1：Run Orchestrator 只依賴 Provider Port，不依賴任一供應商的私有概念
 
 Orchestrator 只依賴 Skill Hub 定義的 Provider Port 與標準 Run Contract；每個 Sandbox 實作以 Adapter 接入，Provider 專屬概念不提升為核心領域欄位。
+
+Provider Port 是 Run 執行 context 裡的程式介面：查詢能力、建立 Attempt、查詢、取消、銷毀、列出仍存活的 sandbox。錯誤以領域分類回報（沒有空位、已不存在、拒絕、暫時不可用），Orchestrator 只依這些分類決定下一步。自建 Sandbox 的 HTTP 契約是其中一個 Adapter 的線路格式；不說這份契約的沙箱服務以另一個 Adapter 接入，Orchestrator 不變。外部系統 Port 與 Adapter 的通則見 ADR-024。
 
 Provider 至少支援以下生命週期語意：
 
@@ -45,7 +47,7 @@ Run Request 至少涵蓋：平台 `run_id` 與 Attempt、Skill Package Reference
 
 標準輸出與事件至少涵蓋：Run 狀態與時間、Agent 最終輸出、Skill 啟用與資源載入事件、Tool Call／MCP Call／Script Log 與錯誤、Token／延遲／資源／成本計量、Artifact Manifest、安全與政策事件；Provider Diagnostics 可保存為擴充欄位，但核心評估不得只依賴某一家 Provider 的私有欄位。
 
-Provider 需宣告 Runtime 類型與版本、Agent／模型整合模式、MCP／工具／Script／Artifact 能力、網路與 Private Network 能力、CPU／記憶體／磁碟／最大時間、地區與資料駐留與隔離等級、GPU 或特殊硬體、可用性與成本模型；Orchestrator 以 Run Requirements 與 Capability Matching 選擇 Provider，無相容 Provider 時在排入執行前回報可理解的原因。
+Provider 需宣告 Runtime 類型與版本、Agent／模型整合模式、MCP／工具／Script／Artifact 能力、網路與 Private Network 能力、CPU／記憶體／磁碟／最大時間、地區與資料駐留與隔離強度、GPU 或特殊硬體、可用性與成本模型。隔離以強度比對而不是產品名：生產只接受強隔離（使用者態核心或硬體虛擬化），弱隔離（共用主機核心的容器）只在開發部署接受，無隔離只在淨測試模式接受；Orchestrator 以 Run Requirements 與 Capability Matching 選擇 Provider，無相容 Provider 時在排入執行前回報可理解的原因。
 
 容量是選擇的一部分，因為平台是多人共用有限的沙箱：Orchestrator 只把 Run 派給相容且回報有空位的 Provider，空位多的優先。Provider 以「沒有空位」拒絕時，那次派送沒有開始，換下一個相容 Provider 是選擇，不是改派。所有相容 Provider 都滿時，Run 留在 `queued` 等候：這不是失敗，不佔用重試次數，也不佔住 Worker（工作延後再取）。排隊有自己的上限（`SlotWaitLimit`，30 分鐘），超過以 `timed_out` 結束並寫明是排隊逾時；Run 的硬性時間上限從第一次被 Provider 接受時起算，排隊的時間不算在裡面。沒有空位時被拒的那次 Attempt 仍會留下紀錄，但只在「看到有空位、送出時已被搶走」的競爭下才會出現。
 
@@ -57,7 +59,16 @@ run_attempt_id      平台的一次執行嘗試
 provider_run_id     Provider 臨時識別碼
 ```
 
-失敗與重試：Provision、Execution、Event Delivery、Artifact Upload、Evaluation 與 Cleanup 分別分類；只有已知冪等且符合政策的動作才能自動重試，不允許無限制重試；不確定 Provider 是否已開始時，以相同 Attempt 的 Idempotency Key 查詢或重送；Provider 不可用不應自動改派另一 Provider，除非資料、權限、成本與行為差異已被政策允許。
+失敗與重試：Provision、Execution、Event Delivery、Artifact Upload、Evaluation 與 Cleanup 分別分類；只有已知冪等且符合政策的動作才能自動重試，不允許無限制重試；不確定 Provider 是否已開始時，以相同 Attempt 的 Idempotency Key 查詢或重送。
+
+Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報不認得這個 Attempt）時，這次 Attempt 以「Provider 遺失」結束，那個 Provider 退出選擇，直到它再度回報健康；Run 改派一次到另一個相容的 Provider。改派只在下列四個條件都成立時才被允許，而這個系統的設計讓它們成立：
+
+- 資料：新 Attempt 使用同一份不可變的 Skill Version 與 Test Case 快照，物件授權依新 Attempt 重新簽發，範圍不變。
+- 權限：沿用使用者確認過的同一份權限摘要；Capability Matching 保證新 Provider 滿足同樣的隔離強度、出口政策與資源上限，並提供同一個 Runtime 版本。
+- 成本：所有 Attempt 共用同一筆 Run 預算；新 Attempt 的模型預算是 Run 預算扣掉先前 Attempt 已記錄的花費，重跑不會讓一個 Run 花超過它的預算。
+- 行為：沙箱唯一能對外產生的效果是經模型閘道的呼叫，重跑不會重複任何外部寫入；前一個 Attempt 事後才送回的 Artifact 落在它自己的授權範圍，不會混進新 Attempt。
+
+每個 Run 最多改派一次，第二次遺失以 `provider_error` 結束。Run 記錄的 Provider 以最後被接受的 Attempt 為準，每個 Attempt 各自記錄自己的 Provider；遺失的 Provider 上殘留的 sandbox 由孤兒掃描回收。
 
 驗證方式：Fake Provider 需通過完整生命週期契約測試；SelfHostedProvider 與其他 Provider 實作共用同一組核心測試；替換 Provider 時不修改 Skill、Test Case、Evaluation 的核心 Schema。
 
@@ -111,5 +122,6 @@ provider_run_id     Provider 臨時識別碼
 ### 成本與限制
 
 - 最小公分母的 Provider Port 可能隱藏特有能力，需要可控 Extension 機制；不同 Provider 仍可能有行為差異，不能宣稱完全一致。
+- Provider 遺失後改派，使用者要多等一次派送；前一個 Attempt 已花掉的模型費用不會退回，只是總額仍受同一筆 Run 預算限制。
 - 最終一致性下 UI 需呈現處理中狀態；需要事件版本、去重、Outbox、Reconciler 與 Dead-letter 處理。
 - UI 需同時顯示執行結果與任務判定兩個狀態，資訊密度上升；對外部消費者而言，「Run 成功」不再是可單獨判斷結果的欄位，必須一併讀 evaluation。
