@@ -160,6 +160,7 @@ queries:
   ListRunAttempts: run
   LockWorkspaceRunSlots: run
   CountActiveRuns: run
+  ListUnfinishedRuns: run
   InsertRunArtifact: run
   ListRunArtifactFileNames: run
   LockRunArtifactManifest: run
@@ -243,6 +244,7 @@ scope:
   InsertCostStatistics: user
   ListAccountsPastGrace: user
   ListActiveRuns: user
+  ListUnfinishedRuns: user
   ListCollectableObjects: user
   ListLiveSkillIDs: user
   ListForkedSkills: user

@@ -89,7 +89,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	ws := mustUUID(t, f.workspaceID)
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run before the halt: %v", err)
 	}
 	if _, view := f.getRun(t, finished.RunID); view.Status != string(gen.RunStatusSucceeded) {
@@ -122,7 +122,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("creating a run under a P1 halt: got %d (%s), want 503", code, view.Error)
 	}
 
-	if err := svc.Drive(ctx, ws, mustUUID(t, queued.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, queued.RunID)); err != nil {
 		t.Fatalf("driving a run under a halt returned an error: %v", err)
 	}
 	if _, view := f.getRun(t, queued.RunID); view.Status != string(gen.RunStatusQueued) {
@@ -190,7 +190,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Fatalf("after the resume: dispatching=%v, halts=%v", dispatching, halts)
 	}
 
-	if err := svc.Drive(ctx, ws, mustUUID(t, queued.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, queued.RunID)); err != nil {
 		t.Fatalf("driving the queued run after the resume: %v", err)
 	}
 	if _, view := f.getRun(t, queued.RunID); view.Status != string(gen.RunStatusSucceeded) {
@@ -268,7 +268,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		t.Fatalf("run status = %q; a capacity pause leaves runs queued (X-04)", created.Status)
 	}
 	dispatchesBefore := fake.Dispatches()
-	if err := svc.Drive(ctx, ws, mustUUID(t, created.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, created.RunID)); err != nil {
 		t.Fatalf("driving a run under the X-04 halt: %v", err)
 	}
 	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) {
@@ -296,7 +296,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	if haltAuditCount(t, pool, "dispatch.resumed") == 0 {
 		t.Error("the automatic recovery left no audit event")
 	}
-	if err := svc.Drive(ctx, ws, mustUUID(t, created.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, created.RunID)); err != nil {
 		t.Fatalf("driving the run after the automatic recovery: %v", err)
 	}
 	if _, view := f.getRun(t, created.RunID); view.Status == string(gen.RunStatusQueued) {

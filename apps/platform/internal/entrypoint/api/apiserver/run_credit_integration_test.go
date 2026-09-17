@@ -50,7 +50,7 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	ctx := context.Background()
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 
@@ -93,7 +93,7 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	ctx := context.Background()
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 	svc.Gateway = spendingGateway(t, -1)
@@ -124,7 +124,7 @@ func TestARunWhoseSpendIsReadOnALaterCleanupReachesTheLedgerAtItsRealCost(t *tes
 	ctx := context.Background()
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 	for _, spend := range []float64{-1, 0.0382} {

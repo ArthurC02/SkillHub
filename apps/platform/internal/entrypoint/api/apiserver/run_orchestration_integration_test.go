@@ -57,6 +57,9 @@ func clearRunBacklog(t *testing.T, pool *pgxpool.Pool) {
 	if _, err := pool.Exec(ctx, `DELETE FROM river_job`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pool.Exec(ctx, `DELETE FROM dispatch_halts`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := pool.Exec(ctx, `
 		UPDATE runs
 		SET status = 'failed', finished_at = now(), cleanup_status = 'cleaned',
@@ -430,7 +433,7 @@ func TestARunEndedElsewhereMidDispatchGetsNoNewAttemptAndTheDriverStepsAside(t *
 	svc.Store = a.packages
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatalf("the driver of a run ended elsewhere returned %v, want it to step aside", err)
 	}
 
@@ -601,7 +604,7 @@ func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testi
 		t.Fatal(err)
 	}
 
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -648,6 +651,18 @@ func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testi
 	}
 	if !strings.Contains(view.StatusReason, "排隊") {
 		t.Errorf("reason = %q, want it to say the run gave up waiting in the queue", view.StatusReason)
+	}
+}
+
+func driveThroughPolls(ctx context.Context, drive func(context.Context, pgtype.UUID, pgtype.UUID) error, ws, runID pgtype.UUID) error {
+	deadline := time.Now().Add(20 * time.Second)
+	for {
+		err := drive(ctx, ws, runID)
+		var snooze *rivertype.JobSnoozeError
+		if !errors.As(err, &snooze) || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 
@@ -793,7 +808,7 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	}
 	abandoned := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
 
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -842,7 +857,7 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 		WHERE id = $1`, attempt.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatal(err)
 	}
 	var state string
@@ -871,7 +886,7 @@ func TestAnAttemptWhoseRequestCannotBeBuiltClosesItsGrantsAndFailsTheRun(t *test
 	svc.ReadVersion = nil
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -995,7 +1010,7 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 				}
 			}
 
-			if err := svc.Drive(ctx, ws, runID); err != nil {
+			if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 				t.Fatal(err)
 			}
 
@@ -1039,7 +1054,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	ctx := context.Background()
 
 	created := f.start(t)
-	if err := svc.Drive(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
 		t.Fatal(err)
 	}
 	if got := readRun(t, pool, f.workspaceID, created.RunID).Status; got != gen.RunStatusSucceeded {
@@ -1154,7 +1169,7 @@ func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := svc.Drive(ctx, ws, runID); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {
 		t.Fatal(err)
 	}
 

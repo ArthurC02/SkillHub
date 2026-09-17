@@ -84,7 +84,7 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 	refused := f.start(t)
 
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	if err := svc.Drive(ctx, ws, mustUUID(t, refused.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, refused.RunID)); err != nil {
 		t.Fatalf("driving a run in the clean test mode returned an error: %v", err)
 	}
 	code, view := f.getRun(t, refused.RunID)
@@ -107,7 +107,7 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 
 	curate(t, pool, f.skillID, f.versionID)
 	accepted := f.start(t)
-	if err := svc.Drive(ctx, ws, mustUUID(t, accepted.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, accepted.RunID)); err != nil {
 		t.Fatalf("driving curated material in the clean test mode: %v", err)
 	}
 	if _, view := f.getRun(t, accepted.RunID); view.Status != string(gen.RunStatusSucceeded) {

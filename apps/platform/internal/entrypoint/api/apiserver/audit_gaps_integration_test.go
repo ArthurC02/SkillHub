@@ -140,7 +140,7 @@ func TestCleanupOutcomeIsAudited(t *testing.T) {
 	ws := mustUUID(t, f.workspaceID)
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 	if fake.Live() != 1 {
@@ -189,7 +189,7 @@ func TestACleanupThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
 	ws := mustUUID(t, f.workspaceID)
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 
@@ -216,7 +216,7 @@ func TestCleanupOutcomeIsAuditedOnlyWhenItChanges(t *testing.T) {
 	ws := mustUUID(t, f.workspaceID)
 
 	finished := f.start(t)
-	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("driving the run: %v", err)
 	}
 	runID := mustUUID(t, finished.RunID)

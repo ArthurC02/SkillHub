@@ -1003,6 +1003,53 @@ func (q *Queries) ListSkillVersionsInRuns(ctx context.Context, versionIds []pgty
 	return items, nil
 }
 
+const listUnfinishedRuns = `-- name: ListUnfinishedRuns :many
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs
+WHERE finished_at IS NULL
+ORDER BY created_at, id
+LIMIT $1
+`
+
+func (q *Queries) ListUnfinishedRuns(ctx context.Context, batchSize int32) ([]Run, error) {
+	rows, err := q.db.Query(ctx, listUnfinishedRuns, batchSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.SkillVersionID,
+			&i.TestCaseSnapshotID,
+			&i.Status,
+			&i.StatusReason,
+			&i.Provider,
+			&i.RuntimeSnapshot,
+			&i.PolicySnapshot,
+			&i.CleanupStatus,
+			&i.CleanupAt,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.CancelRequestedAt,
+			&i.FailureClass,
+			&i.SupervisionCheckedAt,
+			&i.CleanupAttemptedAt,
+			&i.ArtifactsTruncated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
 SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
 WHERE published_at IS NULL AND dead_lettered_at IS NULL

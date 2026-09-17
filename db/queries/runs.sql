@@ -186,6 +186,12 @@ SELECT count(*) FROM runs
 WHERE workspace_id = @workspace_id
   AND finished_at IS NULL;
 
+-- name: ListUnfinishedRuns :many
+SELECT * FROM runs
+WHERE finished_at IS NULL
+ORDER BY created_at, id
+LIMIT @batch_size;
+
 -- name: InsertRunArtifact :exec
 INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,

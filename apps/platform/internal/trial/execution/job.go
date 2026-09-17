@@ -181,6 +181,15 @@ func (d *driver) dispatch(ctx context.Context) error {
 	case err != nil:
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
 	}
+	if d.cur.Status == gen.RunStatusQueued {
+		yield, err := d.svc.turnBelongsToAnother(ctx, d.cur, placements, halts.byTarget)
+		if err != nil {
+			return err
+		}
+		if yield {
+			return d.waitForTurn()
+		}
+	}
 
 	var (
 		lastErr       error
@@ -297,64 +306,49 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 	}
 	handle := *attempt.ProviderRunID
 
-	cancelSent := false
-	for {
-		pr, err := provider.GetRun(ctx, handle)
-		switch {
-		case err == nil:
-			if err := d.mapState(ctx, attempt, pr); err != nil {
-				return err
-			}
-			if pr.State.Terminal() {
-				return d.settle(ctx, attempt, pr)
-			}
-		case !retryable(err):
-			d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
-			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
-		default:
-
-			slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	pr, err := provider.GetRun(ctx, handle)
+	switch {
+	case err == nil:
+		if err := d.mapState(ctx, attempt, pr); err != nil {
+			return err
 		}
-
-		if !cancelSent {
-			cancelled, err := d.cancelRequested(ctx)
-			if err != nil {
-				return err
-			}
-			if cancelled {
-
-				if _, err := provider.Cancel(ctx, handle); err != nil {
-					slog.Warn("provider cancel failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-				} else {
-					cancelSent = true
-				}
-			}
+		if pr.State.Terminal() {
+			return d.settle(ctx, attempt, pr)
 		}
+	case !retryable(err):
+		d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
+	default:
+		slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	}
 
-		if d.expired() {
-
-			if _, err := provider.Cancel(ctx, handle); err != nil {
-				slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-			}
-			d.finishAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
-			return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
-		}
-
-		if reason := d.tokenCeilingBreach(ctx, attempt); reason != "" {
-			if _, err := provider.Cancel(ctx, handle); err != nil {
-				slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-			}
-			d.finishAttempt(ctx, attempt, errClassBudgetExhausted, reason)
-			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
-		}
-
-		select {
-		case <-ctx.Done():
-
-			return ctx.Err()
-		case <-time.After(d.svc.pollInterval()):
+	cancelled, err := d.cancelRequested(ctx)
+	if err != nil {
+		return err
+	}
+	if cancelled {
+		if _, err := provider.Cancel(ctx, handle); err != nil {
+			slog.Warn("provider cancel failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
 	}
+
+	if d.expired() {
+		if _, err := provider.Cancel(ctx, handle); err != nil {
+			slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+		}
+		d.finishAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
+		return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+	}
+
+	if reason := d.tokenCeilingBreach(ctx, attempt); reason != "" {
+		if _, err := provider.Cancel(ctx, handle); err != nil {
+			slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+		}
+		d.finishAttempt(ctx, attempt, errClassBudgetExhausted, reason)
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
+	}
+
+	return river.JobSnooze(d.svc.pollInterval())
 }
 
 func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
@@ -771,6 +765,12 @@ func (d *driver) timeoutReason() string { return d.clock.timeoutReason() }
 func (d *driver) waitForSlot() error {
 	slog.Info("every sandbox provider that can run this is full; the run keeps its place in the queue",
 		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
+	return river.JobSnooze(d.svc.slotWaitInterval())
+}
+
+func (d *driver) waitForTurn() error {
+	slog.Info("a run that waited longer, or whose workspace holds fewer sandboxes, takes the free slot first",
+		"run_id", pgconv.UUIDString(d.cur.ID))
 	return river.JobSnooze(d.svc.slotWaitInterval())
 }
 
