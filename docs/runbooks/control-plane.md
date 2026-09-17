@@ -31,7 +31,7 @@ python tools/deploy/render.py control-plane --release <40 碼 sha> --settings co
 
 - 用 `user-data.yaml` 建主機，接上私有網路。
 - 防火牆：公網只開 22、80、443（含 443/udp）；5432 只對模型閘道的私有位址開。Prometheus（9095）與 Alertmanager（9093）只綁 127.0.0.1，用 SSH tunnel 看。
-- DNS 的 A／AAAA 記錄指到這台。**Caddy 第一次啟動就會去申請憑證**，DNS 沒生效前啟動只會一直重試。
+- DNS 只設 A 記錄指到這台。compose 網路沒有開 IPv6，IPv6 連線會經 Docker 的轉發程式進來，來源位址變成容器網段的閘道，所有 IPv6 使用者會共用一個速率限制桶。**Caddy 第一次啟動就會去申請憑證**，DNS 沒生效前啟動只會一直重試。
 
 驗：`cloud-init status --wait` 是 `done`；`/var/log/cloud-init-output.log` 最後一行是 `skillhub-bootstrap: control plane installed; …`。
 
@@ -166,5 +166,5 @@ sudo systemctl start skillhub-alert@test.service
 
 1. §1.1～1.3 建新的，`--release` 用舊主機最後部署的那個 commit。秘密換新；被入侵時所有秘密都換，**但 `postgres.env` 的 WAL-G 設定指向同一個備份位置**（金鑰可以換）。
 2. §1.4 **不跑 migrate**，照 §4 從備份還原。
-3. 補 migration ledger，讓下一次換版知道從哪裡接：`ls /opt/skillhub/db/migrations | tail -1 | cut -c1-4 | sudo tee /var/lib/skillhub/deployed-migration`（前提是第 1 步的 commit 與備份來自同一個版本）。
+3. 補 migration ledger，讓下一次換版知道從哪裡接：`sudo install -d /var/lib/skillhub && ls /opt/skillhub/db/migrations | tail -1 | cut -c1-4 | sudo tee /var/lib/skillhub/deployed-migration`（前提是第 1 步的 commit 與備份來自同一個版本）。
 4. `sudo systemctl start skillhub`、`skillhub-enable-timers`，最後把 DNS 指過去。Caddy 會重新申請憑證。

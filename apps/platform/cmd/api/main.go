@@ -217,8 +217,12 @@ func (c *navigationCatcher) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
-func startupRefusals(posture envx.Posture, providers *run.Registry) []string {
-	return append(posture.APIRefusals(), providers.UnauthenticatedProviderRefusals()...)
+func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimitErr error) []string {
+	refusals := append(posture.APIRefusals(), providers.UnauthenticatedProviderRefusals()...)
+	if rateLimitErr != nil {
+		refusals = append(refusals, rateLimitErr.Error())
+	}
+	return refusals
 }
 
 func main() {
@@ -307,7 +311,8 @@ func main() {
 	providers := run.NewRegistryFromEnv()
 
 	posture := envx.PostureFromEnv()
-	if refusals := startupRefusals(posture, providers); len(refusals) > 0 {
+	rateLimits, rateLimitErr := rateLimitsFromEnv()
+	if refusals := startupRefusals(posture, providers, rateLimitErr); len(refusals) > 0 {
 		for _, reason := range refusals {
 			slog.Error("refusing to start", "reason", reason)
 		}
@@ -357,7 +362,7 @@ func main() {
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
 		CreationExposed: creation.Exposed(), CreationLimits: creationLimits, CreationTransient: creationTransient,
-		RateLimits: rateLimitsFromEnv(),
+		RateLimits: rateLimits,
 
 		CleanMode: clean,
 	})
@@ -527,12 +532,16 @@ func generateQuotaFromEnv() policy.QuotaLimits {
 	return policy.DefaultGenerateQuotaLimits()
 }
 
-func rateLimitsFromEnv() *httpx.RateLimiter {
+func rateLimitsFromEnv() (*httpx.RateLimiter, error) {
 	if strings.EqualFold(os.Getenv("RATE_LIMIT"), "off") {
 		slog.Warn("RATE_LIMIT=off; anonymous search and the import endpoints have no rate limit (02:NFR-001 clause 5)")
-		return nil
+		return nil, nil
 	}
-	return httpx.NewRateLimiter(60, 30)
+	trusted, err := httpx.ParseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
+	if err != nil {
+		return nil, err
+	}
+	return httpx.NewRateLimiter(60, 30).TrustProxies(trusted), nil
 }
 
 func generateExposedFromEnv() bool {

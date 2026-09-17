@@ -204,7 +204,9 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 - [ ] 順序：Postgres 與物件儲存 → §2.2 migration → `apps/llm` → `cmd/worker` → `cmd/api` → web。**worker 必須在跑**：月分割的建立在 worker，不在 cron
 - [ ] 控制平面照 [控制平面 runbook](../../../runbooks/control-plane.md) 建立：user-data 由 `tools/deploy/render.py` 產生、秘密放 `/etc/skillhub/secrets`（600）、TLS 由 Caddy 自動申請、Postgres 連續封存＋每日完整備份＋每月還原演練、保存期工作由 systemd timer 觸發。**上線前手動跑一次備份與一次演練，演練印出的列數與線上資料庫對過**（runbook §3）；migration 用 `skillhub-migrate`，不照上面 §2.2 手打
 
-**⚠️ 反向代理下速率限制會退化成「全體共用一個桶」**（2026-08-24，`04` 丙-54）：限制器以 `RemoteAddr` 分桶，**刻意不讀 `X-Forwarded-For`**（客戶端能設的標頭就是客戶端能選的桶）。所以只要前面擺了 TLS 終止層或任何代理，**十二位受測者共用 60/min、burst 30，而且是一起被 429**。部署時二選一：①在代理那一層做限制、②只在代理與 API 之間是可信網段時，才在代理上設定把真實來源 IP 傳進來並改讀它（**要先改程式，今天不讀**）。IPv6 已按 /64 分桶（單一配置有 2^64 個位址，按位址分桶等於沒有限制）。
+**反向代理後面的速率限制讀 `TRUSTED_PROXIES`**：限制器預設以連線的來源位址分桶，不讀 `X-Forwarded-For`（客戶端能設的標頭就是客戶端能選的桶）。連線來自 `TRUSTED_PROXIES` 列出的位址或網段時，才讀 `X-Forwarded-For`，從右往左取第一個不是可信代理的位址。**前面擺了代理卻沒設它，全部受測者會共用 60/min、burst 30，而且一起被 429**；設了無法解析的值 `cmd/api` 拒絕啟動。控制平面的 compose 已給 Caddy 與 web 固定位址並對 `platform-api` 設好，不需要另外設定；只信任這兩個位址而不是整個網段，因為 Docker 轉發進來的連線有時以網段閘道位址出現，信任它會讓那些使用者又共用一個桶。
+
+- [ ] 上線後從兩個不同的外部位址各打 `GET /api/skills/search?q=x`（未登入搜尋，有限速）直到 429，驗另一個位址仍是 200。IPv6 按 /64 分桶。
 
 **兩個 roster 的 fail-closed 方向相反，部署時要各驗一次**：`operator.roster` 寫不成 ⇒ **不承認任何 operator**；`beta.roster` 寫不成 ⇒ **誰都進不來**。兩者都是啟動時寫一筆 audit event。
 

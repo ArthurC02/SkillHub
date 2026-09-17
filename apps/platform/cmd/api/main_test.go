@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -84,7 +85,12 @@ func TestRateLimitsFromEnv(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			setenv(t, "RATE_LIMIT", tc.value, tc.unset)
-			if got := rateLimitsFromEnv() != nil; got != tc.limited {
+			setenv(t, "TRUSTED_PROXIES", "", true)
+			limiter, err := rateLimitsFromEnv()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := limiter != nil; got != tc.limited {
 				t.Errorf("RATE_LIMIT=%q leaves anonymous search and the import endpoints rate limited: %v, want %v",
 					tc.value, got, tc.limited)
 			}
@@ -874,12 +880,52 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 	}
 }
 
-func TestTheAPIRefusesToStartWithItsPostureRefusalsAndATokenlessProvider(t *testing.T) {
-	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(&run.Provider{Name: "tokenless"}))
-	if len(refusals) != 2 || !strings.Contains(refusals[0], "APP_URL") || !strings.Contains(refusals[1], "tokenless") {
-		t.Fatalf("refusals = %q, want the missing origin then the tokenless provider", refusals)
+func TestTheAPIRefusesToStartWithItsPostureRefusalsATokenlessProviderAndBadTrustedProxies(t *testing.T) {
+	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(&run.Provider{Name: "tokenless"}),
+		errors.New("TRUSTED_PROXIES entry \"caddy\" is neither an address nor a CIDR prefix"))
+	if len(refusals) != 3 || !strings.Contains(refusals[0], "APP_URL") || !strings.Contains(refusals[1], "tokenless") ||
+		!strings.Contains(refusals[2], "TRUSTED_PROXIES") {
+		t.Fatalf("refusals = %q, want the missing origin, the tokenless provider, then the trusted proxies", refusals)
 	}
-	if refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry()); len(refusals) != 0 {
+	if refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry(), nil); len(refusals) != 0 {
 		t.Fatalf("a clean public deployment was refused: %q", refusals)
+	}
+}
+
+func TestTrustedProxiesThatDoNotParseRefuseTheLimiterUnlessItIsOff(t *testing.T) {
+	setenv(t, "TRUSTED_PROXIES", "172.30.0.0/24,caddy", false)
+	setenv(t, "RATE_LIMIT", "", true)
+	if limiter, err := rateLimitsFromEnv(); err == nil || !strings.Contains(err.Error(), `"caddy"`) || limiter != nil {
+		t.Fatalf("limiter=%v err=%v; an unparsable TRUSTED_PROXIES must be a refusal naming the entry", limiter, err)
+	}
+	setenv(t, "RATE_LIMIT", "off", false)
+	if limiter, err := rateLimitsFromEnv(); err != nil || limiter != nil {
+		t.Fatalf("limiter=%v err=%v; with RATE_LIMIT=off the proxies are never read", limiter, err)
+	}
+	setenv(t, "RATE_LIMIT", "", true)
+	setenv(t, "TRUSTED_PROXIES", "172.30.0.0/24", false)
+	limiter, err := rateLimitsFromEnv()
+	if err != nil || limiter == nil {
+		t.Fatalf("limiter=%v err=%v; a valid prefix must yield a limiter", limiter, err)
+	}
+
+	search := limiter.Limit("public_search", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	fromProxy := func(client string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil)
+		req.RemoteAddr = "172.30.0.4:4000"
+		req.Header.Set("X-Forwarded-For", client)
+		rec := httptest.NewRecorder()
+		search(rec, req)
+		return rec.Code
+	}
+	limited := false
+	for i := 0; i < 100 && !limited; i++ {
+		limited = fromProxy("198.51.100.1") == http.StatusTooManyRequests
+	}
+	if !limited {
+		t.Fatal("the first client was never limited")
+	}
+	if code := fromProxy("198.51.100.2"); code != http.StatusOK {
+		t.Fatalf("a second client behind the proxy got %d once the first was limited; the env's proxies never reached the limiter", code)
 	}
 }

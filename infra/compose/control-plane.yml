@@ -10,6 +10,9 @@ services:
     restart: unless-stopped
     depends_on:
       - web
+    networks:
+      default:
+        ipv4_address: 172.30.0.10
     environment:
       SKILLHUB_DOMAIN: ${SKILLHUB_DOMAIN:?set SKILLHUB_DOMAIN in release.env}
       SKILLHUB_ACME_EMAIL: ${SKILLHUB_ACME_EMAIL:?set SKILLHUB_ACME_EMAIL in release.env}
@@ -25,6 +28,9 @@ services:
   web:
     image: ${SKILLHUB_WEB_IMAGE:?set SKILLHUB_WEB_IMAGE in release.env}
     restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.30.0.11
     depends_on:
       - platform-api
 
@@ -35,6 +41,7 @@ services:
     <<: *platform-env
     environment:
       METRICS_ADDR: ":9090"
+      TRUSTED_PROXIES: 172.30.0.10,172.30.0.11
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,6 +145,12 @@ services:
       - alertmanager-data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   caddy-data:

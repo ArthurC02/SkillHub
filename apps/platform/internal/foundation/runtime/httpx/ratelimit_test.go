@@ -157,3 +157,125 @@ func scrape(t *testing.T, route string) string {
 	}
 	return ""
 }
+
+func TestTheBucketBehindTrustedProxiesIsTheNearestUntrustedHop(t *testing.T) {
+	trusted, err := ParseTrustedProxies("172.30.0.0/24, 10.0.0.7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	limiter := NewRateLimiter(60, 1).TrustProxies(trusted)
+	for _, tc := range []struct {
+		name       string
+		remoteAddr string
+		forwarded  []string
+		want       string
+	}{
+		{name: "a direct caller keeps its own address and cannot choose a bucket by header",
+			remoteAddr: "203.0.113.9:4000", forwarded: []string{"198.51.100.1"}, want: "203.0.113.9"},
+		{name: "one trusted hop names the client",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"198.51.100.1"}, want: "198.51.100.1"},
+		{name: "two trusted hops, as TLS proxy then web server",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"198.51.100.1, 172.30.0.3"}, want: "198.51.100.1"},
+		{name: "a value the client wrote sits left of the real client and is ignored",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"192.0.2.66, 198.51.100.1, 172.30.0.3"}, want: "198.51.100.1"},
+		{name: "repeated headers read as one list",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"192.0.2.66", "198.51.100.1", "172.30.0.3"}, want: "198.51.100.1"},
+		{name: "a single trusted address is trusted",
+			remoteAddr: "10.0.0.7:4000", forwarded: []string{"198.51.100.1"}, want: "198.51.100.1"},
+		{name: "the address just outside the prefix is not trusted",
+			remoteAddr: "172.30.1.4:4000", forwarded: []string{"198.51.100.1"}, want: "172.30.1.4"},
+		{name: "an IPv4-mapped proxy address is the same proxy",
+			remoteAddr: "[::ffff:172.30.0.4]:4000", forwarded: []string{"198.51.100.1"}, want: "198.51.100.1"},
+		{name: "a trusted proxy without the header is the caller",
+			remoteAddr: "172.30.0.4:4000", want: "172.30.0.4"},
+		{name: "a malformed hop stops the walk at the last hop that parsed",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"198.51.100.1, garbage, 172.30.0.3"}, want: "172.30.0.3"},
+		{name: "every hop trusted names the earliest one",
+			remoteAddr: "172.30.0.4:4000", forwarded: []string{"172.30.0.2, 172.30.0.3"}, want: "172.30.0.2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+			req.RemoteAddr = tc.remoteAddr
+			for _, value := range tc.forwarded {
+				req.Header.Add("X-Forwarded-For", value)
+			}
+			if got := limiter.clientAddress(req); got != tc.want {
+				t.Errorf("client address = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestWithoutTrustedProxiesTheHeaderIsNeverRead(t *testing.T) {
+	req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+	req.RemoteAddr = "172.30.0.4:4000"
+	req.Header.Set("X-Forwarded-For", "198.51.100.1")
+	if got := NewRateLimiter(60, 1).clientAddress(req); got != "172.30.0.4" {
+		t.Errorf("client address = %q; with no trusted proxy configured the header must be ignored", got)
+	}
+}
+
+func TestTwoClientsBehindOneProxyDoNotShareABucket(t *testing.T) {
+	trusted, err := ParseTrustedProxies("172.30.0.0/24")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, _ := testLimiter(60, 1)
+	l.TrustProxies(trusted)
+	h := l.Limit("public_search", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	request := func(client string) int {
+		req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+		req.RemoteAddr = "172.30.0.4:4000"
+		req.Header.Set("X-Forwarded-For", client)
+		rec := httptest.NewRecorder()
+		h(rec, req)
+		return rec.Code
+	}
+	if code := request("198.51.100.1"); code != http.StatusOK {
+		t.Fatalf("first client's first request: %d", code)
+	}
+	if code := request("198.51.100.1"); code != http.StatusTooManyRequests {
+		t.Fatalf("first client's second request: %d, want 429", code)
+	}
+	if code := request("198.51.100.2"); code != http.StatusOK {
+		t.Fatalf("second client was refused (%d); both testers are still sharing the proxy's bucket", code)
+	}
+}
+
+func TestParseTrustedProxies(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		raw     string
+		want    []string
+		wantErr string
+	}{
+		{name: "unset trusts nobody", raw: "", want: nil},
+		{name: "a prefix is normalised to its network", raw: "172.30.0.9/24", want: []string{"172.30.0.0/24"}},
+		{name: "a bare IPv4 address is a /32", raw: "10.0.0.7", want: []string{"10.0.0.7/32"}},
+		{name: "a bare IPv6 address is a /128", raw: "2001:db8::1", want: []string{"2001:db8::1/128"}},
+		{name: "an IPv4-mapped address is its IPv4 form", raw: "::ffff:10.0.0.7", want: []string{"10.0.0.7/32"}},
+		{name: "spaces and empty entries are skipped", raw: " 10.0.0.7 , ,172.30.0.0/24", want: []string{"10.0.0.7/32", "172.30.0.0/24"}},
+		{name: "a name is refused", raw: "10.0.0.7,caddy", wantErr: `"caddy"`},
+		{name: "a prefix length past the address is refused", raw: "10.0.0.0/33", wantErr: `"10.0.0.0/33"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseTrustedProxies(tc.raw)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want one naming %s", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var names []string
+			for _, prefix := range got {
+				names = append(names, prefix.String())
+			}
+			if strings.Join(names, " ") != strings.Join(tc.want, " ") {
+				t.Errorf("prefixes = %v, want %v", names, tc.want)
+			}
+		})
+	}
+}
