@@ -412,6 +412,18 @@ func NewRegistryFromEnv() *Registry {
 	return r
 }
 
+func (r *Registry) UnauthenticatedProviderRefusals() []string {
+	var refusals []string
+	for _, p := range r.Providers {
+		if p.token == "" {
+			refusals = append(refusals, fmt.Sprintf("sandbox provider %q has no SKILLHUB_SANDBOX_TOKEN_%s: "+
+				"sandboxd rejects every request without its token, so each run sent there would fail at dispatch",
+				p.Name, strings.ToUpper(p.Name)))
+		}
+	}
+	return refusals
+}
+
 func NewRegistry(providers ...*Provider) *Registry { return &Registry{Providers: providers} }
 
 func NewProvider(name, baseURL, token string) *Provider {

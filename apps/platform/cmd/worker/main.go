@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -32,12 +33,22 @@ func cleanModeRefusal() string {
 		"deployment. Unset it here, or run only cmd/api."
 }
 
+func startupRefusals(providers *run.Registry) []string {
+	refusals := append(envx.PostureFromEnv().WorkerRefusals(), providers.UnauthenticatedProviderRefusals()...)
+	if reason := cleanModeRefusal(); reason != "" {
+		refusals = append(refusals, reason)
+	}
+	return refusals
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if reason := cleanModeRefusal(); reason != "" {
-		slog.Error("worker refuses to start", "reason", reason)
+	if refusals := startupRefusals(run.NewRegistryFromEnv()); len(refusals) > 0 {
+		for _, reason := range refusals {
+			slog.Error("worker refuses to start", "reason", reason)
+		}
 		os.Exit(1)
 	}
 

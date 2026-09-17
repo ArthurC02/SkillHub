@@ -217,6 +217,10 @@ func (c *navigationCatcher) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
+func startupRefusals(posture envx.Posture, providers *run.Registry) []string {
+	return append(posture.APIRefusals(), providers.UnauthenticatedProviderRefusals()...)
+}
+
 func main() {
 	creationLimits, _ := creation.LimitsFromEnv()
 	var cleanWorker *worker.Set
@@ -302,14 +306,14 @@ func main() {
 
 	providers := run.NewRegistryFromEnv()
 
-	posture := deploymentPostureFromEnv()
-	if refusals := posture.refusals(); len(refusals) > 0 {
+	posture := envx.PostureFromEnv()
+	if refusals := startupRefusals(posture, providers); len(refusals) > 0 {
 		for _, reason := range refusals {
 			slog.Error("refusing to start", "reason", reason)
 		}
 		os.Exit(1)
 	}
-	secure, devLogin := posture.secureCookies, posture.devLogin
+	secure, devLogin := posture.SecureCookies, posture.DevLogin
 	if devLogin {
 		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
 			"as any name without a credential. Never in production")
@@ -343,7 +347,7 @@ func main() {
 			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 		},
 		Secure:    secure,
-		AppURL:    posture.appURL,
+		AppURL:    posture.AppURL,
 		DevLogin:  devLogin,
 		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
 
@@ -404,7 +408,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              envx.Or("API_ADDR", ":8080"),
-		Handler:           httpx.DevCORS(handler, posture.devCORSOrigin),
+		Handler:           httpx.DevCORS(handler, posture.DevCORSOrigin),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

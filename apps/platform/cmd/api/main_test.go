@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -455,42 +456,6 @@ func loopName(f func(context.Context)) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 }
 
-func TestADeploymentRefusesToStartWithDevelopmentSettingsOrWithoutItsOrigin(t *testing.T) {
-	public := deploymentPosture{appURL: "https://skillhub.example", secureCookies: true}
-	local := deploymentPosture{appURL: "http://localhost:5173", devLogin: true, devCORSOrigin: "http://localhost:5173",
-		importAllowInsecure: true, importExtraHosts: "localhost"}
-	with := func(p deploymentPosture, change func(*deploymentPosture)) deploymentPosture { change(&p); return p }
-	for _, tc := range []struct {
-		name    string
-		posture deploymentPosture
-		refuses []string
-	}{
-		{"a public deployment with nothing from development", public, nil},
-		{"local development on plain http with every development setting", local, nil},
-		{"a smoke stack with insecure cookies and no APP_URL", deploymentPosture{devLogin: true}, nil},
-		{"dev login with secure cookies", with(public, func(p *deploymentPosture) { p.devLogin = true }), []string{"DEV_LOGIN"}},
-		{"secure cookies and no APP_URL", deploymentPosture{secureCookies: true}, []string{"APP_URL"}},
-		{"secure cookies and an APP_URL with no host", deploymentPosture{appURL: "https://", secureCookies: true}, []string{"APP_URL"}},
-		{"public with insecure cookies", with(public, func(p *deploymentPosture) { p.secureCookies = false }), []string{"COOKIE_INSECURE"}},
-		{"public with a development CORS origin", with(public, func(p *deploymentPosture) { p.devCORSOrigin = "http://localhost:5173" }), []string{"DEV_CORS_ORIGIN"}},
-		{"public importing over plain http", with(public, func(p *deploymentPosture) { p.importAllowInsecure = true }), []string{"IMPORT_ALLOW_INSECURE"}},
-		{"public importing from extra hosts", with(public, func(p *deploymentPosture) { p.importExtraHosts = "localhost" }), []string{"IMPORT_EXTRA_HOSTS"}},
-		{"an upper-case https origin is still public", with(public, func(p *deploymentPosture) { p.appURL = "HTTPS://SkillHub.example"; p.devCORSOrigin = "x" }), []string{"DEV_CORS_ORIGIN"}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.posture.refusals()
-			if len(got) != len(tc.refuses) {
-				t.Fatalf("refusals = %q, want one naming each of %q", got, tc.refuses)
-			}
-			for i, name := range tc.refuses {
-				if !strings.Contains(got[i], name) {
-					t.Errorf("refusal %d = %q, want it to name %s", i, got[i], name)
-				}
-			}
-		})
-	}
-}
-
 func TestStartupTasksAuditTheRosters(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {
@@ -906,5 +871,15 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 
 	if !strings.Contains(block, "proxy_read_timeout") {
 		t.Errorf("the stream location sets no proxy_read_timeout, so nginx's 60s default cuts a quiet stream:\n%s", block)
+	}
+}
+
+func TestTheAPIRefusesToStartWithItsPostureRefusalsAndATokenlessProvider(t *testing.T) {
+	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(&run.Provider{Name: "tokenless"}))
+	if len(refusals) != 2 || !strings.Contains(refusals[0], "APP_URL") || !strings.Contains(refusals[1], "tokenless") {
+		t.Fatalf("refusals = %q, want the missing origin then the tokenless provider", refusals)
+	}
+	if refusals := startupRefusals(envx.Posture{AppURL: "https://skillhub.example", SecureCookies: true}, run.NewRegistry()); len(refusals) != 0 {
+		t.Fatalf("a clean public deployment was refused: %q", refusals)
 	}
 }

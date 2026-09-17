@@ -183,12 +183,12 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 | `SKILLHUB_MODEL_GATEWAY_*` | 沙箱被派到 `--network none`，Run 全部失敗 | 既有 |
 | `OBJSTORE_ENDPOINT`／`OBJSTORE_ACCESS_KEY`／`OBJSTORE_SECRET_KEY`／`OBJSTORE_BUCKET`／`OBJSTORE_SSL` | `ErrNoStore` ⇒ 打包 503；`OBJSTORE_SSL` 未設＝明文連線 | 部署的物件儲存；走公網時 `OBJSTORE_SSL=1` |
 | `APP_URL` | 沒有 `COOKIE_INSECURE=1` 時，未設或不是合法網址 ⇒ **`cmd/api` 拒絕啟動**（同源寫入檢查沒有來源可比對） | 公開網址，`https://` 開頭 |
-| `DEV_LOGIN`／`COOKIE_INSECURE`／`DEV_CORS_ORIGIN`／`IMPORT_ALLOW_INSECURE`／`IMPORT_EXTRA_HOSTS` | `.env.example` 填的是開發值。`APP_URL` 是 https 時任一有設 ⇒ **`cmd/api` 拒絕啟動** | 全部不設 |
+| `DEV_LOGIN`／`COOKIE_INSECURE`／`DEV_CORS_ORIGIN`／`IMPORT_ALLOW_INSECURE`／`IMPORT_EXTRA_HOSTS` | `.env.example` 填的是開發值。`APP_URL` 是 https 時任一有設 ⇒ **`cmd/api` 與 `cmd/worker` 拒絕啟動**；`DEV_LOGIN=1` 沒配 `COOKIE_INSECURE=1` 時兩者也拒絕（worker 把它讀成開發部署，會接受共用主機核心的沙箱） | 全部不設 |
 | `GITHUB_CLIENT_ID`／`GITHUB_CLIENT_SECRET`／`OAUTH_REDIRECT_URL` | **沒有任何登入方式**（公開部署拒絕 dev login） | GitHub OAuth App；callback 是 `<APP_URL>/auth/github/callback` |
 | `GENERATE_SKILL_EXPOSED`／`CREATION_EXPOSED` | 未設＝不曝光，**這正是封測要的**：M5 的生成入口不得對封測使用者出現（`01` §10 ⛔） | **保持未設**；只有字面值 `on` 會打開 |
 | `LLM_SERVICE_URL`／`LLM_SERVICE_TOKEN` | 搜尋只剩 FTS、評估判定一律 `undetermined`；**種入之前就要設**，種進去的內容不會事後補索引 | `apps/llm` 的內部位址；同一把隨機 token 給 `cmd/api`、`cmd/worker` 與 `apps/llm` |
 | `SKILLHUB_TRACE_INGEST_URL`／`SKILLHUB_TRACE_INGEST_SECRET` | Run 的 Trace 收不到（`cmd/api` 只印一行 warning） | `cmd/api` 與 `cmd/worker` 設同一組；URL 必須是沙箱節點連得到的 API 位址 |
-| `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>` | 沒有 provider ⇒ 每個 Run 都派不出去 | `name=https://節點位址`；`<NAME>` 是大寫的 provider 名稱，值等於該節點 `sandboxd` 的 `SKILLHUB_SANDBOX_TOKEN` |
+| `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>` | 沒有 provider ⇒ 每個 Run 都派不出去；有 provider 卻沒有它的 token ⇒ **`cmd/api` 與 `cmd/worker` 拒絕啟動** | `name=https://節點位址`；`<NAME>` 是大寫的 provider 名稱，值等於該節點 `sandboxd` 的 `SKILLHUB_SANDBOX_TOKEN` |
 
 **完整變數清單是 [`.env.example`](../../../../.env.example)**：`automation-check` 的 `env-declared` 保證每個服務讀的變數都列在裡面，`capability-table` 保證每一列都說得出它擋著什麼。本表只列不設會安靜壞掉、或設錯會變危險的。
 
