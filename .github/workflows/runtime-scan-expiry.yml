@@ -28,7 +28,7 @@ jobs:
       - name: Audit the published runtime image against the registry
         run: |
           set -uo pipefail
-          python3 tools/sec009/t8-image-audit.py --json > audit.json
+          python3 tools/sec009/t8-image-audit.py --json > audit.json || echo "::notice::audit exit $? (the batch preconditions fail until a sandbox node exists; only image_half is judged here)"
           if ! jq -e '.image_half' audit.json >/dev/null 2>&1; then
             echo "PROBLEM=the image audit could not measure anything (registry or setup failure)" >> "$GITHUB_ENV"
             exit 0
