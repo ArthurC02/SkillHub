@@ -89,6 +89,8 @@ jobs:
               - 'apps/sandbox/**'
               - 'infra/images/sandboxd/**'
               - 'infra/compose/**'
+              - 'infra/deploy/**'
+              - 'tools/deploy/**'
               - 'tools/ci/**'
               - '.dockerignore'
               - '.github/workflows/ci.yml'

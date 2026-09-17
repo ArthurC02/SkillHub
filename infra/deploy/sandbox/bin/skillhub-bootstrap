@@ -30,6 +30,8 @@ python3 /opt/skillhub/tools/egress/render.py --out /etc/skillhub/egress \
     --sandbox-iface docker0 --control-plane "$SKILLHUB_CONTROL_PLANE_IP"
 nft -c -f /etc/skillhub/egress/nftables.conf
 install -m 0644 /etc/skillhub/egress/nftables.conf /etc/nftables.conf
+install -D -m 0644 "$here/sandbox/nftables-keep-rules.conf" /etc/systemd/system/nftables.service.d/skillhub.conf
+systemctl daemon-reload
 systemctl enable nftables.service
 systemctl restart nftables.service
 
