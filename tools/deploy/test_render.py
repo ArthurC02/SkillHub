@@ -15,6 +15,7 @@ SETTINGS = {
     "SKILLHUB_SMTP_SMARTHOST": "smtp.example:587",
     "SKILLHUB_SMTP_FROM": "alerts@skillhub.example",
     "SKILLHUB_SMTP_USERNAME": "alerts@skillhub.example",
+    "SKILLHUB_GATEWAY_URL": "http://10.0.0.3:4000",
 }
 
 
@@ -66,6 +67,17 @@ def test_a_value_a_shell_would_reinterpret_is_refused():
                  resolve=published)
     expect_error("SKILLHUB_SMTP_FROM", "control-plane", RELEASE, dict(SETTINGS, SKILLHUB_SMTP_FROM="a b"),
                  resolve=published)
+
+
+def test_a_gateway_release_carries_only_its_address_and_resolves_no_image():
+    def nothing_to_resolve(repository, tag):
+        raise AssertionError("the gateway pins its image in compose; nothing should be resolved")
+    env = render.read_settings(render.release_env("gateway", RELEASE, {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
+                                                  resolve=nothing_to_resolve))
+    assert env == {"SKILLHUB_ROLE": "gateway", "SKILLHUB_RELEASE": RELEASE,
+                   "SKILLHUB_REPOSITORY": render.DEFAULT_REPOSITORY, "SKILLHUB_PRIVATE_IP": "10.0.0.3"}, env
+    expect_error("does not use SKILLHUB_DOMAIN", "gateway", RELEASE,
+                 {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=nothing_to_resolve)
 
 
 def test_an_unknown_role_is_refused():

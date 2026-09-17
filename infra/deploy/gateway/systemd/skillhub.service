@@ -1,0 +1,16 @@
+[Unit]
+Description=Skill Hub model gateway
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/skillhub/release.env
+ExecStartPre=/opt/skillhub/infra/deploy/gateway/bin/skillhub-preflight
+ExecStart=/usr/bin/docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/gateway.yml up -d --remove-orphans --wait
+ExecStop=/usr/bin/docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/gateway.yml down
+
+[Install]
+WantedBy=multi-user.target

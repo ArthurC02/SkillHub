@@ -9,6 +9,8 @@ docker compose version >/dev/null 2>&1 || "$here/common/install-docker"
 install -d -m 0700 /etc/skillhub/secrets
 envsubst '${SKILLHUB_SMTP_SMARTHOST} ${SKILLHUB_SMTP_FROM} ${SKILLHUB_SMTP_USERNAME} ${SKILLHUB_ALERT_EMAIL}' \
     <"$here/control-plane/alertmanager.yml.tmpl" >/etc/skillhub/alertmanager.yml
+install -d -m 0755 /etc/skillhub/prometheus-targets
+printf -- '- targets: ["%s/health/liveliness"]\n' "$SKILLHUB_GATEWAY_URL" >/etc/skillhub/prometheus-targets/gateway.yml
 install -m 0644 "$here"/control-plane/systemd/* /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable skillhub.service

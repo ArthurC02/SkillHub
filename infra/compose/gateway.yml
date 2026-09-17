@@ -1,0 +1,21 @@
+name: skillhub
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable@sha256:a3715fa7ad8387941ab697259bd2881d68931657247a41984f90fae6d11c62bf
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/litellm.env
+    environment:
+      STORE_MODEL_IN_DB: "False"
+    volumes:
+      - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/compose/litellm-config.yaml:/app/config.yaml:ro
+    ports:
+      - "${SKILLHUB_PRIVATE_IP:?set SKILLHUB_PRIVATE_IP in release.env}:4000:4000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s

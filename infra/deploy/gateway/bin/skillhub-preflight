@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+path="${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/litellm.env"
+
+if [ ! -s "$path" ]; then
+    echo "preflight: $path is missing or empty" >&2
+    exit 1
+fi
+if [ "$(stat -c '%a' "$path")" != 600 ]; then
+    echo "preflight: $path is mode $(stat -c '%a' "$path"); secrets must be 600" >&2
+    exit 1
+fi
+for name in LITELLM_MASTER_KEY OPENAI_API_KEY DATABASE_URL; do
+    if ! grep -Eq "^$name=.+" "$path"; then
+        echo "preflight: $path does not set $name" >&2
+        exit 1
+    fi
+done

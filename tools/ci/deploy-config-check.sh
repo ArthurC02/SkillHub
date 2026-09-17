@@ -24,6 +24,7 @@ SKILLHUB_ALERT_EMAIL=owner@skillhub.example
 SKILLHUB_SMTP_SMARTHOST=smtp.example:587
 SKILLHUB_SMTP_FROM=alerts@skillhub.example
 SKILLHUB_SMTP_USERNAME=alerts@skillhub.example
+SKILLHUB_GATEWAY_URL=http://10.0.0.3:4000
 EOF
 
 step "user-data renders, and the renderer's own tests pass"
@@ -37,13 +38,17 @@ env = render.release_env(\"control-plane\", \"0\" * 40, render.read_settings(ope
                          resolve=lambda repository, tag: \"sha256:\" + \"0\" * 64)
 open(\"/work/release.env\", \"w\").write(env)
 open(\"/work/user-data.yaml\", \"w\").write(render.cloud_init(env))
+gateway = render.release_env(\"gateway\", \"0\" * 40, {\"SKILLHUB_PRIVATE_IP\": \"10.0.0.3\"})
+open(\"/work/gateway-release.env\", \"w\").write(gateway)
+open(\"/work/gateway-user-data.yaml\", \"w\").write(render.cloud_init(gateway))
 "
   cloud-init schema --config-file /work/user-data.yaml
+  cloud-init schema --config-file /work/gateway-user-data.yaml
 
-  mkdir -p /opt/skillhub/infra/deploy/control-plane/bin
-  for script in skillhub-preflight skillhub-alert; do
-    printf "#!/bin/sh\n" >"/opt/skillhub/infra/deploy/control-plane/bin/$script"
-    chmod +x "/opt/skillhub/infra/deploy/control-plane/bin/$script"
+  for script in control-plane/bin/skillhub-preflight control-plane/bin/skillhub-alert gateway/bin/skillhub-preflight; do
+    mkdir -p "$(dirname "/opt/skillhub/infra/deploy/$script")"
+    printf "#!/bin/sh\n" >"/opt/skillhub/infra/deploy/$script"
+    chmod +x "/opt/skillhub/infra/deploy/$script"
   done
   printf "#!/bin/sh\n" >/usr/bin/docker && chmod +x /usr/bin/docker
   install -m 0644 /repo/infra/deploy/control-plane/systemd/* /etc/systemd/system/
@@ -52,10 +57,13 @@ open(\"/work/user-data.yaml\", \"w\").write(render.cloud_init(env))
   report=$(systemd-analyze verify skillhub.service skillhub-backup.timer skillhub-restore-drill.timer \
     skillhub-alert@skillhub-backup.service $schedule 2>&1 | grep -v "docker.service" || true)
   if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
+  mkdir -p /gateway && install -m 0644 /repo/infra/deploy/gateway/systemd/* /gateway/
+  report=$(cd /gateway && systemd-analyze verify ./skillhub.service 2>&1 | grep -v "docker.service" || true)
+  if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
   echo "systemd units verify clean"
 '
 
-step "compose file resolves with a rendered release"
+step "compose files resolve with a rendered release"
 mkdir -p "$WORK/secrets"
 for file in platform.env llm.env postgres.env postgres-exporter.env smtp-password; do echo "X=1" >"$WORK/secrets/$file"; done
 {
@@ -64,18 +72,23 @@ for file in platform.env llm.env postgres.env postgres-exporter.env smtp-passwor
   echo "SKILLHUB_DEPLOY_DIR=$ROOT"
 } >>"$WORK/release.env"
 docker compose --env-file "$WORK_HOST/release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config -q
+echo "SKILLHUB_SECRETS_DIR=$WORK_HOST/secrets" >>"$WORK/gateway-release.env"
+echo "X=1" >"$WORK/secrets/litellm.env"
+docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config -q
 
 step "Caddyfile"
 docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner@skillhub.example \
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
-step "Alertmanager configuration rendered the way bootstrap renders it"
+step "Alertmanager configuration and probe targets rendered the way bootstrap renders them"
 docker run --rm --env-file "$WORK_HOST/release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends gettext-base >/dev/null
   vars=$(sed -n "s/^envsubst \x27\(.*\)\x27 \\\\$/\1/p" /cp/bin/skillhub-bootstrap)
   [ -n "$vars" ] || { echo "could not read the envsubst variable list from skillhub-bootstrap"; exit 1; }
   envsubst "$vars" </cp/alertmanager.yml.tmpl >/work/alertmanager.yml
   if grep -n "\${" /work/alertmanager.yml; then echo "placeholders left unrendered"; exit 1; fi
+  sh -euc "$(grep prometheus-targets /cp/bin/skillhub-bootstrap | sed "s#/etc/skillhub/#/work/#g")"
+  cat /work/prometheus-targets/gateway.yml
 '
 docker run --rm --entrypoint amtool -v "$WORK_HOST/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   "$ALERTMANAGER" check-config /etc/alertmanager/alertmanager.yml
@@ -84,11 +97,12 @@ step "Prometheus configuration and alert rules"
 docker run --rm --entrypoint promtool \
   -v "$CP/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
   -v "$ROOT/infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro" \
+  -v "$WORK_HOST/prometheus-targets:/etc/prometheus/targets:ro" \
   "$PROMETHEUS" check config /etc/prometheus/prometheus.yml
 
 step "node scripts are POSIX sh"
 docker run --rm -v "$ROOT:/repo:ro" -w /repo "$SHELLCHECK" -s sh -S warning \
-  infra/deploy/common/install-docker infra/deploy/control-plane/bin/* \
+  infra/deploy/common/install-docker infra/deploy/control-plane/bin/* infra/deploy/gateway/bin/* \
   infra/images/postgres/skillhub-backup infra/images/postgres/skillhub-restore-drill
 
 echo

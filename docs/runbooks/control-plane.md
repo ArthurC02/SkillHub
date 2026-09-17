@@ -2,7 +2,7 @@
 
 **讀者是要建、換版、還原或重建控制平面那台機器的人。** 照節次做；每一步都寫了「驗什麼」，對不上就停。
 
-控制平面是一台 Ubuntu 24.04 主機，用 [`infra/compose/control-plane.yml`](../../infra/compose/control-plane.yml) 跑：Caddy（TLS）→ web → platform-api；platform-worker；apps/llm；Postgres（含 WAL-G 連續封存）；postgres-exporter、Prometheus、Alertmanager。排程工作由 systemd timer 觸發，不在容器裡。模型閘道與沙箱節點是另外的機器，不在本檔。
+控制平面是一台 Ubuntu 24.04 主機，用 [`infra/compose/control-plane.yml`](../../infra/compose/control-plane.yml) 跑：Caddy（TLS）→ web → platform-api；platform-worker；apps/llm；Postgres（含 WAL-G 連續封存）；postgres-exporter、blackbox-exporter、Prometheus、Alertmanager。排程工作由 systemd timer 觸發，不在容器裡。模型閘道與沙箱節點是另外的機器，不在本檔。
 
 | 路徑 | 內容 | 誰寫 |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ go -C tools/devctl run . ci-status <40 碼 sha>          # 必須是 green
 python tools/deploy/render.py control-plane --release <40 碼 sha> --settings control-plane.settings > user-data.yaml
 ```
 
-`control-plane.settings` 是 `KEY=VALUE`（不進 repo）：`SKILLHUB_DOMAIN`、`SKILLHUB_ACME_EMAIL`、`SKILLHUB_PRIVATE_IP`（私有網路上這台的位址）、`SKILLHUB_ALERT_EMAIL`、`SKILLHUB_SMTP_SMARTHOST`（`host:587`）、`SKILLHUB_SMTP_FROM`、`SKILLHUB_SMTP_USERNAME`。少一個、多一個拼錯的、或值帶 shell 會重新解讀的字元，render 都會拒絕；某個映像沒有被那個 commit 推出來也會拒絕。
+`control-plane.settings` 是 `KEY=VALUE`（不進 repo）：`SKILLHUB_DOMAIN`、`SKILLHUB_ACME_EMAIL`、`SKILLHUB_PRIVATE_IP`（私有網路上這台的位址）、`SKILLHUB_ALERT_EMAIL`、`SKILLHUB_SMTP_SMARTHOST`（`host:587`）、`SKILLHUB_SMTP_FROM`、`SKILLHUB_SMTP_USERNAME`、`SKILLHUB_GATEWAY_URL`（模型閘道的私有位址，`http://<位址>:4000`；閘道還沒建時先填預定位址，[閘道 runbook](gateway.md) §4）。少一個、多一個拼錯的、或值帶 shell 會重新解讀的字元，render 都會拒絕；某個映像沒有被那個 commit 推出來也會拒絕。
 
 ### 1.2 開機
 
@@ -149,7 +149,7 @@ Alertmanager 把所有告警寄到 `SKILLHUB_ALERT_EMAIL`；`severity=critical` 
 
 | 來源 | 什麼時候響 |
 | --- | --- |
-| `infra/observability/alerts.yml` | 平台自報指標，以及 `skillhub-database` 群組：`PostgresDown`、`WalArchiveFailing`、`WalArchiveStalled` |
+| `infra/observability/alerts.yml` | 平台自報指標；`skillhub-model-gateway` 群組的 `ModelGatewayDown`（blackbox-exporter 探測閘道健康端點）；`skillhub-database` 群組的 `PostgresDown`、`WalArchiveFailing`、`WalArchiveStalled` |
 | `ScheduledJobFailed` | 任何 `skillhub-*` 排程工作（備份、演練、保存期清理）失敗，由 systemd `OnFailure` 直接送進 Alertmanager；`unit` 標籤是失敗的那個 unit，`journalctl -u <unit>` 看原因 |
 
 驗送達：

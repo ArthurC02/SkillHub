@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+here=/opt/skillhub/infra/deploy
+
+docker compose version >/dev/null 2>&1 || "$here/common/install-docker"
+install -d -m 0700 /etc/skillhub/secrets
+install -m 0644 "$here"/gateway/systemd/* /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable skillhub.service
+echo "skillhub-bootstrap: model gateway installed; place /etc/skillhub/secrets/litellm.env, then systemctl start skillhub"

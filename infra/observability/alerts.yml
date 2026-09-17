@@ -374,6 +374,20 @@ groups:
             **鍵是 IP，代理後面會失準**：TLS 終端前面沒有帶正確 client IP 時整個
             cohort 共用一個 bucket，那是部署期的事（release-checklist），不是這裡。
 
+  - name: skillhub-model-gateway
+    rules:
+      - alert: ModelGatewayDown
+        expr: probe_success{job="gateway"} == 0 or absent(probe_success{job="gateway"})
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "模型閘道的健康端點連不上"
+          description: >-
+            所有模型呼叫都經過閘道：搜尋的語意腿、索引增強、評估判定與每一個 Run 都會失敗。
+            先在閘道節點上 systemctl status skillhub 與 docker compose ps，再查兩台之間的私有網路與防火牆。
+            absent 代表探測本身沒有在跑，查 blackbox-exporter 與 /etc/skillhub/prometheus-targets/gateway.yml。
+
   - name: skillhub-database
     rules:
       - alert: PostgresDown

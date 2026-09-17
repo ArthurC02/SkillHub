@@ -22,7 +22,7 @@ ROLES = {
     "control-plane": {
         "settings": [
             "SKILLHUB_DOMAIN", "SKILLHUB_ACME_EMAIL", "SKILLHUB_PRIVATE_IP", "SKILLHUB_ALERT_EMAIL",
-            "SKILLHUB_SMTP_SMARTHOST", "SKILLHUB_SMTP_FROM", "SKILLHUB_SMTP_USERNAME",
+            "SKILLHUB_SMTP_SMARTHOST", "SKILLHUB_SMTP_FROM", "SKILLHUB_SMTP_USERNAME", "SKILLHUB_GATEWAY_URL",
         ],
         "images": {
             "SKILLHUB_WEB_IMAGE": "skillhub-web",
@@ -30,6 +30,10 @@ ROLES = {
             "SKILLHUB_LLM_IMAGE": "skillhub-llm",
             "SKILLHUB_POSTGRES_IMAGE": "skillhub-postgres",
         },
+    },
+    "gateway": {
+        "settings": ["SKILLHUB_PRIVATE_IP"],
+        "images": {},
     },
 }
 

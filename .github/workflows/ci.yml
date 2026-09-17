@@ -93,6 +93,7 @@ jobs:
             deploy:
               - 'infra/deploy/**'
               - 'infra/compose/control-plane.yml'
+              - 'infra/compose/gateway.yml'
               - 'infra/observability/**'
               - 'infra/images/postgres/skillhub-*'
               - 'tools/deploy/**'

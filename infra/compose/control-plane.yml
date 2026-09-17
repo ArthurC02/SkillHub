@@ -129,9 +129,14 @@ services:
     volumes:
       - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/deploy/control-plane/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ${SKILLHUB_CONFIG_DIR:-/etc/skillhub}/prometheus-targets:/etc/prometheus/targets:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9095:9090"
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
+    restart: unless-stopped
 
   alertmanager:
     image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
