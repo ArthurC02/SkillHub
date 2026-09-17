@@ -455,24 +455,37 @@ func loopName(f func(context.Context)) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 }
 
-func TestDevLoginRefusal(t *testing.T) {
+func TestADeploymentRefusesToStartWithDevelopmentSettingsOrWithoutItsOrigin(t *testing.T) {
+	public := deploymentPosture{appURL: "https://skillhub.example", secureCookies: true}
+	local := deploymentPosture{appURL: "http://localhost:5173", devLogin: true, devCORSOrigin: "http://localhost:5173",
+		importAllowInsecure: true, importExtraHosts: "localhost"}
+	with := func(p deploymentPosture, change func(*deploymentPosture)) deploymentPosture { change(&p); return p }
 	for _, tc := range []struct {
-		name            string
-		devLogin, https bool
-		refuses         bool
+		name    string
+		posture deploymentPosture
+		refuses []string
 	}{
-		{name: "production: neither", devLogin: false, https: true},
-		{name: "local dev: dev login on plain http", devLogin: true, https: false},
-		{name: "dev login with secure cookies", devLogin: true, https: true, refuses: true},
-		{name: "no dev login on plain http", devLogin: false, https: false},
+		{"a public deployment with nothing from development", public, nil},
+		{"local development on plain http with every development setting", local, nil},
+		{"a smoke stack with insecure cookies and no APP_URL", deploymentPosture{devLogin: true}, nil},
+		{"dev login with secure cookies", with(public, func(p *deploymentPosture) { p.devLogin = true }), []string{"DEV_LOGIN"}},
+		{"secure cookies and no APP_URL", deploymentPosture{secureCookies: true}, []string{"APP_URL"}},
+		{"secure cookies and an APP_URL with no host", deploymentPosture{appURL: "https://", secureCookies: true}, []string{"APP_URL"}},
+		{"public with insecure cookies", with(public, func(p *deploymentPosture) { p.secureCookies = false }), []string{"COOKIE_INSECURE"}},
+		{"public with a development CORS origin", with(public, func(p *deploymentPosture) { p.devCORSOrigin = "http://localhost:5173" }), []string{"DEV_CORS_ORIGIN"}},
+		{"public importing over plain http", with(public, func(p *deploymentPosture) { p.importAllowInsecure = true }), []string{"IMPORT_ALLOW_INSECURE"}},
+		{"public importing from extra hosts", with(public, func(p *deploymentPosture) { p.importExtraHosts = "localhost" }), []string{"IMPORT_EXTRA_HOSTS"}},
+		{"an upper-case https origin is still public", with(public, func(p *deploymentPosture) { p.appURL = "HTTPS://SkillHub.example"; p.devCORSOrigin = "x" }), []string{"DEV_CORS_ORIGIN"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			reason := devLoginRefusal(tc.devLogin, tc.https)
-			if (reason != "") != tc.refuses {
-				t.Fatalf("devLoginRefusal(%v, %v) = %q, want refusal=%v", tc.devLogin, tc.https, reason, tc.refuses)
+			got := tc.posture.refusals()
+			if len(got) != len(tc.refuses) {
+				t.Fatalf("refusals = %q, want one naming each of %q", got, tc.refuses)
 			}
-			if tc.refuses && !strings.Contains(reason, "COOKIE_INSECURE") {
-				t.Errorf("the refusal does not say how to resolve it: %q", reason)
+			for i, name := range tc.refuses {
+				if !strings.Contains(got[i], name) {
+					t.Errorf("refusal %d = %q, want it to name %s", i, got[i], name)
+				}
 			}
 		})
 	}

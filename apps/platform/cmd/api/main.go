@@ -217,16 +217,6 @@ func (c *navigationCatcher) Write(b []byte) (int, error) {
 	return c.ResponseWriter.Write(b)
 }
 
-func devLoginRefusal(devLogin, secure bool) string {
-	if !devLogin || !secure {
-		return ""
-	}
-	return "DEV_LOGIN=1 with secure session cookies: the offline login provider " +
-		"lets anybody sign in as any name without a credential, and a " +
-		"deployment that terminates TLS is not a deployment that wants it. Unset " +
-		"DEV_LOGIN, or set COOKIE_INSECURE=1 if this really is plain-http local dev."
-}
-
 func main() {
 	creationLimits, _ := creation.LimitsFromEnv()
 	var cleanWorker *worker.Set
@@ -312,12 +302,14 @@ func main() {
 
 	providers := run.NewRegistryFromEnv()
 
-	secure := os.Getenv("COOKIE_INSECURE") != "1"
-	devLogin := os.Getenv("DEV_LOGIN") == "1"
-	if reason := devLoginRefusal(devLogin, secure); reason != "" {
-		slog.Error("refusing to start", "reason", reason)
+	posture := deploymentPostureFromEnv()
+	if refusals := posture.refusals(); len(refusals) > 0 {
+		for _, reason := range refusals {
+			slog.Error("refusing to start", "reason", reason)
+		}
 		os.Exit(1)
 	}
+	secure, devLogin := posture.secureCookies, posture.devLogin
 	if devLogin {
 		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
 			"as any name without a credential. Never in production")
@@ -351,7 +343,7 @@ func main() {
 			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 		},
 		Secure:    secure,
-		AppURL:    os.Getenv("APP_URL"),
+		AppURL:    posture.appURL,
 		DevLogin:  devLogin,
 		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
 
@@ -412,7 +404,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              envx.Or("API_ADDR", ":8080"),
-		Handler:           httpx.DevCORS(handler, os.Getenv("DEV_CORS_ORIGIN")),
+		Handler:           httpx.DevCORS(handler, posture.devCORSOrigin),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

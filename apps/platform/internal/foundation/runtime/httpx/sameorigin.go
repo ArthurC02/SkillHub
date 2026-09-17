@@ -9,7 +9,7 @@ import (
 // when that header is absent; a request with neither header set passes, since
 // only non-browser clients omit both.
 func SameOriginWrites(next http.Handler, appURL string) http.Handler {
-	want := originOf(appURL)
+	want := Origin(appURL)
 	if want == "" {
 		return next
 	}
@@ -31,7 +31,7 @@ func SameOriginWrites(next http.Handler, appURL string) http.Handler {
 			WriteError(w, http.StatusForbidden, "跨站的寫入請求已被拒絕。")
 			return
 		}
-		if origin := r.Header.Get("Origin"); origin != "" && originOf(origin) != want {
+		if origin := r.Header.Get("Origin"); origin != "" && Origin(origin) != want {
 			WriteError(w, http.StatusForbidden, "跨站的寫入請求已被拒絕。")
 			return
 		}
@@ -39,7 +39,7 @@ func SameOriginWrites(next http.Handler, appURL string) http.Handler {
 	})
 }
 
-func originOf(raw string) string {
+func Origin(raw string) string {
 	raw = strings.TrimSpace(raw)
 	scheme, rest, found := strings.Cut(raw, "://")
 	if !found || scheme == "" || rest == "" {
