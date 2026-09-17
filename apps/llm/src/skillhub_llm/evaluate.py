@@ -22,7 +22,7 @@ from skillhub_llm.untrusted import scrub
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
 
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-5.6-terra")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL") or "gpt-5.6-terra"
 
 JUDGE_PROMPT_VERSION = "judge-run/v2"
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"

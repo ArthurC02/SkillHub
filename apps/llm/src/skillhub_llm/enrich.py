@@ -21,7 +21,7 @@ from .enrich_checks import Finding, check_enrichment
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
 
-ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
+ENRICH_MODEL = os.getenv("ENRICH_MODEL") or "gpt-5.6-sol"
 PROMPT_VERSION = "enrich-skill/v7"
 
 # budget-ceiling: enrich.LLM_TIMEOUT_SECONDS

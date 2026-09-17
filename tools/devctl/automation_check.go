@@ -132,6 +132,7 @@ func documentCheckers() []namedChecker {
 		{"goldenset-mirror", goldensetMirrorProblems},
 
 		{"capability-table", capabilityTableProblems},
+		{"env-declared", envDeclaredProblems},
 
 		{"doc-links", docLinkProblems},
 		{"adr-citations", adrCitationProblems},

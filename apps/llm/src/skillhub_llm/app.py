@@ -71,8 +71,8 @@ async def request_validation_error(
 
 
 EMBED_MODEL = "text-embedding-3-small"
-MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL", "gpt-5.6-luna")
-SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL", "gpt-5.4-mini")
+MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL") or "gpt-5.6-luna"
+SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL") or "gpt-5.4-mini"
 
 # budget-ceiling: app.EMBED_TIMEOUT_SECONDS
 EMBED_TIMEOUT_SECONDS = 20.0

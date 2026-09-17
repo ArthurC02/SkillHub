@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.generate")
 
 router = APIRouter()
 
-GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL", "gpt-5.4-mini")
+GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL") or "gpt-5.4-mini"
 GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v4"
 
 # budget-ceiling: generate.LLM_TIMEOUT_SECONDS

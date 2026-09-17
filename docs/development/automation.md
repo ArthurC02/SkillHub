@@ -172,6 +172,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `embedding-dims` | `0007_search.sql` 的 `vector(1536)` 與 `apps/llm` 驗證的寬度一致（migration 為準） | `tools/devctl/embedding_dims.go` |
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
+| `env-declared` | 反方向：`cmd/api`、`cmd/worker`、`cmd/maintenance`、`cmd/reindex`、`sandboxd` 與 `apps/llm` 讀的每個環境變數，`.env.example` 都要列出（Go 以 AST 追到包裝函式與常數，Python 以 `os.getenv`／`os.environ` 比對）。空值必須等於預設值 | `tools/devctl/env_declared.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
 | `adr-citations` | 只有 `docs/adr/` 裡的 ADR 與索引 `docs/adr/README.md` 可以寫 ADR 編號或檔名；其他檔案寫規則本身，需要理由時連索引的主題標題。`docs/adr/` 只放 `ADR-NNN-<slug>.md` 與 `README.md`；每份 ADR 都要列在索引、且所在標題逐字等於該 ADR 的標題（標題就是別人連的錨點）；連到索引的 `README.md#錨點` 必須對得上某個標題。里程碑的機器輸出、量測結果與第三方語料照原樣保存，不受此限（豁免清單連同理由寫在檢查器裡） | `tools/devctl/adr_citations.go` |
 | `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
