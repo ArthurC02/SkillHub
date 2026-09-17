@@ -1,87 +1,19 @@
 ---
 name: domain-memory
-description: Build and maintain a reviewable Domain Registry, or analyze a proposed change that crosses Bounded Contexts. Use for domain vocabulary, ownership, invariants, aggregate, event, contract, or cross-context design; do not use for routine changes contained within one owner.
+description: "Route domain-driven development work to the smallest Domain Memory capability: read the model, design a boundary, maintain the files, or review consistency."
 ---
 
 # Domain Memory
 
-Use this skill as a living development loop: read the reviewed Domain Registry before implementation, use it to constrain names, ownership, invariants, and collaboration, then update the domain documents when the implemented behavior changes them. It separates evidence, design choices, approvals, and unresolved decisions before files are selected or modified.
+Domain Memory is a continuous development loop, not a one-time knowledge dump. The reviewed Registry guides implementation; implementation evidence updates the Registry for the next Agent.
 
-## Continuous development loop
+Choose one focused capability:
 
-Every domain-significant task has four passes:
+- **Read**: before coding, load the reviewed terms, Context, ownership, invariants, and existing collaboration. Use [domain-memory-read](skills/domain-memory-read/SKILL.md).
+- **Design**: when a request changes a boundary, contract, event, consistency rule, or material business rule, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
+- **Maintain**: after implementation or source drift, update the smallest affected asset as a candidate and preserve evidence. Use [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
+- **Review**: before relying on domain facts or handing off work, validate the Registry, source evidence, audit chain, and proposal state. Use [domain-memory-review](skills/domain-memory-review/SKILL.md).
 
-1. **Read**: run `probe`, validate the Registry and policy, then use `resolve-terms`, `get-context`, `get-record`, and `analyze-boundary` before choosing a design.
-2. **Constrain**: treat reviewed records as development constraints. Keep ownership, ubiquitous language, invariants, consistency, authorization, idempotency, and prohibited dependencies aligned with them. A missing or ambiguous fact is a discovery gap, not permission to invent one.
-3. **Implement**: make the smallest code and contract change that satisfies the reviewed model. Derive tests from the invariant or contract outcome, not from the implementation shape.
-4. **Reflect**: after implementation, compare behavior and sources with the Registry. If vocabulary, ownership, invariant, boundary, event, contract, or capability changed, create or update a candidate and route material changes through a Change Package. Re-run validation and evidence checks before relying on the result in the next task.
+Reviewed records constrain code; candidates are handoff material and do not authorize implementation. Keep all capabilities on the same file-backed Registry, policy, source map, audit chain, and Change Package schema.
 
-The Registry guides code only at `reviewed` status. Candidate records prepare the next review but cannot authorize an implementation. A routine change contained within one reviewed owner may use the Read and Reflect passes without the full Change Package; a cross-context, public-contract, consistency, regulated-rule, or irreversible change uses the seven-step workflow.
-
-Start from the business behavior, not a table, endpoint, event name, or package. Establish the ubiquitous terms in the request, the owner of each fact, the invariant that must hold, and the reason a boundary must be crossed. A package boundary is evidence of an architectural boundary; it does not by itself define the business model.
-
-A source is not authoritative for sitting in a particular directory or for being the richest thing you found. Cite what survives: a file the confirmed source map covers, and one that still exists after a repository-specific document is deleted. When a citation falls outside the confirmed sources the Registry records it as `unclassified` and the write says so — that is a report about reach, and the answer is to have the developer confirm the source or to cite something the corpus already covers, never to widen discovery until the warning stops.
-
-Files that instruct coding agents how to work in a repository are not domain sources. They describe a workflow, they are rewritten whenever it changes, and a Domain Memory resting on one loses its evidence when it is. `discover-sources` lists them so you know they exist; select them only for a domain fact no other source states, and record the gap.
-
-Domain facts are not inferred from package names, database tables, event strings, or token extraction. A repository scan can create evidence candidates and coverage gaps; it cannot create approved vocabulary, a business owner, an invariant, or an Aggregate boundary. Mark these as candidates until an authorized reviewer confirms them.
-
-Choose the narrowest collaboration surface that preserves the invariant. A direct call, injected read-only fact, synchronous owner operation, published domain event, or a contract change can each be valid. Do not prescribe events or APIs merely because more than one context is involved. State the required consistency, idempotency, authorization, failure, and observability behavior when they affect the choice.
-
-Derive verification from acceptance criteria and actual behavior branches. A test should demonstrate the stated invariant, contract promise, or observable outcome; it must not merely mirror the proposed implementation.
-
-## Script routing
-
-Use `scripts/registry_tools.py` as the first source for Registry facts. Do not replace these commands with a repository keyword search when the Registry is available.
-
-## Probe before anything else
-
-At the start of work in a repository, run `probe --repo-root <repo> --registry-root <root>` first. It answers three questions in one cheap call and writes nothing: whether a Domain Memory exists here, who confirmed its sources, and whether those sources have moved since. It compares the tracked object of every selected path and the working-tree status of those paths, and only re-reads file contents when that comparison cannot settle the question. Exit code 0 means current, 1 means it needs attention, 2 means no Domain Memory exists at that location.
-
-A probe reporting `none` is not permission to initialize. It ends the automatic part of the work: the developer decides whether this repository gets a Domain Memory, and where. A probe reporting `stale` names the sources that moved, and those are the ones to re-establish.
-
-## Init checkpoint
-
-Before creating a Domain Memory directory or writing any file under it, run `discover-sources --repo-root <repo>` without `--output`. Then ask the developer to choose both the source paths and the repository-relative destination directory. Present the discovered paths as suggestions and allow paths outside that list when they exist inside the repository. Do not default to `domain-memory/`, `docs/`, or any other location.
-
-Proceed only after the developer explicitly identifies both choices, the storage mode, data classification, review mode, source authority, include patterns, and exclusions. Initialize with `init-domain-memory --repo-root <repo> --output <chosen-path> --source <chosen-source> --storage-mode <mode> --data-classification <classification> --review-mode <mode> --source-authority <authority> [--include <glob>] [--exclude <glob>]` once, repeating `--source` for every selected path. A second run against the same destination fails, because the destination must not already hold a Registry. The command writes the Registry, `source-map.json`, and policy only under the chosen destination. Its resource limits apply before the source map is accepted.
-
-The map it writes is `agent-asserted`: you chose those paths, and nothing yet records that the developer agrees they are the corpus. Show them the selected paths and ask. Only once they answer, and only with the identity they give you, run `confirm-sources --registry-root <root> --repo-root <repo> --confirmed-by <identity>`. Never supply that identity yourself, and never take it from a git config, a commit, or a file in the repository: none of those is the developer answering the question. Until they do, `verify-sources` reports the selection as unconfirmed, and that report is accurate rather than a problem to clear.
-
-| Situation | Required Script action | What to do with the result |
-| --- | --- | --- |
-| Beginning work in any repository | `probe --repo-root <repo> --registry-root <root>` | `none` hands the decision to the developer. `stale` names the sources to re-establish. `current` also reports whether a developer confirmed the selection or an agent asserted it. |
-| First use in a repository | `discover-sources --repo-root <repo>` | Present discovered candidates and wait for the developer to choose source paths and destination. |
-| Start work in a repository with a Registry | `validate --registry-root <root> --repo-root <repo>` and `validate-policy --policy <root>/domain-memory-policy.json` when present | Stop reliance on malformed data; use `--require-reviewed` before an implementation may depend on Registry facts. |
-| Developer confirmed source paths and destination | `init-domain-memory --repo-root <repo> --output <root> --source <path>` | Create only an empty candidate Registry and an agent-asserted source map at that destination. |
-| The developer says the selected sources are the right corpus | `confirm-sources --registry-root <root> --repo-root <repo> --confirmed-by <identity>` | Records who confirmed and when, into the audit chain. Only their answer justifies this command. It is refused if the sources moved after the map was written, because that would attest to a corpus that is no longer there. |
-| Requirement contains a domain term | `resolve-terms --query <text> [--context <id>]` | A term matches when its name or id appears in the query, or the query appears in its name, id, or definition, so a whole requirement sentence is a valid query. Record every match. No match is a knowledge gap, not permission to invent a definition. |
-| A Context is named or selected | `get-context --id <id>` | Use its aggregates, rules, contracts, and interactions to identify ownership. A missing Context stops a domain-significant implementation. |
-| A specific asset ID is cited | `get-record --asset <asset> --id <id>` | Use the returned evidence and status; do not assume an ID exists. |
-| A known external Context is involved | `analyze-boundary --source-context <id> --target-context <id>` | Reuse registered collaboration where possible. `no_registered_collaboration` requires a proposal, never a direct cross-context write. |
-| The target asset is uncertain | `lookup --asset <asset> --query <text>` and `coverage` | Treat an empty result or coverage gap as discovery work. |
-| Check developer-confirmed sources before relying on their evidence | `verify-sources --repo-root <repo> --source-map <root>/source-map.json --policy <root>/domain-memory-policy.json` | A stale, unverified, or limit-invalid map is a review trigger, not proof that the Domain Memory is wrong. |
-| A governance setting must change (review mode, storage mode, classification, source authority) | `amend-policy --registry-root <root> --field <name> --value <value> --reason <text>` | Hand-editing the policy leaves no record and is indistinguishable from tampering. The amendment moves the Registry revision, so approvals captured before it must be sought again. |
-| Check citations or audit integrity | `verify-evidence --registry-root <root> --repo-root <repo>` and `verify-audit --registry-root <root>` | Treat stale citations or an invalid audit chain as a blocker for reviewed facts. Legacy string citations remain readable but are not verified. |
-| Building an evidence citation | `cite --repo-root <repo> --path <file> --start <n> --end <n> [--registry-root <root>]` | Emits the citation object with both digests computed the way `verify-evidence` recomputes them. Do not hand-write one: a digest built by a different line-splitting rule is reported as `stale`, which reads as a changed source rather than a malformed citation. With `--registry-root` it also reports the source kind, so reach is visible before the write. |
-| Curating new or changed evidence | `upsert-candidate --registry-root <root> --repo-root <repo> --asset <asset> --record-file <file>` | Preflight the complete Registry, then apply a recoverable transaction. Never edit a reviewed record in place. |
-| Proposing a domain-significant change | `init-change-package --output <path>` then `validate-change-package` | Fill Requirement, Proposal, Test Obligations, Evidence Bundle, and Draft PR before implementation. |
-| Sending a Proposal to review | `submit-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Capture the Registry digest and observed current commit before human review. The proposing identity cannot approve its own Proposal. |
-| Verify planned checks | `verify-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promote only a submitted package with one passing digest-backed test attestation for every obligation and, when configured, an allowlisted command profile. |
-| Evidence overtakes a proposal already submitted | `supersede-proposal --package-root <path> --reason <text> [--superseded-by <id>]` | A submitted proposal cannot be edited back into a draft. Supersede it, say what its conclusion got wrong, and raise the replacement as a new draft. |
-| Completing human review | `record-approval`, `verify-proposal`, then `finalize-proposal --registry-root <root> --repo-root <repo>` | Finalize only a verified package whose SCM attestation, required roles, and Registry revision still match. |
-| Import external review proof | `verify-scm-attestation --attestation <file> --package-root <path>` | Verify an already-collected SCM artifact binds to the exact Proposal and Registry revision. It does not call a hosting-provider API. |
-| Applying Registry changes from an approved proposal | `apply-approved-updates --package-root <path> --registry-root <root> --repo-root <repo>` | The command requires an approved current proposal, validates the whole Registry in staging, and refuses to overwrite reviewed records. |
-
-When implementation is complete, do not leave a domain change implicit in code. Update the smallest affected Registry asset as a candidate, or prepare the Change Package that promotes it. The next Agent must be able to discover the new term, owner, invariant, or boundary from the files without reading the previous conversation.
-
-Use these resources only when they fit the task:
-
-- Read [registry authoring](references/registry-authoring.md) and [registry schema](references/registry-schema.md) only when creating or curating Registry records.
-- Read the [file-backed Domain Memory API](references/script-api.md) only when a command needs its input or output shape.
-- Read the [seven-step workflow](references/seven-step-workflow.md) for a domain-significant change; read [proposal lifecycle](references/proposal-lifecycle.md) only before submitting, approving, or applying its Proposal.
-- Read [registry maintenance](references/registry-maintenance.md) only when cited sources changed; read [evidence rules](references/evidence-rules.md) before curating from a source for the first time, and again whenever sources conflict, are untracked, or a decision status is unclear.
-- Read the [reliability architecture](references/reliability-architecture.md) before changing Registry storage, evidence, approvals, test attestations, or write behavior.
-- Copy [change-impact-report.md](templates/change-impact-report.md) only when the requested output is an impact report rather than a Change Package.
-
-The report is a design artifact. It does not create approval requirements or authorize changes beyond the user's request.
+Read [the seven-step workflow](references/seven-step-workflow.md) for material domain changes and [the file-backed API](references/script-api.md) for command shapes. The scripts are the controlled write boundary; Git remains the collaboration and review boundary.

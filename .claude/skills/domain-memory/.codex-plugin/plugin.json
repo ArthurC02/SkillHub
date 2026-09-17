@@ -1,0 +1,18 @@
+{
+  "name": "domain-memory",
+  "version": "0.1.0",
+  "description": "File-backed Domain Memory for continuous DDD-guided Agent development.",
+  "author": {
+    "name": "SkillHub"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Domain Memory",
+    "shortDescription": "Keep domain documents and code aligned.",
+    "longDescription": "Read reviewed domain facts before coding, design governed changes, maintain the Registry, and review consistency after implementation.",
+    "developerName": "SkillHub",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Design", "Maintain", "Review"],
+    "defaultPrompt": "Use Domain Memory to guide this development task."
+  }
+}
