@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+remote="${SKILLHUB_REMOTE_JOURNAL:-/var/log/journal/remote}"
+alarm_bytes=3221225472
+
+find "$remote" -type f -name '*.journal*' -mtime +90 -print -delete
+used="$(du -sb "$remote" | cut -f1)"
+if [ "$used" -gt "$alarm_bytes" ]; then
+    echo "skillhub-egress-retention: $remote holds $used bytes; at 4G journal-remote deletes the oldest records before they are 90 days old" >&2
+    exit 1
+fi

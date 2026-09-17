@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
+	networktypes "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
@@ -54,6 +56,8 @@ type Config struct {
 	AllowDevCmd bool
 
 	ExtraLabels map[string]string
+
+	Log *slog.Logger
 }
 
 type Driver struct {
@@ -155,8 +159,27 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 
 		return fmt.Errorf("start sandbox: %w", err)
 	}
+	d.logNetworkAddress(ctx, created.ID, network, req)
 
 	return d.pushInputs(ctx, id, req)
+}
+
+func (d *Driver) logNetworkAddress(ctx context.Context, containerID, network string, req sandbox.RunRequest) {
+	if d.cfg.Log == nil || network == "none" {
+		return
+	}
+	insp, err := d.cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	var endpoint *networktypes.EndpointSettings
+	if err == nil && insp.Container.NetworkSettings != nil {
+		endpoint = insp.Container.NetworkSettings.Networks[network]
+	}
+	if endpoint == nil || !endpoint.IPAddress.IsValid() {
+		d.cfg.Log.Warn("run network address unreadable; its egress flows cannot be attributed to it",
+			"run_id", req.RunID, "attempt", req.Attempt, "network", network, "err", err)
+		return
+	}
+	d.cfg.Log.Info("run network address",
+		"run_id", req.RunID, "attempt", req.Attempt, "network", network, "address", endpoint.IPAddress.String())
 }
 
 func (d *Driver) networkFor(req sandbox.RunRequest) string {

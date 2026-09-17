@@ -1,9 +1,11 @@
 package dockerdrv_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -442,5 +444,70 @@ func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
 	}
 	if err := d.Stop(ctx, id, time.Second); err != nil {
 		t.Fatalf("stop: %v", err)
+	}
+}
+
+func startLogged(t *testing.T, network string, req sandbox.RunRequest) (string, []map[string]any) {
+	t.Helper()
+	newDriver(t)
+	var logs bytes.Buffer
+	d, err := dockerdrv.New(dockerdrv.Config{
+		Image:       testImage(),
+		Network:     network,
+		UID:         65532,
+		GID:         65532,
+		AllowDevCmd: true,
+		Runtime:     testRuntime(),
+		ExtraLabels: map[string]string{testLabel: "1"},
+		Log:         slog.New(slog.NewJSONHandler(&logs, nil)),
+	})
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+	if err := d.Start(context.Background(), id, req); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	var records []map[string]any
+	for line := range strings.SplitSeq(strings.TrimSpace(logs.String()), "\n") {
+		record := map[string]any{}
+		if json.Unmarshal([]byte(line), &record) == nil && strings.HasPrefix(fmt.Sprint(record["msg"]), "run network address") {
+			records = append(records, record)
+		}
+	}
+	return "skillhub-run-" + id, records
+}
+
+func TestARunOnANetworkLogsTheAddressItsEgressFlowsCarry(t *testing.T) {
+	cli := dockerClient(t)
+	req := testRequest("sleep 30")
+	req.Egress.Allow = []sandbox.EgressAllowEntry{{Purpose: "model_gateway", URL: "http://10.9.9.9:4000"}}
+	container, records := startLogged(t, "bridge", req)
+
+	insp, err := cli.ContainerInspect(context.Background(), container, client.ContainerInspectOptions{})
+	if err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+	endpoint := insp.Container.NetworkSettings.Networks["bridge"]
+	if endpoint == nil || !endpoint.IPAddress.IsValid() {
+		t.Fatalf("the container has no bridge address to compare against: %+v", insp.Container.NetworkSettings)
+	}
+	want := map[string]any{"run_id": req.RunID, "attempt": float64(req.Attempt), "network": "bridge", "address": endpoint.IPAddress.String()}
+	if len(records) != 1 {
+		t.Fatalf("run network address records = %v, want exactly one", records)
+	}
+	for key, value := range want {
+		if records[0][key] != value {
+			t.Errorf("record[%s] = %v, want %v (record %v)", key, records[0][key], value, records[0])
+		}
+	}
+}
+
+func TestARunWithoutANetworkLogsNoAddress(t *testing.T) {
+	_, records := startLogged(t, "bridge", testRequest("sleep 30"))
+	if len(records) != 0 {
+		t.Errorf("a run with no egress allow list got no network, yet logged %v", records)
 	}
 }

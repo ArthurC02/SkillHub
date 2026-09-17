@@ -6,4 +6,4 @@ while read -r period job; do
     [ -n "$period" ] || continue
     systemctl enable --now "skillhub-$period@$job.timer"
 done <"$schedule"
-systemctl enable --now skillhub-backup.timer skillhub-restore-drill.timer
+systemctl enable --now skillhub-backup.timer skillhub-restore-drill.timer skillhub-egress-retention.timer

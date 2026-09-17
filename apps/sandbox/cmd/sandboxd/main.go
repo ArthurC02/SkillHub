@@ -77,6 +77,7 @@ func main() {
 			GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
 			StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
 			AllowDevCmd:  allowDevCmd,
+			Log:          log,
 		})
 		if err != nil {
 			log.Error("docker driver unavailable", "err", err)

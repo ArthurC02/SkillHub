@@ -1,0 +1,34 @@
+[Unit]
+Description=Skill Hub sandbox egress flow records
+After=nftables.service
+
+[Service]
+Type=exec
+ExecStart=/usr/sbin/conntrack --event --event-mask DESTROY --output timestamp,extended --orig-src 172.17.0.0/16 --buffer-size 8388608
+Restart=always
+RestartSec=1
+SyslogIdentifier=skillhub-egress-flow
+DynamicUser=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

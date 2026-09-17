@@ -29,7 +29,7 @@ class Node:
         self.allow.write_text('{"destinations": []}\n')
         self.secret(TOKEN)
         fake(self.bin, "nft", '[ "$*" = "list table ip skillhub" ]')
-        fake(self.bin, "sysctl", 'echo "$FAKE_BRIDGE_NF"')
+        fake(self.bin, "sysctl", 'case "$2" in net.bridge.*) echo "$FAKE_BRIDGE_NF" ;; *) echo "$FAKE_CONNTRACK_ACCT" ;; esac')
         fake(self.bin, "docker", 'echo "$FAKE_RUNTIMES"')
         self.env = {
             "PATH": "%s:%s" % (self.bin, os.environ["PATH"]),
@@ -38,6 +38,7 @@ class Node:
             "SKILLHUB_SANDBOXD_IMAGE": "ghcr.io/o/skillhub-sandboxd:abc" + DIGEST,
             "SKILLHUB_SANDBOX_IMAGE": "ghcr.io/o/skillhub-runtime-agent-sdk:2026.08-12" + DIGEST,
             "FAKE_BRIDGE_NF": "1",
+            "FAKE_CONNTRACK_ACCT": "1",
             "FAKE_RUNTIMES": "io.containerd.runc.v2 runc runsc ",
         }
 
@@ -100,6 +101,10 @@ def test_an_unloaded_ruleset_is_refused():
 
 def test_bridge_traffic_bypassing_netfilter_is_refused():
     refuses("net.bridge.bridge-nf-call-iptables is not 1", Node(), FAKE_BRIDGE_NF="0")
+
+
+def test_flow_records_without_byte_counts_are_refused():
+    refuses("nf_conntrack_acct is not 1", Node(), FAKE_CONNTRACK_ACCT="0")
 
 
 def test_a_docker_without_runsc_is_refused():

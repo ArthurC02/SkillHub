@@ -1,0 +1,7 @@
+[Unit]
+Description=Delete sandbox node journals older than 90 days
+OnFailure=skillhub-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/skillhub/infra/deploy/control-plane/bin/skillhub-egress-retention

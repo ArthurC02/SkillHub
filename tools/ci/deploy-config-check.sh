@@ -32,7 +32,7 @@ step "user-data renders, every node checkout carries what it runs, and the rende
 docker run --rm -e OWNER="$OWNER" -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-    cloud-init systemd git python3-yaml >/dev/null
+    cloud-init systemd systemd-journal-remote conntrack git python3-yaml >/dev/null
   git config --global --add safe.directory /repo
   python3 test_render.py
   python3 test_checkout.py
@@ -73,7 +73,7 @@ print("P-05 on the sandbox checkout: %s -- %s" % (row["status"], row["detail"]))
 sys.exit(0 if row["status"] == probe.PASS else 1)
 PY
 
-  for script in control-plane/bin/skillhub-preflight control-plane/bin/skillhub-alert gateway/bin/skillhub-preflight \
+  for script in control-plane/bin/skillhub-preflight control-plane/bin/skillhub-alert control-plane/bin/skillhub-egress-retention gateway/bin/skillhub-preflight \
                 sandbox/bin/skillhub-preflight sandbox/bin/skillhub-mark-serving; do
     mkdir -p "$(dirname "/opt/skillhub/infra/deploy/$script")"
     printf "#!/bin/sh\n" >"/opt/skillhub/infra/deploy/$script"
@@ -81,10 +81,12 @@ PY
   done
   for binary in /usr/bin/docker /usr/local/bin/sandboxd; do printf "#!/bin/sh\n" >"$binary" && chmod +x "$binary"; done
   install -m 0644 /repo/infra/deploy/control-plane/systemd/* /etc/systemd/system/
+  install -D -m 0644 /repo/infra/deploy/control-plane/journal-remote/service.conf /etc/systemd/system/systemd-journal-remote.service.d/skillhub.conf
   cd /etc/systemd/system
   schedule=$(sed -n "s/^\([a-z]*\) \([a-z-]*\)$/skillhub-\1@\2.timer/p" /repo/infra/deploy/control-plane/maintenance-schedule)
   report=$(systemd-analyze verify skillhub.service skillhub-backup.timer skillhub-restore-drill.timer \
-    skillhub-alert@skillhub-backup.service $schedule 2>&1 | grep -v "docker.service" || true)
+    skillhub-egress-retention.timer skillhub-alert@skillhub-egress-retention.service $schedule \
+    systemd-journal-remote.service 2>&1 | grep -v "docker.service" || true)
   if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
   for role in gateway sandbox; do
     mkdir -p "/$role" && install -m 0644 /repo/infra/deploy/$role/systemd/* "/$role/"
@@ -92,6 +94,19 @@ PY
     if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
   done
   echo "systemd units verify clean"
+
+  journals=$(mktemp -d)
+  touch -d "91 days ago" "$journals/old.journal"
+  touch -d "89 days ago" "$journals/recent.journal"
+  SKILLHUB_REMOTE_JOURNAL=$journals sh /repo/infra/deploy/control-plane/bin/skillhub-egress-retention
+  if [ -e "$journals/old.journal" ] || [ ! -e "$journals/recent.journal" ]; then
+    echo "retention must delete records past 90 days and keep younger ones: $(ls "$journals")"; exit 1
+  fi
+  truncate -s 4G "$journals/large.journal"
+  if SKILLHUB_REMOTE_JOURNAL=$journals sh /repo/infra/deploy/control-plane/bin/skillhub-egress-retention; then
+    echo "retention did not alarm on a remote journal near its cap"; exit 1
+  fi
+  echo "egress record retention keeps 90 days and alarms near the cap"
   chown -R "$OWNER" /work
 '
 

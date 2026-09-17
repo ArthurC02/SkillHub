@@ -30,7 +30,7 @@ python tools/deploy/render.py control-plane --release <40 碼 sha> --settings co
 ### 1.2 開機
 
 - 用 `user-data.yaml` 建主機，接上私有網路。
-- 防火牆：公網只開 22、80、443（含 443/udp）；5432 只對模型閘道的私有位址開。Prometheus（9095）與 Alertmanager（9093）只綁 127.0.0.1，用 SSH tunnel 看。
+- 防火牆：公網只開 22、80、443（含 443/udp）；5432 只對模型閘道的私有位址開；19532 只對沙箱節點的私有位址開（節點推送 journal，明文）。Prometheus（9095）與 Alertmanager（9093）只綁 127.0.0.1，用 SSH tunnel 看。
 - DNS 只設 A 記錄指到這台。compose 網路沒有開 IPv6，IPv6 連線會經 Docker 的轉發程式進來，來源位址變成容器網段的閘道，所有 IPv6 使用者會共用一個速率限制桶。**Caddy 第一次啟動就會去申請憑證**，DNS 沒生效前啟動只會一直重試。
 
 驗：`cloud-init status --wait` 是 `done`；`/var/log/cloud-init-output.log` 最後一行是 `skillhub-bootstrap: control plane installed; …`。
@@ -68,7 +68,8 @@ sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-enable-timers
 驗：
 - `docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/control-plane.yml ps` 每個服務是 `running`，postgres 是 `healthy`。
 - `curl -sI https://<網域>/healthz` 是 200，憑證由公開 CA 簽發。
-- `systemctl list-timers 'skillhub-*'` 列出 `maintenance-schedule` 的每一行，加上 `skillhub-backup.timer` 與 `skillhub-restore-drill.timer`。
+- `systemctl list-timers 'skillhub-*'` 列出 `maintenance-schedule` 的每一行，加上 `skillhub-backup.timer`、`skillhub-restore-drill.timer` 與 `skillhub-egress-retention.timer`。
+- `ss -ltn` 的 19532 只綁在私有位址上。
 - 立刻做第一次備份與一次演練（§3），不要等排程。
 
 之後接 release-checklist §2.4 的種入與回填。
@@ -164,6 +165,26 @@ sudo systemctl start skillhub-alert@test.service
 主機遺失或被入侵時，不修，重建：
 
 1. §1.1～1.3 建新的，`--release` 用舊主機最後部署的那個 commit。秘密換新；被入侵時所有秘密都換，**但 `postgres.env` 的 WAL-G 設定指向同一個備份位置**（金鑰可以換）。
-2. §1.4 **不跑 migrate**，照 §4 從備份還原。
-3. 補 migration ledger，讓下一次換版知道從哪裡接：`sudo install -d /var/lib/skillhub && ls /opt/skillhub/db/migrations | tail -1 | cut -c1-4 | sudo tee /var/lib/skillhub/deployed-migration`（前提是第 1 步的 commit 與備份來自同一個版本）。
-4. `sudo systemctl start skillhub`、`skillhub-enable-timers`，最後把 DNS 指過去。Caddy 會重新申請憑證。
+2. 舊主機還讀得到時，先把 `/var/log/journal/remote/` 整個搬到新主機同一路徑（擁有者 `systemd-journal-remote`）。那是沙箱節點出口記錄唯一的一份，主機遺失就跟著遺失。
+3. §1.4 **不跑 migrate**，照 §4 從備份還原。
+4. 補 migration ledger，讓下一次換版知道從哪裡接：`sudo install -d /var/lib/skillhub && ls /opt/skillhub/db/migrations | tail -1 | cut -c1-4 | sudo tee /var/lib/skillhub/deployed-migration`（前提是第 1 步的 commit 與備份來自同一個版本）。
+5. `sudo systemctl start skillhub`、`skillhub-enable-timers`，最後把 DNS 指過去。Caddy 會重新申請憑證。
+
+## 7. 沙箱出口記錄
+
+沙箱節點把整份 journal 推到這台的 `/var/log/journal/remote/`，每台節點一組檔。一個 Run 的出口記錄要三份一起讀：
+
+```bash
+remote=/var/log/journal/remote
+sudo journalctl --directory=$remote -u skillhub-sandboxd.service --grep '<run_id>'
+sudo journalctl --directory=$remote SYSLOG_IDENTIFIER=skillhub-egress-flow --since '<Run 開始>' --until '<Run 結束>' --grep 'src=<位址> '
+sudo journalctl --directory=$remote _TRANSPORT=kernel --since '<Run 開始>' --until '<Run 結束>' --grep 'skillhub-drop-.*SRC=<位址> '
+```
+
+1. 第一行找到 `run network address`，記下 `address` 與時間。沒有網路的 Run（`network` 是 `none`）沒有這一筆，也不會有出口記錄。
+2. 第二行是被放行、已結束的連線：`dst`、`dport`、協定，以及兩個方向的 `packets`／`bytes`。
+3. 第三行是被擋的嘗試，`skillhub-drop-` 後面那個字是擋下它的規則。
+
+同一個位址會在前一個 Run 結束後分給下一個 Run，時間窗一定要帶。
+
+`skillhub-egress-retention.timer` 每天刪掉最後寫入超過 90 天的檔；存量超過 3 GB 時它失敗並發 `ScheduledJobFailed`。`systemd-journal-remote` 到 4 GB 會自己丟最舊的檔，那時未滿 90 天的記錄也會被丟，所以收到這個告警就要加大磁碟與 `/etc/systemd/journal-remote.conf.d/skillhub.conf` 的 `MaxUse`，再把腳本裡的門檻一起改。

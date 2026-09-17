@@ -11,7 +11,14 @@ envsubst '${SKILLHUB_SMTP_SMARTHOST} ${SKILLHUB_SMTP_FROM} ${SKILLHUB_SMTP_USERN
     <"$here/control-plane/alertmanager.yml.tmpl" >/etc/skillhub/alertmanager.yml
 install -d -m 0755 /etc/skillhub/prometheus-targets
 printf -- '- targets: ["%s/health/liveliness"]\n' "$SKILLHUB_GATEWAY_URL" >/etc/skillhub/prometheus-targets/gateway.yml
+apt-get install -y --no-install-recommends systemd-journal-remote
+install -D -m 0644 "$here/control-plane/journal-remote/journal-remote.conf" /etc/systemd/journal-remote.conf.d/skillhub.conf
+install -D -m 0644 "$here/control-plane/journal-remote/service.conf" /etc/systemd/system/systemd-journal-remote.service.d/skillhub.conf
+install -d -m 0755 /etc/systemd/system/systemd-journal-remote.socket.d
+printf '[Socket]\nListenStream=\nListenStream=%s:19532\nFreeBind=yes\n' "$SKILLHUB_PRIVATE_IP" \
+    >/etc/systemd/system/systemd-journal-remote.socket.d/skillhub.conf
 install -m 0644 "$here"/control-plane/systemd/* /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable --now systemd-journal-remote.socket
 systemctl enable skillhub.service
 echo "skillhub-bootstrap: control plane installed; place the secrets in /etc/skillhub/secrets, then systemctl start skillhub"
