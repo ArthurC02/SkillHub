@@ -5,17 +5,17 @@ import (
 	"testing"
 )
 
-func TestEveryRealMaintenanceSweepHasACronLine(t *testing.T) {
+func TestEveryRealMaintenanceJobHasACronLine(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if problems := purgeScheduleProblems(root); len(problems) > 0 {
-		t.Fatalf("%d retention sweep(s) with no cron line:\n%s", len(problems), strings.Join(problems, "\n"))
+		t.Fatalf("%d maintenance job(s) with no cron line:\n%s", len(problems), strings.Join(problems, "\n"))
 	}
 }
 
-func TestTheMaintenanceSwitchScanStillFindsTheSweeps(t *testing.T) {
+func TestTheMaintenanceSwitchScanStillFindsTheJobs(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -25,18 +25,14 @@ func TestTheMaintenanceSwitchScanStillFindsTheSweeps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sweeps := 0
 	have := map[string]bool{}
 	for _, n := range names {
 		have[n] = true
-		if strings.HasPrefix(n, purgeSchedPrefix) || n == rotateSubcommand {
-			sweeps++
-		}
 	}
-	if sweeps < purgeSchedFloor {
-		t.Errorf("the switch scan found %d sweeps (%v); the floor is %d", sweeps, names, purgeSchedFloor)
+	if len(names) < purgeSchedFloor {
+		t.Errorf("the switch scan found %d subcommands (%v); the floor is %d", len(names), names, purgeSchedFloor)
 	}
-	for _, n := range []string{"purge-accounts", rotateSubcommand} {
+	for _, n := range []string{"purge-accounts", "rotate-partitions", "collect-objects"} {
 		if !have[n] {
 			t.Errorf("the switch scan no longer finds %q; it found %v", n, names)
 		}
@@ -81,25 +77,27 @@ const allScheduled = "- [ ] `cmd/maintenance purge-accounts` 接上 cron\n" +
 	"- [ ] `cmd/maintenance purge-datasets` 接上 cron\n" +
 	"- [ ] `cmd/maintenance purge-analytics` 接上 cron\n" +
 	"- [ ] `cmd/maintenance purge-run-artifacts` 接上 cron\n" +
-	"- [ ] `cmd/maintenance rotate-partitions` 接上每月 cron\n"
+	"- [ ] `cmd/maintenance rotate-partitions` 接上每月 cron\n" +
+	"- [ ] `cmd/maintenance collect-objects` 接上每日 cron\n"
 
-func TestPurgeScheduleAcceptsATreeWhereEverySweepIsScheduled(t *testing.T) {
+func TestPurgeScheduleAcceptsATreeWhereEveryJobIsScheduled(t *testing.T) {
 	t.Parallel()
 	if problems := purgeScheduleProblems(writePurgeFixture(t, allScheduled)); len(problems) != 0 {
 		t.Fatalf("a fully scheduled deployment section was rejected: %v", problems)
 	}
 
-	if strings.Contains(strings.Join(purgeScheduleProblems(writePurgeFixture(t, allScheduled)), ""), "collect-objects") {
-		t.Fatal("collect-objects is not a purge- or rotate-partitions sweep and must not be required")
+	without := strings.Replace(allScheduled, "- [ ] `cmd/maintenance collect-objects` 接上每日 cron\n", "", 1)
+	if problems := purgeScheduleProblems(writePurgeFixture(t, without)); len(problems) != 1 || !strings.Contains(problems[0], "collect-objects") {
+		t.Fatalf("a job that is not a retention sweep still has to be scheduled, got %v", problems)
 	}
 }
 
-func TestPurgeScheduleNamesTheSweepNobodyScheduled(t *testing.T) {
+func TestPurgeScheduleNamesTheJobNobodyScheduled(t *testing.T) {
 	t.Parallel()
 	without := strings.Replace(allScheduled,
 		"- [ ] `cmd/maintenance purge-run-artifacts` 接上 cron\n", "", 1)
 	problems := purgeScheduleProblems(writePurgeFixture(t, without))
-	if len(problems) != 1 || !strings.Contains(problems[0], "`maintenance purge-run-artifacts` is a retention sweep with no cron line") {
+	if len(problems) != 1 || !strings.Contains(problems[0], "`maintenance purge-run-artifacts` has no cron line") {
 		t.Fatalf("want exactly the purge-run-artifacts problem, got %v", problems)
 	}
 }
@@ -115,14 +113,14 @@ func TestPurgeScheduleSaysSoWhenItHasLostItsSubject(t *testing.T) {
 			t.Fatalf("a §3 mention satisfied the check: %v", problems)
 		}
 	})
-	t.Run("the subcommand switch stopped having sweeps", func(t *testing.T) {
+	t.Run("the subcommand switch lost its jobs", func(t *testing.T) {
 		t.Parallel()
 		root := writePurgeFixture(t, allScheduled)
 		writeAt(t, root, maintenanceMain,
 			"package main\n\nfunc main() {\n\tswitch os.Args[1] {\n\tcase \"collect-objects\":\n\t\treturn\n\t}\n}\n")
 		problems := purgeScheduleProblems(root)
-		if len(problems) != 1 || !strings.Contains(problems[0], "the switch scan is broken rather than the sweeps deleted") {
-			t.Fatalf("an empty sweep list was accepted: %v", problems)
+		if len(problems) != 1 || !strings.Contains(problems[0], "the switch scan is broken rather than the jobs deleted") {
+			t.Fatalf("a near-empty job list was accepted: %v", problems)
 		}
 	})
 	t.Run("the deployment chapter is gone", func(t *testing.T) {

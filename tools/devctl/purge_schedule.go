@@ -13,11 +13,9 @@ import (
 )
 
 const (
-	maintenanceMain  = "apps/platform/cmd/maintenance/main.go"
-	deploymentDoc    = "docs/plans/mvp/m4/release-checklist.md"
-	purgeSchedFloor  = 5
-	purgeSchedPrefix = "purge-"
-	rotateSubcommand = "rotate-partitions"
+	maintenanceMain = "apps/platform/cmd/maintenance/main.go"
+	deploymentDoc   = "docs/plans/mvp/m4/release-checklist.md"
+	purgeSchedFloor = 5
 )
 
 func purgeScheduleProblems(root string) []string {
@@ -25,17 +23,11 @@ func purgeScheduleProblems(root string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("purge-schedule: %v", err)}
 	}
-	var scheduled []string
-	for _, name := range subcommands {
-		if strings.HasPrefix(name, purgeSchedPrefix) || name == rotateSubcommand {
-			scheduled = append(scheduled, name)
-		}
-	}
-	if len(scheduled) < purgeSchedFloor {
+	if len(subcommands) < purgeSchedFloor {
 		return []string{fmt.Sprintf(
-			"purge-schedule: only %d of %s's subcommands look like retention sweeps (%v); there have been "+
-				"at least %d since M4, so the switch scan is broken rather than the sweeps deleted",
-			len(scheduled), maintenanceMain, scheduled, purgeSchedFloor)}
+			"purge-schedule: only %d subcommands found in %s's switch (%v); there have been "+
+				"at least %d since M4, so the switch scan is broken rather than the jobs deleted",
+			len(subcommands), maintenanceMain, subcommands, purgeSchedFloor)}
 	}
 
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(deploymentDoc)))
@@ -49,7 +41,7 @@ func purgeScheduleProblems(root string) []string {
 	}
 
 	var problems []string
-	for _, name := range scheduled {
+	for _, name := range subcommands {
 		var scheduledHere bool
 		for _, line := range strings.Split(section, "\n") {
 			if strings.Contains(line, name) && strings.Contains(line, "cron") {
@@ -59,10 +51,9 @@ func purgeScheduleProblems(root string) []string {
 		}
 		if !scheduledHere {
 			problems = append(problems, fmt.Sprintf(
-				"purge-schedule: `maintenance %s` is a retention sweep with no cron line in %s's deployment "+
-					"section (§2). The command ships no scheduler on purpose, so an unscheduled sweep is a "+
-					"retention promise nothing will keep — and the promises are in "+
-					"gate-test/consent-and-data-policy.md, signed by people",
+				"purge-schedule: `maintenance %s` has no cron line in %s's deployment section (§2). "+
+					"The command ships no scheduler on purpose, so an unscheduled job never runs: a retention "+
+					"sweep becomes a promise nobody keeps, a collector becomes storage nobody reclaims",
 				name, deploymentDoc))
 		}
 	}

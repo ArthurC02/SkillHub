@@ -23,6 +23,10 @@ type PendingEnrichment struct {
 	PackageObjectKey string
 }
 
+func (s *Service) OldestPendingEnrichment(ctx context.Context) (pgtype.Timestamptz, error) {
+	return gen.New(s.Pool).OldestPendingEnrichment(ctx, string(EnrichmentPending))
+}
+
 func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]PendingEnrichment, error) {
 	rows, err := gen.New(s.Pool).ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: limit})
 	if err != nil {

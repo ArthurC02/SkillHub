@@ -283,6 +283,17 @@ func (q *Queries) LockPackageObjectSession(ctx context.Context, objectKey string
 	return err
 }
 
+const oldestCollectableObjectEnqueuedAt = `-- name: OldestCollectableObjectEnqueuedAt :one
+SELECT min(enqueued_at)::timestamptz FROM object_collection_queue
+`
+
+func (q *Queries) OldestCollectableObjectEnqueuedAt(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestCollectableObjectEnqueuedAt)
+	var column_1 pgtype.Timestamptz
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const packageObjectCollectable = `-- name: PackageObjectCollectable :one
 SELECT NOT EXISTS (
     SELECT 1 FROM skill_versions WHERE package_object_key = $1

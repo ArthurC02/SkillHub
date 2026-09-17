@@ -86,10 +86,16 @@ var (
 		Help: "Token-ceiling checks that could not read the gateway and let the run continue (PDM-005 §5.2a-4).",
 	})
 
-	OrphanObjectQueueDepth = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "skillhub_orphan_object_queue_depth",
-		Help: "Package object keys awaiting collection after the last sweep (04 丙-73).",
-	})
+	BacklogOldestSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_backlog_oldest_seconds",
+		Help: "Age of the oldest item waiting in a background backlog, 0 when the backlog is empty.",
+	}, []string{"backlog"})
+)
+
+const (
+	BacklogOrphanObjects = "orphan_objects"
+	BacklogSourceChecks  = "source_checks"
+	BacklogEnrichment    = "enrichment"
 )
 
 const (

@@ -628,6 +628,18 @@ func (q *Queries) ListSkillScans(ctx context.Context, arg ListSkillScansParams) 
 	return items, nil
 }
 
+const oldestPendingEnrichment = `-- name: OldestPendingEnrichment :one
+SELECT min(updated_at)::timestamptz FROM search_documents
+WHERE enrichment_status = $1::text AND latest_package_object_key IS NOT NULL
+`
+
+func (q *Queries) OldestPendingEnrichment(ctx context.Context, pendingStatus string) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestPendingEnrichment, pendingStatus)
+	var column_1 pgtype.Timestamptz
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const pruneDeletedSearchDocuments = `-- name: PruneDeletedSearchDocuments :execrows
 DELETE FROM search_documents WHERE skill_id = ANY($1::uuid[])
 `

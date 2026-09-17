@@ -2,18 +2,26 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"maps"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -165,6 +173,7 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 		PartitionCreateArgs{}.Kind():    true,
 		EnrichmentBackfillArgs{}.Kind(): false,
 		credit.RecomputeArgs{}.Kind():   false,
+		BacklogObserveArgs{}.Kind():     true,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)
@@ -210,4 +219,60 @@ func functionBody(t *testing.T, src, decl string) string {
 	}
 	t.Fatalf("no closing brace for %q", decl)
 	return ""
+}
+
+func TestTheBacklogObserverPublishesEachBacklogsAgeAndReportsTheOnesItCouldNotRead(t *testing.T) {
+	now := time.Now()
+	failing := errors.New("the database went away")
+	w := &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
+		"hour_old": func(context.Context) (pgtype.Timestamptz, error) {
+			return pgtype.Timestamptz{Time: now.Add(-time.Hour), Valid: true}, nil
+		},
+		"empty":      func(context.Context) (pgtype.Timestamptz, error) { return pgtype.Timestamptz{}, nil },
+		"unreadable": func(context.Context) (pgtype.Timestamptz, error) { return pgtype.Timestamptz{}, failing },
+	}}
+	metrics.BacklogOldestSeconds.WithLabelValues("unreadable").Set(-1)
+
+	if err := w.Work(context.Background(), nil); !errors.Is(err, failing) {
+		t.Fatalf("Work = %v, want the unreadable backlog's error", err)
+	}
+	published := publishedBacklogAges(t)
+	if got := published["hour_old"]; got < 3600 || got > 3660 {
+		t.Errorf("hour_old = %v seconds, want about an hour", got)
+	}
+	if got, ok := published["empty"]; !ok || got != 0 {
+		t.Errorf("empty = %v (published %v), want 0", got, ok)
+	}
+	if got := published["unreadable"]; got != -1 {
+		t.Errorf("unreadable = %v, want the last published value left alone", got)
+	}
+}
+
+var backlogSample = regexp.MustCompile(`(?m)^skillhub_backlog_oldest_seconds\{backlog="([a-z_]+)"\} (\S+)$`)
+
+func publishedBacklogAges(t *testing.T) map[string]float64 {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	ages := map[string]float64{}
+	for _, m := range backlogSample.FindAllStringSubmatch(rec.Body.String(), -1) {
+		v, err := strconv.ParseFloat(m[2], 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ages[m[1]] = v
+	}
+	return ages
+}
+
+func TestABacklogItemFromTheFutureIsNotNegativelyOld(t *testing.T) {
+	now := time.Now()
+	future := pgtype.Timestamptz{Time: now.Add(time.Minute), Valid: true}
+	if got := backlogAge(future, now); got != 0 {
+		t.Fatalf("age = %v, want 0", got)
+	}
+	past := pgtype.Timestamptz{Time: now.Add(-90 * time.Second), Valid: true}
+	if got := backlogAge(past, now); got != 90 {
+		t.Fatalf("age = %v, want 90", got)
+	}
 }

@@ -88,6 +88,10 @@ func (s *Service) SourceLineage(ctx context.Context, sourceID pgtype.UUID) (Line
 	}, nil
 }
 
+func (s *Service) OldestSourceCheck(ctx context.Context) (pgtype.Timestamptz, error) {
+	return gen.New(s.Pool).OldestSourceCheck(ctx, string(SourceGit))
+}
+
 func (s *Service) CheckSources(ctx context.Context, limit int32) (checked, unavailable, changed int, err error) {
 	if s.Fetcher == nil {
 		return 0, 0, 0, fmt.Errorf("%w: url import not configured", ErrFetch)

@@ -305,18 +305,49 @@ groups:
             打包產物是冪等的、可以重打；資料集不行。**先查是不是 bucket 生命週期
             或誤刪**，再決定要不要告知受測者（RELEASE-009 的解讀依賴這一條）。
 
-      - alert: OrphanObjectSweepMissingOrBacklogged
-        expr: absent(skillhub_orphan_object_queue_depth) or skillhub_orphan_object_queue_depth > 0
-        for: 3h
+      - alert: BacklogObserverSilent
+        expr: absent(skillhub_backlog_oldest_seconds)
+        for: 1h
         labels:
           severity: warning
         annotations:
-          summary: "孤兒物件清理沒有在跑，或積壓沒有下降"
+          summary: "積壓觀測沒有在發佈，下面三條積壓告警因此都不會響"
           description: >-
-            series 不存在 = `maintenance collect-objects` 從未跑過或已經停了
-            （**這正是這個機制當初補的那個洞：一個沒有人寫的 job**）。
-            數字持續 >0 = 跑了但收不完。兩者都先查部署的 cron。付的是無法觸及的
-            物件儲存費用，不是資料遺失。
+            這個值由 worker 每 15 分鐘發佈。series 不存在 = worker 沒有在跑，
+            或每一個積壓都讀不到資料庫；先查 worker 的 log。
+
+      - alert: OrphanObjectsNotCollected
+        expr: skillhub_backlog_oldest_seconds{backlog="orphan_objects"} > 2 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "最舊的待收孤兒物件已經等了超過兩天"
+          description: >-
+            `maintenance collect-objects` 應該每天跑一次。先查部署的 cron 與那個 job 的 log。
+            付的是無法觸及的物件儲存費用，不是資料遺失。
+
+      - alert: SourceChecksStale
+        expr: skillhub_backlog_oldest_seconds{backlog="source_checks"} > 2 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "有以網址匯入的來源超過兩天沒有被檢查"
+          description: >-
+            `maintenance check-sources` 應該每天跑一次；一次檢查的筆數有上限，來源多到
+            一天收不完時也會響。在那之前，畫面上的「來源已失效／已更新」標示是舊的。
+
+      - alert: EnrichmentBacklogged
+        expr: skillhub_backlog_oldest_seconds{backlog="enrichment"} > 6 * 3600
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "有 Skill 等搜尋增強超過六小時"
+          description: >-
+            等待中的 Skill 仍然搜得到，只是缺少增強後的描述與向量，語意搜尋找不到它。
+            先查 worker 與 LLM 服務是否可達，再查閘道額度。
 
       - alert: RunTokenCeilingNotEnforced
         expr: increase(skillhub_run_token_usage_unreadable_total[30m]) > 0

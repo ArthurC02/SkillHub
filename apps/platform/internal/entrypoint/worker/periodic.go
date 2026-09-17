@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -47,6 +49,40 @@ func (w *PartitionCreateWorker) Work(ctx context.Context, _ *river.Job[Partition
 		}
 	}
 	return errors.Join(failures...)
+}
+
+const BacklogObserveInterval = 15 * time.Minute
+
+type BacklogObserveArgs struct{}
+
+func (BacklogObserveArgs) Kind() string { return "backlog_observe" }
+
+type backlogOldest func(context.Context) (pgtype.Timestamptz, error)
+
+type BacklogObserveWorker struct {
+	river.WorkerDefaults[BacklogObserveArgs]
+	Backlogs map[string]backlogOldest
+}
+
+func (w *BacklogObserveWorker) Work(ctx context.Context, _ *river.Job[BacklogObserveArgs]) error {
+	now := time.Now()
+	var failures []error
+	for name, oldest := range w.Backlogs {
+		at, err := oldest(ctx)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("observe the %s backlog: %w", name, err))
+			continue
+		}
+		metrics.BacklogOldestSeconds.WithLabelValues(name).Set(backlogAge(at, now))
+	}
+	return errors.Join(failures...)
+}
+
+func backlogAge(oldest pgtype.Timestamptz, now time.Time) float64 {
+	if !oldest.Valid {
+		return 0
+	}
+	return max(0, now.Sub(oldest.Time).Seconds())
 }
 
 const EnrichmentBackfillInterval = time.Hour

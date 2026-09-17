@@ -288,3 +288,7 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit)::int;
+
+-- name: OldestPendingEnrichment :one
+SELECT min(updated_at)::timestamptz FROM search_documents
+WHERE enrichment_status = sqlc.arg(pending_status)::text AND latest_package_object_key IS NOT NULL;

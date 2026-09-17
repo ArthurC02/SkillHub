@@ -191,6 +191,10 @@ func TrackPackageObject(ctx context.Context, db gen.DBTX, key string) error {
 	return gen.New(db).RememberPackageObject(ctx, key)
 }
 
+func (s *Service) OldestCollectableObject(ctx context.Context) (pgtype.Timestamptz, error) {
+	return gen.New(s.Pool).OldestCollectableObjectEnqueuedAt(ctx)
+}
+
 func (s *Service) CollectOrphanObjects(ctx context.Context, store ObjectRemover, limit int32) (Collection, error) {
 	if store == nil {
 		return Collection{}, errors.New("registry: object collection needs an object store")

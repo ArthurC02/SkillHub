@@ -294,6 +294,8 @@ scope:
   SetSearchDocumentListing: user
 
   GetLatestCostStatistics: user
+  OldestPendingEnrichment: worker
+  OldestSourceCheck: worker
 
 allow:
 

@@ -14,7 +14,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -205,7 +204,6 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 
 	slog.Info("orphan object collection complete",
 		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
-	metrics.OrphanObjectQueueDepth.Set(float64(c.Depth))
 	return err
 }
 

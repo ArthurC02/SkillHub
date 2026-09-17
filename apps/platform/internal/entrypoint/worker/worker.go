@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
@@ -195,6 +196,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
 	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
+	addWorker(set, workers, &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
+		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
+		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
+		metrics.BacklogEnrichment:    creationSearch.OldestPendingEnrichment,
+	}})
 
 	addWorker(set, workers, &credit.RecomputeWorker{Svc: creditSvc})
 
@@ -226,6 +232,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
+	schedule(BacklogObserveArgs{}, BacklogObserveInterval, true)
 
 	client, err := queue.New(pool, riverConfig(workers, periodic, deps.PollOnly))
 	if err != nil {

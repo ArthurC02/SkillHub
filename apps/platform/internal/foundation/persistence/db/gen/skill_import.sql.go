@@ -162,3 +162,15 @@ func (q *Queries) GetVersionBySkillAndHash(ctx context.Context, arg GetVersionBy
 	)
 	return i, err
 }
+
+const oldestSourceCheck = `-- name: OldestSourceCheck :one
+SELECT min(coalesce(last_checked_at, created_at))::timestamptz FROM skill_sources
+WHERE source_type = $1::text
+`
+
+func (q *Queries) OldestSourceCheck(ctx context.Context, sourceType string) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, oldestSourceCheck, sourceType)
+	var column_1 pgtype.Timestamptz
+	err := row.Scan(&column_1)
+	return column_1, err
+}

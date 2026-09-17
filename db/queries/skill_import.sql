@@ -23,3 +23,7 @@ FROM skill_sources
 WHERE workspace_id = @workspace_id
   AND counts_toward_generate_quota
   AND fetched_at > @since;
+
+-- name: OldestSourceCheck :one
+SELECT min(coalesce(last_checked_at, created_at))::timestamptz FROM skill_sources
+WHERE source_type = sqlc.arg(source_type)::text;
