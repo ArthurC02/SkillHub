@@ -7,7 +7,7 @@
 | 路徑 | 內容 | 誰寫 |
 | --- | --- | --- |
 | `/etc/skillhub/release.env` | 角色、commit、網域、四個釘 digest 的映像。**不含秘密** | cloud-init（由 `tools/deploy/render.py` 產生） |
-| `/opt/skillhub` | 該 commit 的 repo checkout（compose、Caddyfile、systemd、migration） | cloud-init，並驗 `git rev-parse HEAD` 等於 release |
+| `/opt/skillhub` | 該 commit 的部分 checkout：只有 [`checkout-paths`](../../infra/deploy/control-plane/checkout-paths) 列的路徑（compose、部署腳本、告警規則、migration），不含應用程式原始碼與測試 fixture | `/usr/local/sbin/skillhub-checkout`（cloud-init 放的），並驗 `git rev-parse HEAD` 等於 release |
 | `/etc/skillhub/secrets/*` | 秘密，目錄 700、檔案 600 | 人，手動放 |
 | `/etc/skillhub/alertmanager.yml` | 由範本代入 SMTP 設定 | `skillhub-bootstrap` |
 | `/var/lib/skillhub/deployed-migration` | 這個資料庫已套用到的最後一份 migration 編號 | `skillhub-migrate` |
@@ -75,7 +75,7 @@ sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-enable-timers
 
 ## 2. 換版
 
-換版就是換 `release.env` 與 `/opt/skillhub` 到另一個 commit。在自己的電腦上：
+換版就是換 `release.env`，再讓 `skillhub-checkout` 把 `/opt/skillhub` 換到它指定的 commit。在自己的電腦上：
 
 ```bash
 python tools/deploy/render.py control-plane --release <新 sha> --settings control-plane.settings --release-env > release.env
@@ -86,8 +86,7 @@ python tools/deploy/render.py control-plane --release <新 sha> --settings contr
 ```bash
 sudo systemctl start skillhub-backup
 sudo install -m 0644 release.env /etc/skillhub/release.env
-set -a; . /etc/skillhub/release.env; set +a
-cd /opt/skillhub && sudo git fetch -q --depth 1 "$SKILLHUB_REPOSITORY" "$SKILLHUB_RELEASE" && sudo git checkout -q FETCH_HEAD && test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE"
+sudo /usr/local/sbin/skillhub-checkout
 sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-bootstrap
 sudo /opt/skillhub/infra/deploy/control-plane/bin/skillhub-migrate
 sudo systemctl restart skillhub

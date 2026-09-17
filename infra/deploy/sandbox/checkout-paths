@@ -1,0 +1,7 @@
+infra/deploy/common/
+infra/deploy/sandbox/
+infra/egress/allowlist.yaml
+infra/nodes/gvisor-baseline.txt
+tools/ci/check_egress_allowlist.py
+tools/egress/render.py
+tools/sec009/t8-node-probe.py

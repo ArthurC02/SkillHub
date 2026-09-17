@@ -1,0 +1,12 @@
+[Unit]
+Description=Skill Hub sandbox node declares itself serving once sandboxd answers under gVisor
+Requires=skillhub-sandboxd.service
+After=skillhub-sandboxd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/skillhub/infra/deploy/sandbox/bin/skillhub-mark-serving
+
+[Install]
+WantedBy=multi-user.target

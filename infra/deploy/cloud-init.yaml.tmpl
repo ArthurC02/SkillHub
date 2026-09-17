@@ -7,15 +7,20 @@ write_files:
     permissions: "0644"
     content: |
 @RELEASE_ENV@
+  - path: /usr/local/sbin/skillhub-checkout
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      set -a; . /etc/skillhub/release.env; set +a
+      install -d /opt/skillhub
+      cd /opt/skillhub
+      [ -d .git ] || git init -q
+      git remote remove origin 2>/dev/null || true
+      git remote add origin "$SKILLHUB_REPOSITORY"
+      git fetch -q --depth 1 --filter=blob:none origin "$SKILLHUB_RELEASE"
+      git show "FETCH_HEAD:infra/deploy/$SKILLHUB_ROLE/checkout-paths" | git sparse-checkout set --no-cone --stdin
+      git checkout -q --force FETCH_HEAD
+      test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE"
 runcmd:
-  - - sh
-    - -c
-    - >-
-      set -eu;
-      set -a; . /etc/skillhub/release.env; set +a;
-      install -d /opt/skillhub; cd /opt/skillhub;
-      git init -q;
-      git fetch -q --depth 1 "$SKILLHUB_REPOSITORY" "$SKILLHUB_RELEASE";
-      git checkout -q FETCH_HEAD;
-      test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE";
-      exec "infra/deploy/$SKILLHUB_ROLE/bin/skillhub-bootstrap"
+  - [sh, -c, 'set -eu; /usr/local/sbin/skillhub-checkout; . /etc/skillhub/release.env; exec "/opt/skillhub/infra/deploy/$SKILLHUB_ROLE/bin/skillhub-bootstrap"']

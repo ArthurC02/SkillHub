@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+set -a
+. /etc/skillhub/release.env
+set +a
+here=/opt/skillhub/infra/deploy
+facts=/etc/skillhub/node.json
+bridge_gateway=172.17.0.1
+
+if [ -e "$facts" ]; then
+    echo "skillhub-bootstrap: $facts exists, so this node was already built; sandbox nodes are replaced, not rebuilt in place" >&2
+    exit 1
+fi
+
+apt-get install -y --no-install-recommends nftables python3-yaml
+
+printf 'br_netfilter\n' >/etc/modules-load.d/skillhub-sandbox.conf
+modprobe br_netfilter
+printf '%s\n' 'net.bridge.bridge-nf-call-iptables = 1' 'net.ipv4.ip_forward = 1' \
+    'net.ipv6.conf.all.disable_ipv6 = 1' 'net.ipv6.conf.default.disable_ipv6 = 1' >/etc/sysctl.d/90-skillhub-sandbox.conf
+sysctl --system >/dev/null
+
+"$here/sandbox/bin/install-gvisor"
+install -D -m 0644 "$here/sandbox/daemon.json" /etc/docker/daemon.json
+docker version >/dev/null 2>&1 || "$here/common/install-docker"
+systemctl restart docker
+
+install -d -m 0755 /etc/skillhub/egress
+python3 /opt/skillhub/tools/egress/render.py --out /etc/skillhub/egress \
+    --sandbox-iface docker0 --control-plane "$SKILLHUB_CONTROL_PLANE_IP"
+nft -c -f /etc/skillhub/egress/nftables.conf
+install -m 0644 /etc/skillhub/egress/nftables.conf /etc/nftables.conf
+systemctl enable nftables.service
+systemctl restart nftables.service
+
+docker pull "$SKILLHUB_SANDBOX_IMAGE"
+container="$(docker create "$SKILLHUB_SANDBOXD_IMAGE")"
+docker cp "$container:/usr/local/bin/sandboxd" /usr/local/bin/sandboxd.new
+docker rm "$container" >/dev/null
+chmod 0755 /usr/local/bin/sandboxd.new
+mv -f /usr/local/bin/sandboxd.new /usr/local/bin/sandboxd
+
+cat >/etc/skillhub/sandboxd.env <<EOF
+SKILLHUB_SANDBOX_RUNTIME=runsc
+SKILLHUB_SANDBOX_NETWORK=bridge
+SKILLHUB_SANDBOX_EGRESS_ALLOW=/etc/skillhub/egress/egress-allow.json
+SKILLHUB_SANDBOX_ADDR=$SKILLHUB_PRIVATE_IP:9000
+SKILLHUB_SANDBOX_P02_TARGETS=$SKILLHUB_CONTROL_PLANE_IP:5432,169.254.169.254:80,$SKILLHUB_PRIVATE_IP:9000,$bridge_gateway:9000
+EOF
+
+id skillhub-sandboxd >/dev/null 2>&1 ||
+    useradd --system --user-group --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin skillhub-sandboxd
+install -d -m 0700 /etc/skillhub/secrets
+install -m 0644 "$here"/sandbox/systemd/* /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable skillhub-sandboxd.service skillhub-serving.service
+
+node_id="$(cloud-init query instance_id 2>/dev/null || hostname)"
+printf '{"node_id": "%s", "role": "sandbox-exec", "node_created_at": "%s", "iac_commit": "%s", "build_phase": "provision"}\n' \
+    "$node_id" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SKILLHUB_RELEASE" >"$facts.new"
+mv -f "$facts.new" "$facts"
+echo "skillhub-bootstrap: sandbox node installed; place /etc/skillhub/secrets/sandboxd.env, then systemctl start skillhub-serving"

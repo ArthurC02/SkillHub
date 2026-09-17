@@ -86,6 +86,8 @@ jobs:
               - 'infra/images/web/**'
               - 'infra/images/llm/**'
               - 'infra/images/postgres/**'
+              - 'apps/sandbox/**'
+              - 'infra/images/sandboxd/**'
               - 'infra/compose/**'
               - 'tools/ci/**'
               - '.dockerignore'
@@ -96,6 +98,12 @@ jobs:
               - 'infra/compose/gateway.yml'
               - 'infra/observability/**'
               - 'infra/images/postgres/skillhub-*'
+              - 'infra/images/runtime-agent-sdk/Dockerfile'
+              - 'infra/egress/**'
+              - 'infra/nodes/**'
+              - 'tools/egress/**'
+              - 'tools/ci/check_egress_allowlist.py'
+              - 'tools/sec009/t8-node-probe.py'
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
               - '.github/workflows/ci.yml'
@@ -586,9 +594,28 @@ jobs:
         env:
           POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
         run: bash tools/ci/backup-drill.sh
+      - name: Build the sandboxd image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/sandboxd/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=sandboxd
+          cache-to: type=gha,mode=max,scope=sandboxd
+      - name: The sandboxd binary runs and refuses to start without a token
+        env:
+          SANDBOXD_IMAGE: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
+        run: |
+          set -uo pipefail
+          output=$(docker run --rm "$SANDBOXD_IMAGE" 2>&1)
+          status=$?
+          echo "$output"
+          [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
   images-push:
-    needs: [images, web, platform, llm, devctl, contracts-drift, dependency-audit]
+    needs: [images, web, platform, llm, sandbox, devctl, contracts-drift, dependency-audit]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -637,3 +664,11 @@ jobs:
           tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
           push: true
           cache-from: type=gha,scope=postgres
+      - name: Push the sandboxd image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: infra/images/sandboxd/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=sandboxd

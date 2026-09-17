@@ -60,7 +60,9 @@ Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProv
 
 以 gVisor（`runsc`）作為使用者態核心攔截層，疊加在決策 4 的基線之上。選擇理由：一般雲端 VM 即可執行，不需裸機或巢狀虛擬化；沿用容器映像與工具鏈；比加固容器（runc＋seccomp）多一層核心攻擊面隔離，比 MicroVM 的維運與部署平台限制輕。
 
-節點編排採 **compose-per-VM**：每台節點跑 Docker Engine（`containerd`＋`runsc`，`daemon.json` 註冊 runtime、`--icc=false`、`--iptables=true`），節點上只有一個服務 `sandboxd`；不引入 Kubernetes 或任何叢集排程器——調度決策已經在控制平面（依可用 slot 與 egress 模式選節點），第二個排程器只會與它衝突；也不引入 Nomad 等替代叢集技術。節點以 IaC 建置（cloud-init＋compose 檔＋Egress 允許清單），無狀態、不接受手動修改，改動即重建。節點入站只開 `sandboxd` 服務埠且來源限控制平面 IP，其餘全部 DROP；SSH 走供應商 console，不作為部署流程的一部分。
+節點編排採**每台 VM 一個主機服務**：每台節點跑 Docker Engine（`daemon.json` 註冊 `runsc` runtime、`icc: false`、`iptables: true`，Run 容器接在預設 bridge），節點上唯一的服務是 `sandboxd`，由 systemd 以非 root 使用者（附 docker 群組）執行並套 systemd 的沙箱化選項；容器只有 Run 的 gVisor 容器與 `sandboxd` 的常駐 P-02 探針。`sandboxd` 不放進容器：它要操作 dockerd，放進容器就得把 `docker.sock` 以可寫 bind mount 掛進去——那正是節點准入 C-01b 擋下的形狀，而且換不到任何隔離，握有 `docker.sock` 就等於握有主機 root。`sandboxd` 的執行檔由 CI 建成映像、以 commit SHA 發佈，節點從釘 digest 的映像取出。不引入 Kubernetes 或任何叢集排程器——調度決策已經在控制平面（依可用 slot 與 egress 模式選節點），第二個排程器只會與它衝突；也不引入 Nomad 等替代叢集技術。
+
+節點以 IaC 建置（cloud-init＋Egress 允許清單），無狀態、不接受手動修改，改動即重建：建置腳本在已建置過的節點上拒絕重跑。節點上的 repo 是**部分 checkout**，只取該角色 `checkout-paths` 列出的部署檔；完整 repo 帶著測試 fixture 裡的資料庫連線字串，會讓節點准入 P-05 失敗，也把節點用不到的程式碼放上一台跑不受信任內容的機器。`sandboxd` 啟動前先確認 nftables 規則已載入、bridge 流量經過 netfilter、`runsc` 已註冊，任一不成立就不啟動。節點入站只開 `sandboxd` 服務埠且來源限控制平面 IP，其餘全部 DROP；SSH 走供應商 console，不作為部署流程的一部分。
 
 **節點以 7 天為週期滾動重建**，另有事件觸發的立即重建：gVisor 安全基準版本變更、逃逸疑慮、該節點清理連續失敗。重建週期不與映像重掃週期同步——兩者換的內容（OS／gVisor 對比 Runtime 映像內容）與變更節奏不同。
 
@@ -81,9 +83,9 @@ Sandbox 由一個獨立部署在專屬執行區域的 Provider（`SelfHostedProv
 
 **明示的殘餘風險**：一次成功的 gVisor 逃逸可觸及同節點其他 Run 執行中的資料。此風險在 MVP 規模下被接受，緩解手段是 7 天重建與一鍵全池停用；一旦威脅模型或多租戶規模升級，對應動作是為高安全等級需求新增 MicroVM 或受管沙箱服務的 Provider，而不是改變同節點多 Run 的政策。
 
-### 決策 7：Egress 以 nftables default-deny 與固定 DNS 強制，允許清單分兩層
+### 決策 7：Egress 以 nftables default-deny 強制、沙箱沒有 DNS，允許清單分兩層
 
-不部署 L7 Proxy（Squid／Envoy）。強制點在主機側（`forward` 鏈或 Run 的 netns 內，不是容器內的 `output` 鏈——容器內規則能被逃逸後改掉），預設 `drop` 並記錄，只 `accept` 到允許清單渲染出的釘選位址；DNS 走節點固定解析器，允許清單內的名字只有靜態記錄，其餘不遞迴、不轉發，結構性排除 DNS Rebinding 與 tunneling。IPv6（`ip6`）鏈同樣維持預設 drop 且不得渲染 accept 規則，防止以 AAAA 解析繞過只涵蓋 IPv4 的允許清單。
+不部署 L7 Proxy（Squid／Envoy）。強制點在主機側（`forward` 鏈或 Run 的 netns 內，不是容器內的 `output` 鏈——容器內規則能被逃逸後改掉），預設 `drop` 並記錄，只 `accept` 到允許清單渲染出的釘選位址。**沙箱沒有 DNS**：沙箱層唯一的目的地以釘選 IP 表達，平台交給 Run 的模型閘道位址就是 IP 字面值，forward 鏈丟棄所有往 53 埠的流量；Run 容器接在 Docker 預設 bridge，因為使用者自訂網路帶有 dockerd 代為向外查詢的內建 DNS，那條查詢路徑不保證經過 forward 鏈。沒有解析，DNS Rebinding 與 tunneling 就沒有落腳處。渲染器仍產生一份固定解析器設定（只回答允許清單的靜態記錄、其餘 NXDOMAIN），留給允許清單出現非 IP 目的地的那天，節點目前不啟用。IPv6（`ip6`）鏈同樣維持預設 drop 且不得渲染 accept 規則，防止以 AAAA 解析繞過只涵蓋 IPv4 的允許清單；這張表不分介面，節點因此在建置時關閉 IPv6，否則節點自己的 IPv6 連線（套件更新、拉映像）也會被它切斷。
 
 允許清單按信任等級分兩層：
 

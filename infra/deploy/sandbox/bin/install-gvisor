@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+baseline="$(awk '!/^#/ && NF { print $1; exit }' /opt/skillhub/infra/nodes/gvisor-baseline.txt)"
+case "$baseline" in
+    release-*) ;;
+    *)
+        echo "install-gvisor: infra/nodes/gvisor-baseline.txt holds '$baseline', not a gVisor release" >&2
+        exit 1
+        ;;
+esac
+url="https://storage.googleapis.com/gvisor/releases/release/${baseline#release-}/$(uname -m)"
+work="$(mktemp -d)"
+cd "$work"
+for file in runsc containerd-shim-runsc-v1; do
+    curl -fsSL -o "$file" "$url/$file"
+    curl -fsSL -o "$file.sha512" "$url/$file.sha512"
+done
+sha512sum -c runsc.sha512 containerd-shim-runsc-v1.sha512
+install -m 0755 -t /usr/local/bin runsc containerd-shim-runsc-v1
+cd /
+rm -rf "$work"
+runsc --version

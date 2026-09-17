@@ -1,0 +1,17 @@
+{
+  "runtimes": {
+    "runsc": {
+      "path": "/usr/local/bin/runsc"
+    }
+  },
+  "bip": "172.17.0.1/16",
+  "icc": false,
+  "iptables": true,
+  "ipv6": false,
+  "live-restore": false,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "16m",
+    "max-file": "1"
+  }
+}

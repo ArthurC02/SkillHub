@@ -105,7 +105,7 @@
 | --- | --- | --- | --- |
 | 甲-1 | 負責人＋真機 | `SEC-009` 十個測項全跑 | **45 項基線全數 pass、0 項 unknown**。任一 fail 或 unknown 即不得開放，**無例外流程**。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`（判定表 ＋ `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結），保存 ≥ 1 年 |
 | 甲-2 | 同上 | `SBX-010` 的工作項側 | 同甲-1。**現有的真實容器驗證（非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等）不等於逃逸測試通過** |
-| 甲-3 | 同上 | `SBX-005`／`007` 的生產網路面 | 每 Run netns ＋ `--icc=false`（關掉 dev 現存的**不需逃逸**的跨 Run 橫向路徑）；nftables default-deny ＋固定 DNS；`infra/egress/allowlist.yaml` 的 `pinned_ip` 已填實際值且**不是控制平面節點**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的強制條件，由測項 T5-7 抓）。**LiteLLM 必須移到沙箱面專屬節點**——現行 compose 的 `127.0.0.1:4000` 是 dev 形態，生產不可複製 |
+| 甲-3 | 同上 | `SBX-005`／`007` 的生產網路面 | 每 Run netns ＋ `--icc=false`（關掉 dev 現存的**不需逃逸**的跨 Run 橫向路徑）；nftables default-deny、沙箱沒有 DNS（閘道位址是 IP 字面值）；`infra/egress/allowlist.yaml` 的 `pinned_ip` 已填實際值且**不是控制平面節點**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的強制條件，由測項 T5-7 抓）。**LiteLLM 必須移到沙箱面專屬節點**——現行 compose 的 `127.0.0.1:4000` 是 dev 形態，生產不可複製 |
 | 甲-4 | 同上 | `SBX-002` 的閘門 A 節點准入探針 | 探針在**真實節點上**查得到已發佈映像的 SBOM 與掃描 attestation；到期前 7 天告警的**發送端**已接 |
 
 **兩個要在第一台節點上先確認的未知數**（[README.md §10 R1](README.md)）：
@@ -188,11 +188,11 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 | `GENERATE_SKILL_EXPOSED`／`CREATION_EXPOSED` | 未設＝不曝光，**這正是封測要的**：M5 的生成入口不得對封測使用者出現（`01` §10 ⛔） | **保持未設**；只有字面值 `on` 會打開 |
 | `LLM_SERVICE_URL`／`LLM_SERVICE_TOKEN` | 搜尋只剩 FTS、評估判定一律 `undetermined`；**種入之前就要設**，種進去的內容不會事後補索引 | `apps/llm` 的內部位址；同一把隨機 token 給 `cmd/api`、`cmd/worker` 與 `apps/llm` |
 | `SKILLHUB_TRACE_INGEST_URL`／`SKILLHUB_TRACE_INGEST_SECRET` | Run 的 Trace 收不到（`cmd/api` 只印一行 warning） | `cmd/api` 與 `cmd/worker` 設同一組；URL 必須是沙箱節點連得到的 API 位址 |
-| `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>` | 沒有 provider ⇒ 每個 Run 都派不出去；有 provider 卻沒有它的 token ⇒ **`cmd/api` 與 `cmd/worker` 拒絕啟動** | `name=https://節點位址`；`<NAME>` 是大寫的 provider 名稱，值等於該節點 `sandboxd` 的 `SKILLHUB_SANDBOX_TOKEN` |
+| `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>` | 沒有 provider ⇒ 每個 Run 都派不出去；有 provider 卻沒有它的 token ⇒ **`cmd/api` 與 `cmd/worker` 拒絕啟動** | `name=http://節點私有位址:9000`；`<NAME>` 是大寫的 provider 名稱，值等於該節點 `sandboxd` 的 `SKILLHUB_SANDBOX_TOKEN`（[沙箱節點 runbook](../../../runbooks/sandbox-node.md) §5） |
 
 **完整變數清單是 [`.env.example`](../../../../.env.example)**：`automation-check` 的 `env-declared` 保證每個服務讀的變數都列在裡面，`capability-table` 保證每一列都說得出它擋著什麼。本表只列不設會安靜壞掉、或設錯會變危險的。
 
-**沙箱節點（`sandboxd`）另有一組，全部在該節點上設**：
+**沙箱節點（`sandboxd`）另有一組**。照[沙箱節點 runbook](../../../runbooks/sandbox-node.md) 建的節點，除了 token 以外都由建置腳本寫好，而且 `sandboxd` 每次啟動前會再檢查一次；下面三項是手動建節點時要自己做到的事：
 
 - [ ] `SKILLHUB_SANDBOX_TOKEN` 必填（未設拒絕啟動），值與平台側 `SKILLHUB_SANDBOX_TOKEN_<NAME>` 相同
 - [ ] `SKILLHUB_SANDBOX_RUNTIME=runsc`。**只有設了它，下面這些拒絕啟動的檢查才會生效**：`SKILLHUB_SANDBOX_IMAGE` 必須是 `@sha256:` digest、`SKILLHUB_SANDBOX_DEV_CMD` 與 `SKILLHUB_CLEAN_MODE` 必須未設、`SKILLHUB_SANDBOX_P02_TARGETS` 必須列出沙箱不得連到的位址（控制平面的 Postgres、API、物件儲存、雲端 metadata）
@@ -200,7 +200,7 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 
 **映像與啟動順序**：
 
-- [ ] 四個映像由 CI 在 main 推到 GHCR，tag 是 commit SHA：`ghcr.io/arthurc02/skillhub-platform`、`skillhub-web`、`skillhub-llm`、`skillhub-postgres`（pgvector＋WAL-G，推送前 CI 先做一次備份→還原→比對）。**四個取同一個 SHA**，且那個 SHA 的 CI 是綠的（`devctl ci-status <sha>`）；platform 映像裡有 `api`／`worker`／`maintenance`／`reindex` 四個指令
+- [ ] 五個映像由 CI 在 main 推到 GHCR，tag 是 commit SHA：`ghcr.io/arthurc02/skillhub-platform`、`skillhub-web`、`skillhub-llm`、`skillhub-postgres`（pgvector＋WAL-G，推送前 CI 先做一次備份→還原→比對）、`skillhub-sandboxd`（沙箱節點從它取出執行檔）。**全部取同一個 SHA**，且那個 SHA 的 CI 是綠的（`devctl ci-status <sha>`）；platform 映像裡有 `api`／`worker`／`maintenance`／`reindex` 四個指令
 - [ ] 順序：Postgres 與物件儲存 → §2.2 migration → `apps/llm` → `cmd/worker` → `cmd/api` → web。**worker 必須在跑**：月分割的建立在 worker，不在 cron
 - [ ] 控制平面照 [控制平面 runbook](../../../runbooks/control-plane.md) 建立：user-data 由 `tools/deploy/render.py` 產生、秘密放 `/etc/skillhub/secrets`（600）、TLS 由 Caddy 自動申請、Postgres 連續封存＋每日完整備份＋每月還原演練、保存期工作由 systemd timer 觸發。**上線前手動跑一次備份與一次演練，演練印出的列數與線上資料庫對過**（runbook §3）；migration 用 `skillhub-migrate`，不照上面 §2.2 手打
 
@@ -293,7 +293,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 
 ### 2.8 仍待定值或部署驗證的技術債
 
-- [ ] **`DEPLOY-IAC-001`**：部署負責人依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)建立 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。**✅ 2026-09-10 目標已定值（`05` R-43）**：Hetzner Cloud／Falkenstein、第一批 1 台 CPX31（4 vCPU／8 GB／160 GB NVMe）、每月預算上限 US$60。cloud-init 從此有目標。同批定案 `/etc/skillhub/node.json` 的五個必填欄位（`05` R-17c）：`node_id`、`role`（字面值 `sandbox-exec`）、`node_created_at`、`iac_commit`、**`build_phase`**——最後一欄是新的，cloud-init 在建置階段寫 `provision`、服役後由開機腳本改寫為 `serving`，用來取代閘門 A 探針目前那個 2 秒容差的啟發式（啟發式會在一台慢節點上誤判，而沒有人會知道）。
+- [ ] **`DEPLOY-IAC-001`**：部署負責人依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)建立 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。**✅ 2026-09-10 目標已定值（`05` R-43）**：Hetzner Cloud／Falkenstein、第一批 1 台 CPX31（4 vCPU／8 GB／160 GB NVMe）、每月預算上限 US$60。cloud-init 從此有目標。同批定案 `/etc/skillhub/node.json` 的五個必填欄位（`05` R-17c）：`node_id`、`role`（字面值 `sandbox-exec`）、`node_created_at`、`iac_commit`、**`build_phase`**——最後一欄是新的，cloud-init 在建置階段寫 `provision`、服役後由開機腳本改寫為 `serving`，用來取代閘門 A 探針目前那個 2 秒容差的啟發式（啟發式會在一台慢節點上誤判，而沒有人會知道）。**2026-09-17：做法進 repo，沒有在真機上跑過**——`tools/deploy/render.py sandbox`＋`infra/deploy/sandbox/`，步驟與准入順序在[沙箱節點 runbook](../../../runbooks/sandbox-node.md)；勾選仍要該節點上的 SEC-009 證據。
 - [ ] **Suite 1 在該節點上跑過一次，結果存檔**（**2026-09-10 新增，`05` R-6 第 1 條裁定「是」**）。Suite 1 只要 Linux ＋ Docker ＋ runsc（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)已推翻巢狀虛擬化的前提），在節點上跑一次是一天的事。**這一格擋的是「第一位外部使用者的第一個 Run」**——在它之前沒有跑過，等於第一個外部使用者在一台從來沒有被驗過的節點上跑他自己的程式碼，而那正是[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)說「沒有答案等於否」時所指的那個預設。與閘門 A 節點准入探針同一次執行
 - [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。**✅ 2026-09-05 定值：3.13**（[`05` R-44](../../05-pending-rulings.md)）。落地路徑已本機驗證（`node:22-trixie-slim` 讓 apt 原生 `python3` 就是 3.13.5，`constraints.txt` 的鎖版不變），**但未推上 main**：`infra/images/README.md`（2026-08-29 夯實稽核）已把「換 base 發行版需要重跑 SEC-009」列為前提，而 SEC-009 需要的 gVisor 節點就是甲-5／R-43 還沒有的那台。這一格因此仍未勾，理由從「沒有值」變成「有值但沒有 gVisor 證據」。
 - [ ] **`LLM-RES-001`（partial）**：既有 query 長度三層上限保留；部署負責人補 anonymous search 的分散式 rate limit／成本保護，並證明拒絕請求不會呼叫 embedding 或 match-reason LLM。

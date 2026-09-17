@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+secret="${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/sandboxd.env"
+allow="${SKILLHUB_SANDBOX_EGRESS_ALLOW:-/etc/skillhub/egress/egress-allow.json}"
+status=0
+
+refuse() {
+    echo "preflight: $*" >&2
+    status=1
+}
+
+if [ ! -s "$secret" ]; then
+    refuse "$secret is missing or empty"
+elif [ "$(stat -c '%a' "$secret")" != 600 ]; then
+    refuse "$secret is mode $(stat -c '%a' "$secret"); secrets must be 600"
+elif ! grep -Eq '^SKILLHUB_SANDBOX_TOKEN=[^[:space:]]{32,}$' "$secret"; then
+    refuse "$secret does not set SKILLHUB_SANDBOX_TOKEN to at least 32 characters"
+fi
+
+for name in SKILLHUB_SANDBOXD_IMAGE SKILLHUB_SANDBOX_IMAGE; do
+    ref="$(printenv "$name" || true)"
+    if ! printf '%s' "$ref" | grep -Eq '@sha256:[0-9a-f]{64}$'; then
+        refuse "$name='$ref' is not pinned by digest; a tag can move under a running node"
+    fi
+done
+
+if [ ! -s "$allow" ]; then
+    refuse "$allow is missing; sandboxd would declare an egress route the node never rendered"
+fi
+if ! nft list table ip skillhub >/dev/null 2>&1; then
+    refuse "the skillhub nftables table is not loaded, so nothing stops a sandbox reaching the network"
+fi
+if [ "$(sysctl -n net.bridge.bridge-nf-call-iptables 2>/dev/null || true)" != 1 ]; then
+    refuse "net.bridge.bridge-nf-call-iptables is not 1, so traffic between two sandboxes bypasses the ruleset"
+fi
+if ! docker info --format '{{range $name, $_ := .Runtimes}}{{$name}} {{end}}' 2>/dev/null | grep -qw runsc; then
+    refuse "dockerd has no runsc runtime registered"
+fi
+
+exit "$status"

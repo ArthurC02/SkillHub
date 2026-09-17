@@ -28,41 +28,79 @@ SKILLHUB_SMTP_USERNAME=alerts@skillhub.example
 SKILLHUB_GATEWAY_URL=http://10.0.0.3:4000
 EOF
 
-step "user-data renders, and the renderer's own tests pass"
+step "user-data renders, every node checkout carries what it runs, and the renderers' own tests pass"
 docker run --rm -e OWNER="$OWNER" -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends cloud-init systemd >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+    cloud-init systemd git python3-yaml >/dev/null
+  git config --global --add safe.directory /repo
   python3 test_render.py
-  python3 -c "
+  python3 test_checkout.py
+  python3 test_sandbox_node.py
+  python3 - <<"PY"
 import render
-env = render.release_env(\"control-plane\", \"0\" * 40, render.read_settings(open(\"/work/settings\").read()),
-                         resolve=lambda repository, tag: \"sha256:\" + \"0\" * 64)
-open(\"/work/release.env\", \"w\").write(env)
-open(\"/work/user-data.yaml\", \"w\").write(render.cloud_init(env))
-gateway = render.release_env(\"gateway\", \"0\" * 40, {\"SKILLHUB_PRIVATE_IP\": \"10.0.0.3\"})
-open(\"/work/gateway-release.env\", \"w\").write(gateway)
-open(\"/work/gateway-user-data.yaml\", \"w\").write(render.cloud_init(gateway))
-"
-  cloud-init schema --config-file /work/user-data.yaml
-  cloud-init schema --config-file /work/gateway-user-data.yaml
+digest = lambda repository, tag: "sha256:" + "0" * 64
+release = "0" * 40
+settings = {
+    "control-plane": render.read_settings(open("/work/settings").read()),
+    "gateway": {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
+    "sandbox": {"SKILLHUB_PRIVATE_IP": "10.0.0.4", "SKILLHUB_CONTROL_PLANE_IP": "10.0.0.2", "SKILLHUB_SANDBOX_SLOTS": "2"},
+}
+for role, values in settings.items():
+    env = render.release_env(role, release, values, resolve=digest,
+                             read_file=lambda release, path: open("/repo/" + path).read())
+    open("/work/%s-release.env" % role, "w").write(env)
+    open("/work/%s-user-data.yaml" % role, "w").write(render.cloud_init(env))
+PY
+  for role in control-plane gateway sandbox; do
+    cloud-init schema --config-file "/work/$role-user-data.yaml"
+    python3 checkout.py "$role" --stage "/work/checkout-$role"
+  done
 
-  for script in control-plane/bin/skillhub-preflight control-plane/bin/skillhub-alert gateway/bin/skillhub-preflight; do
+  sandbox=/work/checkout-sandbox
+  python3 "$sandbox/tools/egress/render.py" --out /work/sandbox-egress --sandbox-iface docker0 --control-plane 10.0.0.2
+  python3 -m json.tool "$sandbox/infra/deploy/sandbox/daemon.json" >/dev/null
+  python3 - "$sandbox" <<"PY"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("probe", sys.argv[1] + "/tools/sec009/t8-node-probe.py")
+probe = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(probe)
+probe.CRED_PATHS = (sys.argv[1],)
+report = probe.Report()
+probe.check_p05(report)
+row = report.rows[0]
+print("P-05 on the sandbox checkout: %s -- %s" % (row["status"], row["detail"]))
+sys.exit(0 if row["status"] == probe.PASS else 1)
+PY
+
+  for script in control-plane/bin/skillhub-preflight control-plane/bin/skillhub-alert gateway/bin/skillhub-preflight \
+                sandbox/bin/skillhub-preflight sandbox/bin/skillhub-mark-serving; do
     mkdir -p "$(dirname "/opt/skillhub/infra/deploy/$script")"
     printf "#!/bin/sh\n" >"/opt/skillhub/infra/deploy/$script"
     chmod +x "/opt/skillhub/infra/deploy/$script"
   done
-  printf "#!/bin/sh\n" >/usr/bin/docker && chmod +x /usr/bin/docker
+  for binary in /usr/bin/docker /usr/local/bin/sandboxd; do printf "#!/bin/sh\n" >"$binary" && chmod +x "$binary"; done
   install -m 0644 /repo/infra/deploy/control-plane/systemd/* /etc/systemd/system/
   cd /etc/systemd/system
   schedule=$(sed -n "s/^\([a-z]*\) \([a-z-]*\)$/skillhub-\1@\2.timer/p" /repo/infra/deploy/control-plane/maintenance-schedule)
   report=$(systemd-analyze verify skillhub.service skillhub-backup.timer skillhub-restore-drill.timer \
     skillhub-alert@skillhub-backup.service $schedule 2>&1 | grep -v "docker.service" || true)
   if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
-  mkdir -p /gateway && install -m 0644 /repo/infra/deploy/gateway/systemd/* /gateway/
-  report=$(cd /gateway && systemd-analyze verify ./skillhub.service 2>&1 | grep -v "docker.service" || true)
-  if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
+  for role in gateway sandbox; do
+    mkdir -p "/$role" && install -m 0644 /repo/infra/deploy/$role/systemd/* "/$role/"
+    report=$(cd "/$role" && systemd-analyze verify ./*.service 2>&1 | grep -v "docker.service\|nftables.service" || true)
+    if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
+  done
   echo "systemd units verify clean"
   chown -R "$OWNER" /work
+'
+
+step "the sandbox ruleset, rendered the way bootstrap renders it, parses"
+docker run --rm --cap-add NET_ADMIN -v "$WORK_HOST/sandbox-egress:/egress:ro" "$UBUNTU" bash -euc '
+  apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends nftables >/dev/null
+  nft -c -f /egress/nftables.conf
+  grep -q "define SANDBOX_IFACE = \"docker0\"" /egress/nftables.conf
+  echo "nftables ruleset parses"
 '
 
 step "compose files resolve with a rendered release"
@@ -72,8 +110,8 @@ for file in platform.env llm.env postgres.env postgres-exporter.env smtp-passwor
   echo "SKILLHUB_SECRETS_DIR=$WORK_HOST/secrets"
   echo "SKILLHUB_CONFIG_DIR=$WORK_HOST"
   echo "SKILLHUB_DEPLOY_DIR=$ROOT"
-} >>"$WORK/release.env"
-docker compose --env-file "$WORK_HOST/release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config -q
+} >>"$WORK/control-plane-release.env"
+docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra/compose/control-plane.yml" --profile jobs config -q
 echo "SKILLHUB_SECRETS_DIR=$WORK_HOST/secrets" >>"$WORK/gateway-release.env"
 echo "X=1" >"$WORK/secrets/litellm.env"
 docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config -q
@@ -83,7 +121,7 @@ docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 step "Alertmanager configuration and probe targets rendered the way bootstrap renders them"
-docker run --rm -e OWNER="$OWNER" --env-file "$WORK_HOST/release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
+docker run --rm -e OWNER="$OWNER" --env-file "$WORK_HOST/control-plane-release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends gettext-base >/dev/null
   vars=$(sed -n "s/^envsubst \x27\(.*\)\x27 \\\\$/\1/p" /cp/bin/skillhub-bootstrap)
   [ -n "$vars" ] || { echo "could not read the envsubst variable list from skillhub-bootstrap"; exit 1; }
@@ -106,7 +144,7 @@ docker run --rm --entrypoint promtool \
 step "node scripts are POSIX sh"
 docker run --rm -v "$ROOT:/repo:ro" -w /repo "$SHELLCHECK" -s sh -S warning \
   infra/deploy/common/install-docker infra/deploy/control-plane/bin/* infra/deploy/gateway/bin/* \
-  infra/images/postgres/skillhub-backup infra/images/postgres/skillhub-restore-drill
+  infra/deploy/sandbox/bin/* infra/images/postgres/skillhub-backup infra/images/postgres/skillhub-restore-drill
 
 echo
 echo "deploy configuration: ok"

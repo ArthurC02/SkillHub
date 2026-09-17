@@ -56,11 +56,11 @@ sudo systemctl start skillhub
 | --- | --- |
 | 控制平面 `control-plane.settings` | `SKILLHUB_GATEWAY_URL=http://<閘道私有位址>:4000`，照控制平面 runbook §2 換版一次，讓 Prometheus 開始探測它 |
 | 控制平面 `llm.env` | `LITELLM_BASE_URL=http://<閘道私有位址>:4000`、`LITELLM_API_KEY=<Virtual Key>` |
-| 控制平面 `platform.env` | `SKILLHUB_MODEL_GATEWAY_URL`（沙箱節點連得到的位址）、`SKILLHUB_MODEL_GATEWAY_ADMIN_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` |
+| 控制平面 `platform.env` | `SKILLHUB_MODEL_GATEWAY_URL`（`http://<閘道私有位址>:4000`，必須是 IP，見[沙箱節點 runbook](sandbox-node.md) §5）、`SKILLHUB_MODEL_GATEWAY_ADMIN_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` |
 
 驗：控制平面的 Prometheus 上 `probe_success{job="gateway"}` 是 1。把閘道的 `skillhub` 停掉五分鐘，`ModelGatewayDown` 要寄到信箱；再啟動。
 
 ## 5. 換版與重建
 
-- **換版**：`render.py gateway … --release-env`，其餘照控制平面 runbook §2，但沒有備份與 migrate 兩步。LiteLLM 自己的資料表由它啟動時建立與升級。
+- **換版**：`render.py gateway … --release-env`，放好新的 `release.env` 後 `sudo /usr/local/sbin/skillhub-checkout`、重跑 `skillhub-bootstrap`、`sudo systemctl restart skillhub`；沒有控制平面的備份、migrate 與 timer。LiteLLM 自己的資料表由它啟動時建立與升級。
 - **重建**：閘道沒有本機狀態，資料都在控制平面的 `litellm` 資料庫。照 §2～3 建新的，換掉私有位址時一併改 §4 三處。

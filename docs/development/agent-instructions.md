@@ -14,7 +14,7 @@
 | 搜尋 | 混合檢索（向量腿 ＋ FTS 腿 `UNION` 擴充候選，不做 RRF）＋ 索引時 LLM 增強 | [意圖搜尋](../adr/README.md#意圖搜尋) |
 | Agent Runtime | Claude Agent SDK，事實來源是 image digest；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG`，**不在 `tools/toolchain.yaml`**；升級必重跑四項實測 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
 | 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | [身分、Workspace、准入與額度](../adr/README.md#身分workspace准入與額度) |
-| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
+| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny、沙箱沒有 DNS，不部署 L7 Proxy | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
 | Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
 | LLM 觀測 | **不外接第三方服務**（2026-09-10 `05` R-24 裁定 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [模型閘道與可觀測性](../adr/README.md#模型閘道與可觀測性) |
 | 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | [互動創作](../adr/README.md#互動創作) |

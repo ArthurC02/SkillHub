@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+facts="${SKILLHUB_NODE_FACTS:-/etc/skillhub/node.json}"
+address="$(sed -n 's/^SKILLHUB_SANDBOX_ADDR=//p' "${SKILLHUB_SANDBOX_CONFIG:-/etc/skillhub/sandboxd.env}")"
+token="$(sed -n 's/^SKILLHUB_SANDBOX_TOKEN=//p' "${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/sandboxd.env")"
+
+attempt=0
+until capability="$(printf 'header = "Authorization: Bearer %s"\n' "$token" |
+    curl -fsS --max-time 5 -K - "http://$address/capability")"; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 60 ]; then
+        echo "mark-serving: sandboxd did not answer /capability within two minutes" >&2
+        exit 1
+    fi
+    sleep 2
+done
+
+printf '%s' "$capability" | python3 -c '
+import json, os, sys
+level = json.load(sys.stdin).get("isolation", {}).get("level")
+if level != "gvisor":
+    sys.exit("mark-serving: sandboxd reports isolation level %r, not gvisor; the node stays in provision" % level)
+path = os.environ.get("SKILLHUB_NODE_FACTS", "/etc/skillhub/node.json")
+with open(path) as handle:
+    facts = json.load(handle)
+facts["build_phase"] = "serving"
+with open(path + ".new", "w") as handle:
+    json.dump(facts, handle)
+    handle.write("\n")
+os.replace(path + ".new", path)
+'
+echo "mark-serving: $facts now declares build_phase=serving"

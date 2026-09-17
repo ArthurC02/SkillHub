@@ -80,6 +80,64 @@ def test_a_gateway_release_carries_only_its_address_and_resolves_no_image():
                  {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=nothing_to_resolve)
 
 
+SANDBOX_SETTINGS = {
+    "SKILLHUB_PRIVATE_IP": "10.0.0.4",
+    "SKILLHUB_CONTROL_PLANE_IP": "10.0.0.2",
+    "SKILLHUB_SANDBOX_SLOTS": "4",
+}
+RUNTIME_DOCKERFILE = "FROM node\nARG CLAUDE_AGENT_SDK_VERSION=0.3.233\nARG IMAGE_VERSION=2026.08-12\n"
+
+
+def runtime_dockerfile_at(text):
+    def read_file(release, path):
+        assert (release, path) == (RELEASE, render.RUNTIME_DOCKERFILE), (release, path)
+        return text
+    return read_file
+
+
+def test_a_sandbox_release_pins_sandboxd_by_commit_and_the_runtime_by_the_release_image_version():
+    resolved = []
+
+    def recording(repository, tag):
+        resolved.append((repository, tag))
+        return DIGEST
+    env = render.read_settings(render.release_env("sandbox", RELEASE, SANDBOX_SETTINGS, resolve=recording,
+                                                  read_file=runtime_dockerfile_at(RUNTIME_DOCKERFILE)))
+    assert env["SKILLHUB_SANDBOXD_IMAGE"] == "ghcr.io/arthurc02/skillhub-sandboxd:%s@%s" % (RELEASE, DIGEST)
+    assert env["SKILLHUB_SANDBOX_IMAGE"] == "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-12@%s" % DIGEST
+    assert env["SKILLHUB_SANDBOX_RUNTIME_VERSION"] == "0.3.233"
+    assert sorted(resolved) == [("skillhub-runtime-agent-sdk", "2026.08-12"), ("skillhub-sandboxd", RELEASE)]
+
+
+def test_a_runtime_image_version_that_was_never_published_refuses_the_render():
+    def runtime_missing(repository, tag):
+        return "" if repository == "skillhub-runtime-agent-sdk" else DIGEST
+    expect_error("skillhub-runtime-agent-sdk:2026.08-12 is not published", "sandbox", RELEASE, SANDBOX_SETTINGS,
+                 resolve=runtime_missing, read_file=runtime_dockerfile_at(RUNTIME_DOCKERFILE))
+
+
+def test_a_runtime_dockerfile_missing_either_version_refuses_the_render():
+    for missing in ("IMAGE_VERSION", "CLAUDE_AGENT_SDK_VERSION"):
+        text = "".join(line + "\n" for line in RUNTIME_DOCKERFILE.splitlines() if missing + "=" not in line)
+        expect_error("declares no ARG %s" % missing, "sandbox", RELEASE, SANDBOX_SETTINGS, resolve=published,
+                     read_file=runtime_dockerfile_at(text))
+
+
+def test_addresses_and_slots_must_have_their_shape():
+    for key, value, shape in [
+        ("SKILLHUB_PRIVATE_IP", "node-4.internal", "an IPv4 address"),
+        ("SKILLHUB_CONTROL_PLANE_IP", "fd00::2", "an IPv4 address"),
+        ("SKILLHUB_SANDBOX_SLOTS", "0", "a positive integer"),
+        ("SKILLHUB_SANDBOX_SLOTS", "two", "a positive integer"),
+    ]:
+        expect_error("%s=%r is not %s" % (key, value, shape), "sandbox", RELEASE,
+                     dict(SANDBOX_SETTINGS, **{key: value}), resolve=published,
+                     read_file=runtime_dockerfile_at(RUNTIME_DOCKERFILE))
+    env = render.read_settings(render.release_env("sandbox", RELEASE, dict(SANDBOX_SETTINGS, SKILLHUB_SANDBOX_SLOTS="1"),
+                                                  resolve=published, read_file=runtime_dockerfile_at(RUNTIME_DOCKERFILE)))
+    assert env["SKILLHUB_SANDBOX_SLOTS"] == "1"
+
+
 def test_an_unknown_role_is_refused():
     expect_error("unknown role", "database", RELEASE, SETTINGS, resolve=published)
 
@@ -92,9 +150,13 @@ def test_the_user_data_is_cloud_config_carrying_the_release_env_verbatim():
     files = {entry["path"]: entry for entry in document["write_files"]}
     assert files["/etc/skillhub/release.env"]["content"] == env
     assert "git" in document["packages"]
+    checkout = files["/usr/local/sbin/skillhub-checkout"]
+    assert checkout["permissions"] == "0755"
+    assert 'git show "FETCH_HEAD:infra/deploy/$SKILLHUB_ROLE/checkout-paths" | git sparse-checkout set' in checkout["content"]
+    assert 'test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE"' in checkout["content"]
     command = document["runcmd"][0][2]
-    assert 'test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE"' in command
-    assert 'exec "infra/deploy/$SKILLHUB_ROLE/bin/skillhub-bootstrap"' in command
+    assert command.index("/usr/local/sbin/skillhub-checkout") < command.index(
+        'exec "/opt/skillhub/infra/deploy/$SKILLHUB_ROLE/bin/skillhub-bootstrap"')
 
 
 def test_settings_files_ignore_comments_and_refuse_a_line_without_a_value():

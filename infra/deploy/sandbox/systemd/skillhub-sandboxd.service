@@ -1,0 +1,42 @@
+[Unit]
+Description=Skill Hub sandbox provider
+Requires=docker.service nftables.service
+After=docker.service nftables.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/skillhub/release.env
+EnvironmentFile=/etc/skillhub/sandboxd.env
+EnvironmentFile=/etc/skillhub/secrets/sandboxd.env
+ExecStartPre=+/opt/skillhub/infra/deploy/sandbox/bin/skillhub-preflight
+ExecStart=/usr/local/bin/sandboxd
+Restart=on-failure
+RestartSec=5
+User=skillhub-sandboxd
+Group=skillhub-sandboxd
+SupplementaryGroups=docker
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

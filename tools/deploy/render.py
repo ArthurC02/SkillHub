@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import ipaddress
 import json
 import pathlib
 import re
+import subprocess
 import sys
 import urllib.request
 
@@ -35,7 +37,16 @@ ROLES = {
         "settings": ["SKILLHUB_PRIVATE_IP"],
         "images": {},
     },
+    "sandbox": {
+        "settings": ["SKILLHUB_PRIVATE_IP", "SKILLHUB_CONTROL_PLANE_IP", "SKILLHUB_SANDBOX_SLOTS"],
+        "images": {
+            "SKILLHUB_SANDBOXD_IMAGE": "skillhub-sandboxd",
+        },
+        "runtime_image": "SKILLHUB_SANDBOX_IMAGE",
+    },
 }
+RUNTIME_REPOSITORY = "skillhub-runtime-agent-sdk"
+RUNTIME_DOCKERFILE = "infra/images/runtime-agent-sdk/Dockerfile"
 
 RELEASE = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -44,6 +55,20 @@ SAFE_VALUE = re.compile(r"^[A-Za-z0-9@._:/+,=-]+$")
 
 class RenderError(Exception):
     pass
+
+
+def is_ipv4(value):
+    try:
+        return ipaddress.ip_address(value).version == 4
+    except ValueError:
+        return False
+
+
+SHAPES = {
+    "SKILLHUB_PRIVATE_IP": (is_ipv4, "an IPv4 address"),
+    "SKILLHUB_CONTROL_PLANE_IP": (is_ipv4, "an IPv4 address"),
+    "SKILLHUB_SANDBOX_SLOTS": (lambda value: re.fullmatch(r"[1-9][0-9]*", value) is not None, "a positive integer"),
+}
 
 
 def read_settings(text):
@@ -77,7 +102,26 @@ def ghcr_digest(repository, tag):
         raise
 
 
-def release_env(role, release, settings, resolve=ghcr_digest):
+def git_show(release, path):
+    return subprocess.run(["git", "-C", str(ROOT), "show", "%s:%s" % (release, path)],
+                          check=True, capture_output=True, text=True).stdout
+
+
+def dockerfile_arg(dockerfile, name):
+    match = re.search(r"^ARG %s=(\S+)$" % name, dockerfile, re.MULTILINE)
+    if not match:
+        raise RenderError("%s at this release declares no ARG %s" % (RUNTIME_DOCKERFILE, name))
+    return match.group(1)
+
+
+def pinned(repository, tag, resolve, why):
+    digest = resolve(repository, tag)
+    if not DIGEST.match(digest or ""):
+        raise RenderError("%s/%s/%s:%s is not published; %s" % (REGISTRY, OWNER, repository, tag, why))
+    return "%s/%s/%s:%s@%s" % (REGISTRY, OWNER, repository, tag, digest)
+
+
+def release_env(role, release, settings, resolve=ghcr_digest, read_file=git_show):
     if role not in ROLES:
         raise RenderError("unknown role %r; known roles: %s" % (role, ", ".join(sorted(ROLES))))
     if not RELEASE.match(release):
@@ -91,6 +135,10 @@ def release_env(role, release, settings, resolve=ghcr_digest):
     if unknown:
         raise RenderError("%s does not use %s; remove it so a typo cannot pass for a setting" % (role, ", ".join(unknown)))
 
+    for key, (accepts, shape) in SHAPES.items():
+        if key in spec["settings"] and not accepts(settings[key]):
+            raise RenderError("%s=%r is not %s" % (key, settings[key], shape))
+
     values = {
         "SKILLHUB_ROLE": role,
         "SKILLHUB_RELEASE": release,
@@ -98,12 +146,14 @@ def release_env(role, release, settings, resolve=ghcr_digest):
     }
     values.update({key: settings[key] for key in spec["settings"]})
     for key, repository in spec["images"].items():
-        digest = resolve(repository, release)
-        if not DIGEST.match(digest or ""):
-            raise RenderError(
-                "%s/%s/%s:%s is not published; only a commit whose main CI pushed its images can be deployed"
-                % (REGISTRY, OWNER, repository, release))
-        values[key] = "%s/%s/%s:%s@%s" % (REGISTRY, OWNER, repository, release, digest)
+        values[key] = pinned(repository, release, resolve,
+                             "only a commit whose main CI pushed its images can be deployed")
+    if "runtime_image" in spec:
+        dockerfile = read_file(release, RUNTIME_DOCKERFILE)
+        version = dockerfile_arg(dockerfile, "IMAGE_VERSION")
+        values[spec["runtime_image"]] = pinned(RUNTIME_REPOSITORY, version, resolve,
+                                               "the runtime image workflow publishes each IMAGE_VERSION once")
+        values["SKILLHUB_SANDBOX_RUNTIME_VERSION"] = dockerfile_arg(dockerfile, "CLAUDE_AGENT_SDK_VERSION")
 
     for key, value in values.items():
         if not SAFE_VALUE.match(value):
