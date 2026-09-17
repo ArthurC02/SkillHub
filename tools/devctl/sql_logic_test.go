@@ -1,56 +1,69 @@
 package main
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestTheRealRepositoryKeepsItsSQLLogicAtTheBaseline(t *testing.T) {
+func TestTheRealRepositoryMakesNoDecisionsInSQL(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if problems := sqlLogicProblems(root); len(problems) > 0 {
-		t.Fatalf("SQL logic moved off its baseline:\n%s", strings.Join(problems, "\n"))
+		t.Fatalf("queries decide in SQL:\n%s", strings.Join(problems, "\n"))
 	}
 }
 
-func TestSQLLogicCountsDecisionsButNotComments(t *testing.T) {
+func TestSQLDecisionsAreDataBranchesLiteralListsAndIntervalsButNotMechanisms(t *testing.T) {
 	t.Parallel()
-	body := `-- CASE WHEN COALESCE( IN ('x') interval '1 day'
-SELECT case when a then 1 end, coalesce (b, 0), Coalesce(c, 0)
-FROM runs
-WHERE status in ( 'queued', 'running') AND created_at > now() - INTERVAL '1 day'
-  AND updated_at > now() - '2 hours'::interval AND id IN (SELECT id FROM x);`
-	want := sqlLogic{cases: 1, coalesces: 2, literalLists: 1, intervals: 2}
-	if got := sqlLogicOf(body); got != want {
-		t.Fatalf("sqlLogicOf = %+v, want %+v", got, want)
-	}
-}
-
-func TestTheSQLLogicRatchetOnlyLetsCountsFall(t *testing.T) {
-	t.Parallel()
-	query := func(logic sqlLogic) sqlQuery { return sqlQuery{file: "runs.sql", logic: logic} }
+	const (
+		dataCase     = "a CASE branching on data"
+		literalList  = "a literal IN list"
+		intervalLit  = "an interval literal"
+		commentedOut = "-- CASE WHEN a THEN 1 END, IN ('x'), interval '1 day'\nSELECT 1;"
+	)
 	for _, c := range []struct {
-		name     string
-		queries  map[string]sqlQuery
-		baseline map[string]sqlLogic
-		want     string
+		name string
+		body string
+		want []string
 	}{
-		{"at the baseline", map[string]sqlQuery{"Q": query(sqlLogic{cases: 1})}, map[string]sqlLogic{"Q": {cases: 1}}, ""},
-		{"a new query without logic", map[string]sqlQuery{"Q": query(sqlLogic{})}, nil, ""},
-		{"a new query with a CASE", map[string]sqlQuery{"Q": query(sqlLogic{cases: 1})}, nil, "more than its baseline"},
-		{"one more COALESCE", map[string]sqlQuery{"Q": query(sqlLogic{coalesces: 2})}, map[string]sqlLogic{"Q": {coalesces: 1}}, "more than its baseline"},
-		{"an interval literal where none was", map[string]sqlQuery{"Q": query(sqlLogic{cases: 0, intervals: 1})}, map[string]sqlLogic{"Q": {cases: 1}}, "more than its baseline"},
-		{"a literal list traded for a CASE", map[string]sqlQuery{"Q": query(sqlLogic{literalLists: 1})}, map[string]sqlLogic{"Q": {cases: 1}}, "more than its baseline"},
-		{"one fewer and the baseline not lowered", map[string]sqlQuery{"Q": query(sqlLogic{})}, map[string]sqlLogic{"Q": {cases: 1}}, "lower its baseline"},
-		{"a baseline for a removed query", map[string]sqlQuery{}, map[string]sqlLogic{"Gone": {cases: 1}}, "drop its baseline"},
+		{"constructs inside comments", commentedOut, nil},
+		{"zero values and write-once stamps", "SELECT coalesce(sum(n), 0) FROM t; UPDATE t SET at = COALESCE(at, now());", nil},
+		{"a CASE applying a named parameter", "SET at = CASE WHEN sqlc.arg(restart)::bool THEN NULL ELSE at END", nil},
+		{"a CASE applying a nullable parameter", "SET at = case when sqlc.narg( restart ) then null else at end", nil},
+		{"a CASE applying an @ parameter", "SET at = CASE WHEN @restart::bool THEN NULL ELSE at END", nil},
+		{"a CASE applying a positional parameter", "SET at = CASE WHEN $2 THEN NULL ELSE at END", nil},
+		{"a searched CASE on a column", "SELECT case when a > 1 then 1 end FROM t", []string{dataCase}},
+		{"a simple CASE on a column", "SELECT CASE status WHEN 'queued' THEN 1 END FROM t", []string{dataCase}},
+		{"a parameter joined with data", "SELECT CASE WHEN sqlc.arg(a)::bool AND b THEN 1 END FROM t", []string{dataCase}},
+		{"a data branch after a parameter branch", "SELECT CASE WHEN @a THEN 1 WHEN b THEN 2 END FROM t", []string{dataCase}},
+		{"a literal list", "WHERE status in ( 'queued', 'running')", []string{literalList}},
+		{"a subquery list", "WHERE id IN (SELECT id FROM x)", nil},
+		{"an interval keyword literal", "WHERE at > now() - INTERVAL '1 day'", []string{intervalLit}},
+		{"an interval cast literal", "WHERE at > now() - '2 hours'::interval", []string{intervalLit}},
+		{"an interval parameter", "WHERE at > now() - @lease::interval", nil},
+		{"every construct at once", "SELECT CASE WHEN a THEN 1 END FROM t WHERE s IN ('x') AND at > now() - interval '1 day'", []string{dataCase, literalList, intervalLit}},
 	} {
-		t.Run(c.name, func(t *testing.T) {
-			problems := strings.Join(sqlLogicRatchet(c.queries, c.baseline), "\n")
-			if c.want == "" && problems != "" || c.want != "" && !strings.Contains(problems, c.want) {
-				t.Fatalf("problems = %q, want %q", problems, c.want)
-			}
-		})
+		if got := sqlDecisionsOf(c.body); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: decisions = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestADecidingQueryIsNamedWithItsFileAndConstructsAndACleanOneIsNot(t *testing.T) {
+	t.Parallel()
+	problems := sqlDecisionProblems(map[string]sqlQuery{
+		"Clean":         {file: "runs.sql"},
+		"DecidingOnce":  {file: "search.sql", decisions: []string{"an interval literal"}},
+		"DecidingTwice": {file: "trace.sql", decisions: []string{"a CASE branching on data", "a literal IN list"}},
+	})
+	want := []string{
+		"db/queries/search.sql: DecidingOnce decides in SQL with an interval literal; decide in Go and pass the result as a parameter",
+		"db/queries/trace.sql: DecidingTwice decides in SQL with a CASE branching on data, a literal IN list; decide in Go and pass the result as a parameter",
+	}
+	if !reflect.DeepEqual(problems, want) {
+		t.Fatalf("problems = %q, want %q", problems, want)
 	}
 }

@@ -136,7 +136,6 @@ WHERE finished_at IS NOT NULL
 -- name: CountTraceMaskingInWindow :one
 SELECT count(*) FILTER (WHERE occurred_at >= @recent)::bigint AS recent_events,
        count(*) FILTER (WHERE occurred_at <  @recent)::bigint AS earlier_events,
-       coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
-                         THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
+       coalesce(sum(jsonb_array_length(masked_fields)) FILTER (WHERE jsonb_typeof(masked_fields) = 'array'), 0)::bigint AS masked_fields
 FROM trace_events
 WHERE occurred_at >= @since AND source = @source;

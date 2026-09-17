@@ -7,62 +7,33 @@ import (
 	"strings"
 )
 
-type sqlLogic struct {
-	cases        int
-	coalesces    int
-	literalLists int
-	intervals    int
-}
-
 var (
-	sqlCasePattern        = regexp.MustCompile(`\bCASE\b`)
-	sqlCoalescePattern    = regexp.MustCompile(`\bCOALESCE\s*\(`)
-	sqlLiteralListPattern = regexp.MustCompile(`\bIN\s*\(\s*'`)
-	sqlIntervalPattern    = regexp.MustCompile(`\bINTERVAL\s*'|'::INTERVAL\b`)
+	sqlWhenPattern          = regexp.MustCompile(`\bWHEN\b`)
+	sqlParameterWhenPattern = regexp.MustCompile(`\bWHEN\s+(?:SQLC\.N?ARG\(\s*\w+\s*\)|@\w+|\$\d+)(?:::\w+)?\s+THEN\b`)
+	sqlLiteralListPattern   = regexp.MustCompile(`\bIN\s*\(\s*'`)
+	sqlIntervalPattern      = regexp.MustCompile(`\bINTERVAL\s*'|'::INTERVAL\b`)
 )
 
-var sqlLogicBaseline = map[string]sqlLogic{
-	"AggregateCostEventsWindow":       {coalesces: 4},
-	"AggregateSessionSummariesWindow": {coalesces: 4},
-	"CountTraceMaskingInWindow":       {cases: 1, coalesces: 1},
-	"GetLiveSkillListingFacts":        {coalesces: 4},
-	"GetTraceEventText":               {coalesces: 1},
-	"GetTraceStreamHealth":            {coalesces: 1},
-	"ListHybridSearchCandidates":      {coalesces: 3},
-	"ListLiveSkillsForIndex":          {coalesces: 1},
-	"ListSkills":                      {coalesces: 1},
-	"ListSkillsPastDeletionGrace":     {coalesces: 1},
-	"ListTraceGeneralFacts":           {coalesces: 16},
-	"ListWorkspacePurgeCandidates":    {coalesces: 1},
-	"MarkAccountPurgeStarted":         {coalesces: 1},
-	"MarkDatasetObjectLost":           {coalesces: 1},
-	"MarkDatasetPurged":               {coalesces: 1},
-	"NextTraceSeq":                    {coalesces: 1},
-	"PublicSearchSkills":              {cases: 1},
-	"SetRunCleanupStatus":             {coalesces: 1},
-	"SumCreditBalances":               {coalesces: 1},
-	"SumDatasetUsage":                 {coalesces: 1},
-	"UpsertSearchDocumentEnriched":    {cases: 1},
+var sqlDecisionConstructs = []struct {
+	name    string
+	present func(sql string) bool
+}{
+	{"a CASE branching on data", func(sql string) bool {
+		return len(sqlWhenPattern.FindAllStringIndex(sql, -1)) > len(sqlParameterWhenPattern.FindAllStringIndex(sql, -1))
+	}},
+	{"a literal IN list", sqlLiteralListPattern.MatchString},
+	{"an interval literal", sqlIntervalPattern.MatchString},
 }
 
-func sqlLogicOf(body string) sqlLogic {
+func sqlDecisionsOf(body string) []string {
 	sql := strings.ToUpper(sqlCommentPattern.ReplaceAllString(body, " "))
-	return sqlLogic{
-		cases:        len(sqlCasePattern.FindAllString(sql, -1)),
-		coalesces:    len(sqlCoalescePattern.FindAllString(sql, -1)),
-		literalLists: len(sqlLiteralListPattern.FindAllString(sql, -1)),
-		intervals:    len(sqlIntervalPattern.FindAllString(sql, -1)),
+	var found []string
+	for _, construct := range sqlDecisionConstructs {
+		if construct.present(sql) {
+			found = append(found, construct.name)
+		}
 	}
-}
-
-func (l sqlLogic) exceeds(baseline sqlLogic) bool {
-	return l.cases > baseline.cases || l.coalesces > baseline.coalesces ||
-		l.literalLists > baseline.literalLists || l.intervals > baseline.intervals
-}
-
-func (l sqlLogic) String() string {
-	return fmt.Sprintf("CASE %d, COALESCE %d, literal IN lists %d, interval literals %d",
-		l.cases, l.coalesces, l.literalLists, l.intervals)
+	return found
 }
 
 func sqlLogicProblems(root string) []string {
@@ -70,28 +41,16 @@ func sqlLogicProblems(root string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("db/queries: %v", err)}
 	}
-	return sqlLogicRatchet(queries, sqlLogicBaseline)
+	return sqlDecisionProblems(queries)
 }
 
-func sqlLogicRatchet(queries map[string]sqlQuery, baselines map[string]sqlLogic) []string {
+func sqlDecisionProblems(queries map[string]sqlQuery) []string {
 	var problems []string
 	for _, name := range sortedKeys(queries) {
-		got, baseline := queries[name].logic, baselines[name]
-		switch {
-		case got.exceeds(baseline):
+		if decisions := queries[name].decisions; len(decisions) > 0 {
 			problems = append(problems, fmt.Sprintf(
-				"db/queries/%s: %s has %s, more than its baseline (%s); decide the value in Go and pass it as a parameter",
-				queries[name].file, name, got, baseline))
-		case got != baseline:
-			problems = append(problems, fmt.Sprintf(
-				"tools/devctl/sql_logic.go: %s now has %s; lower its baseline to match so the gain cannot be spent again",
-				name, got))
-		}
-	}
-	for _, name := range sortedKeys(baselines) {
-		if _, exists := queries[name]; !exists {
-			problems = append(problems, fmt.Sprintf(
-				"tools/devctl/sql_logic.go: %s is not a query in db/queries; drop its baseline", name))
+				"db/queries/%s: %s decides in SQL with %s; decide in Go and pass the result as a parameter",
+				queries[name].file, name, strings.Join(decisions, ", ")))
 		}
 	}
 	return problems

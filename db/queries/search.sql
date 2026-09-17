@@ -69,8 +69,7 @@ SELECT s.skill_id, s.name,
 FROM search_documents s
 WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
-       OR (sqlc.arg(bigram_query)::text <> ''
-           AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)))
+       OR s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))
   AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -94,9 +93,7 @@ WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)),
-    CASE WHEN sqlc.arg(bigram_query)::text <> ''
-         THEN ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text))
-         ELSE 0 END) DESC
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC
 LIMIT sqlc.arg(result_limit);
 
 -- name: BrowseCatalogSkills :many
@@ -163,9 +160,8 @@ lex AS (
     FROM search_documents s
     WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
       AND s.listable
-      AND sqlc.arg(bigram_query)::text <> ''
-      AND s.bigram @@ to_tsquery('simple', sqlc.arg(bigram_query)::text)
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(bigram_query)::text)) DESC
+      AND s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))) DESC
     LIMIT sqlc.arg(lexical_candidates)::int
 )
 SELECT skill_id, unembedded, distance, false AS lexical FROM vec

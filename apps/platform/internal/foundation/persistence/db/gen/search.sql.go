@@ -305,9 +305,8 @@ lex AS (
     FROM search_documents s
     WHERE s.workspace_id = ANY($2::uuid[])
       AND s.listable
-      AND $6::text <> ''
-      AND s.bigram @@ to_tsquery('simple', $6::text)
-    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', $6::text)) DESC
+      AND s.bigram @@ to_tsquery('simple', nullif($6::text, ''))
+    ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif($6::text, ''))) DESC
     LIMIT $7::int
 )
 SELECT skill_id, unembedded, distance, false AS lexical FROM vec
@@ -653,8 +652,7 @@ SELECT s.skill_id, s.name,
 FROM search_documents s
 WHERE s.workspace_id = ANY($1::uuid[])
   AND (s.tsv @@ websearch_to_tsquery('english', $2::text)
-       OR ($3::text <> ''
-           AND s.bigram @@ to_tsquery('simple', $3::text)))
+       OR s.bigram @@ to_tsquery('simple', nullif($3::text, '')))
   AND s.listable
   AND (
     $4::bool IS NULL
@@ -678,9 +676,7 @@ WHERE s.workspace_id = ANY($1::uuid[])
   )
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)),
-    CASE WHEN $3::text <> ''
-         THEN ts_rank_cd(s.bigram, to_tsquery('simple', $3::text))
-         ELSE 0 END) DESC
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif($3::text, '')))) DESC
 LIMIT $9
 `
 

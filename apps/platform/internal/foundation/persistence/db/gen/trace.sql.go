@@ -27,8 +27,7 @@ func (q *Queries) CountRunsNeedingCleanup(ctx context.Context) (int64, error) {
 const countTraceMaskingInWindow = `-- name: CountTraceMaskingInWindow :one
 SELECT count(*) FILTER (WHERE occurred_at >= $1)::bigint AS recent_events,
        count(*) FILTER (WHERE occurred_at <  $1)::bigint AS earlier_events,
-       coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
-                         THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
+       coalesce(sum(jsonb_array_length(masked_fields)) FILTER (WHERE jsonb_typeof(masked_fields) = 'array'), 0)::bigint AS masked_fields
 FROM trace_events
 WHERE occurred_at >= $2 AND source = $3
 `

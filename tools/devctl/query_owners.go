@@ -26,8 +26,8 @@ type sqlQuery struct {
 	mutates []string
 	tables  []string
 
-	unscoped bool
-	logic    sqlLogic
+	unscoped  bool
+	decisions []string
 }
 
 type callSite struct {
@@ -355,8 +355,8 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 				mutates: mutatedTables(body),
 				tables:  referencedTables(body),
 
-				unscoped: lacksWorkspaceCondition(body),
-				logic:    sqlLogicOf(body),
+				unscoped:  lacksWorkspaceCondition(body),
+				decisions: sqlDecisionsOf(body),
 			}
 		}
 	}
