@@ -13,6 +13,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 WORK_HOST="$(cd "$WORK" && (pwd -W 2>/dev/null || pwd))"
 export MSYS_NO_PATHCONV=1
+OWNER="$(id -u):$(id -g)"
 
 step() { printf '\n== %s\n' "$1"; }
 
@@ -28,7 +29,7 @@ SKILLHUB_GATEWAY_URL=http://10.0.0.3:4000
 EOF
 
 step "user-data renders, and the renderer's own tests pass"
-docker run --rm -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
+docker run --rm -e OWNER="$OWNER" -v "$ROOT:/repo:ro" -v "$WORK_HOST:/work" -w /repo/tools/deploy "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends cloud-init systemd >/dev/null
   python3 test_render.py
@@ -61,6 +62,7 @@ open(\"/work/gateway-user-data.yaml\", \"w\").write(render.cloud_init(gateway))
   report=$(cd /gateway && systemd-analyze verify ./skillhub.service 2>&1 | grep -v "docker.service" || true)
   if [ -n "$report" ]; then printf "%s\n" "$report"; exit 1; fi
   echo "systemd units verify clean"
+  chown -R "$OWNER" /work
 '
 
 step "compose files resolve with a rendered release"
@@ -81,7 +83,7 @@ docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
 step "Alertmanager configuration and probe targets rendered the way bootstrap renders them"
-docker run --rm --env-file "$WORK_HOST/release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
+docker run --rm -e OWNER="$OWNER" --env-file "$WORK_HOST/release.env" -v "$CP:/cp:ro" -v "$WORK_HOST:/work" "$UBUNTU" bash -euc '
   apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends gettext-base >/dev/null
   vars=$(sed -n "s/^envsubst \x27\(.*\)\x27 \\\\$/\1/p" /cp/bin/skillhub-bootstrap)
   [ -n "$vars" ] || { echo "could not read the envsubst variable list from skillhub-bootstrap"; exit 1; }
@@ -89,6 +91,7 @@ docker run --rm --env-file "$WORK_HOST/release.env" -v "$CP:/cp:ro" -v "$WORK_HO
   if grep -n "\${" /work/alertmanager.yml; then echo "placeholders left unrendered"; exit 1; fi
   sh -euc "$(grep prometheus-targets /cp/bin/skillhub-bootstrap | sed "s#/etc/skillhub/#/work/#g")"
   cat /work/prometheus-targets/gateway.yml
+  chown -R "$OWNER" /work
 '
 docker run --rm --entrypoint amtool -v "$WORK_HOST/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   "$ALERTMANAGER" check-config /etc/alertmanager/alertmanager.yml
