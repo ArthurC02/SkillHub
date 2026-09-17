@@ -162,27 +162,27 @@ func (w *Worker) maxAttempts() int32 {
 }
 
 func (w *Worker) recordFailure(ctx context.Context, q *gen.Queries, event Event, cause error) error {
-	row, err := q.RecordOutboxDeliveryFailure(ctx, gen.RecordOutboxDeliveryFailureParams{
-		EventID:     event.EventID,
-		MaxAttempts: w.maxAttempts(),
-	})
+	attempts, err := q.RecordOutboxDeliveryFailure(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("record delivery failure for %s: %w", pgconv.UUIDString(event.EventID), err)
 	}
-	if !row.DeadLetteredAt.Valid {
+	if attempts < w.maxAttempts() {
 		slog.Error("domain event delivery failed",
 			"event_id", pgconv.UUIDString(event.EventID),
 			"event_type", event.EventType,
-			"delivery_attempts", row.DeliveryAttempts,
+			"delivery_attempts", attempts,
 			"error", cause)
 		return nil
+	}
+	if err := q.DeadLetterOutboxEvent(ctx, event.EventID); err != nil {
+		return fmt.Errorf("dead-letter %s: %w", pgconv.UUIDString(event.EventID), err)
 	}
 	metrics.OutboxDeadLettered.WithLabelValues(event.EventType).Inc()
 	slog.Error("domain event dead-lettered: delivery failed too many times, the event is now isolated and needs a human",
 		"event_id", pgconv.UUIDString(event.EventID),
 		"event_type", event.EventType,
 		"correlation_id", pgconv.UUIDString(event.CorrelationID),
-		"delivery_attempts", row.DeliveryAttempts,
+		"delivery_attempts", attempts,
 		"error", cause)
 	return nil
 }

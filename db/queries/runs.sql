@@ -152,14 +152,13 @@ ORDER BY occurred_at, event_id
 LIMIT $1;
 
 -- name: RecordOutboxDeliveryFailure :one
-UPDATE outbox_events
-SET delivery_attempts = delivery_attempts + 1,
-    dead_lettered_at = CASE
-        WHEN dead_lettered_at IS NOT NULL THEN dead_lettered_at
-        WHEN delivery_attempts + 1 >= @max_attempts::int THEN now()
-    END
+UPDATE outbox_events SET delivery_attempts = delivery_attempts + 1
 WHERE event_id = @event_id
-RETURNING delivery_attempts, dead_lettered_at;
+RETURNING delivery_attempts;
+
+-- name: DeadLetterOutboxEvent :exec
+UPDATE outbox_events SET dead_lettered_at = now()
+WHERE event_id = @event_id AND dead_lettered_at IS NULL;
 
 -- name: DeleteOutboxEventsPublishedBefore :execrows
 DELETE FROM outbox_events

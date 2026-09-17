@@ -281,14 +281,18 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 const AccountDeletionGrace = 30 * 24 * time.Hour
 
 func (s *Service) RequestAccountDeletion(ctx context.Context, user User) (User, error) {
-	return s.setDeletionRequest(ctx, user, true)
+	return s.changeDeletionRequest(ctx, user, audit.ActionAccountDeleteAsk, func(a accountLifecycle) (accountLifecycle, error) {
+		return a.requestDeletion(time.Now())
+	})
 }
 
 func (s *Service) CancelAccountDeletion(ctx context.Context, user User) (User, error) {
-	return s.setDeletionRequest(ctx, user, false)
+	return s.changeDeletionRequest(ctx, user, audit.ActionAccountDeleteStop, accountLifecycle.cancelDeletion)
 }
 
-func (s *Service) setDeletionRequest(ctx context.Context, user User, request bool) (User, error) {
+func (s *Service) changeDeletionRequest(
+	ctx context.Context, user User, action string, change func(accountLifecycle) (accountLifecycle, error),
+) (User, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return User{}, err
@@ -296,14 +300,27 @@ func (s *Service) setDeletionRequest(ctx context.Context, user User, request boo
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	var updated gen.User
-	action := audit.ActionAccountDeleteStop
-	if request {
-		updated, err = q.RequestAccountDeletion(ctx, user.ID)
-		action = audit.ActionAccountDeleteAsk
-	} else {
-		updated, err = q.CancelAccountDeletion(ctx, user.ID)
+	current, err := q.LockAccountLifecycle(ctx, user.ID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrAccountPurging
 	}
+	if err != nil {
+		return User{}, err
+	}
+	next, err := change(accountLifecycle{
+		deletedAt:           current.DeletedAt,
+		purgeStartedAt:      current.PurgeStartedAt,
+		deletionRequestedAt: current.DeletionRequestedAt,
+		purgeAttemptedAt:    current.PurgeAttemptedAt,
+	})
+	if err != nil {
+		return User{}, err
+	}
+	updated, err := q.SaveAccountDeletionRequest(ctx, gen.SaveAccountDeletionRequestParams{
+		ID:                  user.ID,
+		DeletionRequestedAt: next.deletionRequestedAt,
+		PurgeAttemptedAt:    next.purgeAttemptedAt,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, ErrAccountPurging
 	}

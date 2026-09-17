@@ -91,6 +91,7 @@ queries:
   InsertOutboxEvent: outbox
   ListUnpublishedOutboxEvents: outbox
   RecordOutboxDeliveryFailure: outbox
+  DeadLetterOutboxEvent: outbox
   DeleteOutboxEventsPublishedBefore: outbox
   MarkOutboxEventsPublished: outbox
   ListOutboxEventsByAggregate: outbox
@@ -104,8 +105,8 @@ queries:
   GetRunForTraceIngest: run
   CountRunsNeedingCleanup: run
 
-  RequestAccountDeletion: identity
-  CancelAccountDeletion: identity
+  LockAccountLifecycle: identity
+  SaveAccountDeletionRequest: identity
   ListAccountsPastGrace: identity
   MarkAccountPurgeStarted: identity
   LockAccountWorkspaceObjects: identity
@@ -182,7 +183,7 @@ queries:
 
 scope:
   AdjustCreditBalance: user
-  CancelAccountDeletion: user
+  LockAccountLifecycle: user
   CreateIdentity: user
   CreateSession: user
   CreateUser: user
@@ -198,7 +199,7 @@ scope:
   GetWorkspaceCreatedAt: user
   InsertCreditEntry: user
   ListWorkspacesByOwner: user
-  RequestAccountDeletion: user
+  SaveAccountDeletionRequest: user
   RequeueSearchDocumentEnrichment: user
   UpsertSessionCostSummary: user
 
@@ -269,6 +270,7 @@ scope:
   RecordObjectSighting: user
   RecordOrphanSighting: user
   RecordOutboxDeliveryFailure: user
+  DeadLetterOutboxEvent: user
   SetSearchDocumentBigram: user
   ListSessionStepCosts: user
   ListSessionsLastSteppedBetween: user

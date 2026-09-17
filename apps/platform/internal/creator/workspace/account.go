@@ -14,8 +14,10 @@ var (
 )
 
 type accountLifecycle struct {
-	deletedAt      pgtype.Timestamptz
-	purgeStartedAt pgtype.Timestamptz
+	deletedAt           pgtype.Timestamptz
+	purgeStartedAt      pgtype.Timestamptz
+	deletionRequestedAt pgtype.Timestamptz
+	purgeAttemptedAt    pgtype.Timestamptz
 }
 
 func (a accountLifecycle) gone() bool {
@@ -34,6 +36,24 @@ func (a accountLifecycle) standing() error {
 		return ErrAccountPurging
 	}
 	return nil
+}
+
+func (a accountLifecycle) requestDeletion(now time.Time) (accountLifecycle, error) {
+	if a.standing() != nil {
+		return a, ErrAccountPurging
+	}
+	if !a.deletionRequestedAt.Valid {
+		a.deletionRequestedAt, a.purgeAttemptedAt = pgtype.Timestamptz{Time: now, Valid: true}, pgtype.Timestamptz{}
+	}
+	return a, nil
+}
+
+func (a accountLifecycle) cancelDeletion() (accountLifecycle, error) {
+	if a.standing() != nil {
+		return a, ErrAccountPurging
+	}
+	a.deletionRequestedAt, a.purgeAttemptedAt = pgtype.Timestamptz{}, pgtype.Timestamptz{}
+	return a, nil
 }
 
 func normalizedEmail(email string) string {

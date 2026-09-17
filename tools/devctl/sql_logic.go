@@ -39,8 +39,6 @@ var sqlLogicBaseline = map[string]sqlLogic{
 	"MarkDatasetPurged":               {coalesces: 1},
 	"NextTraceSeq":                    {coalesces: 1},
 	"PublicSearchSkills":              {cases: 1},
-	"RecordOutboxDeliveryFailure":     {cases: 1},
-	"RequestAccountDeletion":          {cases: 2, coalesces: 1},
 	"SetRunCleanupStatus":             {coalesces: 1},
 	"SumCreditBalances":               {coalesces: 1},
 	"SumDatasetUsage":                 {coalesces: 1},

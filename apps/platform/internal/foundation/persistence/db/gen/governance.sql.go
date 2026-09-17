@@ -62,30 +62,6 @@ func (q *Queries) AnonymizeWorkspacesByOwner(ctx context.Context, arg AnonymizeW
 	return result.RowsAffected(), nil
 }
 
-const cancelAccountDeletion = `-- name: CancelAccountDeletion :one
-UPDATE users SET deletion_requested_at = NULL, purge_attempted_at = NULL,
-    purge_started_at = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
-`
-
-func (q *Queries) CancelAccountDeletion(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, cancelAccountDeletion, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-		&i.DeletionRequestedAt,
-		&i.PurgeAttemptedAt,
-		&i.PurgeStartedAt,
-	)
-	return i, err
-}
-
 const countCollectableObjects = `-- name: CountCollectableObjects :one
 SELECT count(*)::bigint FROM object_collection_queue
 `
@@ -778,6 +754,30 @@ func (q *Queries) ListWorkspaceSkillSourceIDs(ctx context.Context, workspaceID p
 	return items, nil
 }
 
+const lockAccountLifecycle = `-- name: LockAccountLifecycle :one
+SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at
+FROM users WHERE id = $1 FOR UPDATE
+`
+
+type LockAccountLifecycleRow struct {
+	DeletedAt           pgtype.Timestamptz
+	PurgeStartedAt      pgtype.Timestamptz
+	DeletionRequestedAt pgtype.Timestamptz
+	PurgeAttemptedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) LockAccountLifecycle(ctx context.Context, id pgtype.UUID) (LockAccountLifecycleRow, error) {
+	row := q.db.QueryRow(ctx, lockAccountLifecycle, id)
+	var i LockAccountLifecycleRow
+	err := row.Scan(
+		&i.DeletedAt,
+		&i.PurgeStartedAt,
+		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+	)
+	return i, err
+}
+
 const lockAccountWorkspaceObjects = `-- name: LockAccountWorkspaceObjects :exec
 SELECT pg_advisory_lock(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
 `
@@ -884,18 +884,23 @@ func (q *Queries) PurgeSkillsByID(ctx context.Context, arg PurgeSkillsByIDParams
 	return result.RowsAffected(), nil
 }
 
-const requestAccountDeletion = `-- name: RequestAccountDeletion :one
+const saveAccountDeletionRequest = `-- name: SaveAccountDeletionRequest :one
 UPDATE users
-SET deletion_requested_at = coalesce(deletion_requested_at, now()),
-    purge_attempted_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_attempted_at END,
-    purge_started_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_started_at END,
+SET deletion_requested_at = $1,
+    purge_attempted_at = $2,
     updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
+WHERE id = $3 AND deleted_at IS NULL AND purge_started_at IS NULL
 RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
 `
 
-func (q *Queries) RequestAccountDeletion(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, requestAccountDeletion, id)
+type SaveAccountDeletionRequestParams struct {
+	DeletionRequestedAt pgtype.Timestamptz
+	PurgeAttemptedAt    pgtype.Timestamptz
+	ID                  pgtype.UUID
+}
+
+func (q *Queries) SaveAccountDeletionRequest(ctx context.Context, arg SaveAccountDeletionRequestParams) (User, error) {
+	row := q.db.QueryRow(ctx, saveAccountDeletionRequest, arg.DeletionRequestedAt, arg.PurgeAttemptedAt, arg.ID)
 	var i User
 	err := row.Scan(
 		&i.ID,

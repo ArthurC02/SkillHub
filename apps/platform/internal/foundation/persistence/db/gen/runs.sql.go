@@ -234,6 +234,16 @@ func (q *Queries) CreateRunAttempt(ctx context.Context, arg CreateRunAttemptPara
 	return i, err
 }
 
+const deadLetterOutboxEvent = `-- name: DeadLetterOutboxEvent :exec
+UPDATE outbox_events SET dead_lettered_at = now()
+WHERE event_id = $1 AND dead_lettered_at IS NULL
+`
+
+func (q *Queries) DeadLetterOutboxEvent(ctx context.Context, eventID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deadLetterOutboxEvent, eventID)
+	return err
+}
+
 const deleteOutboxEventsPublishedBefore = `-- name: DeleteOutboxEventsPublishedBefore :execrows
 DELETE FROM outbox_events
 WHERE published_at IS NOT NULL
@@ -1240,31 +1250,16 @@ func (q *Queries) RecordOrphanSighting(ctx context.Context, arg RecordOrphanSigh
 }
 
 const recordOutboxDeliveryFailure = `-- name: RecordOutboxDeliveryFailure :one
-UPDATE outbox_events
-SET delivery_attempts = delivery_attempts + 1,
-    dead_lettered_at = CASE
-        WHEN dead_lettered_at IS NOT NULL THEN dead_lettered_at
-        WHEN delivery_attempts + 1 >= $1::int THEN now()
-    END
-WHERE event_id = $2
-RETURNING delivery_attempts, dead_lettered_at
+UPDATE outbox_events SET delivery_attempts = delivery_attempts + 1
+WHERE event_id = $1
+RETURNING delivery_attempts
 `
 
-type RecordOutboxDeliveryFailureParams struct {
-	MaxAttempts int32
-	EventID     pgtype.UUID
-}
-
-type RecordOutboxDeliveryFailureRow struct {
-	DeliveryAttempts int32
-	DeadLetteredAt   pgtype.Timestamptz
-}
-
-func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOutboxDeliveryFailureParams) (RecordOutboxDeliveryFailureRow, error) {
-	row := q.db.QueryRow(ctx, recordOutboxDeliveryFailure, arg.MaxAttempts, arg.EventID)
-	var i RecordOutboxDeliveryFailureRow
-	err := row.Scan(&i.DeliveryAttempts, &i.DeadLetteredAt)
-	return i, err
+func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, eventID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, recordOutboxDeliveryFailure, eventID)
+	var delivery_attempts int32
+	err := row.Scan(&delivery_attempts)
+	return delivery_attempts, err
 }
 
 const rememberRunArtifactUploadIntent = `-- name: RememberRunArtifactUploadIntent :exec

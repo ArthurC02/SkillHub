@@ -18,19 +18,16 @@ LIMIT @page_limit OFFSET @page_offset;
 -- name: DeleteExpiredAuditEvents :execrows
 DELETE FROM audit_events WHERE created_at < $1;
 
--- name: RequestAccountDeletion :one
-UPDATE users
-SET deletion_requested_at = coalesce(deletion_requested_at, now()),
-    purge_attempted_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_attempted_at END,
-    purge_started_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_started_at END,
-    updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
-RETURNING *;
+-- name: LockAccountLifecycle :one
+SELECT deleted_at, purge_started_at, deletion_requested_at, purge_attempted_at
+FROM users WHERE id = $1 FOR UPDATE;
 
--- name: CancelAccountDeletion :one
-UPDATE users SET deletion_requested_at = NULL, purge_attempted_at = NULL,
-    purge_started_at = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
+-- name: SaveAccountDeletionRequest :one
+UPDATE users
+SET deletion_requested_at = sqlc.narg(deletion_requested_at),
+    purge_attempted_at = sqlc.narg(purge_attempted_at),
+    updated_at = now()
+WHERE id = @id AND deleted_at IS NULL AND purge_started_at IS NULL
 RETURNING *;
 
 -- name: ListAccountsPastGrace :many

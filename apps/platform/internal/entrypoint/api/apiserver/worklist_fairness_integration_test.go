@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -376,34 +377,33 @@ func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {
 	q := gen.New(pool)
 
 	account := a.login(t, uniqueWorklistLabel("attempt-reset-account"))
-	userID := mustUUID(t, account.userID)
-	requested, err := q.RequestAccountDeletion(ctx, userID)
-	if err != nil {
+	user := identity.User{ID: mustUUID(t, account.userID)}
+	type deletionState struct{ requestedAt, attemptedAt pgtype.Timestamptz }
+	change := func(what string, act func(context.Context, identity.User) (identity.User, error)) deletionState {
+		t.Helper()
+		if _, err := act(ctx, user); err != nil {
+			t.Fatalf("%s: %v", what, err)
+		}
+		var state deletionState
+		if err := pool.QueryRow(ctx, `SELECT deletion_requested_at, purge_attempted_at FROM users WHERE id = $1`,
+			user.ID).Scan(&state.requestedAt, &state.attemptedAt); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+	requested := change("request", a.auth.Service.RequestAccountDeletion)
+	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = now() WHERE id = $1`, user.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = now() WHERE id = $1`, userID); err != nil {
-		t.Fatal(err)
+	requestedAgain := change("repeated request", a.auth.Service.RequestAccountDeletion)
+	if !requestedAgain.attemptedAt.Valid || !requestedAgain.requestedAt.Time.Equal(requested.requestedAt.Time) {
+		t.Fatalf("an idempotent deletion request reset its existing worklist history: %+v", requestedAgain)
 	}
-	requestedAgain, err := q.RequestAccountDeletion(ctx, userID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !requestedAgain.PurgeAttemptedAt.Valid || requestedAgain.DeletionRequestedAt != requested.DeletionRequestedAt {
-		t.Fatal("an idempotent deletion request reset its existing worklist history")
-	}
-	cancelled, err := q.CancelAccountDeletion(ctx, userID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cancelled.DeletionRequestedAt.Valid || cancelled.PurgeAttemptedAt.Valid || cancelled.PurgeStartedAt.Valid {
+	if cancelled := change("cancel", a.auth.Service.CancelAccountDeletion); cancelled != (deletionState{}) {
 		t.Fatalf("cancel left deletion worklist state behind: %+v", cancelled)
 	}
-	requestedFresh, err := q.RequestAccountDeletion(ctx, userID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if requestedFresh.PurgeAttemptedAt.Valid || requestedFresh.PurgeStartedAt.Valid {
-		t.Fatalf("fresh deletion request inherited an old attempt: %+v", requestedFresh)
+	if fresh := change("fresh request", a.auth.Service.RequestAccountDeletion); !fresh.requestedAt.Valid || fresh.attemptedAt.Valid {
+		t.Fatalf("fresh deletion request inherited an old attempt or was not stamped: %+v", fresh)
 	}
 
 	tag := uniqueWorklistLabel("attempt-reset-enrichment")
