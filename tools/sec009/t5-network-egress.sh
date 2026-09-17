@@ -48,6 +48,19 @@ else
 fi
 nft flush ruleset
 
+nft add table ip nat
+nft add chain ip nat POSTROUTING '{ type nat hook postrouting priority srcnat; }'
+nft add rule ip nat POSTROUTING oifname "docker-uplink" masquerade
+if nft -f /src/infra/egress/rendered/nftables.conf && nft -f /src/infra/egress/rendered/nftables.conf \
+   && nft list table ip nat | grep -q masquerade \
+   && [ "$(nft list tables | grep -cx 'table ip skillhub')" = 1 ]; then
+  echo "  reloading keeps dockerd's own tables    PASS    (nat masquerade survives two loads)"
+else
+  echo "  reloading keeps dockerd's own tables    FAIL    a reload deleted a table the ruleset does not own"
+  fail=2
+fi
+nft flush ruleset
+
 # Topology: run1, run2 on a bridge (skillhub-sbx) behind the node; every
 # destination probed below (gateway, a provider stand-in, metadata, RFC1918,
 # the resolver) lives in the "up" namespace on the other side.

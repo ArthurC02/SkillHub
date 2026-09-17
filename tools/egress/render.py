@@ -59,7 +59,12 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a("# A node's ruleset is a product of that file. Editing it on the node is")
     a("# drift, and the next rebuild (P-03, <= 7 days) wipes it.")
     a("")
-    a("flush ruleset")
+    a("# Replace only this file's own tables. Flushing the whole ruleset would also")
+    a("# delete the nat and filter tables dockerd owns and cut every bridge off.")
+    a("table ip skillhub")
+    a("delete table ip skillhub")
+    a("table ip6 skillhub")
+    a("delete table ip6 skillhub")
     a("")
     a('define SANDBOX_IFACE = "' + sandbox_iface + '"')
     a("")
@@ -307,6 +312,10 @@ def self_check():
          all("counter" in l for l in lines if l.startswith("iifname") or l.startswith("ip saddr")))
     case("the ip6 table carries no accept rule at all (N-08)",
          "accept" not in nft.split("table ip6 skillhub {", 1)[1])
+    case("the ruleset replaces its own tables and leaves dockerd's alone",
+         "flush ruleset" not in nft
+         and idx("delete table ip skillhub") < idx("table ip skillhub {")
+         and idx("delete table ip6 skillhub") < idx("table ip6 skillhub {"))
 
     nft_unset = render_nftables(unset, "sbx0", "10.0.0.53", "10.1.1.1")
     case("an unset pin renders no accept rule (fail-closed)",
