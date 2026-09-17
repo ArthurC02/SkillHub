@@ -609,8 +609,8 @@ jobs:
           SANDBOXD_IMAGE: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
         run: |
           set -uo pipefail
-          output=$(docker run --rm "$SANDBOXD_IMAGE" 2>&1)
-          status=$?
+          status=0
+          output=$(docker run --rm "$SANDBOXD_IMAGE" 2>&1) || status=$?
           echo "$output"
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
