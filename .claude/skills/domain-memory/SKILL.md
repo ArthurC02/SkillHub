@@ -5,7 +5,18 @@ description: Build and maintain a reviewable Domain Registry, or analyze a propo
 
 # Domain Memory
 
-Use this skill to build reviewed domain assets or turn a domain-significant request into an implementable, reviewable change. It separates evidence, design choices, approvals, and unresolved decisions before files are selected or modified.
+Use this skill as a living development loop: read the reviewed Domain Registry before implementation, use it to constrain names, ownership, invariants, and collaboration, then update the domain documents when the implemented behavior changes them. It separates evidence, design choices, approvals, and unresolved decisions before files are selected or modified.
+
+## Continuous development loop
+
+Every domain-significant task has four passes:
+
+1. **Read**: run `probe`, validate the Registry and policy, then use `resolve-terms`, `get-context`, `get-record`, and `analyze-boundary` before choosing a design.
+2. **Constrain**: treat reviewed records as development constraints. Keep ownership, ubiquitous language, invariants, consistency, authorization, idempotency, and prohibited dependencies aligned with them. A missing or ambiguous fact is a discovery gap, not permission to invent one.
+3. **Implement**: make the smallest code and contract change that satisfies the reviewed model. Derive tests from the invariant or contract outcome, not from the implementation shape.
+4. **Reflect**: after implementation, compare behavior and sources with the Registry. If vocabulary, ownership, invariant, boundary, event, contract, or capability changed, create or update a candidate and route material changes through a Change Package. Re-run validation and evidence checks before relying on the result in the next task.
+
+The Registry guides code only at `reviewed` status. Candidate records prepare the next review but cannot authorize an implementation. A routine change contained within one reviewed owner may use the Read and Reflect passes without the full Change Package; a cross-context, public-contract, consistency, regulated-rule, or irreversible change uses the seven-step workflow.
 
 Start from the business behavior, not a table, endpoint, event name, or package. Establish the ubiquitous terms in the request, the owner of each fact, the invariant that must hold, and the reason a boundary must be crossed. A package boundary is evidence of an architectural boundary; it does not by itself define the business model.
 
@@ -61,6 +72,8 @@ The map it writes is `agent-asserted`: you chose those paths, and nothing yet re
 | Completing human review | `record-approval`, `verify-proposal`, then `finalize-proposal --registry-root <root> --repo-root <repo>` | Finalize only a verified package whose SCM attestation, required roles, and Registry revision still match. |
 | Import external review proof | `verify-scm-attestation --attestation <file> --package-root <path>` | Verify an already-collected SCM artifact binds to the exact Proposal and Registry revision. It does not call a hosting-provider API. |
 | Applying Registry changes from an approved proposal | `apply-approved-updates --package-root <path> --registry-root <root> --repo-root <repo>` | The command requires an approved current proposal, validates the whole Registry in staging, and refuses to overwrite reviewed records. |
+
+When implementation is complete, do not leave a domain change implicit in code. Update the smallest affected Registry asset as a candidate, or prepare the Change Package that promotes it. The next Agent must be able to discover the new term, owner, invariant, or boundary from the files without reading the previous conversation.
 
 Use these resources only when they fit the task:
 

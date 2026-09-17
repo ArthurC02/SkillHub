@@ -1,6 +1,8 @@
 # Seven-step domain change workflow
 
-Use this workflow for a change that affects a domain model, crosses a Bounded Context, changes a public or event contract, or changes a material business rule. A routine implementation contained within one approved owner does not need the full workflow.
+Use this workflow for a change that affects a domain model, crosses a Bounded Context, changes a public or event contract, or changes a material business rule. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
+
+The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. Do not treat a completed code change as complete while it leaves a changed owner, term, invariant, boundary, event, contract, or capability undocumented.
 
 ## Before Step 0: Map repository sources
 
@@ -46,6 +48,12 @@ Copy [test-obligations.json](../templates/test-obligations.json). Map every acce
 ## Step 7: Prepare, verify, and review the package
 
 Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `apply-approved-updates` only when the package is approved and Registry records must change. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
+
+## Stop conditions
+
+## After implementation: reflect the model
+
+Run `verify-evidence` and `verify-audit`, then compare the observable behavior with the reviewed records used in Steps 1–5. If the model is unchanged, record that the implementation preserved it in the normal review material. If it changed, add a candidate with `upsert-candidate` or create a new Change Package; never hide the difference in a code-only change. A candidate is the handoff to the next review, not a new constraint until an authorized reviewer promotes it.
 
 ## Stop conditions
 
