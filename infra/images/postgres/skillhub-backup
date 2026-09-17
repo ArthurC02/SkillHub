@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+: "${WALG_S3_PREFIX:?WALG_S3_PREFIX is not set, so there is nowhere to send the backup}"
+export PGHOST=/var/run/postgresql PGUSER="${POSTGRES_USER:-postgres}"
+gosu postgres wal-g backup-push "$PGDATA"
+gosu postgres wal-g delete retain FULL "${WALG_RETAIN_FULL:-7}" --confirm

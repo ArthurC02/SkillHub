@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+: "${WALG_S3_PREFIX:?WALG_S3_PREFIX is not set, so there is no backup to restore}"
+export PGDATA=/var/lib/postgresql/restore-drill PGHOST=/var/run/postgresql PGUSER="${POSTGRES_USER:-postgres}"
+database="${DRILL_DATABASE:-skillhub}"
+
+rm -rf "$PGDATA"
+install -d -o postgres -g postgres -m 0700 "$PGDATA"
+gosu postgres wal-g backup-fetch "$PGDATA" "${DRILL_BACKUP:-LATEST}"
+gosu postgres touch "$PGDATA/recovery.signal"
+gosu postgres pg_ctl -D "$PGDATA" -w -t 3600 -l "$PGDATA/drill.log" start -o \
+    "-c listen_addresses='' -c archive_mode=off -c restore_command='wal-g wal-fetch %f %p' -c recovery_target_action=promote"
+
+waited=0
+until [ "$(gosu postgres psql -Atqc 'SELECT NOT pg_is_in_recovery()')" = t ]; do
+    waited=$((waited + 5))
+    if [ "$waited" -gt "${DRILL_RECOVERY_TIMEOUT_SECONDS:-3600}" ]; then
+        echo "restore drill: recovery did not finish; see $PGDATA/drill.log" >&2
+        exit 1
+    fi
+    sleep 5
+done
+
+gosu postgres psql -v ON_ERROR_STOP=1 -d "$database" -At -F ' ' -c "
+    SELECT 'skills', count(*)::text FROM skills
+    UNION ALL SELECT 'users', count(*)::text FROM users
+    UNION ALL SELECT 'skill_versions', count(*)::text FROM skill_versions
+    UNION ALL SELECT 'runs', count(*)::text FROM runs
+    UNION ALL SELECT 'latest_run_created_at', coalesce(max(created_at)::text, 'none') FROM runs
+    UNION ALL SELECT 'latest_audit_event_at', coalesce(max(created_at)::text, 'none') FROM audit_events"
+gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
+echo "restore drill: recovered and readable"

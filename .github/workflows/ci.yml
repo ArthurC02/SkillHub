@@ -84,6 +84,7 @@ jobs:
               - 'infra/images/platform/**'
               - 'infra/images/web/**'
               - 'infra/images/llm/**'
+              - 'infra/images/postgres/**'
               - 'infra/compose/**'
               - 'tools/ci/**'
               - '.dockerignore'
@@ -550,6 +551,19 @@ jobs:
           WEB_IMAGE: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
           LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
         run: bash tools/ci/stack-smoke.sh
+      - name: Build the postgres image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: infra/images/postgres
+          tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=postgres
+          cache-to: type=gha,mode=max,scope=postgres
+      - name: Back up, restore and compare before pushing it
+        env:
+          POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+        run: bash tools/ci/backup-drill.sh
 
   images-push:
     needs: [images, web, platform, llm, devctl, contracts-drift, dependency-audit]
@@ -594,3 +608,10 @@ jobs:
           tags: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
           push: true
           cache-from: type=gha,scope=llm
+      - name: Push the postgres image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: infra/images/postgres
+          tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=postgres

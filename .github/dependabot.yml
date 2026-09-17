@@ -102,6 +102,7 @@ updates:
       - /infra/images/devtools
       - /infra/images/llm
       - /infra/images/platform
+      - /infra/images/postgres
       - /infra/images/web
       - /tools/codegen/go
       - /tools/codegen/python
