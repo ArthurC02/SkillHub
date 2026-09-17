@@ -38,6 +38,7 @@ BUILD_PHASE_PROVISION = "provision"
 BUILD_PHASE_SERVING = "serving"
 
 SANDBOX_LABEL = "skillhub.sandbox.managed"
+PROBE_LABEL = "skillhub.sandbox.probe"
 PLATFORM_CONTAINER_RE = re.compile(r"sandboxd", re.I)
 
 CRED_NAMES = ("SKILLHUB_DATABASE_URL", "DATABASE_URL", "PGPASSWORD", "SKILLHUB_SECRETS_TOKEN")
@@ -193,6 +194,12 @@ def grade_node_age(created_at: str | None, now: datetime,
 
 
 
+def is_platform_container(name: str, image: str, labels: str) -> bool:
+    keys = {label.partition("=")[0] for label in labels.split(",")}
+    return (SANDBOX_LABEL in keys or PROBE_LABEL in keys
+            or bool(PLATFORM_CONTAINER_RE.search(name) or PLATFORM_CONTAINER_RE.search(image)))
+
+
 def check_p01(rep: Report, facts: dict | None, facts_why: str) -> None:
     if facts is None:
         rep.add("P-01a", "declared role is the execution pool", UNKNOWN, facts_why)
@@ -222,13 +229,11 @@ def check_p01(rep: Report, facts: dict | None, facts_why: str) -> None:
             continue
         counted += 1
         _, name, image, labels = parts
-        if SANDBOX_LABEL in labels:
-            continue
-        if PLATFORM_CONTAINER_RE.search(name) or PLATFORM_CONTAINER_RE.search(image):
-            continue
-        strangers.append("%s (%s)" % (name, image))
+        if not is_platform_container(name, image, labels):
+            strangers.append("%s (%s)" % (name, image))
     how = "read `docker ps`; a container counts as expected only if it carries the %s label " \
-          "(dockerdrv puts it on every Run) or is sandboxd itself" % SANDBOX_LABEL
+          "(dockerdrv puts it on every Run), the %s label (sandboxd's resident P-02 probe) " \
+          "or is sandboxd itself" % (SANDBOX_LABEL, PROBE_LABEL)
     if strangers:
         rep.add("P-01b", "only sandbox + platform containers run here", FAIL,
                 "%s -- %d of %d containers are neither: %s" % (how, len(strangers), counted,
@@ -431,6 +436,18 @@ def self_check() -> int:
          "has not finished being built")
     want("phase off contract", grade_node_age(at(1), now, "ready"), UNKNOWN, "contract")
     want("serving, fresh off the build", grade_node_age(at(0), now, SERVING), PASS)
+
+    print("P-01b -- which containers belong on a sandbox node:")
+    for label, container, expect in [
+        ("a run's container", ("skillhub-run-1", "runtime", "skillhub.sandbox.managed=true"), True),
+        ("the resident P-02 probe", ("skillhub-p02-probe", "runtime", "skillhub.sandbox.probe=p02"), True),
+        ("sandboxd by name", ("sandboxd", "anything", ""), True),
+        ("an unlabelled stranger", ("miner", "xmrig", "maintainer=x"), False),
+        ("a label that only contains the key", ("miner", "xmrig", "note=skillhub.sandbox.probe"), False),
+    ]:
+        wrong = is_platform_container(*container) is not expect
+        bad += 1 if wrong else 0
+        print("  %s %-46s want %-7s" % ("BAD " if wrong else "ok  ", label, "ok" if expect else "stranger"))
 
     print("self-check: %s" % ("all grading cases behave" if not bad else "%d case(s) wrong" % bad))
     return 0 if not bad else 2
