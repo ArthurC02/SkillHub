@@ -105,7 +105,10 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 python tools/sec009/t8-image-audit.py               # 實測
 python tools/sec009/t8-image-audit.py --json        # 給證據落檔用
 python tools/sec009/t8-image-audit.py --self-check  # 離線，不碰網路
+SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  # 查節點釘的那個 digest
 ```
+
+在節點上跑時帶著 `release.env` 的 `SKILLHUB_SANDBOX_IMAGE`：它先確認節點的標籤等於 checkout 裡 Dockerfile 的 `IMAGE_VERSION`，再對那個 digest 查 attestation。`--json` 的 I-04 列多一個 `expires_in_days`，每日的 `runtime-scan-expiry.yml` 讀它，剩 7 天以內或任一項不是 PASS 就開 issue——這是掃描到期前 7 天告警的發送端。
 
 **它是 Suite 1 裡唯一一項從映像發佈那天起就跑得了的**：查的是 GHCR 上公開的東西，不需要節點、不需要 Linux、不需要任何憑證。而在今天之前沒有人跑過。
 

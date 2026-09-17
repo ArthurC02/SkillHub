@@ -4,6 +4,8 @@ against the registry at read time rather than the build workflow's gates.
 `unknown` (could not check) must never read the same as a pass.
 
 Usage: python tools/sec009/t8-image-audit.py [--json] [--self-check]
+       SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest>  audit the digest a node runs,
+                                                 not whatever the tag names today
 Exit:  0 every check passed
        1 setup failed -- nothing was measured, which is not a pass
        2 a check failed, or could not be made
@@ -33,6 +35,8 @@ VULN_PREDICATE = "https://in-toto.io/attestation/vulns/v0.1"
 
 SCAN_VALIDITY_DAYS = 30
 SCAN_WARN_DAYS = 7
+
+NODE_IMAGE = re.compile(r"^%s/%s:([^@\s]+)@(sha256:[0-9a-f]{64})$" % (re.escape(REGISTRY), re.escape(IMAGE_REPO)))
 
 MANIFEST_ACCEPT = ", ".join(
     [
@@ -146,6 +150,28 @@ class Report:
             print("  %-*s  %-7s %s -- %s" % (width, r["id"], r["status"], r["check"], r["detail"]))
 
 
+def parse_node_image(ref: str) -> tuple[str, str]:
+    m = NODE_IMAGE.match(ref)
+    if not m:
+        raise SetupError("SKILLHUB_SANDBOX_IMAGE=%r is not %s/%s:<tag>@sha256:<digest>" % (ref, REGISTRY, IMAGE_REPO))
+    return m.group(1), m.group(2)
+
+
+def grade_node_tag(node_tag: str, version: str) -> tuple[str, str]:
+    if node_tag != version:
+        return FAIL, ("the node runs tag %s but its checkout's Dockerfile declares IMAGE_VERSION %s, "
+                      "so the node and its release disagree about which image it should run" % (node_tag, version))
+    return PASS, "the node's tag %s matches its checkout's IMAGE_VERSION" % node_tag
+
+
+def scan_expires_in_days(finished: str | None, now: datetime) -> int | None:
+    try:
+        scanned = datetime.fromisoformat((finished or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return (scanned + timedelta(days=SCAN_VALIDITY_DAYS) - now).days
+
+
 def grade_scan_age(finished: str | None, now: datetime) -> tuple[str, str]:
     """Judge whether a scan is recent enough to still count as evidence,
     pulled out of audit() so --self-check can drive it offline."""
@@ -195,6 +221,41 @@ def self_check() -> int:
         print("  BAD  the 7-day warning is not surfaced in the detail line")
         bad += 1
 
+    for value, want, why in [
+        (at(0), SCAN_VALIDITY_DAYS, "a scan finished now has the full validity left"),
+        (at(SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS), SCAN_WARN_DAYS, "the first day of the warning window"),
+        (at(SCAN_VALIDITY_DAYS + 1), -1, "an expired scan counts below zero"),
+        (None, None, "no timestamp has no expiry"),
+        ("whenever", None, "an unparseable timestamp has no expiry"),
+    ]:
+        got = scan_expires_in_days(value, now)
+        mark = "ok  " if got == want else "BAD "
+        bad += 0 if got == want else 1
+        print("  %s expires in %-6s want %-5s  %s" % (mark, got, want, why))
+
+    digest = "sha256:" + "a" * 64
+    for ref, want, why in [
+        ("%s/%s:2026.08-12@%s" % (REGISTRY, IMAGE_REPO, digest), ("2026.08-12", digest), "tag and digest"),
+        ("%s/%s:2026.08-12" % (REGISTRY, IMAGE_REPO), None, "a tag alone is not what the node runs"),
+        ("%s/other/image:2026.08-12@%s" % (REGISTRY, digest), None, "another repository"),
+    ]:
+        try:
+            got = parse_node_image(ref)
+        except SetupError:
+            got = None
+        mark = "ok  " if got == want else "BAD "
+        bad += 0 if got == want else 1
+        print("  %s node image %-40s  %s" % (mark, "parsed" if got else "refused", why))
+
+    for node_tag, want, why in [
+        ("2026.08-12", PASS, "the node runs its release's version"),
+        ("2026.08-11", FAIL, "the node and its checkout disagree"),
+    ]:
+        got, _ = grade_node_tag(node_tag, "2026.08-12")
+        mark = "ok  " if got == want else "BAD "
+        bad += 0 if got == want else 1
+        print("  %s node tag %-12s want %-7s got %-7s  %s" % (mark, node_tag, want, got, why))
+
     print("self-check: %s" % ("all grading cases behave" if not bad else "%d case(s) wrong" % bad))
     return 0 if not bad else 2
 
@@ -204,19 +265,29 @@ def audit() -> Report:
     version = dockerfile_version()
     token = _token()
 
-    print("image:   %s/%s:%s" % (REGISTRY, IMAGE_REPO, version))
+    node_ref = os.environ.get("SKILLHUB_SANDBOX_IMAGE", "")
+    reference = version
+    if node_ref:
+        node_tag, reference = parse_node_image(node_ref)
+        status, detail = grade_node_tag(node_tag, version)
+        if status != PASS:
+            rep.add("I-01", "versioned image published", status, detail)
+            return rep
+
+    print("image:   %s/%s:%s" % (REGISTRY, IMAGE_REPO, version), file=sys.stderr)
 
     try:
-        _, headers = _get("manifests/" + version, token, MANIFEST_ACCEPT)
+        _, headers = _get("manifests/" + reference, token, MANIFEST_ACCEPT)
         digest = headers.get("Docker-Content-Digest", "").strip()
     except urllib.error.HTTPError as exc:
-        rep.add("I-01", "versioned image published", FAIL, "GET manifest -> HTTP %d" % exc.code)
+        rep.add("I-01", "versioned image published", FAIL, "GET manifest %s -> HTTP %d" % (reference, exc.code))
         return rep
     if not digest:
         rep.add("I-01", "versioned image published", UNKNOWN, "no Docker-Content-Digest header")
         return rep
-    rep.add("I-01", "versioned image published", PASS, "%s -> %s" % (version, digest))
-    print("digest:  %s" % digest)
+    rep.add("I-01", "versioned image published", PASS, "%s -> %s%s" % (
+        version, digest, " (the digest this node runs)" if node_ref else ""))
+    print("digest:  %s" % digest, file=sys.stderr)
 
     pinned, detail = dockerfile_base_is_pinned()
     rep.add("I-02", "base pinned by digest", PASS if pinned else FAIL, detail)
@@ -270,7 +341,9 @@ def audit() -> Report:
 
     predicate = statement.get("predicate", {})
     finished = (predicate.get("metadata") or {}).get("scan_finished_on")
-    rep.add("I-04", "scan attestation in date", *grade_scan_age(finished, datetime.now(timezone.utc)))
+    now = datetime.now(timezone.utc)
+    rep.add("I-04", "scan attestation in date", *grade_scan_age(finished, now))
+    rep.rows[-1]["expires_in_days"] = scan_expires_in_days(finished, now)
 
     summary = predicate.get("summary") or {}
     fixable = summary.get("fixable_critical_high")

@@ -252,7 +252,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 - [ ] **Alertmanager 部署 ＋ 通知路由**——單人團隊裡，最高級告警必須送得到那一個人。部署與設定在控制平面 compose 裡；**驗的是送達**：`systemctl start skillhub-alert@test.service` 之後信箱真的收到（[runbook](../../../runbooks/control-plane.md) §5）
 - [ ] Grafana dashboard；`O11Y-003` 的門檻值上線後回填（首發值是預設非實測校準值）
 - [ ] 驗 `TraceMaskingStopped` 這條規則真的會觸發並送達（**`NFR-002` 沒有其他偵測器**）
-- [ ] 驗閘門 A 到期前 7 天告警的發送端（甲-4 的一部分）
+- [ ] 驗閘門 A 到期前 7 天告警的發送端（甲-4 的一部分）：發送端是每日的 `runtime-scan-expiry.yml`，剩 7 天以內或稽核任一項不是 PASS 時開 GitHub issue；驗的是負責人真的收到那封 issue 通知（手動 `workflow_dispatch` 一次，`warn_days` 填 31）
 
 ### 2.6 對帳器與排程
 

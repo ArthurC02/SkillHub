@@ -61,13 +61,14 @@ sudo systemctl start skillhub-serving
 
 ## 4. 准入：在這台節點上驗
 
-此時控制平面還不知道這台節點，沒有 Run 會進來。三件事都在**這一台**上做，換一台機器就換了受測物：
+此時控制平面還不知道這台節點，沒有 Run 會進來。四件事都在**這一台**上做，換一台機器就換了受測物：
 
 1. **節點准入探針**：`sudo python3 /opt/skillhub/tools/sec009/t8-node-probe.py`，exit 0 才繼續。它讀 `node.json`、容器清單、`runsc` 版本、`docker info`，並掃描行程環境與 `/etc/skillhub`、`/opt/skillhub` 裡有沒有資料庫憑證。
-2. **SEC-009 Suite 1 與 Suite 2**：照 [`tools/sec009/README.md`](../../tools/sec009/README.md) 的測項，在暫存目錄另取一份完整 checkout（同一個 commit）來跑，證據落 `docs/plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`。跑完刪掉暫存 checkout 與測試用的映像。
-3. **再跑一次第 1 步**：測試留下的容器或檔案會讓它失敗，失敗就先清乾淨。
+2. **這台跑的 Runtime Image 有有效的 SBOM 與掃描**：`sudo sh -c 'set -a; . /etc/skillhub/release.env; set +a; python3 /opt/skillhub/tools/sec009/t8-image-audit.py'`，exit 0 才繼續。帶著 `SKILLHUB_SANDBOX_IMAGE` 時它查的是這台釘的 digest，不是標籤今天指向的那一個；掃描超過 30 天、有可修的 Critical／High、或 `pinned_ip` 還是 `unset` 都會失敗。
+3. **SEC-009 Suite 1 與 Suite 2**：照 [`tools/sec009/README.md`](../../tools/sec009/README.md) 的測項，在暫存目錄另取一份完整 checkout（同一個 commit）來跑，證據落 `docs/plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`。跑完刪掉暫存 checkout 與測試用的映像。
+4. **再跑一次第 1 步**：測試留下的容器或檔案會讓它失敗，失敗就先清乾淨。
 
-三件都過才接 §5。任一測項失敗、或結果是 unknown，這台不接入。
+四件都過才接 §5。任一測項失敗、或結果是 unknown，這台不接入。
 
 ## 5. 接回控制平面
 

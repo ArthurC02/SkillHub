@@ -1,0 +1,58 @@
+name: Runtime image scan expiry
+
+on:
+  schedule:
+    - cron: '43 5 * * *'
+  workflow_dispatch:
+    inputs:
+      warn_days:
+        description: Days before expiry that file the issue; set above the days left to test that the issue reaches the owner
+        default: '7'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WARN_DAYS: ${{ inputs.warn_days || '7' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Audit the published runtime image against the registry
+        run: |
+          set -uo pipefail
+          python3 tools/sec009/t8-image-audit.py --json > audit.json
+          if ! jq -e '.image_half' audit.json >/dev/null 2>&1; then
+            echo "PROBLEM=the image audit could not measure anything (registry or setup failure)" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          failing=$(jq -r '[.image_half[] | select(.status != "PASS") | "\(.id) \(.status): \(.detail)"] | join("; ")' audit.json)
+          days=$(jq -r '.image_half[] | select(.id == "I-04") | .expires_in_days // empty' audit.json)
+          jq -r '.image_half[] | "\(.id) \(.status) \(.detail)"' audit.json
+          if [ -n "$failing" ]; then
+            echo "PROBLEM=$failing" >> "$GITHUB_ENV"
+          elif [ -z "$days" ] || [ "$days" -le "$WARN_DAYS" ]; then
+            echo "PROBLEM=the scan attestation expires in ${days:-an unknown number of} day(s); the weekly rescan has not refreshed it" >> "$GITHUB_ENV"
+          else
+            echo "::notice::runtime image scan valid for $days more day(s)"
+          fi
+
+      - name: File the issue
+        if: ${{ env.PROBLEM != '' }}
+        run: |
+          set -euo pipefail
+          TITLE="Runtime image scan is expiring or failing (SBX-002 I-04)"
+          BODY=$(printf 'Nodes admit a runtime image only while its scan attestation is under 30 days old; after that no new run may use the digest.\n\n%s\n\nRe-run the rescan job of the Runtime Image workflow (workflow_dispatch) and check why the weekly run did not refresh it.\n' "$PROBLEM")
+          if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+            echo "::notice::issue already open, not duplicating"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+          exit 1
