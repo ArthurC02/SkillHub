@@ -56,9 +56,9 @@ type ProviderCapability struct {
 
 	MaxResourcesUnenforced []string `json:"max_resources_unenforced,omitempty"`
 	Isolation              struct {
-		Level                    string `json:"level"`
-		Rootless                 bool   `json:"rootless"`
-		DedicatedWorkspacePerRun bool   `json:"dedicated_workspace_per_run"`
+		Strength                 IsolationStrength `json:"strength"`
+		Rootless                 bool              `json:"rootless"`
+		DedicatedWorkspacePerRun bool              `json:"dedicated_workspace_per_run"`
 
 		ReapsDetachedDescendants *bool `json:"reaps_detached_descendants,omitempty"`
 	} `json:"isolation"`

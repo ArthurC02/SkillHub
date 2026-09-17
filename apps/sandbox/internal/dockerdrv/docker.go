@@ -408,4 +408,15 @@ func devCmd(req sandbox.RunRequest) ([]string, bool) {
 	return cmd, len(cmd) > 0
 }
 
+const userSpaceKernelRuntime = "runsc"
+
 func (d *Driver) Rootless() bool { return d.cfg.UID != 0 && d.cfg.GID != 0 }
+
+func (d *Driver) Isolation() sandbox.IsolationStrength {
+	if d.cfg.Runtime == userSpaceKernelRuntime {
+		return sandbox.IsolationStrong
+	}
+	return sandbox.IsolationWeak
+}
+
+func (d *Driver) DedicatedWorkspacePerRun() bool { return true }

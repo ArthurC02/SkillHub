@@ -79,11 +79,11 @@ func egressAllowLines(allow []egressAllow) []string {
 }
 
 type ProviderSummary struct {
-	Name           string `json:"name"`
-	IsolationLevel string `json:"isolation_level,omitempty"`
-	Rootless       bool   `json:"rootless"`
-	Runtime        string `json:"runtime,omitempty"`
-	RuntimeVersion string `json:"runtime_version,omitempty"`
+	Name              string            `json:"name"`
+	IsolationStrength IsolationStrength `json:"isolation_strength,omitempty"`
+	Rootless          bool              `json:"rootless"`
+	Runtime           string            `json:"runtime,omitempty"`
+	RuntimeVersion    string            `json:"runtime_version,omitempty"`
 
 	DetachedDescendantsSurvive bool `json:"detached_descendants_survive,omitempty"`
 }
@@ -321,7 +321,7 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 	}
 	return ProviderSummary{
 		Name:                       p.Name,
-		IsolationLevel:             capability.Isolation.Level,
+		IsolationStrength:          capability.Isolation.Strength,
 		Rootless:                   capability.Isolation.Rootless,
 		Runtime:                    profile.Runtime,
 		RuntimeVersion:             profile.RuntimeVersion,

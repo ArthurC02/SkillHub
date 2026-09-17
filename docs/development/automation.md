@@ -163,7 +163,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `single-data-layer` | `db/gen` 之外不得長出第二個資料層（`02:PORT-008`） | `tools/devctl/second_data_layer.go` |
 | `require-db-guard` | 會因缺 DB URL 自我停用的測試套件，都必須認 `SKILLHUB_REQUIRE_DB`（`02:PORT-004`） | `tools/devctl/require_db_guard.go` |
 | `require-objstore-guard` | SBX-008 短效授權的那支測試還在，且認 `SKILLHUB_REQUIRE_OBJSTORE`（`02:PORT-009`） | `tools/devctl/require_objstore_guard.go` |
-| `isolation-level` | 派送閘門接受的每個隔離等級都要寫在 `contracts/openapi/sandbox-provider.yaml` 的 enum 裡（單向） | `tools/devctl/isolation_levels.go` |
+| `isolation-level` | 派送閘門接受的每個隔離強度都要寫在 `contracts/openapi/sandbox-provider.yaml` 與 `contracts/openapi/public.yaml` 的 enum 裡（單向） | `tools/devctl/isolation_levels.go` |
 | `route-table` | `router.go` 掛上的 route 與 `contracts/openapi/public.yaml` 的 `paths:` **雙向**對帳（codegen 看不到 route） | `tools/devctl/route_table.go` |
 | `requirement-refs` | `03`／`04`／`05` 引用的 `02:<ID>` 在 `02` 有且只有一個同名標題 | `tools/devctl/requirement_refs.go` |
 | `purge-schedule` | `cmd/maintenance` 的每個子命令（清理、收物件、查來源、輪替分割），在 `infra/deploy/control-plane/maintenance-schedule` 恰好排一次，且週期有對應的 systemd timer | `tools/devctl/purge_schedule.go` |
@@ -356,7 +356,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **`-w` 那一行是必要的**：測試以相對路徑 `../../../../../../db/migrations` 找 migration。
 
-**`DEV_LOGIN=1` 也是必要的**：`execution.Match` 對隔離等級是允許清單，這台 sandboxd 跑 runc、自報 `container`，只有標成開發部署的程序才接受它，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。
+**`DEV_LOGIN=1` 也是必要的**：`execution.Match` 比對的是隔離強度，這台 sandboxd 跑 runc、自報 `weak`，只有標成開發部署的程序才接受低於強隔離的節點，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。
 
 **Git Bash 跑上面這段時**：MSYS 會把以 `/` 開頭的參數與環境變數值改寫成 Windows 路徑（`-e X=/etc/foo` 進容器變成 `C:/Program Files/Git/etc/foo`）。整段前面加 `MSYS_NO_PATHCONV=1`，或把容器內路徑寫成 `//etc/foo`（Linux 把雙斜線當單斜線）。掛載來源用 `C:/...` 的寫法就不會被動。
 

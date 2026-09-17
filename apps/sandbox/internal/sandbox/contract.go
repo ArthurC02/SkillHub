@@ -224,8 +224,18 @@ type RuntimeCapability struct {
 	AgentIntegration []string `json:"agent_integration,omitempty"`
 }
 
+type IsolationStrength string
+
+const (
+	IsolationStrong IsolationStrength = "strong"
+
+	IsolationWeak IsolationStrength = "weak"
+
+	IsolationNone IsolationStrength = "none"
+)
+
 type Isolation struct {
-	Level string `json:"level"`
+	Strength IsolationStrength `json:"strength"`
 
 	Rootless                 bool `json:"rootless"`
 	DedicatedWorkspacePerRun bool `json:"dedicated_workspace_per_run"`

@@ -23,7 +23,7 @@ export interface PreflightSummary {
   injected_secrets: string[];
   provider: {
     name: string;
-    isolation_level?: string;
+    isolation_strength?: string;
     rootless: boolean;
     runtime?: string;
     runtime_version?: string;

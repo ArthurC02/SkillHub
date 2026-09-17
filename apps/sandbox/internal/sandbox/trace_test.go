@@ -95,12 +95,11 @@ func newTracingServer(t *testing.T, sink sandbox.TraceSink) (*fakeDriver, http.H
 	t.Helper()
 	drv := newFakeDriver()
 	m := sandbox.NewManager(drv, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"none"},
-		Slots:          2,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+		EgressModes:  []string{"none"},
+		Slots:        2,
 	}, slog.New(slog.DiscardHandler)).WithTrace(sink, nil)
 	return drv, (&sandbox.Server{M: m, Token: testToken}).Routes()
 }
@@ -258,12 +257,11 @@ func TestPushFailureDoesNotLogTheIngestionToken(t *testing.T) {
 	var logged safeBuffer
 	drv := newFakeDriver()
 	m := sandbox.NewManager(drv, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"none"},
-		Slots:          2,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+		EgressModes:  []string{"none"},
+		Slots:        2,
 	}, slog.New(slog.NewTextHandler(&logged, nil))).WithTrace(urlErrorSink{}, nil)
 	h := (&sandbox.Server{M: m, Token: testToken}).Routes()
 

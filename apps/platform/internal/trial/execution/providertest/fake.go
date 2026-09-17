@@ -96,7 +96,7 @@ func DefaultCapability(name string) run.ProviderCapability {
 		}},
 		MaxResources: run.DefaultResourceLimits(),
 	}
-	c.Isolation.Level = "container"
+	c.Isolation.Strength = "weak"
 	c.Isolation.Rootless = true
 	c.Isolation.DedicatedWorkspacePerRun = true
 

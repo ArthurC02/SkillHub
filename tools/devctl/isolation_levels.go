@@ -17,10 +17,10 @@ const isolationGoFile = "apps/platform/internal/trial/execution/schedule.go"
 
 // Each entry names the key the enum hangs under, since sandbox-provider
 // nests it under "isolation:" while public.yaml uses a flat
-// "isolation_level:".
+// "isolation_strength:".
 var isolationContractFiles = []struct{ path, marker string }{
 	{"contracts/openapi/sandbox-provider.yaml", "isolation:"},
-	{"contracts/openapi/public.yaml", "isolation_level:"},
+	{"contracts/openapi/public.yaml", "isolation_strength:"},
 }
 
 // Anchored so a mention inside a description string can't be mistaken for

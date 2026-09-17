@@ -27,6 +27,7 @@ var allowedDocWords = map[string]string{
 	"PurgeExpiredCostEvents":         "removed with the credit retention sweep (05 R-76); 03 CRED-006 records it as it was",
 	"PurgeExpiredCreditEntries":      "removed with the same sweep",
 	"PurgeUser":                      "removed with the account-deletion credit step; 03 CRED-006 and 04 record it as it was",
+	"GVISOR":                         "a typo the dispatch gate refused when isolation was named after products; 03 PORT-010a records that fix as it was",
 	"Superseded":                     "ADR status vocabulary (AGENTS.md), not a symbol",
 	"Proposed":                       "ADR status vocabulary",
 	"Accepted":                       "ADR status vocabulary",

@@ -27855,18 +27855,18 @@ func (s *OptRunComparisonRunsItemEvaluation) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes RunPermissionSummaryContentProviderIsolationLevel as json.
-func (o OptRunPermissionSummaryContentProviderIsolationLevel) Encode(e *jx.Encoder) {
+// Encode encodes RunPermissionSummaryContentProviderIsolationStrength as json.
+func (o OptRunPermissionSummaryContentProviderIsolationStrength) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
 	e.Str(string(o.Value))
 }
 
-// Decode decodes RunPermissionSummaryContentProviderIsolationLevel from json.
-func (o *OptRunPermissionSummaryContentProviderIsolationLevel) Decode(d *jx.Decoder) error {
+// Decode decodes RunPermissionSummaryContentProviderIsolationStrength from json.
+func (o *OptRunPermissionSummaryContentProviderIsolationStrength) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptRunPermissionSummaryContentProviderIsolationLevel to nil")
+		return errors.New("invalid: unable to decode OptRunPermissionSummaryContentProviderIsolationStrength to nil")
 	}
 	o.Set = true
 	if err := o.Value.Decode(d); err != nil {
@@ -27876,14 +27876,14 @@ func (o *OptRunPermissionSummaryContentProviderIsolationLevel) Decode(d *jx.Deco
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptRunPermissionSummaryContentProviderIsolationLevel) MarshalJSON() ([]byte, error) {
+func (s OptRunPermissionSummaryContentProviderIsolationStrength) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptRunPermissionSummaryContentProviderIsolationLevel) UnmarshalJSON(data []byte) error {
+func (s *OptRunPermissionSummaryContentProviderIsolationStrength) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -34921,9 +34921,9 @@ func (s *RunPermissionSummaryContentProvider) encodeFields(e *jx.Encoder) {
 		e.Str(s.Name)
 	}
 	{
-		if s.IsolationLevel.Set {
-			e.FieldStart("isolation_level")
-			s.IsolationLevel.Encode(e)
+		if s.IsolationStrength.Set {
+			e.FieldStart("isolation_strength")
+			s.IsolationStrength.Encode(e)
 		}
 	}
 	{
@@ -34946,7 +34946,7 @@ func (s *RunPermissionSummaryContentProvider) encodeFields(e *jx.Encoder) {
 
 var jsonFieldsNameOfRunPermissionSummaryContentProvider = [5]string{
 	0: "name",
-	1: "isolation_level",
+	1: "isolation_strength",
 	2: "rootless",
 	3: "runtime",
 	4: "runtime_version",
@@ -34973,15 +34973,15 @@ func (s *RunPermissionSummaryContentProvider) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
-		case "isolation_level":
+		case "isolation_strength":
 			if err := func() error {
-				s.IsolationLevel.Reset()
-				if err := s.IsolationLevel.Decode(d); err != nil {
+				s.IsolationStrength.Reset()
+				if err := s.IsolationStrength.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"isolation_level\"")
+				return errors.Wrap(err, "decode field \"isolation_strength\"")
 			}
 		case "rootless":
 			requiredBitSet[0] |= 1 << 2
@@ -35071,48 +35071,44 @@ func (s *RunPermissionSummaryContentProvider) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes RunPermissionSummaryContentProviderIsolationLevel as json.
-func (s RunPermissionSummaryContentProviderIsolationLevel) Encode(e *jx.Encoder) {
+// Encode encodes RunPermissionSummaryContentProviderIsolationStrength as json.
+func (s RunPermissionSummaryContentProviderIsolationStrength) Encode(e *jx.Encoder) {
 	e.Str(string(s))
 }
 
-// Decode decodes RunPermissionSummaryContentProviderIsolationLevel from json.
-func (s *RunPermissionSummaryContentProviderIsolationLevel) Decode(d *jx.Decoder) error {
+// Decode decodes RunPermissionSummaryContentProviderIsolationStrength from json.
+func (s *RunPermissionSummaryContentProviderIsolationStrength) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode RunPermissionSummaryContentProviderIsolationLevel to nil")
+		return errors.New("invalid: unable to decode RunPermissionSummaryContentProviderIsolationStrength to nil")
 	}
 	v, err := d.StrBytes()
 	if err != nil {
 		return err
 	}
 	// Try to use constant string.
-	switch RunPermissionSummaryContentProviderIsolationLevel(v) {
-	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
-		*s = RunPermissionSummaryContentProviderIsolationLevelGvisor
-	case RunPermissionSummaryContentProviderIsolationLevelContainer:
-		*s = RunPermissionSummaryContentProviderIsolationLevelContainer
-	case RunPermissionSummaryContentProviderIsolationLevelVM:
-		*s = RunPermissionSummaryContentProviderIsolationLevelVM
-	case RunPermissionSummaryContentProviderIsolationLevelProcess:
-		*s = RunPermissionSummaryContentProviderIsolationLevelProcess
-	case RunPermissionSummaryContentProviderIsolationLevelClean:
-		*s = RunPermissionSummaryContentProviderIsolationLevelClean
+	switch RunPermissionSummaryContentProviderIsolationStrength(v) {
+	case RunPermissionSummaryContentProviderIsolationStrengthStrong:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthStrong
+	case RunPermissionSummaryContentProviderIsolationStrengthWeak:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthWeak
+	case RunPermissionSummaryContentProviderIsolationStrengthNone:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthNone
 	default:
-		*s = RunPermissionSummaryContentProviderIsolationLevel(v)
+		*s = RunPermissionSummaryContentProviderIsolationStrength(v)
 	}
 
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s RunPermissionSummaryContentProviderIsolationLevel) MarshalJSON() ([]byte, error) {
+func (s RunPermissionSummaryContentProviderIsolationStrength) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *RunPermissionSummaryContentProviderIsolationLevel) UnmarshalJSON(data []byte) error {
+func (s *RunPermissionSummaryContentProviderIsolationStrength) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

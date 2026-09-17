@@ -942,28 +942,26 @@ components:
             decision a deployment has to make on purpose, not a default.
         isolation:
           type: object
-          required: [level]
+          required: [strength]
           properties:
-            level:
+            strength:
               type: string
-              enum: [gvisor, container, vm, process, clean]
+              enum: [strong, weak, none]
               description: |
-                gvisor is the production baseline. `container` exists
-                for the local dev provider only - gVisor needs Linux, and this
-                is the honest name for what a developer machine actually runs.
-                `process` is not acceptable for untrusted skills (iron rule 1).
+                What the boundary between the workload and the host is worth,
+                not which product draws it. `strong` is a user-space kernel or
+                hardware virtualisation and is the production baseline. `weak`
+                is a container sharing the host kernel, which a development
+                deployment may opt into. `none` means no boundary at all - a
+                host process - and is not a weaker boundary but the absence of
+                one; it needs the clean test mode's own opt-in.
 
-                `clean` means **no boundary at all** - not a weaker one (the clean test mode design's
-                decision 1). It exists for a machine that can install nothing,
-                carries only curated demo material, and needs its own opt-in at
-                the dispatch gate, which is an allow list: an unlisted level,
-                including a typo, is refused (per the clean test mode design).
-
-                This value was added to the enum on 2026-08-29, after the code
-                had been emitting it since 2026-08-28. Nothing failed in the
-                meantime because this provider serves the capability from
-                hand-written structs, not from generated types - which is
-                exactly why the drift was invisible.
+                The driver reports what it actually achieves; the provider does
+                not restate it. The platform compares this value against the
+                minimum its deployment accepts, and the comparison is an allow
+                list: an unlisted value, including a typo, is refused. A new
+                isolation technology declares one of these three rather than a
+                name of its own.
             rootless:
               type: boolean
               description: Workload runs unprivileged and non-root (RUN-003).

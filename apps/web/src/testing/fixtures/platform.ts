@@ -466,7 +466,7 @@ export const PREFLIGHT = {
     mcp_servers: [],
     network: { mode: "default_deny", allow: [] },
     injected_secrets: ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"],
-    provider: { name: "self-hosted", isolation_level: "gvisor", rootless: true },
+    provider: { name: "self-hosted", isolation_strength: "strong", rootless: true },
     resource_limits: {
       vcpu: 2,
       memory_bytes: 4 * 1024 ** 3,

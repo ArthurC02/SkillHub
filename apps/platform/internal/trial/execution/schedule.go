@@ -22,12 +22,31 @@ const (
 	defaultRuntime          = "claude_agent_sdk"
 	defaultAgentIntegration = "in_sandbox_sdk"
 
-	productionIsolation = "gvisor"
+	strongIsolation IsolationStrength = "strong"
 
-	cleanIsolation = "clean"
+	weakIsolation IsolationStrength = "weak"
 
-	weakIsolation = "container"
+	noIsolation IsolationStrength = "none"
 )
+
+type IsolationStrength string
+
+var isolationRank = map[IsolationStrength]int{noIsolation: 1, weakIsolation: 2, strongIsolation: 3}
+
+func (s IsolationStrength) meets(minimum IsolationStrength) bool {
+	return isolationRank[s] >= isolationRank[minimum]
+}
+
+func requiredIsolation() IsolationStrength {
+	switch {
+	case cleanTestMode():
+		return noIsolation
+	case devDeployment():
+		return weakIsolation
+	default:
+		return strongIsolation
+	}
+}
 
 func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
 
@@ -190,20 +209,10 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		return RuntimeProfile{}, fmt.Errorf("%s reports itself unhealthy", name)
 	}
 
-	switch c.Isolation.Level {
-	case productionIsolation:
-	case weakIsolation:
-		if !devDeployment() {
-			return RuntimeProfile{}, fmt.Errorf(
-				"%s isolates workloads with the host kernel (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
-		}
-	case cleanIsolation:
-		if !cleanTestMode() {
-			return RuntimeProfile{}, fmt.Errorf(
-				"%s does not isolate workloads at all (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
-		}
-	default:
-		return RuntimeProfile{}, fmt.Errorf("%s does not isolate workloads strongly enough (isolation %q)", name, c.Isolation.Level)
+	if !c.Isolation.Strength.meets(requiredIsolation()) {
+		return RuntimeProfile{}, fmt.Errorf(
+			"%s isolates workloads %q, and this deployment runs nothing weaker than %q",
+			name, c.Isolation.Strength, requiredIsolation())
 	}
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)
@@ -337,11 +346,11 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, halted map[
 }
 
 type runtimeSnapshot struct {
-	Provider       string         `json:"provider"`
-	Runtime        RuntimeProfile `json:"runtime"`
-	IsolationLevel string         `json:"isolation_level"`
-	Rootless       bool           `json:"rootless"`
-	SelectedAt     string         `json:"selected_at"`
+	Provider          string            `json:"provider"`
+	Runtime           RuntimeProfile    `json:"runtime"`
+	IsolationStrength IsolationStrength `json:"isolation_strength"`
+	Rootless          bool              `json:"rootless"`
+	SelectedAt        string            `json:"selected_at"`
 }
 
 func (s *Service) buildRunRequest(
@@ -425,11 +434,11 @@ func (s *Service) buildRunRequest(
 
 func pinnedRuntime(p *Provider, c ProviderCapability, profile RuntimeProfile) ([]byte, error) {
 	return json.Marshal(runtimeSnapshot{
-		Provider:       p.Name,
-		Runtime:        profile,
-		IsolationLevel: c.Isolation.Level,
-		Rootless:       c.Isolation.Rootless,
-		SelectedAt:     nowUTC(),
+		Provider:          p.Name,
+		Runtime:           profile,
+		IsolationStrength: c.Isolation.Strength,
+		Rootless:          c.Isolation.Rootless,
+		SelectedAt:        nowUTC(),
 	})
 }
 

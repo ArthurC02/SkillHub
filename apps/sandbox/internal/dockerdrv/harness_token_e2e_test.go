@@ -79,13 +79,13 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 	}
 
 	m := sandbox.NewManager(d, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"default_deny"},
-		EgressAllow:    []sandbox.EgressDestination{dest},
-		Slots:          1,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+
+		EgressModes: []string{"default_deny"},
+		EgressAllow: []sandbox.EgressDestination{dest},
+		Slots:       1,
 	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
 
 	sink := newCollector()

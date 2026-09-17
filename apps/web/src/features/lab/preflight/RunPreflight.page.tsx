@@ -21,6 +21,16 @@ import {
 
 type LabSearch = { skill?: string; version?: string; test_case?: string };
 
+const isolationLabels: Record<string, string> = {
+  strong: "強（獨立核心）",
+  weak: "弱（與主機共用核心）",
+  none: "無（沒有隔離邊界）",
+};
+
+function isolationText(strength: string) {
+  return isolationLabels[strength] ?? strength;
+}
+
 export function RunPreflight() {
   const {
     skill = "",
@@ -223,7 +233,8 @@ function Preflight({
         <dt>Provider</dt>
         <dd>
           {summary.provider.name}
-          {summary.provider.isolation_level && `（隔離:${summary.provider.isolation_level}）`}
+          {summary.provider.isolation_strength &&
+            `（隔離:${isolationText(summary.provider.isolation_strength)}）`}
         </dd>
 
         <dt>資源上限</dt>

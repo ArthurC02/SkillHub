@@ -121,7 +121,6 @@ func main() {
 			"the workload reaches whatever this host reaches, and the run's allow list is what the user agreed to, not a boundary")
 	}
 
-	isolation := resolveIsolation(cleanMode, runtime)
 	m := sandbox.NewManager(drv, sandbox.Config{
 		Provider: envOr("SKILLHUB_SANDBOX_PROVIDER", "self_hosted"),
 		Runtimes: []sandbox.RuntimeCapability{{
@@ -131,7 +130,6 @@ func main() {
 		}},
 		MaxResources:             maxResources,
 		MaxResourcesUnenforced:   unenforced,
-		IsolationLevel:           isolation,
 		ReapsDetachedDescendants: reapsDetached,
 		EgressModes:              modes,
 		EgressAllow:              egressAllow,
@@ -178,7 +176,7 @@ func main() {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	log.Info("sandbox provider listening", "addr", srv.Addr, "isolation", isolation)
+	log.Info("sandbox provider listening", "addr", srv.Addr, "isolation", drv.Isolation())
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
@@ -224,17 +222,6 @@ func driverKind(cleanMode bool) string {
 		return "local"
 	}
 	return "docker"
-}
-
-func resolveIsolation(cleanMode bool, runtime string) string {
-	switch {
-	case cleanMode:
-		return "clean"
-	case runtime == "runsc":
-		return "gvisor"
-	default:
-		return "container"
-	}
 }
 
 func cleanModeRunnerScript() (string, error) {

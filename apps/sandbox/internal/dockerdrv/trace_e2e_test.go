@@ -32,7 +32,7 @@ func TestCollectorDrainsARealTraceBeyondEightMiB(t *testing.T) {
 	t.Cleanup(sink.Close)
 	m := sandbox.NewManager(drv, sandbox.Config{
 		Provider: "docker_dev", Runtimes: []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources: sandbox.DefaultLimits, IsolationLevel: "container", EgressModes: []string{"none"}, Slots: 1,
+		MaxResources: sandbox.DefaultLimits, EgressModes: []string{"none"}, Slots: 1,
 	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
 	req := testRequest(largeTraceScript)
 	req.Trace = sandbox.TracePolicy{Level: "standard", IngestionURL: sink.URL + "/internal/trace/test-token"}
@@ -101,12 +101,12 @@ func TestTraceEventsReachTheCollectorFromARealContainer(t *testing.T) {
 	t.Cleanup(sink.Close)
 
 	m := sandbox.NewManager(drv, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"none"},
-		Slots:          1,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+
+		EgressModes: []string{"none"},
+		Slots:       1,
 	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
 
 	req := testRequest(traceScript)

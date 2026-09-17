@@ -31,6 +31,8 @@ type fakeDriver struct {
 	startRelease      chan struct{}
 	removeDeadlines   []bool
 	readTraceFailures int
+	isolation         sandbox.IsolationStrength
+	dedicated         bool
 
 	trace map[string][]byte
 
@@ -55,6 +57,8 @@ func newFakeDriver() *fakeDriver {
 		done:      map[string]bool{},
 		released:  map[string]int{},
 		rootless:  true,
+		isolation: sandbox.IsolationStrong,
+		dedicated: true,
 	}
 }
 
@@ -167,8 +171,10 @@ func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) {
 	}
 	return f.adopted, nil
 }
-func (f *fakeDriver) Healthy(context.Context) bool { return true }
-func (f *fakeDriver) Rootless() bool               { return f.rootless }
+func (f *fakeDriver) Healthy(context.Context) bool         { return true }
+func (f *fakeDriver) Rootless() bool                       { return f.rootless }
+func (f *fakeDriver) Isolation() sandbox.IsolationStrength { return f.isolation }
+func (f *fakeDriver) DedicatedWorkspacePerRun() bool       { return f.dedicated }
 
 func (f *fakeDriver) exit(id string, out sandbox.Outcome) {
 	f.mu.Lock()
@@ -192,12 +198,11 @@ func newServer(t *testing.T) (*fakeDriver, http.Handler) {
 
 func newManager(drv sandbox.Driver) *sandbox.Manager {
 	return sandbox.NewManager(drv, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"none"},
-		Slots:          2,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+		EgressModes:  []string{"none"},
+		Slots:        2,
 	}, slog.New(slog.DiscardHandler))
 }
 
@@ -730,6 +735,23 @@ func waitForTerminal(t *testing.T, h http.Handler, id string) sandbox.ProviderRu
 	}
 	t.Fatalf("run %s never reached a terminal state", id)
 	return sandbox.ProviderRun{}
+}
+
+func TestCapabilityReportsWhatTheDriverAchieves(t *testing.T) {
+	for _, strength := range []sandbox.IsolationStrength{
+		sandbox.IsolationStrong, sandbox.IsolationWeak, sandbox.IsolationNone,
+	} {
+		for _, dedicated := range []bool{true, false} {
+			drv := newFakeDriver()
+			drv.isolation, drv.dedicated = strength, dedicated
+			got := newManager(drv).Capability(context.Background()).Isolation
+			if got.Strength != strength || got.DedicatedWorkspacePerRun != dedicated {
+				t.Errorf("Capability().Isolation = %s/%v with a driver reporting %s/%v: "+
+					"both must carry what the driver actually does",
+					got.Strength, got.DedicatedWorkspacePerRun, strength, dedicated)
+			}
+		}
+	}
 }
 
 func TestCapabilityReportsTheDriversRootlessDetection(t *testing.T) {

@@ -5573,7 +5573,7 @@ func (s *RunPermissionSummaryContentProvider) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if value, ok := s.IsolationLevel.Get(); ok {
+		if value, ok := s.IsolationStrength.Get(); ok {
 			if err := func() error {
 				if err := value.Validate(); err != nil {
 					return err
@@ -5586,7 +5586,7 @@ func (s *RunPermissionSummaryContentProvider) Validate() error {
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "isolation_level",
+			Name:  "isolation_strength",
 			Error: err,
 		})
 	}
@@ -5596,17 +5596,13 @@ func (s *RunPermissionSummaryContentProvider) Validate() error {
 	return nil
 }
 
-func (s RunPermissionSummaryContentProviderIsolationLevel) Validate() error {
+func (s RunPermissionSummaryContentProviderIsolationStrength) Validate() error {
 	switch s {
-	case "gvisor":
+	case "strong":
 		return nil
-	case "container":
+	case "weak":
 		return nil
-	case "vm":
-		return nil
-	case "process":
-		return nil
-	case "clean":
+	case "none":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

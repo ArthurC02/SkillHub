@@ -7412,16 +7412,17 @@ components:
             name:
               type: string
               description: '`unassigned` when no provider could be resolved right now.'
-            isolation_level:
+            isolation_strength:
               type: string
-              enum: [gvisor, container, vm, process, clean]
+              enum: [strong, weak, none]
               description: |
-                The provider's declared isolation level (`clean` is clean test mode's
-                "no boundary at all" level, admitted only under SKILLHUB_CLEAN_MODE).
+                How strongly the provider separates the workload from its host:
+                `strong` is a user-space kernel or hardware virtualisation,
+                `weak` is a container sharing the host kernel, and `none` is no
+                boundary at all, admitted only under SKILLHUB_CLEAN_MODE.
                 Absent when unassigned. Kept as an enum, not prose, so devctl's
-                isolation-level check can reconcile it with the dispatch gate and
-                sandbox-provider.yaml — the prose form let `clean` be emitted here
-                for a day without anything noticing (2026-08-29).
+                isolation check can reconcile it with the dispatch gate and
+                sandbox-provider.yaml.
             rootless: { type: boolean }
             runtime: { type: string }
             runtime_version: { type: string }

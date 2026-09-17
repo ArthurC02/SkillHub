@@ -88,27 +88,6 @@ func TestDriverKindDefaultsToDocker(t *testing.T) {
 	}
 }
 
-func TestResolveIsolationDeclaresCleanHonestly(t *testing.T) {
-	cases := []struct {
-		name      string
-		cleanMode bool
-		runtime   string
-		want      string
-	}{
-		{"clean mode wins even over runsc", true, "runsc", "clean"},
-		{"clean mode, no runtime", true, "", "clean"},
-		{"runsc without clean mode is gvisor", false, "runsc", "gvisor"},
-		{"neither is the dev container level", false, "", "container"},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := resolveIsolation(c.cleanMode, c.runtime); got != c.want {
-				t.Errorf("resolveIsolation(%v, %q) = %q, want %q", c.cleanMode, c.runtime, got, c.want)
-			}
-		})
-	}
-}
-
 func TestCleanModeRunnerScriptFindsRunMjs(t *testing.T) {
 	got, err := cleanModeRunnerScript()
 	if err != nil {

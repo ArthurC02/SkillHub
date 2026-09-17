@@ -13023,38 +13023,38 @@ func (o OptRunComparisonRunsItemEvaluation) Or(d RunComparisonRunsItemEvaluation
 	return d
 }
 
-// NewOptRunPermissionSummaryContentProviderIsolationLevel returns new OptRunPermissionSummaryContentProviderIsolationLevel with value set to v.
-func NewOptRunPermissionSummaryContentProviderIsolationLevel(v RunPermissionSummaryContentProviderIsolationLevel) OptRunPermissionSummaryContentProviderIsolationLevel {
-	return OptRunPermissionSummaryContentProviderIsolationLevel{
+// NewOptRunPermissionSummaryContentProviderIsolationStrength returns new OptRunPermissionSummaryContentProviderIsolationStrength with value set to v.
+func NewOptRunPermissionSummaryContentProviderIsolationStrength(v RunPermissionSummaryContentProviderIsolationStrength) OptRunPermissionSummaryContentProviderIsolationStrength {
+	return OptRunPermissionSummaryContentProviderIsolationStrength{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptRunPermissionSummaryContentProviderIsolationLevel is optional RunPermissionSummaryContentProviderIsolationLevel.
-type OptRunPermissionSummaryContentProviderIsolationLevel struct {
-	Value RunPermissionSummaryContentProviderIsolationLevel
+// OptRunPermissionSummaryContentProviderIsolationStrength is optional RunPermissionSummaryContentProviderIsolationStrength.
+type OptRunPermissionSummaryContentProviderIsolationStrength struct {
+	Value RunPermissionSummaryContentProviderIsolationStrength
 	Set   bool
 }
 
-// IsSet returns true if OptRunPermissionSummaryContentProviderIsolationLevel was set.
-func (o OptRunPermissionSummaryContentProviderIsolationLevel) IsSet() bool { return o.Set }
+// IsSet returns true if OptRunPermissionSummaryContentProviderIsolationStrength was set.
+func (o OptRunPermissionSummaryContentProviderIsolationStrength) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptRunPermissionSummaryContentProviderIsolationLevel) Reset() {
-	var v RunPermissionSummaryContentProviderIsolationLevel
+func (o *OptRunPermissionSummaryContentProviderIsolationStrength) Reset() {
+	var v RunPermissionSummaryContentProviderIsolationStrength
 	o.Value = v
 	o.Set = false
 }
 
 // SetTo sets value to v.
-func (o *OptRunPermissionSummaryContentProviderIsolationLevel) SetTo(v RunPermissionSummaryContentProviderIsolationLevel) {
+func (o *OptRunPermissionSummaryContentProviderIsolationStrength) SetTo(v RunPermissionSummaryContentProviderIsolationStrength) {
 	o.Set = true
 	o.Value = v
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptRunPermissionSummaryContentProviderIsolationLevel) Get() (v RunPermissionSummaryContentProviderIsolationLevel, ok bool) {
+func (o OptRunPermissionSummaryContentProviderIsolationStrength) Get() (v RunPermissionSummaryContentProviderIsolationStrength, ok bool) {
 	if !o.Set {
 		return v, false
 	}
@@ -13062,7 +13062,7 @@ func (o OptRunPermissionSummaryContentProviderIsolationLevel) Get() (v RunPermis
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptRunPermissionSummaryContentProviderIsolationLevel) Or(d RunPermissionSummaryContentProviderIsolationLevel) RunPermissionSummaryContentProviderIsolationLevel {
+func (o OptRunPermissionSummaryContentProviderIsolationStrength) Or(d RunPermissionSummaryContentProviderIsolationStrength) RunPermissionSummaryContentProviderIsolationStrength {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -17571,14 +17571,14 @@ func (s *RunPermissionSummaryContentNetwork) SetAllow(val []string) {
 type RunPermissionSummaryContentProvider struct {
 	// `unassigned` when no provider could be resolved right now.
 	Name string `json:"name"`
-	// The provider's declared isolation level (`clean` is clean test mode's "no boundary at all" level,
-	// admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
-	// devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
-	// the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
-	IsolationLevel OptRunPermissionSummaryContentProviderIsolationLevel `json:"isolation_level"`
-	Rootless       bool                                                 `json:"rootless"`
-	Runtime        OptString                                            `json:"runtime"`
-	RuntimeVersion OptString                                            `json:"runtime_version"`
+	// How strongly the provider separates the workload from its host: `strong` is a user-space kernel or
+	// hardware virtualisation, `weak` is a container sharing the host kernel, and `none` is no boundary at
+	// all, admitted only under SKILLHUB_CLEAN_MODE. Absent when unassigned. Kept as an enum, not prose, so
+	// devctl's isolation check can reconcile it with the dispatch gate and sandbox-provider.yaml.
+	IsolationStrength OptRunPermissionSummaryContentProviderIsolationStrength `json:"isolation_strength"`
+	Rootless          bool                                                    `json:"rootless"`
+	Runtime           OptString                                               `json:"runtime"`
+	RuntimeVersion    OptString                                               `json:"runtime_version"`
 }
 
 // GetName returns the value of Name.
@@ -17586,9 +17586,9 @@ func (s *RunPermissionSummaryContentProvider) GetName() string {
 	return s.Name
 }
 
-// GetIsolationLevel returns the value of IsolationLevel.
-func (s *RunPermissionSummaryContentProvider) GetIsolationLevel() OptRunPermissionSummaryContentProviderIsolationLevel {
-	return s.IsolationLevel
+// GetIsolationStrength returns the value of IsolationStrength.
+func (s *RunPermissionSummaryContentProvider) GetIsolationStrength() OptRunPermissionSummaryContentProviderIsolationStrength {
+	return s.IsolationStrength
 }
 
 // GetRootless returns the value of Rootless.
@@ -17611,9 +17611,9 @@ func (s *RunPermissionSummaryContentProvider) SetName(val string) {
 	s.Name = val
 }
 
-// SetIsolationLevel sets the value of IsolationLevel.
-func (s *RunPermissionSummaryContentProvider) SetIsolationLevel(val OptRunPermissionSummaryContentProviderIsolationLevel) {
-	s.IsolationLevel = val
+// SetIsolationStrength sets the value of IsolationStrength.
+func (s *RunPermissionSummaryContentProvider) SetIsolationStrength(val OptRunPermissionSummaryContentProviderIsolationStrength) {
+	s.IsolationStrength = val
 }
 
 // SetRootless sets the value of Rootless.
@@ -17631,43 +17631,35 @@ func (s *RunPermissionSummaryContentProvider) SetRuntimeVersion(val OptString) {
 	s.RuntimeVersion = val
 }
 
-// The provider's declared isolation level (`clean` is clean test mode's "no boundary at all" level,
-// admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
-// devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
-// the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
-type RunPermissionSummaryContentProviderIsolationLevel string
+// How strongly the provider separates the workload from its host: `strong` is a user-space kernel or
+// hardware virtualisation, `weak` is a container sharing the host kernel, and `none` is no boundary at
+// all, admitted only under SKILLHUB_CLEAN_MODE. Absent when unassigned. Kept as an enum, not prose, so
+// devctl's isolation check can reconcile it with the dispatch gate and sandbox-provider.yaml.
+type RunPermissionSummaryContentProviderIsolationStrength string
 
 const (
-	RunPermissionSummaryContentProviderIsolationLevelGvisor    RunPermissionSummaryContentProviderIsolationLevel = "gvisor"
-	RunPermissionSummaryContentProviderIsolationLevelContainer RunPermissionSummaryContentProviderIsolationLevel = "container"
-	RunPermissionSummaryContentProviderIsolationLevelVM        RunPermissionSummaryContentProviderIsolationLevel = "vm"
-	RunPermissionSummaryContentProviderIsolationLevelProcess   RunPermissionSummaryContentProviderIsolationLevel = "process"
-	RunPermissionSummaryContentProviderIsolationLevelClean     RunPermissionSummaryContentProviderIsolationLevel = "clean"
+	RunPermissionSummaryContentProviderIsolationStrengthStrong RunPermissionSummaryContentProviderIsolationStrength = "strong"
+	RunPermissionSummaryContentProviderIsolationStrengthWeak   RunPermissionSummaryContentProviderIsolationStrength = "weak"
+	RunPermissionSummaryContentProviderIsolationStrengthNone   RunPermissionSummaryContentProviderIsolationStrength = "none"
 )
 
-// AllValues returns all RunPermissionSummaryContentProviderIsolationLevel values.
-func (RunPermissionSummaryContentProviderIsolationLevel) AllValues() []RunPermissionSummaryContentProviderIsolationLevel {
-	return []RunPermissionSummaryContentProviderIsolationLevel{
-		RunPermissionSummaryContentProviderIsolationLevelGvisor,
-		RunPermissionSummaryContentProviderIsolationLevelContainer,
-		RunPermissionSummaryContentProviderIsolationLevelVM,
-		RunPermissionSummaryContentProviderIsolationLevelProcess,
-		RunPermissionSummaryContentProviderIsolationLevelClean,
+// AllValues returns all RunPermissionSummaryContentProviderIsolationStrength values.
+func (RunPermissionSummaryContentProviderIsolationStrength) AllValues() []RunPermissionSummaryContentProviderIsolationStrength {
+	return []RunPermissionSummaryContentProviderIsolationStrength{
+		RunPermissionSummaryContentProviderIsolationStrengthStrong,
+		RunPermissionSummaryContentProviderIsolationStrengthWeak,
+		RunPermissionSummaryContentProviderIsolationStrengthNone,
 	}
 }
 
 // MarshalText implements encoding.TextMarshaler.
-func (s RunPermissionSummaryContentProviderIsolationLevel) MarshalText() ([]byte, error) {
+func (s RunPermissionSummaryContentProviderIsolationStrength) MarshalText() ([]byte, error) {
 	switch s {
-	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
+	case RunPermissionSummaryContentProviderIsolationStrengthStrong:
 		return []byte(s), nil
-	case RunPermissionSummaryContentProviderIsolationLevelContainer:
+	case RunPermissionSummaryContentProviderIsolationStrengthWeak:
 		return []byte(s), nil
-	case RunPermissionSummaryContentProviderIsolationLevelVM:
-		return []byte(s), nil
-	case RunPermissionSummaryContentProviderIsolationLevelProcess:
-		return []byte(s), nil
-	case RunPermissionSummaryContentProviderIsolationLevelClean:
+	case RunPermissionSummaryContentProviderIsolationStrengthNone:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -17675,22 +17667,16 @@ func (s RunPermissionSummaryContentProviderIsolationLevel) MarshalText() ([]byte
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
-func (s *RunPermissionSummaryContentProviderIsolationLevel) UnmarshalText(data []byte) error {
-	switch RunPermissionSummaryContentProviderIsolationLevel(data) {
-	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
-		*s = RunPermissionSummaryContentProviderIsolationLevelGvisor
+func (s *RunPermissionSummaryContentProviderIsolationStrength) UnmarshalText(data []byte) error {
+	switch RunPermissionSummaryContentProviderIsolationStrength(data) {
+	case RunPermissionSummaryContentProviderIsolationStrengthStrong:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthStrong
 		return nil
-	case RunPermissionSummaryContentProviderIsolationLevelContainer:
-		*s = RunPermissionSummaryContentProviderIsolationLevelContainer
+	case RunPermissionSummaryContentProviderIsolationStrengthWeak:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthWeak
 		return nil
-	case RunPermissionSummaryContentProviderIsolationLevelVM:
-		*s = RunPermissionSummaryContentProviderIsolationLevelVM
-		return nil
-	case RunPermissionSummaryContentProviderIsolationLevelProcess:
-		*s = RunPermissionSummaryContentProviderIsolationLevelProcess
-		return nil
-	case RunPermissionSummaryContentProviderIsolationLevelClean:
-		*s = RunPermissionSummaryContentProviderIsolationLevelClean
+	case RunPermissionSummaryContentProviderIsolationStrengthNone:
+		*s = RunPermissionSummaryContentProviderIsolationStrengthNone
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

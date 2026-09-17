@@ -352,3 +352,7 @@ func hostEnvAllowed(name string) bool {
 }
 
 func (d *Driver) Rootless() bool { return rootless() }
+
+func (d *Driver) Isolation() sandbox.IsolationStrength { return sandbox.IsolationNone }
+
+func (d *Driver) DedicatedWorkspacePerRun() bool { return true }

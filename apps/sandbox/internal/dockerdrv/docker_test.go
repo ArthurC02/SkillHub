@@ -350,11 +350,10 @@ func sizeLine(output string) string {
 func TestWallClockStopsALiveSandboxAndDestroyReleasesIt(t *testing.T) {
 	d, cli := newDriver(t)
 	m := sandbox.NewManager(d, sandbox.Config{
-		Provider:       "docker_dev",
-		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
-		MaxResources:   sandbox.DefaultLimits,
-		IsolationLevel: "container",
-		Slots:          2,
+		Provider:     "docker_dev",
+		Runtimes:     []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits,
+		Slots:        2,
 	}, slog.New(slog.DiscardHandler))
 
 	req := testRequest("sleep 300")

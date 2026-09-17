@@ -1,7 +1,7 @@
 # ADR-022：淨測試模式
 
 - 狀態：Accepted
-- 相關：[ADR-002](./ADR-002-data-ownership-and-core-infrastructure.md)（資料所有權與核心基礎設施）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Run 編排與非同步工作流程；Provider Port／Adapter 的既有形狀）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（Sandbox 隔離與執行安全；`isolation.level` 的既有紀律）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（身分、Workspace、准入與額度；「授予＝改部署環境」的既有先例）、[ADR-007](./ADR-007-packaging-license-provenance-and-redistribution.md)（打包、授權溯源與散布；「自帶內容不等於可信」「放行要具名證據」的既有先例）、[ADR-016](./ADR-016-platform-bounded-contexts-and-context-map.md)（Platform Bounded Context 與 Context Map；`cmd/api`／`cmd/worker` 兩個 deployment unit 的既有規則）
+- 相關：[ADR-002](./ADR-002-data-ownership-and-core-infrastructure.md)（資料所有權與核心基礎設施）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Run 編排與非同步工作流程；Provider Port／Adapter 的既有形狀）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（Sandbox 隔離與執行安全；隔離強度宣告的既有紀律）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（身分、Workspace、准入與額度；「授予＝改部署環境」的既有先例）、[ADR-007](./ADR-007-packaging-license-provenance-and-redistribution.md)（打包、授權溯源與散布；「自帶內容不等於可信」「放行要具名證據」的既有先例）、[ADR-016](./ADR-016-platform-bounded-contexts-and-context-map.md)（Platform Bounded Context 與 Context Map；`cmd/api`／`cmd/worker` 兩個 deployment unit 的既有規則）
 
 ## 背景
 
@@ -43,7 +43,7 @@
 
 ### 決策 4：沙箱這一軸用本機行程 Driver，宣告等級為「沒有邊界」
 
-`sandbox.Driver` 介面已存在，淨測試模式新增第二個實作：在主機上直接 spawn 與容器內相同的單一工作負載（`node run.mjs`），把容器目錄換成主機目錄。它向派送邏輯宣告 `isolation.level = "clean"`——**這個名字讀作「沒有邊界」，不是「比較弱的邊界」**，只承載策展過的展示素材，永遠不承載不受信任的內容。
+`sandbox.Driver` 介面已存在，淨測試模式新增第二個實作：在主機上直接 spawn 與容器內相同的單一工作負載（`node run.mjs`），把容器目錄換成主機目錄。它向派送邏輯宣告隔離強度 `none`——**這個值讀作「沒有邊界」，不是「比較弱的邊界」**，只承載策展過的展示素材，永遠不承載不受信任的內容。
 
 隨此新增等級，派送閘門從黑名單改為白名單：`gvisor` 各處可用、`container` 需要開發登入旗標、`clean` 需要 `SKILLHUB_CLEAN_MODE`，其餘任何值一律拒絕；新增等級從此必須先被明確列入白名單才能通過派送檢查。
 

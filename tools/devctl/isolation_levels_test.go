@@ -21,11 +21,11 @@ func TestTheRealRepositoryHasNoIsolationDrift(t *testing.T) {
 	}
 
 	if len(levels) < 3 {
-		t.Fatalf("found %d isolation constants (%v); the gate declares at least gvisor, container and clean, so this check is looking at the wrong thing", len(levels), levels)
+		t.Fatalf("found %d isolation constants (%v); the gate declares at least strong, weak and none, so this check is looking at the wrong thing", len(levels), levels)
 	}
 
 	if len(isolationContractFiles) < 2 {
-		t.Fatalf("the contract list is down to %d entries; public.yaml's isolation_level is the "+
+		t.Fatalf("the contract list is down to %d entries; public.yaml's isolation_strength is the "+
 			"user-facing half and was the one that drifted", len(isolationContractFiles))
 	}
 	for _, contract := range isolationContractFiles {
@@ -33,7 +33,7 @@ func TestTheRealRepositoryHasNoIsolationDrift(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", contract.path, err)
 		}
-		if !admitted["clean"] || !admitted["gvisor"] {
+		if !admitted["none"] || !admitted["strong"] {
 			t.Errorf("%s admits %v; the enum no longer looks like the isolation set, so the "+
 				"comparison above passed against something else", contract.path, admitted)
 		}
@@ -45,8 +45,8 @@ func TestIsolationLevelProblemsNamesALevelEachContractDoesNotAdmit(t *testing.T)
 	const gate = `package execution
 
 const (
-	productionIsolation = "gvisor"
-	cleanIsolation      = "clean"
+	strongIsolation = "strong"
+	noIsolation      = "none"
 	// A fourth level added to the gate and nowhere else.
 	microvmIsolation = "microvm"
 )
@@ -60,7 +60,7 @@ const (
           properties:
             level:
               type: string
-              enum: [gvisor, container, vm, process, clean, microvm]
+              enum: [strong, weak, none, microvm]
 `,
 		"contracts/openapi/public.yaml": `components:
   schemas:
@@ -68,9 +68,9 @@ const (
       properties:
         provider:
           properties:
-            isolation_level:
+            isolation_strength:
               type: string
-              enum: [gvisor, container, vm, process, clean, microvm]
+              enum: [strong, weak, none, microvm]
 `,
 	}
 	for _, contract := range isolationContractFiles {
@@ -99,14 +99,14 @@ const (
 func TestIsolationLevelProblemsRefusesAProseListInsteadOfAnEnum(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeAt(t, root, isolationGoFile, "package execution\n\nconst cleanIsolation = \"clean\"\n")
+	writeAt(t, root, isolationGoFile, "package execution\n\nconst noIsolation = \"none\"\n")
 	writeAt(t, root, "contracts/openapi/sandbox-provider.yaml",
-		"        isolation:\n          properties:\n            level:\n              enum: [clean]\n")
+		"        isolation:\n          properties:\n            level:\n              enum: [none]\n")
 	writeAt(t, root, "contracts/openapi/public.yaml",
-		"            isolation_level:\n              type: string\n"+
-			"              description: 'gvisor | container | vm | process.'\n")
+		"            isolation_strength:\n              type: string\n"+
+			"              description: 'strong | weak | none.'\n")
 	problems := isolationLevelProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], "no enum found under `isolation_level:`") {
+	if len(problems) != 1 || !strings.Contains(problems[0], "no enum found under `isolation_strength:`") {
 		t.Fatalf("a prose list was accepted as a set: %v", problems)
 	}
 }
@@ -117,15 +117,15 @@ func TestIsolationLevelProblemsReadsCodeNotComments(t *testing.T) {
 	writeAt(t, root, isolationGoFile, `package execution
 
 // A comment that mentions microvmIsolation = "microvm" and nothing more.
-const productionIsolation = "gvisor"
+const strongIsolation = "strong"
 `)
 	writeAt(t, root, "contracts/openapi/sandbox-provider.yaml", `        isolation:
           properties:
             level:
-              enum: [gvisor, container, vm, process, clean]
+              enum: [strong, weak, none]
 `)
-	writeAt(t, root, "contracts/openapi/public.yaml", `            isolation_level:
-              enum: [gvisor, container, vm, process, clean]
+	writeAt(t, root, "contracts/openapi/public.yaml", `            isolation_strength:
+              enum: [strong, weak, none]
 `)
 	if problems := isolationLevelProblems(root); len(problems) != 0 {
 		t.Fatalf("a level that exists only in a comment is not a level; got %v", problems)

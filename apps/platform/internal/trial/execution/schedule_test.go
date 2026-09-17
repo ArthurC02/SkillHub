@@ -24,7 +24,7 @@ func compatible() ProviderCapability {
 		}},
 		MaxResources: DefaultResourceLimits(),
 	}
-	c.Isolation.Level = "gvisor"
+	c.Isolation.Strength = "strong"
 	c.Isolation.Rootless = true
 	c.Network.EgressModes = []string{"default_deny"}
 	c.Availability.Healthy = &healthy
@@ -60,8 +60,8 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 		wantSay string
 	}{
 		{"unhealthy", func(c *ProviderCapability) { c.Availability.Healthy = &unhealthy }, "unhealthy"},
-		{"bare process isolation", func(c *ProviderCapability) { c.Isolation.Level = "process" }, "isolate"},
-		{"undeclared isolation", func(c *ProviderCapability) { c.Isolation.Level = "" }, "isolate"},
+		{"unnamed isolation strength", func(c *ProviderCapability) { c.Isolation.Strength = "process" }, "isolates"},
+		{"undeclared isolation", func(c *ProviderCapability) { c.Isolation.Strength = "" }, "isolates"},
 		{"runs as root", func(c *ProviderCapability) { c.Isolation.Rootless = false }, "unprivileged"},
 		{"no egress mode the request can use", func(c *ProviderCapability) {
 			c.Network.EgressModes = []string{"something_else"}
@@ -107,7 +107,7 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 
 func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *testing.T) {
 	c := compatible()
-	c.Isolation.Level = "container"
+	c.Isolation.Strength = "weak"
 
 	t.Setenv("DEV_LOGIN", "")
 	_, err := Match(c, defaultRequirements())
@@ -127,11 +127,11 @@ func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *
 		t.Errorf("a development deployment could not run its own sandbox: %v", err)
 	}
 
-	for _, level := range []string{"process", ""} {
+	for _, strength := range []IsolationStrength{"process", ""} {
 		bare := compatible()
-		bare.Isolation.Level = level
+		bare.Isolation.Strength = strength
 		if _, err := Match(bare, defaultRequirements()); err == nil {
-			t.Errorf("isolation %q was accepted by a development deployment", level)
+			t.Errorf("isolation %q was accepted by a development deployment", strength)
 		}
 	}
 }
@@ -349,7 +349,7 @@ func TestPlaceOffersOnlyProvidersWithAFreeSlotMostFreeFirst(t *testing.T) {
 func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
 	t.Setenv("DEV_LOGIN", "")
 	incompatible := withSlots("weak", 4)
-	incompatible.Isolation.Level = "container"
+	incompatible.Isolation.Strength = "weak"
 	drained := withSlots("drained", 4)
 	halted := map[string]gen.DispatchHalt{"drained": {Source: "incident"}}
 
@@ -372,19 +372,19 @@ func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
 	}
 }
 
-func TestMatchIsAnAllowListSoAnUnknownIsolationLevelIsRefused(t *testing.T) {
+func TestMatchIsAnAllowListSoAnUnnamedIsolationStrengthIsRefused(t *testing.T) {
 	t.Setenv("DEV_LOGIN", "")
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
-	for _, level := range []string{"gvsior", "banana", "hosted-vm", "GVISOR", "gvisor "} {
+	for _, strength := range []IsolationStrength{"gvisor", "banana", "strongest", "STRONG", "strong "} {
 		c := compatible()
-		c.Isolation.Level = level
+		c.Isolation.Strength = strength
 		if _, err := Match(c, defaultRequirements()); err == nil {
-			t.Errorf("isolation %q was accepted; only levels written down here may run anything", level)
+			t.Errorf("isolation %q was accepted; only the strengths written down here may run anything", strength)
 		}
 	}
 
 	c := compatible()
-	c.Isolation.Level = "gvisor"
+	c.Isolation.Strength = "strong"
 	if _, err := Match(c, defaultRequirements()); err != nil {
 		t.Errorf("the production isolation baseline was refused: %v", err)
 	}
@@ -392,7 +392,7 @@ func TestMatchIsAnAllowListSoAnUnknownIsolationLevelIsRefused(t *testing.T) {
 
 func TestMatchAcceptsCleanOnlyUnderItsOwnOptIn(t *testing.T) {
 	c := compatible()
-	c.Isolation.Level = "clean"
+	c.Isolation.Strength = "none"
 
 	t.Setenv("DEV_LOGIN", "")
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
@@ -411,12 +411,18 @@ func TestMatchAcceptsCleanOnlyUnderItsOwnOptIn(t *testing.T) {
 		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
 	}
 
-	for _, level := range []string{"process", ""} {
+	for _, strength := range []IsolationStrength{"process", ""} {
 		bare := compatible()
-		bare.Isolation.Level = level
+		bare.Isolation.Strength = strength
 		if _, err := Match(bare, defaultRequirements()); err == nil {
-			t.Errorf("isolation %q was accepted by a clean-test deployment", level)
+			t.Errorf("isolation %q was accepted by a clean-test deployment", strength)
 		}
+	}
+
+	stronger := compatible()
+	stronger.Isolation.Strength = strongIsolation
+	if _, err := Match(stronger, defaultRequirements()); err != nil {
+		t.Errorf("the clean test mode refused a provider that isolates more strongly than it asks for: %v", err)
 	}
 }
 
@@ -439,7 +445,7 @@ func TestMatchRefusesAProviderThatDoesNotEnforceWhatItDeclares(t *testing.T) {
 
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	clean := compatible()
-	clean.Isolation.Level = "clean"
+	clean.Isolation.Strength = "none"
 	clean.MaxResourcesUnenforced = []string{"vcpu"}
 	if _, err := Match(clean, defaultRequirements()); err != nil {
 		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
@@ -465,7 +471,7 @@ func TestMatchRefusesAProviderThatDeclaresEgressItDoesNotEnforce(t *testing.T) {
 
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	clean := compatible()
-	clean.Isolation.Level = "clean"
+	clean.Isolation.Strength = "none"
 	clean.Network.EgressUnenforced = true
 	req := defaultRequirements()
 	req.EgressMode, req.EgressAllowed = "default_deny", 1
@@ -480,7 +486,7 @@ func TestAProviderThatCannotReapDetachedDescendantsRunsButSaysSo(t *testing.T) {
 
 	no, yes := false, true
 	c := compatible()
-	c.Isolation.Level = "clean"
+	c.Isolation.Strength = "none"
 	c.Isolation.ReapsDetachedDescendants = &no
 	if _, err := Match(c, defaultRequirements()); err != nil {
 		t.Fatalf("a clean provider was refused for a disclosure-shaped fact: %v", err)

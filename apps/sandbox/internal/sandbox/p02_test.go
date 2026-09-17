@@ -109,6 +109,10 @@ func (d *p02Driver) WorkloadDone(context.Context, string) (bool, error) { return
 
 func (d *p02Driver) Rootless() bool { return true }
 
+func (d *p02Driver) Isolation() IsolationStrength { return IsolationStrong }
+
+func (d *p02Driver) DedicatedWorkspacePerRun() bool { return true }
+
 func (d *p02Driver) ReleaseWorkload(context.Context, string) error { return nil }
 func (d *p02Driver) ReadTrace(context.Context, string, int64) ([]byte, bool, error) {
 	return nil, false, nil
@@ -118,12 +122,11 @@ func (d *p02Driver) Healthy(context.Context) bool                          { ret
 
 func p02Config() Config {
 	return Config{
-		Provider:       "test",
-		Runtimes:       []RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"1"}}},
-		MaxResources:   DefaultLimits,
-		IsolationLevel: "container",
-		EgressModes:    []string{"none"},
-		Slots:          4,
+		Provider:     "test",
+		Runtimes:     []RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"1"}}},
+		MaxResources: DefaultLimits,
+		EgressModes:  []string{"none"},
+		Slots:        4,
 	}
 }
 

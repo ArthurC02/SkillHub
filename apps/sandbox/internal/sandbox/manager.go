@@ -35,6 +35,10 @@ type Driver interface {
 	Healthy(ctx context.Context) bool
 
 	Rootless() bool
+
+	Isolation() IsolationStrength
+
+	DedicatedWorkspacePerRun() bool
 }
 
 type Outcome struct {
@@ -55,10 +59,9 @@ type Adopted struct {
 }
 
 type Config struct {
-	Provider       string
-	Runtimes       []RuntimeCapability
-	MaxResources   ResourceLimits
-	IsolationLevel string
+	Provider     string
+	Runtimes     []RuntimeCapability
+	MaxResources ResourceLimits
 
 	MaxResourcesUnenforced []string
 
@@ -155,9 +158,9 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 		MaxResources:           m.cfg.MaxResources,
 		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
 		Isolation: Isolation{
-			Level:                    m.cfg.IsolationLevel,
+			Strength:                 m.drv.Isolation(),
 			Rootless:                 m.drv.Rootless(),
-			DedicatedWorkspacePerRun: true,
+			DedicatedWorkspacePerRun: m.drv.DedicatedWorkspacePerRun(),
 			ReapsDetachedDescendants: m.cfg.ReapsDetachedDescendants,
 		},
 		Network: &NetworkCapability{
