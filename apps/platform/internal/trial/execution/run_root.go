@@ -128,17 +128,6 @@ func (r *Run) LatestAttempt() gen.RunAttempt {
 	return cloneAttempt(r.attempts[len(r.attempts)-1])
 }
 
-func (r *Run) Events() []Event {
-	if r.events == nil {
-		return nil
-	}
-	events := make([]Event, len(r.events))
-	for i, event := range r.events {
-		events[i] = cloneEvent(event)
-	}
-	return events
-}
-
 func (r *Run) Refusal() (Refused, bool) {
 	for _, event := range r.events {
 		if refused, ok := event.(Refused); ok {

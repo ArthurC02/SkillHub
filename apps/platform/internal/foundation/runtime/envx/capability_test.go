@@ -77,18 +77,6 @@ func TestABlankVariableCountsAsMissing(t *testing.T) {
 	}
 }
 
-func TestDeclaredVarsIsDeduplicatedAndStable(t *testing.T) {
-	reg := NewRegistry([]Capability{
-		{ID: "b", Needs: []string{"TWO", "ONE"}},
-		{ID: "a", Needs: []string{"ONE"}},
-	})
-	for i := 0; i < 20; i++ {
-		if got := strings.Join(reg.DeclaredVars(), ","); got != "ONE,TWO" {
-			t.Fatalf("DeclaredVars = %q", got)
-		}
-	}
-}
-
 func TestAnEmptyTableIsNotReady(t *testing.T) {
 
 	if AllReady(nil) {

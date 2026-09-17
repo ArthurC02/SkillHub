@@ -610,8 +610,7 @@ func TestTraceIngestionRefusesWhatTheTokenDoesNotCover(t *testing.T) {
 	}
 }
 
-//nolint:unused
-func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.T) {
+func TestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	owner := a.login(t, "trace-seq-collision-owner")

@@ -122,21 +122,6 @@ func (e *Evaluation) Status() Status { return Status(e.row.Status) }
 
 func (e *Evaluation) Superseded() bool { return e.row.SupersededAt.Valid }
 
-func (e *Evaluation) Decision(suggestionID pgtype.UUID) Decision {
-	return Decision(e.suggestions[suggestionID].Decision)
-}
-
-func (e *Evaluation) Events() []Event {
-	if e.events == nil {
-		return nil
-	}
-	events := make([]Event, len(e.events))
-	for i, event := range e.events {
-		events[i] = cloneEvent(event)
-	}
-	return events
-}
-
 func (e *Evaluation) Refusal() (Refusal, bool) {
 	for _, event := range e.events {
 		if refused, ok := event.(Refused); ok {
@@ -202,10 +187,6 @@ func (e *Evaluation) Decide(suggestionID pgtype.UUID, to Decision) {
 		e.suggestions[suggestionID] = suggestion
 		e.record(SuggestionDecided{SuggestionID: suggestionID, Decision: to})
 	}
-}
-
-func (e *Evaluation) AppliedVersion(suggestionID pgtype.UUID) pgtype.UUID {
-	return e.suggestions[suggestionID].AppliedSkillVersionID
 }
 
 func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {

@@ -218,3 +218,9 @@ func TestAStoredTraceEventCarriesTheMaskedPayloadWhateverTheCallerFilledIn(t *te
 		t.Fatalf("stored fields=%s type=%q, want [\"/prompt\"] and the caller's event type", stored.MaskedFields, stored.EventType)
 	}
 }
+
+func allPatterns() []*regexp.Regexp {
+	out := make([]*regexp.Regexp, 0, len(secretPatterns)+1)
+	out = append(out, secretPatterns...)
+	return append(out, urlUserInfo)
+}

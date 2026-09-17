@@ -420,3 +420,20 @@ func TestARefusedVersionDoesNotTakeANumber(t *testing.T) {
 
 	assertSkillEvents(t, s, Refused{Reason: RefusedGeneratedNameCollision}, SkillVersionAdded{VersionNumber: 5, ContentHash: "generated"})
 }
+
+func (s *SkillRoot) ID() pgtype.UUID { return s.row.ID }
+
+func (s *SkillRoot) Deleted() bool { return s.row.DeletedAt.Valid }
+
+func (s *SkillRoot) Restriction() AccessRestriction { return RestrictionFrom(s.row.AccessRestriction) }
+
+func (s *SkillRoot) Events() []Event {
+	if s.events == nil {
+		return nil
+	}
+	events := make([]Event, len(s.events))
+	for i, event := range s.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}

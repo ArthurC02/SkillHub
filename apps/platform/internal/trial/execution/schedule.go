@@ -156,10 +156,6 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	return requirementsFromPolicy(policy), policy, nil
 }
 
-func DefaultRequirements() Requirements {
-	return requirementsFromPolicy(defaultPolicy())
-}
-
 func requirementsFromPolicy(policy policySnapshot) Requirements {
 	return Requirements{
 		Runtime:          defaultRuntime,

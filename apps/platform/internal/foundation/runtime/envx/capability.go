@@ -57,21 +57,6 @@ func NewRegistry(caps []Capability) *Registry {
 
 func (r *Registry) Capabilities() []Capability { return r.caps }
 
-func (r *Registry) DeclaredVars() []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, c := range r.caps {
-		for _, n := range c.Needs {
-			if !seen[n] {
-				seen[n] = true
-				out = append(out, n)
-			}
-		}
-	}
-	sort.Strings(out)
-	return out
-}
-
 func (r *Registry) Report(ctx context.Context, lookup func(string) string) []Status {
 	out := make([]Status, 0, len(r.caps))
 	for _, c := range r.caps {

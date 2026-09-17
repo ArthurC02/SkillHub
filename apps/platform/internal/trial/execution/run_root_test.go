@@ -509,3 +509,14 @@ func TestEveryRunEventHasACatalogueNameAndAFixedPayloadShape(t *testing.T) {
 		t.Errorf("a refusal is an answer, not a fact to publish, yet it names %q", got)
 	}
 }
+
+func (r *Run) Events() []Event {
+	if r.events == nil {
+		return nil
+	}
+	events := make([]Event, len(r.events))
+	for i, event := range r.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}

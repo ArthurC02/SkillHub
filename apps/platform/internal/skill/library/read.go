@@ -82,17 +82,6 @@ func SkillByName(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name s
 	return skillDTO(row), true, nil
 }
 
-func SkillByID(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
-	row, err := gen.New(tx).GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: workspaceID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Skill{}, false, nil
-	}
-	if err != nil {
-		return Skill{}, false, err
-	}
-	return skillDTO(row), true, nil
-}
-
 func VersionByContent(
 	ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, contentHash string,
 ) (Version, bool, error) {

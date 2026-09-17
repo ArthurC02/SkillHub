@@ -42,12 +42,6 @@ func TestRegistryTransactionalReadFaceKeepsScopeAndUncommittedVisibility(t *test
 	if _, found, err := registry.SkillByName(ctx, tx, strangerID, "transaction-visible"); err != nil || found {
 		t.Fatalf("foreign workspace found owner Skill: found=%v, err=%v", found, err)
 	}
-	if byID, found, err := registry.SkillByID(ctx, tx, ownerID, skillID); err != nil || !found || byID.Name != "transaction-visible" {
-		t.Fatalf("owner read by id = %+v, found=%v, err=%v", byID, found, err)
-	}
-	if _, found, err := registry.SkillByID(ctx, tx, strangerID, skillID); err != nil || found {
-		t.Fatalf("foreign workspace found owner Skill by id: found=%v, err=%v", found, err)
-	}
 
 	var versionID pgtype.UUID
 	if err := tx.QueryRow(ctx, `

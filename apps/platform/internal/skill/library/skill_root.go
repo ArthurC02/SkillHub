@@ -177,8 +177,6 @@ func forkOf(workspaceID pgtype.UUID, name string, source gen.Skill, from gen.Ski
 	return fork
 }
 
-func (s *SkillRoot) ID() pgtype.UUID { return s.row.ID }
-
 func (s *SkillRoot) Skill() Skill { return skillDTO(s.row) }
 
 func (s *SkillRoot) AddedVersion() Version { return versionDTO(s.added) }
@@ -189,24 +187,9 @@ func (s *SkillRoot) Generated() bool { return s.Redistribution() == Redistributi
 
 func (s *SkillRoot) TakenDown() bool { return s.row.TakedownAt.Valid }
 
-func (s *SkillRoot) Deleted() bool { return s.row.DeletedAt.Valid }
-
-func (s *SkillRoot) Restriction() AccessRestriction { return RestrictionFrom(s.row.AccessRestriction) }
-
 func (s *SkillRoot) Redistribution() Redistribution { return Redistribution(s.row.Redistribution) }
 
 func (s *SkillRoot) NewestLicense() LicenseClaim { return s.newest.license }
-
-func (s *SkillRoot) Events() []Event {
-	if s.events == nil {
-		return nil
-	}
-	events := make([]Event, len(s.events))
-	for i, event := range s.events {
-		events[i] = cloneEvent(event)
-	}
-	return events
-}
 
 func (s *SkillRoot) Refusal() (Refused, bool) {
 	for _, event := range s.events {

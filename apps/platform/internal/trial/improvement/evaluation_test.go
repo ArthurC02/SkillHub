@@ -389,3 +389,22 @@ func TestEveryEvaluationEventHasACatalogueNameAndAFixedPayloadShape(t *testing.T
 		t.Errorf("a refusal is an answer, not a fact to publish, yet it names %q", got)
 	}
 }
+
+func (e *Evaluation) Decision(suggestionID pgtype.UUID) Decision {
+	return Decision(e.suggestions[suggestionID].Decision)
+}
+
+func (e *Evaluation) Events() []Event {
+	if e.events == nil {
+		return nil
+	}
+	events := make([]Event, len(e.events))
+	for i, event := range e.events {
+		events[i] = cloneEvent(event)
+	}
+	return events
+}
+
+func (e *Evaluation) AppliedVersion(suggestionID pgtype.UUID) pgtype.UUID {
+	return e.suggestions[suggestionID].AppliedSkillVersionID
+}

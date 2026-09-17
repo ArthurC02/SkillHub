@@ -39,12 +39,6 @@ var secretPatterns = []*regexp.Regexp{
 
 var urlUserInfo = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.-]*://)[^\s/@]+@`)
 
-func allPatterns() []*regexp.Regexp {
-	out := make([]*regexp.Regexp, 0, len(secretPatterns)+1)
-	out = append(out, secretPatterns...)
-	return append(out, urlUserInfo)
-}
-
 type Masker struct {
 	Known []string
 }

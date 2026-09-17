@@ -198,3 +198,7 @@ func TestHaltingOrResumingWithoutAReasonIsRefusedBeforeAnythingIsWritten(t *test
 		t.Errorf("lifting without a reason: lifted=%v err=%v, want ErrHaltReasonRequired", lifted, err)
 	}
 }
+
+func DefaultRequirements() Requirements {
+	return requirementsFromPolicy(defaultPolicy())
+}
