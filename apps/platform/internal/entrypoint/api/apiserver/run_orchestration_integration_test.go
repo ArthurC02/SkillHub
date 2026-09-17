@@ -42,6 +42,7 @@ func withProvider(
 	svc.Providers = registry
 	svc.Store = a.packages
 	svc.PollInterval = 20 * time.Millisecond
+	svc.SlotWaitInterval = 20 * time.Millisecond
 	evalSvc := a.evaluations
 	if len(evaluator) == 1 {
 		evalSvc = evaluator[0]
@@ -539,12 +540,17 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 
 	ctx := context.Background()
 
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	if _, err := pool.Exec(ctx, `
 		UPDATE runs
 		SET policy_snapshot = jsonb_set(policy_snapshot,
-		        '{resource_limits,wall_clock_hard_seconds}', '1'),
-		    created_at = now() - interval '1 hour'
-		WHERE id = $1`, mustUUID(t, created.RunID)); err != nil {
+		        '{resource_limits,wall_clock_hard_seconds}', '1')
+		WHERE id = $1`, runID); err != nil {
+		t.Fatal(err)
+	}
+	dispatched := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET provider_run_id = 'sbx-wall-clock',
+		started_at = now() - interval '1 hour' WHERE id = $1`, dispatched.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -563,6 +569,165 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 
 	if !strings.Contains(view.StatusReason, "時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock limit", view.StatusReason)
+	}
+}
+
+func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-resume-wall-clock")
+	ctx := context.Background()
+	created := f.start(t)
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	svc := &run.Service{Pool: pool}
+	for _, step := range []struct{ from, to gen.RunStatus }{
+		{gen.RunStatusQueued, gen.RunStatusProvisioning},
+		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+	} {
+		if _, err := svc.Transition(ctx, run.TransitionParams{
+			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(ctx, `UPDATE runs SET policy_snapshot = jsonb_set(policy_snapshot,
+		'{resource_limits,wall_clock_hard_seconds}', '60') WHERE id = $1`, runID); err != nil {
+		t.Fatal(err)
+	}
+	dispatched := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET provider_run_id = 'sbx-resumed',
+		started_at = now() - interval '2 minutes' WHERE id = $1`, dispatched.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Drive(ctx, ws, runID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, view := f.getRun(t, created.RunID)
+	if view.Status != string(gen.RunStatusTimedOut) || !strings.Contains(view.StatusReason, "硬性時間上限") {
+		t.Fatalf("a run dispatched 2m ago with a 60s wall clock resumed as %q (%s), want timed_out on the wall clock",
+			view.Status, view.StatusReason)
+	}
+}
+
+func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	clearRunBacklog(t, pool)
+	f := newFixture(t, a, pool, "alice-slot-wait")
+	ctx := context.Background()
+	within, past := f.start(t), f.start(t)
+
+	for runID, waited := range map[string]time.Duration{
+		within.RunID: run.SlotWaitLimit - time.Minute,
+		past.RunID:   run.SlotWaitLimit + time.Minute,
+	} {
+		if _, err := pool.Exec(ctx, `
+			UPDATE runs
+			SET policy_snapshot = jsonb_set(policy_snapshot, '{resource_limits,wall_clock_hard_seconds}', '1'),
+			    created_at = now() - make_interval(secs => $2)
+			WHERE id = $1`, mustUUID(t, runID), waited.Seconds()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	svc := &run.Service{Pool: pool}
+	if err := svc.Supervise(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, view := f.getRun(t, within.RunID); view.Status != string(gen.RunStatusQueued) {
+		t.Errorf("a run waiting %s with a 1s wall clock is %q (%s), want still queued: waiting is not running",
+			run.SlotWaitLimit-time.Minute, view.Status, view.StatusReason)
+	}
+	_, view := f.getRun(t, past.RunID)
+	if view.Status != string(gen.RunStatusTimedOut) || view.FailureClass.Value != "timeout" {
+		t.Fatalf("a run waiting past the limit is %q/%q, want timed_out/timeout", view.Status, view.FailureClass.Value)
+	}
+	if !strings.Contains(view.StatusReason, "排隊") {
+		t.Errorf("reason = %q, want it to say the run gave up waiting in the queue", view.StatusReason)
+	}
+}
+
+func waitForSnoozedRunJob(t *testing.T, pool *pgxpool.Pool, runID string) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		var snoozed bool
+		if err := pool.QueryRow(context.Background(), `SELECT EXISTS (SELECT 1 FROM river_job
+			WHERE kind = 'run_execute' AND args->>'run_id' = $1 AND (metadata->>'snoozes')::int >= 2)`, runID).Scan(&snoozed); err != nil {
+			t.Fatal(err)
+		}
+		if snoozed {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("run %s never went back to wait for a slot", runID)
+}
+
+func TestARunWaitsInTheQueueWhileEveryProviderIsFullAndStartsOnceOneFrees(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-full-fleet")
+	fake, svc := withProvider(t, a, pool, providertest.Plan{})
+	svc.Providers.TTL = time.Millisecond
+	fake.SetFreeSlots(0)
+
+	created := f.start(t)
+	waitForSnoozedRunJob(t, pool, created.RunID)
+
+	_, waiting := f.getRun(t, created.RunID)
+	if waiting.Status != string(gen.RunStatusQueued) || len(waiting.Attempts) != 0 || fake.Dispatches() != 0 {
+		t.Fatalf("with every slot taken the run is %q with %d attempts and %d dispatches, want queued, 0 and 0",
+			waiting.Status, len(waiting.Attempts), fake.Dispatches())
+	}
+
+	fake.SetFreeSlots(1)
+	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+	if len(final.Attempts) != 1 || fake.Dispatches() != 1 {
+		t.Errorf("attempts = %d, dispatches = %d; want 1 and 1: waiting leaves no refused attempts behind",
+			len(final.Attempts), fake.Dispatches())
+	}
+}
+
+func TestAProviderRefusingForCapacityHandsTheRunToTheNextOne(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-spillover")
+	clearRunBacklog(t, pool)
+	busy, spare := providertest.New("busy_sandbox", "test-token"), providertest.New("spare_sandbox", "test-token")
+	t.Cleanup(busy.Close)
+	t.Cleanup(spare.Close)
+	busy.SetFreeSlots(4)
+	spare.SetFreeSlots(1)
+	busy.DispatchStatuses = []int{http.StatusTooManyRequests}
+
+	registry := run.NewRegistry(busy.Provider(), spare.Provider())
+	a.runs.Providers = registry
+	svc := *a.runs
+	svc.Providers = registry
+	svc.Store = a.packages
+	svc.PollInterval = 20 * time.Millisecond
+	startWorkerWith(t, &svc, a.evaluations)
+
+	created := f.start(t)
+	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+
+	if len(final.Attempts) != 2 {
+		t.Fatalf("attempts = %d, want 2 (the refusal and the dispatch that took)", len(final.Attempts))
+	}
+	refused, took := final.Attempts[0], final.Attempts[1]
+	if refused.Provider != "busy_sandbox" || refused.ProviderRunID != "" {
+		t.Errorf("first attempt went to %q with handle %q, want busy_sandbox with none", refused.Provider, refused.ProviderRunID)
+	}
+	if took.Provider != "spare_sandbox" || took.ProviderRunID == "" {
+		t.Errorf("second attempt went to %q with handle %q, want spare_sandbox with one", took.Provider, took.ProviderRunID)
+	}
+	if final.Provider != "spare_sandbox" {
+		t.Errorf("run provider = %q, want the one that ran it, spare_sandbox", final.Provider)
 	}
 }
 

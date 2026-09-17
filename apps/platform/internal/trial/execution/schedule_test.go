@@ -264,26 +264,111 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 	}
 }
 
-func TestHardDeadlineComesFromTheRunsOwnFrozenPolicy(t *testing.T) {
+func dispatchedAttempt(at time.Time) gen.RunAttempt {
+	handle := "sbx-1"
+	return gen.RunAttempt{ProviderRunID: &handle, StartedAt: pgtype.Timestamptz{Time: at, Valid: true}}
+}
+
+func TestTheWallClockRunsFromTheFirstDispatchNotFromCreation(t *testing.T) {
 	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
-	policy, err := json.Marshal(policySnapshot{
-		ResourceLimits: ResourceLimits{WallClockHardSeconds: 120},
-	})
+	first, second := created.Add(time.Hour), created.Add(2*time.Hour)
+	policy, err := json.Marshal(policySnapshot{ResourceLimits: ResourceLimits{WallClockHardSeconds: 120}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	run := gen.Run{
-		CreatedAt:      pgtype.Timestamptz{Time: created, Valid: true},
-		PolicySnapshot: policy,
-	}
-	if got, want := hardDeadline(run), created.Add(2*time.Minute); !got.Equal(want) {
-		t.Errorf("deadline = %s, want %s", got, want)
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: policy}
+	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created.Add(time.Minute), Valid: true}}
+	attempts := []gen.RunAttempt{refused, dispatchedAttempt(second), dispatchedAttempt(first)}
+
+	if got, want := clockFor(run, attempts).deadline(), first.Add(2*time.Minute); !got.Equal(want) {
+		t.Errorf("deadline = %s, want the earliest dispatch plus the frozen policy's 2m, %s", got, want)
 	}
 
 	run.PolicySnapshot = []byte(`{}`)
-	want := created.Add(time.Duration(DefaultResourceLimits().WallClockHardSeconds) * time.Second)
-	if got := hardDeadline(run); !got.Equal(want) {
-		t.Errorf("deadline without a policy = %s, want the default %s", got, want)
+	want := first.Add(time.Duration(DefaultResourceLimits().WallClockHardSeconds) * time.Second)
+	if got := clockFor(run, attempts).deadline(); !got.Equal(want) {
+		t.Errorf("deadline without a policy = %s, want the default counted from dispatch, %s", got, want)
+	}
+	if reason := clockFor(run, attempts).timeoutReason(); !strings.Contains(reason, "硬性時間上限") {
+		t.Errorf("reason = %q, want it to name the wall clock", reason)
+	}
+}
+
+func TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit(t *testing.T) {
+	created := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	run := gen.Run{CreatedAt: pgtype.Timestamptz{Time: created, Valid: true}, PolicySnapshot: []byte(`{}`)}
+	refused := gen.RunAttempt{StartedAt: pgtype.Timestamptz{Time: created, Valid: true}}
+	clock := clockFor(run, []gen.RunAttempt{refused})
+
+	if !clock.waiting() {
+		t.Fatal("a run whose only attempt got no provider handle is not waiting")
+	}
+	if clock.expired(created.Add(SlotWaitLimit)) {
+		t.Error("the run expired exactly at the wait limit, want it still waiting")
+	}
+	if !clock.expired(created.Add(SlotWaitLimit + time.Nanosecond)) {
+		t.Error("the run is still waiting past the wait limit")
+	}
+	if reason := clock.timeoutReason(); !strings.Contains(reason, "排隊") {
+		t.Errorf("reason = %q, want it to say the run timed out waiting in the queue", reason)
+	}
+}
+
+func registryWithCapabilities(capabilities ...ProviderCapability) *Registry {
+	r := &Registry{cached: map[string]cachedCapability{}}
+	for _, c := range capabilities {
+		r.Providers = append(r.Providers, NewProvider(c.Provider, "http://127.0.0.1:1", ""))
+		r.cached[c.Provider] = cachedCapability{capability: c, at: time.Now()}
+	}
+	return r
+}
+
+func withSlots(name string, free int) ProviderCapability {
+	c := compatible()
+	c.Provider = name
+	c.Availability.ConcurrentRunSlots = free
+	return c
+}
+
+func TestPlaceOffersOnlyProvidersWithAFreeSlotMostFreeFirst(t *testing.T) {
+	registry := registryWithCapabilities(withSlots("one_free", 1), withSlots("full", 0), withSlots("three_free", 3))
+
+	placements, err := registry.Place(context.Background(), defaultRequirements(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, p := range placements {
+		names = append(names, p.Provider.Name)
+	}
+	if got, want := strings.Join(names, ","), "three_free,one_free"; got != want {
+		t.Errorf("placements = %s, want %s", got, want)
+	}
+}
+
+func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	incompatible := withSlots("weak", 4)
+	incompatible.Isolation.Level = "container"
+	drained := withSlots("drained", 4)
+	halted := map[string]gen.DispatchHalt{"drained": {Source: "incident"}}
+
+	cases := []struct {
+		name     string
+		registry *Registry
+		want     error
+	}{
+		{"every compatible provider is full", registryWithCapabilities(withSlots("full", 0), incompatible), ErrNoFreeSlot},
+		{"no provider can run it at all", registryWithCapabilities(incompatible), ErrNoCompatibleProvider},
+		{"the only free provider is drained", registryWithCapabilities(drained, withSlots("full", 0)), ErrNoFreeSlot},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.registry.Place(context.Background(), defaultRequirements(), halted)
+			if !errors.Is(err, tc.want) {
+				t.Errorf("err = %v, want %v", err, tc.want)
+			}
+		})
 	}
 }
 

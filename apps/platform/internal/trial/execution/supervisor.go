@@ -88,11 +88,17 @@ func (s *Service) Supervise(ctx context.Context) error {
 }
 
 func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
-	deadline := hardDeadline(run)
-	if !deadline.IsZero() && time.Now().After(deadline) {
-
-		d := &driver{svc: s, cur: run, deadline: deadline}
-		err := d.finish(ctx, s.latestAttemptID(ctx, run), gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{RunID: run.ID, WorkspaceID: run.WorkspaceID})
+	if err != nil {
+		return err
+	}
+	if clock := clockFor(run, attempts); clock.expired(time.Now()) {
+		var lastAttemptID pgtype.UUID
+		if len(attempts) > 0 {
+			lastAttemptID = attempts[len(attempts)-1].ID
+		}
+		d := &driver{svc: s, cur: run, clock: clock}
+		err := d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		switch {
 		case err == nil:
 			slog.Warn("run timed out by the supervisor", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
@@ -118,14 +124,4 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 		slog.Info("re-enqueued a run with no live job", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
 	}
 	return nil
-}
-
-func (s *Service) latestAttemptID(ctx context.Context, run gen.Run) (id pgtype.UUID) {
-	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
-		RunID: run.ID, WorkspaceID: run.WorkspaceID,
-	})
-	if err != nil || len(attempts) == 0 {
-		return id
-	}
-	return attempts[len(attempts)-1].ID
 }

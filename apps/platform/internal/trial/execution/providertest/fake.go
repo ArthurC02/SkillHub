@@ -142,11 +142,24 @@ func (f *Fake) auth(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (f *Fake) capability(w http.ResponseWriter, _ *http.Request) {
+	f.mu.Lock()
 	c := DefaultCapability(f.Name)
 	if f.Capability != nil {
 		c = *f.Capability
 	}
+	f.mu.Unlock()
 	writeJSON(w, http.StatusOK, c)
+}
+
+func (f *Fake) SetFreeSlots(free int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := DefaultCapability(f.Name)
+	if f.Capability != nil {
+		c = *f.Capability
+	}
+	c.Availability.ConcurrentRunSlots = free
+	f.Capability = &c
 }
 
 func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {

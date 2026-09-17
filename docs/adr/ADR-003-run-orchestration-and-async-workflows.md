@@ -47,6 +47,8 @@ Run Request 至少涵蓋：平台 `run_id` 與 Attempt、Skill Package Reference
 
 Provider 需宣告 Runtime 類型與版本、Agent／模型整合模式、MCP／工具／Script／Artifact 能力、網路與 Private Network 能力、CPU／記憶體／磁碟／最大時間、地區與資料駐留與隔離等級、GPU 或特殊硬體、可用性與成本模型；Orchestrator 以 Run Requirements 與 Capability Matching 選擇 Provider，無相容 Provider 時在排入執行前回報可理解的原因。
 
+容量是選擇的一部分，因為平台是多人共用有限的沙箱：Orchestrator 只把 Run 派給相容且回報有空位的 Provider，空位多的優先。Provider 以「沒有空位」拒絕時，那次派送沒有開始，換下一個相容 Provider 是選擇，不是改派。所有相容 Provider 都滿時，Run 留在 `queued` 等候：這不是失敗，不佔用重試次數，也不佔住 Worker（工作延後再取）。排隊有自己的上限（`SlotWaitLimit`，30 分鐘），超過以 `timed_out` 結束並寫明是排隊逾時；Run 的硬性時間上限從第一次被 Provider 接受時起算，排隊的時間不算在裡面。沒有空位時被拒的那次 Attempt 仍會留下紀錄，但只在「看到有空位、送出時已被搶走」的競爭下才會出現。
+
 識別策略區分三層，歷史資料、評估與 URL 一律使用平台 ID：
 
 ```text

@@ -1,6 +1,7 @@
 package run
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -273,16 +275,40 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	return profile, nil
 }
 
-func (r *Registry) Select(ctx context.Context, req Requirements) (*Provider, ProviderCapability, RuntimeProfile, error) {
-	return r.SelectExcluding(ctx, req, nil)
+type Placement struct {
+	Provider   *Provider
+	Capability ProviderCapability
+	Profile    RuntimeProfile
 }
 
-func (r *Registry) SelectExcluding(
-	ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt,
-) (*Provider, ProviderCapability, RuntimeProfile, error) {
-	if len(r.Providers) == 0 {
-		return nil, ProviderCapability{}, RuntimeProfile{}, ErrNoProvider
+func (p Placement) freeSlots() int { return p.Capability.Availability.ConcurrentRunSlots }
+
+func (r *Registry) Select(ctx context.Context, req Requirements) (*Provider, ProviderCapability, RuntimeProfile, error) {
+	compatible, err := r.compatible(ctx, req, nil)
+	if err != nil {
+		return nil, ProviderCapability{}, RuntimeProfile{}, err
 	}
+	return compatible[0].Provider, compatible[0].Capability, compatible[0].Profile, nil
+}
+
+func (r *Registry) Place(ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt) ([]Placement, error) {
+	compatible, err := r.compatible(ctx, req, halted)
+	if err != nil {
+		return nil, err
+	}
+	free := slices.DeleteFunc(compatible, func(p Placement) bool { return p.freeSlots() <= 0 })
+	if len(free) == 0 {
+		return nil, ErrNoFreeSlot
+	}
+	slices.SortStableFunc(free, func(a, b Placement) int { return cmp.Compare(b.freeSlots(), a.freeSlots()) })
+	return free, nil
+}
+
+func (r *Registry) compatible(ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt) ([]Placement, error) {
+	if len(r.Providers) == 0 {
+		return nil, ErrNoProvider
+	}
+	var placements []Placement
 	reasons := make([]string, 0, len(r.Providers))
 	for _, p := range r.Providers {
 		if halt, ok := halted[p.Name]; ok {
@@ -302,10 +328,12 @@ func (r *Registry) SelectExcluding(
 			reasons = append(reasons, err.Error())
 			continue
 		}
-		return p, capability, profile, nil
+		placements = append(placements, Placement{Provider: p, Capability: capability, Profile: profile})
 	}
-	return nil, ProviderCapability{}, RuntimeProfile{},
-		fmt.Errorf("%w: %s", ErrNoCompatibleProvider, strings.Join(reasons, "; "))
+	if len(placements) == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrNoCompatibleProvider, strings.Join(reasons, "; "))
+	}
+	return placements, nil
 }
 
 type runtimeSnapshot struct {

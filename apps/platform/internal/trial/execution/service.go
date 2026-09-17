@@ -108,6 +108,8 @@ type Service struct {
 
 	PollInterval time.Duration
 
+	SlotWaitInterval time.Duration
+
 	TraceSigner *trace.Signer
 
 	Trace *trace.Service
@@ -147,6 +149,13 @@ func (s *Service) pollInterval() time.Duration {
 		return s.PollInterval
 	}
 	return defaultPollInterval
+}
+
+func (s *Service) slotWaitInterval() time.Duration {
+	if s.SlotWaitInterval > 0 {
+		return s.SlotWaitInterval
+	}
+	return defaultSlotWaitInterval
 }
 
 func (s *Service) providers() *Registry {

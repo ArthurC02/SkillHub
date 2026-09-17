@@ -63,6 +63,7 @@ type runView struct {
 		AttemptNumber int32  `json:"attempt_number"`
 		ProviderRunID string `json:"provider_run_id"`
 		ErrorClass    string `json:"error_class"`
+		Provider      string `json:"provider"`
 	} `json:"attempts"`
 	CancelRequestedAt string `json:"cancel_requested_at"`
 }

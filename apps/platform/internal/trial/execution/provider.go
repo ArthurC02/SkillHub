@@ -392,7 +392,14 @@ var (
 	ErrNoProvider = errors.New("no sandbox provider is configured")
 
 	ErrNoCompatibleProvider = errors.New("no configured sandbox provider can run this request")
+
+	ErrNoFreeSlot = errors.New("every sandbox provider that can run this request is full")
 )
+
+func refusedForCapacity(err error) bool {
+	pe, ok := errors.AsType[*providerError](err)
+	return ok && pe.Status == http.StatusTooManyRequests
+}
 
 func NewRegistryFromEnv() *Registry {
 	r := &Registry{}
@@ -481,4 +488,10 @@ func (r *Registry) Refresh() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cached = nil
+}
+
+func (r *Registry) forget(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.cached, name)
 }

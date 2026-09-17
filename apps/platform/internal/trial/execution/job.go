@@ -27,6 +27,10 @@ const (
 
 	defaultPollInterval = 2 * time.Second
 
+	defaultSlotWaitInterval = 15 * time.Second
+
+	SlotWaitLimit = 30 * time.Minute
+
 	jobTimeout = 30 * time.Minute
 
 	reasonLimit = 500
@@ -89,7 +93,11 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 		return nil
 	}
 
-	err = (&driver{svc: s, cur: current, deadline: hardDeadline(current)}).execute(ctx)
+	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{RunID: current.ID, WorkspaceID: current.WorkspaceID})
+	if err != nil {
+		return err
+	}
+	err = (&driver{svc: s, cur: current, clock: clockFor(current, attempts)}).execute(ctx)
 	if errors.Is(err, errSuperseded) {
 		slog.Info("run driver superseded", "run_id", pgconv.UUIDString(runID))
 		return nil
@@ -101,7 +109,7 @@ type driver struct {
 	svc      *Service
 	cur      gen.Run
 	provider *Provider
-	deadline time.Time
+	clock    runClock
 }
 
 func (d *driver) execute(ctx context.Context) error {
@@ -166,34 +174,27 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
 	}
 
-	provider, capability, profile, err := d.svc.providers().SelectExcluding(ctx, req, halts.byTarget)
-	if err != nil {
-
+	placements, err := d.svc.providers().Place(ctx, req, halts.byTarget)
+	switch {
+	case errors.Is(err, ErrNoFreeSlot):
+		return d.waitForSlot()
+	case err != nil:
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
-	}
-	d.provider = provider
-
-	snapshot, err := pinnedRuntime(provider, capability, profile)
-	if err != nil {
-		return err
-	}
-	pinned, err := d.command(ctx, func(r *Run) { r.AssignProvider(provider.Name, snapshot) })
-	if err != nil {
-		return err
-	}
-	d.cur = pinned.Row()
-
-	if d.cur.Status == gen.RunStatusQueued {
-		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name); err != nil {
-			return err
-		}
 	}
 
 	var (
 		lastErr       error
 		lastAttemptID pgtype.UUID
+		failures      int
 	)
-	for i := 0; i < d.svc.maxAttempts(); i++ {
+dispatching:
+	for failures < d.svc.maxAttempts() {
+		if len(placements) == 0 {
+			return d.waitForSlot()
+		}
+		placement := placements[0]
+		provider := placement.Provider
+		d.provider = provider
 		if d.expired() {
 			return d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		}
@@ -210,7 +211,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 		attempt := started.LatestAttempt()
 		lastAttemptID = attempt.ID
 
-		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, profile, policy)
+		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, policy)
 		if err != nil {
 
 			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
@@ -223,17 +224,32 @@ func (d *driver) dispatch(ctx context.Context) error {
 		if err != nil {
 			lastErr = err
 			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), err.Error())
-			if !retryable(err) {
-				break
+			switch {
+			case refusedForCapacity(err):
+				d.svc.providers().forget(provider.Name)
+				placements = placements[1:]
+				continue
+			case !retryable(err):
+				break dispatching
 			}
+			failures++
 			slog.Warn("run dispatch failed, retrying with a new attempt",
 				"run_id", pgconv.UUIDString(d.cur.ID), "attempt", attempt.AttemptNumber, "error", err)
 			continue
 		}
 
-		dispatched, err := d.command(ctx, func(r *Run) { r.RecordDispatch(attempt.ID, pr.ProviderRunID) })
+		snapshot, err := pinnedRuntime(provider, placement.Capability, placement.Profile)
+		if err != nil {
+			return err
+		}
+		dispatched, err := d.command(ctx, func(r *Run) {
+			r.RecordDispatch(attempt.ID, pr.ProviderRunID)
+			r.AssignProvider(provider.Name, snapshot)
+		})
 		if err == nil {
 			attempt = dispatched.Attempt(attempt.ID)
+			d.cur = dispatched.Row()
+			d.clock = d.clock.dispatchedAt(attempt.StartedAt.Time)
 		}
 		if err != nil {
 
@@ -244,10 +260,16 @@ func (d *driver) dispatch(ctx context.Context) error {
 			}
 			return err
 		}
+		if d.cur.Status == gen.RunStatusQueued {
+			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name); err != nil {
+				return err
+			}
+		}
 
 		if pr.State == ProviderStateFailed {
 			lastErr = fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason))
 			d.finishAttempt(ctx, attempt, errClassProvision, lastErr.Error())
+			failures++
 			continue
 		}
 		return d.follow(ctx, attempt)
@@ -686,23 +708,70 @@ func (d *driver) cancelRequested(ctx context.Context) (bool, error) {
 	return fresh.CancelRequestedAt.Valid, nil
 }
 
-func hardDeadline(run gen.Run) time.Time {
+type runClock struct {
+	createdAt  time.Time
+	dispatched time.Time
+	wallClock  time.Duration
+}
+
+func clockFor(run gen.Run, attempts []gen.RunAttempt) runClock {
 	seconds := runLimits(run).WallClockHardSeconds
 	if seconds <= 0 {
 		seconds = DefaultResourceLimits().WallClockHardSeconds
 	}
-	if !run.CreatedAt.Valid {
-		return time.Time{}
+	clock := runClock{wallClock: time.Duration(seconds) * time.Second}
+	if run.CreatedAt.Valid {
+		clock.createdAt = run.CreatedAt.Time
 	}
-	return run.CreatedAt.Time.Add(time.Duration(seconds) * time.Second)
+	for _, a := range attempts {
+		if a.ProviderRunID != nil && a.StartedAt.Valid {
+			clock = clock.dispatchedAt(a.StartedAt.Time)
+		}
+	}
+	return clock
 }
 
-func (d *driver) expired() bool {
-	return !d.deadline.IsZero() && time.Now().After(d.deadline)
+func (c runClock) dispatchedAt(at time.Time) runClock {
+	if c.dispatched.IsZero() || at.Before(c.dispatched) {
+		c.dispatched = at
+	}
+	return c
 }
 
-func (d *driver) timeoutReason() string {
-	return fmt.Sprintf("超過硬性時間上限;期限是 %s", d.deadline.UTC().Format(time.RFC3339))
+func (c runClock) waiting() bool { return c.dispatched.IsZero() }
+
+func (c runClock) deadline() time.Time {
+	switch {
+	case !c.waiting():
+		return c.dispatched.Add(c.wallClock)
+	case c.createdAt.IsZero():
+		return time.Time{}
+	default:
+		return c.createdAt.Add(SlotWaitLimit)
+	}
+}
+
+func (c runClock) expired(now time.Time) bool {
+	deadline := c.deadline()
+	return !deadline.IsZero() && now.After(deadline)
+}
+
+func (c runClock) timeoutReason() string {
+	deadline := c.deadline().UTC().Format(time.RFC3339)
+	if c.waiting() {
+		return fmt.Sprintf("排隊等空的沙箱超過時間上限 %d 分鐘;期限是 %s", int(SlotWaitLimit.Minutes()), deadline)
+	}
+	return fmt.Sprintf("超過硬性時間上限;期限是 %s", deadline)
+}
+
+func (d *driver) expired() bool { return d.clock.expired(time.Now()) }
+
+func (d *driver) timeoutReason() string { return d.clock.timeoutReason() }
+
+func (d *driver) waitForSlot() error {
+	slog.Info("every sandbox provider that can run this is full; the run keeps its place in the queue",
+		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
+	return river.JobSnooze(d.svc.slotWaitInterval())
 }
 
 const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
