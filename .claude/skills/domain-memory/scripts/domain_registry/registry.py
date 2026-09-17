@@ -160,7 +160,6 @@ def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
 
 def migrate_evidence(root: Path, repo_root: Path) -> int:
     from .transaction import mutate_registry, write_json
-    from .audit import append as append_audit
     migrated = 0
     source_map = source_map_for(root)
     def transform(value: Any) -> Any:
@@ -182,9 +181,8 @@ def migrate_evidence(root: Path, repo_root: Path) -> int:
         for name in ASSET_KEYS:
             path = registry_dir(staging) / name
             write_json(path, transform(load_json(path)))
-    mutate_registry(root, repo_root, mutate)
-    if migrated:
-        append_audit(root, {"operation": "migrate-evidence", "migrated": migrated})
+    mutate_registry(root, repo_root, mutate,
+                    audit_event=lambda: {"operation": "migrate-evidence", "migrated": migrated} if migrated else None)
     return migrated
 
 
@@ -327,5 +325,4 @@ def boundary_analysis(root: Path, source: str, target: str) -> dict[str, Any]:
         "dependencies": dependencies,
         "status": "known" if interactions or contracts else "no_registered_collaboration",
     }
-
 

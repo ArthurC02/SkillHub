@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -31,7 +32,7 @@ from domain_registry.sources import test_locations as discovered_test_locations
 from domain_registry.updates import apply_approved_updates, upsert_candidate
 from domain_registry.attestations import verify_scm
 from domain_registry.audit import append as append_audit, verify as verify_audit
-from domain_registry.evidence import citation, digest, verify
+from domain_registry.evidence import citation, digest, source_map_for, verify
 
 
 def stored_policy_of(repo: Path) -> dict:
@@ -108,6 +109,15 @@ class DomainRegistryTest(unittest.TestCase):
             upsert_candidate(self.repo / "memory", self.repo, "vocabulary", record)
         self.assertEqual(before, (self.repo / "memory" / "registry" / "vocabulary.json").read_text(encoding="utf-8"))
 
+    def test_audit_failure_rolls_back_a_registry_swap(self) -> None:
+        before = (self.repo / "memory" / "registry" / "contexts.json").read_text(encoding="utf-8")
+        record = self.write_record("context.json", {"id": "orders", "name": "Orders", "responsibility": "Own orders."})
+        with patch("domain_registry.audit.append_locked", side_effect=OSError("audit unavailable")):
+            with self.assertRaisesRegex(OSError, "audit unavailable"):
+                upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        self.assertEqual(before, (self.repo / "memory" / "registry" / "contexts.json").read_text(encoding="utf-8"))
+        self.assertFalse((self.repo / "memory" / ".domain-registry-transaction.json").exists())
+
     def test_source_snapshot_detects_drift(self) -> None:
         source = self.repo / "docs"
         source.mkdir()
@@ -118,6 +128,21 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual("current", verify_source_map(self.repo, source_map_path)["status"])
         (source / "rules.md").write_text("revised version\n", encoding="utf-8")
         self.assertEqual("stale", verify_source_map(self.repo, source_map_path)["status"])
+
+    def test_a_source_map_with_mismatched_snapshot_paths_is_unverified(self) -> None:
+        source = self.repo / "docs"
+        source.mkdir()
+        (source / "rules.md").write_text("rules\n", encoding="utf-8")
+        source_map = selected_source_map(self.repo, [source])
+        source_map["source_snapshots"][0]["path"] = "other"
+        path = self.write_record("source-map.json", source_map)
+        self.assertEqual("unverified", verify_source_map(self.repo, path)["status"])
+
+    def test_a_malformed_source_map_is_rejected_instead_of_treated_as_empty(self) -> None:
+        path = self.repo / "memory" / "source-map.json"
+        path.write_text("{not json", encoding="utf-8")
+        with self.assertRaises(json.JSONDecodeError):
+            source_map_for(self.repo / "memory")
 
     def test_source_policy_excludes_files_and_enforces_limits(self) -> None:
         source = self.repo / "docs"
@@ -166,9 +191,37 @@ class DomainRegistryTest(unittest.TestCase):
         append_audit(self.repo / "memory", {"operation": "first"})
         append_audit(self.repo / "memory", {"operation": "second"})
         self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
+        manifest = json.loads((self.repo / "memory" / "audit" / "manifest.json").read_text(encoding="utf-8"))
+        events = (self.repo / "memory" / "audit" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(2, manifest["events"])
+        self.assertEqual(json.loads(events[-1])["event_sha256"], manifest["head_sha256"])
         path = self.repo / "memory" / "audit" / "events.jsonl"
         path.write_text(path.read_text(encoding="utf-8").replace("second", "changed"), encoding="utf-8")
         self.assertEqual("invalid", verify_audit(self.repo / "memory")["status"])
+
+    def test_recovery_rolls_back_an_installed_transaction_without_its_audit_event(self) -> None:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-new"
+        staging = root / ".domain-registry-stage-new"
+        shutil.copytree(root / "registry", backup)
+        staging.mkdir()
+        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        transaction_path(root).write_text(json.dumps({"format": "domain-registry-transaction/v2", "operation_id": "new", "phase": "installed", "backup": backup.name, "staging": staging.name}), encoding="utf-8")
+        recover_interrupted_update(root, False)
+        self.assertEqual("domain-registry/v1", json.loads((root / "registry" / "manifest.json").read_text(encoding="utf-8"))["format"])
+
+    def test_recovery_keeps_an_installed_transaction_whose_audit_event_is_present(self) -> None:
+        root = self.repo / "memory"
+        backup = root / ".domain-registry-backup-audited"
+        staging = root / ".domain-registry-stage-audited"
+        shutil.copytree(root / "registry", backup)
+        staging.mkdir()
+        (root / "registry" / "manifest.json").write_text("{}\n", encoding="utf-8")
+        append_audit(root, {"operation": "update", "operation_id": "audited"})
+        transaction_path(root).write_text(json.dumps({"format": "domain-registry-transaction/v2", "operation_id": "audited", "phase": "installed", "backup": backup.name, "staging": staging.name}), encoding="utf-8")
+        recover_interrupted_update(root, False)
+        self.assertEqual("{}\n", (root / "registry" / "manifest.json").read_text(encoding="utf-8"))
+        self.assertFalse(backup.exists())
 
     def test_structured_evidence_detects_source_drift(self) -> None:
         source = self.repo / "evidence.md"
@@ -243,6 +296,7 @@ class DomainRegistryTest(unittest.TestCase):
         applied = json.loads((package / "domain-change-proposal.json").read_text(encoding="utf-8"))
         self.assertEqual("applied", applied["status"])
         self.assertIn("registry_digest", applied["applied_registry_revision"])
+        self.assertFalse((self.repo / "memory" / ".domain-registry-reconciliation.json").exists())
         self.assertEqual([], validate_change_package(package, self.repo / "memory"))
 
 
@@ -401,6 +455,21 @@ class DomainRegistryTest(unittest.TestCase):
         result = probe_sources(self.repo, self.committed_source_map())
         self.assertEqual(result["status"], "current")
         self.assertEqual(result["checked"], "git")
+
+    def test_probe_rechecks_policy_limits_before_using_the_git_fast_path(self) -> None:
+        path = self.committed_source_map()
+        policy = stored_policy_of(self.repo)
+        policy["limits"]["max_file_bytes"] = 1
+        result = probe_sources(self.repo, path, policy)
+        self.assertEqual(result["status"], "invalid")
+
+    def test_probe_rejects_policy_source_paths_that_differ_from_the_map(self) -> None:
+        path = self.committed_source_map()
+        policy = stored_policy_of(self.repo)
+        policy["source_policy"]["selected_paths"] = ["other"]
+        result = probe_sources(self.repo, path, policy)
+        self.assertEqual(result["status"], "invalid")
+        self.assertEqual("invalid", verify_source_map(self.repo, path, policy)["status"])
 
     def test_an_uncommitted_source_sends_the_probe_back_to_hashing(self) -> None:
         path = self.committed_source_map()

@@ -1,5 +1,4 @@
 from .changes import test_attestation_errors, validate_change_package
-from .common import load_json
 from .common import completed_identifier, iso_timestamp, load_json
 from .revision import current_registry_revision, require_current_registry_revision
 

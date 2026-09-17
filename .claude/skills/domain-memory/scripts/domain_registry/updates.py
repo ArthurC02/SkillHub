@@ -2,7 +2,6 @@ from .changes import validate_change_package
 from .common import ASSET_KEYS, completed_identifier, iso_timestamp, load_json, registry_dir
 from .revision import current_registry_revision, require_current_registry_revision, valid_registry_revision
 from .policy import review_mode
-from .audit import append as append_audit
 from .registry import asset_records
 from .evidence import classify_all, source_map_for, unclassified_paths
 from .transaction import mutate_registry
@@ -11,6 +10,44 @@ from pathlib import Path
 from typing import Any
 import json
 from datetime import datetime, timezone
+
+
+def reconciliation_path(root: Path) -> Path:
+    return root / ".domain-registry-reconciliation.json"
+
+
+def reconcile_pending_update(registry_root: Path, repo_root: Path) -> None:
+    marker_path = reconciliation_path(registry_root)
+    if not marker_path.is_file():
+        return
+    marker = load_json(marker_path)
+    relative = marker.get("package")
+    proposal_id = marker.get("proposal_id")
+    if not isinstance(relative, str) or not completed_identifier(proposal_id):
+        raise ValueError("registry reconciliation marker is malformed")
+    package_root = (repo_root / relative).resolve()
+    try:
+        package_root.relative_to(repo_root.resolve())
+    except ValueError as error:
+        raise ValueError("registry reconciliation marker points outside the repository") from error
+    proposal_path = package_root / "domain-change-proposal.json"
+    proposal = load_json(proposal_path)
+    if proposal.get("proposal_id") != proposal_id:
+        raise ValueError("registry reconciliation marker does not match its proposal")
+    if proposal.get("status") == "applied":
+        marker_path.unlink()
+        return
+    if proposal.get("status") != "approved":
+        raise ValueError("registry reconciliation requires an approved proposal")
+    from .audit import read_events
+    events = read_events(registry_root)
+    if not events or events[-1].get("operation") != "apply-approved-updates" or events[-1].get("proposal_id") != proposal_id:
+        raise ValueError("registry reconciliation cannot prove the approved update was committed")
+    proposal["status"] = "applied"
+    proposal["applied_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    proposal["applied_registry_revision"] = current_registry_revision(registry_root, repo_root)
+    write_document(proposal_path, proposal)
+    marker_path.unlink()
 
 
 def review_status(asset: str, record: dict[str, Any], asset_status: str) -> str:
@@ -56,12 +93,13 @@ def upsert_candidate(root: Path, repo_root: Path | None, asset: str, record_path
             records[records.index(existing)] = candidate
         from .transaction import write_json
         write_json(path, document)
-    mutate_registry(root, repo_root, mutate)
-    append_audit(root, {"operation": "upsert-candidate", "asset": asset, "record_id": record["id"]})
+    mutate_registry(root, repo_root, mutate,
+                    audit_event=lambda: {"operation": "upsert-candidate", "asset": asset, "record_id": record["id"]})
     return sorted(set(outside))
 
 
 def apply_approved_updates(package_root: Path, registry_root: Path, repo_root: Path) -> None:
+    reconcile_pending_update(registry_root, repo_root)
     if review_mode(registry_root) != "scm-verified":
         raise ValueError("reviewed updates require an scm-verified Domain Memory policy")
     errors = validate_change_package(package_root, registry_root)
@@ -109,12 +147,28 @@ def apply_approved_updates(package_root: Path, registry_root: Path, repo_root: P
     base_revision = proposal.get("base_registry_revision")
     if not valid_registry_revision(base_revision):
         raise ValueError("approved proposal has an invalid base Registry revision")
-    mutate_registry(registry_root, repo_root, mutate, base_revision["registry_digest"])
+    relative_package = package_root.resolve().relative_to(repo_root.resolve())
+    from .transaction import write_json
+    write_json(reconciliation_path(registry_root), {
+        "format": "domain-registry-reconciliation/v1",
+        "package": relative_package.as_posix(),
+        "proposal_id": proposal["proposal_id"],
+    })
+    mutate_registry(
+        registry_root,
+        repo_root,
+        mutate,
+        base_revision["registry_digest"],
+        audit_event=lambda: {
+            "operation": "apply-approved-updates",
+            "proposal_id": proposal["proposal_id"],
+            "from_revision": base_revision,
+            "to_revision": current_registry_revision(registry_root, repo_root),
+        },
+    )
     proposal["status"] = "applied"
     proposal["applied_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     proposal["applied_registry_revision"] = current_registry_revision(registry_root, repo_root)
     path = package_root / "domain-change-proposal.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(proposal, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temporary.replace(path)
-    append_audit(registry_root, {"operation": "apply-approved-updates", "proposal_id": proposal["proposal_id"], "from_revision": base_revision, "to_revision": proposal["applied_registry_revision"]})
+    write_json(path, proposal)
+    reconciliation_path(registry_root).unlink(missing_ok=True)

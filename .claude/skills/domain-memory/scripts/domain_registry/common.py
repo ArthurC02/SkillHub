@@ -5,10 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
+MAX_JSON_BYTES = 16 * 1024 * 1024
 
 ASSET_KEYS = {
     "contexts.json": "contexts",
@@ -75,6 +78,10 @@ REVIEW_REQUIRED_FIELDS = {
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ValueError(f"JSON file required: {path}")
+    if path.stat().st_size > MAX_JSON_BYTES:
+        raise ValueError(f"JSON file exceeds {MAX_JSON_BYTES} bytes: {path}")
     with path.open(encoding="utf-8") as source:
         value = json.load(source)
     if not isinstance(value, dict):
@@ -84,6 +91,19 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def registry_dir(root: Path) -> Path:
     return root / "registry"
+
+
+@contextmanager
+def writer_lock(root: Path):
+    lock = root / ".domain-registry.lock"
+    try:
+        lock.mkdir()
+    except FileExistsError as error:
+        raise ValueError(f"another Domain Registry update is in progress: {lock}") from error
+    try:
+        yield
+    finally:
+        lock.rmdir()
 
 
 def template_dir() -> Path:
@@ -106,5 +126,3 @@ def iso_timestamp(value: Any) -> bool:
     except ValueError:
         return False
     return True
-
-

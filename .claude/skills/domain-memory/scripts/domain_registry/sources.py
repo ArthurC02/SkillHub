@@ -6,8 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .audit import append as append_audit
-from .common import completed_identifier
+from .common import completed_identifier, writer_lock
 
 
 EXCLUDED_DIRECTORIES = {".git", ".hg", ".svn", "node_modules", ".venv", "vendor", "dist", "build", "generated"}
@@ -114,8 +113,13 @@ def source_files(root: Path, selected_paths: list[Path], policy: dict[str, Any] 
     include = policy.get("source_policy", {}).get("include", ["**"]) if policy else ["**"]
     exclude = policy.get("source_policy", {}).get("exclude", []) if policy else []
     files: set[Path] = set()
+    roots = []
     for selected in selected_paths:
         resolved = selected.resolve()
+        if any(resolved == parent or parent in resolved.parents for parent in roots if parent.is_dir()):
+            continue
+        roots.append(resolved)
+    for resolved in roots:
         candidates = [resolved] if resolved.is_file() else resolved.rglob("*")
         for candidate in candidates:
             if candidate.is_file() and not any(part in EXCLUDED_DIRECTORIES for part in candidate.parts):
@@ -143,12 +147,17 @@ def source_policy_report(root: Path, selected_paths: list[Path], policy: dict[st
 
 
 def owned_source_files(root: Path, selected: list[str], policy: dict[str, Any] | None = None) -> dict[str, list[Path]]:
-    by_source = {path: source_files(root, [root / path], policy) for path in selected}
+    files = source_files(root, [root / path for path in selected], policy)
+    by_source = {path: [] for path in selected}
     owner = {}
-    for path, files in by_source.items():
-        for file in files:
-            if len(path) > len(owner.get(file, "")):
-                owner[file] = path
+    for file in files:
+        for path in selected:
+            selected_path = (root / path).resolve()
+            if file == selected_path or (selected_path.is_dir() and selected_path in file.parents):
+                if len(path) > len(owner.get(file, "")):
+                    owner[file] = path
+    for file, path in owner.items():
+        by_source[path].append(file)
     return {path: [file for file in files if owner[file] == path] for path, files in by_source.items()}
 
 
@@ -237,12 +246,14 @@ def confirm_sources(root: Path, repo_root: Path, confirmed_by: str, policy: dict
     source_map["selection_status"] = "developer-confirmed"
     source_map["confirmed_by"] = confirmed_by
     source_map["confirmed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    write_source_map(path, source_map)
-    append_audit(root, {
-        "operation": "confirm-sources",
-        "confirmed_by": confirmed_by,
-        "selected_paths": source_map.get("selected_paths", []),
-    })
+    with writer_lock(root):
+        write_source_map(path, source_map)
+        from .audit import append_locked
+        append_locked(root, {
+            "operation": "confirm-sources",
+            "confirmed_by": confirmed_by,
+            "selected_paths": source_map.get("selected_paths", []),
+        })
     return source_map
 
 def verify_source_map(root: Path, source_map_path: Path, policy: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -254,6 +265,18 @@ def verify_source_map(root: Path, source_map_path: Path, policy: dict[str, Any] 
     if not all(isinstance(snapshot, dict) and isinstance(snapshot.get("path"), str) for snapshot in snapshots):
         return {"status": "unverified", "selection_status": selection_status, "reason": "source map has an invalid snapshot"}
     recorded_paths = [snapshot["path"] for snapshot in snapshots]
+    selected_paths = source_map.get("selected_paths")
+    if (not isinstance(selected_paths, list) or
+            not all(isinstance(path, str) and path.strip() for path in selected_paths) or
+            len(selected_paths) != len(set(selected_paths)) or
+            set(selected_paths) != set(recorded_paths)):
+        return {"status": "unverified", "selection_status": selection_status,
+                "reason": "source map snapshots do not match selected_paths"}
+    if policy is not None:
+        policy_paths = policy.get("source_policy", {}).get("selected_paths")
+        if isinstance(policy_paths, list) and sorted(policy_paths) != sorted(selected_paths):
+            return {"status": "invalid", "selection_status": selection_status,
+                    "reason": "policy selected_paths do not match the source map"}
     actual = {snapshot["path"]: snapshot for snapshot in source_snapshots(root, recorded_paths, policy)}
     changed = []
     for snapshot in snapshots:
@@ -307,6 +330,25 @@ def probe_sources(root: Path, source_map_path: Path, policy: dict[str, Any] | No
         return {"status": "absent", "reason": f"no source map at {source_map_path}"}
     source_map = json.loads(source_map_path.read_text(encoding="utf-8"))
     recorded = source_map.get("git_state")
+    if policy is not None:
+        from .policy import validate_policy
+
+        errors = validate_policy(policy)
+        if errors:
+            return {"status": "invalid", "selection_status": source_map.get("selection_status", "agent-asserted"),
+                    "reason": "; ".join(errors)}
+        policy_paths = policy["source_policy"]["selected_paths"]
+        if sorted(policy_paths) != sorted(source_map.get("selected_paths", [])):
+            return {"status": "invalid", "selection_status": source_map.get("selection_status", "agent-asserted"),
+                    "reason": "policy selected_paths do not match the source map"}
+        try:
+            report = source_policy_report(root, [root / path for path in policy_paths], policy)
+        except (OSError, ValueError) as error:
+            return {"status": "invalid", "selection_status": source_map.get("selection_status", "agent-asserted"),
+                    "reason": str(error)}
+        if report["errors"]:
+            return {"status": "invalid", "selection_status": source_map.get("selection_status", "agent-asserted"),
+                    "reason": "; ".join(report["errors"]), "source_policy_report": report}
     if isinstance(recorded, dict) and recorded.get("tracked_objects") and not recorded.get("dirty_sources"):
         now = git_state(root, source_map.get("selected_paths", []))
         if now.get("tracked_objects") == recorded["tracked_objects"] and not now.get("dirty_sources"):

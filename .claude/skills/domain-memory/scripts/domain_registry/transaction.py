@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from .common import registry_dir
+from .common import MAX_JSON_BYTES, registry_dir, writer_lock
 from .revision import registry_digest
 from .registry import validate
 
 import json
+import os
 import shutil
 import uuid
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 
 def write_json(path: Path, value: dict) -> None:
     temporary = path.with_suffix(f"{path.suffix}.tmp")
-    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    with temporary.open("w", encoding="utf-8") as output:
+        output.write(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+        output.flush()
+        os.fsync(output.fileno())
     temporary.replace(path)
 
 
@@ -34,9 +37,39 @@ def recover(root: Path) -> None:
     backup = root / value["backup"]
     staging = root / value["staging"]
     target = registry_dir(root)
-    if not target.exists() and backup.exists():
-        backup.replace(target)
-    elif target.exists() and backup.exists():
+    legacy = "phase" not in value or "operation_id" not in value
+    if legacy:
+        if not target.exists() and backup.exists():
+            backup.replace(target)
+        elif target.exists() and backup.exists():
+            shutil.rmtree(backup)
+        if staging.exists():
+            shutil.rmtree(staging)
+        journal.unlink(missing_ok=True)
+        return
+    if value["phase"] not in {"prepared", "installed", "audited", "reconciliation-required"}:
+        raise ValueError("registry recovery journal has an invalid phase")
+    if value["phase"] == "prepared":
+        if backup.exists():
+            shutil.rmtree(backup)
+        if staging.exists():
+            shutil.rmtree(staging)
+        journal.unlink(missing_ok=True)
+        return
+    if value["phase"] == "installed":
+        from .audit import read_events
+        events = read_events(root)
+        audited = bool(events and events[-1].get("operation_id") == value["operation_id"])
+        if not audited and backup.exists() and staging.parent.exists():
+            staging_registry = registry_dir(staging)
+            if target.exists():
+                target.replace(staging_registry)
+            backup.replace(target)
+        value["phase"] = "audited" if audited else "committed"
+        write_json(journal, value)
+    if value["phase"] == "reconciliation-required":
+        raise ValueError("registry transaction requires manual reconciliation")
+    if backup.exists():
         shutil.rmtree(backup)
     if staging.exists():
         shutil.rmtree(staging)
@@ -52,20 +85,7 @@ def recover_interrupted_update(root: Path, force: bool) -> None:
     recover(root)
 
 
-@contextmanager
-def writer_lock(root: Path):
-    lock = root / ".domain-registry.lock"
-    try:
-        lock.mkdir()
-    except FileExistsError as error:
-        raise ValueError(f"another Domain Registry update is in progress: {lock}") from error
-    try:
-        yield
-    finally:
-        lock.rmdir()
-
-
-def mutate_registry(root: Path, repo_root: Path | None, mutate: Callable[[Path], None], expected_digest: str | None = None) -> None:
+def mutate_registry(root: Path, repo_root: Path | None, mutate: Callable[[Path], None], expected_digest: str | None = None, audit_event: Callable[[], dict[str, Any]] | None = None) -> None:
     with writer_lock(root):
         recover(root)
         if expected_digest is not None and registry_digest(root) != expected_digest:
@@ -81,9 +101,32 @@ def mutate_registry(root: Path, repo_root: Path | None, mutate: Callable[[Path],
             if errors:
                 raise ValueError("registry update is invalid: " + "; ".join(errors))
             journal = transaction_path(root)
-            write_json(journal, {"staging": staging.name, "backup": backup.name})
+            write_json(journal, {
+                "format": "domain-registry-transaction/v2",
+                "operation_id": operation,
+                "phase": "prepared",
+                "staging": staging.name,
+                "backup": backup.name,
+                "expected_digest": expected_digest,
+            })
             registry_dir(root).replace(backup)
             staging_registry.replace(registry_dir(root))
+            journal_value = load_journal(journal)
+            journal_value["phase"] = "installed"
+            write_json(journal, journal_value)
+            if audit_event is not None:
+                try:
+                    from .audit import append_locked
+                    event = audit_event()
+                    event["operation_id"] = operation
+                    append_locked(root, event)
+                except Exception:
+                    registry_dir(root).replace(staging_registry)
+                    backup.replace(registry_dir(root))
+                    journal.unlink(missing_ok=True)
+                    raise
+                journal_value["phase"] = "audited"
+                write_json(journal, journal_value)
             shutil.rmtree(backup)
             shutil.rmtree(staging)
             journal.unlink(missing_ok=True)
@@ -91,3 +134,12 @@ def mutate_registry(root: Path, repo_root: Path | None, mutate: Callable[[Path],
             if staging.exists():
                 shutil.rmtree(staging)
             raise
+
+
+def load_journal(path: Path) -> dict[str, Any]:
+    if path.stat().st_size > MAX_JSON_BYTES:
+        raise ValueError("registry recovery journal is too large")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("format") != "domain-registry-transaction/v2":
+        raise ValueError("registry recovery journal is malformed")
+    return value

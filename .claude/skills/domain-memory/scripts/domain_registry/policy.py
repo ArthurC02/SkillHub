@@ -65,7 +65,8 @@ AMENDABLE_FIELDS = {
 
 
 def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, Any]:
-    from .audit import append as append_audit
+    from .audit import append_locked
+    from .common import writer_lock
 
     if field not in AMENDABLE_FIELDS:
         raise ValueError(f"{field} is not an amendable policy field; amend one of {', '.join(sorted(AMENDABLE_FIELDS))}. "
@@ -85,8 +86,9 @@ def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, A
     errors = validate_policy(value_document)
     if errors:
         raise ValueError("amended policy is invalid: " + "; ".join(errors))
-    path.write_text(json.dumps(value_document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    append_audit(root, change)
+    with writer_lock(root):
+        path.write_text(json.dumps(value_document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        append_locked(root, change)
     return change
 
 

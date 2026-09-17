@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .common import load_json
 from .sources import source_kind_for
 
 
@@ -16,10 +17,7 @@ def source_map_for(registry_root: Path) -> dict[str, Any]:
     path = registry_root / "source-map.json"
     if not path.is_file():
         return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    return load_json(path)
 
 
 def classified(reference: Any, source_map: dict[str, Any]) -> Any:
