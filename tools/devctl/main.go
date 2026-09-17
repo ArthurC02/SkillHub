@@ -21,17 +21,17 @@ Usage:
   devctl doctor     check required tools and repository configuration
   devctl bootstrap  download project dependencies using native package managers
   devctl env-init   create .env from .env.example without overwriting it
-	devctl profile-check model  verify a profile's required variables without printing values
-	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
-	devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
-	devctl automation-check  verify Task, Agent docs and generated ownership markers
-	devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
-	devctl test-report dir [go test args]  run the suite and report what skipped and why
-	devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
-	devctl image-gate [--range A..B]  runtime image source gates: digest-pinned base, upgrade record, version bump
-	devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
-	devctl ci-status [ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
-	devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
+  devctl profile-check model  verify a profile's required variables without printing values
+  devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
+  devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
+  devctl automation-check  verify Task, Agent docs and generated ownership markers
+  devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
+  devctl test-report dir [go test args]  run the suite and report what skipped and why
+  devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
+  devctl image-gate [--range A..B]  runtime image source gates: digest-pinned base, upgrade record, version bump
+  devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
+  devctl ci-status [ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
+  devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
 
 type checkResult struct {

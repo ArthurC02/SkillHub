@@ -30,7 +30,7 @@ var (
 		".py": hashComments, ".yml": hashComments, ".yaml": hashComments, ".toml": hashComments, ".sh": hashComments,
 		".sql": {"--"},
 	}
-	commentMachineMarker = regexp.MustCompile(`^(//|#|--)\s*(go:|line |export |lint:|nolint|one-number:|drift:|budget-over:|` +
+	commentMachineMarker = regexp.MustCompile(`^(//|#|--)\s*(go:|line |export |lint:|nolint|one-number:|budget-over:|` +
 		`budget-ceiling:|Deprecated:|\+build|Output:|Unordered output:|eslint-|@ts-|/ <reference|@vitest-environment|` +
 		`istanbul|c8 |biome-ignore|prettier-ignore|noqa|type:|pragma|fmt:|-\*-|pyright:|mypy:|shellcheck|syntax=|escape=|` +
 		`check=|yaml-language-server|name:\s|!)`)

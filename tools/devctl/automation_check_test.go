@@ -11,7 +11,7 @@ import (
 func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	t.Parallel()
 	want := []string{
-		"drift-marker", "depguard-deny", "service-construction", "identifier-order", "one-number", "query-owner", "query-scope", "sql-logic",
+		"depguard-deny", "service-construction", "identifier-order", "one-number", "query-owner", "query-scope", "sql-logic",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
 		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
 
@@ -62,7 +62,7 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
 		"見 [規則](./docs/rules/missing.md)。\n")
 
-	write("apps/platform/.golangci.yml", "# drift: DDD-005 (run -> eval)\n")
+	write("apps/platform/.golangci.yml", "version: \"2\"\n")
 	write(contextMapDoc, "# Context map\n\n沒有對照表，也沒有白名單。\n")
 
 	write(genDirRelative+"/fake.sql.go", `package gen
@@ -148,43 +148,6 @@ func TestMain(m *testing.M) {
 				}
 			}
 		})
-	}
-}
-
-func TestDriftMarkerProblems(t *testing.T) {
-	t.Parallel()
-
-	write := func(root, lint, adr string) {
-		lintPath := filepath.Join(root, "apps", "platform", ".golangci.yml")
-		adrPath := filepath.Join(root, filepath.FromSlash(contextMapDoc))
-		for path, contents := range map[string]string{lintPath: lint, adrPath: adr} {
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-
-	matched := t.TempDir()
-	write(matched,
-		"# drift: DDD-005 (run -> eval)\n# drift: DDD-006 (run -> ingest)\n# drift: DDD-006 (eval -> ingest)\n",
-		"標註（`# drift: DDD-00x`）\n| **drift: DDD-005** |\n| **drift: DDD-006** |\n| **drift: DDD-006** |\n")
-	if problems := driftMarkerProblems(matched); len(problems) != 0 {
-		t.Fatalf("matching markers reported problems: %#v", problems)
-	}
-
-	skewed := t.TempDir()
-	write(skewed,
-		"# drift: DDD-005 (run -> eval)\n# drift: DDD-006 (run -> ingest)\n# drift: DDD-006 (eval -> ingest)\n",
-		"| **drift: DDD-005** |\n| **drift: DDD-006** |\n")
-	problems := driftMarkerProblems(skewed)
-	if len(problems) != 1 {
-		t.Fatalf("expected one problem for a marker only present in the lint config, got %#v", problems)
-	}
-	if !strings.Contains(problems[0], "lint=2 map=1") {
-		t.Fatalf("problem does not report the count difference: %q", problems[0])
 	}
 }
 

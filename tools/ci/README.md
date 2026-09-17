@@ -1,9 +1,10 @@
 # tools/ci
 
-CI 用的輔助腳本。放在這裡而不是 `.github/workflows/`，是因為那個目錄的內容是 workflow 定義；腳本是被 workflow 呼叫的程式碼，換一個 CI 供應商時該跟著走的是 workflow 檔，不是這兩支。
+CI 用的輔助腳本。放在這裡而不是 `.github/workflows/`，是因為那個目錄的內容是 workflow 定義；腳本是被 workflow 呼叫的程式碼，換一個 CI 供應商時該跟著走的是 workflow 檔，不是這些腳本。
 
 | 腳本 | 歸屬的 workflow | 做什麼 |
 | --- | --- | --- |
+| [`report-failure.sh`](report-failure.sh) | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)（Platform／Sandbox 測試、Gate A node probe、runtime 腳本測試、gVisor driver 測試、QA-002 各步驟） | 包住一個命令照常執行；失敗時把輸出末段寫進 `$GITHUB_STEP_SUMMARY`，並發一行 `::error::` annotation（check-runs API 讀得到的那一種），所以失敗原因不必下載整份 log 才看得到 |
 | [`check_egress_allowlist.py`](check_egress_allowlist.py) | [`.github/workflows/egress-allowlist.yml`](../../.github/workflows/egress-allowlist.yml) | 斷言 `infra/egress/allowlist.yaml` 的不變式：`tier: sandbox` 恰為一筆 `model_gateway`、N-07 供應商網域 deny-list、`pinned_ip` 的 tier 規則 |
 | [`scan_predicate.sh`](scan_predicate.sh) | [`.github/workflows/runtime-image.yml`](../../.github/workflows/runtime-image.yml)（`review` 與 `rescan` 兩個 job 都用） | 把 grype 的 JSON 轉成 in-toto vulns predicate（含 `scanned_at` 與 `fixable_critical_high`），供 I-04 的 attestation 使用 |
 | [`scan-images.sh`](scan-images.sh) | [`.github/workflows/image-scan.yml`](../../.github/workflows/image-scan.yml) | 依[映像漏洞掃描擋建置](../../docs/adr/README.md#開發自動化與依賴治理)的規則掃 `infra/compose/docker-compose.yml` 裡每一顆拉下來的映像，以及我們自己建的 `platform`／`web`／`llm`／`devtools` 四顆：syft 出 SBOM、grype 出報告。**映像清單直接從 compose 讀**，不另抄一份，所以不會漂。閘門分三層：`deployed`（`platform`／`web`／`llm`）有可修的 Critical／High 就紅；`upstream` 只報，除非 `FAIL_ON_UPSTREAM=1`（排程跑時設）；`dev-only`（`devtools`）永不紅 |

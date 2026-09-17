@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 )
 
@@ -99,7 +97,6 @@ type namedChecker struct {
 
 func documentCheckers() []namedChecker {
 	return []namedChecker{
-		{"drift-marker", driftMarkerProblems},
 		{"depguard-deny", depguardDenyProblems},
 		{"service-construction", serviceConstructionProblems},
 		{"identifier-order", identifierOrderProblems},
@@ -143,55 +140,6 @@ func documentCheckers() []namedChecker {
 		{"harness", harnessProblems},
 		{"comment-budget", commentBudgetProblems},
 	}
-}
-
-// \b keeps this from matching inside a longer word, since a marker always
-// ends at a non-word character.
-var driftMarkerPattern = regexp.MustCompile(`drift: DDD-\d+\b`)
-
-func driftMarkerProblems(root string) []string {
-	sources := map[string]string{
-		"lint": filepath.Join("apps", "platform", ".golangci.yml"),
-		"map":  filepath.FromSlash(contextMapDoc),
-	}
-	counts := map[string]map[string]int{}
-	var problems []string
-	for side, relative := range sources {
-		data, err := os.ReadFile(filepath.Join(root, relative))
-		if err != nil {
-			return append(problems, fmt.Sprintf("%s: %v", relative, err))
-		}
-		counts[side] = map[string]int{}
-		for _, marker := range driftMarkerPattern.FindAllString(string(data), -1) {
-			counts[side][marker]++
-		}
-	}
-
-	markers := map[string]bool{}
-	for _, side := range counts {
-		for marker := range side {
-			markers[marker] = true
-		}
-	}
-	var sorted []string
-	for marker := range markers {
-		sorted = append(sorted, marker)
-	}
-	sort.Strings(sorted)
-
-	var differences []string
-	for _, marker := range sorted {
-		lint, contextMap := counts["lint"][marker], counts["map"][marker]
-		if lint != contextMap {
-			differences = append(differences, fmt.Sprintf("%q lint=%d map=%d", marker, lint, contextMap))
-		}
-	}
-	if len(differences) > 0 {
-		problems = append(problems, fmt.Sprintf(
-			"%s and %s disagree on drift markers: %s",
-			sources["lint"], sources["map"], strings.Join(differences, "; ")))
-	}
-	return problems
 }
 
 func taskDescriptions(path string) (map[string]string, error) {

@@ -148,7 +148,6 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 | 名字 | 它比對什麼 | 規則寫在哪 |
 | --- | --- | --- |
-| `drift-marker` | [跨 context import 白名單](./platform-context-map.md)與 `apps/platform/.golangci.yml` 的 `drift: DDD-n` 標記多重集必須一致 | `tools/devctl/automation_check.go` |
 | `depguard-deny` | depguard deny 清單的**內容**與 [跨 context import 白名單](./platform-context-map.md)相符——刪兩行就等於默默開一條跨 context 權限 | `tools/devctl/depguard_deny.go` |
 | `service-construction` | 非 composition root 不得現場建構其他 Bounded Context 的 `Service`（見[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)） | `tools/devctl/service_construction.go` |
 | `one-number` | 帶 `one-number:` 標記的各站點數值相同，且標記要在 `sharedNumberRoster` 名冊上（雙向） | `tools/devctl/shared_number.go` |
