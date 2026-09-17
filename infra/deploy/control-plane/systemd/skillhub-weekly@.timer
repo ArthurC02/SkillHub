@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Skill Hub maintenance job %i weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=skillhub-maintenance@%i.service
+
+[Install]
+WantedBy=timers.target

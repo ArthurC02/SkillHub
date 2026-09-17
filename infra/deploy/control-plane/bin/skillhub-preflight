@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+secrets="${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}"
+status=0
+
+for name in SKILLHUB_WEB_IMAGE SKILLHUB_PLATFORM_IMAGE SKILLHUB_LLM_IMAGE SKILLHUB_POSTGRES_IMAGE; do
+    ref="$(printenv "$name" || true)"
+    if ! printf '%s' "$ref" | grep -Eq '@sha256:[0-9a-f]{64}$'; then
+        echo "preflight: $name='$ref' is not pinned by digest; a tag can move under a running deployment" >&2
+        status=1
+    fi
+done
+
+for file in platform.env llm.env postgres.env postgres-exporter.env smtp-password; do
+    path="$secrets/$file"
+    if [ ! -s "$path" ]; then
+        echo "preflight: $path is missing or empty" >&2
+        status=1
+    elif [ "$(stat -c '%a' "$path")" != 600 ]; then
+        echo "preflight: $path is mode $(stat -c '%a' "$path"); secrets must be 600" >&2
+        status=1
+    fi
+done
+
+exit "$status"

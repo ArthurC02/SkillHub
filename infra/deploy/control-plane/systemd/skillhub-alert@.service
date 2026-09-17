@@ -1,0 +1,6 @@
+[Unit]
+Description=Tell Alertmanager that %i failed
+
+[Service]
+Type=oneshot
+ExecStart=/opt/skillhub/infra/deploy/control-plane/bin/skillhub-alert %i

@@ -160,3 +160,33 @@ func TestTheRealTreeFollowsTheDependencyPolicy(t *testing.T) {
 		t.Fatalf("%s", strings.Join(problems, "\n"))
 	}
 }
+
+func TestADeployTimeComposeImageMustBeOneAPreflightRefusesUnpinned(t *testing.T) {
+	t.Parallel()
+	digest := "@sha256:" + strings.Repeat("a", 64)
+	preflight := "for name in SKILLHUB_WEB_IMAGE SKILLHUB_PLATFORM_IMAGE_OLD; do"
+	cases := []struct {
+		name, image, problem string
+	}{
+		{"an upstream image pinned by digest", "caddy:2.11.4" + digest, ""},
+		{"an upstream image on a tag alone", "caddy:2.11.4", "image caddy:2.11.4 is not pinned by digest"},
+		{"a variable the preflight checks", "${SKILLHUB_WEB_IMAGE:?set it}", ""},
+		{"a variable no preflight checks", "${SKILLHUB_LLM_IMAGE:?set it}", "image ${SKILLHUB_LLM_IMAGE} is chosen at deploy time"},
+		{"a variable only a longer name contains", "${SKILLHUB_PLATFORM_IMAGE}", "image ${SKILLHUB_PLATFORM_IMAGE} is chosen at deploy time"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			problems := deployComposeImageProblems("infra/compose/control-plane.yml", "services:\n  x:\n    image: "+c.image+"\n", preflight)
+			if c.problem == "" {
+				if len(problems) != 0 {
+					t.Fatalf("got %v, want none", problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !strings.Contains(problems[0], "infra/compose/control-plane.yml: "+c.problem) {
+				t.Fatalf("got %v, want one problem containing %q", problems, c.problem)
+			}
+		})
+	}
+}

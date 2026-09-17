@@ -166,7 +166,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `isolation-level` | 派送閘門接受的每個隔離等級都要寫在 `contracts/openapi/sandbox-provider.yaml` 的 enum 裡（單向） | `tools/devctl/isolation_levels.go` |
 | `route-table` | `router.go` 掛上的 route 與 `contracts/openapi/public.yaml` 的 `paths:` **雙向**對帳（codegen 看不到 route） | `tools/devctl/route_table.go` |
 | `requirement-refs` | `03`／`04`／`05` 引用的 `02:<ID>` 在 `02` 有且只有一個同名標題 | `tools/devctl/requirement_refs.go` |
-| `purge-schedule` | `cmd/maintenance` 的每個子命令（清理、收物件、查來源、輪替分割），在 release checklist 的部署段都要有一行 cron | `tools/devctl/purge_schedule.go` |
+| `purge-schedule` | `cmd/maintenance` 的每個子命令（清理、收物件、查來源、輪替分割），在 `infra/deploy/control-plane/maintenance-schedule` 恰好排一次，且週期有對應的 systemd timer | `tools/devctl/purge_schedule.go` |
 | `timeout-budget` | 成對的 `budget-over:`／`budget-ceiling:` 標記，Go 的 deadline 必須大於 Python 的 | `tools/devctl/timeout_budgets.go` |
 | `image-version` | Dockerfile 的 `ARG IMAGE_VERSION` 每個版本，`UPGRADES.md` 都要有同名章節（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)；**只查章節在不在，查不出四項有沒有真的跑**） | `tools/devctl/image_version.go` |
 | `embedding-dims` | `0007_search.sql` 的 `vector(1536)` 與 `apps/llm` 驗證的寬度一致（migration 為準） | `tools/devctl/embedding_dims.go` |

@@ -1,0 +1,9 @@
+daily purge-accounts
+daily purge-run-artifacts
+daily purge-datasets
+daily purge-deleted-skills
+daily collect-objects
+daily check-sources
+weekly purge-audit
+weekly purge-feedback
+monthly rotate-partitions

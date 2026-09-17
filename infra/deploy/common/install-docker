@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+fingerprint=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+key="$(mktemp)"
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o "$key"
+actual="$(gpg --show-keys --with-colons "$key" | awk -F: '$1 == "fpr" { print $10; exit }')"
+if [ "$actual" != "$fingerprint" ]; then
+    echo "install-docker: the Docker apt key is $actual, not $fingerprint" >&2
+    exit 1
+fi
+install -d -m 0755 /etc/apt/keyrings
+install -m 0644 "$key" /etc/apt/keyrings/docker.asc
+. /etc/os-release
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" \
+    >/etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-compose-plugin

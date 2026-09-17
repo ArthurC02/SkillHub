@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+ledger=/var/lib/skillhub/deployed-migration
+migrations=/opt/skillhub/db/migrations
+compose="docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/control-plane.yml"
+
+if [ "$#" -eq 1 ]; then
+    deployed="$1"
+elif [ -s "$ledger" ]; then
+    deployed="$(cat "$ledger")"
+else
+    echo "skillhub-migrate: pass the last migration this database already has (0000 for a new one); $ledger is empty" >&2
+    exit 2
+fi
+if ! printf '%s' "$deployed" | grep -Eq '^[0-9]{4}$'; then
+    echo "skillhub-migrate: '$deployed' is not a four-digit migration number" >&2
+    exit 2
+fi
+
+$compose up -d --wait postgres
+install -d -m 0755 "$(dirname "$ledger")"
+for file in "$migrations"/[0-9][0-9][0-9][0-9]_*.sql; do
+    number="$(basename "$file")"
+    number="${number%%_*}"
+    expr "$number" \<= "$deployed" >/dev/null && continue
+    echo "skillhub-migrate: applying $(basename "$file")"
+    $compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 --single-transaction -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f -' <"$file"
+    echo "$number" >"$ledger"
+done
+echo "skillhub-migrate: database is at $(cat "$ledger" 2>/dev/null || echo "$deployed")"

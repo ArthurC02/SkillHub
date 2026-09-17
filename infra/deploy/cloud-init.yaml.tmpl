@@ -1,0 +1,21 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages: [ca-certificates, curl, gettext-base, git, gnupg]
+write_files:
+  - path: /etc/skillhub/release.env
+    permissions: "0644"
+    content: |
+@RELEASE_ENV@
+runcmd:
+  - - sh
+    - -c
+    - >-
+      set -eu;
+      set -a; . /etc/skillhub/release.env; set +a;
+      install -d /opt/skillhub; cd /opt/skillhub;
+      git init -q;
+      git fetch -q --depth 1 "$SKILLHUB_REPOSITORY" "$SKILLHUB_RELEASE";
+      git checkout -q FETCH_HEAD;
+      test "$(git rev-parse HEAD)" = "$SKILLHUB_RELEASE";
+      exec "infra/deploy/$SKILLHUB_ROLE/bin/skillhub-bootstrap"

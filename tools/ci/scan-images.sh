@@ -20,8 +20,8 @@ grype_with_shared_db() {
 }
 
 upstream_images() {
-  sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$ROOT/infra/compose/docker-compose.yml" |
-    tr -d "\"'" | sort -u
+  sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$ROOT/infra/compose/docker-compose.yml" "$ROOT/infra/compose/control-plane.yml" |
+    tr -d "\"'" | grep -v '^\$' | sort -u
 }
 
 scan() {

@@ -200,9 +200,9 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 
 **映像與啟動順序**：
 
-- [ ] 三個服務映像由 CI 在 main 推到 GHCR，tag 是 commit SHA：`ghcr.io/arthurc02/skillhub-platform`、`skillhub-web`、`skillhub-llm`。**三個取同一個 SHA**，且那個 SHA 的 CI 是綠的（`devctl ci-status <sha>`）；platform 映像裡有 `api`／`worker`／`maintenance`／`reindex` 四個指令
+- [ ] 四個映像由 CI 在 main 推到 GHCR，tag 是 commit SHA：`ghcr.io/arthurc02/skillhub-platform`、`skillhub-web`、`skillhub-llm`、`skillhub-postgres`（pgvector＋WAL-G，推送前 CI 先做一次備份→還原→比對）。**四個取同一個 SHA**，且那個 SHA 的 CI 是綠的（`devctl ci-status <sha>`）；platform 映像裡有 `api`／`worker`／`maintenance`／`reindex` 四個指令
 - [ ] 順序：Postgres 與物件儲存 → §2.2 migration → `apps/llm` → `cmd/worker` → `cmd/api` → web。**worker 必須在跑**：月分割的建立在 worker，不在 cron
-- [ ] TLS 終止、Postgres 每日備份與一次還原演練、secrets 的存放方式：**本檢查表沒有做法**，是 [`04` 甲-5](../../04-backlog-and-handoffs.md) ② 的範圍。三件任一沒做就上線，要寫下是誰接受了這個風險
+- [ ] 控制平面照 [控制平面 runbook](../../../runbooks/control-plane.md) 建立：user-data 由 `tools/deploy/render.py` 產生、秘密放 `/etc/skillhub/secrets`（600）、TLS 由 Caddy 自動申請、Postgres 連續封存＋每日完整備份＋每月還原演練、保存期工作由 systemd timer 觸發。**上線前手動跑一次備份與一次演練，演練印出的列數與線上資料庫對過**（runbook §3）；migration 用 `skillhub-migrate`，不照上面 §2.2 手打
 
 **⚠️ 反向代理下速率限制會退化成「全體共用一個桶」**（2026-08-24，`04` 丙-54）：限制器以 `RemoteAddr` 分桶，**刻意不讀 `X-Forwarded-For`**（客戶端能設的標頭就是客戶端能選的桶）。所以只要前面擺了 TLS 終止層或任何代理，**十二位受測者共用 60/min、burst 30，而且是一起被 429**。部署時二選一：①在代理那一層做限制、②只在代理與 API 之間是可信網段時，才在代理上設定把真實來源 IP 傳進來並改讀它（**要先改程式，今天不讀**）。IPv6 已按 /64 分桶（單一配置有 2^64 個位址，按位址分桶等於沒有限制）。
 
@@ -247,14 +247,14 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 
 ### 2.5 可觀測性與告警
 
-- [ ] **Alertmanager 部署 ＋ 通知路由**——單人團隊裡，最高級告警必須送得到那一個人
+- [ ] **Alertmanager 部署 ＋ 通知路由**——單人團隊裡，最高級告警必須送得到那一個人。部署與設定在控制平面 compose 裡；**驗的是送達**：`systemctl start skillhub-alert@test.service` 之後信箱真的收到（[runbook](../../../runbooks/control-plane.md) §5）
 - [ ] Grafana dashboard；`O11Y-003` 的門檻值上線後回填（首發值是預設非實測校準值）
 - [ ] 驗 `TraceMaskingStopped` 這條規則真的會觸發並送達（**`NFR-002` 沒有其他偵測器**）
 - [ ] 驗閘門 A 到期前 7 天告警的發送端（甲-4 的一部分）
 
 ### 2.6 對帳器與排程
 
-> **2026-08-29：這一節少了五行，而少掉的那五行是同意書上寫給受測者看的承諾。** `cmd/maintenance` 有七個保存期子命令，此前只有兩個（`purge-accounts`、`rotate-partitions`）在這份文件裡接上排程；其餘五個在整份檢查表裡**零命中**。Trace 與分析事件靠分割表輪替、帳號刪除有自己的 cron，**剩下的位元組在部署上沒有任何東西會去刪它們**——而畫面已經會把過期的那一列標成「檔案已刪除，這筆紀錄保留」。**畫面說的話會比事實更乾淨，那正是本專案反覆記載的那種缺陷。**<br>**`devctl automation-check` 的 `purge-schedule` 自 2026-08-29 起機械對帳**：`main.go` 的 dispatch switch 裡每多一個 `purge-*`，這一節就要多一行含它名字與 `cron` 的句子，否則 CI FAIL。**一個沒有排程的 purge 子命令，就是一句沒有人執行的保存政策。**
+> **2026-08-29：這一節少了五行，而少掉的那五行是同意書上寫給受測者看的承諾。** `cmd/maintenance` 有七個保存期子命令，此前只有兩個（`purge-accounts`、`rotate-partitions`）在這份文件裡接上排程；其餘五個在整份檢查表裡**零命中**。Trace 與分析事件靠分割表輪替、帳號刪除有自己的 cron，**剩下的位元組在部署上沒有任何東西會去刪它們**——而畫面已經會把過期的那一列標成「檔案已刪除，這筆紀錄保留」。**畫面說的話會比事實更乾淨，那正是本專案反覆記載的那種缺陷。**<br>**排程的事實來源是 [`infra/deploy/control-plane/maintenance-schedule`](../../../../infra/deploy/control-plane/maintenance-schedule)**（每行 `<daily|weekly|monthly> <子命令>`，由同目錄 `systemd/` 的 `skillhub-<週期>@.timer` 觸發）。`devctl automation-check` 的 `purge-schedule` 機械對帳：`main.go` 的 dispatch switch 裡每個子命令都要在那個檔裡恰好一行、每行都要指得到真的子命令與存在的 timer，否則 CI FAIL。下面各列的「接上 cron」＝在節點上確認對應的 timer 已啟用（`systemctl list-timers 'skillhub-*'`）並跑過一次。**一個沒有排程的 purge 子命令，就是一句沒有人執行的保存政策。**
 
 - [ ] `cmd/maintenance purge-accounts` 接上 cron（**程式刻意不自帶 scheduler**）；`PURGE_GRACE` 預設 720h
 - [ ] `cmd/maintenance purge-run-artifacts` 接上**每日** cron。承諾對象：同意書 §3「試跑產出的檔案」（**2026-08-29 起為 90 天**，[`05` R-11](../../05-pending-rulings.md)）。**驗一次真的刪掉了位元組，不只是標了欄位**——`expires_at` 到期只會讓畫面標示過期，位元組要這個 job 才會走

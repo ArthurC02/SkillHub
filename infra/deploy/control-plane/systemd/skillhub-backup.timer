@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Skill Hub Postgres base backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

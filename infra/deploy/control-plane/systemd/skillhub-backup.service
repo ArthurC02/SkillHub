@@ -1,0 +1,9 @@
+[Unit]
+Description=Skill Hub Postgres base backup
+Requires=skillhub.service
+After=skillhub.service
+OnFailure=skillhub-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/control-plane.yml exec -T postgres skillhub-backup

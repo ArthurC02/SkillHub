@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+unit="$1"
+starts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+ends="$(date -u -d '+12 hours' +%Y-%m-%dT%H:%M:%SZ)"
+curl -fsS -m 10 -X POST -H 'Content-Type: application/json' http://127.0.0.1:9093/api/v2/alerts \
+    -d "[{\"labels\":{\"alertname\":\"ScheduledJobFailed\",\"severity\":\"critical\",\"unit\":\"$unit\"},\"annotations\":{\"summary\":\"$unit failed on $(hostname)\",\"description\":\"Read journalctl -u $unit. Backups, restore drills and retention sweeps run only from these timers.\"},\"startsAt\":\"$starts\",\"endsAt\":\"$ends\"}]"

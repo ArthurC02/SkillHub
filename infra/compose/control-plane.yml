@@ -1,0 +1,147 @@
+name: skillhub
+
+x-platform-env: &platform-env
+  env_file:
+    - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/platform.env
+
+services:
+  caddy:
+    image: caddy:2.11.4@sha256:13ba145cba2f3e28fa801994876e4c086d1b95d5aa2a520a734765ffb6b12017
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      SKILLHUB_DOMAIN: ${SKILLHUB_DOMAIN:?set SKILLHUB_DOMAIN in release.env}
+      SKILLHUB_ACME_EMAIL: ${SKILLHUB_ACME_EMAIL:?set SKILLHUB_ACME_EMAIL in release.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/deploy/control-plane/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  web:
+    image: ${SKILLHUB_WEB_IMAGE:?set SKILLHUB_WEB_IMAGE in release.env}
+    restart: unless-stopped
+    depends_on:
+      - platform-api
+
+  platform-api:
+    image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    command: ["api"]
+    restart: unless-stopped
+    <<: *platform-env
+    environment:
+      METRICS_ADDR: ":9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  platform-worker:
+    image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    command: ["worker"]
+    restart: unless-stopped
+    <<: *platform-env
+    environment:
+      METRICS_ADDR: ":9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  maintenance:
+    image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    profiles: ["jobs"]
+    entrypoint: ["maintenance"]
+    <<: *platform-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  reindex:
+    image: ${SKILLHUB_PLATFORM_IMAGE:?set SKILLHUB_PLATFORM_IMAGE in release.env}
+    profiles: ["jobs"]
+    command: ["reindex"]
+    <<: *platform-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  llm:
+    image: ${SKILLHUB_LLM_IMAGE:?set SKILLHUB_LLM_IMAGE in release.env}
+    restart: unless-stopped
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/llm.env
+
+  postgres:
+    image: ${SKILLHUB_POSTGRES_IMAGE:?set SKILLHUB_POSTGRES_IMAGE in release.env}
+    restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=wal-g wal-push %p
+      - -c
+      - archive_timeout=60
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/postgres.env
+    ports:
+      - "${SKILLHUB_PRIVATE_IP:?set SKILLHUB_PRIVATE_IP in release.env}:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  restore-drill:
+    image: ${SKILLHUB_POSTGRES_IMAGE:?set SKILLHUB_POSTGRES_IMAGE in release.env}
+    profiles: ["jobs"]
+    command: ["skillhub-restore-drill"]
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/postgres.env
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    restart: unless-stopped
+    env_file:
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/postgres-exporter.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.14.0@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/deploy/control-plane/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${SKILLHUB_DEPLOY_DIR:-/opt/skillhub}/infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9095:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ${SKILLHUB_CONFIG_DIR:-/etc/skillhub}/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/smtp-password:/etc/alertmanager/smtp-password:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  prometheus-data:
+  alertmanager-data:

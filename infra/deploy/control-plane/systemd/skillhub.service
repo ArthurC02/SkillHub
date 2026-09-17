@@ -1,0 +1,16 @@
+[Unit]
+Description=Skill Hub control plane
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/skillhub/release.env
+ExecStartPre=/opt/skillhub/infra/deploy/control-plane/bin/skillhub-preflight
+ExecStart=/usr/bin/docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/control-plane.yml up -d --remove-orphans --wait
+ExecStop=/usr/bin/docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/control-plane.yml down
+
+[Install]
+WantedBy=multi-user.target

@@ -373,3 +373,38 @@ groups:
             RATE_LIMIT=off，代表限制器根本沒有被套上去（04 丙-54 記過一次同型缺陷）。
             **鍵是 IP，代理後面會失準**：TLS 終端前面沒有帶正確 client IP 時整個
             cohort 共用一個 bucket，那是部署期的事（release-checklist），不是這裡。
+
+  - name: skillhub-database
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0 or absent(pg_up)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Postgres 連不上，或 postgres-exporter 本身沒有在回報"
+          description: >-
+            API、worker、佇列與 Run 狀態機全部在這個資料庫上。absent 代表 exporter
+            沒被抓到，也要當成資料庫狀態不明處理：docker compose ps 先看兩個容器。
+
+      - alert: WalArchiveFailing
+        expr: increase(pg_stat_archiver_failed_count[15m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WAL 封存持續失敗，最後一次備份之後的寫入救不回來"
+          description: >-
+            還原只能回到最後一段成功封存的 WAL。查 postgres 容器 log 裡 wal-g wal-push
+            的錯誤（物件儲存憑證、網路、額度）。失敗期間 WAL 會堆在資料卷上，放太久會把磁碟塞滿。
+
+      - alert: WalArchiveStalled
+        expr: increase(pg_stat_archiver_archived_count[1h]) == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "兩小時沒有封存任何 WAL 段"
+          description: >-
+            worker 的週期工作一直在寫資料庫，加上 archive_timeout=60，正常時每小時會封存數十段。
+            沒有封存也沒有失敗，通常是 archive_mode 沒開或 worker 停了；兩者都要處理。

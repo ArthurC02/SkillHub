@@ -28,6 +28,7 @@ jobs:
       qa002: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.qa002 == 'true' }}
       pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
+      deploy: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.deploy == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,6 +89,14 @@ jobs:
               - 'infra/compose/**'
               - 'tools/ci/**'
               - '.dockerignore'
+              - '.github/workflows/ci.yml'
+            deploy:
+              - 'infra/deploy/**'
+              - 'infra/compose/control-plane.yml'
+              - 'infra/observability/**'
+              - 'infra/images/postgres/skillhub-*'
+              - 'tools/deploy/**'
+              - 'tools/ci/deploy-config-check.sh'
               - '.github/workflows/ci.yml'
 
   web:
@@ -502,6 +511,18 @@ jobs:
             fi
             echo "ok: --mutate=$mutation failed as it must"
           done
+
+  deploy-config:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Render, validate and lint the node deployment
+        run: bash tools/ci/deploy-config-check.sh
 
   images:
     needs: changes

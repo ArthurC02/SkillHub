@@ -18,7 +18,10 @@ var (
 	versionComment   = regexp.MustCompile(`^\s+#\s*v\d`)
 	uvCooldown       = regexp.MustCompile(`(?m)^exclude-newer\s*=`)
 	pinnedImageRef   = regexp.MustCompile(`[a-z0-9][a-z0-9./_-]*:[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}`)
+	deployImageVar   = regexp.MustCompile(`^\$\{([A-Z][A-Z0-9_]*)`)
 )
+
+const deployPreflightSuffix = "/bin/skillhub-preflight"
 
 func dependencyPolicyProblems(root string) []string {
 	out, err := exec.Command("git", "-C", root, "ls-files").Output()
@@ -36,6 +39,7 @@ func dependencyPolicyProblems(root string) []string {
 	var problems []string
 	updated := map[string]bool{}
 	composeFiles, ciFiles := map[string]string{}, map[string]string{}
+	var preflights strings.Builder
 	for _, file := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		dir, base := path.Dir(file), path.Base(file)
 		switch {
@@ -69,7 +73,13 @@ func dependencyPolicyProblems(root string) []string {
 				continue
 			}
 			composeFiles[file] = content
-			problems = append(problems, composeImageProblems(file, content)...)
+		case strings.HasPrefix(file, "infra/deploy/") && strings.HasSuffix(file, deployPreflightSuffix):
+			content, err := read(file)
+			if err != nil {
+				problems = append(problems, err.Error())
+				continue
+			}
+			preflights.WriteString(content)
 		case (strings.HasPrefix(file, ".github/workflows/") || strings.HasPrefix(file, ".github/actions/")) && isYAML(base):
 			if strings.HasPrefix(file, ".github/actions/") {
 				updated[dir] = true
@@ -89,6 +99,9 @@ func dependencyPolicyProblems(root string) []string {
 			}
 			ciFiles[file] = content
 		}
+	}
+	for _, file := range sortedKeys(composeFiles) {
+		problems = append(problems, deployComposeImageProblems(file, composeFiles[file], preflights.String())...)
 	}
 	for dir := range updated {
 		if !dependabotCovers(string(dependabot), dir) {
@@ -126,6 +139,24 @@ func composeImageProblems(file, content string) []string {
 	for _, match := range composeImageLine.FindAllStringSubmatch(content, -1) {
 		if !digestPinnedImage.MatchString(match[1]) {
 			problems = append(problems, fmt.Sprintf("%s: image %s is not pinned by digest", file, match[1]))
+		}
+	}
+	return problems
+}
+
+func deployComposeImageProblems(file, content, preflights string) []string {
+	var problems []string
+	for _, match := range composeImageLine.FindAllStringSubmatch(content, -1) {
+		variable := deployImageVar.FindStringSubmatch(match[1])
+		switch {
+		case variable == nil:
+			if !digestPinnedImage.MatchString(match[1]) {
+				problems = append(problems, fmt.Sprintf("%s: image %s is not pinned by digest", file, match[1]))
+			}
+		case !regexp.MustCompile(`\b` + variable[1] + `\b`).MatchString(preflights):
+			problems = append(problems, fmt.Sprintf(
+				"%s: image ${%s} is chosen at deploy time, but no infra/deploy/*%s refuses a value that is not pinned by digest",
+				file, variable[1], deployPreflightSuffix))
 		}
 	}
 	return problems

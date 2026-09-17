@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+schedule="${1:-/opt/skillhub/infra/deploy/control-plane/maintenance-schedule}"
+systemctl daemon-reload
+while read -r period job; do
+    [ -n "$period" ] || continue
+    systemctl enable --now "skillhub-$period@$job.timer"
+done <"$schedule"
+systemctl enable --now skillhub-backup.timer skillhub-restore-drill.timer

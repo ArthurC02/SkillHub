@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	maintenanceMain = "apps/platform/cmd/maintenance/main.go"
-	deploymentDoc   = "docs/plans/mvp/m4/release-checklist.md"
-	purgeSchedFloor = 5
+	maintenanceMain     = "apps/platform/cmd/maintenance/main.go"
+	maintenanceSchedule = "infra/deploy/control-plane/maintenance-schedule"
+	maintenanceTimers   = "infra/deploy/control-plane/systemd"
+	purgeSchedFloor     = 5
 )
 
 func purgeScheduleProblems(root string) []string {
@@ -30,55 +31,54 @@ func purgeScheduleProblems(root string) []string {
 			len(subcommands), maintenanceMain, subcommands, purgeSchedFloor)}
 	}
 
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(deploymentDoc)))
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(maintenanceSchedule)))
 	if err != nil {
 		return []string{fmt.Sprintf("purge-schedule: %v", err)}
 	}
 
-	section, err := deploymentSection(string(data))
-	if err != nil {
-		return []string{fmt.Sprintf("purge-schedule: %s: %v", deploymentDoc, err)}
+	known := map[string]bool{}
+	for _, name := range subcommands {
+		known[name] = true
+	}
+	var problems []string
+	scheduled := map[string]bool{}
+	for index, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		where := fmt.Sprintf("purge-schedule: %s:%d", maintenanceSchedule, index+1)
+		if len(fields) != 2 {
+			problems = append(problems, fmt.Sprintf("%s: want `<period> <subcommand>`, got %q", where, line))
+			continue
+		}
+		period, name := fields[0], fields[1]
+		timer := filepath.Join(root, filepath.FromSlash(maintenanceTimers), "skillhub-"+period+"@.timer")
+		if _, err := os.Stat(timer); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: period %q has no %s/skillhub-%s@.timer, so `maintenance %s` would never fire",
+				where, period, maintenanceTimers, period, name))
+		}
+		if !known[name] {
+			problems = append(problems, fmt.Sprintf("%s: `maintenance %s` is not a subcommand in %s, so its timer would fail every run",
+				where, name, maintenanceMain))
+		}
+		if scheduled[name] {
+			problems = append(problems, fmt.Sprintf("%s: `maintenance %s` is scheduled twice", where, name))
+		}
+		scheduled[name] = true
 	}
 
-	var problems []string
 	for _, name := range subcommands {
-		var scheduledHere bool
-		for _, line := range strings.Split(section, "\n") {
-			if strings.Contains(line, name) && strings.Contains(line, "cron") {
-				scheduledHere = true
-				break
-			}
-		}
-		if !scheduledHere {
+		if !scheduled[name] {
 			problems = append(problems, fmt.Sprintf(
-				"purge-schedule: `maintenance %s` has no cron line in %s's deployment section (§2). "+
-					"The command ships no scheduler on purpose, so an unscheduled job never runs: a retention "+
-					"sweep becomes a promise nobody keeps, a collector becomes storage nobody reclaims",
-				name, deploymentDoc))
+				"purge-schedule: `maintenance %s` has no line in %s. The command ships no scheduler on purpose, "+
+					"so an unscheduled job never runs: a retention sweep becomes a promise nobody keeps, "+
+					"a collector becomes storage nobody reclaims",
+				name, maintenanceSchedule))
 		}
 	}
 	sort.Strings(problems)
 	return problems
-}
-
-func deploymentSection(text string) (string, error) {
-	lines := strings.Split(text, "\n")
-	start := -1
-	for i, line := range lines {
-		if strings.HasPrefix(line, "## 2.") {
-			start = i
-			break
-		}
-	}
-	if start < 0 {
-		return "", fmt.Errorf("no `## 2.` deployment chapter; this check has lost half its subject")
-	}
-	for i := start + 1; i < len(lines); i++ {
-		if strings.HasPrefix(lines[i], "## ") {
-			return strings.Join(lines[start:i], "\n"), nil
-		}
-	}
-	return strings.Join(lines[start:], "\n"), nil
 }
 
 func maintenanceSubcommands(path string) ([]string, error) {
