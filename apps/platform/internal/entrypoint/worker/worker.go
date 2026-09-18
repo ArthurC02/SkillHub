@@ -115,6 +115,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	wiring.WireEvaluationRunReaders(set.Evaluations, set.Runs)
 	wiring.WireEvaluationRegistryReaders(set.Evaluations, registrySvc)
+	set.Evaluations.ReadEventsOfType = func(
+		ctx context.Context, eventType string, since time.Time, limit int32,
+	) ([]outbox.Event, error) {
+		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
+	}
 	if deps.LLM != nil {
 		set.Evaluations.Judge = deps.LLM
 

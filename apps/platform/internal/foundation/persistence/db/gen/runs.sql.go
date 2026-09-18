@@ -680,6 +680,53 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 	return items, nil
 }
 
+const listOutboxEventsByTypeSince = `-- name: ListOutboxEventsByTypeSince :many
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
+WHERE event_type = $1 AND occurred_at >= $2::timestamptz
+ORDER BY occurred_at, event_id
+LIMIT $3
+`
+
+type ListOutboxEventsByTypeSinceParams struct {
+	EventType   string
+	Since       pgtype.Timestamptz
+	ResultLimit int32
+}
+
+func (q *Queries) ListOutboxEventsByTypeSince(ctx context.Context, arg ListOutboxEventsByTypeSinceParams) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, listOutboxEventsByTypeSince, arg.EventType, arg.Since, arg.ResultLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.EventID,
+			&i.EventType,
+			&i.EventVersion,
+			&i.OccurredAt,
+			&i.CorrelationID,
+			&i.CausationID,
+			&i.WorkspaceID,
+			&i.AggregateType,
+			&i.AggregateID,
+			&i.Payload,
+			&i.PublishedAt,
+			&i.DeliveryAttempts,
+			&i.DeadLetteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRunArtifactFileNames = `-- name: ListRunArtifactFileNames :many
 SELECT file_name FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'

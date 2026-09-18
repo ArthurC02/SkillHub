@@ -94,6 +94,7 @@ queries:
   DeadLetterOutboxEvent: outbox
   DeleteOutboxEventsPublishedBefore: outbox
   MarkOutboxEventsPublished: outbox
+  ListOutboxEventsByTypeSince: outbox
   ListOutboxEventsByAggregate: outbox
   CountDeadLetteredOutboxEvents: outbox
 
@@ -300,6 +301,7 @@ scope:
   GetLatestCostStatistics: user
   OldestPendingEnrichment: worker
   OldestSourceCheck: worker
+  ListOutboxEventsByTypeSince: worker
 
 allow:
 

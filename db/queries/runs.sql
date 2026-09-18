@@ -173,6 +173,12 @@ WHERE event_id = ANY(@event_ids::uuid[]) AND published_at IS NULL;
 -- name: CountDeadLetteredOutboxEvents :one
 SELECT count(*)::bigint FROM outbox_events WHERE dead_lettered_at IS NOT NULL;
 
+-- name: ListOutboxEventsByTypeSince :many
+SELECT * FROM outbox_events
+WHERE event_type = @event_type AND occurred_at >= @since::timestamptz
+ORDER BY occurred_at, event_id
+LIMIT @result_limit;
+
 -- name: ListOutboxEventsByAggregate :many
 SELECT * FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2

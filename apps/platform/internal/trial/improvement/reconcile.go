@@ -50,5 +50,6 @@ func (w *RecoveryWorker) Work(ctx context.Context, _ *river.Job[RecoveryArgs]) e
 			return err
 		}
 	}
-	return nil
+	_, err = w.Svc.RecoverLostSuggestionProvenance(ctx)
+	return err
 }

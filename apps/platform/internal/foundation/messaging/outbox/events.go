@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -209,4 +210,23 @@ func Insert(ctx context.Context, tx pgx.Tx, event NewEvent) error {
 		AggregateID: event.AggregateID, Payload: payload,
 	})
 	return err
+}
+
+func EventsOfTypeSince(ctx context.Context, db gen.DBTX, eventType string, since time.Time, limit int32) ([]Event, error) {
+	if !slices.Contains(EventTypes, eventType) {
+		return nil, fmt.Errorf("%w: %q", ErrUnknownEventType, eventType)
+	}
+	rows, err := gen.New(db).ListOutboxEventsByTypeSince(ctx, gen.ListOutboxEventsByTypeSinceParams{
+		EventType:   eventType,
+		Since:       pgtype.Timestamptz{Time: since, Valid: true},
+		ResultLimit: limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	events := make([]Event, 0, len(rows))
+	for _, row := range rows {
+		events = append(events, eventFromRow(row))
+	}
+	return events, nil
 }
