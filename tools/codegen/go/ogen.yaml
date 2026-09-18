@@ -4,3 +4,6 @@ generator:
   features:
     disable:
       - "paths/client"
+      - "paths/server"
+      - "webhooks/client"
+      - "webhooks/server"

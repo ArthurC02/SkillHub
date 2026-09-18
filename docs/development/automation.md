@@ -69,7 +69,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 2. 由主 Agent（單一 Writer）執行 `task gen`；SubAgent 不自行生成。
 3. 實作 Go domain policy／service／adapter。Workspace 取自 session，不接受 UI 傳入 scope。
 4. Web 保留 `apps/web/src/core/api/types.ts` 的 UI view model，逐 endpoint 寫 generated DTO adapter，不整檔替換。
-5. Go 的 ogen server目前只在 `router.go` 精確 `GET /healthz` pattern後使用。新增 endpoint 仍必須在 `router.go` 明確保留原本 `RequireSession`／`RequireOperator`／`OptionalSession` 語意，不 mount整個 generated server。
+5. Go 的 contract 產出只有 models：`tools/codegen/go/ogen.yaml` 把 server 與 client 的生成都關掉，所以沒有 generated router 存在，也沒有東西可以整批 mount。新增 endpoint 一律在 `router.go` 明確掛上並保留 `RequireSession`／`RequireOperator`／`OptionalSession` 語意；`GET /healthz` 的回應形狀仍取自生成的型別。
 6. 跑 scoped tests、`task gen:check`，最後跑 `task ci`。
 
 ## 共享工作樹與 SubAgent
