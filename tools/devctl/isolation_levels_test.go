@@ -78,6 +78,7 @@ const (
 			t.Parallel()
 			root := t.TempDir()
 			writeAt(t, root, isolationGoFile, gate)
+			writeMarkServing(t, root, "strong")
 			for path, body := range full {
 				if path == contract.path {
 
@@ -105,6 +106,7 @@ func TestIsolationLevelProblemsRefusesAProseListInsteadOfAnEnum(t *testing.T) {
 	writeAt(t, root, "contracts/openapi/public.yaml",
 		"            isolation_strength:\n              type: string\n"+
 			"              description: 'strong | weak | none.'\n")
+	writeMarkServing(t, root, "none")
 	problems := isolationLevelProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "no enum found under `isolation_strength:`") {
 		t.Fatalf("a prose list was accepted as a set: %v", problems)
@@ -119,6 +121,7 @@ func TestIsolationLevelProblemsReadsCodeNotComments(t *testing.T) {
 // A comment that mentions microvmIsolation = "microvm" and nothing more.
 const strongIsolation = "strong"
 `)
+	writeMarkServing(t, root, "strong")
 	writeAt(t, root, "contracts/openapi/sandbox-provider.yaml", `        isolation:
           properties:
             level:
@@ -130,6 +133,47 @@ const strongIsolation = "strong"
 	if problems := isolationLevelProblems(root); len(problems) != 0 {
 		t.Fatalf("a level that exists only in a comment is not a level; got %v", problems)
 	}
+}
+
+func TestANodeWaitingForAStrengthTheContractDoesNotAdmitIsNamed(t *testing.T) {
+	t.Parallel()
+	root := admittingStrongIsolation(t)
+	writeMarkServing(t, root, "gvisor")
+
+	problems := isolationLevelProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "gvisor") || !strings.Contains(problems[0], isolationNodeScript) {
+		t.Fatalf("a node that can never reach serving was not named: %v", problems)
+	}
+}
+
+func TestANodeThatNoLongerReadsTheCapabilityIsRefused(t *testing.T) {
+	t.Parallel()
+	root := admittingStrongIsolation(t)
+	writeAt(t, root, isolationNodeScript,
+		"#!/bin/sh\nstrength = json.load(sys.stdin).get(\"isolation\", {}).get(\"strength\")\nprint(strength)\n")
+
+	problems := isolationLevelProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "no longer reads") {
+		t.Fatalf("a node script that checks nothing was accepted: %v", problems)
+	}
+}
+
+func admittingStrongIsolation(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeAt(t, root, isolationGoFile, "package execution\n\nconst strongIsolation = \"strong\"\n")
+	writeAt(t, root, "contracts/openapi/sandbox-provider.yaml",
+		"        isolation:\n          properties:\n            strength:\n              enum: [strong, weak, none]\n")
+	writeAt(t, root, "contracts/openapi/public.yaml",
+		"            isolation_strength:\n              enum: [strong, weak, none]\n")
+	return root
+}
+
+func writeMarkServing(t *testing.T, root, waitsFor string) {
+	t.Helper()
+	writeAt(t, root, isolationNodeScript,
+		"#!/bin/sh\nstrength = json.load(sys.stdin).get(\"isolation\", {}).get(\"strength\")\n"+
+			"if strength != \""+waitsFor+"\":\n    sys.exit(1)\n")
 }
 
 func writeAt(t *testing.T, root, rel, body string) {
