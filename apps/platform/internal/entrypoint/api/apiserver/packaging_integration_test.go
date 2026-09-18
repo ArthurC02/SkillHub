@@ -18,6 +18,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -1513,5 +1514,23 @@ func TestASourcePackagesOwnManifestDoesNotTravel(t *testing.T) {
 	}
 	if m.SchemaVersion == "" || m.ManifestHash == "" {
 		t.Fatalf("the surviving manifest is not the platform's: %s", got)
+	}
+}
+
+func TestARefusedImportAnswersInTheLanguageOfTheScreen(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "alice-bad-archive")
+
+	code, body := owner.upload(t, "/skills/import/upload", "skill.zip", []byte("this is not a zip at all"))
+	if code != http.StatusBadRequest {
+		t.Fatalf("importing a file that is not a zip: got %d, body %v", code, body)
+	}
+	message, _ := body["error"].(string)
+	if !strings.ContainsFunc(message, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+		t.Errorf("the refusal reads %q; it is printed inside a Chinese sentence on the import screen", message)
+	}
+	if strings.Contains(message, "bad archive") {
+		t.Errorf("the refusal hands the reader the internal diagnostic: %q", message)
 	}
 }

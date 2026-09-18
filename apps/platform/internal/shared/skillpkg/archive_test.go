@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 func zipBytes(t *testing.T, files map[string]string) []byte {
@@ -510,5 +511,57 @@ func TestLooksLikeArchiveReadsTheNameOnly(t *testing.T) {
 		if LooksLikeArchive(name) {
 			t.Errorf("%s is not an archive", name)
 		}
+	}
+}
+
+func TestAnArchiveRefusalSaysWhichKindOfRefusalItIs(t *testing.T) {
+	old := maxUnpackedBytes
+	maxUnpackedBytes = 1024
+	defer func() { maxUnpackedBytes = old }()
+
+	cases := []struct {
+		name string
+		data []byte
+		want ArchiveRefusal
+	}{
+		{"a file that is not a zip at all", []byte("plain text"), ArchiveNotZip},
+		{"content that unpacks past the ceiling",
+			zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "big.txt": strings.Repeat("x", 4096)}),
+			ArchiveBeyondLimits},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := PackageFS(tc.data)
+			var refused *ArchiveError
+			if !errors.As(err, &refused) {
+				t.Fatalf("PackageFS returned %v; a refusal that carries no reason cannot be turned "+
+					"into a sentence or a finding", err)
+			}
+			if refused.Refusal != tc.want {
+				t.Errorf("refusal = %q, want %q (detail: %s)", refused.Refusal, tc.want, refused.Detail)
+			}
+		})
+	}
+}
+
+func TestEveryArchiveRefusalHasASentenceAPersonCanRead(t *testing.T) {
+	refusals := []ArchiveRefusal{
+		ArchiveNotZip, ArchiveUnsafeName, ArchiveBeyondLimits,
+		ArchiveEncrypted, ArchiveUnsupported, ArchiveCorrupt,
+	}
+	seen := make(map[string]ArchiveRefusal, len(refusals))
+	for _, refusal := range refusals {
+		detail := "unsupported compression method 99 for \"payroll/../etc/passwd\""
+		message := (&ArchiveError{Refusal: refusal, Detail: detail}).Message()
+		if strings.Contains(message, detail) {
+			t.Errorf("%s hands the reader the diagnostic verbatim: %s", refusal, message)
+		}
+		if !strings.ContainsFunc(message, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("%s answers a reader of a Chinese screen with %q", refusal, message)
+		}
+		if first, repeat := seen[message]; repeat {
+			t.Errorf("%s and %s say the same thing, so the reason code buys nothing", first, refusal)
+		}
+		seen[message] = refusal
 	}
 }

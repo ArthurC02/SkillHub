@@ -32,17 +32,58 @@ var (
 
 var ErrBadArchive = errors.New("bad archive")
 
+type ArchiveRefusal string
+
+const (
+	ArchiveNotZip       ArchiveRefusal = "not_zip"
+	ArchiveUnsafeName   ArchiveRefusal = "unsafe_name"
+	ArchiveBeyondLimits ArchiveRefusal = "beyond_limits"
+	ArchiveEncrypted    ArchiveRefusal = "encrypted"
+	ArchiveUnsupported  ArchiveRefusal = "unsupported_feature"
+	ArchiveCorrupt      ArchiveRefusal = "corrupt"
+)
+
+type ArchiveError struct {
+	Refusal ArchiveRefusal
+	Detail  string
+}
+
+func (e *ArchiveError) Error() string { return ErrBadArchive.Error() + ": " + e.Detail }
+
+func (e *ArchiveError) Unwrap() error { return ErrBadArchive }
+
+func (e *ArchiveError) Message() string {
+	switch e.Refusal {
+	case ArchiveNotZip:
+		return "這個檔案不是 zip 套件。"
+	case ArchiveUnsafeName:
+		return "套件裡有平台不會解開的檔名:重複、指向套件外面,或是同一個名字同時當檔案又當資料夾。"
+	case ArchiveBeyondLimits:
+		return fmt.Sprintf("這個套件超過匯入上限:最多 %d 個項目、單一檔案 %s、解開後總共 %s、資料夾最多 %d 層。",
+			maxArchiveEntries, HumanMB(int64(maxEntryBytes)), HumanMB(int64(maxUnpackedBytes)), maxEntryDepth)
+	case ArchiveEncrypted:
+		return "套件裡有加密的項目,平台不會解開需要密碼的內容。"
+	case ArchiveUnsupported:
+		return "這個 zip 用了平台不支援的功能(例如 zip64 或非標準的壓縮方式),請用一般的 zip 重新打包。"
+	default:
+		return "這個 zip 讀不完整,可能在產生或傳輸的過程中壞掉了,請重新打包或重新下載之後再試一次。"
+	}
+}
+
+func badArchive(refusal ArchiveRefusal, detail string, args ...any) error {
+	return &ArchiveError{Refusal: refusal, Detail: fmt.Sprintf(detail, args...)}
+}
+
 func PackageFS(data []byte) (fs.FS, error) {
 	if err := validateZipEnvelope(data); err != nil {
 		return nil, err
 	}
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
-		return nil, fmt.Errorf("%w: not a zip archive", ErrBadArchive)
+		return nil, badArchive(ArchiveNotZip, "not a zip archive")
 	}
 	if len(zr.File) > maxArchiveEntries {
-		return nil, fmt.Errorf("%w: archive holds %d entries, more than the %d allowed",
-			ErrBadArchive, len(zr.File), maxArchiveEntries)
+		return nil, badArchive(ArchiveBeyondLimits, "archive holds %d entries, more than the %d allowed", len(zr.File), maxArchiveEntries)
 	}
 	var unpacked uint64
 	var findings []Finding
@@ -50,65 +91,65 @@ func PackageFS(data []byte) (fs.FS, error) {
 	requiredDirs := make(map[string]struct{}, len(zr.File))
 	for _, f := range zr.File {
 		if f.Name == "" || strings.ContainsRune(f.Name, 0) || !utf8.ValidString(f.Name) {
-			return nil, fmt.Errorf("%w: archive has an empty or invalid UTF-8 entry name", ErrBadArchive)
+			return nil, badArchive(ArchiveUnsafeName, "archive has an empty or invalid UTF-8 entry name")
 		}
 		nameIsDir := strings.HasSuffix(f.Name, "/")
 		mode := f.Mode()
 		if mode.IsDir() != nameIsDir || (nameIsDir && mode&fs.ModeSymlink != 0) {
-			return nil, fmt.Errorf("%w: archive entry type disagrees with its name for %q", ErrBadArchive, f.Name)
+			return nil, badArchive(ArchiveUnsafeName, "archive entry type disagrees with its name for %q", f.Name)
 		}
 		hasZip64, extraErr := hasZip64Extra(f.Extra)
 		if extraErr != nil {
-			return nil, fmt.Errorf("%w: malformed extra field for %q: %v", ErrBadArchive, f.Name, extraErr)
+			return nil, badArchive(ArchiveCorrupt, "malformed extra field for %q: %v", f.Name, extraErr)
 		}
 		if hasZip64 {
-			return nil, fmt.Errorf("%w: unsupported zip64 entry %q", ErrBadArchive, f.Name)
+			return nil, badArchive(ArchiveUnsupported, "unsupported zip64 entry %q", f.Name)
 		}
 		if f.Flags&1 != 0 {
-			return nil, fmt.Errorf("%w: encrypted archive entry %q", ErrBadArchive, f.Name)
+			return nil, badArchive(ArchiveEncrypted, "encrypted archive entry %q", f.Name)
 		}
 		if f.Method != zip.Store && f.Method != zip.Deflate {
-			return nil, fmt.Errorf("%w: unsupported compression method %d for %q", ErrBadArchive, f.Method, f.Name)
+			return nil, badArchive(ArchiveUnsupported, "unsupported compression method %d for %q", f.Method, f.Name)
 		}
 		finding, escapes := ArchiveEntryFinding(f.Name)
 		name := canonicalArchiveName(f.Name)
 		if !escapes && !isCanonicalArchiveName(f.Name) {
-			return nil, fmt.Errorf("%w: archive entry has a non-canonical portable name %q", ErrBadArchive, f.Name)
+			return nil, badArchive(ArchiveUnsafeName, "archive entry has a non-canonical portable name %q", f.Name)
 		}
 		for _, part := range strings.Split(strings.TrimSuffix(f.Name, "/"), "/") {
 			if len(part) > 255 {
-				return nil, fmt.Errorf("%w: archive entry component exceeds 255 bytes in %q", ErrBadArchive, f.Name)
+				return nil, badArchive(ArchiveBeyondLimits, "archive entry component exceeds 255 bytes in %q", f.Name)
 			}
 		}
 		if _, duplicate := seen[name]; duplicate {
-			return nil, fmt.Errorf("%w: duplicate archive entry %q", ErrBadArchive, f.Name)
+			return nil, badArchive(ArchiveUnsafeName, "duplicate archive entry %q", f.Name)
 		}
 		portable := strings.TrimSuffix(name, "/")
 		parts := strings.Split(portable, "/")
 		for i := 1; i < len(parts); i++ {
 			ancestor := strings.Join(parts[:i], "/")
 			if isDir, exists := seen[ancestor]; exists && !isDir {
-				return nil, fmt.Errorf("%w: archive file %q is an ancestor of %q", ErrBadArchive, ancestor, f.Name)
+				return nil, badArchive(ArchiveUnsafeName, "archive file %q is an ancestor of %q", ancestor, f.Name)
 			}
 			requiredDirs[ancestor] = struct{}{}
 		}
 		if !nameIsDir {
 			if _, neededAsDir := requiredDirs[portable]; neededAsDir {
-				return nil, fmt.Errorf("%w: archive file %q conflicts with a descendant entry", ErrBadArchive, f.Name)
+				return nil, badArchive(ArchiveUnsafeName, "archive file %q conflicts with a descendant entry", f.Name)
 			}
 		}
 		seen[portable] = nameIsDir
 		if f.UncompressedSize64 > maxEntryBytes {
-			return nil, fmt.Errorf("%w: %s declares %d bytes, more than the %d allowed for one file",
-				ErrBadArchive, f.Name, f.UncompressedSize64, maxEntryBytes)
+			return nil, badArchive(ArchiveBeyondLimits, "%s declares %d bytes, more than the %d allowed for one file",
+				f.Name, f.UncompressedSize64, maxEntryBytes)
 		}
 		if depth := strings.Count(strings.Trim(f.Name, "/"), "/"); depth > maxEntryDepth {
-			return nil, fmt.Errorf("%w: %s nests %d directories deep, more than the %d allowed",
-				ErrBadArchive, f.Name, depth, maxEntryDepth)
+			return nil, badArchive(ArchiveBeyondLimits, "%s nests %d directories deep, more than the %d allowed",
+				f.Name, depth, maxEntryDepth)
 		}
 		unpacked += f.UncompressedSize64
 		if unpacked > maxUnpackedBytes {
-			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
+			return nil, badArchive(ArchiveBeyondLimits, "uncompressed content exceeds %d bytes", maxUnpackedBytes)
 		}
 
 		if !nameIsDir && LooksLikeArchive(f.Name) {
@@ -122,12 +163,12 @@ func PackageFS(data []byte) (fs.FS, error) {
 		if !f.FileInfo().IsDir() {
 			r, err := f.Open()
 			if err != nil {
-				return nil, fmt.Errorf("%w: cannot open entry %q: %v", ErrBadArchive, f.Name, err)
+				return nil, badArchive(ArchiveCorrupt, "cannot open entry %q: %v", f.Name, err)
 			}
 			_, readErr := io.Copy(io.Discard, r)
 			closeErr := r.Close()
 			if readErr != nil || closeErr != nil {
-				return nil, fmt.Errorf("%w: corrupt entry %q: %v", ErrBadArchive, f.Name, errors.Join(readErr, closeErr))
+				return nil, badArchive(ArchiveCorrupt, "corrupt entry %q: %v", f.Name, errors.Join(readErr, closeErr))
 			}
 		}
 	}
@@ -146,7 +187,7 @@ func validateZipEnvelope(data []byte) error {
 		zip64LocatorSignature = 0x07064b50
 	)
 	if len(data) < 22 {
-		return fmt.Errorf("%w: not a zip archive", ErrBadArchive)
+		return badArchive(ArchiveNotZip, "not a zip archive")
 	}
 	// The end-of-central-directory record sits at the very end of the file but
 	// may be preceded by a comment of up to 65535 bytes, so scan backward for
@@ -164,22 +205,22 @@ func validateZipEnvelope(data []byte) error {
 		}
 	}
 	if eocd < 0 {
-		return fmt.Errorf("%w: end of central directory not found", ErrBadArchive)
+		return badArchive(ArchiveCorrupt, "end of central directory not found")
 	}
 	if eocd >= 20 && binary.LittleEndian.Uint32(data[eocd-20:eocd-16]) == zip64LocatorSignature {
-		return fmt.Errorf("%w: unsupported zip64 archive", ErrBadArchive)
+		return badArchive(ArchiveUnsupported, "unsupported zip64 archive")
 	}
 	entries := binary.LittleEndian.Uint16(data[eocd+10 : eocd+12])
 	cdSize := binary.LittleEndian.Uint32(data[eocd+12 : eocd+16])
 	cdOffset := binary.LittleEndian.Uint32(data[eocd+16 : eocd+20])
 	if entries == 0xffff || cdSize == 0xffffffff || cdOffset == 0xffffffff {
-		return fmt.Errorf("%w: unsupported zip64 archive", ErrBadArchive)
+		return badArchive(ArchiveUnsupported, "unsupported zip64 archive")
 	}
 	if entries > 0 && (len(data) < 4 || binary.LittleEndian.Uint32(data[:4]) != 0x04034b50) {
-		return fmt.Errorf("%w: prefixed zip archive", ErrBadArchive)
+		return badArchive(ArchiveCorrupt, "prefixed zip archive")
 	}
 	if uint64(cdOffset)+uint64(cdSize) != uint64(eocd) {
-		return fmt.Errorf("%w: prefixed or malformed zip archive", ErrBadArchive)
+		return badArchive(ArchiveCorrupt, "prefixed or malformed zip archive")
 	}
 	return nil
 }

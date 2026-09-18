@@ -154,8 +154,9 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 		return
 	}
 
-	if errors.Is(err, skillpkg.ErrBadArchive) {
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	var badArchive *skillpkg.ArchiveError
+	if errors.As(err, &badArchive) {
+		httpx.WriteError(w, http.StatusBadRequest, badArchive.Message())
 		return
 	}
 
