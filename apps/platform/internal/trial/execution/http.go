@@ -223,7 +223,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errors.Is(err, ErrNoCompatibleProvider) {
+	if errors.Is(err, ErrNoCompatibleProvider) || errors.Is(err, ErrNoModelGateway) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}

@@ -37,10 +37,8 @@ type ObjectStore interface {
 var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
 
 func injectedSecretsFor(snap policySnapshot) []string {
-	for _, a := range snap.Egress.Allow {
-		if a.Purpose == "model_gateway" {
-			return injectedSecretNames
-		}
+	if snap.reachesAModel() {
+		return injectedSecretNames
 	}
 	return []string{}
 }
@@ -277,9 +275,18 @@ func (s *Service) permissionSummaryFor(
 		Hash:          hex.EncodeToString(sum[:]),
 		EstimatedCost: estimate,
 		Quota:         quota,
-		Notes:         permissionSummaryNotes,
+		Notes:         summaryNotes(snap),
 	}, nil
 }
+
+func summaryNotes(snap policySnapshot) []string {
+	if snap.reachesAModel() {
+		return permissionSummaryNotes
+	}
+	return append([]string{noModelOutletNote}, permissionSummaryNotes...)
+}
+
+const noModelOutletNote = "這個部署沒有模型出路:Sandbox 連不到任何模型,因此現在開不了 Run。"
 
 var permissionSummaryNotes = []string{
 	"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",

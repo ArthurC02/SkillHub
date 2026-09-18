@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
 func seedRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) string {
@@ -461,7 +462,7 @@ func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := &run.Service{Pool: pool}
+	runs := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	traceSvc := &trace.Service{
 		Pool: pool,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
@@ -500,7 +501,7 @@ func TestEvaluationEvidenceKeepsTheEarliestActivationsAndErrorsBeyondTheTail(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := &run.Service{Pool: pool}
+	runs := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	traceSvc := &trace.Service{
 		Pool: pool,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
@@ -721,7 +722,7 @@ func TestEventsArrivingAfterTheRunFinishedAreKeptAndFlagged(t *testing.T) {
 	skillID := seedSkill(t, pool, owner.workspaceID, "trace-late-skill")
 	runID := seedRun(t, pool, owner.workspaceID, skillID)
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	if _, err := svc.Transition(context.Background(), run.TransitionParams{
 		WorkspaceID: mustUUID(t, owner.workspaceID), RunID: mustUUID(t, runID),
 		From: gen.RunStatusQueued, To: gen.RunStatusFailed,

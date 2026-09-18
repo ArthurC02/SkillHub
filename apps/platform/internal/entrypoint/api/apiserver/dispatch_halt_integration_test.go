@@ -306,7 +306,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 
 func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	pool := requireDB(t)
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ctx := context.Background()
 	operator := mustUUID(t, newAPI(t, pool).login(t, "operator-escalation").userID)
 

@@ -199,6 +199,10 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
 	}
 
+	if err := d.svc.requireModelGateway(); err != nil {
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
+	}
+
 	budget, err := d.budgetForNextAttempt(ctx, attempts)
 	if err != nil {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider, err.Error())

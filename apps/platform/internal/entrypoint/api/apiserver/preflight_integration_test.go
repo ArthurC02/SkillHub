@@ -126,6 +126,8 @@ func TestPreflightNamesTheInjectedSecretsAndNeverTheirValues(t *testing.T) {
 
 func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	pool := requireDB(t)
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "")
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "")
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-preflight-summary")
 
@@ -162,6 +164,10 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 
 	if len(s.InjectedSecrets) != 0 {
 		t.Errorf("no gateway grant, so nothing is injected, but the summary names %v", s.InjectedSecrets)
+	}
+	if !strings.Contains(strings.Join(view.Notes, " "), "沒有模型出路") {
+		t.Errorf("notes = %v, want the summary to say this deployment cannot reach a model before "+
+			"the user confirms and is refused", view.Notes)
 	}
 	if s.InjectedSecrets == nil {
 		t.Error("the row must still render as an empty list; an omitted one reads as a question never asked")

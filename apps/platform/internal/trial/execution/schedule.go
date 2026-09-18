@@ -188,6 +188,9 @@ func requirementsFromPolicy(policy policySnapshot) Requirements {
 }
 
 func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) error {
+	if !policy.reachesAModel() {
+		return refused(ReasonCapabilityMismatch, ErrNoModelGateway)
+	}
 	registry := s.providers()
 	if len(registry.Providers) == 0 {
 		return nil

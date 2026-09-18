@@ -36,6 +36,17 @@ func GatewayOrNone(g *Gateway) ModelGateway {
 	return g
 }
 
+const modelGatewayPurpose = "model_gateway"
+
+var ErrNoModelGateway = errors.New("this deployment has no model gateway, so a run has no way to reach a model")
+
+func (s *Service) requireModelGateway() error {
+	if s.Gateway == nil {
+		return ErrNoModelGateway
+	}
+	return nil
+}
+
 type Gateway struct {
 	AdminBaseURL string
 

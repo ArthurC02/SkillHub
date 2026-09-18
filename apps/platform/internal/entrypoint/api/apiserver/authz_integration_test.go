@@ -29,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -37,6 +38,10 @@ const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
 var testPool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
+	if os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY") == "" {
+		os.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "http://model-gateway.test")
+		os.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "sk-test-not-a-real-key")
+	}
 	dsn := os.Getenv(dbURLEnv)
 	if dsn == "" {
 
@@ -253,6 +258,7 @@ func newAPITuned(
 	if tune != nil {
 		tune(&app.Deps)
 	}
+	app.RunSvc.Gateway = providertest.NewGateway()
 	handler := app.Handler()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

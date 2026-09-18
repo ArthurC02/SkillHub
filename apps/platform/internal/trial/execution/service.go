@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -214,10 +215,16 @@ type policySnapshot struct {
 	Egress         EgressPolicy   `json:"egress"`
 }
 
+func (p policySnapshot) reachesAModel() bool {
+	return slices.ContainsFunc(p.Egress.Allow, func(a egressAllow) bool {
+		return a.Purpose == modelGatewayPurpose
+	})
+}
+
 func defaultPolicy() policySnapshot {
 	allow := []egressAllow{}
 	if url := GatewayURL(); url != "" {
-		allow = append(allow, egressAllow{Purpose: "model_gateway", URL: url})
+		allow = append(allow, egressAllow{Purpose: modelGatewayPurpose, URL: url})
 	}
 	return policySnapshot{
 		ResourceLimits: DefaultResourceLimits(),

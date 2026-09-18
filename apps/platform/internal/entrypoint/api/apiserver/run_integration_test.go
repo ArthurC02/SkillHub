@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -307,7 +308,7 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	}
 
 	created := f.start(t)
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	move := run.TransitionParams{
 		WorkspaceID: ws, RunID: runID,
@@ -376,7 +377,7 @@ func TestATransitionThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	failOutboxCommitFor(t, pool, runID)
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	if _, err := svc.Transition(ctx, run.TransitionParams{
 		WorkspaceID: ws, RunID: runID,
 		From: gen.RunStatusQueued, To: gen.RunStatusProvisioning, Reason: "cannot commit",
@@ -482,7 +483,7 @@ func TestIllegalTransitionIsRefusedWithoutWriting(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-illegal-transition")
 	created := f.start(t)
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	before := unpublishedCount(t, pool)
 
@@ -780,7 +781,7 @@ type labelledJSON struct {
 
 func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
 	t.Helper()
-	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway(), ClearSightings: objreconcile.ClearArtifactSightings}
 	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
 		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)

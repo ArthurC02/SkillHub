@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -148,5 +149,15 @@ func TestRevokeReportsARealFailure(t *testing.T) {
 	g := &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}
 	if err := g.Revoke(context.Background(), "attempt-1"); err == nil {
 		t.Fatal("a gateway failure was reported as a successful revocation")
+	}
+}
+
+func TestADeploymentWithNoModelGatewayCannotSendARunToASandbox(t *testing.T) {
+	if err := (&Service{}).requireModelGateway(); !errors.Is(err, ErrNoModelGateway) {
+		t.Errorf("a service with no gateway gave %v, want it to refuse: a run would reach a sandbox "+
+			"with no way to call a model and report success", err)
+	}
+	if err := (&Service{Gateway: gatewaySpending(0)}).requireModelGateway(); err != nil {
+		t.Errorf("a configured gateway was refused: %v", err)
 	}
 }

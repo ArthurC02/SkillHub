@@ -557,7 +557,7 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	if err := svc.Supervise(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -589,7 +589,7 @@ func TestSupervisorTimesOutARunWhoseTimestampsAreFreshButWhoseClockRanOut(t *tes
 		t.Fatal(err)
 	}
 
-	svc := &run.Service{Pool: pool, Now: func() time.Time { return time.Now().Add(2 * time.Hour) }}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway(), Now: func() time.Time { return time.Now().Add(2 * time.Hour) }}
 	if err := svc.Supervise(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +609,7 @@ func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testi
 	created := f.start(t)
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	for _, step := range []struct{ from, to gen.RunStatus }{
 		{gen.RunStatusQueued, gen.RunStatusProvisioning},
 		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
@@ -662,7 +662,7 @@ func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testi
 		}
 	}
 
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	if err := svc.Supervise(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -819,7 +819,7 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	ctx := context.Background()
 
 	created := f.start(t)
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	for _, step := range []struct{ from, to gen.RunStatus }{
 		{gen.RunStatusQueued, gen.RunStatusProvisioning},
@@ -863,7 +863,7 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-legacy-grants")
 	ctx := context.Background()
 	created := f.start(t)
-	svc := &run.Service{Pool: pool}
+	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	for _, step := range []struct{ from, to gen.RunStatus }{
 		{gen.RunStatusQueued, gen.RunStatusProvisioning},
@@ -1011,7 +1011,7 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, a, pool, tc.name)
 
-			svc := &run.Service{Pool: pool}
+			svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 			created := f.start(t)
 			ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
