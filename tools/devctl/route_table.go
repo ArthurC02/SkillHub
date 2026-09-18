@@ -61,8 +61,8 @@ func routeTableProblems(root string) []string {
 		if !documented[pattern] {
 			problems = append(problems, fmt.Sprintf(
 				"route-table: %q is mounted but has no operation in %s; iron rule 12 wants the contract "+
-					"written first, and codegen cannot see this because only GET /healthz reaches the "+
-					"generated server", pattern, routeContractFile))
+					"written first, and codegen cannot see this because the Go side generates models only, "+
+					"so no generated router exists to notice a route", pattern, routeContractFile))
 		}
 	}
 	for pattern := range documented {
