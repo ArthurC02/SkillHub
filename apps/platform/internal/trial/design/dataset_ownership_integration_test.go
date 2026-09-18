@@ -600,3 +600,63 @@ func TestCommitCompensationOnlyRunsAfterADefiniteRollback(t *testing.T) {
 		t.Fatal("successful commit requested compensation")
 	}
 }
+
+func accountPurgeCanTakeTheWorkspace(t *testing.T, pool *pgxpool.Pool, workspaceID pgtype.UUID) bool {
+	t.Helper()
+	conn, err := pool.Acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	var taken bool
+	if err := conn.QueryRow(t.Context(),
+		`SELECT pg_try_advisory_lock(hashtextextended('workspace-objects:' || $1::uuid::text, 0))`,
+		workspaceID).Scan(&taken); err != nil {
+		t.Fatal(err)
+	}
+	if taken {
+		if _, err := conn.Exec(t.Context(),
+			`SELECT pg_advisory_unlock(hashtextextended('workspace-objects:' || $1::uuid::text, 0))`,
+			workspaceID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return taken
+}
+
+func TestAnAccountPurgeWaitsForBytesThatAreStillBeingWritten(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	store := &blockingPutStore{started: make(chan struct{}), release: make(chan struct{})}
+	svc := datasetService(pool, store)
+
+	if !accountPurgeCanTakeTheWorkspace(t, pool, ws.ID) {
+		t.Fatal("the workspace was already held before the upload started")
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+		done <- err
+	}()
+	select {
+	case <-store.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("object upload did not start")
+	}
+
+	if accountPurgeCanTakeTheWorkspace(t, pool, ws.ID) {
+		close(store.release)
+		<-done
+		t.Fatal("an account purge could take the workspace while bytes were still on their way to storage; " +
+			"it would enumerate and delete what is there, then this upload would land after it")
+	}
+
+	close(store.release)
+	if err := <-done; err != nil {
+		t.Fatalf("upload failed after storage was released: %v", err)
+	}
+	if !accountPurgeCanTakeTheWorkspace(t, pool, ws.ID) {
+		t.Error("the finished upload never gave the workspace back")
+	}
+}
