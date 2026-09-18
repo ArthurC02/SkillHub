@@ -28,7 +28,7 @@ Usage:
   devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
   devctl test-report dir [go test args]  run the suite and report what skipped and why
   devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
-  devctl image-gate [--range A..B]  runtime image source gates: digest-pinned base, upgrade record, version bump
+  devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
   devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
   devctl ci-status [ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)

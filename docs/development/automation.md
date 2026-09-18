@@ -382,7 +382,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 **pre-push hook**：`task bootstrap` 會把 `core.hooksPath` 指到 `.githooks/`，`pre-push` 跑 `devctl preflight --hook`。它只檢查**這次要推的 commit**，而且讀的是 commit 裡的位元組（`git show <sha>:<path>`）而不是工作樹，所以共享工作樹裡別人未提交的修改擋不到你的推送。它查兩件 CI 會紅的事：
 
 - 推送範圍內改到的 `apps/platform`／`apps/sandbox` Go 檔（gofmt）、`apps/web` 檔（prettier）、`apps/llm` Python 檔（ruff format）有沒有照 CI 的格式；
-- `infra/images/runtime-agent-sdk/` 的 Dockerfile 或它 `COPY` 進映像的檔有改、`ARG IMAGE_VERSION` 卻沒動（I-05）。這段判斷與 `Runtime Image` workflow 呼叫的 `devctl image-gate` 是同一份程式，兩邊不會再各說各話；沒被複製進映像的檔（例如 `run.test.mjs`）不觸發。
+- `infra/images/runtime-agent-sdk/` 現在的映像內容，與**目前 `ARG IMAGE_VERSION` 這個版本當初發佈時的內容**不一樣（I-05）。判準是「HEAD 跟那個版本被寫進 Dockerfile 的那一次 commit 相比，有沒有任何會被 `COPY` 進映像的檔不同」，不是「這次推送改了什麼」——所以**把誤改還原就會自然變綠**，不必為了消紅而 bump 一個沒人量過的版本；反過來，分好幾次推送慢慢累積的變更也躲不掉。這段判斷與 `Runtime Image` workflow 呼叫的 `devctl image-gate` 是同一份程式，兩邊不會再各說各話；沒被複製進映像的檔（例如 `run.test.mjs`）不觸發。
 
 格式工具不在這台機器上時只印 `WARN`、不擋，CI 仍會查。**不要用 `--no-verify` 跳過**（`.claude/settings.json` 的 deny 已擋）；hook 誤擋就修 `tools/devctl/preflight.go`，不要繞過它。
 

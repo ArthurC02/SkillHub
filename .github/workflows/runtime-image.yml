@@ -55,19 +55,7 @@ jobs:
           cache: false
 
       - name: Source gates (I-05 version bump, I-02 digest pin, upgrade record)
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          case "$GITHUB_EVENT_NAME" in
-            pull_request)
-              git fetch --quiet origin "$GITHUB_BASE_REF"
-              RANGE="origin/$GITHUB_BASE_REF...HEAD"
-              ;;
-            push) RANGE="$BEFORE..$GITHUB_SHA" ;;
-            *) RANGE="" ;;
-          esac
-          go -C tools/devctl run . image-gate --range "$RANGE"
+        run: go -C tools/devctl run . image-gate
 
       - name: Build
         run: docker build -t "$IMAGE" infra/images/runtime-agent-sdk

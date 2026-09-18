@@ -20,19 +20,16 @@ var (
 )
 
 func imageGate(root string, args []string, out io.Writer) error {
-	rangeSpec, err := parseRangeFlag(args)
-	if err != nil {
-		return err
+	if len(args) > 0 {
+		return errors.New("usage: devctl image-gate")
 	}
 	problems := digestPinProblems(root)
 	problems = append(problems, imageVersionProblems(root)...)
-	if rangeSpec != "" {
-		bump, err := imageBumpProblemsInRange(root, rangeSpec)
-		if err != nil {
-			return err
-		}
-		problems = append(problems, bump...)
+	bump, err := imageBumpProblems(root)
+	if err != nil {
+		return err
 	}
+	problems = append(problems, bump...)
 	if len(problems) > 0 {
 		for _, problem := range problems {
 			fmt.Fprintln(out, "FAIL", problem)
@@ -41,18 +38,6 @@ func imageGate(root string, args []string, out io.Writer) error {
 	}
 	fmt.Fprintln(out, "runtime image source gates passed")
 	return nil
-}
-
-func parseRangeFlag(args []string) (string, error) {
-	switch {
-	case len(args) == 0:
-		return "", nil
-	case len(args) == 2 && args[0] == "--range":
-		return args[1], nil
-	case len(args) == 1 && strings.HasPrefix(args[0], "--range="):
-		return strings.TrimPrefix(args[0], "--range="), nil
-	}
-	return "", errors.New("usage: devctl image-gate [--range A..B]")
 }
 
 func digestPinProblems(root string) []string {
@@ -191,44 +176,72 @@ func (inputs imageInputs) include(file string) bool {
 	return false
 }
 
-func imageBumpProblems(changed []string, dockerfile, dockerfileDiff string) []string {
-	inputs := runtimeImageInputs(dockerfile)
-	var entering []string
-	for _, file := range changed {
-		if inputs.include(file) {
-			entering = append(entering, file)
-		}
+func imageBumpProblems(root string) ([]string, error) {
+	dockerfile, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(runtimeDockerfile)))
+	if err != nil {
+		return nil, err
 	}
-	if len(entering) == 0 || imageVersionDiffLine.MatchString(dockerfileDiff) {
-		return nil
+	version := declaredImageVersion(string(dockerfile))
+	if version == "" {
+		return nil, nil
+	}
+	published, err := commitThatDeclared(root, version)
+	if err != nil || published == "" {
+		return nil, err
+	}
+	changed, err := inputsChangedSince(root, published, string(dockerfile))
+	if err != nil || len(changed) == 0 {
+		return nil, err
 	}
 	return []string{fmt.Sprintf(
-		"I-05: %s changed and the image is built from it, but ARG IMAGE_VERSION did not move in the same range; "+
-			"bump it in %s and add that version's section to %s",
-		strings.Join(entering, ", "), runtimeDockerfile, runtimeUpgrades)}
+		"I-05: %s no longer matches what was published as IMAGE_VERSION=%s (%s differ, comparing against %s); "+
+			"bump the version in %s and add that version's section to %s, or restore the content that version was built from",
+		runtimeImageDir, version, strings.Join(changed, ", "), published[:12], runtimeDockerfile, runtimeUpgrades)}, nil
 }
 
-func imageBumpProblemsInRange(root, rangeSpec string) ([]string, error) {
-	names, err := gitOutput(root, "diff", "--name-only", rangeSpec, "--", runtimeImageDir)
+func declaredImageVersion(dockerfile string) string {
+	matches := imageVersionArg.FindAllStringSubmatch(dockerfile, -1)
+	if len(matches) != 1 {
+		return ""
+	}
+	return matches[0][1]
+}
+
+// Walks the Dockerfile's history newest first and stops at the first commit
+// declaring a different version; the commit before it is where the current
+// version was introduced, which is the content that was published under it.
+func commitThatDeclared(root, version string) (string, error) {
+	history, err := gitOutput(root, "log", "--format=%H", "--", runtimeDockerfile)
+	if err != nil {
+		return "", err
+	}
+	introduced := ""
+	for _, commit := range lines(history) {
+		dockerfile, err := gitOutput(root, "show", commit+":"+runtimeDockerfile)
+		if err != nil {
+			return "", err
+		}
+		if declaredImageVersion(dockerfile) != version {
+			break
+		}
+		introduced = commit
+	}
+	return introduced, nil
+}
+
+func inputsChangedSince(root, commit, dockerfile string) ([]string, error) {
+	inputs := runtimeImageInputs(dockerfile)
+	names, err := gitOutput(root, "diff", "--name-only", commit, "HEAD", "--", runtimeImageDir)
 	if err != nil {
 		return nil, err
 	}
 	var changed []string
 	for _, name := range lines(names) {
-		changed = append(changed, strings.TrimPrefix(name, runtimeImageDir+"/"))
+		if file := strings.TrimPrefix(name, runtimeImageDir+"/"); inputs.include(file) {
+			changed = append(changed, file)
+		}
 	}
-	if len(changed) == 0 {
-		return nil, nil
-	}
-	dockerfile, err := gitOutput(root, "show", rangeEnd(rangeSpec)+":"+runtimeDockerfile)
-	if err != nil {
-		return nil, err
-	}
-	diff, err := gitOutput(root, "diff", "-U0", rangeSpec, "--", runtimeDockerfile)
-	if err != nil {
-		return nil, err
-	}
-	return imageBumpProblems(changed, dockerfile, diff), nil
+	return changed, nil
 }
 
 func rangeEnd(rangeSpec string) string {

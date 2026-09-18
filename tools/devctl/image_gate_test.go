@@ -32,37 +32,6 @@ func TestTheRealRuntimeDockerfileIsPinnedAndItsInputsAreKnown(t *testing.T) {
 	}
 }
 
-func TestImageBumpOnlyAsksForAVersionWhenTheImageIsBuiltFromTheChange(t *testing.T) {
-	t.Parallel()
-	const bumped = "-ARG IMAGE_VERSION=2026.08-10\n+ARG IMAGE_VERSION=2026.08-11\n"
-	cases := []struct {
-		name    string
-		changed []string
-		diff    string
-		fail    bool
-	}{
-		{"a copied file without a bump", []string{"run.mjs"}, "", true},
-		{"a copied file with a bump", []string{"run.mjs", "UPGRADES.md"}, bumped, false},
-		{"the Dockerfile itself without a bump", []string{"Dockerfile"}, "+# note\n", true},
-		{"a test file no COPY names", []string{"run.test.mjs"}, "", false},
-		{"only the upgrade record", []string{"UPGRADES.md"}, "", false},
-		{"one of several sources in a single COPY", []string{"package-lock.json"}, "", true},
-		{"a copied file next to a test file", []string{"run.test.mjs", "constraints.txt"}, "", true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			problems := imageBumpProblems(tc.changed, gateDockerfile, tc.diff)
-			if tc.fail != (len(problems) == 1) || len(problems) > 1 {
-				t.Fatalf("changed=%v diff=%q: got %v", tc.changed, tc.diff, problems)
-			}
-			if tc.fail && !strings.HasPrefix(problems[0], "I-05: ") {
-				t.Fatalf("the failure does not name its gate: %q", problems[0])
-			}
-		})
-	}
-}
-
 func TestImageInputsFailClosedOnSourcesThatAreNotPlainPaths(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -118,7 +87,7 @@ func TestBaseImagesMustBePinnedByDigestUnlessTheyAreAnEarlierStage(t *testing.T)
 	}
 }
 
-func TestImageBumpReadsTheRangeFromGit(t *testing.T) {
+func TestImageBumpComparesAgainstWhatTheVersionWasPublishedFrom(t *testing.T) {
 	t.Parallel()
 	repo := newGitRepo(t)
 	repo.commit(t, map[string]string{
@@ -126,18 +95,58 @@ func TestImageBumpReadsTheRangeFromGit(t *testing.T) {
 		runtimeImageDir + "/run.mjs":         "export {}\n",
 		runtimeImageDir + "/run.test.mjs":    "test()\n",
 		runtimeImageDir + "/constraints.txt": "x==1\n",
+		runtimeUpgrades:                      "# 2026.08-10\n",
 	})
-	base := repo.head(t)
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/run.test.mjs": "test(1)\n"})
-	if problems, err := imageBumpProblemsInRange(repo.root, base+"..HEAD"); err != nil || len(problems) != 0 {
-		t.Fatalf("a test-only change asked for a bump: %v %v", problems, err)
+	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
+		t.Fatalf("a file no COPY names asked for a bump: %v %v", problems, err)
 	}
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/run.mjs": "export const x = 1\n"})
-	problems, err := imageBumpProblemsInRange(repo.root, base+"..HEAD")
+	problems, err := imageBumpProblems(repo.root)
 	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "run.mjs") {
 		t.Fatalf("an unbumped change to a copied file passed: %v %v", problems, err)
+	}
+	if !strings.HasPrefix(problems[0], "I-05: ") {
+		t.Fatalf("the failure does not name its gate: %q", problems[0])
+	}
+
+	repo.commit(t, map[string]string{runtimeImageDir + "/run.mjs": "export {}\n"})
+	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
+		t.Fatalf("putting the content back still demanded a version bump (%v %v); under that gate the only "+
+			"way out of a mistaken change is to publish a version nobody measured", problems, err)
+	}
+
+	repo.commit(t, map[string]string{
+		runtimeImageDir + "/run.mjs": "export const x = 2\n",
+		runtimeDockerfile:            gateDockerfile + "ARG IMAGE_VERSION=2026.08-11\n",
+		runtimeUpgrades:              "# 2026.08-10\n\n# 2026.08-11\n",
+	})
+	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
+		t.Fatalf("a change that did bump the version was refused: %v %v", problems, err)
+	}
+
+	repo.commit(t, map[string]string{runtimeImageDir + "/constraints.txt": "x==2\n"})
+	problems, err = imageBumpProblems(repo.root)
+	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "constraints.txt") {
+		t.Fatalf("a change made after that bump, under the same version, passed: %v %v", problems, err)
+	}
+
+	published := gateDockerfile + "ARG IMAGE_VERSION=2026.08-11\n"
+	repo.commit(t, map[string]string{
+		runtimeImageDir + "/constraints.txt": "x==1\n",
+		runtimeDockerfile:                    "# a note someone added by mistake\n" + published,
+	})
+	problems, err = imageBumpProblems(repo.root)
+	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "Dockerfile") {
+		t.Fatalf("an edit to the Dockerfile under a published version passed: %v %v", problems, err)
+	}
+
+	repo.commit(t, map[string]string{runtimeDockerfile: published})
+	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
+		t.Fatalf("taking the mistaken edit back out still demanded a bump (%v %v); that is the shape where "+
+			"the only way to a green gate is publishing a version nobody measured", problems, err)
 	}
 }
 
