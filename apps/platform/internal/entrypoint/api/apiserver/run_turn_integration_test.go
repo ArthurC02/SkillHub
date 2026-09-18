@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -80,8 +79,7 @@ func (s turnScene) expectWaits(t *testing.T, runID, what string) {
 		ws = mustUUID(t, s.bob.workspaceID)
 	}
 	err := s.svc.Drive(s.ctx, ws, mustUUID(t, runID))
-	var snooze *rivertype.JobSnoozeError
-	if !errors.As(err, &snooze) {
+	if !errors.Is(err, run.ErrTryAgainLater) {
 		t.Fatalf("driving %s returned %v, want it to come back later", what, err)
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 func loadRun(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID) (*Run, error) {
@@ -194,10 +193,7 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 	if s.Queue == nil {
 		return nil
 	}
-	_, err = s.Queue.InsertTx(ctx, tx, CleanupArgs{
-		RunID: pgconv.UUIDString(row.ID), WorkspaceID: pgconv.UUIDString(row.WorkspaceID),
-	}, cleanupInsertOpts())
-	return err
+	return s.Queue.CleanInTx(ctx, tx, row)
 }
 
 func writeObjectGrants(ctx context.Context, q *gen.Queries, a gen.RunAttempt) error {

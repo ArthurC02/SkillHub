@@ -14,7 +14,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -84,8 +83,7 @@ func lossSceneWith(t *testing.T, name string, gateway *run.Gateway, spare bool) 
 func (s lossScene) drive(t *testing.T, what string) {
 	t.Helper()
 	err := s.svc.Drive(s.ctx, s.ws, s.runID)
-	var snooze *rivertype.JobSnoozeError
-	if err != nil && !errors.As(err, &snooze) {
+	if err != nil && !errors.Is(err, run.ErrTryAgainLater) {
 		t.Fatalf("driving %s: %v", what, err)
 	}
 }

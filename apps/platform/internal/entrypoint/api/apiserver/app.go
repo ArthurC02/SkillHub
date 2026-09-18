@@ -162,7 +162,7 @@ func NewApp(cfg Config) (*App, error) {
 	}
 
 	runSvc := &run.Service{
-		Pool: cfg.Pool, TestLab: testlabSvc, Queue: jobs, Providers: cfg.Providers, Store: cfg.Store,
+		Pool: cfg.Pool, TestLab: testlabSvc, Queue: run.NewRunQueue(jobs), Providers: cfg.Providers, Store: cfg.Store,
 		ClearSightings:     objreconcile.ClearArtifactSightings,
 		Quota:              cfg.Quota,
 		WorkspaceCreatedAt: auth.Service.WorkspaceCreatedAt,

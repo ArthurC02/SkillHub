@@ -684,8 +684,7 @@ func driveThroughPolls(ctx context.Context, drive func(context.Context, pgtype.U
 	deadline := time.Now().Add(20 * time.Second)
 	for {
 		err := drive(ctx, ws, runID)
-		var snooze *rivertype.JobSnoozeError
-		if !errors.As(err, &snooze) || time.Now().After(deadline) {
+		if !errors.Is(err, run.ErrTryAgainLater) || time.Now().After(deadline) {
 			return err
 		}
 		time.Sleep(5 * time.Millisecond)

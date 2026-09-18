@@ -72,12 +72,15 @@ type SuggestionsAppliedWorker struct {
 }
 
 func (w *SuggestionsAppliedWorker) Work(ctx context.Context, job *river.Job[SuggestionsAppliedArgs]) error {
-	a := job.Args
-	err := w.Svc.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
-	if err == nil || job.Attempt < job.MaxAttempts {
+	return w.Svc.ConsumeSuggestionsApplied(ctx, job.Args, job.Attempt >= job.MaxAttempts)
+}
+
+func (s *Service) ConsumeSuggestionsApplied(ctx context.Context, a SuggestionsAppliedArgs, lastTry bool) error {
+	err := s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
+	if err == nil || !lastTry {
 		return err
 	}
-	if auditErr := w.Svc.auditLostProvenance(ctx, a); auditErr != nil {
+	if auditErr := s.auditLostProvenance(ctx, a); auditErr != nil {
 		slog.Error("lost suggestion provenance could not be audited",
 			"skill_version_id", pgconv.UUIDString(a.SkillVersionID), "evaluation_id", pgconv.UUIDString(a.EvaluationID), "error", auditErr)
 		return errors.Join(err, auditErr)

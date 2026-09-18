@@ -72,9 +72,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 		if s.Queue == nil {
 			break
 		}
-		if _, err := s.Queue.Insert(ctx, CleanupArgs{
-			RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
-		}, cleanupInsertOpts()); err != nil {
+		if err := s.Queue.Clean(ctx, run); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -114,13 +112,11 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 		return nil
 	}
 
-	res, err := s.Queue.Insert(ctx, JobArgs{
-		RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
-	}, executeInsertOpts())
+	added, err := s.Queue.Drive(ctx, run)
 	if err != nil {
 		return err
 	}
-	if !res.UniqueSkippedAsDuplicate {
+	if added {
 		slog.Info("re-enqueued a run with no live job", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
 	}
 	return nil

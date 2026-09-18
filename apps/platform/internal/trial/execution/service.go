@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -98,7 +97,7 @@ type Service struct {
 
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
-	Queue *river.Client[pgx.Tx]
+	Queue RunQueue
 
 	Providers *Registry
 
@@ -372,11 +371,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	run := requested.Row()
 
 	if s.Queue != nil {
-
-		if _, err := s.Queue.InsertTx(ctx, tx, JobArgs{
-			RunID:       pgconv.UUIDString(run.ID),
-			WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
-		}, executeInsertOpts()); err != nil {
+		if err := s.Queue.DriveInTx(ctx, tx, run); err != nil {
 			return gen.Run{}, err
 		}
 	}

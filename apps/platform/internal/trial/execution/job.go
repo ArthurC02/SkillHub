@@ -69,6 +69,18 @@ func (w *Worker) Timeout(*river.Job[JobArgs]) time.Duration { return jobTimeout 
 
 var errSuperseded = errors.New("run was moved by something else")
 
+var ErrTryAgainLater = errors.New("the run is not ready to move on")
+
+type tryAgainError struct{ after time.Duration }
+
+func (e *tryAgainError) Error() string {
+	return fmt.Sprintf("%s; look again in %s", ErrTryAgainLater, e.after)
+}
+
+func (e *tryAgainError) Unwrap() error { return ErrTryAgainLater }
+
+func tryAgainIn(after time.Duration) error { return &tryAgainError{after: after} }
+
 func (w *Worker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
 	var runID, workspaceID pgtype.UUID
 	if err := runID.Scan(job.Args.RunID); err != nil {
@@ -77,7 +89,12 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
 	if err := workspaceID.Scan(job.Args.WorkspaceID); err != nil {
 		return err
 	}
-	return w.Svc.Drive(ctx, workspaceID, runID)
+	err := w.Svc.Drive(ctx, workspaceID, runID)
+	var again *tryAgainError
+	if errors.As(err, &again) {
+		return river.JobSnooze(again.after)
+	}
+	return err
 }
 
 func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) error {
@@ -374,7 +391,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
 	}
 
-	return river.JobSnooze(d.svc.pollInterval())
+	return tryAgainIn(d.svc.pollInterval())
 }
 
 func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
@@ -785,13 +802,13 @@ func (d *driver) timeoutReason() string { return d.clock.timeoutReason() }
 func (d *driver) waitForSlot() error {
 	slog.Info("every sandbox provider that can run this is full; the run keeps its place in the queue",
 		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
-	return river.JobSnooze(d.svc.slotWaitInterval())
+	return tryAgainIn(d.svc.slotWaitInterval())
 }
 
 func (d *driver) waitForTurn() error {
 	slog.Info("a run that waited longer, or whose workspace holds fewer sandboxes, takes the free slot first",
 		"run_id", pgconv.UUIDString(d.cur.ID))
-	return river.JobSnooze(d.svc.slotWaitInterval())
+	return tryAgainIn(d.svc.slotWaitInterval())
 }
 
 const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"

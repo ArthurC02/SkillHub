@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func answering(t *testing.T, status int) SandboxProvider {
@@ -76,6 +77,28 @@ func TestOnlyAFullOrSilentProviderIsWorthAnotherTry(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := retryable(tc.err); got != tc.want {
 				t.Errorf("retryable(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestARunThatCannotMoveOnYetAsksToBeLookedAtAgainInsteadOfFailing(t *testing.T) {
+	d := &driver{svc: &Service{}}
+	for _, tc := range []struct {
+		name string
+		err  error
+		want time.Duration
+	}{
+		{"no free slot", d.waitForSlot(), defaultSlotWaitInterval},
+		{"another run holds the turn", d.waitForTurn(), defaultSlotWaitInterval},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if !errors.Is(tc.err, ErrTryAgainLater) {
+				t.Fatalf("waiting gave %v, want the run to be told to try again later", tc.err)
+			}
+			var again *tryAgainError
+			if !errors.As(tc.err, &again) || again.after != tc.want {
+				t.Errorf("the wait carries %v, want %v so the queue knows when to look again", again, tc.want)
 			}
 		})
 	}

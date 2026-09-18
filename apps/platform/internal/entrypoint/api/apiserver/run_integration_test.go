@@ -131,7 +131,7 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator *eval.Service) *r
 	runEvents.Insert = c.Insert
 
 	if svc.Queue == nil {
-		svc.Queue = c
+		svc.Queue = run.NewRunQueue(c)
 	}
 	if err := c.Start(context.Background()); err != nil {
 		t.Fatal(err)

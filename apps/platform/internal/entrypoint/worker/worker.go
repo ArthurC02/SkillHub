@@ -244,7 +244,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		return err
 	}
 
-	set.Runs.Queue = client
+	set.Runs.Queue = run.NewRunQueue(client)
 	set.RunEvents.Insert = client.Insert
 	set.SkillVersions.Insert = client.Insert
 	return set, nil

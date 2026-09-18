@@ -73,7 +73,7 @@ func TestAFailingSuperviseRunDoesNotSwitchOffTheP1Detectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.runs.Queue = deadQueue
+	a.runs.Queue = run.NewRunQueue(deadQueue)
 
 	if err := a.runs.Supervise(ctx); err == nil {
 		t.Fatal("the sweep reported success while its re-enqueue could not reach the queue; " +
