@@ -469,6 +469,7 @@ func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
 			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
 			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
 		},
+		ReadRunTransitions: readsTransitionsFrom(runs),
 	}
 	view, err := traceSvc.AdvancedAll(ctx, mustUUID(t, owner.workspaceID), mustUUID(t, runID))
 	if err != nil {
@@ -508,6 +509,7 @@ func TestEvaluationEvidenceKeepsTheEarliestActivationsAndErrorsBeyondTheTail(t *
 			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
 			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
 		},
+		ReadRunTransitions: readsTransitionsFrom(runs),
 	}
 	view, err := traceSvc.AdvancedAll(ctx, mustUUID(t, owner.workspaceID), mustUUID(t, runID))
 	if err != nil {
@@ -863,5 +865,19 @@ func TestTraceIsWorkspaceScoped(t *testing.T) {
 	}
 	if code, _ := stranger.generalTrace(t, runID); code != http.StatusNotFound {
 		t.Errorf("stranger read another workspace's summary: %d", code)
+	}
+}
+
+func readsTransitionsFrom(runs *run.Service) func(context.Context, pgtype.UUID, pgtype.UUID) ([]trace.RunTransition, error) {
+	return func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.RunTransition, error) {
+		rows, err := runs.TraceTransitions(ctx, workspaceID, runID)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]trace.RunTransition, len(rows))
+		for i, row := range rows {
+			out[i] = trace.RunTransition{ToStatus: row.ToStatus, Reason: row.Reason}
+		}
+		return out, nil
 	}
 }

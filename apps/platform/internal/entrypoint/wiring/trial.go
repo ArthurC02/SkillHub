@@ -74,7 +74,9 @@ func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service
 		Pool: pool, Signer: signer,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
 			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
-			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
+			return trace.RunState{
+				Status: state.Status, StatusReason: state.StatusReason, Started: state.Started,
+			}, found, err
 		},
 		ReadIngestRunState: func(ctx context.Context, runID pgtype.UUID) (trace.IngestRunState, bool, error) {
 			state, found, err := runs.TraceIngestRun(ctx, runID)

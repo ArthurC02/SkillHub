@@ -35,6 +35,7 @@ type Service struct {
 type RunState struct {
 	Status       string
 	StatusReason *string
+	Started      bool
 }
 
 type IngestRunState struct {
@@ -54,13 +55,11 @@ var errPersistenceNotConfigured = errors.New("trace persistence is not configure
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
-func nothingWasCollected(health []StreamHealth, transitions []RunTransition) bool {
-	if slices.ContainsFunc(health, func(h StreamHealth) bool { return h.EmittedBy == SourceSandbox }) {
+func nothingWasCollected(run RunState, health []StreamHealth) bool {
+	if !run.Started {
 		return false
 	}
-	return slices.ContainsFunc(transitions, func(t RunTransition) bool {
-		return t.ToStatus == string(gen.RunStatusRunning)
-	})
+	return !slices.ContainsFunc(health, func(h StreamHealth) bool { return h.EmittedBy == SourceSandbox })
 }
 
 type IngestReport struct {
@@ -336,7 +335,8 @@ const (
 )
 
 func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, after int64) (AdvancedView, error) {
-	if _, err := s.runState(ctx, workspaceID, runID); err != nil {
+	run, err := s.runState(ctx, workspaceID, runID)
+	if err != nil {
 		return AdvancedView{}, err
 	}
 	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
@@ -349,12 +349,8 @@ func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, 
 	if err != nil {
 		return AdvancedView{}, err
 	}
-	transitions, err := s.ReadRunTransitions(ctx, workspaceID, runID)
-	if err != nil {
-		return AdvancedView{}, err
-	}
 	view := AdvancedView{RunID: pgconv.UUIDString(runID), Streams: health, Complete: true, NextAfter: after}
-	if nothingWasCollected(health, transitions) {
+	if nothingWasCollected(run, health) {
 		view.Complete = false
 	}
 	if len(rows) > int(tracePageSize) {
@@ -437,7 +433,8 @@ func sortEventViews(events []EventView) {
 }
 
 func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUID) (AdvancedView, error) {
-	if _, err := s.runState(ctx, workspaceID, runID); err != nil {
+	run, err := s.runState(ctx, workspaceID, runID)
+	if err != nil {
 		return AdvancedView{}, err
 	}
 	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
@@ -445,6 +442,9 @@ func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUI
 		return AdvancedView{}, err
 	}
 	all := AdvancedView{RunID: pgconv.UUIDString(runID), Complete: true, Streams: health, Events: []EventView{}}
+	if nothingWasCollected(run, health) {
+		all.Complete = false
+	}
 	for _, stream := range health {
 		if stream.MissingCount > 0 {
 			all.Complete = false
@@ -532,12 +532,12 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		}
 	}
 
+	if nothingWasCollected(run, health) {
+		summary.Complete = false
+	}
 	transitions, err := s.ReadRunTransitions(ctx, workspaceID, runID)
 	if err != nil {
 		return Summary{}, err
-	}
-	if nothingWasCollected(health, transitions) {
-		summary.Complete = false
 	}
 	for _, t := range transitions {
 		step := ProgressStep{Status: t.ToStatus}

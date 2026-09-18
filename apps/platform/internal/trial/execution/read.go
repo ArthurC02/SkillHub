@@ -20,6 +20,7 @@ func (s *Service) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgt
 type TraceRun struct {
 	Status       string
 	StatusReason *string
+	Started      bool
 }
 
 type TraceIngestRun struct {
@@ -76,7 +77,9 @@ func (s *Service) TraceRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	if err != nil {
 		return TraceRun{}, false, err
 	}
-	return TraceRun{Status: string(row.Status), StatusReason: row.StatusReason}, true, nil
+	return TraceRun{
+		Status: string(row.Status), StatusReason: row.StatusReason, Started: row.StartedAt.Valid,
+	}, true, nil
 }
 
 func (s *Service) TraceIngestRun(ctx context.Context, runID pgtype.UUID) (TraceIngestRun, bool, error) {

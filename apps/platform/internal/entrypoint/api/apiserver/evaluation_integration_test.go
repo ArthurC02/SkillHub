@@ -43,8 +43,9 @@ func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID s
 
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  runtime_snapshot, policy_snapshot, status, finished_at)
-		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb, 'succeeded', now())
+		                  runtime_snapshot, policy_snapshot, status, started_at, finished_at)
+		VALUES ($1, $2, $3, 'fake_sandbox', '{}'::jsonb, '{}'::jsonb, 'succeeded',
+		        now() - interval '1 minute', now())
 		RETURNING id::text`,
 		mustUUID(t, workspaceID), mustUUID(t, versionID), mustUUID(t, snapshotID),
 	).Scan(&runID); err != nil {
@@ -72,7 +73,7 @@ func seedFinalOutput(t *testing.T, pool *pgxpool.Pool, workspaceID, runID, text 
 	if _, err := pool.Exec(context.Background(), `
 		INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type,
 		                          source, status, schema_version, masked, masked_fields, payload)
-		VALUES (gen_random_uuid(), $1, $2, 1, 1, now(), 'agent_output', 'llm_service', 'ok',
+		VALUES (gen_random_uuid(), $1, $2, 1, 1, now(), 'agent_output', 'sandbox', 'ok',
 		        '1.0', true, '[]'::jsonb, $3)`,
 		mustUUID(t, workspaceID), mustUUID(t, runID), payload,
 	); err != nil {
@@ -1039,5 +1040,39 @@ func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T
 		if r.Result == "passed" {
 			t.Errorf("criterion %s passed on incomplete evidence", r.CriterionID)
 		}
+	}
+}
+
+func TestARunWhoseRecorderNeverSpokeCannotBeJudgedAPass(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-no-recorder")
+	skillID := seedSkill(t, pool, c.workspaceID, "dedupe")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "it looks right to me",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
+			{CriterionID: "c2", Result: "passed", Reason: "it looks right to me",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
+		},
+		Overall: "met", Summary: "both criteria are met",
+	}, "judge-run@2026-08-18")
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	status, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if status != http.StatusOK {
+		t.Fatalf("GET evaluation: got %d (%s)", status, body.Error)
+	}
+	if body.EvidenceComplete {
+		t.Error("the sandbox recorded nothing at all for this run, and the evaluation still calls its " +
+			"evidence complete; a judgement made on an empty trace is not a judgement made on everything")
+	}
+	if body.Overall == "met" {
+		t.Error("a pass was recorded on a run whose trace is entirely absent")
 	}
 }

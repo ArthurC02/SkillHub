@@ -79,7 +79,7 @@ func seedRunUsage(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string, c
 	if _, err := pool.Exec(context.Background(), `
 		INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type,
 		                          source, status, schema_version, masked, masked_fields, payload)
-		VALUES (gen_random_uuid(), $1, $2, 1, 2, now(), 'usage', 'llm_service', 'ok',
+		VALUES (gen_random_uuid(), $1, $2, 1, 1, now(), 'usage', 'llm_service', 'ok',
 		        '1.1', true, '[]'::jsonb, $3)`,
 		mustUUID(t, workspaceID), mustUUID(t, runID), payload,
 	); err != nil {
