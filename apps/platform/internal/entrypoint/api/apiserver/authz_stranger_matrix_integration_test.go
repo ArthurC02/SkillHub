@@ -83,19 +83,18 @@ var strangerRoutes = []strangerCase{
 		body: `{"credits":1000,"reason":"a stranger asked"}`, want: http.StatusNotFound},
 
 	{pattern: "POST /skills/{id}/runs/preflight/confirm",
-		unprobed: "the confirmation carries the owner's summary hash, which a stranger cannot compute; " +
-			"the read it confirms is probed above"},
+		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","summary_hash":"` +
+			strangerGuessedHash + `"}`, want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/runs",
-		unprobed: "starting a run needs a confirmed summary hash; the preflight read it follows is probed above"},
+		body: `{"version_id":"{versionId}","test_case_id":"{testCaseId}","confirmed_summary_hash":"` +
+			strangerGuessedHash + `"}`, want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/versions",
 		unprobed: "a new version is a multipart package upload; this matrix sends JSON"},
 	{pattern: "POST /test-cases/{id}/datasets",
 		unprobed: "a dataset is a multipart file upload; this matrix sends JSON"},
 	{pattern: "POST /test-cases/{id}/criteria/suggest",
 		unprobed: "suggesting criteria calls the model service, which this matrix does not stand up"},
-	{pattern: "PUT /runs/{id}/evaluation/feedback",
-		unprobed: "feedback is keyed to an evaluation revision the stranger cannot name; " +
-			"the evaluation reads it follows are probed above"},
+	{pattern: "PUT /runs/{id}/evaluation/feedback", body: `{"helpful":true}`, want: http.StatusNotFound},
 	{pattern: "GET /suggestions/{id}/diff",
 		unprobed: "no suggestion exists in this world: the judge stub returns a verdict without suggestions"},
 	{pattern: "PUT /suggestions/{id}/decision", unprobed: "no suggestion exists in this world"},
@@ -220,7 +219,10 @@ func TestEveryRouteThatNamesAResourceIsInTheStrangerMatrix(t *testing.T) {
 	}
 }
 
-const anotherRunID = "00000000-0000-0000-0000-0000000000ff"
+const (
+	anotherRunID        = "00000000-0000-0000-0000-0000000000ff"
+	strangerGuessedHash = "sha256:a-hash-the-stranger-made-up"
+)
 
 const (
 	aliceSkillName  = "matrix-private-widget"
@@ -329,7 +331,7 @@ func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T
 		method, pattern, _ := strings.Cut(tc.pattern, " ")
 		target := world.resolve(pattern) + world.resolve(tc.query)
 		t.Run(tc.pattern, func(t *testing.T) {
-			status, body := callAs(t, bob, method, target, tc.body)
+			status, body := callAs(t, bob, method, target, world.resolve(tc.body))
 			if status == http.StatusBadRequest && tc.want != http.StatusBadRequest {
 				t.Fatalf("answered 400 (%s); a request that never reaches the authorization decision "+
 					"proves nothing about isolation, so this route is uncovered", strings.TrimSpace(body))

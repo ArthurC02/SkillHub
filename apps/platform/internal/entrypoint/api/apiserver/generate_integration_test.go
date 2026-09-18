@@ -509,7 +509,7 @@ func TestTheEntryPointIsNotAdvertisedToSomeoneWhoMayNotUseIt(t *testing.T) {
 			t.Errorf("%s = %d, want 403 — the test's premise is that this caller is refused", gated.name, code)
 		}
 
-		if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+		if msg, _ := body["error"].(string); !strings.Contains(msg, "封測") {
 			t.Errorf("%s refused an uninvited user for some other reason: %v", gated.name, body)
 		}
 	}

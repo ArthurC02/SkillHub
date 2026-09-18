@@ -65,8 +65,12 @@ func TestNotInvitedAnswersABrowserWithAChinesePage(t *testing.T) {
 	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		t.Errorf("Content-Type = %q, want JSON for an API caller", ct)
 	}
-	if !strings.Contains(w.Body.String(), "closed beta") {
-		t.Errorf("API body = %q, want the unchanged betaNotInvited sentence", w.Body.String())
+	if !strings.Contains(w.Body.String(), "封測") {
+		t.Errorf("API body = %q; the app prints this sentence inside a Chinese screen", w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "/feedback") {
+		t.Errorf("API body = %q; it tells the reader to call an endpoint rather than use the page "+
+			"they are on", w.Body.String())
 	}
 }
 

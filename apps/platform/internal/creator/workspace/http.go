@@ -245,10 +245,8 @@ func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
 	}
 }
 
-const betaNotInvited = "Skill Hub is in closed beta: browsing and skill details are open to " +
-	"everyone, but forking, trial runs and downloads are limited to the invited testers. " +
-	"Tell us what you were trying to do at POST /feedback with kind=need_signal and it goes " +
-	"straight into the scope review."
+const betaNotInvited = "Skill Hub 還在封測:瀏覽與 Skill 詳情對所有人開放,但 Fork、試跑與下載只開放給受邀的測試者。" +
+	"用頁尾的「回報問題」告訴我們你想做什麼,它會直接進入範圍檢討。"
 
 func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

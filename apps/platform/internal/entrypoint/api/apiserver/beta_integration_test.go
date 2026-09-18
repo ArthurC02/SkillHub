@@ -336,7 +336,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	if code != http.StatusForbidden {
 		t.Errorf("POST fork as an uninvited user: got %d, want 403", code)
 	}
-	if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "封測") {
 		t.Errorf("the refusal does not explain itself: %v", body)
 	}
 	hash := bob.confirmPermissions(t)
@@ -354,7 +354,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 			t.Errorf("%s as an uninvited user: got %d, want 403", gated.name, code)
 		}
 
-		if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+		if msg, _ := body["error"].(string); !strings.Contains(msg, "封測") {
 			t.Errorf("%s refused an uninvited user for some other reason: %v", gated.name, body)
 		}
 	}
@@ -388,7 +388,7 @@ func TestAdmissionListGatesCreationSessionsAsWell(t *testing.T) {
 	if code != http.StatusForbidden {
 		t.Errorf("POST /creation-sessions as an uninvited user: got %d, want 403", code)
 	}
-	if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "封測") {
 		t.Errorf("the refusal does not explain itself: %v", body)
 	}
 
