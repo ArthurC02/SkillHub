@@ -275,3 +275,27 @@ func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
 		})
 	}
 }
+
+func TestNothingWasCollected(t *testing.T) {
+	ran := []RunTransition{{ToStatus: "queued"}, {ToStatus: "running"}, {ToStatus: "succeeded"}}
+	neverRan := []RunTransition{{ToStatus: "queued"}, {ToStatus: "refused"}}
+	cases := []struct {
+		name        string
+		health      []StreamHealth
+		transitions []RunTransition
+		want        bool
+	}{
+		{"the workload ran and no stream exists at all", nil, ran, true},
+		{"the workload ran and only the platform's own events exist",
+			[]StreamHealth{{EmittedBy: SourceOrchestr}}, ran, true},
+		{"the recorder spoke", []StreamHealth{{EmittedBy: SourceSandbox}}, ran, false},
+		{"the workload never ran, so there is nothing to have collected", nil, neverRan, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := nothingWasCollected(tc.health, tc.transitions); got != tc.want {
+				t.Errorf("nothingWasCollected = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

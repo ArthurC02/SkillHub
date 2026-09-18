@@ -8833,8 +8833,10 @@ func (s *Server) handleGetRunQuotaRequest(args [0]string, argsEscaped bool, w ht
 // There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext
 // an unmasked mode would show does not exist anywhere to be served.
 //
-// `complete: false` means a producer's gapless sequence has a hole, which means an event was lost. The
-// UI must say so rather than present the remainder as the whole story.
+// `complete: false` means what is here is not the whole story: a producer's gapless sequence has a
+// hole, so an event was lost, or the workload ran and its recorder never said anything at all, so
+// nothing was collected. The UI must say so rather than present the remainder as the whole story, and
+// must not read an empty trace as "nothing happened".
 //
 // Every payload here is untrusted content that crossed the trust boundary and must be rendered as
 // inert text: no HTML, ANSI or SVG interpretation.

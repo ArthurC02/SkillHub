@@ -3360,9 +3360,12 @@ paths:
         rule 11), so the plaintext an unmasked mode would show does not exist
         anywhere to be served.
 
-        `complete: false` means a producer's gapless sequence has a hole, which
-        means an event was lost. The UI must say so rather than present the
-        remainder as the whole story.
+        `complete: false` means what is here is not the whole story: a
+        producer's gapless sequence has a hole, so an event was lost, or the
+        workload ran and its recorder never said anything at all, so nothing
+        was collected. The UI must say so rather than present the remainder as
+        the whole story, and must not read an empty trace as "nothing
+        happened".
 
         Every payload here is untrusted content that crossed the trust boundary
         and must be rendered as inert text: no HTML, ANSI or SVG
@@ -5345,7 +5348,9 @@ components:
         complete:
           type: boolean
           description: |
-            False when any stream has a hole. Not "the run finished": a finished
+            False when any stream has a hole, and false when the workload ran
+            but the sandbox never recorded anything: nothing collected is not
+            the same as nothing happened. Not "the run finished": a finished
             run with a gap is incomplete, and a running one with no gap yet is
             complete so far.
         streams:
@@ -5385,7 +5390,13 @@ components:
             (iron rule 5). Never reconstructed by replaying run_lifecycle trace
             events, and never allowed to disagree with `Run.status`.
         status_reason: { type: string }
-        complete: { type: boolean }
+        complete:
+          type: boolean
+          description: |
+            Same meaning as on the advanced view: false when a stream has a
+            hole, and false when the workload ran with no recorder heard from.
+            Zero counts under `complete: false` mean nothing was collected,
+            not that nothing happened.
         skills:
           type: array
           maxItems: 100

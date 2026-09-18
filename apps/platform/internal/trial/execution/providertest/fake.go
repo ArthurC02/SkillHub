@@ -22,6 +22,7 @@ type Plan struct {
 	FinalState   run.ProviderRunState
 	ResultStatus string
 	ErrorClass   string
+	AgentOutput  string
 
 	OmitResult bool
 }
@@ -314,7 +315,10 @@ func (f *Fake) view(fr *fakeRun) run.ProviderRun {
 		view.CancelRequestedAt = &at
 	}
 	if state.Terminal() && !f.Plan.OmitResult {
-		result := run.RunResult{RunID: fr.runID, RunAttemptID: fr.attemptID, Status: resultStatus}
+		result := run.RunResult{
+			RunID: fr.runID, RunAttemptID: fr.attemptID, Status: resultStatus,
+			AgentOutput: f.Plan.AgentOutput,
+		}
 		if resultStatus != "succeeded" {
 			class := f.Plan.ErrorClass
 			if class == "" {

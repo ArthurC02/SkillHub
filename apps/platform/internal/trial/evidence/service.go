@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -52,6 +53,15 @@ var errRunReaderNotConfigured = errors.New("trace run reader is not configured")
 var errPersistenceNotConfigured = errors.New("trace persistence is not configured")
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
+
+func nothingWasCollected(health []StreamHealth, transitions []RunTransition) bool {
+	if slices.ContainsFunc(health, func(h StreamHealth) bool { return h.EmittedBy == SourceSandbox }) {
+		return false
+	}
+	return slices.ContainsFunc(transitions, func(t RunTransition) bool {
+		return t.ToStatus == string(gen.RunStatusRunning)
+	})
+}
 
 type IngestReport struct {
 	Received  int `json:"received"`
@@ -339,7 +349,14 @@ func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, 
 	if err != nil {
 		return AdvancedView{}, err
 	}
+	transitions, err := s.ReadRunTransitions(ctx, workspaceID, runID)
+	if err != nil {
+		return AdvancedView{}, err
+	}
 	view := AdvancedView{RunID: pgconv.UUIDString(runID), Streams: health, Complete: true, NextAfter: after}
+	if nothingWasCollected(health, transitions) {
+		view.Complete = false
+	}
 	if len(rows) > int(tracePageSize) {
 		view.HasMore = true
 		rows = rows[:tracePageSize]
@@ -518,6 +535,9 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	transitions, err := s.ReadRunTransitions(ctx, workspaceID, runID)
 	if err != nil {
 		return Summary{}, err
+	}
+	if nothingWasCollected(health, transitions) {
+		summary.Complete = false
 	}
 	for _, t := range transitions {
 		step := ProgressStep{Status: t.ToStatus}

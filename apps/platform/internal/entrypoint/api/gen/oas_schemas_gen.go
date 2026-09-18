@@ -22135,8 +22135,9 @@ func (s *TestCaseListItem) SetHasRubric(val bool) {
 // Ref: #/components/schemas/TraceAdvanced
 type TraceAdvanced struct {
 	RunID uuid.UUID `json:"run_id"`
-	// False when any stream has a hole. Not "the run finished": a finished run with a gap is incomplete,
-	// and a running one with no gap yet is complete so far.
+	// False when any stream has a hole, and false when the workload ran but the sandbox never recorded
+	// anything: nothing collected is not the same as nothing happened. Not "the run finished": a finished
+	// run with a gap is incomplete, and a running one with no gap yet is complete so far.
 	Complete bool          `json:"complete"`
 	Streams  []TraceStream `json:"streams"`
 	// Masked events, canonically ordered within this ingestion page. Pages themselves follow receipt
@@ -22696,10 +22697,13 @@ type TraceSummary struct {
 	// Read from the runs table, which is the only authority on run state (iron rule 5). Never
 	// reconstructed by replaying run_lifecycle trace events, and never allowed to disagree with
 	// `Run.status`.
-	Status       TraceSummaryStatus       `json:"status"`
-	StatusReason OptString                `json:"status_reason"`
-	Complete     bool                     `json:"complete"`
-	Skills       []TraceSummarySkillsItem `json:"skills"`
+	Status       TraceSummaryStatus `json:"status"`
+	StatusReason OptString          `json:"status_reason"`
+	// Same meaning as on the advanced view: false when a stream has a hole, and false when the workload
+	// ran with no recorder heard from. Zero counts under `complete: false` mean nothing was collected, not
+	// that nothing happened.
+	Complete bool                     `json:"complete"`
+	Skills   []TraceSummarySkillsItem `json:"skills"`
 	// Exact number of skill activation events; skills contains at most the first 100.
 	SkillsTotal   int                      `json:"skills_total"`
 	ResourcesRead int                      `json:"resources_read"`

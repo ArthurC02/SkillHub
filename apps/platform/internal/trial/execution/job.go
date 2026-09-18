@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -21,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 const (
@@ -428,9 +430,26 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	d.finishAttempt(ctx, attempt, errClass, message)
 
 	if status != gen.RunStatusSucceeded {
+		d.keepWorkloadOutput(ctx, attempt, pr)
 		return d.finish(ctx, attempt.ID, status, failureClass, message)
 	}
 	return d.walkHappyPath(ctx, attempt.ID)
+}
+
+func (d *driver) keepWorkloadOutput(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) {
+	if pr.Result == nil || pr.Result.AgentOutput == "" {
+		return
+	}
+	err := pgx.BeginFunc(ctx, d.svc.Pool, func(tx pgx.Tx) error {
+		return trace.RecordOrchestratorEvent(ctx, tx, attempt.WorkspaceID, attempt.RunID,
+			int(attempt.AttemptNumber), trace.TypeAgentOutput, "", map[string]any{
+				"kind": "captured", "text": pr.Result.AgentOutput,
+			})
+	})
+	if err != nil {
+		slog.Warn("the workload's own output could not be kept; this run's failure may have no explanation",
+			"run_id", pgconv.UUIDString(attempt.RunID), "error", err)
+	}
 }
 
 func (d *driver) walkHappyPath(ctx context.Context, attemptID pgtype.UUID) error {

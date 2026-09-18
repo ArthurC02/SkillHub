@@ -73,6 +73,10 @@ export interface TraceSummary {
      */
     statusReason?: string;
     /**
+     * Same meaning as on the advanced view: false when a stream has a
+     * hole, and false when the workload ran with no recorder heard from.
+     * Zero counts under `complete: false` mean nothing was collected,
+     * not that nothing happened.
      * 
      */
     complete: boolean;

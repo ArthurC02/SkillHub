@@ -39,7 +39,9 @@ export interface TraceAdvanced {
      */
     runId: string;
     /**
-     * False when any stream has a hole. Not "the run finished": a finished
+     * False when any stream has a hole, and false when the workload ran
+     * but the sandbox never recorded anything: nothing collected is not
+     * the same as nothing happened. Not "the run finished": a finished
      * run with a gap is incomplete, and a running one with no gap yet is
      * complete so far.
      * 

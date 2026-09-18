@@ -1531,3 +1531,86 @@ func attemptErrorClass(t *testing.T, pool *pgxpool.Pool, runID string) string {
 	}
 	return *class
 }
+
+func (c *client) traceEvents(t *testing.T, runID string) []struct {
+	Type    string         `json:"type"`
+	Payload map[string]any `json:"payload"`
+} {
+	t.Helper()
+	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=advanced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("advanced trace: got %d, want 200", resp.StatusCode)
+	}
+	var out struct {
+		Events []struct {
+			Type    string         `json:"type"`
+			Payload map[string]any `json:"payload"`
+		} `json:"events"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	return out.Events
+}
+
+func (c *client) traceIsComplete(t *testing.T, runID string) bool {
+	t.Helper()
+	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=general")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("general trace: got %d, want 200", resp.StatusCode)
+	}
+	var out struct {
+		Complete bool `json:"complete"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	return out.Complete
+}
+
+func TestAFailedRunKeepsWhatTheWorkloadItselfPrinted(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-kept-output")
+	withProvider(t, a, pool, providertest.Plan{
+		FinalState: run.ProviderStateCompleted, ResultStatus: "failed", ErrorClass: "execution",
+		AgentOutput: "Traceback: the ledger file was never opened",
+	})
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
+
+	kept := ""
+	for _, event := range f.traceEvents(t, created.RunID) {
+		if event.Type == "agent_output" && event.Payload["kind"] == "captured" {
+			kept, _ = event.Payload["text"].(string)
+		}
+	}
+	if kept != "Traceback: the ledger file was never opened" {
+		t.Errorf("the trace kept %q of what the workload printed; the provider handed it back and "+
+			"the failure message on its own does not say why the run failed", kept)
+	}
+}
+
+func TestATraceNoRecorderEverSpokeToIsNotCalledComplete(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-no-recorder")
+	withProvider(t, a, pool, providertest.Plan{})
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+
+	if f.traceIsComplete(t, created.RunID) {
+		t.Error("a run whose recorder never said anything reports complete=true with every count at zero; " +
+			"nothing collected is being shown as nothing happened")
+	}
+}
