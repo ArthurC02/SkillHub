@@ -122,7 +122,7 @@ def mark_serving(isolation):
     facts.write_text(json.dumps({"node_id": "n1", "role": "sandbox-exec", "build_phase": "provision"}) + "\n")
     config = node.root / "sandboxd.env"
     config.write_text("SKILLHUB_SANDBOX_RUNTIME=runsc\nSKILLHUB_SANDBOX_ADDR=10.0.0.4:9000\n")
-    capability = json.dumps({"isolation": {"level": isolation}})
+    capability = json.dumps({"isolation": {"strength": isolation}})
     fake(node.bin, "curl", 'cat >"$FAKE_CURL_CONFIG"; echo "$*" >"$FAKE_CURL_ARGS"; printf %%s \'%s\'' % capability)
     fake(node.bin, "sleep", "exit 0")
     env = dict(node.env, SKILLHUB_NODE_FACTS=str(facts), SKILLHUB_SANDBOX_CONFIG=str(config),
@@ -131,8 +131,8 @@ def mark_serving(isolation):
     return result, json.loads(facts.read_text()), node.root
 
 
-def test_a_node_answering_under_gvisor_is_marked_serving_and_the_token_never_reaches_argv():
-    result, facts, root = mark_serving("gvisor")
+def test_a_node_isolating_strongly_is_marked_serving_and_the_token_never_reaches_argv():
+    result, facts, root = mark_serving("strong")
     assert result.returncode == 0, result.stderr
     assert facts == {"node_id": "n1", "role": "sandbox-exec", "build_phase": "serving"}, facts
     assert (root / "curl-config").read_text() == 'header = "Authorization: Bearer %s"\n' % TOKEN
@@ -140,9 +140,9 @@ def test_a_node_answering_under_gvisor_is_marked_serving_and_the_token_never_rea
     assert TOKEN not in args and "http://10.0.0.4:9000/capability" in args, args
 
 
-def test_a_node_answering_without_gvisor_stays_in_provision():
-    result, facts, _ = mark_serving("container")
-    assert result.returncode == 1 and "isolation level 'container', not gvisor" in result.stderr, result.stderr
+def test_a_node_that_isolates_weakly_stays_in_provision():
+    result, facts, _ = mark_serving("weak")
+    assert result.returncode == 1 and "isolation strength 'weak', not strong" in result.stderr, result.stderr
     assert facts["build_phase"] == "provision", facts
 
 

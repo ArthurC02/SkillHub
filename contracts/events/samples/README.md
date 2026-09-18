@@ -2,7 +2,14 @@
 
 這裡的 `*.jsonl` **不是手寫的範例**，是管線兩端的真實輸出，被記錄下來當作契約迴歸的證據。schema 自帶的 `examples` 是「契約寫得對」，這裡是「程式跑出來的東西真的符合契約」——後者才會在 harness 或遮罩器改動時破。
 
-`python tools/contracts/validate_trace_events.py` 會逐行驗證本目錄的每個 `.jsonl`。
+`python tools/contracts/validate_trace_events.py` 會逐行驗證本目錄根層的每個 `.jsonl`。
+
+子目錄的 [`egress/records.jsonl`](egress/records.jsonl) 屬於出口記錄契約，由 `python tools/contracts/validate_egress_records.py` 驗證。它是節點上那兩個工具的原始輸出（conntrack 的連線結束事件、核心的丟包行）經 `sandboxd egress-record` 正規化後的結果，由 `apps/sandbox/internal/egress` 的 `TestWhatTheNodeWritesIsTheSampleTheContractIsCheckedAgainst` 產生：
+
+```bash
+SKILLHUB_EGRESS_SAMPLE_OUT=<absolute path>/contracts/events/samples/egress/records.jsonl \
+  go test ./internal/egress/ -run TestWhatTheNodeWrites -count=1
+```
 
 | 檔案 | 產生者 | 代表什麼 |
 | --- | --- | --- |

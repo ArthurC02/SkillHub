@@ -46,6 +46,7 @@ func isolationLevelProblems(root string) []string {
 			isolationGoFile, isolationConstSuffix)}
 	}
 	var problems []string
+	problems = append(problems, nodeIsolationProblems(root)...)
 	for _, contract := range isolationContractFiles {
 		admitted, err := contractIsolationEnum(filepath.Join(root, filepath.FromSlash(contract.path)), contract.marker)
 		if err != nil {
@@ -67,6 +68,38 @@ func isolationLevelProblems(root string) []string {
 		}
 	}
 	return problems
+}
+
+const isolationNodeScript = "infra/deploy/sandbox/bin/skillhub-mark-serving"
+
+var isolationNodePattern = regexp.MustCompile(`isolation", \{\}\)\.get\("([a-z_]+)"\)`)
+
+var isolationNodeExpectation = regexp.MustCompile(`!= "([a-z_]+)"`)
+
+func nodeIsolationProblems(root string) []string {
+	path := filepath.Join(root, filepath.FromSlash(isolationNodeScript))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return []string{fmt.Sprintf("isolation levels: %v", err)}
+	}
+	field := isolationNodePattern.FindSubmatch(raw)
+	demanded := isolationNodeExpectation.FindSubmatch(raw)
+	if field == nil || demanded == nil {
+		return []string{fmt.Sprintf(
+			"isolation levels: %s no longer reads a field out of the capability's isolation object and compares it; "+
+				"a node that never reaches serving looks exactly like a node that is still building", isolationNodeScript)}
+	}
+	contract := isolationContractFiles[0]
+	admitted, err := contractIsolationEnum(filepath.Join(root, filepath.FromSlash(contract.path)), contract.marker)
+	if err != nil {
+		return []string{fmt.Sprintf("isolation levels: %v", err)}
+	}
+	if !admitted[string(demanded[1])] {
+		return []string{fmt.Sprintf(
+			"%s waits for isolation.%s == %q, which %s does not admit; the node would stay in provision forever",
+			isolationNodeScript, field[1], demanded[1], contract.path)}
+	}
+	return nil
 }
 
 // Reads constant values via the AST rather than grepping text, so a comment

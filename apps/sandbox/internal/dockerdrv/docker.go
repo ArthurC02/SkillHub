@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -17,6 +18,7 @@ import (
 	networktypes "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/egress"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
@@ -61,8 +63,15 @@ type Config struct {
 }
 
 type Driver struct {
-	cli *client.Client
-	cfg Config
+	cli  *client.Client
+	cfg  Config
+	held sync.Map
+}
+
+type heldAddress struct {
+	runID   string
+	attempt int
+	address string
 }
 
 func New(cfg Config) (*Driver, error) {
@@ -159,12 +168,12 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 
 		return fmt.Errorf("start sandbox: %w", err)
 	}
-	d.logNetworkAddress(ctx, created.ID, network, req)
+	d.recordAddressAssigned(ctx, created.ID, id, network, req)
 
 	return d.pushInputs(ctx, id, req)
 }
 
-func (d *Driver) logNetworkAddress(ctx context.Context, containerID, network string, req sandbox.RunRequest) {
+func (d *Driver) recordAddressAssigned(ctx context.Context, containerID, id, network string, req sandbox.RunRequest) {
 	if d.cfg.Log == nil || network == "none" {
 		return
 	}
@@ -178,8 +187,18 @@ func (d *Driver) logNetworkAddress(ctx context.Context, containerID, network str
 			"run_id", req.RunID, "attempt", req.Attempt, "network", network, "err", err)
 		return
 	}
-	d.cfg.Log.Info("run network address",
-		"run_id", req.RunID, "attempt", req.Attempt, "network", network, "address", endpoint.IPAddress.String())
+	address := endpoint.IPAddress.String()
+	d.held.Store(id, heldAddress{runID: req.RunID, attempt: req.Attempt, address: address})
+	d.cfg.Log.Info(egress.Message, egress.AddressAssigned(req.RunID, req.Attempt, address, time.Now())...)
+}
+
+func (d *Driver) recordAddressReleased(id string) {
+	held, ok := d.held.LoadAndDelete(id)
+	if !ok || d.cfg.Log == nil {
+		return
+	}
+	a := held.(heldAddress)
+	d.cfg.Log.Info(egress.Message, egress.AddressReleased(a.runID, a.attempt, a.address, time.Now())...)
 }
 
 func (d *Driver) networkFor(req sandbox.RunRequest) string {
@@ -227,6 +246,7 @@ func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error
 }
 
 func (d *Driver) Remove(ctx context.Context, id string) error {
+	d.recordAddressReleased(id)
 	_, err := d.cli.ContainerRemove(ctx, name(id), client.ContainerRemoveOptions{
 		Force:         true,
 		RemoveVolumes: true,

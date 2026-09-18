@@ -102,9 +102,9 @@ gVisor、Docker Engine 與 systemd 是自建 Provider 內部的 Adapter。`sandb
 
 `sandboxd` 在接受一次 Run 時，逐項比對平台送來的 egress 允許清單與節點實際渲染的清單，不相符即以既有的能力不符錯誤拒絕，避免接上一張到不了目的地的網路而讓 Run 空等到逾時。
 
-記錄目的地 IP:port、協定、方向、決策（accept／drop）、位元組數、時間與 Run 的關聯鍵；不記錄內容、Header、URL 或任何 payload；保存 90 天。記錄的格式由平台定義在 `contracts/events/`，分兩種：出口記錄（來源位址、目的地、協定、兩個方向的封包與位元組數、放行或阻擋、時間）與 Run 位址記錄（`run_id`、Attempt、位址、起訖時間）。查詢以「同一個位址、落在那個 Run 的存活時間內」把兩者接起來；runbook、告警與測試只讀這個格式。
+記錄目的地 IP:port、協定、方向、決策（accept／drop）、位元組數、時間與 Run 的關聯鍵；不記錄內容、Header、URL 或任何 payload；保存 90 天。記錄的格式由平台定義在 [`contracts/events/egress-record.schema.json`](../../contracts/events/egress-record.schema.json)，分兩種：出口記錄（來源位址、目的地、協定、兩個方向的封包與位元組數、放行或阻擋與擋下它的規則、時間）與 Run 位址記錄（`run_id`、Attempt、位址，以 `assigned`／`released` 兩筆標出起訖）。查詢以「同一個位址、落在那個 Run 的存活時間內」把兩者接起來；runbook、告警與測試只讀這個格式。
 
-產生與搬運記錄的工具都是 Adapter，換掉它們不改格式與查法。現行的 Adapter：被放行的連線在結束時由 conntrack 事件取得兩個方向的封包與位元組數（節點開啟 `nf_conntrack_acct`，沒開 `sandboxd` 不啟動，記錄程序停了 `sandboxd` 跟著停）；被擋的嘗試來自 forward 鏈的 `log prefix`；Run 位址記錄由 `sandboxd` 在 Run 啟動時寫出。節點每七天換新，本機不能當保存處，所以記錄經 `systemd-journal-upload` 推到控制平面的 `systemd-journal-remote`；控制平面每日刪掉最後寫入超過 90 天的檔，存量逼近 4 GB 上限（到上限會先丟最舊的、未滿 90 天的記錄）時告警。推送走私有網路上的明文 HTTP，與派送 Run 的 9000 埠同一個上限：私有網路上的其他主機能偽造或讀到記錄，所以 19532 只對沙箱節點開。
+產生與搬運記錄的工具都是 Adapter，輸出在寫進 journal 前就已經是上面的格式，換掉它們不改格式與查法。現行的 Adapter：被放行的連線在結束時由 conntrack 事件取得兩個方向的封包與位元組數（節點開啟 `nf_conntrack_acct`，沒開 `sandboxd` 不啟動，記錄程序停了 `sandboxd` 跟著停）；被擋的嘗試來自 forward 鏈的 `log prefix`；這兩者的原始文字都由節點上的 `sandboxd egress-record` 逐行轉成記錄，Run 位址記錄則由 `sandboxd` 在取得與交還位址時各寫一筆。節點每七天換新，本機不能當保存處，所以記錄經 `systemd-journal-upload` 推到控制平面的 `systemd-journal-remote`；控制平面每日刪掉最後寫入超過 90 天的檔，存量逼近 4 GB 上限（到上限會先丟最舊的、未滿 90 天的記錄）時告警。推送走私有網路上的明文 HTTP，與派送 Run 的 9000 埠同一個上限：私有網路上的其他主機能偽造或讀到記錄，所以 19532 只對沙箱節點開。
 
 不受信任執行環境若被用於挖礦、掃描或濫用流量，底層雲端供應商的處置可能偏向直接停機而非事先通知；除本節的 default-deny Egress 外，另需事前與供應商溝通用途，並建立濫用偵測與自動封停 Run 的流程。
 

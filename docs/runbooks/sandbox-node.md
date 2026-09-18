@@ -36,7 +36,7 @@ render 從那個 commit 的 Runtime Image Dockerfile 讀 `IMAGE_VERSION` 與 Age
 - 用 `sandbox-user-data.yaml` 建主機，接上與控制平面、閘道同一個私有網路。
 - 供應商防火牆：入站只開 9000，來源只有控制平面的私有位址；**不開 22**，要進機器用供應商的 console。節點自己的 nftables 也只收這一條，兩層任一層設錯另一層還擋著。
 
-驗：從 console 登入，`cloud-init status --wait` 是 `done`，`/var/log/cloud-init-output.log` 最後一行是 `skillhub-bootstrap: sandbox node installed; …`；`runsc --version` 等於 `infra/nodes/gvisor-baseline.txt`；`sudo nft list table ip skillhub` 有一條指向閘道 `IP 4000` 的 `accept`；`systemctl is-active skillhub-egress-flows systemd-journal-upload` 兩個都是 `active`。
+驗：從 console 登入，`cloud-init status --wait` 是 `done`，`/var/log/cloud-init-output.log` 最後一行是 `skillhub-bootstrap: sandbox node installed; …`；`runsc --version` 等於 `infra/nodes/gvisor-baseline.txt`；`sudo nft list table ip skillhub` 有一條指向閘道 `IP 4000` 的 `accept`；`systemctl is-active skillhub-egress-flows skillhub-egress-drops systemd-journal-upload` 三個都是 `active`。
 
 建置腳本只能跑一次：`/etc/skillhub/node.json` 存在時它拒絕執行。建壞了就刪掉重建，不在原機上修。
 
@@ -57,7 +57,7 @@ EOF
 sudo systemctl start skillhub-serving
 ```
 
-`skillhub-serving` 先啟動 `sandboxd`，等它以 token 回答 `/capability` 且隔離等級是 `gvisor`，才把 `node.json` 改成 `serving`。`sandboxd` 每次啟動前的檢查任一不過就不啟動：token 檔不是 600 或短於 32 字元、映像沒有釘 digest、egress 准入清單不存在、`skillhub` nftables 表沒有載入、bridge 流量沒有經過 netfilter、連線記錄不帶位元組數（`nf_conntrack_acct` 不是 1）、dockerd 沒有註冊 `runsc`。記錄出口連線的 `skillhub-egress-flows` 沒在跑時 `sandboxd` 也不啟動。原因在 `journalctl -u skillhub-sandboxd`。
+`skillhub-serving` 先啟動 `sandboxd`，等它以 token 回答 `/capability` 且隔離強度是 `strong`，才把 `node.json` 改成 `serving`。`sandboxd` 每次啟動前的檢查任一不過就不啟動：token 檔不是 600 或短於 32 字元、映像沒有釘 digest、egress 准入清單不存在、`skillhub` nftables 表沒有載入、bridge 流量沒有經過 netfilter、連線記錄不帶位元組數（`nf_conntrack_acct` 不是 1）、dockerd 沒有註冊 `runsc`。寫出口記錄的 `skillhub-egress-flows`（放行的連線）與 `skillhub-egress-drops`（被擋的封包）任一個沒在跑，`sandboxd` 都不啟動；兩者都把觀察到的東西轉成[出口記錄契約](../../contracts/events/egress-record.schema.json)的格式才寫進 journal，查法見[控制平面 runbook](control-plane.md) §7。原因在 `journalctl -u skillhub-sandboxd`。
 
 驗：`systemctl is-active skillhub-sandboxd` 是 `active`；`sudo cat /etc/skillhub/node.json` 的 `build_phase` 是 `serving`。
 

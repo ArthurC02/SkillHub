@@ -172,19 +172,16 @@ sudo systemctl start skillhub-alert@test.service
 
 ## 7. 沙箱出口記錄
 
-沙箱節點把整份 journal 推到這台的 `/var/log/journal/remote/`，每台節點一組檔。一個 Run 的出口記錄要三份一起讀：
+沙箱節點把整份 journal 推到這台的 `/var/log/journal/remote/`，每台節點一組檔。記錄的格式由 [出口記錄契約](../../contracts/events/egress-record.schema.json) 定義，節點上的工具在寫出前就已經轉成這個格式，所以這裡只有兩種記錄、一種查法。先問這個 Run 拿到哪個位址，再問那個位址在那段時間做了什麼：
 
 ```bash
 remote=/var/log/journal/remote
-sudo journalctl --directory=$remote -u skillhub-sandboxd.service --grep '<run_id>'
-sudo journalctl --directory=$remote SYSLOG_IDENTIFIER=skillhub-egress-flow --since '<Run 開始>' --until '<Run 結束>' --grep 'src=<位址> '
-sudo journalctl --directory=$remote _TRANSPORT=kernel --since '<Run 開始>' --until '<Run 結束>' --grep 'skillhub-drop-.*SRC=<位址> '
+sudo journalctl --directory=$remote -u skillhub-sandboxd.service --output=cat --grep '"record":"run_address"' | jq -c 'select(.run_id == "<run_id>") | {state, at, address}'
+sudo journalctl --directory=$remote SYSLOG_IDENTIFIER=skillhub-egress-record --output=cat --since '<assigned 的 at>' --until '<released 的 at>' | jq -c 'select(.source == "<位址>")'
 ```
 
-1. 第一行找到 `run network address`，記下 `address` 與時間。沒有網路的 Run（`network` 是 `none`）沒有這一筆，也不會有出口記錄。
-2. 第二行是被放行、已結束的連線：`dst`、`dport`、協定，以及兩個方向的 `packets`／`bytes`。
-3. 第三行是被擋的嘗試，`skillhub-drop-` 後面那個字是擋下它的規則。
-
-同一個位址會在前一個 Run 結束後分給下一個 Run，時間窗一定要帶。
+1. 第一行給出 `assigned` 與 `released` 兩筆，中間那段就是這個位址屬於這個 Run 的時間。沒有網路的 Run 兩筆都沒有，也不會有出口記錄。
+2. 第二行每一筆就是一次出口：`decision` 是 `accepted`（連線已結束，`packets_out`／`bytes_out`／`packets_in`／`bytes_in` 是最終計數）或 `blocked`（`blocked_by` 是擋下它的規則，計數是被丟掉的那一個封包）。
+3. 位址會在 `released` 之後分給下一個 Run，所以時間窗一定要帶——用第一行給的那兩個時間，不要用 Run 在平台上的起訖。
 
 `skillhub-egress-retention.timer` 每天刪掉最後寫入超過 90 天的檔；存量超過 3 GB 時它失敗並發 `ScheduledJobFailed`。`systemd-journal-remote` 到 4 GB 會自己丟最舊的檔，那時未滿 90 天的記錄也會被丟，所以收到這個告警就要加大磁碟與 `/etc/systemd/journal-remote.conf.d/skillhub.conf` 的 `MaxUse`，再把腳本裡的門檻一起改。

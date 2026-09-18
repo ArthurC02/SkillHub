@@ -1,7 +1,7 @@
 [Unit]
 Description=Skill Hub sandbox provider
-Requires=docker.service nftables.service skillhub-egress-flows.service
-After=docker.service nftables.service skillhub-egress-flows.service network-online.target
+Requires=docker.service nftables.service skillhub-egress-flows.service skillhub-egress-drops.service
+After=docker.service nftables.service skillhub-egress-flows.service skillhub-egress-drops.service network-online.target
 Wants=network-online.target
 
 [Service]

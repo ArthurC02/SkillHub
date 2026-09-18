@@ -20,11 +20,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/egress"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/localdrv"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "egress-record" {
+		if err := egress.Record(os.Stdin, os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	token := os.Getenv("SKILLHUB_SANDBOX_TOKEN")

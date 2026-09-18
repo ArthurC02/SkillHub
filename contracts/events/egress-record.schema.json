@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillhub.local/contracts/events/egress-record.schema.json",
+  "title": "Skill Hub Sandbox Egress Record",
+  "description": "One record about traffic that a sandbox tried to send out of its node, or about which address a Run held while it could send. The platform owns this format; the tools that observe the traffic are adapters and normalise their own output into it before writing. Reading a Run's egress means joining the two record kinds on address and time: an `egress_flow` belongs to the Run whose latest `run_address` record for the same address is `assigned` at that moment. Destination, protocol, ports, counters and the deciding rule are the whole of it: no payload, header, URL, hostname or user content is ever recorded. Records travel inside a log carrier that adds envelope keys of its own, so unknown top-level properties are not rejected.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "record",
+    "at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "description": "Version of this contract, not of the tool that produced the record."
+    },
+    "record": {
+      "type": "string",
+      "enum": [
+        "egress_flow",
+        "run_address"
+      ]
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the observation happened, in UTC. For an accepted flow this is when the connection ended, which is when its counters are final."
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/egress_flow"
+    },
+    {
+      "$ref": "#/$defs/run_address"
+    }
+  ],
+  "$defs": {
+    "egress_flow": {
+      "title": "Egress flow",
+      "required": [
+        "record",
+        "decision",
+        "protocol",
+        "source",
+        "destination",
+        "packets_out",
+        "bytes_out",
+        "packets_in",
+        "bytes_in"
+      ],
+      "properties": {
+        "record": {
+          "const": "egress_flow"
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "blocked"
+          ],
+          "description": "Whether the ruleset let this traffic out."
+        },
+        "blocked_by": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Name of the rule that dropped it. Present on a blocked record and only there."
+        },
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "tcp",
+            "udp",
+            "icmp",
+            "other"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "The sandbox address the traffic came from; the key that ties a flow to a Run."
+        },
+        "destination": {
+          "type": "string",
+          "description": "Destination address as a literal. Sandboxes have no DNS, so there is no name to record."
+        },
+        "destination_port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "Absent for protocols that have no ports."
+        },
+        "packets_out": {
+          "$ref": "#/$defs/counter"
+        },
+        "bytes_out": {
+          "$ref": "#/$defs/counter"
+        },
+        "packets_in": {
+          "$ref": "#/$defs/counter"
+        },
+        "bytes_in": {
+          "$ref": "#/$defs/counter"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "blocked"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "required": [
+              "blocked_by"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "blocked_by"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "run_address": {
+      "title": "Run address",
+      "required": [
+        "record",
+        "state",
+        "run_id",
+        "attempt",
+        "address"
+      ],
+      "properties": {
+        "record": {
+          "const": "run_address"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "assigned",
+            "released"
+          ],
+          "description": "`assigned` opens the window in which flows from this address belong to this Run; `released` closes it. An address is handed to the next Run once released."
+        },
+        "run_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "address": {
+          "type": "string"
+        }
+      }
+    },
+    "counter": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Counted from the sandbox's side: `out` is what it sent, `in` is what came back. A blocked record counts the one packet that was dropped."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "record": "egress_flow",
+      "at": "2026-09-18T09:00:12.481204Z",
+      "decision": "accepted",
+      "protocol": "tcp",
+      "source": "172.17.0.4",
+      "destination": "10.0.0.3",
+      "destination_port": 4000,
+      "packets_out": 18,
+      "bytes_out": 2411,
+      "packets_in": 16,
+      "bytes_in": 18942
+    },
+    {
+      "schema_version": "1.0",
+      "record": "egress_flow",
+      "at": "2026-09-18T09:00:13.002911Z",
+      "decision": "blocked",
+      "blocked_by": "dns",
+      "protocol": "udp",
+      "source": "172.17.0.4",
+      "destination": "1.1.1.1",
+      "destination_port": 53,
+      "packets_out": 1,
+      "bytes_out": 68,
+      "packets_in": 0,
+      "bytes_in": 0
+    },
+    {
+      "schema_version": "1.0",
+      "record": "egress_flow",
+      "at": "2026-09-18T09:00:14.117003Z",
+      "decision": "blocked",
+      "blocked_by": "default",
+      "protocol": "icmp",
+      "source": "172.17.0.4",
+      "destination": "8.8.8.8",
+      "packets_out": 1,
+      "bytes_out": 84,
+      "packets_in": 0,
+      "bytes_in": 0
+    },
+    {
+      "schema_version": "1.0",
+      "record": "run_address",
+      "at": "2026-09-18T09:00:01.004000Z",
+      "state": "assigned",
+      "run_id": "9f1c8f2e-6a4b-4c1d-9e3a-0b7d5c2f1a88",
+      "attempt": 1,
+      "address": "172.17.0.4"
+    },
+    {
+      "schema_version": "1.0",
+      "record": "run_address",
+      "at": "2026-09-18T09:04:37.210000Z",
+      "state": "released",
+      "run_id": "9f1c8f2e-6a4b-4c1d-9e3a-0b7d5c2f1a88",
+      "attempt": 1,
+      "address": "172.17.0.4"
+    }
+  ]
+}

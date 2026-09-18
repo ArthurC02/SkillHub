@@ -458,10 +458,11 @@ jobs:
       - name: redocly lint (contracts/openapi)
         run: npx --yes @redocly/cli@2.52.1 lint contracts/openapi/*.yaml
 
-      - name: Trace event contract (contracts/events)
+      - name: Event contracts (contracts/events)
         run: |
           pip install jsonschema==4.26.0
           python tools/contracts/validate_trace_events.py
+          python tools/contracts/validate_egress_records.py
 
       - name: Packaging contracts (contracts/packaging)
         run: python tools/contracts/validate_packaging.py

@@ -446,10 +446,10 @@ func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
 	}
 }
 
-func startLogged(t *testing.T, network string, req sandbox.RunRequest) (string, []map[string]any) {
+func startLogged(t *testing.T, network string, req sandbox.RunRequest) (string, *dockerdrv.Driver, string, *bytes.Buffer) {
 	t.Helper()
 	newDriver(t)
-	var logs bytes.Buffer
+	logs := &bytes.Buffer{}
 	d, err := dockerdrv.New(dockerdrv.Config{
 		Image:       testImage(),
 		Network:     network,
@@ -458,7 +458,7 @@ func startLogged(t *testing.T, network string, req sandbox.RunRequest) (string, 
 		AllowDevCmd: true,
 		Runtime:     testRuntime(),
 		ExtraLabels: map[string]string{testLabel: "1"},
-		Log:         slog.New(slog.NewJSONHandler(&logs, nil)),
+		Log:         slog.New(slog.NewJSONHandler(logs, nil)),
 	})
 	if err != nil {
 		t.Fatalf("driver: %v", err)
@@ -469,21 +469,25 @@ func startLogged(t *testing.T, network string, req sandbox.RunRequest) (string, 
 	if err := d.Start(context.Background(), id, req); err != nil {
 		t.Fatalf("start: %v", err)
 	}
+	return "skillhub-run-" + id, d, id, logs
+}
+
+func addressRecords(logs *bytes.Buffer) []map[string]any {
 	var records []map[string]any
 	for line := range strings.SplitSeq(strings.TrimSpace(logs.String()), "\n") {
 		record := map[string]any{}
-		if json.Unmarshal([]byte(line), &record) == nil && strings.HasPrefix(fmt.Sprint(record["msg"]), "run network address") {
+		if json.Unmarshal([]byte(line), &record) == nil && record["record"] == "run_address" {
 			records = append(records, record)
 		}
 	}
-	return "skillhub-run-" + id, records
+	return records
 }
 
-func TestARunOnANetworkLogsTheAddressItsEgressFlowsCarry(t *testing.T) {
+func TestARunOnANetworkRecordsTheAddressItsEgressFlowsCarry(t *testing.T) {
 	cli := dockerClient(t)
 	req := testRequest("sleep 30")
 	req.Egress.Allow = []sandbox.EgressAllowEntry{{Purpose: "model_gateway", URL: "http://10.9.9.9:4000"}}
-	container, records := startLogged(t, "bridge", req)
+	container, _, _, logs := startLogged(t, "bridge", req)
 
 	insp, err := cli.ContainerInspect(context.Background(), container, client.ContainerInspectOptions{})
 	if err != nil {
@@ -493,20 +497,57 @@ func TestARunOnANetworkLogsTheAddressItsEgressFlowsCarry(t *testing.T) {
 	if endpoint == nil || !endpoint.IPAddress.IsValid() {
 		t.Fatalf("the container has no bridge address to compare against: %+v", insp.Container.NetworkSettings)
 	}
-	want := map[string]any{"run_id": req.RunID, "attempt": float64(req.Attempt), "network": "bridge", "address": endpoint.IPAddress.String()}
+	records := addressRecords(logs)
 	if len(records) != 1 {
-		t.Fatalf("run network address records = %v, want exactly one", records)
+		t.Fatalf("run address records = %v, want exactly one", records)
+	}
+	want := map[string]any{
+		"schema_version": "1.0", "record": "run_address", "state": "assigned",
+		"run_id": req.RunID, "attempt": float64(req.Attempt), "address": endpoint.IPAddress.String(),
 	}
 	for key, value := range want {
 		if records[0][key] != value {
 			t.Errorf("record[%s] = %v, want %v (record %v)", key, records[0][key], value, records[0])
 		}
 	}
+	if _, err := time.Parse(time.RFC3339Nano, fmt.Sprint(records[0]["at"])); err != nil {
+		t.Errorf("record at = %v, want a time a query can bound a Run by: %v", records[0]["at"], err)
+	}
 }
 
-func TestARunWithoutANetworkLogsNoAddress(t *testing.T) {
-	_, records := startLogged(t, "bridge", testRequest("sleep 30"))
-	if len(records) != 0 {
-		t.Errorf("a run with no egress allow list got no network, yet logged %v", records)
+func TestRemovingASandboxClosesTheWindowItsAddressOpened(t *testing.T) {
+	req := testRequest("sleep 30")
+	req.Egress.Allow = []sandbox.EgressAllowEntry{{Purpose: "model_gateway", URL: "http://10.9.9.9:4000"}}
+	_, d, id, logs := startLogged(t, "bridge", req)
+
+	if err := d.Remove(context.Background(), id); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	records := addressRecords(logs)
+	if len(records) != 2 {
+		t.Fatalf("run address records = %v, want the assignment and its release", records)
+	}
+	if records[0]["state"] != "assigned" || records[1]["state"] != "released" {
+		t.Errorf("states = %v then %v, want assigned then released", records[0]["state"], records[1]["state"])
+	}
+	if records[1]["address"] != records[0]["address"] || records[1]["run_id"] != records[0]["run_id"] {
+		t.Errorf("the release names %v of %v, want the address and Run the assignment opened (%v of %v)",
+			records[1]["address"], records[1]["run_id"], records[0]["address"], records[0]["run_id"])
+	}
+	if err := d.Remove(context.Background(), id); err != nil {
+		t.Fatalf("second remove: %v", err)
+	}
+	if again := addressRecords(logs); len(again) != 2 {
+		t.Errorf("removing an already removed sandbox recorded %v, want no second release", again)
+	}
+}
+
+func TestARunWithoutANetworkRecordsNoAddressAndIsNotTreatedAsAFault(t *testing.T) {
+	_, _, _, logs := startLogged(t, "bridge", testRequest("sleep 30"))
+	if records := addressRecords(logs); len(records) != 0 {
+		t.Errorf("a run with no egress allow list got no network, yet recorded %v", records)
+	}
+	if strings.Contains(logs.String(), "unreadable") {
+		t.Errorf("a run that was never given a network was reported as one whose address could not be read: %s", logs.String())
 	}
 }

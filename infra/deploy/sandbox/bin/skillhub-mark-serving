@@ -17,9 +17,9 @@ done
 
 printf '%s' "$capability" | python3 -c '
 import json, os, sys
-level = json.load(sys.stdin).get("isolation", {}).get("level")
-if level != "gvisor":
-    sys.exit("mark-serving: sandboxd reports isolation level %r, not gvisor; the node stays in provision" % level)
+strength = json.load(sys.stdin).get("isolation", {}).get("strength")
+if strength != "strong":
+    sys.exit("mark-serving: sandboxd reports isolation strength %r, not strong; the node stays in provision" % strength)
 path = os.environ.get("SKILLHUB_NODE_FACTS", "/etc/skillhub/node.json")
 with open(path) as handle:
     facts = json.load(handle)

@@ -1,0 +1,4 @@
+[1789722012.481204]	[DESTROY] ipv4     2 tcp      6 src=172.17.0.4 dst=10.0.0.3 sport=52134 dport=4000 packets=18 bytes=2411 src=10.0.0.3 dst=172.17.0.4 sport=4000 dport=52134 packets=16 bytes=18942 [ASSURED] mark=0 delta-time=12 use=1
+{"__REALTIME_TIMESTAMP":"1789722013002911","_TRANSPORT":"kernel","MESSAGE":"skillhub-drop-dns IN=docker0 OUT=ens3 MAC=02:42:ac:11:00:04:02:42:56:0f:2b:1c:08:00 SRC=172.17.0.4 DST=1.1.1.1 LEN=68 TOS=0x00 PREC=0x00 TTL=63 ID=4321 PROTO=UDP SPT=41234 DPT=53 LEN=48"}
+{"__REALTIME_TIMESTAMP":"1789722014117003","_TRANSPORT":"kernel","MESSAGE":"skillhub-drop-default IN=docker0 OUT=ens3 MAC=02:42:ac:11:00:04:02:42:56:0f:2b:1c:08:00 SRC=172.17.0.4 DST=8.8.8.8 LEN=84 TOS=0x00 PREC=0x00 TTL=63 ID=9182 PROTO=ICMP TYPE=8 CODE=0 ID=12 SEQ=1"}
+{"__REALTIME_TIMESTAMP":"1789722014220000","_TRANSPORT":"kernel","MESSAGE":"docker0: port 1(veth6b1c9d2) entered blocking state"}

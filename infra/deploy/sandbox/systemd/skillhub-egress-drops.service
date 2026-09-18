@@ -1,16 +1,17 @@
 [Unit]
-Description=Skill Hub sandbox egress records: connections the ruleset let out
+Description=Skill Hub sandbox egress records: packets the ruleset dropped
 After=nftables.service
 
 [Service]
 Type=exec
-ExecStart=/bin/sh -c 'exec stdbuf -oL /usr/sbin/conntrack --event --event-mask DESTROY --output timestamp,extended --orig-src 172.17.0.0/16 --buffer-size 8388608 | /usr/local/bin/sandboxd egress-record'
+ExecStart=/bin/sh -c 'exec journalctl --no-pager --dmesg --follow --lines=0 --output=json | /usr/local/bin/sandboxd egress-record'
 Restart=always
 RestartSec=1
 SyslogIdentifier=skillhub-egress-record
 DynamicUser=yes
-CapabilityBoundingSet=CAP_NET_ADMIN
-AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=
+AmbientCapabilities=
+SupplementaryGroups=systemd-journal
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
@@ -28,7 +29,7 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
 SystemCallArchitectures=native
-RestrictAddressFamilies=AF_NETLINK
+RestrictAddressFamilies=AF_UNIX
 
 [Install]
 WantedBy=multi-user.target
