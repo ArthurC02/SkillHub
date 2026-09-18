@@ -150,6 +150,19 @@ func TestBuildWorkersLeavesTheGatewayUnsetWhenNoneIsConfigured(t *testing.T) {
 	}
 }
 
+func TestBuildWorkersLeavesTheSearchModelUnsetWhenNoneIsConfigured(t *testing.T) {
+	pool, deps := testDeps(t)
+	deps.LLM = nil
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+	if set.CreationSearch.LLM != nil {
+		t.Error("no model service configured, yet creation search holds one; every `LLM == nil` guard " +
+			"in search now passes and the first embedding call panics")
+	}
+}
+
 func TestOutboxDispatchAccountsForEveryEventType(t *testing.T) {
 	pool, deps := testDeps(t)
 	set, err := BuildWorkers(pool, deps)

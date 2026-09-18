@@ -152,7 +152,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 
 	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: deps.LLM}
 	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
-	creationSearch := &catalog.Service{Pool: pool, LLM: deps.LLM, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	creationSearch := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(deps.LLM), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 	set.CreationSearch = creationSearch
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)

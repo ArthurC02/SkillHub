@@ -145,7 +145,7 @@ func NewApp(cfg Config) (*App, error) {
 		Pool:          cfg.Pool,
 		Store:         cfg.Store,
 		Fetcher:       cfg.Fetcher,
-		LLM:           cfg.LLM,
+		LLM:           ingest.ModelOrNone(cfg.LLM),
 		GenerateQuota: cfg.GenerateQuota,
 	}
 	registrySvc := &registry.Service{
@@ -199,7 +199,7 @@ func NewApp(cfg Config) (*App, error) {
 	runSvc.ActiveArtifactReferences = packaging.ActiveArtifactReferences
 	catalogSvc := wiring.NewCatalogService(cfg.Pool)
 	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
-	catalogSvc.LLM = cfg.LLM
+	catalogSvc.LLM = catalog.ModelOrNone(cfg.LLM)
 	catalogSvc.Store = cfg.Store
 	catalogSvc.Analytics = funnel
 	catalogSvc.SourceByID = func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {

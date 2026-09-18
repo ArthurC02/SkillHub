@@ -123,3 +123,15 @@ func TestOnlyASingleShotGenerationCountsTowardTheGenerateQuota(t *testing.T) {
 		}
 	}
 }
+
+func TestAnAbsentModelDoesNotReachIngestLookingPresent(t *testing.T) {
+	var unconfigured *llmclient.Client
+
+	if model := ModelOrNone(unconfigured); model != nil {
+		t.Error("an unconfigured client arrived as a non-nil Model; the `LLM == nil` guards in enrichment " +
+			"and generation now pass and the first call panics")
+	}
+	if model := ModelOrNone(&llmclient.Client{}); model == nil {
+		t.Error("a configured client did not reach the service; enrichment would be refused as unconfigured")
+	}
+}

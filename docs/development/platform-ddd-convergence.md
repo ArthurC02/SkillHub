@@ -290,11 +290,21 @@ git grep -n "Gateway\." -- apps/platform/internal/trial/execution/ | awk '!/_tes
 
 排程把錯誤原樣往上拋、結算記一筆警告後跳過這個 attempt、改派一律轉成 `errSpendUnreadable`（它本來就是領域錯誤）。再加「閘道不回應」「閘道拒絕」這類哨兵，會得到零呼叫者的抽象，J2 四問全否。哪天真的要分辨（例如額度用盡不該重試、閘道暫時不通應該重試），照 `provider.go` 的 `Unwrap()` 形狀補，並同批補上會紅的測試。
 
+### 5.9 模型能力介面簽章裡的 DTO
+
+`llmclient` 的請求／回應型別不是外面那家公司的欄位名，是本專案自己的內部契約（`contracts/openapi/llm-internal.yaml`）的形狀——Go 與 Python 兩端都照它實作：
+
+```
+git grep -n "llmclient\." -- apps/platform/internal/skill/ apps/platform/internal/trial/ | awk '!/_test/' | wc -l
+```
+
+換掉模型服務的傳輸方式不會動到這些型別；會動到它們的是契約本身改版，而那本來就要兩端一起改。每個領域套件各自再複製一份自己的 Request／Response，只會多出一層只做欄位搬運的翻譯碼，以及一個沒有機器擋得住的漂移面（契約改了、複製品不會紅）。所以只有**欄位的型別**收斂成消費者自己宣告的窄介面（`catalog.Model`、`ingest.Model`），簽章維持契約的型別，跟 `trial/design` 的 `CriteriaSuggester` 與 `trial/improvement` 的 `Judge` 一致。哪天模型能力改成直連某一家供應商的 SDK，那些型別就變成廠商的話，屆時 J1 成立，才照 `provider.go` 的形狀把 DTO 也收斂進領域。
+
 ---
 
 ## 6 待做
 
-待做是 `04` 的丙-250～丙-253：四條對外邊界還沒到 `apps/platform/internal/trial/execution/provider.go` 的標準（領域動詞、可 `errors.Is` 的領域錯誤、HTTP status 與廠商型別只在 adapter）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。物件儲存（六個消費者各自宣告自己要的窄介面）、Outbox（`Insert` 與 `Dispatcher` 都是純 Go，只有排程觸發器碰佇列）、Trace（遮罩與 schema 驗證在領域層、寫入前無條件執行）與創作的抓取器（函式欄位）同批盤點過，判定已經合格。四項動工時各自照本節末尾的形狀寫進來。丙-249（模型閘道）已結案，它動工時放在這裡的規格隨結案移除，改用的判斷記在 §5.8。
+待做是 `04` 的丙-251～丙-253：三條對外邊界還沒到 `apps/platform/internal/trial/execution/provider.go` 的標準（領域動詞、可 `errors.Is` 的領域錯誤、HTTP status 與廠商型別只在 adapter）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。物件儲存（六個消費者各自宣告自己要的窄介面）、Outbox（`Insert` 與 `Dispatcher` 都是純 Go，只有排程觸發器碰佇列）、Trace（遮罩與 schema 驗證在領域層、寫入前無條件執行）與創作的抓取器（函式欄位）同批盤點過，判定已經合格。三項動工時各自照本節末尾的形狀寫進來。丙-249（模型閘道）與丙-250（模型能力）已結案，它們動工時放在這裡的規格隨結案移除，改用的判斷記在 §5.8 與 §5.9。
 
 [Aggregate 與領域事件](../adr/README.md#aggregate-與領域事件)的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 

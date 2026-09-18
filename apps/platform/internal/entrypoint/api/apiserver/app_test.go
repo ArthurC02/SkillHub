@@ -154,6 +154,11 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		}
 	}
 
+	if app.Versions.LLM != nil {
+		t.Error("no model service configured, yet the importer holds one; every `LLM == nil` guard in " +
+			"enrichment and generation now passes and the first call panics")
+	}
+
 	if app.EvalSvc.Judge != nil || app.EvalSvc.Suggester != nil {
 		t.Error("the API's evaluation service holds a judge or suggester; producing a verdict belongs to cmd/worker")
 	}

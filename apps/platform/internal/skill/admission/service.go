@@ -33,11 +33,26 @@ type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 }
 
+type Model interface {
+	Embed(ctx context.Context, texts []string) (*llmclient.EmbedResponse, error)
+	EnrichSkill(ctx context.Context, req llmclient.EnrichSkillRequest) (*llmclient.EnrichSkillResponse, error)
+	GenerateSkill(ctx context.Context, req llmclient.GenerateSkillRequest) (*llmclient.GenerateSkillResponse, error)
+}
+
+// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
+// and panics on the first call.
+func ModelOrNone(c *llmclient.Client) Model {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
 type Service struct {
 	Pool    *pgxpool.Pool
 	Store   ObjectStore
 	Fetcher *URLFetcher
-	LLM     *llmclient.Client
+	LLM     Model
 
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 

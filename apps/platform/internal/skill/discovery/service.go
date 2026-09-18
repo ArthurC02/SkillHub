@@ -18,6 +18,20 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
 
+type Model interface {
+	EmbedWithin(ctx context.Context, texts []string, seconds float64) (*llmclient.EmbedResponse, error)
+	MatchReasons(ctx context.Context, query string, candidates []llmclient.SkillCandidate) (*llmclient.MatchReasonsResponse, error)
+}
+
+// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
+// and panics on the first call.
+func ModelOrNone(c *llmclient.Client) Model {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
 type Service struct {
 	Pool *pgxpool.Pool
 
@@ -34,7 +48,7 @@ type Service struct {
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 
-	LLM *llmclient.Client
+	LLM Model
 
 	Credit CostRecorder
 
