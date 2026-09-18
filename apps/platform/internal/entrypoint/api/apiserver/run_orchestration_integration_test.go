@@ -1346,12 +1346,19 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 		delivered = append(delivered, e.EventType)
 		return nil
 	}}
-	n, err = publisher.Publish(ctx)
-	if err != nil {
-		t.Fatal(err)
+	published := 0
+	for {
+		n, err = publisher.Publish(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n == 0 {
+			break
+		}
+		published += n
 	}
-	if n != backlog || len(delivered) != backlog {
-		t.Errorf("published %d events and delivered %d, want %d", n, len(delivered), backlog)
+	if published != backlog || len(delivered) != backlog {
+		t.Errorf("published %d events and delivered %d, want %d", published, len(delivered), backlog)
 	}
 	if after := unpublishedCount(t, pool); after != 0 {
 		t.Errorf("%d events are still unpublished after a successful pass", after)
