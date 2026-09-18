@@ -1144,10 +1144,10 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := fake.Provider().GetRun(context.Background(), leaked); err == nil {
+	if _, err := fake.Provider().Observe(context.Background(), leaked); err == nil {
 		t.Error("the leaked sandbox survived the scan")
 	}
-	if _, err := fake.Provider().GetRun(context.Background(), fresh); err != nil {
+	if _, err := fake.Provider().Observe(context.Background(), fresh); err != nil {
 		t.Errorf("the scan destroyed a sandbox that was too new to judge: %v", err)
 	}
 }
@@ -1228,10 +1228,10 @@ func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 	if err := (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fake.Provider().GetRun(ctx, leaked); err == nil {
+	if _, err := fake.Provider().Observe(ctx, leaked); err == nil {
 		t.Error("a sandbox whose attempt never recorded its handle survived the scan")
 	}
-	if _, err := fake.Provider().GetRun(ctx, fresh); err != nil {
+	if _, err := fake.Provider().Observe(ctx, fresh); err != nil {
 		t.Errorf("the scan destroyed a dispatch that is still in flight: %v", err)
 	}
 }
@@ -1257,7 +1257,7 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 	if got := persistentOrphans(t, pool, fake.Name); got != 1 {
 		t.Fatalf("after two consecutive rounds on the same handle the count is %d, want 1", got)
 	}
-	if _, err := fake.Provider().GetRun(ctx, stuck); err != nil {
+	if _, err := fake.Provider().Observe(ctx, stuck); err != nil {
 		t.Fatalf("the fixture stopped holding the stuck sandbox: %v", err)
 	}
 

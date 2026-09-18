@@ -285,14 +285,14 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 }
 
 type Placement struct {
-	Provider   *Provider
+	Provider   SandboxProvider
 	Capability ProviderCapability
 	Profile    RuntimeProfile
 }
 
 func (p Placement) freeSlots() int { return p.Capability.Availability.ConcurrentRunSlots }
 
-func (r *Registry) Select(ctx context.Context, req Requirements) (*Provider, ProviderCapability, RuntimeProfile, error) {
+func (r *Registry) Select(ctx context.Context, req Requirements) (SandboxProvider, ProviderCapability, RuntimeProfile, error) {
 	compatible, err := r.compatible(ctx, req, nil)
 	if err != nil {
 		return nil, ProviderCapability{}, RuntimeProfile{}, err
@@ -320,17 +320,17 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, halted map[
 	var placements []Placement
 	reasons := make([]string, 0, len(r.Providers))
 	for _, p := range r.Providers {
-		if halt, ok := halted[p.Name]; ok {
-			reasons = append(reasons, fmt.Sprintf("%s is drained (%s)", p.Name, halt.Source))
+		if halt, ok := halted[p.Name()]; ok {
+			reasons = append(reasons, fmt.Sprintf("%s is drained (%s)", p.Name(), halt.Source))
 			continue
 		}
 		capability, err := r.Capability(ctx, p)
 		if err != nil {
-			reasons = append(reasons, fmt.Sprintf("%s is unreachable", p.Name))
+			reasons = append(reasons, fmt.Sprintf("%s is unreachable", p.Name()))
 			continue
 		}
 		if capability.Provider == "" {
-			capability.Provider = p.Name
+			capability.Provider = p.Name()
 		}
 		profile, err := Match(capability, req)
 		if err != nil {
@@ -432,9 +432,9 @@ func (s *Service) buildRunRequest(
 	}, nil
 }
 
-func pinnedRuntime(p *Provider, c ProviderCapability, profile RuntimeProfile) ([]byte, error) {
+func pinnedRuntime(p SandboxProvider, c ProviderCapability, profile RuntimeProfile) ([]byte, error) {
 	return json.Marshal(runtimeSnapshot{
-		Provider:          p.Name,
+		Provider:          p.Name(),
 		Runtime:           profile,
 		IsolationStrength: c.Isolation.Strength,
 		Rootless:          c.Isolation.Rootless,

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"net/http"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -19,10 +18,7 @@ const (
 	reassignmentsPerRun = 1
 )
 
-func providerForgotAttempt(err error) bool {
-	pe, ok := errors.AsType[*providerError](err)
-	return ok && pe.Status == http.StatusNotFound
-}
+func providerForgotAttempt(err error) bool { return errors.Is(err, ErrAttemptUnknown) }
 
 func timesLost(attempts []gen.RunAttempt) int {
 	lost := 0

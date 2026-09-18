@@ -109,7 +109,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 type driver struct {
 	svc      *Service
 	cur      gen.Run
-	provider *Provider
+	provider SandboxProvider
 	clock    runClock
 }
 
@@ -227,7 +227,7 @@ dispatching:
 			return d.finish(ctx, lastAttemptID, gen.RunStatusCancelled, failureCancelled, "派送進行中被取消")
 		}
 
-		started, err := d.command(ctx, func(r *Run) { r.StartAttempt(provider.Name) })
+		started, err := d.command(ctx, func(r *Run) { r.StartAttempt(provider.Name()) })
 		if err != nil {
 			return err
 		}
@@ -243,13 +243,13 @@ dispatching:
 			d.finishAttempt(ctx, attempt, errClassProvision, err.Error())
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, err.Error())
 		}
-		pr, err := provider.CreateRun(ctx, request)
+		pr, err := provider.Start(ctx, request)
 		if err != nil {
 			lastErr = err
 			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), err.Error())
 			switch {
 			case refusedForCapacity(err):
-				d.svc.providers().forget(provider.Name)
+				d.svc.providers().forget(provider.Name())
 				placements = placements[1:]
 				continue
 			case !retryable(err):
@@ -267,7 +267,7 @@ dispatching:
 		}
 		dispatched, err := d.command(ctx, func(r *Run) {
 			r.RecordDispatch(attempt.ID, pr.ProviderRunID)
-			r.AssignProvider(provider.Name, snapshot)
+			r.AssignProvider(provider.Name(), snapshot)
 		})
 		if err == nil {
 			attempt = dispatched.Attempt(attempt.ID)
@@ -284,7 +284,7 @@ dispatching:
 			return err
 		}
 		if d.cur.Status == gen.RunStatusQueued {
-			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name); err != nil {
+			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name()); err != nil {
 				return err
 			}
 		}
@@ -307,7 +307,7 @@ dispatching:
 
 func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt gen.RunAttempt) error {
 	provider := d.provider
-	if provider == nil || provider.Name != attempt.Provider {
+	if provider == nil || provider.Name() != attempt.Provider {
 		provider = d.svc.providers().Lookup(attempt.Provider)
 	}
 	if provider == nil {
@@ -320,7 +320,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 	}
 	handle := *attempt.ProviderRunID
 
-	pr, err := provider.GetRun(ctx, handle)
+	pr, err := provider.Observe(ctx, handle)
 	switch {
 	case err == nil:
 		d.providerAnswered(ctx, attempt)
@@ -331,7 +331,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 			return d.settle(ctx, attempt, pr)
 		}
 	case providerForgotAttempt(err):
-		return d.providerLost(ctx, attempt, provider.Name+" no longer knows this attempt")
+		return d.providerLost(ctx, attempt, provider.Name()+" no longer knows this attempt")
 	case !retryable(err):
 		d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
@@ -343,7 +343,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		silent := time.Since(silentSince)
 		if silent >= ProviderLostAfter {
 			return d.providerLost(ctx, attempt,
-				fmt.Sprintf("%s has not answered for %s: %s", provider.Name, silent.Round(time.Second), err))
+				fmt.Sprintf("%s has not answered for %s: %s", provider.Name(), silent.Round(time.Second), err))
 		}
 		slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	}

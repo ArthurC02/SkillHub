@@ -67,7 +67,7 @@ func main() {
 	providers := run.NewRegistryFromEnv()
 	names := make([]string, 0, len(providers.Providers))
 	for _, p := range providers.Providers {
-		names = append(names, p.Name)
+		names = append(names, p.Name())
 	}
 	if len(names) == 0 {
 		slog.Warn("no sandbox provider configured; runs will fail at dispatch")

@@ -81,7 +81,7 @@ func TestIncidentHeldCoversTheRightNodes(t *testing.T) {
 }
 
 func TestIncidentPaused(t *testing.T) {
-	two := &Registry{Providers: []*Provider{
+	two := &Registry{Providers: []SandboxProvider{
 		NewProvider("node_a", "http://a", ""),
 		NewProvider("node_b", "http://b", ""),
 	}}
@@ -105,7 +105,7 @@ func TestIncidentPaused(t *testing.T) {
 }
 
 func TestDispatchPaused(t *testing.T) {
-	two := &Registry{Providers: []*Provider{
+	two := &Registry{Providers: []SandboxProvider{
 		NewProvider("node_a", "http://a", ""),
 		NewProvider("node_b", "http://b", ""),
 	}}

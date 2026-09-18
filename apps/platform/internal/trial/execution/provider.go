@@ -232,18 +232,58 @@ type ProviderRunList struct {
 	ObservedAt time.Time `json:"observed_at"`
 }
 
-type Provider struct {
-	Name    string
-	BaseURL string
+type SandboxProvider interface {
+	Name() string
+
+	Capability(ctx context.Context) (ProviderCapability, error)
+
+	Start(ctx context.Context, req RunRequest) (ProviderRun, error)
+	Observe(ctx context.Context, providerRunID string) (ProviderRun, error)
+	Cancel(ctx context.Context, providerRunID string) (ProviderRun, error)
+	Destroy(ctx context.Context, providerRunID string) error
+
+	ListActive(ctx context.Context) (ProviderRunList, error)
+}
+
+var (
+	ErrProviderFull = errors.New("the provider has no free slot for this run")
+
+	ErrAttemptUnknown = errors.New("the provider does not know this attempt")
+
+	ErrProviderUnavailable = errors.New("the provider is not answering right now")
+
+	ErrProviderRefused = errors.New("the provider refused this request")
+)
+
+type httpProvider struct {
+	name    string
+	baseURL string
 
 	token string
 	HTTP  *http.Client
 }
 
+func (p *httpProvider) Name() string { return p.name }
+
+func (p *httpProvider) Authenticated() bool { return p.token != "" }
+
 type providerError struct {
 	Status  int
 	Class   string
 	Message string
+}
+
+func (e *providerError) Unwrap() error {
+	switch {
+	case e.Status == http.StatusTooManyRequests:
+		return ErrProviderFull
+	case e.Status == http.StatusNotFound:
+		return ErrAttemptUnknown
+	case e.Status >= 500:
+		return ErrProviderUnavailable
+	default:
+		return ErrProviderRefused
+	}
 }
 
 func (e *providerError) Error() string {
@@ -254,29 +294,25 @@ func (e *providerError) Error() string {
 }
 
 func retryable(err error) bool {
-	if pe, ok := errors.AsType[*providerError](err); ok {
-		return pe.Status == http.StatusTooManyRequests || pe.Status >= 500
-	}
-
-	return !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded)
+	return errors.Is(err, ErrProviderUnavailable) || errors.Is(err, ErrProviderFull)
 }
 
-func (p *Provider) client() *http.Client {
+func (p *httpProvider) client() *http.Client {
 	if p.HTTP != nil {
 		return p.HTTP
 	}
 	return http.DefaultClient
 }
 
-func (p *Provider) do(ctx context.Context, method, operation, path string, body, out any, want ...int) (int, error) {
+func (p *httpProvider) do(ctx context.Context, method, operation, path string, body, out any, want ...int) (int, error) {
 	start := time.Now()
 	status, err := p.call(ctx, method, path, body, out, want...)
-	metrics.ProviderRequest.WithLabelValues(p.Name, operation, metrics.StatusClass(status)).Inc()
-	metrics.ObserveSince(metrics.ProviderRequestDuration.WithLabelValues(p.Name, operation), start)
+	metrics.ProviderRequest.WithLabelValues(p.name, operation, metrics.StatusClass(status)).Inc()
+	metrics.ObserveSince(metrics.ProviderRequestDuration.WithLabelValues(p.name, operation), start)
 	return status, err
 }
 
-func (p *Provider) call(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
+func (p *httpProvider) call(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
 	var payload io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -285,7 +321,7 @@ func (p *Provider) call(ctx context.Context, method, path string, body, out any,
 		}
 		payload = bytes.NewReader(encoded)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(p.BaseURL, "/")+path, payload)
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(p.baseURL, "/")+path, payload)
 	if err != nil {
 		return 0, err
 	}
@@ -297,7 +333,10 @@ func (p *Provider) call(ctx context.Context, method, path string, body, out any,
 	}
 	resp, err := p.client().Do(req)
 	if err != nil {
-		return 0, err
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
 	}
 	defer resp.Body.Close()
 
@@ -337,43 +376,43 @@ func (p *Provider) call(ctx context.Context, method, path string, body, out any,
 	return resp.StatusCode, &providerError{Status: resp.StatusCode, Class: errBody.Class, Message: message}
 }
 
-func (p *Provider) Capability(ctx context.Context) (ProviderCapability, error) {
+func (p *httpProvider) Capability(ctx context.Context) (ProviderCapability, error) {
 	var c ProviderCapability
 	_, err := p.do(ctx, http.MethodGet, "capability", "/capability", nil, &c, http.StatusOK)
 	return c, err
 }
 
-func (p *Provider) CreateRun(ctx context.Context, req RunRequest) (ProviderRun, error) {
+func (p *httpProvider) Start(ctx context.Context, req RunRequest) (ProviderRun, error) {
 	var pr ProviderRun
 	_, err := p.do(ctx, http.MethodPost, "create_run", "/runs", req, &pr, http.StatusCreated, http.StatusOK)
 	return pr, err
 }
 
-func (p *Provider) GetRun(ctx context.Context, providerRunID string) (ProviderRun, error) {
+func (p *httpProvider) Observe(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
 	_, err := p.do(ctx, http.MethodGet, "get_run", "/runs/"+url.PathEscape(providerRunID), nil, &pr, http.StatusOK)
 	return pr, err
 }
 
-func (p *Provider) Cancel(ctx context.Context, providerRunID string) (ProviderRun, error) {
+func (p *httpProvider) Cancel(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
 	_, err := p.do(ctx, http.MethodPost, "cancel_run", "/runs/"+url.PathEscape(providerRunID)+"/cancel", nil, &pr, http.StatusAccepted)
 	return pr, err
 }
 
-func (p *Provider) Destroy(ctx context.Context, providerRunID string) error {
+func (p *httpProvider) Destroy(ctx context.Context, providerRunID string) error {
 	_, err := p.do(ctx, http.MethodDelete, "destroy_run", "/runs/"+url.PathEscape(providerRunID), nil, nil, http.StatusNoContent)
 	return err
 }
 
-func (p *Provider) ListActive(ctx context.Context) (ProviderRunList, error) {
+func (p *httpProvider) ListActive(ctx context.Context) (ProviderRunList, error) {
 	var list ProviderRunList
 	_, err := p.do(ctx, http.MethodGet, "list_active", "/runs?active=true", nil, &list, http.StatusOK)
 	return list, err
 }
 
 type Registry struct {
-	Providers []*Provider
+	Providers []SandboxProvider
 
 	TTL time.Duration
 
@@ -397,10 +436,7 @@ var (
 	ErrNoFreeSlot = errors.New("every sandbox provider that can run this request is full")
 )
 
-func refusedForCapacity(err error) bool {
-	pe, ok := errors.AsType[*providerError](err)
-	return ok && pe.Status == http.StatusTooManyRequests
-}
+func refusedForCapacity(err error) bool { return errors.Is(err, ErrProviderFull) }
 
 func NewRegistryFromEnv() *Registry {
 	r := &Registry{}
@@ -410,12 +446,8 @@ func NewRegistryFromEnv() *Registry {
 		if !ok || name == "" || base == "" {
 			continue
 		}
-		r.Providers = append(r.Providers, &Provider{
-			Name:    name,
-			BaseURL: base,
-			token:   os.Getenv("SKILLHUB_SANDBOX_TOKEN_" + strings.ToUpper(name)),
-			HTTP:    &http.Client{Timeout: 30 * time.Second},
-		})
+		r.Providers = append(r.Providers,
+			NewProvider(name, base, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name))))
 	}
 	return r
 }
@@ -423,55 +455,57 @@ func NewRegistryFromEnv() *Registry {
 func (r *Registry) UnauthenticatedProviderRefusals() []string {
 	var refusals []string
 	for _, p := range r.Providers {
-		if p.token == "" {
-			refusals = append(refusals, fmt.Sprintf("sandbox provider %q has no SKILLHUB_SANDBOX_TOKEN_%s: "+
-				"sandboxd rejects every request without its token, so each run sent there would fail at dispatch",
-				p.Name, strings.ToUpper(p.Name)))
+		credentialed, asks := p.(interface{ Authenticated() bool })
+		if !asks || credentialed.Authenticated() {
+			continue
 		}
+		refusals = append(refusals, fmt.Sprintf("sandbox provider %q has no SKILLHUB_SANDBOX_TOKEN_%s: "+
+			"sandboxd rejects every request without its token, so each run sent there would fail at dispatch",
+			p.Name(), strings.ToUpper(p.Name())))
 	}
 	return refusals
 }
 
-func NewRegistry(providers ...*Provider) *Registry { return &Registry{Providers: providers} }
+func NewRegistry(providers ...SandboxProvider) *Registry { return &Registry{Providers: providers} }
 
-func NewProvider(name, baseURL, token string) *Provider {
-	return &Provider{Name: name, BaseURL: baseURL, token: token, HTTP: &http.Client{Timeout: 30 * time.Second}}
+func NewProvider(name, baseURL, token string) SandboxProvider {
+	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: &http.Client{Timeout: 30 * time.Second}}
 }
 
-func (r *Registry) Lookup(name string) *Provider {
+func (r *Registry) Lookup(name string) SandboxProvider {
 	for _, p := range r.Providers {
-		if p.Name == name {
+		if p.Name() == name {
 			return p
 		}
 	}
 	return nil
 }
 
-func (r *Registry) Capability(ctx context.Context, p *Provider) (ProviderCapability, error) {
+func (r *Registry) Capability(ctx context.Context, p SandboxProvider) (ProviderCapability, error) {
 	ttl := r.TTL
 	if ttl == 0 {
 		ttl = capabilityTTL
 	}
 
-	if entry, ok := r.freshCapability(p.Name, ttl); ok {
+	if entry, ok := r.freshCapability(p.Name(), ttl); ok {
 		return entry.capability, entry.err
 	}
 	capability, err := p.Capability(ctx)
 
 	switch {
 	case err != nil:
-		metrics.ProviderCapability.WithLabelValues(p.Name, "error").Inc()
+		metrics.ProviderCapability.WithLabelValues(p.Name(), "error").Inc()
 	case capability.Availability.Healthy != nil && !*capability.Availability.Healthy:
-		metrics.ProviderCapability.WithLabelValues(p.Name, "unhealthy").Inc()
+		metrics.ProviderCapability.WithLabelValues(p.Name(), "unhealthy").Inc()
 	default:
-		metrics.ProviderCapability.WithLabelValues(p.Name, "ok").Inc()
+		metrics.ProviderCapability.WithLabelValues(p.Name(), "ok").Inc()
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cached == nil {
 		r.cached = map[string]cachedCapability{}
 	}
-	r.cached[p.Name] = cachedCapability{capability: capability, at: time.Now(), err: err}
+	r.cached[p.Name()] = cachedCapability{capability: capability, at: time.Now(), err: err}
 	return capability, err
 }
 

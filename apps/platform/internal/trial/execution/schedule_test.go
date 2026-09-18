@@ -339,7 +339,7 @@ func TestPlaceOffersOnlyProvidersWithAFreeSlotMostFreeFirst(t *testing.T) {
 	}
 	var names []string
 	for _, p := range placements {
-		names = append(names, p.Provider.Name)
+		names = append(names, p.Provider.Name())
 	}
 	if got, want := strings.Join(names, ","), "three_free,one_free"; got != want {
 		t.Errorf("placements = %s, want %s", got, want)

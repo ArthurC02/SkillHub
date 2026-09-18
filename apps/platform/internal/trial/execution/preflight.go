@@ -320,7 +320,7 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 		return ProviderSummary{Name: providerUnassigned}
 	}
 	return ProviderSummary{
-		Name:                       p.Name,
+		Name:                       p.Name(),
 		IsolationStrength:          capability.Isolation.Strength,
 		Rootless:                   capability.Isolation.Rootless,
 		Runtime:                    profile.Runtime,

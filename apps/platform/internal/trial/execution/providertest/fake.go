@@ -83,7 +83,7 @@ func randomID() string {
 	return hex.EncodeToString(b[:])
 }
 
-func (f *Fake) Provider() *run.Provider { return run.NewProvider(f.Name, f.URL, f.Token) }
+func (f *Fake) Provider() run.SandboxProvider { return run.NewProvider(f.Name, f.URL, f.Token) }
 
 func DefaultCapability(name string) run.ProviderCapability {
 	healthy, reaps := true, true

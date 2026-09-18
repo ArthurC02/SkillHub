@@ -881,7 +881,7 @@ func TestNginxDoesNotBufferTheEventStream(t *testing.T) {
 }
 
 func TestTheAPIRefusesToStartWithItsPostureRefusalsATokenlessProviderAndBadTrustedProxies(t *testing.T) {
-	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(&run.Provider{Name: "tokenless"}),
+	refusals := startupRefusals(envx.Posture{SecureCookies: true}, run.NewRegistry(run.NewProvider("tokenless", "http://tokenless", "")),
 		errors.New("TRUSTED_PROXIES entry \"caddy\" is neither an address nor a CIDR prefix"))
 	if len(refusals) != 3 || !strings.Contains(refusals[0], "APP_URL") || !strings.Contains(refusals[1], "tokenless") ||
 		!strings.Contains(refusals[2], "TRUSTED_PROXIES") {

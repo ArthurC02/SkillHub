@@ -85,6 +85,6 @@ func (r *Registry) sharesPlacement(ctx context.Context, other gen.Run, placement
 		return false
 	}
 	return slices.ContainsFunc(theirs, func(t Placement) bool {
-		return slices.ContainsFunc(placements, func(p Placement) bool { return p.Provider.Name == t.Provider.Name })
+		return slices.ContainsFunc(placements, func(p Placement) bool { return p.Provider.Name() == t.Provider.Name() })
 	})
 }

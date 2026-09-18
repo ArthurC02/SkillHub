@@ -13,7 +13,7 @@ Skill Hub 需要在不綁死單一 Sandbox 供應商的前提下執行 Run，而
 
 Orchestrator 只依賴 Skill Hub 定義的 Provider Port 與標準 Run Contract；每個 Sandbox 實作以 Adapter 接入，Provider 專屬概念不提升為核心領域欄位。
 
-Provider Port 是 Run 執行 context 裡的程式介面：查詢能力、建立 Attempt、查詢、取消、銷毀、列出仍存活的 sandbox。錯誤以領域分類回報（沒有空位、已不存在、拒絕、暫時不可用），Orchestrator 只依這些分類決定下一步。自建 Sandbox 的 HTTP 契約是其中一個 Adapter 的線路格式；不說這份契約的沙箱服務以另一個 Adapter 接入，Orchestrator 不變。外部系統 Port 與 Adapter 的通則見 ADR-024。
+Provider Port 是 Run 執行 context 裡的程式介面，方法用領域自己的動詞：查詢能力、開始一次 Attempt、觀察、取消、銷毀、列出仍存活的 sandbox。錯誤也以領域分類回報（沒有空位、不認得這個 Attempt、暫時不回應、拒絕），Orchestrator 只依這些分類決定下一步，不看 HTTP 狀態碼；狀態碼的翻譯只存在於 Adapter。自建 Sandbox 的 HTTP 契約是其中一個 Adapter 的線路格式；不說這份契約的沙箱服務以另一個 Adapter 接入，Orchestrator 不變。外部系統 Port 與 Adapter 的通則見 ADR-024。
 
 Provider 至少支援以下生命週期語意：
 

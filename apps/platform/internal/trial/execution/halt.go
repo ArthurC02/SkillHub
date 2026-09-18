@@ -68,7 +68,7 @@ func (h haltState) dispatchPaused(registry *Registry) bool {
 		return false
 	}
 	for _, p := range registry.Providers {
-		if _, ok := h.active(p.Name); !ok {
+		if _, ok := h.active(p.Name()); !ok {
 			return false
 		}
 	}
@@ -83,7 +83,7 @@ func (h haltState) incidentPaused(registry *Registry) bool {
 		return false
 	}
 	for _, p := range registry.Providers {
-		if !h.incidentHeld(p.Name) {
+		if !h.incidentHeld(p.Name()) {
 			return false
 		}
 	}
@@ -249,11 +249,11 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 	var poolOrphans, poolSlots int64
 	for _, provider := range registry.Providers {
 		persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
-			Provider: provider.Name, PersistentAfterRounds: OrphanPersistsAfterRounds,
+			Provider: provider.Name(), PersistentAfterRounds: OrphanPersistsAfterRounds,
 		})
 		if err != nil {
 			slog.Error("counting persistent orphans for the X-04 threshold failed",
-				"provider", provider.Name, "error", err)
+				"provider", provider.Name(), "error", err)
 			continue
 		}
 		slots := 0
@@ -264,9 +264,9 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 		poolSlots += int64(slots)
 
 		threshold := haltThreshold(slots, 1, 2, 1)
-		s.reconcileThresholdHalt(ctx, provider.Name, persistent >= threshold, fmt.Sprintf(
+		s.reconcileThresholdHalt(ctx, provider.Name(), persistent >= threshold, fmt.Sprintf(
 			"X-04: %d leaked sandboxes on %s have survived two reconciler rounds, at or above the %d that drains a node with %d declared slots",
-			persistent, provider.Name, threshold, slots))
+			persistent, provider.Name(), threshold, slots))
 	}
 
 	if len(registry.Providers) > 0 {
@@ -494,7 +494,7 @@ func (s *Service) detectP02Breach(ctx context.Context) {
 			continue
 		}
 		if ok, detail := capability.P02Breach(); ok {
-			breached = append(breached, provider.Name+": "+detail)
+			breached = append(breached, provider.Name()+": "+detail)
 		}
 	}
 	if len(breached) == 0 {

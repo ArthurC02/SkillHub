@@ -20,7 +20,7 @@ const (
 )
 
 type target struct {
-	provider *run.Provider
+	provider run.SandboxProvider
 	baseURL  string
 	token    string
 
@@ -43,7 +43,7 @@ func newTarget(t *testing.T) target {
 	return tg
 }
 
-func negotiate(t *testing.T, p *run.Provider) run.RuntimeProfile {
+func negotiate(t *testing.T, p run.SandboxProvider) run.RuntimeProfile {
 	t.Helper()
 	capability, err := p.Capability(context.Background())
 	if err != nil {
@@ -84,7 +84,7 @@ func (tg target) request(prompt string) run.RunRequest {
 
 func (tg target) dispatch(t *testing.T, req run.RunRequest) run.ProviderRun {
 	t.Helper()
-	pr, err := tg.provider.CreateRun(context.Background(), req)
+	pr, err := tg.provider.Start(context.Background(), req)
 	if err != nil {
 		t.Fatalf("POST /runs: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestProviderContract(t *testing.T) {
 			t.Error("the provider did not echo the platform identifiers back")
 		}
 
-		second, err := tg.provider.CreateRun(ctx, req)
+		second, err := tg.provider.Start(ctx, req)
 		if err != nil {
 			t.Fatalf("re-sending the same request: %v", err)
 		}
@@ -138,7 +138,7 @@ func TestProviderContract(t *testing.T) {
 
 		changed := req
 		changed.TestCaseSnapshot.UserPrompt = "a different prompt entirely"
-		_, err := tg.provider.CreateRun(ctx, changed)
+		_, err := tg.provider.Start(ctx, changed)
 		if err == nil {
 			t.Fatal("a superseded attempt was served the first body's run instead of a conflict")
 		}
@@ -265,7 +265,7 @@ func TestProviderRefusalIsClassifiedAndNotRetried(t *testing.T) {
 	tg := target{provider: fake.Provider(), baseURL: fake.URL, token: fake.Token}
 	tg.profile = negotiate(t, tg.provider)
 	fake.DispatchStatuses = []int{http.StatusUnprocessableEntity}
-	_, err := tg.provider.CreateRun(context.Background(), tg.request("refuse me"))
+	_, err := tg.provider.Start(context.Background(), tg.request("refuse me"))
 	if err == nil {
 		t.Fatal("a 422 was reported as a successful dispatch")
 	}
@@ -293,13 +293,13 @@ func (tg target) raw(t *testing.T, method, path string) *http.Response {
 	return resp
 }
 
-func waitForTerminal(t *testing.T, p *run.Provider, handle string) run.ProviderRun {
+func waitForTerminal(t *testing.T, p run.SandboxProvider, handle string) run.ProviderRun {
 	t.Helper()
 	ctx := context.Background()
 	deadline := time.Now().Add(30 * time.Second)
 	var last run.ProviderRun
 	for time.Now().Before(deadline) {
-		pr, err := p.GetRun(ctx, handle)
+		pr, err := p.Observe(ctx, handle)
 		if err != nil {
 			t.Fatalf("GET /runs/{id}: %v", err)
 		}

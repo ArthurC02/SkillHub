@@ -43,7 +43,7 @@ func TestTheWorkerRefusesToStartWithDevLoginATokenlessProviderOrCleanMode(t *tes
 	}
 	t.Setenv("DEV_LOGIN", "1")
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	refusals := startupRefusals(run.NewRegistry(&run.Provider{Name: "tokenless"}))
+	refusals := startupRefusals(run.NewRegistry(run.NewProvider("tokenless", "http://tokenless", "")))
 	if len(refusals) != 3 || !strings.Contains(refusals[0], "DEV_LOGIN") || !strings.Contains(refusals[1], "tokenless") || !strings.Contains(refusals[2], "single process") {
 		t.Fatalf("refusals = %q, want the dev login, the tokenless provider, then clean mode", refusals)
 	}

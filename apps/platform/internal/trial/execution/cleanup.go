@@ -217,11 +217,11 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 	var failures []string
 	for _, provider := range w.Svc.providers().Providers {
 		if err := w.Svc.scanProvider(ctx, provider); err != nil {
-			metrics.OrphanScan.WithLabelValues(provider.Name, "error").Inc()
-			failures = append(failures, fmt.Sprintf("%s: %v", provider.Name, err))
+			metrics.OrphanScan.WithLabelValues(provider.Name(), "error").Inc()
+			failures = append(failures, fmt.Sprintf("%s: %v", provider.Name(), err))
 			continue
 		}
-		metrics.OrphanScan.WithLabelValues(provider.Name, "ok").Inc()
+		metrics.OrphanScan.WithLabelValues(provider.Name(), "ok").Inc()
 	}
 
 	w.Svc.EvaluateOrphanThresholds(ctx)
@@ -231,7 +231,7 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 	return nil
 }
 
-func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
+func (s *Service) scanProvider(ctx context.Context, provider SandboxProvider) error {
 	list, err := provider.ListActive(ctx)
 	if err != nil {
 		return err
@@ -241,7 +241,7 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		observed = time.Now()
 	}
 
-	preserveScene := s.haltsFailClosed(ctx).incidentHeld(provider.Name)
+	preserveScene := s.haltsFailClosed(ctx).incidentHeld(provider.Name())
 
 	stillPresent := []string{}
 	var failures []string
@@ -252,13 +252,13 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		}
 		stillPresent = append(stillPresent, entry.ProviderRunID)
 		rounds, err := s.queries().RecordOrphanSighting(ctx, gen.RecordOrphanSightingParams{
-			Provider: provider.Name, ProviderRunID: entry.ProviderRunID,
+			Provider: provider.Name(), ProviderRunID: entry.ProviderRunID,
 		})
 		if err != nil {
 
-			slog.Error("recording orphan sighting failed", "provider", provider.Name, "error", err)
+			slog.Error("recording orphan sighting failed", "provider", provider.Name(), "error", err)
 		}
-		slog.Warn("destroying leaked sandbox", "provider", provider.Name, "reason", why,
+		slog.Warn("destroying leaked sandbox", "provider", provider.Name(), "reason", why,
 			"consecutive_rounds", rounds,
 
 			"run_id", entry.RunID)
@@ -267,25 +267,25 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		}
 
 		if err := provider.Destroy(ctx, entry.ProviderRunID); err != nil {
-			metrics.OrphanSandbox.WithLabelValues(provider.Name, "failed").Inc()
+			metrics.OrphanSandbox.WithLabelValues(provider.Name(), "failed").Inc()
 			failures = append(failures, fmt.Sprintf("destroy %s: %v", entry.RunID, err))
 			continue
 		}
-		metrics.OrphanSandbox.WithLabelValues(provider.Name, "destroyed").Inc()
+		metrics.OrphanSandbox.WithLabelValues(provider.Name(), "destroyed").Inc()
 	}
 
 	if err := s.queries().ForgetClearedOrphans(ctx, gen.ForgetClearedOrphansParams{
-		Provider: provider.Name, StillPresent: stillPresent,
+		Provider: provider.Name(), StillPresent: stillPresent,
 	}); err != nil {
-		slog.Error("pruning orphan sightings failed", "provider", provider.Name, "error", err)
+		slog.Error("pruning orphan sightings failed", "provider", provider.Name(), "error", err)
 	}
 	persistent, err := s.queries().CountPersistentOrphans(ctx, gen.CountPersistentOrphansParams{
-		Provider: provider.Name, PersistentAfterRounds: OrphanPersistsAfterRounds,
+		Provider: provider.Name(), PersistentAfterRounds: OrphanPersistsAfterRounds,
 	})
 	if err != nil {
-		slog.Error("counting persistent orphans failed", "provider", provider.Name, "error", err)
+		slog.Error("counting persistent orphans failed", "provider", provider.Name(), "error", err)
 	} else {
-		metrics.OrphanPersistent.WithLabelValues(provider.Name).Set(float64(persistent))
+		metrics.OrphanPersistent.WithLabelValues(provider.Name()).Set(float64(persistent))
 	}
 
 	if len(failures) > 0 {

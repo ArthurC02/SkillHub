@@ -192,7 +192,7 @@ func TestProviderRefusesAResponsePastItsReadLimit(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewProvider("test", srv.URL, "")
+	p := NewProvider("test", srv.URL, "").(*httpProvider)
 	var out map[string]any
 	if _, err := p.call(context.Background(), http.MethodGet, "/", nil, &out, http.StatusOK); err == nil {
 		t.Fatal("provider accepted a response larger than its 4 MiB limit")
@@ -211,7 +211,7 @@ func TestOversizedProviderErrorKeepsItsHTTPRetryClassification(t *testing.T) {
 				_, _ = io.WriteString(w, strings.Repeat("x", limit+1))
 			}))
 			defer srv.Close()
-			p := NewProvider("test", srv.URL, "")
+			p := NewProvider("test", srv.URL, "").(*httpProvider)
 			_, err := p.call(context.Background(), http.MethodGet, "/", nil, nil, http.StatusOK)
 			if err == nil || retryable(err) != tc.retryable {
 				t.Fatalf("error = %v, retryable = %v; want %v", err, retryable(err), tc.retryable)
