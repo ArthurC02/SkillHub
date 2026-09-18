@@ -2,11 +2,9 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -102,23 +100,36 @@ func TestARunIsReassignableOnlyOnceAndOnlyAfterALoss(t *testing.T) {
 	}
 }
 
-func usageGateway(t *testing.T, spendPerAttempt float64) *Gateway {
-	t.Helper()
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /spend/logs/v2", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"data":        []any{map[string]any{"prompt_tokens": 10, "completion_tokens": 5, "spend": spendPerAttempt}},
-			"total_pages": 1,
-		})
-	})
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return &Gateway{AdminBaseURL: srv.URL, SandboxBaseURL: srv.URL, MaxBudgetUSD: 0.50, HTTP: srv.Client()}
+type gatewayStub struct {
+	ceilingUSD float64
+	perAttempt AttemptUsage
+	err        error
+}
+
+func (g gatewayStub) Issue(context.Context, string, string, time.Duration, float64) (*ModelGatewayGrant, error) {
+	return &ModelGatewayGrant{}, nil
+}
+
+func (g gatewayStub) Revoke(context.Context, string) error { return nil }
+
+func (g gatewayStub) Usage(context.Context, string, time.Time) (AttemptUsage, error) {
+	return g.perAttempt, g.err
+}
+
+func (g gatewayStub) BudgetCeilingUSD() float64 { return g.ceilingUSD }
+
+func gatewaySpending(costPerAttempt float64) gatewayStub {
+	return gatewayStub{
+		ceilingUSD: 0.50,
+		perAttempt: AttemptUsage{
+			InputTokens: 10, OutputTokens: 5,
+			ModelCostUSD: costPerAttempt, CostReported: costPerAttempt > 0,
+		},
+	}
 }
 
 func TestANewAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
-	svc := &Service{Gateway: usageGateway(t, 0.10)}
+	svc := &Service{Gateway: gatewaySpending(0.10)}
 	attempts := []gen.RunAttempt{attemptOn("alpha", errClassProviderLost), attemptOn("beta_", errClassExecution)}
 
 	left, err := svc.budgetLeft(context.Background(), attempts)
@@ -131,7 +142,7 @@ func TestANewAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
 }
 
 func TestEveryAttemptsTokensCountAgainstTheSameRunCeiling(t *testing.T) {
-	svc := &Service{Gateway: usageGateway(t, 0)}
+	svc := &Service{Gateway: gatewaySpending(0)}
 	attempts := []gen.RunAttempt{attemptOn("alpha", errClassProviderLost), attemptOn("beta_", "")}
 
 	used, err := svc.usageOf(context.Background(), attempts)
@@ -144,11 +155,9 @@ func TestEveryAttemptsTokensCountAgainstTheSameRunCeiling(t *testing.T) {
 }
 
 func TestSpendThatCannotBeReadStopsTheRunFromStartingAnotherAttempt(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	t.Cleanup(srv.Close)
-	svc := &Service{Gateway: &Gateway{AdminBaseURL: srv.URL, MaxBudgetUSD: 0.50, HTTP: srv.Client()}}
+	unreadable := gatewaySpending(0.10)
+	unreadable.err = errors.New("the gateway is not answering")
+	svc := &Service{Gateway: unreadable}
 
 	_, err := svc.budgetLeft(context.Background(), []gen.RunAttempt{attemptOn("alpha", errClassProviderLost)})
 	if !errors.Is(err, errSpendUnreadable) {

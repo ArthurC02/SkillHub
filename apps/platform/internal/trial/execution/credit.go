@@ -52,7 +52,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 			if attempt.CreatedAt.Valid {
 				since = attempt.CreatedAt.Time.UTC()
 			}
-			usage, err := s.Gateway.AttemptUsage(ctx, pgconv.UUIDString(attempt.ID), since)
+			usage, err := s.Gateway.Usage(ctx, pgconv.UUIDString(attempt.ID), since)
 			if err != nil {
 
 				metrics.RunTokenUsageUnreadable.Inc()
@@ -61,8 +61,8 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 					"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
 				continue
 			}
-			if usage.SpendReported {
-				spent += usage.SpendUSD
+			if usage.CostReported {
+				spent += usage.ModelCostUSD
 				reported = true
 			}
 		}

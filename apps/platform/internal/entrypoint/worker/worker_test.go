@@ -137,6 +137,19 @@ func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 	}
 }
 
+func TestBuildWorkersLeavesTheGatewayUnsetWhenNoneIsConfigured(t *testing.T) {
+	pool, deps := testDeps(t)
+	deps.Gateway = nil
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+	if set.Runs.Gateway != nil {
+		t.Error("no model gateway configured, yet the run service holds one; every `Gateway == nil` guard " +
+			"in the run service now passes and the first call panics")
+	}
+}
+
 func TestOutboxDispatchAccountsForEveryEventType(t *testing.T) {
 	pool, deps := testDeps(t)
 	set, err := BuildWorkers(pool, deps)

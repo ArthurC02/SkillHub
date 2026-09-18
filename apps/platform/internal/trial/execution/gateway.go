@@ -20,6 +20,22 @@ const (
 	defaultKeyTPMLimit  = 200_000
 )
 
+type ModelGateway interface {
+	Issue(ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64) (*ModelGatewayGrant, error)
+	Revoke(ctx context.Context, runAttemptID string) error
+	Usage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error)
+	BudgetCeilingUSD() float64
+}
+
+// An absent gateway must reach the run as a nil interface: a nil *Gateway
+// inside a non-nil interface passes every `!= nil` guard and panics on use.
+func GatewayOrNone(g *Gateway) ModelGateway {
+	if g == nil {
+		return nil
+	}
+	return g
+}
+
 type Gateway struct {
 	AdminBaseURL string
 
@@ -140,13 +156,15 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	return err
 }
 
+func (g *Gateway) BudgetCeilingUSD() float64 { return g.MaxBudgetUSD }
+
 type AttemptUsage struct {
 	InputTokens  int
 	OutputTokens int
 
-	SpendUSD float64
+	ModelCostUSD float64
 
-	SpendReported bool
+	CostReported bool
 }
 
 const (
@@ -159,7 +177,7 @@ const (
 	usageDateFormat = "2006-01-02 15:04:05"
 )
 
-func (g *Gateway) AttemptUsage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error) {
+func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Time) (AttemptUsage, error) {
 	q := url.Values{}
 	q.Set("key_alias", keyAlias(runAttemptID))
 	q.Set("start_date", since.UTC().Format(usageDateFormat))
@@ -188,8 +206,8 @@ func (g *Gateway) AttemptUsage(ctx context.Context, runAttemptID string, since t
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
 			if row.Spend != nil {
-				total.SpendUSD += *row.Spend
-				total.SpendReported = true
+				total.ModelCostUSD += *row.Spend
+				total.CostReported = true
 			}
 		}
 		if len(out.Data) == 0 || page >= out.TotalPages {

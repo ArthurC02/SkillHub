@@ -122,7 +122,7 @@ type Service struct {
 
 	Quota policy.QuotaLimits
 
-	Gateway *Gateway
+	Gateway ModelGateway
 }
 
 func (s *Service) requireTestLab() error {

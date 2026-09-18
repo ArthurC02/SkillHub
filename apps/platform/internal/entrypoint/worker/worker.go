@@ -99,7 +99,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	downloads.TestLab = testlabSvc
 
 	set.Runs = &run.Service{
-		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: deps.Gateway,
+		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: run.GatewayOrNone(deps.Gateway),
 		ClearSightings: objreconcile.ClearArtifactSightings,
 		TestLab:        testlabSvc,
 		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,

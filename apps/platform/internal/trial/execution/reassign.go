@@ -101,7 +101,7 @@ func (d *driver) budgetForNextAttempt(ctx context.Context, attempts []gen.RunAtt
 	}
 	if left <= 0 {
 		return 0, fmt.Errorf("this run has spent its model budget of %.2f USD, so no further attempt can run within it",
-			d.svc.Gateway.MaxBudgetUSD)
+			d.svc.Gateway.BudgetCeilingUSD())
 	}
 	return left, nil
 }
@@ -113,14 +113,14 @@ func (s *Service) usageOf(ctx context.Context, attempts []gen.RunAttempt) (Attem
 		if a.CreatedAt.Valid {
 			since = a.CreatedAt.Time.UTC()
 		}
-		used, err := s.Gateway.AttemptUsage(ctx, pgconv.UUIDString(a.ID), since)
+		used, err := s.Gateway.Usage(ctx, pgconv.UUIDString(a.ID), since)
 		if err != nil {
 			return AttemptUsage{}, err
 		}
 		total.InputTokens += used.InputTokens
 		total.OutputTokens += used.OutputTokens
-		total.SpendUSD += used.SpendUSD
-		total.SpendReported = total.SpendReported || used.SpendReported
+		total.ModelCostUSD += used.ModelCostUSD
+		total.CostReported = total.CostReported || used.CostReported
 	}
 	return total, nil
 }
@@ -133,5 +133,5 @@ func (s *Service) budgetLeft(ctx context.Context, attempts []gen.RunAttempt) (fl
 	if err != nil {
 		return 0, errSpendUnreadable
 	}
-	return s.Gateway.MaxBudgetUSD - used.SpendUSD, nil
+	return s.Gateway.BudgetCeilingUSD() - used.ModelCostUSD, nil
 }

@@ -57,7 +57,7 @@ func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
 	stub := &spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}, {19_415, 250}}}
 	g := stub.start(t)
 
-	used, err := g.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err := g.Usage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,23 +73,23 @@ func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
 	}
 }
 
-func TestAttemptUsageSumsSpendAndSaysWhetherAnyWasReported(t *testing.T) {
+func TestAttemptUsageSumsCostAndSaysWhetherAnyWasReported(t *testing.T) {
 	priced := (&spendLogStub{calls: [][2]int{{420, 12}, {19_215, 300}}, spends: []float64{0.0012, 0.037}}).start(t)
-	used, err := priced.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err := priced.Usage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !used.SpendReported || math.Abs(used.SpendUSD-0.0382) > 1e-9 {
-		t.Errorf("spend = %v reported = %v, want 0.0382 / true", used.SpendUSD, used.SpendReported)
+	if !used.CostReported || math.Abs(used.ModelCostUSD-0.0382) > 1e-9 {
+		t.Errorf("spend = %v reported = %v, want 0.0382 / true", used.ModelCostUSD, used.CostReported)
 	}
 
 	unpriced := (&spendLogStub{calls: [][2]int{{420, 12}}}).start(t)
-	used, err = unpriced.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err = unpriced.Usage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if used.SpendReported || used.SpendUSD != 0 {
-		t.Errorf("spend = %v reported = %v, want 0 / false for rows without a spend field", used.SpendUSD, used.SpendReported)
+	if used.CostReported || used.ModelCostUSD != 0 {
+		t.Errorf("spend = %v reported = %v, want 0 / false for rows without a spend field", used.ModelCostUSD, used.CostReported)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
 	stub := &spendLogStub{calls: calls}
 	g := stub.start(t)
 
-	used, err := g.AttemptUsage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
+	used, err := g.Usage(context.Background(), "attempt-1", time.Now().Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestAttemptTokensFollowsThePagesTheGatewayReports(t *testing.T) {
 	}
 }
 
-func driverWithCeiling(t *testing.T, g *Gateway, maxInput, maxOutput int) *driver {
+func driverWithCeiling(t *testing.T, g ModelGateway, maxInput, maxOutput int) *driver {
 	t.Helper()
 	limits := DefaultResourceLimits()
 	limits.TokenBudget.MaxInputTokens = maxInput
@@ -181,6 +181,15 @@ func TestAnUnreadableGatewayDoesNotKillAHealthyRun(t *testing.T) {
 
 func TestNoGatewayMeansNoCeilingToEnforce(t *testing.T) {
 	d := driverWithCeiling(t, nil, 300_000, 60_000)
+	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
+		t.Fatalf("a deployment with no model gateway stopped a run over tokens: %q", reason)
+	}
+}
+
+func TestAnAbsentGatewayDoesNotReachTheRunLookingPresent(t *testing.T) {
+	var unconfigured *Gateway
+	d := driverWithCeiling(t, GatewayOrNone(unconfigured), 300_000, 60_000)
+
 	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
 		t.Fatalf("a deployment with no model gateway stopped a run over tokens: %q", reason)
 	}
