@@ -314,7 +314,11 @@ git grep -n "river\." -- apps/platform/internal/trial/ apps/platform/internal/cr
 
 ## 6 待做
 
-待做是 `04` 的丙-252～丙-253：兩條對外邊界還沒到 `apps/platform/internal/trial/execution/provider.go` 的標準（領域動詞、可 `errors.Is` 的領域錯誤、HTTP status 與廠商型別只在 adapter）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。物件儲存（六個消費者各自宣告自己要的窄介面）、Outbox（`Insert` 與 `Dispatcher` 都是純 Go，只有排程觸發器碰佇列）、Trace（遮罩與 schema 驗證在領域層、寫入前無條件執行）與創作的抓取器（函式欄位）同批盤點過，判定已經合格。兩項動工時各自照本節末尾的形狀寫進來。丙-249（模型閘道）、丙-250（模型能力）與丙-251（佇列）已結案，它們動工時放在這裡的規格隨結案移除，改用的判斷記在 §5.8、§5.9 與 §5.10。
+對外邊界的盤點已經做完：每個被領域欄位持有的外部系統都由領域自己宣告要用到的窄介面，具體的 client 退回實作它的 adapter，缺席時一律經一個轉換函式變成真正的 nil 介面（typed nil 會讓每個 `X == nil` 守衛失效、第一次呼叫就 panic）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。判定不做的三件與各自的量測在 §5.8～§5.10。再有新的邊界，用同一組問題量一次，先在 `04` 登記，再照本節末尾的形狀寫進來。
+
+```
+git grep -n "\*http.Client\|\*river.Client\|llmclient.Client\|OrNone(\|OrNil(" -- apps/platform/internal/ | awk '!/_test/'
+```
 
 [Aggregate 與領域事件](../adr/README.md#aggregate-與領域事件)的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 

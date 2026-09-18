@@ -100,6 +100,14 @@ func (u GitHubUser) External() ExternalIdentity {
 	}
 }
 
+func (g *GitHubOAuth) Identify(ctx context.Context, accessToken string) (ExternalIdentity, error) {
+	user, err := g.FetchUser(ctx, accessToken)
+	if err != nil {
+		return ExternalIdentity{}, err
+	}
+	return user.External(), nil
+}
+
 func (g *GitHubOAuth) FetchUser(ctx context.Context, token string) (GitHubUser, error) {
 	var u struct {
 		ID    int64  `json:"id"`

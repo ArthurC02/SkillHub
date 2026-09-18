@@ -86,6 +86,10 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
+	if h.Service.OAuth == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "github login is not configured")
+		return
+	}
 	raw := make([]byte, 16)
 	if _, err := rand.Read(raw); err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "state generation failed")
@@ -100,6 +104,10 @@ func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
+	if h.Service.OAuth == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "github login is not configured")
+		return
+	}
 
 	sc, err := r.Cookie(stateCookie)
 	if err != nil || sc.Value == "" || r.URL.Query().Get("state") != sc.Value {
@@ -118,13 +126,13 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "code exchange failed")
 		return
 	}
-	ghUser, err := h.Service.OAuth.FetchUser(ctx, accessToken)
+	external, err := h.Service.OAuth.Identify(ctx, accessToken)
 	if err != nil {
 		slog.Warn("github user fetch failed", "error", err)
 		httpx.WriteError(w, http.StatusUnauthorized, "user fetch failed")
 		return
 	}
-	token, err := h.Service.LoginOrSignup(ctx, ghUser.External())
+	token, err := h.Service.LoginOrSignup(ctx, external)
 	if err != nil {
 		if errors.Is(err, ErrAccountPurging) {
 			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")

@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
@@ -131,5 +133,17 @@ func TestAddCriterionAcceptsUpToTheLimitAndRefusesOneOver(t *testing.T) {
 	}
 	if _, err := svc.AddCriterion(t.Context(), ws, tc.ID, "overflow", SourceUser); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("criterion %d returned %v, want ErrLimitExceeded", MaxCriteria+1, err)
+	}
+}
+
+func TestAnAbsentModelDoesNotReachTheTestLabLookingPresent(t *testing.T) {
+	var unconfigured *llmclient.Client
+
+	if model := ModelOrNone(unconfigured); model != nil {
+		t.Error("an unconfigured client arrived as a non-nil CriteriaSuggester; the `LLM == nil` guard on " +
+			"suggesting criteria now passes and the first call panics")
+	}
+	if model := ModelOrNone(&llmclient.Client{}); model == nil {
+		t.Error("a configured client did not reach the test lab; criteria would never be suggested")
 	}
 }

@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -66,5 +67,29 @@ func TestNotInvitedAnswersABrowserWithAChinesePage(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "closed beta") {
 		t.Errorf("API body = %q, want the unchanged betaNotInvited sentence", w.Body.String())
+	}
+}
+
+func TestTheLoginRoutesRefuseCleanlyWhenNoProviderIsConfigured(t *testing.T) {
+	h := &Handler{Service: &Service{}}
+	for _, tc := range []struct {
+		name   string
+		serve  func(http.ResponseWriter, *http.Request)
+		target string
+	}{
+		{"start", h.startLogin, "/auth/github/login"},
+		{"callback", h.finishLogin, "/auth/github/callback?state=x&code=y"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			tc.serve(w, httptest.NewRequest("GET", tc.target, nil))
+
+			if w.Code != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want 503 when no identity provider is configured", w.Code)
+			}
+			if !strings.Contains(w.Body.String(), "not configured") {
+				t.Errorf("body = %q, want it to say the provider is not configured", w.Body.String())
+			}
+		})
 	}
 }

@@ -239,3 +239,22 @@ func TestOptionalSessionWithoutCookiePassesThrough(t *testing.T) {
 		t.Fatal("want no user in context without a session cookie")
 	}
 }
+
+func TestTheProviderHandsTheDomainANeutralIdentityRatherThanItsOwnUser(t *testing.T) {
+	g := stubGitHub(t, "")
+
+	id, err := g.Identify(context.Background(), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ExternalIdentity{
+		Provider: providerGitHub, ProviderUserID: "42",
+		Email: "a@x.dev", Name: "arthur", Login: "arthur",
+	}
+	if id != want {
+		t.Errorf("identity = %+v, want %+v", id, want)
+	}
+	if _, err := g.Identify(context.Background(), "wrong-token"); err == nil {
+		t.Error("a refused token still produced an identity")
+	}
+}

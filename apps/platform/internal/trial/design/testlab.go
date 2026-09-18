@@ -67,6 +67,15 @@ type CriteriaSuggester interface {
 	SuggestCriteria(ctx context.Context, req llmclient.SuggestCriteriaRequest) (*llmclient.SuggestCriteriaResponse, error)
 }
 
+// A nil *Client inside a non-nil interface passes every `LLM == nil` guard
+// and panics on the first call.
+func ModelOrNone(c *llmclient.Client) CriteriaSuggester {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore

@@ -135,3 +135,15 @@ func TestAnAbsentModelDoesNotReachIngestLookingPresent(t *testing.T) {
 		t.Error("a configured client did not reach the service; enrichment would be refused as unconfigured")
 	}
 }
+
+func TestAnAbsentFetcherDoesNotReachIngestLookingPresent(t *testing.T) {
+	var unconfigured *URLFetcher
+
+	if f := FetcherOrNone(unconfigured); f != nil {
+		t.Error("an unconfigured fetcher arrived as a non-nil SourceFetcher; importing from a URL would " +
+			"pass the `Fetcher == nil` guard and panic instead of saying the deployment has it turned off")
+	}
+	if f := FetcherOrNone(&URLFetcher{}); f == nil {
+		t.Error("a configured fetcher did not reach the service; every URL import would be refused")
+	}
+}

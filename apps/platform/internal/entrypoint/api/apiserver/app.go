@@ -94,7 +94,7 @@ type App struct {
 }
 
 func NewApp(cfg Config) (*App, error) {
-	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth}
+	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: identity.ProviderOrNone(cfg.OAuth)}
 	testlabSvc := &testlab.Service{
 		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
 	}
@@ -144,7 +144,7 @@ func NewApp(cfg Config) (*App, error) {
 	versions := &ingest.Service{
 		Pool:          cfg.Pool,
 		Store:         cfg.Store,
-		Fetcher:       cfg.Fetcher,
+		Fetcher:       ingest.FetcherOrNone(cfg.Fetcher),
 		LLM:           ingest.ModelOrNone(cfg.LLM),
 		GenerateQuota: cfg.GenerateQuota,
 	}
@@ -155,7 +155,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	versions.References = registrySvc
 	testlabSvc.Store = cfg.Store
-	testlabSvc.LLM = suggesterOrNil(cfg.LLM)
+	testlabSvc.LLM = testlab.ModelOrNone(cfg.LLM)
 	testlabSvc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (testlab.SkillFacts, bool, error) {
 		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
 		return testlab.SkillFacts{Name: skill.Name, Summary: skill.Summary}, found, err
@@ -486,13 +486,6 @@ func (a *App) logFeatureFlags(ctx context.Context) error {
 
 func BetaGateClosed() map[string]bool {
 	return map[string]bool{"\x00 roster was not recorded": true}
-}
-
-func suggesterOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
-	if c == nil {
-		return nil
-	}
-	return c
 }
 
 func creationEnabled(cfg Config) bool {

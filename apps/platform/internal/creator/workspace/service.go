@@ -27,9 +27,24 @@ var ErrAccountPurging = errors.New("account deletion is already in progress")
 
 var ErrWorkspaceNotFound = errors.New("workspace not found")
 
+type IdentityProvider interface {
+	AuthURL(state string) string
+	Exchange(ctx context.Context, code string) (accessToken string, err error)
+	Identify(ctx context.Context, accessToken string) (ExternalIdentity, error)
+}
+
+// A nil *GitHubOAuth inside a non-nil interface passes every `OAuth == nil`
+// guard and panics on the first call.
+func ProviderOrNone(g *GitHubOAuth) IdentityProvider {
+	if g == nil {
+		return nil
+	}
+	return g
+}
+
 type Service struct {
 	Pool  *pgxpool.Pool
-	OAuth *GitHubOAuth
+	OAuth IdentityProvider
 
 	PurgeAnalytics     WorkspacePurge
 	PurgeTestData      WorkspacePurge

@@ -37,3 +37,15 @@ func TestPublishedDTOsPreserveIdentityFacts(t *testing.T) {
 		t.Fatalf("workspaceDTO() = %#v", workspace)
 	}
 }
+
+func TestAnAbsentIdentityProviderDoesNotReachTheServiceLookingPresent(t *testing.T) {
+	var unconfigured *GitHubOAuth
+
+	if p := ProviderOrNone(unconfigured); p != nil {
+		t.Error("an unconfigured client arrived as a non-nil IdentityProvider; the login routes would take " +
+			"it for a working provider and panic on the first call")
+	}
+	if p := ProviderOrNone(&GitHubOAuth{}); p == nil {
+		t.Error("a configured client did not reach the service; login would be refused as unconfigured")
+	}
+}

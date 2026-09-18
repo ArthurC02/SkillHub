@@ -33,6 +33,21 @@ type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 }
 
+type SourceFetcher interface {
+	Normalize(rawURL string) (string, error)
+	Fetch(ctx context.Context, rawURL string) (data []byte, ref string, err error)
+	Probe(ctx context.Context, rawURL string) error
+}
+
+// A nil *URLFetcher inside a non-nil interface passes every `Fetcher == nil`
+// guard and panics on the first call.
+func FetcherOrNone(f *URLFetcher) SourceFetcher {
+	if f == nil {
+		return nil
+	}
+	return f
+}
+
 type Model interface {
 	Embed(ctx context.Context, texts []string) (*llmclient.EmbedResponse, error)
 	EnrichSkill(ctx context.Context, req llmclient.EnrichSkillRequest) (*llmclient.EnrichSkillResponse, error)
@@ -51,7 +66,7 @@ func ModelOrNone(c *llmclient.Client) Model {
 type Service struct {
 	Pool    *pgxpool.Pool
 	Store   ObjectStore
-	Fetcher *URLFetcher
+	Fetcher SourceFetcher
 	LLM     Model
 
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
