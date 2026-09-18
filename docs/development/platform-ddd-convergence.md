@@ -284,7 +284,9 @@ creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在
 
 ## 6 待做
 
-目前沒有待做。[Aggregate 與領域事件](../adr/README.md#aggregate-與領域事件)的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
+待做是 `04` 的丙-249～丙-253：五條對外邊界還沒到 `apps/platform/internal/trial/execution/provider.go` 的標準（領域動詞、可 `errors.Is` 的領域錯誤、HTTP status 與廠商型別只在 adapter）。判準是三問中兩問為是：**這個外部系統會被換掉嗎**、**領域程式是不是在講它的話**、**要測一條領域規則是不是得把外部系統架起來**。物件儲存（六個消費者各自宣告自己要的窄介面）、Outbox（`Insert` 與 `Dispatcher` 都是純 Go，只有排程觸發器碰佇列）、Trace（遮罩與 schema 驗證在領域層、寫入前無條件執行）與創作的抓取器（函式欄位）同批盤點過，判定已經合格。下一項的規格在 §6.1；其餘四項動工時各自照同一個形狀寫進來。
+
+[Aggregate 與領域事件](../adr/README.md#aggregate-與領域事件)的 Evaluation、Skill、Run aggregate 與 creation 的兩個具名概念都已改完；新的 aggregate 照抄 `trial/improvement/evaluation.go`（aggregate 與事件）、`evaluation_store.go`（載入與存回）、`evaluation_test.go`（只看唯讀狀態與事件）；aggregate 之間的事件往來照抄 `trial/improvement/mailbox.go`（訂閱者把事件投進 Mailbox，worker 消化，最後一次仍失敗才稽核）：
 
 - 狀態不匯出，只有唯讀存取。命令不回傳值、不帶 `context`、不做 I/O：成立就改狀態並記下領域事件，不成立就只記一則帶理由的拒絕事件。
 - 載入是吃呼叫端交易的套件函式並以列鎖讀出；存回只有一處，同交易寫狀態並把事件寫進 outbox；拒絕不存回。
@@ -293,6 +295,23 @@ creation 會話不包成 aggregate：唯一的寫入點 `advance()` 已經存在
 - 新事件照[事件目錄](../../contracts/events/domain-events.md) §4 規則 4：目錄、outbox 常數、新 migration 的值域檢查、producer 同一個 commit。
 
 新的待做先在 `04` 登記，再寫進這一節，每一項用同一個形狀：**GOAL**（要擋住什麼）、**DISCOVER**（能重跑的指令）、**EDIT**（改動的形狀）、**PROVE**（弄壞哪一行、哪條測試會紅）、**STOP-IF**（什麼情況停下回報）。
+
+### 6.1 丙-249：模型閘道的 Port
+
+**GOAL**：擋住「換一個模型閘道要動領域檔」，以及「領域規則讀得到供應商的花費欄位」。
+
+**DISCOVER**
+
+```
+git grep -n "Gateway\." -- apps/platform/internal/trial/execution/ | awk '!/_test/ && !/gateway.go/'
+git grep -n "SpendUSD\|MaxBudgetUSD" -- apps/platform/internal/ | awk '!/_test/'
+```
+
+**EDIT**：照 `provider.go` 的形狀——以領域動詞宣告介面（為一次 attempt 簽發額度、讀一次 attempt 的用量）、可 `errors.Is` 的領域錯誤（至少「閘道不回應」與「花費讀不到」，後者的 `errSpendUnreadable` 已經存在）、領域自己的用量型別（`RunUsage.ModelCostUSD` 已經是這個詞，只是沒被統一使用）；HTTP status 收進 `gatewayError.Unwrap()`，`Service.Gateway` 的欄位型別改成介面。
+
+**PROVE**：把 `Unwrap()` 裡任一條 status 對應改掉、把欄位型別換回具體型別，各跑一次並指名會紅的測試；每個新的領域錯誤都要有一條不連資料庫的測試。
+
+**STOP-IF**：領域側還有讀 `Gateway` 其他欄位的地方，或「虛擬金鑰」在領域規則裡不只是一個額度上限——停下回報，不要自行擴大介面。
 
 J3 已經量過，不在這裡：吃事實的 `require*` 都只負責取事實，判斷交給純函式（`scanVerdict`、`runSlotVerdict`、`policy.EnforceQuota`）或注入的讀取者；額度扣抵留在 SQL 是 C2。重開前先重跑 J3 的 DISCOVER：
 

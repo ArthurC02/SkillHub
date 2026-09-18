@@ -778,7 +778,7 @@ func (c runClock) timeoutReason() string {
 	return fmt.Sprintf("超過硬性時間上限;期限是 %s", deadline)
 }
 
-func (d *driver) expired() bool { return d.clock.expired(time.Now()) }
+func (d *driver) expired() bool { return d.clock.expired(d.svc.now()) }
 
 func (d *driver) timeoutReason() string { return d.clock.timeoutReason() }
 

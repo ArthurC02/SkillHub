@@ -2,6 +2,7 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -11,6 +12,47 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
+
+func TestARunsDeadlineIsJudgedAgainstTheClockTheServiceReads(t *testing.T) {
+	dispatched := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	policy, err := json.Marshal(policySnapshot{ResourceLimits: ResourceLimits{WallClockHardSeconds: 120}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock := clockFor(
+		gen.Run{CreatedAt: pgtype.Timestamptz{Time: dispatched, Valid: true}, PolicySnapshot: policy},
+		[]gen.RunAttempt{dispatchedAttempt(dispatched)},
+	)
+	deadline := dispatched.Add(2 * time.Minute)
+
+	for _, tc := range []struct {
+		name string
+		now  time.Time
+		want bool
+	}{
+		{"at the deadline", deadline, false},
+		{"a second past it", deadline.Add(time.Second), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &driver{svc: &Service{Now: func() time.Time { return tc.now }}, clock: clock}
+			if got := d.expired(); got != tc.want {
+				t.Errorf("expired at %s = %v, want %v (deadline %s)", tc.now, got, tc.want, deadline)
+			}
+		})
+	}
+}
+
+func TestAServiceWithoutAnInjectedClockReadsTheRealOneInUTC(t *testing.T) {
+	before := time.Now().UTC()
+	now := (&Service{}).now()
+
+	if now.Before(before) || now.Sub(before) > time.Minute {
+		t.Errorf("now = %s, want the real time around %s", now, before)
+	}
+	if now.Location() != time.UTC {
+		t.Errorf("now is in %s, want UTC: deadlines are compared against stored UTC timestamps", now.Location())
+	}
+}
 
 func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
 	if err := (&Service{TestLab: &testlab.Service{}}).requireTestLab(); err != nil {

@@ -575,6 +575,32 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	}
 }
 
+func TestSupervisorTimesOutARunWhoseTimestampsAreFreshButWhoseClockRanOut(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-service-clock")
+	created := f.start(t)
+
+	ctx := context.Background()
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	dispatched := insertUnissuedAttempt(t, gen.New(pool), ws, runID, 1)
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET provider_run_id = 'sbx-service-clock',
+		started_at = now() WHERE id = $1`, dispatched.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := &run.Service{Pool: pool, Now: func() time.Time { return time.Now().Add(2 * time.Hour) }}
+	if err := svc.Supervise(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	_, view := f.getRun(t, created.RunID)
+	if view.Status != string(gen.RunStatusTimedOut) {
+		t.Fatalf("status = %q, want timed_out: the run started a moment ago, and only the clock the service "+
+			"reads says its deadline has passed", view.Status)
+	}
+}
+
 func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
