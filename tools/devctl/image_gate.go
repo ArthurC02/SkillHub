@@ -14,10 +14,7 @@ import (
 
 const runtimeImageDir = "infra/images/runtime-agent-sdk"
 
-var (
-	digestPinnedImage    = regexp.MustCompile(`@sha256:[0-9a-f]{64}$`)
-	imageVersionDiffLine = regexp.MustCompile(`(?m)^[+-]ARG\s+IMAGE_VERSION\s*=`)
-)
+var digestPinnedImage = regexp.MustCompile(`@sha256:[0-9a-f]{64}$`)
 
 func imageGate(root string, args []string, out io.Writer) error {
 	if len(args) > 0 {
