@@ -19,7 +19,9 @@ INSERT INTO credit_entries (
     sqlc.arg(user_id), sqlc.arg(kind), sqlc.arg(delta_credits), sqlc.arg(usd_micros),
     sqlc.arg(markup_bps), sqlc.arg(model), sqlc.arg(prompt_version), sqlc.arg(ref_type),
     sqlc.arg(ref_id), sqlc.arg(cost_event_id), sqlc.arg(estimated), sqlc.arg(idempotency_key)
-) RETURNING *;
+)
+ON CONFLICT ON CONSTRAINT credit_entries_idempotency_key_key DO NOTHING
+RETURNING *;
 
 -- name: ListRecentCreditEntries :many
 SELECT * FROM credit_entries

@@ -138,7 +138,9 @@ INSERT INTO cost_events (
     $5, $6, $7,
     $8, $9, $10, $11,
     $12
-) RETURNING id, kind, model, prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key, created_at
+)
+ON CONFLICT ON CONSTRAINT cost_events_idempotency_key_key DO NOTHING
+RETURNING id, kind, model, prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key, created_at
 `
 
 type InsertCostEventParams struct {

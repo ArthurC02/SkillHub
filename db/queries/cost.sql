@@ -7,7 +7,9 @@ INSERT INTO cost_events (
     sqlc.arg(completion_tokens), sqlc.arg(usd_micros), sqlc.arg(cost_source),
     sqlc.arg(workspace_id), sqlc.arg(user_id), sqlc.arg(ref_type), sqlc.arg(ref_id),
     sqlc.arg(idempotency_key)
-) RETURNING *;
+)
+ON CONFLICT ON CONSTRAINT cost_events_idempotency_key_key DO NOTHING
+RETURNING *;
 
 -- name: AggregateCostEventsWindow :one
 SELECT

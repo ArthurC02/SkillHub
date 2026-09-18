@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -1612,5 +1613,50 @@ func TestATraceNoRecorderEverSpokeToIsNotCalledComplete(t *testing.T) {
 	if f.traceIsComplete(t, created.RunID) {
 		t.Error("a run whose recorder never said anything reports complete=true with every count at zero; " +
 			"nothing collected is being shown as nothing happened")
+	}
+}
+
+func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-unsettled-cost")
+	clearRunBacklog(t, pool)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.PollInterval = 20 * time.Millisecond
+	settled := 0
+	svc.CreditSettle = func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *int64, int64) error {
+		settled++
+		if settled == 1 {
+			return errors.New("the ledger is not answering")
+		}
+		return nil
+	}
+	ctx := context.Background()
+
+	created := f.start(t)
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err == nil {
+		t.Fatal("a run whose cost was never charged reported a clean teardown; nothing would try again " +
+			"and the workspace keeps the credits it spent")
+	}
+	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusFailed) {
+		t.Fatalf("cleanup_status = %q after the charge failed, want failed", got)
+	}
+
+	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err != nil {
+		t.Fatalf("the retry that charged the run failed: %v", err)
+	}
+	if settled != 2 {
+		t.Errorf("settlement ran %d times; the retry has to charge the run that was never charged", settled)
+	}
+	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusCleaned) {
+		t.Errorf("cleanup_status = %q once the charge went through, want cleaned", got)
 	}
 }

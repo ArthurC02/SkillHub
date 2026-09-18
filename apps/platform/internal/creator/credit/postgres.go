@@ -76,7 +76,7 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 	if err == nil {
 		return pgconv.UUIDString(row.ID), false, nil
 	}
-	if !isUniqueViolation(err) {
+	if !errors.Is(err, pgx.ErrNoRows) && !isUniqueViolation(err) {
 		return "", false, fmt.Errorf("credit: record cost event: %w", err)
 	}
 	existing, lookupErr := q.GetCostEventByIdempotencyKey(ctx, e.IdempotencyKey)
@@ -106,7 +106,7 @@ func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (
 		IdempotencyKey: d.IdempotencyKey,
 	})
 	if err != nil {
-		if !isUniqueViolation(err) {
+		if !errors.Is(err, pgx.ErrNoRows) && !isUniqueViolation(err) {
 			return 0, false, fmt.Errorf("credit: insert debit: %w", err)
 		}
 		balance, readErr := s.balanceIn(ctx, q, d.UserID)
@@ -138,7 +138,7 @@ func (s *PostgresStore) ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (
 		IdempotencyKey: g.IdempotencyKey,
 	})
 	if err != nil {
-		if !isUniqueViolation(err) {
+		if !errors.Is(err, pgx.ErrNoRows) && !isUniqueViolation(err) {
 			return 0, fmt.Errorf("credit: insert grant: %w", err)
 		}
 		return s.balanceIn(ctx, q, g.UserID)

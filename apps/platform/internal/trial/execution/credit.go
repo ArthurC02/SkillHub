@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -39,10 +40,10 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 	return nil
 }
 
-func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) {
+func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) error {
 	if s.CreditSettle == nil || len(attempts) == 0 {
 
-		return
+		return nil
 	}
 	var spent float64
 	reported := false
@@ -74,16 +75,14 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		slog.Error("run credit settlement could not start", "run_id", pgconv.UUIDString(run.ID), "error", err)
-		return
+		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, micros, usdMicros(RunBudgetUSD())); err != nil {
-
-		slog.Error("run credit settlement failed", "run_id", pgconv.UUIDString(run.ID), "error", err)
-		return
+		return fmt.Errorf("settle: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		slog.Error("run credit settlement did not commit", "run_id", pgconv.UUIDString(run.ID), "error", err)
+		return fmt.Errorf("commit settlement: %w", err)
 	}
+	return nil
 }

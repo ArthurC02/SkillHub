@@ -59,7 +59,9 @@ INSERT INTO credit_entries (
     $1, $2, $3, $4,
     $5, $6, $7, $8,
     $9, $10, $11, $12
-) RETURNING id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at
+)
+ON CONFLICT ON CONSTRAINT credit_entries_idempotency_key_key DO NOTHING
+RETURNING id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at
 `
 
 type InsertCreditEntryParams struct {
