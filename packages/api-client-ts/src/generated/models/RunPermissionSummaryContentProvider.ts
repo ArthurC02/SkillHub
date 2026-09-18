@@ -28,15 +28,16 @@ export interface RunPermissionSummaryContentProvider {
      */
     name: string;
     /**
-     * The provider's declared isolation level (`clean` is clean test mode's
-     * "no boundary at all" level, admitted only under SKILLHUB_CLEAN_MODE).
+     * How strongly the provider separates the workload from its host:
+     * `strong` is a user-space kernel or hardware virtualisation,
+     * `weak` is a container sharing the host kernel, and `none` is no
+     * boundary at all, admitted only under SKILLHUB_CLEAN_MODE.
      * Absent when unassigned. Kept as an enum, not prose, so devctl's
-     * isolation-level check can reconcile it with the dispatch gate and
-     * sandbox-provider.yaml — the prose form let `clean` be emitted here
-     * for a day without anything noticing (2026-08-29).
+     * isolation check can reconcile it with the dispatch gate and
+     * sandbox-provider.yaml.
      * 
      */
-    isolationLevel?: RunPermissionSummaryContentProviderIsolationLevelEnum;
+    isolationStrength?: RunPermissionSummaryContentProviderIsolationStrengthEnum;
     /**
      * 
      */
@@ -55,14 +56,12 @@ export interface RunPermissionSummaryContentProvider {
 /**
  * @export
  */
-export const RunPermissionSummaryContentProviderIsolationLevelEnum = {
-    Gvisor: 'gvisor',
-    Container: 'container',
-    Vm: 'vm',
-    Process: 'process',
-    Clean: 'clean',
+export const RunPermissionSummaryContentProviderIsolationStrengthEnum = {
+    Strong: 'strong',
+    Weak: 'weak',
+    None: 'none',
 } as const;
-export type RunPermissionSummaryContentProviderIsolationLevelEnum = typeof RunPermissionSummaryContentProviderIsolationLevelEnum[keyof typeof RunPermissionSummaryContentProviderIsolationLevelEnum];
+export type RunPermissionSummaryContentProviderIsolationStrengthEnum = typeof RunPermissionSummaryContentProviderIsolationStrengthEnum[keyof typeof RunPermissionSummaryContentProviderIsolationStrengthEnum];
 
 
 /**
@@ -85,7 +84,7 @@ export function RunPermissionSummaryContentProviderFromJSONTyped(json: any, igno
     return {
         
         'name': json['name'],
-        'isolationLevel': json['isolation_level'] == null ? undefined : json['isolation_level'],
+        'isolationStrength': json['isolation_strength'] == null ? undefined : json['isolation_strength'],
         'rootless': json['rootless'],
         'runtime': json['runtime'] == null ? undefined : json['runtime'],
         'runtimeVersion': json['runtime_version'] == null ? undefined : json['runtime_version'],
@@ -104,7 +103,7 @@ export function RunPermissionSummaryContentProviderToJSONTyped(value?: RunPermis
     return {
         
         'name': value['name'],
-        'isolation_level': value['isolationLevel'],
+        'isolation_strength': value['isolationStrength'],
         'rootless': value['rootless'],
         'runtime': value['runtime'],
         'runtime_version': value['runtimeVersion'],
