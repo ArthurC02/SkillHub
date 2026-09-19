@@ -365,7 +365,7 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "download not found")
 		return
 	case errors.Is(err, ErrNoStore):
-		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
+		writeUnconfigured(w, err)
 		return
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, "download failed")

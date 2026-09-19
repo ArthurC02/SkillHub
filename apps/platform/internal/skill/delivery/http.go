@@ -3,6 +3,7 @@ package packaging
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -262,11 +263,27 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, err error) bool {
 		httpx.WriteError(w, http.StatusBadRequest,
 			"`target` must be one of standard, claude-code, claude-agent-sdk")
 	case errors.Is(err, ErrNoProfile), errors.Is(err, ErrNoStore), errors.Is(err, ErrRetentionNotConfigured):
-		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
+		writeUnconfigured(w, err)
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, "packaging failed")
 	}
 	return false
+}
+
+func writeUnconfigured(w http.ResponseWriter, err error) {
+	slog.Error("packaging is unavailable because this deployment is not configured", "error", err)
+	httpx.WriteError(w, http.StatusServiceUnavailable, unconfiguredMessage(err))
+}
+
+func unconfiguredMessage(err error) string {
+	switch {
+	case errors.Is(err, ErrNoProfile):
+		return "這個部署沒有設定這個打包目標，請聯絡管理者"
+	case errors.Is(err, ErrNoStore):
+		return "這個部署沒有接上套件儲存，暫時拿不到套件內容，請聯絡管理者"
+	default:
+		return "這個部署還沒有設定套件的保存期限，暫時不能打包，請聯絡管理者"
+	}
 }
 
 func includedViews(in []IncludedTestCase) []testCaseView {
