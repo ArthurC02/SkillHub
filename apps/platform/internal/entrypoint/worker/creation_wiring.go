@@ -39,7 +39,9 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		}
 		return refs, cost, nil
 	}
-	s.ValidateDraft = versions.ValidateCreationDraft
+	s.ValidateDraft = func(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+	}
 	s.Mask = (&trace.Masker{}).MaskString
 	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
 		sid, err := creation.ParseID(skillID)
@@ -63,7 +65,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 				ref.Warnings = &w
 			}
 		}
-		return ref, content, err
+		return ref, llmclient.GenerateReference{Name: content.Name, SkillMD: content.SkillMD}, err
 	}
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
@@ -103,4 +105,15 @@ func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 		return grant.VirtualKey, nil
 	}
 	s.RevokeKey = gateway.Revoke
+}
+
+func generatedSkillForIngest(g llmclient.GeneratedSkill) ingest.GeneratedSkill {
+	out := ingest.GeneratedSkill{
+		Name: g.Name, Description: g.Description, Compatibility: g.Compatibility,
+		AllowedTools: g.AllowedTools, Body: g.Body,
+	}
+	for _, f := range g.Files {
+		out.Files = append(out.Files, ingest.GeneratedFile{Path: f.Path, Content: f.Content})
+	}
+	return out
 }

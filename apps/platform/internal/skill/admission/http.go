@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -274,7 +273,7 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 
 		httpx.WriteError(w, http.StatusServiceUnavailable,
 			"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。")
-	case errors.Is(err, llmclient.ErrGenerateTruncated):
+	case errors.Is(err, ErrGenerationTruncated):
 
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
 			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。"+

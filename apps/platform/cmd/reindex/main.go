@@ -60,7 +60,7 @@ func main() {
 
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
-		LLM: &llmclient.Client{BaseURL: llmURL, Token: llmToken},
+		LLM: ingest.ModelOrNone(&llmclient.Client{BaseURL: llmURL, Token: llmToken}),
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
 			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,

@@ -19,7 +19,6 @@ import (
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -46,21 +45,6 @@ func FetcherOrNone(f *URLFetcher) SourceFetcher {
 		return nil
 	}
 	return f
-}
-
-type Model interface {
-	Embed(ctx context.Context, texts []string) (*llmclient.EmbedResponse, error)
-	EnrichSkill(ctx context.Context, req llmclient.EnrichSkillRequest) (*llmclient.EnrichSkillResponse, error)
-	GenerateSkill(ctx context.Context, req llmclient.GenerateSkillRequest) (*llmclient.GenerateSkillResponse, error)
-}
-
-// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
-// and panics on the first call.
-func ModelOrNone(c *llmclient.Client) Model {
-	if c == nil {
-		return nil
-	}
-	return c
 }
 
 type Service struct {

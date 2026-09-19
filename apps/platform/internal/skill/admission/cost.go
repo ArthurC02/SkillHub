@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 type CostRecorder interface {
@@ -16,7 +15,7 @@ type CostRecorder interface {
 }
 
 func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspaceID pgtype.UUID,
-	model, promptVersion string, u *llmclient.GatewayUsage) {
+	model, promptVersion string, u *ModelUsage) {
 	if s.Credit == nil {
 		return
 	}

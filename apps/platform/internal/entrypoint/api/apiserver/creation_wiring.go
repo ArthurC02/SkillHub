@@ -19,7 +19,9 @@ import (
 )
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
-	s.ValidateDraft = versions.ValidateCreationDraft
+	s.ValidateDraft = func(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+	}
 
 	semantic := func(maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 		return func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
@@ -65,7 +67,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 				ref.Warnings = &w
 			}
 		}
-		return ref, content, err
+		return ref, llmclient.GenerateReference{Name: content.Name, SkillMD: content.SkillMD}, err
 	}
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
@@ -96,7 +98,7 @@ func wireCreationWrites(s *creation.Service, versions *ingest.Service, runs *run
 			}
 			provenance.ExistingSkillID = &id
 		}
-		result, err := versions.MaterializeGeneratedCandidate(ctx, ws, draft, provenance, func(ctx context.Context, tx pgx.Tx, r ingest.Result) error {
+		result, err := versions.MaterializeGeneratedCandidate(ctx, ws, generatedSkillForIngest(draft), provenance, func(ctx context.Context, tx pgx.Tx, r ingest.Result) error {
 			return after(ctx, tx, creation.Candidate{SkillID: creation.UUID(r.Skill.ID), VersionID: creation.UUID(r.Version.ID)})
 		})
 		if err == nil && result.Report.Blocked {
@@ -151,4 +153,15 @@ func wireCreationTestCases(s *creation.Service, lab *testlab.Service) {
 		}
 		return creation.UUID(tc.ID), nil
 	}
+}
+
+func generatedSkillForIngest(g llmclient.GeneratedSkill) ingest.GeneratedSkill {
+	out := ingest.GeneratedSkill{
+		Name: g.Name, Description: g.Description, Compatibility: g.Compatibility,
+		AllowedTools: g.AllowedTools, Body: g.Body,
+	}
+	for _, f := range g.Files {
+		out.Files = append(out.Files, ingest.GeneratedFile{Path: f.Path, Content: f.Content})
+	}
+	return out
 }

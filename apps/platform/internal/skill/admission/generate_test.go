@@ -24,8 +24,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
-func goodGeneratedSkill() llmclient.GeneratedSkill {
-	return llmclient.GeneratedSkill{
+func goodGeneratedSkill() GeneratedSkill {
+	return GeneratedSkill{
 		Name:          "scanned-invoice-table",
 		Description:   "從掃描的單據影像抽出表格內容並合併成一份檔案。當使用者手上是掃描件時使用。",
 		Compatibility: "需要能讀取影像或 PDF 的工具。",
@@ -34,7 +34,7 @@ func goodGeneratedSkill() llmclient.GeneratedSkill {
 	}
 }
 
-func validateGenerated(t *testing.T, g llmclient.GeneratedSkill) skillpkg.Report {
+func validateGenerated(t *testing.T, g GeneratedSkill) skillpkg.Report {
 	t.Helper()
 	data, err := buildGeneratedPackage(g)
 	if err != nil {
@@ -92,7 +92,7 @@ func TestTheSameAnswerAlwaysProducesTheSameBytes(t *testing.T) {
 
 func TestAnEscapingFilePathIsBlockedNotFiltered(t *testing.T) {
 	g := goodGeneratedSkill()
-	g.Files = []llmclient.GeneratedFile{{Path: "../../evil.sh", Content: "echo hi\n"}}
+	g.Files = []GeneratedFile{{Path: "../../evil.sh", Content: "echo hi\n"}}
 	r := validateGenerated(t, g)
 	if !r.Blocked {
 		t.Fatal("an escaping entry was accepted")
@@ -104,7 +104,7 @@ func TestAnEscapingFilePathIsBlockedNotFiltered(t *testing.T) {
 
 func TestASecondSkillMDIsRefused(t *testing.T) {
 	g := goodGeneratedSkill()
-	g.Files = []llmclient.GeneratedFile{{Path: "SKILL.md", Content: "---\nname: other\n---\n"}}
+	g.Files = []GeneratedFile{{Path: "SKILL.md", Content: "---\nname: other\n---\n"}}
 	if _, err := buildGeneratedPackage(g); !errors.Is(err, ErrGeneratedPackageInvalid) {
 		t.Fatalf("err = %v, want ErrGeneratedPackageInvalid", err)
 	}
@@ -134,7 +134,7 @@ func TestPossibleSecretIsNotRetried(t *testing.T) {
 }
 
 func TestBlankTaskDescriptionNeverReachesTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	for _, in := range []string{"", "   ", "\n\t \n"} {
 		if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, GenerateInput{TaskDescription: in}); !errors.Is(err, ErrGenerateNoInput) {
 			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateNoInput", in, err)
@@ -167,7 +167,7 @@ func containsCode(r skillpkg.Report, code string) bool {
 func TestTheSecondSkillMDIsCaughtUnderItsRealName(t *testing.T) {
 	for _, p := range []string{"SKILL.md/", ".//SKILL.md", "././SKILL.md", "skill.MD", `.\SKILL.md`} {
 		g := goodGeneratedSkill()
-		g.Files = []llmclient.GeneratedFile{{Path: p, Content: "---\nname: other\n---\n"}}
+		g.Files = []GeneratedFile{{Path: p, Content: "---\nname: other\n---\n"}}
 		if _, err := buildGeneratedPackage(g); !errors.Is(err, ErrGeneratedPackageInvalid) {
 			t.Errorf("path %q: err = %v, want ErrGeneratedPackageInvalid", p, err)
 		}
@@ -177,7 +177,7 @@ func TestTheSecondSkillMDIsCaughtUnderItsRealName(t *testing.T) {
 func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
 	for _, p := range []string{".", "./", "/", "././"} {
 		g := goodGeneratedSkill()
-		g.Files = []llmclient.GeneratedFile{{Path: p, Content: "AKIA0123456789ABCDEF\n"}}
+		g.Files = []GeneratedFile{{Path: p, Content: "AKIA0123456789ABCDEF\n"}}
 		if _, err := buildGeneratedPackage(g); !errors.Is(err, ErrGeneratedPackageInvalid) {
 			t.Errorf("path %q: err = %v, want ErrGeneratedPackageInvalid", p, err)
 		}
@@ -185,7 +185,7 @@ func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
 }
 
 func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	ctx, ws := context.Background(), identity.Workspace{}
 
 	for _, in := range []string{"abc", "  短  ", strings.Repeat("a", minTaskDescriptionRunes-1)} {
@@ -213,7 +213,7 @@ func TestExactlyTheDescriptionLengthBoundsAreAccepted(t *testing.T) {
 }
 
 func TestOneGenerationPerWorkspaceAtATime(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "11111111-1111-1111-1111-111111111111")}
 	other := identity.Workspace{ID: mustUUIDForTest(t, "22222222-2222-2222-2222-222222222222")}
 
@@ -263,7 +263,7 @@ func gatewayReturning(t *testing.T, body string) *Service {
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
-	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}
+	return &Service{LLM: ModelOrNone(&llmclient.Client{BaseURL: srv.URL})}
 }
 
 func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
@@ -334,10 +334,10 @@ func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 	first := 0.01
 	second := 0.02
 	var out GenerateResult
-	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50,
-		CostUSD: &first, CostSource: "gateway"})
-	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50,
-		CostUSD: &second, CostSource: "gateway"})
+	out.addUsage(&ModelUsage{PromptTokens: 100, CompletionTokens: 50,
+		CostUSD: &first, CostReported: true})
+	out.addUsage(&ModelUsage{PromptTokens: 100, CompletionTokens: 50,
+		CostUSD: &second, CostReported: true})
 
 	if out.CostUSD == nil || *out.CostUSD != first+second {
 		t.Errorf("cost = %v, want %v", out.CostUSD, first+second)
@@ -346,7 +346,7 @@ func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
 		t.Errorf("tokens = %d/%d, want 200/100", out.PromptTokens, out.CompletionTokens)
 	}
 
-	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50})
+	out.addUsage(&ModelUsage{PromptTokens: 100, CompletionTokens: 50})
 	if out.CostUSD == nil || *out.CostUSD != first+second {
 		t.Errorf("an unpriced attempt changed the total: %v", out.CostUSD)
 	}
@@ -368,7 +368,7 @@ func requestCapturingStub(t *testing.T, body string) (*Service, *[]byte) {
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
-	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}, &captured
+	return &Service{LLM: ModelOrNone(&llmclient.Client{BaseURL: srv.URL})}, &captured
 }
 
 func TestDiagramOnlyReachesTheGatewayWithAnEmptyTaskDescription(t *testing.T) {
@@ -443,14 +443,14 @@ func TestAShortCaptionWithADiagramIsNotBlank(t *testing.T) {
 }
 
 func TestNoTextAndNoDiagramNeverReachesTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, GenerateInput{}); !errors.Is(err, ErrGenerateNoInput) {
 		t.Errorf("err = %v, want ErrGenerateNoInput", err)
 	}
 }
 
 func TestAnOversizedDiagramIsRefusedBeforeTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	in := GenerateInput{Diagram: &GenerateDiagram{
 		MediaType: "image/png",
 		Data:      make([]byte, generateMaxDiagramBytes+1),
@@ -466,7 +466,7 @@ func TestExactlyTheDiagramSizeCapIsNotRefused(t *testing.T) {
 		t.Fatalf("pgxpool.New: %v", err)
 	}
 	t.Cleanup(pool.Close)
-	svc := &Service{LLM: &llmclient.Client{}, Pool: pool}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{}), Pool: pool}
 	in := GenerateInput{
 		TaskDescription: "把掃描的單據整理成一份表格。",
 		Diagram: &GenerateDiagram{
@@ -480,7 +480,7 @@ func TestExactlyTheDiagramSizeCapIsNotRefused(t *testing.T) {
 }
 
 func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	var ids []pgtype.UUID
 	for i := 1; i <= generateMaxReferences+1; i++ {
 		ids = append(ids, mustUUIDForTest(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", i)))
@@ -492,7 +492,7 @@ func TestFourReferencesIsRefusedBeforeTheGateway(t *testing.T) {
 }
 
 func TestExactlyTheReferenceCapIsNotRefused(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	var ids []pgtype.UUID
 	for i := 1; i <= generateMaxReferences; i++ {
 		ids = append(ids, mustUUIDForTest(t, fmt.Sprintf("00000000-0000-0000-0000-%012d", i)))
@@ -541,7 +541,7 @@ func (f fakeObjectStore) Get(_ context.Context, key string) ([]byte, error) {
 
 func TestAnUnresolvableReferenceIsRefusedBeforeTheGateway(t *testing.T) {
 	svc := &Service{
-		LLM:        &llmclient.Client{},
+		LLM:        ModelOrNone(&llmclient.Client{}),
 		References: fakeReferenceReader{},
 	}
 	missing := mustUUIDForTest(t, "99999999-9999-9999-9999-999999999999")
@@ -585,7 +585,7 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
 	fakeSvc, captured := requestCapturingStub(t, skillResp)
 	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
-		[]llmclient.GenerateReference{ref}); err != nil {
+		[]ReferenceSkill{ref}); err != nil {
 		t.Fatalf("generateOnce: %v", err)
 	}
 	var sent struct {
@@ -720,7 +720,7 @@ func TestALongReferenceIsCutToLeaveRoomForTheMarker(t *testing.T) {
 }
 
 func TestADisallowedDiagramMediaTypeIsRefused(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	in := GenerateInput{Diagram: &GenerateDiagram{MediaType: "image/svg+xml", Data: []byte("<svg/>")}}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrDiagramInvalid) {
 		t.Errorf("err = %v, want ErrDiagramInvalid", err)
@@ -728,7 +728,7 @@ func TestADisallowedDiagramMediaTypeIsRefused(t *testing.T) {
 }
 
 func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
-	svc := &Service{LLM: &llmclient.Client{}}
+	svc := &Service{LLM: ModelOrNone(&llmclient.Client{})}
 	someID := mustUUIDForTest(t, "40000000-0000-0000-0000-000000000001")
 	in := GenerateInput{ReferenceSkillIDs: []pgtype.UUID{someID}}
 	if _, err := svc.GenerateSkill(context.Background(), identity.Workspace{}, in); !errors.Is(err, ErrGenerateNoInput) {
@@ -738,7 +738,7 @@ func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
 
 func TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt(t *testing.T) {
 	g := goodGeneratedSkill()
-	g.Files = []llmclient.GeneratedFile{{Path: "SKILL.md", Content: "---\nlicense: MIT\n---\n"}}
+	g.Files = []GeneratedFile{{Path: "SKILL.md", Content: "---\nlicense: MIT\n---\n"}}
 	hash, report, blocked, err := (&Service{}).ValidateCreationDraft(context.Background(), g)
 	if err != nil || !blocked || hash != "" {
 		t.Fatalf("a second SKILL.md must block without error: hash=%q blocked=%v err=%v", hash, blocked, err)

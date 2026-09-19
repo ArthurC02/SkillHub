@@ -21,7 +21,6 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -1112,7 +1111,7 @@ func TestAGeneratedCandidateRevisesOnlyAGeneratedSkill(t *testing.T) {
 	}
 	target := uploaded.Skill.ID
 
-	_, err = a.versions.MaterializeGeneratedCandidate(ctx, ws, llmclient.GeneratedSkill{
+	_, err = a.versions.MaterializeGeneratedCandidate(ctx, ws, ingest.GeneratedSkill{
 		Name:        "pdf-extract",
 		Description: "把掃描的單據影像抽成表格。當使用者手上是掃描件、需要彙整成一份時使用。",
 		Body:        "# 內容\n\n1. 做這件事。\n",

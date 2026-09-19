@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -130,7 +128,7 @@ type GenerateResult struct {
 	CompletionTokens int64
 }
 
-func (r *GenerateResult) addUsage(u *llmclient.GatewayUsage) {
+func (r *GenerateResult) addUsage(u *ModelUsage) {
 	if u == nil {
 		return
 	}
@@ -172,7 +170,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 		return GenerateResult{}, ErrTooManyReferences
 	}
 
-	var references []llmclient.GenerateReference
+	var references []ReferenceSkill
 	var refProvenance []referenceProvenance
 	if len(in.ReferenceSkillIDs) > 0 {
 		if s.References == nil {
@@ -248,7 +246,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 
 			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
 				"failure":   FailureGateway,
-				"truncated": errors.Is(err, llmclient.ErrGenerateTruncated),
+				"truncated": errors.Is(err, ErrGenerationTruncated),
 			})
 			return out, err
 		}
@@ -310,19 +308,13 @@ const generateTimeout = 130 * time.Second
 
 func (s *Service) generateOnce(
 	ctx context.Context, workspaceID pgtype.UUID, task string,
-	diagram *GenerateDiagram, references []llmclient.GenerateReference,
-) (*llmclient.GenerateSkillResponse, error) {
+	diagram *GenerateDiagram, references []ReferenceSkill,
+) (*GeneratedDraft, error) {
 	callCtx, cancel := context.WithTimeout(ctx, generateTimeout)
 	defer cancel()
-	req := llmclient.GenerateSkillRequest{TaskDescription: task, References: references}
-	if diagram != nil {
-
-		req.Diagram = &llmclient.GenerateDiagram{
-			MediaType: diagram.MediaType,
-			Data:      base64.StdEncoding.EncodeToString(diagram.Data),
-		}
-	}
-	resp, err := s.LLM.GenerateSkill(callCtx, req)
+	resp, err := s.LLM.GenerateSkill(callCtx, GenerateRequest{
+		TaskDescription: task, Diagram: diagram, References: references,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -353,40 +345,40 @@ func referenceable(skill registry.Skill) bool {
 
 func (s *Service) resolveReference(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
-) (llmclient.GenerateReference, referenceProvenance, error) {
+) (ReferenceSkill, referenceProvenance, error) {
 	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, id)
 	if err != nil {
-		return llmclient.GenerateReference{}, referenceProvenance{}, err
+		return ReferenceSkill{}, referenceProvenance{}, err
 	}
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, id)
 		if err != nil {
-			return llmclient.GenerateReference{}, referenceProvenance{}, err
+			return ReferenceSkill{}, referenceProvenance{}, err
 		}
 	}
 	if !found || !referenceable(skill) {
-		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
+		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
 	}
 
 	version, found, err := s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	if err != nil {
-		return llmclient.GenerateReference{}, referenceProvenance{}, err
+		return ReferenceSkill{}, referenceProvenance{}, err
 	}
 	if !found {
-		return llmclient.GenerateReference{}, referenceProvenance{}, ErrReferenceUnavailable
+		return ReferenceSkill{}, referenceProvenance{}, ErrReferenceUnavailable
 	}
 
 	data, err := s.Store.Get(ctx, version.PackageObjectKey)
 	if err != nil {
-		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}
 	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
-		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}
 	md, err := fs.ReadFile(fsys, "SKILL.md")
 	if err != nil {
-		return llmclient.GenerateReference{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
+		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}
 
 	content, truncated := cutRunes(strings.ToValidUTF8(string(md), ""),
@@ -394,7 +386,7 @@ func (s *Service) resolveReference(
 	if truncated {
 		content += referenceTruncationMarker
 	}
-	return llmclient.GenerateReference{Name: skill.Name, SkillMD: content},
+	return ReferenceSkill{Name: skill.Name, SkillMD: content},
 		referenceProvenance{SkillID: skill.ID, VersionID: version.ID, Name: skill.Name}, nil
 }
 
@@ -461,7 +453,7 @@ type generatedFrontmatter struct {
 	AllowedTools  string `yaml:"allowed-tools,omitempty"`
 }
 
-func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
+func buildGeneratedPackage(g GeneratedSkill) ([]byte, error) {
 	fm, err := yaml.Marshal(generatedFrontmatter{
 		Name:          g.Name,
 		Description:   g.Description,

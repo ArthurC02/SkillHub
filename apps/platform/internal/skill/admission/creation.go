@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
@@ -25,7 +24,7 @@ type GeneratedCandidateProvenance struct {
 	ExistingSkillID                       *pgtype.UUID
 }
 
-func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity.Workspace, skill llmclient.GeneratedSkill, p GeneratedCandidateProvenance, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
+func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity.Workspace, skill GeneratedSkill, p GeneratedCandidateProvenance, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
 	data, err := buildGeneratedPackage(skill)
 	if err != nil {
 		return Result{}, err
@@ -83,19 +82,19 @@ type FixedCreationReference struct {
 	AllowedTools  string
 }
 
-func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (FixedCreationReference, llmclient.GenerateReference, error) {
+func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (FixedCreationReference, ReferenceSkill, error) {
 	if s.References == nil || s.Store == nil {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	skill, found, err := s.References.WorkspaceSkill(ctx, ws.ID, skillID)
 	if err != nil {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, err
+		return FixedCreationReference{}, ReferenceSkill{}, err
 	}
 	if !found {
 		skill, found, err = s.References.CatalogSkill(ctx, skillID)
 	}
 	if err != nil || !found || !referenceable(skill) {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	var version registry.Version
 	if versionID.Valid {
@@ -103,26 +102,26 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 			WorkspaceVersion(context.Context, pgtype.UUID, pgtype.UUID) (registry.Version, bool, error)
 		})
 		if !ok {
-			return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+			return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 		}
 		version, found, err = reader.WorkspaceVersion(ctx, skill.WorkspaceID, versionID)
 	} else {
 		version, found, err = s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	}
 	if err != nil || !found || version.SkillID != skill.ID {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	data, err := s.Store.Get(ctx, version.PackageObjectKey)
 	if err != nil {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	tree, err := skillpkg.PackageFS(data)
 	if err != nil {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	md, err := fs.ReadFile(tree, "SKILL.md")
 	if err != nil {
-		return FixedCreationReference{}, llmclient.GenerateReference{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
 	text, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
 	if truncated {
@@ -135,10 +134,10 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 		fixed.Compatibility = report.Manifest.Compatibility
 		fixed.AllowedTools = strings.Join(report.Manifest.AllowedTools, " ")
 	}
-	return fixed, llmclient.GenerateReference{Name: skill.Name, SkillMD: text}, nil
+	return fixed, ReferenceSkill{Name: skill.Name, SkillMD: text}, nil
 }
 
-func (s *Service) ValidateCreationDraft(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkill) (string, string, bool, error) {
 	data, err := buildGeneratedPackage(draft)
 	if err != nil {
 

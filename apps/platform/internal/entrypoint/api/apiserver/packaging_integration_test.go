@@ -200,7 +200,7 @@ func importFilesEnriched(
 		})
 	}}
 	if llm != nil {
-		svc.LLM = llm
+		svc.LLM = ingest.ModelOrNone(llm)
 	}
 	res, err := svc.UploadZip(ctx, publishedWorkspace(ws), zipOf(t, files))
 	if err != nil {

@@ -27,7 +27,7 @@ type stubEnricher struct {
 	embedded     []string
 }
 
-func (s *stubEnricher) start(t *testing.T) *llmclient.Client {
+func (s *stubEnricher) start(t *testing.T) Model {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/enrich-skill", func(w http.ResponseWriter, _ *http.Request) {
@@ -67,7 +67,7 @@ func (s *stubEnricher) start(t *testing.T) *llmclient.Client {
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &llmclient.Client{BaseURL: srv.URL}
+	return ModelOrNone(&llmclient.Client{BaseURL: srv.URL})
 }
 
 func writeTestJSON(w http.ResponseWriter, v any) {

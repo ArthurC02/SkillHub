@@ -11,7 +11,6 @@ import (
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -84,7 +83,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 
 	enrichCtx, cancel := context.WithTimeout(ctx, enrichTimeout)
 	defer cancel()
-	resp, err := s.LLM.EnrichSkill(enrichCtx, llmclient.EnrichSkillRequest{
+	resp, err := s.LLM.EnrichSkill(enrichCtx, EnrichRequest{
 		SkillName: p.report.Manifest.Name,
 		SkillMD:   p.skillMD,
 		FileTree:  p.fileTree,
@@ -114,13 +113,13 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 	if emb != nil {
 		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, emb.Model, "", emb.Usage)
 	}
-	if err != nil || len(emb.Embeddings) == 0 {
+	if err != nil || len(emb.Vectors) == 0 {
 
 		slog.Warn("enrichment embedding failed; search document left pending",
 			"skill", p.report.Manifest.Name, "error", err)
 		return e
 	}
-	v := pgvector.NewVector(emb.Embeddings[0])
+	v := pgvector.NewVector(emb.Vectors[0])
 	e.embedding = &v
 	e.status = enrichmentEnriched
 	return e
@@ -142,7 +141,7 @@ func embeddingText(name string, e enrichment) string {
 }
 
 func (e enrichment) flatTags() string {
-	var t llmclient.SkillTags
+	var t SkillTags
 	if len(e.tags) == 0 || json.Unmarshal(e.tags, &t) != nil {
 		return ""
 	}
@@ -153,7 +152,7 @@ func (e enrichment) flatTags() string {
 	return strings.Join(out, " ")
 }
 
-func joinTaskExamples(examples []llmclient.TaskExample) string {
+func joinTaskExamples(examples []TaskExample) string {
 	lines := make([]string, 0, len(examples)*2)
 	for _, ex := range examples {
 		lines = append(lines, ex.ZhHant, ex.En)
@@ -171,7 +170,7 @@ func joinLines(items []string) string {
 	return strings.Join(out, "\n")
 }
 
-func marshalTags(t llmclient.SkillTags) []byte {
+func marshalTags(t SkillTags) []byte {
 	for _, bucket := range []*[]string{&t.Inputs, &t.Outputs, &t.Tools, &t.Dependencies} {
 		*bucket = trimAll(*bucket)
 	}

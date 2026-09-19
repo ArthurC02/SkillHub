@@ -42,11 +42,11 @@ func TestImportPathsRefuseWithoutProjectionDependencies(t *testing.T) {
 		t.Error("persistVersion succeeded without the search projection write injected")
 	}
 
-	if _, _, err := (&Service{LLM: &llmclient.Client{}}).ReindexPending(ctx, 1); err == nil {
+	if _, _, err := (&Service{LLM: ModelOrNone(&llmclient.Client{})}).ReindexPending(ctx, 1); err == nil {
 		t.Error("ReindexPending succeeded without the search projection write injected")
 	}
 	if _, _, err := (&Service{
-		LLM: &llmclient.Client{},
+		LLM: ModelOrNone(&llmclient.Client{}),
 		IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error {
 			return nil
 		},

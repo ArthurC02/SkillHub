@@ -34,8 +34,8 @@ var goldensetSpans = []struct {
 
 var goldensetPinned = map[string]string{
 	"embeddingText":       "af940c00a9126201aed3908e9fd97a55bc65cca965fe69df71aea80be80461de",
-	"flatTags":            "f4ecd7636059797e7eeb0067e57697ef742d7da27b4c471a0915ac641ef176cc",
-	"joinTaskExamples":    "26eb2f141a252b10612598270c606bbaeb901e7715c11903b86406871e8edae0",
+	"flatTags":            "aa7cb83dc8c9361852dd28f592bd849d8e05f01d37683872fa5f3fc95ee5637d",
+	"joinTaskExamples":    "64ba99aa069cd16b0c3621684c62a3ea28d47a9c0f6c42014f50a92cab3cdcbb",
 	"enriched_index_text": "3df8036c499a9a9565d357fae542ab14be4b4bd91b44dc9478c6d9798060af67",
 }
 
