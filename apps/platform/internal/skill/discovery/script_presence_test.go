@@ -15,6 +15,8 @@ func TestAScriptIsPresentOnlyWhenTheScanRecordedAScriptCode(t *testing.T) {
 		{"no codes", `{"codes":[]}`, &no},
 		{"codes recorded as null", `{"codes":null}`, &no},
 		{"a scan without codes", `{"warnings":1}`, nil},
+		{"codes recorded as something other than a list", `{"codes":"script-file"}`, nil},
+		{"a scan that is not an object", `["script-file"]`, nil},
 		{"no scan", ``, nil},
 		{"a null scan", `null`, nil},
 	} {
