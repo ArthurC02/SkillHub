@@ -390,7 +390,7 @@ go test -count=1 ./...
 - **表被改壞** → 真實流程的整合測試必須紅，而且錯誤訊息必須是守衛自己丟的那一句。這證明**守衛真的接在寫入路徑上**。
 - **規則被改錯** → 對應的純測試必須紅。這證明**規則本身有人守**。
 
-**回報一行一條**（`T 編號`＝ [`istqb-test-design`](../../.claude/skills/istqb-test-design/SKILL.md) 九條判準的編號，例如 T3 邊界值、T5 狀態轉移）
+**回報一行一條**（`T 編號`＝ [`istqb-test-design`](../../.claude/skills/istqb-test-design/SKILL.md) 十條判準的編號，例如 T3 邊界值、T5 狀態轉移）
 
 `<測試名> — <T 編號>：<條件>（產品 <檔案:行>）— 弄壞 <那一行> → FAIL（<訊息>）→ 還原 → diff 空`
 
