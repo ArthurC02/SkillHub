@@ -28,6 +28,7 @@ const (
 	KindSuggestion      CostKind = "suggestion"
 	KindGenerate        CostKind = "generate"
 	KindMatchReasons    CostKind = "match_reasons"
+	KindSuggestCriteria CostKind = "suggest_criteria"
 
 	KindRun CostKind = "run"
 
@@ -37,14 +38,15 @@ const (
 func AllCostEventKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
-		KindSuggestion, KindGenerate, KindMatchReasons, KindRun,
+		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindRun,
 	}
 }
 
 func AllStatisticKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
-		KindSuggestion, KindGenerate, KindMatchReasons, KindRun, KindCreationSession,
+		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria,
+		KindRun, KindCreationSession,
 	}
 }
 

@@ -20,6 +20,26 @@ type CriteriaRequest struct {
 	Datasets     []DatasetOutline
 }
 
+type ModelUsage struct {
+	PromptTokens     int64
+	CompletionTokens int64
+
+	CostUSD      *float64
+	CostReported bool
+}
+
+func (u *ModelUsage) ReportedCostUSD() *float64 {
+	if u == nil || !u.CostReported {
+		return nil
+	}
+	return u.CostUSD
+}
+
+type CriteriaProposal struct {
+	Texts []string
+	Usage *ModelUsage
+}
+
 type CriteriaSuggester interface {
-	SuggestCriteria(ctx context.Context, req CriteriaRequest) (proposed []string, err error)
+	SuggestCriteria(ctx context.Context, req CriteriaRequest) (*CriteriaProposal, error)
 }

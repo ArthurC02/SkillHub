@@ -67,10 +67,11 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
-	proposed, err := s.LLM.SuggestCriteria(callCtx, req)
+	proposal, err := s.LLM.SuggestCriteria(callCtx, req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSuggestUnavailable, err)
 	}
+	s.recordSuggestCost(ctx, proposal.Usage)
 
 	current, err := DecodeCriteria(tc.AcceptanceCriteria)
 	if err != nil {
@@ -80,8 +81,8 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	for _, c := range current {
 		seen[c.Text] = true
 	}
-	out := make([]Suggestion, 0, len(proposed))
-	for _, criterion := range proposed {
+	out := make([]Suggestion, 0, len(proposal.Texts))
+	for _, criterion := range proposal.Texts {
 		if len(out) >= MaxCriteria {
 			break
 		}

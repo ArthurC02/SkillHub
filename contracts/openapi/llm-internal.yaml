@@ -874,8 +874,10 @@ components:
     SuggestCriteriaResponse:
       type: object
       description: |
-        Also the JSON schema handed to the model, so the wire shape and the shape
-        the prompt asks for cannot drift apart (same rule as MatchReasonsResponse).
+        `criteria` is what the model wrote, under the same schema the prompt asks
+        for, so the two cannot drift apart (same rule as MatchReasonsResponse).
+        `usage` is what this service knows and the model cannot influence: the
+        service adds it after the call, from the gateway's own numbers.
       additionalProperties: false
       required: [criteria]
       properties:

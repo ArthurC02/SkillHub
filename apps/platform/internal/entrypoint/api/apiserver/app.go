@@ -250,7 +250,7 @@ func NewApp(cfg Config) (*App, error) {
 	}
 	wiring.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
 
-	wireCostRecording(creditSvc, catalogSvc, versions)
+	wireCostRecording(creditSvc, catalogSvc, versions, testlabSvc, cfg.Pool)
 	wireGenerateCredit(versions, creditSvc, identitySvc.WorkspaceOwner)
 	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)

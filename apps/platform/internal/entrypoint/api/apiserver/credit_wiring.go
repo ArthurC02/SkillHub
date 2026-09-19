@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 type creditLedger struct {
@@ -78,9 +79,23 @@ func (l *creditLedger) Grant(ctx context.Context, workspaceID pgtype.UUID, amoun
 	return balance, nil
 }
 
-func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service) {
+func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *ingest.Service,
+	lab *testlab.Service, pool *pgxpool.Pool) {
 	search.Credit = svc
 	versions.Credit = svc
+	lab.RecordSpend = func(ctx context.Context, usage *testlab.ModelUsage) error {
+		e := credit.CostEvent{
+			Kind:           credit.KindSuggestCriteria,
+			IdempotencyKey: string(credit.KindSuggestCriteria) + ":" + uuid.NewString(),
+			Estimated:      true,
+		}
+		if usage != nil {
+			e.PromptTokens, e.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
+			e.UsdMicros, e.Estimated = credit.UsageCost(usage.ReportedCostUSD())
+		}
+		_, _, err := svc.RecordCost(ctx, pool, e)
+		return err
+	}
 }
 
 func wireGenerateCredit(

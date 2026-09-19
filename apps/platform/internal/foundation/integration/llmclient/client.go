@@ -191,6 +191,8 @@ type SuggestedCriterion struct {
 
 type SuggestCriteriaResponse struct {
 	Criteria []SuggestedCriterion `json:"criteria"`
+
+	Usage *GatewayUsage `json:"usage,omitempty"`
 }
 
 func (c *Client) SuggestCriteria(ctx context.Context, req SuggestCriteriaRequest) (*SuggestCriteriaResponse, error) {

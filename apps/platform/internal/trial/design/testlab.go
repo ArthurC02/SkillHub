@@ -72,6 +72,8 @@ type Service struct {
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
 	LLM CriteriaSuggester
+
+	RecordSpend func(ctx context.Context, usage *ModelUsage) error
 }
 
 type Criterion struct {

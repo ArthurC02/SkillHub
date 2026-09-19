@@ -17,7 +17,7 @@ func ModelOrNone(c *llmclient.Client) CriteriaSuggester {
 	return criteriaOverHTTP{client: c}
 }
 
-func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaRequest) ([]string, error) {
+func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaRequest) (*CriteriaProposal, error) {
 	resp, err := a.client.SuggestCriteria(ctx, llmclient.SuggestCriteriaRequest{
 		SkillName:    req.SkillName,
 		SkillSummary: req.SkillSummary,
@@ -27,11 +27,23 @@ func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaReque
 	if err != nil {
 		return nil, err
 	}
-	proposed := make([]string, 0, len(resp.Criteria))
+	out := &CriteriaProposal{Texts: make([]string, 0, len(resp.Criteria)), Usage: usageFromWire(resp.Usage)}
 	for _, c := range resp.Criteria {
-		proposed = append(proposed, c.Text)
+		out.Texts = append(out.Texts, c.Text)
 	}
-	return proposed, nil
+	return out, nil
+}
+
+func usageFromWire(u *llmclient.GatewayUsage) *ModelUsage {
+	if u == nil {
+		return nil
+	}
+	return &ModelUsage{
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+		CostUSD:          u.CostUSD,
+		CostReported:     u.ReportedCostUSD() != nil,
+	}
 }
 
 func wireDatasets(datasets []DatasetOutline) []llmclient.DatasetOutline {
