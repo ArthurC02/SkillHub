@@ -51,8 +51,6 @@ func failLLM(t *testing.T) creationStepFunc {
 	})
 }
 
-func int64Ptr(v int64) *int64 { return &v }
-
 func TestStepRequiresLLMAndKeyCallbacks(t *testing.T) {
 	llmOK := creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
 		return &llmclient.CreationStepResponse{}, nil
@@ -272,7 +270,7 @@ func TestStepCreditReserveFailureSkipsTheModelCallAndFails(t *testing.T) {
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, reserveErr }},
+		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, float64) (bool, error) { return false, reserveErr }},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -337,7 +335,7 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *float64, float64) error {
 			settleCalls++
 			return nil
 		}},
@@ -384,15 +382,15 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	ws := newCreationWorkspace(t, pool)
 	rec := &jobRecorder{}
 	type settleCall struct {
-		usdMicros         *int64
-		reservedUSDMicros int64
+		costUSD     *float64
+		reservedUSD float64
 	}
 	var settles []settleCall
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, reservedUSDMicros int64) error {
-			settles = append(settles, settleCall{usdMicros, reservedUSDMicros})
+		Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, costUSD *float64, reservedUSD float64) error {
+			settles = append(settles, settleCall{costUSD, reservedUSD})
 			return nil
 		}},
 	}
@@ -440,13 +438,12 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	if len(settles) != 1 {
 		t.Fatalf("CreditSettle calls = %d, want 1", len(settles))
 	}
-	wantMicros := int64(20000)
-	if settles[0].usdMicros == nil || *settles[0].usdMicros != wantMicros {
-		t.Fatalf("settled micros = %v, want %d", settles[0].usdMicros, wantMicros)
+	if settles[0].costUSD == nil || *settles[0].costUSD != cost {
+		t.Fatalf("settled cost = %v, want %v", settles[0].costUSD, cost)
 	}
-	wantReserved := int64(100000)
-	if settles[0].reservedUSDMicros != wantReserved {
-		t.Fatalf("reserved micros = %d, want %d (MaxCallCostUSD)", settles[0].reservedUSDMicros, wantReserved)
+	wantReserved := creationLimits().MaxCallCostUSD
+	if settles[0].reservedUSD != wantReserved {
+		t.Fatalf("reserved = %v, want %v (MaxCallCostUSD)", settles[0].reservedUSD, wantReserved)
 	}
 }
 
@@ -455,9 +452,9 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 	cases := []struct {
 		name  string
 		usage *llmclient.GatewayUsage
-		want  *int64
+		want  *float64
 	}{
-		{"usage with a finite non-negative cost", &llmclient.GatewayUsage{CostUSD: &cost}, int64Ptr(40000)},
+		{"usage with a finite non-negative cost", &llmclient.GatewayUsage{CostUSD: &cost}, &cost},
 		{"response with no usage", nil, nil},
 	}
 	for _, tc := range cases {
@@ -465,14 +462,14 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 			pool := requireDB(t)
 			ws := newCreationWorkspace(t, pool)
 			rec := &jobRecorder{}
-			var got *int64
+			var got *float64
 			var settleCalls int
 			svc := &creation.Service{
 				Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 				IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-				Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, usdMicros *int64, _ int64) error {
+				Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, costUSD *float64, _ float64) error {
 					settleCalls++
-					got = usdMicros
+					got = costUSD
 					return nil
 				}},
 			}
@@ -491,7 +488,7 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 				t.Fatalf("CreditSettle calls = %d, want 1", settleCalls)
 			}
 			if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
-				t.Fatalf("settled micros = %v, want %v", got, tc.want)
+				t.Fatalf("settled cost = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -508,7 +505,7 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 		LLM: creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
 			return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的"}, nil
 		}),
-		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *int64, int64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *float64, float64) error {
 			return settleErr
 		}},
 	}
@@ -587,7 +584,7 @@ func TestFinishCreditFloorRefusalShowsBothSentencesAndWaitsForInput(t *testing.T
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		LLM: failLLM(t), IssueKey: failIssueKey(t), RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil }},
+		Billing: creation.BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, float64) (bool, error) { return false, nil }},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {

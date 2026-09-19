@@ -88,9 +88,9 @@ type Service struct {
 
 	Credits func(usd float64) (credits int64, ok bool)
 
-	CreditReserve func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (ok bool, err error)
+	CreditReserve func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSD float64) (ok bool, err error)
 
-	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, usdMicros *int64, reservedUSDMicros int64) error
+	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error
 
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 

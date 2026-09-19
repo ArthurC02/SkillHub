@@ -40,22 +40,6 @@ func TestCreditCanStartNilSkipsTheGate(t *testing.T) {
 	}
 }
 
-func TestUSDMicrosRounding(t *testing.T) {
-	cases := []struct {
-		usd  float64
-		want int64
-	}{
-		{0.1, 100_000},
-		{0, 0},
-		{-1, 0},
-	}
-	for _, c := range cases {
-		if got := usdMicros(c.usd); got != c.want {
-			t.Errorf("usdMicros(%v) = %d, want %d", c.usd, got, c.want)
-		}
-	}
-}
-
 func TestCatalogCheckRunsBeforeTheTransaction(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
 	if err != nil {

@@ -17,20 +17,11 @@ import (
 
 var ErrCreditBalance = errors.New("run: the workspace has too few credits to start a run")
 
-func usdMicros(usd float64) int64 {
-	micros := usd * 1_000_000
-	whole := int64(micros)
-	if float64(whole) < micros {
-		whole++
-	}
-	return whole
-}
-
 func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	if s.CreditReserve == nil {
 		return nil
 	}
-	ok, err := s.CreditReserve(ctx, tx, workspaceID, usdMicros(RunBudgetUSD()))
+	ok, err := s.CreditReserve(ctx, tx, workspaceID, RunBudgetUSD())
 	if err != nil {
 		return err
 	}
@@ -68,17 +59,16 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 			}
 		}
 	}
-	var micros *int64
+	var costUSD *float64
 	if reported {
-		v := usdMicros(spent)
-		micros = &v
+		costUSD = &spent
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, micros, usdMicros(RunBudgetUSD())); err != nil {
+	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, costUSD, RunBudgetUSD()); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

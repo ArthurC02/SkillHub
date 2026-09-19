@@ -109,20 +109,12 @@ func knownCost(usage *llmclient.GatewayUsage) (float64, bool) {
 	return *usage.CostUSD, true
 }
 
-func knownCostMicros(usage *llmclient.GatewayUsage) *int64 {
+func knownCostUSD(usage *llmclient.GatewayUsage) *float64 {
 	cost, known := knownCost(usage)
 	if !known {
 		return nil
 	}
-	micros := usdMicros(cost)
-	return &micros
-}
-
-func usdMicros(usd float64) int64 {
-	if !finite(usd) || usd <= 0 {
-		return 0
-	}
-	return int64(math.Round(usd * 1_000_000))
+	return &cost
 }
 
 type attempt struct {
@@ -364,7 +356,7 @@ func (s *Service) reserveCall(ctx context.Context, workspaceID pgtype.UUID, maxC
 	if s.Billing == nil {
 		return nil
 	}
-	ok, err := s.Billing.Reserve(ctx, workspaceID, usdMicros(maxCallCostUSD))
+	ok, err := s.Billing.Reserve(ctx, workspaceID, maxCallCostUSD)
 	if err != nil {
 		return err
 	}
@@ -467,7 +459,7 @@ func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limi
 	if s.Billing == nil {
 		return nil
 	}
-	return s.Billing.Settle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, knownCostMicros(usage), usdMicros(l.MaxCallCostUSD))
+	return s.Billing.Settle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, knownCostUSD(usage), l.MaxCallCostUSD)
 }
 
 func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *llmclient.CreationStepResponse, callErr error, hadDiagram bool) (State, bool) {

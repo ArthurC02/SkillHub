@@ -386,10 +386,10 @@ func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
 	wiring.WireCreationCredit(target, svc, pool)
 
 	for _, tc := range []struct {
-		name      string
-		usdMicros int64
+		name    string
+		costUSD float64
 	}{
-		{"a paid step", 3_000},
+		{"a paid step", .003},
 		{"a step that cost nothing", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -400,8 +400,8 @@ func TestCreationSettlementCompletesOnOneConnection(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer func() { _ = tx.Rollback(context.Background()) }()
-			spent := tc.usdMicros
-			if err := target.Billing.Settle(ctx, tx, workspaceID, mustParseUUID(t, uuid.NewString()), 1, &spent, 100_000); err != nil {
+			spent := tc.costUSD
+			if err := target.Billing.Settle(ctx, tx, workspaceID, mustParseUUID(t, uuid.NewString()), 1, &spent, .10); err != nil {
 				t.Fatalf("settling a creation step on one connection: %v", err)
 			}
 		})

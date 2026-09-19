@@ -138,20 +138,20 @@ func TestOnlyAFiniteNonNegativeCostIsKnown(t *testing.T) {
 	for _, c := range []struct {
 		name  string
 		usage *llmclient.GatewayUsage
-		want  *int64
+		want  *float64
 	}{
 		{"no usage", nil, nil},
 		{"no cost", &llmclient.GatewayUsage{}, nil},
 		{"not a number", cost(math.NaN()), nil},
 		{"infinite", cost(math.Inf(1)), nil},
 		{"negative", cost(-.01), nil},
-		{"zero", cost(0), new(int64)},
-		{"positive", cost(.0123), func() *int64 { v := int64(12300); return &v }()},
+		{"zero", cost(0), new(float64)},
+		{"positive", cost(.0123), func() *float64 { v := .0123; return &v }()},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			got := knownCostMicros(c.usage)
+			got := knownCostUSD(c.usage)
 			if (got == nil) != (c.want == nil) || got != nil && *got != *c.want {
-				t.Fatalf("micros = %v, want %v", got, c.want)
+				t.Fatalf("cost = %v, want %v", got, c.want)
 			}
 		})
 	}
@@ -217,10 +217,10 @@ func TestAModelCallThatNeverStartsSettlesAsAKnownZero(t *testing.T) {
 		{"a reference that no longer resolves", []Reference{{SkillID: "gone", Confirmed: true}}, func(*Service) {}, time.Minute, ErrNotFound},
 		{"no resolver for a reference", []Reference{{SkillID: "a", Confirmed: true}}, func(s *Service) { s.ResolveReference = nil }, time.Minute, ErrNotFound},
 		{"the balance is at the floor", nil, func(s *Service) {
-			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, nil }}
+			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, float64) (bool, error) { return false, nil }}
 		}, time.Minute, ErrCreditFloor},
 		{"the reservation failed", nil, func(s *Service) {
-			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, int64) (bool, error) { return false, errKeyRefused }}
+			s.Billing = BillingHooks{ReserveFunc: func(context.Context, pgtype.UUID, float64) (bool, error) { return false, errKeyRefused }}
 		}, time.Minute, errKeyRefused},
 		{"the gateway key was refused", nil, func(s *Service) {
 			s.IssueKey = func(context.Context, string, string, float64, time.Duration) (string, error) {

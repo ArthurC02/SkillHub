@@ -39,6 +39,19 @@ func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 	}, nil
 }
 
+func billable(usd float64) int64 {
+	micros, _ := credit.BillableMicros(usd)
+	return micros
+}
+
+func billableOrNil(usd *float64) *int64 {
+	if usd == nil {
+		return nil
+	}
+	micros := billable(*usd)
+	return &micros
+}
+
 func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 	owner := ids.WorkspaceOwner
@@ -56,14 +69,14 @@ func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 			return check.OK, nil
 		},
 		SessionEndedFunc: svc.SummarizeSession,
-		ReserveFunc: func(ctx context.Context, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
+		ReserveFunc: func(ctx context.Context, workspaceID pgtype.UUID, reservedUSD float64) (bool, error) {
 			userID, err := owner(ctx, workspaceID)
 			if err != nil {
 				return false, err
 			}
-			return svc.CanAffordStep(ctx, userID, reservedUSDMicros)
+			return svc.CanAffordStep(ctx, userID, billable(reservedUSD))
 		},
-		SettleFunc: func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, usdMicros *int64, reservedUSDMicros int64) error {
+		SettleFunc: func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, costUSD *float64, reservedUSD float64) error {
 			userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 			if err != nil {
 				return err
@@ -71,8 +84,8 @@ func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 
 			_, err = svc.Charge(ctx, tx, credit.ChargeInput{
 				Kind:              credit.KindCreationStep,
-				UsdMicros:         usdMicros,
-				ReservedUsdMicros: reservedUSDMicros,
+				UsdMicros:         billableOrNil(costUSD),
+				ReservedUsdMicros: billable(reservedUSD),
 				UserID:            userID,
 				WorkspaceID:       workspaceID,
 				RefType:           credit.RefCreationSession,
@@ -93,21 +106,21 @@ func WireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Ser
 func WireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool) {
 	ids := &identity.Service{Pool: pool}
 
-	target.CreditReserve = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSDMicros int64) (bool, error) {
+	target.CreditReserve = func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSD float64) (bool, error) {
 
 		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 		if err != nil {
 			return false, err
 		}
-		return svc.CanAffordStepIn(ctx, tx, userID, reservedUSDMicros)
+		return svc.CanAffordStepIn(ctx, tx, userID, billable(reservedUSD))
 	}
-	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, usdMicros *int64, reservedUSDMicros int64) error {
+	target.CreditSettle = func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error {
 		userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
 		if err != nil {
 			return err
 		}
 		key := "run:" + pgconv.UUIDString(runID)
-		if usdMicros == nil {
+		if costUSD == nil {
 
 			_, _, err := svc.RecordCost(ctx, tx, credit.CostEvent{
 				Kind:           credit.KindRun,
@@ -122,8 +135,8 @@ func WireRunCredit(target *run.Service, svc *credit.Service, pool *pgxpool.Pool)
 		}
 		_, err = svc.Charge(ctx, tx, credit.ChargeInput{
 			Kind:              credit.KindRun,
-			UsdMicros:         usdMicros,
-			ReservedUsdMicros: reservedUSDMicros,
+			UsdMicros:         billableOrNil(costUSD),
+			ReservedUsdMicros: billable(reservedUSD),
 			UserID:            userID,
 			WorkspaceID:       workspaceID,
 			RefType:           credit.RefRun,

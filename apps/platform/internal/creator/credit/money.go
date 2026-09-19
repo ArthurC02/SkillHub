@@ -36,19 +36,23 @@ func CreditsForMicros(billedMicros, microsPerCredit int64) int64 {
 	return ceilDiv(billedMicros, microsPerCredit)
 }
 
+func BillableMicros(usd float64) (usdMicros int64, exact bool) {
+	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
+		return 0, false
+	}
+	// Compared before the conversion: converting a float past int64's range
+	// is implementation-defined and can land back inside the billable range.
+	scaled := usd * 1_000_000
+	if scaled > float64(MaxBillableMicros) {
+		return MaxBillableMicros, false
+	}
+	return int64(math.Ceil(scaled)), true
+}
+
 func UsageCost(costUSD *float64) (usdMicros int64, estimated bool) {
 	if costUSD == nil {
 		return 0, true
 	}
-	v := *costUSD
-	if math.IsNaN(v) || math.IsInf(v, 0) || v <= 0 {
-
-		return 0, true
-	}
-	micros := int64(math.Ceil(v * 1_000_000))
-	if micros > MaxBillableMicros {
-
-		return MaxBillableMicros, true
-	}
-	return micros, false
+	micros, exact := BillableMicros(*costUSD)
+	return micros, !exact
 }

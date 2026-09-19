@@ -67,6 +67,25 @@ func TestAnAmountTooLargeToPriceIsAnErrorNotZero(t *testing.T) {
 	}
 }
 
+func TestAFigureTooLargeToScaleIsCappedNotWrapped(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		usd  float64
+	}{
+		{"one micro past the ceiling", float64(MaxBillableMicros+1) / 1_000_000},
+		{"past what a micro count can hold", float64(math.MaxInt64) / 1_000_000 * 2},
+		{"astronomically large but finite", 1e300},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			micros, exact := BillableMicros(tc.usd)
+			if micros != MaxBillableMicros || exact {
+				t.Errorf("BillableMicros(%v) = %d / %v, want %d / false: a figure that cannot be scaled "+
+					"must cap at the ceiling, never wrap to a negative one", tc.usd, micros, exact, MaxBillableMicros)
+			}
+		})
+	}
+}
+
 func TestUsageCostBillsOnlyAPositiveFiniteFigure(t *testing.T) {
 	usd := func(f float64) *float64 { return &f }
 	for _, tc := range []struct {
