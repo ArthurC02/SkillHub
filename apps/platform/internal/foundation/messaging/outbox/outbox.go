@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -174,7 +176,7 @@ func (w *Worker) recordFailure(ctx context.Context, q *gen.Queries, event Event,
 			"error", cause)
 		return nil
 	}
-	if err := q.DeadLetterOutboxEvent(ctx, event.EventID); err != nil {
+	if err := w.isolate(ctx, event, attempts, cause); err != nil {
 		return fmt.Errorf("dead-letter %s: %w", pgconv.UUIDString(event.EventID), err)
 	}
 	metrics.OutboxDeadLettered.WithLabelValues(event.EventType).Inc()
@@ -185,6 +187,26 @@ func (w *Worker) recordFailure(ctx context.Context, q *gen.Queries, event Event,
 		"delivery_attempts", attempts,
 		"error", cause)
 	return nil
+}
+
+func (w *Worker) isolate(ctx context.Context, event Event, attempts int32, cause error) error {
+	return pgx.BeginFunc(ctx, w.Pool, func(tx pgx.Tx) error {
+		if err := gen.New(tx).DeadLetterOutboxEvent(ctx, event.EventID); err != nil {
+			return err
+		}
+		return audit.Log(ctx, tx, audit.Event{
+			Workspace:    event.WorkspaceID,
+			Action:       audit.ActionEventDeadLettered,
+			ResourceType: audit.ResourceDomainEvent,
+			ResourceID:   event.EventID,
+			Metadata: map[string]any{
+				"event_type":        event.EventType,
+				"correlation_id":    pgconv.UUIDString(event.CorrelationID),
+				"delivery_attempts": attempts,
+				"last_error":        cause.Error(),
+			},
+		})
+	})
 }
 
 func logDelivery(_ context.Context, event Event) error {

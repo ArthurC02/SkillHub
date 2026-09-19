@@ -45,6 +45,8 @@ const (
 	ActionAccountDeleteStop = "account.deletion_cancelled"
 	ActionAccountPurge      = "account.purged"
 
+	ActionEventDeadLettered = "event.dead_lettered"
+
 	ActionRunCreate     = "run.create"
 	ActionRunTransition = "run.transition"
 	ActionRunCancelAsk  = "run.cancel_requested"
@@ -102,6 +104,8 @@ const (
 	ResourceDispatch = "dispatch"
 
 	ResourceCreditAccount = "credit_account"
+
+	ResourceDomainEvent = "domain_event"
 )
 
 type Event struct {

@@ -396,6 +396,62 @@ func TestATransitionThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
 	}
 }
 
+func TestAnIsolatedEventIsWrittenIntoTheAuditTrail(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-outbox-audit")
+
+	poisoned := f.start(t)
+	poisonedID := mustUUID(t, poisoned.RunID)
+	w := &outbox.Worker{
+		Pool:                pool,
+		MaxDeliveryAttempts: 1,
+		Deliver: func(_ context.Context, e outbox.Event) error {
+			if e.AggregateID == poisonedID {
+				return errors.New("this consumer will never accept this event")
+			}
+			return nil
+		},
+	}
+	for range 3 {
+		_, _ = w.Publish(context.Background())
+	}
+
+	poison := eventOfType(t, pool, poisoned.RunID, outbox.RunQueued)
+	if !poison.DeadLetteredAt.Valid {
+		t.Fatal("the event was never isolated, so there is nothing to audit")
+	}
+
+	var action, resourceType string
+	var workspace pgtype.UUID
+	var metadata []byte
+	if err := pool.QueryRow(context.Background(),
+		"SELECT action, resource_type, workspace_id, metadata FROM audit_events WHERE resource_id = $1",
+		poison.EventID).Scan(&action, &resourceType, &workspace, &metadata); err != nil {
+		t.Fatalf("an isolated event left no audit row: %v", err)
+	}
+	if action != "event.dead_lettered" || resourceType != "domain_event" {
+		t.Errorf("audit row = %s/%s, want event.dead_lettered/domain_event", action, resourceType)
+	}
+	if workspace != mustUUID(t, f.workspaceID) {
+		t.Errorf("workspace_id = %v, want the workspace the event belongs to", workspace)
+	}
+	var meta struct {
+		EventType        string `json:"event_type"`
+		DeliveryAttempts int    `json:"delivery_attempts"`
+		LastError        string `json:"last_error"`
+	}
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		t.Fatalf("metadata is not readable: %v", err)
+	}
+	if meta.EventType != outbox.RunQueued || meta.DeliveryAttempts != 1 {
+		t.Errorf("metadata = %s/%d attempts, want %s/1", meta.EventType, meta.DeliveryAttempts, outbox.RunQueued)
+	}
+	if !strings.Contains(meta.LastError, "will never accept") {
+		t.Errorf("last_error = %q, want the refusal that stopped delivery", meta.LastError)
+	}
+}
+
 func TestAnUndeliverableEventIsIsolatedAndReleasesTheBacklog(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
