@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
@@ -67,7 +66,7 @@ func TestEvaluationSnapshotsDoNotAliasInputsOrOutputs(t *testing.T) {
 		v := verdict{
 			results:  []CriterionResult{{CriterionID: "criterion-original", Evidence: []EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
 			findings: []Finding{{Message: "finding-original", Evidence: []EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
-			costUSD:  &cost, usage: &llmclient.GatewayUsage{CostUSD: &usageCost},
+			costUSD:  &cost, usage: &ModelUsage{CostUSD: &usageCost},
 		}
 		e := revisionIn(StatusPending, false)
 		e.Complete(v)

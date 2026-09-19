@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -295,7 +294,7 @@ func cloneEvidenceRefs(refs []EvidenceRef) []EvidenceRef {
 	return cloned
 }
 
-func cloneUsage(usage *llmclient.GatewayUsage) *llmclient.GatewayUsage {
+func cloneUsage(usage *ModelUsage) *ModelUsage {
 	cloned := pgconv.Clone(usage)
 	if cloned != nil {
 		cloned.CostUSD = pgconv.Clone(usage.CostUSD)

@@ -139,13 +139,13 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		ref     llmclient.JudgeEvidenceRef
+		ref     Citation
 		wantErr bool
 		check   func(*testing.T, EvidenceRef)
 	}{
 		{
 			name: "a trace event in the digest, quoted correctly",
-			ref: llmclient.JudgeEvidenceRef{
+			ref: Citation{
 				Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`,
 			},
 			check: func(t *testing.T, got EvidenceRef) {
@@ -156,21 +156,21 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 		},
 		{
 			name: "an event id the model invented",
-			ref: llmclient.JudgeEvidenceRef{
+			ref: Citation{
 				Kind: KindTraceEvent, TraceEventID: strp("11111111-1111-4111-8111-111111111111"),
 			},
 			wantErr: true,
 		},
 		{
 			name: "a real event with a quote that is not in it",
-			ref: llmclient.JudgeEvidenceRef{
+			ref: Citation{
 				Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: "the skill worked perfectly",
 			},
 			wantErr: true,
 		},
 		{
 			name: "an artifact that is in the manifest",
-			ref:  llmclient.JudgeEvidenceRef{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+			ref:  Citation{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
 			check: func(t *testing.T, got EvidenceRef) {
 				if got.ByteRange != nil {
 					t.Error("no artifact bytes were sent, so there is no byte range to report")
@@ -182,12 +182,12 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 		},
 		{
 			name:    "an artifact nobody produced",
-			ref:     llmclient.JudgeEvidenceRef{Kind: KindArtifact, ArtifactPath: strp("report.pdf")},
+			ref:     Citation{Kind: KindArtifact, ArtifactPath: strp("report.pdf")},
 			wantErr: true,
 		},
 		{
 			name: "a quote from the agent's final output",
-			ref:  llmclient.JudgeEvidenceRef{Kind: KindAgentOutput, Quote: quote},
+			ref:  Citation{Kind: KindAgentOutput, Quote: quote},
 			check: func(t *testing.T, got EvidenceRef) {
 				if got.CharRange == nil {
 					t.Fatal("Go computes the char range itself; it must be present")
@@ -199,12 +199,12 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 		},
 		{
 			name:    "a quote the final output does not contain",
-			ref:     llmclient.JudgeEvidenceRef{Kind: KindAgentOutput, Quote: "I could not do it"},
+			ref:     Citation{Kind: KindAgentOutput, Quote: "I could not do it"},
 			wantErr: true,
 		},
 		{
 			name:    "a kind this platform has never heard of",
-			ref:     llmclient.JudgeEvidenceRef{Kind: "database_row", Quote: "x"},
+			ref:     Citation{Kind: "database_row", Quote: "x"},
 			wantErr: true,
 		},
 	}
@@ -233,7 +233,7 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 
 func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(llmclient.JudgeEvidenceRef{
+	got, why := verify(Citation{
 		Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows",
 	}, m, digest)
 
@@ -253,7 +253,7 @@ func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
 
 func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(llmclient.JudgeEvidenceRef{
+	got, why := verify(Citation{
 
 		Kind: KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
 	}, m, digest)
@@ -275,7 +275,7 @@ func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
 
 func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	got, why := verify(llmclient.JudgeEvidenceRef{
+	got, why := verify(Citation{
 		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: `"tool_name":"bash"`,
 	}, m, digest)
 
@@ -296,7 +296,7 @@ func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T)
 
 func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	ref := llmclient.JudgeEvidenceRef{
+	ref := Citation{
 		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"),
 		Quote: "the duplicates were removed by hand",
 	}
@@ -316,12 +316,12 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 		{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
 		{ID: "c2", Text: "an xlsx file is produced", EvidenceRequired: false},
 	}}
-	results := (&Service{}).merge(m, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	results := (&Service{}).merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "it says so",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{ref}},
+				Citations: []Citation{ref}},
 			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}, digest, evidenceCuts{})
@@ -345,7 +345,7 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	short := `"Removed 17"`
 
-	if _, why := verify(llmclient.JudgeEvidenceRef{
+	if _, why := verify(Citation{
 		Kind: KindAgentOutput, Quote: short,
 	}, m, digest); why == "" {
 		t.Error("a quote below the length floor may only be accepted verbatim")
@@ -361,14 +361,14 @@ func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
 func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	results := s.merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 					{Kind: KindTraceEvent, TraceEventID: strp("22222222-2222-4222-8222-222222222222")},
 				}},
 			{CriterionID: "c2", Result: ResultFailed, Reason: "no xlsx",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
@@ -399,10 +399,10 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	results := s.merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "both of these check out",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 
 					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 
@@ -410,7 +410,7 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 						Quote: "the deduplicator ran twice and agreed with itself"},
 				}},
 			{CriterionID: "c2", Result: ResultFailed, Reason: "no xlsx",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
 				}},
 		},
@@ -431,10 +431,10 @@ func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *
 func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	s := &Service{}
-	results := s.merge(m, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	results := s.merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "the duplicates are gone",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				Citations: []Citation{
 					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 				}},
 
@@ -463,8 +463,8 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 
 func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	results := (&Service{}).merge(m, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	results := (&Service{}).merge(m, &Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me"},
 			{CriterionID: "c2", Result: ResultFailed, Reason: "also trust me"},
 		},
@@ -481,18 +481,18 @@ func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
 }
 
 func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
-	pass := llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	pass := Judgement{
+		Criteria: []CriterionVerdict{
 			{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
+				Citations: []Citation{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
 			{CriterionID: "c2", Result: ResultFailed, Reason: "no file",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+				Citations: []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	s := &Service{}
 
 	incomplete, digest := fixtureMaterial(false)
-	got := s.merge(incomplete, pass, digest, evidenceCuts{})
+	got := s.merge(incomplete, &pass, digest, evidenceCuts{})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("a trace with holes cannot support a pass (丙-1), got %q", got[0].Result)
 	}
@@ -501,12 +501,12 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	}
 
 	complete, digest := fixtureMaterial(true)
-	got = s.merge(complete, pass, digest, evidenceCuts{batch: true})
+	got = s.merge(complete, &pass, digest, evidenceCuts{batch: true})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("judging on truncated input cannot support a pass (§6.3), got %q", got[0].Result)
 	}
 
-	got = s.merge(complete, pass, digest, evidenceCuts{})
+	got = s.merge(complete, &pass, digest, evidenceCuts{})
 	if got[0].Result != ResultPassed {
 		t.Error("with complete, untruncated evidence a pass is a pass")
 	}
@@ -707,7 +707,7 @@ func TestAJudgeFailureIsAnErrorAndNotALenientVerdict(t *testing.T) {
 		t.Fatal("a 502 from the judge must surface as an error")
 	}
 
-	svc := &Service{Judge: client}
+	svc := &Service{Judge: JudgeOrNone(client)}
 	if _, err := svc.judge(context.Background(), material{
 		criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 	}, gen.Evaluation{}); err == nil {
@@ -728,12 +728,14 @@ func TestAJudgeCallCostsOnlyWhatTheGatewayReported(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := fakeJudge(t, http.StatusOK, llmclient.JudgeRunResponse{
 				Verdict: llmclient.JudgeVerdict{
-					CriterionResults: []llmclient.CriterionVerdict{{CriterionID: "c1", Result: ResultPassed, Reason: "done"}},
-					Overall:          string(OverallMet),
+					CriterionResults: []llmclient.CriterionVerdict{
+						{CriterionID: "c1", Result: ResultPassed, Reason: "done"},
+					},
+					Overall: string(OverallMet),
 				},
 				Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: tc.source},
 			}, nil)
-			v, err := (&Service{Judge: client}).judge(context.Background(), material{
+			v, err := (&Service{Judge: JudgeOrNone(client)}).judge(context.Background(), material{
 				criteria: []testlab.Criterion{{ID: "c1", Text: "x"}},
 			}, gen.Evaluation{})
 			if err != nil {
@@ -881,31 +883,31 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 		t.Fatalf("the judge got an empty artifact list with nothing said about it: %v", req.Truncation)
 	}
 
-	pass := llmclient.JudgeVerdict{CriterionResults: []llmclient.CriterionVerdict{
+	pass := Judgement{Criteria: []CriterionVerdict{
 		{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
-			EvidenceRefs: []llmclient.JudgeEvidenceRef{
+			Citations: []Citation{
 				{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
 			}},
 	}}
-	got := s.merge(m, pass, digest, evidenceCuts{batch: batchWideCut(truncation)})
+	got := s.merge(m, &pass, digest, evidenceCuts{batch: batchWideCut(truncation)})
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("a pass judged with the run's outputs unreadable was stored as a pass: %+v", got[0])
 	}
 }
 
 func TestATrimmedExcerptOnlySilencesTheCriterionThatCitesIt(t *testing.T) {
-	verdict := llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
+	verdict := Judgement{
+		Criteria: []CriterionVerdict{
 
 			{CriterionID: "c1", Result: ResultPassed, Reason: "the tool call shows it",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
+				Citations: []Citation{{Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`}}},
 
 			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+				Citations: []Citation{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	m, digest := fixtureMaterial(true)
-	got := (&Service{}).merge(m, verdict, digest, evidenceCuts{trimmedEvents: map[string]bool{eventID: true}})
+	got := (&Service{}).merge(m, &verdict, digest, evidenceCuts{trimmedEvents: map[string]bool{eventID: true}})
 
 	if got[0].Result != ResultUndetermined {
 		t.Errorf("a verdict resting on a trimmed excerpt cannot be a pass, got %q", got[0].Result)

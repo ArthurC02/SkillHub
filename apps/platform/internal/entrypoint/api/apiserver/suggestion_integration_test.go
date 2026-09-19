@@ -129,8 +129,8 @@ func evaluateWithSuggestions(
 	seedFinalOutput(t, pool, c.workspaceID, runID, suggestionFinalOutput)
 
 	llm := llmServer(t, failedBoth, proposals)
-	a.evaluations.Judge = llm
-	a.evaluations.Suggester = llm
+	a.evaluations.Judge = eval.JudgeOrNone(llm)
+	a.evaluations.Suggester = eval.SuggesterOrNone(llm)
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatalf("evaluate: %v", err)
@@ -459,7 +459,7 @@ func TestSuggestionsThatRebuildAnExistingVersionAreRecordedAgainstThatVersion(t 
 		runID := seedRunForVersion(t, pool, c.workspaceID, seed.skillID, versionID)
 		seedFinalOutput(t, pool, c.workspaceID, runID, suggestionFinalOutput)
 		llm := llmServer(t, failedBoth, proposal(content))
-		a.evaluations.Judge, a.evaluations.Suggester = llm, llm
+		a.evaluations.Judge, a.evaluations.Suggester = eval.JudgeOrNone(llm), eval.SuggesterOrNone(llm)
 		if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 			t.Fatalf("evaluating version %s: %v", versionID, err)
 		}

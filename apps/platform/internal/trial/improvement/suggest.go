@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
@@ -27,11 +26,6 @@ const (
 	maxDigestEvidence   = 8
 	maxSuggestionsStore = 10 // one-number: suggestMaxSuggestions
 )
-
-type Suggester interface {
-	SuggestImprovements(ctx context.Context, req llmclient.SuggestImprovementsRequest) (
-		*llmclient.SuggestImprovementsResponse, error)
-}
 
 func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v verdict) {
 	if s.Suggester == nil || !worthSuggesting(v) {
@@ -49,7 +43,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
-	resp, err := s.Suggester.SuggestImprovements(callCtx, llmclient.SuggestImprovementsRequest{
+	resp, err := s.Suggester.SuggestImprovements(callCtx, ImprovementRequest{
 		EvaluationID:     pgconv.UUIDString(ev.ID),
 		EvaluationDigest: digest,
 		FileTree:         tree,
@@ -73,9 +67,9 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	q := s.queries()
 
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
-	for _, p := range resp.Suggestions {
+	for _, p := range resp.Proposals {
 		if stored == maxSuggestionsStore {
-			overCap = len(resp.Suggestions) - stored - noEvidence - unstorable - writeFailed
+			overCap = len(resp.Proposals) - stored - noEvidence - unstorable - writeFailed
 			break
 		}
 		evidence, err := suggestionEvidence(p, refs)
@@ -118,7 +112,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 
 	slog.Info("improvement proposals",
 		"evaluation_id", pgconv.UUIDString(ev.ID),
-		"proposed", len(resp.Suggestions),
+		"proposed", len(resp.Proposals),
 		"stored", stored,
 		"dropped_no_evidence", noEvidence,
 		"dropped_unstorable", unstorable,
@@ -138,7 +132,7 @@ func worthSuggesting(v verdict) bool {
 	return false
 }
 
-func storable(p llmclient.ImprovementProposal) bool {
+func storable(p ImprovementProposal) bool {
 	if !SuggestionCategory(p.Category).actionable() {
 		return false
 	}
@@ -152,7 +146,7 @@ func storable(p llmclient.ImprovementProposal) bool {
 	return ok
 }
 
-func suggestionEvidence(p llmclient.ImprovementProposal, refs []EvidenceRef) ([]byte, error) {
+func suggestionEvidence(p ImprovementProposal, refs []EvidenceRef) ([]byte, error) {
 	out := make([]EvidenceRef, 0, maxStoredEvidence)
 	for _, quote := range evidenceQuotes(p.Evidence) {
 		for _, ref := range refs {
@@ -259,7 +253,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 	return digest, refs
 }
 
-func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []llmclient.TargetFile) {
+func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []TargetFile) {
 	if s.Store == nil || m.version.PackageObjectKey == "" {
 		return nil, nil
 	}
@@ -291,7 +285,7 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []llm
 		}
 	}
 
-	files := make([]llmclient.TargetFile, 0, maxTargetFiles)
+	files := make([]TargetFile, 0, maxTargetFiles)
 	for _, p := range ordered {
 		if len(files) == maxTargetFiles {
 			break
@@ -300,7 +294,7 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []llm
 		if err != nil || content == "" || len([]rune(content)) > maxTargetFileChars {
 			continue
 		}
-		files = append(files, llmclient.TargetFile{Path: p, Content: content})
+		files = append(files, TargetFile{Path: p, Content: content})
 	}
 	return tree, files
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -18,7 +17,7 @@ type CostRecorder interface {
 type CreditsForUSD = func(usd float64) (credits int64, ok bool)
 
 func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind credit.CostKind,
-	workspaceID, evaluationID, runID pgtype.UUID, model, promptVersion string, u *llmclient.GatewayUsage) {
+	workspaceID, evaluationID, runID pgtype.UUID, model, promptVersion string, u *ModelUsage) {
 	if s.Credit == nil {
 		return
 	}

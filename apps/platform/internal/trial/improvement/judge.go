@@ -10,7 +10,6 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -40,13 +39,13 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	if err != nil {
 		return verdict{}, err
 	}
-	results := s.merge(m, resp.Verdict, digest, evidenceCuts{
+	results := s.merge(m, resp, digest, evidenceCuts{
 		batch:         batchWideCut(truncation),
 		trimmedEvents: trimmedEvents,
 	})
 	v := verdict{
 		overall:          overallFrom(results),
-		summary:          resp.Verdict.Summary,
+		summary:          resp.Summary,
 		results:          results,
 		evidenceComplete: true,
 		model:            orUnknown(resp.Model),
@@ -83,7 +82,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 
 func (s *Service) buildRequest(
 	m material, ev gen.Evaluation,
-) (llmclient.JudgeRunRequest, map[string]trace.EventView, []string, []string, map[string]bool) {
+) (JudgeRequest, map[string]trace.EventView, []string, []string, map[string]bool) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.summary.FinalOutput, maxFinalOutput)
@@ -91,23 +90,23 @@ func (s *Service) buildRequest(
 		truncation = append(truncation, "final_output")
 	}
 
-	criteria := make([]llmclient.JudgeCriterion, 0, maxCriteria)
+	criteria := make([]JudgeCriterion, 0, maxCriteria)
 	for _, c := range m.criteria {
 		if len(criteria) == maxCriteria {
 			truncation = append(truncation, "criteria")
 			break
 		}
-		criteria = append(criteria, llmclient.JudgeCriterion{ID: c.ID, Text: c.Text})
+		criteria = append(criteria, JudgeCriterion{ID: c.ID, Text: c.Text})
 	}
 
-	artifacts := make([]llmclient.JudgeArtifact, 0, len(m.artifacts))
+	artifacts := make([]JudgeArtifact, 0, len(m.artifacts))
 	for _, a := range m.artifacts {
 		if len(artifacts) == maxArtifactRows {
 			truncation = append(truncation, "artifacts")
 			break
 		}
 
-		artifacts = append(artifacts, llmclient.JudgeArtifact{
+		artifacts = append(artifacts, JudgeArtifact{
 			Path: a.FileName, SizeBytes: a.SizeBytes, ContentType: a.ContentType,
 		})
 	}
@@ -128,28 +127,28 @@ func (s *Service) buildRequest(
 		truncation = append(truncation, "trace_digest.entries[].excerpt")
 	}
 
-	req := llmclient.JudgeRunRequest{
+	req := JudgeRequest{
 		RunID:        pgconv.UUIDString(m.run.ID),
 		EvaluationID: pgconv.UUIDString(ev.ID),
 		UserPrompt:   m.snapshot.UserPrompt,
 		Criteria:     criteria,
 		FinalOutput:  final,
 		Artifacts:    artifacts,
-		TraceDigest: llmclient.TraceDigest{
+		TraceDigest: TraceDigest{
 			Complete: m.advanced.Complete,
 			Entries:  entries,
 		},
 		Truncation: truncation,
 	}
 	if m.skill.Name != "" {
-		req.Skill = &llmclient.JudgeSkill{Name: m.skill.Name, Summary: derefString(m.skill.Summary)}
+		req.Skill = &JudgedSkill{Name: m.skill.Name, Summary: derefString(m.skill.Summary)}
 	}
 	rubric, dropped := rubricFor(m.rubric, criteria)
 	req.Rubric = rubric
 	return req, digest, truncation, dropped, cuts.TrimmedEvents
 }
 
-func rubricFor(r *testlab.Rubric, criteria []llmclient.JudgeCriterion) (*llmclient.Rubric, []string) {
+func rubricFor(r *testlab.Rubric, criteria []JudgeCriterion) (*JudgeRubric, []string) {
 	if r == nil || len(r.Items) == 0 {
 		return nil, nil
 	}
@@ -157,21 +156,21 @@ func rubricFor(r *testlab.Rubric, criteria []llmclient.JudgeCriterion) (*llmclie
 	for _, c := range criteria {
 		sent[c.ID] = true
 	}
-	items := make([]llmclient.RubricItem, 0, len(r.Items))
+	items := make([]JudgeRubricItem, 0, len(r.Items))
 	var dropped []string
 	for _, it := range r.Items {
 		if !sent[it.ID] {
 			dropped = append(dropped, it.ID)
 			continue
 		}
-		items = append(items, llmclient.RubricItem{
+		items = append(items, JudgeRubricItem{
 			ID: it.ID, Text: it.Text, Weight: it.Weight, EvidenceRequired: it.EvidenceRequired,
 		})
 	}
 	if len(items) == 0 {
 		return nil, dropped
 	}
-	return &llmclient.Rubric{Items: items}, dropped
+	return &JudgeRubric{Items: items}, dropped
 }
 
 type digestCuts struct {
@@ -182,7 +181,7 @@ type digestCuts struct {
 	TrimmedEvents map[string]bool
 }
 
-func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[string]trace.EventView, digestCuts) {
+func buildDigest(view trace.AdvancedView) ([]TraceDigestEntry, map[string]trace.EventView, digestCuts) {
 	citable := make([]trace.EventView, 0, len(view.Events))
 	for _, e := range view.Events {
 		switch e.Type {
@@ -197,11 +196,11 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 		cuts.DroppedEvents = true
 	}
 
-	entries := make([]llmclient.TraceDigestEntry, 0, len(citable))
+	entries := make([]TraceDigestEntry, 0, len(citable))
 	digest := make(map[string]trace.EventView, len(citable))
 	for _, e := range citable {
 		excerpt, cutExcerpt := cut(string(e.Payload), maxDigestEntry)
-		entries = append(entries, llmclient.TraceDigestEntry{
+		entries = append(entries, TraceDigestEntry{
 			TraceEventID: e.EventID,
 			OccurredAt:   e.OccurredAt,
 			Type:         e.Type,
@@ -244,7 +243,7 @@ func batchWideCut(truncation []string) bool {
 }
 
 func (s *Service) merge(
-	m material, v llmclient.JudgeVerdict, digest map[string]trace.EventView, cuts evidenceCuts,
+	m material, v *Judgement, digest map[string]trace.EventView, cuts evidenceCuts,
 ) []CriterionResult {
 
 	evidenceRequired := map[string]bool{}
@@ -254,8 +253,8 @@ func (s *Service) merge(
 		}
 	}
 
-	answers := make(map[string]llmclient.CriterionVerdict, len(v.CriterionResults))
-	for _, cv := range v.CriterionResults {
+	answers := make(map[string]CriterionVerdict, len(v.Criteria))
+	for _, cv := range v.Criteria {
 
 		answers[cv.CriterionID] = cv
 	}
@@ -277,7 +276,7 @@ func (s *Service) merge(
 		result.Reason = cv.Reason
 
 		var unverifiable []string
-		for _, ref := range cv.EvidenceRefs {
+		for _, ref := range cv.Citations {
 			verified, why := verify(ref, m, digest)
 			if why != "" {
 				unverifiable = append(unverifiable, why)
@@ -334,7 +333,7 @@ func normaliseResult(r string) string {
 }
 
 func verify(
-	ref llmclient.JudgeEvidenceRef, m material, digest map[string]trace.EventView,
+	ref Citation, m material, digest map[string]trace.EventView,
 ) (EvidenceRef, string) {
 
 	var namedFailure string

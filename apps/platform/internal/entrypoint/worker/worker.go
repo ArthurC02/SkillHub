@@ -120,11 +120,8 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	) ([]outbox.Event, error) {
 		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
 	}
-	if deps.LLM != nil {
-		set.Evaluations.Judge = deps.LLM
-
-		set.Evaluations.Suggester = deps.LLM
-	}
+	set.Evaluations.Judge = eval.JudgeOrNone(deps.LLM)
+	set.Evaluations.Suggester = eval.SuggesterOrNone(deps.LLM)
 
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 	set.SkillVersions = &eval.SkillVersionConsumer{}

@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 var baselineCriteria = []string{
@@ -111,7 +112,7 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
 
 	judging := *a.evaluations
-	judging.Judge = &llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
+	judging.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")})
 	startWorkerWith(t, a.runs, &judging)
 
 	c := a.login(t, "gen009-baseline")

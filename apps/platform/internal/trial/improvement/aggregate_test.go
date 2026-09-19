@@ -756,7 +756,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 
 	t.Run("the declared conditions survive the failure", func(t *testing.T) {
 		s := &Service{
-			Pool: pool, Judge: &llmclient.Client{},
+			Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
 			JudgeModel: "gpt-5.6-terra", JudgePromptVersion: "judge-run@v1",
 		}
 		m := seedRun(t, s.Pool)
@@ -789,7 +789,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 	})
 
 	t.Run("an undeclared prompt version stays NULL while the model is recorded", func(t *testing.T) {
-		s := &Service{Pool: pool, Judge: &llmclient.Client{}}
+		s := &Service{Pool: pool, Judge: JudgeOrNone(&llmclient.Client{})}
 		m := seedRun(t, s.Pool)
 
 		got := failed(t, s, m)
@@ -805,7 +805,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 
 	t.Run("a completed row reports what ran, not what was declared", func(t *testing.T) {
 		s := &Service{
-			Pool: pool, Judge: &llmclient.Client{},
+			Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
 			JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
 		}
 		m := seedRun(t, s.Pool)

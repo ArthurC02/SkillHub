@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -102,10 +101,6 @@ const (
 	SeverityWarning = "warning"
 	SeverityInfo    = "info"
 )
-
-type Judge interface {
-	JudgeRun(ctx context.Context, req llmclient.JudgeRunRequest) (*llmclient.JudgeRunResponse, error)
-}
 
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
@@ -228,7 +223,7 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 
 func (s *Service) recordModelUsage(
 	ctx context.Context, q *gen.Queries, workspaceID, evaluationID pgtype.UUID, operation string,
-	model, promptVersion string, usage *llmclient.GatewayUsage,
+	model, promptVersion string, usage *ModelUsage,
 ) error {
 	if usage == nil {
 		return nil
@@ -407,7 +402,7 @@ type verdict struct {
 	rubricVersion    string
 	costUSD          *float64
 
-	usage *llmclient.GatewayUsage
+	usage *ModelUsage
 }
 
 func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (material, error) {

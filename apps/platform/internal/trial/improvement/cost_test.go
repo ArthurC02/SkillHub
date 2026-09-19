@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -28,9 +27,8 @@ func TestJudgingRecordsExactlyOneReviewCostEvent(t *testing.T) {
 
 	cost := 0.0031
 	v := aVerdict("the criteria were met", OverallMet)
-	v.usage = &llmclient.GatewayUsage{
-		PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostSource: "gateway",
-	}
+	v.usage = &ModelUsage{
+		PromptTokens: 4000, CompletionTokens: 600, CostUSD: &cost, CostReported: true}
 	ev := beginAndComplete(t, s, m, v)
 
 	if len(ledger.events) != 1 {
@@ -80,11 +78,10 @@ func TestSuggestingRecordsExactlyOneSuggestionCostEvent(t *testing.T) {
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
-		Suggester: stubSuggester{resp: llmclient.SuggestImprovementsResponse{
+		Suggester: stubSuggester{resp: Improvements{
 			Model: "suggest-model", PromptVersion: "suggest/v2",
-			Usage: &llmclient.GatewayUsage{
-				PromptTokens: 3000, CompletionTokens: 900, CostUSD: &cost, CostSource: "gateway",
-			},
+			Usage: &ModelUsage{
+				PromptTokens: 3000, CompletionTokens: 900, CostUSD: &cost, CostReported: true},
 		}},
 	}
 	m := seedRun(t, s.Pool)
@@ -114,9 +111,9 @@ func TestACallTheGatewayDidNotPriceIsRecordedAsEstimatedRatherThanFree(t *testin
 	s := &Service{
 		Pool:   requireEvalDB(t),
 		Credit: ledger,
-		Suggester: stubSuggester{resp: llmclient.SuggestImprovementsResponse{
+		Suggester: stubSuggester{resp: Improvements{
 			Model: "m", PromptVersion: "v",
-			Usage: &llmclient.GatewayUsage{PromptTokens: 10, CostUSD: &cost, CostSource: "estimated"},
+			Usage: &ModelUsage{PromptTokens: 10, CostUSD: &cost, CostReported: false},
 		}},
 	}
 	m := seedRun(t, s.Pool)
