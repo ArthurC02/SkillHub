@@ -65,6 +65,17 @@ type packagingFaultStore struct {
 	removes   int
 }
 
+func (s *packagingRaceStore) GetIfPresent(ctx context.Context, key string) ([]byte, bool, error) {
+	return s.base.GetIfPresent(ctx, key)
+}
+
+func (s *packagingFaultStore) GetIfPresent(ctx context.Context, key string) ([]byte, bool, error) {
+	if s.getErr != nil {
+		return nil, false, s.getErr
+	}
+	return s.base.GetIfPresent(ctx, key)
+}
+
 func (s *packagingFaultStore) Get(ctx context.Context, key string) ([]byte, error) {
 	if s.getErr != nil {
 		return nil, s.getErr

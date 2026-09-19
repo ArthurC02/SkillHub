@@ -1015,3 +1015,27 @@ func TestPackagingAnOlderVersionSaysWhichVersionIsLatest(t *testing.T) {
 			one.SkillID, one.VersionNumber, one.LatestVersionNumber, skillID)
 	}
 }
+
+func TestAStoreThatCannotBeReadDoesNotTellTheOwnerTheirDownloadIsGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-outage")
+	art := buildDownload(t, a, pool, c, "outage-skill")
+
+	a.packaging.Store = &packagingFaultStore{
+		base:   a.packages,
+		getErr: errors.New("the object store is not answering"),
+	}
+
+	resp, body := c.fetchContent(t, art.ArtifactID)
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("GET content with an unreadable store: got %d, want 503: the download still exists, "+
+			"and a 404 tells the owner to stop trying", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), "稍後再試") {
+		t.Errorf("body = %q, want it to say in Chinese that the download is still there", body)
+	}
+	if strings.Contains(string(body), "not answering") {
+		t.Errorf("body = %q, still carries the store's own words", body)
+	}
+}

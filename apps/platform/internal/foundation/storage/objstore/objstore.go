@@ -59,16 +59,37 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 const MaxObjectBytes = 128 << 20
 
 func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
+	data, found, err := c.GetIfPresent(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, fmt.Errorf("objstore get %s: no object with that key", key)
+	}
+	return data, nil
+}
+
+func (c *Client) GetIfPresent(ctx context.Context, key string) ([]byte, bool, error) {
 	obj, err := c.mc.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("objstore get %s: %w", key, err)
+		if isNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("objstore get %s: %w", key, err)
 	}
 	defer func() { _ = obj.Close() }()
 	data, err := readCapped(obj, MaxObjectBytes)
 	if err != nil {
-		return nil, fmt.Errorf("objstore get %s: %w", key, err)
+		if isNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("objstore get %s: %w", key, err)
 	}
-	return data, nil
+	return data, true, nil
+}
+
+func isNotFound(err error) bool {
+	return minio.ToErrorResponse(err).StatusCode == http.StatusNotFound
 }
 
 // readCapped reads one byte past max: io.ReadAll on a plain LimitReader
@@ -94,7 +115,7 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 
 func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	if _, err := c.mc.StatObject(ctx, c.bucket, key, minio.StatObjectOptions{}); err != nil {
-		if minio.ToErrorResponse(err).StatusCode == http.StatusNotFound {
+		if isNotFound(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("objstore stat %s: %w", key, err)

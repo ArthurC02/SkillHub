@@ -26,6 +26,11 @@ func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
 	return data, nil
 }
 
+func (s packageStore) GetIfPresent(_ context.Context, key string) ([]byte, bool, error) {
+	data, ok := s[key]
+	return data, ok, nil
+}
+
 func (s packageStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://objects.test/" + key + "?signature=test", nil
 }

@@ -273,3 +273,34 @@ func inProcessEndpoint(t *testing.T, c *Client) (endpoint, key string) {
 	}
 	return u.Scheme + "://" + u.Host, key
 }
+
+func TestAMissingObjectIsAbsenceNotFailure(t *testing.T) {
+	c, stop, err := NewInProcess("absence-bucket")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(stop)
+	ctx := context.Background()
+	if err := c.Put(ctx, "here", []byte("bytes")); err != nil {
+		t.Fatal(err)
+	}
+
+	data, found, err := c.GetIfPresent(ctx, "here")
+	if err != nil || !found || string(data) != "bytes" {
+		t.Fatalf("GetIfPresent(here) = %q %v %v, want the bytes and found", data, found, err)
+	}
+
+	data, found, err = c.GetIfPresent(ctx, "never-written")
+	if err != nil {
+		t.Fatalf("a key that was never written reported a failure: %v; the caller cannot then tell "+
+			"a gone object from a store it could not read", err)
+	}
+	if found || data != nil {
+		t.Errorf("GetIfPresent(never-written) = %q %v, want no bytes and not found", data, found)
+	}
+
+	stop()
+	if _, _, err := c.GetIfPresent(ctx, "here"); err == nil {
+		t.Error("a store that is not answering reported absence; the caller would call a present object gone")
+	}
+}

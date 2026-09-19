@@ -61,6 +61,7 @@ var (
 
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
+	GetIfPresent(ctx context.Context, key string) (data []byte, found bool, err error)
 	Put(ctx context.Context, key string, data []byte) error
 	Remove(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)

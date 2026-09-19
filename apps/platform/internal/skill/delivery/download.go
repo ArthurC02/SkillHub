@@ -21,6 +21,8 @@ import (
 
 var ErrGone = errors.New("this package is no longer available for download")
 
+var ErrStoreUnreadable = errors.New("the package store could not be read")
+
 var errDownloadReadNotConfigured = errors.New("packaging: version summary or display name read is not configured")
 
 type downloadArtifact struct {
@@ -163,11 +165,15 @@ func (s *Service) Download(
 		return none, nil, ErrGone
 	}
 
-	data, err := s.Store.Get(ctx, row.ObjectKey)
+	data, found, err := s.Store.GetIfPresent(ctx, row.ObjectKey)
 	if err != nil {
-
-		slog.Warn("download artifact object unreadable",
+		slog.Error("the package store could not be read",
 			"artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
+		return none, nil, ErrStoreUnreadable
+	}
+	if !found {
+		slog.Warn("download artifact object is gone",
+			"artifact_id", pgconv.UUIDString(row.ArtifactID))
 		return none, nil, ErrGone
 	}
 
@@ -366,6 +372,10 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, ErrNoStore):
 		writeUnconfigured(w, err)
+		return
+	case errors.Is(err, ErrStoreUnreadable):
+		httpx.WriteError(w, http.StatusServiceUnavailable,
+			"套件儲存現在讀不到，這個下載還在，請稍後再試。")
 		return
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, "download failed")
