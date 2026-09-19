@@ -229,7 +229,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	var (
-		lastErr       error
+		lastReason    string
 		lastAttemptID pgtype.UUID
 		failures      int
 	)
@@ -263,13 +263,14 @@ dispatching:
 			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
 				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 			}
-			d.finishAttempt(ctx, attempt, errClassProvision, err.Error())
-			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, err.Error())
+			reason := d.reasonFor(err)
+			d.finishAttempt(ctx, attempt, errClassProvision, reason)
+			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, reason)
 		}
 		pr, err := provider.Start(ctx, request)
 		if err != nil {
-			lastErr = err
-			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), err.Error())
+			lastReason = d.reasonFor(err)
+			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), lastReason)
 			switch {
 			case refusedForCapacity(err):
 				d.svc.providers().forget(provider.Name())
@@ -313,17 +314,20 @@ dispatching:
 		}
 
 		if pr.State == ProviderStateFailed {
-			lastErr = fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason))
-			d.finishAttempt(ctx, attempt, errClassProvision, lastErr.Error())
+			slog.Error("a run failed on an external system; the run carries the platform's own wording instead",
+				"run_id", pgconv.UUIDString(d.cur.ID),
+				"error", fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason)))
+			lastReason = "執行沙箱在準備階段就失敗了"
+			d.finishAttempt(ctx, attempt, errClassProvision, lastReason)
 			failures++
 			continue
 		}
 		return d.follow(ctx, append(slices.Clone(attempts), attempt), attempt)
 	}
 
-	message := "dispatch failed"
-	if lastErr != nil {
-		message = lastErr.Error()
+	message := "派送沒有成功"
+	if lastReason != "" {
+		message = lastReason
 	}
 	return d.finish(ctx, lastAttemptID, gen.RunStatusFailed, failureProvider, message)
 }
@@ -505,6 +509,29 @@ func classifyResult(pr ProviderRun) (status gen.RunStatus, failureClass FailureC
 		return gen.RunStatusFailed, failureProvider,
 			orDefault(errClass, errClassProvision), orDefault(message, "the provider could not carry the attempt")
 	}
+}
+
+func anExternalSystemRefused(err error) string {
+	if _, ok := errors.AsType[*gatewayError](err); ok {
+		return "模型閘道沒有為這次試跑配發金鑰"
+	}
+	if _, ok := errors.AsType[*providerError](err); ok {
+		return "執行沙箱沒有接下這次試跑"
+	}
+	if errors.Is(err, ErrProviderUnavailable) {
+		return "執行沙箱沒有回應"
+	}
+	return ""
+}
+
+func (d *driver) reasonFor(err error) string {
+	reason := anExternalSystemRefused(err)
+	if reason == "" {
+		return err.Error()
+	}
+	slog.Error("a run failed on an external system; the run carries the platform's own wording instead",
+		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+	return reason
 }
 
 func dispatchErrorClass(err error) string {

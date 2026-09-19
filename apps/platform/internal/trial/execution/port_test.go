@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -102,4 +103,50 @@ func TestARunThatCannotMoveOnYetAsksToBeLookedAtAgainInsteadOfFailing(t *testing
 			}
 		})
 	}
+}
+
+func TestTheRunNeverRepeatsWhatAnExternalSystemSaid(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	srv.Close()
+	_, unreachable := NewProvider("test", srv.URL, "").Observe(context.Background(), "sbx-1")
+	_, refused := answering(t, http.StatusUnprocessableEntity).Observe(context.Background(), "sbx-1")
+	address := srv.Listener.Addr().String()
+
+	d := &driver{}
+	for _, tc := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"a sandbox that cannot be reached", unreachable, "執行沙箱沒有回應"},
+		{"a sandbox that refused the request", refused, "執行沙箱沒有接下這次試跑"},
+		{
+			"a model gateway that would not mint a key",
+			&gatewayError{Status: http.StatusInternalServerError, Message: "budget exhausted for key sk-live-1"},
+			"模型閘道沒有為這次試跑配發金鑰",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason := d.reasonFor(tc.err)
+			if reason != tc.want {
+				t.Fatalf("reason = %q, want %q", reason, tc.want)
+			}
+			if strings.Contains(reason, address) {
+				t.Errorf("reason = %q, and it carries this deployment's own address %q to whoever opens the run",
+					reason, address)
+			}
+			for _, leaked := range []string{"dial", "gateway returned", "sk-live-1", "http://"} {
+				if strings.Contains(reason, leaked) {
+					t.Errorf("reason = %q, and it repeats %q from the external system", reason, leaked)
+				}
+			}
+		})
+	}
+
+	t.Run("the platform's own refusal is left alone", func(t *testing.T) {
+		if got := d.reasonFor(ErrNoModelGateway); got != ErrNoModelGateway.Error() {
+			t.Errorf("reason = %q, want the platform's own sentence %q: translating it would hide "+
+				"which piece of this deployment is missing", got, ErrNoModelGateway)
+		}
+	})
 }
