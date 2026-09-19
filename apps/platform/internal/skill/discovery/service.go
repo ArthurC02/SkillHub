@@ -11,26 +11,11 @@ import (
 	"github.com/pgvector/pgvector-go"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
-
-type Model interface {
-	EmbedWithin(ctx context.Context, texts []string, seconds float64) (*llmclient.EmbedResponse, error)
-	MatchReasons(ctx context.Context, query string, candidates []llmclient.SkillCandidate) (*llmclient.MatchReasonsResponse, error)
-}
-
-// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
-// and panics on the first call.
-func ModelOrNone(c *llmclient.Client) Model {
-	if c == nil {
-		return nil
-	}
-	return c
-}
 
 type Service struct {
 	Pool *pgxpool.Pool
@@ -210,7 +195,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 		out.FilteredOut = len(unfiltered) > 0
 	}
 
-	var reasons []llmclient.MatchReason
+	var reasons []MatchReason
 	if len(out.Hits) > 0 && s.LLM != nil && !silent {
 		reasons = s.matchReasons(ctx, query, out.Hits)
 	}
@@ -228,17 +213,17 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 	embedCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
 
-	embedResp, err := s.LLM.EmbedWithin(embedCtx, []string{query}, 10)
+	embedResp, err := s.LLM.Embed(embedCtx, []string{query}, 10*time.Second)
 	if err != nil {
 		return nil, err
 	}
 
 	s.recordSearchCost(ctx, embedResp)
-	if len(embedResp.Embeddings) == 0 {
+	if len(embedResp.Vectors) == 0 {
 
 		return nil, errors.New("catalog: embed returned no vectors")
 	}
-	embedding := pgvector.NewVector(embedResp.Embeddings[0])
+	embedding := pgvector.NewVector(embedResp.Vectors[0])
 	return &embedding, nil
 }
 
@@ -398,11 +383,11 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	return hits, total, nil
 }
 
-func (s *Service) matchReasons(ctx context.Context, query string, hits []searchResult) []llmclient.MatchReason {
+func (s *Service) matchReasons(ctx context.Context, query string, hits []searchResult) []MatchReason {
 	n := min(len(hits), 10)
-	candidates := make([]llmclient.SkillCandidate, n)
+	candidates := make([]SkillCandidate, n)
 	for i := 0; i < n; i++ {
-		candidates[i] = llmclient.SkillCandidate{
+		candidates[i] = SkillCandidate{
 			SkillID: hits[i].SkillID,
 			Name:    hits[i].Name,
 			Summary: hits[i].Summary,

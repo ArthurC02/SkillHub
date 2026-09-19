@@ -7,21 +7,20 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
 
-func (s *Service) recordSearchCost(ctx context.Context, resp *llmclient.EmbedResponse) {
+func (s *Service) recordSearchCost(ctx context.Context, resp *Embeddings) {
 	if resp == nil {
 		return
 	}
 	s.recordCallCost(ctx, credit.KindSearchEmbedding, resp.Model, resp.Usage)
 }
 
-func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, model string, u *llmclient.GatewayUsage) {
+func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, model string, u *ModelUsage) {
 	if s.Credit == nil {
 		return
 	}
@@ -32,7 +31,7 @@ func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, mode
 	}
 	if u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens
-		e.UsdMicros, e.Estimated = credit.UsageCost(u.ReportedCostUSD())
+		e.UsdMicros, e.Estimated = credit.UsageCost(u.reportedCostUSD())
 	} else {
 		e.Estimated = true
 	}

@@ -43,7 +43,7 @@ func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 	if len(corpus.Reference) > 10 {
 		corpus.Reference = corpus.Reference[:10]
 	}
-	s := &Service{Pool: pool, LLM: &llmclient.Client{BaseURL: base, Token: os.Getenv("LLM_SERVICE_TOKEN")}}
+	s := &Service{Pool: pool, LLM: ModelOrNone(&llmclient.Client{BaseURL: base, Token: os.Getenv("LLM_SERVICE_TOKEN")})}
 	names := func(hits []searchResult) []string {
 		out := []string{}
 		for i, h := range hits {

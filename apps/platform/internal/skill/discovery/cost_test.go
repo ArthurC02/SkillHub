@@ -22,7 +22,7 @@ func (f *fakeLedger) RecordCost(_ context.Context, _ credit.DBTX, e credit.CostE
 	return "id", false, f.err
 }
 
-func embedServer(t *testing.T, usage *llmclient.GatewayUsage) *llmclient.Client {
+func embedServer(t *testing.T, usage *llmclient.GatewayUsage) Model {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -34,7 +34,7 @@ func embedServer(t *testing.T, usage *llmclient.GatewayUsage) *llmclient.Client 
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return &llmclient.Client{BaseURL: srv.URL}
+	return ModelOrNone(&llmclient.Client{BaseURL: srv.URL})
 }
 
 func TestSearchEmbeddingRecordsExactlyOneCostEvent(t *testing.T) {
@@ -111,7 +111,7 @@ func TestALedgerFailureDoesNotFailTheSearch(t *testing.T) {
 	}
 }
 
-func matchReasonsServer(t *testing.T, usage *llmclient.GatewayUsage) *llmclient.Client {
+func matchReasonsServer(t *testing.T, usage *llmclient.GatewayUsage) Model {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -122,7 +122,7 @@ func matchReasonsServer(t *testing.T, usage *llmclient.GatewayUsage) *llmclient.
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return &llmclient.Client{BaseURL: srv.URL}
+	return ModelOrNone(&llmclient.Client{BaseURL: srv.URL})
 }
 
 func TestMatchReasonsRecordOneCostEventOfTheirOwnKind(t *testing.T) {

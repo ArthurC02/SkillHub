@@ -59,7 +59,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unit(0).Slice()}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost}})
 	}))
 	t.Cleanup(embed.Close)
-	svc := &catalog.Service{Pool: pool, LLM: &llmclient.Client{BaseURL: embed.URL}, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	svc := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(&llmclient.Client{BaseURL: embed.URL}), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 
 	ids, cost, degraded, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資", catalog.CreationMaxDistance)
 	if err != nil || degraded || cost != 0.00001 {

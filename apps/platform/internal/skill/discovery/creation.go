@@ -70,14 +70,14 @@ func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDis
 	}
 	embedCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
-	embedResp, err := s.LLM.EmbedWithin(embedCtx, []string{query}, 10)
-	if err != nil || len(embedResp.Embeddings) == 0 {
+	embedResp, err := s.LLM.Embed(embedCtx, []string{query}, 10*time.Second)
+	if err != nil || len(embedResp.Vectors) == 0 {
 		return degradedAnswer()
 	}
 	if embedResp.Usage != nil && embedResp.Usage.CostUSD != nil {
 		costUSD = *embedResp.Usage.CostUSD
 	}
-	embedding := pgvector.NewVector(embedResp.Embeddings[0])
+	embedding := pgvector.NewVector(embedResp.Vectors[0])
 	rows, _, err := s.hybridSearch(ctx, queries, query, &embedding, 10, searchFilters{}, maxDistance)
 	if err != nil {
 		return nil, costUSD, false, err

@@ -399,7 +399,7 @@ func anyUnranked(hits []searchResult) bool {
 	return false
 }
 
-func applyMatchReasons(hits []searchResult, query string, reasons []llmclient.MatchReason) {
+func applyMatchReasons(hits []searchResult, query string, reasons []MatchReason) {
 	fromModel := make(map[string]string, len(reasons))
 	for _, r := range reasons {
 		if r.Reason != "" {

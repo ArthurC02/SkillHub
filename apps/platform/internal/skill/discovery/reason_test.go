@@ -6,8 +6,6 @@ import (
 	"testing"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 func TestApplyMatchReasonsLabelsEachCandidateSeparately(t *testing.T) {
@@ -15,7 +13,7 @@ func TestApplyMatchReasonsLabelsEachCandidateSeparately(t *testing.T) {
 		{SkillID: "s1", Name: "pdf-extractor", Summary: "Extracts tables from PDF invoices"},
 		{SkillID: "s2", Name: "csv-cleaner", Summary: "Normalises tabular files"},
 	}
-	applyMatchReasons(hits, "extract tables from an invoice pdf", []llmclient.MatchReason{
+	applyMatchReasons(hits, "extract tables from an invoice pdf", []MatchReason{
 		{SkillID: "s1", Reason: "It reads invoice PDFs and returns the tables."},
 		{SkillID: "s2", Reason: ""},
 	})
