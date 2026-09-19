@@ -31,13 +31,14 @@ const (
 	failureTimeout    FailureClass = "timeout"
 	failureCancelled  FailureClass = "cancelled"
 	failureNoProvider FailureClass = "capability_mismatch"
+	failurePolicy     FailureClass = "policy_refused"
 	failurePlatform   FailureClass = "platform_error"
 )
 
 func AllFailureClasses() []FailureClass {
 	return []FailureClass{
 		failureProvider, failureWorkload, failureTimeout,
-		failureCancelled, failureNoProvider, failurePlatform,
+		failureCancelled, failureNoProvider, failurePolicy, failurePlatform,
 	}
 }
 
@@ -178,7 +179,7 @@ func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Quer
 
 func (c FailureClass) category() string {
 	switch c {
-	case failureProvider, failureNoProvider:
+	case failureProvider, failureNoProvider, failurePolicy:
 		return "provision"
 	default:
 		return "execution"

@@ -199,8 +199,8 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	if err := d.svc.requireCuratedContent(ctx, d.cur); err != nil {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
-			d.reasonFor(failureNoProvider, err))
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePolicy,
+			d.reasonFor(failurePolicy, err))
 	}
 
 	if err := d.svc.requireModelGateway(); err != nil {

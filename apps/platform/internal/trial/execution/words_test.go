@@ -52,7 +52,7 @@ func TestFailureClassWordsCoverExactlyTheClosedList(t *testing.T) {
 }
 
 func TestProviderSideFailuresAreFiledUnderProvision(t *testing.T) {
-	provision := map[FailureClass]bool{failureProvider: true, failureNoProvider: true}
+	provision := map[FailureClass]bool{failureProvider: true, failureNoProvider: true, failurePolicy: true}
 	for _, class := range AllFailureClasses() {
 		want := "execution"
 		if provision[class] {

@@ -16978,11 +16978,12 @@ type RunListItem struct {
 	// row. Not permission to re-run — that is preflight's answer (TEST-009).
 	TestCaseID OptUUID `json:"test_case_id"`
 	Provider   string  `json:"provider"`
-	// Why the run failed, in the platform's own six-value vocabulary, fixed by a CHECK constraint in
-	// db/migrations/0018_run_scheduling.sql: `provider_error` (the provider could not carry the attempt),
-	// `workload_error` (the workload ran and reported failure), `timeout`, `cancelled` (the user asked),
-	// `capability_mismatch` (no configured provider can run this request) and `platform_error` (the
-	// control plane's own fault).
+	// Why the run failed, in the platform's own seven-value vocabulary, fixed by a CHECK constraint whose
+	// current form is in db/migrations/0080_run_failure_class_policy_refused.sql: `provider_error` (the
+	// provider could not carry the attempt), `workload_error` (the workload ran and reported failure),
+	// `timeout`, `cancelled` (the user asked), `capability_mismatch` (no configured provider can run this
+	// request), `policy_refused` (this deployment's own rules stopped it before anything ran — not a
+	// capability gap and not a fault) and `platform_error` (the control plane's own fault).
 	//
 	// Not the provider's ten `class` values — those are sandbox-provider.yaml's, and they live per
 	// attempt on `run_attempts.error_class`. The vocabulary here is narrow because the retry rule is

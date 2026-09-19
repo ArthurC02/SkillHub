@@ -99,6 +99,8 @@ var failureClassWords = map[FailureClass][2]string{
 		"是使用者要求停止的,不是失敗。"},
 	failureNoProvider: {"沒有能跑這個請求的環境",
 		"在任何東西被執行之前就被拒絕了——沒有一個已設定的 Provider 能承接這個請求。這不是崩潰,沙箱從來沒有被建立。"},
+	failurePolicy: {"平台的規則擋下了它",
+		"這個部署自己的規則不讓這次試跑開始——不是能力對不上,也不是任何系統故障。擋下的理由見上面那一列。"},
 	failurePlatform: {"平台自己的錯誤",
 		"控制平面這一側的問題,不是 Skill 也不是 Provider 的問題。"},
 }

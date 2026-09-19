@@ -7548,13 +7548,15 @@ components:
         failure_class:
           $ref: "#/components/schemas/Labelled"
           description: |
-            Why the run failed, in the platform's own six-value vocabulary,
-            fixed by a CHECK constraint in db/migrations/0018_run_scheduling.sql:
+            Why the run failed, in the platform's own seven-value vocabulary,
+            fixed by a CHECK constraint whose current form is in
+            db/migrations/0080_run_failure_class_policy_refused.sql:
             `provider_error` (the provider could not carry the attempt),
             `workload_error` (the workload ran and reported failure), `timeout`,
             `cancelled` (the user asked), `capability_mismatch` (no configured
-            provider can run this request) and `platform_error` (the control
-            plane's own fault).
+            provider can run this request), `policy_refused` (this deployment's
+            own rules stopped it before anything ran — not a capability gap and
+            not a fault) and `platform_error` (the control plane's own fault).
 
             **Not the provider's ten `class` values** — those are
             sandbox-provider.yaml's, and they live per attempt on

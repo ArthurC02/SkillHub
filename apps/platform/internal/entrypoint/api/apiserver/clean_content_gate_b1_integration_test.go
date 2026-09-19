@@ -101,6 +101,10 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 			t.Errorf("status reason = %q, want it to mention %q", view.StatusReason, want)
 		}
 	}
+	if view.FailureClass.Value != "policy_refused" {
+		t.Errorf("failure_class = %q, want policy_refused: this deployment's own rule stopped it, "+
+			"and it is not a capability gap", view.FailureClass.Value)
+	}
 	if fake.Dispatches() != 0 {
 		t.Fatalf("dispatches = %d; uncurated material reached the fleet", fake.Dispatches())
 	}
