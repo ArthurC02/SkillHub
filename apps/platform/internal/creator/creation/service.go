@@ -257,9 +257,9 @@ func ModelOrNone(c *llmclient.Client) StepModel {
 }
 
 type Service struct {
-	Pool   *pgxpool.Pool
-	Limits Limits
-	LLM    StepModel
+	Pool             *pgxpool.Pool
+	Limits           Limits
+	LLM              StepModel
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
