@@ -585,6 +585,8 @@ class Reason(Enum):
     diagram_incomplete = 'diagram_incomplete'
     search_query_missing = 'search_query_missing'
     draft_missing = 'draft_missing'
+    brief_missing = 'brief_missing'
+    fetch_url_missing = 'fetch_url_missing'
 
 
 class CreationDraftValidation(BaseModel):
