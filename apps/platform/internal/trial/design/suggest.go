@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
@@ -59,7 +58,7 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 		return nil, err
 	}
 
-	req := llmclient.SuggestCriteriaRequest{
+	req := CriteriaRequest{
 		SkillName:    skill.Name,
 		SkillSummary: truncate(derefString(skill.Summary), maxSkillSummaryBytes),
 		UserPrompt:   tc.UserPrompt,
@@ -68,7 +67,7 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
-	resp, err := s.LLM.SuggestCriteria(callCtx, req)
+	proposed, err := s.LLM.SuggestCriteria(callCtx, req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSuggestUnavailable, err)
 	}
@@ -81,12 +80,12 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	for _, c := range current {
 		seen[c.Text] = true
 	}
-	out := make([]Suggestion, 0, len(resp.Criteria))
-	for _, proposed := range resp.Criteria {
+	out := make([]Suggestion, 0, len(proposed))
+	for _, criterion := range proposed {
 		if len(out) >= MaxCriteria {
 			break
 		}
-		text, err := validateCriterion(proposed.Text)
+		text, err := validateCriterion(criterion)
 
 		if err != nil || seen[text] {
 			continue
@@ -97,10 +96,10 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 	return out, nil
 }
 
-func (s *Service) outlineDatasets(ctx context.Context, rows []gen.Dataset) []llmclient.DatasetOutline {
-	out := make([]llmclient.DatasetOutline, 0, len(rows))
+func (s *Service) outlineDatasets(ctx context.Context, rows []gen.Dataset) []DatasetOutline {
+	out := make([]DatasetOutline, 0, len(rows))
 	for _, d := range rows {
-		outline := llmclient.DatasetOutline{FileName: d.FileName, ContentType: d.ContentType}
+		outline := DatasetOutline{FileName: d.FileName, ContentType: d.ContentType}
 		if s.Store != nil && strings.HasPrefix(d.ContentType, "text/") {
 			if data, err := s.Store.Get(ctx, d.ObjectKey); err == nil {
 				outline.Fields = inferFields(data)
@@ -111,7 +110,7 @@ func (s *Service) outlineDatasets(ctx context.Context, rows []gen.Dataset) []llm
 	return out
 }
 
-func inferFields(data []byte) []llmclient.DatasetField {
+func inferFields(data []byte) []DatasetField {
 	if len(data) > datasetHeadBytes {
 		data = data[:datasetHeadBytes]
 	}
@@ -139,7 +138,7 @@ func inferFields(data []byte) []llmclient.DatasetField {
 		sample = nil
 	}
 
-	fields := make([]llmclient.DatasetField, 0, len(header))
+	fields := make([]DatasetField, 0, len(header))
 	for i, name := range header {
 		if name = strings.TrimSpace(name); name == "" {
 			continue
@@ -148,7 +147,7 @@ func inferFields(data []byte) []llmclient.DatasetField {
 		if i < len(sample) {
 			value = sample[i]
 		}
-		fields = append(fields, llmclient.DatasetField{Name: name, InferredType: inferType(value)})
+		fields = append(fields, DatasetField{Name: name, InferredType: inferType(value)})
 		if len(fields) == maxOutlineFields {
 			break
 		}

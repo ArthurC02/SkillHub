@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -61,19 +60,6 @@ type ObjectStore interface {
 
 	Get(ctx context.Context, key string) ([]byte, error)
 	Remove(ctx context.Context, key string) error
-}
-
-type CriteriaSuggester interface {
-	SuggestCriteria(ctx context.Context, req llmclient.SuggestCriteriaRequest) (*llmclient.SuggestCriteriaResponse, error)
-}
-
-// A nil *Client inside a non-nil interface passes every `LLM == nil` guard
-// and panics on the first call.
-func ModelOrNone(c *llmclient.Client) CriteriaSuggester {
-	if c == nil {
-		return nil
-	}
-	return c
 }
 
 type Service struct {
