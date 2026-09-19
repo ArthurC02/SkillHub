@@ -144,6 +144,7 @@ func main() {
 		EgressAllow:              egressAllow,
 		EgressUnenforced:         egressUnenforced,
 		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
+		ResultRetention:          time.Duration(envInt("SKILLHUB_SANDBOX_RESULT_RETENTION_SECONDS", 0)) * time.Second,
 	}, log)
 
 	probe := sandbox.NewP02Probe(

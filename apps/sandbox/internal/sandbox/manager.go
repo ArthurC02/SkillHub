@@ -74,6 +74,8 @@ type Config struct {
 	EgressUnenforced bool
 	Slots            int
 	CancelGrace      time.Duration
+
+	ResultRetention time.Duration
 }
 
 var (
@@ -129,6 +131,9 @@ type Manager struct {
 func NewManager(drv Driver, cfg Config, log *slog.Logger) *Manager {
 	if cfg.CancelGrace <= 0 {
 		cfg.CancelGrace = 10 * time.Second
+	}
+	if cfg.ResultRetention <= 0 {
+		cfg.ResultRetention = defaultResultRetention
 	}
 	return &Manager{
 		drv:   drv,
@@ -252,6 +257,28 @@ func (m *Manager) terminateEveryRun(r P02Result) {
 }
 
 const teardownTimeout = 30 * time.Second
+
+const defaultResultRetention = 30 * time.Minute
+
+func (m *Manager) ReclaimStale() {
+	cutoff := m.now().Add(-m.cfg.ResultRetention)
+	m.mu.Lock()
+	var stale []string
+	for id, e := range m.runs {
+		if e.run.State.Terminal() && !e.run.FinishedAt.IsZero() && e.run.FinishedAt.Before(cutoff) {
+			stale = append(stale, id)
+		}
+	}
+	m.mu.Unlock()
+	for _, id := range stale {
+		m.log.Warn("taking a finished run's slot back; nothing deleted it within the result retention",
+			"provider_run_id", id, "result_retention", m.cfg.ResultRetention)
+		if err := m.destroyBounded(id); err != nil {
+			m.log.Error("could not take a finished run's slot back",
+				"provider_run_id", id, "error", err)
+		}
+	}
+}
 
 func (m *Manager) destroyBounded(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), teardownTimeout)
@@ -502,6 +529,7 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 	e.run.Result = res
 	m.metrics.finished(res.Status)
 	m.log.Info("run finished", "provider_run_id", id, "state", e.run.State, "status", res.Status)
+	time.AfterFunc(m.cfg.ResultRetention, m.ReclaimStale)
 }
 
 func (m *Manager) Get(id string) (ProviderRun, error) {
