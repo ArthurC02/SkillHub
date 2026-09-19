@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -122,11 +121,11 @@ type Reference struct {
 	Warnings   *int   `json:"warnings,omitempty"`
 }
 type Draft struct {
-	Revision    int64                    `json:"revision"`
-	ContentHash string                   `json:"content_hash"`
-	Skill       llmclient.GeneratedSkill `json:"skill"`
-	Validation  string                   `json:"validation"`
-	Blocked     bool                     `json:"blocked"`
+	Revision    int64          `json:"revision"`
+	ContentHash string         `json:"content_hash"`
+	Skill       GeneratedSkill `json:"skill"`
+	Validation  string         `json:"validation"`
+	Blocked     bool           `json:"blocked"`
 }
 
 type ModelChange struct {
@@ -163,8 +162,8 @@ const (
 func (p Snapshot) hasRoomFor(messages int) bool { return len(p.Messages)+messages <= MaxMessages }
 
 type Snapshot struct {
-	Messages []llmclient.CreationMessage `json:"messages"`
-	Brief    string                      `json:"brief"`
+	Messages []Message `json:"messages"`
+	Brief    string    `json:"brief"`
 
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 
@@ -243,25 +242,12 @@ type Provenance struct {
 	Brief, Model, PromptVersion, ExistingSkillID string
 	Inputs                                       []byte
 }
-type StepModel interface {
-	CreationStep(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error)
-}
-
-// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
-// and panics on the first call.
-func ModelOrNone(c *llmclient.Client) StepModel {
-	if c == nil {
-		return nil
-	}
-	return c
-}
-
 type Service struct {
 	Pool             *pgxpool.Pool
 	Limits           Limits
 	LLM              StepModel
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
-	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
+	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
 
 	Fetch func(context.Context, string) (Fetch, string)
@@ -275,8 +261,8 @@ type Service struct {
 	Adopt func(context.Context, identity.Workspace, string) (Candidate, error)
 
 	Mask          func(string) string
-	ValidateDraft func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error)
-	Materialize   func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
+	ValidateDraft func(context.Context, GeneratedSkill) (string, string, bool, error)
+	Materialize   func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
 	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
 
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)

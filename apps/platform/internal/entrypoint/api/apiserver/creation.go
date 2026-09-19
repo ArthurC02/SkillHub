@@ -7,7 +7,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,7 +19,7 @@ import (
 type creationHandler struct {
 	Svc       *creation.Service
 	Identity  *identity.Service
-	Transient func(context.Context, creation.JobArgs, *llmclient.GenerateDiagram) error
+	Transient func(context.Context, creation.JobArgs, *creation.Diagram) error
 	Credit    *credit.Service
 }
 

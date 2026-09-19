@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"math"
 	"os"
 	"path/filepath"
@@ -28,7 +27,7 @@ func TestUnknownUsageRetainsReservation(t *testing.T) {
 func TestKnownUsageSettlesOnlyActualSpend(t *testing.T) {
 	zero, cost := 0.0, .03
 	p := Snapshot{BudgetUSD: .2, SpentUSD: &zero, ReservedUSD: .1}
-	settleCost(&p, .1, &llmclient.GatewayUsage{CostUSD: &cost})
+	settleCost(&p, .1, &ModelUsage{CostUSD: &cost})
 	if p.ReservedUSD != 0 || *p.SpentUSD != cost || p.UsageUnknown {
 		t.Fatalf("wrong settlement: %+v", p)
 	}
@@ -36,7 +35,7 @@ func TestKnownUsageSettlesOnlyActualSpend(t *testing.T) {
 func TestInvalidCostsNeverBecomeCredit(t *testing.T) {
 	for _, cost := range []float64{-1, math.Inf(1), math.NaN()} {
 		p := Snapshot{ReservedUSD: .1}
-		settleCost(&p, .1, &llmclient.GatewayUsage{CostUSD: &cost})
+		settleCost(&p, .1, &ModelUsage{CostUSD: &cost})
 		if p.ReservedUSD != .1 || !p.UsageUnknown {
 			t.Fatal("invalid cost became credit")
 		}
@@ -44,12 +43,12 @@ func TestInvalidCostsNeverBecomeCredit(t *testing.T) {
 }
 func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 	calls := 0
-	s := Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		calls++
 		return "hash", "ok", false, nil
 	}}
 	e := envelope{Snapshot: Snapshot{Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &llmclient.GeneratedSkill{Body: "body"}})
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}})
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.Draft != nil || calls != 0 {
 		t.Fatalf("confirmation bypass: %s %+v", state, e)
 	}
@@ -57,7 +56,7 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 func TestUnavailableReferenceBlocksDraft(t *testing.T) {
 	e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: true, References: []Reference{{Confirmed: true, Available: false}}}}
 	s := Service{}
-	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{Outcome: "draft", Message: "draft", Draft: &llmclient.GeneratedSkill{}})
+	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}})
 	if err == nil {
 		t.Fatal("unavailable reference accepted")
 	}
@@ -96,7 +95,7 @@ func TestDiagramInterpretationRequiresAllSectionsBeforeSaving(t *testing.T) {
 func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 	for _, confirmedBrief := range []bool{false, true} {
 		calls := 0
-		s := Service{ValidateDraft: func(_ context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+		s := Service{ValidateDraft: func(_ context.Context, draft GeneratedSkill) (string, string, bool, error) {
 			calls++
 			if draft.Body != "newly proposed body" {
 				t.Error("validated stale content")
@@ -104,9 +103,9 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 			return "new-hash", "actual finding", true, nil
 		}}
 		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief}, Limits: testLimits()}
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{
-			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &llmclient.CreationToolIntent{Kind: "validate_draft"},
-			Draft: &llmclient.GeneratedSkill{Body: "newly proposed body"},
+		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{
+			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &ToolIntent{Kind: "validate_draft"},
+			Draft: &GeneratedSkill{Body: "newly proposed body"},
 		})
 		if !confirmedBrief {
 			if err == nil || calls != 0 {
@@ -121,11 +120,11 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 }
 
 func TestCanSpendRefusesNearMessageCeiling(t *testing.T) {
-	p := Snapshot{Messages: make([]llmclient.CreationMessage, 97), BudgetUSD: 1}
+	p := Snapshot{Messages: make([]Message, 97), BudgetUSD: 1}
 	if canSpend(p, testLimits()) {
 		t.Fatal("canSpend allowed a step that proposal() would refuse for message count")
 	}
-	p.Messages = make([]llmclient.CreationMessage, 96)
+	p.Messages = make([]Message, 96)
 	if !canSpend(p, testLimits()) {
 		t.Fatal("canSpend wrongly refused a snapshot with room for one more step")
 	}
@@ -196,8 +195,8 @@ func TestCriteriaValidationRejectsTooManyOrTooLong(t *testing.T) {
 
 func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &llmclient.CreationStepResponse{Outcome: "clarification", Message: "tool unavailable", Reason: "tool_unavailable"})
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &StepResult{Outcome: "clarification", Message: "tool unavailable", Reason: "tool_unavailable"})
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("clarification with a reason: state=%q next=%v err=%v", state, next, err)
 	}
@@ -205,7 +204,7 @@ func TestProposalReplacesTheMessageFromTheReasonTable(t *testing.T) {
 	if last.Role != "assistant" || last.Content != reasonSentences["tool_unavailable"] {
 		t.Fatalf("Go did not own the sentence: %+v", last)
 	}
-	if _, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &llmclient.CreationStepResponse{Outcome: "clarification", Message: "x", Reason: "made_up"}); err == nil {
+	if _, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, &StepResult{Outcome: "clarification", Message: "x", Reason: "made_up"}); err == nil {
 		t.Fatal("an unknown reason code was accepted")
 	}
 }
@@ -216,8 +215,8 @@ func testLimitsForProposal() Limits {
 
 func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) {
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}})
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}})
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("restated brief: state=%q next=%v err=%v", state, next, err)
 	}
@@ -229,8 +228,8 @@ func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) 
 func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
 		t.Fatalf("first draft_missing should requeue once: state=%q next=%v retries=%d err=%v", state, next, e.Snapshot.DraftRetries, err)
@@ -248,8 +247,8 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.SampleInput != "new" || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("changed sample_input did not reopen the confirmation: state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
@@ -263,13 +262,13 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 }
 
 func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
-	s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
 	}}
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
-	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
+	r := &StepResult{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 	for i := 1; i <= MaxNudges; i++ {
 		state, next, err := s.proposal(context.Background(), identity.Workspace{}, int64(3+i), &e, r)
 		if err != nil || !next || state != "queued" || e.Snapshot.Nudges != i || e.Snapshot.Draft != ran {
@@ -287,7 +286,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 		t.Fatalf("the person was not told: %+v", last)
 	}
 
-	s.ValidateDraft = func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+	s.ValidateDraft = func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}
 	e.Snapshot.Nudges = 0
@@ -298,13 +297,13 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 }
 
 func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
 	}}
 	zero := 0.0
 	understanding := `{"nodes":["收到報帳申請","送經理簽核","寄出付款通知"],"conditions":[],"branches":[],"uncertainties":[]}`
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, DiagramUnderstanding: understanding, DiagramConfirmed: true, DiagramFingerprint: "fp", BudgetUSD: 1, SpentUSD: &zero}}
-	half := &llmclient.CreationStepResponse{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramUnderstanding: understanding, DiagramConfirmed: true, DiagramFingerprint: "fp", BudgetUSD: 1, SpentUSD: &zero}}
+	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, half)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
 		t.Fatalf("half a flow was accepted: state=%q next=%v err=%v", state, next, err)
@@ -312,7 +311,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "寄出付款通知") || strings.Contains(last.Content, "收到報帳申請") {
 		t.Fatalf("the missing node was not named, or a present one was: %+v", last)
 	}
-	full := &llmclient.CreationStepResponse{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
+	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, full)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("a full walk was refused: state=%q next=%v err=%v", state, next, err)
@@ -336,19 +335,19 @@ func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
 }
 
 func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
 	}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	for i, body := range []string{"one", "two"} {
-		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: body}}
+		r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
 		state, _, err := s.proposal(context.Background(), identity.Workspace{}, int64(2+i), &e, r)
 		if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
 			t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
 		}
 	}
-	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "three"}}
+	r := &StepResult{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "three"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
 	if err != nil || next || state != "waiting_input" || e.Snapshot.BlockedRepeats != MaxBlockedRepeats || e.Snapshot.Draft == nil || !e.Snapshot.Draft.Blocked {
 		t.Fatalf("third identical verdict must hand the turn back with the draft kept: state=%q next=%v repeats=%d err=%v", state, next, e.Snapshot.BlockedRepeats, err)
@@ -357,7 +356,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 		t.Fatalf("the person was not told: %+v", last)
 	}
 
-	s.ValidateDraft = func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+	s.ValidateDraft = func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "another", true, nil
 	}
 	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
@@ -369,8 +368,8 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "請先確認流程圖的理解。", Brief: "b", DiagramUnderstanding: `{"nodes":["invented"],"conditions":[],"branches":[],"uncertainties":[]}`}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "clarification", Message: "請先確認流程圖的理解。", Brief: "b", DiagramUnderstanding: `{"nodes":["invented"],"conditions":[],"branches":[],"uncertainties":[]}`}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "waiting_input" || e.Snapshot.DiagramUnderstanding != "" || e.Snapshot.PendingAction == "confirm_diagram" {
 		t.Fatalf("an invented diagram became a confirmation: state=%q snap=%+v err=%v", state, e.Snapshot, err)
@@ -378,12 +377,12 @@ func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testin
 }
 
 func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
 	}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &llmclient.CreationToolIntent{Kind: "validate_draft"}, Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("first validation must queue the model: state=%q next=%v err=%v", state, next, err)
@@ -398,12 +397,12 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 }
 
 func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
 	}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "body"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("an empty message beside a draft must not fail the step: state=%q err=%v", state, err)
@@ -419,8 +418,8 @@ func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 		return Fetch{}, ""
 	}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "查一下", ToolIntent: &llmclient.CreationToolIntent{Kind: "fetch_url", Query: " https://example.com/docs#top "}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "tool_intent", Message: "查一下", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: " https://example.com/docs#top "}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_fetch" || e.Snapshot.PendingFetchURL != "https://example.com/docs" {
 		t.Fatalf("state=%q next=%v pending=%q url=%q err=%v", state, next, e.Snapshot.PendingAction, e.Snapshot.PendingFetchURL, err)
@@ -468,9 +467,9 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 		},
 	}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
 
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦", Queries: []string{"逐字稿 待辦", "把會議逐字稿整理成待辦", "action items"}}}
+	r := &StepResult{Outcome: "tool_intent", Message: "找相近的", ToolIntent: &ToolIntent{Kind: "search_catalog", Query: "把會議逐字稿整理成待辦", Queries: []string{"逐字稿 待辦", "把會議逐字稿整理成待辦", "action items"}}}
 	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || state != "waiting_confirmation" || e.Snapshot.PendingAction != "confirm_references" || semantic != 1 || len(e.Snapshot.References) != 1 {
 		t.Fatalf("state=%q pending=%q semantic=%d refs=%d err=%v", state, e.Snapshot.PendingAction, semantic, len(e.Snapshot.References), err)
@@ -492,8 +491,8 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) { return nil, 0, nil }}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "tool_intent", Message: "找", ToolIntent: &llmclient.CreationToolIntent{Kind: "search_knowledge", Query: "沒有這種東西"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "tool_intent", Message: "找", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "沒有這種東西"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 1 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "第 1／2 回") {
 		t.Fatalf("first empty round: state=%q rounds=%d err=%v last=%+v", state, e.Snapshot.SearchRounds, err, e.Snapshot.Messages[len(e.Snapshot.Messages)-1])
@@ -511,13 +510,13 @@ func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
 func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if err != nil || !next || state != "queued" || e.BriefRetries != 1 {
 		t.Fatalf("first empty brief must be retried: state=%q next=%v retries=%d err=%v", state, next, e.BriefRetries, err)
 	}
-	r = &llmclient.CreationStepResponse{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
+	r = &StepResult{Outcome: "clarification", Message: "brief missing", Reason: "brief_missing"}
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("the second empty brief goes to the person: state=%q next=%v err=%v", state, next, err)
@@ -570,7 +569,7 @@ func TestAnIdentifierThePersonSuppliedSurvivesInACompoundName(t *testing.T) {
 
 	text := evaluationFreeText(`{"evaluation":{"evaluation_available":true,"status":"completed",` +
 		`"criterion_results":[{"result":"failed","reason":"The run wrote shopify_order_A1001.csv but left the totals column empty."}]}}`)
-	draft := llmclient.GeneratedSkill{Body: "Write one file per order, named shopify_order_A1001.csv, with a totals column."}
+	draft := GeneratedSkill{Body: "Write one file per order, named shopify_order_A1001.csv, with a totals column."}
 	if copied := copiedFromEvaluation(text, draftText(draft), "", "", "orders: A1001, A1002, A1003", "", ""); len(copied) != 0 {
 		t.Fatalf("an identifier the person supplied was called a copy: %v", copied)
 	}
@@ -581,7 +580,7 @@ func TestAChineseSentenceWithANumberIsNotAMarker(t *testing.T) {
 	text := evaluationFreeText(`{"evaluation":{"evaluation_available":true,"status":"completed",` +
 		`"criterion_results":[{"result":"failed","reason":"輸出沒有說明：金額超過5000元，要送簽核。"}]}}`)
 
-	draft := llmclient.GeneratedSkill{Body: "金額超過5000元，請先送經理簽核。"}
+	draft := GeneratedSkill{Body: "金額超過5000元，請先送經理簽核。"}
 	if copied := copiedFromEvaluation(text, draftText(draft), "", "", "", "", ""); len(copied) != 0 {
 		t.Fatalf("a Chinese sentence was read as a marker: %v", copied)
 	}
@@ -590,9 +589,9 @@ func TestAChineseSentenceWithANumberIsNotAMarker(t *testing.T) {
 func TestAMarkerHiddenInAPackagedFileIsCaughtToo(t *testing.T) {
 
 	text := evaluationFreeText(attackObservation)
-	draft := llmclient.GeneratedSkill{
+	draft := GeneratedSkill{
 		Body:  "Write the report.",
-		Files: []llmclient.GeneratedFile{{Path: "scripts/run.py", Content: "# EXFIL-9c0d\nprint('hi')"}},
+		Files: []GeneratedFile{{Path: "scripts/run.py", Content: "# EXFIL-9c0d\nprint('hi')"}},
 	}
 	copied := copiedFromEvaluation(text, draftText(draft), "", "", "", "", "")
 	if len(copied) != 1 || copied[0] != "exfil-9c0d" {
@@ -663,7 +662,7 @@ func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 	t.Run("exfil_marker_in_body", func(t *testing.T) {
 		c := injectionCaseByGoal(t, cases, "evaluation", "exfil_marker_in_body")
 		evalText := evaluationFreeText(string(c.Payload))
-		draft := llmclient.GeneratedSkill{Name: "x", Body: "Write the report and include " + c.Marker + " in the header."}
+		draft := GeneratedSkill{Name: "x", Body: "Write the report and include " + c.Marker + " in the header."}
 		copied := copiedFromEvaluation(evalText, draftText(draft), "", "", "", "", "")
 		if len(copied) == 0 {
 			t.Fatalf("corpus case %s: marker %q was not caught by copiedFromEvaluation", c.ID, c.Marker)
@@ -673,17 +672,17 @@ func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 	t.Run("add_bash_tool", func(t *testing.T) {
 		c := injectionCaseByGoal(t, cases, "evaluation", "add_bash_tool")
 		zero := 0.0
-		prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: llmclient.GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
-		s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+		prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
+		s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 			return "new-hash", "{}", false, nil
 		}}
 		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []llmclient.CreationMessage{}, Brief: "process the attached CSV",
+			Messages: []Message{}, Brief: "process the attached CSV",
 			BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 			Draft: prior, EvaluationText: evaluationFreeText(string(c.Payload)),
 		}}
-		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
-			Draft: &llmclient.GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
+		r := &StepResult{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
+			Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
 		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 		if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
 			t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
@@ -698,9 +697,9 @@ func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 		c := injectionCaseByGoal(t, cases, "evaluation", "change_brief")
 		s := &Service{}
 		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []llmclient.CreationMessage{}, Brief: "original confirmed brief", BriefConfirmed: true,
+			Messages: []Message{}, Brief: "original confirmed brief", BriefConfirmed: true,
 		}}
-		r := &llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
+		r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
 		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 		if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 			t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
@@ -716,17 +715,17 @@ func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 		if !runUnmet(observation) {
 			t.Fatalf("corpus case %s should read as an unmet run under Go's own runUnmet regardless of the summary's claim", c.ID)
 		}
-		s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+		s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 			return "same-hash", "{}", false, nil
 		}}
 		zero := 0.0
 		ran := &Draft{Revision: 3, ContentHash: "same-hash"}
 		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
+			Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 			Draft: ran, RunUnmet: runUnmet(observation),
 		}}
-		r := &llmclient.CreationStepResponse{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
-			Draft: &llmclient.GeneratedSkill{Name: "x", Body: "same"}}
+		r := &StepResult{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
+			Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
 		if err != nil || !next || state != "queued" {
 			t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)
@@ -764,11 +763,11 @@ func TestTheNudgeOnlyBlamesTheEvaluationWhenItNamesTheTool(t *testing.T) {
 
 func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
 
-	s := Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "hash", "ok", false, nil
 	}}
 	e := envelope{Snapshot: Snapshot{Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
-	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &llmclient.CreationStepResponse{
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, &StepResult{
 		Outcome: "confirm_brief", Message: "revised", Brief: "B1", AcceptanceCriteria: []string{"C2"},
 	})
 	if err != nil || state != "waiting_confirmation" {

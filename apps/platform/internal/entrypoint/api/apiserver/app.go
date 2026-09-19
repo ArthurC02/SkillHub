@@ -72,7 +72,7 @@ type Config struct {
 	GenerateExposed   bool
 	CreationExposed   bool
 	CreationLimits    creation.Limits
-	CreationTransient func(context.Context, creation.JobArgs, *llmclient.GenerateDiagram) error
+	CreationTransient func(context.Context, creation.JobArgs, *creation.Diagram) error
 
 	RateLimits *httpx.RateLimiter
 

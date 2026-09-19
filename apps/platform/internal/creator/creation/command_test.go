@@ -13,7 +13,6 @@ import (
 	"time"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 )
@@ -30,20 +29,20 @@ func storedSession(t *testing.T, state State, revision int64, e envelope) gen.Cr
 }
 
 func openSession() envelope {
-	return envelope{Limits: testLimits(), Deadline: time.Now().Add(time.Hour), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}}}
+	return envelope{Limits: testLimits(), Deadline: time.Now().Add(time.Hour), Snapshot: Snapshot{Messages: []Message{}}}
 }
 
 func saveableSnapshot() Snapshot {
 	return Snapshot{
-		Messages:       []llmclient.CreationMessage{},
+		Messages:       []Message{},
 		Brief:          "b",
 		BriefConfirmed: true,
-		Draft:          &Draft{ContentHash: "h", Skill: llmclient.GeneratedSkill{Name: "summary", Description: "d", Body: "body"}},
+		Draft:          &Draft{ContentHash: "h", Skill: GeneratedSkill{Name: "summary", Description: "d", Body: "body"}},
 	}
 }
 
-func materializer() func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
-	return func(context.Context, identity.Workspace, llmclient.GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
+func materializer() func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
+	return func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
 		return nil
 	}
 }
@@ -144,7 +143,7 @@ func TestAMessageMustHaveTextFitTheLimitAndLeaveRoom(t *testing.T) {
 		{"one below the ceiling", "hi", MaxMessages - 1, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			p := &Snapshot{Messages: make([]llmclient.CreationMessage, c.messages)}
+			p := &Snapshot{Messages: make([]Message, c.messages)}
 			_, err := (&Service{}).acceptMessage(p, c.message)
 			if c.ok && err != nil || !c.ok && !errors.Is(err, ErrInvalidCommand) {
 				t.Fatalf("err = %v, want accepted=%v", err, c.ok)
@@ -181,9 +180,9 @@ func TestConfirmingTheDiagramNeedsTheQuestionAndACompleteUnderstanding(t *testin
 
 func TestSelectingReferencesResolvesEachAndAsksForConfirmation(t *testing.T) {
 	var asked []string
-	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, version string) (Reference, llmclient.GenerateReference, error) {
+	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, version string) (Reference, ReferenceSkill, error) {
 		asked = append(asked, id+"@"+version)
-		return Reference{SkillID: id, Confirmed: true}, llmclient.GenerateReference{}, nil
+		return Reference{SkillID: id, Confirmed: true}, ReferenceSkill{}, nil
 	}}
 	p := &Snapshot{BriefConfirmed: true, Draft: &Draft{}, PendingAction: "confirm_brief"}
 	got, err := s.selectReferences(context.Background(), identity.Workspace{}, p, Command{ReferenceSkillIDs: []string{"a", "b", "c"}, Message: "use these"})
@@ -199,15 +198,15 @@ func TestSelectingReferencesResolvesEachAndAsksForConfirmation(t *testing.T) {
 }
 
 func TestSelectingReferencesRefusesWhatItCannotResolve(t *testing.T) {
-	resolve := func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, llmclient.GenerateReference, error) {
+	resolve := func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
 		if id == "gone" {
-			return Reference{}, llmclient.GenerateReference{}, errors.New("no such skill")
+			return Reference{}, ReferenceSkill{}, errors.New("no such skill")
 		}
-		return Reference{SkillID: id}, llmclient.GenerateReference{}, nil
+		return Reference{SkillID: id}, ReferenceSkill{}, nil
 	}
 	for _, c := range []struct {
 		name    string
-		resolve func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
+		resolve func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error)
 		ids     []string
 		want    error
 	}{
@@ -280,7 +279,7 @@ func TestDecliningReferencesEmptiesThemAndTellsTheModel(t *testing.T) {
 	if last := p.Messages[len(p.Messages)-1]; last.Role != "tool" || last.Content != "使用者不採用目錄裡的 Skill；請依需求撰寫。" {
 		t.Fatalf("last message = %+v", last)
 	}
-	for name, q := range map[string]Snapshot{"nobody asked": {}, "at the message ceiling": {PendingAction: "confirm_references", Messages: make([]llmclient.CreationMessage, MaxMessages)}} {
+	for name, q := range map[string]Snapshot{"nobody asked": {}, "at the message ceiling": {PendingAction: "confirm_references", Messages: make([]Message, MaxMessages)}} {
 		if _, err := declineReferences(&q); !errors.Is(err, ErrInvalidCommand) {
 			t.Errorf("%s: err = %v, want ErrInvalidCommand", name, err)
 		}
@@ -289,9 +288,9 @@ func TestDecliningReferencesEmptiesThemAndTellsTheModel(t *testing.T) {
 
 func TestConfirmingReferencesMarksEveryOneThatStillResolves(t *testing.T) {
 	var asked []string
-	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, version string) (Reference, llmclient.GenerateReference, error) {
+	s := &Service{ResolveReference: func(_ context.Context, _ identity.Workspace, id, version string) (Reference, ReferenceSkill, error) {
 		asked = append(asked, id+"@"+version)
-		return Reference{}, llmclient.GenerateReference{}, nil
+		return Reference{}, ReferenceSkill{}, nil
 	}}
 	p := &Snapshot{PendingAction: "confirm_references", References: []Reference{{SkillID: "a", VersionID: "1"}, {SkillID: "b", VersionID: "2"}}}
 	got, err := s.confirmReferences(context.Background(), identity.Workspace{}, p)
@@ -306,8 +305,8 @@ func TestConfirmingReferencesMarksEveryOneThatStillResolves(t *testing.T) {
 }
 
 func TestConfirmingReferencesRefusesWithoutTheQuestionAResolverOrAResolvableSkill(t *testing.T) {
-	failing := func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error) {
-		return Reference{}, llmclient.GenerateReference{}, errors.New("gone")
+	failing := func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
+		return Reference{}, ReferenceSkill{}, errors.New("gone")
 	}
 	refs := []Reference{{SkillID: "a"}}
 	for _, c := range []struct {
@@ -332,17 +331,17 @@ func TestADiagramMustBeANonEmptyImageWithinTheSizeLimit(t *testing.T) {
 	encoded := func(n int) string { return base64.StdEncoding.EncodeToString(make([]byte, n)) }
 	for _, c := range []struct {
 		name    string
-		diagram *llmclient.GenerateDiagram
+		diagram *Diagram
 		ok      bool
 	}{
 		{"missing", nil, false},
-		{"not base64", &llmclient.GenerateDiagram{MediaType: "image/png", Data: "%%"}, false},
-		{"empty", &llmclient.GenerateDiagram{MediaType: "image/png", Data: ""}, false},
-		{"at the size limit", &llmclient.GenerateDiagram{MediaType: "image/png", Data: encoded(MaxDiagramBytes)}, true},
-		{"one byte over", &llmclient.GenerateDiagram{MediaType: "image/png", Data: encoded(MaxDiagramBytes + 1)}, false},
-		{"jpeg", &llmclient.GenerateDiagram{MediaType: "image/jpeg", Data: encoded(1)}, true},
-		{"webp", &llmclient.GenerateDiagram{MediaType: "image/webp", Data: encoded(1)}, true},
-		{"gif", &llmclient.GenerateDiagram{MediaType: "image/gif", Data: encoded(1)}, false},
+		{"not base64", &Diagram{MediaType: "image/png", Data: "%%"}, false},
+		{"empty", &Diagram{MediaType: "image/png", Data: ""}, false},
+		{"at the size limit", &Diagram{MediaType: "image/png", Data: encoded(MaxDiagramBytes)}, true},
+		{"one byte over", &Diagram{MediaType: "image/png", Data: encoded(MaxDiagramBytes + 1)}, false},
+		{"jpeg", &Diagram{MediaType: "image/jpeg", Data: encoded(1)}, true},
+		{"webp", &Diagram{MediaType: "image/webp", Data: encoded(1)}, true},
+		{"gif", &Diagram{MediaType: "image/gif", Data: encoded(1)}, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			image, err := diagramImage(c.diagram)
@@ -355,8 +354,8 @@ func TestADiagramMustBeANonEmptyImageWithinTheSizeLimit(t *testing.T) {
 
 func TestAnAttachedDiagramReplacesTheUnderstandingAndRunsATransientStep(t *testing.T) {
 	image := []byte("png-bytes")
-	p := &Snapshot{Messages: []llmclient.CreationMessage{{Role: "user", Content: "hi"}}, DiagramUnderstanding: understoodDiagram, DiagramConfirmed: true, BriefConfirmed: true, Draft: &Draft{}}
-	got, err := (&Service{}).attachDiagram(p, Command{Message: "see the flow", Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString(image)}})
+	p := &Snapshot{Messages: []Message{{Role: "user", Content: "hi"}}, DiagramUnderstanding: understoodDiagram, DiagramConfirmed: true, BriefConfirmed: true, Draft: &Draft{}}
+	got, err := (&Service{}).attachDiagram(p, Command{Message: "see the flow", Diagram: &Diagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString(image)}})
 	if err != nil || !got.queueStep || !got.transient {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
 	}
@@ -428,7 +427,7 @@ func TestAttachingARunNeedsACandidateAReaderARunAndRoom(t *testing.T) {
 		{"no candidate", read, Snapshot{}, "run-1", ErrInvalidCommand},
 		{"no reader", nil, Snapshot{Candidate: &Candidate{}}, "run-1", ErrInvalidCommand},
 		{"no run", read, Snapshot{Candidate: &Candidate{}}, "", ErrInvalidCommand},
-		{"at the message ceiling", read, Snapshot{Candidate: &Candidate{}, Messages: make([]llmclient.CreationMessage, MaxMessages)}, "run-1", ErrInvalidCommand},
+		{"at the message ceiling", read, Snapshot{Candidate: &Candidate{}, Messages: make([]Message, MaxMessages)}, "run-1", ErrInvalidCommand},
 		{"the run cannot be read", read, Snapshot{Candidate: &Candidate{}}, "gone", ErrNotFound},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -526,8 +525,8 @@ func TestSavingNeedsEveryReferenceToStillResolve(t *testing.T) {
 	if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("no resolver: err = %v, want ErrUnavailable", err)
 	}
-	s := &Service{Materialize: materializer(), ResolveReference: func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error) {
-		return Reference{}, llmclient.GenerateReference{}, errors.New("gone")
+	s := &Service{Materialize: materializer(), ResolveReference: func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
+		return Reference{}, ReferenceSkill{}, errors.New("gone")
 	}}
 	if _, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("a reference that no longer resolves: err = %v, want ErrNotFound", err)

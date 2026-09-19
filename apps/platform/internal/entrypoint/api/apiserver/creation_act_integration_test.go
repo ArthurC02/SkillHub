@@ -12,7 +12,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -94,10 +93,10 @@ func assertRevisionUnchanged(t *testing.T, pool *pgxpool.Pool, id pgtype.UUID, w
 	}
 }
 
-func fillerMessages(n int) []llmclient.CreationMessage {
-	msgs := make([]llmclient.CreationMessage, n)
+func fillerMessages(n int) []creation.Message {
+	msgs := make([]creation.Message, n)
 	for i := range msgs {
-		msgs[i] = llmclient.CreationMessage{Role: "user", Content: "filler"}
+		msgs[i] = creation.Message{Role: "user", Content: "filler"}
 	}
 	return msgs
 }
@@ -202,7 +201,7 @@ func TestActMessageOnAQueuedSessionIsAConflict(t *testing.T) {
 func TestActAcceptedCommandBacksUpTheExistingDraft(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
 	v, id := newActSession(t, svc, ws)
-	draft := creation.Draft{Revision: 1, ContentHash: "hash-before", Skill: llmclient.GeneratedSkill{Name: "n", Description: "d"}}
+	draft := creation.Draft{Revision: 1, ContentHash: "hash-before", Skill: creation.GeneratedSkill{Name: "n", Description: "d"}}
 	setCreationSnapshotField(t, pool, id, "draft", draft)
 
 	_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "message", Message: "continue please"})
@@ -318,11 +317,11 @@ func TestActConfirmDiagram(t *testing.T) {
 
 func TestActSelectReferences(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
-	okResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-		return creation.Reference{}, llmclient.GenerateReference{}, nil
+	okResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+		return creation.Reference{}, creation.ReferenceSkill{}, nil
 	}
-	failResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-		return creation.Reference{}, llmclient.GenerateReference{}, errors.New("not found upstream")
+	failResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+		return creation.Reference{}, creation.ReferenceSkill{}, errors.New("not found upstream")
 	}
 
 	t.Run("more than three ids", func(t *testing.T) {
@@ -364,9 +363,9 @@ func TestActSelectReferences(t *testing.T) {
 	t.Run("note over the rune limit", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		called := false
-		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
+		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
 			called = true
-			return creation.Reference{}, llmclient.GenerateReference{}, nil
+			return creation.Reference{}, creation.ReferenceSkill{}, nil
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "select_references", Message: strings.Repeat("字", 4001)})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
@@ -420,8 +419,8 @@ func TestActConfirmReferences(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
 	t.Run("not pending confirm_references", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
-		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-			return creation.Reference{}, llmclient.GenerateReference{}, nil
+		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+			return creation.Reference{}, creation.ReferenceSkill{}, nil
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_references"})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
@@ -443,8 +442,8 @@ func TestActConfirmReferences(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		setCreationSnapshotField(t, pool, id, "pending_action", "confirm_references")
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1"}})
-		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-			return creation.Reference{}, llmclient.GenerateReference{}, errors.New("resolve boom")
+		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_references"})
 		if !errors.Is(err, creation.ErrNotFound) {
@@ -468,7 +467,7 @@ func TestActDiagramValidation(t *testing.T) {
 	})
 	t.Run("invalid base64", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: "not-base64!!"}})
+		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &creation.Diagram{MediaType: "image/png", Data: "not-base64!!"}})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
 			t.Fatalf("got %v, want ErrInvalidCommand", err)
 		}
@@ -476,7 +475,7 @@ func TestActDiagramValidation(t *testing.T) {
 	})
 	t.Run("empty bytes", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: ""}})
+		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &creation.Diagram{MediaType: "image/png", Data: ""}})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
 			t.Fatalf("got %v, want ErrInvalidCommand", err)
 		}
@@ -485,7 +484,7 @@ func TestActDiagramValidation(t *testing.T) {
 	t.Run("exactly the byte limit is accepted", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		data := base64.StdEncoding.EncodeToString(make([]byte, creation.MaxDiagramBytes))
-		out, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: data}})
+		out, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &creation.Diagram{MediaType: "image/png", Data: data}})
 		if err != nil {
 			t.Fatalf("diagram at the byte limit: %v", err)
 		}
@@ -496,7 +495,7 @@ func TestActDiagramValidation(t *testing.T) {
 	t.Run("one byte over the limit is rejected", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		data := base64.StdEncoding.EncodeToString(make([]byte, creation.MaxDiagramBytes+1))
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: data}})
+		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &creation.Diagram{MediaType: "image/png", Data: data}})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
 			t.Fatalf("got %v, want ErrInvalidCommand", err)
 		}
@@ -504,7 +503,7 @@ func TestActDiagramValidation(t *testing.T) {
 	})
 	t.Run("rejected media type", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &llmclient.GenerateDiagram{MediaType: "image/gif", Data: png}})
+		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Diagram: &creation.Diagram{MediaType: "image/gif", Data: png}})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
 			t.Fatalf("got %v, want ErrInvalidCommand", err)
 		}
@@ -512,7 +511,7 @@ func TestActDiagramValidation(t *testing.T) {
 	})
 	t.Run("note over the rune limit", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Message: strings.Repeat("字", 4001), Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: png}})
+		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram", Message: strings.Repeat("字", 4001), Diagram: &creation.Diagram{MediaType: "image/png", Data: png}})
 		if !errors.Is(err, creation.ErrInvalidCommand) {
 			t.Fatalf("got %v, want ErrInvalidCommand", err)
 		}
@@ -666,7 +665,7 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		setCreationSnapshotField(t, pool, id, "brief", "整理輸入並輸出摘要")
 	}
 	draft := func(hash string, blocked bool) creation.Draft {
-		return creation.Draft{Revision: 1, ContentHash: hash, Skill: llmclient.GeneratedSkill{Name: "n", Description: "d"}, Blocked: blocked}
+		return creation.Draft{Revision: 1, ContentHash: hash, Skill: creation.GeneratedSkill{Name: "n", Description: "d"}, Blocked: blocked}
 	}
 
 	t.Run("no draft", func(t *testing.T) {
@@ -734,8 +733,8 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1", Confirmed: true, Available: true}})
-		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-			return creation.Reference{}, llmclient.GenerateReference{}, errors.New("resolve boom")
+		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
 		}
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
 		if !errors.Is(err, creation.ErrNotFound) {

@@ -4,8 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 func (s *Service) attachDiagram(p *Snapshot, c Command) (commandOutcome, error) {
@@ -34,7 +32,7 @@ func (s *Service) attachDiagram(p *Snapshot, c Command) (commandOutcome, error) 
 	return commandOutcome{queueStep: true, transient: true}, nil
 }
 
-func diagramImage(d *llmclient.GenerateDiagram) ([]byte, error) {
+func diagramImage(d *Diagram) ([]byte, error) {
 	if d == nil {
 		return nil, ErrInvalidCommand
 	}

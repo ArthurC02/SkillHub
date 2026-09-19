@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,14 +39,14 @@ func validDiagramInterpretation(value string) bool {
 }
 
 type TransientRequest struct {
-	WorkspaceID      pgtype.UUID               `json:"workspace_id"`
-	SessionID        pgtype.UUID               `json:"session_id"`
-	ReceiptID        pgtype.UUID               `json:"receipt_id"`
-	ExpectedRevision int64                     `json:"expected_revision"`
-	Diagram          llmclient.GenerateDiagram `json:"diagram"`
+	WorkspaceID      pgtype.UUID `json:"workspace_id"`
+	SessionID        pgtype.UUID `json:"session_id"`
+	ReceiptID        pgtype.UUID `json:"receipt_id"`
+	ExpectedRevision int64       `json:"expected_revision"`
+	Diagram          Diagram     `json:"diagram"`
 }
 
-func diagramMatches(p Snapshot, d *llmclient.GenerateDiagram) bool {
+func diagramMatches(p Snapshot, d *Diagram) bool {
 	if d == nil {
 		return false
 	}
@@ -99,11 +98,11 @@ func (s *Service) TransientHandler(token string) http.Handler {
 	})
 }
 
-func TransientClient(baseURL, token string, timeout time.Duration) func(context.Context, JobArgs, *llmclient.GenerateDiagram) error {
+func TransientClient(baseURL, token string, timeout time.Duration) func(context.Context, JobArgs, *Diagram) error {
 	if baseURL == "" || token == "" || timeout <= 0 {
 		return nil
 	}
-	return func(ctx context.Context, a JobArgs, d *llmclient.GenerateDiagram) error {
+	return func(ctx context.Context, a JobArgs, d *Diagram) error {
 		if d == nil {
 			return ErrInvalidCommand
 		}
@@ -171,7 +170,7 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	state := abandonedState(e.Snapshot)
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.PendingAction = NothingPending
-	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: "工作已中斷，已保留進度。費用無法確認時仍占用預算；流程圖請重新上傳。"})
+	e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "assistant", Content: "工作已中斷，已保留進度。費用無法確認時仍占用預算；流程圖請重新上傳。"})
 	if _, err = s.advance(ctx, tx, row, state, "attempt_interrupted", e); err != nil {
 		return err
 	}

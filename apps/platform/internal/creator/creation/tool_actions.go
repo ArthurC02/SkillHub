@@ -6,10 +6,9 @@ import (
 	"strings"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
-func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
+func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	run := s.toolFor(ctx, ws, revision, e, r)
 	if run == nil {
 		return "", false, ErrInvalidCommand
@@ -21,7 +20,7 @@ func (s *Service) useTool(ctx context.Context, ws identity.Workspace, revision i
 	return run()
 }
 
-func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) func() (State, bool, error) {
+func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) func() (State, bool, error) {
 	if r.ToolIntent == nil {
 		return nil
 	}
@@ -37,16 +36,16 @@ func (s *Service) toolFor(ctx context.Context, ws identity.Workspace, revision i
 	return nil
 }
 
-func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *llmclient.CreationToolIntent) (State, bool, error) {
+func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *Snapshot, intent *ToolIntent) (State, bool, error) {
 	if s.SearchKnowledge == nil && s.SearchReferences == nil {
 		return "", false, ErrUnavailable
 	}
 	if strings.TrimSpace(intent.Query) == "" {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
 		return StateQueued, true, nil
 	}
 	if p.SearchRounds >= MaxSearchRounds {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。"})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。"})
 		return StateQueued, true, nil
 	}
 	refs, err := s.search(ctx, ws, p, searchQueries(intent))
@@ -55,7 +54,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 	}
 	if len(refs) == 0 {
 		p.SearchRounds++
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: emptySearchNote(p.SearchRounds)})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: emptySearchNote(p.SearchRounds)})
 		return StateQueued, true, nil
 	}
 	p.References = shortlist(refs)
@@ -65,7 +64,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 	return StateWaitingConfirmation, false, nil
 }
 
-func searchQueries(intent *llmclient.CreationToolIntent) []string {
+func searchQueries(intent *ToolIntent) []string {
 	queries := []string{strings.TrimSpace(intent.Query)}
 	for _, q := range intent.Queries {
 		if q = strings.TrimSpace(q); q != "" && !containsString(queries, q) && len(queries) < 4 {
@@ -99,7 +98,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 	}
 	clean, err := validateFetchURL(query)
 	if err != nil {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。"})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。"})
 		return StateQueued, true, nil
 	}
 	p.PendingFetchURL = clean
@@ -107,7 +106,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 	return StateWaitingConfirmation, false, nil
 }
 
-func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
+func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
 	if !draftFollowsConfirmation(*p, r) || s.ValidateDraft == nil {
 		return "", false, ErrInvalidCommand
@@ -124,12 +123,12 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	}
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
 		p.PendingAction = NothingPending
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
 		return StateDraftReady, false, nil
 	}
 	p.PreviousDraft = e.PreviousDraft
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
+	p.Messages = append(p.Messages, Message{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
 	return StateQueued, true, nil
 }
 

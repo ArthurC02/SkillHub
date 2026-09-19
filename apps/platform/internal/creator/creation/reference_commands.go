@@ -4,7 +4,6 @@ import (
 	"context"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 func listedReference(p *Snapshot, id string) bool {
@@ -72,7 +71,7 @@ func declineReferences(p *Snapshot) (commandOutcome, error) {
 	}
 	p.References = []Reference{}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: "使用者不採用目錄裡的 Skill；請依需求撰寫。"})
+	p.Messages = append(p.Messages, Message{Role: "tool", Content: "使用者不採用目錄裡的 Skill；請依需求撰寫。"})
 	return stepQueued(), nil
 }
 

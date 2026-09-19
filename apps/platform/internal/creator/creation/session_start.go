@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -67,11 +66,11 @@ func resumeStart(r gen.CreationSession, key string) (View, error) {
 
 func (s *Service) openingEnvelope(ctx context.Context, ws identity.Workspace, message string, budget float64, key string) (envelope, State) {
 	zero := 0.0
-	e := envelope{Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, References: []Reference{}, BudgetUSD: budget, SpentUSD: &zero}, Limits: s.Limits, StartHash: key, Deadline: time.Now().Add(s.Limits.SessionTimeout)}
+	e := envelope{Snapshot: Snapshot{Messages: []Message{}, References: []Reference{}, BudgetUSD: budget, SpentUSD: &zero}, Limits: s.Limits, StartHash: key, Deadline: time.Now().Add(s.Limits.SessionTimeout)}
 	if strings.TrimSpace(message) == "" {
 		return e, StateWaitingInput
 	}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
+	e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "user", Content: s.masked(message)})
 	if s.CatalogCheck == nil {
 		return e, StateQueued
 	}

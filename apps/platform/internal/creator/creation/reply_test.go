@@ -2,23 +2,21 @@ package creation
 
 import (
 	"testing"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 func TestADraftMustRestateEveryConfirmedInput(t *testing.T) {
 	confirmedInputs := Snapshot{Brief: "b", BriefConfirmed: true, AcceptanceCriteria: []string{"c"}, SampleInput: "s"}
-	restated := func() *llmclient.CreationStepResponse {
-		return &llmclient.CreationStepResponse{Brief: "b", Draft: &llmclient.GeneratedSkill{}}
+	restated := func() *StepResult {
+		return &StepResult{Brief: "b", Draft: &GeneratedSkill{}}
 	}
 	if !draftFollowsConfirmation(confirmedInputs, restated()) {
 		t.Fatal("a draft that leaves criteria and sample input empty restates them")
 	}
-	for name, change := range map[string]func(*llmclient.CreationStepResponse){
-		"other criteria":     func(r *llmclient.CreationStepResponse) { r.AcceptanceCriteria = []string{"d"} },
-		"other sample input": func(r *llmclient.CreationStepResponse) { r.SampleInput = "t" },
-		"no draft":           func(r *llmclient.CreationStepResponse) { r.Draft = nil },
-		"no brief":           func(r *llmclient.CreationStepResponse) { r.Brief = "" },
+	for name, change := range map[string]func(*StepResult){
+		"other criteria":     func(r *StepResult) { r.AcceptanceCriteria = []string{"d"} },
+		"other sample input": func(r *StepResult) { r.SampleInput = "t" },
+		"no draft":           func(r *StepResult) { r.Draft = nil },
+		"no brief":           func(r *StepResult) { r.Brief = "" },
 	} {
 		r := restated()
 		change(r)
@@ -42,7 +40,7 @@ func TestANewReadingOfTheDiagramDropsWhatWasBuiltOnTheOldOne(t *testing.T) {
 }
 
 func TestSearchQueriesAreTheIntentThenUpToThreeDistinctRewrites(t *testing.T) {
-	got := searchQueries(&llmclient.CreationToolIntent{Query: " a ", Queries: []string{"b", " a", "", "c", "d", "e"}})
+	got := searchQueries(&ToolIntent{Query: " a ", Queries: []string{"b", " a", "", "c", "d", "e"}})
 	if len(got) != 4 || got[0] != "a" || got[1] != "b" || got[2] != "c" || got[3] != "d" {
 		t.Fatalf("queries = %q", got)
 	}

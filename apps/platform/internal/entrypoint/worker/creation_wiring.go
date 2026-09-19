@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
@@ -39,20 +38,20 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		}
 		return refs, cost, nil
 	}
-	s.ValidateDraft = func(ctx context.Context, draft llmclient.GeneratedSkill) (string, string, bool, error) {
+	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
 		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
 	}
 	s.Mask = (&trace.Masker{}).MaskString
-	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, llmclient.GenerateReference, error) {
+	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, creation.ReferenceSkill, error) {
 		sid, err := creation.ParseID(skillID)
 		if err != nil {
-			return creation.Reference{}, llmclient.GenerateReference{}, err
+			return creation.Reference{}, creation.ReferenceSkill{}, err
 		}
 		var vid pgtype.UUID
 		if versionID != "" {
 			vid, err = creation.ParseID(versionID)
 			if err != nil {
-				return creation.Reference{}, llmclient.GenerateReference{}, err
+				return creation.Reference{}, creation.ReferenceSkill{}, err
 			}
 		}
 		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
@@ -65,7 +64,7 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 				ref.Warnings = &w
 			}
 		}
-		return ref, llmclient.GenerateReference{Name: content.Name, SkillMD: content.SkillMD}, err
+		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
 	}
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
@@ -107,7 +106,7 @@ func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 	s.RevokeKey = gateway.Revoke
 }
 
-func generatedSkillForIngest(g llmclient.GeneratedSkill) ingest.GeneratedSkill {
+func generatedSkillForIngest(g creation.GeneratedSkill) ingest.GeneratedSkill {
 	out := ingest.GeneratedSkill{
 		Name: g.Name, Description: g.Description, Compatibility: g.Compatibility,
 		AllowedTools: g.AllowedTools, Body: g.Body,

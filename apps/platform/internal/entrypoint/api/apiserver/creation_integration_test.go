@@ -40,7 +40,7 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 			return
 		}
 		cost := .01
-		out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost}}
+		out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}}
 		if in.Diagram != nil {
 			out.Outcome = "confirm_diagram"
 			out.DiagramUnderstanding = `{"nodes":["開始","整理輸入","輸出摘要"],"conditions":[],"branches":[],"uncertainties":["需確認格式"]}`
@@ -307,9 +307,9 @@ func TestCreationExposureAndAnonymousAuth(t *testing.T) {
 	}
 }
 
-type creationStepFunc func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error)
+type creationStepFunc func(context.Context, creation.StepRequest) (*creation.StepResult, error)
 
-func (f creationStepFunc) CreationStep(ctx context.Context, r llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+func (f creationStepFunc) CreationStep(ctx context.Context, r creation.StepRequest) (*creation.StepResult, error) {
 	return f(ctx, r)
 }
 func creationJob(t *testing.T, id string) creation.JobArgs {
@@ -328,7 +328,7 @@ func TestCreationCancellationSettlesUnknownCostWithoutDraft(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-running-cancel")
 	started := make(chan struct{})
-	s.LLM = creationStepFunc(func(ctx context.Context, _ llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	s.LLM = creationStepFunc(func(ctx context.Context, _ creation.StepRequest) (*creation.StepResult, error) {
 		close(started)
 		<-ctx.Done()
 		return nil, ctx.Err()
@@ -359,7 +359,7 @@ func TestCreationPurgeFencesLateModelResult(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-purge-late")
 	started := make(chan struct{})
-	s.LLM = creationStepFunc(func(ctx context.Context, _ llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	s.LLM = creationStepFunc(func(ctx context.Context, _ creation.StepRequest) (*creation.StepResult, error) {
 		close(started)
 		<-ctx.Done()
 		return nil, ctx.Err()

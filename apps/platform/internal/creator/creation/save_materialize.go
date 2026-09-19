@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 )
@@ -24,7 +23,7 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 		p.PendingAction = NothingPending
 		p.PendingMaterialize = ""
 		if taken, collides := draftNameTaken(*p, c.ContentHash); collides {
-			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
+			p.Messages = append(p.Messages, Message{Role: "tool", Content: fmt.Sprintf("使用者仍要建立自己的版本，但草稿名稱「%s」與目錄裡那份相同，保存會被拒絕；請只改名稱（描述其差異），其餘內容不變，重新交出草稿。", taken)})
 			return stepQueued(), nil
 		}
 	}

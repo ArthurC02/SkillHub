@@ -110,7 +110,7 @@ func TestCreationLangGraphCarriesGoValidationIntoTheNextModelTurn(t *testing.T) 
 
 	a.app.CreationSvc.Limits.CallTimeout = 10 * time.Second
 	service.Limits.CallTimeout = 10 * time.Second
-	service.LLM = &llmclient.Client{BaseURL: pythonURL, Token: "test-service"}
+	service.LLM = creation.ModelOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
 	creator := a.login(t, "creation-langgraph-loop")
 	v := creationPost(t, creator, "/creation-sessions", map[string]any{
 		"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650,

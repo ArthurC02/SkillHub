@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
@@ -86,10 +87,10 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 		draft.Body += "\nVerify that duplicate rows were removed; report missing artifacts honestly.\n"
 		cost := .01
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost}})
+		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
 	}))
 	t.Cleanup(model.Close)
-	service.LLM = &llmclient.Client{BaseURL: model.URL}
+	service.LLM = creation.ModelOrNone(&llmclient.Client{BaseURL: model.URL})
 	v = creationPost(t, c, path, action(runID), 200)
 
 	if v.State != "waiting_input" || !strings.Contains(v.Snapshot.Messages[len(v.Snapshot.Messages)-1].Content, reason) {

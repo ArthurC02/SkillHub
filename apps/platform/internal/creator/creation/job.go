@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -88,7 +87,7 @@ func callTimeoutSeconds(left time.Duration) (int, error) {
 	}
 	return remaining, nil
 }
-func settleCost(p *Snapshot, reserved float64, usage *llmclient.GatewayUsage) {
+func settleCost(p *Snapshot, reserved float64, usage *ModelUsage) {
 	cost, known := knownCost(usage)
 	if !known {
 		p.UsageUnknown = true
@@ -102,14 +101,14 @@ func settleCost(p *Snapshot, reserved float64, usage *llmclient.GatewayUsage) {
 	*p.SpentUSD += cost
 }
 
-func knownCost(usage *llmclient.GatewayUsage) (float64, bool) {
+func knownCost(usage *ModelUsage) (float64, bool) {
 	if usage == nil || usage.CostUSD == nil || !finite(*usage.CostUSD) || *usage.CostUSD < 0 {
 		return 0, false
 	}
 	return *usage.CostUSD, true
 }
 
-func knownCostUSD(usage *llmclient.GatewayUsage) *float64 {
+func knownCostUSD(usage *ModelUsage) *float64 {
 	cost, known := knownCost(usage)
 	if !known {
 		return nil
@@ -122,7 +121,7 @@ type attempt struct {
 	revision int64
 }
 
-func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.GenerateDiagram) error {
+func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if s.LLM == nil || s.IssueKey == nil || s.RevokeKey == nil {
 		return ErrUnavailable
 	}
@@ -145,7 +144,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *llmclient.Genera
 	return s.finish(cleanupCtx, a, response, usage, callErr, diagram != nil)
 }
 
-func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *llmclient.GenerateDiagram) (*attempt, error) {
+func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram) (*attempt, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -253,7 +252,7 @@ func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
 	rec, text := s.Fetch(ctx, url)
 	p.PendingFetchURL = ""
 	p.Fetches = append(p.Fetches, rec)
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, s.masked(text))})
+	p.Messages = append(p.Messages, Message{Role: "tool", Content: fetchObservation(rec, s.masked(text))})
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {
@@ -285,21 +284,21 @@ func sessionMoved(current gen.CreationSession, err error) bool {
 	return State(current.State) != StateWorking || !live(current)
 }
 
-func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *llmclient.GenerateDiagram) llmclient.CreationStepRequest {
+func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
 	p := e.Snapshot
-	req := llmclient.CreationStepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []llmclient.GenerateReference{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, p.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, p.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	req.Draft, req.DraftValidation = draftForModel(p.Draft, e.PreviousDraft)
 	return req
 }
 
-func draftForModel(current, previous *Draft) (*llmclient.GeneratedSkill, *llmclient.CreationDraftValidation) {
+func draftForModel(current, previous *Draft) (*GeneratedSkill, *DraftValidation) {
 	if current == nil {
 		if previous == nil {
 			return nil, nil
 		}
 		return &previous.Skill, nil
 	}
-	return &current.Skill, &llmclient.CreationDraftValidation{ContentHash: current.ContentHash, Blocked: current.Blocked, Report: truncatedReport(current.Validation)}
+	return &current.Skill, &DraftValidation{ContentHash: current.ContentHash, Blocked: current.Blocked, Report: truncatedReport(current.Validation)}
 }
 
 func truncatedReport(report string) string {
@@ -311,9 +310,9 @@ func truncatedReport(report string) string {
 	return string(runes)
 }
 
-func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req llmclient.CreationStepRequest, deadline time.Time) (*llmclient.CreationStepResponse, *llmclient.GatewayUsage, error) {
+func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req StepRequest, deadline time.Time) (*StepResult, *ModelUsage, error) {
 	zero := 0.0
-	knownZero := &llmclient.GatewayUsage{CostUSD: &zero}
+	knownZero := &ModelUsage{CostUSD: &zero}
 	references, err := s.referencedContent(ctx, identity.Workspace{ID: a.WorkspaceID}, e.Snapshot.References)
 	if err != nil {
 		return nil, knownZero, err
@@ -337,8 +336,8 @@ func (s *Service) callModel(ctx context.Context, a JobArgs, e envelope, req llmc
 	return response, response.Usage, err
 }
 
-func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, refs []Reference) ([]llmclient.GenerateReference, error) {
-	var contents []llmclient.GenerateReference
+func (s *Service) referencedContent(ctx context.Context, ws identity.Workspace, refs []Reference) ([]ReferenceSkill, error) {
+	var contents []ReferenceSkill
 	for _, ref := range refs {
 		if !ref.Confirmed || s.ResolveReference == nil {
 			return nil, ErrNotFound
@@ -378,7 +377,7 @@ func stepFailureMessage(err, callErr error) string {
 
 func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, refusal attemptRefusal) error {
 	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: refusal.sentence(e.Snapshot, e.Limits)})
+	e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "assistant", Content: refusal.sentence(e.Snapshot, e.Limits)})
 	if _, err := s.advance(ctx, tx, row, abandonedState(e.Snapshot), "attempt_refused", e); err != nil {
 		return err
 	}
@@ -388,7 +387,7 @@ func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSes
 	}
 	return tx.Commit(ctx)
 }
-func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.CreationStepResponse, usage *llmclient.GatewayUsage, callErr error, hadDiagram bool) error {
+func (s *Service) finish(ctx context.Context, a JobArgs, response *StepResult, usage *ModelUsage, callErr error, hadDiagram bool) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -439,7 +438,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *llmclient.Cre
 	return tx.Commit(ctx)
 }
 
-func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *llmclient.GatewayUsage) error {
+func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
 	if err := finishAttemptReceipt(ctx, tx, a, usage); err != nil {
 		return err
 	}
@@ -449,20 +448,20 @@ func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobAr
 	return tx.Commit(ctx)
 }
 
-func finishAttemptReceipt(ctx context.Context, tx pgx.Tx, a JobArgs, usage *llmclient.GatewayUsage) error {
+func finishAttemptReceipt(ctx context.Context, tx pgx.Tx, a JobArgs, usage *ModelUsage) error {
 	u, _ := json.Marshal(usage)
 	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "finished", Result: []byte("{}"), Usage: u})
 	return err
 }
 
-func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *llmclient.GatewayUsage) error {
+func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
 	if s.Billing == nil {
 		return nil
 	}
 	return s.Billing.Settle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, knownCostUSD(usage), l.MaxCallCostUSD)
 }
 
-func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *llmclient.CreationStepResponse, callErr error, hadDiagram bool) (State, bool) {
+func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *StepResult, callErr error, hadDiagram bool) (State, bool) {
 	state, next, err := s.attemptOutcome(ctx, a, row, e, response, callErr, hadDiagram)
 	if err == nil {
 		return state, next
@@ -471,7 +470,7 @@ func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.Creati
 	return failedAttempt(&e.Snapshot, err, callErr, hadDiagram), false
 }
 
-func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *llmclient.CreationStepResponse, callErr error, hadDiagram bool) (State, bool, error) {
+func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *StepResult, callErr error, hadDiagram bool) (State, bool, error) {
 	if callErr != nil || response == nil || !live(row) || !e.Deadline.After(time.Now()) {
 		return "", false, ErrUnavailable
 	}
@@ -487,7 +486,7 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 		state = StateNeedsReupload
 	}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: stepFailureMessage(err, callErr)})
+	p.Messages = append(p.Messages, Message{Role: "assistant", Content: stepFailureMessage(err, callErr)})
 	if errors.Is(callErr, ErrNotFound) {
 		state = StateWaitingConfirmation
 		p.PendingAction = PendingReferenceChoice
@@ -495,12 +494,12 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 			p.References[i].Available = false
 			p.References[i].Confirmed = false
 		}
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "參考內容目前不可用，請換選後再確認。"})
+		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "參考內容目前不可用，請換選後再確認。"})
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
+		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
 	}
 	return state
 }
@@ -514,7 +513,7 @@ func (s *Service) logStepFailure(a JobArgs, callErr error) {
 
 func (s *Service) queueNextStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (State, error) {
 	if !canSpend(e.Snapshot, e.Limits) {
-		e.Snapshot.Messages = append(e.Snapshot.Messages, llmclient.CreationMessage{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
+		e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
 		return StateWaitingInput, nil
 	}
 	if _, err := s.enqueue(ctx, tx, row, e, false); err != nil {

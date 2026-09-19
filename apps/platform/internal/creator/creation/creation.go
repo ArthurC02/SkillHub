@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,14 +15,14 @@ import (
 )
 
 type Command struct {
-	ID                pgtype.UUID                `json:"command_id"`
-	ExpectedRevision  int64                      `json:"expected_revision"`
-	Kind              string                     `json:"kind"`
-	Message           string                     `json:"message,omitempty"`
-	ReferenceSkillIDs []string                   `json:"reference_skill_ids,omitempty"`
-	ContentHash       string                     `json:"content_hash,omitempty"`
-	Diagram           *llmclient.GenerateDiagram `json:"diagram,omitempty"`
-	RunID             string                     `json:"run_id,omitempty"`
+	ID                pgtype.UUID `json:"command_id"`
+	ExpectedRevision  int64       `json:"expected_revision"`
+	Kind              string      `json:"kind"`
+	Message           string      `json:"message,omitempty"`
+	ReferenceSkillIDs []string    `json:"reference_skill_ids,omitempty"`
+	ContentHash       string      `json:"content_hash,omitempty"`
+	Diagram           *Diagram    `json:"diagram,omitempty"`
+	RunID             string      `json:"run_id,omitempty"`
 
 	BudgetUSD float64 `json:"budget_usd,omitempty"`
 }
@@ -133,7 +132,7 @@ func (s *Service) attachNote(p *Snapshot, note string) error {
 	if utf8.RuneCountInString(note) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return ErrInvalidCommand
 	}
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(note)})
+	p.Messages = append(p.Messages, Message{Role: "user", Content: s.masked(note)})
 	return nil
 }
 
@@ -146,7 +145,7 @@ func nameCollides(name string, dups []Reference) (string, bool) {
 	return "", false
 }
 
-func duplicateQuery(skill llmclient.GeneratedSkill) string {
+func duplicateQuery(skill GeneratedSkill) string {
 	return strings.TrimSpace(skill.Name + "\n" + skill.Description)
 }
 
@@ -279,7 +278,7 @@ func stopStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelo
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: stopStepNote(beforeSending)})
+	p.Messages = append(p.Messages, Message{Role: "assistant", Content: stopStepNote(beforeSending)})
 	return settledIn(StateWaitingInput), nil
 }
 
@@ -307,7 +306,7 @@ func (s *Service) acceptMessage(p *Snapshot, message string) (commandOutcome, er
 	if strings.TrimSpace(message) == "" || utf8.RuneCountInString(message) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "user", Content: s.masked(message)})
+	p.Messages = append(p.Messages, Message{Role: "user", Content: s.masked(message)})
 	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }

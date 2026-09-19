@@ -7,7 +7,6 @@ import (
 	"unicode/utf8"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 var reasonSentences = map[string]string{
@@ -54,7 +53,7 @@ func equalStrings(a, b []string) bool {
 	return true
 }
 
-func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
+func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
 	if r.Reason != "" {
 		sentence, err := reasonSentence(r.Reason)
@@ -64,7 +63,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		r.Message = sentence
 		if retries := missingOutputRetries(e, r.Reason); retriesMissingOutput(retries, *p, e.Limits) {
 			*retries++
-			p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
+			p.Messages = append(p.Messages, Message{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
 			p.PendingAction = NothingPending
 			return StateQueued, true, nil
 		}
@@ -110,7 +109,7 @@ func retriesMissingOutput(retries *int, p Snapshot, l Limits) bool {
 	return retries != nil && *retries < 1 && canSpend(p, l)
 }
 
-func normalizeReply(r *llmclient.CreationStepResponse, diagramUploaded bool) {
+func normalizeReply(r *StepResult, diagramUploaded bool) {
 	if !diagramUploaded {
 		r.DiagramUnderstanding = ""
 	}
@@ -119,7 +118,7 @@ func normalizeReply(r *llmclient.CreationStepResponse, diagramUploaded bool) {
 	}
 }
 
-func admitReply(r *llmclient.CreationStepResponse, p Snapshot) error {
+func admitReply(r *StepResult, p Snapshot) error {
 	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
 		return ErrInvalidCommand
 	}
@@ -135,10 +134,10 @@ func admitReply(r *llmclient.CreationStepResponse, p Snapshot) error {
 	return nil
 }
 
-func recordReply(p *Snapshot, r *llmclient.CreationStepResponse) {
+func recordReply(p *Snapshot, r *StepResult) {
 	p.Model = r.Model
 	p.PromptVersion = r.PromptVersion
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: r.Message})
+	p.Messages = append(p.Messages, Message{Role: "assistant", Content: r.Message})
 }
 
 func reinterpretDiagram(p *Snapshot, understanding string) State {
@@ -151,7 +150,7 @@ func reinterpretDiagram(p *Snapshot, understanding string) State {
 
 type briefChange struct{ brief, criteria, sample bool }
 
-func briefChangeIn(p Snapshot, r *llmclient.CreationStepResponse) briefChange {
+func briefChangeIn(p Snapshot, r *StepResult) briefChange {
 	return briefChange{
 		brief:    r.Brief != "" && r.Brief != p.Brief,
 		criteria: len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria),
@@ -175,7 +174,7 @@ func (c briefChange) overturned(p Snapshot) *ModelChange {
 	return changed
 }
 
-func reviseBrief(p *Snapshot, r *llmclient.CreationStepResponse, c briefChange) State {
+func reviseBrief(p *Snapshot, r *StepResult, c briefChange) State {
 	if p.BriefConfirmed {
 		p.ModelChanged = c.overturned(*p)
 	}
@@ -215,7 +214,7 @@ func askToConfirmDiagram(p *Snapshot) (State, bool, error) {
 	return StateWaitingConfirmation, false, nil
 }
 
-func draftFollowsConfirmation(p Snapshot, r *llmclient.CreationStepResponse) bool {
+func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
 	return confirmed(p) && r.Brief == p.Brief &&
 		(len(r.AcceptanceCriteria) == 0 || equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) &&
 		(r.SampleInput == "" || r.SampleInput == p.SampleInput) &&
@@ -223,7 +222,7 @@ func draftFollowsConfirmation(p Snapshot, r *llmclient.CreationStepResponse) boo
 		r.Draft != nil
 }
 
-func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, r *llmclient.CreationStepResponse) (State, bool, error) {
+func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
 	if !draftFollowsConfirmation(*p, r) || s.ValidateDraft == nil {
 		return "", false, ErrInvalidCommand
@@ -235,12 +234,12 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	objection := objectionsTo(*p, *r.Draft, hash)
 	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
 		p.Nudges++
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: objection.toModel(p.EvaluationText)})
+		p.Messages = append(p.Messages, Message{Role: "tool", Content: objection.toModel(p.EvaluationText)})
 		p.PendingAction = NothingPending
 		return StateQueued, true, nil
 	}
 	if note := objection.toPerson(); note != "" {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: note})
+		p.Messages = append(p.Messages, Message{Role: "assistant", Content: note})
 	}
 	p.PreviousDraft = e.PreviousDraft
 	if p.Draft == nil || p.Draft.ContentHash != hash {
@@ -255,7 +254,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 		p.BlockedRepeats = 0
 	}
 	if p.BlockedRepeats >= MaxBlockedRepeats {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。"})
+		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。"})
 		return StateWaitingInput, false, nil
 	}
 	return StateDraftReady, false, nil
@@ -277,7 +276,7 @@ type draftObjection struct {
 	newTools     []string
 }
 
-func objectionsTo(p Snapshot, d llmclient.GeneratedSkill, hash string) draftObjection {
+func objectionsTo(p Snapshot, d GeneratedSkill, hash string) draftObjection {
 	o := draftObjection{unchanged: p.RunUnmet && p.Draft != nil && p.Draft.ContentHash == hash}
 	if p.DiagramFingerprint != "" && p.DiagramConfirmed && p.DiagramUnderstanding != "" {
 		o.missingNodes = missingDiagramNodes(p.DiagramUnderstanding, d.Body)

@@ -8,12 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func withMessages(n int) Snapshot {
-	return Snapshot{Messages: make([]llmclient.CreationMessage, n)}
+	return Snapshot{Messages: make([]Message, n)}
 }
 
 func TestASessionHasRoomForMessagesUpToTheCeilingAndNoFurther(t *testing.T) {
@@ -65,11 +64,11 @@ func TestADraftNameClashIsRaisedOnlyWhileTheSessionHasRoomToAsk(t *testing.T) {
 	p := saveableSnapshot()
 	p.Duplicates = []Reference{{Name: p.Draft.Skill.Name}}
 
-	p.Messages = make([]llmclient.CreationMessage, MaxMessages-1)
+	p.Messages = make([]Message, MaxMessages-1)
 	if _, taken := draftNameTaken(p, p.Draft.ContentHash); !taken {
 		t.Fatal("one below the ceiling, a draft named like a duplicate was not raised")
 	}
-	p.Messages = make([]llmclient.CreationMessage, MaxMessages)
+	p.Messages = make([]Message, MaxMessages)
 	if _, taken := draftNameTaken(p, p.Draft.ContentHash); taken {
 		t.Fatal("at the ceiling, the session was asked to rename with no room left to ask")
 	}

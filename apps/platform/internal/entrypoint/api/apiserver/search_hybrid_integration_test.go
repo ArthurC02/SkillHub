@@ -56,7 +56,7 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	embed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cost := 0.00001
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unit(0).Slice()}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost}})
+		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unit(0).Slice()}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
 	}))
 	t.Cleanup(embed.Close)
 	svc := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(&llmclient.Client{BaseURL: embed.URL}), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}

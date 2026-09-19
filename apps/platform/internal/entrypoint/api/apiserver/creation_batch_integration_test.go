@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"io"
 	"strings"
 	"testing"
@@ -74,8 +73,8 @@ func TestCreationBatchConfirmReferencesRestoresAvailable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-		return creation.Reference{}, llmclient.GenerateReference{}, nil
+	s.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+		return creation.Reference{}, creation.ReferenceSkill{}, nil
 	}
 	out, _, err := s.Act(context.Background(), identity.Workspace{ID: ws}, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_references"})
 	if err != nil {
@@ -104,8 +103,8 @@ func TestCreationBatchGenerationInputsShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stubResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-		return creation.Reference{}, llmclient.GenerateReference{}, nil
+	stubResolve := func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+		return creation.Reference{}, creation.ReferenceSkill{}, nil
 	}
 	s.ResolveReference = stubResolve
 	a.app.CreationSvc.ResolveReference = stubResolve
@@ -206,8 +205,8 @@ func TestCreationBatchAMaterialCarriesItsSentence(t *testing.T) {
 
 	const withRefs = "我想要和這個很像，但是輸出成表格。"
 	v = creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
-	a.app.CreationSvc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, llmclient.GenerateReference, error) {
-		return creation.Reference{SkillID: "33333333-3333-3333-3333-333333333333", VersionID: "44444444-4444-4444-4444-444444444444", Name: "Ref", Available: true}, llmclient.GenerateReference{}, nil
+	a.app.CreationSvc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+		return creation.Reference{SkillID: "33333333-3333-3333-3333-333333333333", VersionID: "44444444-4444-4444-4444-444444444444", Name: "Ref", Available: true}, creation.ReferenceSkill{}, nil
 	}
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
 		"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",

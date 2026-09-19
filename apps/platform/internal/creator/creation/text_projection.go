@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 	"unicode"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
-func draftText(skill llmclient.GeneratedSkill) string {
+func draftText(skill GeneratedSkill) string {
 	parts := []string{skill.Name, skill.Description, skill.Compatibility, skill.AllowedTools, skill.Body}
 	for _, f := range skill.Files {
 		parts = append(parts, f.Path, f.Content)
@@ -23,7 +21,7 @@ func previousDraftText(d *Draft) string {
 	return draftText(d.Skill)
 }
 
-func personText(messages []llmclient.CreationMessage) string {
+func personText(messages []Message) string {
 	var b strings.Builder
 	for _, m := range messages {
 		if m.Role == "user" {

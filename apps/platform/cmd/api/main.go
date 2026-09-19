@@ -328,7 +328,7 @@ func main() {
 	reportCapabilities(ctx, capabilities)
 
 	if clean {
-		creationTransient = func(ctx context.Context, a creation.JobArgs, d *llmclient.GenerateDiagram) error {
+		creationTransient = func(ctx context.Context, a creation.JobArgs, d *creation.Diagram) error {
 			if cleanWorker == nil {
 				return creation.ErrUnavailable
 			}

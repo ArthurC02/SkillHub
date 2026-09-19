@@ -12,7 +12,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -45,15 +44,15 @@ func failRevokeKey(t *testing.T) func(context.Context, string) error {
 }
 
 func failLLM(t *testing.T) creationStepFunc {
-	return creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	return creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 		t.Fatal("LLM called")
 		return nil, nil
 	})
 }
 
 func TestStepRequiresLLMAndKeyCallbacks(t *testing.T) {
-	llmOK := creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-		return &llmclient.CreationStepResponse{}, nil
+	llmOK := creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+		return &creation.StepResult{}, nil
 	})
 	cases := []struct {
 		name string
@@ -98,7 +97,7 @@ func TestStepRejectsATransientDiagramThatDoesNotMatchTheStored(t *testing.T) {
 	storedB64 := base64.StdEncoding.EncodeToString([]byte("stored-diagram-bytes"))
 	_, job, err := svc.Act(context.Background(), ws, id, creation.Command{
 		ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram",
-		Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: storedB64},
+		Diagram: &creation.Diagram{MediaType: "image/png", Data: storedB64},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +105,7 @@ func TestStepRejectsATransientDiagramThatDoesNotMatchTheStored(t *testing.T) {
 	if job == nil {
 		t.Fatal("diagram command did not return a transient job")
 	}
-	other := &llmclient.GenerateDiagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString([]byte("different-bytes"))}
+	other := &creation.Diagram{MediaType: "image/png", Data: base64.StdEncoding.EncodeToString([]byte("different-bytes"))}
 	err = svc.Step(context.Background(), *job, other)
 	if !errors.Is(err, creation.ErrInvalidCommand) {
 		t.Fatalf("got %v, want ErrInvalidCommand", err)
@@ -222,10 +221,10 @@ func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 		},
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
 	}
-	var captured llmclient.CreationStepRequest
-	svc.LLM = creationStepFunc(func(_ context.Context, r llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	var captured creation.StepRequest
+	svc.LLM = creationStepFunc(func(_ context.Context, r creation.StepRequest) (*creation.StepResult, error) {
 		captured = r
-		return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的"}, nil
+		return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
 	})
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -345,11 +344,11 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := rec.calls[0]
-	svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 		if _, err := pool.Exec(context.Background(), "UPDATE creation_receipts SET status='failed' WHERE id=$1", job.ReceiptID); err != nil {
 			t.Fatal(err)
 		}
-		return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的"}, nil
+		return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
 	})
 	before, err := svc.Get(context.Background(), ws, id)
 	if err != nil {
@@ -400,11 +399,11 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	}
 	job := rec.calls[0]
 	cost := .02
-	svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 		if _, err := pool.Exec(context.Background(), "UPDATE creation_receipts SET status='unknown' WHERE id=$1", job.ReceiptID); err != nil {
 			t.Fatal(err)
 		}
-		return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的", Usage: &llmclient.GatewayUsage{CostUSD: &cost}}, nil
+		return &creation.StepResult{Outcome: "clarification", Message: "好的", Usage: &creation.ModelUsage{CostUSD: &cost, CostReported: true}}, nil
 	})
 	before, err := svc.Get(context.Background(), ws, id)
 	if err != nil {
@@ -428,7 +427,7 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	if status != "finished" {
 		t.Fatalf("receipt status = %q, want finished", status)
 	}
-	var storedUsage llmclient.GatewayUsage
+	var storedUsage creation.ModelUsage
 	if err := json.Unmarshal(usage, &storedUsage); err != nil {
 		t.Fatal(err)
 	}
@@ -451,10 +450,10 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 	cost := .04
 	cases := []struct {
 		name  string
-		usage *llmclient.GatewayUsage
+		usage *creation.ModelUsage
 		want  *float64
 	}{
-		{"usage with a finite non-negative cost", &llmclient.GatewayUsage{CostUSD: &cost}, &cost},
+		{"usage with a finite non-negative cost", &creation.ModelUsage{CostUSD: &cost, CostReported: true}, &cost},
 		{"response with no usage", nil, nil},
 	}
 	for _, tc := range cases {
@@ -473,8 +472,8 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 					return nil
 				}},
 			}
-			svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-				return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的", Usage: tc.usage}, nil
+			svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+				return &creation.StepResult{Outcome: "clarification", Message: "好的", Usage: tc.usage}, nil
 			})
 			id := creationID(t)
 			if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {
@@ -502,8 +501,8 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		LLM: creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-			return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的"}, nil
+		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
 		}),
 		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *float64, float64) error {
 			return settleErr
@@ -542,8 +541,8 @@ func TestFinishTransientDiagramWithNoUnderstandingNeedsReupload(t *testing.T) {
 	pool := requireDB(t)
 	ws := newCreationWorkspace(t, pool)
 	svc := &creation.Service{Pool: pool, Limits: creationLimits(), IssueKey: okIssueKey, RevokeKey: okRevokeKey}
-	svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-		return &llmclient.CreationStepResponse{Outcome: "clarification", Message: "好的", DiagramUnderstanding: ""}, nil
+	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+		return &creation.StepResult{Outcome: "clarification", Message: "好的", DiagramUnderstanding: ""}, nil
 	})
 	id := creationID(t)
 	v, err := svc.Create(context.Background(), ws, id, "", .5)
@@ -553,7 +552,7 @@ func TestFinishTransientDiagramWithNoUnderstandingNeedsReupload(t *testing.T) {
 	b64 := base64.StdEncoding.EncodeToString([]byte("diagram-bytes"))
 	_, job, err := svc.Act(context.Background(), ws, id, creation.Command{
 		ID: creationID(t), ExpectedRevision: v.Revision, Kind: "diagram",
-		Diagram: &llmclient.GenerateDiagram{MediaType: "image/png", Data: b64},
+		Diagram: &creation.Diagram{MediaType: "image/png", Data: b64},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -561,7 +560,7 @@ func TestFinishTransientDiagramWithNoUnderstandingNeedsReupload(t *testing.T) {
 	if job == nil {
 		t.Fatal("diagram command did not return a transient job")
 	}
-	if err := svc.Step(context.Background(), *job, &llmclient.GenerateDiagram{MediaType: "image/png", Data: b64}); err != nil {
+	if err := svc.Step(context.Background(), *job, &creation.Diagram{MediaType: "image/png", Data: b64}); err != nil {
 		t.Fatal(err)
 	}
 	final, err := svc.Get(context.Background(), ws, id)
@@ -623,11 +622,11 @@ func TestFinishWhenTheModelAsksForAnotherStepEnqueuesIt(t *testing.T) {
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey, SearchReferences: failSearchReferences(t),
 	}
 	cost := .01
-	svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-		return &llmclient.CreationStepResponse{
+	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+		return &creation.StepResult{
 			Outcome: "tool_intent", Message: "讓我先查查目錄。",
-			ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: ""},
-			Usage:      &llmclient.GatewayUsage{CostUSD: &cost},
+			ToolIntent: &creation.ToolIntent{Kind: "search_catalog", Query: ""},
+			Usage:      &creation.ModelUsage{CostUSD: &cost, CostReported: true},
 		}, nil
 	})
 	id := creationID(t)
@@ -666,10 +665,10 @@ func TestFinishWhenTheModelAsksForAnotherStepButTheSessionCannotSpendWaitsForInp
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey, SearchReferences: failSearchReferences(t),
 	}
-	svc.LLM = creationStepFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
-		return &llmclient.CreationStepResponse{
+	svc.LLM = creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
+		return &creation.StepResult{
 			Outcome: "tool_intent", Message: "讓我先查查目錄。",
-			ToolIntent: &llmclient.CreationToolIntent{Kind: "search_catalog", Query: ""},
+			ToolIntent: &creation.ToolIntent{Kind: "search_catalog", Query: ""},
 		}, nil
 	})
 	id := creationID(t)

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
 
 func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snapshot, runID string) (commandOutcome, error) {
@@ -19,9 +18,9 @@ func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snaps
 	p.RunUnmet = runUnmet(observation)
 	observation = s.masked(observation)
 	p.EvaluationText = evaluationFreeText(observation)
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: observation})
+	p.Messages = append(p.Messages, Message{Role: "tool", Content: observation})
 	if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
-		p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "assistant", Content: questions})
+		p.Messages = append(p.Messages, Message{Role: "assistant", Content: questions})
 		p.PendingAction = NothingPending
 		return settledIn(StateWaitingInput), nil
 	}
@@ -46,7 +45,7 @@ func declineFetch(p *Snapshot) (commandOutcome, error) {
 	}
 	rec := Fetch{URL: p.PendingFetchURL, Status: "declined"}
 	p.Fetches = append(p.Fetches, rec)
-	p.Messages = append(p.Messages, llmclient.CreationMessage{Role: "tool", Content: fetchObservation(rec, "")})
+	p.Messages = append(p.Messages, Message{Role: "tool", Content: fetchObservation(rec, "")})
 	p.PendingFetchURL = ""
 	p.PendingAction = NothingPending
 	return stepQueued(), nil

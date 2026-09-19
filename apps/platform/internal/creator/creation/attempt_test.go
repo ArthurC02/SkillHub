@@ -10,15 +10,14 @@ import (
 	"time"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type modelFunc func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error)
+type modelFunc func(context.Context, StepRequest) (*StepResult, error)
 
-func (f modelFunc) CreationStep(ctx context.Context, r llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+func (f modelFunc) CreationStep(ctx context.Context, r StepRequest) (*StepResult, error) {
 	return f(ctx, r)
 }
 
@@ -108,8 +107,8 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 }
 
 func TestTheModelSeesTheCurrentDraftWithItsReportOrElseThePreviousOne(t *testing.T) {
-	current := &Draft{ContentHash: "h", Blocked: true, Validation: "report", Skill: llmclient.GeneratedSkill{Name: "now"}}
-	previous := &Draft{Skill: llmclient.GeneratedSkill{Name: "before"}}
+	current := &Draft{ContentHash: "h", Blocked: true, Validation: "report", Skill: GeneratedSkill{Name: "now"}}
+	previous := &Draft{Skill: GeneratedSkill{Name: "before"}}
 	if skill, validation := draftForModel(nil, nil); skill != nil || validation != nil {
 		t.Errorf("no draft at all: %+v %+v", skill, validation)
 	}
@@ -134,14 +133,14 @@ func TestTheValidationReportIsCutToTheTextLimitWithAMarker(t *testing.T) {
 }
 
 func TestOnlyAFiniteNonNegativeCostIsKnown(t *testing.T) {
-	cost := func(v float64) *llmclient.GatewayUsage { return &llmclient.GatewayUsage{CostUSD: &v} }
+	cost := func(v float64) *ModelUsage { return &ModelUsage{CostUSD: &v} }
 	for _, c := range []struct {
 		name  string
-		usage *llmclient.GatewayUsage
+		usage *ModelUsage
 		want  *float64
 	}{
 		{"no usage", nil, nil},
-		{"no cost", &llmclient.GatewayUsage{}, nil},
+		{"no cost", &ModelUsage{}, nil},
 		{"not a number", cost(math.NaN()), nil},
 		{"infinite", cost(math.Inf(1)), nil},
 		{"negative", cost(-.01), nil},
@@ -170,19 +169,19 @@ func callerFor(t *testing.T, calls *int) *Service {
 	t.Helper()
 	cost := .03
 	return &Service{
-		LLM: modelFunc(func(_ context.Context, r llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+		LLM: modelFunc(func(_ context.Context, r StepRequest) (*StepResult, error) {
 			*calls++
 			if r.GatewayKey != "key" || r.TimeoutSeconds < 1 {
 				t.Errorf("request = %+v", r)
 			}
-			return &llmclient.CreationStepResponse{Outcome: "clarification", Usage: &llmclient.GatewayUsage{CostUSD: &cost}}, nil
+			return &StepResult{Outcome: "clarification", Usage: &ModelUsage{CostUSD: &cost}}, nil
 		}),
 		IssueKey: func(context.Context, string, string, float64, time.Duration) (string, error) { return "key", nil },
-		ResolveReference: func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, llmclient.GenerateReference, error) {
+		ResolveReference: func(_ context.Context, _ identity.Workspace, id, _ string) (Reference, ReferenceSkill, error) {
 			if id == "gone" {
-				return Reference{}, llmclient.GenerateReference{}, errors.New("gone")
+				return Reference{}, ReferenceSkill{}, errors.New("gone")
 			}
-			return Reference{}, llmclient.GenerateReference{Name: id}, nil
+			return Reference{}, ReferenceSkill{Name: id}, nil
 		},
 	}
 }
@@ -192,7 +191,7 @@ func TestAModelCallCarriesTheConfirmedReferencesAndReportsItsUsage(t *testing.T)
 	s := callerFor(t, &calls)
 	var sent []string
 	inner := s.LLM
-	s.LLM = modelFunc(func(ctx context.Context, r llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	s.LLM = modelFunc(func(ctx context.Context, r StepRequest) (*StepResult, error) {
 		for _, ref := range r.References {
 			sent = append(sent, ref.Name)
 		}
@@ -250,7 +249,7 @@ var errKeyRefused = errors.New("refused")
 func TestAModelCallThatBringsBackNothingSettlesAsUnknownCost(t *testing.T) {
 	calls := 0
 	s := callerFor(t, &calls)
-	s.LLM = modelFunc(func(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error) {
+	s.LLM = modelFunc(func(context.Context, StepRequest) (*StepResult, error) {
 		return nil, context.DeadlineExceeded
 	})
 	e := envelope{Limits: testLimits()}
@@ -293,14 +292,14 @@ func liveRow(revision int64) gen.CreationSession {
 }
 
 func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
-	ok := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "?"}
+	ok := &StepResult{Outcome: "clarification", Message: "?"}
 	expired := liveRow(2)
 	expired.ExpiresAt.Time = time.Now().Add(-time.Second)
 	for _, c := range []struct {
 		name     string
 		row      gen.CreationSession
 		deadline time.Time
-		response *llmclient.CreationStepResponse
+		response *StepResult
 		callErr  error
 	}{
 		{"the call failed", liveRow(2), time.Now().Add(time.Hour), ok, errors.New("boom")},
@@ -309,7 +308,7 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 		{"the deadline passed", liveRow(2), time.Now().Add(-time.Second), ok, nil},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			e := &envelope{Deadline: c.deadline, Limits: testLimits(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}}}
+			e := &envelope{Deadline: c.deadline, Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}}}
 			if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, c.row, e, c.response, c.callErr, false); !errors.Is(err, ErrUnavailable) {
 				t.Fatalf("err = %v, want ErrUnavailable", err)
 			}
@@ -319,18 +318,18 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 
 func TestADiagramAttemptMustComeBackWithAnUnderstanding(t *testing.T) {
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits()}
-	response := &llmclient.CreationStepResponse{Outcome: "clarification", Message: "?"}
+	response := &StepResult{Outcome: "clarification", Message: "?"}
 	if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, liveRow(2), e, response, nil, true); !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }
 
 func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
-	s := &Service{ValidateDraft: func(context.Context, llmclient.GeneratedSkill) (string, string, bool, error) {
+	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h", "{}", false, nil
 	}}
-	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []llmclient.CreationMessage{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
-	response := &llmclient.CreationStepResponse{Outcome: "draft", Message: "draft", Brief: "b", Draft: &llmclient.GeneratedSkill{Name: "x", Body: "body"}}
+	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
+	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	state, next, err := s.attemptOutcome(context.Background(), JobArgs{}, liveRow(6), e, response, nil, false)
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {
 		t.Fatalf("state = %s, next = %v, draft = %+v, err = %v", state, next, e.Snapshot.Draft, err)
