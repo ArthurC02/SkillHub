@@ -47,3 +47,10 @@ type Model interface {
 	Embed(ctx context.Context, texts []string, within time.Duration) (*Embeddings, error)
 	MatchReasons(ctx context.Context, query string, candidates []SkillCandidate) (*MatchReasons, error)
 }
+
+type SkillTags struct {
+	Inputs       []string `json:"inputs"`
+	Outputs      []string `json:"outputs"`
+	Tools        []string `json:"tools"`
+	Dependencies []string `json:"dependencies"`
+}

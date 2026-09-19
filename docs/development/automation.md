@@ -171,6 +171,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `image-version` | Dockerfile 的 `ARG IMAGE_VERSION` 每個版本，`UPGRADES.md` 都要有同名章節（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)；**只查章節在不在，查不出四項有沒有真的跑**） | `tools/devctl/image_version.go` |
 | `embedding-dims` | `0007_search.sql` 的 `vector(1536)` 與 `apps/llm` 驗證的寬度一致（migration 為準） | `tools/devctl/embedding_dims.go` |
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
+| `model-wire-boundary` | 模型服務的線路型別只出現在 `*_adapter.go` 與組裝根，領域套件用自己的話描述 | `tools/devctl/model_wire_boundary.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `env-declared` | 反方向：`cmd/api`、`cmd/worker`、`cmd/maintenance`、`cmd/reindex`、`sandboxd` 與 `apps/llm` 讀的每個環境變數，`.env.example` 都要列出（Go 以 AST 追到包裝函式與常數，Python 以 `os.getenv`／`os.environ` 比對）。空值必須等於預設值 | `tools/devctl/env_declared.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |

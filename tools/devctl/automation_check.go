@@ -130,6 +130,7 @@ func documentCheckers() []namedChecker {
 		{"image-version", imageVersionProblems},
 		{"embedding-dims", embeddingDimsProblems},
 		{"goldenset-mirror", goldensetMirrorProblems},
+		{"model-wire-boundary", modelWireBoundaryProblems},
 
 		{"capability-table", capabilityTableProblems},
 		{"env-declared", envDeclaredProblems},

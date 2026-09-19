@@ -22,7 +22,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"domain-vocabulary",
 		"run-status-sql",
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
-		"image-version", "embedding-dims", "goldenset-mirror",
+		"image-version", "embedding-dims", "goldenset-mirror", "model-wire-boundary",
 
 		"capability-table", "env-declared",
 
@@ -107,7 +107,8 @@ func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
 
 	write("apps/platform/budgets.go",
 		"package x\n\nconst t = 135 * time.Second // budget-over: nothing.PAIRS_WITH_THIS\n")
-	write("apps/platform/internal/fake/decided.go", "package fake\n\n// Decided in R-74.\nvar decided = true\n")
+	write("apps/platform/internal/fake/decided.go",
+		"package fake\n\nimport _ \""+modelWirePackage+"\"\n\n// Decided in R-74.\nvar decided = true\n")
 
 	write("apps/platform/internal/fake/main_test.go", `package fake
 

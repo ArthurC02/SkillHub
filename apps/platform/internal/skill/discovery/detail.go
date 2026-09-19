@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -150,13 +149,13 @@ func unverifiedCompat() compatibility {
 }
 
 type enrichmentInfo struct {
-	Status        string               `json:"status"`
-	Summary       string               `json:"summary,omitempty"`
-	TaskExamples  []string             `json:"task_examples,omitempty"`
-	Tags          *llmclient.SkillTags `json:"tags,omitempty"`
-	Model         string               `json:"model,omitempty"`
-	PromptVersion string               `json:"prompt_version,omitempty"`
-	Note          string               `json:"note"`
+	Status        string     `json:"status"`
+	Summary       string     `json:"summary,omitempty"`
+	TaskExamples  []string   `json:"task_examples,omitempty"`
+	Tags          *SkillTags `json:"tags,omitempty"`
+	Model         string     `json:"model,omitempty"`
+	PromptVersion string     `json:"prompt_version,omitempty"`
+	Note          string     `json:"note"`
 }
 
 type limitation struct {
@@ -607,7 +606,7 @@ func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {
 	out.Summary = e.EnrichedSummary
 	out.TaskExamples = nonEmptyLines(e.TaskExamples)
 
-	var tags llmclient.SkillTags
+	var tags SkillTags
 	if len(e.Tags) > 0 && json.Unmarshal(e.Tags, &tags) == nil && tags.Inputs != nil {
 		out.Tags = &tags
 	}
