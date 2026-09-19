@@ -223,8 +223,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if errors.Is(err, ErrNoCompatibleProvider) || errors.Is(err, ErrNoModelGateway) {
+	if errors.Is(err, ErrNoCompatibleProvider) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if errors.Is(err, ErrNoModelGateway) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"這個部署沒有接上模型閘道，試跑沒有辦法連到模型，請聯絡管理者。")
 		return
 	}
 

@@ -87,7 +87,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 	if h.Service.OAuth == nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "github login is not configured")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "這個部署沒有設定登入提供者，現在無法登入，請聯絡管理者")
 		return
 	}
 	raw := make([]byte, 16)
@@ -105,7 +105,7 @@ func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	if h.Service.OAuth == nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "github login is not configured")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "這個部署沒有設定登入提供者，現在無法登入，請聯絡管理者")
 		return
 	}
 

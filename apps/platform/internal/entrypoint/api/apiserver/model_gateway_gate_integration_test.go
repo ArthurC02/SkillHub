@@ -68,7 +68,10 @@ func TestADeploymentWithNoModelOutletRefusesToStartARunAndSaysSoBeforeConfirming
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("POST run: got %d (%s), want 422: this deployment cannot reach a model", code, view.Error)
 	}
-	if !strings.Contains(view.Error, "model gateway") {
-		t.Errorf("error = %q, want it to name the missing model gateway", view.Error)
+	if !strings.Contains(view.Error, "沒有接上模型閘道") {
+		t.Errorf("error = %q, want it to name in Chinese the outlet this deployment is missing", view.Error)
+	}
+	if strings.Contains(view.Error, "model gateway") {
+		t.Errorf("error = %q, still carries the English sentence meant for the log", view.Error)
 	}
 }
