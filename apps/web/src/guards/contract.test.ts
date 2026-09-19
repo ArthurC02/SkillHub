@@ -65,14 +65,25 @@ function handWritten(name: string, types: string): Fields | null {
   return merged;
 }
 
+function handWrittenSources(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const at = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...handWrittenSources(at));
+    } else if (
+      /\.tsx?$/.test(entry.name) &&
+      !entry.name.includes(".test.") &&
+      !entry.name.endsWith(".d.ts")
+    ) {
+      out.push(readFileSync(at, "utf8"));
+    }
+  }
+  return out;
+}
+
 test("鐵律 12: every hand-written interface with a generated twin has the same fields", () => {
-  const types = [
-    readFileSync(join(src, "core", "api", "types.ts"), "utf8"),
-    readFileSync(join(src, "features", "creation", "import.service.ts"), "utf8"),
-    readFileSync(join(src, "features", "creation", "creation.service.ts"), "utf8"),
-    readFileSync(join(src, "features", "lab", "lab.service.ts"), "utf8"),
-    readFileSync(join(src, "features", "packaging", "packaging.service.ts"), "utf8"),
-  ].join("\n");
+  const types = handWrittenSources(src).join("\n");
   const names = [...types.matchAll(/^export interface (\w+)/gm)].map((m) => m[1]);
   expect(
     names.length,
@@ -117,6 +128,40 @@ test("鐵律 12: every hand-written interface with a generated twin has the same
 
   expect(compared, "no interface was actually compared — the name match broke").toBeGreaterThan(15);
   expect(problems.sort(), "api/types.ts and the generated client disagree").toEqual([]);
+});
+
+test("鐵律 12: every hand-written string union with a generated twin lists the same values", () => {
+  const types = handWrittenSources(src).join("\n");
+  const problems: string[] = [];
+  let compared = 0;
+
+  for (const [, name, body] of types.matchAll(/^export type (\w+) =\s*([^;]+);/gm)) {
+    const here = [...body.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+    if (!here.length || body.replace(/"[^"]*"|\s|\|/g, "") !== "") continue;
+
+    const twin = (generated as Record<string, unknown>)[name];
+    if (!twin || typeof twin !== "object") continue;
+    const there = Object.values(twin as Record<string, unknown>).filter(
+      (v): v is string => typeof v === "string",
+    );
+    if (!there.length) continue;
+    compared++;
+
+    for (const value of here) {
+      if (!there.includes(value)) problems.push(`${name}: "${value}" is not in the contract`);
+    }
+    for (const value of there) {
+      if (!here.includes(value)) {
+        problems.push(`${name}: the contract has "${value}" and the hand-written union does not`);
+      }
+    }
+  }
+
+  expect(
+    compared,
+    "no string union was compared — a union the contract also names should exist",
+  ).toBeGreaterThan(0);
+  expect(problems.sort(), "a hand-written union disagrees with the contract's enum").toEqual([]);
 });
 
 const LABEL_TABLES: Array<{

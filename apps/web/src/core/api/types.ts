@@ -73,8 +73,8 @@ export interface DataRetentionPolicyFeedback {
   note?: string;
 }
 
-export interface Labelled {
-  value: string;
+export interface Labelled<V extends string = string> {
+  value: V;
   label: string;
   note: string;
 }
@@ -242,9 +242,9 @@ export type AgentCapability = "activated" | "not_activated" | "unverified";
 export type AgentRuntime = "native" | "transpiled" | "failed" | "unverified";
 
 export interface SkillCompatibility {
-  spec_validation: Labelled;
-  capability: Labelled;
-  runtime: Labelled;
+  spec_validation: Labelled<CompatibilityResult>;
+  capability: Labelled<AgentCapability>;
+  runtime: Labelled<AgentRuntime>;
   runtime_image?: string;
   measured_at?: string;
   note: string;
