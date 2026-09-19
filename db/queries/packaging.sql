@@ -132,9 +132,6 @@ RETURNING *;
 DELETE FROM download_object_cleanup_intents
 WHERE object_key = @object_key AND workspace_id = @workspace_id;
 
--- name: LockPackagingWorkspaceObjects :exec
-SELECT pg_advisory_xact_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
-
 -- name: LockPackagingWorkspaceObjectsSession :exec
 SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
 

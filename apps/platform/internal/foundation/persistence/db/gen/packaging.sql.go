@@ -664,15 +664,6 @@ func (q *Queries) LockDownloadObjectKeySession(ctx context.Context, lockKey stri
 	return err
 }
 
-const lockPackagingWorkspaceObjects = `-- name: LockPackagingWorkspaceObjects :exec
-SELECT pg_advisory_xact_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
-`
-
-func (q *Queries) LockPackagingWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, lockPackagingWorkspaceObjects, workspaceID)
-	return err
-}
-
 const lockPackagingWorkspaceObjectsSession = `-- name: LockPackagingWorkspaceObjectsSession :exec
 SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
 `
