@@ -1091,3 +1091,30 @@ func finishedAtOn(t *testing.T, status, at string) pgtype.Timestamptz {
 	}
 	return pgtype.Timestamptz{Time: finished, Valid: run.IsTerminal(gen.RunStatus(status))}
 }
+
+func waitForAutomaticEvaluation(t *testing.T, pool *pgxpool.Pool, runID string) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		var delivered bool
+		if err := pool.QueryRow(context.Background(), `
+			SELECT EXISTS (SELECT 1 FROM outbox_events
+			               WHERE aggregate_id = $1 AND event_type = $2 AND published_at IS NOT NULL)`,
+			runID, outbox.RunSucceeded).Scan(&delivered); err != nil {
+			t.Fatal(err)
+		}
+		var live int
+		if err := pool.QueryRow(context.Background(), `
+			SELECT count(*) FROM river_job
+			WHERE kind = 'evaluate_run' AND args->>'run_id' = $1 AND finalized_at IS NULL`,
+			runID).Scan(&live); err != nil {
+			t.Fatal(err)
+		}
+		if delivered && live == 0 {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("the evaluation the succeeded run asked for never settled, so anything this test evaluates " +
+		"can still be superseded underneath it")
+}

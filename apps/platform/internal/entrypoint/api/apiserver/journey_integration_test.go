@@ -120,6 +120,7 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 		t.Errorf("run %s finished and is not in the workspace's history", created.RunID)
 	}
 
+	waitForAutomaticEvaluation(t, pool, created.RunID)
 	seedFinalOutput(t, pool, traveller.workspaceID, created.RunID,
 		"Removed the duplicate rows and saved the result.")
 	if err := evaluator.Evaluate(t.Context(),
