@@ -1,6 +1,8 @@
 package run
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"unicode"
@@ -129,6 +131,58 @@ func TestEveryFailurePathSpeaksTheInterfaceLanguage(t *testing.T) {
 		if !hasHan(string(message)) {
 			t.Errorf("%s: the reason the run carries is not in the interface language: %q", tc.name, message)
 		}
+	}
+}
+
+func TestEveryRefusedRunSpeaksTheInterfaceLanguage(t *testing.T) {
+	if len(refusedRuns) == 0 {
+		t.Fatal("no refusal carries a message of its own")
+	}
+	for _, r := range refusedRuns {
+		if !hasHan(r.message) {
+			t.Errorf("%v: the sentence the caller reads is not in the interface language: %q",
+				r.is, r.message)
+		}
+		if r.message == r.is.Error() {
+			t.Errorf("%v: the sentence the caller reads is the error's own text", r.is)
+		}
+	}
+}
+
+func TestARefusalNamesWhichOneItWas(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		err    error
+		status int
+		want   string
+	}{
+		{"a deployment with no model gateway", ErrNoModelGateway, 422,
+			"這個部署沒有接上模型閘道，試跑沒有辦法連到模型，請聯絡管理者。"},
+		{"a workspace already at its concurrent limit",
+			fmt.Errorf("%w: 2 of 2 in progress", ErrRunLimitReached), 422,
+			"這個 Workspace 同時進行中的試跑已經達到上限，等其中一個結束再開始。"},
+		{"a skill whose source licence is under review", ErrAccessRestricted, 422,
+			"這個 Skill 的來源授權還在審查中，審查期間不能試跑。"},
+		{"a target that is not there", ErrPreflightTargetNotFound, 404,
+			messagePreflightTargetNotFound},
+		{"a run that is not there", ErrNotFound, 404, messageRunNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := refusalFor(tc.err)
+			if !ok {
+				t.Fatalf("refusalFor(%v) found no refusal; the caller would read the error's own text", tc.err)
+			}
+			if got.status != tc.status || got.message != tc.want {
+				t.Errorf("refusalFor(%v) = %d %q, want %d %q", tc.err, got.status, got.message, tc.status, tc.want)
+			}
+			if strings.Contains(got.message, "in progress") {
+				t.Errorf("the sentence repeats the wrapped English detail: %q", got.message)
+			}
+		})
+	}
+
+	if _, ok := refusalFor(errors.New("something the platform has no sentence for")); ok {
+		t.Error("an unrecognised error was matched to a refusal; it must fall through to the platform's own failure")
 	}
 }
 

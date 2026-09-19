@@ -138,13 +138,48 @@ const (
 	messageCreditBalance = "點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。"
 
 	messagePreflightTargetNotFound = "找不到這個 Skill 版本或 Test Case"
+
+	messageRunNotFound = "找不到這個 Run"
 )
+
+type refusedRun struct {
+	is      error
+	status  int
+	message string
+}
+
+var refusedRuns = []refusedRun{
+	{ErrPreflightTargetNotFound, http.StatusNotFound, messagePreflightTargetNotFound},
+	{ErrNotFound, http.StatusNotFound, messageRunNotFound},
+	{ErrDispatchHalted, http.StatusServiceUnavailable,
+		"執行環境現在沒有在派送新的試跑，請稍後再試。"},
+	{ErrPermissionsNotConfirmed, http.StatusUnprocessableEntity,
+		"開始之前要先確認這次試跑會用到的權限。"},
+	{ErrNoModelGateway, http.StatusUnprocessableEntity,
+		"這個部署沒有接上模型閘道，試跑沒有辦法連到模型，請聯絡管理者。"},
+	{ErrCreditBalance, http.StatusUnprocessableEntity, messageCreditBalance},
+	{ErrRunLimitReached, http.StatusUnprocessableEntity,
+		"這個 Workspace 同時進行中的試跑已經達到上限，等其中一個結束再開始。"},
+	{ErrAccessRestricted, http.StatusUnprocessableEntity,
+		"這個 Skill 的來源授權還在審查中，審查期間不能試跑。"},
+	{policy.ErrQuotaExceeded, http.StatusUnprocessableEntity,
+		"這個 Workspace 的免費試跑額度已經用完了。"},
+}
+
+func refusalFor(err error) (refusedRun, bool) {
+	for _, r := range refusedRuns {
+		if errors.Is(err, r.is) {
+			return r, true
+		}
+	}
+	return refusedRun{}, false
+}
 
 func notFoundMessage(err error) string {
 	if errors.Is(err, ErrPreflightTargetNotFound) {
 		return messagePreflightTargetNotFound
 	}
-	return err.Error()
+	return messageRunNotFound
 }
 
 func toRunResponse(run gen.Run) runResponse {
@@ -184,7 +219,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	var skillID pgtype.UUID
 	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	}
 	var body struct {
@@ -209,43 +244,21 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		ConfirmedSummaryHash: body.ConfirmedSummaryHash,
 	})
 
-	if errors.Is(err, ErrDispatchHalted) {
-		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
-		return
-	}
-	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
-		return
-	}
-
-	if errors.Is(err, ErrPermissionsNotConfirmed) {
+	if errors.Is(err, ErrNoCompatibleProvider) || errors.Is(err, ErrScanBlocked) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-
-	if errors.Is(err, ErrNoCompatibleProvider) {
-		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
-		return
-	}
-	if errors.Is(err, ErrNoModelGateway) {
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這個部署沒有接上模型閘道，試跑沒有辦法連到模型，請聯絡管理者。")
-		return
-	}
-
-	if errors.Is(err, ErrCreditBalance) {
-		httpx.WriteError(w, http.StatusUnprocessableEntity, messageCreditBalance)
-		return
-	}
-	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
-		errors.Is(err, ErrAccessRestricted) || errors.Is(err, policy.ErrQuotaExceeded) {
-		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+	if refusal, ok := refusalFor(err); ok {
+		slog.Info("a run was refused before it started",
+			"workspace_id", pgconv.UUIDString(ws.ID), "error", err)
+		httpx.WriteError(w, refusal.status, refusal.message)
 		return
 	}
 	if err != nil {
 
 		slog.Error("run creation failed", "error", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "run creation failed")
+		httpx.WriteError(w, http.StatusInternalServerError,
+			"這次試跑沒有建立起來，問題在平台這一側，請稍後再試。")
 		return
 	}
 	resp := toRunResponse(run)
@@ -382,7 +395,7 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, truncated, err := h.Svc.Artifacts(r.Context(), ws.ID, runID)
 	if errors.Is(err, ErrNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	}
 	if err != nil {
@@ -426,7 +439,7 @@ func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
 
 func pathUUID(w http.ResponseWriter, r *http.Request, name string) (id pgtype.UUID, ok bool) {
 	if err := id.Scan(r.PathValue(name)); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return id, false
 	}
 	return id, true
@@ -463,13 +476,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	var runID pgtype.UUID
 	if err := runID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	}
 
 	run, err := h.Svc.Get(r.Context(), ws.ID, runID)
 	if errors.Is(err, ErrNotFound) {
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	}
 	if err != nil {
@@ -520,17 +533,17 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}
 	var runID pgtype.UUID
 	if err := runID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	}
 
 	run, err := h.Svc.RequestCancel(r.Context(), ws.ID, runID, user.ID)
 	switch {
 	case errors.Is(err, ErrNotFound):
-		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return
 	case errors.Is(err, ErrRunFinished):
-		httpx.WriteError(w, http.StatusConflict, err.Error())
+		httpx.WriteError(w, http.StatusConflict, "這次試跑已經結束了，沒有東西可以取消。")
 		return
 	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "cancel failed")

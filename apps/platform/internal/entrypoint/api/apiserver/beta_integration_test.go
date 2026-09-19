@@ -139,7 +139,7 @@ func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("POST run over the daily allowance: got %d, want 422 (%s)", code, view.Error)
 	}
-	if !strings.Contains(view.Error, "allowance") {
+	if !strings.Contains(view.Error, "免費試跑額度") {
 		t.Errorf("refusal does not say it is the allowance: %q", view.Error)
 	}
 

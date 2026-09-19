@@ -458,7 +458,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 
 func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (skillID, versionID, testCaseID pgtype.UUID, ok bool) {
 	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
 		return skillID, versionID, testCaseID, false
 	}
 	if versionID.Scan(version) != nil || testCaseID.Scan(testCase) != nil {

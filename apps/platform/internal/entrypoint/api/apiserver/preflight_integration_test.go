@@ -294,7 +294,7 @@ func TestRunIsRefusedWhenTheSkillIsAccessRestricted(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run on an access-restricted skill: got %d, want 422", code)
 	}
-	if !strings.Contains(refused.Error, "license") {
+	if !strings.Contains(refused.Error, "來源授權還在審查") {
 		t.Errorf("refusal = %q, want it to name the license restriction", refused.Error)
 	}
 	if refused.RunID != "" {
@@ -321,7 +321,7 @@ func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
 	if refused.RunID != "" {
 		t.Error("a refused run still created a run row")
 	}
-	if !strings.Contains(refused.Error, "in progress") {
+	if !strings.Contains(refused.Error, "同時進行中的試跑已經達到上限") {
 		t.Errorf("refusal = %q, want it to say why and what to do", refused.Error)
 	}
 
@@ -474,7 +474,7 @@ func TestChangingTheDatasetInvalidatesAnEarlierConfirmation(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run on a stale confirmation: got %d, want 422", code)
 	}
-	if !strings.Contains(refused.Error, "confirm") {
+	if !strings.Contains(refused.Error, "先確認這次試跑會用到的權限") {
 		t.Errorf("refusal = %q, want it to say the summary needs confirming", refused.Error)
 	}
 

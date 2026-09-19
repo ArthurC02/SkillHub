@@ -1243,7 +1243,7 @@ func TestARunOnHeldMaterialsIsRefused(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run on held materials: got %d, want 422", code)
 	}
-	if !strings.Contains(view.Error, "license") {
+	if !strings.Contains(view.Error, "來源授權還在審查") {
 		t.Errorf("refusal = %q, want it to say the licence review is why", view.Error)
 	}
 }

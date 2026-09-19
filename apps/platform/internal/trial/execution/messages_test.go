@@ -10,6 +10,7 @@ func TestTheSentencesTheRunHandlerWritesAreInTheInterfaceLanguage(t *testing.T) 
 	for label, msg := range map[string]string{
 		"messageCreditBalance":           messageCreditBalance,
 		"messagePreflightTargetNotFound": messagePreflightTargetNotFound,
+		"messageRunNotFound":             messageRunNotFound,
 	} {
 		if !hasHan(msg) {
 			t.Errorf("%s: %q is what a reader sees, so it belongs in the interface language", label, msg)
@@ -18,8 +19,8 @@ func TestTheSentencesTheRunHandlerWritesAreInTheInterfaceLanguage(t *testing.T) 
 	if got := notFoundMessage(ErrPreflightTargetNotFound); got != messagePreflightTargetNotFound {
 		t.Errorf("a missing preflight target is reported as %q", got)
 	}
-	if got := notFoundMessage(ErrNotFound); got != ErrNotFound.Error() {
-		t.Errorf("a missing run is reported as %q, want its own message", got)
+	if got := notFoundMessage(ErrNotFound); got != messageRunNotFound {
+		t.Errorf("a missing run is reported as %q, want the handler's own sentence", got)
 	}
 }
 
