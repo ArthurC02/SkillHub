@@ -394,26 +394,15 @@ func eventViews(rows []gen.TraceEvent) []EventView {
 }
 
 func evaluationEventViews(rows []gen.ListEvaluationTraceEventsRow) []EventView {
-	events := make([]EventView, 0, len(rows))
+	events := make([]gen.TraceEvent, 0, len(rows))
 	for _, row := range rows {
-		var fields []string
-		_ = json.Unmarshal(row.MaskedFields, &fields)
-		if fields == nil {
-			fields = []string{}
-		}
-		var status string
-		if row.Status != nil {
-			status = *row.Status
-		}
-		events = append(events, EventView{
-			EventID: pgconv.UUIDString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
-			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
-			occurredAt: row.OccurredAt.Time.UTC(),
-			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
-			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
+		events = append(events, gen.TraceEvent{
+			EventID: row.EventID, Attempt: row.Attempt, Seq: row.Seq, OccurredAt: row.OccurredAt,
+			Source: row.Source, EventType: row.EventType, Status: row.Status, Late: row.Late,
+			MaskedFields: row.MaskedFields, Payload: row.Payload,
 		})
 	}
-	return events
+	return eventViews(events)
 }
 
 func sortEventViews(events []EventView) {

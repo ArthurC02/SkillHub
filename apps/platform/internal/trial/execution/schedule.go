@@ -249,7 +249,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		if rt.Runtime != req.Runtime || len(rt.Versions) == 0 {
 			continue
 		}
-		if len(rt.AgentIntegration) > 0 && !contains(rt.AgentIntegration, req.AgentIntegration) {
+		if len(rt.AgentIntegration) > 0 && !slices.Contains(rt.AgentIntegration, req.AgentIntegration) {
 			return RuntimeProfile{}, fmt.Errorf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration)
 		}
 
@@ -456,18 +456,9 @@ func egressSatisfied(offered []string, req Requirements) bool {
 		return true
 	case len(offered) == 0:
 		return false
-	case contains(offered, req.EgressMode):
+	case slices.Contains(offered, req.EgressMode):
 		return true
 	default:
-		return req.EgressMode == "default_deny" && req.EgressAllowed == 0 && contains(offered, "none")
+		return req.EgressMode == "default_deny" && req.EgressAllowed == 0 && slices.Contains(offered, "none")
 	}
-}
-
-func contains(values []string, want string) bool {
-	for _, v := range values {
-		if v == want {
-			return true
-		}
-	}
-	return false
 }

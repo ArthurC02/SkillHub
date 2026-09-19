@@ -45,14 +45,14 @@ var errGone = errors.New("sandbox is no longer running")
 func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunRequest) error {
 	if err := d.exec(ctx, id, []string{"/bin/mkdir", "-p", InputDir, DatasetDir, ArtifactDir}, nil); err != nil {
 
-		if errors.Is(err, errGone) || len(readGrants(req)) == 0 {
+		if errors.Is(err, errGone) || len(req.InputGrants()) == 0 {
 			return nil
 		}
 		return fmt.Errorf("prepare sandbox input directories: %w", err)
 	}
 
 	names := datasetNames(req)
-	for _, g := range readGrants(req) {
+	for _, g := range req.InputGrants() {
 		var target string
 		switch g.Purpose {
 		case "skill_package":
@@ -86,17 +86,6 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 			"provider_run_id", id, "err", err)
 	}
 	return nil
-}
-
-func readGrants(req sandbox.RunRequest) []sandbox.ObjectGrant {
-	out := make([]sandbox.ObjectGrant, 0, len(req.ObjectGrants))
-	for _, g := range req.ObjectGrants {
-		if g.Access == "read" && g.URL != "" &&
-			(g.Purpose == "skill_package" || g.Purpose == "dataset") {
-			out = append(out, g)
-		}
-	}
-	return out
 }
 
 func datasetNames(req sandbox.RunRequest) map[string]string {

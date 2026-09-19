@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -745,7 +746,7 @@ func (c Config) accept(req RunRequest) *RunError {
 	case req.Egress.Mode == "none" && len(req.Egress.Allow) > 0:
 		return mismatch("egress mode none cannot carry an allow list")
 
-	case len(req.Egress.Allow) > 0 && !contains(c.EgressModes, "default_deny"):
+	case len(req.Egress.Allow) > 0 && !slices.Contains(c.EgressModes, "default_deny"):
 		return mismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(req.Egress.Allow))
 	}
 
@@ -782,15 +783,6 @@ func (c Config) renderedSummary() string {
 		parts = append(parts, fmt.Sprintf("%s:%d", d.Purpose, d.Port))
 	}
 	return strings.Join(parts, ", ")
-}
-
-func contains(values []string, want string) bool {
-	for _, v := range values {
-		if v == want {
-			return true
-		}
-	}
-	return false
 }
 
 // HashRequest hashes the re-marshalled request rather than the raw body, so

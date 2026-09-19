@@ -45,7 +45,7 @@ func collectedPath(outDir string) string { return filepath.Join(outDir, collecte
 
 func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest) error {
 	names := datasetNames(req)
-	for _, g := range readGrants(req) {
+	for _, g := range req.InputGrants() {
 		var target string
 		switch g.Purpose {
 		case "skill_package":
@@ -71,17 +71,6 @@ func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest)
 	}
 	_ = os.WriteFile(filepath.Join(inputDir(r.workDir), readyName), []byte("ready\n"), 0o600)
 	return nil
-}
-
-func readGrants(req sandbox.RunRequest) []sandbox.ObjectGrant {
-	out := make([]sandbox.ObjectGrant, 0, len(req.ObjectGrants))
-	for _, g := range req.ObjectGrants {
-		if g.Access == "read" && g.URL != "" &&
-			(g.Purpose == "skill_package" || g.Purpose == "dataset") {
-			out = append(out, g)
-		}
-	}
-	return out
 }
 
 func datasetNames(req sandbox.RunRequest) map[string]string {

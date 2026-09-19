@@ -115,7 +115,7 @@ func TestANodeDeclaresNoEgressRouteUntilSomethingIsRendered(t *testing.T) {
 				t.Errorf("EgressModesFor(%q, %d rendered) = %v, want %q first", tc.network, len(tc.rendered), got, tc.want)
 			}
 
-			if !contains(got, "none") {
+			if !slices.Contains(got, "none") {
 				t.Errorf("EgressModesFor(%q, ...) = %v, which cannot carry a run needing no egress", tc.network, got)
 			}
 		})

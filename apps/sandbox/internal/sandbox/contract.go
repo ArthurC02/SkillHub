@@ -53,6 +53,17 @@ type RunRequest struct {
 	Extensions     map[string]any      `json:"provider_extensions,omitempty"`
 }
 
+func (r RunRequest) InputGrants() []ObjectGrant {
+	out := make([]ObjectGrant, 0, len(r.ObjectGrants))
+	for _, g := range r.ObjectGrants {
+		if g.Access == "read" && g.URL != "" &&
+			(g.Purpose == "skill_package" || g.Purpose == "dataset") {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
 type PackageRef struct {
 	SkillVersionID string `json:"skill_version_id"`
 	ContentHash    string `json:"content_hash"`
