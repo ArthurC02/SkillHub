@@ -35,7 +35,7 @@ func TestARunWithNoWayToReachAModelIsRefusedBeforeItReachesAnySandbox(t *testing
 		t.Fatalf("a run that never had a way to reach a model reported success (%s); "+
 			"a failure gets asked about, a green light does not", view.StatusReason)
 	}
-	if !strings.Contains(view.StatusReason, "model gateway") {
+	if !strings.Contains(view.StatusReason, "模型閘道") {
 		t.Errorf("status reason = %q, want it to name the missing model gateway", view.StatusReason)
 	}
 	if fake.Dispatches() != 0 {

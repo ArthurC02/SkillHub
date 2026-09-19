@@ -245,7 +245,7 @@ func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
 	startWorker(t, a)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
 
-	if !strings.Contains(final.StatusReason, "no sandbox provider") {
+	if !strings.Contains(final.StatusReason, "沒有設定任何執行沙箱") {
 		t.Errorf("failure reason = %q, want it to name the missing provider", final.StatusReason)
 	}
 

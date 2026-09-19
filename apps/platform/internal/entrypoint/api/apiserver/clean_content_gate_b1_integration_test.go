@@ -96,7 +96,7 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 			view.Status, view.StatusReason)
 	}
 
-	for _, want := range []string{"curated", "catalogue", "indexed"} {
+	for _, want := range []string{"淨測試模式", "策展"} {
 		if !strings.Contains(view.StatusReason, want) {
 			t.Errorf("status reason = %q, want it to mention %q", view.StatusReason, want)
 		}

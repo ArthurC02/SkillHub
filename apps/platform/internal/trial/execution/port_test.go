@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -114,39 +115,46 @@ func TestTheRunNeverRepeatsWhatAnExternalSystemSaid(t *testing.T) {
 
 	d := &driver{}
 	for _, tc := range []struct {
-		name string
-		err  error
-		want string
+		name  string
+		class FailureClass
+		err   error
+		want  statusReason
 	}{
-		{"a sandbox that cannot be reached", unreachable, "執行沙箱沒有回應"},
-		{"a sandbox that refused the request", refused, "執行沙箱沒有接下這次試跑"},
+		{"a sandbox that cannot be reached", failureProvider, unreachable, "執行沙箱沒有回應"},
+		{"a sandbox that refused the request", failureProvider, refused, "執行沙箱沒有接下這次試跑"},
 		{
-			"a model gateway that would not mint a key",
+			"a model gateway that would not mint a key", failureProvider,
 			&gatewayError{Status: http.StatusInternalServerError, Message: "budget exhausted for key sk-live-1"},
 			"模型閘道沒有為這次試跑配發金鑰",
 		},
+		{
+			"a deployment with no model gateway", failureNoProvider, ErrNoModelGateway,
+			"這個部署沒有接上模型閘道,試跑沒有辦法連到模型",
+		},
+		{
+			"material the clean test mode will not run", failureNoProvider, ErrContentNotCurated,
+			"淨測試模式只跑已策展的內容,這個版本不在其中",
+		},
+		{
+			"an error the platform has no sentence of its own for", failurePlatform,
+			fmt.Errorf("dial tcp %s: connect: connection refused", address),
+			"平台自己的錯誤",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			reason := d.reasonFor(tc.err)
+			reason := d.reasonFor(tc.class, tc.err)
 			if reason != tc.want {
 				t.Fatalf("reason = %q, want %q", reason, tc.want)
 			}
-			if strings.Contains(reason, address) {
+			if strings.Contains(string(reason), address) {
 				t.Errorf("reason = %q, and it carries this deployment's own address %q to whoever opens the run",
 					reason, address)
 			}
 			for _, leaked := range []string{"dial", "gateway returned", "sk-live-1", "http://"} {
-				if strings.Contains(reason, leaked) {
+				if strings.Contains(string(reason), leaked) {
 					t.Errorf("reason = %q, and it repeats %q from the external system", reason, leaked)
 				}
 			}
 		})
 	}
-
-	t.Run("the platform's own refusal is left alone", func(t *testing.T) {
-		if got := d.reasonFor(ErrNoModelGateway); got != ErrNoModelGateway.Error() {
-			t.Errorf("reason = %q, want the platform's own sentence %q: translating it would hide "+
-				"which piece of this deployment is missing", got, ErrNoModelGateway)
-		}
-	})
 }

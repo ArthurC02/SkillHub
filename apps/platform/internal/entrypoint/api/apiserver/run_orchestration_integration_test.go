@@ -522,7 +522,7 @@ func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
 		t.Errorf("failure_class = %q, want workload_error", final.FailureClass.Value)
 	}
 
-	if !strings.Contains(final.StatusReason, "token ceiling") {
+	if !strings.Contains(final.StatusReason, "token") || !strings.Contains(final.StatusReason, "上限") {
 		t.Errorf("reason = %q, want it to name the token ceiling", final.StatusReason)
 	}
 
@@ -845,7 +845,7 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	if view.FailureClass.Value != "platform_error" {
 		t.Errorf("failure_class = %q, want platform_error", view.FailureClass.Value)
 	}
-	if !strings.Contains(view.StatusReason, "resume") {
+	if !strings.Contains(view.StatusReason, "接回去") {
 		t.Errorf("reason = %q, want it to say the attempt could not be resumed", view.StatusReason)
 	}
 	var finite bool

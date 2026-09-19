@@ -176,13 +176,14 @@ func (d *driver) resumeEvaluating(ctx context.Context) error {
 
 func (d *driver) terminateUnresumable(ctx context.Context) error {
 	return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform,
-		"no live provider attempt to resume after a restart")
+		"重啟之後沒有任何還活著的 Provider 嘗試可以接回去")
 }
 
 func (d *driver) dispatch(ctx context.Context) error {
 	req, policy, err := requirementsFor(d.cur)
 	if err != nil {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform, err.Error())
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform,
+			d.reasonFor(failurePlatform, err))
 	}
 
 	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
@@ -198,16 +199,19 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	if err := d.svc.requireCuratedContent(ctx, d.cur); err != nil {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
+			d.reasonFor(failureNoProvider, err))
 	}
 
 	if err := d.svc.requireModelGateway(); err != nil {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
+			d.reasonFor(failureNoProvider, err))
 	}
 
 	budget, err := d.budgetForNextAttempt(ctx, attempts)
 	if err != nil {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider, err.Error())
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureProvider,
+			d.reasonFor(failureProvider, err))
 	}
 
 	avoid := lostProviders(attempts, halts.byTarget)
@@ -216,7 +220,8 @@ func (d *driver) dispatch(ctx context.Context) error {
 	case errors.Is(err, ErrNoFreeSlot):
 		return d.waitForSlot()
 	case err != nil:
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
+			d.reasonFor(failureNoProvider, err))
 	}
 	if d.cur.Status == gen.RunStatusQueued {
 		yield, err := d.svc.turnBelongsToAnother(ctx, d.cur, placements, avoid)
@@ -229,7 +234,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 	}
 
 	var (
-		lastReason    string
+		lastReason    statusReason
 		lastAttemptID pgtype.UUID
 		failures      int
 	)
@@ -263,14 +268,14 @@ dispatching:
 			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
 				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 			}
-			reason := d.reasonFor(err)
-			d.finishAttempt(ctx, attempt, errClassProvision, reason)
+			reason := d.reasonFor(failurePlatform, err)
+			d.finishAttempt(ctx, attempt, errClassProvision, string(reason))
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, reason)
 		}
 		pr, err := provider.Start(ctx, request)
 		if err != nil {
-			lastReason = d.reasonFor(err)
-			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), lastReason)
+			lastReason = d.reasonFor(failureProvider, err)
+			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), string(lastReason))
 			switch {
 			case refusedForCapacity(err):
 				d.svc.providers().forget(provider.Name())
@@ -308,7 +313,7 @@ dispatching:
 			return err
 		}
 		if d.cur.Status == gen.RunStatusQueued {
-			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name()); err != nil {
+			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider.Name())); err != nil {
 				return err
 			}
 		}
@@ -318,18 +323,15 @@ dispatching:
 				"run_id", pgconv.UUIDString(d.cur.ID),
 				"error", fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason)))
 			lastReason = "執行沙箱在準備階段就失敗了"
-			d.finishAttempt(ctx, attempt, errClassProvision, lastReason)
+			d.finishAttempt(ctx, attempt, errClassProvision, string(lastReason))
 			failures++
 			continue
 		}
 		return d.follow(ctx, append(slices.Clone(attempts), attempt), attempt)
 	}
 
-	message := "派送沒有成功"
-	if lastReason != "" {
-		message = lastReason
-	}
-	return d.finish(ctx, lastAttemptID, gen.RunStatusFailed, failureProvider, message)
+	return d.finish(ctx, lastAttemptID, gen.RunStatusFailed, failureProvider,
+		orDefault(lastReason, "派送沒有成功"))
 }
 
 func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt gen.RunAttempt) error {
@@ -339,7 +341,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 	}
 	if provider == nil {
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform,
-			"provider "+attempt.Provider+" is no longer configured")
+			"這次試跑用的 Provider "+statusReason(attempt.Provider)+" 已經不在這個部署的設定裡")
 	}
 	d.provider = provider
 	if attempt.ProviderRunID == nil {
@@ -358,10 +360,11 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 			return d.settle(ctx, attempt, pr)
 		}
 	case providerForgotAttempt(err):
-		return d.providerLost(ctx, attempt, provider.Name()+" no longer knows this attempt")
+		return d.providerLost(ctx, attempt, "執行沙箱 "+statusReason(provider.Name())+" 已經不認得這次嘗試")
 	case !retryable(err):
-		d.finishAttempt(ctx, attempt, errClassExecution, err.Error())
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, err.Error())
+		reason := d.reasonFor(failureProvider, err)
+		d.finishAttempt(ctx, attempt, errClassExecution, string(reason))
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, reason)
 	default:
 		silentSince, markErr := d.providerSilentSince(ctx, attempt)
 		if markErr != nil {
@@ -369,8 +372,11 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		}
 		silent := time.Since(silentSince)
 		if silent >= ProviderLostAfter {
+			slog.Error("a provider stopped answering; the run carries the platform's own wording instead",
+				"run_id", pgconv.UUIDString(d.cur.ID), "provider", provider.Name(), "error", err)
 			return d.providerLost(ctx, attempt,
-				fmt.Sprintf("%s has not answered for %s: %s", provider.Name(), silent.Round(time.Second), err))
+				"執行沙箱 "+statusReason(provider.Name())+" 已經 "+
+					statusReason(silent.Round(time.Second).String())+" 沒有回應")
 		}
 		slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	}
@@ -389,7 +395,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		d.finishAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
+		d.finishAttempt(ctx, attempt, errClassTimeout, string(d.timeoutReason()))
 		return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
@@ -397,7 +403,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		d.finishAttempt(ctx, attempt, errClassBudgetExhausted, reason)
+		d.finishAttempt(ctx, attempt, errClassBudgetExhausted, string(reason))
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
 	}
 
@@ -405,7 +411,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 }
 
 func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
-	reason := truncate(pr.StateReason)
+	reason := relayed(truncate(pr.StateReason))
 	switch pr.State {
 	case ProviderStateCreating:
 		if d.cur.Status == gen.RunStatusProvisioning {
@@ -427,11 +433,11 @@ func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr Provid
 func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
 	status, failureClass, errClass, message := classifyResult(pr)
 	if err := d.recordArtifacts(ctx, attempt, pr); err != nil {
-		message = err.Error()
-		d.finishAttempt(ctx, attempt, errClassProvision, message)
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, message)
+		reason := d.reasonFor(failureProvider, err)
+		d.finishAttempt(ctx, attempt, errClassProvision, string(reason))
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, reason)
 	}
-	d.finishAttempt(ctx, attempt, errClass, message)
+	d.finishAttempt(ctx, attempt, errClass, string(message))
 
 	if status != gen.RunStatusSucceeded {
 		d.keepWorkloadOutput(ctx, attempt, pr)
@@ -469,7 +475,7 @@ func (d *driver) walkHappyPath(ctx context.Context, attemptID pgtype.UUID) error
 	return nil
 }
 
-func successReason(to gen.RunStatus) string {
+func successReason(to gen.RunStatus) statusReason {
 	switch to {
 	case gen.RunStatusPreparing:
 		return "Provider 已接下這次派送"
@@ -483,55 +489,73 @@ func successReason(to gen.RunStatus) string {
 	}
 }
 
-func classifyResult(pr ProviderRun) (status gen.RunStatus, failureClass FailureClass, errClass, message string) {
+func classifyResult(pr ProviderRun) (
+	status gen.RunStatus, failureClass FailureClass, errClass string, message statusReason,
+) {
 	if pr.Result == nil {
 		return gen.RunStatusFailed, failureProvider, errClassProvision,
-			"provider reported a terminal state with no result"
+			"執行沙箱回報這次嘗試已經結束,卻沒有附上結果"
 	}
-	errClass, message = "", truncate(pr.StateReason)
+	errClass, message = "", relayed(truncate(pr.StateReason))
 	if pr.Result.Error != nil {
-		errClass, message = pr.Result.Error.Class, truncate(pr.Result.Error.Message)
+		errClass, message = pr.Result.Error.Class, relayed(truncate(pr.Result.Error.Message))
 	}
 
 	switch {
 	case pr.State == ProviderStateCancelled || pr.Result.Status == "cancelled":
 		return gen.RunStatusCancelled, failureCancelled,
-			orDefault(errClass, errClassCancelled), orDefault(message, "stopped at the user's request")
+			orDefault(errClass, errClassCancelled), orDefault(message, "是使用者要求停止的")
 	case pr.Result.Status == "timed_out":
 		return gen.RunStatusTimedOut, failureTimeout,
-			orDefault(errClass, errClassTimeout), orDefault(message, "the provider stopped the workload at its wall clock limit")
+			orDefault(errClass, errClassTimeout), orDefault(message, "執行沙箱在它自己的時間上限把工作負載停掉了")
 	case pr.State == ProviderStateCompleted && pr.Result.Status == "succeeded":
 		return gen.RunStatusSucceeded, "", "", ""
 	case pr.State == ProviderStateCompleted:
 		return gen.RunStatusFailed, failureWorkload,
-			orDefault(errClass, errClassExecution), orDefault(message, "the workload reported failure")
+			orDefault(errClass, errClassExecution), orDefault(message, "工作負載跑起來了,而且自己回報失敗")
 	default:
 		return gen.RunStatusFailed, failureProvider,
-			orDefault(errClass, errClassProvision), orDefault(message, "the provider could not carry the attempt")
+			orDefault(errClass, errClassProvision), orDefault(message, "執行沙箱沒能承載這次嘗試")
 	}
 }
 
-func anExternalSystemRefused(err error) string {
+type statusReason string
+
+func relayed(fromProvider string) statusReason { return statusReason(fromProvider) }
+
+func platformWordingFor(class FailureClass) statusReason {
+	return statusReason(failureClassWords[class][0])
+}
+
+func namedRefusal(err error) statusReason {
 	if _, ok := errors.AsType[*gatewayError](err); ok {
 		return "模型閘道沒有為這次試跑配發金鑰"
 	}
 	if _, ok := errors.AsType[*providerError](err); ok {
 		return "執行沙箱沒有接下這次試跑"
 	}
-	if errors.Is(err, ErrProviderUnavailable) {
+	switch {
+	case errors.Is(err, ErrProviderUnavailable):
 		return "執行沙箱沒有回應"
+	case errors.Is(err, ErrNoModelGateway):
+		return "這個部署沒有接上模型閘道,試跑沒有辦法連到模型"
+	case errors.Is(err, ErrContentNotCurated):
+		return "淨測試模式只跑已策展的內容,這個版本不在其中"
+	case errors.Is(err, ErrNoProvider):
+		return "這個部署沒有設定任何執行沙箱,試跑沒有地方可以跑"
+	case errors.Is(err, ErrNoCompatibleProvider):
+		return "沒有任何已設定的執行沙箱能承接這個請求;是哪一項要求對不上,見這次 Run 的嘗試紀錄"
 	}
 	return ""
 }
 
-func (d *driver) reasonFor(err error) string {
-	reason := anExternalSystemRefused(err)
-	if reason == "" {
-		return err.Error()
+func (d *driver) reasonFor(class FailureClass, err error) statusReason {
+	slog.Error("a run failed; the run carries the platform's own wording instead of this error",
+		"run_id", pgconv.UUIDString(d.cur.ID), "failure_class", string(class), "error", err)
+	if refused := namedRefusal(err); refused != "" {
+		return refused
 	}
-	slog.Error("a run failed on an external system; the run carries the platform's own wording instead",
-		"run_id", pgconv.UUIDString(d.cur.ID), "error", err)
-	return reason
+	return platformWordingFor(class)
 }
 
 func dispatchErrorClass(err error) string {
@@ -546,12 +570,12 @@ func dispatchErrorClass(err error) string {
 	return errClassProvision
 }
 
-func (d *driver) advance(ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, reason string) error {
+func (d *driver) advance(ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, reason statusReason) error {
 	return d.transition(ctx, attemptID, to, "", reason)
 }
 
 func (d *driver) finish(
-	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason string,
+	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason statusReason,
 ) error {
 	return d.transition(ctx, attemptID, to, failureClass, reason)
 }
@@ -564,7 +588,7 @@ func (d *driver) command(ctx context.Context, command func(*Run)) (*Run, error) 
 }
 
 func (d *driver) transition(
-	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason string,
+	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason statusReason,
 ) error {
 	run, err := d.svc.Transition(ctx, TransitionParams{
 		WorkspaceID:  d.cur.WorkspaceID,
@@ -837,17 +861,17 @@ func (c runClock) expired(now time.Time) bool {
 	return !deadline.IsZero() && now.After(deadline)
 }
 
-func (c runClock) timeoutReason() string {
+func (c runClock) timeoutReason() statusReason {
 	deadline := c.deadline().UTC().Format(time.RFC3339)
 	if c.waiting() {
-		return fmt.Sprintf("排隊等空的沙箱超過時間上限 %d 分鐘;期限是 %s", int(SlotWaitLimit.Minutes()), deadline)
+		return statusReason(fmt.Sprintf("排隊等空的沙箱超過時間上限 %d 分鐘;期限是 %s", int(SlotWaitLimit.Minutes()), deadline))
 	}
-	return fmt.Sprintf("超過硬性時間上限;期限是 %s", deadline)
+	return statusReason(fmt.Sprintf("超過硬性時間上限;期限是 %s", deadline))
 }
 
 func (d *driver) expired() bool { return d.clock.expired(d.svc.now()) }
 
-func (d *driver) timeoutReason() string { return d.clock.timeoutReason() }
+func (d *driver) timeoutReason() statusReason { return d.clock.timeoutReason() }
 
 func (d *driver) waitForSlot() error {
 	slog.Info("every sandbox provider that can run this is full; the run keeps its place in the queue",
@@ -863,7 +887,7 @@ func (d *driver) waitForTurn() error {
 
 const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
 
-func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttempt) string {
+func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttempt) statusReason {
 	limits := runLimits(d.cur).TokenBudget
 	if d.svc.Gateway == nil || (limits.MaxInputTokens <= 0 && limits.MaxOutputTokens <= 0) {
 		return ""
@@ -879,12 +903,12 @@ func (d *driver) tokenCeilingBreach(ctx context.Context, attempts []gen.RunAttem
 	switch {
 	case limits.MaxInputTokens > 0 && used.InputTokens > limits.MaxInputTokens:
 		metrics.RunTokenCeilingBreached.Inc()
-		return fmt.Sprintf("reached this run's token ceiling: %d input tokens used, limit %d%s",
-			used.InputTokens, limits.MaxInputTokens, tokenCeilingRoundsHint)
+		return statusReason(fmt.Sprintf("這次試跑用掉的輸入 token 超過上限:已用 %d,上限 %d%s",
+			used.InputTokens, limits.MaxInputTokens, tokenCeilingRoundsHint))
 	case limits.MaxOutputTokens > 0 && used.OutputTokens > limits.MaxOutputTokens:
 		metrics.RunTokenCeilingBreached.Inc()
-		return fmt.Sprintf("reached this run's token ceiling: %d output tokens used, limit %d%s",
-			used.OutputTokens, limits.MaxOutputTokens, tokenCeilingRoundsHint)
+		return statusReason(fmt.Sprintf("這次試跑產出的 token 超過上限:已用 %d,上限 %d%s",
+			used.OutputTokens, limits.MaxOutputTokens, tokenCeilingRoundsHint))
 	}
 	return ""
 }
@@ -897,7 +921,7 @@ func runLimits(run gen.Run) ResourceLimits {
 	return policy.ResourceLimits
 }
 
-func orDefault(v, fallback string) string {
+func orDefault[T ~string](v, fallback T) T {
 	if v == "" {
 		return fallback
 	}
@@ -906,9 +930,9 @@ func orDefault(v, fallback string) string {
 
 // Cutting by byte count can split a multi-byte rune; ToValidUTF8 drops the
 // broken tail instead of writing invalid UTF-8 to a text column.
-func truncate(s string) string {
+func truncate[T ~string](s T) T {
 	if len(s) <= reasonLimit {
 		return s
 	}
-	return strings.ToValidUTF8(s[:reasonLimit], "") + "..."
+	return T(strings.ToValidUTF8(string(s)[:reasonLimit], "") + "...")
 }

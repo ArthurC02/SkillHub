@@ -65,8 +65,8 @@ func (d *driver) providerSilentSince(ctx context.Context, attempt gen.RunAttempt
 	return since.Time, nil
 }
 
-func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reason string) error {
-	d.finishAttempt(ctx, attempt, errClassProviderLost, reason)
+func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reason statusReason) error {
+	d.finishAttempt(ctx, attempt, errClassProviderLost, string(reason))
 	d.svc.providers().forget(attempt.Provider)
 
 	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
@@ -75,7 +75,7 @@ func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reaso
 	}
 	if timesLost(attempts) > reassignmentsPerRun {
 		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider,
-			fmt.Sprintf("%s;這個 Run 已經改派過一次", reason))
+			reason+";這個 Run 已經改派過一次")
 	}
 	slog.Warn("provider lost this attempt; reassigning the run to another provider once",
 		"run_id", pgconv.UUIDString(d.cur.ID), "provider", attempt.Provider, "reason", reason)

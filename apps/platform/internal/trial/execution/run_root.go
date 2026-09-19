@@ -137,7 +137,7 @@ func (r *Run) Refusal() (Refused, bool) {
 	return Refused{}, false
 }
 
-func (r *Run) Transition(to gen.RunStatus, reason string, failure FailureClass, attemptID pgtype.UUID) {
+func (r *Run) Transition(to gen.RunStatus, reason statusReason, failure FailureClass, attemptID pgtype.UUID) {
 	from := r.row.Status
 	if !CanTransition(from, to) {
 		r.refuse(RefusedIllegalTransition)
@@ -149,7 +149,7 @@ func (r *Run) Transition(to gen.RunStatus, reason string, failure FailureClass, 
 		r.row.FailureClass = &class
 	}
 	changed := StatusChanged{
-		RunStatusChanged: outbox.RunStatusChanged{ToStatus: string(to), FromStatus: string(from), Reason: reason},
+		RunStatusChanged: outbox.RunStatusChanged{ToStatus: string(to), FromStatus: string(from), Reason: string(reason)},
 		attemptID:        attemptID, failure: failure,
 	}
 	if to == gen.RunStatusRunning && !r.row.StartedAt.Valid {

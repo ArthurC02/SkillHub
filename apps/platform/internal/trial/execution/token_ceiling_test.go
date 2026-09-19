@@ -148,7 +148,7 @@ func TestARunPastItsTokenCeilingIsStoppedAndToldWhy(t *testing.T) {
 		t.Fatal("a run 310400 input tokens into a 300000 ceiling was allowed to continue")
 	}
 
-	if !containsAll(reason, "token ceiling", "310400", "300000") {
+	if !containsAll(string(reason), "token", "上限", "310400", "300000") {
 		t.Errorf("reason = %q, want it to name the token ceiling and both numbers", reason)
 	}
 }

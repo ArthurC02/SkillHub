@@ -33,11 +33,11 @@ func TestTheTokenCeilingAbortMessageSaysTheRoundsDependOnToolCalls(t *testing.T)
 	if reason == "" {
 		t.Fatal("a run past its input ceiling was allowed to continue")
 	}
-	if !strings.Contains(reason, "工具呼叫") {
+	if !strings.Contains(string(reason), "工具呼叫") {
 		t.Errorf("abort message = %q, want it to say the ceiling's rounds depend on tool calls per round", reason)
 	}
 
-	if !containsAll(reason, "300001", "300000") {
+	if !containsAll(string(reason), "300001", "300000") {
 		t.Errorf("abort message = %q, want it to keep naming what was used and what the limit was", reason)
 	}
 }
@@ -45,7 +45,7 @@ func TestTheTokenCeilingAbortMessageSaysTheRoundsDependOnToolCalls(t *testing.T)
 func TestTheOutputCeilingAbortMessageCarriesTheSameClause(t *testing.T) {
 	d := driverWithCeiling(t, (&spendLogStub{calls: [][2]int{{1_000, 60_001}}}).start(t), 300_000, 60_000)
 	reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)})
-	if !strings.Contains(reason, "工具呼叫") {
+	if !strings.Contains(string(reason), "工具呼叫") {
 		t.Errorf("output-ceiling abort message = %q, want the same rounds clause as the input one", reason)
 	}
 }

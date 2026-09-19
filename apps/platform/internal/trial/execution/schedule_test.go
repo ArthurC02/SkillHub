@@ -289,7 +289,7 @@ func TestTheWallClockRunsFromTheFirstDispatchNotFromCreation(t *testing.T) {
 	if got := clockFor(run, attempts).deadline(); !got.Equal(want) {
 		t.Errorf("deadline without a policy = %s, want the default counted from dispatch, %s", got, want)
 	}
-	if reason := clockFor(run, attempts).timeoutReason(); !strings.Contains(reason, "硬性時間上限") {
+	if reason := clockFor(run, attempts).timeoutReason(); !strings.Contains(string(reason), "硬性時間上限") {
 		t.Errorf("reason = %q, want it to name the wall clock", reason)
 	}
 }
@@ -309,7 +309,7 @@ func TestARunNobodyHasAcceptedWaitsForASlotUpToTheWaitLimit(t *testing.T) {
 	if !clock.expired(created.Add(SlotWaitLimit + time.Nanosecond)) {
 		t.Error("the run is still waiting past the wait limit")
 	}
-	if reason := clock.timeoutReason(); !strings.Contains(reason, "排隊") {
+	if reason := clock.timeoutReason(); !strings.Contains(string(reason), "排隊") {
 		t.Errorf("reason = %q, want it to say the run timed out waiting in the queue", reason)
 	}
 }

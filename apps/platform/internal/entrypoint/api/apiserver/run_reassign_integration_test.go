@@ -221,15 +221,20 @@ func TestTheProviderThatLostTheRunIsNotGivenItAgain(t *testing.T) {
 
 	s.drive(t, "the run whose only provider lost it")
 
-	if got := len(s.attempts(t)); got != 1 {
-		t.Fatalf("attempts = %d, want 1: the lost provider must not take the run again", got)
+	attempts := s.attempts(t)
+	if len(attempts) != 1 {
+		t.Fatalf("attempts = %d, want 1: the lost provider must not take the run again", len(attempts))
 	}
 	_, view := s.f.getRun(t, uuidText(s.runID))
 	if view.Status != string(gen.RunStatusFailed) {
 		t.Fatalf("run = %q (%s), want failed", view.Status, view.StatusReason)
 	}
-	if !strings.Contains(view.StatusReason, "alpha_sandbox") {
-		t.Errorf("status_reason = %q, want it to name the provider that is out of the running", view.StatusReason)
+	if !strings.Contains(view.StatusReason, "沒有任何已設定的執行沙箱") {
+		t.Errorf("status_reason = %q, want it to say no configured sandbox can carry the request", view.StatusReason)
+	}
+	if attempts[0].Provider != "alpha_sandbox" {
+		t.Errorf("attempt provider = %q, want the reason's pointer at the attempt record to lead to alpha_sandbox",
+			attempts[0].Provider)
 	}
 }
 

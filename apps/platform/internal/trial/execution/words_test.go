@@ -77,13 +77,69 @@ func TestTheHappyPathSpeaksTheInterfaceLanguage(t *testing.T) {
 		gen.RunStatusEvaluating,
 		gen.RunStatusSucceeded,
 	} {
-		if r := successReason(to); !hasHan(r) {
+		if r := successReason(to); !hasHan(string(r)) {
 			t.Errorf("the reason recorded for %s is not in the interface language: %q", to, r)
 		}
 	}
 
 	final := successReason(gen.RunStatusSucceeded)
-	if !strings.Contains(final, "評估") {
+	if !strings.Contains(string(final), "評估") {
 		t.Errorf("the terminal reason no longer points at the evaluation as the separate judgement: %q", final)
 	}
+}
+
+func TestEveryFailurePathSpeaksTheInterfaceLanguage(t *testing.T) {
+	for _, class := range AllFailureClasses() {
+		if r := platformWordingFor(class); !hasHan(string(r)) {
+			t.Errorf("%s: the reason a run carries when nothing more specific is known is not in the "+
+				"interface language: %q", class, r)
+		}
+	}
+
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"a sandbox that did not answer", ErrProviderUnavailable},
+		{"a sandbox that refused", &providerError{Status: 422}},
+		{"a gateway that would not mint a key", &gatewayError{Status: 500, Message: "budget exhausted"}},
+		{"a deployment with no model gateway", ErrNoModelGateway},
+		{"material the clean test mode will not run", ErrContentNotCurated},
+		{"a request no configured sandbox can carry", ErrNoCompatibleProvider},
+		{"a deployment with no sandbox at all", ErrNoProvider},
+	} {
+		if r := namedRefusal(tc.err); !hasHan(string(r)) {
+			t.Errorf("%s: the named refusal is not in the interface language: %q", tc.name, r)
+		}
+	}
+
+	silent := ProviderRun{Result: &RunResult{}}
+	for _, tc := range []struct {
+		name string
+		run  ProviderRun
+	}{
+		{"a terminal state with no result at all", ProviderRun{State: ProviderStateFailed}},
+		{"a cancellation the provider did not explain", withStatus(silent, "cancelled")},
+		{"a timeout the provider did not explain", withStatus(silent, "timed_out")},
+		{"a workload failure the provider did not explain",
+			withState(withStatus(silent, "failed"), ProviderStateCompleted)},
+		{"a provider failure it did not explain", withStatus(silent, "failed")},
+	} {
+		_, _, _, message := classifyResult(tc.run)
+		if !hasHan(string(message)) {
+			t.Errorf("%s: the reason the run carries is not in the interface language: %q", tc.name, message)
+		}
+	}
+}
+
+func withStatus(pr ProviderRun, status string) ProviderRun {
+	result := *pr.Result
+	result.Status = status
+	pr.Result = &result
+	return pr
+}
+
+func withState(pr ProviderRun, state ProviderRunState) ProviderRun {
+	pr.State = state
+	return pr
 }

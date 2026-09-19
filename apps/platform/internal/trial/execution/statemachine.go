@@ -129,7 +129,7 @@ type TransitionParams struct {
 
 	AttemptID pgtype.UUID
 	From, To  gen.RunStatus
-	Reason    string
+	Reason    statusReason
 
 	FailureClass FailureClass
 
