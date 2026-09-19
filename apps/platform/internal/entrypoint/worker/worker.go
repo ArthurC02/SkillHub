@@ -155,7 +155,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	outboxWorker := &outbox.Worker{Pool: pool, Deliver: set.Events.Deliver}
 
-	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: deps.LLM}
+	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: creation.ModelOrNone(deps.LLM)}
 	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
 	creationSearch := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(deps.LLM), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 	set.CreationSearch = creationSearch

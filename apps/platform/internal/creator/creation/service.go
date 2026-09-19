@@ -243,12 +243,23 @@ type Provenance struct {
 	Brief, Model, PromptVersion, ExistingSkillID string
 	Inputs                                       []byte
 }
+type StepModel interface {
+	CreationStep(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error)
+}
+
+// A nil *Client inside a non-nil interface passes every `LLM != nil` guard
+// and panics on the first call.
+func ModelOrNone(c *llmclient.Client) StepModel {
+	if c == nil {
+		return nil
+	}
+	return c
+}
+
 type Service struct {
 	Pool   *pgxpool.Pool
 	Limits Limits
-	LLM    interface {
-		CreationStep(context.Context, llmclient.CreationStepRequest) (*llmclient.CreationStepResponse, error)
-	}
+	LLM    StepModel
 	Insert           func(context.Context, pgx.Tx, JobArgs) error
 	ResolveReference func(context.Context, identity.Workspace, string, string) (Reference, llmclient.GenerateReference, error)
 	SearchReferences func(context.Context, identity.Workspace, string) ([]Reference, error)
