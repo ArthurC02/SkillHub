@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 var ErrGenerationTruncated = errors.New("ingest: the generated skill stopped at the model's token ceiling")
@@ -53,6 +54,8 @@ type EnrichRequest struct {
 	SkillMD   string
 	FileTree  []string
 	Language  string
+
+	Within time.Duration
 }
 
 type SkillEnrichment struct {
@@ -89,6 +92,8 @@ type GenerateRequest struct {
 	TaskDescription string
 	Diagram         *GenerateDiagram
 	References      []ReferenceSkill
+
+	Within time.Duration
 }
 
 type GeneratedDraft struct {

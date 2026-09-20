@@ -33,6 +33,7 @@
 | — | Generic | outbox | foundation/messaging/outbox | — |
 | — | Generic | objreconcile | foundation/storage/objreconcile | — |
 | — | Generic | llmclient | foundation/integration/llmclient | — |
+| — | Generic | modelbudget | foundation/integration/modelbudget | — |
 | — | Generic | queue | foundation/messaging/queue | — |
 | — | Generic | objstore | foundation/storage/objstore | — |
 | — | Generic | metrics | foundation/observability/metrics | — |
@@ -48,7 +49,7 @@
 
 - 產品領域名稱供人讀導覽；`類型`、`Boundary ID`、`現行 internal path` 是 CI 的 architecture identity。每個 package 只有一個 architecture identity。
 - Core、Supporting、Shared Kernel 與 Generic 都要求 depguard coverage。例外是組裝套件（`apiserver`、`worker`、`wiring`，名單是 `tools/devctl` 的 `compositionRoots`）與 generated transport `entrypoint/api/gen`。
-- Generic 列不得包含領域規則：`audit` 與 `outbox` 是交易內外送事件的機制；`llmclient` 與 `run` 的 provider gateway 是防腐層；`foundation/*`（含 generated persistence）是純技術基座；`entrypoint/*` 是表現層與組裝。
+- Generic 列不得包含領域規則：`audit` 與 `outbox` 是交易內外送事件的機制；`llmclient` 與 `run` 的 provider gateway 是防腐層；`modelbudget` 只存一個秒數與是誰設的，哪些 kind 存在、值可以低到哪裡由呼叫端的 context 決定；`foundation/*`（含 generated persistence）是純技術基座；`entrypoint/*` 是表現層與組裝。
 
 ## 跨 context import 白名單
 

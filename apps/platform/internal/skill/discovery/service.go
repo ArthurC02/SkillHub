@@ -15,7 +15,15 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
+
+// budget-over: app.MATCH_REASONS_TIMEOUT_SECONDS
+const matchReasonsDeadline = 13 * time.Second
+
+// MatchReasonsBudget names this call for an operator and bounds what they may set.
+var MatchReasonsBudget = modelbudget.Endpoint{Kind: "match-reasons", Deadline: matchReasonsDeadline}
 
 type Service struct {
 	Pool *pgxpool.Pool
@@ -34,6 +42,8 @@ type Service struct {
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 
 	LLM Model
+
+	Budgets *modelbudget.Service
 
 	Credit CostRecorder
 
@@ -394,11 +404,10 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 		}
 	}
 
-	// budget-over: app.MATCH_REASONS_TIMEOUT_SECONDS
-	reasonCtx, cancel := context.WithTimeout(ctx, 13*time.Second)
+	reasonCtx, cancel := context.WithTimeout(ctx, matchReasonsDeadline)
 	defer cancel()
 
-	resp, err := s.LLM.MatchReasons(reasonCtx, query, candidates)
+	resp, err := s.LLM.MatchReasons(reasonCtx, query, candidates, s.Budgets.Within(ctx, MatchReasonsBudget))
 	if err != nil {
 		slog.Warn("match-reasons call failed, using template fallback", "error", err)
 		return nil

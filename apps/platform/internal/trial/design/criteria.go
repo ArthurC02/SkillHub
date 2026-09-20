@@ -1,6 +1,9 @@
 package testlab
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type DatasetField struct {
 	Name         string
@@ -18,6 +21,8 @@ type CriteriaRequest struct {
 	SkillSummary string
 	UserPrompt   string
 	Datasets     []DatasetOutline
+
+	Within time.Duration
 }
 
 type ModelUsage struct {

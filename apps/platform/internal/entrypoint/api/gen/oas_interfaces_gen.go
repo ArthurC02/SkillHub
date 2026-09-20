@@ -21,6 +21,10 @@ type CancelRunRes interface {
 	cancelRunRes()
 }
 
+type ClearModelCallBudgetRes interface {
+	clearModelCallBudgetRes()
+}
+
 type ClearSkillRestrictionRes interface {
 	clearSkillRestrictionRes()
 }
@@ -237,6 +241,10 @@ type ListGenerationFailuresRes interface {
 	listGenerationFailuresRes()
 }
 
+type ListModelCallBudgetsRes interface {
+	listModelCallBudgetsRes()
+}
+
 type ListOperatorAuditLogRes interface {
 	listOperatorAuditLogRes()
 }
@@ -299,6 +307,10 @@ type SearchSkillsRes interface {
 
 type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
+}
+
+type SetModelCallBudgetRes interface {
+	setModelCallBudgetRes()
 }
 
 type SetSkillCategoryRes interface {

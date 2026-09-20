@@ -426,6 +426,15 @@ type FeedbackReport struct {
 	BuildID     *string
 }
 
+// An operator-set per-call ceiling for one model endpoint (02:OPS-009). An absent row means the compiled default. Which kinds exist, and how far below the compiled deadline a value may sit, are decided in Go; this table stores a number and who set it.
+type ModelCallBudget struct {
+	Kind    string
+	Seconds int32
+	Reason  string
+	SetBy   pgtype.UUID
+	SetAt   pgtype.Timestamptz
+}
+
 // Package object keys whose last referencing skill_versions row was deleted (04 丙-73). A key is removed from storage only when no skill_versions row references it, because the object is shared with every fork of the same content.
 type ObjectCollectionQueue struct {
 	ObjectKey  string

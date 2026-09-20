@@ -14,6 +14,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 const (
@@ -26,6 +28,11 @@ const (
 	maxDigestEvidence   = 8
 	maxSuggestionsStore = 10 // one-number: suggestMaxSuggestions
 )
+
+// SuggestImprovementsBudget names this call for an operator and bounds what they may set.
+var SuggestImprovementsBudget = modelbudget.Endpoint{
+	Kind: "suggest-improvements", Deadline: suggestTimeout,
+}
 
 func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v verdict) {
 	if s.Suggester == nil || !worthSuggesting(v) {
@@ -48,6 +55,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		EvaluationDigest: digest,
 		FileTree:         tree,
 		TargetFiles:      files,
+		Within:           s.Budgets.Within(ctx, SuggestImprovementsBudget),
 	})
 	if err != nil {
 		slog.Warn("evaluation suggestions unavailable",

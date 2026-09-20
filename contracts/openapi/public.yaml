@@ -2701,6 +2701,126 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/model-budgets:
+    get:
+      operationId: listModelCallBudgets
+      summary: How long the platform waits for each model call (02:OPS-009)
+      description: |
+        Operator only. One row per model call the platform makes, whether or not
+        a value has been set for it. `default_seconds` is what the code compiles
+        in; `seconds` is what an operator set, or null.
+
+        `max_seconds` is not a preference. Every one of these calls has a
+        deadline in Go that its own code will wait out, and the value sent to the
+        capability provider has to stay below it — if the provider is still
+        working when Go gives up, Go records a timeout while the gateway call
+        keeps running and keeps billing. The ceiling here is that deadline minus
+        the margin, so no setting on this page can produce that.
+      responses:
+        "200":
+          description: Every model call an operator may retime.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [budgets]
+                properties:
+                  budgets:
+                    type: array
+                    items: { $ref: "#/components/schemas/ModelCallBudget" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/model-budgets/{kind}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string }
+        description: |
+          The model call, as `GET /admin/model-budgets` named it. A kind the
+          platform does not call is 404, the same answer a non-operator gets.
+    put:
+      operationId: setModelCallBudget
+      summary: Set how long one model call may run (02:OPS-009)
+      description: |
+        Operator only. Writes the value and its audit event in one transaction
+        (iron rule 9). `reason` is required and whitespace does not satisfy it:
+        the next person to look at a shortened deadline has to be able to find
+        out why.
+
+        Which caller gets which deadline stays a Go decision (iron rule 6). What
+        this sets is the number Go sends, and the capability provider honours it
+        only when it is below its own ceiling.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seconds, reason]
+              properties:
+                seconds:
+                  type: integer
+                  minimum: 1
+                  description: |
+                    At most the `max_seconds` this kind reported. Anything
+                    above it is 400 rather than silently clamped: a page that
+                    accepts a number and stores a different one is lying about
+                    what the platform will do.
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: The value this model call now runs under.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModelCallBudget" }
+        "400":
+          description: Body is not JSON, `reason` is blank or too long, or `seconds` is outside the allowed range.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no such model call.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: clearModelCallBudget
+      summary: Return one model call to its compiled default (02:OPS-009)
+      description: |
+        Operator only. Removes the stored value so the call runs under
+        `default_seconds` again. `reason` is required here too, and clearing a
+        kind that had no value is still answered 204 and still audited — the
+        operator did the action either way.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "204":
+          description: This model call runs under its compiled default again.
+        "400":
+          description: Body is not JSON, or `reason` is blank or too long.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no such model call.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/cost-statistics:
     get:
       operationId: getCostStatistics
@@ -5622,6 +5742,22 @@ components:
           type: [string, "null"]
           format: date-time
         takedown_reason: { type: [string, "null"] }
+    ModelCallBudget:
+      type: object
+      required: [kind, seconds, default_seconds, min_seconds, max_seconds, reason, set_at]
+      properties:
+        kind: { type: string }
+        seconds:
+          type: [integer, "null"]
+          description: What an operator set, or null when this call runs under its default.
+        default_seconds: { type: integer }
+        min_seconds: { type: integer }
+        max_seconds: { type: integer }
+        reason:
+          type: [string, "null"]
+        set_at:
+          type: [string, "null"]
+          format: date-time
     OperatorAuditEvent:
       type: object
       required: [actor_user_id, action, resource_type, resource_id, workspace_id, occurred_at, metadata]

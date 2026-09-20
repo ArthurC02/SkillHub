@@ -30,6 +30,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 const generateMaxAttempts = 2 // one-number: generateMaxAttempts
@@ -306,6 +308,9 @@ func shouldRetry(attempt int, r skillpkg.Report) bool {
 // budget-over: generate.LLM_TIMEOUT_SECONDS
 const generateTimeout = 130 * time.Second
 
+// GenerateBudget names this call for an operator and bounds what they may set.
+var GenerateBudget = modelbudget.Endpoint{Kind: "generate-skill", Deadline: generateTimeout}
+
 func (s *Service) generateOnce(
 	ctx context.Context, workspaceID pgtype.UUID, task string,
 	diagram *GenerateDiagram, references []ReferenceSkill,
@@ -314,6 +319,7 @@ func (s *Service) generateOnce(
 	defer cancel()
 	resp, err := s.LLM.GenerateSkill(callCtx, GenerateRequest{
 		TaskDescription: task, Diagram: diagram, References: references,
+		Within: s.Budgets.Within(ctx, GenerateBudget),
 	})
 	if err != nil {
 		return nil, err

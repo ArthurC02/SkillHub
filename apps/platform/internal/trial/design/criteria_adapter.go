@@ -19,10 +19,11 @@ func ModelOrNone(c *llmclient.Client) CriteriaSuggester {
 
 func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaRequest) (*CriteriaProposal, error) {
 	resp, err := a.client.SuggestCriteria(ctx, llmclient.SuggestCriteriaRequest{
-		SkillName:    req.SkillName,
-		SkillSummary: req.SkillSummary,
-		UserPrompt:   req.UserPrompt,
-		Datasets:     wireDatasets(req.Datasets),
+		SkillName:      req.SkillName,
+		SkillSummary:   req.SkillSummary,
+		UserPrompt:     req.UserPrompt,
+		Datasets:       wireDatasets(req.Datasets),
+		TimeoutSeconds: req.Within.Seconds(),
 	})
 	if err != nil {
 		return nil, err

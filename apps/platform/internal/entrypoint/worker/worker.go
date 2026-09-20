@@ -123,6 +123,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set.Evaluations.Judge = eval.JudgeOrNone(deps.LLM)
 	set.Evaluations.Suggester = eval.SuggesterOrNone(deps.LLM)
 
+	budgets := wiring.NewModelBudgets(pool)
+	set.Evaluations.Budgets = budgets
+
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 	set.SkillVersions = &eval.SkillVersionConsumer{}
 
@@ -155,6 +158,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: creation.ModelOrNone(deps.LLM)}
 	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
 	creationSearch := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(deps.LLM), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
+	creationSearch.Budgets = budgets
 	set.CreationSearch = creationSearch
 	wireCreationReads(set.Creation, creationVersions, creationSearch)
 	wireCreationGateway(set.Creation, deps.Gateway)

@@ -15,9 +15,14 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 var ErrSuggestUnavailable = errors.New("目前無法自動建議驗收條件，請自己手動輸入")
+
+// SuggestCriteriaBudget names this call for an operator and bounds what they may set.
+var SuggestCriteriaBudget = modelbudget.Endpoint{Kind: "suggest-criteria", Deadline: suggestTimeout}
 
 const (
 	suggestTimeout = 40 * time.Second // budget-over: app.SUGGEST_CRITERIA_TIMEOUT_SECONDS
@@ -63,6 +68,7 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 		SkillSummary: truncate(derefString(skill.Summary), maxSkillSummaryBytes),
 		UserPrompt:   tc.UserPrompt,
 		Datasets:     s.outlineDatasets(ctx, datasets),
+		Within:       s.Budgets.Within(ctx, SuggestCriteriaBudget),
 	}
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)

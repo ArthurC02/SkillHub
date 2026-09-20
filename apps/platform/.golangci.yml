@@ -586,6 +586,7 @@ linters:
             - "**/internal/foundation/observability/audit/**"
             - "**/internal/foundation/messaging/outbox/**"
             - "**/internal/foundation/integration/llmclient/**"
+            - "**/internal/foundation/integration/modelbudget/**"
             - "**/internal/foundation/persistence/db/gen/**"
             - "**/internal/foundation/messaging/queue/**"
             - "**/internal/foundation/storage/objstore/**"

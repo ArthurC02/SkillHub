@@ -1298,6 +1298,33 @@ func (*CategorizedFindings) importSkillFromURLRes() {}
 func (*CategorizedFindings) saveSkillVersionRes()   {}
 func (*CategorizedFindings) uploadSkillPackageRes() {}
 
+type ClearModelCallBudgetBadRequest Error
+
+func (*ClearModelCallBudgetBadRequest) clearModelCallBudgetRes() {}
+
+// ClearModelCallBudgetNoContent is response for ClearModelCallBudget operation.
+type ClearModelCallBudgetNoContent struct{}
+
+func (*ClearModelCallBudgetNoContent) clearModelCallBudgetRes() {}
+
+type ClearModelCallBudgetNotFound Error
+
+func (*ClearModelCallBudgetNotFound) clearModelCallBudgetRes() {}
+
+type ClearModelCallBudgetReq struct {
+	Reason string `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *ClearModelCallBudgetReq) GetReason() string {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *ClearModelCallBudgetReq) SetReason(val string) {
+	s.Reason = val
+}
+
 type ClearSkillRestrictionBadRequest Error
 
 func (*ClearSkillRestrictionBadRequest) clearSkillRestrictionRes() {}
@@ -6155,6 +6182,7 @@ func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
 func (*Error) getOperatorRostersRes()     {}
 func (*Error) listDownloadArtifactsRes()  {}
+func (*Error) listModelCallBudgetsRes()   {}
 func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
 func (*Error) publicSearchSkillsRes()     {}
@@ -9772,6 +9800,22 @@ type ListGenerationFailuresUnauthorized Error
 
 func (*ListGenerationFailuresUnauthorized) listGenerationFailuresRes() {}
 
+type ListModelCallBudgetsOK struct {
+	Budgets []ModelCallBudget `json:"budgets"`
+}
+
+// GetBudgets returns the value of Budgets.
+func (s *ListModelCallBudgetsOK) GetBudgets() []ModelCallBudget {
+	return s.Budgets
+}
+
+// SetBudgets sets the value of Budgets.
+func (s *ListModelCallBudgetsOK) SetBudgets(val []ModelCallBudget) {
+	s.Budgets = val
+}
+
+func (*ListModelCallBudgetsOK) listModelCallBudgetsRes() {}
+
 type ListOperatorAuditLogBadRequest Error
 
 func (*ListOperatorAuditLogBadRequest) listOperatorAuditLogRes() {}
@@ -10251,6 +10295,90 @@ func (s *MeFeatures) init() MeFeatures {
 	}
 	return m
 }
+
+// Ref: #/components/schemas/ModelCallBudget
+type ModelCallBudget struct {
+	Kind string `json:"kind"`
+	// What an operator set, or null when this call runs under its default.
+	Seconds        NilInt      `json:"seconds"`
+	DefaultSeconds int         `json:"default_seconds"`
+	MinSeconds     int         `json:"min_seconds"`
+	MaxSeconds     int         `json:"max_seconds"`
+	Reason         NilString   `json:"reason"`
+	SetAt          NilDateTime `json:"set_at"`
+}
+
+// GetKind returns the value of Kind.
+func (s *ModelCallBudget) GetKind() string {
+	return s.Kind
+}
+
+// GetSeconds returns the value of Seconds.
+func (s *ModelCallBudget) GetSeconds() NilInt {
+	return s.Seconds
+}
+
+// GetDefaultSeconds returns the value of DefaultSeconds.
+func (s *ModelCallBudget) GetDefaultSeconds() int {
+	return s.DefaultSeconds
+}
+
+// GetMinSeconds returns the value of MinSeconds.
+func (s *ModelCallBudget) GetMinSeconds() int {
+	return s.MinSeconds
+}
+
+// GetMaxSeconds returns the value of MaxSeconds.
+func (s *ModelCallBudget) GetMaxSeconds() int {
+	return s.MaxSeconds
+}
+
+// GetReason returns the value of Reason.
+func (s *ModelCallBudget) GetReason() NilString {
+	return s.Reason
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *ModelCallBudget) GetSetAt() NilDateTime {
+	return s.SetAt
+}
+
+// SetKind sets the value of Kind.
+func (s *ModelCallBudget) SetKind(val string) {
+	s.Kind = val
+}
+
+// SetSeconds sets the value of Seconds.
+func (s *ModelCallBudget) SetSeconds(val NilInt) {
+	s.Seconds = val
+}
+
+// SetDefaultSeconds sets the value of DefaultSeconds.
+func (s *ModelCallBudget) SetDefaultSeconds(val int) {
+	s.DefaultSeconds = val
+}
+
+// SetMinSeconds sets the value of MinSeconds.
+func (s *ModelCallBudget) SetMinSeconds(val int) {
+	s.MinSeconds = val
+}
+
+// SetMaxSeconds sets the value of MaxSeconds.
+func (s *ModelCallBudget) SetMaxSeconds(val int) {
+	s.MaxSeconds = val
+}
+
+// SetReason sets the value of Reason.
+func (s *ModelCallBudget) SetReason(val NilString) {
+	s.Reason = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *ModelCallBudget) SetSetAt(val NilDateTime) {
+	s.SetAt = val
+}
+
+func (*ModelCallBudget) setModelCallBudgetRes() {}
 
 // NewNilDateTime returns new NilDateTime with value set to v.
 func NewNilDateTime(v time.Time) NilDateTime {
@@ -18855,6 +18983,41 @@ func (s *SetEvaluationFeedbackReq) SetComment(val OptString) {
 type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
+
+type SetModelCallBudgetBadRequest Error
+
+func (*SetModelCallBudgetBadRequest) setModelCallBudgetRes() {}
+
+type SetModelCallBudgetNotFound Error
+
+func (*SetModelCallBudgetNotFound) setModelCallBudgetRes() {}
+
+type SetModelCallBudgetReq struct {
+	// At most the `max_seconds` this kind reported. Anything above it is 400 rather than silently clamped:
+	// a page that accepts a number and stores a different one is lying about what the platform will do.
+	Seconds int    `json:"seconds"`
+	Reason  string `json:"reason"`
+}
+
+// GetSeconds returns the value of Seconds.
+func (s *SetModelCallBudgetReq) GetSeconds() int {
+	return s.Seconds
+}
+
+// GetReason returns the value of Reason.
+func (s *SetModelCallBudgetReq) GetReason() string {
+	return s.Reason
+}
+
+// SetSeconds sets the value of Seconds.
+func (s *SetModelCallBudgetReq) SetSeconds(val int) {
+	s.Seconds = val
+}
+
+// SetReason sets the value of Reason.
+func (s *SetModelCallBudgetReq) SetReason(val string) {
+	s.Reason = val
+}
 
 type SetSkillCategoryBadRequest Error
 

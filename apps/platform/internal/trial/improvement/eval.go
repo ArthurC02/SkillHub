@@ -18,6 +18,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 var ErrNotFound = errors.New("evaluation not found")
@@ -108,10 +110,15 @@ type ObjectStore interface {
 
 const judgeTimeout = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
 
+// JudgeBudget names this call for an operator and bounds what they may set.
+var JudgeBudget = modelbudget.Endpoint{Kind: "judge-run", Deadline: judgeTimeout}
+
 type Service struct {
 	Pool *pgxpool.Pool
 
 	Judge Judge
+
+	Budgets *modelbudget.Service
 
 	Suggester Suggester
 

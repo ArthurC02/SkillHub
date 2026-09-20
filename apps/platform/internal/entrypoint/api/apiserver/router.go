@@ -16,6 +16,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 type Deps struct {
@@ -34,6 +36,8 @@ type Deps struct {
 	Credits *creditsHandler
 
 	OperatorAudit *operatorAuditHandler
+
+	ModelBudgets *modelbudget.Handler
 
 	Trends *trendsHandler
 
@@ -127,6 +131,9 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /admin/rosters", auth.RequireOperator(auth.Rosters))
 	mux.HandleFunc("GET /admin/skills", auth.RequireOperator(d.Search.FindSkillsForGovernance))
 	mux.HandleFunc("GET /admin/audit-log", auth.RequireOperator(d.OperatorAudit.List))
+	mux.HandleFunc("GET /admin/model-budgets", auth.RequireOperator(d.ModelBudgets.List))
+	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
+	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
 

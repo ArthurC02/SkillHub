@@ -34,10 +34,11 @@ func (a modelOverHTTP) Embed(ctx context.Context, texts []string) (*Embeddings, 
 
 func (a modelOverHTTP) EnrichSkill(ctx context.Context, req EnrichRequest) (*SkillEnrichment, error) {
 	resp, err := a.client.EnrichSkill(ctx, llmclient.EnrichSkillRequest{
-		SkillName: req.SkillName,
-		SkillMD:   req.SkillMD,
-		FileTree:  req.FileTree,
-		Language:  req.Language,
+		SkillName:      req.SkillName,
+		SkillMD:        req.SkillMD,
+		FileTree:       req.FileTree,
+		Language:       req.Language,
+		TimeoutSeconds: req.Within.Seconds(),
 	})
 	if err != nil {
 		return nil, err
@@ -65,7 +66,10 @@ func (a modelOverHTTP) EnrichSkill(ctx context.Context, req EnrichRequest) (*Ski
 }
 
 func (a modelOverHTTP) GenerateSkill(ctx context.Context, req GenerateRequest) (*GeneratedDraft, error) {
-	wire := llmclient.GenerateSkillRequest{TaskDescription: req.TaskDescription}
+	wire := llmclient.GenerateSkillRequest{
+		TaskDescription: req.TaskDescription,
+		TimeoutSeconds:  req.Within.Seconds(),
+	}
 	for _, r := range req.References {
 		wire.References = append(wire.References, llmclient.GenerateReference{Name: r.Name, SkillMD: r.SkillMD})
 	}

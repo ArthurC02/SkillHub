@@ -45,7 +45,7 @@ type MatchReasons struct {
 
 type Model interface {
 	Embed(ctx context.Context, texts []string, within time.Duration) (*Embeddings, error)
-	MatchReasons(ctx context.Context, query string, candidates []SkillCandidate) (*MatchReasons, error)
+	MatchReasons(ctx context.Context, query string, candidates []SkillCandidate, within time.Duration) (*MatchReasons, error)
 }
 
 type SkillTags struct {

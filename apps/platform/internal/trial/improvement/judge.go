@@ -32,6 +32,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	}
 
 	req, digest, truncation, dropped, trimmedEvents := s.buildRequest(m, ev)
+	req.Within = s.Budgets.Within(ctx, JudgeBudget)
 
 	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
 	defer cancel()

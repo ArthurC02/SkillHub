@@ -75,6 +75,8 @@ const (
 
 	ActionOperatorRefused = "operator.refused"
 
+	ActionModelBudgetSet = "model_budget.set"
+
 	ActionCreditGrant   = "credit.grant"
 	ActionAccountLookup = "account.lookup"
 	ActionCreditLookup  = "credit.lookup"
@@ -102,6 +104,8 @@ const (
 	ResourceFeatureFlags = "feature_flags"
 
 	ResourceDispatch = "dispatch"
+
+	ResourceModelBudget = "model_budget"
 
 	ResourceCreditAccount = "credit_account"
 

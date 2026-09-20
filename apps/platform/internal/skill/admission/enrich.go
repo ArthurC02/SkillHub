@@ -12,6 +12,8 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 type enrichmentStatus string
@@ -31,6 +33,9 @@ const (
 	// budget-over: app.EMBED_TIMEOUT_SECONDS
 	embedTimeout = 25 * time.Second
 )
+
+// EnrichBudget names this call for an operator and bounds what they may set.
+var EnrichBudget = modelbudget.Endpoint{Kind: "enrich-skill", Deadline: enrichTimeout}
 
 type enrichment struct {
 	summary         string
@@ -87,6 +92,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 		SkillName: p.report.Manifest.Name,
 		SkillMD:   p.skillMD,
 		FileTree:  p.fileTree,
+		Within:    s.Budgets.Within(ctx, EnrichBudget),
 	})
 	if err != nil {
 		slog.Warn("index-time enrichment failed; search document left pending",

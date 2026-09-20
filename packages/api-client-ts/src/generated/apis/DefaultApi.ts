@@ -59,6 +59,11 @@ import {
     CategorizedFindingsToJSON,
 } from '../models/CategorizedFindings';
 import {
+    type ClearModelCallBudgetRequest,
+    ClearModelCallBudgetRequestFromJSON,
+    ClearModelCallBudgetRequestToJSON,
+} from '../models/ClearModelCallBudgetRequest';
+import {
     type ClearSkillRestrictionRequest,
     ClearSkillRestrictionRequestFromJSON,
     ClearSkillRestrictionRequestToJSON,
@@ -314,6 +319,11 @@ import {
     ListDownloadRecords200ResponseToJSON,
 } from '../models/ListDownloadRecords200Response';
 import {
+    type ListModelCallBudgets200Response,
+    ListModelCallBudgets200ResponseFromJSON,
+    ListModelCallBudgets200ResponseToJSON,
+} from '../models/ListModelCallBudgets200Response';
+import {
     type ListOperatorAuditLog200Response,
     ListOperatorAuditLog200ResponseFromJSON,
     ListOperatorAuditLog200ResponseToJSON,
@@ -364,6 +374,11 @@ import {
     MeToJSON,
 } from '../models/Me';
 import {
+    type ModelCallBudget,
+    ModelCallBudgetFromJSON,
+    ModelCallBudgetToJSON,
+} from '../models/ModelCallBudget';
+import {
     type PackagingPreview,
     PackagingPreviewFromJSON,
     PackagingPreviewToJSON,
@@ -413,6 +428,11 @@ import {
     SetEvaluationFeedbackRequestFromJSON,
     SetEvaluationFeedbackRequestToJSON,
 } from '../models/SetEvaluationFeedbackRequest';
+import {
+    type SetModelCallBudgetRequest,
+    SetModelCallBudgetRequestFromJSON,
+    SetModelCallBudgetRequestToJSON,
+} from '../models/SetModelCallBudgetRequest';
 import {
     type SetSkillCategoryRequest,
     SetSkillCategoryRequestFromJSON,
@@ -578,6 +598,19 @@ export interface CancelRunRequest {
      * 
      */
     id: string;
+}
+
+export interface ClearModelCallBudgetOperationRequest {
+    /**
+     * The model call, as `GET /admin/model-budgets` named it. A kind the
+     * platform does not call is 404, the same answer a non-operator gets.
+     * 
+     */
+    kind: string;
+    /**
+     * 
+     */
+    clearModelCallBudgetRequest: ClearModelCallBudgetRequest;
 }
 
 export interface ClearSkillRestrictionOperationRequest {
@@ -1209,6 +1242,19 @@ export interface SetEvaluationFeedbackOperationRequest {
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
 }
 
+export interface SetModelCallBudgetOperationRequest {
+    /**
+     * The model call, as `GET /admin/model-budgets` named it. A kind the
+     * platform does not call is 404, the same answer a non-operator gets.
+     * 
+     */
+    kind: string;
+    /**
+     * 
+     */
+    setModelCallBudgetRequest: SetModelCallBudgetRequest;
+}
+
 export interface SetSkillCategoryOperationRequest {
     /**
      * 
@@ -1492,6 +1538,32 @@ export interface DefaultApiInterface {
      * Request cancellation of a run (RUN-004)
      */
     cancelRun(requestParameters: CancelRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelRun202Response>;
+
+    /**
+     * Creates request options for clearModelCallBudget without sending the request
+     * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
+     * @param {ClearModelCallBudgetRequest} clearModelCallBudgetRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
+     * @summary Return one model call to its compiled default (02:OPS-009)
+     * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
+     * @param {ClearModelCallBudgetRequest} clearModelCallBudgetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
+     * Return one model call to its compiled default (02:OPS-009)
+     */
+    clearModelCallBudget(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for clearSkillRestriction without sending the request
@@ -2865,6 +2937,28 @@ export interface DefaultApiInterface {
     listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures>;
 
     /**
+     * Creates request options for listModelCallBudgets without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listModelCallBudgetsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. One row per model call the platform makes, whether or not a value has been set for it. `default_seconds` is what the code compiles in; `seconds` is what an operator set, or null.  `max_seconds` is not a preference. Every one of these calls has a deadline in Go that its own code will wait out, and the value sent to the capability provider has to stay below it — if the provider is still working when Go gives up, Go records a timeout while the gateway call keeps running and keeps billing. The ceiling here is that deadline minus the margin, so no setting on this page can produce that. 
+     * @summary How long the platform waits for each model call (02:OPS-009)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listModelCallBudgetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListModelCallBudgets200Response>>;
+
+    /**
+     * Operator only. One row per model call the platform makes, whether or not a value has been set for it. `default_seconds` is what the code compiles in; `seconds` is what an operator set, or null.  `max_seconds` is not a preference. Every one of these calls has a deadline in Go that its own code will wait out, and the value sent to the capability provider has to stay below it — if the provider is still working when Go gives up, Go records a timeout while the gateway call keeps running and keeps billing. The ceiling here is that deadline minus the margin, so no setting on this page can produce that. 
+     * How long the platform waits for each model call (02:OPS-009)
+     */
+    listModelCallBudgets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListModelCallBudgets200Response>;
+
+    /**
      * Creates request options for listOperatorAuditLog without sending the request
      * @param {number} [limit] 
      * @param {number} [offset] 
@@ -3298,6 +3392,32 @@ export interface DefaultApiInterface {
      * Say whether the judgement was helpful (EVAL-001)
      */
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * Creates request options for setModelCallBudget without sending the request
+     * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
+     * @param {SetModelCallBudgetRequest} setModelCallBudgetRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setModelCallBudgetRequestOpts(requestParameters: SetModelCallBudgetOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Writes the value and its audit event in one transaction (iron rule 9). `reason` is required and whitespace does not satisfy it: the next person to look at a shortened deadline has to be able to find out why.  Which caller gets which deadline stays a Go decision (iron rule 6). What this sets is the number Go sends, and the capability provider honours it only when it is below its own ceiling. 
+     * @summary Set how long one model call may run (02:OPS-009)
+     * @param {string} kind The model call, as &#x60;GET /admin/model-budgets&#x60; named it. A kind the platform does not call is 404, the same answer a non-operator gets. 
+     * @param {SetModelCallBudgetRequest} setModelCallBudgetRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setModelCallBudgetRaw(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ModelCallBudget>>;
+
+    /**
+     * Operator only. Writes the value and its audit event in one transaction (iron rule 9). `reason` is required and whitespace does not satisfy it: the next person to look at a shortened deadline has to be able to find out why.  Which caller gets which deadline stays a Go decision (iron rule 6). What this sets is the number Go sends, and the capability provider honours it only when it is below its own ceiling. 
+     * Set how long one model call may run (02:OPS-009)
+     */
+    setModelCallBudget(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ModelCallBudget>;
 
     /**
      * Creates request options for setSkillCategory without sending the request
@@ -3946,6 +4066,62 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     async cancelRun(requestParameters: CancelRunRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CancelRun202Response> {
         const response = await this.cancelRunRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for clearModelCallBudget without sending the request
+     */
+    async clearModelCallBudgetRequestOpts(requestParameters: ClearModelCallBudgetOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['kind'] == null) {
+            throw new runtime.RequiredError(
+                'kind',
+                'Required parameter "kind" was null or undefined when calling clearModelCallBudget().'
+            );
+        }
+
+        if (requestParameters['clearModelCallBudgetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'clearModelCallBudgetRequest',
+                'Required parameter "clearModelCallBudgetRequest" was null or undefined when calling clearModelCallBudget().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/model-budgets/{kind}`;
+        urlPath = urlPath.replace('{kind}', encodeURIComponent(String(requestParameters['kind'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ClearModelCallBudgetRequestToJSON(requestParameters['clearModelCallBudgetRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
+     * Return one model call to its compiled default (02:OPS-009)
+     */
+    async clearModelCallBudgetRaw(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.clearModelCallBudgetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Operator only. Removes the stored value so the call runs under `default_seconds` again. `reason` is required here too, and clearing a kind that had no value is still answered 204 and still audited — the operator did the action either way. 
+     * Return one model call to its compiled default (02:OPS-009)
+     */
+    async clearModelCallBudget(requestParameters: ClearModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.clearModelCallBudgetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -6669,6 +6845,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listModelCallBudgets without sending the request
+     */
+    async listModelCallBudgetsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/model-budgets`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. One row per model call the platform makes, whether or not a value has been set for it. `default_seconds` is what the code compiles in; `seconds` is what an operator set, or null.  `max_seconds` is not a preference. Every one of these calls has a deadline in Go that its own code will wait out, and the value sent to the capability provider has to stay below it — if the provider is still working when Go gives up, Go records a timeout while the gateway call keeps running and keeps billing. The ceiling here is that deadline minus the margin, so no setting on this page can produce that. 
+     * How long the platform waits for each model call (02:OPS-009)
+     */
+    async listModelCallBudgetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListModelCallBudgets200Response>> {
+        const requestOptions = await this.listModelCallBudgetsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListModelCallBudgets200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. One row per model call the platform makes, whether or not a value has been set for it. `default_seconds` is what the code compiles in; `seconds` is what an operator set, or null.  `max_seconds` is not a preference. Every one of these calls has a deadline in Go that its own code will wait out, and the value sent to the capability provider has to stay below it — if the provider is still working when Go gives up, Go records a timeout while the gateway call keeps running and keeps billing. The ceiling here is that deadline minus the margin, so no setting on this page can produce that. 
+     * How long the platform waits for each model call (02:OPS-009)
+     */
+    async listModelCallBudgets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListModelCallBudgets200Response> {
+        const response = await this.listModelCallBudgetsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listOperatorAuditLog without sending the request
      */
     async listOperatorAuditLogRequestOpts(requestParameters: ListOperatorAuditLogRequest): Promise<runtime.RequestOpts> {
@@ -7521,6 +7736,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation> {
         const response = await this.setEvaluationFeedbackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setModelCallBudget without sending the request
+     */
+    async setModelCallBudgetRequestOpts(requestParameters: SetModelCallBudgetOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['kind'] == null) {
+            throw new runtime.RequiredError(
+                'kind',
+                'Required parameter "kind" was null or undefined when calling setModelCallBudget().'
+            );
+        }
+
+        if (requestParameters['setModelCallBudgetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setModelCallBudgetRequest',
+                'Required parameter "setModelCallBudgetRequest" was null or undefined when calling setModelCallBudget().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/model-budgets/{kind}`;
+        urlPath = urlPath.replace('{kind}', encodeURIComponent(String(requestParameters['kind'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetModelCallBudgetRequestToJSON(requestParameters['setModelCallBudgetRequest']),
+        };
+    }
+
+    /**
+     * Operator only. Writes the value and its audit event in one transaction (iron rule 9). `reason` is required and whitespace does not satisfy it: the next person to look at a shortened deadline has to be able to find out why.  Which caller gets which deadline stays a Go decision (iron rule 6). What this sets is the number Go sends, and the capability provider honours it only when it is below its own ceiling. 
+     * Set how long one model call may run (02:OPS-009)
+     */
+    async setModelCallBudgetRaw(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ModelCallBudget>> {
+        const requestOptions = await this.setModelCallBudgetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ModelCallBudgetFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Writes the value and its audit event in one transaction (iron rule 9). `reason` is required and whitespace does not satisfy it: the next person to look at a shortened deadline has to be able to find out why.  Which caller gets which deadline stays a Go decision (iron rule 6). What this sets is the number Go sends, and the capability provider honours it only when it is below its own ceiling. 
+     * Set how long one model call may run (02:OPS-009)
+     */
+    async setModelCallBudget(requestParameters: SetModelCallBudgetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ModelCallBudget> {
+        const response = await this.setModelCallBudgetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

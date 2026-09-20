@@ -17,6 +17,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 const (
@@ -72,6 +74,8 @@ type Service struct {
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
 	LLM CriteriaSuggester
+
+	Budgets *modelbudget.Service
 
 	RecordSpend func(ctx context.Context, usage *ModelUsage) error
 }

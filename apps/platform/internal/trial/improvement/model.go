@@ -1,6 +1,9 @@
 package eval
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type ModelUsage struct {
 	PromptTokens     int64
@@ -69,6 +72,8 @@ type JudgeRequest struct {
 	Artifacts    []JudgeArtifact
 	TraceDigest  TraceDigest
 	Truncation   []string
+
+	Within time.Duration
 }
 
 type Citation struct {
@@ -108,6 +113,8 @@ type ImprovementRequest struct {
 	EvaluationDigest string
 	FileTree         []string
 	TargetFiles      []TargetFile
+
+	Within time.Duration
 }
 
 type ImprovementProposal struct {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -23,6 +24,7 @@ var operatorActions = audit.PlatformFilter{
 		audit.ActionCreditGrant,
 		audit.ActionDispatchHalt,
 		audit.ActionDispatchResume,
+		audit.ActionModelBudgetSet,
 		audit.ActionAccountLookup,
 		audit.ActionCreditLookup,
 	},
@@ -94,4 +96,12 @@ func optionalUUID(id pgtype.UUID) *string {
 	}
 	s := pgconv.UUIDString(id)
 	return &s
+}
+
+func sessionActorID(r *http.Request) (pgtype.UUID, bool) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		return pgtype.UUID{}, false
+	}
+	return user.ID, true
 }

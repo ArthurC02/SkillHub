@@ -119,6 +119,7 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 	catalogSvc := wiring.NewCatalogService(pool)
 	return &ingest.Service{
 		Pool: pool, Store: deps.Store, LLM: ingest.ModelOrNone(deps.LLM),
+		Budgets: wiring.NewModelBudgets(pool),
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
 			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,

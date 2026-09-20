@@ -25,6 +25,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 type ObjectStore interface {
@@ -52,6 +54,8 @@ type Service struct {
 	Store   ObjectStore
 	Fetcher SourceFetcher
 	LLM     Model
+
+	Budgets *modelbudget.Service
 
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 

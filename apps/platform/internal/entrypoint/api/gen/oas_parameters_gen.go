@@ -36,6 +36,13 @@ type CancelRunParams struct {
 	ID uuid.UUID
 }
 
+// ClearModelCallBudgetParams is parameters of clearModelCallBudget operation.
+type ClearModelCallBudgetParams struct {
+	// The model call, as `GET /admin/model-budgets` named it. A kind the platform does not call is 404,
+	// the same answer a non-operator gets.
+	Kind string
+}
+
 // ClearSkillRestrictionParams is parameters of clearSkillRestriction operation.
 type ClearSkillRestrictionParams struct {
 	ID uuid.UUID
@@ -380,6 +387,13 @@ type SearchSkillsParams struct {
 // SetEvaluationFeedbackParams is parameters of setEvaluationFeedback operation.
 type SetEvaluationFeedbackParams struct {
 	ID uuid.UUID
+}
+
+// SetModelCallBudgetParams is parameters of setModelCallBudget operation.
+type SetModelCallBudgetParams struct {
+	// The model call, as `GET /admin/model-budgets` named it. A kind the platform does not call is 404,
+	// the same answer a non-operator gets.
+	Kind string
 }
 
 // SetSkillCategoryParams is parameters of setSkillCategory operation.

@@ -26,12 +26,14 @@ func (a modelOverHTTP) Embed(ctx context.Context, texts []string, within time.Du
 	return &Embeddings{Vectors: resp.Embeddings, Model: resp.Model, Usage: usageFromWire(resp.Usage)}, nil
 }
 
-func (a modelOverHTTP) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate) (*MatchReasons, error) {
+func (a modelOverHTTP) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate,
+	within time.Duration,
+) (*MatchReasons, error) {
 	wire := make([]llmclient.SkillCandidate, 0, len(candidates))
 	for _, c := range candidates {
 		wire = append(wire, llmclient.SkillCandidate{SkillID: c.SkillID, Name: c.Name, Summary: c.Summary})
 	}
-	resp, err := a.client.MatchReasons(ctx, query, wire)
+	resp, err := a.client.MatchReasonsWithin(ctx, query, wire, within.Seconds())
 	if err != nil {
 		return nil, err
 	}

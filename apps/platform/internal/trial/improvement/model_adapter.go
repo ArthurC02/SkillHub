@@ -36,6 +36,8 @@ func (a modelOverHTTP) JudgeRun(ctx context.Context, req JudgeRequest) (*Judgeme
 		Artifacts:    wireArtifacts(req.Artifacts),
 		TraceDigest:  wireDigest(req.TraceDigest),
 		Truncation:   req.Truncation,
+
+		TimeoutSeconds: req.Within.Seconds(),
 	})
 	if err != nil {
 		return nil, err
@@ -60,6 +62,7 @@ func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req ImprovementR
 		EvaluationDigest: req.EvaluationDigest,
 		FileTree:         req.FileTree,
 		TargetFiles:      files,
+		TimeoutSeconds:   req.Within.Seconds(),
 	})
 	if err != nil {
 		return nil, err

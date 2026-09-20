@@ -31,6 +31,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 type ObjectStore interface {
@@ -200,6 +202,9 @@ func NewApp(cfg Config) (*App, error) {
 	catalogSvc := wiring.NewCatalogService(cfg.Pool)
 	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
 	catalogSvc.LLM = catalog.ModelOrNone(cfg.LLM)
+
+	budgets := wiring.NewModelBudgets(cfg.Pool)
+	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets
 	catalogSvc.Store = cfg.Store
 	catalogSvc.Analytics = funnel
 	catalogSvc.SourceByID = func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
@@ -285,6 +290,7 @@ func NewApp(cfg Config) (*App, error) {
 				Identity: identitySvc,
 			},
 			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
+			ModelBudgets:  &modelbudget.Handler{Svc: budgets, Actor: sessionActorID},
 			Trends: &trendsHandler{
 				Credits:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 				DailyRuns: runSvc.DailyRuns,

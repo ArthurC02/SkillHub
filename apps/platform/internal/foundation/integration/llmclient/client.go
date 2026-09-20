@@ -108,10 +108,11 @@ type SkillTags struct {
 }
 
 type EnrichSkillRequest struct {
-	SkillName string   `json:"skill_name"`
-	SkillMD   string   `json:"skill_md"`
-	FileTree  []string `json:"file_tree,omitempty"`
-	Language  string   `json:"language,omitempty"`
+	SkillName      string   `json:"skill_name"`
+	SkillMD        string   `json:"skill_md"`
+	FileTree       []string `json:"file_tree,omitempty"`
+	Language       string   `json:"language,omitempty"`
+	TimeoutSeconds float64  `json:"timeout_seconds,omitempty"`
 }
 
 type EnrichSkillResponse struct {
@@ -146,8 +147,9 @@ type SkillCandidate struct {
 }
 
 type MatchReasonsRequest struct {
-	Query      string           `json:"query"`
-	Candidates []SkillCandidate `json:"candidates"`
+	Query          string           `json:"query"`
+	Candidates     []SkillCandidate `json:"candidates"`
+	TimeoutSeconds float64          `json:"timeout_seconds,omitempty"`
 }
 
 type MatchReason struct {
@@ -162,9 +164,11 @@ type MatchReasonsResponse struct {
 	Usage *GatewayUsage `json:"usage,omitempty"`
 }
 
-func (c *Client) MatchReasons(ctx context.Context, query string, candidates []SkillCandidate) (*MatchReasonsResponse, error) {
+func (c *Client) MatchReasonsWithin(ctx context.Context, query string, candidates []SkillCandidate,
+	seconds float64,
+) (*MatchReasonsResponse, error) {
 	return post[MatchReasonsRequest, MatchReasonsResponse](ctx, c, "/match-reasons",
-		MatchReasonsRequest{Query: query, Candidates: candidates})
+		MatchReasonsRequest{Query: query, Candidates: candidates, TimeoutSeconds: seconds})
 }
 
 type DatasetField struct {
@@ -179,10 +183,11 @@ type DatasetOutline struct {
 }
 
 type SuggestCriteriaRequest struct {
-	SkillName    string           `json:"skill_name,omitempty"`
-	SkillSummary string           `json:"skill_summary,omitempty"`
-	UserPrompt   string           `json:"user_prompt"`
-	Datasets     []DatasetOutline `json:"datasets,omitempty"`
+	SkillName      string           `json:"skill_name,omitempty"`
+	SkillSummary   string           `json:"skill_summary,omitempty"`
+	UserPrompt     string           `json:"user_prompt"`
+	Datasets       []DatasetOutline `json:"datasets,omitempty"`
+	TimeoutSeconds float64          `json:"timeout_seconds,omitempty"`
 }
 
 type SuggestedCriterion struct {
@@ -253,6 +258,8 @@ type JudgeRunRequest struct {
 	TraceDigest  TraceDigest      `json:"trace_digest"`
 
 	Truncation []string `json:"truncation"`
+
+	TimeoutSeconds float64 `json:"timeout_seconds,omitempty"`
 }
 
 type JudgeEvidenceRef struct {
@@ -316,6 +323,7 @@ type SuggestImprovementsRequest struct {
 	EvaluationDigest string       `json:"evaluation_digest"`
 	FileTree         []string     `json:"file_tree,omitempty"`
 	TargetFiles      []TargetFile `json:"target_files,omitempty"`
+	TimeoutSeconds   float64      `json:"timeout_seconds,omitempty"`
 }
 
 type ImprovementProposal struct {
@@ -346,6 +354,7 @@ type GenerateSkillRequest struct {
 	TaskDescription string              `json:"task_description,omitempty"`
 	Diagram         *GenerateDiagram    `json:"diagram,omitempty"`
 	References      []GenerateReference `json:"references,omitempty"`
+	TimeoutSeconds  float64             `json:"timeout_seconds,omitempty"`
 }
 
 type GenerateDiagram struct {

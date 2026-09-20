@@ -5,6 +5,7 @@ files:
   auth.sql: identity
   beta.sql:
   dispatch.sql: run
+  model_budget.sql: modelbudget
   evaluation.sql: eval
   governance.sql:
   packaging.sql: packaging
@@ -218,6 +219,8 @@ scope:
   LockSkillForOperatorWrite: user
   ListRecentCreditEntries: user
   SetDispatchHaltClearRounds: user
+  SetModelCallBudget: operator
+  ClearModelCallBudget: operator
   SetSkillAccessRestriction: user
   SetSkillCuration: user
   SetSkillRedistribution: user
@@ -360,6 +363,7 @@ tables:
   run_artifact_upload_intents: run
   reconciler_orphan_sightings: run
   dispatch_halts: run
+  model_call_budgets: modelbudget
   artifacts: run, packaging
   download_artifacts: packaging
   download_records: packaging

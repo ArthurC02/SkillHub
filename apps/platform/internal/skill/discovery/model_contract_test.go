@@ -26,7 +26,9 @@ func (f *fakeModel) Embed(_ context.Context, texts []string, within time.Duratio
 	return f.embeddings, nil
 }
 
-func (f *fakeModel) MatchReasons(_ context.Context, query string, candidates []SkillCandidate) (*MatchReasons, error) {
+func (f *fakeModel) MatchReasons(_ context.Context, query string, candidates []SkillCandidate,
+	_ time.Duration,
+) (*MatchReasons, error) {
 	f.askedQuery, f.askedAbout = query, candidates
 	return f.reasons, nil
 }
@@ -117,7 +119,7 @@ func TestTheAdapterCarriesEveryCandidateOntoTheWire(t *testing.T) {
 
 	got, err := model.MatchReasons(context.Background(), "invoice totals", []SkillCandidate{
 		{SkillID: "s1", Name: "invoice reader", Summary: "reads invoices"},
-	})
+	}, 7*time.Second)
 	if err != nil {
 		t.Fatalf("asking for match reasons: %v", err)
 	}
