@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -97,6 +98,31 @@ type PermissionSummary struct {
 }
 
 const blockedContentNotCurated = "content_not_curated"
+
+// blockingReason is what would refuse this pair right now, asked of the very
+// gates create() enforces so the two can never answer differently.
+func (s *Service) blockingReason(
+	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot,
+	report skillpkg.Report, scanned bool,
+) string {
+	if s.ReadSkill != nil {
+		if skill, found, err := s.ReadSkill(ctx, workspaceID, version.SkillID); err == nil && found {
+			if reason, err := accessVerdict(skill); err != nil {
+				return reason
+			}
+		}
+	}
+	if reason, err := s.schedulableRefusal(ctx, snap); err != nil {
+		return reason
+	}
+	if reason, err := scanVerdict(report, scanned); err != nil {
+		return reason
+	}
+	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
+		return blockedContentNotCurated
+	}
+	return ""
+}
 
 type CostEstimate struct {
 	LowCredits     int64 `json:"low_credits"`
@@ -229,6 +255,7 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	snap := defaultPolicy()
+	report, scanned := s.packageReport(ctx, version.PackageObjectKey)
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
@@ -236,7 +263,7 @@ func (s *Service) permissionSummaryFor(
 		TestCaseID:        pgconv.UUIDString(draft.TestCaseID),
 		Datasets:          draft.Datasets,
 		DatasetTotalBytes: draft.DatasetTotalBytes,
-		Scripts:           s.scriptSummary(ctx, version.PackageObjectKey),
+		Scripts:           scriptSummaryOf(report, scanned),
 
 		Tools: []string{"sandbox filesystem (/work, /out)", "sandbox shell"},
 
@@ -255,9 +282,7 @@ func (s *Service) permissionSummaryFor(
 
 	blocked := ""
 	if held == nil {
-		if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
-			blocked = blockedContentNotCurated
-		}
+		blocked = s.blockingReason(ctx, workspaceID, version, snap, report, scanned)
 	}
 
 	var quota *policy.QuotaView
@@ -309,8 +334,7 @@ var permissionSummaryNotes = []string{
 	"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
 }
 
-func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSummary {
-	report, ok := s.packageReport(ctx, objectKey)
+func scriptSummaryOf(report skillpkg.Report, ok bool) ScriptSummary {
 	if !ok {
 		return ScriptSummary{Status: "unavailable", Findings: []string{}}
 	}

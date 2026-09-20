@@ -64,7 +64,12 @@ export interface PreflightResponse {
   summary_hash: string;
   estimated_cost: CostEstimate;
   quota?: RunQuota;
-  blocked?: "content_not_curated";
+  blocked?:
+    | "access_restricted"
+    | "capability_mismatch"
+    | "scan_blocked"
+    | "scan_unavailable"
+    | "content_not_curated";
   notes: string[];
 }
 

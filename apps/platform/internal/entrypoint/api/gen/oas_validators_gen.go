@@ -5521,6 +5521,14 @@ func (s *RunPermissionSummary) Validate() error {
 
 func (s RunPermissionSummaryBlocked) Validate() error {
 	switch s {
+	case "access_restricted":
+		return nil
+	case "capability_mismatch":
+		return nil
+	case "scan_blocked":
+		return nil
+	case "scan_unavailable":
+		return nil
 	case "content_not_curated":
 		return nil
 	default:

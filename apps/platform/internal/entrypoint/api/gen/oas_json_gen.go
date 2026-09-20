@@ -34832,6 +34832,14 @@ func (s *RunPermissionSummaryBlocked) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch RunPermissionSummaryBlocked(v) {
+	case RunPermissionSummaryBlockedAccessRestricted:
+		*s = RunPermissionSummaryBlockedAccessRestricted
+	case RunPermissionSummaryBlockedCapabilityMismatch:
+		*s = RunPermissionSummaryBlockedCapabilityMismatch
+	case RunPermissionSummaryBlockedScanBlocked:
+		*s = RunPermissionSummaryBlockedScanBlocked
+	case RunPermissionSummaryBlockedScanUnavailable:
+		*s = RunPermissionSummaryBlockedScanUnavailable
 	case RunPermissionSummaryBlockedContentNotCurated:
 		*s = RunPermissionSummaryBlockedContentNotCurated
 	default:

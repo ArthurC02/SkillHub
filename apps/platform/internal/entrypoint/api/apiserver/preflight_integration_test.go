@@ -707,3 +707,37 @@ func TestTheCleanModeRefusalArrivesBeforeTheUserSpendsThreeStepsOnIt(t *testing.
 			"outside the hash, or every outstanding confirmation is revoked by it")
 	}
 }
+
+func TestASkillUnderALicenceHoldSaysSoInTheSummaryNotAfterTheConfirmation(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-hold-shows-in-summary")
+
+	code, before := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight: got %d (%s)", code, before.Error)
+	}
+	if before.Blocked != "" {
+		t.Fatalf("a skill under no hold reported blocked=%q", before.Blocked)
+	}
+
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET access_restriction = 'license-review' WHERE id = $1",
+		mustUUID(t, f.skillID)); err != nil {
+		t.Fatal(err)
+	}
+
+	code, held := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight under a hold: got %d (%s)", code, held.Error)
+	}
+	if held.Blocked != "access_restricted" {
+		t.Fatalf("the summary says blocked=%q for a skill POST /runs refuses; the user reads the "+
+			"whole summary and confirms it before anything tells them", held.Blocked)
+	}
+
+	if code, refused := f.startWithHash(t, held.Hash); code != http.StatusUnprocessableEntity {
+		t.Errorf("the summary blocks it but the run was accepted: %d (%s); the two sides must answer "+
+			"the same question the same way", code, refused.Error)
+	}
+}

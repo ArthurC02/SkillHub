@@ -17447,9 +17447,15 @@ type RunPermissionSummary struct {
 	// something the run is allowed to touch. A deployment that releases a version must not invalidate a
 	// confirmation someone is already holding.
 	//
-	// `content_not_curated` is the clean test mode refusing material that is neither in the public
-	// catalogue nor curated at this exact version. The run-time gate refuses it too; this field exists so
-	// the refusal arrives before the user has spent three steps on it.
+	// The values are the refusal reasons the run gates already count, so the screen and the enforcement
+	// cannot drift apart: the summary asks the same functions `POST /runs` enforces. `access_restricted`
+	// is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
+	// sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
+	// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
+	// the public catalogue nor curated at this exact version.
+	//
+	// Every one of these is also refused when the run is created; this field exists so the refusal arrives
+	// before the user has read a permission summary and confirmed it.
 	Blocked OptRunPermissionSummaryBlocked `json:"blocked"`
 	// Plain-language explanation of the summary, deliberately outside the hash. Rewording a sentence must
 	// not invalidate every outstanding confirmation, and the facts are in `summary` where the hash covers
@@ -17527,18 +17533,32 @@ func (*RunPermissionSummary) getRunPreflightRes() {}
 // something the run is allowed to touch. A deployment that releases a version must not invalidate a
 // confirmation someone is already holding.
 //
-// `content_not_curated` is the clean test mode refusing material that is neither in the public
-// catalogue nor curated at this exact version. The run-time gate refuses it too; this field exists so
-// the refusal arrives before the user has spent three steps on it.
+// The values are the refusal reasons the run gates already count, so the screen and the enforcement
+// cannot drift apart: the summary asks the same functions `POST /runs` enforces. `access_restricted`
+// is a licence hold on the skill, `capability_mismatch` a deployment with no model outlet or no
+// sandbox that fits, `scan_blocked` and `scan_unavailable` the static scan refusing or being unable to
+// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
+// the public catalogue nor curated at this exact version.
+//
+// Every one of these is also refused when the run is created; this field exists so the refusal arrives
+// before the user has read a permission summary and confirmed it.
 type RunPermissionSummaryBlocked string
 
 const (
-	RunPermissionSummaryBlockedContentNotCurated RunPermissionSummaryBlocked = "content_not_curated"
+	RunPermissionSummaryBlockedAccessRestricted   RunPermissionSummaryBlocked = "access_restricted"
+	RunPermissionSummaryBlockedCapabilityMismatch RunPermissionSummaryBlocked = "capability_mismatch"
+	RunPermissionSummaryBlockedScanBlocked        RunPermissionSummaryBlocked = "scan_blocked"
+	RunPermissionSummaryBlockedScanUnavailable    RunPermissionSummaryBlocked = "scan_unavailable"
+	RunPermissionSummaryBlockedContentNotCurated  RunPermissionSummaryBlocked = "content_not_curated"
 )
 
 // AllValues returns all RunPermissionSummaryBlocked values.
 func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 	return []RunPermissionSummaryBlocked{
+		RunPermissionSummaryBlockedAccessRestricted,
+		RunPermissionSummaryBlockedCapabilityMismatch,
+		RunPermissionSummaryBlockedScanBlocked,
+		RunPermissionSummaryBlockedScanUnavailable,
 		RunPermissionSummaryBlockedContentNotCurated,
 	}
 }
@@ -17546,6 +17566,14 @@ func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 // MarshalText implements encoding.TextMarshaler.
 func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 	switch s {
+	case RunPermissionSummaryBlockedAccessRestricted:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedCapabilityMismatch:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedScanBlocked:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedScanUnavailable:
+		return []byte(s), nil
 	case RunPermissionSummaryBlockedContentNotCurated:
 		return []byte(s), nil
 	default:
@@ -17556,6 +17584,18 @@ func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
 	switch RunPermissionSummaryBlocked(data) {
+	case RunPermissionSummaryBlockedAccessRestricted:
+		*s = RunPermissionSummaryBlockedAccessRestricted
+		return nil
+	case RunPermissionSummaryBlockedCapabilityMismatch:
+		*s = RunPermissionSummaryBlockedCapabilityMismatch
+		return nil
+	case RunPermissionSummaryBlockedScanBlocked:
+		*s = RunPermissionSummaryBlockedScanBlocked
+		return nil
+	case RunPermissionSummaryBlockedScanUnavailable:
+		*s = RunPermissionSummaryBlockedScanUnavailable
+		return nil
 	case RunPermissionSummaryBlockedContentNotCurated:
 		*s = RunPermissionSummaryBlockedContentNotCurated
 		return nil

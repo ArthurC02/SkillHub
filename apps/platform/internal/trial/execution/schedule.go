@@ -201,19 +201,27 @@ func requirementsFromPolicy(policy policySnapshot) Requirements {
 }
 
 func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) error {
+	reason, err := s.schedulableRefusal(ctx, policy)
+	if err != nil {
+		return refused(reason, err)
+	}
+	return nil
+}
+
+func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot) (string, error) {
 	if !policy.reachesAModel() {
-		return refused(ReasonCapabilityMismatch, ErrNoModelGateway)
+		return ReasonCapabilityMismatch, ErrNoModelGateway
 	}
 	registry := s.providers()
 	if len(registry.Providers) == 0 {
-		return nil
+		return "", nil
 	}
 	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy))
 	if errors.Is(err, ErrNoCompatibleProvider) {
-		return refused(ReasonCapabilityMismatch, err)
+		return ReasonCapabilityMismatch, err
 	}
 
-	return nil
+	return "", nil
 }
 
 func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {

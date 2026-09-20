@@ -64,11 +64,19 @@ func refused(reason string, err error) error {
 }
 
 func (s *Service) requireNotAccessRestricted(skill SkillFacts) error {
-	if !skill.AccessRestricted {
-		return nil
+	reason, err := accessVerdict(skill)
+	if err != nil {
+		return refused(reason, err)
 	}
-	return refused(ReasonAccessRestricted,
-		fmt.Errorf("%w (%s)", ErrAccessRestricted, skill.AccessRestrictionReason))
+	return nil
+}
+
+func accessVerdict(skill SkillFacts) (string, error) {
+	if !skill.AccessRestricted {
+		return "", nil
+	}
+	return ReasonAccessRestricted,
+		fmt.Errorf("%w (%s)", ErrAccessRestricted, skill.AccessRestrictionReason)
 }
 
 func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg.Report, bool) {
@@ -86,16 +94,16 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	return skillpkg.Validate(fsys), true
 }
 
-func scanVerdict(report skillpkg.Report, scanned bool) error {
+func scanVerdict(report skillpkg.Report, scanned bool) (string, error) {
 	if !scanned {
-		return refused(ReasonScanUnavailable, fmt.Errorf("%w: the package could not be scanned, "+
-			"and an unscanned package is not treated as a clean one", ErrScanBlocked))
+		return ReasonScanUnavailable, fmt.Errorf("%w: the package could not be scanned, "+
+			"and an unscanned package is not treated as a clean one", ErrScanBlocked)
 	}
 	if !report.Blocked {
-		return nil
+		return "", nil
 	}
-	return refused(ReasonScanBlocked, fmt.Errorf("%w: %s", ErrScanBlocked,
-		strings.Join(blockingCodes(report), ", ")))
+	return ReasonScanBlocked, fmt.Errorf("%w: %s", ErrScanBlocked,
+		strings.Join(blockingCodes(report), ", "))
 }
 
 func blockingCodes(report skillpkg.Report) []string {
@@ -110,6 +118,14 @@ func blockingCodes(report skillpkg.Report) []string {
 }
 
 func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) error {
+	reason, err := s.scanRefusal(ctx, objectKey)
+	if err != nil {
+		return refused(reason, err)
+	}
+	return nil
+}
+
+func (s *Service) scanRefusal(ctx context.Context, objectKey string) (string, error) {
 	report, scanned := s.packageReport(ctx, objectKey)
 	return scanVerdict(report, scanned)
 }
