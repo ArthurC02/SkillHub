@@ -309,7 +309,9 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
 			"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
 	case errors.Is(err, ErrGenerateNotForCatalogue):
-		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"公開目錄不生成 Skill。請切換到你自己的工作區再生成一次，"+
+				"做好之後可以從那裡發布到目錄。")
 	case errors.Is(err, ErrGeneratedNameCollision):
 
 		httpx.WriteError(w, http.StatusUnprocessableEntity,

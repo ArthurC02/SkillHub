@@ -265,6 +265,26 @@ func TestTheCatalogueDoesNotGenerateSkills(t *testing.T) {
 	}
 }
 
+func TestTheCatalogueRefusalReachesTheScreenInTheInterfaceLanguage(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t)
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-curator-http")
+	markCatalog(t, pool, c.workspaceID)
+
+	code, body := postJSON(t, c, "/skills/generate", `{"task_description":"任何任務。"}`)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("POST /skills/generate from the catalogue: got %d, body %v", code, body)
+	}
+	msg, _ := body["error"].(string)
+	if !strings.Contains(msg, "公開目錄不生成 Skill") {
+		t.Errorf("the refusal on screen is %q, want the interface language", msg)
+	}
+	if strings.Contains(msg, "ingest:") || strings.Contains(msg, "catalogue does not generate") {
+		t.Errorf("the sentinel's own English text reached the screen: %q", msg)
+	}
+}
+
 func workspaceOf(t *testing.T, pool *pgxpool.Pool, c *client) identity.Workspace {
 	t.Helper()
 	ws, err := gen.New(pool).GetWorkspace(context.Background(), gen.GetWorkspaceParams{
