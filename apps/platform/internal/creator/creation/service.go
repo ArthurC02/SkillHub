@@ -23,6 +23,7 @@ var (
 	ErrConflict       = errors.New("creation: stale revision")
 	ErrReplayMismatch = errors.New("creation: command reused")
 	ErrInvalidCommand = errors.New("creation: invalid command")
+	ErrUnknownOutcome = fmt.Errorf("%w: outcome this build has no branch for", ErrInvalidCommand)
 	ErrLimit          = errors.New("creation: limit reached")
 	ErrUnavailable    = errors.New("creation: capability unavailable")
 

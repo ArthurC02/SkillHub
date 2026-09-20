@@ -871,7 +871,7 @@ func TestProposalRejectsAnUnknownOutcomeButKeepsTheRecordedReply(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "trying something new", Outcome: "bogus", Brief: "b"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
-	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
+	if !errors.Is(err, ErrUnknownOutcome) || !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
 	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]

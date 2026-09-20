@@ -92,7 +92,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	case "tool_intent":
 		return s.useTool(ctx, ws, revision, e, r)
 	}
-	return "", false, ErrInvalidCommand
+	return "", false, ErrUnknownOutcome
 }
 
 func missingOutputRetries(e *envelope, reason string) *int {

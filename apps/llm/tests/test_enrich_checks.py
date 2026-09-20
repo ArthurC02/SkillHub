@@ -8,9 +8,6 @@ made the claim itself.
 from __future__ import annotations
 
 from skillhub_llm.enrich_checks import (
-    RULE_NON_ENGLISH_IN_EN_EXAMPLE,
-    RULE_RUNTIME_NOT_IN_LIMITATIONS,
-    RULE_UNSUPPORTED_APPRAISAL,
     check_enrichment,
 )
 
@@ -39,7 +36,7 @@ def test_a_python_dependency_the_limitations_never_mention_is_a_finding():
         limitations=["不支援掃描檔"],
         tags_flat=["python", "pandas"],
     )
-    assert rules(found) == [RULE_RUNTIME_NOT_IN_LIMITATIONS]
+    assert rules(found) == ["runtime_not_in_limitations"]
     assert found[0].token == "python"
     assert found[0].field == "limitations"
 
@@ -74,7 +71,7 @@ def test_an_appraisal_the_document_never_made_is_a_finding():
         skill_md="Converts .docx to markdown.",
         summary="產生結構清晰、專業的輸出。",
     )
-    assert rules(found) == [RULE_UNSUPPORTED_APPRAISAL] * 2
+    assert rules(found) == ["unsupported_appraisal"] * 2
     assert sorted(f.token for f in found) == ["professional", "well-structured"]
 
 
@@ -86,7 +83,7 @@ def test_an_appraisal_the_document_itself_claims_is_allowed():
 def test_the_appraisal_check_reads_limitations_and_tags_too():
     """The prompt says the rules apply to every field, so summary alone is not enough."""
     found = run(skill_md="Converts files.", limitations=["輸出可能不夠精確"])
-    assert rules(found) == [RULE_UNSUPPORTED_APPRAISAL]
+    assert rules(found) == ["unsupported_appraisal"]
     assert found[0].field == "limitations[0]"
 
 
@@ -101,7 +98,7 @@ def test_cjk_inside_an_english_example_is_a_finding():
         skill_md="Sets fonts.",
         task_examples_en=["Set the body text in 思源黑体", "Set the body text in Source Han Sans"],
     )
-    assert rules(found) == [RULE_NON_ENGLISH_IN_EN_EXAMPLE]
+    assert rules(found) == ["non_english_in_en_example"]
     assert found[0].field == "task_examples[0].en"
 
 

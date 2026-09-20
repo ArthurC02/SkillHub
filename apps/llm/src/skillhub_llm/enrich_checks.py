@@ -11,17 +11,17 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-RULE_RUNTIME_NOT_IN_LIMITATIONS = "runtime_not_in_limitations"
-RULE_UNSUPPORTED_APPRAISAL = "unsupported_appraisal"
-RULE_NON_ENGLISH_IN_EN_EXAMPLE = "non_english_in_en_example"
-
 
 class Finding(BaseModel):
     """One rule, one field, and nothing quoted from the model."""
 
     model_config = ConfigDict(extra="forbid")
 
-    rule: str = Field(..., max_length=64)
+    rule: Literal[
+        "runtime_not_in_limitations",
+        "unsupported_appraisal",
+        "non_english_in_en_example",
+    ]
     field: str = Field(..., max_length=64)
     token: str = Field("", max_length=64)
     severity: Literal["warning"] = "warning"
@@ -62,9 +62,7 @@ def _runtime_findings(source: str, limitations: list[str]) -> list[Finding]:
             continue
         if any(name in haystack for name in names):
             continue
-        out.append(
-            Finding(rule=RULE_RUNTIME_NOT_IN_LIMITATIONS, field="limitations", token=runtime)
-        )
+        out.append(Finding(rule="runtime_not_in_limitations", field="limitations", token=runtime))
     return out
 
 
@@ -107,7 +105,7 @@ def _appraisal_findings(source: str, fields: list[tuple[str, str]]) -> list[Find
             if key in seen:
                 continue
             seen.add(key)
-            out.append(Finding(rule=RULE_UNSUPPORTED_APPRAISAL, field=name, token=token))
+            out.append(Finding(rule="unsupported_appraisal", field=name, token=token))
     return out
 
 
@@ -125,7 +123,7 @@ _CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿豈-﫿]")
 
 def _english_example_findings(examples: list[str]) -> list[Finding]:
     return [
-        Finding(rule=RULE_NON_ENGLISH_IN_EN_EXAMPLE, field=f"task_examples[{i}].en")
+        Finding(rule="non_english_in_en_example", field=f"task_examples[{i}].en")
         for i, text in enumerate(examples)
         if _CJK.search(text)
     ]
