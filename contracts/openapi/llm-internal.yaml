@@ -746,9 +746,12 @@ components:
             the same way `seed` below does, and for the same reason.
 
             Reported for the reason `model` and `prompt_version` are reported,
-            but only those two are stored: no table on the control-plane side
-            has a column for sampling, so today this value is read off the
-            response and dropped (04 丙-279).
+            but only those two are stored, and that is deliberate. A verdict
+            names its own ruler with the judge model, the prompt version and
+            the rubric version; sampling is a function of the model and the
+            gateway config, and the config is versioned, so what drifts is the
+            config and not the verdict. This value is read off the response
+            and dropped.
 
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
@@ -1413,9 +1416,12 @@ components:
             the same way `seed` below does, and for the same reason.
 
             Reported for the reason `model` and `prompt_version` are reported,
-            but only those two are stored: no table on the control-plane side
-            has a column for sampling, so today this value is read off the
-            response and dropped (04 丙-279).
+            but only those two are stored, and that is deliberate. A verdict
+            names its own ruler with the judge model, the prompt version and
+            the rubric version; sampling is a function of the model and the
+            gateway config, and the config is versioned, so what drifts is the
+            config and not the verdict. This value is read off the response
+            and dropped.
 
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
@@ -1675,9 +1681,12 @@ components:
             the same way `seed` below does, and for the same reason.
 
             Reported for the reason `model` and `prompt_version` are reported,
-            but only those two are stored: no table on the control-plane side
-            has a column for sampling, so today this value is read off the
-            response and dropped (04 丙-279).
+            but only those two are stored, and that is deliberate. A verdict
+            names its own ruler with the judge model, the prompt version and
+            the rubric version; sampling is a function of the model and the
+            gateway config, and the config is versioned, so what drifts is the
+            config and not the verdict. This value is read off the response
+            and dropped.
 
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
@@ -1839,9 +1848,12 @@ components:
             the same way `seed` below does, and for the same reason.
 
             Reported for the reason `model` and `prompt_version` are reported,
-            but only those two are stored: no table on the control-plane side
-            has a column for sampling, so today this value is read off the
-            response and dropped (04 丙-279).
+            but only those two are stored, and that is deliberate. A verdict
+            names its own ruler with the judge model, the prompt version and
+            the rubric version; sampling is a function of the model and the
+            gateway config, and the config is versioned, so what drifts is the
+            config and not the verdict. This value is read off the response
+            and dropped.
 
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored

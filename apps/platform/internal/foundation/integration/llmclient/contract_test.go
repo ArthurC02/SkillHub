@@ -64,8 +64,8 @@ var notModelledInGo = map[string]string{
 }
 
 const samplingIsReportedButNotStored = "reported so a caller could record which sampling was asked " +
-	"for; nothing in the control plane stores it, and 05 R-31 measured that the tiers this is " +
-	"reported by drop the parameter anyway (04 丙-279)"
+	"for; nothing stores it, because a verdict names its ruler with the judge model, the prompt " +
+	"version and the rubric version, and the tiers this is reported by drop the parameter anyway"
 
 var ignoredResponseFields = map[string]string{
 	"EnrichSkillResponse.temperature":         samplingIsReportedButNotStored,
