@@ -214,7 +214,7 @@ func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot)
 	}
 	registry := s.providers()
 	if len(registry.Providers) == 0 {
-		return "", nil
+		return ReasonCapabilityMismatch, ErrNoProvider
 	}
 	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy))
 	if errors.Is(err, ErrNoCompatibleProvider) {

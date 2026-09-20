@@ -218,7 +218,7 @@ func (f fixture) start(t *testing.T) runView {
 	return view
 }
 
-func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
+func TestASandboxThatDisappearsAfterQueueingFailsTheRunWithNothingDispatched(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-run-chain")
@@ -242,6 +242,7 @@ func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
 			read.SkillID, read.TestCaseID, f.skillID, f.testCaseID)
 	}
 
+	a.runs.Providers = run.NewRegistry()
 	startWorker(t, a)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
 

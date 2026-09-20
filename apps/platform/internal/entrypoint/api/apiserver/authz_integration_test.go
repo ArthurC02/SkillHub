@@ -259,6 +259,9 @@ func newAPITuned(
 		tune(&app.Deps)
 	}
 	app.RunSvc.Gateway = providertest.NewGateway()
+	sandbox := providertest.New("fixture_sandbox", "test-token")
+	t.Cleanup(sandbox.Close)
+	app.RunSvc.Providers = run.NewRegistry(sandbox.Provider())
 	handler := app.Handler()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

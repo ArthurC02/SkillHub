@@ -130,6 +130,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "")
 	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "")
 	a := newAPI(t, pool)
+	a.runs.Providers = run.NewRegistry()
 	f := newFixture(t, a, pool, "alice-preflight-summary")
 
 	if code, body := f.upload(t, "/test-cases/"+f.testCaseID+"/datasets", "rows.csv", csvBytes(512)); code != http.StatusCreated {
@@ -739,5 +740,44 @@ func TestASkillUnderALicenceHoldSaysSoInTheSummaryNotAfterTheConfirmation(t *tes
 	if code, refused := f.startWithHash(t, held.Hash); code != http.StatusUnprocessableEntity {
 		t.Errorf("the summary blocks it but the run was accepted: %d (%s); the two sides must answer "+
 			"the same question the same way", code, refused.Error)
+	}
+}
+
+func TestADeploymentWithNoSandboxSaysSoBeforeTheRunIsQueued(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-no-sandbox-anywhere")
+
+	code, fleeted := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight: got %d (%s)", code, fleeted.Error)
+	}
+	if fleeted.Blocked != "" {
+		t.Fatalf("a deployment with a sandbox reported blocked=%q", fleeted.Blocked)
+	}
+
+	a.runs.Providers = run.NewRegistry()
+
+	code, fleetless := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight on a fleet-less deployment: got %d (%s)", code, fleetless.Error)
+	}
+	if fleetless.Blocked != "capability_mismatch" {
+		t.Fatalf("the summary says blocked=%q on a deployment with nowhere to run; dispatch already "+
+			"knows this, and the user should not pay three steps to learn it", fleetless.Blocked)
+	}
+
+	if code, refused := f.startWithHash(t, fleetless.Hash); code != http.StatusUnprocessableEntity {
+		t.Fatalf("a run was queued for a deployment with no sandbox: %d (%s)", code, refused.Error)
+	}
+
+	var queued int
+	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM runs WHERE workspace_id = $1", mustUUID(t, f.workspaceID),
+	).Scan(&queued); err != nil {
+		t.Fatal(err)
+	}
+	if queued != 0 {
+		t.Errorf("runs recorded = %d, want 0: a refusal that still costs a slot is not a refusal", queued)
 	}
 }
