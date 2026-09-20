@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -30,14 +29,19 @@ func timesLost(attempts []gen.RunAttempt) int {
 	return lost
 }
 
-func lostProviders(attempts []gen.RunAttempt, halted map[string]gen.DispatchHalt) map[string]gen.DispatchHalt {
-	avoid := maps.Clone(halted)
-	if avoid == nil {
-		avoid = map[string]gen.DispatchHalt{}
+type SetAsideProvider struct {
+	Why         string
+	MayComeBack bool
+}
+
+func lostProviders(attempts []gen.RunAttempt, halted map[string]gen.DispatchHalt) map[string]SetAsideProvider {
+	avoid := make(map[string]SetAsideProvider, len(halted)+len(attempts))
+	for name, halt := range halted {
+		avoid[name] = SetAsideProvider{Why: "drained (" + halt.Source + ")", MayComeBack: true}
 	}
 	for _, a := range attempts {
 		if a.ErrorClass != nil && *a.ErrorClass == errClassProviderLost {
-			avoid[a.Provider] = gen.DispatchHalt{Provider: a.Provider, Source: "lost this run's earlier attempt"}
+			avoid[a.Provider] = SetAsideProvider{Why: "lost this run's earlier attempt"}
 		}
 	}
 	return avoid

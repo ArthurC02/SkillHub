@@ -1457,6 +1457,46 @@ func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 	}
 }
 
+func TestASandboxThatGoesUnhealthyAfterQueueingKeepsTheRunInTheQueue(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-sandbox-recovering")
+	clearRunBacklog(t, pool)
+
+	fake := providertest.New("recovering_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	registry := run.NewRegistry(fake.Provider())
+	registry.TTL = time.Millisecond
+	a.runs.Providers = registry
+
+	created := f.start(t)
+	if created.Status != string(gen.RunStatusQueued) {
+		t.Fatalf("new run status = %q, want queued", created.Status)
+	}
+
+	sick := providertest.DefaultCapability("recovering_sandbox")
+	unhealthy := false
+	sick.Availability.Healthy = &unhealthy
+	fake.Capability = &sick
+
+	svc := *a.runs
+	svc.Providers = registry
+	svc.Store = a.packages
+	svc.SlotWaitInterval = 20 * time.Millisecond
+
+	err := svc.Drive(context.Background(), mustUUID(t, f.workspaceID), mustUUID(t, created.RunID))
+	if !errors.Is(err, run.ErrTryAgainLater) {
+		t.Fatalf("driving a run whose only sandbox is unhealthy returned %v, want it to come back later", err)
+	}
+	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) {
+		t.Errorf("run status = %q (%s), want queued: the sandbox may come back, and failing here "+
+			"spends the user's run on an outage", view.Status, view.StatusReason)
+	}
+	if fake.Dispatches() != 0 {
+		t.Error("an unhealthy sandbox was dispatched to")
+	}
+}
+
 func (c *client) runPage(t *testing.T, query string) []runListView {
 	t.Helper()
 	var out struct {

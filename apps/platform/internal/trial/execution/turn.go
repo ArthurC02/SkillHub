@@ -57,7 +57,7 @@ func (l runLine) ahead(of gen.Run) []gen.Run {
 	return ahead
 }
 
-func (s *Service) turnBelongsToAnother(ctx context.Context, current gen.Run, placements []Placement, halted map[string]gen.DispatchHalt) (bool, error) {
+func (s *Service) turnBelongsToAnother(ctx context.Context, current gen.Run, placements []Placement, setAside map[string]SetAsideProvider) (bool, error) {
 	unfinished, err := s.queries().ListUnfinishedRuns(ctx, turnWindow)
 	if err != nil {
 		return false, err
@@ -68,19 +68,19 @@ func (s *Service) turnBelongsToAnother(ctx context.Context, current gen.Run, pla
 	}
 	contenders := 0
 	for _, other := range lineOf(unfinished).ahead(current) {
-		if s.providers().sharesPlacement(ctx, other, placements, halted) {
+		if s.providers().sharesPlacement(ctx, other, placements, setAside) {
 			contenders++
 		}
 	}
 	return contenders >= free, nil
 }
 
-func (r *Registry) sharesPlacement(ctx context.Context, other gen.Run, placements []Placement, halted map[string]gen.DispatchHalt) bool {
+func (r *Registry) sharesPlacement(ctx context.Context, other gen.Run, placements []Placement, setAside map[string]SetAsideProvider) bool {
 	req, _, err := requirementsFor(other)
 	if err != nil {
 		return false
 	}
-	theirs, err := r.Place(ctx, req, halted)
+	theirs, err := r.Place(ctx, req, setAside)
 	if err != nil {
 		return false
 	}

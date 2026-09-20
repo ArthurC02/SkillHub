@@ -315,18 +315,33 @@ func (s *Service) permissionSummaryFor(
 		EstimatedCost: estimate,
 		Quota:         quota,
 		Blocked:       blocked,
-		Notes:         summaryNotes(snap),
+		Notes:         s.summaryNotes(ctx, snap),
 	}, nil
 }
 
-func summaryNotes(snap policySnapshot) []string {
-	if snap.reachesAModel() {
-		return permissionSummaryNotes
+func (s *Service) summaryNotes(ctx context.Context, snap policySnapshot) []string {
+	if !snap.reachesAModel() {
+		return append([]string{noModelOutletNote}, permissionSummaryNotes...)
 	}
-	return append([]string{noModelOutletNote}, permissionSummaryNotes...)
+	if s.sandboxesUnavailableNow(ctx, snap) {
+		return append([]string{sandboxUnavailableNote}, permissionSummaryNotes...)
+	}
+	return permissionSummaryNotes
+}
+
+func (s *Service) sandboxesUnavailableNow(ctx context.Context, snap policySnapshot) bool {
+	registry := s.providers()
+	if len(registry.Providers) == 0 {
+		return false
+	}
+	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(snap))
+	return errors.Is(err, ErrNoSandboxAvailableYet)
 }
 
 const noModelOutletNote = "這個部署沒有模型出路:Sandbox 連不到任何模型,因此現在開不了 Run。"
+
+const sandboxUnavailableNote = "執行環境現在暫時不可用:沙箱正在重啟、被排空或連不上。" +
+	"試跑仍然開得起來,它會留在佇列裡等,恢復之後自己開始,不必重按。"
 
 var permissionSummaryNotes = []string{
 	"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",

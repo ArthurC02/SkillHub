@@ -351,7 +351,7 @@ func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
 	incompatible := withSlots("weak", 4)
 	incompatible.Isolation.Strength = "weak"
 	drained := withSlots("drained", 4)
-	halted := map[string]gen.DispatchHalt{"drained": {Source: "incident"}}
+	halted := map[string]SetAsideProvider{"drained": {Why: "drained (incident)", MayComeBack: true}}
 
 	cases := []struct {
 		name     string
@@ -367,6 +367,62 @@ func TestPlaceTellsAFullFleetApartFromOneThatCannotRunTheRequest(t *testing.T) {
 			_, err := tc.registry.Place(context.Background(), defaultRequirements(), halted)
 			if !errors.Is(err, tc.want) {
 				t.Errorf("err = %v, want %v", err, tc.want)
+			}
+		})
+	}
+}
+
+func unhealthy(name string) ProviderCapability {
+	c := withSlots(name, 4)
+	no := false
+	c.Availability.Healthy = &no
+	return c
+}
+
+func neverFits(name string) ProviderCapability {
+	c := withSlots(name, 4)
+	c.Isolation.Strength = weakIsolation
+	return c
+}
+
+func TestAPoolThatMayRecoverIsToldApartFromOneThatCouldNeverRunTheRequest(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	unreachable := &Registry{
+		Providers: []SandboxProvider{NewProvider("gone", "http://127.0.0.1:1", "")},
+		cached:    map[string]cachedCapability{},
+	}
+	halted := map[string]SetAsideProvider{
+		"drained": {Why: "drained (incident)", MayComeBack: true},
+		"lost":    {Why: "lost this run's earlier attempt"},
+	}
+
+	for _, tc := range []struct {
+		name     string
+		registry *Registry
+		want     error
+	}{
+		{"the only sandbox already lost this run once",
+			registryWithCapabilities(withSlots("lost", 4)), ErrNoCompatibleProvider},
+		{"the only sandbox reports itself unhealthy",
+			registryWithCapabilities(unhealthy("sick")), ErrNoSandboxAvailableYet},
+		{"the only sandbox is drained", registryWithCapabilities(withSlots("drained", 4)), ErrNoSandboxAvailableYet},
+		{"the only sandbox does not answer", unreachable, ErrNoSandboxAvailableYet},
+		{"one sandbox may recover and one never fits",
+			registryWithCapabilities(unhealthy("sick"), neverFits("weak")), ErrNoSandboxAvailableYet},
+		{"no sandbox could ever run it", registryWithCapabilities(neverFits("weak")), ErrNoCompatibleProvider},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.registry.Place(context.Background(), defaultRequirements(), halted)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("err = %v, want %v", err, tc.want)
+			}
+			other := ErrNoCompatibleProvider
+			if tc.want == ErrNoCompatibleProvider {
+				other = ErrNoSandboxAvailableYet
+			}
+			if errors.Is(err, other) {
+				t.Errorf("err = %v is both %v and %v; the caller keys on which one it is", err, tc.want, other)
 			}
 		})
 	}

@@ -434,6 +434,8 @@ var (
 
 	ErrNoCompatibleProvider = errors.New("no configured sandbox provider can run this request")
 
+	ErrNoSandboxAvailableYet = errors.New("every sandbox provider is drained, unreachable or unhealthy right now")
+
 	ErrNoFreeSlot = errors.New("every sandbox provider that can run this request is full")
 )
 

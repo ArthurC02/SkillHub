@@ -219,6 +219,8 @@ func (d *driver) dispatch(ctx context.Context) error {
 	switch {
 	case errors.Is(err, ErrNoFreeSlot):
 		return d.waitForSlot()
+	case errors.Is(err, ErrNoSandboxAvailableYet):
+		return d.waitForSandbox(err)
 	case err != nil:
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
 			d.reasonFor(failureNoProvider, err))
@@ -876,6 +878,13 @@ func (d *driver) timeoutReason() statusReason { return d.clock.timeoutReason() }
 func (d *driver) waitForSlot() error {
 	slog.Info("every sandbox provider that can run this is full; the run keeps its place in the queue",
 		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
+	return tryAgainIn(d.svc.slotWaitInterval())
+}
+
+func (d *driver) waitForSandbox(err error) error {
+	slog.Warn("no sandbox provider is available right now; the run keeps its place in the queue "+
+		"instead of failing, because waiting can fix this",
+		"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status, "error", err)
 	return tryAgainIn(d.svc.slotWaitInterval())
 }
 

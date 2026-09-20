@@ -224,13 +224,42 @@ func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot)
 	return "", nil
 }
 
+// waitingCanFixThis separates a pool that is momentarily short of sandboxes
+// from one that could never run this request; only the latter refuses the run.
+type waitingCanFixThis struct{ error }
+
+func waitingCanFix(err error) bool {
+	_, ok := errors.AsType[waitingCanFixThis](err)
+	return ok
+}
+
+func setAsideRefusal(name string, aside SetAsideProvider) error {
+	refusal := fmt.Errorf("%s is set aside: %s", name, aside.Why)
+	if aside.MayComeBack {
+		return waitingCanFixThis{refusal}
+	}
+	return refusal
+}
+
+func noneFit(refusals []error) error {
+	sentinel := ErrNoCompatibleProvider
+	why := make([]string, 0, len(refusals))
+	for _, refusal := range refusals {
+		if waitingCanFix(refusal) {
+			sentinel = ErrNoSandboxAvailableYet
+		}
+		why = append(why, refusal.Error())
+	}
+	return fmt.Errorf("%w: %s", sentinel, strings.Join(why, "; "))
+}
+
 func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	name := c.Provider
 	if name == "" {
 		name = "provider"
 	}
 	if c.Availability.Healthy != nil && !*c.Availability.Healthy {
-		return RuntimeProfile{}, fmt.Errorf("%s reports itself unhealthy", name)
+		return RuntimeProfile{}, waitingCanFixThis{fmt.Errorf("%s reports itself unhealthy", name)}
 	}
 
 	if !c.Isolation.Strength.meets(requiredIsolation()) {
@@ -324,8 +353,8 @@ func (r *Registry) Select(ctx context.Context, req Requirements) (SandboxProvide
 	return compatible[0].Provider, compatible[0].Capability, compatible[0].Profile, nil
 }
 
-func (r *Registry) Place(ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt) ([]Placement, error) {
-	compatible, err := r.compatible(ctx, req, halted)
+func (r *Registry) Place(ctx context.Context, req Requirements, setAside map[string]SetAsideProvider) ([]Placement, error) {
+	compatible, err := r.compatible(ctx, req, setAside)
 	if err != nil {
 		return nil, err
 	}
@@ -337,20 +366,20 @@ func (r *Registry) Place(ctx context.Context, req Requirements, halted map[strin
 	return free, nil
 }
 
-func (r *Registry) compatible(ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt) ([]Placement, error) {
+func (r *Registry) compatible(ctx context.Context, req Requirements, setAside map[string]SetAsideProvider) ([]Placement, error) {
 	if len(r.Providers) == 0 {
 		return nil, ErrNoProvider
 	}
 	var placements []Placement
-	reasons := make([]string, 0, len(r.Providers))
+	refusals := make([]error, 0, len(r.Providers))
 	for _, p := range r.Providers {
-		if halt, ok := halted[p.Name()]; ok {
-			reasons = append(reasons, fmt.Sprintf("%s is drained (%s)", p.Name(), halt.Source))
+		if aside, ok := setAside[p.Name()]; ok {
+			refusals = append(refusals, setAsideRefusal(p.Name(), aside))
 			continue
 		}
 		capability, err := r.Capability(ctx, p)
 		if err != nil {
-			reasons = append(reasons, fmt.Sprintf("%s is unreachable", p.Name()))
+			refusals = append(refusals, waitingCanFixThis{fmt.Errorf("%s is unreachable", p.Name())})
 			continue
 		}
 		if capability.Provider == "" {
@@ -358,13 +387,13 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, halted map[
 		}
 		profile, err := Match(capability, req)
 		if err != nil {
-			reasons = append(reasons, err.Error())
+			refusals = append(refusals, err)
 			continue
 		}
 		placements = append(placements, Placement{Provider: p, Capability: capability, Profile: profile})
 	}
 	if len(placements) == 0 {
-		return nil, fmt.Errorf("%w: %s", ErrNoCompatibleProvider, strings.Join(reasons, "; "))
+		return nil, noneFit(refusals)
 	}
 	return placements, nil
 }

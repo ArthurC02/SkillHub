@@ -109,6 +109,39 @@ func TestAProviderThatCannotBeAskedClaimsNoSecrets(t *testing.T) {
 	}
 }
 
+func TestASandboxThatMayComeBackQueuesTheRunInsteadOfRefusingIt(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	recovering := &Service{Providers: registryWithCapabilities(unhealthy("sick"))}
+
+	if reason, err := recovering.schedulableRefusal(context.Background(), withGatewayGrant()); err != nil {
+		t.Errorf("a run was refused for %q while the pool may recover: %v; SEC-002 keeps it queued, "+
+			"and refusing spends the user's attempt on something waiting would have fixed", reason, err)
+	}
+
+	hopeless := &Service{Providers: registryWithCapabilities(neverFits("weak"))}
+	_, err := hopeless.schedulableRefusal(context.Background(), withGatewayGrant())
+	if !errors.Is(err, ErrNoCompatibleProvider) {
+		t.Errorf("err = %v, want %v: a pool that could never run this must still refuse at once",
+			err, ErrNoCompatibleProvider)
+	}
+}
+
+func TestTheSummarySaysTheSandboxesAreDownAndThatTheRunWillWait(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	down := &Service{Providers: registryWithCapabilities(unhealthy("sick"))}
+	notes := down.summaryNotes(context.Background(), withGatewayGrant())
+	if !slices.Contains(notes, sandboxUnavailableNote) {
+		t.Errorf("notes = %v, want one saying the sandboxes are down and the run will wait", notes)
+	}
+
+	up := &Service{Providers: registryWithCapabilities(withSlots("ok", 4))}
+	if notes := up.summaryNotes(context.Background(), withGatewayGrant()); slices.Contains(notes, sandboxUnavailableNote) {
+		t.Error("a healthy pool is told the sandboxes are down")
+	}
+}
+
 func TestPreflightMissingVersionIsPreflightTargetNotFound(t *testing.T) {
 	svc := &Service{
 		TestLab: &testlab.Service{},
