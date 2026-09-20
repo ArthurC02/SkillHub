@@ -2323,3 +2323,22 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 - **建議**：(a)。事件化在同一個資料庫裡買到的是未來拆分時比較好搬，付出的是今天就成立的全有全無；[系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑)那項決策裡，服務拆分要由壓力觸發的條件沒有出現。
 - **不決定的代價**：沒有；照現況運作。
 - **決定之後誰動**：選 (a) 沒有工作；選 (b) 由 Agent 依[Run 編排與非同步工作流程](../adr/README.md#run-編排與非同步工作流程)開事件與 Mailbox，並改寫 CORE-007 的允收準則。
+
+## R-84｜模型端點的逾時上限由誰決定（`04` 丙-262） — ✅ **已裁定並落地（2026-09-20）：平台決定上限，系統管理員在 Admin 頁面於上限內調整**
+
+- 日期：2026-09-20
+- **要決定的是什麼**：六個模型端點的逾時秒數寫死在 `apps/llm` 的模組常數裡，而契約在三個端點明寫「retry and timeout policy belong to Go」。丙-262 要求兩者擇一：把逾時放進請求，或改掉契約那句話。
+- **已經查到的事實**：
+  1. Go 其實已經在決定自己的 deadline——六個呼叫點各有一個 `// budget-over:` 標記的常數，而 `tools/devctl/timeout_budgets.go` 強制 Go 的 deadline 至少比 Python 的常數多 5 秒，少一邊標記就紅。缺的不是「Go 沒決定」，是 Go 決定了卻沒告訴 Python。
+  2. 六個端點的 request schema 沒有 `timeout_seconds`，所以生效的永遠是 Python 的常數。
+  3. `/embed` 已經是正確形狀：欄位選填，服務端取 `min()`，呼叫端只能往下壓。
+  4. 後台沒有任何「設定值」機制；唯一「operator 執行期寫入、持久化、影響全平台」的先例是派送煞車。
+- **裁定（負責人 2026-09-20 指示「逾時上限應該由平台決定，並且系統管理員可以在 Admin 頁面設定」）**：
+
+1. **契約補欄位，Python 照 `/embed` 的形狀 honour 它。** 六個 request schema 加選填的 `timeout_seconds`，服務端取 `min()`：呼叫端只能把上限往下壓，不能延長；零或負數回 422。
+2. **編譯期的那一對常數不動，它就是「平台決定的上限」。** Python 的常數是它自我保護的一部分，不從資料庫改——搬進 DB 會同時破掉鐵律 6 與 `timeout-budget` 檢查（後者讀的是原始碼字面值）。
+3. **管理員設的值只能落在 `[1 秒, Go 的 deadline − 5 秒]`**，由 Go 在讀取時夾住。要突破硬天花板＝改程式並推 Python 常數。5 秒與 `timeout_budgets.go` 用的是同一個距離。
+4. **持久化與擁有者**：`model_call_budgets`（migration `0082`），一個 kind 一列，缺列＝用編譯期預設。擁有者是新的 Generic 套件 `foundation/integration/modelbudget`；它只存一個秒數與是誰設的，**哪些 kind 存在、值可以低到哪裡由呼叫端的 context 決定**，透過組裝根拼出的名冊（`wiring.NewModelBudgets`）傳進來。SQL 不認得領域：`kind` 沒有列舉端點的 CHECK。
+5. **端點與稽核**：`GET`／`PUT`／`DELETE /admin/model-budgets[/{kind}]`，逐條 `RequireOperator`；理由必填、空白不成立，寫入與 audit event 同一交易；清除一個本來就沒有值的 kind 照樣回 204 且照樣稽核。
+6. **畫面**：`/admin/model-budgets`（`02:OPS-009`）。超出範圍的數字由前端擋下並說明理由，不靜默夾住——收下一個數字卻存另一個，是對「平台會怎麼做」說謊。
+
