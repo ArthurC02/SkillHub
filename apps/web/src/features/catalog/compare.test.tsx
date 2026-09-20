@@ -110,6 +110,17 @@ async function waitFor(done: () => boolean, timeoutMs = 4000) {
 
 const text = () => container.textContent ?? "";
 
+function rowOf(heading: string) {
+  const row = Array.from(container.querySelectorAll("tbody tr")).find(
+    (candidate) => candidate.querySelector("th")?.textContent?.replace("有差異", "") === heading,
+  );
+  expect(row, `${heading} row`).toBeDefined();
+  return row!;
+}
+
+const cellOf = (heading: string, column: number) =>
+  rowOf(heading).querySelectorAll("td")[column].textContent;
+
 const candidateButtons = () =>
   Array.from(container.querySelectorAll("button")).filter((b) =>
     (b.textContent ?? "").startsWith("與這一次比較"),
@@ -140,6 +151,48 @@ test("DISC-009 comparison gives absent fields their actual state", async () => {
   );
   expect(versionRow).toBeDefined();
   expect(versionRow?.querySelector("td")?.textContent).toBe("不適用");
+});
+
+test("DISC-009 §2.9 量過而且是零的欄位印 0，不是未測量", async () => {
+  const measuredZero = skillDetail("z", "Z");
+  measuredZero.enrichment.tags = { inputs: [], outputs: ["markdown"], tools: [], dependencies: [] };
+  measuredZero.limitations = [];
+  await render(<CompareTable skills={[measuredZero, skillDetail("o", "O")]} />);
+
+  expect(cellOf("輸入", 0), "模型量過、這個套件沒有輸入").toBe("0 項");
+  expect(cellOf("依賴", 0), "模型量過、這個套件沒有依賴").toBe("0 項");
+  expect(cellOf("限制", 0), "模型與掃描都跑過、兩邊都沒有發現").toBe("0 項");
+});
+
+test("DISC-009 §2.9 一邊處理中、一邊未測量：那一列要說有差異", async () => {
+  const pending = skillDetail("p", "P");
+  pending.enrichment = { status: "pending", note: "正在處理" };
+  const enriched = skillDetail("e", "E");
+  enriched.enrichment = { ...enriched.enrichment, tags: undefined };
+  await render(<CompareTable skills={[pending, enriched]} />);
+
+  expect(cellOf("輸入", 0)).toBe("處理中");
+  expect(cellOf("輸入", 1)).toBe("未測量");
+  expect(rowOf("輸入").querySelector("th")?.textContent).toContain("有差異");
+});
+
+test("DISC-009 §2.9 每一列的缺席各自說出自己的型別", async () => {
+  const bare = skillDetail("b", "B");
+  bare.summary = "";
+  bare.allowed_tools = undefined;
+  bare.source = undefined;
+  bare.version = undefined;
+  bare.enrichment = { status: "pending", note: "正在處理" };
+  const scannedWithoutTools = skillDetail("s", "S");
+  scannedWithoutTools.allowed_tools = undefined;
+  await render(<CompareTable skills={[bare, scannedWithoutTools]} />);
+
+  expect(cellOf("套件自述摘要", 0), "套件自己沒寫 description").toBe("不適用");
+  expect(cellOf("白話摘要（AI 產生）", 0)).toBe("處理中");
+  expect(cellOf("套件宣告可用的工具（權限）", 0), "沒有保存版本，套件從來沒被掃過").toBe("未測量");
+  expect(cellOf("套件宣告可用的工具（權限）", 1), "掃過了，套件沒有宣告這個欄位").toBe("不適用");
+  expect(cellOf("來源", 0)).toBe("不適用");
+  expect(cellOf("版本與時間", 0)).toBe("不適用");
 });
 
 test("DISC-009 最小匯入的 Skill：不印表外詞「未提供」", async () => {

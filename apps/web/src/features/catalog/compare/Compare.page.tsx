@@ -8,12 +8,13 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import type { SkillDetail, SkillTags } from "../../../core/api/types";
+import { IN_PROGRESS, type Absence } from "../../../shared/ui/absence";
 import "./Compare.page.css";
 
 type TagBucket = keyof SkillTags;
 
 function tagBucket(skill: SkillDetail, bucket: TagBucket): string | undefined {
-  return skill.enrichment.tags?.[bucket].join(" ") || undefined;
+  return skill.enrichment.tags?.[bucket].join(" ");
 }
 
 function tagRenderer(bucket: TagBucket) {
@@ -28,38 +29,45 @@ function tagRenderer(bucket: TagBucket) {
   );
 }
 
+type Absent = Absence | typeof IN_PROGRESS;
+
 type CompareRow = {
   label: string;
-  signature: (skill: SkillDetail) => string | undefined;
   render?: (skill: SkillDetail) => ReactNode;
-  absent?: (skill: SkillDetail) => ReactNode;
-};
+} & (
+  | { signature: (skill: SkillDetail) => string; absent?: never }
+  | {
+      signature: (skill: SkillDetail) => string | undefined;
+      absent: (skill: SkillDetail) => Absent;
+    }
+);
 
-const enrichmentAbsence = (skill: SkillDetail) =>
-  skill.enrichment.status === "pending" ? "處理中" : "未測量";
+const modelAbsence = (skill: SkillDetail): Absent =>
+  skill.enrichment.status === "pending" ? IN_PROGRESS : "未測量";
 
-const tagAbsence = (skill: SkillDetail) =>
-  skill.enrichment.status === "pending" ? "處理中" : "未測量";
+const packageScanned = (skill: SkillDetail) => skill.version !== undefined;
 
-const notMeasured = () => "未測量";
-const notApplicable = () => "不適用";
+const notApplicable = (): Absent => "不適用";
 
 const ROWS: CompareRow[] = [
   {
     label: "套件自述摘要",
     signature: (skill) => skill.summary || undefined,
-    absent: notMeasured,
+    absent: notApplicable,
   },
   {
     label: "白話摘要（AI 產生）",
     signature: (skill) =>
-      skill.enrichment.status === "enriched" ? skill.enrichment.summary : undefined,
-    absent: enrichmentAbsence,
+      skill.enrichment.status === "enriched" ? skill.enrichment.summary || undefined : undefined,
+    absent: modelAbsence,
   },
   {
     label: "可以用來做什麼（AI 產生的任務範例）",
-    signature: (skill) => skill.enrichment.task_examples?.join("\n") || undefined,
-    absent: enrichmentAbsence,
+    signature: (skill) =>
+      skill.enrichment.status === "enriched"
+        ? skill.enrichment.task_examples?.join("\n")
+        : undefined,
+    absent: modelAbsence,
     render: (skill) => (
       <ul>
         {skill.enrichment.task_examples?.map((example) => (
@@ -70,9 +78,12 @@ const ROWS: CompareRow[] = [
   },
   {
     label: "限制",
-    signature: (skill) =>
-      skill.limitations.map((limit) => `${limit.source}:${limit.text}`).join("\n") || undefined,
-    absent: notMeasured,
+    signature: (skill) => {
+      const listed = skill.limitations.map((limit) => `${limit.source}:${limit.text}`).join("\n");
+      if (listed) return listed;
+      return skill.enrichment.status === "enriched" && packageScanned(skill) ? "" : undefined;
+    },
+    absent: modelAbsence,
     render: (skill) => (
       <ul>
         {skill.limitations.map((limit) => (
@@ -93,24 +104,24 @@ const ROWS: CompareRow[] = [
     label: "輸入",
     signature: (skill) => tagBucket(skill, "inputs"),
     render: tagRenderer("inputs"),
-    absent: tagAbsence,
+    absent: modelAbsence,
   },
   {
     label: "輸出",
     signature: (skill) => tagBucket(skill, "outputs"),
     render: tagRenderer("outputs"),
-    absent: tagAbsence,
+    absent: modelAbsence,
   },
   {
     label: "依賴",
     signature: (skill) => tagBucket(skill, "dependencies"),
     render: tagRenderer("dependencies"),
-    absent: tagAbsence,
+    absent: modelAbsence,
   },
   {
     label: "套件宣告可用的工具（權限）",
-    signature: (skill) => skill.allowed_tools?.join(" ") || undefined,
-    absent: notApplicable,
+    signature: (skill) => skill.allowed_tools?.join(" "),
+    absent: (skill) => (packageScanned(skill) ? "不適用" : "未測量"),
     render: (skill) => (
       <ul className="tag-list">
         {skill.allowed_tools?.map((tool) => (
@@ -220,8 +231,11 @@ export function CompareTable({ skills }: { skills: SkillDetail[] }) {
           <tbody>
             {ROWS.map((row) => {
               const signatures = skills.map(row.signature);
-              // Sentinel prefix keeps "no data" from matching a genuinely empty value.
-              const differs = new Set(signatures.map((value) => value ?? "\u0000未提供")).size > 1;
+              // Sentinel prefix keeps an absence word from matching a genuinely equal value.
+              const differs =
+                new Set(
+                  skills.map((skill, index) => signatures[index] ?? `\u0000${row.absent?.(skill)}`),
+                ).size > 1;
               return (
                 <tr key={row.label} className={differs ? "compare-differs" : undefined}>
                   <th scope="row">
@@ -231,7 +245,9 @@ export function CompareTable({ skills }: { skills: SkillDetail[] }) {
                   {skills.map((skill, index) => (
                     <td key={skill.skill_id}>
                       {signatures[index] === undefined ? (
-                        <span className="compare-unknown">{row.absent?.(skill) ?? "未測量"}</span>
+                        <span className="compare-unknown">{row.absent?.(skill)}</span>
+                      ) : signatures[index] === "" ? (
+                        "0 項"
                       ) : (
                         (row.render?.(skill) ?? signatures[index])
                       )}

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { expect, test } from "vitest";
+import { ABSENCE_WORDS } from "../shared/ui/absence";
 
 const src = join(import.meta.dirname, "..");
 const stylesheets = readdirSync(src, { recursive: true })
@@ -73,6 +74,17 @@ test("§5: the vocabulary may shrink, not grow", () => {
     DEVIATIONS.length,
     "the deviation list may only shrink; a new value belongs on the scale, not here",
   ).toBeLessThanOrEqual(2);
+});
+
+test("§2.9: the absence words the app may render are the document's table, minus the real zero", () => {
+  const from = doc.indexOf("### 2.9");
+  expect(from, "system.md has no section 2.9").toBeGreaterThan(-1);
+  const next = doc.indexOf("### ", from + 4);
+  const table = doc.slice(from, next === -1 ? doc.length : next);
+  const stated = [...table.matchAll(/^\| `([^`]+)` \|/gm)].map(([, word]) => word);
+  expect(stated, "§2.9 parsed no word — the table or the regex moved").toContain("未測量");
+  expect(stated, "§2.9 lost the real zero, which is the row this test subtracts").toContain("0");
+  expect(new Set(ABSENCE_WORDS)).toEqual(new Set(stated.filter((word) => word !== "0")));
 });
 
 test("§2.7: colour lives in tokens, and nothing multiplies it", () => {

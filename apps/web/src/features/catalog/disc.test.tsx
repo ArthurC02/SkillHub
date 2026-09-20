@@ -1192,8 +1192,12 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   const inputs = compareRow("輸入");
   expect(inputs.textContent).toContain("PDF");
   expect(inputs.querySelectorAll(".compare-unknown")).toHaveLength(1);
-  expect(compareRow("輸出").querySelectorAll(".compare-unknown")).toHaveLength(2);
-  expect(compareRow("限制").querySelectorAll(".compare-unknown")).toHaveLength(2);
+  const outputs = compareRow("輸出");
+  expect(outputs.textContent, "左邊量過了，而且沒有輸出").toContain("0 項");
+  expect(outputs.querySelectorAll(".compare-unknown"), "右邊還沒有標籤").toHaveLength(1);
+  const limits = compareRow("限制");
+  expect(limits.textContent, "左邊模型與掃描都跑過，兩邊都沒有發現").toContain("0 項");
+  expect(limits.querySelectorAll(".compare-unknown"), "右邊還在處理").toHaveLength(1);
 
   const version = compareRow("版本與時間");
   expect(version.className).toContain("compare-differs");
