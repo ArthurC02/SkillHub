@@ -197,6 +197,10 @@ type GetSkillFilesRes interface {
 	getSkillFilesRes()
 }
 
+type GetSkillImportLimitsRes interface {
+	getSkillImportLimitsRes()
+}
+
 type GetSuggestionDiffRes interface {
 	getSuggestionDiffRes()
 }

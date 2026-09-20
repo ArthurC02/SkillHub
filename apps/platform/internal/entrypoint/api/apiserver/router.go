@@ -64,6 +64,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /readyz", readinessHandler(d.Readiness, d.CleanMode))
 	auth.Mount(mux)
 
+	mux.HandleFunc("GET /skills/import/limits", auth.RequireSession(d.Importer.Limits))
 	mux.HandleFunc("POST /skills/import/upload", limited(d, metrics.RouteImportUpload, auth.RequireSession(d.Importer.Upload)))
 	mux.HandleFunc("POST /skills/import/url", limited(d, metrics.RouteImportURL, auth.RequireSession(d.Importer.ImportURL)))
 

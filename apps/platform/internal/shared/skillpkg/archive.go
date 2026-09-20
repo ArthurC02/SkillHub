@@ -30,6 +30,24 @@ var (
 	maxEntryDepth = 10
 )
 
+type ArchiveLimits struct {
+	ZipBytes      int64
+	UnpackedBytes int64
+	Entries       int
+	EntryBytes    int64
+	EntryDepth    int
+}
+
+func Limits() ArchiveLimits {
+	return ArchiveLimits{
+		ZipBytes:      MaxZipBytes,
+		UnpackedBytes: int64(maxUnpackedBytes),
+		Entries:       maxArchiveEntries,
+		EntryBytes:    int64(maxEntryBytes),
+		EntryDepth:    maxEntryDepth,
+	}
+}
+
 var ErrBadArchive = errors.New("bad archive")
 
 type ArchiveRefusal string

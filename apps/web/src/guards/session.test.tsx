@@ -227,15 +227,45 @@ test("IA-6 the site-wide feedback form says it before a paragraph is written", a
 });
 
 test("SEC/§2.2 the import screen states the rules it is enforced by, before the form", async () => {
-  vi.stubGlobal("fetch", () => json({ user_id: "u-1", workspace_id: "ws-1" }));
-  await render(<ImportSkill />, () => text().includes("匯入 Skill"));
+  // Values no constant in this app holds, none a substring of another.
+  vi.stubGlobal("fetch", (input: string) =>
+    String(input).includes("/skills/import/limits")
+      ? json({
+          max_zip_bytes: 6 << 20,
+          max_unpacked_bytes: 129 << 20,
+          max_files: 813,
+          max_file_bytes: 4 << 20,
+          max_path_depth: 5,
+          allowed_hosts: ["example.test", "sources.example.test"],
+          note: "",
+        })
+      : json({ user_id: "u-1", workspace_id: "ws-1" }),
+  );
+  await render(<ImportSkill />, () => text().includes("zip 最大"));
 
-  expect(text()).toContain("來源限 GitHub");
   expect(text()).toContain("必須是 https");
   expect(text()).toContain("不得帶帳號密碼");
-  expect(text()).toContain("大小上限見拒絕訊息");
-  expect(text()).not.toContain("10 MB");
-  expect(text()).not.toContain("100 MB");
+
+  for (const [what, sentence] of [
+    ["the archive ceiling", "zip 最大 6 MB"],
+    ["the unpacked ceiling a small archive can breach", "解壓後總量最大 129 MB"],
+    ["the file count", "最多 813 個檔案"],
+    ["the per-file ceiling", "單一檔案最大 4 MB"],
+    ["the path depth", "路徑最深 5 層"],
+  ]) {
+    expect(text(), `${what} is not on screen, so it is learned by being refused`).toContain(
+      sentence,
+    );
+  }
+
+  expect(
+    text(),
+    "the hosts come from this deployment's fetcher, not from a list in the page",
+  ).toContain("來源限 example.test、sources.example.test");
+
+  expect(text(), "the page must not still say the numbers are unreadable").not.toContain(
+    "大小上限見拒絕訊息",
+  );
 });
 
 test("IA-6 precedent: ForkAction tells a visitor what logging in buys (SkillDetail)", async () => {

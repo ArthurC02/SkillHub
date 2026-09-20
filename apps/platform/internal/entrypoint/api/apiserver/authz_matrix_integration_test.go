@@ -58,6 +58,7 @@ var anonymousRoutes = []anonCase{
 
 	{pattern: "POST " + trace.IngestPath + "{token}", want: http.StatusUnauthorized},
 
+	{pattern: "GET /skills/import/limits", want: http.StatusUnauthorized},
 	{pattern: "POST /skills/import/upload", want: http.StatusUnauthorized},
 
 	{pattern: "POST /skills/generate", want: http.StatusMethodNotAllowed, conditional: "Config.GenerateExposed"},

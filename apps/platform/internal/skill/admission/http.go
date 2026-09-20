@@ -45,6 +45,26 @@ func NewUploadResult(res Result) UploadResult {
 	}
 }
 
+const importLimitsNote = "套件只做靜態檢查，匯入期間不執行其中的 Script；" +
+	"超過任何一項上限的套件會在掃描前就被擋下，不會留下任何版本。"
+
+func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
+	limits := skillpkg.Limits()
+	hosts := []string{}
+	if named, ok := h.Svc.Fetcher.(interface{ AllowedHosts() []string }); ok {
+		hosts = named.AllowedHosts()
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"max_zip_bytes":      limits.ZipBytes,
+		"max_unpacked_bytes": limits.UnpackedBytes,
+		"max_files":          limits.Entries,
+		"max_file_bytes":     limits.EntryBytes,
+		"max_path_depth":     limits.EntryDepth,
+		"allowed_hosts":      hosts,
+		"note":               importLimitsNote,
+	})
+}
+
 func writeTooLarge(w http.ResponseWriter, r *http.Request) {
 	metrics.PackageSizeRefused.WithLabelValues(metrics.CeilingUpload).Inc()
 	msg := "套件超過平台的上傳上限 " + skillpkg.HumanMB(skillpkg.MaxZipBytes) + "。"

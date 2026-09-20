@@ -6181,6 +6181,7 @@ func (*Error) getDatasetLimitsRes()       {}
 func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
 func (*Error) getOperatorRostersRes()     {}
+func (*Error) getSkillImportLimitsRes()   {}
 func (*Error) listDownloadArtifactsRes()  {}
 func (*Error) listModelCallBudgetsRes()   {}
 func (*Error) listSkillVersionsRes()      {}
@@ -21005,6 +21006,95 @@ func (s *SkillGovernance) SetTakedownAt(val NilDateTime) {
 func (s *SkillGovernance) SetTakedownReason(val NilString) {
 	s.TakedownReason = val
 }
+
+// The ceilings and allowed sources an import is held to, read from what enforces them.
+// Ref: #/components/schemas/SkillImportLimits
+type SkillImportLimits struct {
+	// Largest archive accepted, before it is unpacked.
+	MaxZipBytes int64 `json:"max_zip_bytes"`
+	// Largest total the archive may expand to; what stops a small archive that unpacks huge.
+	MaxUnpackedBytes int64 `json:"max_unpacked_bytes"`
+	MaxFiles         int   `json:"max_files"`
+	// Largest single file inside the archive.
+	MaxFileBytes int64 `json:"max_file_bytes"`
+	// Deepest directory nesting a path inside the archive may have.
+	MaxPathDepth int `json:"max_path_depth"`
+	// Hosts this deployment will fetch an import from; anything else is refused before a request is made.
+	AllowedHosts []string `json:"allowed_hosts"`
+	Note         string   `json:"note"`
+}
+
+// GetMaxZipBytes returns the value of MaxZipBytes.
+func (s *SkillImportLimits) GetMaxZipBytes() int64 {
+	return s.MaxZipBytes
+}
+
+// GetMaxUnpackedBytes returns the value of MaxUnpackedBytes.
+func (s *SkillImportLimits) GetMaxUnpackedBytes() int64 {
+	return s.MaxUnpackedBytes
+}
+
+// GetMaxFiles returns the value of MaxFiles.
+func (s *SkillImportLimits) GetMaxFiles() int {
+	return s.MaxFiles
+}
+
+// GetMaxFileBytes returns the value of MaxFileBytes.
+func (s *SkillImportLimits) GetMaxFileBytes() int64 {
+	return s.MaxFileBytes
+}
+
+// GetMaxPathDepth returns the value of MaxPathDepth.
+func (s *SkillImportLimits) GetMaxPathDepth() int {
+	return s.MaxPathDepth
+}
+
+// GetAllowedHosts returns the value of AllowedHosts.
+func (s *SkillImportLimits) GetAllowedHosts() []string {
+	return s.AllowedHosts
+}
+
+// GetNote returns the value of Note.
+func (s *SkillImportLimits) GetNote() string {
+	return s.Note
+}
+
+// SetMaxZipBytes sets the value of MaxZipBytes.
+func (s *SkillImportLimits) SetMaxZipBytes(val int64) {
+	s.MaxZipBytes = val
+}
+
+// SetMaxUnpackedBytes sets the value of MaxUnpackedBytes.
+func (s *SkillImportLimits) SetMaxUnpackedBytes(val int64) {
+	s.MaxUnpackedBytes = val
+}
+
+// SetMaxFiles sets the value of MaxFiles.
+func (s *SkillImportLimits) SetMaxFiles(val int) {
+	s.MaxFiles = val
+}
+
+// SetMaxFileBytes sets the value of MaxFileBytes.
+func (s *SkillImportLimits) SetMaxFileBytes(val int64) {
+	s.MaxFileBytes = val
+}
+
+// SetMaxPathDepth sets the value of MaxPathDepth.
+func (s *SkillImportLimits) SetMaxPathDepth(val int) {
+	s.MaxPathDepth = val
+}
+
+// SetAllowedHosts sets the value of AllowedHosts.
+func (s *SkillImportLimits) SetAllowedHosts(val []string) {
+	s.AllowedHosts = val
+}
+
+// SetNote sets the value of Note.
+func (s *SkillImportLimits) SetNote(val string) {
+	s.Note = val
+}
+
+func (*SkillImportLimits) getSkillImportLimitsRes() {}
 
 // License provenance has two axes. The expression alone cannot distinguish "the author declared MIT in
 // frontmatter" from "the monorepo root had an MIT file", and DISC-003 forbids presenting the second as

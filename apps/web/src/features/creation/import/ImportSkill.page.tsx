@@ -4,7 +4,11 @@ import { Findings } from "../../../shared/ui/Findings";
 import { LoginRequired, ReadFailure, unauthenticated } from "../../../shared/ui/LoginRequired";
 import { useMe } from "../../../core/session/me.service";
 import { ApiError } from "../../../core/api/client";
-import { isCategorizedFindings, useImportSkill } from "../import.service";
+import { isCategorizedFindings, useImportSkill, useSkillImportLimits } from "../import.service";
+
+function mb(bytes: number): string {
+  return (bytes / (1 << 20)).toFixed(1).replace(/\.0$/, "") + " MB";
+}
 
 export function ImportSkill() {
   const me = useMe();
@@ -12,6 +16,8 @@ export function ImportSkill() {
   const [url, setURL] = useState("");
   const [file, setFile] = useState<File>();
   const mutation = useImportSkill();
+  const limits = useSkillImportLimits();
+  const rules = Array.isArray(limits.data?.allowed_hosts) ? limits.data : undefined;
   const result = mutation.data;
   const failure = mutation.error;
   const rejected =
@@ -28,9 +34,20 @@ export function ImportSkill() {
       <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
 
       <ul className="note">
-        <li>來源限 GitHub（PDM-002 的首批來源），其他網域一律拒絕。</li>
+        <li>
+          來源限 {rules ? rules.allowed_hosts.join("、") : "GitHub（PDM-002 的首批來源）"}
+          ，其他網域一律拒絕。
+        </li>
         <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
-        <li>大小上限見拒絕訊息——平台對 zip 與解壓後各強制一個上限，這一頁還讀不到它們的數字。</li>
+        {rules ? (
+          <li>
+            zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
+            {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
+            {rules.max_path_depth} 層。
+          </li>
+        ) : (
+          <li>正在讀這個部署的大小上限…</li>
+        )}
         <li>
           zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
           <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，

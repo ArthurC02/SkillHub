@@ -454,6 +454,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/import/limits:
+    get:
+      operationId: getSkillImportLimits
+      summary: The ceilings and allowed sources an import is held to (SKILL-002)
+      description: |
+        Import is the only way untrusted third-party code enters the platform,
+        and the screen that starts it enforced four ceilings without printing
+        one of them: a refusal was the first time a person learned the rule,
+        after they had already sent a file that was thrown away.
+
+        Served from the same values the archive reader enforces and from the
+        host list the deployment's fetcher actually holds, so the page and the
+        behaviour cannot drift. Hard-coding them in the interface would be a
+        second definition of the same rule.
+      responses:
+        "200":
+          description: The limits in force.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SkillImportLimits" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/import/upload:
     post:
       operationId: uploadSkillPackage
@@ -7274,6 +7299,34 @@ components:
           type: string
           format: date-time
           description: 90 days from upload; deleting earlier is always allowed.
+    SkillImportLimits:
+      description: The ceilings and allowed sources an import is held to, read from what enforces them.
+      type: object
+      required:
+        [max_zip_bytes, max_unpacked_bytes, max_files, max_file_bytes, max_path_depth, allowed_hosts, note]
+      properties:
+        max_zip_bytes:
+          type: integer
+          format: int64
+          description: Largest archive accepted, before it is unpacked.
+        max_unpacked_bytes:
+          type: integer
+          format: int64
+          description: Largest total the archive may expand to; what stops a small archive that unpacks huge.
+        max_files:
+          type: integer
+        max_file_bytes:
+          type: integer
+          format: int64
+          description: Largest single file inside the archive.
+        max_path_depth:
+          type: integer
+          description: Deepest directory nesting a path inside the archive may have.
+        allowed_hosts:
+          type: array
+          description: Hosts this deployment will fetch an import from; anything else is refused before a request is made.
+          items: { type: string }
+        note: { type: string }
     DatasetLimits:
       description: PDM-005 §5.1, served from the constants the upload path enforces.
       type: object

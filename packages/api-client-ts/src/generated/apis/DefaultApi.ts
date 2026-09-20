@@ -484,6 +484,11 @@ import {
     SkillFilesToJSON,
 } from '../models/SkillFiles';
 import {
+    type SkillImportLimits,
+    SkillImportLimitsFromJSON,
+    SkillImportLimitsToJSON,
+} from '../models/SkillImportLimits';
+import {
     type StartRunRequest,
     StartRunRequestFromJSON,
     StartRunRequestToJSON,
@@ -2676,6 +2681,28 @@ export interface DefaultApiInterface {
      * SKILL.md and the package file tree (DISC-007)
      */
     getSkillFiles(requestParameters: GetSkillFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillFiles>;
+
+    /**
+     * Creates request options for getSkillImportLimits without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getSkillImportLimitsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Import is the only way untrusted third-party code enters the platform, and the screen that starts it enforced four ceilings without printing one of them: a refusal was the first time a person learned the rule, after they had already sent a file that was thrown away.  Served from the same values the archive reader enforces and from the host list the deployment\'s fetcher actually holds, so the page and the behaviour cannot drift. Hard-coding them in the interface would be a second definition of the same rule. 
+     * @summary The ceilings and allowed sources an import is held to (SKILL-002)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getSkillImportLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillImportLimits>>;
+
+    /**
+     * Import is the only way untrusted third-party code enters the platform, and the screen that starts it enforced four ceilings without printing one of them: a refusal was the first time a person learned the rule, after they had already sent a file that was thrown away.  Served from the same values the archive reader enforces and from the host list the deployment\'s fetcher actually holds, so the page and the behaviour cannot drift. Hard-coding them in the interface would be a second definition of the same rule. 
+     * The ceilings and allowed sources an import is held to (SKILL-002)
+     */
+    getSkillImportLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillImportLimits>;
 
     /**
      * Creates request options for getSuggestionDiff without sending the request
@@ -6331,6 +6358,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getSkillFiles(requestParameters: GetSkillFilesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillFiles> {
         const response = await this.getSkillFilesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSkillImportLimits without sending the request
+     */
+    async getSkillImportLimitsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/import/limits`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Import is the only way untrusted third-party code enters the platform, and the screen that starts it enforced four ceilings without printing one of them: a refusal was the first time a person learned the rule, after they had already sent a file that was thrown away.  Served from the same values the archive reader enforces and from the host list the deployment\'s fetcher actually holds, so the page and the behaviour cannot drift. Hard-coding them in the interface would be a second definition of the same rule. 
+     * The ceilings and allowed sources an import is held to (SKILL-002)
+     */
+    async getSkillImportLimitsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SkillImportLimits>> {
+        const requestOptions = await this.getSkillImportLimitsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SkillImportLimitsFromJSON(jsonValue));
+    }
+
+    /**
+     * Import is the only way untrusted third-party code enters the platform, and the screen that starts it enforced four ceilings without printing one of them: a refusal was the first time a person learned the rule, after they had already sent a file that was thrown away.  Served from the same values the archive reader enforces and from the host list the deployment\'s fetcher actually holds, so the page and the behaviour cannot drift. Hard-coding them in the interface would be a second definition of the same rule. 
+     * The ceilings and allowed sources an import is held to (SKILL-002)
+     */
+    async getSkillImportLimits(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SkillImportLimits> {
+        const response = await this.getSkillImportLimitsRaw(initOverrides);
         return await response.value();
     }
 

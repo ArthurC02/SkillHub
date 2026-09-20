@@ -179,6 +179,7 @@ export * from './SkillEnrichmentTags';
 export * from './SkillFileEntry';
 export * from './SkillFiles';
 export * from './SkillGovernance';
+export * from './SkillImportLimits';
 export * from './SkillLicense';
 export * from './SkillLimitation';
 export * from './SkillRisk';

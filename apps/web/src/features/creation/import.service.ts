@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CategorizedFindings, ImportResult } from "../../core/api/types";
@@ -37,4 +37,21 @@ export function isCategorizedFindings(value: unknown): value is CategorizedFindi
   if (typeof value !== "object" || value === null) return false;
   const body = value as Partial<CategorizedFindings>;
   return Array.isArray(body.errors) && Array.isArray(body.warnings) && Array.isArray(body.infos);
+}
+
+export interface SkillImportLimits {
+  max_zip_bytes: number;
+  max_unpacked_bytes: number;
+  max_files: number;
+  max_file_bytes: number;
+  max_path_depth: number;
+  allowed_hosts: string[];
+  note: string;
+}
+
+export function useSkillImportLimits() {
+  return useQuery({
+    queryKey: queryKeys.skills.importLimits,
+    queryFn: () => apiFetch<SkillImportLimits>("/skills/import/limits"),
+  });
 }

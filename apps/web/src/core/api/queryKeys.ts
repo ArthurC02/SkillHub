@@ -17,6 +17,7 @@ export const queryKeys = {
   credits: ["credits"],
   dataRetentionPolicy: ["policy", "data-retention"],
   skills: {
+    importLimits: ["skills", "import-limits"],
     search: (query: string, filters: SearchFilters, purpose?: string) => [
       "skills",
       "search",

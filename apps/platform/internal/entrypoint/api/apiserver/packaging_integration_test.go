@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -1543,5 +1544,52 @@ func TestARefusedImportAnswersInTheLanguageOfTheScreen(t *testing.T) {
 	}
 	if strings.Contains(message, "bad archive") {
 		t.Errorf("the refusal hands the reader the internal diagnostic: %q", message)
+	}
+}
+
+func TestTheImportLimitsPublishedAreTheOnesTheArchiveReaderEnforces(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-import-limits")
+
+	code, published := alice.doJSON(t, http.MethodGet, "/skills/import/limits", "")
+	if code != http.StatusOK {
+		t.Fatalf("GET /skills/import/limits: got %d", code)
+	}
+
+	enforced := skillpkg.Limits()
+	for _, c := range []struct {
+		field string
+		want  int64
+	}{
+		{"max_zip_bytes", enforced.ZipBytes},
+		{"max_unpacked_bytes", enforced.UnpackedBytes},
+		{"max_files", int64(enforced.Entries)},
+		{"max_file_bytes", enforced.EntryBytes},
+		{"max_path_depth", int64(enforced.EntryDepth)},
+	} {
+		got, ok := published[c.field].(float64)
+		if !ok {
+			t.Errorf("%s is missing; a ceiling the page cannot print is one the user meets by being refused", c.field)
+			continue
+		}
+		if int64(got) != c.want {
+			t.Errorf("%s published as %d but enforced as %d", c.field, int64(got), c.want)
+		}
+	}
+
+	hosts, _ := published["allowed_hosts"].([]any)
+	if len(hosts) == 0 {
+		t.Fatal("allowed_hosts is empty; the deployment fetches from somewhere")
+	}
+	named := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		named = append(named, h.(string))
+	}
+	if !slices.Contains(named, "github.com") {
+		t.Errorf("allowed_hosts = %v, want the deployment's own fetcher hosts", named)
+	}
+	if !slices.IsSorted(named) {
+		t.Errorf("allowed_hosts = %v, want a stable order", named)
 	}
 }

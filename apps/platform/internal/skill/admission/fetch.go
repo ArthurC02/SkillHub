@@ -11,6 +11,7 @@ import (
 	"net/netip"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -91,6 +92,17 @@ var (
 	strictClient = newClient(false)
 	devClient    = newClient(true)
 )
+
+func (f *URLFetcher) AllowedHosts() []string {
+	hosts := make([]string, 0, len(f.Allowed))
+	for host, allowed := range f.Allowed {
+		if allowed {
+			hosts = append(hosts, host)
+		}
+	}
+	sort.Strings(hosts)
+	return hosts
+}
 
 func DefaultAllowedHosts() map[string]bool {
 	return map[string]bool{
