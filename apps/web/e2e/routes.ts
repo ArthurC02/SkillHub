@@ -33,6 +33,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["admin-dispatch", "/admin/dispatch"],
   ["admin-rosters", "/admin/rosters"],
   ["admin-audit-log", "/admin/audit-log"],
+  ["admin-model-budgets", "/admin/model-budgets"],
   ["admin-cost-statistics", "/admin/cost-statistics"],
   ["admin-trends", "/admin/trends"],
 ];

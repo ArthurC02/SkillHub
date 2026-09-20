@@ -94,6 +94,7 @@ export const queryKeys = {
     rosters: ["admin", "rosters"],
     auditLog: ["admin", "audit-log"],
     costStatistics: ["admin", "cost-statistics"],
+    modelBudgets: ["admin", "model-budgets"],
     trend: (path: string, days: number) => ["admin", "trends", path, days],
   },
 } as const;

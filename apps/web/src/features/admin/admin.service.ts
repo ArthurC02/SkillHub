@@ -48,6 +48,16 @@ export type DispatchHalt = {
 
 export type DispatchStatus = { dispatching: boolean; halts: DispatchHalt[] };
 
+export type ModelCallBudget = {
+  kind: string;
+  seconds: number | null;
+  default_seconds: number;
+  min_seconds: number;
+  max_seconds: number;
+  reason: string | null;
+  set_at: string | null;
+};
+
 export type Rosters = { operator_user_ids: string[]; beta_allowlist: string[] };
 
 export type OperatorAuditEvent = {
@@ -143,6 +153,26 @@ export function useDispatchHalt(method: "PUT" | "DELETE") {
     mutationFn: (body: { note: string; provider?: string }) =>
       apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
+  });
+}
+
+export function useModelBudgets() {
+  return useQuery({
+    queryKey: queryKeys.admin.modelBudgets,
+    queryFn: () => apiFetch<{ budgets: ModelCallBudget[] }>("/admin/model-budgets"),
+    enabled: useOperator(),
+  });
+}
+
+export function useModelBudgetChange(method: "PUT" | "DELETE") {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kind, ...body }: { kind: string; reason: string; seconds?: number }) =>
+      apiFetch<ModelCallBudget | undefined>(
+        `/admin/model-budgets/${encodeURIComponent(kind)}`,
+        send(method, body),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets }),
   });
 }
 

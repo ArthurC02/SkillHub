@@ -47,6 +47,14 @@ export function AdminHome() {
         </li>
         <li className="download-item">
           <p>
+            <Link to="/admin/model-budgets">
+              <strong>模型呼叫逾時</strong>
+            </Link>
+          </p>
+          <p className="note">每一種模型呼叫最多可以跑多久，上限由程式決定。</p>
+        </li>
+        <li className="download-item">
+          <p>
             <Link to="/admin/cost-statistics">
               <strong>成本統計</strong>
             </Link>

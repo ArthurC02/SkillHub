@@ -860,6 +860,29 @@ export const ADMIN_TREND_ACTIONS = {
   ],
 } satisfies Trend;
 
+export const ADMIN_MODEL_BUDGETS = {
+  budgets: [
+    {
+      kind: "judge-run",
+      seconds: 90,
+      default_seconds: 130,
+      min_seconds: 1,
+      max_seconds: 130,
+      reason: "閘道最近變慢，先收緊等待",
+      set_at: "2026-09-19T08:00:00Z",
+    },
+    {
+      kind: "match-reasons",
+      seconds: null,
+      default_seconds: 8,
+      min_seconds: 1,
+      max_seconds: 8,
+      reason: null,
+      set_at: null,
+    },
+  ],
+};
+
 export const ADMIN_COST_STATISTICS = {
   statistics: [
     {
@@ -900,6 +923,7 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path === "/admin/rosters") return ok(ADMIN_ROSTERS);
   if (path === "/admin/audit-log") return ok(ADMIN_AUDIT_LOG);
   if (path === "/admin/cost-statistics") return ok(ADMIN_COST_STATISTICS);
+  if (path === "/admin/model-budgets") return ok(ADMIN_MODEL_BUDGETS);
   if (path === "/admin/trends/cost") return ok(ADMIN_TREND_COST);
   if (path === "/admin/trends/credits") return ok(ADMIN_TREND_CREDITS);
   if (path === "/admin/trends/runs") return ok(ADMIN_TREND_RUNS);

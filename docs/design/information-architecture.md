@@ -112,6 +112,7 @@
 | `/admin/dispatch` | `AdminDispatch` | 02:OPS-005 | 產品營運／**營運後台** |
 | `/admin/rosters` | `AdminRosters` | 02:OPS-005 | 產品營運／**營運後台** |
 | `/admin/audit-log` | `AdminAuditLog` | 02:OPS-006 | 產品營運／**營運後台** |
+| `/admin/model-budgets` | `AdminModelBudgets` | 02:OPS-009 | 產品營運／**營運後台** |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
 
@@ -205,7 +206,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/admin` 與 `/admin/*` 八頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
+| 2 | `/admin` 與 `/admin/*` 九頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
 | 3 | `/workspace/downloads` | ✅ |
 | 5 | `/`、`/lab/run`、`/runs/$runId`、`/workspace/skills` | ✅ |
 | 6 | `/lab/test-cases` | ✅ |

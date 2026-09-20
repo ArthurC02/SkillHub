@@ -277,6 +277,7 @@ const SCANNED_ROUTES = [
   "/admin/dispatch",
   "/admin/rosters",
   "/admin/audit-log",
+  "/admin/model-budgets",
   "/admin/cost-statistics",
   "/admin/trends",
 ];
@@ -297,6 +298,7 @@ for (const [to, heading] of [
   ["/admin/dispatch", "停止派送"],
   ["/admin/rosters", "這個部署沒有設定封測名單"],
   ["/admin/audit-log", "授予點數"],
+  ["/admin/model-budgets", "模型呼叫逾時"],
   ["/admin/cost-statistics", "搜尋理由"],
   ["/admin/trends", "全平台目前餘額總和"],
 ] as const) {

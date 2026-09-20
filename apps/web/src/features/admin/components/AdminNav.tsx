@@ -21,6 +21,9 @@ export function AdminNav() {
       <Link to="/admin/audit-log" className="chip">
         動作紀錄
       </Link>
+      <Link to="/admin/model-budgets" className="chip">
+        模型呼叫逾時
+      </Link>
       <Link to="/admin/cost-statistics" className="chip">
         成本統計
       </Link>

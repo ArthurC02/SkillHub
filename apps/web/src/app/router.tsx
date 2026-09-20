@@ -294,6 +294,15 @@ const adminAuditLogRoute = createRoute({
   ),
 });
 
+const adminModelBudgetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/model-budgets",
+  component: lazyRouteComponent(
+    () => import("../features/admin/model-budgets/AdminModelBudgets.page"),
+    "AdminModelBudgets",
+  ),
+});
+
 const adminCostStatisticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/cost-statistics",
@@ -340,6 +349,7 @@ const routeTree = rootRoute.addChildren([
   adminDispatchRoute,
   adminRostersRoute,
   adminAuditLogRoute,
+  adminModelBudgetsRoute,
   adminCostStatisticsRoute,
   adminTrendsRoute,
 ]);
