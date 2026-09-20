@@ -193,10 +193,28 @@ func (d *Driver) Stop(ctx context.Context, id string, grace time.Duration) error
 	return r.tree.terminate(r.cmd.Process.Pid)
 }
 
+func (d *Driver) removeResidue(id string) error {
+	base, err := filepath.Abs(d.cfg.BaseDir)
+	if err != nil {
+		return err
+	}
+	target, err := filepath.Abs(filepath.Join(d.cfg.BaseDir, id))
+	if err != nil {
+		return err
+	}
+	if filepath.Dir(target) != base {
+		return fmt.Errorf("localdrv: %q does not name a run directory under the sandbox base", id)
+	}
+	if err := os.RemoveAll(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
 func (d *Driver) Remove(ctx context.Context, id string) error {
 	r := d.take(id)
 	if r == nil {
-		return nil
+		return d.removeResidue(id)
 	}
 	_ = r.tree.terminate(r.cmd.Process.Pid)
 	_ = r.tree.release()

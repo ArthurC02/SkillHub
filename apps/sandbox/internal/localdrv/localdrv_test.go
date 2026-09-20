@@ -452,3 +452,55 @@ func makeNonRegularEntry(t *testing.T, outDir string) {
 		t.Skipf("no symlink privilege and mklink /J failed (%v): %s", err, out)
 	}
 }
+
+func newDriverForResidue(t *testing.T) (*Driver, string) {
+	t.Helper()
+	base := t.TempDir()
+	d, err := New(Config{
+		NodeBin: requireNode(t), RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d, base
+}
+
+func TestRemoveDeletesWhatARestartLeftBehind(t *testing.T) {
+	d, base := newDriverForResidue(t)
+	left := filepath.Join(base, "run-from-before-the-restart")
+	if err := os.MkdirAll(filepath.Join(left, "work"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := d.Remove(context.Background(), "run-from-before-the-restart"); err != nil {
+		t.Fatalf("Remove() = %v, want nil", err)
+	}
+	if _, err := os.Stat(left); !os.IsNotExist(err) {
+		t.Errorf("the run directory survived a destroy that reported success: %v", err)
+	}
+}
+
+func TestRemoveOfSomethingAlreadyGoneStillSucceeds(t *testing.T) {
+	d, _ := newDriverForResidue(t)
+	if err := d.Remove(context.Background(), "never-existed"); err != nil {
+		t.Fatalf("Remove() = %v, want nil: destroy has to be safe to repeat", err)
+	}
+}
+
+func TestRemoveRefusesAnIDThatWouldReachOutsideTheSandboxBase(t *testing.T) {
+	d, base := newDriverForResidue(t)
+	sibling := filepath.Join(filepath.Dir(base), "not-ours")
+	if err := os.MkdirAll(sibling, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(sibling) })
+
+	for _, id := range []string{"../not-ours", "nested/deeper", ".."} {
+		if err := d.Remove(context.Background(), id); err == nil {
+			t.Errorf("Remove(%q) reported success; an id from the wire must not pick the directory", id)
+		}
+	}
+	if _, err := os.Stat(sibling); err != nil {
+		t.Errorf("a directory outside the sandbox base was removed: %v", err)
+	}
+}
