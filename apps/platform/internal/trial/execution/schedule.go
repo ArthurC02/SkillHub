@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -59,34 +61,45 @@ const curatedTier curationTier = "curated"
 var ErrContentNotCurated = errors.New("the clean test mode only runs curated material")
 
 func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error {
-	if !cleanTestMode() {
-		return nil
-	}
-	if s.ReadContentSource == nil {
-		return fmt.Errorf("%w, and this deployment cannot tell where this material came from "+
-			"(the content-source read is not configured)", ErrContentNotCurated)
-	}
-	source, found, err := s.ReadContentSource(ctx, run.WorkspaceID, run.SkillVersionID)
-	if err != nil {
-		return fmt.Errorf("%w, and where this material came from could not be read: %w", ErrContentNotCurated, err)
-	}
-	if !found {
-		return fmt.Errorf("%w, and this version's skill could not be found to check", ErrContentNotCurated)
-	}
-	if source.WorkspaceIsCatalog || (curationTier(source.CurationTier) == curatedTier && source.CuratedVersionIsThisOne) {
-		return nil
-	}
-	versionID := pgconv.UUIDString(run.SkillVersionID)
-	if reason, released := operatorReleased(versionID); released {
-
+	released, err := s.curatedContentRefusal(ctx, run.WorkspaceID, run.SkillVersionID)
+	if released != "" {
 		slog.Warn("clean mode: an operator released this version to run with no isolation boundary",
 			"run_id", pgconv.UUIDString(run.ID),
-			"skill_version_id", versionID,
-			"reason", reason)
-		return nil
+			"skill_version_id", pgconv.UUIDString(run.SkillVersionID),
+			"reason", released)
+	}
+	return err
+}
+
+// curatedContentRefusal answers for a (workspace, version) pair alone, so the
+// pre-run summary can give the same answer before a run exists.
+func (s *Service) curatedContentRefusal(
+	ctx context.Context, workspaceID, skillVersionID pgtype.UUID,
+) (released string, err error) {
+	if !cleanTestMode() {
+		return "", nil
+	}
+	if s.ReadContentSource == nil {
+		return "", fmt.Errorf("%w, and this deployment cannot tell where this material came from "+
+			"(the content-source read is not configured)", ErrContentNotCurated)
+	}
+	source, found, readErr := s.ReadContentSource(ctx, workspaceID, skillVersionID)
+	if readErr != nil {
+		return "", fmt.Errorf("%w, and where this material came from could not be read: %w",
+			ErrContentNotCurated, readErr)
+	}
+	if !found {
+		return "", fmt.Errorf("%w, and this version's skill could not be found to check", ErrContentNotCurated)
+	}
+	if source.WorkspaceIsCatalog || (curationTier(source.CurationTier) == curatedTier && source.CuratedVersionIsThisOne) {
+		return "", nil
+	}
+	versionID := pgconv.UUIDString(skillVersionID)
+	if reason, ok := operatorReleased(versionID); ok {
+		return reason, nil
 	}
 
-	return fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
+	return "", fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
 		"curation_tier is %q on the exact version being run, may run here; anything else needs a "+
 		"deployment with a real sandbox — or %s",
 		ErrContentNotCurated, describeContentSource(source), curatedTier, howToRelease(versionID))

@@ -186,6 +186,11 @@ const LABEL_TABLES: Array<{
       (await import("../features/workspace/skills/WorkspaceSkills.page")).REDISTRIBUTION_BADGE,
   },
   {
+    what: "RunPermissionSummary.blocked → 為什麼這一對開不了 Run (05 R-37 (a))",
+    values: generated.RunPermissionSummaryBlockedEnum,
+    table: async () => (await import("../features/lab/preflight/preflight.model")).BLOCKED_SENTENCE,
+  },
+  {
     what: "Run.status → 執行狀態措辭",
     values: generated.RunStatusEnum,
     table: async () => (await import("../features/runs/runs.model")).RUN_STATUS_LABEL,

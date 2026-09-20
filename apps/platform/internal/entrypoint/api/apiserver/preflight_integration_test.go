@@ -41,6 +41,7 @@ type preflightView struct {
 		ResourceLimits run.ResourceLimits `json:"resource_limits"`
 	} `json:"summary"`
 	Hash          string   `json:"summary_hash"`
+	Blocked       string   `json:"blocked"`
 	Notes         []string `json:"notes"`
 	EstimatedCost struct {
 		LowCredits     int64  `json:"low_credits"`
@@ -676,5 +677,33 @@ func TestSuggestionSurvivesAnLLMServiceFailure(t *testing.T) {
 
 	if code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", ""); code != http.StatusServiceUnavailable {
 		t.Fatalf("suggest against a failing LLM service: got %d, body %v", code, body)
+	}
+}
+
+func TestTheCleanModeRefusalArrivesBeforeTheUserSpendsThreeStepsOnIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-clean-mode-preflight")
+
+	code, before := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight: got %d (%s)", code, before.Error)
+	}
+	if before.Blocked != "" {
+		t.Fatalf("a deployment with a sandbox blocked nothing, yet the summary says %q", before.Blocked)
+	}
+
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	code, blocked := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight under clean mode: got %d (%s)", code, blocked.Error)
+	}
+	if blocked.Blocked != "content_not_curated" {
+		t.Fatalf("the summary says blocked=%q for material this mode refuses to run; the user would "+
+			"confirm, start, and only then be told", blocked.Blocked)
+	}
+	if blocked.Hash != before.Hash {
+		t.Errorf("the hash changed when the deployment mode did; a refusal is a state and must stay " +
+			"outside the hash, or every outstanding confirmation is revoked by it")
 	}
 }

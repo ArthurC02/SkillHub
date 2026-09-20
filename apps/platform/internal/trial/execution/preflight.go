@@ -91,9 +91,12 @@ type PermissionSummary struct {
 	Hash          string                   `json:"summary_hash"`
 	EstimatedCost CostEstimate             `json:"estimated_cost"`
 
-	Quota *policy.QuotaView `json:"quota,omitempty"`
-	Notes []string          `json:"notes"`
+	Quota   *policy.QuotaView `json:"quota,omitempty"`
+	Blocked string            `json:"blocked,omitempty"`
+	Notes   []string          `json:"notes"`
 }
+
+const blockedContentNotCurated = "content_not_curated"
 
 type CostEstimate struct {
 	LowCredits     int64 `json:"low_credits"`
@@ -250,6 +253,13 @@ func (s *Service) permissionSummaryFor(
 	}
 	sum := sha256.Sum256(body)
 
+	blocked := ""
+	if held == nil {
+		if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
+			blocked = blockedContentNotCurated
+		}
+	}
+
 	var quota *policy.QuotaView
 	if held != nil {
 		// Skipped here: a second pool read would deadlock a caller already
@@ -275,6 +285,7 @@ func (s *Service) permissionSummaryFor(
 		Hash:          hex.EncodeToString(sum[:]),
 		EstimatedCost: estimate,
 		Quota:         quota,
+		Blocked:       blocked,
 		Notes:         summaryNotes(snap),
 	}, nil
 }

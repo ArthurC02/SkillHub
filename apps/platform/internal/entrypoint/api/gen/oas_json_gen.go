@@ -28325,6 +28325,39 @@ func (s *OptRunComparisonRunsItemEvaluation) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes RunPermissionSummaryBlocked as json.
+func (o OptRunPermissionSummaryBlocked) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes RunPermissionSummaryBlocked from json.
+func (o *OptRunPermissionSummaryBlocked) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptRunPermissionSummaryBlocked to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptRunPermissionSummaryBlocked) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptRunPermissionSummaryBlocked) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes RunPermissionSummaryContentProviderIsolationStrength as json.
 func (o OptRunPermissionSummaryContentProviderIsolationStrength) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -34622,6 +34655,12 @@ func (s *RunPermissionSummary) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Blocked.Set {
+			e.FieldStart("blocked")
+			s.Blocked.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("notes")
 		e.ArrStart()
 		for _, elem := range s.Notes {
@@ -34631,12 +34670,13 @@ func (s *RunPermissionSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfRunPermissionSummary = [5]string{
+var jsonFieldsNameOfRunPermissionSummary = [6]string{
 	0: "summary",
 	1: "summary_hash",
 	2: "estimated_cost",
 	3: "quota",
-	4: "notes",
+	4: "blocked",
+	5: "notes",
 }
 
 // Decode decodes RunPermissionSummary from json.
@@ -34690,8 +34730,18 @@ func (s *RunPermissionSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"quota\"")
 			}
+		case "blocked":
+			if err := func() error {
+				s.Blocked.Reset()
+				if err := s.Blocked.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"blocked\"")
+			}
 		case "notes":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				s.Notes = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -34720,7 +34770,7 @@ func (s *RunPermissionSummary) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00010111,
+		0b00100111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -34762,6 +34812,44 @@ func (s *RunPermissionSummary) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *RunPermissionSummary) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes RunPermissionSummaryBlocked as json.
+func (s RunPermissionSummaryBlocked) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes RunPermissionSummaryBlocked from json.
+func (s *RunPermissionSummaryBlocked) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode RunPermissionSummaryBlocked to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch RunPermissionSummaryBlocked(v) {
+	case RunPermissionSummaryBlockedContentNotCurated:
+		*s = RunPermissionSummaryBlockedContentNotCurated
+	default:
+		*s = RunPermissionSummaryBlocked(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s RunPermissionSummaryBlocked) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *RunPermissionSummaryBlocked) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

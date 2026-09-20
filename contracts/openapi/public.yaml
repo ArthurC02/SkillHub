@@ -7405,6 +7405,24 @@ components:
             zeroed or filled with nulls: a number on this screen is a claim that
             it is applied (04 乙-2), so a build with no enforcement shows nothing
             at all.
+        blocked:
+          type: string
+          enum: [content_not_curated]
+          description: |
+            Why this pair cannot start a run at all, absent when it can. A code
+            rather than a sentence: the wording belongs to the interface, and an
+            English message from the server would be the only English on the
+            screen.
+
+            Outside the hash, like `quota` and for the same reason: it is a
+            state of the deployment, not something the run is allowed to touch.
+            A deployment that releases a version must not invalidate a
+            confirmation someone is already holding.
+
+            `content_not_curated` is the clean test mode refusing material that
+            is neither in the public catalogue nor curated at this exact
+            version. The run-time gate refuses it too; this field exists so the
+            refusal arrives before the user has spent three steps on it.
         notes:
           type: array
           items: { type: string }

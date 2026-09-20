@@ -5485,6 +5485,24 @@ func (s *RunPermissionSummary) Validate() error {
 		})
 	}
 	if err := func() error {
+		if value, ok := s.Blocked.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "blocked",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if s.Notes == nil {
 			return errors.New("nil is invalid value")
 		}
@@ -5499,6 +5517,15 @@ func (s *RunPermissionSummary) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s RunPermissionSummaryBlocked) Validate() error {
+	switch s {
+	case "content_not_curated":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *RunPermissionSummaryContent) Validate() error {

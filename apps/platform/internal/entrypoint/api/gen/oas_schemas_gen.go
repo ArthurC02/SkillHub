@@ -13151,6 +13151,52 @@ func (o OptRunComparisonRunsItemEvaluation) Or(d RunComparisonRunsItemEvaluation
 	return d
 }
 
+// NewOptRunPermissionSummaryBlocked returns new OptRunPermissionSummaryBlocked with value set to v.
+func NewOptRunPermissionSummaryBlocked(v RunPermissionSummaryBlocked) OptRunPermissionSummaryBlocked {
+	return OptRunPermissionSummaryBlocked{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptRunPermissionSummaryBlocked is optional RunPermissionSummaryBlocked.
+type OptRunPermissionSummaryBlocked struct {
+	Value RunPermissionSummaryBlocked
+	Set   bool
+}
+
+// IsSet returns true if OptRunPermissionSummaryBlocked was set.
+func (o OptRunPermissionSummaryBlocked) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptRunPermissionSummaryBlocked) Reset() {
+	var v RunPermissionSummaryBlocked
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptRunPermissionSummaryBlocked) SetTo(v RunPermissionSummaryBlocked) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptRunPermissionSummaryBlocked) Get() (v RunPermissionSummaryBlocked, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptRunPermissionSummaryBlocked) Or(d RunPermissionSummaryBlocked) RunPermissionSummaryBlocked {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptRunPermissionSummaryContentProviderIsolationStrength returns new OptRunPermissionSummaryContentProviderIsolationStrength with value set to v.
 func NewOptRunPermissionSummaryContentProviderIsolationStrength(v RunPermissionSummaryContentProviderIsolationStrength) OptRunPermissionSummaryContentProviderIsolationStrength {
 	return OptRunPermissionSummaryContentProviderIsolationStrength{
@@ -17393,6 +17439,18 @@ type RunPermissionSummary struct {
 	// number on this screen is a claim that it is applied (04 乙-2), so a build with no enforcement shows
 	// nothing at all.
 	Quota OptRunQuota `json:"quota"`
+	// Why this pair cannot start a run at all, absent when it can. A code rather than a sentence: the
+	// wording belongs to the interface, and an English message from the server would be the only English
+	// on the screen.
+	//
+	// Outside the hash, like `quota` and for the same reason: it is a state of the deployment, not
+	// something the run is allowed to touch. A deployment that releases a version must not invalidate a
+	// confirmation someone is already holding.
+	//
+	// `content_not_curated` is the clean test mode refusing material that is neither in the public
+	// catalogue nor curated at this exact version. The run-time gate refuses it too; this field exists so
+	// the refusal arrives before the user has spent three steps on it.
+	Blocked OptRunPermissionSummaryBlocked `json:"blocked"`
 	// Plain-language explanation of the summary, deliberately outside the hash. Rewording a sentence must
 	// not invalidate every outstanding confirmation, and the facts are in `summary` where the hash covers
 	// them.
@@ -17417,6 +17475,11 @@ func (s *RunPermissionSummary) GetEstimatedCost() RunCostEstimate {
 // GetQuota returns the value of Quota.
 func (s *RunPermissionSummary) GetQuota() OptRunQuota {
 	return s.Quota
+}
+
+// GetBlocked returns the value of Blocked.
+func (s *RunPermissionSummary) GetBlocked() OptRunPermissionSummaryBlocked {
+	return s.Blocked
 }
 
 // GetNotes returns the value of Notes.
@@ -17444,12 +17507,62 @@ func (s *RunPermissionSummary) SetQuota(val OptRunQuota) {
 	s.Quota = val
 }
 
+// SetBlocked sets the value of Blocked.
+func (s *RunPermissionSummary) SetBlocked(val OptRunPermissionSummaryBlocked) {
+	s.Blocked = val
+}
+
 // SetNotes sets the value of Notes.
 func (s *RunPermissionSummary) SetNotes(val []string) {
 	s.Notes = val
 }
 
 func (*RunPermissionSummary) getRunPreflightRes() {}
+
+// Why this pair cannot start a run at all, absent when it can. A code rather than a sentence: the
+// wording belongs to the interface, and an English message from the server would be the only English
+// on the screen.
+//
+// Outside the hash, like `quota` and for the same reason: it is a state of the deployment, not
+// something the run is allowed to touch. A deployment that releases a version must not invalidate a
+// confirmation someone is already holding.
+//
+// `content_not_curated` is the clean test mode refusing material that is neither in the public
+// catalogue nor curated at this exact version. The run-time gate refuses it too; this field exists so
+// the refusal arrives before the user has spent three steps on it.
+type RunPermissionSummaryBlocked string
+
+const (
+	RunPermissionSummaryBlockedContentNotCurated RunPermissionSummaryBlocked = "content_not_curated"
+)
+
+// AllValues returns all RunPermissionSummaryBlocked values.
+func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
+	return []RunPermissionSummaryBlocked{
+		RunPermissionSummaryBlockedContentNotCurated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
+	switch s {
+	case RunPermissionSummaryBlockedContentNotCurated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
+	switch RunPermissionSummaryBlocked(data) {
+	case RunPermissionSummaryBlockedContentNotCurated:
+		*s = RunPermissionSummaryBlockedContentNotCurated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // The hashed body: the eight TEST-008 disclosures plus what they belong to. Field order is fixed by
 // the server's type rather than by an encoder, because the hash depends on it.

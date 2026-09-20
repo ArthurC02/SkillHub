@@ -1,7 +1,7 @@
 import { unauthenticated } from "../../../shared/ui/LoginRequired";
 import { bytes } from "../../../shared/format";
 import { ApiError } from "../../../core/api/client";
-import type { PreflightSummary } from "../lab.service";
+import type { PreflightResponse, PreflightSummary } from "../lab.service";
 
 export function ceiling(n: number | undefined): string {
   return limit(n, bytes);
@@ -23,6 +23,12 @@ export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string>
   none: "無(靜態掃描未發現 Script 或內嵌程式碼)",
   present: "有",
   unavailable: "未知(套件無法讀取,未完成掃描)",
+};
+
+export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>, string> = {
+  content_not_curated:
+    "這個部署只跑目錄裡的 Skill。這一版不在公開目錄、也不是被策展的那一版,所以按了也不會開始——" +
+    "要跑自己的 Skill,請用有真正沙箱的部署。",
 };
 
 export function startFailureSentence(err: unknown): string {

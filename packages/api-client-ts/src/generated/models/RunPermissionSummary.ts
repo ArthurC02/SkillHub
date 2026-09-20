@@ -86,6 +86,24 @@ export interface RunPermissionSummary {
      */
     quota?: RunQuota;
     /**
+     * Why this pair cannot start a run at all, absent when it can. A code
+     * rather than a sentence: the wording belongs to the interface, and an
+     * English message from the server would be the only English on the
+     * screen.
+     * 
+     * Outside the hash, like `quota` and for the same reason: it is a
+     * state of the deployment, not something the run is allowed to touch.
+     * A deployment that releases a version must not invalidate a
+     * confirmation someone is already holding.
+     * 
+     * `content_not_curated` is the clean test mode refusing material that
+     * is neither in the public catalogue nor curated at this exact
+     * version. The run-time gate refuses it too; this field exists so the
+     * refusal arrives before the user has spent three steps on it.
+     * 
+     */
+    blocked?: RunPermissionSummaryBlockedEnum;
+    /**
      * Plain-language explanation of the summary, deliberately outside the
      * hash. Rewording a sentence must not invalidate every outstanding
      * confirmation, and the facts are in `summary` where the hash covers
@@ -94,6 +112,16 @@ export interface RunPermissionSummary {
      */
     notes: Array<string>;
 }
+
+
+/**
+ * @export
+ */
+export const RunPermissionSummaryBlockedEnum = {
+    ContentNotCurated: 'content_not_curated',
+} as const;
+export type RunPermissionSummaryBlockedEnum = typeof RunPermissionSummaryBlockedEnum[keyof typeof RunPermissionSummaryBlockedEnum];
+
 
 /**
  * Check if a given object implements the RunPermissionSummary interface.
@@ -120,6 +148,7 @@ export function RunPermissionSummaryFromJSONTyped(json: any, ignoreDiscriminator
         'summaryHash': json['summary_hash'],
         'estimatedCost': RunCostEstimateFromJSON(json['estimated_cost']),
         'quota': json['quota'] == null ? undefined : RunQuotaFromJSON(json['quota']),
+        'blocked': json['blocked'] == null ? undefined : json['blocked'],
         'notes': json['notes'],
     };
 }
@@ -139,6 +168,7 @@ export function RunPermissionSummaryToJSONTyped(value?: RunPermissionSummary | n
         'summary_hash': value['summaryHash'],
         'estimated_cost': RunCostEstimateToJSON(value['estimatedCost']),
         'quota': RunQuotaToJSON(value['quota']),
+        'blocked': value['blocked'],
         'notes': value['notes'],
     };
 }

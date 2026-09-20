@@ -16,6 +16,7 @@ import {
   seconds,
   tokens,
   SCRIPT_LABEL,
+  BLOCKED_SENTENCE,
   startFailureSentence,
 } from "./preflight.model";
 
@@ -143,7 +144,14 @@ function Preflight({
     );
   }
 
-  const { summary, summary_hash: hash, estimated_cost: cost, quota, notes } = preflight.data;
+  const {
+    summary,
+    summary_hash: hash,
+    estimated_cost: cost,
+    quota,
+    blocked,
+    notes,
+  } = preflight.data;
 
   return shell(
     <>
@@ -293,6 +301,10 @@ function Preflight({
           <span className="note">
             Run ID：<code>{runId}</code>
           </span>
+        </p>
+      ) : blocked ? (
+        <p role="alert" className="notice">
+          {BLOCKED_SENTENCE[blocked]}
         </p>
       ) : (
         <>
