@@ -604,6 +604,18 @@ components:
           description: Language for `summary`. `task_examples` are always bilingual.
           maxLength: 32
           default: zh-Hant
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
     TaskExample:
       type: object
       required: [zh_hant, en]
@@ -786,6 +798,18 @@ components:
             $ref: "#/components/schemas/SkillCandidate"
           minItems: 1
           maxItems: 20
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
     MatchReason:
       type: object
       required: [skill_id, reason]
@@ -864,6 +888,18 @@ components:
             $ref: "#/components/schemas/DatasetOutline"
           maxItems: 20
           default: []
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
     SuggestedCriterion:
       type: object
       additionalProperties: false
@@ -1185,6 +1221,18 @@ components:
             branches on it (skillhub_llm/evaluate.py); renaming it on one side
             only silently restores the reading the clause forbids, with no
             symptom on either side.
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
     JudgeEvidenceRef:
       type: object
       description: |
@@ -1443,6 +1491,18 @@ components:
             answer. A reference longer than the cap is cut by Go before it
             arrives, and the cut is marked, so the model is never shown half a
             file as if it were whole.
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
 
     GenerateDiagram:
       type: object
@@ -1665,6 +1725,18 @@ components:
             $ref: "#/components/schemas/TargetFile"
           maxItems: 10  # one-number: suggestMaxTargetFiles
           default: []
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            Without this field the service's own constant is the only ceiling,
+            so a Go deadline set below it expires first: Go records a timeout
+            while the gateway call keeps running and keeps billing.
     ImprovementProposal:
       type: object
       description: |

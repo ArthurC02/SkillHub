@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 logger = logging.getLogger("skillhub_llm.generate")
@@ -42,9 +42,9 @@ MAX_DIAGRAM_BYTES = 4_000_000  # one-number: generateMaxDiagramBytes
 MAX_REFERENCES = 3  # one-number: generateMaxReferences
 
 
-def _client() -> AsyncOpenAI:
+def _client(requested: float | None = None) -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway."""
-    return client(LLM_TIMEOUT_SECONDS)
+    return client(within(LLM_TIMEOUT_SECONDS, requested))
 
 
 MAX_OUTPUT_TOKENS = 16000  # one-number: generateMaxOutputTokens
@@ -118,6 +118,7 @@ class GenerateSkillRequest(BaseModel):
     )
     diagram: GenerateDiagram | None = None
     references: list[GenerateReference] = Field(default_factory=list)
+    timeout_seconds: float | None = Field(None, gt=0)
 
     @field_validator("task_description")
     @classmethod
@@ -256,7 +257,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         user_content = text
 
     try:
-        raw = await _client().chat.completions.with_raw_response.create(
+        raw = await _client(req.timeout_seconds).chat.completions.with_raw_response.create(
             model=GENERATE_SKILL_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},

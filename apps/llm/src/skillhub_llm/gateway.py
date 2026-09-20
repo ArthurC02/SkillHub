@@ -54,6 +54,13 @@ def gateway() -> tuple[str, str]:
     return base_url, api_key
 
 
+def within(ceiling: float, requested: float | None) -> float:
+    """The smaller of this service's ceiling and the one the caller asked for."""
+    if requested is None:
+        return ceiling
+    return min(ceiling, requested)
+
+
 def client(timeout: float) -> AsyncOpenAI:
     """OpenAI-compatible client for the gateway, with one attempt and one ceiling.
 

@@ -17,7 +17,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from skillhub_llm.creation import router as creation_router
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
-from skillhub_llm.gateway import GatewayUsage, _embedding_usage, _metadata, _usage, close_client
+from skillhub_llm.gateway import (
+    GatewayUsage,
+    _embedding_usage,
+    _metadata,
+    _usage,
+    close_client,
+    within,
+)
 from skillhub_llm.gateway import client as _client
 from skillhub_llm.generate import router as generate_router
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
@@ -130,10 +137,7 @@ class EmbedResponse(BaseModel):
 @app.post("/embed", response_model=EmbedResponse, dependencies=protected)
 async def embed(req: EmbedRequest) -> EmbedResponse:
     """Generate embeddings for one or more texts via text-embedding-3-small."""
-    ceiling = EMBED_TIMEOUT_SECONDS
-    if req.timeout_seconds is not None:
-        ceiling = min(EMBED_TIMEOUT_SECONDS, req.timeout_seconds)
-    client = _client(ceiling)
+    client = _client(within(EMBED_TIMEOUT_SECONDS, req.timeout_seconds))
 
     try:
         raw = await client.embeddings.with_raw_response.create(
@@ -176,6 +180,7 @@ class SkillCandidate(BaseModel):
 class MatchReasonsRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
     candidates: list[SkillCandidate] = Field(..., min_length=1, max_length=20)
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class MatchReason(BaseModel):
@@ -236,7 +241,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         + "\n\nProduce the match reasons."
     )
 
-    client = _client(MATCH_REASONS_TIMEOUT_SECONDS)
+    client = _client(within(MATCH_REASONS_TIMEOUT_SECONDS, req.timeout_seconds))
 
     try:
         raw = await client.chat.completions.with_raw_response.create(
@@ -310,6 +315,7 @@ class SuggestCriteriaRequest(BaseModel):
     skill_summary: str = ""
     user_prompt: str = Field(..., min_length=1)
     datasets: list[DatasetOutline] = Field(default_factory=list, max_length=20)
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class SuggestedCriterion(BaseModel):
@@ -375,7 +381,7 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         + "\n\nPropose the acceptance criteria."
     )
 
-    client = _client(SUGGEST_CRITERIA_TIMEOUT_SECONDS)
+    client = _client(within(SUGGEST_CRITERIA_TIMEOUT_SECONDS, req.timeout_seconds))
 
     try:
         raw = await client.chat.completions.with_raw_response.create(

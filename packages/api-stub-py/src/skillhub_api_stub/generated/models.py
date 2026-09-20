@@ -54,6 +54,10 @@ class EnrichSkillRequest(BaseModel):
         'zh-Hant',
         description='Language for `summary`. `task_examples` are always bilingual.',
     )
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
+    )
 
 
 class TaskExample(BaseModel):
@@ -106,6 +110,10 @@ class SkillCandidate(BaseModel):
 class MatchReasonsRequest(BaseModel):
     query: constr(min_length=1, max_length=2000)
     candidates: list[SkillCandidate] = Field(..., max_length=20, min_length=1)
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
+    )
 
 
 class MatchReason(BaseModel):
@@ -147,6 +155,10 @@ class SuggestCriteriaRequest(BaseModel):
     user_prompt: constr(min_length=1)
     datasets: list[DatasetOutline] | None = Field(
         [], max_length=20, validate_default=True
+    )
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
 
 
@@ -287,6 +299,10 @@ class JudgeRunRequest(BaseModel):
         [],
         description='Names of the fields that were cut, e.g. `final_output` or\n`artifacts[2].text_excerpt`. When this list is non-empty, any\ncriterion that depends on a cut field may be answered `undetermined`,\nand judging it `passed` without having seen the full text is not\nacceptable. `undetermined` under truncation is the correct answer, not\na failure to answer (evaluation-design §6.3).\n\nOne value on this list is not a cut but a hole in the evidence, and\nboth sides read it by name: `artifacts.unreadable` means the run\nrecorded output files that this evaluation can no longer read -\ndeleted by the workspace, or past the retention stamped on them - so\nan empty `artifacts` alongside it must NOT be read as a run that\nwrote nothing (02:EVAL-001 過期分支, 02:NFR-002a 第 2 條; 03:EVAL-014).\nGo writes it (trial/improvement/judge.go) and the judge prompt\nbranches on it (skillhub_llm/evaluate.py); renaming it on one side\nonly silently restores the reading the clause forbids, with no\nsymptom on either side.\n',
         max_length=100,
+    )
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
 
 
@@ -461,6 +477,10 @@ class SuggestImprovementsRequest(BaseModel):
     file_tree: list[str] | None = Field([], max_length=500)
     target_files: list[TargetFile] | None = Field(
         [], max_length=10, validate_default=True
+    )
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
 
 
@@ -678,6 +698,10 @@ class GenerateSkillRequest(BaseModel):
         None,
         description="Existing Skills the model reads before writing (GEN-006). Content,\nnot ids: Go has already decided these may be read and has fetched\nthe latest version's SKILL.md. Each is fenced as untrusted data\nunder its own tag, and the prompt says what a reference is for —\nshape, level of detail, conventions — and what it is not: the\nanswer. A reference longer than the cap is cut by Go before it\narrives, and the cut is marked, so the model is never shown half a\nfile as if it were whole.\n",
         max_length=3,
+    )
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="A ceiling this caller wants, honoured only when it is BELOW the\nservice's own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWithout this field the service's own constant is the only ceiling,\nso a Go deadline set below it expires first: Go records a timeout\nwhile the gateway call keeps running and keeps billing.\n",
     )
 
 

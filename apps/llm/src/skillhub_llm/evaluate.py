@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
 from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
@@ -147,9 +147,9 @@ answer, and it does not mean the run was fine.
 Answer only with the required JSON object. Every field is required."""
 
 
-def _client() -> AsyncOpenAI:
+def _client(requested: float | None = None) -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway."""
-    return client(LLM_TIMEOUT_SECONDS)
+    return client(within(LLM_TIMEOUT_SECONDS, requested))
 
 
 def _scrub(text: str) -> str:
@@ -239,6 +239,7 @@ class JudgeRunRequest(BaseModel):
     )
     trace_digest: TraceDigest
     truncation: list[str] = Field(default_factory=list, max_length=100)
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class JudgeEvidenceRef(BaseModel):
@@ -386,7 +387,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
 
     try:
         # Raw response: the call's cost is in a response header, never in the body.
-        raw = await _client().chat.completions.with_raw_response.create(
+        raw = await _client(req.timeout_seconds).chat.completions.with_raw_response.create(
             model=JUDGE_MODEL,
             messages=[
                 {"role": "system", "content": system},
@@ -457,6 +458,7 @@ class SuggestImprovementsRequest(BaseModel):
         default_factory=list,
         max_length=10,  # one-number: suggestMaxTargetFiles
     )
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class ImprovementProposal(BaseModel):
@@ -516,7 +518,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
     No authorization, no writes; the caller validates each proposal.
     """
     try:
-        raw = await _client().chat.completions.with_raw_response.create(
+        raw = await _client(req.timeout_seconds).chat.completions.with_raw_response.create(
             model=JUDGE_MODEL,
             messages=[
                 {"role": "system", "content": SUGGEST_IMPROVEMENTS_SYSTEM_PROMPT},

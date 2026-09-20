@@ -64,7 +64,7 @@ def capture(monkeypatch):
     calls: list = []
 
     def use(content: str, **stub):
-        monkeypatch.setattr(generate, "_client", lambda: _fake_client(content, calls, **stub))
+        monkeypatch.setattr(generate, "_client", lambda *_: _fake_client(content, calls, **stub))
         return calls
 
     return use
@@ -138,7 +138,7 @@ def test_gateway_failure_is_502(monkeypatch):
     monkeypatch.setattr(
         generate,
         "_client",
-        lambda: SimpleNamespace(
+        lambda *_: SimpleNamespace(
             chat=SimpleNamespace(
                 completions=SimpleNamespace(
                     with_raw_response=SimpleNamespace(

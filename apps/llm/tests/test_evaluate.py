@@ -115,7 +115,7 @@ def _fake_client(content: str, capture: list | None = None, usage=..., headers: 
     )
 
 
-def _fake_gateway_failure():
+def _fake_gateway_failure(*_args):
     return SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(
@@ -133,7 +133,7 @@ def capture(monkeypatch):
     calls: list = []
 
     def use(content: str, **stub):
-        monkeypatch.setattr(evaluate, "_client", lambda: _fake_client(content, calls, **stub))
+        monkeypatch.setattr(evaluate, "_client", lambda *_: _fake_client(content, calls, **stub))
         return calls
 
     return use

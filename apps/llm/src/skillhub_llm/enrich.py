@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
 from skillhub_llm.untrusted import scrub
 
 from .enrich_checks import Finding, check_enrichment
@@ -106,6 +106,7 @@ class EnrichSkillRequest(BaseModel):
     skill_md: str = Field(..., min_length=1, max_length=200_000)
     file_tree: list[str] = Field(default_factory=list, max_length=500)
     language: str = Field("zh-Hant", max_length=32)
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class TaskExample(BaseModel):
@@ -144,9 +145,9 @@ class EnrichSkillResponse(Enrichment):
     checks: list[Finding] = Field(default_factory=list)
 
 
-def _client() -> AsyncOpenAI:
+def _client(requested: float | None = None) -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway."""
-    return client(LLM_TIMEOUT_SECONDS)
+    return client(within(LLM_TIMEOUT_SECONDS, requested))
 
 
 def _scrub(text: str) -> str:
@@ -167,7 +168,7 @@ def _user_message(req: EnrichSkillRequest) -> str:
 
 @router.post("/v1/enrich-skill", response_model=EnrichSkillResponse)
 async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
-    client = _client()
+    client = _client(req.timeout_seconds)
     system = SYSTEM_PROMPT.format(tag=DATA_TAG, language=req.language)
     try:
         # Raw response: the call's cost is in a response header, never in the body.
