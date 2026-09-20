@@ -787,7 +787,7 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	}
 	events = append(events,
 		event(runID, 1, 19, "agent_output", `{"kind":"intermediate","text":"Checking the sheet again.","truncated":false}`),
-		event(runID, 1, 20, "script_log", `{"stream":"stdout","text":"done"}`))
+		event(runID, 1, 20, "script_log", `{"stream":"stdout","message":"done","truncated":false}`))
 	if code, report := a.ingest(t, runID, 1, events...); code != http.StatusAccepted || report.Stored != len(events) {
 		t.Fatalf("push: got %d %+v", code, report)
 	}

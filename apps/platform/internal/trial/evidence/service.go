@@ -195,6 +195,9 @@ func RecordOrchestratorEvent(
 	if err != nil {
 		return err
 	}
+	if err := validatePayload(eventType, encoded); err != nil {
+		return err
+	}
 
 	masker := &Masker{}
 	masked, err := masker.Mask(encoded)

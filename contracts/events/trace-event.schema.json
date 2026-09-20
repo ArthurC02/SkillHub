@@ -285,7 +285,8 @@
       "required": ["kind", "text", "truncated"],
       "description": "TRACE-004. Agent-produced text. The final answer of a run is kind=final.",
       "properties": {
-        "kind": { "type": "string", "enum": ["final", "intermediate"] },
+        "kind": { "type": "string", "enum": ["final", "intermediate", "captured"],
+            "$comment": "captured is the workload's own final output kept by the orchestrator after a failure, when nothing streamed it; emitted_by says which side kept it." },
         "text": {
           "type": "string",
           "maxLength": 64000,

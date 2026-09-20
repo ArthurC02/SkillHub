@@ -114,7 +114,7 @@ func (e *Event) Validate() error {
 	case len(bytes.TrimSpace(e.Payload)) == 0 || bytes.TrimSpace(e.Payload)[0] != '{':
 		return fmt.Errorf("%w: payload must be a JSON object", ErrInvalid)
 	}
-	return nil
+	return validatePayload(e.Type, e.Payload)
 }
 
 func compatibleVersion(v string) bool {

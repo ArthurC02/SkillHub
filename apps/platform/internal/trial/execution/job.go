@@ -453,7 +453,7 @@ func (d *driver) keepWorkloadOutput(ctx context.Context, attempt gen.RunAttempt,
 	err := pgx.BeginFunc(ctx, d.svc.Pool, func(tx pgx.Tx) error {
 		return trace.RecordOrchestratorEvent(ctx, tx, attempt.WorkspaceID, attempt.RunID,
 			int(attempt.AttemptNumber), trace.TypeAgentOutput, "", map[string]any{
-				"kind": "captured", "text": pr.Result.AgentOutput,
+				"kind": "captured", "text": pr.Result.AgentOutput, "truncated": false,
 			})
 	})
 	if err != nil {

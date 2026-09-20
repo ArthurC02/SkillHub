@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+var evaluationPayloads = map[string]string{
+	TypeEvaluationStarted: `{"evaluation_id":"ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11",` +
+		`"judge_model":"claude-judge","judge_prompt_version":"v3"}`,
+	TypeEvaluationCompleted: `{"evaluation_id":"ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11",` +
+		`"overall":"met","criteria_total":3,"criteria_passed":3,"criteria_failed":0,` +
+		`"criteria_undetermined":0,"evidence_complete":true}`,
+}
+
 func evaluationEvent(eventType, emittedBy string) *Event {
 	return &Event{
 		SchemaVersion: SchemaVersionEvaluation,
@@ -17,7 +25,7 @@ func evaluationEvent(eventType, emittedBy string) *Event {
 		EmittedBy:     emittedBy,
 		Type:          eventType,
 		Masked:        true,
-		Payload:       json.RawMessage(`{"evaluation_id":"ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11"}`),
+		Payload:       json.RawMessage(evaluationPayloads[eventType]),
 	}
 }
 
