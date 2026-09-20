@@ -1137,7 +1137,7 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   await resume();
   expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
   expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \d/);
-  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toBe(
+  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toContain(
     "費用 未知 / 1300 點",
   );
   await click("確認流程圖理解");
@@ -1152,9 +1152,25 @@ test("a known cost of zero is 0 points in the drawer's summary, not unknown", as
   );
   await render();
   await resume();
-  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toBe(
+  expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toContain(
     "費用 0 / 1300 點",
   );
+});
+
+test("the bar says what the next step costs and what is left for it", async () => {
+  const v = sample();
+  Object.assign(v.snapshot, { usage_unknown: false, spent_credits: 1200, reserved_credits: 0 });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  const summary = box.querySelector(".creation-bar .creation-details > summary")!.textContent ?? "";
+  expect(
+    summary,
+    "the user types the next message before learning the budget will not cover it",
+  ).toContain("預算只剩 100 點，不夠再走一步的 130 點");
 });
 test("the state and the step count share one pill in the bar", async () => {
   const v = sample();

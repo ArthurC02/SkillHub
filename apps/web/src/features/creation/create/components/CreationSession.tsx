@@ -30,6 +30,7 @@ import {
   FETCH_STATUS_LABEL,
   buildRoundTimeline,
   budgetChoices,
+  nextStepBudget,
   newestMessageIn,
   isBelow,
 } from "../create.model";
@@ -58,6 +59,35 @@ type Extra = Omit<CreationAction, "command_id" | "expected_revision" | "kind">;
 const MAX_MESSAGE_RUNES = 4000;
 
 const points = (v: number) => v + " 點";
+
+function NextStep({
+  costCredits,
+  remainingCredits,
+  roomForAnother,
+}: {
+  costCredits: number;
+  remainingCredits: number;
+  roomForAnother: boolean;
+}) {
+  if (roomForAnother) {
+    return (
+      <>
+        {" "}
+        · 下一步最多 {points(costCredits)}，預算還有 {points(remainingCredits)}
+      </>
+    );
+  }
+  return (
+    <>
+      {" "}
+      ·{" "}
+      <strong>
+        預算只剩 {points(remainingCredits)}，不夠再走一步的 {points(costCredits)}
+      </strong>
+      ，展開可以提高預算
+    </>
+  );
+}
 
 const STARTERS = [
   {
@@ -390,6 +420,9 @@ export function CreationSession() {
             <summary>
               費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
               {points(p.budget_credits)}
+              {limits.data && !terminal && (
+                <NextStep {...nextStepBudget(p, limits.data.min_budget_credits)} />
+              )}
             </summary>
             <div>
               <p className="note">

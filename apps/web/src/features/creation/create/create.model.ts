@@ -156,6 +156,25 @@ export function buildRoundTimeline(messages: CreationSnapshot["messages"]): Time
   return items;
 }
 
+export interface NextStepBudget {
+  costCredits: number;
+  remainingCredits: number;
+  roomForAnother: boolean;
+}
+
+export function nextStepBudget(
+  progress: { budget_credits: number; reserved_credits: number; spent_credits?: number },
+  perStepCredits: number,
+): NextStepBudget {
+  const remaining =
+    progress.budget_credits - (progress.spent_credits ?? 0) - progress.reserved_credits;
+  return {
+    costCredits: perStepCredits,
+    remainingCredits: Math.max(remaining, 0),
+    roomForAnother: remaining >= perStepCredits,
+  };
+}
+
 export function budgetChoices(min: number, max: number) {
   return [...new Set([min, 200, 500, 1000, 2000, 5000, max])]
     .filter((v) => v >= min && v <= max)
