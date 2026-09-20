@@ -69,12 +69,20 @@ tasks:
     desc: Fail on fixable vulnerabilities in shipped dependencies; pass -- --full to scan every project, dev dependencies too
     cmd: go -C tools/devctl run . dep-audit {{.CLI_ARGS}}
 
+  egress:check:
+    desc: Check the rendered firewall, DNS and admission files still match infra/egress/allowlist.yaml
+    cmds:
+      - python tools/egress/render.py --self-check
+      - python tools/egress/render.py --check
+      - python tools/egress/test_render.py
+
   ci:
     desc: Run the local secret-free CI sequence in deterministic order
     cmds:
       - go -C tools/devctl run . automation-check
       - go -C tools/devctl run . agent-sync
       - go -C tools/devctl run . gen --check
+      - task: egress:check
       - task: check
       - task: test
       - task: build

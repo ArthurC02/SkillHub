@@ -101,6 +101,7 @@ func documentCheckers() []namedChecker {
 		{"service-construction", serviceConstructionProblems},
 		{"identifier-order", identifierOrderProblems},
 		{"one-number", sharedNumberProblems},
+		{"sandbox-node-facts", sandboxNodeFactProblems},
 		{"query-owner", queryOwnerProblems},
 		{"query-scope", queryScopeProblems},
 		{"sql-logic", sqlLogicProblems},
