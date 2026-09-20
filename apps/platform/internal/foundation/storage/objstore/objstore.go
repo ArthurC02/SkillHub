@@ -139,7 +139,17 @@ func (c *Client) PresignPut(ctx context.Context, key string, ttl time.Duration) 
 	return u.String(), nil
 }
 
+func withinObjectCeiling(size, max int) error {
+	if size > max {
+		return fmt.Errorf("object is larger than the %d byte ceiling", max)
+	}
+	return nil
+}
+
 func (c *Client) Put(ctx context.Context, key string, data []byte) error {
+	if err := withinObjectCeiling(len(data), MaxObjectBytes); err != nil {
+		return fmt.Errorf("objstore put %s: %w", key, err)
+	}
 	_, err := c.mc.PutObject(ctx, c.bucket, key, bytes.NewReader(data), int64(len(data)),
 		minio.PutObjectOptions{})
 	if err != nil {
