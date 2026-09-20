@@ -644,36 +644,7 @@ components:
           type: array
           items:
             type: string
-    EnrichSkillResponse:
-      type: object
-      description: |
-        The intent-search enrichment whitelist only. No trust, risk, safety or quality
-        field may be added here.
-
-        `checks` is not an exception to that sentence and is worth saying why.
-        It carries no judgement OF the Skill - it reports where this service's
-        own output disagrees with the document it was given, which is a fact
-        about the enrichment, not about the package.
-      required: [summary, task_examples, tags, limitations, model, prompt_version]
-      properties:
-        checks:
-          type: array
-          description: |
-            Deterministic findings on this enrichment, checked against the
-            source document without a model call (05 R-34).
-
-            Advisory. This service reports; whether a finding blocks an index,
-            downgrades a field or merely annotates it is the control plane's
-            decision. An empty array means every rule that can
-            be checked without a model passed - NOT that the enrichment is
-            right, because the rules that need one (restated modality,
-            neighbouring capabilities, composing two stated facts, the locale
-            gloss) are not attempted here and are still carried by the prompt
-            alone.
-
-            Additive: absent means a build that predates these checks, not an
-            enrichment that passed them.
-          items:
+    EnrichCheck:
             type: object
             additionalProperties: false
             required: [rule, field]
@@ -709,6 +680,37 @@ components:
               severity:
                 type: string
                 enum: [warning]
+    EnrichSkillResponse:
+      type: object
+      description: |
+        The intent-search enrichment whitelist only. No trust, risk, safety or quality
+        field may be added here.
+
+        `checks` is not an exception to that sentence and is worth saying why.
+        It carries no judgement OF the Skill - it reports where this service's
+        own output disagrees with the document it was given, which is a fact
+        about the enrichment, not about the package.
+      required: [summary, task_examples, tags, limitations, model, prompt_version]
+      properties:
+        checks:
+          type: array
+          description: |
+            Deterministic findings on this enrichment, checked against the
+            source document without a model call (05 R-34).
+
+            Advisory. This service reports; whether a finding blocks an index,
+            downgrades a field or merely annotates it is the control plane's
+            decision. An empty array means every rule that can
+            be checked without a model passed - NOT that the enrichment is
+            right, because the rules that need one (restated modality,
+            neighbouring capabilities, composing two stated facts, the locale
+            gloss) are not attempted here and are still carried by the prompt
+            alone.
+
+            Additive: absent means a build that predates these checks, not an
+            enrichment that passed them.
+          items:
+            $ref: "#/components/schemas/EnrichCheck"
         summary:
           type: string
           description: Plain-language, task-oriented summary covering the document body.
@@ -743,7 +745,11 @@ components:
             service and never chosen by the caller. It identifies the REQUEST,
             the same way `seed` below does, and for the same reason.
 
-            Recorded for the reason `model` and `prompt_version` are recorded.
+            Reported for the reason `model` and `prompt_version` are reported,
+            but only those two are stored: no table on the control-plane side
+            has a column for sampling, so today this value is read off the
+            response and dropped (04 丙-279).
+
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
             explained it: the rule that a verdict must name its own ruler, and
@@ -1118,6 +1124,17 @@ components:
           items:
             $ref: "#/components/schemas/RubricItem"
           maxItems: 50
+    JudgeSkill:
+      type: object
+      description: The Skill under test, for context only. Untrusted package text.
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          default: ""
+        summary:
+          type: string
+          default: ""
     JudgeRunRequest:
       type: object
       description: |
@@ -1151,16 +1168,7 @@ components:
           type: string
           description: The evaluation row this call belongs to. Gateway metadata, as above.
         skill:
-          type: object
-          description: The Skill under test, for context only. Untrusted package text.
-          additionalProperties: false
-          properties:
-            name:
-              type: string
-              default: ""
-            summary:
-              type: string
-              default: ""
+          $ref: "#/components/schemas/JudgeSkill"
         user_prompt:
           type: string
           minLength: 1
@@ -1404,7 +1412,11 @@ components:
             service and never chosen by the caller. It identifies the REQUEST,
             the same way `seed` below does, and for the same reason.
 
-            Recorded for the reason `model` and `prompt_version` are recorded.
+            Reported for the reason `model` and `prompt_version` are reported,
+            but only those two are stored: no table on the control-plane side
+            has a column for sampling, so today this value is read off the
+            response and dropped (04 丙-279).
+
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
             explained it: the rule that a verdict must name its own ruler, and
@@ -1662,7 +1674,11 @@ components:
             service and never chosen by the caller. It identifies the REQUEST,
             the same way `seed` below does, and for the same reason.
 
-            Recorded for the reason `model` and `prompt_version` are recorded.
+            Reported for the reason `model` and `prompt_version` are reported,
+            but only those two are stored: no table on the control-plane side
+            has a column for sampling, so today this value is read off the
+            response and dropped (04 丙-279).
+
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
             explained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and
@@ -1822,7 +1838,11 @@ components:
             service and never chosen by the caller. It identifies the REQUEST,
             the same way `seed` below does, and for the same reason.
 
-            Recorded for the reason `model` and `prompt_version` are recorded.
+            Reported for the reason `model` and `prompt_version` are reported,
+            but only those two are stored: no table on the control-plane side
+            has a column for sampling, so today this value is read off the
+            response and dropped (04 丙-279).
+
             Under the provider default the same prompt version, the same model
             and the same input could answer differently, and nothing stored
             explained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and

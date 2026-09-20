@@ -82,7 +82,7 @@ class Severity(Enum):
     warning = 'warning'
 
 
-class Check(BaseModel):
+class EnrichCheck(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -252,7 +252,7 @@ class Rubric(BaseModel):
     items: list[RubricItem] = Field(..., max_length=50)
 
 
-class Skill(BaseModel):
+class JudgeSkill(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -269,10 +269,7 @@ class JudgeRunRequest(BaseModel):
         ...,
         description='The evaluation row this call belongs to. Gateway metadata, as above.',
     )
-    skill: Skill | None = Field(
-        None,
-        description='The Skill under test, for context only. Untrusted package text.',
-    )
+    skill: JudgeSkill | None = None
     user_prompt: constr(min_length=1, max_length=40000) = Field(
         ...,
         description='The task the user asked for. Untrusted, and the thing the criteria are about.',
@@ -409,7 +406,7 @@ class JudgeRunResponse(BaseModel):
     )
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nReported for the reason `model` and `prompt_version` are reported,\nbut only those two are stored: no table on the control-plane side\nhas a column for sampling, so today this value is read off the\nresponse and dropped (04 丙-279).\n\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -525,7 +522,7 @@ class SuggestImprovementsResponse(BaseModel):
     prompt_version: str
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nReported for the reason `model` and `prompt_version` are reported,\nbut only those two are stored: no table on the control-plane side\nhas a column for sampling, so today this value is read off the\nresponse and dropped (04 丙-279).\n\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -629,7 +626,7 @@ class EmbedResponse(BaseModel):
 
 
 class EnrichSkillResponse(BaseModel):
-    checks: list[Check] | None = Field(
+    checks: list[EnrichCheck] | None = Field(
         None,
         description="Deterministic findings on this enrichment, checked against the\nsource document without a model call (05 R-34).\n\nAdvisory. This service reports; whether a finding blocks an index,\ndowngrades a field or merely annotates it is the control plane's\ndecision. An empty array means every rule that can\nbe checked without a model passed - NOT that the enrichment is\nright, because the rules that need one (restated modality,\nneighbouring capabilities, composing two stated facts, the locale\ngloss) are not attempted here and are still carried by the prompt\nalone.\n\nAdditive: absent means a build that predates these checks, not an\nenrichment that passed them.\n",
     )
@@ -649,7 +646,7 @@ class EnrichSkillResponse(BaseModel):
     )
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nReported for the reason `model` and `prompt_version` are reported,\nbut only those two are stored: no table on the control-plane side\nhas a column for sampling, so today this value is read off the\nresponse and dropped (04 丙-279).\n\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the rule that a verdict must name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See 05 R-31.\n',
     )
     seed: int | None = Field(
         None,
@@ -742,7 +739,7 @@ class GenerateSkillResponse(BaseModel):
     prompt_version: str
     temperature: float | None = Field(
         None,
-        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller. It identifies the REQUEST,\nthe same way `seed` below does, and for the same reason.\n\nReported for the reason `model` and `prompt_version` are reported,\nbut only those two are stored: no table on the control-plane side\nhas a column for sampling, so today this value is read off the\nresponse and dropped (04 丙-279).\n\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: the evaluation-verdict trust boundary makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n\nMEASURED 2026-08-30, and it narrows the paragraph above: the\nflagship, judge and match-reason tiers REFUSE any temperature but\ntheir own default (400, "Unsupported value: \'temperature\' does not\nsupport 0.0 with this model"). The gateway now drops the parameter\nfor those three models, so what they sample at is the provider\'s\ndefault and this field says what was asked for, not what was used.\nSampling is pinned on the mini tier and nowhere else. Which tiers\ndrop it is the gateway\'s answer, not this service\'s guess -\n`GET /model/info` returns each model\'s `additional_drop_params` to\nany Virtual Key. See the evaluation-verdict trust boundary\'s 2026-08-30 addendum and 05 R-31.\n',
     )
     seed: int | None = Field(
         None,

@@ -41,7 +41,7 @@ type CreationToolIntent struct {
 	Kind  string `json:"kind"`
 	Query string `json:"query"`
 
-	Queries []string `json:"queries,omitempty"`
+	Queries []string `json:"queries"`
 }
 type CreationStepResponse struct {
 	Outcome              string   `json:"outcome"`
