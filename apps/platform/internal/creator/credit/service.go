@@ -125,7 +125,7 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 		return ChargeResult{}, err
 	}
 	credits := CreditsForMicros(billed, s.Config.MicrosPerCredit)
-	if credits == 0 {
+	if estimated || credits == 0 {
 
 		balance, err := s.Store.Balance(ctx, tx, in.UserID)
 		if err != nil {

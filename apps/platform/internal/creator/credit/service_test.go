@@ -139,9 +139,10 @@ func TestChargeIsIdempotentOnSessionRevision(t *testing.T) {
 	}
 }
 
-func TestChargeUnknownUsageFallsBackToReservedAndMarksEstimated(t *testing.T) {
+func TestUnknownUsageIsRecordedAndNeverDebited(t *testing.T) {
 	store := newFakeStore()
 	user := testUser(2)
+	store.balances[idKey(user)] = 100
 	s := &Service{Store: store, Config: testConfig()}
 	r, err := s.Charge(context.Background(), nil, ChargeInput{
 		Kind: KindCreationStep, UserID: user,
@@ -153,8 +154,15 @@ func TestChargeUnknownUsageFallsBackToReservedAndMarksEstimated(t *testing.T) {
 	if !r.Estimated {
 		t.Fatal("a charge with unknown actual usage must be marked Estimated")
 	}
-	if r.Credits == 0 {
-		t.Fatal("unknown usage must never charge zero credits")
+	if r.Credits != 0 {
+		t.Fatalf("a call nobody could price debited %d credits; the ceiling is what it was allowed "+
+			"to cost, never evidence of what it did cost", r.Credits)
+	}
+	if got := store.balances[idKey(user)]; got != 100 {
+		t.Fatalf("balance = %d, want it untouched at 100", got)
+	}
+	if _, recorded := store.events["session-2:rev-1"]; !recorded {
+		t.Error("an unpriced call left no cost event, so the spend it may have caused is invisible")
 	}
 }
 
