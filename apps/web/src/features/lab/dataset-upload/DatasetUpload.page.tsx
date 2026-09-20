@@ -4,14 +4,10 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { ApiError } from "../../../core/api/client";
 import { useDatasetLimits, useUploadDataset, type Dataset } from "../lab.service";
+import { useTestCaseDatasets } from "../testcases.service";
+import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
 
 type UploadSearch = { test_case?: string };
-
-function roundedBytes(n: number): string {
-  if (n >= 1 << 20) return `${Math.round(n / (1 << 20))} MB`;
-  if (n >= 1 << 10) return `${Math.round(n / (1 << 10))} KB`;
-  return `${n} B`;
-}
 
 export function DatasetUpload() {
   const { test_case: testCase = "" } = useSearch({ strict: false }) as UploadSearch;
@@ -24,8 +20,13 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
   const limits = useDatasetLimits();
+  const stored = useTestCaseDatasets(testCase);
   const upload = useUploadDataset(testCase);
   const uploadError = upload.error;
+  const used: TestCaseUsage | undefined = stored.data && {
+    fileCount: stored.data.datasets.length,
+    totalBytes: stored.data.total_bytes,
+  };
 
   return (
     <section>
@@ -45,17 +46,24 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
               單一檔案最大 {roundedBytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}
               {roundedBytes(limits.data.max_test_case_bytes)}、最多{" "}
               {limits.data.max_files_per_test_case} 個檔案。
-              <p className="note">
-                這一頁不知道這個 Test Case 已經用掉多少：已上傳的檔案、每個檔案的大小與合計,在{" "}
-                {testCase === "" ? (
-                  "Test Case 頁的「測試資料」那一節"
-                ) : (
-                  <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: testCase }}>
-                    這個 Test Case 的「測試資料」那一節
-                  </Link>
-                )}
-                。超過上限時伺服器會擋下來並說明原因。
-              </p>
+              {used ? (
+                <p className="note">
+                  這個 Test Case 已經用掉 {used.fileCount} 個檔案、
+                  {roundedBytes(used.totalBytes)}，還可以再上傳{" "}
+                  {limits.data.max_files_per_test_case - used.fileCount} 個檔案、
+                  {roundedBytes(limits.data.max_test_case_bytes - used.totalBytes)}。 每個檔案在{" "}
+                  {testCase === "" ? (
+                    "Test Case 頁的「測試資料」那一節"
+                  ) : (
+                    <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: testCase }}>
+                      這個 Test Case 的「測試資料」那一節
+                    </Link>
+                  )}
+                  可以逐一刪除。
+                </p>
+              ) : (
+                <p className="note">正在讀這個 Test Case 已經用掉多少…</p>
+              )}
             </dd>
 
             <dt>支援格式</dt>
@@ -95,6 +103,13 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
                   if (!file) {
                     setMessage("請先選擇一個檔案。");
                     return;
+                  }
+                  if (used) {
+                    const refusal = uploadRefusal(file, limits.data, used);
+                    if (refusal !== "") {
+                      setMessage(refusal);
+                      return;
+                    }
                   }
                   upload.mutate(file, {
                     onSuccess: (d) => {

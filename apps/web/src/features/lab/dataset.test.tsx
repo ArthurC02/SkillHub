@@ -47,6 +47,14 @@ function stubPlatform(limitsStatus = 200) {
         }),
       );
     }
+    if (url.includes(`/test-cases/${TEST_CASE}/datasets`)) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ datasets: [], total_bytes: 0 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
     return Promise.resolve(new Response(`{"error":"not found"}`, { status: 404 }));
   });
   return calls;
@@ -81,7 +89,12 @@ test("02:TEST-002 the upload rules are on screen before anything is uploaded", a
   expect(text).toContain("副檔名");
 
   expect(calls.some((u) => u.includes("/test-cases/limits"))).toBe(true);
-  expect(calls.some((u) => u.includes("/datasets"))).toBe(false);
+  expect(
+    calls.some((u) => u.includes(`/test-cases/${TEST_CASE}/datasets`)),
+    "the rules are useless without how much of them is left; a page that cannot say that sends " +
+      "uploads it already knows will be refused",
+  ).toBe(true);
+  expect(text).toContain("還可以再上傳 20 個檔案");
   expect(container.querySelector("input[type=file]")).not.toBeNull();
 });
 
