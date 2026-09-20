@@ -18,6 +18,7 @@ func (d *reclaimDriver) Remove(_ context.Context, id string) error {
 }
 
 func (d *reclaimDriver) Isolation() IsolationStrength   { return IsolationNone }
+func (d *reclaimDriver) InjectsFromGrant() []string     { return nil }
 func (d *reclaimDriver) Rootless() bool                 { return true }
 func (d *reclaimDriver) DedicatedWorkspacePerRun() bool { return true }
 func (d *reclaimDriver) Healthy(context.Context) bool   { return true }

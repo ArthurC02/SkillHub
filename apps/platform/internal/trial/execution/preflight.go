@@ -35,13 +35,17 @@ type ObjectStore interface {
 	Remove(ctx context.Context, key string) error
 }
 
-var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
-
-func injectedSecretsFor(snap policySnapshot) []string {
-	if snap.reachesAModel() {
-		return injectedSecretNames
+func (s *Service) injectedSecretsFor(ctx context.Context, snap policySnapshot) []string {
+	if !snap.reachesAModel() {
+		return []string{}
 	}
-	return []string{}
+	_, capability, _, err := s.providers().Select(ctx, requirementsFromPolicy(snap))
+	if err != nil {
+		return []string{}
+	}
+	named := append([]string{}, capability.Injects...)
+	sort.Strings(named)
+	return named
 }
 
 type PermissionSummaryContent struct {
@@ -269,7 +273,7 @@ func (s *Service) permissionSummaryFor(
 
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
-		InjectedSecrets: injectedSecretsFor(snap),
+		InjectedSecrets: s.injectedSecretsFor(ctx, snap),
 		Provider:        s.providerSummary(ctx, snap),
 		ResourceLimits:  snap.ResourceLimits,
 	}

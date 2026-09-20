@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -502,5 +504,48 @@ func TestRemoveRefusesAnIDThatWouldReachOutsideTheSandboxBase(t *testing.T) {
 	}
 	if _, err := os.Stat(sibling); err != nil {
 		t.Errorf("a directory outside the sandbox base was removed: %v", err)
+	}
+}
+
+func namesSetBy(lines []string) map[string]bool {
+	set := map[string]bool{}
+	for _, line := range lines {
+		if name, _, ok := strings.Cut(line, "="); ok {
+			set[name] = true
+		}
+	}
+	return set
+}
+
+func namesTheGrantAdds(withGrant, without []string) []string {
+	before, after := namesSetBy(without), namesSetBy(withGrant)
+	added := []string{}
+	for name := range after {
+		if !before[name] {
+			added = append(added, name)
+		}
+	}
+	sort.Strings(added)
+	return added
+}
+
+func TestTheNamesDeclaredAreTheNamesTheGrantActuallySets(t *testing.T) {
+	req := sandbox.RunRequest{
+		ModelGateway: &sandbox.ModelGatewayGrant{
+			BaseURL: "https://gateway.test", VirtualKey: "sk-not-a-real-key",
+		},
+	}
+	bare := sandbox.RunRequest{}
+
+	added := namesTheGrantAdds(env(req, "work", "out"), env(bare, "work", "out"))
+	declared := append([]string{}, (&Driver{}).InjectsFromGrant()...)
+	sort.Strings(declared)
+
+	if !slices.Equal(added, declared) {
+		t.Errorf("the workload is given %v but this provider declares %v; the pre-run summary "+
+			"shows the declaration, so a difference is a false claim about secrets", added, declared)
+	}
+	if len(added) == 0 {
+		t.Fatal("the grant added no variable at all; this test would pass on any declaration")
 	}
 }

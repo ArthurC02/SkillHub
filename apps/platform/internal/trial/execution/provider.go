@@ -54,6 +54,7 @@ type ProviderCapability struct {
 	Runtimes     []RuntimeSupport `json:"runtimes"`
 	MaxResources ResourceLimits   `json:"max_resources"`
 
+	Injects                []string `json:"injects,omitempty"`
 	MaxResourcesUnenforced []string `json:"max_resources_unenforced,omitempty"`
 	Isolation              struct {
 		Strength                 IsolationStrength `json:"strength"`

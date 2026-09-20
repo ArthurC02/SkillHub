@@ -40,6 +40,8 @@ type Driver interface {
 	Isolation() IsolationStrength
 
 	DedicatedWorkspacePerRun() bool
+
+	InjectsFromGrant() []string
 }
 
 type Outcome struct {
@@ -163,6 +165,7 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 		Runtimes:               m.cfg.Runtimes,
 		MaxResources:           m.cfg.MaxResources,
 		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
+		Injects:                m.drv.InjectsFromGrant(),
 		Isolation: Isolation{
 			Strength:                 m.drv.Isolation(),
 			Rootless:                 m.drv.Rootless(),

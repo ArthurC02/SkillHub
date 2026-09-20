@@ -33,6 +33,7 @@ type fakeDriver struct {
 	readTraceFailures int
 	isolation         sandbox.IsolationStrength
 	dedicated         bool
+	injects           []string
 
 	trace map[string][]byte
 
@@ -175,6 +176,7 @@ func (f *fakeDriver) Healthy(context.Context) bool         { return true }
 func (f *fakeDriver) Rootless() bool                       { return f.rootless }
 func (f *fakeDriver) Isolation() sandbox.IsolationStrength { return f.isolation }
 func (f *fakeDriver) DedicatedWorkspacePerRun() bool       { return f.dedicated }
+func (f *fakeDriver) InjectsFromGrant() []string           { return f.injects }
 
 func (f *fakeDriver) exit(id string, out sandbox.Outcome) {
 	f.mu.Lock()

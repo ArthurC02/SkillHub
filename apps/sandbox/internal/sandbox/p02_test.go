@@ -113,6 +113,8 @@ func (d *p02Driver) Isolation() IsolationStrength { return IsolationStrong }
 
 func (d *p02Driver) DedicatedWorkspacePerRun() bool { return true }
 
+func (d *p02Driver) InjectsFromGrant() []string { return nil }
+
 func (d *p02Driver) ReleaseWorkload(context.Context, string) error { return nil }
 func (d *p02Driver) ReadTrace(context.Context, string, int64) ([]byte, bool, error) {
 	return nil, false, nil

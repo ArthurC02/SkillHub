@@ -17,6 +17,15 @@ import (
 
 const logTailBytes = 32 << 10
 
+const (
+	grantBaseURLVar = "ANTHROPIC_BASE_URL"
+	grantTokenVar   = "ANTHROPIC_AUTH_TOKEN"
+)
+
+func (d *Driver) InjectsFromGrant() []string {
+	return []string{grantBaseURLVar, grantTokenVar}
+}
+
 type Config struct {
 	NodeBin string
 
@@ -314,9 +323,9 @@ func env(req sandbox.RunRequest, workDir, outDir string) []string {
 		pairs = append(pairs, kv{"SKILLHUB_MODEL", req.Runtime.Model})
 	}
 	if g := req.ModelGateway; g != nil {
-		pairs = append(pairs, kv{"ANTHROPIC_BASE_URL", g.BaseURL})
+		pairs = append(pairs, kv{grantBaseURLVar, g.BaseURL})
 		if g.VirtualKey != "" {
-			pairs = append(pairs, kv{"ANTHROPIC_AUTH_TOKEN", g.VirtualKey})
+			pairs = append(pairs, kv{grantTokenVar, g.VirtualKey})
 		}
 	}
 

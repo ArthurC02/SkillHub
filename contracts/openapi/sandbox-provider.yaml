@@ -913,6 +913,24 @@ components:
                 items: { type: string, enum: [in_sandbox_sdk, provider_hosted_agent] }
         max_resources:
           $ref: "#/components/schemas/ResourceLimits"
+        injects:
+          type: array
+          items: { type: string }
+          description: |
+            Environment variable names this provider sets in the workload out
+            of the model-gateway grant the orchestrator hands it, and nothing
+            else. Empty or absent means it injects none of it.
+
+            The pre-run permission summary tells a user which secrets the
+            sandbox will be given. That claim was three independent hard-coded
+            lists - one in the orchestrator and one in each driver - so a
+            provider that injected different names would have left the summary
+            declaring names nobody set, with no test able to notice. A security
+            claim about an external system has to come from that system.
+
+            Order is not significant; a consumer that puts these in a hash
+            sorts them first, so a provider reordering its own list does not
+            revoke confirmations a user already gave.
         max_resources_unenforced:
           type: array
           items:

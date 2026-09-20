@@ -26,6 +26,9 @@ const (
 	WorkDir = "/work"
 	OutDir  = "/out"
 
+	grantBaseURLVar = "ANTHROPIC_BASE_URL"
+	grantTokenVar   = "ANTHROPIC_AUTH_TOKEN"
+
 	labelManaged   = "skillhub.sandbox.managed"
 	labelRunID     = "skillhub.sandbox.run_id"
 	labelAttemptID = "skillhub.sandbox.run_attempt_id"
@@ -385,12 +388,16 @@ func env(req sandbox.RunRequest) []string {
 		e = append(e, "SKILLHUB_MODEL="+req.Runtime.Model)
 	}
 	if g := req.ModelGateway; g != nil {
-		e = append(e, "ANTHROPIC_BASE_URL="+g.BaseURL)
+		e = append(e, grantBaseURLVar+"="+g.BaseURL)
 		if g.VirtualKey != "" {
-			e = append(e, "ANTHROPIC_AUTH_TOKEN="+g.VirtualKey)
+			e = append(e, grantTokenVar+"="+g.VirtualKey)
 		}
 	}
 	return e
+}
+
+func (d *Driver) InjectsFromGrant() []string {
+	return []string{grantBaseURLVar, grantTokenVar}
 }
 
 func (d *Driver) tail(ctx context.Context, id string) string {

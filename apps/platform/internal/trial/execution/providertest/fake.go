@@ -96,6 +96,7 @@ func DefaultCapability(name string) run.ProviderCapability {
 			AgentIntegration: []string{"in_sandbox_sdk"},
 		}},
 		MaxResources: run.DefaultResourceLimits(),
+		Injects:      []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"},
 	}
 	c.Isolation.Strength = "weak"
 	c.Isolation.Rootless = true

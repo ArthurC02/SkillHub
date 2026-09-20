@@ -2,7 +2,11 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"unicode"
@@ -35,21 +39,54 @@ func TestEgressAllowIsRenderedAsPurposeAndURL(t *testing.T) {
 	}
 }
 
-func TestInjectedSecretsFollowTheGrantAndNotAConstant(t *testing.T) {
-	withGateway := policySnapshot{Egress: EgressPolicy{
+func providerDeclaring(t *testing.T, injects string) *Service {
+	t.Helper()
+	body := `{"provider":"declared","runtimes":[{"runtime":"claude_agent_sdk","versions":["0.1.0"],` +
+		`"agent_integration":["in_sandbox_sdk"]}],"max_resources":` + declaredResourcesJSON() +
+		`,"isolation":{"strength":"strong","rootless":true,"dedicated_workspace_per_run":true},` +
+		`"network":{"egress_modes":["default_deny"],"private_network":true},` +
+		`"availability":{"concurrent_run_slots":4,"healthy":true},"injects":` + injects + `}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return &Service{Providers: NewRegistry(NewProvider("declared", srv.URL, ""))}
+}
+
+func declaredResourcesJSON() string {
+	limits, err := json.Marshal(DefaultResourceLimits())
+	if err != nil {
+		panic(err)
+	}
+	return string(limits)
+}
+
+func withGatewayGrant() policySnapshot {
+	return policySnapshot{Egress: EgressPolicy{
 		Mode:  "default_deny",
 		Allow: []egressAllow{{Purpose: "model_gateway", URL: "http://gateway.invalid"}},
 	}}
-	if got := injectedSecretsFor(withGateway); len(got) != 2 {
-		t.Errorf("a run with a gateway grant receives both secrets, got %v", got)
+}
+
+func TestTheSummaryNamesTheSecretsTheProviderSaysItInjects(t *testing.T) {
+	svc := providerDeclaring(t, `["SOMETHING_ELSE","ANOTHER_ONE"]`)
+
+	got := svc.injectedSecretsFor(context.Background(), withGatewayGrant())
+	if want := []string{"ANOTHER_ONE", "SOMETHING_ELSE"}; !slices.Equal(got, want) {
+		t.Errorf("the summary claims %v, want %v: it is a claim about what the sandbox is given, "+
+			"so only the sandbox can make it", got, want)
 	}
+}
+
+func TestNoGatewayGrantMeansNothingFromItIsInjected(t *testing.T) {
+	svc := providerDeclaring(t, `["ANTHROPIC_BASE_URL"]`)
 
 	none := policySnapshot{Egress: EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}}}
-	got := injectedSecretsFor(none)
+	got := svc.injectedSecretsFor(context.Background(), none)
 	if len(got) != 0 {
-		t.Errorf("no gateway means no secrets are injected, but the summary claims %v", got)
+		t.Errorf("no gateway means nothing from it is injected, but the summary claims %v", got)
 	}
-
 	if got == nil {
 		t.Error("an empty disclosure must still be a list; a missing row reads as a question never asked")
 	}
@@ -58,8 +95,17 @@ func TestInjectedSecretsFollowTheGrantAndNotAConstant(t *testing.T) {
 		Mode:  "default_deny",
 		Allow: []egressAllow{{Purpose: "something_else", URL: "http://elsewhere.invalid"}},
 	}}
-	if got := injectedSecretsFor(other); len(got) != 0 {
+	if got := svc.injectedSecretsFor(context.Background(), other); len(got) != 0 {
 		t.Errorf("only a model_gateway grant injects these, got %v", got)
+	}
+}
+
+func TestAProviderThatCannotBeAskedClaimsNoSecrets(t *testing.T) {
+	svc := &Service{Providers: NewRegistry()}
+
+	if got := svc.injectedSecretsFor(context.Background(), withGatewayGrant()); len(got) != 0 {
+		t.Errorf("with nothing to ask, the summary still claims %v; an unverifiable claim about "+
+			"secrets must not be made", got)
 	}
 }
 
