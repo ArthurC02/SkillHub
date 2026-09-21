@@ -14,6 +14,7 @@ to decide whether a candidate is needed before creating one.
 1. Run `verify-sources --repo-root <repo> --source-map <registry>/source-map.json --policy <registry>/domain-memory-policy.json`, `verify-evidence --registry-root <registry> --repo-root <repo>`, and `verify-audit --registry-root <registry>`.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
 3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies rather than a fixed language pattern. Use [tactical design reasoning](../../references/tactical-reasoning.md).
+   When deployment configuration affects an immutable record's behavior, verify that the chosen value is captured in that record's snapshot rather than reread during retries.
 4. If the model changed, update the smallest affected asset with `upsert-candidate`, or prepare a Change Package for a material change. For a boundary-preserving refactor, retain the focused architecture check when one exists; otherwise retain affected tests and lint as preservation evidence.
 5. From the repository root, run `validate --registry-root <registry> --repo-root <repo>`, then preserve the audit trail.
 
