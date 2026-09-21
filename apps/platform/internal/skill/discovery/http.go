@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
@@ -586,11 +585,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	hits := make([]searchHit, 0, len(rows))
 	for _, row := range rows {
-		hits = append(hits, searchHit{
-			SkillID: pgconv.UUIDString(row.SkillID),
-			Name:    row.Name,
-			Summary: row.Summary,
-		})
+		hits = append(hits, searchHit(row))
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": hits})
 }

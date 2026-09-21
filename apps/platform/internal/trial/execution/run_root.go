@@ -227,6 +227,16 @@ func (r *Run) FinishAttempt(attemptID pgtype.UUID, errorClass, message string) {
 	}
 }
 
+func (r *Run) FinishAttemptAndTransition(
+	attemptID pgtype.UUID, errorClass, message string, to gen.RunStatus, reason statusReason, failure FailureClass,
+) {
+	r.FinishAttempt(attemptID, errorClass, message)
+	if _, refused := r.Refusal(); refused {
+		return
+	}
+	r.Transition(to, reason, failure, attemptID)
+}
+
 func (r *Run) RecordGrantExpiry(attemptID pgtype.UUID, expires time.Time) {
 	a := r.attempt(attemptID)
 	switch {

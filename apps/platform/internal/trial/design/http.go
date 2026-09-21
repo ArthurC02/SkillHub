@@ -115,17 +115,6 @@ type datasetResponse struct {
 	ExpiresAt   string `json:"expires_at"`
 }
 
-func toDatasetResponse(d gen.Dataset) datasetResponse {
-	return datasetResponse{
-		DatasetID:   pgconv.UUIDString(d.ID),
-		FileName:    d.FileName,
-		ContentType: d.ContentType,
-		SizeBytes:   d.SizeBytes,
-		ContentHash: d.ContentHash,
-		ExpiresAt:   d.ExpiresAt.Time.UTC().Format(time.RFC3339),
-	}
-}
-
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBytes)).Decode(v); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "請求內容不是合法的 JSON")
@@ -488,7 +477,7 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "上傳失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, toDatasetResponse(ds))
+	httpx.WriteJSON(w, http.StatusCreated, toDatasetResponseDTO(ds))
 }
 
 func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
@@ -508,13 +497,20 @@ func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
 	out := make([]datasetResponse, 0, len(rows))
 	var total int64
 	for _, d := range rows {
-		out = append(out, toDatasetResponse(d))
+		out = append(out, toDatasetResponseDTO(d))
 		total += d.SizeBytes
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"datasets":    out,
 		"total_bytes": total,
 	})
+}
+
+func toDatasetResponseDTO(d Dataset) datasetResponse {
+	return datasetResponse{
+		DatasetID: pgconv.UUIDString(d.ID), FileName: d.FileName, ContentType: d.ContentType,
+		SizeBytes: d.SizeBytes, ContentHash: d.ContentHash, ExpiresAt: d.ExpiresAt.Time.UTC().Format(time.RFC3339),
+	}
 }
 
 func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {

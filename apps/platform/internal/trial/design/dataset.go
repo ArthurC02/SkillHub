@@ -21,24 +21,24 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
-func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (gen.Dataset, error) {
+func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (Dataset, error) {
 	name := sanitizeFileName(fileName)
 	if name == "" {
-		return gen.Dataset{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
+		return Dataset{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
 	}
 	if len(data) == 0 {
-		return gen.Dataset{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
+		return Dataset{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
 	}
 	if len(data) > MaxFileBytes {
-		return gen.Dataset{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
+		return Dataset{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
 	}
 	contentType, err := detectContentType(data)
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	sum := sha256.Sum256(data)
@@ -47,7 +47,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	key := fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(ws.ID), pgconv.UUIDString(id))
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	locked := false
 	objectLocked := false
@@ -75,28 +75,28 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		conn.Release()
 	}()
 	if err := gen.New(conn).LockDatasetWorkspaceObjects(ctx, ws.ID); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	locked = true
 	if s.MayStoreObjects == nil {
-		return gen.Dataset{}, errors.New("testlab: identity lifecycle read is not configured")
+		return Dataset{}, errors.New("testlab: identity lifecycle read is not configured")
 	}
 	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	if !allowed {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	}
 	if err := gen.New(conn).LockDatasetObjectKeySession(ctx, key); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	objectLocked = true
 	intent, err := gen.New(conn).CreateDatasetCleanupIntent(ctx, gen.CreateDatasetCleanupIntentParams{
 		WorkspaceID: ws.ID, ObjectKey: key, Hold: pgconv.Interval(datasetCleanupHold),
 	})
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	commitAttempted := false
@@ -117,35 +117,35 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		}
 	}()
 	if err := s.Store.Put(ctx, key, data); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	usage, err := q.SumDatasetUsage(ctx, gen.SumDatasetUsageParams{
 		TestCaseID: tc.ID, WorkspaceID: ws.ID,
 	})
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	if usage.FileCount+1 > MaxFilesPerTestCase {
-		return gen.Dataset{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 個檔案",
+		return Dataset{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 個檔案",
 			ErrLimitExceeded, MaxFilesPerTestCase)
 	}
 	if usage.TotalBytes+int64(len(data)) > MaxTestCaseBytes {
-		return gen.Dataset{}, fmt.Errorf("%w: 一個 Test Case 的檔案總量最多 %s",
+		return Dataset{}, fmt.Errorf("%w: 一個 Test Case 的檔案總量最多 %s",
 			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 
@@ -160,12 +160,12 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(DatasetRetention), Valid: true},
 	})
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	if err := q.DeleteDatasetCleanupIntent(ctx, gen.DeleteDatasetCleanupIntentParams{
 		ID: intent.ID, WorkspaceID: ws.ID,
 	}); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	commitAttempted = true
 	commitErr := tx.Commit(ctx)
@@ -173,7 +173,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		// Commit definitely failed, so no row exists; let the deferred cleanup remove the object.
 		commitAttempted = false
 	}
-	return ds, commitErr
+	return datasetDTO(ds), commitErr
 }
 
 // shouldCompensateCommit reports whether tx.Commit definitely failed rather
@@ -192,13 +192,14 @@ type Dataset struct {
 	SizeBytes   int64
 	ContentHash string
 	ObjectKey   string
+	ExpiresAt   pgtype.Timestamptz
 }
 
 func datasetDTO(row gen.Dataset) Dataset {
 	return Dataset{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, TestCaseID: row.TestCaseID,
 		FileName: row.FileName, ContentType: row.ContentType,
-		SizeBytes: row.SizeBytes, ContentHash: row.ContentHash, ObjectKey: row.ObjectKey,
+		SizeBytes: row.SizeBytes, ContentHash: row.ContentHash, ObjectKey: row.ObjectKey, ExpiresAt: row.ExpiresAt,
 	}
 }
 
@@ -231,46 +232,44 @@ func (s *Service) CaseDatasets(ctx context.Context, workspaceID, testCaseID pgty
 	return out, nil
 }
 
-func (s *Service) ListDatasets(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID) ([]gen.Dataset, error) {
+func (s *Service) ListDatasets(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID) ([]Dataset, error) {
 
 	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
 		return nil, err
 	}
-	return gen.New(s.Pool).ListDatasets(ctx, gen.ListDatasetsParams{
-		TestCaseID: testCaseID, WorkspaceID: ws.ID,
-	})
+	return s.CaseDatasets(ctx, ws.ID, testCaseID)
 }
 
-func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, testCaseID, datasetID pgtype.UUID) (gen.Dataset, error) {
+func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, testCaseID, datasetID pgtype.UUID) (Dataset, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	ds, err := q.GetDataset(ctx, gen.GetDatasetParams{ID: datasetID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	if ds.TestCaseID != testCaseID {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	}
 	if _, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: ws.ID}); errors.Is(err, pgx.ErrNoRows) {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	} else if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	ds, err = q.SoftDeleteDataset(ctx, gen.SoftDeleteDatasetParams{ID: datasetID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Dataset{}, ErrNotFound
+		return Dataset{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        ws.OwnerUserID,
@@ -280,14 +279,14 @@ func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, test
 		ResourceID:   ds.ID,
 		Metadata:     map[string]any{"test_case_id": pgconv.UUIDString(ds.TestCaseID)},
 	}); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return gen.Dataset{}, err
+		return Dataset{}, err
 	}
 
 	s.removeDatasetObject(ctx, ds)
-	return ds, nil
+	return datasetDTO(ds), nil
 }
 
 func (s *Service) removeDatasetObject(ctx context.Context, ds gen.Dataset) {

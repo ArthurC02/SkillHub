@@ -363,8 +363,7 @@ func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
-	records, err := audit.ListForWorkspace(r.Context(), h.Svc.Pool, ws.ID,
-		[]string{audit.ActionSkillGenerateFailed}, generateFailureLimit)
+	records, err := h.Svc.GenerateFailures(r.Context(), ws.ID, generateFailureLimit)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "failure history could not be read")
 		return

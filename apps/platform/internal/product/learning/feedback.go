@@ -29,6 +29,16 @@ func AllFeedbackKinds() []FeedbackKind {
 	return []FeedbackKind{FeedbackBlockingIssue, FeedbackNeedSignal}
 }
 
+type FeedbackReport struct {
+	WorkspaceID pgtype.UUID
+	UserID      pgtype.UUID
+	Kind        FeedbackKind
+	Message     string
+	PagePath    *string
+	RunID       pgtype.UUID
+	BuildID     *string
+}
+
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
@@ -88,10 +98,10 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := gen.InsertFeedbackReportParams{
+	p := FeedbackReport{
 		WorkspaceID: ws.ID,
 		UserID:      user.ID,
-		Kind:        string(body.Kind),
+		Kind:        body.Kind,
 		Message:     message,
 	}
 
@@ -116,11 +126,26 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := gen.New(h.Svc.Pool).InsertFeedbackReport(r.Context(), p); err != nil {
+	if err := h.Svc.RecordFeedback(r.Context(), p); err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "回報沒有記錄成功，可以再送一次")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Service) RecordFeedback(ctx context.Context, report FeedbackReport) error {
+	if s == nil || s.Pool == nil {
+		return errors.New("feedback recording requires a database pool")
+	}
+	return gen.New(s.Pool).InsertFeedbackReport(ctx, gen.InsertFeedbackReportParams{
+		WorkspaceID: report.WorkspaceID,
+		UserID:      report.UserID,
+		Kind:        string(report.Kind),
+		Message:     report.Message,
+		PagePath:    report.PagePath,
+		RunID:       report.RunID,
+		BuildID:     report.BuildID,
+	})
 }
 
 func (s *Service) PurgeExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {

@@ -54,6 +54,15 @@ func TestAServiceWithoutAnInjectedClockReadsTheRealOneInUTC(t *testing.T) {
 	}
 }
 
+func TestAProvidersSilenceIsMeasuredAgainstTheClockTheServiceReads(t *testing.T) {
+	since := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	d := &driver{svc: &Service{Now: func() time.Time { return since.Add(ProviderLostAfter) }}}
+
+	if got := d.providerSilentFor(since); got != ProviderLostAfter {
+		t.Errorf("provider silence = %s, want %s", got, ProviderLostAfter)
+	}
+}
+
 func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
 	if err := (&Service{TestLab: &testlab.Service{}}).requireTestLab(); err != nil {
 		t.Fatalf("requireTestLab rejected an injected owner service: %v", err)

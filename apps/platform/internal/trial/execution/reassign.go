@@ -70,7 +70,9 @@ func (d *driver) providerSilentSince(ctx context.Context, attempt gen.RunAttempt
 }
 
 func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reason statusReason) error {
-	d.finishAttempt(ctx, attempt, errClassProviderLost, string(reason))
+	if err := d.finishAttempt(ctx, attempt, errClassProviderLost, string(reason)); err != nil {
+		return err
+	}
 	d.svc.providers().forget(attempt.Provider)
 
 	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)

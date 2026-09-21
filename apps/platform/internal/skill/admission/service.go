@@ -97,6 +97,14 @@ type PendingEnrichment struct {
 	PackageObjectKey string
 }
 
+func (s *Service) GenerateFailures(ctx context.Context, workspaceID pgtype.UUID, limit int32) ([]audit.Record, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errors.New("generate failure history requires a database pool")
+	}
+	return audit.ListForWorkspace(ctx, s.Pool, workspaceID,
+		[]string{audit.ActionSkillGenerateFailed}, limit)
+}
+
 func (s *Service) requireProjection() error {
 	if s.IndexSkill == nil {
 		return errors.New("ingest: search projection write not injected; refusing to write")

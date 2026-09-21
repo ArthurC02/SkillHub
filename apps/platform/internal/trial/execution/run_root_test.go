@@ -432,6 +432,23 @@ func TestAnAttemptKeepsItsOutcome(t *testing.T) {
 	}
 }
 
+func TestAnAttemptAndRunFinishTogether(t *testing.T) {
+	r := runIn(gen.RunStatusRunning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
+	execution := string(errClassExecution)
+
+	r.FinishAttemptAndTransition(firstAttempt, errClassExecution, "failed", gen.RunStatusFailed, "failed", failureWorkload)
+
+	assertRunEvents(t, r,
+		AttemptFinished{AttemptID: firstAttempt, ErrorClass: &execution},
+		StatusChanged{RunStatusChanged: outbox.RunStatusChanged{
+			FromStatus: string(gen.RunStatusRunning), ToStatus: string(gen.RunStatusFailed), Reason: "failed",
+		}, attemptID: firstAttempt, failure: failureWorkload},
+	)
+	if !r.Attempt(firstAttempt).FinishedAt.Valid || r.Status() != gen.RunStatusFailed {
+		t.Fatalf("attempt finished %v and run status %q, want finished failed", r.Attempt(firstAttempt).FinishedAt.Valid, r.Status())
+	}
+}
+
 func TestGrantExpiryIsRecordedOnlyWhereTheGrantStateAllowsIt(t *testing.T) {
 	expires := time.Unix(1_800_000_000, 0).UTC()
 	cases := []struct {

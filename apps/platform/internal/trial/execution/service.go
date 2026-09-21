@@ -112,6 +112,8 @@ type Service struct {
 
 	Now func() time.Time
 
+	LastOrphanScan func(context.Context) (time.Time, bool, error)
+
 	TraceSigner *trace.Signer
 
 	Trace *trace.Service

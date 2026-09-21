@@ -504,9 +504,10 @@ func TestExactlyTheReferenceCapIsNotRefused(t *testing.T) {
 }
 
 type fakeReferenceReader struct {
-	workspace map[string]registry.Skill
-	catalog   map[string]registry.Skill
-	versions  map[string]registry.Version
+	workspace    map[string]registry.Skill
+	catalog      map[string]registry.Skill
+	versions     map[string]registry.Version
+	versionsByID map[string]registry.Version
 }
 
 func (f fakeReferenceReader) WorkspaceSkill(_ context.Context, _, skillID pgtype.UUID) (registry.Skill, bool, error) {
@@ -522,6 +523,53 @@ func (f fakeReferenceReader) CatalogSkill(_ context.Context, skillID pgtype.UUID
 func (f fakeReferenceReader) LatestVersion(_ context.Context, _, skillID pgtype.UUID) (registry.Version, bool, error) {
 	v, ok := f.versions[pgconv.UUIDString(skillID)]
 	return v, ok, nil
+}
+
+func (f fakeReferenceReader) WorkspaceVersion(_ context.Context, workspaceID, versionID pgtype.UUID) (registry.Version, bool, error) {
+	if version, ok := f.versionsByID[pgconv.UUIDString(versionID)]; ok && version.WorkspaceID == workspaceID {
+		return version, true, nil
+	}
+	for _, version := range f.versions {
+		if version.ID == versionID && version.WorkspaceID == workspaceID {
+			return version, true, nil
+		}
+	}
+	return registry.Version{}, false, nil
+}
+
+func TestCreationReferenceUsesTheRequestedVersion(t *testing.T) {
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000031")}
+	skillID := mustUUIDForTest(t, "20000000-0000-0000-0000-000000000032")
+	requestedID := mustUUIDForTest(t, "30000000-0000-0000-0000-000000000033")
+	latestID := mustUUIDForTest(t, "40000000-0000-0000-0000-000000000034")
+	const requestedKey = "packages/requested-reference.zip"
+	const latestKey = "packages/latest-reference.zip"
+
+	svc := &Service{
+		Store: fakeObjectStore{
+			requestedKey: zipBytes(t, map[string]string{"SKILL.md": "---\nname: requested\ndescription: requested version\n---\n\nRequested."}),
+			latestKey:    zipBytes(t, map[string]string{"SKILL.md": "---\nname: latest\ndescription: latest version\n---\n\nLatest."}),
+		},
+		References: fakeReferenceReader{
+			workspace: map[string]registry.Skill{pgconv.UUIDString(skillID): {
+				ID: skillID, WorkspaceID: ws.ID, Name: "reference", Redistribution: "self_supplied",
+			}},
+			versions: map[string]registry.Version{pgconv.UUIDString(skillID): {
+				ID: latestID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: latestKey,
+			}},
+			versionsByID: map[string]registry.Version{pgconv.UUIDString(requestedID): {
+				ID: requestedID, SkillID: skillID, WorkspaceID: ws.ID, PackageObjectKey: requestedKey,
+			}},
+		},
+	}
+
+	fixed, reference, err := svc.ReadCreationReference(context.Background(), ws, skillID, requestedID)
+	if err != nil {
+		t.Fatalf("ReadCreationReference: %v", err)
+	}
+	if fixed.VersionID != requestedID || reference.SkillMD != "---\nname: requested\ndescription: requested version\n---\n\nRequested." {
+		t.Errorf("reference = %+v %+v, want requested version %v", fixed, reference, requestedID)
+	}
 }
 
 type fakeObjectStore map[string][]byte
@@ -652,7 +700,7 @@ func TestACreationReferenceIsRefusedOnlyWhenItsRedistributionIsBlocked(t *testin
 					}},
 				},
 			}
-			fixed, _, err := svc.ReadCreationReference(context.Background(), ws, skillID, pgtype.UUID{})
+			fixed, _, err := svc.ReadCreationReference(context.Background(), ws, skillID, versionID)
 			if tc.wantRefused {
 				if !errors.Is(err, ErrReferenceUnavailable) {
 					t.Errorf("err = %v, want ErrReferenceUnavailable", err)

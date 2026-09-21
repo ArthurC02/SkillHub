@@ -98,13 +98,7 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	}
 	var version registry.Version
 	if versionID.Valid {
-		reader, ok := s.References.(interface {
-			WorkspaceVersion(context.Context, pgtype.UUID, pgtype.UUID) (registry.Version, bool, error)
-		})
-		if !ok {
-			return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
-		}
-		version, found, err = reader.WorkspaceVersion(ctx, skill.WorkspaceID, versionID)
+		version, found, err = s.References.WorkspaceVersion(ctx, skill.WorkspaceID, versionID)
 	} else {
 		version, found, err = s.References.LatestVersion(ctx, skill.WorkspaceID, skill.ID)
 	}

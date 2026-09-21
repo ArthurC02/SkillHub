@@ -416,10 +416,24 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 	return resp.Reasons
 }
 
-func (s *Service) SearchWorkspace(ctx context.Context, workspaceID pgtype.UUID, query string, limit int32) ([]gen.SearchSkillsRow, error) {
-	return gen.New(s.Pool).SearchSkills(ctx, gen.SearchSkillsParams{
+type WorkspaceSearchHit struct {
+	SkillID string
+	Name    string
+	Summary string
+}
+
+func (s *Service) SearchWorkspace(ctx context.Context, workspaceID pgtype.UUID, query string, limit int32) ([]WorkspaceSearchHit, error) {
+	rows, err := gen.New(s.Pool).SearchSkills(ctx, gen.SearchSkillsParams{
 		WorkspaceID: workspaceID,
 		Query:       query,
 		Limit:       limit,
 	})
+	if err != nil {
+		return nil, err
+	}
+	hits := make([]WorkspaceSearchHit, 0, len(rows))
+	for _, row := range rows {
+		hits = append(hits, WorkspaceSearchHit{SkillID: pgconv.UUIDString(row.SkillID), Name: row.Name, Summary: row.Summary})
+	}
+	return hits, nil
 }

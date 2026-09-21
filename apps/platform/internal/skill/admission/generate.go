@@ -95,6 +95,7 @@ type ReferenceReader interface {
 	WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (registry.Skill, bool, error)
 	CatalogSkill(ctx context.Context, skillID pgtype.UUID) (registry.Skill, bool, error)
 	LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (registry.Version, bool, error)
+	WorkspaceVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (registry.Version, bool, error)
 }
 
 var ErrGeneratedPackageInvalid = errors.New("ingest: generated skill cannot be packaged")
