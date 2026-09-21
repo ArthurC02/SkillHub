@@ -301,11 +301,11 @@ func (s *Service) permissionSummaryFor(
 		quota = &view
 	}
 
-	if s.Credits == nil {
+	if s.Ledger == nil {
 
 		return PermissionSummary{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
 	}
-	estimate, err := defaultCostEstimate(s.Credits)
+	estimate, err := defaultCostEstimate(s.Ledger.CreditsForUSD)
 	if err != nil {
 		return PermissionSummary{}, err
 	}

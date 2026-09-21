@@ -1672,13 +1672,13 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 	svc.Store = a.packages
 	svc.PollInterval = 20 * time.Millisecond
 	settled := 0
-	svc.CreditSettle = func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *float64, float64) error {
+	svc.Ledger = runCreditLedger{settle: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *float64, float64) error {
 		settled++
 		if settled == 1 {
 			return errors.New("the ledger is not answering")
 		}
 		return nil
-	}
+	}}
 	ctx := context.Background()
 
 	created := f.start(t)

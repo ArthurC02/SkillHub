@@ -120,6 +120,12 @@ type RegistryReader interface {
 	ContentSource(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
 }
 
+type CreditLedger interface {
+	CreditsForUSD(float64) (int64, bool)
+	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
+	Settle(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *float64, float64) error
+}
+
 const providerUnassigned = "unassigned"
 
 type Service struct {
@@ -129,11 +135,7 @@ type Service struct {
 
 	Registry RegistryReader
 
-	Credits func(usd float64) (credits int64, ok bool)
-
-	CreditReserve func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, reservedUSD float64) (ok bool, err error)
-
-	CreditSettle func(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error
+	Ledger CreditLedger
 
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 

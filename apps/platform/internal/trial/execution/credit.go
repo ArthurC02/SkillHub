@@ -18,10 +18,10 @@ import (
 var ErrCreditBalance = errors.New("run: the workspace has too few credits to start a run")
 
 func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
-	if s.CreditReserve == nil {
+	if s.Ledger == nil {
 		return nil
 	}
-	ok, err := s.CreditReserve(ctx, tx, workspaceID, s.Deployment.Budget())
+	ok, err := s.Ledger.Reserve(ctx, tx, workspaceID, s.Deployment.Budget())
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 }
 
 func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.RunAttempt) error {
-	if s.CreditSettle == nil || len(attempts) == 0 {
+	if s.Ledger == nil || len(attempts) == 0 {
 
 		return nil
 	}
@@ -68,7 +68,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, costUSD, s.Deployment.Budget()); err != nil {
+	if err := s.Ledger.Settle(ctx, tx, run.WorkspaceID, run.ID, costUSD, s.Deployment.Budget()); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

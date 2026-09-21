@@ -200,6 +200,9 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if app.RunSvc.Registry == nil {
 		t.Error("the run service is missing its Registry reader")
 	}
+	if app.RunSvc.Ledger == nil {
+		t.Error("the run service is missing its Credit ledger")
+	}
 	if app.Deps.TestLab.Svc.ReadSkill == nil {
 		t.Error("the test lab service is missing Registry's skill reader")
 	}
