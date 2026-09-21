@@ -5,7 +5,9 @@
 
 ```text
 創作者空間
-└── 創作者帳戶與工作區
+├── 創作者帳戶與工作區
+├── 互動 Skill 創作
+└── 創作者 Credit 帳務
 
 Skill 生命週期
 ├── Skill 探索
@@ -29,6 +31,8 @@ Skill 生命週期
 | 價值流 | 候選產品領域 | stable Boundary ID／現有 Go package | 擁有的事實或規則 | 主要入口 |
 | --- | --- | --- | --- | --- |
 | 創作者空間 | 創作者帳戶與工作區 | `identity`／`creator/workspace` | user、session、workspace scope、帳號刪除協調 | `Service`、`Handler` |
+| 創作者空間 | 互動 Skill 創作 | `creation`／`creator/creation` | 創作會話、步驟與產出候選 | `Service`、River workers |
+| 創作者空間 | 創作者 Credit 帳務 | `credit`／`creator/credit` | credit 帳戶、分錄與成本統計 | `Service`、River workers |
 | Skill 生命週期 | Skill 探索 | `catalog`／`skill/discovery` | search document、搜尋投影、搜尋與顯示語意 | `Service`、`Handler` |
 | Skill 生命週期 | Skill 資產與版本歷史 | `registry`／`skill/library` | Skill identity、不可變 Skill Version aggregate | `Service`、版本寫入 API |
 | Skill 生命週期 | Skill 接納與信任 | `ingest`／`skill/admission` | package provenance、靜態驗證與唯一匯入路徑 | `Service.SaveVersion`、匯入 Handler |
@@ -106,6 +110,6 @@ internal/
 [`cmd/worker/main.go`](../cmd/worker/main.go)；maintenance 與 reindex 則各自於其 deployment
 unit 的 root 建構所需服務。詳見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
-## 規劃中的互動創作（尚未實作）
+## 互動創作的後續能力
 
-[互動創作](../../../docs/adr/README.md#互動創作) 規劃由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。現有套件地圖不代表這些新能力已存在；實作前先定義契約，新增套件須依 [context map](../../../docs/development/platform-context-map.md) 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。
+[互動創作](../../../docs/adr/README.md#互動創作) 由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。尚未實作的新能力必須先定義契約，新增套件須依 [context map](../../../docs/development/platform-context-map.md) 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。

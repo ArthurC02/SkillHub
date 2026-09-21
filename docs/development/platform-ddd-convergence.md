@@ -80,19 +80,19 @@ var successors = map[State][]State{…}   // 轉移表；終態不出現在 key
 func ParseState(string) (State, bool)   // 邊界 parse，不合法回 false
 func (s State) HasEnded() bool          // 具名謂詞取代散落的 == 比較
 func (s State) AwaitsTheModel() bool
-func CanTransition(from, to State) bool // 兩端都先 Parse；from == to 一律放行
+func CanTransition(from, to State) bool // 兩端都先 Parse；是否放行同狀態由 owner 的規格決定
 ```
 
-**三條適用於每個狀態機的規則**
+**三條適用於這個 Creation state machine 的規則**
 
-1. **`from == to` 必須放行。** 寫入路徑常把同一個狀態原樣寫回，只為推進 revision 或補一筆事件。Postgres 的 `enforce_run_status_transition()` 也是這個語意（`IF OLD.status IS NOT DISTINCT FROM NEW.status THEN RETURN NEW`）。禁止同狀態寫入會直接弄壞現行流程。
+1. **`from == to` 必須放行。** Creation 的寫入路徑會把同一個狀態原樣寫回，只為推進 revision 或補一筆事件。Run 的 Go state machine 則把同狀態視為非法；資料庫 trigger 放行物理上的 no-op，不能取代 Go owner 的規格。
 2. **兩端都要 Parse。** DB 欄位若沒有 CHECK，讀出來可能是任何字串。未知值一律拒絕寫入（fail closed）。
 3. **守衛裝在唯一寫入點。** 先用 DISCOVER 證明只有一個寫入點，再裝。creation 的寫入點是 `service.go` 的 `advance()`。
 
 **測試形狀**（依 [`istqb-test-design`](../../.claude/skills/istqb-test-design/SKILL.md) 技能）
 
 - 測試檔**獨立重述**一份合法集，拿它驗生產表。不要 import 生產表當自己的預言。
-- 除黃金表外，每條**性質**各一支測試：終態沒有出口、同狀態寫入放行、某狀態只能由某個來源產生、未宣告的值兩端都拒絕。
+- 除黃金表外，每條**性質**各一支測試：終態沒有出口、owner 規格指定的同狀態語意、某狀態只能由某個來源產生、未宣告的值兩端都拒絕。
 - 反假綠：斷言集合大小等於這個狀態機真正的值數（creation 是 `len(AllStates()) != 10` 就 Fatal），否則迴圈跑在空集合上也會綠。
 
 **特徵化先於強制**
