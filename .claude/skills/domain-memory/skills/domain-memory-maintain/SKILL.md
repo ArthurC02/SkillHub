@@ -18,6 +18,7 @@ to decide whether a candidate is needed before creating one.
    For dispatch policy, snapshot every value that changes a compatibility or safety decision, including minimum isolation and any explicitly accepted provider limitation.
    Integration tests must construct adapters through the same composition wiring; do not retain Context-owned environment factories only for tests.
    Treat HTTP clients, transports, and timeouts as adapter composition concerns: inject them at the entrypoint and retain a focused seam test that proves the selected client reaches the adapter.
+   For an internal capability call, keep the Context adapter responsible for its request and response contract, while wiring owns the endpoint credentials and HTTP client.
    A test-friendly adapter fallback does not replace production composition; verify the executable entrypoint supplies the client explicitly.
    When an adapter depends on deployment posture, parse posture once at the entrypoint and pass the typed value to wiring instead of letting the adapter reread environment variables.
    Keep runtime setting types and their pure validation in Foundation, but place operating-system environment parsing only in entrypoint wiring.
