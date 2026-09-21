@@ -101,8 +101,25 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 			if !strings.Contains(err.Error(), "test_provider") {
 				t.Errorf("reason = %q, want it to name the provider", err)
 			}
+			said := inInterfaceLanguage(t, err)
+			if !hasHan(said) {
+				t.Errorf("the sentence the user reads is %q; it reaches the screen, so it is "+
+					"written in the interface language", said)
+			}
+			if !strings.Contains(said, "test_provider") {
+				t.Errorf("the sentence the user reads is %q, want it to name the provider too", said)
+			}
 		})
 	}
+}
+
+func inInterfaceLanguage(t *testing.T, err error) string {
+	t.Helper()
+	refusal, ok := errors.AsType[providerRefusal](err)
+	if !ok {
+		t.Fatalf("%v carries no sentence for the screen, so the caller would print the English", err)
+	}
+	return refusal.inWords
 }
 
 func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *testing.T) {
@@ -193,8 +210,13 @@ func TestMatchChecksEveryResourceCeiling(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			c := compatible()
 			lower(&c.MaxResources)
-			if _, err := Match(c, defaultRequirements()); err == nil {
+			_, err := Match(c, defaultRequirements())
+			if err == nil {
 				t.Fatal("provider accepted a run above its declared ceiling")
+			}
+			if said := inInterfaceLanguage(t, err); !hasHan(said) || strings.Contains(said, name) {
+				t.Errorf("the %s ceiling reads %q on screen; every ceiling needs its own word in "+
+					"the interface language, not the English one this table is keyed by", name, said)
 			}
 		})
 	}

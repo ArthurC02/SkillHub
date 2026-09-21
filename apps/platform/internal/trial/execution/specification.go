@@ -94,16 +94,36 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	return skillpkg.Validate(fsys), true
 }
 
+type scanRefusal struct {
+	codes     []string
+	unscanned bool
+}
+
+func (s scanRefusal) Unwrap() error { return ErrScanBlocked }
+
+func (s scanRefusal) Error() string {
+	if s.unscanned {
+		return fmt.Sprintf("%s: the package could not be scanned, and an unscanned package "+
+			"is not treated as a clean one", ErrScanBlocked)
+	}
+	return fmt.Sprintf("%s: %s", ErrScanBlocked, strings.Join(s.codes, ", "))
+}
+
+func (s scanRefusal) inInterfaceLanguage() string {
+	if s.unscanned {
+		return "這個版本的套件這次讀不到，所以沒有掃描結果；沒掃過的套件不會被當成乾淨的。"
+	}
+	return "擋下它的掃描項目：" + strings.Join(s.codes, "、") + "。"
+}
+
 func scanVerdict(report skillpkg.Report, scanned bool) (string, error) {
 	if !scanned {
-		return ReasonScanUnavailable, fmt.Errorf("%w: the package could not be scanned, "+
-			"and an unscanned package is not treated as a clean one", ErrScanBlocked)
+		return ReasonScanUnavailable, scanRefusal{unscanned: true}
 	}
 	if !report.Blocked {
 		return "", nil
 	}
-	return ReasonScanBlocked, fmt.Errorf("%w: %s", ErrScanBlocked,
-		strings.Join(blockingCodes(report), ", "))
+	return ReasonScanBlocked, scanRefusal{codes: blockingCodes(report)}
 }
 
 func blockingCodes(report skillpkg.Report) []string {

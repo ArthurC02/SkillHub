@@ -163,6 +163,8 @@ var refusedRuns = []refusedRun{
 		"這個部署沒有設定任何執行沙箱，試跑沒有地方可以跑，請聯絡管理者。"},
 	{ErrNoCompatibleProvider, http.StatusUnprocessableEntity,
 		"現有的執行沙箱都不符合這次試跑需要的執行環境，請聯絡管理者。"},
+	{ErrScanBlocked, http.StatusUnprocessableEntity,
+		"這個 Skill 版本的靜態掃描擋下了它，所以不能試跑。"},
 	{ErrCreditBalance, http.StatusUnprocessableEntity, messageCreditBalance},
 	{ErrRunLimitReached, http.StatusUnprocessableEntity,
 		"這個 Workspace 同時進行中的試跑已經達到上限，等其中一個結束再開始。"},
@@ -170,6 +172,19 @@ var refusedRuns = []refusedRun{
 		"這個 Skill 的來源授權還在審查中，審查期間不能試跑。"},
 	{policy.ErrQuotaExceeded, http.StatusUnprocessableEntity,
 		"這個 Workspace 的免費試跑額度已經用完了。"},
+}
+
+// whatDidNotFit keeps the specific reason a refusal carries without letting the
+// internal English reach the screen; a refusal with no detail adds nothing.
+func whatDidNotFit(err error) string {
+	var said interface {
+		error
+		inInterfaceLanguage() string
+	}
+	if !errors.As(err, &said) {
+		return ""
+	}
+	return said.inInterfaceLanguage()
 }
 
 func refusalFor(err error) (refusedRun, bool) {
@@ -250,14 +265,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		ConfirmedSummaryHash: body.ConfirmedSummaryHash,
 	})
 
-	if errors.Is(err, ErrNoCompatibleProvider) || errors.Is(err, ErrScanBlocked) {
-		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
-		return
-	}
 	if refusal, ok := refusalFor(err); ok {
 		slog.Info("a run was refused before it started",
 			"workspace_id", pgconv.UUIDString(ws.ID), "error", err)
-		httpx.WriteError(w, refusal.status, refusal.message)
+		httpx.WriteError(w, refusal.status, refusal.message+whatDidNotFit(err))
 		return
 	}
 	if err != nil {

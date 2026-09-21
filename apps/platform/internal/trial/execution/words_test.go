@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -146,6 +147,49 @@ func TestEveryRefusedRunSpeaksTheInterfaceLanguage(t *testing.T) {
 		if r.message == r.is.Error() {
 			t.Errorf("%v: the sentence the caller reads is the error's own text", r.is)
 		}
+	}
+}
+
+func TestTheSentenceTheCallerReadsCarriesTheDetailWithoutTheEnglish(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	tooSmall := withSlots("small_sandbox", 4)
+	tooSmall.MaxResources.MemoryBytes = 1 << 28
+	_, poolErr := registryWithCapabilities(tooSmall).Place(context.Background(), defaultRequirements(), nil)
+
+	for _, tc := range []struct {
+		name     string
+		err      error
+		wantSaid []string
+		wantGone []string
+	}{
+		{"a fleet whose only sandbox is too small", poolErr,
+			[]string{"small_sandbox", "記憶體", "上限低於這次試跑需要的"},
+			[]string{"caps memory below", "does not declare"}},
+		{"a package the scanner blocked", scanRefusal{codes: []string{"PKG-E01", "PKG-E02"}},
+			[]string{"PKG-E01", "PKG-E02", "擋下它的掃描項目"},
+			[]string{"static scan", "blocks it from running"}},
+		{"a package that could not be scanned", scanRefusal{unscanned: true},
+			[]string{"沒掃過的套件不會被當成乾淨的"},
+			[]string{"could not be scanned"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			refusal, ok := refusalFor(tc.err)
+			if !ok {
+				t.Fatalf("refusalFor(%v) found no refusal; the caller would read the error's own text", tc.err)
+			}
+			said := refusal.message + whatDidNotFit(tc.err)
+			for _, want := range tc.wantSaid {
+				if !strings.Contains(said, want) {
+					t.Errorf("the caller reads %q, want it to say %q", said, want)
+				}
+			}
+			for _, gone := range tc.wantGone {
+				if strings.Contains(said, gone) {
+					t.Errorf("the caller reads %q, which still carries the internal English %q", said, gone)
+				}
+			}
+		})
 	}
 }
 

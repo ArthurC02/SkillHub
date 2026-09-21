@@ -224,33 +224,68 @@ func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot)
 	return "", nil
 }
 
-// waitingCanFixThis separates a pool that is momentarily short of sandboxes
-// from one that could never run this request; only the latter refuses the run.
-type waitingCanFixThis struct{ error }
-
-func waitingCanFix(err error) bool {
-	_, ok := errors.AsType[waitingCanFixThis](err)
-	return ok
+type providerRefusal struct {
+	english     string
+	inWords     string
+	mayComeBack bool
 }
 
-func setAsideRefusal(name string, aside SetAsideProvider) error {
-	refusal := fmt.Errorf("%s is set aside: %s", name, aside.Why)
+func (r providerRefusal) Error() string { return r.english }
+
+func cannotRun(english, inWords string) providerRefusal {
+	return providerRefusal{english: english, inWords: inWords}
+}
+
+func notRightNow(english, inWords string) providerRefusal {
+	return providerRefusal{english: english, inWords: inWords, mayComeBack: true}
+}
+
+func setAsideRefusal(name string, aside SetAsideProvider) providerRefusal {
+	english := fmt.Sprintf("%s is set aside: %s", name, aside.Why)
 	if aside.MayComeBack {
-		return waitingCanFixThis{refusal}
+		return notRightNow(english, fmt.Sprintf("%s 暫時被排開了", name))
 	}
-	return refusal
+	return cannotRun(english, fmt.Sprintf("%s 弄丟過這次試跑的上一次嘗試，不會再交給它", name))
 }
 
-func noneFit(refusals []error) error {
-	sentinel := ErrNoCompatibleProvider
-	why := make([]string, 0, len(refusals))
-	for _, refusal := range refusals {
-		if waitingCanFix(refusal) {
-			sentinel = ErrNoSandboxAvailableYet
-		}
-		why = append(why, refusal.Error())
+type poolRefusal struct {
+	sentinel error
+	refusals []providerRefusal
+}
+
+func (p poolRefusal) Unwrap() error { return p.sentinel }
+
+func (p poolRefusal) Error() string {
+	why := make([]string, 0, len(p.refusals))
+	for _, refusal := range p.refusals {
+		why = append(why, refusal.english)
 	}
-	return fmt.Errorf("%w: %s", sentinel, strings.Join(why, "; "))
+	return fmt.Sprintf("%s: %s", p.sentinel, strings.Join(why, "; "))
+}
+
+func (p poolRefusal) inInterfaceLanguage() string {
+	said := make([]string, 0, len(p.refusals))
+	for _, refusal := range p.refusals {
+		said = append(said, refusal.inWords)
+	}
+	return "不符的項目：" + strings.Join(said, "；") + "。"
+}
+
+func asProviderRefusal(name string, err error) providerRefusal {
+	if refusal, ok := errors.AsType[providerRefusal](err); ok {
+		return refusal
+	}
+	return cannotRun(fmt.Sprintf("%s: %s", name, err), fmt.Sprintf("%s 不符合這次試跑的要求", name))
+}
+
+func noneFit(refusals []providerRefusal) error {
+	pool := poolRefusal{sentinel: ErrNoCompatibleProvider, refusals: refusals}
+	for _, refusal := range refusals {
+		if refusal.mayComeBack {
+			pool.sentinel = ErrNoSandboxAvailableYet
+		}
+	}
+	return pool
 }
 
 func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
@@ -259,34 +294,46 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		name = "provider"
 	}
 	if c.Availability.Healthy != nil && !*c.Availability.Healthy {
-		return RuntimeProfile{}, waitingCanFixThis{fmt.Errorf("%s reports itself unhealthy", name)}
+		return RuntimeProfile{}, notRightNow(
+			fmt.Sprintf("%s reports itself unhealthy", name),
+			fmt.Sprintf("%s 回報自己不健康", name))
 	}
 
 	if !c.Isolation.Strength.meets(requiredIsolation()) {
-		return RuntimeProfile{}, fmt.Errorf(
-			"%s isolates workloads %q, and this deployment runs nothing weaker than %q",
-			name, c.Isolation.Strength, requiredIsolation())
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s isolates workloads %q, and this deployment runs nothing weaker than %q",
+				name, c.Isolation.Strength, requiredIsolation()),
+			fmt.Sprintf("%s 的隔離強度是 %q，這個部署不跑比 %q 更弱的",
+				name, c.Isolation.Strength, requiredIsolation()))
 	}
 	if !c.Isolation.Rootless {
-		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s does not run workloads unprivileged", name),
+			fmt.Sprintf("%s 不是以非特權身分執行工作負載", name))
 	}
 
 	if len(c.MaxResourcesUnenforced) > 0 && !cleanTestMode() {
-		return RuntimeProfile{}, fmt.Errorf(
-			"%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
-			name, strings.Join(c.MaxResourcesUnenforced, ", "))
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
+				name, strings.Join(c.MaxResourcesUnenforced, ", ")),
+			fmt.Sprintf("%s 宣告了自己不強制的資源上限（%s），這個部署不接受",
+				name, strings.Join(c.MaxResourcesUnenforced, "、")))
 	}
 
 	if c.Network.EgressUnenforced && !cleanTestMode() {
-		return RuntimeProfile{}, fmt.Errorf(
-			"%s declares egress modes it does not enforce, which this deployment does not accept", name)
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s declares egress modes it does not enforce, which this deployment does not accept", name),
+			fmt.Sprintf("%s 宣告了自己不強制的網路出口模式，這個部署不接受", name))
 	}
 	if !egressSatisfied(c.Network.EgressModes, req) {
 		if req.EgressAllowed > 0 {
-			return RuntimeProfile{}, fmt.Errorf(
-				"%s cannot enforce %s network egress with an allow list", name, req.EgressMode)
+			return RuntimeProfile{}, cannotRun(
+				fmt.Sprintf("%s cannot enforce %s network egress with an allow list", name, req.EgressMode),
+				fmt.Sprintf("%s 沒辦法在帶允許清單的情況下強制 %s 網路出口", name, req.EgressMode))
 		}
-		return RuntimeProfile{}, fmt.Errorf("%s cannot enforce %s network egress", name, req.EgressMode)
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s cannot enforce %s network egress", name, req.EgressMode),
+			fmt.Sprintf("%s 沒辦法強制 %s 網路出口", name, req.EgressMode))
 	}
 
 	profile := RuntimeProfile{
@@ -300,7 +347,9 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			continue
 		}
 		if len(rt.AgentIntegration) > 0 && !slices.Contains(rt.AgentIntegration, req.AgentIntegration) {
-			return RuntimeProfile{}, fmt.Errorf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration)
+			return RuntimeProfile{}, cannotRun(
+				fmt.Sprintf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration),
+				fmt.Sprintf("%s 跑得動 %s，但不支援 %s 這個接法", name, req.Runtime, req.AgentIntegration))
 		}
 
 		profile.RuntimeVersion = rt.Versions[len(rt.Versions)-1]
@@ -308,30 +357,36 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		break
 	}
 	if !supported {
-		return RuntimeProfile{}, fmt.Errorf("%s does not support the %s runtime", name, req.Runtime)
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s does not support the %s runtime", name, req.Runtime),
+			fmt.Sprintf("%s 不支援 %s 這個執行環境", name, req.Runtime))
 	}
 
 	for _, check := range []struct {
-		what            string
+		what, inWords   string
 		needed, offered float64
 	}{
-		{"vCPU", req.Limits.VCPU, c.MaxResources.VCPU},
-		{"memory", float64(req.Limits.MemoryBytes), float64(c.MaxResources.MemoryBytes)},
-		{"disk", float64(req.Limits.DiskBytes), float64(c.MaxResources.DiskBytes)},
-		{"processes", float64(req.Limits.MaxPIDs), float64(c.MaxResources.MaxPIDs)},
-		{"open files", float64(req.Limits.MaxOpenFiles), float64(c.MaxResources.MaxOpenFiles)},
-		{"soft wall clock", float64(req.Limits.WallClockSoftSeconds), float64(c.MaxResources.WallClockSoftSeconds)},
-		{"hard wall clock", float64(req.Limits.WallClockHardSeconds), float64(c.MaxResources.WallClockHardSeconds)},
-		{"total artifact bytes", float64(req.Limits.ArtifactTotalBytes), float64(c.MaxResources.ArtifactTotalBytes)},
-		{"artifact file bytes", float64(req.Limits.ArtifactFileBytes), float64(c.MaxResources.ArtifactFileBytes)},
-		{"input tokens", float64(req.Limits.TokenBudget.MaxInputTokens), float64(c.MaxResources.TokenBudget.MaxInputTokens)},
-		{"output tokens", float64(req.Limits.TokenBudget.MaxOutputTokens), float64(c.MaxResources.TokenBudget.MaxOutputTokens)},
+		{"vCPU", "vCPU", req.Limits.VCPU, c.MaxResources.VCPU},
+		{"memory", "記憶體", float64(req.Limits.MemoryBytes), float64(c.MaxResources.MemoryBytes)},
+		{"disk", "磁碟", float64(req.Limits.DiskBytes), float64(c.MaxResources.DiskBytes)},
+		{"processes", "行程數", float64(req.Limits.MaxPIDs), float64(c.MaxResources.MaxPIDs)},
+		{"open files", "開檔數", float64(req.Limits.MaxOpenFiles), float64(c.MaxResources.MaxOpenFiles)},
+		{"soft wall clock", "軟性執行時限", float64(req.Limits.WallClockSoftSeconds), float64(c.MaxResources.WallClockSoftSeconds)},
+		{"hard wall clock", "硬性執行時限", float64(req.Limits.WallClockHardSeconds), float64(c.MaxResources.WallClockHardSeconds)},
+		{"total artifact bytes", "產出總位元組", float64(req.Limits.ArtifactTotalBytes), float64(c.MaxResources.ArtifactTotalBytes)},
+		{"artifact file bytes", "單一產出位元組", float64(req.Limits.ArtifactFileBytes), float64(c.MaxResources.ArtifactFileBytes)},
+		{"input tokens", "輸入 Token", float64(req.Limits.TokenBudget.MaxInputTokens), float64(c.MaxResources.TokenBudget.MaxInputTokens)},
+		{"output tokens", "輸出 Token", float64(req.Limits.TokenBudget.MaxOutputTokens), float64(c.MaxResources.TokenBudget.MaxOutputTokens)},
 	} {
 		if check.offered <= 0 {
-			return RuntimeProfile{}, fmt.Errorf("%s does not declare a %s ceiling", name, check.what)
+			return RuntimeProfile{}, cannotRun(
+				fmt.Sprintf("%s does not declare a %s ceiling", name, check.what),
+				fmt.Sprintf("%s 沒有宣告 %s 的上限", name, check.inWords))
 		}
 		if check.needed > check.offered {
-			return RuntimeProfile{}, fmt.Errorf("%s caps %s below what this run needs", name, check.what)
+			return RuntimeProfile{}, cannotRun(
+				fmt.Sprintf("%s caps %s below what this run needs", name, check.what),
+				fmt.Sprintf("%s 的 %s 上限低於這次試跑需要的", name, check.inWords))
 		}
 	}
 	return profile, nil
@@ -371,7 +426,7 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, setAside ma
 		return nil, ErrNoProvider
 	}
 	var placements []Placement
-	refusals := make([]error, 0, len(r.Providers))
+	refusals := make([]providerRefusal, 0, len(r.Providers))
 	for _, p := range r.Providers {
 		if aside, ok := setAside[p.Name()]; ok {
 			refusals = append(refusals, setAsideRefusal(p.Name(), aside))
@@ -379,7 +434,9 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, setAside ma
 		}
 		capability, err := r.Capability(ctx, p)
 		if err != nil {
-			refusals = append(refusals, waitingCanFixThis{fmt.Errorf("%s is unreachable", p.Name())})
+			refusals = append(refusals, notRightNow(
+				fmt.Sprintf("%s is unreachable", p.Name()),
+				fmt.Sprintf("%s 沒有回應", p.Name())))
 			continue
 		}
 		if capability.Provider == "" {
@@ -387,7 +444,7 @@ func (r *Registry) compatible(ctx context.Context, req Requirements, setAside ma
 		}
 		profile, err := Match(capability, req)
 		if err != nil {
-			refusals = append(refusals, err)
+			refusals = append(refusals, asProviderRefusal(p.Name(), err))
 			continue
 		}
 		placements = append(placements, Placement{Provider: p, Capability: capability, Profile: profile})

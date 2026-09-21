@@ -250,8 +250,10 @@ func TestRunIsRefusedWhenThePackageCannotBeScanned(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run on an unscannable package: got %d, want 422", code)
 	}
-	if !strings.Contains(refused.Error, "scan") {
-		t.Errorf("refusal = %q, want it to name the scan", refused.Error)
+	if !strings.Contains(refused.Error, "掃描") ||
+		!strings.Contains(refused.Error, "沒掃過的套件不會被當成乾淨的") {
+		t.Errorf("refusal = %q, want it to name the scan and say why an unreadable package "+
+			"is refused rather than let through", refused.Error)
 	}
 	if refused.RunID != "" {
 		t.Error("a refused run still created a run row")

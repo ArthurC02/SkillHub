@@ -1449,8 +1449,11 @@ func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("run on an incompatible fleet: got %d, want 422", code)
 	}
-	if !strings.Contains(view.Error, "memory") || !strings.Contains(view.Error, "weak_sandbox") {
+	if !strings.Contains(view.Error, "記憶體") || !strings.Contains(view.Error, "weak_sandbox") {
 		t.Errorf("refusal = %q, want it to name the provider and what did not fit", view.Error)
+	}
+	if strings.Contains(view.Error, "caps memory below") {
+		t.Errorf("refusal = %q, want the sentence the user reads to be in the interface language", view.Error)
 	}
 	if fake.Dispatches() != 0 {
 		t.Error("a refused run was still dispatched")
