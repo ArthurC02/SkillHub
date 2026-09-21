@@ -12,7 +12,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
@@ -59,7 +58,7 @@ func main() {
 
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
-		LLM: ingest.ModelOrNone(&llmclient.Client{BaseURL: llmURL, Token: llmToken}),
+		LLM: ingest.ModelOrNone(wiring.LLMClient(llmURL, llmToken)),
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
 			return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,

@@ -102,7 +102,7 @@ func main() {
 			slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
 			os.Exit(1)
 		}
-		llm = &llmclient.Client{BaseURL: llmURL, Token: token}
+		llm = wiring.LLMClient(llmURL, token)
 		slog.Info("judge service configured", "url", llmURL)
 	} else {
 		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
