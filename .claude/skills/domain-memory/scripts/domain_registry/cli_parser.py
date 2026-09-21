@@ -119,6 +119,9 @@ def build_parser() -> argparse.ArgumentParser:
     confirm_parser.add_argument("--registry-root", required=True, type=Path)
     confirm_parser.add_argument("--repo-root", required=True, type=Path)
     confirm_parser.add_argument("--confirmed-by", required=True)
+    refresh_parser = commands.add_parser("refresh-sources")
+    refresh_parser.add_argument("--registry-root", required=True, type=Path)
+    refresh_parser.add_argument("--repo-root", required=True, type=Path)
     amend_parser = commands.add_parser("amend-policy")
     amend_parser.add_argument("--registry-root", required=True, type=Path)
     amend_parser.add_argument(

@@ -399,6 +399,21 @@ def confirm_sources(
     return source_map
 
 
+def refresh_sources(root: Path, repo_root: Path, policy: dict[str, Any] | None = None) -> dict[str, Any]:
+    path = root / "source-map.json"
+    if not path.is_file():
+        raise ValueError(f"no source map at {path}: initialize the Domain Memory before refreshing it")
+    selected = load_json(path).get("selected_paths")
+    if not isinstance(selected, list) or not all(isinstance(item, str) and item.strip() for item in selected):
+        raise ValueError("source map has no valid selected paths to refresh")
+    source_map = selected_source_map(repo_root, [repo_root / item for item in selected], policy)
+    with writer_lock(root):
+        write_source_map(path, source_map)
+        from .audit import append_locked
+        append_locked(root, {"operation": "refresh-sources", "selected_paths": source_map["selected_paths"]})
+    return source_map
+
+
 def verify_source_map(
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:

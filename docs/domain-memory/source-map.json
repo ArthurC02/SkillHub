@@ -106,6 +106,7 @@
         "apps/platform/internal/creator/creation/start_test.go",
         "apps/platform/internal/creator/creation/state_test.go",
         "apps/platform/internal/creator/creation/step_failure_test.go",
+        "apps/platform/internal/creator/creation/transient_client_test.go",
         "apps/platform/internal/creator/credit/config_test.go",
         "apps/platform/internal/creator/credit/display_test.go",
         "apps/platform/internal/creator/credit/money_test.go",
@@ -175,6 +176,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/preflight_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/read_face_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/run_credit_ledger_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/run_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/run_orchestration_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/run_reassign_integration_test.go",
@@ -195,7 +197,14 @@
         "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/worklist_fairness_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/workspace_history_integration_test.go",
+        "apps/platform/internal/entrypoint/wiring/creation_environment_test.go",
+        "apps/platform/internal/entrypoint/wiring/creation_queue_test.go",
+        "apps/platform/internal/entrypoint/wiring/credit_environment_test.go",
+        "apps/platform/internal/entrypoint/wiring/llm_client_test.go",
         "apps/platform/internal/entrypoint/wiring/model_budget_test.go",
+        "apps/platform/internal/entrypoint/wiring/posture_environment_test.go",
+        "apps/platform/internal/entrypoint/wiring/run_environment_test.go",
+        "apps/platform/internal/entrypoint/wiring/run_queue_test.go",
         "apps/platform/internal/entrypoint/wiring/trial_test.go",
         "apps/platform/internal/entrypoint/worker/worker_test.go",
         "apps/platform/internal/foundation/integration/llmclient/client_test.go",
@@ -212,10 +221,12 @@
         "apps/platform/internal/foundation/persistence/partition/partition_test.go",
         "apps/platform/internal/foundation/persistence/pgconv/pgconv_test.go",
         "apps/platform/internal/foundation/runtime/envx/capability_test.go",
+        "apps/platform/internal/foundation/runtime/envx/envx_test.go",
         "apps/platform/internal/foundation/runtime/envx/posture_test.go",
         "apps/platform/internal/foundation/runtime/httpx/cors_test.go",
         "apps/platform/internal/foundation/runtime/httpx/ratelimit_test.go",
         "apps/platform/internal/foundation/runtime/httpx/sameorigin_test.go",
+        "apps/platform/internal/foundation/runtime/httpx/transport_test.go",
         "apps/platform/internal/foundation/storage/objreconcile/objreconcile_test.go",
         "apps/platform/internal/foundation/storage/objstore/inprocess_test.go",
         "apps/platform/internal/foundation/storage/objstore/objstore_test.go",
@@ -307,10 +318,8 @@
         "apps/platform/internal/trial/execution/preflight_test.go",
         "apps/platform/internal/trial/execution/provider_cache_a4_test.go",
         "apps/platform/internal/trial/execution/provider_contract_test.go",
-        "apps/platform/internal/trial/execution/provider_registry_test.go",
         "apps/platform/internal/trial/execution/provider_response_test.go",
         "apps/platform/internal/trial/execution/purge_test.go",
-        "apps/platform/internal/trial/execution/queue_test.go",
         "apps/platform/internal/trial/execution/quota_test.go",
         "apps/platform/internal/trial/execution/read_test.go",
         "apps/platform/internal/trial/execution/reassign_test.go",
@@ -322,6 +331,7 @@
         "apps/platform/internal/trial/execution/statemachine_test.go",
         "apps/platform/internal/trial/execution/token_ceiling_test.go",
         "apps/platform/internal/trial/execution/token_rounds_a4_test.go",
+        "apps/platform/internal/trial/execution/transition_command_test.go",
         "apps/platform/internal/trial/execution/turn_test.go",
         "apps/platform/internal/trial/execution/words_test.go",
         "apps/platform/internal/trial/improvement/aggregate_test.go",
@@ -467,7 +477,7 @@
   ],
   "source_policy_report": {
     "files": 1287,
-    "total_bytes": 10264233,
+    "total_bytes": 10264295,
     "oversized_files": [],
     "errors": []
   },
@@ -477,26 +487,23 @@
   },
   "git_state": {
     "tracked_objects": {
-      "docs": "1af09f0c0d95a508e827055e8254038041884e77",
-      "docs/development": "4e968ee9aa638f18a7d5d38eee97468b587545b4"
+      "docs": "fb0e0571f73f9adb05ef81d23810eed8973b49bf",
+      "docs/development": "42b4c169c62d86da58418a06346c7f9c25b7da1e"
     },
-    "dirty_sources": [
-      " M docs/development/platform-ddd-convergence.md",
-      "?? docs/domain-memory/"
-    ]
+    "dirty_sources": []
   },
   "source_snapshots": [
     {
       "path": "docs",
       "file_count": 1276,
-      "digest": "sha256:fc3cfd357067a8479ad3d6462ec8befd2a69c96dc531b2fab9e903c02d873fb2"
+      "digest": "sha256:7ce4656dcf94e2ba94a236d8755679ee4aa2ecd90f33cc77c48d5fb93e9f1383"
     },
     {
       "path": "docs/development",
       "file_count": 11,
-      "digest": "sha256:be231800e322b75300d24ecbd6ba2be3b3d1ab53c4e9f5dfae0ac8fa64510ade"
+      "digest": "sha256:a9e124966bc1019d93d0ceabfea6843de49c5727768c550b081e308da1d83841"
     }
   ],
   "confirmed_by": "developer",
-  "confirmed_at": "2026-09-21T01:28:30.595656Z"
+  "confirmed_at": "2026-09-21T10:07:12.101102Z"
 }

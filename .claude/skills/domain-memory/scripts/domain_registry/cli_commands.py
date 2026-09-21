@@ -43,6 +43,7 @@ from .sources import (
     confirm_sources,
     discover_sources,
     probe_sources,
+    refresh_sources,
     selected_source_map,
     verify_source_map,
     write_source_map,
@@ -350,6 +351,18 @@ def handle_confirm_sources(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_refresh_sources(args: argparse.Namespace) -> int:
+    registry_root = args.registry_root.resolve()
+    policy = policy_path(registry_root)
+    try:
+        source_map = refresh_sources(registry_root, args.repo_root.resolve(), load_json(policy) if policy.is_file() else None)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    print("Sources refreshed and require developer confirmation: " + ", ".join(source_map["selected_paths"]))
+    return 0
+
+
 def handle_amend_policy(args: argparse.Namespace) -> int:
     change = amend_policy(
         args.registry_root.resolve(), args.field, args.value, args.reason
@@ -512,6 +525,7 @@ HANDLERS = {
     "recover-registry-update": handle_recover_registry_update,
     "init-domain-memory": handle_init_domain_memory,
     "confirm-sources": handle_confirm_sources,
+    "refresh-sources": handle_refresh_sources,
     "amend-policy": handle_amend_policy,
     "validate-policy": handle_validate_policy,
     "scan-secrets": handle_scan_secrets,
