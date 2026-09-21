@@ -39,7 +39,7 @@ func (s *Service) injectedSecretsFor(ctx context.Context, snap policySnapshot) [
 	if !snap.reachesAModel() {
 		return []string{}
 	}
-	_, capability, _, err := s.providers().Select(ctx, requirementsFromPolicy(snap))
+	_, capability, _, err := s.providers().Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
 	if err != nil {
 		return []string{}
 	}
@@ -334,7 +334,7 @@ func (s *Service) sandboxesUnavailableNow(ctx context.Context, snap policySnapsh
 	if len(registry.Providers) == 0 {
 		return false
 	}
-	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(snap))
+	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
 	return errors.Is(err, ErrNoSandboxAvailableYet)
 }
 
@@ -376,7 +376,7 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 	if len(registry.Providers) == 0 {
 		return ProviderSummary{Name: providerUnassigned}
 	}
-	p, capability, profile, err := registry.Select(ctx, requirementsFromPolicy(policy))
+	p, capability, profile, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
 	if err != nil {
 		return ProviderSummary{Name: providerUnassigned}
 	}

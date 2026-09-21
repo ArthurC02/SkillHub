@@ -174,6 +174,7 @@ func describeContentSource(source ContentSource) string {
 }
 
 type Requirements struct {
+	Model            string
 	Runtime          string
 	AgentIntegration string
 	Limits           ResourceLimits
@@ -187,17 +188,21 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
 		return Requirements{}, policy, fmt.Errorf("decode policy snapshot: %w", err)
 	}
-	return requirementsFromPolicy(policy), policy, nil
+	return requirementsFromPolicy(policy, s.Deployment.Model), policy, nil
 }
 
-func requirementsFromPolicy(policy policySnapshot) Requirements {
-	return Requirements{
+func requirementsFromPolicy(policy policySnapshot, model ...string) Requirements {
+	req := Requirements{
 		Runtime:          defaultRuntime,
 		AgentIntegration: defaultAgentIntegration,
 		Limits:           policy.ResourceLimits,
 		EgressMode:       policy.Egress.Mode,
 		EgressAllowed:    len(policy.Egress.Allow),
 	}
+	if len(model) > 0 {
+		req.Model = model[0]
+	}
+	return req
 }
 
 func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) error {
@@ -216,7 +221,7 @@ func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot)
 	if len(registry.Providers) == 0 {
 		return ReasonCapabilityMismatch, ErrNoProvider
 	}
-	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy))
+	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
 	if errors.Is(err, ErrNoCompatibleProvider) {
 		return ReasonCapabilityMismatch, err
 	}
@@ -339,7 +344,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	profile := RuntimeProfile{
 		Runtime:          req.Runtime,
 		AgentIntegration: req.AgentIntegration,
-		Model:            RunModel(),
+		Model:            req.Model,
 	}
 	var supported bool
 	for _, rt := range c.Runtimes {
