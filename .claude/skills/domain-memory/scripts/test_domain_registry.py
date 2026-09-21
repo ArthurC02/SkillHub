@@ -193,10 +193,9 @@ class DomainRegistryTest(unittest.TestCase):
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
 
-    def test_reviewing_an_empty_registry_marks_every_asset_reviewed(self) -> None:
-        review_empty_registry(self.repo / "memory", self.repo, "developer")
-
-        self.assertEqual([], validate(self.repo / "memory", self.repo, True))
+    def test_reviewing_an_empty_registry_requires_external_governance(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Working Memory"):
+            review_empty_registry(self.repo / "memory", self.repo, "developer")
 
     def test_reviewing_an_nonempty_registry_is_rejected(self) -> None:
         self.seed(
@@ -204,7 +203,7 @@ class DomainRegistryTest(unittest.TestCase):
             [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
         )
 
-        with self.assertRaisesRegex(ValueError, "every asset to be empty"):
+        with self.assertRaisesRegex(ValueError, "Working Memory"):
             review_empty_registry(self.repo / "memory", self.repo, "developer")
 
     def test_changed_registry_rejects_a_captured_revision(self) -> None:
@@ -1574,7 +1573,7 @@ class DomainRegistryTest(unittest.TestCase):
             result["signals"][-1], {"kind": "registry_records", "count": 1}
         )
 
-    def test_readiness_accepts_a_reviewed_empty_registry(self) -> None:
+    def test_readiness_reports_an_empty_working_memory_as_current(self) -> None:
         (self.repo / "docs").mkdir()
         implementation = self.repo / "apps" / "orders"
         implementation.mkdir(parents=True)
@@ -1589,14 +1588,12 @@ class DomainRegistryTest(unittest.TestCase):
             ),
         )
         self.commit_all("source map")
-        review_empty_registry(self.repo / "memory", self.repo, "developer")
-
         result = assess_readiness(self.repo, self.repo / "memory")
 
         self.assertEqual("brownfield", result["state"])
         self.assertEqual("read-and-maintain", result["next_capability"])
         self.assertEqual(
-            {"kind": "registry", "status": "reviewed-empty"}, result["signals"][-2]
+            {"kind": "registry", "status": "current"}, result["signals"][-2]
         )
         self.assertEqual([], result["blocks"])
 

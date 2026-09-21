@@ -80,33 +80,7 @@ def review_status(asset: str, record: dict[str, Any], asset_status: str) -> str:
 
 
 def review_empty_registry(registry_root: Path, repo_root: Path, reviewer: str) -> None:
-    if not completed_identifier(reviewer):
-        raise ValueError("empty Registry review requires a reviewer")
-    if review_mode(registry_root) != "scm-verified":
-        raise ValueError("empty Registry review requires an scm-verified Domain Memory policy")
-
-    def mutate(staging: Path) -> None:
-        for name, key in ASSET_KEYS.items():
-            path = registry_dir(staging) / name
-            document = load_json(path)
-            if document[key]:
-                raise ValueError("empty Registry review requires every asset to be empty")
-            document["status"] = "reviewed"
-            write_json(path, document)
-        manifest_path = registry_dir(staging) / "manifest.json"
-        manifest = load_json(manifest_path)
-        manifest["status"] = "reviewed"
-        write_json(manifest_path, manifest)
-
-    mutate_registry(
-        registry_root,
-        repo_root,
-        mutate,
-        audit_event=lambda: {
-            "operation": "review-empty-registry",
-            "reviewer": reviewer,
-        },
-    )
+    raise ValueError("an empty Registry is Working Memory until external governance verifies it")
 
 
 def read_update(path: Path) -> dict[str, Any]:
