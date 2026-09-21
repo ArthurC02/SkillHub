@@ -1363,6 +1363,17 @@ class DomainRegistryTest(unittest.TestCase):
             "known",
         )
 
+    def test_a_reviewed_internal_interaction_does_not_require_a_contract(self) -> None:
+        self.two_contexts()
+        source = self.repo / "fact.md"
+        source.write_text("Orders notify Billing.", encoding="utf-8")
+        document = self.repo / "memory" / "registry" / "interactions.json"
+        value = json.loads(document.read_text(encoding="utf-8"))
+        value["status"] = "reviewed"
+        value["interactions"] = [{"id": "order-billed", "producer_context": "orders", "consumer_context": "billing", "consistency": "eventual", "delivery": "outbox event", "evidence": [citation(self.repo, "fact.md", 1, 1)], "review": {"proposal_id": "P-1"}}]
+        document.write_text(json.dumps(value), encoding="utf-8")
+        self.assertEqual(validate(self.repo / "memory", self.repo, False), [])
+
     def test_a_registered_interaction_does_not_make_the_reverse_direction_known(
         self,
     ) -> None:
