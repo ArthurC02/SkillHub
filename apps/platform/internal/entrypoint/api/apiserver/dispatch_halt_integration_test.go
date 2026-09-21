@@ -341,14 +341,3 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 }
 
 func nil2uuid() pgtype.UUID { return pgtype.UUID{} }
-
-func mustRun(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string) gen.Run {
-	t.Helper()
-	row, err := gen.New(pool).GetRun(context.Background(), gen.GetRunParams{
-		ID: mustUUID(t, runID), WorkspaceID: mustUUID(t, workspaceID),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return row
-}
