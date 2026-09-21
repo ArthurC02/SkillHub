@@ -35,6 +35,13 @@ dist/
 /.devctl/
 *.devctl-backup-*
 
+# A GOCACHE or scratch directory an agent's local environment pointed
+# at the repo root instead of outside it; automation-check's file walk
+# and git ls-files --others would otherwise sweep its contents.
+/scratchpad/
+.tmp-*/
+.tmp-*.patch
+
 # Embedding caches (float arrays keyed by text hash; regenerable, no secrets)
 tools/**/embeddings_cache.json
 # ... except the golden set's, which is FROZEN GATE EVIDENCE and not regenerable.
