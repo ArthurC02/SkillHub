@@ -15,6 +15,7 @@ to decide whether a candidate is needed before creating one.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
 3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies rather than a fixed language pattern. Use [tactical design reasoning](../../references/tactical-reasoning.md).
    When deployment configuration affects an immutable record's behavior, verify that the chosen value is captured in that record's snapshot rather than reread during retries.
+   For dispatch policy, snapshot every value that changes a compatibility or safety decision, including minimum isolation and any explicitly accepted provider limitation.
    Integration tests must construct adapters through the same composition wiring; do not retain Context-owned environment factories only for tests.
    Treat HTTP clients, transports, and timeouts as adapter composition concerns: inject them at the entrypoint and retain a focused seam test that proves the selected client reaches the adapter.
    A test-friendly adapter fallback does not replace production composition; verify the executable entrypoint supplies the client explicitly.
