@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 func TestAnAbsentQueueDoesNotLookConfigured(t *testing.T) {
@@ -19,11 +19,11 @@ func TestAnAbsentQueueDoesNotLookConfigured(t *testing.T) {
 }
 
 func TestQueuedWorkNamesTheRunAndWorkspace(t *testing.T) {
-	r := gen.Run{ID: pgtype.UUID{Bytes: [16]byte{0: 1}, Valid: true}, WorkspaceID: pgtype.UUID{Bytes: [16]byte{0: 2}, Valid: true}}
-	if got := runJob(r); got.RunID != pgconv.UUIDString(r.ID) || got.WorkspaceID != pgconv.UUIDString(r.WorkspaceID) {
+	work := run.RunWork{RunID: pgtype.UUID{Bytes: [16]byte{0: 1}, Valid: true}, WorkspaceID: pgtype.UUID{Bytes: [16]byte{0: 2}, Valid: true}}
+	if got := runJob(work); got.RunID != pgconv.UUIDString(work.RunID) || got.WorkspaceID != pgconv.UUIDString(work.WorkspaceID) {
 		t.Errorf("run job = %+v", got)
 	}
-	if got := cleanupJob(r); got.RunID != pgconv.UUIDString(r.ID) || got.WorkspaceID != pgconv.UUIDString(r.WorkspaceID) {
+	if got := cleanupJob(work); got.RunID != pgconv.UUIDString(work.RunID) || got.WorkspaceID != pgconv.UUIDString(work.WorkspaceID) {
 		t.Errorf("cleanup job = %+v", got)
 	}
 }

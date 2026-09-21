@@ -57,7 +57,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 		if s.Queue == nil {
 			break
 		}
-		if err := s.Queue.Clean(ctx, run); err != nil {
+		if err := s.Queue.Clean(ctx, RunWork{RunID: run.ID, WorkspaceID: run.WorkspaceID}); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -97,7 +97,7 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 		return nil
 	}
 
-	added, err := s.Queue.Drive(ctx, run)
+	added, err := s.Queue.Drive(ctx, RunWork{RunID: run.ID, WorkspaceID: run.WorkspaceID})
 	if err != nil {
 		return err
 	}

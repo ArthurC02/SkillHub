@@ -4,13 +4,17 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type RunWork struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
 type RunQueue interface {
-	Drive(ctx context.Context, run gen.Run) (added bool, err error)
-	DriveInTx(ctx context.Context, tx pgx.Tx, run gen.Run) error
-	Clean(ctx context.Context, run gen.Run) error
-	CleanInTx(ctx context.Context, tx pgx.Tx, run gen.Run) error
+	Drive(context.Context, RunWork) (added bool, err error)
+	DriveInTx(context.Context, pgx.Tx, RunWork) error
+	Clean(context.Context, RunWork) error
+	CleanInTx(context.Context, pgx.Tx, RunWork) error
 }

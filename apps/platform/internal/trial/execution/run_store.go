@@ -193,7 +193,7 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 	if s.Queue == nil {
 		return nil
 	}
-	return s.Queue.CleanInTx(ctx, tx, row)
+	return s.Queue.CleanInTx(ctx, tx, RunWork{RunID: row.ID, WorkspaceID: row.WorkspaceID})
 }
 
 func writeObjectGrants(ctx context.Context, q *gen.Queries, a gen.RunAttempt) error {

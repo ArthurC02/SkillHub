@@ -435,7 +435,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	run := requested.Row()
 
 	if s.Queue != nil {
-		if err := s.Queue.DriveInTx(ctx, tx, run); err != nil {
+		if err := s.Queue.DriveInTx(ctx, tx, RunWork{RunID: run.ID, WorkspaceID: run.WorkspaceID}); err != nil {
 			return gen.Run{}, err
 		}
 	}
