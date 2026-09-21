@@ -9,12 +9,25 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
+
+func TestPermissionConfirmationCarriesTheSummaryAndConfirmationTime(t *testing.T) {
+	confirmed := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	got := permissionConfirmation(gen.RunPermissionConfirmation{
+		SummaryHash: "summary", ConfirmedAt: pgtype.Timestamptz{Time: confirmed, Valid: true},
+	})
+
+	if got.SummaryHash != "summary" || got.ConfirmedAt == nil || !got.ConfirmedAt.Equal(confirmed) {
+		t.Errorf("permission confirmation = %+v", got)
+	}
+}
 
 func TestEgressAllowIsRenderedAsPurposeAndURL(t *testing.T) {
 	lines := egressAllowLines([]egressAllow{

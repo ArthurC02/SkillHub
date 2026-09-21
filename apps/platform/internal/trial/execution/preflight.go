@@ -394,20 +394,25 @@ func detachedDescendantsSurvive(c ProviderCapability) bool {
 	return c.Isolation.ReapsDetachedDescendants != nil && !*c.Isolation.ReapsDetachedDescendants
 }
 
+type PermissionConfirmation struct {
+	SummaryHash string
+	ConfirmedAt *time.Time
+}
+
 func (s *Service) ConfirmPermissions(
 	ctx context.Context, workspaceID, actor, skillID, versionID, testCaseID pgtype.UUID, hash string,
-) (gen.RunPermissionConfirmation, error) {
+) (PermissionConfirmation, error) {
 	summary, err := s.PermissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID)
 	if err != nil {
-		return gen.RunPermissionConfirmation{}, err
+		return PermissionConfirmation{}, err
 	}
 	if hash != summary.Hash {
-		return gen.RunPermissionConfirmation{}, ErrPermissionsNotConfirmed
+		return PermissionConfirmation{}, ErrPermissionsNotConfirmed
 	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.RunPermissionConfirmation{}, err
+		return PermissionConfirmation{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
@@ -417,16 +422,23 @@ func (s *Service) ConfirmPermissions(
 		SummaryHash: hash, ConfirmedBy: actor,
 	})
 	if err != nil {
-		return gen.RunPermissionConfirmation{}, err
+		return PermissionConfirmation{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: actor, Workspace: workspaceID, Action: audit.ActionRunPermissionsConfirm,
 		ResourceType: audit.ResourceTestCase, ResourceID: testCaseID,
 		Metadata: map[string]any{"summary_hash": hash, "skill_version_id": pgconv.UUIDString(versionID)},
 	}); err != nil {
-		return gen.RunPermissionConfirmation{}, err
+		return PermissionConfirmation{}, err
 	}
-	return row, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return PermissionConfirmation{}, err
+	}
+	return permissionConfirmation(row), nil
+}
+
+func permissionConfirmation(row gen.RunPermissionConfirmation) PermissionConfirmation {
+	return PermissionConfirmation{SummaryHash: row.SummaryHash, ConfirmedAt: timePointer(row.ConfirmedAt)}
 }
 
 func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
@@ -506,7 +518,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
 		"confirmed":    true,
 		"summary_hash": row.SummaryHash,
-		"confirmed_at": pgconv.RFC3339(row.ConfirmedAt),
+		"confirmed_at": formatTime(row.ConfirmedAt),
 	})
 }
 
