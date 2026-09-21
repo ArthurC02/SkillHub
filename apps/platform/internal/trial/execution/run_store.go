@@ -11,7 +11,17 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
+
+func (s *Service) captureWorkloadOutput(ctx context.Context, attempt gen.RunAttempt, output string) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		return trace.RecordOrchestratorEvent(ctx, tx, attempt.WorkspaceID, attempt.RunID,
+			int(attempt.AttemptNumber), trace.TypeAgentOutput, "", map[string]any{
+				"kind": "captured", "text": output, "truncated": false,
+			})
+	})
+}
 
 func loadRun(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID) (*Run, error) {
 	row, err := q.LockRun(ctx, gen.LockRunParams{ID: runID, WorkspaceID: workspaceID})
