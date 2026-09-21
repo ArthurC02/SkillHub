@@ -125,7 +125,7 @@ def verify_scm_value(value: dict[str, Any], proposal: dict[str, Any]) -> list[st
     if value.get("status") != "approved":
         errors.append("SCM attestation status must be approved")
     if value.get("provider") not in {"github", "git-signed-commit"}:
-        errors.append("SCM attestation provider is not supported")
+        errors.append("SCM attestation provider must be github or git-signed-commit")
     if value.get("provider") == "github":
         for key in ("pull_request", "checks_url"):
             if not isinstance(value.get(key), str) or not value[key].startswith("https://"):

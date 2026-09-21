@@ -427,7 +427,9 @@ class DomainRegistryTest(unittest.TestCase):
         proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
         path = self.write_record("attestation.json", {"provider": "git", "pull_request": "https://host.example/pull/1", "checks_url": "https://host.example/checks/1", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
         errors = verify_scm(path, proposal)
-        self.assertTrue(any("must be GitHub" in error for error in errors), errors)
+        self.assertTrue(
+            any("must be github or git-signed-commit" in error for error in errors), errors
+        )
 
     def test_external_scm_verification_requires_merged_approved_green_github_pr(self) -> None:
         attestation = {
@@ -1704,7 +1706,7 @@ class DomainRegistryTest(unittest.TestCase):
     def test_readiness_routes_a_valid_registry_with_domain_records_to_greenfield(
         self,
     ) -> None:
-        docs = self.repo / "domain-notes"
+        docs = self.repo / "docs"
         docs.mkdir()
         write_source_map(
             self.repo / "memory" / "source-map.json",
