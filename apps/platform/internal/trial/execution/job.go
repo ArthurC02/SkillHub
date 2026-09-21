@@ -605,19 +605,7 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 			}
 		}
 	}
-	if d.svc == nil || d.svc.Pool == nil {
-		return errors.New("run artifact persistence is not configured")
-	}
-	tx, err := d.svc.Pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-	if err := persistArtifactManifest(ctx, artifactManifestStore{q}, d.cur, archiveKey, pr.Result, truncated); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return d.svc.saveArtifactManifest(ctx, d.cur, archiveKey, pr.Result, truncated)
 }
 
 const runArtifactRetention = 90 * 24 * time.Hour

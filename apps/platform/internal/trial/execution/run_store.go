@@ -23,6 +23,21 @@ func (s *Service) captureWorkloadOutput(ctx context.Context, attempt gen.RunAtte
 	})
 }
 
+func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, archiveKey string, result *RunResult, truncated bool) error {
+	if s == nil || s.Pool == nil {
+		return errors.New("run artifact persistence is not configured")
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := persistArtifactManifest(ctx, artifactManifestStore{gen.New(tx)}, current, archiveKey, result, truncated); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func loadRun(ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID) (*Run, error) {
 	row, err := q.LockRun(ctx, gen.LockRunParams{ID: runID, WorkspaceID: workspaceID})
 	if err != nil {
