@@ -42,8 +42,8 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	client, err := New(endpoint,
-		envx.Or("SKILLHUB_TEST_OBJSTORE_ACCESS_KEY", devAccessKey),
-		envx.Or("SKILLHUB_TEST_OBJSTORE_SECRET_KEY", devSecretKey),
+		envx.Or(os.Getenv("SKILLHUB_TEST_OBJSTORE_ACCESS_KEY"), devAccessKey),
+		envx.Or(os.Getenv("SKILLHUB_TEST_OBJSTORE_SECRET_KEY"), devSecretKey),
 		testBucket, os.Getenv("SKILLHUB_TEST_OBJSTORE_SSL") == "1")
 	if err != nil {
 		panic(err)

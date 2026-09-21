@@ -99,7 +99,7 @@ func newStore(clean bool) (*objstore.Client, func(), error) {
 		store, err := wiring.ObjectStoreFromEnv()
 		return store, nil, err
 	}
-	store, stop, err := objstore.NewInProcess(envx.Or("OBJSTORE_BUCKET", "skillhub"))
+	store, stop, err := objstore.NewInProcess(envx.Or(os.Getenv("OBJSTORE_BUCKET"), "skillhub"))
 	return store, stop, err
 }
 
@@ -287,7 +287,7 @@ func main() {
 		slog.Warn("SKILLHUB_TRACE_INGEST_SECRET not set; run traces will not be collected")
 	}
 
-	profileDir := envx.Or("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles")
+	profileDir := envx.Or(os.Getenv("PACKAGING_PROFILES_DIR"), "contracts/packaging/profiles")
 	profiles, err := packaging.LoadProfiles(profileDir)
 	if err != nil {
 		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
@@ -416,7 +416,7 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:              envx.Or("API_ADDR", ":8080"),
+		Addr:              envx.Or(os.Getenv("API_ADDR"), ":8080"),
 		Handler:           httpx.DevCORS(handler, posture.DevCORSOrigin),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

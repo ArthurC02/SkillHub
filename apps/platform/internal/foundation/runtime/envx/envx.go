@@ -1,10 +1,8 @@
 package envx
 
-import "os"
-
-func Or(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func Or(value, fallback string) string {
+	if value != "" {
+		return value
 	}
 	return fallback
 }
