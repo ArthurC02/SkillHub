@@ -64,7 +64,8 @@ type Config struct {
 	Operators map[string]bool
 	Invited   map[string]bool
 
-	Providers *run.Registry
+	Providers     *run.Registry
+	RunDeployment run.Deployment
 
 	Quota policy.QuotaLimits
 
@@ -168,6 +169,7 @@ func NewApp(cfg Config) (*App, error) {
 		Quota:              cfg.Quota,
 		WorkspaceCreatedAt: auth.Service.WorkspaceCreatedAt,
 		LastOrphanScan:     wiring.LastOrphanScan(cfg.Pool),
+		Deployment:         cfg.RunDeployment,
 	}
 	wiring.WireRunRegistryReaders(runSvc, registrySvc)
 	funnel.RunBelongsToWorkspace = runSvc.BelongsToWorkspace

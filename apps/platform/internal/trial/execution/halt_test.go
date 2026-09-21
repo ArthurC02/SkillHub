@@ -200,5 +200,5 @@ func TestHaltingOrResumingWithoutAReasonIsRefusedBeforeAnythingIsWritten(t *test
 }
 
 func DefaultRequirements() Requirements {
-	return requirementsFromPolicy(defaultPolicy())
+	return requirementsFromPolicy(defaultPolicy(Deployment{}))
 }

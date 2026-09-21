@@ -35,6 +35,7 @@ type Deps struct {
 	Providers      *run.Registry
 	Store          *objstore.Client
 	Gateway        *run.Gateway
+	RunDeployment  run.Deployment
 
 	TraceSigner        *trace.Signer
 	TraceIngestBaseURL string
@@ -105,6 +106,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
 		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
 		LastOrphanScan:           wiring.LastOrphanScan(pool),
+		Deployment:               deps.RunDeployment,
 	}
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)

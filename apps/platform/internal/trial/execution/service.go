@@ -125,6 +125,8 @@ type Service struct {
 	Quota policy.QuotaLimits
 
 	Gateway ModelGateway
+
+	Deployment Deployment
 }
 
 func (s *Service) requireTestLab() error {
@@ -223,9 +225,9 @@ func (p policySnapshot) reachesAModel() bool {
 	})
 }
 
-func defaultPolicy() policySnapshot {
+func defaultPolicy(deployment Deployment) policySnapshot {
 	allow := []egressAllow{}
-	if url := GatewayURL(); url != "" {
+	if url := deployment.GatewayURL; url != "" {
 		allow = append(allow, egressAllow{Purpose: modelGatewayPurpose, URL: url})
 	}
 	return policySnapshot{
@@ -234,7 +236,9 @@ func defaultPolicy() policySnapshot {
 	}
 }
 
-func defaultPolicySnapshot() ([]byte, error) { return json.Marshal(defaultPolicy()) }
+func defaultPolicySnapshot(deployment Deployment) ([]byte, error) {
+	return json.Marshal(defaultPolicy(deployment))
+}
 
 type CreateParams struct {
 	WorkspaceID pgtype.UUID
@@ -308,7 +312,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	policy, err := defaultPolicySnapshot()
+	policy, err := defaultPolicySnapshot(s.Deployment)
 	if err != nil {
 		return gen.Run{}, err
 	}

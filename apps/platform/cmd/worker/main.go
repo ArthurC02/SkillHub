@@ -65,6 +65,7 @@ func main() {
 	}
 
 	providers := wiring.NewRunRegistryFromEnv()
+	runDeployment := wiring.RunDeploymentFromEnv()
 	names := make([]string, 0, len(providers.Providers))
 	for _, p := range providers.Providers {
 		names = append(names, p.Name())
@@ -115,6 +116,7 @@ func main() {
 		Providers:          providers,
 		Store:              store,
 		Gateway:            gateway,
+		RunDeployment:      runDeployment,
 		TraceSigner:        traceSigner,
 		TraceIngestBaseURL: traceBase,
 		LLM:                llm,

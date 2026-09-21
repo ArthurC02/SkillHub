@@ -20,6 +20,11 @@ func GatewayFromEnv() *run.Gateway {
 	})
 }
 
+func RunDeploymentFromEnv() run.Deployment {
+	budget, _ := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64)
+	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget}
+}
+
 func NewRunRegistryFromEnv() *run.Registry {
 	providers := make([]run.SandboxProvider, 0)
 	for _, entry := range strings.Split(os.Getenv("SKILLHUB_SANDBOX_PROVIDERS"), ",") {

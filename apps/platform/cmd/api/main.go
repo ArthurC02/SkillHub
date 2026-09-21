@@ -310,6 +310,7 @@ func main() {
 	}
 
 	providers := wiring.NewRunRegistryFromEnv()
+	runDeployment := wiring.RunDeploymentFromEnv()
 
 	posture := envx.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()
@@ -359,6 +360,7 @@ func main() {
 
 		Invited:         operatorIDs(os.Getenv("BETA_ALLOWLIST")),
 		Providers:       providers,
+		RunDeployment:   runDeployment,
 		Quota:           quotaFromEnv(),
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
@@ -385,6 +387,7 @@ func main() {
 			Providers:          providers,
 			Store:              store,
 			Gateway:            wiring.GatewayFromEnv(),
+			RunDeployment:      runDeployment,
 			TraceSigner:        traceSigner,
 			TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
 			LLM:                llm,

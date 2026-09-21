@@ -67,6 +67,18 @@ type GatewayConfig struct {
 	HTTP                                          *http.Client
 }
 
+type Deployment struct {
+	Model, GatewayURL string
+	BudgetUSD         float64
+}
+
+func (d Deployment) Budget() float64 {
+	if d.BudgetUSD > 0 {
+		return d.BudgetUSD
+	}
+	return defaultKeyBudgetUSD
+}
+
 func NewGateway(c GatewayConfig) *Gateway {
 	if c.SandboxBaseURL == "" || c.AdminKey == "" {
 		return nil

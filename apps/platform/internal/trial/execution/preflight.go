@@ -258,7 +258,7 @@ func (s *Service) permissionSummaryFor(
 		return PermissionSummary{}, ErrNotFound
 	}
 
-	snap := defaultPolicy()
+	snap := defaultPolicy(s.Deployment)
 	report, scanned := s.packageReport(ctx, version.PackageObjectKey)
 
 	content := PermissionSummaryContent{

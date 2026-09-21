@@ -21,7 +21,7 @@ func (s *Service) requireCredit(ctx context.Context, tx pgx.Tx, workspaceID pgty
 	if s.CreditReserve == nil {
 		return nil
 	}
-	ok, err := s.CreditReserve(ctx, tx, workspaceID, RunBudgetUSD())
+	ok, err := s.CreditReserve(ctx, tx, workspaceID, s.Deployment.Budget())
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, costUSD, RunBudgetUSD()); err != nil {
+	if err := s.CreditSettle(ctx, tx, run.WorkspaceID, run.ID, costUSD, s.Deployment.Budget()); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
