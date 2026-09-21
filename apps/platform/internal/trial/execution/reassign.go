@@ -51,22 +51,18 @@ func (d *driver) providerAnswered(ctx context.Context, attempt gen.RunAttempt) {
 	if !attempt.ProviderUnreachableSince.Valid {
 		return
 	}
-	if err := d.svc.queries().ClearAttemptProviderUnreachable(ctx, gen.ClearAttemptProviderUnreachableParams{
-		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
-	}); err != nil {
+	if err := d.svc.recordProviderAnswer(ctx, attempt); err != nil {
 		slog.Warn("could not record that the provider answered again",
 			"run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
 	}
 }
 
 func (d *driver) providerSilentSince(ctx context.Context, attempt gen.RunAttempt) (time.Time, error) {
-	since, err := d.svc.queries().MarkAttemptProviderUnreachable(ctx, gen.MarkAttemptProviderUnreachableParams{
-		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
-	})
+	since, err := d.svc.recordProviderSilence(ctx, attempt)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return since.Time, nil
+	return since, nil
 }
 
 func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reason statusReason) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,22 @@ func (s *Service) captureWorkloadOutput(ctx context.Context, attempt gen.RunAtte
 				"kind": "captured", "text": output, "truncated": false,
 			})
 	})
+}
+
+func (s *Service) recordProviderAnswer(ctx context.Context, attempt gen.RunAttempt) error {
+	return s.queries().ClearAttemptProviderUnreachable(ctx, gen.ClearAttemptProviderUnreachableParams{
+		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
+	})
+}
+
+func (s *Service) recordProviderSilence(ctx context.Context, attempt gen.RunAttempt) (time.Time, error) {
+	since, err := s.queries().MarkAttemptProviderUnreachable(ctx, gen.MarkAttemptProviderUnreachableParams{
+		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
+	})
+	if err != nil {
+		return time.Time{}, err
+	}
+	return since.Time, nil
 }
 
 func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, archiveKey string, result *RunResult, truncated bool) error {
