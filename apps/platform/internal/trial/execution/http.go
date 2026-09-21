@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -369,19 +370,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	out := make([]runListItem, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, runListItem{
-			Evaluation: verdicts[pgconv.UUIDString(row.ID)],
-			RunID:      pgconv.UUIDString(row.ID), Status: string(row.Status),
-			StatusReason:   deref(row.StatusReason),
+			Evaluation:     verdicts[pgconv.UUIDString(row.ID)],
+			RunID:          pgconv.UUIDString(row.ID),
+			Status:         row.Status,
+			StatusReason:   row.StatusReason,
 			SkillID:        pgconv.UUIDString(row.SkillID),
 			SkillName:      row.SkillName,
 			SkillVersionID: pgconv.UUIDString(row.SkillVersionID),
 			TestCaseID:     pgconv.UUIDString(row.TestCaseID),
 			Provider:       row.Provider,
-			FailureClass:   failureClassWord(deref(row.FailureClass)),
-			CleanupStatus:  cleanupWord(string(row.CleanupStatus)),
-			CreatedAt:      pgconv.RFC3339(row.CreatedAt),
-			StartedAt:      pgconv.RFC3339(row.StartedAt),
-			FinishedAt:     pgconv.RFC3339(row.FinishedAt),
+			FailureClass:   failureClassWord(row.FailureClass),
+			CleanupStatus:  cleanupWord(row.CleanupStatus),
+			CreatedAt:      formatTime(row.CreatedAt),
+			StartedAt:      formatTime(row.StartedAt),
+			FinishedAt:     formatTime(row.FinishedAt),
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
@@ -583,4 +585,11 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339Nano)
 }

@@ -51,10 +51,19 @@ type VersionSummary struct {
 }
 
 type RunSummary struct {
-	gen.ListWorkspaceRunsRow
-	SkillID    pgtype.UUID
-	SkillName  string
-	TestCaseID pgtype.UUID
+	ID             pgtype.UUID
+	Status         string
+	StatusReason   string
+	Provider       string
+	FailureClass   string
+	CleanupStatus  string
+	SkillID        pgtype.UUID
+	SkillName      string
+	SkillVersionID pgtype.UUID
+	TestCaseID     pgtype.UUID
+	CreatedAt      *time.Time
+	StartedAt      *time.Time
+	FinishedAt     *time.Time
 }
 
 type Linkage struct {
@@ -452,11 +461,35 @@ func (s *Service) List(
 		if !versionFound || !caseFound {
 			return nil, fmt.Errorf("%w: run %s", errRunLinkMissing, pgconv.UUIDString(row.ID))
 		}
-		summaries[i] = RunSummary{
-			ListWorkspaceRunsRow: row, SkillID: version.SkillID, SkillName: version.SkillName, TestCaseID: testCaseID,
-		}
+		summaries[i] = runSummary(row, version, testCaseID)
 	}
 	return summaries, nil
+}
+
+func runSummary(row gen.ListWorkspaceRunsRow, version VersionSummary, testCaseID pgtype.UUID) RunSummary {
+	return RunSummary{
+		ID:             row.ID,
+		Status:         string(row.Status),
+		StatusReason:   deref(row.StatusReason),
+		Provider:       row.Provider,
+		FailureClass:   deref(row.FailureClass),
+		CleanupStatus:  string(row.CleanupStatus),
+		SkillID:        version.SkillID,
+		SkillName:      version.SkillName,
+		SkillVersionID: row.SkillVersionID,
+		TestCaseID:     testCaseID,
+		CreatedAt:      timePointer(row.CreatedAt),
+		StartedAt:      timePointer(row.StartedAt),
+		FinishedAt:     timePointer(row.FinishedAt),
+	}
+}
+
+func timePointer(ts pgtype.Timestamptz) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	t := ts.Time
+	return &t
 }
 
 func (s *Service) runLinks(

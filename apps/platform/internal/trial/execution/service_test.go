@@ -110,3 +110,52 @@ func TestRunHistoryAndLinkageRefuseWithoutTheirOwnerReaders(t *testing.T) {
 		})
 	}
 }
+
+func TestRunSummaryKeepsTheRunListConceptSeparateFromTheDatabaseRow(t *testing.T) {
+	created := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	started := created.Add(time.Minute)
+	finished := started.Add(time.Minute)
+	reason := "provider recovered"
+	failure := ""
+	versionID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	testCaseID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+
+	for _, tc := range []struct {
+		name     string
+		row      gen.ListWorkspaceRunsRow
+		started  bool
+		finished bool
+	}{
+		{
+			name: "a completed run",
+			row: gen.ListWorkspaceRunsRow{
+				Status: gen.RunStatusSucceeded, StatusReason: &reason, FailureClass: &failure,
+				CleanupStatus: gen.RunCleanupStatusCleaned, SkillVersionID: versionID,
+				CreatedAt:  pgtype.Timestamptz{Time: created, Valid: true},
+				StartedAt:  pgtype.Timestamptz{Time: started, Valid: true},
+				FinishedAt: pgtype.Timestamptz{Time: finished, Valid: true},
+			},
+			started: true, finished: true,
+		},
+		{
+			name: "a queued run",
+			row: gen.ListWorkspaceRunsRow{
+				Status: gen.RunStatusQueued, CleanupStatus: gen.RunCleanupStatusPending,
+				SkillVersionID: versionID, CreatedAt: pgtype.Timestamptz{Time: created, Valid: true},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := runSummary(tc.row, VersionSummary{SkillID: versionID, SkillName: "Skill"}, testCaseID)
+			if got.SkillVersionID != versionID || got.TestCaseID != testCaseID {
+				t.Fatalf("summary links = (%v, %v), want (%v, %v)", got.SkillVersionID, got.TestCaseID, versionID, testCaseID)
+			}
+			if got.CreatedAt == nil || !got.CreatedAt.Equal(created) {
+				t.Fatalf("created at = %v, want %v", got.CreatedAt, created)
+			}
+			if (got.StartedAt != nil) != tc.started || (got.FinishedAt != nil) != tc.finished {
+				t.Fatalf("lifecycle timestamps = (%v, %v), want (%v, %v)", got.StartedAt, got.FinishedAt, tc.started, tc.finished)
+			}
+		})
+	}
+}
