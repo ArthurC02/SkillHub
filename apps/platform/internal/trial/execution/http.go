@@ -530,13 +530,13 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	for _, a := range attempts {
 		resp.Attempts = append(resp.Attempts, attemptView{
 			RunAttemptID:  pgconv.UUIDString(a.ID),
-			AttemptNumber: a.AttemptNumber,
+			AttemptNumber: a.Number,
 			Provider:      a.Provider,
-			ProviderRunID: deref(a.ProviderRunID),
-			ErrorClass:    deref(a.ErrorClass),
-			ErrorMessage:  deref(a.ErrorMessage),
-			StartedAt:     pgconv.RFC3339(a.StartedAt),
-			FinishedAt:    pgconv.RFC3339(a.FinishedAt),
+			ProviderRunID: a.ProviderRunID,
+			ErrorClass:    a.ErrorClass,
+			ErrorMessage:  a.ErrorMessage,
+			StartedAt:     formatTime(a.StartedAt),
+			FinishedAt:    formatTime(a.FinishedAt),
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)

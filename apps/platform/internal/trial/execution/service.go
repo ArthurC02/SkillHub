@@ -98,6 +98,17 @@ type Artifact struct {
 	Purged      bool
 }
 
+type Attempt struct {
+	ID            pgtype.UUID
+	Number        int32
+	Provider      string
+	ProviderRunID string
+	ErrorClass    string
+	ErrorMessage  string
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
+}
+
 type StatusTransition struct {
 	From       string
 	To         string
@@ -665,10 +676,35 @@ func derefStatus(status *gen.RunStatus) string {
 	return string(*status)
 }
 
-func (s *Service) Attempts(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunAttempt, error) {
+func (s *Service) attempts(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunAttempt, error) {
 	return s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
+}
+
+func (s *Service) Attempts(ctx context.Context, workspaceID, runID pgtype.UUID) ([]Attempt, error) {
+	rows, err := s.attempts(ctx, workspaceID, runID)
+	if err != nil {
+		return nil, err
+	}
+	attempts := make([]Attempt, len(rows))
+	for i, row := range rows {
+		attempts[i] = runAttempt(row)
+	}
+	return attempts, nil
+}
+
+func runAttempt(row gen.RunAttempt) Attempt {
+	return Attempt{
+		ID:            row.ID,
+		Number:        row.AttemptNumber,
+		Provider:      row.Provider,
+		ProviderRunID: deref(row.ProviderRunID),
+		ErrorClass:    deref(row.ErrorClass),
+		ErrorMessage:  deref(row.ErrorMessage),
+		StartedAt:     timePointer(row.StartedAt),
+		FinishedAt:    timePointer(row.FinishedAt),
+	}
 }
 
 func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor pgtype.UUID) (RunView, error) {

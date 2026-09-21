@@ -99,7 +99,7 @@ func (d *driver) execute(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
-	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
+	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 			d.reasonFor(failurePlatform, err))
 	}
 
-	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
+	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return err
 	}

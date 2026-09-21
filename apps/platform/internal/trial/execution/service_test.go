@@ -98,6 +98,29 @@ func TestAProvidersSilenceIsMeasuredAgainstTheClockTheServiceReads(t *testing.T)
 	}
 }
 
+func TestRunAttemptViewCarriesTheReadableAttemptFacts(t *testing.T) {
+	started := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	finished := started.Add(time.Minute)
+	providerRunID, class, message := "provider-run", "execution", "failed"
+	row := gen.RunAttempt{
+		ID:            pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
+		AttemptNumber: 2,
+		Provider:      "sandbox",
+		ProviderRunID: &providerRunID,
+		ErrorClass:    &class,
+		ErrorMessage:  &message,
+		StartedAt:     pgtype.Timestamptz{Time: started, Valid: true},
+		FinishedAt:    pgtype.Timestamptz{Time: finished, Valid: true},
+	}
+
+	got := runAttempt(row)
+	if got.ID != row.ID || got.Number != 2 || got.Provider != "sandbox" ||
+		got.ProviderRunID != providerRunID || got.ErrorClass != class || got.ErrorMessage != message ||
+		got.StartedAt == nil || !got.StartedAt.Equal(started) || got.FinishedAt == nil || !got.FinishedAt.Equal(finished) {
+		t.Errorf("attempt view = %+v", got)
+	}
+}
+
 func TestRequireTestLabDoesNotInspectOwnerInternals(t *testing.T) {
 	if err := (&Service{TestLab: &testlab.Service{}}).requireTestLab(); err != nil {
 		t.Fatalf("requireTestLab rejected an injected owner service: %v", err)

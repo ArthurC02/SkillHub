@@ -75,7 +75,7 @@ func (d *driver) providerLost(ctx context.Context, attempt gen.RunAttempt, reaso
 	}
 	d.svc.providers().forget(attempt.Provider)
 
-	attempts, err := d.svc.Attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
+	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return err
 	}

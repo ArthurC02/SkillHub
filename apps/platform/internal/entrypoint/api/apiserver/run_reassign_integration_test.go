@@ -88,7 +88,7 @@ func (s lossScene) drive(t *testing.T, what string) {
 	}
 }
 
-func (s lossScene) attempts(t *testing.T) []gen.RunAttempt {
+func (s lossScene) attempts(t *testing.T) []run.Attempt {
 	t.Helper()
 	attempts, err := s.svc.Attempts(s.ctx, s.ws, s.runID)
 	if err != nil {
@@ -115,12 +115,7 @@ func (s lossScene) silentSince(t *testing.T) pgtype.Timestamptz {
 	return since
 }
 
-func errorClass(a gen.RunAttempt) string {
-	if a.ErrorClass == nil {
-		return ""
-	}
-	return *a.ErrorClass
-}
+func errorClass(a run.Attempt) string { return a.ErrorClass }
 
 func TestAProviderThatForgetsAnAttemptHandsTheRunToAnother(t *testing.T) {
 	s := newLossScene(t, "alice-forgotten-attempt")
@@ -135,7 +130,7 @@ func TestAProviderThatForgetsAnAttemptHandsTheRunToAnother(t *testing.T) {
 	if attempts[0].Provider != "alpha_sandbox" || errorClass(attempts[0]) != "provider_lost" {
 		t.Errorf("first attempt = %s/%s, want alpha_sandbox/provider_lost", attempts[0].Provider, errorClass(attempts[0]))
 	}
-	if attempts[1].Provider != "beta_sandbox" || attempts[1].ProviderRunID == nil {
+	if attempts[1].Provider != "beta_sandbox" || attempts[1].ProviderRunID == "" {
 		t.Errorf("second attempt = %s with handle %v, want beta_sandbox with one",
 			attempts[1].Provider, attempts[1].ProviderRunID)
 	}
