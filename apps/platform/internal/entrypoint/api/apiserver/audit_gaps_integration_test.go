@@ -150,7 +150,7 @@ func TestCleanupOutcomeIsAudited(t *testing.T) {
 		t.Fatalf("a cleanup was audited before one happened (%d rows)", n)
 	}
 
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("cleanup: %v", err)
 	}
 
@@ -196,7 +196,7 @@ func TestACleanupThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
 	runID := mustUUID(t, finished.RunID)
 	failOutboxCommitFor(t, pool, runID)
 
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err == nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err == nil {
 		t.Fatal("cleanup reported success although its transaction could not commit")
 	}
 	if n := countRow(t, pool, cleanupAuditSQL, runID); n != 0 {
@@ -223,7 +223,7 @@ func TestCleanupOutcomeIsAuditedOnlyWhenItChanges(t *testing.T) {
 
 	fake.DestroyStatus = http.StatusInternalServerError
 	for pass := 1; pass <= 3; pass++ {
-		if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err == nil {
+		if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err == nil {
 			t.Fatalf("pass %d: a refused teardown reported success", pass)
 		}
 	}
@@ -239,7 +239,7 @@ func TestCleanupOutcomeIsAuditedOnlyWhenItChanges(t *testing.T) {
 	}
 
 	fake.DestroyStatus = 0
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("the recovered teardown: %v", err)
 	}
 	if n := countRow(t, pool, cleanupAuditSQL, runID); n != 2 {

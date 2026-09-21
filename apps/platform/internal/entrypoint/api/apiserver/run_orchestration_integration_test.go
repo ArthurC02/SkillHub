@@ -1089,7 +1089,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	}
 
 	fake.DestroyStatus = http.StatusInternalServerError
-	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err == nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err == nil {
 		t.Fatal("a teardown the provider refused was reported as done")
 	}
 	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusFailed) {
@@ -1099,7 +1099,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 
 	fake.DestroyStatus = 0
 	runRow := readRun(t, pool, f.workspaceID, created.RunID)
-	if err := svc.Cleanup(context.Background(), runRow); err != nil {
+	if err := svc.CleanRun(context.Background(), runRow.WorkspaceID, runRow.ID); err != nil {
 		t.Fatalf("retrying a failed cleanup: %v", err)
 	}
 	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusCleaned) {
@@ -1686,7 +1686,7 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err == nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err == nil {
 		t.Fatal("a run whose cost was never charged reported a clean teardown; nothing would try again " +
 			"and the workspace keeps the credits it spent")
 	}
@@ -1694,7 +1694,7 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 		t.Fatalf("cleanup_status = %q after the charge failed, want failed", got)
 	}
 
-	if err := svc.Cleanup(ctx, readRun(t, pool, f.workspaceID, created.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
 		t.Fatalf("the retry that charged the run failed: %v", err)
 	}
 	if settled != 2 {

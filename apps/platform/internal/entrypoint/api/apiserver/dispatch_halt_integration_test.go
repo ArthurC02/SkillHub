@@ -133,7 +133,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("dispatches = %d; the halted fleet was handed more work", fake.Dispatches())
 	}
 
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("cleanup under a halt returned an error: %v", err)
 	}
 	if fake.Destroys() != 0 || fake.Live() != 1 {
@@ -197,7 +197,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	if _, view := f.getRun(t, queued.RunID); view.Status != string(gen.RunStatusSucceeded) {
 		t.Errorf("the previously queued run is %q after the resume, want succeeded", view.Status)
 	}
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("cleanup after the resume: %v", err)
 	}
 	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus.Value != string(gen.RunCleanupStatusCleaned) {

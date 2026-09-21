@@ -38,10 +38,10 @@ func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	if run.CleanupStatus == gen.RunCleanupStatusCleaned {
 		return nil
 	}
-	return s.Cleanup(ctx, run)
+	return s.cleanup(ctx, run)
 }
 
-func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
+func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 	defer metrics.ObserveSince(metrics.CleanupDuration, time.Now())
 
 	halts := s.haltsFailClosed(ctx)

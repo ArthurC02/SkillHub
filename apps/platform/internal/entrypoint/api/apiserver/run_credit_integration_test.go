@@ -57,7 +57,7 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	svc.Gateway = spendingGateway(t, 0.0382)
 
 	for pass := 1; pass <= 2; pass++ {
-		if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+		if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 			t.Fatalf("cleanup pass %d: %v", pass, err)
 		}
 	}
@@ -98,7 +98,7 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	}
 	svc.Gateway = spendingGateway(t, -1)
 
-	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 		t.Fatalf("cleanup: %v", err)
 	}
 
@@ -129,7 +129,7 @@ func TestARunWhoseSpendIsReadOnALaterCleanupReachesTheLedgerAtItsRealCost(t *tes
 	}
 	for _, spend := range []float64{-1, 0.0382} {
 		svc.Gateway = spendingGateway(t, spend)
-		if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+		if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, finished.RunID)); err != nil {
 			t.Fatalf("cleanup with spend %v: %v", spend, err)
 		}
 	}
