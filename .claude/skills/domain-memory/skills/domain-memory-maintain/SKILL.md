@@ -15,7 +15,7 @@ to decide whether a candidate is needed before creating one.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
 3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies rather than a fixed language pattern. Use [tactical design reasoning](../../references/tactical-reasoning.md).
 4. If the model changed, update the smallest affected asset with `upsert-candidate`, or prepare a Change Package for a material change.
-5. Validate the complete Registry and preserve the audit trail.
+5. Run `validate --registry-root <registry> --repo-root <repo>`, then preserve the audit trail.
 
 For a material change, compare the implementation with its implementation handoff and run the counterfactual check described in [pattern verification](../../references/pattern-verification.md). Missing proof, a changed assumption, or a different consistency decision is a model discrepancy even when the unit tests are green.
 
