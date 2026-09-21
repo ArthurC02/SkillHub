@@ -118,9 +118,7 @@ func (d *driver) execute(ctx context.Context) error {
 }
 
 func (d *driver) resumeEvaluating(ctx context.Context) error {
-	attempts, err := d.svc.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
-		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
-	})
+	attempts, err := d.svc.attemptsForRun(ctx, d.cur)
 	if err != nil {
 		return err
 	}
