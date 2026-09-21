@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -185,9 +186,8 @@ func TestImportFetcherAllowsInsecureOnlyWhenAskedTo(t *testing.T) {
 		{name: "1", value: "1", want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			setenv(t, "IMPORT_ALLOW_INSECURE", tc.value, tc.unset)
-			setenv(t, "IMPORT_EXTRA_HOSTS", "", true)
-			if got := importFetcherFromEnv().AllowInsecure; got != tc.want {
+			posture := envx.Posture{ImportAllowInsecure: tc.value == "1" && !tc.unset}
+			if got := wiring.ImportFetcher(posture).AllowInsecure; got != tc.want {
 				t.Errorf("IMPORT_ALLOW_INSECURE=%q allows plain http: %v, want %v", tc.value, got, tc.want)
 			}
 		})
@@ -195,9 +195,7 @@ func TestImportFetcherAllowsInsecureOnlyWhenAskedTo(t *testing.T) {
 }
 
 func TestImportFetcherHostsFromEnv(t *testing.T) {
-	setenv(t, "IMPORT_ALLOW_INSECURE", "", true)
-	setenv(t, "IMPORT_EXTRA_HOSTS", " Files.Example.Com , ,gitlab.example.com ", false)
-	allowed := importFetcherFromEnv().Allowed
+	allowed := wiring.ImportFetcher(envx.Posture{ImportExtraHosts: " Files.Example.Com , ,gitlab.example.com "}).Allowed
 	for host := range ingest.DefaultAllowedHosts() {
 		if !allowed[host] {
 			t.Errorf("IMPORT_EXTRA_HOSTS replaced the default host %q instead of adding to it", host)

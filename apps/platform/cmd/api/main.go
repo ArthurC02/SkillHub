@@ -33,7 +33,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -342,7 +341,7 @@ func main() {
 		Readiness:          capabilities,
 		Store:              store,
 		LLM:                llm,
-		Fetcher:            importFetcherFromEnv(),
+		Fetcher:            wiring.ImportFetcher(posture),
 		TraceSigner:        traceSigner,
 		Profiles:           profiles,
 		DownloadRetention:  retentionFromEnv(),
@@ -482,19 +481,6 @@ func operatorIDs(raw string) map[string]bool {
 		}
 	}
 	return out
-}
-
-func importFetcherFromEnv() *ingest.URLFetcher {
-	f := &ingest.URLFetcher{
-		Allowed:       ingest.DefaultAllowedHosts(),
-		AllowInsecure: os.Getenv("IMPORT_ALLOW_INSECURE") == "1",
-	}
-	for _, h := range strings.Split(os.Getenv("IMPORT_EXTRA_HOSTS"), ",") {
-		if h = strings.TrimSpace(strings.ToLower(h)); h != "" {
-			f.Allowed[h] = true
-		}
-	}
-	return f
 }
 
 func retentionFromEnv() time.Duration {
