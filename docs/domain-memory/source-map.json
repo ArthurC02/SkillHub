@@ -4,6 +4,7 @@
   "source_order": [
     "repository_instructions",
     "decisions",
+    "architecture_guidance",
     "requirements",
     "contracts",
     "bounded_contexts",
@@ -37,6 +38,14 @@
       "authority": "current approved decisions when their status says so",
       "paths": [
         "docs/adr"
+      ]
+    },
+    {
+      "kind": "architecture_guidance",
+      "authority": "current boundary and convergence guidance; corroborate behavior with implementation",
+      "paths": [
+        "docs/development/platform-context-map.md",
+        "docs/development/platform-ddd-convergence.md"
       ]
     },
     {
@@ -490,8 +499,8 @@
     "apps/platform/internal/skill/library/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/preflight.go": "unclassified",
-    "docs/development/platform-context-map.md": "unclassified",
-    "docs/development/platform-ddd-convergence.md": "unclassified"
+    "docs/development/platform-context-map.md": "architecture_guidance",
+    "docs/development/platform-ddd-convergence.md": "architecture_guidance"
   },
   "git_state": {
     "tracked_objects": {

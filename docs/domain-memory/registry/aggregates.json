@@ -1,6 +1,6 @@
 {
   "format": "domain-aggregates/v1",
-  "status": "reviewed",
+  "status": "candidate",
   "aggregates": [
     {
       "id": "run",
@@ -21,25 +21,7 @@
           "source_kind": "unclassified"
         }
       ],
-      "review": {
-        "proposal_id": "run-registry-slice",
-        "proposal_revision": 1,
-        "approvals": [
-          {
-            "role": "developer",
-            "reviewer": "ArthurC",
-            "decision": "approved",
-            "approved_at": "2026-09-21T10:28:45.330993Z",
-            "scope": "Run Registry slice",
-            "proposal_revision": 1,
-            "base_registry_revision": {
-              "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
-              "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
-            }
-          }
-        ]
-      },
-      "status": "reviewed"
+      "status": "candidate"
     }
   ]
 }

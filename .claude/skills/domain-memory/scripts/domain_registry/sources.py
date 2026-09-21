@@ -26,6 +26,19 @@ EXCLUDED_DIRECTORIES = {
     "generated",
 }
 
+CI_MARKERS = {
+    ".github/workflows": "github-actions",
+    ".gitlab-ci.yml": "gitlab-ci",
+    "Jenkinsfile": "jenkins",
+    ".circleci/config.yml": "circleci",
+    ".buildkite/pipeline.yml": "buildkite",
+    "azure-pipelines.yml": "azure-pipelines",
+}
+
+
+def discover_ci_tools(root: Path) -> list[str]:
+    return sorted(name for path, name in CI_MARKERS.items() if (root / path).exists())
+
 
 def git_ignored(root: Path, candidates: list[Path]) -> set[Path]:
     if not candidates or not (root / ".git").exists():
@@ -129,6 +142,18 @@ def discover_sources(root: Path) -> dict[str, Any]:
             ),
         },
         {
+            "kind": "architecture_guidance",
+            "authority": "current boundary and convergence guidance; corroborate behavior with implementation",
+            "paths": [
+                path
+                for path in (
+                    "docs/development/platform-context-map.md",
+                    "docs/development/platform-ddd-convergence.md",
+                )
+                if (root / path).is_file()
+            ],
+        },
+        {
             "kind": "requirements",
             "authority": "intended behavior and acceptance criteria",
             "paths": existing_directories(
@@ -172,6 +197,11 @@ def discover_sources(root: Path) -> dict[str, Any]:
         "source_groups": groups,
         "missing_groups": [group["kind"] for group in groups if not group["paths"]],
         "selection_status": "discovered",
+        "governance_candidates": {
+            "ci_tools": discover_ci_tools(root),
+            "recommended_verifier": "scm-review" if discover_ci_tools(root) else "git-signed-commit",
+            "recommended_trigger": "external-scm" if discover_ci_tools(root) else "git-commit",
+        },
         "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
     }
 
@@ -312,7 +342,18 @@ def source_kind_for(source_map: dict[str, Any], cited_path: str) -> str:
             path
         ) > len(owner):
             owner = path
-    return kinds.get(owner, "unclassified")
+    if owner and kinds[owner] != "unclassified":
+        return kinds[owner]
+    owner = ""
+    kind = "unclassified"
+    for group in source_map.get("source_groups", []):
+        for path in group.get("paths", []):
+            if (cited_path == path or cited_path.startswith(path + "/")) and len(
+                path
+            ) > len(owner):
+                owner = path
+                kind = group.get("kind", "unclassified")
+    return kind if isinstance(kind, str) else "unclassified"
 
 
 def selected_source_map(

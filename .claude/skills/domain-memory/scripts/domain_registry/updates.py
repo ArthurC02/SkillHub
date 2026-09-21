@@ -79,8 +79,27 @@ def review_status(asset: str, record: dict[str, Any], asset_status: str) -> str:
     return record.get("status", asset_status)
 
 
-def review_empty_registry(registry_root: Path, repo_root: Path, reviewer: str) -> None:
-    raise ValueError("an empty Registry is Working Memory until external governance verifies it")
+def demote_local_reviews(registry_root: Path, repo_root: Path) -> None:
+    if review_mode(registry_root) != "local-draft-only":
+        raise ValueError("review demotion is only for local-draft-only Domain Memory")
+
+    def mutate(staging: Path) -> None:
+        for name, key in ASSET_KEYS.items():
+            path = registry_dir(staging) / name
+            document = load_json(path)
+            document["status"] = "candidate"
+            for record in document[key]:
+                record.pop("review", None)
+                if name == "decisions.json":
+                    record["review_status"] = "candidate"
+                else:
+                    record["status"] = "candidate"
+            write_json(path, document)
+
+    mutate_registry(
+        registry_root, repo_root, mutate,
+        audit_event=lambda: {"operation": "demote-local-reviews"},
+    )
 
 
 def read_update(path: Path) -> dict[str, Any]:

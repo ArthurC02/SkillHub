@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .changes import test_attestation_errors, validate_change_package
+from .attestations import verify_external_scm, verify_git_signed_commit
 from .common import completed_identifier, iso_timestamp, load_json
+from .policy import review_governance
 from .revision import current_registry_revision, require_current_registry_revision
 
 
@@ -132,12 +134,33 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("verified proposal is invalid: " + "; ".join(errors))
 
 
-def finalize_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
+def finalize_proposal(
+    root: Path, registry_root: Path, repo_root: Path, verification_token_env: str = "GITHUB_TOKEN"
+) -> None:
     path = proposal_path(root)
     proposal = load_json(path)
     if proposal.get("status") != "verified":
         raise ValueError("only a verified proposal may be finalized")
     require_current_registry_revision(proposal, registry_root, repo_root)
+    evidence = load_json(root / "evidence-bundle.json")
+    attestation = evidence.get("scm_attestation") if isinstance(evidence, dict) else None
+    if not isinstance(attestation, dict):
+        raise ValueError("finalizing a proposal requires SCM attestation")
+    governance = review_governance(registry_root)
+    if governance["verifier"] == "github-pr":
+        errors = verify_external_scm(
+            attestation,
+            verification_token_env,
+            governance["ci_requirement"] == "required",
+        )
+    elif governance["verifier"] == "git-signed-commit":
+        errors = verify_git_signed_commit(
+            attestation, repo_root, registry_root, governance["authorized_signers"]
+        )
+    else:
+        errors = ["policy has no review verifier"]
+    if errors:
+        raise ValueError("SCM governance is not externally verified: " + "; ".join(errors))
     proposal["status"] = "approved"
     proposal["finalized_at"] = now()
     write_document(path, proposal)

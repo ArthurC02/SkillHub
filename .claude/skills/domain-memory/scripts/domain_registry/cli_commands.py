@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 from .attestations import verify_scm
+from .git_hooks import governance_readiness, install_pre_push_hook, verify_git_governance
 from .audit import verify as verify_audit
 from .changes import init_change_package, validate_change_package
 from .common import load_json
@@ -50,7 +51,7 @@ from .sources import (
     write_source_map,
 )
 from .transaction import recover_interrupted_update
-from .updates import apply_approved_updates, review_empty_registry, upsert_candidate
+from .updates import apply_approved_updates, demote_local_reviews, upsert_candidate
 
 
 def probe_summary(result: dict, registry_root: Path) -> str:
@@ -109,11 +110,13 @@ def handle_migrate_registry(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_review_empty_registry(args: argparse.Namespace) -> int:
-    review_empty_registry(
-        args.registry_root.resolve(), args.repo_root.resolve(), args.reviewer
-    )
-    print("Empty Registry is reviewed.")
+def handle_demote_local_reviews(args: argparse.Namespace) -> int:
+    try:
+        demote_local_reviews(args.registry_root.resolve(), args.repo_root.resolve())
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    print("Local reviewed records were demoted to Working Memory candidates.")
     return 0
 
 
@@ -286,6 +289,15 @@ def handle_recover_registry_update(args: argparse.Namespace) -> int:
 def handle_init_domain_memory(args: argparse.Namespace) -> int:
     repo_root = args.repo_root.resolve()
     output = args.output.resolve()
+    if args.review_mode == "scm-verified" and not args.review_verifier:
+        print("ERROR: scm-verified Domain Memory requires --review-verifier")
+        return 1
+    if args.review_verifier == "git-signed-commit" and not args.authorized_signer:
+        print("ERROR: git-signed-commit requires at least one --authorized-signer")
+        return 1
+    if args.review_verifier == "git-signed-commit" and args.review_trigger != "git-push":
+        print("ERROR: git-signed-commit requires --review-trigger git-push")
+        return 1
     try:
         output.relative_to(repo_root)
     except ValueError:
@@ -313,6 +325,12 @@ def handle_init_domain_memory(args: argparse.Namespace) -> int:
         args.source_authority,
         args.include or ["**"],
         args.exclude or [],
+        {
+            "verifier": args.review_verifier or "none",
+            "trigger": args.review_trigger or "none",
+            "ci_requirement": args.ci_requirement,
+            "authorized_signers": args.authorized_signer or [],
+        },
     )
     try:
         source_map = selected_source_map(
@@ -421,6 +439,31 @@ def handle_verify_scm_attestation(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_verify_git_governance(args: argparse.Namespace) -> int:
+    errors = verify_git_governance(args.registry_root.resolve(), args.repo_root.resolve(), args.commit)
+    if errors:
+        print("\n".join(f"ERROR: {error}" for error in errors))
+        return 1
+    print("Git governance is valid.")
+    return 0
+
+
+def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:
+    try:
+        hook = install_pre_push_hook(args.registry_root.resolve(), args.repo_root.resolve(), Path(__file__).parents[1] / "registry_tools.py")
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    print(f"Installed Git HITL pre-push hook: {hook}")
+    return 0
+
+
+def handle_governance_readiness(args: argparse.Namespace) -> int:
+    result = governance_readiness(args.registry_root.resolve(), args.repo_root.resolve())
+    print(json.dumps(result, ensure_ascii=False))
+    return 0 if result["status"] in {"ready", "working-memory"} else 1
+
+
 def handle_verify_audit(args: argparse.Namespace) -> int:
     result = verify_audit(args.registry_root.resolve())
     print(json.dumps(result, ensure_ascii=False))
@@ -488,6 +531,7 @@ def handle_finalize_proposal(args: argparse.Namespace) -> int:
             args.package_root.resolve(),
             args.registry_root.resolve(),
             args.repo_root.resolve(),
+            args.verification_token_env,
         )
     except ValueError as error:
         print(f"ERROR: {error}")
@@ -529,7 +573,7 @@ HANDLERS = {
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "apply-approved-updates": handle_apply_approved_updates,
-    "review-empty-registry": handle_review_empty_registry,
+    "demote-local-reviews": handle_demote_local_reviews,
     "discover-sources": handle_discover_sources,
     "readiness": handle_readiness,
     "verify-sources": handle_verify_sources,
@@ -546,6 +590,9 @@ HANDLERS = {
     "scan-secrets": handle_scan_secrets,
     "validate-contract": handle_validate_contract,
     "verify-scm-attestation": handle_verify_scm_attestation,
+    "verify-git-governance": handle_verify_git_governance,
+    "install-git-hitl-hook": handle_install_git_hitl_hook,
+    "governance-readiness": handle_governance_readiness,
     "verify-audit": handle_verify_audit,
     "submit-proposal": handle_submit_proposal,
     "record-approval": handle_record_approval,

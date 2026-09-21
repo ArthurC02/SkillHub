@@ -9,6 +9,9 @@ from .common import load_json
 STORAGE_MODES = {"tracked", "ignored", "external"}
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 REVIEW_MODES = {"local-draft-only", "scm-verified"}
+GOVERNANCE_VERIFIERS = {"github-pr", "git-signed-commit", "none"}
+GOVERNANCE_TRIGGERS = {"external-scm", "git-commit", "git-push", "none"}
+CI_REQUIREMENTS = {"required", "optional", "none"}
 
 
 def policy_path(root: Path) -> Path:
@@ -25,6 +28,25 @@ def validate_policy(value: dict[str, Any]) -> list[str]:
         errors.append("policy has an invalid data_classification")
     if value.get("review_mode") not in REVIEW_MODES:
         errors.append("policy has an invalid review_mode")
+    governance = value.get("review_governance")
+    if not isinstance(governance, dict):
+        errors.append("policy requires review_governance")
+    elif (
+        governance.get("verifier") not in GOVERNANCE_VERIFIERS
+        or governance.get("trigger") not in GOVERNANCE_TRIGGERS
+        or governance.get("ci_requirement") not in CI_REQUIREMENTS
+        or not isinstance(governance.get("authorized_signers"), list)
+        or not all(isinstance(signer, str) and signer.strip() for signer in governance["authorized_signers"])
+    ):
+        errors.append("policy has invalid review_governance")
+    elif value.get("review_mode") == "local-draft-only" and governance["verifier"] != "none":
+        errors.append("local-draft-only policy must not select a review verifier")
+    elif value.get("review_mode") == "scm-verified" and governance["verifier"] == "none":
+        errors.append("scm-verified policy requires a review verifier")
+    elif governance.get("verifier") == "git-signed-commit" and not governance["authorized_signers"]:
+        errors.append("git-signed-commit policy requires authorized_signers")
+    elif governance.get("verifier") == "git-signed-commit" and governance.get("trigger") != "git-push":
+        errors.append("git-signed-commit policy requires git-push enforcement")
     source = value.get("source_policy")
     if (
         not isinstance(source, dict)
@@ -74,12 +96,19 @@ def write_policy(
     authority: str,
     include: list[str] | None = None,
     exclude: list[str] | None = None,
+    governance: dict[str, Any] | None = None,
 ) -> None:
     template = Path(__file__).parents[2] / "templates" / "domain-memory-policy.json"
     value = load_json(template)
     value["storage_mode"] = storage_mode
     value["data_classification"] = data_classification
     value["review_mode"] = review_mode
+    value["review_governance"] = governance or {
+        "verifier": "none" if review_mode == "local-draft-only" else "git-signed-commit",
+        "trigger": "none" if review_mode == "local-draft-only" else "git-commit",
+        "ci_requirement": "none",
+        "authorized_signers": [],
+    }
     value["source_policy"]["selected_paths"] = source_map["selected_paths"]
     value["source_policy"]["authority"] = authority
     if include is not None:
@@ -99,6 +128,9 @@ AMENDABLE_FIELDS = {
     "storage_mode": ("storage_mode",),
     "data_classification": ("data_classification",),
     "source_authority": ("source_policy", "authority"),
+    "review_verifier": ("review_governance", "verifier"),
+    "review_trigger": ("review_governance", "trigger"),
+    "ci_requirement": ("review_governance", "ci_requirement"),
 }
 
 
@@ -131,6 +163,13 @@ def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, A
         "reason": reason.strip(),
     }
     target[keys[-1]] = value
+    if field == "review_mode" and value == "local-draft-only":
+        value_document["review_governance"] = {
+            "verifier": "none",
+            "trigger": "none",
+            "ci_requirement": "none",
+            "authorized_signers": [],
+        }
     errors = validate_policy(value_document)
     if errors:
         raise ValueError("amended policy is invalid: " + "; ".join(errors))
@@ -152,6 +191,14 @@ def review_mode(root: Path) -> str:
     if errors:
         raise ValueError("invalid Domain Memory policy: " + "; ".join(errors))
     return value["review_mode"]
+
+
+def review_governance(root: Path) -> dict[str, Any]:
+    value = load_json(policy_path(root))
+    errors = validate_policy(value)
+    if errors:
+        raise ValueError("invalid Domain Memory policy: " + "; ".join(errors))
+    return value["review_governance"]
 
 
 def approved_command_profiles(root: Path | None) -> set[str]:

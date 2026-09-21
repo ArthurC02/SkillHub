@@ -1,6 +1,6 @@
 {
   "format": "domain-contracts/v1",
-  "status": "reviewed",
+  "status": "candidate",
   "contracts": [
     {
       "id": "registry-run-facts-v1",
@@ -23,25 +23,7 @@
           "excerpt_sha256": "sha256:1926ff2a48b702eab8c53e2ea80437d71a076ae43a4189c683658ff903f06395"
         }
       ],
-      "review": {
-        "proposal_id": "run-registry-interaction",
-        "proposal_revision": 1,
-        "approvals": [
-          {
-            "role": "developer",
-            "reviewer": "ArthurC",
-            "decision": "approved",
-            "approved_at": "2026-09-21T10:41:58.838474Z",
-            "scope": "Run Registry interaction",
-            "proposal_revision": 1,
-            "base_registry_revision": {
-              "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
-              "registry_digest": "sha256:161f51f05e58033aabed64d30ff87912ef31cdc7263ba0131be26adb706ce381"
-            }
-          }
-        ]
-      },
-      "status": "reviewed"
+      "status": "candidate"
     }
   ]
 }

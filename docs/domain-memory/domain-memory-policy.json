@@ -3,6 +3,12 @@
   "storage_mode": "tracked",
   "data_classification": "internal",
   "review_mode": "local-draft-only",
+  "review_governance": {
+    "verifier": "none",
+    "trigger": "none",
+    "ci_requirement": "none",
+    "authorized_signers": []
+  },
   "source_policy": {
     "selected_paths": [
       "apps/platform/internal/entrypoint/wiring/trial.go",

@@ -3,6 +3,12 @@
   "storage_mode": "<tracked|ignored|external>",
   "data_classification": "<public|internal|confidential|restricted>",
   "review_mode": "<local-draft-only|scm-verified>",
+  "review_governance": {
+    "verifier": "<github-pr|git-signed-commit|none>",
+    "trigger": "<external-scm|git-commit|git-push|none>",
+    "ci_requirement": "<required|optional|none>",
+    "authorized_signers": []
+  },
   "source_policy": {
     "selected_paths": [],
     "include": ["**"],

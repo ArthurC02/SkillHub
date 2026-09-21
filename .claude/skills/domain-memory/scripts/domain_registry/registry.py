@@ -245,6 +245,8 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
     if not manifest_path.is_file():
         return [f"missing manifest: {manifest_path}"]
     errors: list[str] = []
+    if require_reviewed and review_mode(root) != "scm-verified":
+        errors.append("local-draft-only Domain Memory cannot satisfy --require-reviewed")
     manifest = load_json(manifest_path)
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list) or not set(ASSET_KEYS).issubset(artifacts):
@@ -258,8 +260,9 @@ def validate(root: Path, repo_root: Path | None, require_reviewed: bool) -> list
 
 
 def verify_evidence(root: Path, repo_root: Path) -> dict[str, Any]:
+    source_map = source_map_for(root)
     results = [
-        verify(reference, repo_root)
+        verify(classified(reference, source_map), repo_root)
         for reference in evidence_values(
             {name: asset_records(root, name) for name in ASSET_KEYS}
         )

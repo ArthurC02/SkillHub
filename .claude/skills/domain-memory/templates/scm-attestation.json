@@ -1,5 +1,5 @@
 {
-  "provider": "<github|gitlab>",
+  "provider": "<github|git-signed-commit>",
   "pull_request": "<https://host/.../pull/...>",
   "checks_url": "<https://host/.../checks/...>",
   "commit": "<40-hex-commit>",

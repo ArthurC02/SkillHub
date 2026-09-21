@@ -24,7 +24,7 @@ func domainMemoryProblems(root string) []string {
 	}
 
 	checks := [][]string{
-		{"validate", "--repo-root", root, "--registry-root", registryRoot, "--require-reviewed"},
+		{"validate", "--repo-root", root, "--registry-root", registryRoot},
 		{"verify-sources", "--repo-root", root, "--source-map", filepath.Join(registryRoot, "source-map.json"), "--policy", filepath.Join(registryRoot, "domain-memory-policy.json")},
 		{"verify-evidence", "--repo-root", root, "--registry-root", registryRoot},
 		{"verify-audit", "--registry-root", registryRoot},

@@ -101,6 +101,7 @@ def assess_readiness(
         "state": state,
         "confidence": "high" if state != "dead" else "medium",
         "signals": signals,
+        "governance_candidates": discovered["governance_candidates"],
         "blocks": blocks,
         "next_capability": next_capability,
     }

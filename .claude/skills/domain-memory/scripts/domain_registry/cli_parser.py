@@ -71,10 +71,9 @@ def build_parser() -> argparse.ArgumentParser:
     apply_updates_parser.add_argument("--package-root", required=True, type=Path)
     apply_updates_parser.add_argument("--registry-root", required=True, type=Path)
     apply_updates_parser.add_argument("--repo-root", required=True, type=Path)
-    review_empty_parser = commands.add_parser("review-empty-registry")
-    review_empty_parser.add_argument("--registry-root", required=True, type=Path)
-    review_empty_parser.add_argument("--repo-root", required=True, type=Path)
-    review_empty_parser.add_argument("--reviewer", required=True)
+    demote_parser = commands.add_parser("demote-local-reviews")
+    demote_parser.add_argument("--registry-root", required=True, type=Path)
+    demote_parser.add_argument("--repo-root", required=True, type=Path)
     source_parser = commands.add_parser("discover-sources")
     source_parser.add_argument("--repo-root", required=True, type=Path)
     source_parser.add_argument("--output", type=Path)
@@ -113,6 +112,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--review-mode", required=True, choices=["local-draft-only", "scm-verified"]
     )
     memory_init_parser.add_argument("--source-authority", required=True)
+    memory_init_parser.add_argument(
+        "--review-verifier", choices=["github-pr", "git-signed-commit", "none"]
+    )
+    memory_init_parser.add_argument(
+        "--review-trigger", choices=["external-scm", "git-commit", "git-push", "none"]
+    )
+    memory_init_parser.add_argument(
+        "--ci-requirement", choices=["required", "optional", "none"], default="none"
+    )
+    memory_init_parser.add_argument("--authorized-signer", action="append")
     memory_init_parser.add_argument("--include", action="append")
     memory_init_parser.add_argument("--exclude", action="append")
     confirm_parser = commands.add_parser("confirm-sources")
@@ -142,6 +151,16 @@ def build_parser() -> argparse.ArgumentParser:
     scm_parser = commands.add_parser("verify-scm-attestation")
     scm_parser.add_argument("--attestation", required=True, type=Path)
     scm_parser.add_argument("--package-root", required=True, type=Path)
+    git_governance_parser = commands.add_parser("verify-git-governance")
+    git_governance_parser.add_argument("--registry-root", required=True, type=Path)
+    git_governance_parser.add_argument("--repo-root", required=True, type=Path)
+    git_governance_parser.add_argument("--commit", required=True)
+    hook_parser = commands.add_parser("install-git-hitl-hook")
+    hook_parser.add_argument("--registry-root", required=True, type=Path)
+    hook_parser.add_argument("--repo-root", required=True, type=Path)
+    governance_parser = commands.add_parser("governance-readiness")
+    governance_parser.add_argument("--registry-root", required=True, type=Path)
+    governance_parser.add_argument("--repo-root", required=True, type=Path)
     audit_parser = commands.add_parser("verify-audit")
     audit_parser.add_argument("--registry-root", required=True, type=Path)
     submit_parser = commands.add_parser("submit-proposal")
@@ -166,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     finalize_parser.add_argument("--package-root", required=True, type=Path)
     finalize_parser.add_argument("--registry-root", type=Path)
     finalize_parser.add_argument("--repo-root", type=Path)
+    finalize_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
     package_validate_parser = commands.add_parser("validate-change-package")
     package_validate_parser.add_argument("--package-root", required=True, type=Path)
     package_validate_parser.add_argument("--registry-root", type=Path)

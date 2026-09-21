@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from domain_registry.attestations import verify_scm
+from domain_registry.attestations import verify_external_scm, verify_git_signed_commit, verify_scm
 from domain_registry.audit import append as append_audit
 from domain_registry.audit import verify as verify_audit
 from domain_registry.changes import init_change_package, validate_change_package
@@ -32,6 +32,7 @@ from domain_registry.hitl import (
     supersede_proposal,
     verify_proposal,
 )
+from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.policy import amend_policy, validate_policy
 from domain_registry.readiness import assess_readiness
 from domain_registry.registry import (
@@ -66,12 +67,13 @@ from domain_registry.sources import (
     verify_source_map,
     write_source_map,
 )
+from domain_registry.sources import discover_ci_tools
 from domain_registry.sources import test_locations as discovered_test_locations
 from domain_registry.transaction import recover_interrupted_update, transaction_path
 from domain_registry.updates import (
     apply_approved_updates,
+    demote_local_reviews,
     reconcile_pending_update,
-    review_empty_registry,
     upsert_candidate,
 )
 
@@ -94,6 +96,12 @@ class DomainRegistryTest(unittest.TestCase):
                     "storage_mode": "tracked",
                     "data_classification": "internal",
                     "review_mode": "scm-verified",
+                    "review_governance": {
+                        "verifier": "github-pr",
+                        "trigger": "external-scm",
+                        "ci_requirement": "required",
+                        "authorized_signers": [],
+                    },
                     "source_policy": {
                         "selected_paths": ["docs"],
                         "include": ["**"],
@@ -192,19 +200,6 @@ class DomainRegistryTest(unittest.TestCase):
             {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
-
-    def test_reviewing_an_empty_registry_requires_external_governance(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Working Memory"):
-            review_empty_registry(self.repo / "memory", self.repo, "developer")
-
-    def test_reviewing_an_nonempty_registry_is_rejected(self) -> None:
-        self.seed(
-            "contexts.json",
-            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
-        )
-
-        with self.assertRaisesRegex(ValueError, "Working Memory"):
-            review_empty_registry(self.repo / "memory", self.repo, "developer")
 
     def test_changed_registry_rejects_a_captured_revision(self) -> None:
         expected = current_registry_revision(self.repo / "memory", self.repo)
@@ -432,7 +427,98 @@ class DomainRegistryTest(unittest.TestCase):
         proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
         path = self.write_record("attestation.json", {"provider": "git", "pull_request": "https://host.example/pull/1", "checks_url": "https://host.example/checks/1", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
         errors = verify_scm(path, proposal)
-        self.assertTrue(any("externally verifiable" in error for error in errors), errors)
+        self.assertTrue(any("must be GitHub" in error for error in errors), errors)
+
+    def test_external_scm_verification_requires_merged_approved_green_github_pr(self) -> None:
+        attestation = {
+            "provider": "github",
+            "pull_request": "https://github.com/acme/skills/pull/7",
+            "commit": "a" * 40,
+        }
+        responses = [
+            {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
+            [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
+            {"check_runs": [{"status": "completed", "conclusion": "success"}]},
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            with patch("domain_registry.attestations.github_json", side_effect=responses):
+                self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"))
+
+    def test_external_scm_verification_rejects_unsuccessful_checks(self) -> None:
+        attestation = {
+            "provider": "github",
+            "pull_request": "https://github.com/acme/skills/pull/7",
+            "commit": "a" * 40,
+        }
+        responses = [
+            {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
+            [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
+            {"check_runs": [{"status": "completed", "conclusion": "failure"}]},
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            with patch("domain_registry.attestations.github_json", side_effect=responses):
+                self.assertEqual(
+                    ["SCM attested commit has incomplete or unsuccessful checks"],
+                    verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN"),
+                )
+
+    def test_external_scm_verification_can_make_ci_optional(self) -> None:
+        attestation = {"provider": "github", "pull_request": "https://github.com/acme/skills/pull/7", "commit": "a" * 40}
+        responses = [
+            {"state": "closed", "merged_at": "2026-01-01T00:00:00Z", "head": {"sha": "a" * 40}},
+            [{"user": {"login": "reviewer"}, "state": "APPROVED"}],
+        ]
+        with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
+            with patch("domain_registry.attestations.github_json", side_effect=responses):
+                self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
+
+    def test_git_signed_commit_requires_authorized_signer_and_domain_memory_change(self) -> None:
+        attestation = {"commit": "a" * 40}
+        verified = subprocess.CompletedProcess(
+            [], 0, "[GNUPG:] VALIDSIG ABCD", ""
+        )
+        changed = subprocess.CompletedProcess([], 0, "docs/domain-memory/registry/rules.json\n", "")
+        with patch("domain_registry.attestations.subprocess.run", side_effect=[verified, changed]):
+            self.assertEqual(
+                [],
+                verify_git_signed_commit(
+                    attestation, self.repo, self.repo / "docs" / "domain-memory", ["ABCD"]
+                ),
+            )
+        with patch("domain_registry.attestations.subprocess.run", return_value=verified):
+            self.assertEqual(
+                ["Git commit signer is not authorized by Domain Memory policy"],
+                verify_git_signed_commit(
+                    attestation, self.repo, self.repo / "docs" / "domain-memory", ["OTHER"]
+                ),
+            )
+
+    def test_pre_push_hook_checks_each_domain_memory_commit(self) -> None:
+        (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
+        existing = self.repo / ".git" / "hooks" / "pre-push"
+        existing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        hook = install_pre_push_hook(
+            self.repo / "docs" / "domain-memory", self.repo, self.repo / "registry_tools.py"
+        )
+        content = hook.read_text(encoding="utf-8")
+        self.assertIn("git rev-list $range -- \"$memory\"", content)
+        self.assertIn("verify-git-governance", content)
+        self.assertEqual(
+            "#!/bin/sh\nexit 0\n",
+            (self.repo / ".git" / "hooks" / "pre-push.domain-memory-existing").read_text(encoding="utf-8"),
+        )
+
+    def test_local_working_memory_needs_no_governance_setup(self) -> None:
+        amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
+        self.assertEqual(
+            {"status": "working-memory", "blocks": []},
+            governance_readiness(self.repo / "memory", self.repo),
+        )
+
+    def test_git_attestation_does_not_require_a_pull_request(self) -> None:
+        proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
+        path = self.write_record("attestation.json", {"provider": "git-signed-commit", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
+        self.assertEqual([], verify_scm(path, proposal))
 
     def test_audit_chain_detects_tampering(self) -> None:
         append_audit(self.repo / "memory", {"operation": "first"})
@@ -742,7 +828,9 @@ class DomainRegistryTest(unittest.TestCase):
         }
         evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
         verify_proposal(package, self.repo / "memory", self.repo)
-        finalize_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]) as verify_scm:
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        verify_scm.assert_called_once_with(evidence["scm_attestation"], "GITHUB_TOKEN", True)
         apply_approved_updates(package, self.repo / "memory", self.repo)
         rules = json.loads(
             (self.repo / "memory" / "registry" / "rules.json").read_text(
@@ -1148,6 +1236,15 @@ class DomainRegistryTest(unittest.TestCase):
             source_kind_for(self.nested_sources(), "infra/node.txt"), "unclassified"
         )
 
+    def test_a_selected_file_inherits_its_discovered_parent_kind(self) -> None:
+        source_map = {
+            "source_kinds": {"apps/svc/preflight.go": "unclassified"},
+            "source_groups": [{"kind": "implementation", "paths": ["apps"]}],
+        }
+        self.assertEqual(
+            source_kind_for(source_map, "apps/svc/worker.go"), "implementation"
+        )
+
     def test_nested_test_directories_are_reported_without_reclassifying_implementation(
         self,
     ) -> None:
@@ -1193,10 +1290,19 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(
             stored["contexts"][0]["evidence"][0]["source_kind"], "decisions"
         )
+        summary = verify_evidence(self.repo / "memory", self.repo)["summary"]
+        self.assertEqual(summary["by_source_kind"], {"decisions": 1})
 
     def test_a_probe_of_an_uninitialized_repository_says_so(self) -> None:
         result = probe_sources(self.repo, self.repo / "nowhere" / "source-map.json")
         self.assertEqual(result["status"], "absent")
+
+    def test_ci_discovery_offers_candidates_without_selecting_governance(self) -> None:
+        (self.repo / ".github" / "workflows").mkdir(parents=True)
+        self.assertEqual(["github-actions"], discover_ci_tools(self.repo))
+        discovered = discover_sources(self.repo)
+        self.assertEqual("scm-review", discovered["governance_candidates"]["recommended_verifier"])
+        self.assertEqual("discovered", discovered["selection_status"])
 
     def test_resolve_terms_reads_the_definition_and_not_the_rest_of_the_record(
         self,
@@ -1338,6 +1444,29 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertIsNotNone(model)
         assert model is not None
         self.assertEqual(model["usage"], "working-memory")
+
+    def test_local_draft_memory_cannot_satisfy_reviewed_validation(self) -> None:
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
+
+    def test_demoting_local_reviews_removes_reviewed_status(self) -> None:
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        self.two_contexts()
+        document = self.repo / "memory" / "registry" / "contexts.json"
+        value = json.loads(document.read_text(encoding="utf-8"))
+        value["status"] = "reviewed"
+        value["contexts"][0]["status"] = "reviewed"
+        value["contexts"][0]["review"] = {"proposal_id": "P-1"}
+        document.write_text(json.dumps(value), encoding="utf-8")
+        demote_local_reviews(self.repo / "memory", self.repo)
+        demoted = json.loads(document.read_text(encoding="utf-8"))
+        self.assertEqual(demoted["contexts"][0]["status"], "candidate")
+        self.assertNotIn("review", demoted["contexts"][0])
 
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()
