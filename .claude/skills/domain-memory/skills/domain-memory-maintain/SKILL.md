@@ -11,7 +11,7 @@ For a brownfield refactoring that preserves the reviewed model, follow the
 [brownfield refactoring fast path](../../references/brownfield-refactoring.md)
 to decide whether a candidate is needed before creating one.
 
-1. Run `verify-sources`, `verify-evidence`, and `verify-audit`.
+1. Run `verify-sources --repo-root <repo> --source-map <registry>/source-map.json --policy <registry>/domain-memory-policy.json`, `verify-evidence --registry-root <registry> --repo-root <repo>`, and `verify-audit --registry-root <registry>`.
 2. Compare the implemented behavior with the reviewed terms, owner, invariants, boundaries, events, contracts, and capabilities.
 3. Compare the implementation's tactical choice, including an explicit choice of no pattern, with the invariant, ownership, consistency, retry, and failure behavior it claims to preserve. Review behavior and dependencies rather than a fixed language pattern. Use [tactical design reasoning](../../references/tactical-reasoning.md).
 4. If the model changed, update the smallest affected asset with `upsert-candidate`, or prepare a Change Package for a material change.
