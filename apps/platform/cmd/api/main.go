@@ -24,6 +24,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
@@ -308,7 +309,7 @@ func main() {
 		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
 	}
 
-	providers := run.NewRegistryFromEnv()
+	providers := wiring.NewRunRegistryFromEnv()
 
 	posture := envx.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()

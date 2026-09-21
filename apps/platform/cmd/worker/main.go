@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
@@ -45,7 +46,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if refusals := startupRefusals(run.NewRegistryFromEnv()); len(refusals) > 0 {
+	if refusals := startupRefusals(wiring.NewRunRegistryFromEnv()); len(refusals) > 0 {
 		for _, reason := range refusals {
 			slog.Error("worker refuses to start", "reason", reason)
 		}
@@ -64,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	providers := run.NewRegistryFromEnv()
+	providers := wiring.NewRunRegistryFromEnv()
 	names := make([]string, 0, len(providers.Providers))
 	for _, p := range providers.Providers {
 		names = append(names, p.Name())

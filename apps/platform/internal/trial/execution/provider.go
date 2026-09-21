@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -423,20 +422,6 @@ var (
 )
 
 func refusedForCapacity(err error) bool { return errors.Is(err, ErrProviderFull) }
-
-func NewRegistryFromEnv() *Registry {
-	r := &Registry{}
-	for _, entry := range strings.Split(os.Getenv("SKILLHUB_SANDBOX_PROVIDERS"), ",") {
-		name, base, ok := strings.Cut(strings.TrimSpace(entry), "=")
-		name, base = strings.TrimSpace(name), strings.TrimSpace(base)
-		if !ok || name == "" || base == "" {
-			continue
-		}
-		r.Providers = append(r.Providers,
-			NewProvider(name, base, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name))))
-	}
-	return r
-}
 
 func (r *Registry) UnauthenticatedProviderRefusals() []string {
 	var refusals []string
