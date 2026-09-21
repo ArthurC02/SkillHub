@@ -86,6 +86,17 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 	return pgconv.UUIDString(existing), true, nil
 }
 
+func (s *PostgresStore) CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error) {
+	_, err := s.q(tx).GetCostEventByIdempotencyKey(ctx, idempotencyKey)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("credit: read cost event: %w", err)
+	}
+	return true, nil
+}
+
 func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (int64, bool, error) {
 	q := s.q(tx)
 	if err := q.EnsureCreditAccount(ctx, d.UserID); err != nil {

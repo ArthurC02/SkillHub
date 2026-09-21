@@ -62,6 +62,13 @@ func (s *Service) RecordCost(ctx context.Context, tx DBTX, e CostEvent) (id stri
 	return s.Store.RecordCostEvent(ctx, tx, e)
 }
 
+func (s *Service) CostRecorded(ctx context.Context, idempotencyKey string) (bool, error) {
+	if s.Store == nil {
+		return false, ErrUnavailable
+	}
+	return s.Store.CostEventExists(ctx, nil, idempotencyKey)
+}
+
 type ChargeInput struct {
 	Kind             CostKind
 	Model            string

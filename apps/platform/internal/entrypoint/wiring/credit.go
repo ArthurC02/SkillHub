@@ -191,3 +191,7 @@ func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, workspaceID, run
 	})
 	return err
 }
+
+func (l runCreditLedger) FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error) {
+	return l.credits.CostRecorded(ctx, "run:"+pgconv.UUIDString(runID))
+}

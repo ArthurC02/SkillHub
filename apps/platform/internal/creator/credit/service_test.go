@@ -58,6 +58,11 @@ func (f *fakeStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (
 	return id, false, nil
 }
 
+func (f *fakeStore) CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error) {
+	_, ok := f.events[idempotencyKey]
+	return ok, nil
+}
+
 func (f *fakeStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (int64, bool, error) {
 	key := idKey(d.UserID)
 	if f.applied[d.IdempotencyKey] {

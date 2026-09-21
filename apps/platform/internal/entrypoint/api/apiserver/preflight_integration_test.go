@@ -127,9 +127,8 @@ func TestPreflightNamesTheInjectedSecretsAndNeverTheirValues(t *testing.T) {
 
 func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	pool := requireDB(t)
-	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "")
-	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "")
 	a := newAPI(t, pool)
+	a.runs.Deployment.GatewayURL = ""
 	a.runs.Providers = run.NewRegistry()
 	f := newFixture(t, a, pool, "alice-preflight-summary")
 

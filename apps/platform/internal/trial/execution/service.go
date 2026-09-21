@@ -135,6 +135,7 @@ type CreditLedger interface {
 	CreditsForUSD(float64) (int64, bool)
 	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
 	Settle(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error
+	FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error)
 }
 
 const providerUnassigned = "unassigned"

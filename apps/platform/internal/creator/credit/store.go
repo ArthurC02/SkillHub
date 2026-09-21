@@ -125,6 +125,8 @@ type Store interface {
 
 	RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (id string, existed bool, err error)
 
+	CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error)
+
 	ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (balanceAfter int64, existed bool, err error)
 
 	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, err error)

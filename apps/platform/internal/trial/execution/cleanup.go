@@ -36,9 +36,27 @@ func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return nil
 	}
 	if run.CleanupStatus == gen.RunCleanupStatusCleaned {
-		return nil
+		return s.settleLateSpend(ctx, run)
 	}
 	return s.cleanup(ctx, run)
+}
+
+// Spend can be unreadable at teardown and become readable later; a repeat
+// call must still reach the real cost without tearing the sandbox down
+// again, which a provider need not tolerate.
+func (s *Service) settleLateSpend(ctx context.Context, run gen.Run) error {
+	if s.Ledger == nil {
+		return nil
+	}
+	final, err := s.Ledger.FinalCostRecorded(ctx, run.ID)
+	if err != nil || final {
+		return err
+	}
+	attempts, err := s.attempts(ctx, run.WorkspaceID, run.ID)
+	if err != nil {
+		return err
+	}
+	return s.settleCredit(ctx, run, attempts)
 }
 
 func (s *Service) cleanup(ctx context.Context, run gen.Run) error {

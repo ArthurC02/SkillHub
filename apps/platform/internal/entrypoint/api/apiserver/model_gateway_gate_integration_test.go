@@ -57,9 +57,8 @@ func TestARunWithNoWayToReachAModelIsRefusedBeforeItReachesAnySandbox(t *testing
 
 func TestADeploymentWithNoModelOutletRefusesToStartARunAndSaysSoBeforeConfirming(t *testing.T) {
 	pool := requireDB(t)
-	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "")
-	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "")
 	a := newAPI(t, pool)
+	a.runs.Deployment.GatewayURL = ""
 	f := newFixture(t, a, pool, "no-model-outlet-start")
 
 	hash := f.confirmPermissions(t)
