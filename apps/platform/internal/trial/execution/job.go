@@ -69,7 +69,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 		return nil
 	}
 
-	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{RunID: current.ID, WorkspaceID: current.WorkspaceID})
+	attempts, err := s.attemptsForRun(ctx, current)
 	if err != nil {
 		return err
 	}
