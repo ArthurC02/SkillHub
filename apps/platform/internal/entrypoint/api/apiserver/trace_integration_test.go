@@ -725,9 +725,9 @@ func TestEventsArrivingAfterTheRunFinishedAreKeptAndFlagged(t *testing.T) {
 	runID := seedRun(t, pool, owner.workspaceID, skillID)
 
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
-	if _, err := svc.Transition(context.Background(), run.TransitionParams{
+	if _, err := svc.Transition(context.Background(), run.TransitionCommand{
 		WorkspaceID: mustUUID(t, owner.workspaceID), RunID: mustUUID(t, runID),
-		From: gen.RunStatusQueued, To: gen.RunStatusFailed,
+		From: run.StatusQueued, To: run.StatusFailed,
 		Reason: "the provider could not carry the attempt", FailureClass: "provider_error",
 	}); err != nil {
 		t.Fatal(err)

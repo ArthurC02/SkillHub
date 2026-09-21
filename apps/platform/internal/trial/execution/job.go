@@ -551,14 +551,14 @@ func (d *driver) command(ctx context.Context, command func(*Run)) (*Run, error) 
 func (d *driver) transition(
 	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason statusReason,
 ) error {
-	run, err := d.svc.transition(ctx, TransitionParams{
-		WorkspaceID:  d.cur.WorkspaceID,
-		RunID:        d.cur.ID,
-		AttemptID:    attemptID,
-		From:         d.cur.Status,
-		To:           to,
-		Reason:       truncate(reason),
-		FailureClass: failureClass,
+	run, err := d.svc.transition(ctx, transitionParams{
+		workspaceID: d.cur.WorkspaceID,
+		runID:       d.cur.ID,
+		attemptID:   attemptID,
+		from:        d.cur.Status,
+		to:          to,
+		reason:      truncate(reason),
+		failure:     failureClass,
 	})
 	if errors.Is(err, ErrConflict) {
 		return errSuperseded
@@ -771,9 +771,9 @@ func (d *driver) finishAttemptAndRun(
 		return err
 	}
 	d.cur = r.Row()
-	observeTransition(d.cur, TransitionParams{
-		WorkspaceID: attempt.WorkspaceID, RunID: attempt.RunID, AttemptID: attempt.ID,
-		From: from, To: to, Reason: truncate(reason), FailureClass: failureClass,
+	observeTransition(d.cur, transitionParams{
+		workspaceID: attempt.WorkspaceID, runID: attempt.RunID, attemptID: attempt.ID,
+		from: from, to: to, reason: truncate(reason), failure: failureClass,
 	})
 	return nil
 }

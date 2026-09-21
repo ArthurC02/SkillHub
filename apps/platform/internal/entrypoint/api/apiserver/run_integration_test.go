@@ -313,9 +313,9 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	created := f.start(t)
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	move := run.TransitionParams{
+	move := run.TransitionCommand{
 		WorkspaceID: ws, RunID: runID,
-		From: gen.RunStatusQueued, To: gen.RunStatusProvisioning, Reason: "first",
+		From: run.StatusQueued, To: run.StatusProvisioning, Reason: "first",
 	}
 	if _, err := svc.Transition(ctx, move); err != nil {
 		t.Fatal(err)
@@ -381,9 +381,9 @@ func TestATransitionThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
 	failOutboxCommitFor(t, pool, runID)
 
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
-	if _, err := svc.Transition(ctx, run.TransitionParams{
+	if _, err := svc.Transition(ctx, run.TransitionCommand{
 		WorkspaceID: ws, RunID: runID,
-		From: gen.RunStatusQueued, To: gen.RunStatusProvisioning, Reason: "cannot commit",
+		From: run.StatusQueued, To: run.StatusProvisioning, Reason: "cannot commit",
 	}); err == nil {
 		t.Fatal("the transition reported success although its transaction could not commit")
 	}
@@ -546,9 +546,9 @@ func TestIllegalTransitionIsRefusedWithoutWriting(t *testing.T) {
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 	before := unpublishedCount(t, pool)
 
-	_, err := svc.Transition(context.Background(), run.TransitionParams{
+	_, err := svc.Transition(context.Background(), run.TransitionCommand{
 		WorkspaceID: ws, RunID: runID,
-		From: gen.RunStatusQueued, To: gen.RunStatusSucceeded, Reason: "cheating",
+		From: run.StatusQueued, To: run.StatusSucceeded, Reason: "cheating",
 	})
 	if err == nil || !strings.Contains(err.Error(), "illegal run status transition") {
 		t.Fatalf("queued -> succeeded: got %v, want an illegal-transition error", err)

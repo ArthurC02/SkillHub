@@ -25,6 +25,20 @@ var (
 
 type FailureClass string
 
+type Status string
+
+const (
+	StatusQueued       Status = "queued"
+	StatusProvisioning Status = "provisioning"
+	StatusPreparing    Status = "preparing"
+	StatusRunning      Status = "running"
+	StatusEvaluating   Status = "evaluating"
+	StatusSucceeded    Status = "succeeded"
+	StatusFailed       Status = "failed"
+	StatusCancelled    Status = "cancelled"
+	StatusTimedOut     Status = "timed_out"
+)
+
 const (
 	failureProvider   FailureClass = "provider_error"
 	failureWorkload   FailureClass = "workload_error"
@@ -124,28 +138,51 @@ func HappyPath(from gen.RunStatus) ([]gen.RunStatus, error) {
 	return path, nil
 }
 
-type TransitionParams struct {
+type TransitionCommand struct {
 	WorkspaceID pgtype.UUID
 	RunID       pgtype.UUID
 
 	AttemptID pgtype.UUID
-	From, To  gen.RunStatus
-	Reason    statusReason
+	From, To  Status
+	Reason    string
 
 	FailureClass FailureClass
 
 	Actor pgtype.UUID
 }
 
-func (s *Service) transition(ctx context.Context, p TransitionParams) (gen.Run, error) {
-	if !CanTransition(p.From, p.To) {
-		return gen.Run{}, fmt.Errorf("%w: %s -> %s", ErrIllegalTransition, p.From, p.To)
+type transitionParams struct {
+	workspaceID pgtype.UUID
+	runID       pgtype.UUID
+	attemptID   pgtype.UUID
+	from, to    gen.RunStatus
+	reason      statusReason
+	failure     FailureClass
+	actor       pgtype.UUID
+}
+
+func transitionCommandParams(command TransitionCommand) transitionParams {
+	return transitionParams{
+		workspaceID: command.WorkspaceID,
+		runID:       command.RunID,
+		attemptID:   command.AttemptID,
+		from:        gen.RunStatus(command.From),
+		to:          gen.RunStatus(command.To),
+		reason:      statusReason(command.Reason),
+		failure:     command.FailureClass,
+		actor:       command.Actor,
 	}
-	r, err := s.commandRun(ctx, p.WorkspaceID, p.RunID, p.Actor, func(r *Run) error {
-		if r.Status() != p.From {
+}
+
+func (s *Service) transition(ctx context.Context, p transitionParams) (gen.Run, error) {
+	if !CanTransition(p.from, p.to) {
+		return gen.Run{}, fmt.Errorf("%w: %s -> %s", ErrIllegalTransition, p.from, p.to)
+	}
+	r, err := s.commandRun(ctx, p.workspaceID, p.runID, p.actor, func(r *Run) error {
+		if r.Status() != p.from {
 			return ErrConflict
 		}
-		r.Transition(p.To, p.Reason, p.FailureClass, p.AttemptID)
+		r.Transition(p.to, p.reason, p.failure, p.attemptID)
 		return nil
 	})
 	if errors.Is(err, ErrNotFound) {
@@ -158,8 +195,8 @@ func (s *Service) transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	return r.Row(), nil
 }
 
-func (s *Service) Transition(ctx context.Context, p TransitionParams) (RunView, error) {
-	row, err := s.transition(ctx, p)
+func (s *Service) Transition(ctx context.Context, command TransitionCommand) (RunView, error) {
+	row, err := s.transition(ctx, transitionCommandParams(command))
 	if err != nil {
 		return RunView{}, err
 	}
@@ -208,20 +245,20 @@ func attemptNumber(ctx context.Context, q *gen.Queries, run gen.Run) int {
 	return int(attempts[len(attempts)-1].AttemptNumber)
 }
 
-func observeTransition(run gen.Run, p TransitionParams) {
-	if p.To == gen.RunStatusProvisioning && run.CreatedAt.Valid {
+func observeTransition(run gen.Run, p transitionParams) {
+	if p.to == gen.RunStatusProvisioning && run.CreatedAt.Valid {
 		metrics.RunQueueDuration.Observe(time.Since(run.CreatedAt.Time).Seconds())
 	}
-	if !IsTerminal(p.To) {
+	if !IsTerminal(p.to) {
 		return
 	}
-	failureClass := string(p.FailureClass)
+	failureClass := string(p.failure)
 	if failureClass == "" {
 		failureClass = "none"
 	}
-	metrics.RunTerminal.WithLabelValues(string(p.To), failureClass).Inc()
+	metrics.RunTerminal.WithLabelValues(string(p.to), failureClass).Inc()
 	if run.CreatedAt.Valid && run.FinishedAt.Valid {
-		metrics.RunDuration.WithLabelValues(string(p.To)).
+		metrics.RunDuration.WithLabelValues(string(p.to)).
 			Observe(run.FinishedAt.Time.Sub(run.CreatedAt.Time).Seconds())
 	}
 }

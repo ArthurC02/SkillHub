@@ -612,11 +612,11 @@ func TestADriverResumingADispatchedRunCountsItsWallClockFromTheDispatch(t *testi
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
-	for _, step := range []struct{ from, to gen.RunStatus }{
-		{gen.RunStatusQueued, gen.RunStatusProvisioning},
-		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+	for _, step := range []struct{ from, to run.Status }{
+		{run.StatusQueued, run.StatusProvisioning},
+		{run.StatusProvisioning, run.StatusPreparing},
 	} {
-		if _, err := svc.Transition(ctx, run.TransitionParams{
+		if _, err := svc.Transition(ctx, run.TransitionCommand{
 			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
 		}); err != nil {
 			t.Fatal(err)
@@ -823,11 +823,11 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	created := f.start(t)
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	for _, step := range []struct{ from, to gen.RunStatus }{
-		{gen.RunStatusQueued, gen.RunStatusProvisioning},
-		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+	for _, step := range []struct{ from, to run.Status }{
+		{run.StatusQueued, run.StatusProvisioning},
+		{run.StatusProvisioning, run.StatusPreparing},
 	} {
-		if _, err := svc.Transition(ctx, run.TransitionParams{
+		if _, err := svc.Transition(ctx, run.TransitionCommand{
 			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
 		}); err != nil {
 			t.Fatal(err)
@@ -867,11 +867,11 @@ func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
 	created := f.start(t)
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway()}
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
-	for _, step := range []struct{ from, to gen.RunStatus }{
-		{gen.RunStatusQueued, gen.RunStatusProvisioning},
-		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+	for _, step := range []struct{ from, to run.Status }{
+		{run.StatusQueued, run.StatusProvisioning},
+		{run.StatusProvisioning, run.StatusPreparing},
 	} {
-		if _, err := svc.Transition(ctx, run.TransitionParams{
+		if _, err := svc.Transition(ctx, run.TransitionCommand{
 			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
 		}); err != nil {
 			t.Fatal(err)
@@ -974,8 +974,8 @@ func TestEndingARunClosesOnlyTheGrantsItsAttemptsNeverIssued(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := a.runs.Transition(ctx, run.TransitionParams{
-		WorkspaceID: ws, RunID: runID, From: gen.RunStatusQueued, To: gen.RunStatusCancelled, Reason: "stopped before dispatch",
+	if _, err := a.runs.Transition(ctx, run.TransitionCommand{
+		WorkspaceID: ws, RunID: runID, From: run.StatusQueued, To: run.StatusCancelled, Reason: "stopped before dispatch",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -1024,13 +1024,13 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 				runID, ws, tc.errorClass); err != nil {
 				t.Fatal(err)
 			}
-			for _, step := range []struct{ from, to gen.RunStatus }{
-				{gen.RunStatusQueued, gen.RunStatusProvisioning},
-				{gen.RunStatusProvisioning, gen.RunStatusPreparing},
-				{gen.RunStatusPreparing, gen.RunStatusRunning},
-				{gen.RunStatusRunning, gen.RunStatusEvaluating},
+			for _, step := range []struct{ from, to run.Status }{
+				{run.StatusQueued, run.StatusProvisioning},
+				{run.StatusProvisioning, run.StatusPreparing},
+				{run.StatusPreparing, run.StatusRunning},
+				{run.StatusRunning, run.StatusEvaluating},
 			} {
-				if _, err := svc.Transition(ctx, run.TransitionParams{
+				if _, err := svc.Transition(ctx, run.TransitionCommand{
 					WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
 				}); err != nil {
 					t.Fatal(err)
