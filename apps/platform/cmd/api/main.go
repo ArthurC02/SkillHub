@@ -311,7 +311,7 @@ func main() {
 	providers := wiring.NewRunRegistryFromEnv()
 	runDeployment := wiring.RunDeploymentFromEnv()
 
-	posture := envx.PostureFromEnv()
+	posture := wiring.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()
 	if refusals := startupRefusals(posture, providers, rateLimitErr); len(refusals) > 0 {
 		for _, reason := range refusals {

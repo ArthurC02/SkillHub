@@ -17,7 +17,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -33,7 +32,7 @@ func cleanModeRefusal() string {
 }
 
 func startupRefusals(providers *run.Registry) []string {
-	refusals := append(envx.PostureFromEnv().WorkerRefusals(), providers.UnauthenticatedProviderRefusals()...)
+	refusals := append(wiring.PostureFromEnv().WorkerRefusals(), providers.UnauthenticatedProviderRefusals()...)
 	if reason := cleanModeRefusal(); reason != "" {
 		refusals = append(refusals, reason)
 	}
