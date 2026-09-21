@@ -403,6 +403,18 @@ func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+type accountView struct {
+	UserID              string          `json:"user_id"`
+	Email               string          `json:"email"`
+	DisplayName         string          `json:"display_name"`
+	WorkspaceID         string          `json:"workspace_id"`
+	Operator            bool            `json:"operator"`
+	DeletionRequestedAt *string         `json:"deletion_requested_at"`
+	PurgeAfter          *string         `json:"purge_after"`
+	DeletionScope       *string         `json:"deletion_scope"`
+	Features            map[string]bool `json:"features,omitempty"`
+}
+
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	ws, err := h.Service.PersonalWorkspace(r.Context(), user)
@@ -411,16 +423,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := map[string]any{
-		"user_id":               pgconv.UUIDString(user.ID),
-		"email":                 user.Email,
-		"display_name":          user.DisplayName,
-		"workspace_id":          pgconv.UUIDString(ws.ID),
-		"operator":              h.Operators[pgconv.UUIDString(user.ID)],
-		"deletion_requested_at": nil,
-		"purge_after":           nil,
-
-		"deletion_scope": nil,
+	out := accountView{
+		UserID:      pgconv.UUIDString(user.ID),
+		Email:       user.Email,
+		DisplayName: user.DisplayName,
+		WorkspaceID: pgconv.UUIDString(ws.ID),
+		Operator:    h.Operators[pgconv.UUIDString(user.ID)],
 	}
 
 	merged := map[string]bool{}
@@ -435,13 +443,16 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(merged) > 0 {
-		out["features"] = merged
+		out.Features = merged
 	}
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()
-		out["deletion_requested_at"] = at.Format(time.RFC3339)
-		out["purge_after"] = at.Add(AccountDeletionGrace).UTC().Format(time.RFC3339)
-		out["deletion_scope"] = deletionScope
+		requestedAt := at.Format(time.RFC3339)
+		purgeAfter := at.Add(AccountDeletionGrace).UTC().Format(time.RFC3339)
+		scope := deletionScope
+		out.DeletionRequestedAt = &requestedAt
+		out.PurgeAfter = &purgeAfter
+		out.DeletionScope = &scope
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,26 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func TestAccountViewKeepsUnavailableAccountDeletionFieldsExplicit(t *testing.T) {
+	encoded, err := json.Marshal(accountView{UserID: "user", Email: "user@example.test", DisplayName: "User", WorkspaceID: "workspace"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"deletion_requested_at", "purge_after", "deletion_scope"} {
+		value, present := body[field]
+		if !present || value != nil {
+			t.Errorf("%s = %v (present %v), want explicit null", field, value, present)
+		}
+	}
+	if _, present := body["features"]; present {
+		t.Errorf("features = %v, want it omitted when no feature is available", body["features"])
+	}
+}
 
 func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
 	h := &Handler{DevLogin: true}
