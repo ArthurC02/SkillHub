@@ -469,41 +469,71 @@
     }
   ],
   "missing_groups": [],
-  "selection_status": "developer-confirmed",
+  "selection_status": "agent-asserted",
   "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
   "selected_paths": [
-    "docs",
-    "docs/development"
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/trial/execution/preflight.go",
+    "docs/development/platform-context-map.md",
+    "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 1287,
-    "total_bytes": 10264295,
+    "files": 6,
+    "total_bytes": 70129,
     "oversized_files": [],
     "errors": []
   },
   "source_kinds": {
-    "docs": "unclassified",
-    "docs/development": "unclassified"
+    "apps/platform/internal/entrypoint/wiring/trial.go": "unclassified",
+    "apps/platform/internal/skill/library/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/execution/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/execution/preflight.go": "unclassified",
+    "docs/development/platform-context-map.md": "unclassified",
+    "docs/development/platform-ddd-convergence.md": "unclassified"
   },
   "git_state": {
     "tracked_objects": {
-      "docs": "fb0e0571f73f9adb05ef81d23810eed8973b49bf",
-      "docs/development": "42b4c169c62d86da58418a06346c7f9c25b7da1e"
+      "apps/platform/internal/entrypoint/wiring/trial.go": "1867057373e61ef9fd04cd600bee6eadfc25e4b8",
+      "apps/platform/internal/skill/library/doc.go": "7c2ed38bb0ef78b8b980dc4b57db356575eb6720",
+      "apps/platform/internal/trial/execution/doc.go": "9feaa4cda0a38b34a100315274cf833692b24fd2",
+      "apps/platform/internal/trial/execution/preflight.go": "d24680f2185b68ca32c6d19280780317280da078",
+      "docs/development/platform-context-map.md": "9a8df6978bbae4006acd255866dd7026a91a43e9",
+      "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
     "dirty_sources": []
   },
   "source_snapshots": [
     {
-      "path": "docs",
-      "file_count": 1276,
-      "digest": "sha256:7ce4656dcf94e2ba94a236d8755679ee4aa2ecd90f33cc77c48d5fb93e9f1383"
+      "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+      "file_count": 1,
+      "digest": "sha256:aba7dc81386646a93ca67eda71fc5623cf9644debe6bc279b4d7176f909efed7"
     },
     {
-      "path": "docs/development",
-      "file_count": 11,
-      "digest": "sha256:a9e124966bc1019d93d0ceabfea6843de49c5727768c550b081e308da1d83841"
+      "path": "apps/platform/internal/skill/library/doc.go",
+      "file_count": 1,
+      "digest": "sha256:a1e4619f7431e8b8a3da5bc63d53e3e3dee7221a6a952fe77a7303515a9f8d29"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/doc.go",
+      "file_count": 1,
+      "digest": "sha256:d41d9c23c1314b9483cb58c21273f7f608dba7ec5d4e041e0dbfb966e5a8bf76"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/preflight.go",
+      "file_count": 1,
+      "digest": "sha256:d0e2761b21c6c72d65cf00e3fe844023f6b440e3b4f8420fe83a28a7ec31a086"
+    },
+    {
+      "path": "docs/development/platform-context-map.md",
+      "file_count": 1,
+      "digest": "sha256:544d74e2639155579c7fa6471929617f596497e07bb306480f054413fa0dc758"
+    },
+    {
+      "path": "docs/development/platform-ddd-convergence.md",
+      "file_count": 1,
+      "digest": "sha256:3291972d27b7303ed53febb94dd8b4925aa566184682718c1588f2f2be47ece0"
     }
-  ],
-  "confirmed_by": "developer",
-  "confirmed_at": "2026-09-21T10:07:12.101102Z"
+  ]
 }

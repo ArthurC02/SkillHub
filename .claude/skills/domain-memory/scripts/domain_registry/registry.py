@@ -14,7 +14,7 @@ from .common import (
     template_dir,
 )
 from .evidence import all_references, classified, migrate_legacy, source_map_for, verify
-from .policy import query_result_limit
+from .policy import query_result_limit, review_mode
 
 
 def init_registry(output: Path) -> None:
@@ -437,7 +437,10 @@ def context_model(root: Path, identifier: str) -> dict[str, Any] | None:
     if context is None:
         return None
     contracts = asset_records(root, "contracts.json")
+    mode = review_mode(root)
     return {
+        "usage": "constraint" if mode == "scm-verified" else "working-memory",
+        "review_mode": mode,
         "context": context,
         "vocabulary": [
             entry

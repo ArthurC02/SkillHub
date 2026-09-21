@@ -1317,10 +1317,21 @@ class DomainRegistryTest(unittest.TestCase):
         model = context_model(self.repo / "memory", "orders")
         self.assertIsNotNone(model)
         assert model is not None
+        self.assertEqual(model["usage"], "constraint")
         self.assertEqual(
             sorted(entry["id"] for entry in model["contracts"]),
             ["invoice-api", "order-api"],
         )
+
+    def test_a_local_draft_context_model_is_working_memory(self) -> None:
+        amend_policy(
+            self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
+        )
+        self.two_contexts()
+        model = context_model(self.repo / "memory", "orders")
+        self.assertIsNotNone(model)
+        assert model is not None
+        self.assertEqual(model["usage"], "working-memory")
 
     def test_two_contexts_without_registered_collaboration_say_so(self) -> None:
         self.two_contexts()

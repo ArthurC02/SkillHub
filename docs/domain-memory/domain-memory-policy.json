@@ -2,11 +2,15 @@
   "format": "domain-memory-policy/v1",
   "storage_mode": "tracked",
   "data_classification": "internal",
-  "review_mode": "scm-verified",
+  "review_mode": "local-draft-only",
   "source_policy": {
     "selected_paths": [
-      "docs",
-      "docs/development"
+      "apps/platform/internal/entrypoint/wiring/trial.go",
+      "apps/platform/internal/skill/library/doc.go",
+      "apps/platform/internal/trial/execution/doc.go",
+      "apps/platform/internal/trial/execution/preflight.go",
+      "docs/development/platform-context-map.md",
+      "docs/development/platform-ddd-convergence.md"
     ],
     "include": [
       "**"
