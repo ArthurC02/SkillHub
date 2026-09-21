@@ -1,4 +1,5 @@
 {
+  "format": "domain-requirement/v1",
   "requirement_id": "<stable-id>",
   "status": "draft",
   "intent": "<business outcome>",

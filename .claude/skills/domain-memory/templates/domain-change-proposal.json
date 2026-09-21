@@ -1,8 +1,10 @@
 {
+  "format": "domain-change-proposal/v1",
   "proposal_id": "<stable-id>",
   "proposer": "<agent-or-human-identity>",
   "requirement_id": "<requirement-id>",
   "status": "draft",
+  "change_classification": "material",
   "submitted_at": null,
   "verified_at": null,
   "finalized_at": null,
@@ -22,6 +24,14 @@
     "consistency": "<synchronous-or-eventual>",
     "prohibited_dependencies": [],
     "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [],
+    "decision": "<smallest approach that protects the domain behavior, or no tactical pattern>",
+    "invariants_preserved": [],
+    "rejected_alternatives": [],
+    "proof_obligations": [],
+    "counterfactual_check": "<essential protection to mutate and focused test expected to fail>"
   },
   "event_change": null,
   "contract_change": null,

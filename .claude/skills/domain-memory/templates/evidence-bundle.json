@@ -1,9 +1,11 @@
 {
+  "format": "domain-evidence-bundle/v1",
   "requirement_id": "<requirement-id>",
   "proposal_id": "<proposal-id>",
   "registry_revision": null,
   "approvals": [],
   "scm_attestation": null,
+  "counterfactual_check": null,
   "sources": [],
   "test_results": [
     {

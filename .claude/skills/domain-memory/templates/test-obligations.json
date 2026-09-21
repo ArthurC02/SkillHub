@@ -1,4 +1,5 @@
 {
+  "format": "domain-test-obligations/v1",
   "requirement_id": "<requirement-id>",
   "proposal_id": "<proposal-id>",
   "obligations": [

@@ -11,5 +11,7 @@ Use this before coding when a request uses a domain term or may cross a Context.
 2. Run `validate --registry-root <root> --repo-root <repo>` and validate the policy.
 3. Resolve terms with `resolve-terms`, then inspect the owner with `get-context` and `get-record`.
 4. Inspect existing collaboration with `analyze-boundary` before proposing a new dependency.
+5. Before coding, answer the tactical design questions in [tactical design reasoning](../../references/tactical-reasoning.md). Decide whether a tactical pattern is needed, then choose an idiomatic implementation only after identifying the owner, invariant, consistency boundary, and failure behavior.
+6. For a material change, emit the [implementation handoff](../../references/implementation-handoff.md) with reviewed facts, forces, unknowns, and proof obligations. Do not invent the decision in Read mode when the change needs Design.
 
 Use only `reviewed` records as constraints. Treat candidates, stale sources, unverified maps, and missing records as gaps to report. Do not write files in this mode. See [the file-backed API](../../references/script-api.md).

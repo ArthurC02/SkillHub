@@ -1,15 +1,17 @@
-from .changes import test_attestation_errors, validate_change_package
-from .common import completed_identifier, iso_timestamp, load_json
-from .revision import current_registry_revision, require_current_registry_revision
-
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .changes import test_attestation_errors, validate_change_package
+from .common import completed_identifier, iso_timestamp, load_json
+from .revision import current_registry_revision, require_current_registry_revision
+
 
 def write_document(path: Path, value: dict) -> None:
     temporary = path.with_suffix(f"{path.suffix}.tmp")
-    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary.write_text(
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     temporary.replace(path)
 
 
@@ -49,9 +51,13 @@ def supersede_proposal(root: Path, reason: str, superseded_by: str | None) -> No
     proposal = load_json(path)
     status = proposal.get("status")
     if status not in SUPERSEDABLE_STATUSES:
-        raise ValueError(f"a {status} proposal cannot be superseded; create a new draft instead")
+        raise ValueError(
+            f"a {status} proposal cannot be superseded; create a new draft instead"
+        )
     if not completed_identifier(reason):
-        raise ValueError("superseding a proposal requires a reason: what its conclusion got wrong, or what replaced it")
+        raise ValueError(
+            "superseding a proposal requires a reason: what its conclusion got wrong, or what replaced it"
+        )
     if superseded_by is not None and not completed_identifier(superseded_by):
         raise ValueError("superseded_by must name the proposal that replaces this one")
     proposal["superseded_from_status"] = status
@@ -63,7 +69,9 @@ def supersede_proposal(root: Path, reason: str, superseded_by: str | None) -> No
     write_document(path, proposal)
 
 
-def record_approval(root: Path, role: str, reviewer: str, scope: str, approved_at: str | None) -> None:
+def record_approval(
+    root: Path, role: str, reviewer: str, scope: str, approved_at: str | None
+) -> None:
     proposal = load_json(proposal_path(root))
     if proposal.get("status") != "submitted":
         raise ValueError("approvals may be recorded only for a submitted proposal")
@@ -75,9 +83,23 @@ def record_approval(root: Path, role: str, reviewer: str, scope: str, approved_a
     if not iso_timestamp(timestamp):
         raise ValueError("approved_at must be an ISO-8601 timestamp")
     approvals = proposal.setdefault("approvals", [])
-    if any(entry.get("role") == role and entry.get("proposal_revision") == proposal.get("proposal_revision") for entry in approvals):
+    if any(
+        entry.get("role") == role
+        and entry.get("proposal_revision") == proposal.get("proposal_revision")
+        for entry in approvals
+    ):
         raise ValueError("the role already approved this proposal revision")
-    approvals.append({"role": role, "reviewer": reviewer, "decision": "approved", "approved_at": timestamp, "scope": scope, "proposal_revision": proposal.get("proposal_revision"), "base_registry_revision": proposal.get("base_registry_revision")})
+    approvals.append(
+        {
+            "role": role,
+            "reviewer": reviewer,
+            "decision": "approved",
+            "approved_at": timestamp,
+            "scope": scope,
+            "proposal_revision": proposal.get("proposal_revision"),
+            "base_registry_revision": proposal.get("base_registry_revision"),
+        }
+    )
     write_document(proposal_path(root), proposal)
 
 
@@ -88,7 +110,13 @@ def verify_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         raise ValueError("only a submitted proposal may be verified")
     require_current_registry_revision(proposal, registry_root, repo_root)
     obligations = load_json(root / "test-obligations.json").get("obligations", [])
-    obligation_ids = {entry.get("id") for entry in obligations if isinstance(entry, dict) and completed_identifier(entry.get("id"))}
+    obligation_ids: set[str] = set()
+    for entry in obligations:
+        if not isinstance(entry, dict):
+            continue
+        identifier = entry.get("id")
+        if isinstance(identifier, str) and completed_identifier(identifier):
+            obligation_ids.add(identifier)
     evidence = load_json(root / "evidence-bundle.json")
     errors = test_attestation_errors(evidence, obligation_ids, registry_root)
     if errors:
@@ -118,4 +146,6 @@ def finalize_proposal(root: Path, registry_root: Path, repo_root: Path) -> None:
         proposal["status"] = "submitted"
         proposal.pop("finalized_at", None)
         write_document(path, proposal)
-        raise ValueError("proposal lacks required approvals or traceability: " + "; ".join(errors))
+        raise ValueError(
+            "proposal lacks required approvals or traceability: " + "; ".join(errors)
+        )

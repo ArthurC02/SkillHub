@@ -5,6 +5,7 @@
 | Capability | Command | Machine guarantee |
 | --- | --- | --- |
 | Map repository sources | `discover-sources --repo-root <repo> [--output <file>]` | Inventories instruction files and candidate decision, requirement, contract, boundary, implementation, and test paths without inferring domain facts. |
+| Assess project readiness | `readiness --repo-root <repo> [--registry-root <path>]` | Reports the posture described in [readiness](readiness.md). It is read-only and never promotes a fact or selects a source corpus. |
 | Initialize from human choices | `init-domain-memory --repo-root <repo> --output <path> --source <path> --storage-mode <mode> --data-classification <class> --review-mode <mode> --source-authority <identity> [--include <glob>] [--exclude <glob>]` | Requires an explicit destination and source choices. Applies include/exclude and policy resource limits before writing the confirmed map. |
 | Verify selected sources | `verify-sources --repo-root <repo> --source-map <path> [--policy <path>]` | Compares each selected source to its initialization snapshot and, when supplied, rechecks policy limits. |
 | Verify citations | `verify-evidence --registry-root <path> --repo-root <repo>` | Detects missing, malformed, and changed structured evidence citations. |
@@ -24,6 +25,6 @@
 | Verify test attestations | `verify-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a submitted Proposal that has a passing, digest-backed result for every obligation. |
 | Finalize approval | `finalize-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a verified Proposal whose required approval roles, SCM attestation, traceability, and base revision still validate. |
 
-All command output is JSON except success or error messages. Pass `--registry-root` to every read or update command. The scripts do not grant authorization: call a write command only when the current user and repository process authorize it.
+All command output is JSON except success or error messages. Registry-dependent commands require `--registry-root`; `readiness` may omit it when assessing a repository before Domain Memory exists. The scripts do not grant authorization: call a write command only when the current user and repository process authorize it.
 
 For an update, include `registry_updates` in `domain-change-proposal.json`. Each update uses `operation: "upsert"`, names an asset, and contains the complete record. Submission records a deterministic digest of all standard Registry files plus the observed Git HEAD when available. Finalize and apply require the Registry digest to remain current; an unrelated Git commit alone does not invalidate review. They do not traverse Git history. `verify-proposal` validates submitted test results as attestations; it does not run an arbitrary command from the package. The apply command validates the Change Package, then rejects an update that would overwrite a reviewed record. Create a new record or an explicitly governed superseding proposal for a reviewed change.

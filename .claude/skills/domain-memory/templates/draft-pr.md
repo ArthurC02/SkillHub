@@ -8,6 +8,10 @@
 
 <Affected Contexts, ownership decision, invariant, and boundary decision.>
 
+## Implementation handoff
+
+<Domain forces, chosen approach, unknowns, rejected alternatives, proof obligations, and counterfactual result.>
+
 ## Proposal and approvals
 
 <Proposal ID, status, required approvals, and outstanding decisions.>

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from .common import completed_identifier, load_json
-
 from pathlib import Path
 from typing import Any
+
+from .common import completed_identifier, load_json
 
 
 def verify_scm_value(value: dict[str, Any], proposal: dict[str, Any]) -> list[str]:
