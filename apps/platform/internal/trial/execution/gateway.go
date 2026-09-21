@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -96,44 +95,6 @@ func NewGateway(c GatewayConfig) *Gateway {
 		c.HTTP = &http.Client{Timeout: 20 * time.Second}
 	}
 	return &Gateway{AdminBaseURL: c.AdminBaseURL, adminKey: c.AdminKey, SandboxBaseURL: c.SandboxBaseURL, Model: c.Model, MaxBudgetUSD: c.MaxBudgetUSD, TPMLimit: c.TPMLimit, HTTP: c.HTTP}
-}
-
-func GatewayFromEnv() *Gateway {
-	base := strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/")
-	key := os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY")
-	if base == "" || key == "" {
-		return nil
-	}
-	admin := strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_ADMIN_URL"), "/")
-	if admin == "" {
-		admin = base
-	}
-	g := NewGateway(GatewayConfig{AdminBaseURL: admin, AdminKey: key, SandboxBaseURL: base, Model: RunModel()})
-	if v, err := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64); err == nil && v > 0 {
-		g.MaxBudgetUSD = v
-	}
-	if v, err := strconv.Atoi(os.Getenv("SKILLHUB_RUN_TPM_LIMIT")); err == nil && v > 0 {
-		g.TPMLimit = v
-	}
-	return g
-}
-
-func RunModel() string { return os.Getenv("SKILLHUB_RUN_MODEL") }
-
-func GatewayURL() string {
-	if os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY") == "" {
-		return ""
-	}
-	return strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/")
-}
-
-func RunBudgetUSD() float64 {
-	if raw := os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"); raw != "" {
-		if v, err := strconv.ParseFloat(raw, 64); err == nil && v > 0 {
-			return v
-		}
-	}
-	return defaultKeyBudgetUSD
 }
 
 func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAttemptID }

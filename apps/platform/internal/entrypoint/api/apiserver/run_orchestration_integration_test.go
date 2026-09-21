@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -511,7 +512,7 @@ func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
 	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "sk-master-test")
 
 	a := newAPI(t, pool)
-	a.runs.Gateway = run.GatewayFromEnv()
+	a.runs.Gateway = wiring.GatewayFromEnv()
 	f := newFixture(t, a, pool, "alice-token-ceiling")
 	fake, _ := withProvider(t, a, pool, providertest.Plan{StuckRunning: true})
 

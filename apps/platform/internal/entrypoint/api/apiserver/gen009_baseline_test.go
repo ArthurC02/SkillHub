@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -92,7 +93,7 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	a.runs.Store = store
 	a.runs.Providers = run.NewRegistry(run.NewProvider(
 		"self_hosted", sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
-	a.runs.Gateway = run.GatewayFromEnv()
+	a.runs.Gateway = wiring.GatewayFromEnv()
 	if a.runs.Gateway == nil {
 		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required")
 	}
