@@ -40,6 +40,18 @@ func (s *Service) recordProviderSilence(ctx context.Context, attempt gen.RunAtte
 	return since.Time, nil
 }
 
+func (s *Service) beginCleanup(ctx context.Context, current gen.Run) ([]gen.RunAttempt, error) {
+	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
+		CleanupStatus: gen.RunCleanupStatusCleaningUp,
+		SettledAt:     cleanupSettledAt(gen.RunCleanupStatusCleaningUp),
+		RunID:         current.ID,
+		WorkspaceID:   current.WorkspaceID,
+	}); err != nil {
+		return nil, err
+	}
+	return s.attempts(ctx, current.WorkspaceID, current.ID)
+}
+
 func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, archiveKey string, result *RunResult, truncated bool) error {
 	if s == nil || s.Pool == nil {
 		return errors.New("run artifact persistence is not configured")

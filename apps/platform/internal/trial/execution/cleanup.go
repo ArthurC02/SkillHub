@@ -50,16 +50,7 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 		slog.Warn("cleanup held: a P1 halt is preserving the scene", "run_id", pgconv.UUIDString(run.ID))
 		return nil
 	}
-	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
-		CleanupStatus: gen.RunCleanupStatusCleaningUp, SettledAt: cleanupSettledAt(gen.RunCleanupStatusCleaningUp),
-		RunID: run.ID, WorkspaceID: run.WorkspaceID,
-	}); err != nil {
-		return err
-	}
-
-	attempts, err := s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
-		RunID: run.ID, WorkspaceID: run.WorkspaceID,
-	})
+	attempts, err := s.beginCleanup(ctx, run)
 	if err != nil {
 		return err
 	}
