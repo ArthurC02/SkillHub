@@ -20,6 +20,7 @@ to decide whether a candidate is needed before creating one.
    Treat HTTP clients, transports, and timeouts as adapter composition concerns: inject them at the entrypoint and retain a focused seam test that proves the selected client reaches the adapter.
    A test-friendly adapter fallback does not replace production composition; verify the executable entrypoint supplies the client explicitly.
    When an adapter depends on deployment posture, parse posture once at the entrypoint and pass the typed value to wiring instead of letting the adapter reread environment variables.
+   Keep runtime setting types and their pure validation in Foundation, but place operating-system environment parsing only in entrypoint wiring.
 4. If the model changed, update the smallest affected asset with `upsert-candidate`, or prepare a Change Package for a material change. For a boundary-preserving refactor, retain the focused architecture check when one exists; otherwise retain affected tests and lint as preservation evidence.
 5. From the repository root, run `validate --registry-root <registry> --repo-root <repo>`, then preserve the audit trail.
 
