@@ -1,0 +1,44 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-registry-interaction",
+  "proposal_id": "run-registry-interaction",
+  "registry_revision": {
+    "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+    "registry_digest": "sha256:161f51f05e58033aabed64d30ff87912ef31cdc7263ba0131be26adb706ce381"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git",
+    "pull_request": "local-review",
+    "commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+      "registry_digest": "sha256:161f51f05e58033aabed64d30ff87912ef31cdc7263ba0131be26adb706ce381"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "run-registry-fact-contract-obligation",
+    "mutated_protection": "interaction record",
+    "failure_evidence": "boundary analysis reports no registered collaboration",
+    "restored": true
+  },
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "run-registry-fact-contract-obligation",
+      "status": "passed",
+      "evidence": "registry analyze-boundary",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "finished_at": "2026-09-21T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

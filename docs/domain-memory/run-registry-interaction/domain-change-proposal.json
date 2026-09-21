@@ -1,0 +1,129 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-registry-interaction",
+  "proposer": "developer",
+  "requirement_id": "run-registry-interaction",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-09-21T10:41:58.602603Z",
+  "verified_at": "2026-09-21T10:42:34.624554Z",
+  "finalized_at": "2026-09-21T10:42:34.952091Z",
+  "applied_at": "2026-09-21T10:42:35.414632Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+    "registry_digest": "sha256:161f51f05e58033aabed64d30ff87912ef31cdc7263ba0131be26adb706ce381"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry owns the Skill and Version facts it supplies.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Run synchronously reads narrow SkillFacts and VersionFacts from Registry.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "Run must not consume Registry persistence rows directly."
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Run needs current version and access facts before preflight.",
+      "Registry persistence types must not cross the Context boundary."
+    ],
+    "decision": "Keep the composition-root adapter that translates Registry values to Run facts.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions.",
+      "Registry owns Skill and Version history."
+    ],
+    "rejected_alternatives": [
+      "Let Run query Registry persistence directly."
+    ],
+    "proof_obligations": [
+      "run-registry-fact-contract-obligation"
+    ],
+    "counterfactual_check": "Remove the interaction record and expect boundary analysis to report no collaboration."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "registry-run-facts-v1",
+        "kind": "internal-fact-reader",
+        "producer_context": "registry",
+        "consumer_contexts": [
+          "run"
+        ],
+        "version": "v1",
+        "compatibility_policy": "consumer-specific facts evolve deliberately",
+        "data_classification": "internal",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 14,
+              "end": 30
+            },
+            "content_sha256": "sha256:035010fcec22c02af97300d6cb3418894b1b01ed44136845398b966c2e073bc6",
+            "excerpt_sha256": "sha256:1926ff2a48b702eab8c53e2ea80437d71a076ae43a4189c683658ff903f06395"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-run-preflight-facts",
+        "producer_context": "registry",
+        "consumer_context": "run",
+        "contract_id": "registry-run-facts-v1",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/preflight.go",
+            "lines": {
+              "start": 199,
+              "end": 240
+            },
+            "content_sha256": "sha256:971c8d3e6dd9d01f11c6f41d341bb37c73b64d10fba8284efc4a2cffa117a996",
+            "excerpt_sha256": "sha256:d83b4da11631a3d911e05eb650ac97dd3cbf7ebbe1fd608b5a1f895219caea43"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-21T10:41:58.838474Z",
+      "scope": "Run Registry interaction",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+        "registry_digest": "sha256:161f51f05e58033aabed64d30ff87912ef31cdc7263ba0131be26adb706ce381"
+      }
+    }
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "41a884bd61cd8e21d8510d8a098d775ca570f401",
+    "registry_digest": "sha256:b5fe52c8f2d1c5bf46c0fe531ad3b696bb55bd6f0975d91d6539d218dca45b9a"
+  }
+}

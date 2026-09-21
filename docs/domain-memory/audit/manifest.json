@@ -1,5 +1,5 @@
 {
   "format": "domain-memory-audit/v1",
-  "events": 7,
-  "head_sha256": "sha256:c4998a0afef8c1467dae5dc63b79fc1fe2d45328674c4f5a9d5e73310a61c516"
+  "events": 8,
+  "head_sha256": "sha256:899cc25d6d7600ff1d7583c2eb067ff25ec25a1337e75e1e7354c268f235dccd"
 }
