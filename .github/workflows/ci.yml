@@ -403,6 +403,9 @@ jobs:
           cache-dependency-path: |
             tools/devctl/go.mod
             apps/platform/go.sum
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
       - uses: ./.github/actions/golangci-lint
       - run: golangci-lint run
         working-directory: tools/devctl
