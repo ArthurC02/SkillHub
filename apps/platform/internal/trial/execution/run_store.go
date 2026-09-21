@@ -23,12 +23,6 @@ func (s *Service) captureWorkloadOutput(ctx context.Context, attempt gen.RunAtte
 	})
 }
 
-func (s *Service) attemptsForRun(ctx context.Context, current gen.Run) ([]gen.RunAttempt, error) {
-	return s.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
-		RunID: current.ID, WorkspaceID: current.WorkspaceID,
-	})
-}
-
 func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, archiveKey string, result *RunResult, truncated bool) error {
 	if s == nil || s.Pool == nil {
 		return errors.New("run artifact persistence is not configured")

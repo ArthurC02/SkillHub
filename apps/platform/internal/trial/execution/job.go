@@ -69,7 +69,7 @@ func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) err
 		return nil
 	}
 
-	attempts, err := s.attemptsForRun(ctx, current)
+	attempts, err := s.attempts(ctx, current.WorkspaceID, current.ID)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (d *driver) execute(ctx context.Context) error {
 }
 
 func (d *driver) resumeEvaluating(ctx context.Context) error {
-	attempts, err := d.svc.attemptsForRun(ctx, d.cur)
+	attempts, err := d.svc.attempts(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return err
 	}
