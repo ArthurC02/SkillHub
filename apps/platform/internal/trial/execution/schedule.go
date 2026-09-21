@@ -188,7 +188,7 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
 		return Requirements{}, policy, fmt.Errorf("decode policy snapshot: %w", err)
 	}
-	return requirementsFromPolicy(policy, s.Deployment.Model), policy, nil
+	return requirementsFromPolicy(policy, policy.Model), policy, nil
 }
 
 func requirementsFromPolicy(policy policySnapshot, model ...string) Requirements {

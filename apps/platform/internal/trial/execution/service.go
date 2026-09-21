@@ -217,6 +217,7 @@ func DefaultResourceLimits() ResourceLimits {
 type policySnapshot struct {
 	ResourceLimits ResourceLimits `json:"resource_limits"`
 	Egress         EgressPolicy   `json:"egress"`
+	Model          string         `json:"model,omitempty"`
 }
 
 func (p policySnapshot) reachesAModel() bool {
@@ -233,6 +234,7 @@ func defaultPolicy(deployment Deployment) policySnapshot {
 	return policySnapshot{
 		ResourceLimits: DefaultResourceLimits(),
 		Egress:         EgressPolicy{Mode: "default_deny", Allow: allow},
+		Model:          deployment.Model,
 	}
 }
 
