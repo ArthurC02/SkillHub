@@ -67,11 +67,8 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("run service has no object store")
 	case set.Runs.ActiveArtifactReferences == nil:
 		t.Error("run service has no packaging artifact reference counter")
-	case set.Runs.ReadSkill == nil || set.Runs.ReadVersion == nil:
-		t.Error("run service has no Registry owner reads")
-	case set.Runs.ReadContentSource == nil:
-
-		t.Error("run service has no content-source read: clean mode would refuse every dispatch")
+	case set.Runs.Registry == nil:
+		t.Error("run service has no Registry reader")
 	case set.Registry == nil || set.Registry.CatalogWorkspaces == nil:
 		t.Error("registry service has no catalog workspace read: every catalog skill reads as not found")
 	case set.CreationSearch == nil || set.CreationSearch.CatalogWorkspaces == nil:

@@ -16,11 +16,11 @@ func TestTheContentSourceAdapterReadsCurationFromTheOwningContexts(t *testing.T)
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 
-	read := a.runs.ReadContentSource
-	if read == nil {
+	if a.runs.Registry == nil {
 
-		t.Fatal("NewApp left run.ReadContentSource unwired; the clean-mode content gate would refuse every run")
+		t.Fatal("NewApp left run.Registry unwired; the clean-mode content gate would refuse every run")
 	}
+	read := a.runs.Registry.ContentSource
 
 	owner := a.login(t, "b1-clean-gate-owner")
 	workspace := mustUUID(t, owner.workspaceID)

@@ -640,10 +640,10 @@ func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 
 	called := false
-	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
 		called = true
 		return ContentSource{CurationTier: "indexed"}, true, nil
-	}}
+	}}}
 	if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 		t.Fatalf("a production deployment was refused by the clean-mode content gate: %v", err)
 	}
@@ -702,7 +702,11 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 	} {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-			err := (&Service{Deployment: deploymentFromTestEnv(), ReadContentSource: tc.read}).requireCuratedContent(t.Context(), contentSourceRun())
+			svc := &Service{Deployment: deploymentFromTestEnv()}
+			if tc.read != nil {
+				svc.Registry = registryReaderFuncs{contentSource: tc.read}
+			}
+			err := svc.requireCuratedContent(t.Context(), contentSourceRun())
 			if tc.wantPass {
 				if err != nil {
 					t.Fatalf("curated material was refused: %v", err)
@@ -729,10 +733,10 @@ func TestTheContentSourceGateAsksAboutThisRunsOwnVersion(t *testing.T) {
 	run := contentSourceRun()
 
 	var gotWorkspace, gotVersion pgtype.UUID
-	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
 		gotWorkspace, gotVersion = workspaceID, versionID
 		return curatedSource(), true, nil
-	}}
+	}}}
 	if err := svc.requireCuratedContent(t.Context(), run); err != nil {
 		t.Fatalf("curated material was refused: %v", err)
 	}

@@ -109,8 +109,8 @@ func (s *Service) blockingReason(
 	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot,
 	report skillpkg.Report, scanned bool,
 ) string {
-	if s.ReadSkill != nil {
-		if skill, found, err := s.ReadSkill(ctx, workspaceID, version.SkillID); err == nil && found {
+	if s.Registry != nil {
+		if skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID); err == nil && found {
 			if reason, err := accessVerdict(skill); err != nil {
 				return reason
 			}
@@ -198,7 +198,7 @@ func (s *Service) store() ObjectStore { return s.Store }
 func (s *Service) PermissionSummaryFor(
 	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID,
 ) (PermissionSummary, error) {
-	if s.ReadVersion == nil {
+	if s.Registry == nil {
 		return PermissionSummary{}, errRegistryReadNotConfigured
 	}
 	if err := s.requireTestLab(); err != nil {
@@ -226,7 +226,7 @@ func (s *Service) permissionSummaryFor(
 			found bool
 			err   error
 		)
-		version, found, err = s.ReadVersion(ctx, workspaceID, versionID)
+		version, found, err = s.Registry.Version(ctx, workspaceID, versionID)
 		if !found && err == nil {
 
 			return PermissionSummary{}, ErrPreflightTargetNotFound

@@ -13,60 +13,56 @@ import (
 )
 
 func WireRunRegistryReaders(runs *run.Service, registryService *registry.Service) {
-	runs.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
-		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
-		return runSkillFacts(skill), found, err
+	runs.Registry = runRegistryReader{registryService}
+}
+
+type runRegistryReader struct{ service *registry.Service }
+
+func (r runRegistryReader) Skill(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
+	skill, found, err := r.service.WorkspaceSkill(ctx, workspaceID, skillID)
+	return runSkillFacts(skill), found, err
+}
+
+func (r runRegistryReader) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
+	version, found, err := r.service.WorkspaceVersion(ctx, workspaceID, versionID)
+	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash, PackageObjectKey: version.PackageObjectKey}, found, err
+}
+
+func (r runRegistryReader) VersionSummaries(
+	ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID,
+) (map[pgtype.UUID]run.VersionSummary, error) {
+	summaries, err := r.service.VersionSummaries(ctx, workspaceID, versionIDs)
+	if err != nil {
+		return nil, err
 	}
-	runs.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
-		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		return run.VersionFacts{
-			ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
-			PackageObjectKey: version.PackageObjectKey,
-		}, found, err
+	out := make(map[pgtype.UUID]run.VersionSummary, len(summaries))
+	for id, summary := range summaries {
+		out[id] = run.VersionSummary{SkillID: summary.SkillID, SkillName: summary.SkillName}
 	}
-	runs.ReadVersionSummaries = func(
-		ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID,
-	) (map[pgtype.UUID]run.VersionSummary, error) {
-		summaries, err := registryService.VersionSummaries(ctx, workspaceID, versionIDs)
-		if err != nil {
-			return nil, err
-		}
-		out := make(map[pgtype.UUID]run.VersionSummary, len(summaries))
-		for id, summary := range summaries {
-			out[id] = run.VersionSummary{SkillID: summary.SkillID, SkillName: summary.SkillName}
-		}
-		return out, nil
+	return out, nil
+}
+
+func (r runRegistryReader) ContentSource(
+	ctx context.Context, workspaceID, versionID pgtype.UUID,
+) (run.ContentSource, bool, error) {
+	version, found, err := r.service.WorkspaceVersion(ctx, workspaceID, versionID)
+	if err != nil || !found {
+		return run.ContentSource{}, found, err
 	}
-	runs.ReadContentSource = readContentSource(registryService)
+	skill, found, err := r.service.WorkspaceSkill(ctx, workspaceID, version.SkillID)
+	if err != nil || !found {
+		return run.ContentSource{}, found, err
+	}
+	_, inCatalogue, err := r.service.CatalogSkill(ctx, version.SkillID)
+	if err != nil {
+		return run.ContentSource{}, false, err
+	}
+	return run.ContentSource{WorkspaceIsCatalog: inCatalogue, CurationTier: skill.CurationTier, CuratedVersionIsThisOne: skill.CuratedVersionID == versionID}, true, nil
 }
 
 func runSkillFacts(skill registry.Skill) run.SkillFacts {
 	restriction := skill.Restriction()
 	return run.SkillFacts{AccessRestricted: restriction.InEffect(), AccessRestrictionReason: restriction.Reason()}
-}
-
-func readContentSource(
-	registryService *registry.Service,
-) func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
-	return func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
-		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		if err != nil || !found {
-			return run.ContentSource{}, found, err
-		}
-		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, version.SkillID)
-		if err != nil || !found {
-			return run.ContentSource{}, found, err
-		}
-		_, inCatalogue, err := registryService.CatalogSkill(ctx, version.SkillID)
-		if err != nil {
-			return run.ContentSource{}, false, err
-		}
-		return run.ContentSource{
-			WorkspaceIsCatalog:      inCatalogue,
-			CurationTier:            skill.CurationTier,
-			CuratedVersionIsThisOne: skill.CuratedVersionID == versionID,
-		}, true, nil
-	}
 }
 
 func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service) *trace.Service {

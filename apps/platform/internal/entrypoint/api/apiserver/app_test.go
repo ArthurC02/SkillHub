@@ -197,8 +197,8 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if app.RunSvc.WorkspaceCreatedAt == nil {
 		t.Error("the run service is missing identity's workspace creation reader")
 	}
-	if app.RunSvc.ReadSkill == nil || app.RunSvc.ReadVersion == nil {
-		t.Error("the run service is missing Registry owner reads")
+	if app.RunSvc.Registry == nil {
+		t.Error("the run service is missing its Registry reader")
 	}
 	if app.Deps.TestLab.Svc.ReadSkill == nil {
 		t.Error("the test lab service is missing Registry's skill reader")

@@ -145,9 +145,9 @@ func TestTheSummarySaysTheSandboxesAreDownAndThatTheRunWillWait(t *testing.T) {
 func TestPreflightMissingVersionIsPreflightTargetNotFound(t *testing.T) {
 	svc := &Service{
 		TestLab: &testlab.Service{},
-		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+		Registry: registryReaderFuncs{version: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
 			return VersionFacts{}, false, nil
-		},
+		}},
 	}
 	var ws, skill, versionID, testCaseID pgtype.UUID
 	for _, u := range []*pgtype.UUID{&ws, &skill, &versionID, &testCaseID} {

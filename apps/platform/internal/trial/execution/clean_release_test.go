@@ -91,7 +91,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 				t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.file))
 			}
 
-			svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+			svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 			err := svc.requireCuratedContent(t.Context(), contentSourceRun())
 			if tc.wantPass {
 				if err != nil {
@@ -123,7 +123,7 @@ func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 	if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 		t.Fatalf("a released version was refused: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 			t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.line))
-			svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+			svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
 			if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 				t.Fatalf("a release written this way was ignored (%s): %v", tc.why, err)
 			}

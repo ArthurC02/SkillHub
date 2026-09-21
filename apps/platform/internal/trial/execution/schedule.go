@@ -68,11 +68,11 @@ func (s *Service) curatedContentRefusal(
 	if !s.Deployment.CleanMode {
 		return "", nil
 	}
-	if s.ReadContentSource == nil {
+	if s.Registry == nil {
 		return "", fmt.Errorf("%w, and this deployment cannot tell where this material came from "+
 			"(the content-source read is not configured)", ErrContentNotCurated)
 	}
-	source, found, readErr := s.ReadContentSource(ctx, workspaceID, skillVersionID)
+	source, found, readErr := s.Registry.ContentSource(ctx, workspaceID, skillVersionID)
 	if readErr != nil {
 		return "", fmt.Errorf("%w, and where this material came from could not be read: %w",
 			ErrContentNotCurated, readErr)
@@ -470,13 +470,13 @@ func (s *Service) buildRunRequest(
 	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile,
 	policy policySnapshot, budgetUSD float64,
 ) (RunRequest, error) {
-	if s.ReadVersion == nil {
+	if s.Registry == nil {
 		return RunRequest{}, errRegistryReadNotConfigured
 	}
 	if err := s.requireTestLab(); err != nil {
 		return RunRequest{}, err
 	}
-	version, found, err := s.ReadVersion(ctx, run.WorkspaceID, run.SkillVersionID)
+	version, found, err := s.Registry.Version(ctx, run.WorkspaceID, run.SkillVersionID)
 	if !found && err == nil {
 		return RunRequest{}, ErrNotFound
 	}

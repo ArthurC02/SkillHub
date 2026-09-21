@@ -13,6 +13,41 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
+type registryReaderFuncs struct {
+	skill          func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	version        func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	versionSummary func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
+	contentSource  func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+}
+
+func (f registryReaderFuncs) Skill(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error) {
+	if f.skill == nil {
+		return SkillFacts{}, false, nil
+	}
+	return f.skill(ctx, workspaceID, skillID)
+}
+
+func (f registryReaderFuncs) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error) {
+	if f.version == nil {
+		return VersionFacts{}, false, nil
+	}
+	return f.version(ctx, workspaceID, versionID)
+}
+
+func (f registryReaderFuncs) VersionSummaries(ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) {
+	if f.versionSummary == nil {
+		return nil, nil
+	}
+	return f.versionSummary(ctx, workspaceID, versionIDs)
+}
+
+func (f registryReaderFuncs) ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
+	if f.contentSource == nil {
+		return ContentSource{}, false, nil
+	}
+	return f.contentSource(ctx, workspaceID, versionID)
+}
+
 func TestARunsDeadlineIsJudgedAgainstTheClockTheServiceReads(t *testing.T) {
 	dispatched := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
 	policy, err := json.Marshal(policySnapshot{ResourceLimits: ResourceLimits{WallClockHardSeconds: 120}})
@@ -98,7 +133,7 @@ func TestRunHistoryAndLinkageRefuseWithoutTheirOwnerReaders(t *testing.T) {
 		svc  *Service
 	}{
 		{"without Registry's version summaries", &Service{TestLab: &testlab.Service{}}},
-		{"without Test Lab", &Service{ReadVersionSummaries: summaries}},
+		{"without Test Lab", &Service{Registry: registryReaderFuncs{versionSummary: summaries}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.svc.List(t.Context(), id, id, 10, 0); err == nil {

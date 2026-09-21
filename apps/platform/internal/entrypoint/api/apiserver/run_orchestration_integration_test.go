@@ -910,7 +910,7 @@ func TestAnAttemptWhoseRequestCannotBeBuiltClosesItsGrantsAndFailsTheRun(t *test
 	svc := *a.runs
 	svc.Providers = run.NewRegistry(fake.Provider())
 	svc.Store = a.packages
-	svc.ReadVersion = nil
+	svc.Registry = nil
 	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
 
 	if err := driveThroughPolls(ctx, svc.Drive, ws, runID); err != nil {

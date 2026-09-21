@@ -113,6 +113,13 @@ type ContentSource struct {
 	CuratedVersionIsThisOne bool
 }
 
+type RegistryReader interface {
+	Skill(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	Version(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	VersionSummaries(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
+	ContentSource(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+}
+
 const providerUnassigned = "unassigned"
 
 type Service struct {
@@ -120,12 +127,7 @@ type Service struct {
 
 	TestLab *testlab.Service
 
-	ReadSkill   func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
-	ReadVersion func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
-
-	ReadVersionSummaries func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
-
-	ReadContentSource func(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error)
+	Registry RegistryReader
 
 	Credits func(usd float64) (credits int64, ok bool)
 
@@ -178,7 +180,7 @@ func (s *Service) requireTestLab() error {
 }
 
 func (s *Service) requireRunLinks() error {
-	if s.ReadVersionSummaries == nil {
+	if s.Registry == nil {
 		return errRegistryReadNotConfigured
 	}
 	return s.requireTestLab()
@@ -327,7 +329,7 @@ func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
 }
 
 func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
-	if s.ReadVersion == nil || s.ReadSkill == nil {
+	if s.Registry == nil {
 		return gen.Run{}, errRegistryReadNotConfigured
 	}
 
@@ -335,7 +337,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	version, found, err := s.ReadVersion(ctx, p.WorkspaceID, p.VersionID)
+	version, found, err := s.Registry.Version(ctx, p.WorkspaceID, p.VersionID)
 	if !found && err == nil {
 
 		return gen.Run{}, ErrPreflightTargetNotFound
@@ -348,7 +350,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, ErrNotFound
 	}
 
-	skill, found, err := s.ReadSkill(ctx, p.WorkspaceID, p.SkillID)
+	skill, found, err := s.Registry.Skill(ctx, p.WorkspaceID, p.SkillID)
 	if !found && err == nil {
 		return gen.Run{}, ErrNotFound
 	}
@@ -552,7 +554,7 @@ func timePointer(ts pgtype.Timestamptz) *time.Time {
 func (s *Service) runLinks(
 	ctx context.Context, workspaceID pgtype.UUID, versionIDs, snapshotIDs []pgtype.UUID,
 ) (map[pgtype.UUID]VersionSummary, map[pgtype.UUID]pgtype.UUID, error) {
-	versions, err := s.ReadVersionSummaries(ctx, workspaceID, versionIDs)
+	versions, err := s.Registry.VersionSummaries(ctx, workspaceID, versionIDs)
 	if err != nil {
 		return nil, nil, err
 	}
