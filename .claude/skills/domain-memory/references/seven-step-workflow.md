@@ -1,6 +1,18 @@
 # Seven-step domain change workflow
 
+Start with `readiness --repo-root <repo>`. Use the result only to choose the
+smallest next action: discover sources for an empty repository, design for a
+greenfield repository, read and maintain for a brownfield repository, and
+recover or ask the developer for new sources when the result is dead. The
+command is a read-only filesystem observation; it never selects sources or
+changes the Registry.
+
 Use this workflow for a change that affects a domain model, crosses a Bounded Context, changes a public or event contract, or changes a material business rule. A routine implementation contained within one approved owner does not need the full workflow, but it still reads the Registry before coding and checks whether the implementation changed the domain documents afterward.
+
+For a brownfield refactoring that preserves the reviewed model, use the
+[brownfield refactoring fast path](brownfield-refactoring.md). It requires
+evidence that the model was preserved and escalates back here whenever an
+owner, invariant, collaboration surface, or contract changes.
 
 The workflow is continuous: the Registry is the input to implementation and the implementation is evidence for the next Registry revision. Do not treat a completed code change as complete while it leaves a changed owner, term, invariant, boundary, event, contract, or capability undocumented.
 
@@ -23,6 +35,8 @@ For every external fact, identify its owner and the Context that consumes it. Ru
 ## Step 3: Decide the boundary
 
 Complete [domain-change-proposal.json](../templates/domain-change-proposal.json). State the owner Context, invariant, allowed collaboration surface, consistency behavior, and prohibited dependencies. Run `validate-change-package --package-root <path> --registry-root <root>` after every material edit. Stop for review when a change adds or splits an Aggregate, changes consistency, writes across Contexts, or changes a regulated rule.
+
+Before implementation, decide whether tactical design is needed at all. If it is, derive the smallest approach from the domain forces, record why it protects the invariant and consistency boundary, which alternatives were rejected, and how tests will expose a violation. Let the Agent choose the language-idiomatic construct; the Change Package must explain behavior and ownership, not prescribe a class, package, or framework template. See [tactical design reasoning](tactical-reasoning.md).
 
 | Need | Collaboration shape |
 | --- | --- |
@@ -48,8 +62,6 @@ Copy [test-obligations.json](../templates/test-obligations.json). Map every acce
 ## Step 7: Prepare, verify, and review the package
 
 Create an [evidence bundle](../templates/evidence-bundle.json) and [Draft PR description](../templates/draft-pr.md). Include the requirement, proposal, registry revision, approvals, executed checks, failures, and residual risks. Run `validate-change-package --package-root <path> --registry-root <root>` before presenting the package. Run `apply-approved-updates` only when the package is approved and Registry records must change. A Skill can prepare this package; repository write, PR creation, merge, and deployment remain subject to the user's authorization and the repository's own controls.
-
-## Stop conditions
 
 ## After implementation: reflect the model
 
