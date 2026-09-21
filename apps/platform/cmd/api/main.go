@@ -352,6 +352,7 @@ func main() {
 			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
+			Client:       &http.Client{Timeout: 15 * time.Second},
 		},
 		Secure:    secure,
 		AppURL:    posture.AppURL,
