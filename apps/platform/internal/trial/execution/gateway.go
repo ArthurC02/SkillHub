@@ -109,22 +109,33 @@ func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAtte
 func (g *Gateway) Issue(
 	ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64,
 ) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, runAttemptID, ttl, maxBudgetUSD,
+	return g.issue(ctx, runAttemptID, ttl, maxBudgetUSD, g.model,
 		map[string]string{"run_id": runID, "run_attempt_id": runAttemptID})
 }
 
 func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, attemptID, ttl, 0, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
+	return g.issue(ctx, attemptID, ttl, 0, g.model, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
 }
 
 func (g *Gateway) IssueCreationForModel(ctx context.Context, sessionID, attemptID string, ttl time.Duration, budget float64, model string) (*ModelGatewayGrant, error) {
-	scoped := *g
-	scoped.maxBudgetUSD = budget
-	scoped.model = model
-	return scoped.IssueCreation(ctx, sessionID, attemptID, ttl)
+	return g.issue(ctx, attemptID, ttl, budget, model, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
 }
+
+type keyGenerationRequest struct {
+	KeyAlias  string            `json:"key_alias"`
+	Duration  string            `json:"duration"`
+	MaxBudget float64           `json:"max_budget"`
+	TPMLimit  int               `json:"tpm_limit"`
+	Metadata  map[string]string `json:"metadata"`
+	Models    []string          `json:"models,omitempty"`
+}
+
+type keyDeletionRequest struct {
+	KeyAliases []string `json:"key_aliases"`
+}
+
 func (g *Gateway) issue(
-	ctx context.Context, runAttemptID string, ttl time.Duration, maxBudgetUSD float64, metadata map[string]string,
+	ctx context.Context, runAttemptID string, ttl time.Duration, maxBudgetUSD float64, model string, metadata map[string]string,
 ) (*ModelGatewayGrant, error) {
 	if ttl <= 0 {
 		ttl = time.Hour
@@ -132,17 +143,15 @@ func (g *Gateway) issue(
 	if maxBudgetUSD <= 0 {
 		maxBudgetUSD = g.maxBudgetUSD
 	}
-	body := map[string]any{
-		"key_alias":  keyAlias(runAttemptID),
-		"duration":   strconv.Itoa(int(ttl.Seconds())) + "s",
-		"max_budget": maxBudgetUSD,
-		"tpm_limit":  g.tpmLimit,
-
-		"metadata": metadata,
+	body := keyGenerationRequest{
+		KeyAlias:  keyAlias(runAttemptID),
+		Duration:  strconv.Itoa(int(ttl.Seconds())) + "s",
+		MaxBudget: maxBudgetUSD,
+		TPMLimit:  g.tpmLimit,
+		Metadata:  metadata,
 	}
-	if g.model != "" {
-
-		body["models"] = []string{g.model}
+	if model != "" {
+		body.Models = []string{model}
 	}
 	var out struct {
 		Key string `json:"key"`
@@ -163,9 +172,7 @@ func (g *Gateway) issue(
 }
 
 func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
-	err := g.post(ctx, "/key/delete", map[string]any{
-		"key_aliases": []string{keyAlias(runAttemptID)},
-	}, nil)
+	err := g.post(ctx, "/key/delete", keyDeletionRequest{KeyAliases: []string{keyAlias(runAttemptID)}}, nil)
 	if ge, ok := errors.AsType[*gatewayError](err); ok && ge.notFound() {
 		return nil
 	}
