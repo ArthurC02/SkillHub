@@ -207,3 +207,17 @@ func TestRunViewKeepsTheUseCaseResponseSeparateFromTheAggregateRow(t *testing.T)
 		t.Fatalf("view lifecycle = %#v, want cancellation and truncation", got)
 	}
 }
+
+func TestStatusTransitionUsesAnEmptyFromStatusForTheFirstRecordedState(t *testing.T) {
+	occurred := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	if got := derefStatus(nil); got != "" {
+		t.Fatalf("first transition from status = %q, want empty", got)
+	}
+	queued := gen.RunStatusQueued
+	if got := derefStatus(&queued); got != string(queued) {
+		t.Fatalf("transition from status = %q, want %q", got, queued)
+	}
+	if got := timePointer(pgtype.Timestamptz{Time: occurred, Valid: true}); got == nil || !got.Equal(occurred) {
+		t.Fatalf("transition occurred at = %v, want %v", got, occurred)
+	}
+}

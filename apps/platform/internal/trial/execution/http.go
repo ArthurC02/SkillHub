@@ -518,11 +518,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, t := range transitions {
-		v := transitionView{To: string(t.ToStatus), Reason: deref(t.Reason), OccurredAt: pgconv.RFC3339(t.OccurredAt)}
-		if t.FromStatus != nil {
-			v.From = string(*t.FromStatus)
-		}
-		resp.Transitions = append(resp.Transitions, v)
+		resp.Transitions = append(resp.Transitions, transitionView{
+			From: t.From, To: t.To, Reason: t.Reason, OccurredAt: formatTime(t.OccurredAt),
+		})
 	}
 	attempts, err := h.Svc.Attempts(r.Context(), ws.ID, runID)
 	if err != nil {

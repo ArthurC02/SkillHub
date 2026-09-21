@@ -98,6 +98,13 @@ type Artifact struct {
 	Purged      bool
 }
 
+type StatusTransition struct {
+	From       string
+	To         string
+	Reason     string
+	OccurredAt *time.Time
+}
+
 type ContentSource struct {
 	WorkspaceIsCatalog bool
 
@@ -631,10 +638,27 @@ func (s *Service) Linkage(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	return Linkage{SkillID: version.SkillID, TestCaseID: testCaseID}, nil
 }
 
-func (s *Service) History(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunStatusTransition, error) {
-	return s.queries().ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{
+func (s *Service) History(ctx context.Context, workspaceID, runID pgtype.UUID) ([]StatusTransition, error) {
+	rows, err := s.queries().ListRunStatusTransitions(ctx, gen.ListRunStatusTransitionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
+	if err != nil {
+		return nil, err
+	}
+	transitions := make([]StatusTransition, len(rows))
+	for i, row := range rows {
+		transitions[i] = StatusTransition{
+			From: derefStatus(row.FromStatus), To: string(row.ToStatus), Reason: deref(row.Reason), OccurredAt: timePointer(row.OccurredAt),
+		}
+	}
+	return transitions, nil
+}
+
+func derefStatus(status *gen.RunStatus) string {
+	if status == nil {
+		return ""
+	}
+	return string(*status)
 }
 
 func (s *Service) Attempts(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunAttempt, error) {
