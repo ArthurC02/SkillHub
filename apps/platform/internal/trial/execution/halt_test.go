@@ -3,11 +3,30 @@ package run
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
+
+func TestDispatchHaltViewCarriesOperatorFacingFacts(t *testing.T) {
+	declared := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	row := gen.DispatchHalt{
+		ID:          pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
+		Provider:    "sandbox",
+		Source:      string(HaltSourceIncident),
+		Reason:      "containment",
+		DeclaredAt:  pgtype.Timestamptz{Time: declared, Valid: true},
+		ClearRounds: 2,
+	}
+
+	got := dispatchHalt(row)
+	if got.ID != row.ID || got.Provider != "sandbox" || got.Source != HaltSourceIncident ||
+		got.Reason != "containment" || got.DeclaredAt == nil || !got.DeclaredAt.Equal(declared) || got.ClearRounds != 2 {
+		t.Errorf("dispatch halt = %+v", got)
+	}
+}
 
 func TestNodeAndPoolThresholds(t *testing.T) {
 	for _, tc := range []struct {

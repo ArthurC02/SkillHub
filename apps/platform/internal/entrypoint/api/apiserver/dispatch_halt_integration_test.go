@@ -318,7 +318,7 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if halt.Source != string(run.HaltSourceIncident) || halt.Reason != "escape suspicion" {
+	if halt.Source != run.HaltSourceIncident || halt.Reason != "escape suspicion" {
 		t.Fatalf("halt after the P1 = %s/%q, want the incident to have taken over", halt.Source, halt.Reason)
 	}
 
@@ -330,7 +330,7 @@ func TestAnIncidentTakesOverACapacityPauseAndIsNeverDowngraded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.Source != string(run.HaltSourceIncident) || again.Reason != "escape suspicion" {
+	if again.Source != run.HaltSourceIncident || again.Reason != "escape suspicion" {
 		t.Errorf("a threshold breach downgraded the P1 to %s/%q", again.Source, again.Reason)
 	}
 

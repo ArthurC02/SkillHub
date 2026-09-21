@@ -40,6 +40,15 @@ const haltRecoveryRounds = 2
 
 var ErrDispatchHalted = errors.New("the execution environment is temporarily unavailable")
 
+type DispatchHalt struct {
+	ID          pgtype.UUID
+	Provider    string
+	Source      HaltSource
+	Reason      string
+	DeclaredAt  *time.Time
+	ClearRounds int32
+}
+
 type haltState struct {
 	byTarget map[string]gen.DispatchHalt
 }
@@ -127,21 +136,21 @@ func (s *Service) requireDispatchable(ctx context.Context) error {
 
 func (s *Service) DeclareHalt(
 	ctx context.Context, provider string, source HaltSource, reason string, actor pgtype.UUID,
-) (gen.DispatchHalt, error) {
+) (DispatchHalt, error) {
 	declaration, err := newHaltDeclaration(source, reason, actor)
 	if err != nil {
-		return gen.DispatchHalt{}, err
+		return DispatchHalt{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.DispatchHalt{}, err
+		return DispatchHalt{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
 	halt, err := recordHaltDeclaration(ctx, q, provider, declaration)
 	if err != nil {
-		return gen.DispatchHalt{}, err
+		return DispatchHalt{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        actor,
@@ -156,9 +165,12 @@ func (s *Service) DeclareHalt(
 			"reason":           halt.Reason,
 		},
 	}); err != nil {
-		return gen.DispatchHalt{}, err
+		return DispatchHalt{}, err
 	}
-	return halt, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return DispatchHalt{}, err
+	}
+	return dispatchHalt(halt), nil
 }
 
 func recordHaltDeclaration(ctx context.Context, q *gen.Queries, provider string, d haltDeclaration) (gen.DispatchHalt, error) {
@@ -182,13 +194,13 @@ func recordHaltDeclaration(ctx context.Context, q *gen.Queries, provider string,
 
 func (s *Service) LiftHalt(
 	ctx context.Context, provider, reason string, actor pgtype.UUID, sources []HaltSource,
-) (gen.DispatchHalt, bool, error) {
+) (DispatchHalt, bool, error) {
 	if err := requireHaltReason(reason); err != nil {
-		return gen.DispatchHalt{}, false, err
+		return DispatchHalt{}, false, err
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.DispatchHalt{}, false, err
+		return DispatchHalt{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
@@ -197,10 +209,10 @@ func (s *Service) LiftHalt(
 		Provider: provider, LiftReason: &reason, LiftedBy: actor, Sources: sourceValues(sources),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.DispatchHalt{}, false, nil
+		return DispatchHalt{}, false, nil
 	}
 	if err != nil {
-		return gen.DispatchHalt{}, false, err
+		return DispatchHalt{}, false, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        actor,
@@ -215,9 +227,23 @@ func (s *Service) LiftHalt(
 			"clear_rounds": halt.ClearRounds,
 		},
 	}); err != nil {
-		return gen.DispatchHalt{}, false, err
+		return DispatchHalt{}, false, err
 	}
-	return halt, true, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return DispatchHalt{}, false, err
+	}
+	return dispatchHalt(halt), true, nil
+}
+
+func dispatchHalt(row gen.DispatchHalt) DispatchHalt {
+	return DispatchHalt{
+		ID:          row.ID,
+		Provider:    row.Provider,
+		Source:      HaltSource(row.Source),
+		Reason:      row.Reason,
+		DeclaredAt:  timePointer(row.DeclaredAt),
+		ClearRounds: row.ClearRounds,
+	}
 }
 
 func sourceValues(sources []HaltSource) []string {
@@ -388,7 +414,7 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 		"target":      haltTarget(halt.Provider),
 		"source":      halt.Source,
 		"reason":      halt.Reason,
-		"declared_at": pgconv.RFC3339(halt.DeclaredAt),
+		"declared_at": formatTime(halt.DeclaredAt),
 		"note": "new runs are refused and nothing is dispatched to this target; " +
 			"cleanup and orphan teardown stand down so the scene is preserved. " +
 			"This halt is never lifted automatically.",
