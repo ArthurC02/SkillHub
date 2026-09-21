@@ -159,12 +159,14 @@ func (l runCreditLedger) Reserve(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	return l.credits.CanAffordStepIn(ctx, tx, userID, billable(reservedUSD))
 }
 
+func runCostKey(runID pgtype.UUID) string { return "run:" + pgconv.UUIDString(runID) }
+
 func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error {
 	userID, err := l.identities.WorkspaceOwnerIn(ctx, tx, workspaceID)
 	if err != nil {
 		return err
 	}
-	key := "run:" + pgconv.UUIDString(runID)
+	key := runCostKey(runID)
 	if costUSD == nil {
 
 		_, _, err := l.credits.RecordCost(ctx, tx, credit.CostEvent{
@@ -193,5 +195,5 @@ func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, workspaceID, run
 }
 
 func (l runCreditLedger) FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error) {
-	return l.credits.CostRecorded(ctx, "run:"+pgconv.UUIDString(runID))
+	return l.credits.CostRecorded(ctx, runCostKey(runID))
 }
