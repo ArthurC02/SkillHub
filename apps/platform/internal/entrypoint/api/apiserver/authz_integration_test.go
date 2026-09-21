@@ -210,6 +210,13 @@ func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 	return newAPIWithLLM(t, pool, "")
 }
 
+func testRunDeployment(cleanMode bool) run.Deployment {
+	return run.Deployment{
+		Model: "test-model", GatewayURL: "http://model-gateway.test", MinimumIsolation: run.WeakIsolation,
+		CleanMode: cleanMode,
+	}
+}
+
 func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	t.Helper()
 	return newAPITuned(t, pool, llmBaseURL, nil)
@@ -237,11 +244,11 @@ func newAPITuned(
 	traceSigner := &trace.Signer{Secret: []byte("integration-test-trace-secret")}
 
 	app, err := apiserver.NewApp(apiserver.Config{
-		Pool:    pool,
-		Store:   packages,
-		LLM:     llm,
-		Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
-
+		Pool:              pool,
+		Store:             packages,
+		LLM:               llm,
+		Fetcher:           &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
+		RunDeployment:     testRunDeployment(false),
 		TraceSigner:       traceSigner,
 		Profiles:          profiles,
 		DownloadRetention: 24 * time.Hour,

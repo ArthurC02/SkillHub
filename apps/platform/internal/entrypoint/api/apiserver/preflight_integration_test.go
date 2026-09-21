@@ -696,7 +696,7 @@ func TestTheCleanModeRefusalArrivesBeforeTheUserSpendsThreeStepsOnIt(t *testing.
 		t.Fatalf("a deployment with a sandbox blocked nothing, yet the summary says %q", before.Blocked)
 	}
 
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	a.runs.Deployment = testRunDeployment(true)
 	code, blocked := f.preflight(t)
 	if code != http.StatusOK {
 		t.Fatalf("GET preflight under clean mode: got %d (%s)", code, blocked.Error)

@@ -77,13 +77,13 @@ func TestTheCleanTestModeRefusesUncuratedMaterialBeforeItReachesAnySandbox(t *te
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	fake, svc := haltHarness(t, a, pool)
+	svc.Deployment = testRunDeployment(true)
 	f := newFixture(t, a, pool, "b1-clean-dispatch")
 	ctx := context.Background()
 	ws := mustUUID(t, f.workspaceID)
 
 	refused := f.start(t)
 
-	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, refused.RunID)); err != nil {
 		t.Fatalf("driving a run in the clean test mode returned an error: %v", err)
 	}
