@@ -228,7 +228,7 @@ func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimitErr
 func main() {
 	creationLimits, _ := wiring.CreationLimitsFromEnv()
 	var cleanWorker *worker.Set
-	creationTransient := creation.TransientClient(os.Getenv("CREATION_WORKER_INTERNAL_URL"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"), creationLimits.CallTimeout+30*time.Second)
+	creationTransient := wiring.CreationTransientFromEnv(creationLimits)
 
 	if len(os.Args) > 1 && os.Args[1] == "--capabilities" {
 		if err := printCapabilitiesJSON(os.Stdout); err != nil {

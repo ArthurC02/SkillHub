@@ -99,8 +99,15 @@ func (s *Service) TransientHandler(token string) http.Handler {
 }
 
 func TransientClient(baseURL, token string, timeout time.Duration) func(context.Context, JobArgs, *Diagram) error {
+	return TransientClientWithHTTP(baseURL, token, timeout, nil)
+}
+
+func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, client *http.Client) func(context.Context, JobArgs, *Diagram) error {
 	if baseURL == "" || token == "" || timeout <= 0 {
 		return nil
+	}
+	if client == nil {
+		client = http.DefaultClient
 	}
 	return func(ctx context.Context, a JobArgs, d *Diagram) error {
 		if d == nil {
@@ -118,7 +125,7 @@ func TransientClient(baseURL, token string, timeout time.Duration) func(context.
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
-		res, err := http.DefaultClient.Do(req)
+		res, err := client.Do(req)
 		if err != nil {
 			return ErrUnavailable
 		}
