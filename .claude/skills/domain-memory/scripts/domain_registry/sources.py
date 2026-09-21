@@ -414,6 +414,23 @@ def refresh_sources(root: Path, repo_root: Path, policy: dict[str, Any] | None =
     return source_map
 
 
+def refine_sources(
+    root: Path, repo_root: Path, selected_paths: list[Path], policy: dict[str, Any]
+) -> dict[str, Any]:
+    if not selected_paths:
+        raise ValueError("refining sources requires at least one focused path")
+    source_map = selected_source_map(repo_root, selected_paths, policy)
+    policy["source_policy"]["selected_paths"] = source_map["selected_paths"]
+    with writer_lock(root):
+        (root / "domain-memory-policy.json").write_text(
+            json.dumps(policy, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        write_source_map(root / "source-map.json", source_map)
+        from .audit import append_locked
+        append_locked(root, {"operation": "refine-sources", "selected_paths": source_map["selected_paths"]})
+    return source_map
+
+
 def verify_source_map(
     root: Path, source_map_path: Path, policy: dict[str, Any] | None = None
 ) -> dict[str, Any]:

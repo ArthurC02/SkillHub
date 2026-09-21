@@ -58,6 +58,7 @@ from domain_registry.sources import (
     confirm_sources,
     discover_sources,
     probe_sources,
+    refine_sources,
     selected_source_map,
     source_files,
     source_kind_for,
@@ -290,6 +291,15 @@ class DomainRegistryTest(unittest.TestCase):
         result = verify_source_map(self.repo, path)
         self.assertEqual("invalid", result["status"])
         self.assertIn("escapes repository", result["reason"])
+
+    def test_refining_sources_replaces_the_corpus_and_requires_confirmation(self) -> None:
+        source = self.repo / "fact.md"
+        source.write_text("x", encoding="utf-8")
+        policy = stored_policy_of(self.repo)
+        result = refine_sources(self.repo / "memory", self.repo, [source], policy)
+        self.assertEqual(result["selected_paths"], ["fact.md"])
+        self.assertEqual(result["selection_status"], "agent-asserted")
+        self.assertEqual(stored_policy_of(self.repo)["source_policy"]["selected_paths"], ["fact.md"])
 
     def test_a_source_map_with_mismatched_snapshot_paths_is_unverified(self) -> None:
         source = self.repo / "docs"
@@ -716,9 +726,10 @@ class DomainRegistryTest(unittest.TestCase):
         evidence_path = package / "evidence-bundle.json"
         evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
         evidence["scm_attestation"] = {
-            "provider": "test",
-            "pull_request": "1",
-            "commit": "abc",
+            "provider": "github",
+            "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1",
+            "commit": "a" * 40,
             "status": "approved",
             "proposal_revision": 1,
             "base_registry_revision": submitted["base_registry_revision"],

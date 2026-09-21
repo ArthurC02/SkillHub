@@ -1,7 +1,8 @@
 {
-  "provider": "<github|gitlab|other>",
-  "pull_request": "<external-pr-id-or-url>",
-  "commit": "<reviewed-commit-sha>",
+  "provider": "<github|gitlab>",
+  "pull_request": "<https://host/.../pull/...>",
+  "checks_url": "<https://host/.../checks/...>",
+  "commit": "<40-hex-commit>",
   "status": "approved",
   "proposal_revision": 1,
   "base_registry_revision": null,

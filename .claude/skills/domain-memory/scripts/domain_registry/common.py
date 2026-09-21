@@ -96,8 +96,8 @@ REVIEW_REQUIRED_FIELDS = {
     "interactions.json": (
         "producer_context",
         "consumer_context",
-        "contract_id",
         "consistency",
+        "delivery",
         "review",
     ),
     "decisions.json": ("statement", "source", "review"),

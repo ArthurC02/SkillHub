@@ -44,6 +44,7 @@ from .sources import (
     discover_sources,
     probe_sources,
     refresh_sources,
+    refine_sources,
     selected_source_map,
     verify_source_map,
     write_source_map,
@@ -363,6 +364,19 @@ def handle_refresh_sources(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_refine_sources(args: argparse.Namespace) -> int:
+    registry_root = args.registry_root.resolve()
+    policy = load_json(policy_path(registry_root))
+    selected = [path if path.is_absolute() else args.repo_root.resolve() / path for path in args.source]
+    try:
+        source_map = refine_sources(registry_root, args.repo_root.resolve(), selected, policy)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    print("Focused sources selected and require developer confirmation: " + ", ".join(source_map["selected_paths"]))
+    return 0
+
+
 def handle_amend_policy(args: argparse.Namespace) -> int:
     change = amend_policy(
         args.registry_root.resolve(), args.field, args.value, args.reason
@@ -526,6 +540,7 @@ HANDLERS = {
     "init-domain-memory": handle_init_domain_memory,
     "confirm-sources": handle_confirm_sources,
     "refresh-sources": handle_refresh_sources,
+    "refine-sources": handle_refine_sources,
     "amend-policy": handle_amend_policy,
     "validate-policy": handle_validate_policy,
     "scan-secrets": handle_scan_secrets,

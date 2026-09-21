@@ -8,6 +8,7 @@
 | Assess project readiness | `readiness --repo-root <repo> [--registry-root <path>]` | Reports the posture described in [readiness](readiness.md). It is read-only and never promotes a fact or selects a source corpus. |
 | Initialize from human choices | `init-domain-memory --repo-root <repo> --output <path> --source <path> --storage-mode <mode> --data-classification <class> --review-mode <mode> --source-authority <identity> [--include <glob>] [--exclude <glob>]` | Requires an explicit destination and source choices. Applies include/exclude and policy resource limits before writing the confirmed map. |
 | Verify selected sources | `verify-sources --repo-root <repo> --source-map <path> [--policy <path>]` | Compares each selected source to its initialization snapshot and, when supplied, rechecks policy limits. |
+| Focus selected sources | `refine-sources --registry-root <root> --repo-root <repo> --source <path>...` | Replaces a broad source corpus with focused paths, rebuilds snapshots, and resets selection to agent-asserted until a developer confirms it. |
 | Verify citations | `verify-evidence --registry-root <path> --repo-root <repo>` | Detects missing, malformed, and changed structured evidence citations. |
 | Upgrade legacy citations | `migrate-evidence --registry-root <path> --repo-root <repo>` | Converts only existing, in-repository `path:line` citations into digest-backed structured citations through a journaled update. |
 | Verify audit trail | `verify-audit --registry-root <path>` | Validates the local append-only hash chain and its small head manifest; it is tamper-evident, not an external immutable log. |
@@ -23,7 +24,7 @@
 | Submit for review | `submit-proposal --package-root <path> --registry-root <path> --repo-root <repo>` | Captures the exact Git HEAD and Registry digest before changing a valid draft to `submitted`. |
 | Record human approval | `record-approval --package-root <path> --role <role> --reviewer <identity> --scope <scope>` | Rejects self-approval and duplicate approval for the same role and revision. |
 | Verify test attestations | `verify-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a submitted Proposal that has a passing, digest-backed result for every obligation. |
-| Finalize approval | `finalize-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a verified Proposal whose required approval roles, SCM attestation, traceability, and base revision still validate. |
+| Finalize approval | `finalize-proposal --package-root <path> --registry-root <root> --repo-root <repo>` | Promotes only a verified Proposal whose required approval roles, externally verifiable SCM evidence, traceability, and base revision still validate. |
 
 All command output is JSON except success or error messages. Registry-dependent commands require `--registry-root`; `readiness` may omit it when assessing a repository before Domain Memory exists. The scripts do not grant authorization: call a write command only when the current user and repository process authorize it.
 
