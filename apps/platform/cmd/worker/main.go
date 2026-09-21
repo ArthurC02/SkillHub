@@ -18,7 +18,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -83,7 +82,7 @@ func main() {
 			"has_secret", traceSigner.Enabled(), "has_url", traceBase != "")
 	}
 
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
 		os.Exit(1)

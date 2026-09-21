@@ -13,10 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
@@ -71,7 +71,7 @@ func main() {
 }
 
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		return err
 	}

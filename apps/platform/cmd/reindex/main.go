@@ -13,7 +13,6 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
@@ -52,7 +51,7 @@ func main() {
 		slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
 		os.Exit(1)
 	}
-	store, err := objstore.FromEnv()
+	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
 		os.Exit(1)

@@ -97,7 +97,7 @@ func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
 
 func newStore(clean bool) (*objstore.Client, func(), error) {
 	if !clean {
-		store, err := objstore.FromEnv()
+		store, err := wiring.ObjectStoreFromEnv()
 		return store, nil, err
 	}
 	store, stop, err := objstore.NewInProcess(envx.Or("OBJSTORE_BUCKET", "skillhub"))

@@ -7,13 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 )
 
 type Client struct {
@@ -30,16 +27,6 @@ func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Client, e
 		return nil, fmt.Errorf("objstore client: %w", err)
 	}
 	return &Client{mc: mc, bucket: bucket}, nil
-}
-
-func FromEnv() (*Client, error) {
-	return New(
-		envx.Or("OBJSTORE_ENDPOINT", "localhost:8333"),
-		os.Getenv("OBJSTORE_ACCESS_KEY"),
-		os.Getenv("OBJSTORE_SECRET_KEY"),
-		envx.Or("OBJSTORE_BUCKET", "skillhub"),
-		os.Getenv("OBJSTORE_SSL") == "1",
-	)
 }
 
 func (c *Client) EnsureBucket(ctx context.Context) error {
