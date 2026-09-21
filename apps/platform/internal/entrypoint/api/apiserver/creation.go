@@ -25,41 +25,69 @@ type creationHandler struct {
 
 var errNoCreditRate = errors.New("creation: credit conversion unavailable")
 
-var snapshotCreditFields = map[string]string{
-	"budget_usd":   "budget_credits",
-	"reserved_usd": "reserved_credits",
-	"spent_usd":    "spent_credits",
+type snapshotCreditField struct {
+	Internal string
+	Public   string
 }
 
-func (h *creationHandler) present(v creation.View) (map[string]any, error) {
-	if h.Credit == nil {
-		return nil, errNoCreditRate
-	}
-	b, err := json.Marshal(v)
+var snapshotCreditFields = []snapshotCreditField{
+	{Internal: "budget_usd", Public: "budget_credits"},
+	{Internal: "reserved_usd", Public: "reserved_credits"},
+	{Internal: "spent_usd", Public: "spent_credits"},
+}
+
+type creationSnapshotProjection struct {
+	Snapshot      creation.Snapshot
+	CreditsForUSD func(float64) (int64, bool)
+}
+
+func (p creationSnapshotProjection) MarshalJSON() ([]byte, error) {
+	raw, err := json.Marshal(p.Snapshot)
 	if err != nil {
 		return nil, err
 	}
-	var out map[string]any
-	if err := json.Unmarshal(b, &out); err != nil {
+	fields := map[string]json.RawMessage{}
+	if err := json.Unmarshal(raw, &fields); err != nil {
 		return nil, err
 	}
-	snap, _ := out["snapshot"].(map[string]any)
-	for usdKey, creditKey := range snapshotCreditFields {
-		usd, present := snap[usdKey].(float64)
-		delete(snap, usdKey)
+	for _, field := range snapshotCreditFields {
+		usd, present := fields[field.Internal]
+		delete(fields, field.Internal)
 		if !present {
 			continue
 		}
+		var amount float64
+		if err := json.Unmarshal(usd, &amount); err != nil {
+			return nil, err
+		}
 		credits := int64(0)
-		if usd > 0 {
+		if amount > 0 {
 			var ok bool
-			if credits, ok = h.Credit.CreditsForUSD(usd); !ok {
+			if credits, ok = p.CreditsForUSD(amount); !ok {
 				return nil, errNoCreditRate
 			}
 		}
-		snap[creditKey] = credits
+		fields[field.Public], err = json.Marshal(credits)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return out, nil
+	return json.Marshal(fields)
+}
+
+type creationSessionResponse struct {
+	creation.View
+	Snapshot creationSnapshotProjection `json:"snapshot"`
+}
+
+func (h *creationHandler) present(v creation.View) (creationSessionResponse, error) {
+	if h.Credit == nil {
+		return creationSessionResponse{}, errNoCreditRate
+	}
+	return creationSessionResponse{
+		View:     v,
+		Snapshot: creationSnapshotProjection{Snapshot: v.Snapshot, CreditsForUSD: h.Credit.CreditsForUSD},
+	}, nil
 }
 
 func (h *creationHandler) writeView(w http.ResponseWriter, v creation.View) {
@@ -161,7 +189,7 @@ func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.creationError(w, err)
 		return
 	}
-	out := make([]map[string]any, 0, len(v))
+	out := make([]creationSessionResponse, 0, len(v))
 	for _, one := range v {
 		presented, err := h.present(one)
 		if err != nil {
