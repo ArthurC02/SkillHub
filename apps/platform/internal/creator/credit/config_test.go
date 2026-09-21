@@ -2,19 +2,8 @@ package credit
 
 import "testing"
 
-func clearCreditEnv(t *testing.T) {
-	t.Helper()
-	for _, k := range []string{
-		"CREDIT_USD_PER_CREDIT", "CREDIT_MARKUP_BPS",
-		"CREDIT_DEBT_FLOOR", "CREDIT_MIN_START_FALLBACK",
-	} {
-		t.Setenv(k, "")
-	}
-}
-
-func TestConfigFromEnvDefaults(t *testing.T) {
-	clearCreditEnv(t)
-	cfg, err := ConfigFromEnv()
+func TestNewConfigAcceptsDefaults(t *testing.T) {
+	cfg, err := NewConfig(0.001, 13000, -50, 70)
 	if err != nil {
 		t.Fatalf("ConfigFromEnv() with nothing set: %v", err)
 	}
@@ -24,34 +13,20 @@ func TestConfigFromEnvDefaults(t *testing.T) {
 	}
 }
 
-func TestConfigFromEnvFailsClosedOnMalformedValue(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_MARKUP_BPS", "not-a-number")
-	if _, err := ConfigFromEnv(); err == nil {
-		t.Fatal("a malformed CREDIT_MARKUP_BPS must fail closed, not silently fall back to the default")
-	}
-}
-
-func TestConfigFromEnvFailsClosedOnPositiveDebtFloor(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_DEBT_FLOOR", "10")
-	if _, err := ConfigFromEnv(); err == nil {
+func TestNewConfigFailsClosedOnPositiveDebtFloor(t *testing.T) {
+	if _, err := NewConfig(0.001, 13000, 10, 70); err == nil {
 		t.Fatal("a positive CREDIT_DEBT_FLOOR must fail closed: the floor caps how negative a balance may go")
 	}
 }
 
-func TestConfigFromEnvFailsClosedOnNonPositiveMarkup(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_MARKUP_BPS", "0")
-	if _, err := ConfigFromEnv(); err == nil {
+func TestNewConfigFailsClosedOnNonPositiveMarkup(t *testing.T) {
+	if _, err := NewConfig(0.001, 0, -50, 70); err == nil {
 		t.Fatal("a zero or negative CREDIT_MARKUP_BPS must fail closed")
 	}
 }
 
-func TestConfigFromEnvRespectsOverride(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_USD_PER_CREDIT", "0.01")
-	cfg, err := ConfigFromEnv()
+func TestNewConfigRespectsRate(t *testing.T) {
+	cfg, err := NewConfig(0.01, 13000, -50, 70)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,10 +35,8 @@ func TestConfigFromEnvRespectsOverride(t *testing.T) {
 	}
 }
 
-func TestConfigFromEnvAcceptsTheLargestMarkupAChargeCanUse(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_MARKUP_BPS", "1000000")
-	cfg, err := ConfigFromEnv()
+func TestNewConfigAcceptsTheLargestMarkupAChargeCanUse(t *testing.T) {
+	cfg, err := NewConfig(0.001, 1000000, -50, 70)
 	if err != nil {
 		t.Fatalf("CREDIT_MARKUP_BPS=1000000: %v", err)
 	}
@@ -72,10 +45,8 @@ func TestConfigFromEnvAcceptsTheLargestMarkupAChargeCanUse(t *testing.T) {
 	}
 }
 
-func TestConfigFromEnvFailsClosedOnAMarkupNoChargeCanUse(t *testing.T) {
-	clearCreditEnv(t)
-	t.Setenv("CREDIT_MARKUP_BPS", "1000001")
-	if _, err := ConfigFromEnv(); err == nil {
+func TestNewConfigFailsClosedOnAMarkupNoChargeCanUse(t *testing.T) {
+	if _, err := NewConfig(0.001, 1000001, -50, 70); err == nil {
 		t.Fatal("CREDIT_MARKUP_BPS=1000001 must fail at startup: every charge would be refused and every call would go unbilled")
 	}
 }

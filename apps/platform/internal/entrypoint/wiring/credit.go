@@ -3,6 +3,8 @@ package wiring
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,7 +20,7 @@ import (
 )
 
 func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
-	cfg, err := credit.ConfigFromEnv()
+	cfg, err := CreditConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +39,40 @@ func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 			return credit.AccountFacts{Exists: present, Purged: purging}, nil
 		},
 	}, nil
+}
+
+func CreditConfigFromEnv() (credit.Config, error) {
+	usd, err := creditEnvFloat("CREDIT_USD_PER_CREDIT", 0.001)
+	if err != nil {
+		return credit.Config{}, fmt.Errorf("credit: CREDIT_USD_PER_CREDIT: %w", err)
+	}
+	markup, err := creditEnvInt("CREDIT_MARKUP_BPS", 13000)
+	if err != nil {
+		return credit.Config{}, fmt.Errorf("credit: CREDIT_MARKUP_BPS: %w", err)
+	}
+	floor, err := creditEnvInt("CREDIT_DEBT_FLOOR", -50)
+	if err != nil {
+		return credit.Config{}, fmt.Errorf("credit: CREDIT_DEBT_FLOOR: %w", err)
+	}
+	fallback, err := creditEnvInt("CREDIT_MIN_START_FALLBACK", 70)
+	if err != nil {
+		return credit.Config{}, fmt.Errorf("credit: CREDIT_MIN_START_FALLBACK: %w", err)
+	}
+	return credit.NewConfig(usd, markup, floor, fallback)
+}
+
+func creditEnvFloat(name string, fallback float64) (float64, error) {
+	if raw := os.Getenv(name); raw != "" {
+		return strconv.ParseFloat(raw, 64)
+	}
+	return fallback, nil
+}
+
+func creditEnvInt(name string, fallback int64) (int64, error) {
+	if raw := os.Getenv(name); raw != "" {
+		return strconv.ParseInt(raw, 10, 64)
+	}
+	return fallback, nil
 }
 
 func billable(usd float64) int64 {

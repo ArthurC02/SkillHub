@@ -75,7 +75,7 @@ func main() {
 		},
 	}
 
-	creditCfg, err := credit.ConfigFromEnv()
+	creditCfg, err := wiring.CreditConfigFromEnv()
 	if err != nil {
 		slog.Error("credit config", "error", err)
 		os.Exit(1)
