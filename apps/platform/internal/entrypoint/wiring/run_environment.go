@@ -33,8 +33,8 @@ func NewRunRegistryFromEnv() *run.Registry {
 		if !ok || name == "" || baseURL == "" {
 			continue
 		}
-		providers = append(providers, run.NewProvider(
-			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name))))
+		providers = append(providers, run.NewProviderWithClient(
+			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), &http.Client{Timeout: 30 * time.Second}))
 	}
 	return run.NewRegistry(providers...)
 }

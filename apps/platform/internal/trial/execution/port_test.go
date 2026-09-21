@@ -21,6 +21,16 @@ func answering(t *testing.T, status int) SandboxProvider {
 	return NewProvider("test", srv.URL, "")
 }
 
+func TestProviderUsesTheHTTPClientComposedAtTheEntrypoint(t *testing.T) {
+	client := &http.Client{Timeout: time.Second}
+
+	provider := NewProviderWithClient("test", "http://provider", "", client).(*httpProvider)
+
+	if provider.HTTP != client {
+		t.Fatal("provider did not retain the HTTP client supplied by its composition root")
+	}
+}
+
 func TestTheAdapterTranslatesEveryRefusalIntoTheDomainsOwnWords(t *testing.T) {
 	for _, tc := range []struct {
 		status int

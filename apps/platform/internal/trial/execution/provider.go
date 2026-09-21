@@ -440,7 +440,14 @@ func (r *Registry) UnauthenticatedProviderRefusals() []string {
 func NewRegistry(providers ...SandboxProvider) *Registry { return &Registry{Providers: providers} }
 
 func NewProvider(name, baseURL, token string) SandboxProvider {
-	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: &http.Client{Timeout: 30 * time.Second}}
+	return NewProviderWithClient(name, baseURL, token, nil)
+}
+
+func NewProviderWithClient(name, baseURL, token string, client *http.Client) SandboxProvider {
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
+	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: client}
 }
 
 func (r *Registry) Lookup(name string) SandboxProvider {
