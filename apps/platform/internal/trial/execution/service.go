@@ -125,16 +125,16 @@ type ContentSource struct {
 }
 
 type RegistryReader interface {
-	Skill(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
-	Version(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	Skill(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	VersionSummaries(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
-	ContentSource(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+	ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error)
 }
 
 type CreditLedger interface {
 	CreditsForUSD(float64) (int64, bool)
 	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
-	Settle(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *float64, float64) error
+	Settle(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error
 }
 
 const providerUnassigned = "unassigned"

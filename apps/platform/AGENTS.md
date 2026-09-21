@@ -4,6 +4,7 @@
 
 - [根指示](../../AGENTS.md) 與 [開發自動化](../../docs/development/automation.md)
 - [平台內部指標](internal/AGENTS.md)；若要動 `internal/`，再讀目標套件的 `doc.go`
+- [Platform DDD 收斂指南](../../docs/development/platform-ddd-convergence.md)；首次接手既有 Aggregate、Port 或 Store 重構時先讀相關段落
 - [平台內部產品價值流](internal/README.md)、[public API 契約](../../contracts/openapi/public.yaml)
 - [根 Taskfile](../../Taskfile.yml) 的 `test:platform`、`lint:platform`、`build:platform`
 

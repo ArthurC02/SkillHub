@@ -99,7 +99,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 ## Credit 計價
 
-依[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)的決策：創作會話扣點。`creation.Service` 的三個掛勾（`CreditCanStart`／`CreditReserve`／`CreditSettle`）由 `entrypoint/wiring` 的 `WireCreationCredit` 在 API 與 Worker 兩個組裝根接上。三道閘各自是什麼：
+依[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)的決策：創作會話扣點。`creation.Service` 透過 `CreationBilling` 的 `CanStart`／`Reserve`／`Settle` 三個操作，由 `entrypoint/wiring` 的 `WireCreationCredit` 在 API 與 Worker 兩個組裝根接上。三道閘各自是什麼：
 
 - **① 開始前**：建立新會話之前，若 Workspace 的 Credit 餘額低於「最近滾動窗 p95 × 加成」推導出的門檻（樣本 < 20 時退回保守常數並標示估計值），拒絕建立，不消耗任何成本。對應 `creation.ErrCreditThreshold`。
 - **② 每步扣款前**：既有 `settleCost` 算出這一步的預留額之後、呼叫模型之前，若「目前餘額 − 這一步預留額」會低於 **−50**，停止該會話（狀態轉 `waiting_input`，訊息告知帳戶餘額已達可容忍的欠款上限），已發生的成本仍照常結算。對應 `creation.ErrCreditFloor`。

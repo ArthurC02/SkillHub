@@ -117,6 +117,7 @@ ADR 一個主題一份、內容永遠是現行版本，歷史在 git；只有 AD
 | 下一個工作項目 | [`03`](docs/plans/03-work-items.md) |
 | 系統邊界與平面／資料模型／Run 生命週期／安全 | [ADR 索引](docs/adr/README.md)的同名主題 |
 | Query 屬於誰、跨 context 怎麼拿事實 | [Query 與寫入所有權](docs/adr/README.md#query-與寫入所有權) ＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)；動手前讀目標套件的 `doc.go` |
+| 已審查的領域事實或已知空白 | [Domain Memory](docs/domain-memory/)；只把 reviewed records 當事實，`reviewed-empty` 代表尚無可依賴的模型，必須回到 ADR、契約、程式與測試查證 |
 | 派送被停了怎麼判斷與解除 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md) |
 | 畫面該長什麼樣、新畫面放哪個網址 | [system.md](docs/design/system.md) §3、[information-architecture.md](docs/design/information-architecture.md) §0（先過這關再寫） |
 | 封測上線前要做什麼 | [release-checklist](docs/plans/mvp/m4/release-checklist.md) |
