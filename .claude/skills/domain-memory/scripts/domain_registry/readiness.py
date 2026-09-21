@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .common import load_json
 from .registry import coverage, validate
 from .sources import discover_sources, verify_source_map
 
@@ -35,6 +36,7 @@ def assess_readiness(
     if registry_root:
         registry_path = registry_root.resolve()
         source_map = registry_path / "source-map.json"
+        policy_path = registry_path / "domain-memory-policy.json"
         if not registry_path.exists():
             registry_status = "absent"
         elif not source_map.is_file():
@@ -42,7 +44,8 @@ def assess_readiness(
             blocks.append("Domain Memory exists without a source map.")
         else:
             try:
-                source_result = verify_source_map(repo_root, source_map)
+                policy = load_json(policy_path) if policy_path.is_file() else None
+                source_result = verify_source_map(repo_root, source_map, policy)
             except ValueError as error:
                 registry_status = "invalid"
                 blocks.append(f"Domain Memory source map cannot be read: {error}")
@@ -71,6 +74,9 @@ def assess_readiness(
                             "contracts",
                         )
                     )
+                    manifest = load_json(registry_path / "registry" / "manifest.json")
+                    if registry_records == 0 and manifest.get("status") == "reviewed":
+                        registry_status = "reviewed-empty"
         signals.append({"kind": "registry", "status": registry_status})
         signals.append({"kind": "registry_records", "count": registry_records})
 

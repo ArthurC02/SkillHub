@@ -1552,6 +1552,32 @@ class DomainRegistryTest(unittest.TestCase):
             result["signals"][-1], {"kind": "registry_records", "count": 1}
         )
 
+    def test_readiness_accepts_a_reviewed_empty_registry(self) -> None:
+        (self.repo / "docs").mkdir()
+        implementation = self.repo / "apps" / "orders"
+        implementation.mkdir(parents=True)
+        (implementation / "main.py").write_text("pass\n", encoding="utf-8")
+        self.commit_all("implementation")
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            selected_source_map(
+                self.repo,
+                [self.repo / "docs"],
+                stored_policy_of(self.repo),
+            ),
+        )
+        self.commit_all("source map")
+        review_empty_registry(self.repo / "memory", self.repo, "developer")
+
+        result = assess_readiness(self.repo, self.repo / "memory")
+
+        self.assertEqual("brownfield", result["state"])
+        self.assertEqual("read-and-maintain", result["next_capability"])
+        self.assertEqual(
+            {"kind": "registry", "status": "reviewed-empty"}, result["signals"][-2]
+        )
+        self.assertEqual([], result["blocks"])
+
     def test_readiness_does_not_treat_a_corrupt_registry_as_empty(self) -> None:
         docs = self.repo / "domain-notes"
         docs.mkdir()
