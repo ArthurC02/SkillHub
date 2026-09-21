@@ -246,7 +246,7 @@ func TestSchedulerAcceptsTheTargetsRealCapability(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /capability: %v", err)
 	}
-	profile, err := run.Match(capability, run.DefaultRequirements())
+	profile, err := run.Match(capability, run.RequirementsFor(run.Deployment{MinimumIsolation: run.WeakIsolation}))
 	if err != nil {
 		t.Fatalf("the scheduler will not dispatch to this provider: %v", err)
 	}

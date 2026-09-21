@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -33,9 +34,38 @@ func compatible() ProviderCapability {
 
 func defaultRequirements() Requirements {
 	return requirementsFromPolicy(policySnapshot{
-		ResourceLimits: DefaultResourceLimits(),
-		Egress:         EgressPolicy{Mode: "default_deny"},
+		ResourceLimits:   DefaultResourceLimits(),
+		Egress:           EgressPolicy{Mode: "default_deny"},
+		MinimumIsolation: deploymentFromTestEnv().RequiredIsolation(),
+		CleanMode:        deploymentFromTestEnv().CleanMode,
 	})
+}
+
+func TestRequirementsRetainTheRunSnapshotDeploymentPolicy(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+
+	requirements := requirementsFromPolicy(policySnapshot{
+		ResourceLimits:   DefaultResourceLimits(),
+		Egress:           EgressPolicy{Mode: "default_deny"},
+		MinimumIsolation: noIsolation,
+		CleanMode:        true,
+	})
+
+	if requirements.MinimumIsolation != noIsolation || !requirements.AcceptUnenforced {
+		t.Fatalf("requirements = %+v, want the deployment policy captured by the run", requirements)
+	}
+}
+
+func deploymentFromTestEnv() Deployment {
+	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
+	minimumIsolation := strongIsolation
+	if cleanMode {
+		minimumIsolation = noIsolation
+	} else if os.Getenv("DEV_LOGIN") == "1" {
+		minimumIsolation = weakIsolation
+	}
+	return Deployment{MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv(cleanModeReleaseFile)}
 }
 
 func TestMatchAcceptsACompatibleProviderAndResolvesTheRuntimeVersion(t *testing.T) {
@@ -610,7 +640,7 @@ func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 
 	called := false
-	svc := &Service{ReadContentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
 		called = true
 		return ContentSource{CurationTier: "indexed"}, true, nil
 	}}
@@ -672,7 +702,7 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 	} {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-			err := (&Service{ReadContentSource: tc.read}).requireCuratedContent(t.Context(), contentSourceRun())
+			err := (&Service{Deployment: deploymentFromTestEnv(), ReadContentSource: tc.read}).requireCuratedContent(t.Context(), contentSourceRun())
 			if tc.wantPass {
 				if err != nil {
 					t.Fatalf("curated material was refused: %v", err)
@@ -699,7 +729,7 @@ func TestTheContentSourceGateAsksAboutThisRunsOwnVersion(t *testing.T) {
 	run := contentSourceRun()
 
 	var gotWorkspace, gotVersion pgtype.UUID
-	svc := &Service{ReadContentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
+	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
 		gotWorkspace, gotVersion = workspaceID, versionID
 		return curatedSource(), true, nil
 	}}

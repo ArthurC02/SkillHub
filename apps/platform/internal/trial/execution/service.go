@@ -215,9 +215,11 @@ func DefaultResourceLimits() ResourceLimits {
 }
 
 type policySnapshot struct {
-	ResourceLimits ResourceLimits `json:"resource_limits"`
-	Egress         EgressPolicy   `json:"egress"`
-	Model          string         `json:"model,omitempty"`
+	ResourceLimits   ResourceLimits    `json:"resource_limits"`
+	Egress           EgressPolicy      `json:"egress"`
+	Model            string            `json:"model,omitempty"`
+	MinimumIsolation IsolationStrength `json:"minimum_isolation"`
+	CleanMode        bool              `json:"clean_mode"`
 }
 
 func (p policySnapshot) reachesAModel() bool {
@@ -232,9 +234,11 @@ func defaultPolicy(deployment Deployment) policySnapshot {
 		allow = append(allow, egressAllow{Purpose: modelGatewayPurpose, URL: url})
 	}
 	return policySnapshot{
-		ResourceLimits: DefaultResourceLimits(),
-		Egress:         EgressPolicy{Mode: "default_deny", Allow: allow},
-		Model:          deployment.Model,
+		ResourceLimits:   DefaultResourceLimits(),
+		Egress:           EgressPolicy{Mode: "default_deny", Allow: allow},
+		Model:            deployment.Model,
+		MinimumIsolation: deployment.RequiredIsolation(),
+		CleanMode:        deployment.CleanMode,
 	}
 }
 

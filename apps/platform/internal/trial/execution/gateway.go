@@ -69,6 +69,9 @@ type GatewayConfig struct {
 type Deployment struct {
 	Model, GatewayURL string
 	BudgetUSD         float64
+	MinimumIsolation  IsolationStrength
+	CleanMode         bool
+	CleanModeReleases string
 }
 
 func (d Deployment) Budget() float64 {
@@ -76,6 +79,13 @@ func (d Deployment) Budget() float64 {
 		return d.BudgetUSD
 	}
 	return defaultKeyBudgetUSD
+}
+
+func (d Deployment) RequiredIsolation() IsolationStrength {
+	if d.MinimumIsolation != "" {
+		return d.MinimumIsolation
+	}
+	return strongIsolation
 }
 
 func NewGateway(c GatewayConfig) *Gateway {

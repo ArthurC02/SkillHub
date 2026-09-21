@@ -29,6 +29,10 @@ const (
 	weakIsolation IsolationStrength = "weak"
 
 	noIsolation IsolationStrength = "none"
+
+	StrongIsolation = strongIsolation
+	WeakIsolation   = weakIsolation
+	NoIsolation     = noIsolation
 )
 
 type IsolationStrength string
@@ -38,21 +42,6 @@ var isolationRank = map[IsolationStrength]int{noIsolation: 1, weakIsolation: 2, 
 func (s IsolationStrength) meets(minimum IsolationStrength) bool {
 	return isolationRank[s] >= isolationRank[minimum]
 }
-
-func requiredIsolation() IsolationStrength {
-	switch {
-	case cleanTestMode():
-		return noIsolation
-	case devDeployment():
-		return weakIsolation
-	default:
-		return strongIsolation
-	}
-}
-
-func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
-
-func cleanTestMode() bool { return os.Getenv("SKILLHUB_CLEAN_MODE") == "1" }
 
 type curationTier string
 
@@ -76,7 +65,7 @@ func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error 
 func (s *Service) curatedContentRefusal(
 	ctx context.Context, workspaceID, skillVersionID pgtype.UUID,
 ) (released string, err error) {
-	if !cleanTestMode() {
+	if !s.Deployment.CleanMode {
 		return "", nil
 	}
 	if s.ReadContentSource == nil {
@@ -95,20 +84,19 @@ func (s *Service) curatedContentRefusal(
 		return "", nil
 	}
 	versionID := pgconv.UUIDString(skillVersionID)
-	if reason, ok := operatorReleased(versionID); ok {
+	if reason, ok := operatorReleased(versionID, s.Deployment.CleanModeReleases); ok {
 		return reason, nil
 	}
 
 	return "", fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
 		"curation_tier is %q on the exact version being run, may run here; anything else needs a "+
 		"deployment with a real sandbox — or %s",
-		ErrContentNotCurated, describeContentSource(source), curatedTier, howToRelease(versionID))
+		ErrContentNotCurated, describeContentSource(source), curatedTier, howToRelease(versionID, s.Deployment.CleanModeReleases))
 }
 
 const cleanModeReleaseFile = "SKILLHUB_CLEAN_MODE_RELEASES"
 
-func operatorReleased(versionID string) (string, bool) {
-	path := os.Getenv(cleanModeReleaseFile)
+func operatorReleased(versionID, path string) (string, bool) {
 	if path == "" || versionID == "" {
 		return "", false
 	}
@@ -155,8 +143,7 @@ func operatorReleased(versionID string) (string, bool) {
 
 func releaseToken(s string) string { return strings.Trim(s, "`'\"“”‘’,;:") }
 
-func howToRelease(versionID string) string {
-	path := os.Getenv(cleanModeReleaseFile)
+func howToRelease(versionID, path string) string {
 	if path == "" {
 		return fmt.Sprintf("an operator may release this exact version by pointing %s at a file "+
 			"and putting `%s <why>` in it (05 R-37); this deployment has not set that variable, "+
@@ -180,7 +167,9 @@ type Requirements struct {
 	Limits           ResourceLimits
 	EgressMode       string
 
-	EgressAllowed int
+	EgressAllowed    int
+	MinimumIsolation IsolationStrength
+	AcceptUnenforced bool
 }
 
 func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
@@ -198,11 +187,20 @@ func requirementsFromPolicy(policy policySnapshot, model ...string) Requirements
 		Limits:           policy.ResourceLimits,
 		EgressMode:       policy.Egress.Mode,
 		EgressAllowed:    len(policy.Egress.Allow),
+		MinimumIsolation: policy.MinimumIsolation,
+		AcceptUnenforced: policy.CleanMode,
+	}
+	if req.MinimumIsolation == "" {
+		req.MinimumIsolation = strongIsolation
 	}
 	if len(model) > 0 {
 		req.Model = model[0]
 	}
 	return req
+}
+
+func RequirementsFor(deployment Deployment) Requirements {
+	return requirementsFromPolicy(defaultPolicy(deployment), deployment.Model)
 }
 
 func (s *Service) checkSchedulable(ctx context.Context, policy policySnapshot) error {
@@ -304,12 +302,12 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			fmt.Sprintf("%s 回報自己不健康", name))
 	}
 
-	if !c.Isolation.Strength.meets(requiredIsolation()) {
+	if !c.Isolation.Strength.meets(req.MinimumIsolation) {
 		return RuntimeProfile{}, cannotRun(
 			fmt.Sprintf("%s isolates workloads %q, and this deployment runs nothing weaker than %q",
-				name, c.Isolation.Strength, requiredIsolation()),
+				name, c.Isolation.Strength, req.MinimumIsolation),
 			fmt.Sprintf("%s 的隔離強度是 %q，這個部署不跑比 %q 更弱的",
-				name, c.Isolation.Strength, requiredIsolation()))
+				name, c.Isolation.Strength, req.MinimumIsolation))
 	}
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, cannotRun(
@@ -317,7 +315,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			fmt.Sprintf("%s 不是以非特權身分執行工作負載", name))
 	}
 
-	if len(c.MaxResourcesUnenforced) > 0 && !cleanTestMode() {
+	if len(c.MaxResourcesUnenforced) > 0 && !req.AcceptUnenforced {
 		return RuntimeProfile{}, cannotRun(
 			fmt.Sprintf("%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
 				name, strings.Join(c.MaxResourcesUnenforced, ", ")),
@@ -325,7 +323,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 				name, strings.Join(c.MaxResourcesUnenforced, "、")))
 	}
 
-	if c.Network.EgressUnenforced && !cleanTestMode() {
+	if c.Network.EgressUnenforced && !req.AcceptUnenforced {
 		return RuntimeProfile{}, cannotRun(
 			fmt.Sprintf("%s declares egress modes it does not enforce, which this deployment does not accept", name),
 			fmt.Sprintf("%s 宣告了自己不強制的網路出口模式，這個部署不接受", name))

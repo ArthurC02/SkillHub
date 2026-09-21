@@ -91,7 +91,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 				t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.file))
 			}
 
-			svc := &Service{ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+			svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
 			err := svc.requireCuratedContent(t.Context(), contentSourceRun())
 			if tc.wantPass {
 				if err != nil {
@@ -123,7 +123,7 @@ func TestUsingAReleaseSaysSoWithTheReasonTheOperatorGave(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	svc := &Service{ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+	svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
 	if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 		t.Fatalf("a released version was refused: %v", err)
 	}
@@ -155,14 +155,14 @@ func TestTheReleaseListIsNeverEvenReadOutsideTheCleanTestMode(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "")
 	t.Setenv("DEV_LOGIN", "1")
 
-	t.Setenv(cleanModeReleaseFile, t.TempDir())
+	path := t.TempDir()
 
 	var logged bytes.Buffer
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	if reason, released := operatorReleased(releasedVersion); released {
+	if reason, released := operatorReleased(releasedVersion, path); released {
 		t.Fatalf("a version was released off an unreadable list, reason %q", reason)
 	}
 	if logged.Len() == 0 {
@@ -194,7 +194,7 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 		t.Run(tc.what, func(t *testing.T) {
 			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
 			t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.line))
-			svc := &Service{ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+			svc := &Service{Deployment: deploymentFromTestEnv(), ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
 			if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
 				t.Fatalf("a release written this way was ignored (%s): %v", tc.why, err)
 			}
@@ -204,14 +204,14 @@ func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
 
 func TestALineThatLooksLikeAReleaseAndIsNotSaysSo(t *testing.T) {
 	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-	t.Setenv(cleanModeReleaseFile, writeReleases(t, "release "+releasedVersion+" for the demo\n"))
+	path := writeReleases(t, "release "+releasedVersion+" for the demo\n")
 
 	var logged bytes.Buffer
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
-	if _, released := operatorReleased(releasedVersion); released {
+	if _, released := operatorReleased(releasedVersion, path); released {
 		t.Fatal("a line whose first token is not the version id released it anyway")
 	}
 	if !strings.Contains(logged.String(), "does not release it") {

@@ -22,7 +22,14 @@ func GatewayFromEnv() *run.Gateway {
 
 func RunDeploymentFromEnv() run.Deployment {
 	budget, _ := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64)
-	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget}
+	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
+	minimumIsolation := run.StrongIsolation
+	if cleanMode {
+		minimumIsolation = run.NoIsolation
+	} else if os.Getenv("DEV_LOGIN") == "1" {
+		minimumIsolation = run.WeakIsolation
+	}
+	return run.Deployment{Model: os.Getenv("SKILLHUB_RUN_MODEL"), GatewayURL: strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/"), BudgetUSD: budget, MinimumIsolation: minimumIsolation, CleanMode: cleanMode, CleanModeReleases: os.Getenv("SKILLHUB_CLEAN_MODE_RELEASES")}
 }
 
 func NewRunRegistryFromEnv() *run.Registry {
