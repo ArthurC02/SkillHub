@@ -551,7 +551,7 @@ func (d *driver) command(ctx context.Context, command func(*Run)) (*Run, error) 
 func (d *driver) transition(
 	ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass FailureClass, reason statusReason,
 ) error {
-	run, err := d.svc.Transition(ctx, TransitionParams{
+	run, err := d.svc.transition(ctx, TransitionParams{
 		WorkspaceID:  d.cur.WorkspaceID,
 		RunID:        d.cur.ID,
 		AttemptID:    attemptID,

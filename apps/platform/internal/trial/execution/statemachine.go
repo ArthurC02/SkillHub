@@ -137,7 +137,7 @@ type TransitionParams struct {
 	Actor pgtype.UUID
 }
 
-func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, error) {
+func (s *Service) transition(ctx context.Context, p TransitionParams) (gen.Run, error) {
 	if !CanTransition(p.From, p.To) {
 		return gen.Run{}, fmt.Errorf("%w: %s -> %s", ErrIllegalTransition, p.From, p.To)
 	}
@@ -156,6 +156,14 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	}
 	observeTransition(r.Row(), p)
 	return r.Row(), nil
+}
+
+func (s *Service) Transition(ctx context.Context, p TransitionParams) (RunView, error) {
+	row, err := s.transition(ctx, p)
+	if err != nil {
+		return RunView{}, err
+	}
+	return runView(row), nil
 }
 
 func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, run gen.Run, failure FailureClass, reason string) error {
