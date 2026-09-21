@@ -1,0 +1,8 @@
+{
+  "id": "registry",
+  "name": "Skill Registry",
+  "responsibility": "Owns Skill assets and version history.",
+  "evidence": [
+    "docs/development/platform-context-map.md:21"
+  ]
+}

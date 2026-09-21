@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-registry-slice",
+  "proposal_id": "run-registry-slice",
+  "obligations": [
+    {
+      "id": "run-registry-obligation",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-registry-facts",
+      "expected_outcome": "Run ownership resolves.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    }
+  ]
+}

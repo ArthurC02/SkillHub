@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"dependency-policy",
 		"harness",
 		"comment-budget",
+		"domain-memory",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -41,6 +43,26 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		t.Fatalf("the checker roster changed: got [%s], want [%s]. "+
 			"Adding a checker means adding it here; removing one means saying so here too",
 			strings.Join(got, ", "), strings.Join(want, ", "))
+	}
+}
+
+func TestDomainMemoryProblemsRejectsAnyFailedVerification(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "domain-memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := domainMemoryTool
+	t.Cleanup(func() { domainMemoryTool = original })
+	domainMemoryTool = func(_ string, args ...string) (string, error) {
+		if args[0] == "verify-evidence" {
+			return "stale citation", errors.New("failed")
+		}
+		return "valid", nil
+	}
+
+	problems := domainMemoryProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "verify-evidence: stale citation") {
+		t.Fatalf("problems = %v, want the failed evidence verification", problems)
 	}
 }
 
@@ -128,6 +150,7 @@ func TestMain(m *testing.M) {
 	write(".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
 
 	write(".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
+	write("docs/domain-memory/not-a-registry", "")
 
 	var out bytes.Buffer
 	if err := automationCheck(root, &out); err == nil {

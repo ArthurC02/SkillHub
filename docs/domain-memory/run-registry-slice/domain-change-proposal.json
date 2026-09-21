@@ -1,0 +1,142 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-registry-slice",
+  "proposer": "developer",
+  "requirement_id": "run-registry-slice",
+  "status": "applied",
+  "change_classification": "material",
+  "submitted_at": "2026-09-21T10:28:45.056472Z",
+  "verified_at": "2026-09-21T10:29:02.559591Z",
+  "applied_at": "2026-09-21T10:29:03.376716Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+    "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+  },
+  "affected_contexts": [
+    "run",
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Run reads Registry facts.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Coding agents need ownership facts."
+    ],
+    "decision": "Record existing reviewed facts.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Infer ownership from folder names."
+    ],
+    "proof_obligations": [
+      "run-registry-obligation"
+    ],
+    "counterfactual_check": "Remove the ownership record and expect validation to fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "run",
+        "name": "Run Orchestration",
+        "responsibility": "Owns Skill trial Run lifecycle.",
+        "evidence": [
+          "docs/development/platform-context-map.md:24"
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "registry",
+        "name": "Skill Registry",
+        "responsibility": "Owns Skill assets and version history.",
+        "evidence": [
+          "docs/development/platform-context-map.md:21"
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "run",
+        "context": "run",
+        "root": "Run",
+        "invariants": [
+          "Run owns lifecycle transitions."
+        ],
+        "evidence": [
+          "docs/development/platform-ddd-convergence.md:120"
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "run",
+        "name": "Run",
+        "definition": "Skill trial lifecycle.",
+        "contexts": [
+          "run"
+        ],
+        "evidence": [
+          "docs/development/platform-ddd-convergence.md:120"
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "run-lifecycle-owner",
+        "contexts": [
+          "run"
+        ],
+        "statement": "Run owns lifecycle transitions.",
+        "evidence": [
+          "docs/development/platform-ddd-convergence.md:120"
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-21T10:28:45.330993Z",
+      "scope": "Run Registry slice",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+        "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+      }
+    }
+  ],
+  "finalized_at": "2026-09-21T10:29:02.861259Z",
+  "applied_registry_revision": {
+    "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+    "registry_digest": "sha256:a87fe971a0a6256042c7abbcdd6763db1cf700ba9ee908ccd849e69ba795e76b"
+  }
+}

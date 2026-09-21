@@ -1,0 +1,21 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-registry-slice",
+  "status": "draft",
+  "intent": "Record reviewed Run and Registry facts.",
+  "actor": "coding-agent",
+  "observable_outcome": "Reviewed records guide Run work.",
+  "acceptance_criteria": [
+    {
+      "id": "run-registry-facts",
+      "statement": "Run ownership is reviewed."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": []
+}

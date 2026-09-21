@@ -1,0 +1,44 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-registry-slice",
+  "proposal_id": "run-registry-slice",
+  "registry_revision": {
+    "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+    "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git",
+    "pull_request": "local-review",
+    "commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+      "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "run-registry-obligation",
+    "mutated_protection": "reviewed record evidence",
+    "failure_evidence": "registry validator rejects a reviewed record without evidence",
+    "restored": true
+  },
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "run-registry-obligation",
+      "status": "passed",
+      "evidence": "registry validate",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "finished_at": "2026-09-21T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

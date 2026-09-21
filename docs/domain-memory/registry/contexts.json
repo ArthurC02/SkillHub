@@ -1,5 +1,78 @@
 {
   "format": "domain-contexts/v1",
   "status": "reviewed",
-  "contexts": []
+  "contexts": [
+    {
+      "id": "run",
+      "name": "Run Orchestration",
+      "responsibility": "Owns Skill trial Run lifecycle.",
+      "evidence": [
+        {
+          "path": "docs/development/platform-context-map.md",
+          "lines": {
+            "start": 24,
+            "end": 24
+          },
+          "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
+          "excerpt_sha256": "sha256:a69319447f424b26bc5c20e6ea791732555128d2988bf5749c4bf28efa31e0b1",
+          "source_kind": "unclassified"
+        }
+      ],
+      "review": {
+        "proposal_id": "run-registry-slice",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-21T10:28:45.330993Z",
+            "scope": "Run Registry slice",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+              "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "registry",
+      "name": "Skill Registry",
+      "responsibility": "Owns Skill assets and version history.",
+      "evidence": [
+        {
+          "path": "docs/development/platform-context-map.md",
+          "lines": {
+            "start": 21,
+            "end": 21
+          },
+          "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
+          "excerpt_sha256": "sha256:850bc6dfefea6a0f6d49ccb82f2ec9e756ac672b1d72afdfe6f8d985bdbd078e",
+          "source_kind": "unclassified"
+        }
+      ],
+      "review": {
+        "proposal_id": "run-registry-slice",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-21T10:28:45.330993Z",
+            "scope": "Run Registry slice",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+              "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    }
+  ]
 }

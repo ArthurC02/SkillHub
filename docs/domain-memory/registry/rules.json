@@ -1,5 +1,44 @@
 {
   "format": "domain-rules/v1",
   "status": "reviewed",
-  "rules": []
+  "rules": [
+    {
+      "id": "run-lifecycle-owner",
+      "contexts": [
+        "run"
+      ],
+      "statement": "Run owns lifecycle transitions.",
+      "evidence": [
+        {
+          "path": "docs/development/platform-ddd-convergence.md",
+          "lines": {
+            "start": 120,
+            "end": 120
+          },
+          "content_sha256": "sha256:ae866e4bbae522dcbf5c740ab3bea6a6cc7c2c44c1adb1ff810afffe85c60366",
+          "excerpt_sha256": "sha256:7d913e495803508e0afb2a084abf9a187f5f45425a8f71d03326e5d92d89d318",
+          "source_kind": "unclassified"
+        }
+      ],
+      "review": {
+        "proposal_id": "run-registry-slice",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-21T10:28:45.330993Z",
+            "scope": "Run Registry slice",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "6fcf4d7fbb9e24bcf0263b800e1e27caef991c4e",
+              "registry_digest": "sha256:19a51bb35194a2196e9c98e559d2ec8f04ad362ca6f4ad9e7d0e448f394da9fc"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    }
+  ]
 }

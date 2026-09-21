@@ -1,0 +1,8 @@
+{
+  "id": "run",
+  "name": "Run Orchestration",
+  "responsibility": "Owns Skill trial Run lifecycle.",
+  "evidence": [
+    "docs/development/platform-context-map.md:24"
+  ]
+}
