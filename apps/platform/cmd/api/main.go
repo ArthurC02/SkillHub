@@ -227,7 +227,7 @@ func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimitErr
 }
 
 func main() {
-	creationLimits, _ := creation.LimitsFromEnv()
+	creationLimits, _ := wiring.CreationLimitsFromEnv()
 	var cleanWorker *worker.Set
 	creationTransient := creation.TransientClient(os.Getenv("CREATION_WORKER_INTERNAL_URL"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"), creationLimits.CallTimeout+30*time.Second)
 
@@ -362,7 +362,7 @@ func main() {
 		Quota:           quotaFromEnv(),
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
-		CreationExposed: creation.Exposed(), CreationLimits: creationLimits, CreationTransient: creationTransient,
+		CreationExposed: wiring.CreationExposedFromEnv(), CreationLimits: creationLimits, CreationTransient: creationTransient,
 		RateLimits: rateLimits,
 
 		CleanMode: clean,

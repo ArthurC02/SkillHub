@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"log/slog"
 	"net/http"
 	"os"
@@ -110,7 +109,7 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
 	}
 
-	creationLimits, _ := creation.LimitsFromEnv()
+	creationLimits, _ := wiring.CreationLimitsFromEnv()
 	set, err := worker.BuildWorkers(pool, worker.Deps{
 		CreationLimits:     creationLimits,
 		Providers:          providers,

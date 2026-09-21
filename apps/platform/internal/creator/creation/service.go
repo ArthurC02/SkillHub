@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"math"
-	"os"
 	"time"
 )
 
@@ -80,7 +79,7 @@ func (l Limits) Valid() bool {
 	return finite(l.MaxCostUSD) && finite(l.MaxCallCostUSD) && l.MaxCostUSD > 0 && l.MaxCallCostUSD > 0 && l.MaxCallCostUSD <= l.MaxCostUSD && l.MaxSteps > 0 && l.MaxToolCalls > 0 && l.CallTimeout >= time.Second && l.CallTimeout <= 120*time.Second && l.SessionTimeout >= l.CallTimeout && l.Retention >= l.SessionTimeout && l.MaxOutputTokens > 0 && l.MaxOutputTokens <= 16000
 }
 func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
-func LimitsFromEnv() (Limits, error) {
+func LimitsFromJSON(raw string) (Limits, error) {
 	var v struct {
 		MaxCostUSD      float64 `json:"max_cost_usd"`
 		MaxCallCostUSD  float64 `json:"max_call_cost_usd"`
@@ -91,7 +90,7 @@ func LimitsFromEnv() (Limits, error) {
 		Retention       int64   `json:"retention_seconds"`
 		MaxOutputTokens int     `json:"max_output_tokens"`
 	}
-	if err := json.Unmarshal([]byte(os.Getenv("CREATION_LIMITS_JSON")), &v); err != nil {
+	if err := json.Unmarshal([]byte(raw), &v); err != nil {
 		return Limits{}, ErrUnavailable
 	}
 	for _, n := range []int64{v.CallTimeout, v.SessionTimeout, v.Retention} {
@@ -105,7 +104,6 @@ func LimitsFromEnv() (Limits, error) {
 	}
 	return l, nil
 }
-func Exposed() bool { return os.Getenv("CREATION_EXPOSED") == "on" }
 
 type Reference struct {
 	SkillID       string `json:"skill_id"`

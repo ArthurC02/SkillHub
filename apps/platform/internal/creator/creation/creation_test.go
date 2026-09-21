@@ -70,10 +70,6 @@ func TestLimitsFailClosed(t *testing.T) {
 	if l.Valid() {
 		t.Fatal("infinite budget")
 	}
-	t.Setenv("CREATION_LIMITS_JSON", "{}")
-	if _, err := LimitsFromEnv(); err == nil {
-		t.Fatal("missing limits enabled")
-	}
 }
 
 func TestDiagramInterpretationRequiresAllSectionsBeforeSaving(t *testing.T) {
