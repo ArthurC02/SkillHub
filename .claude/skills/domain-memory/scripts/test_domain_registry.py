@@ -414,8 +414,9 @@ class DomainRegistryTest(unittest.TestCase):
             "attestation.json",
             {
                 "provider": "github",
-                "pull_request": "1",
-                "commit": "abc",
+                "pull_request": "https://github.example/repo/pull/1",
+                "checks_url": "https://github.example/repo/actions/runs/1",
+                "commit": "a" * 40,
                 "status": "approved",
                 "proposal_revision": 2,
                 "base_registry_revision": proposal["base_registry_revision"],
@@ -426,6 +427,12 @@ class DomainRegistryTest(unittest.TestCase):
         value["proposal_revision"] = 1
         path.write_text(json.dumps(value), encoding="utf-8")
         self.assertTrue(verify_scm(path, proposal))
+
+    def test_scm_attestation_rejects_a_local_claim_of_review(self) -> None:
+        proposal = {"proposal_revision": 1, "base_registry_revision": {"registry_digest": "sha256:" + "0" * 64, "observed_commit": None}}
+        path = self.write_record("attestation.json", {"provider": "git", "pull_request": "https://host.example/pull/1", "checks_url": "https://host.example/checks/1", "commit": "a" * 40, "status": "approved", "proposal_revision": 1, "base_registry_revision": proposal["base_registry_revision"]})
+        errors = verify_scm(path, proposal)
+        self.assertTrue(any("externally verifiable" in error for error in errors), errors)
 
     def test_audit_chain_detects_tampering(self) -> None:
         append_audit(self.repo / "memory", {"operation": "first"})
