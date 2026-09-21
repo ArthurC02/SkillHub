@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -204,20 +203,20 @@ func notFoundMessage(err error) string {
 	return messageRunNotFound
 }
 
-func toRunResponse(run gen.Run) runResponse {
+func toRunResponse(run RunView) runResponse {
 	return runResponse{
 		RunID:             pgconv.UUIDString(run.ID),
-		Status:            string(run.Status),
-		StatusReason:      deref(run.StatusReason),
+		Status:            run.Status,
+		StatusReason:      run.StatusReason,
 		SkillVersionID:    pgconv.UUIDString(run.SkillVersionID),
 		TestCaseSnapshot:  pgconv.UUIDString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
-		FailureClass:      failureClassWord(deref(run.FailureClass)),
-		CleanupStatus:     cleanupWord(string(run.CleanupStatus)),
-		CancelRequestedAt: pgconv.RFC3339(run.CancelRequestedAt),
-		CreatedAt:         pgconv.RFC3339(run.CreatedAt),
-		StartedAt:         pgconv.RFC3339(run.StartedAt),
-		FinishedAt:        pgconv.RFC3339(run.FinishedAt),
+		FailureClass:      failureClassWord(run.FailureClass),
+		CleanupStatus:     cleanupWord(run.CleanupStatus),
+		CancelRequestedAt: formatTime(run.CancelRequestedAt),
+		CreatedAt:         formatTime(run.CreatedAt),
+		StartedAt:         formatTime(run.StartedAt),
+		FinishedAt:        formatTime(run.FinishedAt),
 	}
 }
 

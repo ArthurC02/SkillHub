@@ -58,7 +58,7 @@ func RetryAfter(err error) (time.Duration, bool) {
 }
 
 func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) error {
-	current, err := s.Get(ctx, workspaceID, runID)
+	current, err := s.load(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {
 		slog.Warn("run job for unknown run", "run_id", pgconv.UUIDString(runID))
 		return nil
@@ -788,7 +788,7 @@ func liveAttempt(attempts []gen.RunAttempt) *gen.RunAttempt {
 }
 
 func (d *driver) cancelRequested(ctx context.Context) (bool, error) {
-	fresh, err := d.svc.Get(ctx, d.cur.WorkspaceID, d.cur.ID)
+	fresh, err := d.svc.load(ctx, d.cur.WorkspaceID, d.cur.ID)
 	if err != nil {
 		return false, err
 	}

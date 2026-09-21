@@ -181,3 +181,29 @@ func TestArtifactKeepsStorageMaintenanceDetailsOutOfTheReadModel(t *testing.T) {
 		t.Fatalf("artifact lifetime = (purged %v, expires %v), want (true, nil)", got.Purged, got.ExpiresAt)
 	}
 }
+
+func TestRunViewKeepsTheUseCaseResponseSeparateFromTheAggregateRow(t *testing.T) {
+	created := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	cancelled := created.Add(time.Minute)
+	reason := "user requested cancellation"
+	row := gen.Run{
+		ID:                 pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
+		Status:             gen.RunStatusRunning,
+		StatusReason:       &reason,
+		SkillVersionID:     pgtype.UUID{Bytes: [16]byte{2}, Valid: true},
+		TestCaseSnapshotID: pgtype.UUID{Bytes: [16]byte{3}, Valid: true},
+		Provider:           "sandbox",
+		CleanupStatus:      gen.RunCleanupStatusPending,
+		CreatedAt:          pgtype.Timestamptz{Time: created, Valid: true},
+		CancelRequestedAt:  pgtype.Timestamptz{Time: cancelled, Valid: true},
+		ArtifactsTruncated: true,
+	}
+
+	got := runView(row)
+	if got.ID != row.ID || got.Status != string(row.Status) || got.SkillVersionID != row.SkillVersionID || got.TestCaseSnapshotID != row.TestCaseSnapshotID {
+		t.Fatalf("view identity and state = %#v, want run fields", got)
+	}
+	if got.CancelRequestedAt == nil || !got.CancelRequestedAt.Equal(cancelled) || !got.ArtifactsTruncated {
+		t.Fatalf("view lifecycle = %#v, want cancellation and truncation", got)
+	}
+}

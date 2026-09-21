@@ -24,7 +24,7 @@ const OrphanScanInterval = 5 * time.Minute
 const OrphanScanJobKind = "run_orphan_scan"
 
 func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) error {
-	run, err := s.Get(ctx, workspaceID, runID)
+	run, err := s.load(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {
 		return nil
 	}

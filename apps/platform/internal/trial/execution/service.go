@@ -66,6 +66,22 @@ type RunSummary struct {
 	FinishedAt     *time.Time
 }
 
+type RunView struct {
+	ID                 pgtype.UUID
+	Status             string
+	StatusReason       string
+	SkillVersionID     pgtype.UUID
+	TestCaseSnapshotID pgtype.UUID
+	Provider           string
+	FailureClass       string
+	CleanupStatus      string
+	CancelRequestedAt  *time.Time
+	CreatedAt          *time.Time
+	StartedAt          *time.Time
+	FinishedAt         *time.Time
+	ArtifactsTruncated bool
+}
+
 type Linkage struct {
 	SkillID    pgtype.UUID
 	TestCaseID pgtype.UUID
@@ -274,15 +290,15 @@ type CreateParams struct {
 	ConfirmedSummaryHash string
 }
 
-func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
+func (s *Service) Create(ctx context.Context, p CreateParams) (RunView, error) {
 	if err := s.requireTestLab(); err != nil {
-		return gen.Run{}, err
+		return RunView{}, err
 	}
 	run, err := s.create(ctx, p)
 	if err != nil {
 		s.auditRefusal(ctx, p, err)
 	}
-	return run, err
+	return runView(run), err
 }
 
 func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
@@ -419,12 +435,35 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	return run, nil
 }
 
-func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.Run, error) {
+func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (RunView, error) {
+	run, err := s.load(ctx, workspaceID, runID)
+	return runView(run), err
+}
+
+func (s *Service) load(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.Run, error) {
 	run, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Run{}, ErrNotFound
 	}
 	return run, err
+}
+
+func runView(row gen.Run) RunView {
+	return RunView{
+		ID:                 row.ID,
+		Status:             string(row.Status),
+		StatusReason:       deref(row.StatusReason),
+		SkillVersionID:     row.SkillVersionID,
+		TestCaseSnapshotID: row.TestCaseSnapshotID,
+		Provider:           row.Provider,
+		FailureClass:       deref(row.FailureClass),
+		CleanupStatus:      string(row.CleanupStatus),
+		CancelRequestedAt:  timePointer(row.CancelRequestedAt),
+		CreatedAt:          timePointer(row.CreatedAt),
+		StartedAt:          timePointer(row.StartedAt),
+		FinishedAt:         timePointer(row.FinishedAt),
+		ArtifactsTruncated: row.ArtifactsTruncated,
+	}
 }
 
 func (s *Service) List(
@@ -526,7 +565,7 @@ func (s *Service) Artifacts(
 	ctx context.Context, workspaceID, runID pgtype.UUID,
 ) ([]Artifact, bool, error) {
 
-	run, err := s.Get(ctx, workspaceID, runID)
+	run, err := s.load(ctx, workspaceID, runID)
 	if err != nil {
 		return nil, false, err
 	}
@@ -604,22 +643,22 @@ func (s *Service) Attempts(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	})
 }
 
-func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor pgtype.UUID) (gen.Run, error) {
+func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor pgtype.UUID) (RunView, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.Run{}, err
+		return RunView{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	r, err := loadRun(ctx, s.queries().WithTx(tx), workspaceID, runID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Run{}, ErrNotFound
+		return RunView{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Run{}, err
+		return RunView{}, err
 	}
 	r.RequestCancel()
 	if err := s.saveRun(ctx, tx, r, actor); err != nil {
-		return gen.Run{}, err
+		return RunView{}, err
 	}
 	run := r.Row()
 
@@ -628,9 +667,12 @@ func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor p
 		ResourceType: audit.ResourceRun, ResourceID: run.ID,
 		Metadata: map[string]any{"status_at_request": string(run.Status)},
 	}); err != nil {
-		return gen.Run{}, err
+		return RunView{}, err
 	}
-	return run, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return RunView{}, err
+	}
+	return runView(run), nil
 }
 
 func nowUTC() string { return time.Now().UTC().Format(time.RFC3339) }
