@@ -34,6 +34,13 @@ type dailyAmountView struct {
 	Total int64  `json:"total"`
 }
 
+type trendView[T any] struct {
+	From         string `json:"from"`
+	To           string `json:"to"`
+	Buckets      []T    `json:"buckets"`
+	BalanceTotal *int64 `json:"balance_total,omitempty"`
+}
+
 func trendDays(r *http.Request) (int, error) {
 	q := r.URL.Query()
 	if !q.Has("days") {
@@ -61,8 +68,8 @@ func (h *trendsHandler) window(w http.ResponseWriter, r *http.Request) (from, to
 	return to.AddDate(0, 0, 1-days), to, true
 }
 
-func trendBody(from, to time.Time, buckets any) map[string]any {
-	return map[string]any{"from": from.Format(isoDate), "to": to.Format(isoDate), "buckets": buckets}
+func newTrendView[T any](from, to time.Time, buckets []T) trendView[T] {
+	return trendView[T]{From: from.Format(isoDate), To: to.Format(isoDate), Buckets: buckets}
 }
 
 func amountViews(days []credit.DailyAmount) []dailyAmountView {
@@ -83,7 +90,7 @@ func (h *trendsHandler) Cost(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "cost trend lookup failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, trendBody(from, to, amountViews(days)))
+	httpx.WriteJSON(w, http.StatusOK, newTrendView(from, to, amountViews(days)))
 }
 
 func (h *trendsHandler) CreditMovement(w http.ResponseWriter, r *http.Request) {
@@ -96,8 +103,8 @@ func (h *trendsHandler) CreditMovement(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "credit trend lookup failed")
 		return
 	}
-	body := trendBody(from, to, amountViews(days))
-	body["balance_total"] = balanceTotal
+	body := newTrendView(from, to, amountViews(days))
+	body.BalanceTotal = &balanceTotal
 	httpx.WriteJSON(w, http.StatusOK, body)
 }
 
@@ -115,7 +122,7 @@ func (h *trendsHandler) Runs(w http.ResponseWriter, r *http.Request) {
 	for _, d := range days {
 		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: d.Status, Count: d.Runs})
 	}
-	httpx.WriteJSON(w, http.StatusOK, trendBody(from, to, views))
+	httpx.WriteJSON(w, http.StatusOK, newTrendView(from, to, views))
 }
 
 func (h *trendsHandler) OperatorActions(w http.ResponseWriter, r *http.Request) {
@@ -132,5 +139,5 @@ func (h *trendsHandler) OperatorActions(w http.ResponseWriter, r *http.Request) 
 	for _, d := range days {
 		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: d.Action, Count: d.Count})
 	}
-	httpx.WriteJSON(w, http.StatusOK, trendBody(from, to, views))
+	httpx.WriteJSON(w, http.StatusOK, newTrendView(from, to, views))
 }
