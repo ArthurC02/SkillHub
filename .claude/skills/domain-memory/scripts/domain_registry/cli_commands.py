@@ -48,7 +48,7 @@ from .sources import (
     write_source_map,
 )
 from .transaction import recover_interrupted_update
-from .updates import apply_approved_updates, upsert_candidate
+from .updates import apply_approved_updates, review_empty_registry, upsert_candidate
 
 
 def probe_summary(result: dict, registry_root: Path) -> str:
@@ -104,6 +104,14 @@ def handle_migrate_registry(args: argparse.Namespace) -> int:
             ensure_ascii=False,
         )
     )
+    return 0
+
+
+def handle_review_empty_registry(args: argparse.Namespace) -> int:
+    review_empty_registry(
+        args.registry_root.resolve(), args.repo_root.resolve(), args.reviewer
+    )
+    print("Empty Registry is reviewed.")
     return 0
 
 
@@ -494,6 +502,7 @@ HANDLERS = {
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
     "apply-approved-updates": handle_apply_approved_updates,
+    "review-empty-registry": handle_review_empty_registry,
     "discover-sources": handle_discover_sources,
     "readiness": handle_readiness,
     "verify-sources": handle_verify_sources,

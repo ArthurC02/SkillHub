@@ -70,6 +70,7 @@ from domain_registry.transaction import recover_interrupted_update, transaction_
 from domain_registry.updates import (
     apply_approved_updates,
     reconcile_pending_update,
+    review_empty_registry,
     upsert_candidate,
 )
 
@@ -190,6 +191,20 @@ class DomainRegistryTest(unittest.TestCase):
             {"id": "orders", "name": "Orders", "responsibility": "Own orders."},
         )
         upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+
+    def test_reviewing_an_empty_registry_marks_every_asset_reviewed(self) -> None:
+        review_empty_registry(self.repo / "memory", self.repo, "developer")
+
+        self.assertEqual([], validate(self.repo / "memory", self.repo, True))
+
+    def test_reviewing_an_nonempty_registry_is_rejected(self) -> None:
+        self.seed(
+            "contexts.json",
+            [{"id": "orders", "name": "Orders", "responsibility": "Own orders."}],
+        )
+
+        with self.assertRaisesRegex(ValueError, "every asset to be empty"):
+            review_empty_registry(self.repo / "memory", self.repo, "developer")
 
     def test_changed_registry_rejects_a_captured_revision(self) -> None:
         expected = current_registry_revision(self.repo / "memory", self.repo)
