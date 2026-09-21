@@ -60,6 +60,32 @@ type Gateway struct {
 	HTTP         *http.Client
 }
 
+type GatewayConfig struct {
+	AdminBaseURL, AdminKey, SandboxBaseURL, Model string
+	MaxBudgetUSD                                  float64
+	TPMLimit                                      int
+	HTTP                                          *http.Client
+}
+
+func NewGateway(c GatewayConfig) *Gateway {
+	if c.SandboxBaseURL == "" || c.AdminKey == "" {
+		return nil
+	}
+	if c.AdminBaseURL == "" {
+		c.AdminBaseURL = c.SandboxBaseURL
+	}
+	if c.MaxBudgetUSD <= 0 {
+		c.MaxBudgetUSD = defaultKeyBudgetUSD
+	}
+	if c.TPMLimit <= 0 {
+		c.TPMLimit = defaultKeyTPMLimit
+	}
+	if c.HTTP == nil {
+		c.HTTP = &http.Client{Timeout: 20 * time.Second}
+	}
+	return &Gateway{AdminBaseURL: c.AdminBaseURL, adminKey: c.AdminKey, SandboxBaseURL: c.SandboxBaseURL, Model: c.Model, MaxBudgetUSD: c.MaxBudgetUSD, TPMLimit: c.TPMLimit, HTTP: c.HTTP}
+}
+
 func GatewayFromEnv() *Gateway {
 	base := strings.TrimSuffix(os.Getenv("SKILLHUB_MODEL_GATEWAY_URL"), "/")
 	key := os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY")
@@ -70,15 +96,7 @@ func GatewayFromEnv() *Gateway {
 	if admin == "" {
 		admin = base
 	}
-	g := &Gateway{
-		AdminBaseURL:   admin,
-		adminKey:       key,
-		SandboxBaseURL: base,
-		Model:          RunModel(),
-		MaxBudgetUSD:   defaultKeyBudgetUSD,
-		TPMLimit:       defaultKeyTPMLimit,
-		HTTP:           &http.Client{Timeout: 20 * time.Second},
-	}
+	g := NewGateway(GatewayConfig{AdminBaseURL: admin, AdminKey: key, SandboxBaseURL: base, Model: RunModel()})
 	if v, err := strconv.ParseFloat(os.Getenv("SKILLHUB_RUN_MAX_BUDGET_USD"), 64); err == nil && v > 0 {
 		g.MaxBudgetUSD = v
 	}

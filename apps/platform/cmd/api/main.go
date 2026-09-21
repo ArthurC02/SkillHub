@@ -384,7 +384,7 @@ func main() {
 			CreationLimits:     creationLimits,
 			Providers:          providers,
 			Store:              store,
-			Gateway:            run.GatewayFromEnv(),
+			Gateway:            wiring.GatewayFromEnv(),
 			TraceSigner:        traceSigner,
 			TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
 			LLM:                llm,

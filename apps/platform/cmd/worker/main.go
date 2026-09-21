@@ -88,7 +88,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	gateway := run.GatewayFromEnv()
+	gateway := wiring.GatewayFromEnv()
 	if gateway == nil {
 		slog.Warn("no model gateway configured; runs will be dispatched with no model credential")
 	} else {
