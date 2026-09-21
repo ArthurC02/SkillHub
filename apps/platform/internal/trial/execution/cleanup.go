@@ -8,50 +8,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const orphanGrace = 5 * time.Minute
 
 const OrphanScanInterval = 5 * time.Minute
 
-type CleanupArgs struct {
-	RunID       string `json:"run_id"`
-	WorkspaceID string `json:"workspace_id"`
-}
+const OrphanScanJobKind = "run_orphan_scan"
 
-func (CleanupArgs) Kind() string { return "run_cleanup" }
-
-func cleanupInsertOpts() *river.InsertOpts {
-	return &river.InsertOpts{
-		UniqueOpts:  river.UniqueOpts{ByArgs: true, ByState: liveJobStates},
-		MaxAttempts: 5,
-	}
-}
-
-type CleanupWorker struct {
-	river.WorkerDefaults[CleanupArgs]
-	Svc *Service
-}
-
-func (w *CleanupWorker) Work(ctx context.Context, job *river.Job[CleanupArgs]) error {
-	var runID, workspaceID pgtype.UUID
-	if err := runID.Scan(job.Args.RunID); err != nil {
-		return err
-	}
-	if err := workspaceID.Scan(job.Args.WorkspaceID); err != nil {
-		return err
-	}
-
-	run, err := w.Svc.Get(ctx, workspaceID, runID)
+func (s *Service) CleanRun(ctx context.Context, workspaceID, runID pgtype.UUID) error {
+	run, err := s.Get(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {
 		return nil
 	}
@@ -65,7 +38,7 @@ func (w *CleanupWorker) Work(ctx context.Context, job *river.Job[CleanupArgs]) e
 	if run.CleanupStatus == gen.RunCleanupStatusCleaned {
 		return nil
 	}
-	return w.Svc.Cleanup(ctx, run)
+	return s.Cleanup(ctx, run)
 }
 
 func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
@@ -205,19 +178,10 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	return tx.Commit(ctx)
 }
 
-type OrphanScanArgs struct{}
-
-func (OrphanScanArgs) Kind() string { return "run_orphan_scan" }
-
-type OrphanScanWorker struct {
-	river.WorkerDefaults[OrphanScanArgs]
-	Svc *Service
-}
-
-func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs]) error {
+func (s *Service) ScanOrphans(ctx context.Context) error {
 	var failures []string
-	for _, provider := range w.Svc.providers().Providers {
-		if err := w.Svc.scanProvider(ctx, provider); err != nil {
+	for _, provider := range s.providers().Providers {
+		if err := s.scanProvider(ctx, provider); err != nil {
 			metrics.OrphanScan.WithLabelValues(provider.Name(), "error").Inc()
 			failures = append(failures, fmt.Sprintf("%s: %v", provider.Name(), err))
 			continue
@@ -225,7 +189,7 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 		metrics.OrphanScan.WithLabelValues(provider.Name(), "ok").Inc()
 	}
 
-	w.Svc.EvaluateOrphanThresholds(ctx)
+	s.EvaluateOrphanThresholds(ctx)
 	if len(failures) > 0 {
 		return errors.New("orphan scan incomplete: " + strings.Join(failures, "; "))
 	}

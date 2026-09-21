@@ -19,6 +19,8 @@ import (
 	"github.com/riverqueue/river"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -104,13 +106,13 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator *eval.Service) *r
 		t.Fatal("worker evaluator is not wired")
 	}
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &run.Worker{Svc: svc})
-	river.AddWorker(workers, &run.CleanupWorker{Svc: svc})
-	river.AddWorker(workers, &run.OrphanScanWorker{Svc: svc})
-	river.AddWorker(workers, &run.SuperviseWorker{Svc: svc})
+	river.AddWorker(workers, &worker.RunExecuteWorker{Runs: svc})
+	river.AddWorker(workers, &worker.RunCleanupWorker{Runs: svc})
+	river.AddWorker(workers, &worker.RunOrphanScanWorker{Runs: svc})
+	river.AddWorker(workers, &worker.RunSuperviseWorker{Runs: svc})
 
 	evalSvc := *evaluator
-	river.AddWorker(workers, &eval.Worker{Svc: &evalSvc})
+	river.AddWorker(workers, &worker.EvaluationExecuteWorker{Svc: &evalSvc})
 
 	runEvents := &eval.RunEventConsumer{HasCurrentEvaluation: evalSvc.HasCurrentEvaluation}
 	outboxWorker := &outbox.Worker{
@@ -129,10 +131,10 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator *eval.Service) *r
 	if err != nil {
 		t.Fatal(err)
 	}
-	runEvents.Insert = c.Insert
+	runEvents.Enqueue = wiring.NewEvaluationEnqueue(c)
 
 	if svc.Queue == nil {
-		svc.Queue = run.NewRunQueue(c)
+		svc.Queue = wiring.NewRunQueue(c)
 	}
 	if err := c.Start(context.Background()); err != nil {
 		t.Fatal(err)

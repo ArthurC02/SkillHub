@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
@@ -170,11 +168,7 @@ func TestEvaluationRetryDoesNotRepeatACompletedJudgeCall(t *testing.T) {
 	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatal(err)
 	}
-	worker := &eval.Worker{Svc: a.evaluations}
-	err := worker.Work(context.Background(), &river.Job[eval.JobArgs]{
-		JobRow: &rivertype.JobRow{Attempt: 2},
-		Args:   eval.JobArgs{RunID: runID, WorkspaceID: c.workspaceID},
-	})
+	err := a.evaluations.DeliverEvaluation(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,13 +197,12 @@ func TestStalePendingEvaluationIsReconciledWithoutJudge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	worker := &eval.RecoveryWorker{Svc: a.evaluations}
 	start := make(chan struct{})
 	errs := make(chan error, 2)
 	for range 2 {
 		go func() {
 			<-start
-			errs <- worker.Work(context.Background(), &river.Job[eval.RecoveryArgs]{})
+			errs <- a.evaluations.RecoverPending(context.Background())
 		}()
 	}
 	close(start)

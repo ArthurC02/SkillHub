@@ -7,8 +7,6 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -18,11 +16,11 @@ import (
 
 const (
 	actionSuggestionProvenanceLost = "evaluation.provenance_not_recorded"
-	suggestionsAppliedAttempts     = 5
+	SuggestionsAppliedAttempts     = 5
 )
 
 type SkillVersionConsumer struct {
-	Insert func(context.Context, river.JobArgs, *river.InsertOpts) (*rivertype.JobInsertResult, error)
+	Enqueue func(context.Context, SuggestionsAppliedArgs) error
 }
 
 type versionAdded struct {
@@ -37,7 +35,7 @@ func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) 
 	if event.EventType != outbox.SkillVersionAdded {
 		return nil
 	}
-	if c.Insert == nil {
+	if c.Enqueue == nil {
 		return errors.New("suggestions-applied consumer is not configured")
 	}
 	var added versionAdded
@@ -47,11 +45,11 @@ func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) 
 	if added.ImprovedBy == nil {
 		return nil
 	}
-	_, err := c.Insert(ctx, SuggestionsAppliedArgs{
+	err := c.Enqueue(ctx, SuggestionsAppliedArgs{
 		EventID:     event.EventID,
 		WorkspaceID: event.WorkspaceID, SkillID: event.AggregateID, SkillVersionID: added.VersionID,
 		EvaluationID: added.ImprovedBy.EvaluationID, SuggestionIDs: added.ImprovedBy.SuggestionIDs,
-	}, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true}, MaxAttempts: suggestionsAppliedAttempts})
+	})
 	return err
 }
 
@@ -65,15 +63,6 @@ type SuggestionsAppliedArgs struct {
 }
 
 func (SuggestionsAppliedArgs) Kind() string { return "record_suggestions_applied" }
-
-type SuggestionsAppliedWorker struct {
-	river.WorkerDefaults[SuggestionsAppliedArgs]
-	Svc *Service
-}
-
-func (w *SuggestionsAppliedWorker) Work(ctx context.Context, job *river.Job[SuggestionsAppliedArgs]) error {
-	return w.Svc.ConsumeSuggestionsApplied(ctx, job.Args, job.Attempt >= job.MaxAttempts)
-}
 
 func (s *Service) ConsumeSuggestionsApplied(ctx context.Context, a SuggestionsAppliedArgs, lastTry bool) error {
 	err := s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)

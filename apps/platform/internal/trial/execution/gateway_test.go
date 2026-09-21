@@ -95,18 +95,6 @@ func TestCreationGrantUsesSessionAttribution(t *testing.T) {
 	}
 }
 
-func TestBoundedResponseAcceptsItsExactLimit(t *testing.T) {
-	const limit = int64(32)
-	body := strings.Repeat("x", int(limit))
-	got, err := readBoundedResponse(strings.NewReader(body), limit)
-	if err != nil {
-		t.Fatalf("exact-limit response refused: %v", err)
-	}
-	if string(got) != body {
-		t.Fatal("exact-limit response changed")
-	}
-}
-
 func TestGatewayAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
 	for _, tc := range []struct {
 		code int

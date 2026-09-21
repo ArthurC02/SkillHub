@@ -624,12 +624,6 @@ func TestExcerptsAreCutOnRunesNotBytes(t *testing.T) {
 	}
 }
 
-func TestEvaluationJobsGetOneRecoveryAttempt(t *testing.T) {
-	if got := InsertOpts().MaxAttempts; got != 2 {
-		t.Fatalf("MaxAttempts = %d, want 2 (one work attempt plus one recovery attempt)", got)
-	}
-}
-
 func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
 	view := trace.AdvancedView{Complete: true, Events: []trace.EventView{{
 		EventID: eventID, Type: trace.TypeAgentOutput,

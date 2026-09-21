@@ -8,7 +8,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
 	"log/slog"
 	"math"
 	"time"
@@ -21,31 +20,9 @@ type JobArgs struct {
 	ReceiptID   pgtype.UUID `json:"receipt_id"`
 }
 
-func (JobArgs) Kind() string                 { return "creation_step" }
-func (JobArgs) InsertOpts() river.InsertOpts { return river.InsertOpts{MaxAttempts: 1} }
-
-type Worker struct {
-	river.WorkerDefaults[JobArgs]
-	Svc *Service
-}
-
-func (w *Worker) Work(ctx context.Context, j *river.Job[JobArgs]) error {
-	return w.Svc.Step(ctx, j.Args, nil)
-}
-func (w *Worker) Timeout(*river.Job[JobArgs]) time.Duration { return 3 * time.Minute }
-
-type ExpiryArgs struct{}
-
-func (ExpiryArgs) Kind() string { return "creation_expiry" }
-
-type ExpiryWorker struct {
-	river.WorkerDefaults[ExpiryArgs]
-	Svc *Service
-}
-
-func (w *ExpiryWorker) Work(ctx context.Context, _ *river.Job[ExpiryArgs]) error {
-	recoverErr := w.Svc.Recover(ctx)
-	_, purgeErr := PurgeExpired(ctx, w.Svc.Pool, w.Svc.Limits.Retention)
+func (s *Service) RecoverExpired(ctx context.Context) error {
+	recoverErr := s.Recover(ctx)
+	_, purgeErr := PurgeExpired(ctx, s.Pool, s.Limits.Retention)
 	return errors.Join(recoverErr, purgeErr)
 }
 

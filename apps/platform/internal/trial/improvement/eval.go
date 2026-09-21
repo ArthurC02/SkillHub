@@ -215,6 +215,13 @@ var errRunStillGoing = errors.New("evaluation: the run has not finished")
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
+func (s *Service) DeliverEvaluation(ctx context.Context, workspaceID, runID pgtype.UUID, retry bool) error {
+	if retry {
+		return s.recoverAttempt(ctx, workspaceID, runID)
+	}
+	return s.Evaluate(ctx, workspaceID, runID)
+}
+
 func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID pgtype.UUID) (bool, error) {
 	if s == nil || s.Pool == nil {
 		return false, errors.New("evaluation persistence is not configured")

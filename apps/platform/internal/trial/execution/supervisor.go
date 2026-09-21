@@ -6,12 +6,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -32,19 +30,6 @@ func CleanupClaim(batch int32) gen.ListRunsNeedingCleanupParams {
 	return gen.ListRunsNeedingCleanupParams{
 		SettledFor: pgconv.Interval(CleanupRescueAfter), RecheckAfter: pgconv.Interval(SuperviseInterval), BatchSize: batch,
 	}
-}
-
-type SuperviseArgs struct{}
-
-func (SuperviseArgs) Kind() string { return "run_supervise" }
-
-type SuperviseWorker struct {
-	river.WorkerDefaults[SuperviseArgs]
-	Svc *Service
-}
-
-func (w *SuperviseWorker) Work(ctx context.Context, _ *river.Job[SuperviseArgs]) error {
-	return w.Svc.Supervise(ctx)
 }
 
 func (s *Service) Supervise(ctx context.Context) error {

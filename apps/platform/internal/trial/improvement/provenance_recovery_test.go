@@ -8,8 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -87,9 +85,8 @@ func TestProvenanceThatRanOutOfDeliveryTriesIsStillRecordedByTheSweep(t *testing
 		t.Fatalf("%d applications before the sweep, want 0: the letter is meant to be lost", got)
 	}
 
-	if err := (&RecoveryWorker{Svc: s}).Work(context.Background(),
-		&river.Job[RecoveryArgs]{JobRow: &rivertype.JobRow{}, Args: RecoveryArgs{}}); err != nil {
-		t.Fatalf("recovery job: %v", err)
+	if err := s.RecoverPending(context.Background()); err != nil {
+		t.Fatalf("recovery: %v", err)
 	}
 
 	if got := appliedSuggestionCount(t, s, m.run.WorkspaceID, version); got != 1 {

@@ -15,6 +15,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
+	platformworker "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -253,18 +254,16 @@ func deliverImprovedVersion(t *testing.T, a *api, pool *pgxpool.Pool, versionID 
 		t.Fatalf("the version's skill.version_added event: %v", err)
 	}
 	var letter *river.Job[eval.SuggestionsAppliedArgs]
-	mailbox := &eval.SkillVersionConsumer{Insert: func(
-		_ context.Context, args river.JobArgs, opts *river.InsertOpts,
-	) (*rivertype.JobInsertResult, error) {
+	mailbox := &eval.SkillVersionConsumer{Enqueue: func(_ context.Context, args eval.SuggestionsAppliedArgs) error {
 		attempt := 1
 		if finalAttempt {
-			attempt = opts.MaxAttempts
+			attempt = eval.SuggestionsAppliedAttempts
 		}
 		letter = &river.Job[eval.SuggestionsAppliedArgs]{
-			JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: opts.MaxAttempts},
-			Args:   args.(eval.SuggestionsAppliedArgs),
+			JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: eval.SuggestionsAppliedAttempts},
+			Args:   args,
 		}
-		return nil, nil
+		return nil
 	}}
 	if err := mailbox.Deliver(ctx, event); err != nil {
 		t.Fatalf("deliver: %v", err)
@@ -272,7 +271,7 @@ func deliverImprovedVersion(t *testing.T, a *api, pool *pgxpool.Pool, versionID 
 	if letter == nil {
 		t.Fatal("a version built from suggestions posted nothing to the evaluation's mailbox")
 	}
-	return (&eval.SuggestionsAppliedWorker{Svc: a.evaluations}).Work(ctx, letter)
+	return (&platformworker.SuggestionsAppliedWorker{Svc: a.evaluations}).Work(ctx, letter)
 }
 
 func storedFile(t *testing.T, a *api, key, path string) string {

@@ -16,8 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -199,9 +199,9 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 	}
 	consumer := &eval.RunEventConsumer{
 		HasCurrentEvaluation: a.evaluations.HasCurrentEvaluation,
-		Insert: func(context.Context, river.JobArgs, *river.InsertOpts) (*rivertype.JobInsertResult, error) {
+		Enqueue: func(context.Context, eval.JobArgs) error {
 			t.Error("a redelivered run.succeeded enqueued a second evaluation")
-			return nil, nil
+			return nil
 		},
 	}
 	if err := consumer.Deliver(context.Background(), event); err != nil {
@@ -1109,10 +1109,10 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	}
 
 	settled := fake.Destroys()
-	job := &river.Job[run.CleanupArgs]{
-		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
+	job := &river.Job[worker.RunCleanupArgs]{
+		Args: worker.RunCleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
 	}
-	if err := (&run.CleanupWorker{Svc: &svc}).Work(context.Background(), job); err != nil {
+	if err := (&worker.RunCleanupWorker{Runs: &svc}).Work(context.Background(), job); err != nil {
 		t.Fatalf("a cleanup job for an already-cleaned run: %v", err)
 	}
 	if got := fake.Destroys(); got != settled {
@@ -1166,7 +1166,7 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
 	waitForCleanup(t, f.client, created.RunID)
 
-	if err := (&run.OrphanScanWorker{Svc: svc}).Work(context.Background(), nil); err != nil {
+	if err := (&worker.RunOrphanScanWorker{Runs: svc}).Work(context.Background(), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1251,7 +1251,7 @@ func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
 
 	fresh := fake.Seed(created.RunID, inFlight, time.Now())
 
-	if err := (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil); err != nil {
+	if err := (&worker.RunOrphanScanWorker{Runs: svc}).Work(ctx, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fake.Provider().Observe(ctx, leaked); err == nil {
@@ -1273,7 +1273,7 @@ func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
 	stuck := fake.Seed("00000000-0000-4000-8000-000000000011",
 		"00000000-0000-4000-8000-000000000012", time.Now().Add(-time.Hour))
 
-	scan := func() { _ = (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil) }
+	scan := func() { _ = (&worker.RunOrphanScanWorker{Runs: svc}).Work(ctx, nil) }
 
 	scan()
 	if got := persistentOrphans(t, pool, fake.Name); got != 0 {

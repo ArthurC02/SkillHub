@@ -443,8 +443,6 @@ const (
 
 const reconcilerStallWindow = 10 * time.Minute
 
-const reconcilerLastRun = `SELECT max(coalesce(finalized_at, attempted_at)) FROM river_job WHERE kind = $1`
-
 func (s *Service) detectMaskingStopped(ctx context.Context) {
 	if s.incidentAlreadyHeld(ctx) {
 		return
@@ -529,16 +527,19 @@ func (s *Service) DetectReconcilerStall(ctx context.Context) {
 	if s.incidentAlreadyHeld(ctx) {
 		return
 	}
-	var last pgtype.Timestamptz
-	if err := s.Pool.QueryRow(ctx, reconcilerLastRun, OrphanScanArgs{}.Kind()).Scan(&last); err != nil {
+	if s.LastOrphanScan == nil {
+		slog.Error("orphan reconciler monitor is not injected")
+		return
+	}
+	last, found, err := s.LastOrphanScan(ctx)
+	if err != nil {
 		slog.Error("could not read when the orphan reconciler last ran", "error", err)
 		return
 	}
-
-	if !last.Valid {
+	if !found {
 		return
 	}
-	idle := time.Since(last.Time)
+	idle := s.now().Sub(last)
 	if idle <= reconcilerStallWindow {
 		return
 	}

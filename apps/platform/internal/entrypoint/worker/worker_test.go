@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -26,7 +26,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
@@ -117,10 +116,10 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("object reconciler is missing an owner read/write function")
 	}
 
-	if set.RunEvents.HasCurrentEvaluation == nil || set.RunEvents.Insert == nil {
-		t.Error("run event consumer is missing HasCurrentEvaluation or Insert")
+	if set.RunEvents.HasCurrentEvaluation == nil || set.RunEvents.Enqueue == nil {
+		t.Error("run event consumer is missing HasCurrentEvaluation or enqueue")
 	}
-	if set.SkillVersions == nil || set.SkillVersions.Insert == nil {
+	if set.SkillVersions == nil || set.SkillVersions.Enqueue == nil {
 		t.Error("the evaluation's mailbox for skill versions is not wired to the queue")
 	}
 }
@@ -204,15 +203,15 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		eval.RecoveryArgs{}.Kind():      true,
-		run.SuperviseArgs{}.Kind():      true,
-		run.OrphanScanArgs{}.Kind():     true,
-		outbox.PublishArgs{}.Kind():     true,
-		objreconcile.Args{}.Kind():      false,
-		PartitionCreateArgs{}.Kind():    true,
-		EnrichmentBackfillArgs{}.Kind(): false,
-		credit.RecomputeArgs{}.Kind():   false,
-		BacklogObserveArgs{}.Kind():     true,
+		EvaluationRecoveryArgs{}.Kind():     true,
+		RunSuperviseArgs{}.Kind():           true,
+		RunOrphanScanArgs{}.Kind():          true,
+		outbox.PublishArgs{}.Kind():         true,
+		objreconcile.Args{}.Kind():          false,
+		PartitionCreateArgs{}.Kind():        true,
+		EnrichmentBackfillArgs{}.Kind():     false,
+		wiring.CreditRecomputeArgs{}.Kind(): false,
+		BacklogObserveArgs{}.Kind():         true,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)

@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
@@ -164,10 +163,11 @@ func NewApp(cfg Config) (*App, error) {
 	}
 
 	runSvc := &run.Service{
-		Pool: cfg.Pool, TestLab: testlabSvc, Queue: run.NewRunQueue(jobs), Providers: cfg.Providers, Store: cfg.Store,
+		Pool: cfg.Pool, TestLab: testlabSvc, Queue: wiring.NewRunQueue(jobs), Providers: cfg.Providers, Store: cfg.Store,
 		ClearSightings:     objreconcile.ClearArtifactSightings,
 		Quota:              cfg.Quota,
 		WorkspaceCreatedAt: auth.Service.WorkspaceCreatedAt,
+		LastOrphanScan:     wiring.LastOrphanScan(cfg.Pool),
 	}
 	wiring.WireRunRegistryReaders(runSvc, registrySvc)
 	funnel.RunBelongsToWorkspace = runSvc.BelongsToWorkspace
@@ -240,10 +240,7 @@ func NewApp(cfg Config) (*App, error) {
 	registrySvc.CatalogSkillRisks = catalogSvc.CatalogSkillRisks
 
 	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits}
-	creationSvc.Insert = func(ctx context.Context, tx pgx.Tx, a creation.JobArgs) error {
-		_, err := jobs.InsertTx(ctx, tx, a, &river.InsertOpts{MaxAttempts: 1})
-		return err
-	}
+	creationSvc.Insert = wiring.NewCreationQueue(jobs)
 	wireCreationReads(creationSvc, versions, catalogSvc)
 	wireCreationWrites(creationSvc, versions, runSvc, evalSvc)
 	wireCreationTestCases(creationSvc, testlabSvc)

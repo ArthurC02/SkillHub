@@ -16,8 +16,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -34,40 +32,8 @@ const (
 
 	SlotWaitLimit = 30 * time.Minute
 
-	jobTimeout = 30 * time.Minute
-
 	reasonLimit = 500
 )
-
-var liveJobStates = []rivertype.JobState{
-	rivertype.JobStateAvailable,
-	rivertype.JobStatePending,
-	rivertype.JobStateRunning,
-	rivertype.JobStateScheduled,
-	rivertype.JobStateRetryable,
-}
-
-type JobArgs struct {
-	RunID       string `json:"run_id"`
-	WorkspaceID string `json:"workspace_id"`
-}
-
-func (JobArgs) Kind() string { return "run_execute" }
-
-func executeInsertOpts() *river.InsertOpts {
-	return &river.InsertOpts{
-		UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveJobStates},
-
-		MaxAttempts: 3,
-	}
-}
-
-type Worker struct {
-	river.WorkerDefaults[JobArgs]
-	Svc *Service
-}
-
-func (w *Worker) Timeout(*river.Job[JobArgs]) time.Duration { return jobTimeout }
 
 var errSuperseded = errors.New("run was moved by something else")
 
@@ -83,20 +49,12 @@ func (e *tryAgainError) Unwrap() error { return ErrTryAgainLater }
 
 func tryAgainIn(after time.Duration) error { return &tryAgainError{after: after} }
 
-func (w *Worker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
-	var runID, workspaceID pgtype.UUID
-	if err := runID.Scan(job.Args.RunID); err != nil {
-		return err
+func RetryAfter(err error) (time.Duration, bool) {
+	var retry *tryAgainError
+	if !errors.As(err, &retry) {
+		return 0, false
 	}
-	if err := workspaceID.Scan(job.Args.WorkspaceID); err != nil {
-		return err
-	}
-	err := w.Svc.Drive(ctx, workspaceID, runID)
-	var again *tryAgainError
-	if errors.As(err, &again) {
-		return river.JobSnooze(again.after)
-	}
-	return err
+	return retry.after, true
 }
 
 func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) error {
@@ -271,13 +229,14 @@ dispatching:
 				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 			}
 			reason := d.reasonFor(failurePlatform, err)
-			d.finishAttempt(ctx, attempt, errClassProvision, string(reason))
-			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, reason)
+			return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failurePlatform, reason)
 		}
 		pr, err := provider.Start(ctx, request)
 		if err != nil {
 			lastReason = d.reasonFor(failureProvider, err)
-			d.finishAttempt(ctx, attempt, dispatchErrorClass(err), string(lastReason))
+			if err := d.finishAttempt(ctx, attempt, dispatchErrorClass(err), string(lastReason)); err != nil {
+				return err
+			}
 			switch {
 			case refusedForCapacity(err):
 				d.svc.providers().forget(provider.Name())
@@ -325,7 +284,9 @@ dispatching:
 				"run_id", pgconv.UUIDString(d.cur.ID),
 				"error", fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason)))
 			lastReason = "執行沙箱在準備階段就失敗了"
-			d.finishAttempt(ctx, attempt, errClassProvision, string(lastReason))
+			if err := d.finishAttempt(ctx, attempt, errClassProvision, string(lastReason)); err != nil {
+				return err
+			}
 			failures++
 			continue
 		}
@@ -365,14 +326,13 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		return d.providerLost(ctx, attempt, "執行沙箱 "+statusReason(provider.Name())+" 已經不認得這次嘗試")
 	case !retryable(err):
 		reason := d.reasonFor(failureProvider, err)
-		d.finishAttempt(ctx, attempt, errClassExecution, string(reason))
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassExecution, string(reason), gen.RunStatusFailed, failureProvider, reason)
 	default:
 		silentSince, markErr := d.providerSilentSince(ctx, attempt)
 		if markErr != nil {
 			return markErr
 		}
-		silent := time.Since(silentSince)
+		silent := d.providerSilentFor(silentSince)
 		if silent >= ProviderLostAfter {
 			slog.Error("a provider stopped answering; the run carries the platform's own wording instead",
 				"run_id", pgconv.UUIDString(d.cur.ID), "provider", provider.Name(), "error", err)
@@ -397,16 +357,14 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		d.finishAttempt(ctx, attempt, errClassTimeout, string(d.timeoutReason()))
-		return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+		return d.finishAttemptAndRun(ctx, attempt, errClassTimeout, string(d.timeoutReason()), gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 	}
 
 	if reason := d.tokenCeilingBreach(ctx, attempts); reason != "" {
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		d.finishAttempt(ctx, attempt, errClassBudgetExhausted, string(reason))
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassBudgetExhausted, string(reason), gen.RunStatusFailed, failureWorkload, reason)
 	}
 
 	return tryAgainIn(d.svc.pollInterval())
@@ -436,15 +394,16 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	status, failureClass, errClass, message := classifyResult(pr)
 	if err := d.recordArtifacts(ctx, attempt, pr); err != nil {
 		reason := d.reasonFor(failureProvider, err)
-		d.finishAttempt(ctx, attempt, errClassProvision, string(reason))
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failureProvider, reason)
 	}
-	d.finishAttempt(ctx, attempt, errClass, string(message))
-
 	if status != gen.RunStatusSucceeded {
 		d.keepWorkloadOutput(ctx, attempt, pr)
-		return d.finish(ctx, attempt.ID, status, failureClass, message)
+		return d.finishAttemptAndRun(ctx, attempt, errClass, string(message), status, failureClass, message)
 	}
+	if err := d.finishAttempt(ctx, attempt, errClass, string(message)); err != nil {
+		return err
+	}
+
 	return d.walkHappyPath(ctx, attempt.ID)
 }
 
@@ -785,13 +744,38 @@ func validArtifactFileName(name string) bool {
 	return true
 }
 
-func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errClass, message string) {
-	if _, err := d.svc.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
+func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errClass, message string) error {
+	_, err := d.svc.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
 		r.FinishAttempt(attempt.ID, errClass, truncate(message))
 		return nil
-	}); err != nil {
-		slog.Warn("could not record attempt outcome", "run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
+	})
+	if errors.Is(err, errAttemptFinished) {
+		return nil
 	}
+	return err
+}
+
+func (d *driver) finishAttemptAndRun(
+	ctx context.Context, attempt gen.RunAttempt, errClass, message string,
+	to gen.RunStatus, failureClass FailureClass, reason statusReason,
+) error {
+	from := d.cur.Status
+	r, err := d.svc.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
+		r.FinishAttemptAndTransition(attempt.ID, errClass, truncate(message), to, truncate(reason), failureClass)
+		return nil
+	})
+	if errors.Is(err, ErrConflict) {
+		return errSuperseded
+	}
+	if err != nil {
+		return err
+	}
+	d.cur = r.Row()
+	observeTransition(d.cur, TransitionParams{
+		WorkspaceID: attempt.WorkspaceID, RunID: attempt.RunID, AttemptID: attempt.ID,
+		From: from, To: to, Reason: truncate(reason), FailureClass: failureClass,
+	})
+	return nil
 }
 
 func liveAttempt(attempts []gen.RunAttempt) *gen.RunAttempt {
@@ -872,6 +856,8 @@ func (c runClock) timeoutReason() statusReason {
 }
 
 func (d *driver) expired() bool { return d.clock.expired(d.svc.now()) }
+
+func (d *driver) providerSilentFor(since time.Time) time.Duration { return d.svc.now().Sub(since) }
 
 func (d *driver) timeoutReason() statusReason { return d.clock.timeoutReason() }
 

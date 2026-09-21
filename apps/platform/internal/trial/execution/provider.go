@@ -1,12 +1,10 @@
 package run
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 type ProviderRunState string
@@ -298,13 +297,6 @@ func retryable(err error) bool {
 	return errors.Is(err, ErrProviderUnavailable) || errors.Is(err, ErrProviderFull)
 }
 
-func (p *httpProvider) client() *http.Client {
-	if p.HTTP != nil {
-		return p.HTTP
-	}
-	return http.DefaultClient
-}
-
 func (p *httpProvider) do(ctx context.Context, method, operation, path string, body, out any, want ...int) (int, error) {
 	start := time.Now()
 	status, err := p.call(ctx, method, path, body, out, want...)
@@ -314,50 +306,41 @@ func (p *httpProvider) do(ctx context.Context, method, operation, path string, b
 }
 
 func (p *httpProvider) call(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
-	var payload io.Reader
+	var payload []byte
 	if body != nil {
 		encoded, err := json.Marshal(body)
 		if err != nil {
 			return 0, err
 		}
-		payload = bytes.NewReader(encoded)
+		payload = encoded
 	}
-	req, err := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(p.baseURL, "/")+path, payload)
-	if err != nil {
-		return 0, err
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	if p.token != "" {
-		req.Header.Set("Authorization", "Bearer "+p.token)
-	}
-	resp, err := p.client().Do(req)
+	status, raw, err := (httpx.Transport{
+		Client:        p.HTTP,
+		Token:         p.token,
+		ResponseLimit: 4 << 20,
+	}).Do(ctx, method, strings.TrimSuffix(p.baseURL, "/")+path, payload)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return 0, err
 		}
-		return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
-	}
-	defer resp.Body.Close()
-
-	raw, err := readBoundedResponse(resp.Body, 4<<20)
-	if err != nil {
-		for _, code := range want {
-			if resp.StatusCode == code {
-				return resp.StatusCode, err
-			}
-		}
-		return resp.StatusCode, &providerError{Status: resp.StatusCode, Message: err.Error()}
-	}
-	for _, code := range want {
-		if resp.StatusCode == code {
-			if out != nil && len(raw) > 0 {
-				if err := json.Unmarshal(raw, out); err != nil {
-					return resp.StatusCode, fmt.Errorf("decode %s %s: %w", method, path, err)
+		if status != 0 {
+			for _, code := range want {
+				if status == code {
+					return status, err
 				}
 			}
-			return resp.StatusCode, nil
+			return status, &providerError{Status: status, Message: err.Error()}
+		}
+		return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+	}
+	for _, code := range want {
+		if status == code {
+			if out != nil && len(raw) > 0 {
+				if err := json.Unmarshal(raw, out); err != nil {
+					return status, fmt.Errorf("decode %s %s: %w", method, path, err)
+				}
+			}
+			return status, nil
 		}
 	}
 
@@ -372,9 +355,9 @@ func (p *httpProvider) call(ctx context.Context, method, path string, body, out 
 		message = errBody.Message
 	}
 	if message == "" {
-		message = http.StatusText(resp.StatusCode)
+		message = http.StatusText(status)
 	}
-	return resp.StatusCode, &providerError{Status: resp.StatusCode, Class: errBody.Class, Message: message}
+	return status, &providerError{Status: status, Class: errBody.Class, Message: message}
 }
 
 func (p *httpProvider) Capability(ctx context.Context) (ProviderCapability, error) {

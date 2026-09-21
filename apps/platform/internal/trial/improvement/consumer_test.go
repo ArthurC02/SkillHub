@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -19,7 +17,6 @@ type recorder struct {
 	found    bool
 	lookups  int
 	inserted []JobArgs
-	opts     []*river.InsertOpts
 	err      error
 }
 
@@ -32,13 +29,11 @@ func (r *recorder) consumer() *RunEventConsumer {
 			}
 			return r.found, nil
 		},
-		Insert: func(_ context.Context, args river.JobArgs, opts *river.InsertOpts,
-		) (*rivertype.JobInsertResult, error) {
-			r.inserted = append(r.inserted, args.(JobArgs))
-			r.opts = append(r.opts, opts)
+		Enqueue: func(_ context.Context, args JobArgs) error {
+			r.inserted = append(r.inserted, args)
 
 			r.found = true
-			return nil, nil
+			return nil
 		},
 	}
 }
@@ -70,9 +65,6 @@ func TestRunEventConsumerEnqueuesOncePerRun(t *testing.T) {
 			t.Errorf("%s enqueued %+v, want the event's own identifiers", eventType, r.inserted[0])
 		}
 
-		if r.opts[0] == nil || !r.opts[0].UniqueOpts.ByArgs {
-			t.Errorf("%s enqueued without the per-run unique key", eventType)
-		}
 	}
 }
 
@@ -104,15 +96,12 @@ func TestRunEventConsumerRefusesToGuessWhenTheLookupFails(t *testing.T) {
 
 type mailbox struct {
 	posted []SuggestionsAppliedArgs
-	opts   []*river.InsertOpts
 }
 
 func (m *mailbox) consumer() *SkillVersionConsumer {
-	return &SkillVersionConsumer{Insert: func(_ context.Context, args river.JobArgs, opts *river.InsertOpts,
-	) (*rivertype.JobInsertResult, error) {
-		m.posted = append(m.posted, args.(SuggestionsAppliedArgs))
-		m.opts = append(m.opts, opts)
-		return nil, nil
+	return &SkillVersionConsumer{Enqueue: func(_ context.Context, args SuggestionsAppliedArgs) error {
+		m.posted = append(m.posted, args)
+		return nil
 	}}
 }
 
@@ -153,9 +142,6 @@ func TestAVersionBuiltFromSuggestionsIsPostedToTheEvaluationsMailbox(t *testing.
 		pgconv.UUIDString(got.SuggestionIDs[1]) != "77777777-7777-4777-8777-777777777777" {
 		t.Errorf("posted %+v, want the event's workspace, skill, version, evaluation and both suggestions", got)
 	}
-	if m.opts[0] == nil || !m.opts[0].UniqueOpts.ByArgs || m.opts[0].MaxAttempts != suggestionsAppliedAttempts {
-		t.Errorf("posted with %+v, want one letter per version and %d attempts", m.opts[0], suggestionsAppliedAttempts)
-	}
 }
 
 func TestTheMailboxKeepsOneLetterPerEvent(t *testing.T) {
@@ -179,11 +165,6 @@ func TestTheMailboxKeepsOneLetterPerEvent(t *testing.T) {
 	}
 	if reflect.DeepEqual(m.posted[0], m.posted[2]) {
 		t.Error("two different events with the same content posted identical letters; the second would be dropped as a redelivery")
-	}
-	for i, opts := range m.opts {
-		if opts == nil || !opts.UniqueOpts.ByArgs {
-			t.Errorf("letter %d was posted without the one-per-event key", i)
-		}
 	}
 }
 
@@ -220,7 +201,7 @@ func TestTheMailboxRefusesAnUnreadableOrUnwiredDelivery(t *testing.T) {
 
 func TestRunEventConsumerFailsClosedWithoutDependencies(t *testing.T) {
 	for _, consumer := range []*RunEventConsumer{
-		{Insert: (&recorder{}).consumer().Insert},
+		{Enqueue: (&recorder{}).consumer().Enqueue},
 		{HasCurrentEvaluation: (&recorder{}).consumer().HasCurrentEvaluation},
 	} {
 		if err := consumer.Deliver(t.Context(), runEvent(outbox.RunSucceeded)); err == nil {

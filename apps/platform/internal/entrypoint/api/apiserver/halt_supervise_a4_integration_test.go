@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -73,7 +74,7 @@ func TestAFailingSuperviseRunDoesNotSwitchOffTheP1Detectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.runs.Queue = run.NewRunQueue(deadQueue)
+	a.runs.Queue = wiring.NewRunQueue(deadQueue)
 
 	if err := a.runs.Supervise(ctx); err == nil {
 		t.Fatal("the sweep reported success while its re-enqueue could not reach the queue; " +

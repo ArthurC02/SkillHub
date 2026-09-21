@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/riverqueue/river"
-	"github.com/riverqueue/river/rivertype"
 )
 
 func auditedProvenanceLosses(t *testing.T, s *Service, workspaceID pgtype.UUID) int {
@@ -67,7 +65,6 @@ func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	m := seedRun(t, s.Pool)
 	version := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-improved")
-	w := &SuggestionsAppliedWorker{Svc: s}
 	ctx := context.Background()
 
 	var unknown pgtype.UUID
@@ -79,20 +76,17 @@ func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 	}
 	work := func(attempt int) {
 		t.Helper()
-		if err := w.Work(ctx, &river.Job[SuggestionsAppliedArgs]{
-			JobRow: &rivertype.JobRow{Attempt: attempt, MaxAttempts: suggestionsAppliedAttempts},
-			Args:   args,
-		}); err == nil {
+		if err := s.ConsumeSuggestionsApplied(ctx, args, attempt >= SuggestionsAppliedAttempts); err == nil {
 			t.Fatalf("attempt %d reported success although the evaluation is unknown", attempt)
 		}
 	}
 
-	work(suggestionsAppliedAttempts - 1)
+	work(SuggestionsAppliedAttempts - 1)
 	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 0 {
 		t.Fatalf("%d provenance losses audited while one delivery attempt is left, want 0", got)
 	}
 
-	work(suggestionsAppliedAttempts)
+	work(SuggestionsAppliedAttempts)
 	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
 		t.Fatalf("%d provenance losses audited on the final attempt, want 1", got)
 	}

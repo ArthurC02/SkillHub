@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
@@ -44,7 +45,7 @@ func haltAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
 
 func runOrphanScan(t *testing.T, svc *run.Service) {
 	t.Helper()
-	if err := (&run.OrphanScanWorker{Svc: svc}).Work(context.Background(), nil); err != nil {
+	if err := (&worker.RunOrphanScanWorker{Runs: svc}).Work(context.Background(), nil); err != nil {
 
 		t.Logf("orphan scan reported: %v", err)
 	}

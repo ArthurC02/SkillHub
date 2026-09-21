@@ -1,18 +1,18 @@
 package run
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 const (
@@ -262,34 +262,16 @@ func (g *Gateway) get(ctx context.Context, path string, out any) error {
 }
 
 func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out any, limit int64) error {
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, g.AdminBaseURL+path, reader)
+	status, raw, err := (httpx.Transport{
+		Client:        g.HTTP,
+		Token:         g.adminKey,
+		ResponseLimit: limit,
+	}).Do(ctx, method, g.AdminBaseURL+path, body)
 	if err != nil {
 		return err
 	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Authorization", "Bearer "+g.adminKey)
-
-	client := g.HTTP
-	if client == nil {
-		client = http.DefaultClient
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	raw, err := readBoundedResponse(resp.Body, limit)
-	if err != nil {
-		return err
-	}
-	if !successfulGatewayStatus(resp.StatusCode) {
-		return &gatewayError{Status: resp.StatusCode, Message: truncate(string(raw))}
+	if !successfulGatewayStatus(status) {
+		return &gatewayError{Status: status, Message: truncate(string(raw))}
 	}
 	if out != nil && len(raw) > 0 {
 		return json.Unmarshal(raw, out)
@@ -298,14 +280,3 @@ func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out 
 }
 
 func successfulGatewayStatus(code int) bool { return code >= 200 && code < 300 }
-
-func readBoundedResponse(body io.Reader, limit int64) ([]byte, error) {
-	raw, err := io.ReadAll(io.LimitReader(body, limit+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(raw)) > limit {
-		return nil, fmt.Errorf("response exceeds %d bytes", limit)
-	}
-	return raw, nil
-}

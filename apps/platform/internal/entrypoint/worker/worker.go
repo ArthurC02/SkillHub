@@ -104,6 +104,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		TestLab:        testlabSvc,
 		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
 		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
+		LastOrphanScan:           wiring.LastOrphanScan(pool),
 	}
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
@@ -175,16 +176,16 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
 	wiring.WireRunCredit(set.Runs, creditSvc, pool)
 	workers := river.NewWorkers()
-	addWorker(set, workers, &creation.Worker{Svc: set.Creation})
-	addWorker(set, workers, &creation.ExpiryWorker{Svc: set.Creation})
+	addWorker(set, workers, &CreationStepWorker{Svc: set.Creation})
+	addWorker(set, workers, &CreationExpiryWorker{Svc: set.Creation})
 
-	addWorker(set, workers, &run.Worker{Svc: set.Runs})
-	addWorker(set, workers, &run.CleanupWorker{Svc: set.Runs})
-	addWorker(set, workers, &run.OrphanScanWorker{Svc: set.Runs})
-	addWorker(set, workers, &run.SuperviseWorker{Svc: set.Runs})
-	addWorker(set, workers, &eval.Worker{Svc: set.Evaluations})
-	addWorker(set, workers, &eval.RecoveryWorker{Svc: set.Evaluations})
-	addWorker(set, workers, &eval.SuggestionsAppliedWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &RunExecuteWorker{Runs: set.Runs})
+	addWorker(set, workers, &RunCleanupWorker{Runs: set.Runs})
+	addWorker(set, workers, &RunOrphanScanWorker{Runs: set.Runs})
+	addWorker(set, workers, &RunSuperviseWorker{Runs: set.Runs})
+	addWorker(set, workers, &EvaluationExecuteWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &EvaluationRecoveryWorker{Svc: set.Evaluations})
+	addWorker(set, workers, &SuggestionsAppliedWorker{Svc: set.Evaluations})
 	addWorker(set, workers, outboxWorker)
 
 	set.Objects = &objreconcile.Service{
@@ -208,7 +209,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		metrics.BacklogEnrichment:    creationSearch.OldestPendingEnrichment,
 	}})
 
-	addWorker(set, workers, &credit.RecomputeWorker{Svc: creditSvc})
+	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
 
 	var periodic []*river.PeriodicJob
 	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
@@ -220,19 +221,19 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(every),
 			func() (river.JobArgs, *river.InsertOpts) { return args, nil }, opts))
 	}
-	schedule(eval.RecoveryArgs{}, eval.RecoveryInterval, true)
-	schedule(run.SuperviseArgs{}, run.SuperviseInterval, true)
+	schedule(EvaluationRecoveryArgs{}, eval.RecoveryInterval, true)
+	schedule(RunSuperviseArgs{}, run.SuperviseInterval, true)
 	if deps.CreationLimits.Valid() {
-		schedule(creation.ExpiryArgs{}, time.Minute, true)
+		schedule(wiring.CreationExpiryArgs{}, time.Minute, true)
 	}
-	schedule(run.OrphanScanArgs{}, run.OrphanScanInterval, true)
+	schedule(RunOrphanScanArgs{}, run.OrphanScanInterval, true)
 
 	schedule(outbox.PublishArgs{}, outboxWorker.Interval(), true)
 
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
 
 	for _, kind := range credit.AllStatisticKinds() {
-		schedule(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}, 24*time.Hour, false)
+		schedule(wiring.NewCreditRecomputeArgs(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}), 24*time.Hour, false)
 	}
 
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
@@ -245,14 +246,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		return nil, fmt.Errorf("queue client: %w", err)
 	}
 	set.Queue = client
-	set.Creation.Insert = func(ctx context.Context, tx pgx.Tx, a creation.JobArgs) error {
-		_, err := client.InsertTx(ctx, tx, a, &river.InsertOpts{MaxAttempts: 1})
-		return err
-	}
+	set.Creation.Insert = wiring.NewCreationQueue(client)
 
-	set.Runs.Queue = run.NewRunQueue(client)
-	set.RunEvents.Insert = client.Insert
-	set.SkillVersions.Insert = client.Insert
+	set.Runs.Queue = wiring.NewRunQueue(client)
+	set.RunEvents.Enqueue = wiring.NewEvaluationEnqueue(client)
+	set.SkillVersions.Enqueue = wiring.NewSuggestionsAppliedEnqueue(client)
 	return set, nil
 }
 
