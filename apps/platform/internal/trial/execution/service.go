@@ -71,6 +71,17 @@ type Linkage struct {
 	TestCaseID pgtype.UUID
 }
 
+type Artifact struct {
+	ID          pgtype.UUID
+	FileName    string
+	ContentType string
+	SizeBytes   int64
+	ContentHash string
+	CreatedAt   *time.Time
+	ExpiresAt   *time.Time
+	Purged      bool
+}
+
 type ContentSource struct {
 	WorkspaceIsCatalog bool
 
@@ -513,7 +524,7 @@ const (
 
 func (s *Service) Artifacts(
 	ctx context.Context, workspaceID, runID pgtype.UUID,
-) ([]gen.Artifact, bool, error) {
+) ([]Artifact, bool, error) {
 
 	run, err := s.Get(ctx, workspaceID, runID)
 	if err != nil {
@@ -525,7 +536,24 @@ func (s *Service) Artifacts(
 	if err != nil {
 		return nil, false, err
 	}
-	return rows, run.ArtifactsTruncated, nil
+	artifacts := make([]Artifact, len(rows))
+	for i, row := range rows {
+		artifacts[i] = artifact(row)
+	}
+	return artifacts, run.ArtifactsTruncated, nil
+}
+
+func artifact(row gen.Artifact) Artifact {
+	return Artifact{
+		ID:          row.ID,
+		FileName:    row.FileName,
+		ContentType: row.ContentType,
+		SizeBytes:   row.SizeBytes,
+		ContentHash: row.ContentHash,
+		CreatedAt:   timePointer(row.CreatedAt),
+		ExpiresAt:   timePointer(row.ExpiresAt),
+		Purged:      row.PurgedAt.Valid,
+	}
 }
 
 func (s *Service) DeleteArtifact(

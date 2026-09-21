@@ -159,3 +159,25 @@ func TestRunSummaryKeepsTheRunListConceptSeparateFromTheDatabaseRow(t *testing.T
 		})
 	}
 }
+
+func TestArtifactKeepsStorageMaintenanceDetailsOutOfTheReadModel(t *testing.T) {
+	created := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	row := gen.Artifact{
+		ID:          pgtype.UUID{Bytes: [16]byte{1}, Valid: true},
+		FileName:    "result.json",
+		ContentType: "application/json",
+		SizeBytes:   42,
+		ContentHash: "hash",
+		ObjectKey:   "internal-only",
+		CreatedAt:   pgtype.Timestamptz{Time: created, Valid: true},
+		PurgedAt:    pgtype.Timestamptz{Valid: true},
+	}
+
+	got := artifact(row)
+	if got.FileName != row.FileName || got.ContentHash != row.ContentHash || got.CreatedAt == nil || !got.CreatedAt.Equal(created) {
+		t.Fatalf("artifact = %#v, want its downloadable details", got)
+	}
+	if !got.Purged || got.ExpiresAt != nil {
+		t.Fatalf("artifact lifetime = (purged %v, expires %v), want (true, nil)", got.Purged, got.ExpiresAt)
+	}
+}

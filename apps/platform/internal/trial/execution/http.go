@@ -426,8 +426,8 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 		out = append(out, artifactView{
 			ArtifactID: pgconv.UUIDString(a.ID), FileName: a.FileName, ContentType: a.ContentType,
 			SizeBytes: a.SizeBytes, ContentHash: a.ContentHash,
-			CreatedAt: pgconv.RFC3339(a.CreatedAt), ExpiresAt: pgconv.RFC3339(a.ExpiresAt),
-			Purged: a.PurgedAt.Valid,
+			CreatedAt: formatTime(a.CreatedAt), ExpiresAt: formatTime(a.ExpiresAt),
+			Purged: a.Purged,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
