@@ -49,7 +49,7 @@ func (s *spendLogStub) start(t *testing.T) *Gateway {
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": rows, "total_pages": totalPages})
 	}))
 	t.Cleanup(srv.Close)
-	return &Gateway{AdminBaseURL: srv.URL, adminKey: "sk-master-test", HTTP: srv.Client()}
+	return &Gateway{adminBaseURL: srv.URL, adminKey: "sk-master-test", client: srv.Client()}
 }
 
 func TestAttemptTokensSumsWhatTheGatewayBilledThisAttempt(t *testing.T) {
@@ -173,7 +173,7 @@ func TestAnUnreadableGatewayDoesNotKillAHealthyRun(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	d := driverWithCeiling(t, &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}, 300_000, 60_000)
+	d := driverWithCeiling(t, &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}, 300_000, 60_000)
 	if reason := d.tokenCeilingBreach(context.Background(), []gen.RunAttempt{anAttempt(t)}); reason != "" {
 		t.Fatalf("a broken gateway management API terminated a run: %q", reason)
 	}

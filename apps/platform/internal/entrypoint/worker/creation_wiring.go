@@ -94,10 +94,7 @@ func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 		return
 	}
 	s.IssueKey = func(ctx context.Context, sessionID, receiptID string, budget float64, ttl time.Duration) (string, error) {
-		scoped := *gateway
-		scoped.MaxBudgetUSD = budget
-		scoped.Model = "gpt-5.4-mini"
-		grant, err := scoped.IssueCreation(ctx, sessionID, receiptID, ttl)
+		grant, err := gateway.IssueCreationForModel(ctx, sessionID, receiptID, ttl, budget, "gpt-5.4-mini")
 		if err != nil {
 			return "", err
 		}

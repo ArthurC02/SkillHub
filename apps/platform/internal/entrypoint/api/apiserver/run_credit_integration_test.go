@@ -162,7 +162,7 @@ func spendingGateway(t *testing.T, spendUSD float64) *run.Gateway {
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &run.Gateway{AdminBaseURL: srv.URL, HTTP: srv.Client()}
+	return run.NewGateway(run.GatewayConfig{AdminBaseURL: srv.URL, AdminKey: "test", SandboxBaseURL: srv.URL, HTTP: srv.Client()})
 }
 
 func balanceOf(t *testing.T, pool *pgxpool.Pool, userID string) int64 {

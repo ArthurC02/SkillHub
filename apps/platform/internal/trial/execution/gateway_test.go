@@ -24,8 +24,8 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 	defer srv.Close()
 
 	g := &Gateway{
-		AdminBaseURL: srv.URL, adminKey: "sk-master-test", SandboxBaseURL: "http://gateway:4000",
-		Model: "gpt-5.4-mini", MaxBudgetUSD: 0.5, TPMLimit: 1000, HTTP: srv.Client(),
+		adminBaseURL: srv.URL, adminKey: "sk-master-test", sandboxBaseURL: "http://gateway:4000",
+		model: "gpt-5.4-mini", maxBudgetUSD: 0.5, tpmLimit: 1000, client: srv.Client(),
 	}
 	grant, err := g.Issue(context.Background(), "run-1", "attempt-1", 30*time.Minute, 0)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestGatewayRefusesAResponsePastItsReadLimit(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	g := &Gateway{AdminBaseURL: srv.URL, HTTP: srv.Client()}
+	g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
 	var out map[string]any
 	if err := g.do(context.Background(), http.MethodGet, "/", nil, &out, limit); err == nil {
 		t.Fatal("gateway accepted a response larger than its configured limit")
@@ -82,8 +82,8 @@ func TestCreationGrantUsesSessionAttribution(t *testing.T) {
 		_, _ = w.Write([]byte(`{"key":"test-creation-key"}`))
 	}))
 	defer srv.Close()
-	g := &Gateway{AdminBaseURL: srv.URL, HTTP: srv.Client(), Model: "gpt-5.4-mini", MaxBudgetUSD: .1}
-	if _, err := g.IssueCreation(context.Background(), "session-1", "receipt-1", 30*time.Second); err != nil {
+	g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
+	if _, err := g.IssueCreationForModel(context.Background(), "session-1", "receipt-1", 30*time.Second, .1, "gpt-5.4-mini"); err != nil {
 		t.Fatal(err)
 	}
 	metadata, _ := got["metadata"].(map[string]any)
@@ -92,6 +92,10 @@ func TestCreationGrantUsesSessionAttribution(t *testing.T) {
 	}
 	if got["max_budget"] != .1 || got["duration"] != "30s" {
 		t.Fatalf("creation grant lost its bound: %v", got)
+	}
+	models, _ := got["models"].([]any)
+	if len(models) != 1 || models[0] != "gpt-5.4-mini" {
+		t.Fatalf("creation grant models = %v, want gpt-5.4-mini", got["models"])
 	}
 }
 
@@ -111,7 +115,7 @@ func TestIssueFailsWhenTheGatewayAnswersNothing(t *testing.T) {
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
-	g := &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}
+	g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
 	if _, err := g.Issue(context.Background(), "run-1", "attempt-1", time.Minute, 0); err == nil {
 		t.Fatal("a gateway that returned no key was treated as success")
 	}
@@ -123,7 +127,7 @@ func TestRevokeIsIdempotent(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error":{"message":"Key aliases not found"}}`))
 	}))
 	defer srv.Close()
-	g := &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}
+	g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
 	if err := g.Revoke(context.Background(), "attempt-1"); err != nil {
 		t.Fatalf("revoking a key that is already gone reported failure: %v", err)
 	}
@@ -134,7 +138,7 @@ func TestRevokeReportsARealFailure(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	g := &Gateway{AdminBaseURL: srv.URL, adminKey: "k", HTTP: srv.Client()}
+	g := &Gateway{adminBaseURL: srv.URL, adminKey: "k", client: srv.Client()}
 	if err := g.Revoke(context.Background(), "attempt-1"); err == nil {
 		t.Fatal("a gateway failure was reported as a successful revocation")
 	}

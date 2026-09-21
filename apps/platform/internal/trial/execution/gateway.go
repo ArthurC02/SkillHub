@@ -47,16 +47,13 @@ func (s *Service) requireModelGateway() error {
 }
 
 type Gateway struct {
-	AdminBaseURL string
-
-	adminKey string
-
-	SandboxBaseURL string
-
-	Model        string
-	MaxBudgetUSD float64
-	TPMLimit     int
-	HTTP         *http.Client
+	adminBaseURL   string
+	adminKey       string
+	sandboxBaseURL string
+	model          string
+	maxBudgetUSD   float64
+	tpmLimit       int
+	client         *http.Client
 }
 
 type GatewayConfig struct {
@@ -104,7 +101,7 @@ func NewGateway(c GatewayConfig) *Gateway {
 	if c.HTTP == nil {
 		c.HTTP = &http.Client{Timeout: 20 * time.Second}
 	}
-	return &Gateway{AdminBaseURL: c.AdminBaseURL, adminKey: c.AdminKey, SandboxBaseURL: c.SandboxBaseURL, Model: c.Model, MaxBudgetUSD: c.MaxBudgetUSD, TPMLimit: c.TPMLimit, HTTP: c.HTTP}
+	return &Gateway{adminBaseURL: c.AdminBaseURL, adminKey: c.AdminKey, sandboxBaseURL: c.SandboxBaseURL, model: c.Model, maxBudgetUSD: c.MaxBudgetUSD, tpmLimit: c.TPMLimit, client: c.HTTP}
 }
 
 func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAttemptID }
@@ -119,6 +116,13 @@ func (g *Gateway) Issue(
 func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, attemptID, ttl, 0, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
 }
+
+func (g *Gateway) IssueCreationForModel(ctx context.Context, sessionID, attemptID string, ttl time.Duration, budget float64, model string) (*ModelGatewayGrant, error) {
+	scoped := *g
+	scoped.maxBudgetUSD = budget
+	scoped.model = model
+	return scoped.IssueCreation(ctx, sessionID, attemptID, ttl)
+}
 func (g *Gateway) issue(
 	ctx context.Context, runAttemptID string, ttl time.Duration, maxBudgetUSD float64, metadata map[string]string,
 ) (*ModelGatewayGrant, error) {
@@ -126,19 +130,19 @@ func (g *Gateway) issue(
 		ttl = time.Hour
 	}
 	if maxBudgetUSD <= 0 {
-		maxBudgetUSD = g.MaxBudgetUSD
+		maxBudgetUSD = g.maxBudgetUSD
 	}
 	body := map[string]any{
 		"key_alias":  keyAlias(runAttemptID),
 		"duration":   strconv.Itoa(int(ttl.Seconds())) + "s",
 		"max_budget": maxBudgetUSD,
-		"tpm_limit":  g.TPMLimit,
+		"tpm_limit":  g.tpmLimit,
 
 		"metadata": metadata,
 	}
-	if g.Model != "" {
+	if g.model != "" {
 
-		body["models"] = []string{g.Model}
+		body["models"] = []string{g.model}
 	}
 	var out struct {
 		Key string `json:"key"`
@@ -150,10 +154,10 @@ func (g *Gateway) issue(
 		return nil, errors.New("mint virtual key: gateway returned no key")
 	}
 	return &ModelGatewayGrant{
-		BaseURL:      g.SandboxBaseURL,
+		BaseURL:      g.sandboxBaseURL,
 		VirtualKey:   out.Key,
 		MaxBudgetUSD: maxBudgetUSD,
-		TPMLimit:     g.TPMLimit,
+		TPMLimit:     g.tpmLimit,
 		ExpiresAt:    time.Now().UTC().Add(ttl),
 	}, nil
 }
@@ -168,7 +172,7 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	return err
 }
 
-func (g *Gateway) BudgetCeilingUSD() float64 { return g.MaxBudgetUSD }
+func (g *Gateway) BudgetCeilingUSD() float64 { return g.maxBudgetUSD }
 
 type AttemptUsage struct {
 	InputTokens  int
@@ -264,10 +268,10 @@ func (g *Gateway) get(ctx context.Context, path string, out any) error {
 
 func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out any, limit int64) error {
 	status, raw, err := (httpx.Transport{
-		Client:        g.HTTP,
+		Client:        g.client,
 		Token:         g.adminKey,
 		ResponseLimit: limit,
-	}).Do(ctx, method, g.AdminBaseURL+path, body)
+	}).Do(ctx, method, g.adminBaseURL+path, body)
 	if err != nil {
 		return err
 	}

@@ -92,7 +92,7 @@ func main() {
 		slog.Warn("no model gateway configured; runs will be dispatched with no model credential")
 	} else {
 
-		slog.Info("model gateway configured", "sandbox_base_url", gateway.SandboxBaseURL, "model", gateway.Model)
+		slog.Info("model gateway configured", "sandbox_base_url", runDeployment.GatewayURL, "model", runDeployment.Model)
 	}
 
 	var llm *llmclient.Client

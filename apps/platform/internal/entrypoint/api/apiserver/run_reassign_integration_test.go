@@ -278,7 +278,7 @@ func (m *keyMint) gateway(t *testing.T, spendPerAttempt float64) *run.Gateway {
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &run.Gateway{AdminBaseURL: srv.URL, SandboxBaseURL: srv.URL, MaxBudgetUSD: 0.50, HTTP: srv.Client()}
+	return run.NewGateway(run.GatewayConfig{AdminBaseURL: srv.URL, AdminKey: "test", SandboxBaseURL: srv.URL, MaxBudgetUSD: 0.50, HTTP: srv.Client()})
 }
 
 func TestAReassignedAttemptOnlyGetsWhatIsLeftOfTheRunBudget(t *testing.T) {
@@ -311,7 +311,7 @@ func TestARunWhoseSpendCannotBeReadIsNotReassigned(t *testing.T) {
 	}))
 	t.Cleanup(broken.Close)
 	s := newLossSceneWithGateway(t, "alice-unreadable-spend",
-		&run.Gateway{AdminBaseURL: broken.URL, SandboxBaseURL: broken.URL, MaxBudgetUSD: 0.50, HTTP: broken.Client()})
+		run.NewGateway(run.GatewayConfig{AdminBaseURL: broken.URL, AdminKey: "test", SandboxBaseURL: broken.URL, MaxBudgetUSD: 0.50, HTTP: broken.Client()}))
 	s.alpha.SetPollStatus(http.StatusNotFound)
 
 	s.drive(t, "the run whose spend cannot be read")
