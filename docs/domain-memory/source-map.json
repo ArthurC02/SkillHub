@@ -491,7 +491,6 @@
   },
   "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
   "selected_paths": [
-    "apps/platform/architecture-identity.yaml",
     "apps/platform/internal/creator/creation/doc.go",
     "apps/platform/internal/creator/credit/doc.go",
     "apps/platform/internal/creator/workspace/doc.go",
@@ -513,13 +512,12 @@
     "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 20,
-    "total_bytes": 105496,
+    "files": 19,
+    "total_bytes": 102474,
     "oversized_files": [],
     "errors": []
   },
   "source_kinds": {
-    "apps/platform/architecture-identity.yaml": "unclassified",
     "apps/platform/internal/creator/creation/doc.go": "bounded_contexts",
     "apps/platform/internal/creator/credit/doc.go": "bounded_contexts",
     "apps/platform/internal/creator/workspace/doc.go": "bounded_contexts",
@@ -542,7 +540,6 @@
   },
   "git_state": {
     "tracked_objects": {
-      "apps/platform/architecture-identity.yaml": "0790187ab403ad5730b271e3f101367fdc1d027e",
       "apps/platform/internal/creator/creation/doc.go": "06f3a6ab586afed215d23c6313d2f80e96fced9c",
       "apps/platform/internal/creator/credit/doc.go": "4088f3f4758f43a2c0a85b2f7b2986699f83220e",
       "apps/platform/internal/creator/workspace/doc.go": "3400fd7bb000a5d43f762eee2543270e7e847313",
@@ -566,11 +563,6 @@
     "dirty_sources": []
   },
   "source_snapshots": [
-    {
-      "path": "apps/platform/architecture-identity.yaml",
-      "file_count": 1,
-      "digest": "sha256:50982de6092f5e8776edde7ec5c15b49b7793291bf57bb10dffa3ce4f2939936"
-    },
     {
       "path": "apps/platform/internal/creator/creation/doc.go",
       "file_count": 1,
@@ -668,5 +660,5 @@
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T10:12:24.874986Z"
+  "confirmed_at": "2026-09-22T10:25:31.582278Z"
 }

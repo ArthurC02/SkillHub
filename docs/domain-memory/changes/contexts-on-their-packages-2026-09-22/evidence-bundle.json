@@ -1,0 +1,102 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "a-context-rests-on-the-package-that-holds-it",
+  "proposal_id": "contexts-rest-on-their-packages",
+  "registry_revision": {
+    "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+    "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "no-two-contexts-claim-one-path",
+    "mutated_protection": "the one-Context-per-path rule on implementation_path",
+    "failure_evidence": "Widening eval's implementation_path from trial/improvement to trial made validate exit 1 with \"ERROR: contexts.json:eval claims trial, which overlaps trial/design claimed by testlab: code belongs to one Context\"; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/creator/creation/doc.go",
+    "apps/platform/internal/creator/credit/doc.go",
+    "apps/platform/internal/creator/workspace/doc.go",
+    "apps/platform/internal/product/entitlements/doc.go",
+    "apps/platform/internal/product/learning/doc.go",
+    "apps/platform/internal/skill/admission/doc.go",
+    "apps/platform/internal/skill/delivery/doc.go",
+    "apps/platform/internal/skill/discovery/doc.go",
+    "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/trial/design/doc.go",
+    "apps/platform/internal/trial/evidence/doc.go",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/trial/improvement/doc.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding all thirteen records reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:41637d390ac2be4cd86e17587ae0732ff710be764097ca1bbb6bc02c717e6f77",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-record-cites-layout-data",
+      "status": "passed",
+      "evidence": "the staged contexts.json names apps/platform/architecture-identity.yaml zero times",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:728522f6da22d37f0e6ec0788d09c041eb897baee52d1da3f6a884bffcf51cb0",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "editing-layout-data-leaves-sources-current",
+      "status": "passed",
+      "evidence": "appending a byte to the architecture identity file left verify-sources reporting current; the byte was removed and the file restored",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:732e1a15bdc00990f9546dd0cc8f2d5aaf225cad7064a840f62fbc130d45116a",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-two-contexts-claim-one-path",
+      "status": "passed",
+      "evidence": "widening eval's implementation path to trial made validate refuse it as overlapping run's and testlab's and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:610e502369030616ab9285d3aaf8dc099cdffe62fc636d196abc7876b1c1b2de",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ec92257f38823016c3e90654659a526c99efc96585ca5ffd4c7ac586e6b9ad63",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

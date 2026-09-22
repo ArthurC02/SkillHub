@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "a-context-rests-on-the-package-that-holds-it",
+  "status": "draft",
+  "intent": "A Context record rests only on sources that do not move when a package is added, so routine layout work does not turn a reviewed record stale.",
+  "actor": "A developer adding a Go package under apps/platform/internal",
+  "observable_outcome": "Adding a package changes no Registry source, so no machine check goes red and no human re-confirmation is needed.",
+  "acceptance_criteria": [
+    {
+      "id": "a-context-cites-only-its-own-package",
+      "statement": "Every reviewed Context record cites exactly the doc comment of the package that holds it, and nothing else."
+    },
+    {
+      "id": "layout-data-is-not-a-registry-source",
+      "statement": "The architecture identity file is not in the Registry's source corpus, so editing it leaves verify-sources current."
+    },
+    {
+      "id": "code-still-belongs-to-one-context",
+      "statement": "No two Contexts claim the same implementation path or a path inside another's."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/doc.go"
+  ]
+}

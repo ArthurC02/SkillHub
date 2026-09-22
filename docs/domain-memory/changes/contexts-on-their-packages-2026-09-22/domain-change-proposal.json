@@ -1,0 +1,441 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "contexts-rest-on-their-packages",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "a-context-rests-on-the-package-that-holds-it",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-22T10:27:23.873864Z",
+  "verified_at": "2026-09-22T10:27:24.445237Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+    "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
+  },
+  "affected_contexts": [
+    "run",
+    "registry",
+    "identity",
+    "creation",
+    "catalog",
+    "ingest",
+    "testlab",
+    "eval",
+    "packaging",
+    "trace",
+    "policy",
+    "analytics",
+    "credit"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "A Go package under apps/platform/internal belongs to exactly one Bounded Context.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/doc.go:1"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged. This narrows what each record rests on and alters no collaboration.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md:16"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Citing the architecture identity file put it in the Registry's source corpus, and source verification compares whole-file snapshots, so adding any package turned the machine checks red until a human re-confirmed the corpus.",
+      "A tool whose job is to confirm facts must not make routine work fail.",
+      "The directory a package occupies is proved by the path of the doc comment being cited, so a second citation into a layout file adds a dependency without adding evidence."
+    ],
+    "decision": "Cite only the owning package's doc comment, and let the machine checks read the Registry directly instead of treating layout data as a source to corroborate against.",
+    "invariants_preserved": [
+      "A Go package under apps/platform/internal belongs to exactly one Bounded Context."
+    ],
+    "rejected_alternatives": [
+      "Keep the layout citation and re-confirm the corpus each time: that is the cost being removed, paid forever.",
+      "Drop implementation_path from the records: the machine checks are about to read it from here, so it is the one place it should live.",
+      "Keep both the Registry and the layout file authoritative for the thirteen Contexts: one fact with two homes drifts."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "no-record-cites-layout-data",
+      "editing-layout-data-leaves-sources-current",
+      "no-two-contexts-claim-one-path",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "no-two-contexts-claim-one-path"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "identity",
+        "name": "Identity & Workspace",
+        "responsibility": "Owns creator accounts and workspaces: login, sessions, and resolving the authenticated user and their personal workspace.",
+        "subdomain": "core",
+        "implementation_path": "creator/workspace",
+        "requirement_prefixes": [
+          "WS",
+          "SEC"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 2
+            },
+            "content_sha256": "sha256:1d7610face5d957e4bb641515e7c057c85091f6e495d73892bb1dec2d11c7611",
+            "excerpt_sha256": "sha256:306577f02884d5012e8d340a6b1b3593b7e118fc573bb71c7d47a50f331fa176",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "creation",
+        "name": "Skill Creation",
+        "responsibility": "Owns interactive Skill-creation sessions: their steps, checkpoints, and the proposals produced along the way.",
+        "subdomain": "core",
+        "implementation_path": "creator/creation",
+        "requirement_prefixes": [
+          "GEN"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 2
+            },
+            "content_sha256": "sha256:5d2951845dc0228f36c237be53fe41d6c94db8586921768a8ab5daf581d33a99",
+            "excerpt_sha256": "sha256:5946916feb42af8748934caf0f39eeecde3cd335a9cd64d46bc91a3603151354",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "catalog",
+        "name": "Catalog & Discovery",
+        "responsibility": "Owns Skill discovery: the search-facing projection of a Skill, hybrid lexical and vector ranking, and the tier, trust, licence and redistribution facets shown alongside a result.",
+        "subdomain": "core",
+        "implementation_path": "skill/discovery",
+        "requirement_prefixes": [
+          "DISC"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:74e4f42dc7aa595207ad0a0fea87aaf8ce8c2db7cad160204748e74f48ce18ff",
+            "excerpt_sha256": "sha256:ce32d825feff2cf05012f0a904be7fa8b1da74a7eb3ee3ecb197e132846e7dd2",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "registry",
+        "name": "Skill Registry & Versioning",
+        "responsibility": "Owns Skills and their immutable versions: identity, lineage, fork, delete, takedown, and the licensing and redistribution gates on a Skill's materials.",
+        "subdomain": "core",
+        "implementation_path": "skill/library",
+        "requirement_prefixes": [
+          "SKILL"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:1064604c520ad5f1792d01cb7bd1cfac49c67c610afc06057b4a39be98965218",
+            "excerpt_sha256": "sha256:6065d37fd70c10f03121d0275a55300cba22ec04130f0072338b52ea7e6d0c4f",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "ingest",
+        "name": "Trust & Supply Chain",
+        "responsibility": "Owns admitting an outside Skill package into the platform: validating its structure statically, storing the accepted archive, and recording where it came from.",
+        "subdomain": "core",
+        "implementation_path": "skill/admission",
+        "requirement_prefixes": [
+          "SKILL",
+          "SEC"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:206cba2045fd60403cfa7aae00c0fb41738c815a8b9b47b39f0b676e986545f6",
+            "excerpt_sha256": "sha256:50cd5e0780f26f20d4c9fa996aeaf6196507abaa623568e4f8f74aa03c0a427a",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "testlab",
+        "name": "Test Lab",
+        "responsibility": "Owns Test Case drafts — their prompts, acceptance criteria, rubrics and uploaded datasets — and freezes a draft into the immutable snapshot a Run executes against.",
+        "subdomain": "core",
+        "implementation_path": "trial/design",
+        "requirement_prefixes": [
+          "TEST"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:f71987cdae5511401b481c9f19df283765dd6d48310b38bd4502671796e6e00d",
+            "excerpt_sha256": "sha256:59f3d24b0abfb539df1f38e697bffd2d84ea729a253a893dcf3af4f0706a23bd",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "run",
+        "name": "Run Orchestration",
+        "responsibility": "Owns a Skill trial Run's lifecycle: its state machine, dispatch to a sandbox provider, following execution to completion, and cleanup.",
+        "subdomain": "core",
+        "implementation_path": "trial/execution",
+        "requirement_prefixes": [
+          "RUN",
+          "SBX"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 2
+            },
+            "content_sha256": "sha256:9b94d8b60748c567792cd49862c965fbfc20a8147e0ea7ed975fe3e8050c6ba1",
+            "excerpt_sha256": "sha256:2258f2bf42ecea1fa2980f67aa7bbfbf667741dc3d73a979e210d503a3397149",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "eval",
+        "name": "Evaluation & Improvement",
+        "responsibility": "Judges a completed trial Run against its acceptance criteria, lets a creator compare Runs and review improvement suggestions, and applies accepted suggestions as a new Skill Version.",
+        "subdomain": "core",
+        "implementation_path": "trial/improvement",
+        "requirement_prefixes": [
+          "EVAL"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:3337e2c6102c2b7f26208b76ed52e5e4a2570418be6cff8b3b0099eceb678523",
+            "excerpt_sha256": "sha256:34298e555d583899df7b5373146b88ec0f8ffb9d49e55b8efe3e214ad72b6ce7",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "packaging",
+        "name": "Packaging & Distribution",
+        "responsibility": "Turns an immutable Skill Version into a downloadable package: it builds the archive, writes the manifest, and owns the download artifacts and records produced from it.",
+        "subdomain": "core",
+        "implementation_path": "skill/delivery",
+        "requirement_prefixes": [
+          "PACK"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:a27ae28f0f10985a23d2216da105c15b00093ad2051cc4a7e77aed6c9e90333c",
+            "excerpt_sha256": "sha256:1711ee5492b86b4bcbb56112334fe0fa0ea64b6bc04fdb8d134df091643d6b96",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "trace",
+        "name": "Run Trace",
+        "responsibility": "Owns Run trace evidence: masking, storing and reading what a Skill trial actually did.",
+        "subdomain": "supporting",
+        "implementation_path": "trial/evidence",
+        "requirement_prefixes": [
+          "TRACE"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/evidence/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 2
+            },
+            "content_sha256": "sha256:e2d5d90b0098ce155f3059d0f2de2a7707e1e79327456a10963cfa91998044d6",
+            "excerpt_sha256": "sha256:f3d4a13d0e09f1d1cbd3eadfae53604c5e7d6a34fba0b0f47357a9648eaf91a3",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "policy",
+        "name": "Policy & Usage",
+        "responsibility": "Owns what a Workspace may consume and how long what it produces is kept: run and generation allowances, and download artifact retention.",
+        "subdomain": "supporting",
+        "implementation_path": "product/entitlements",
+        "requirement_prefixes": [
+          "PDM",
+          "NFR"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/entitlements/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:4c85ff1c71f27e195c2b5b8a8ae69f2cdac24444c9b8e82744ea593fc78c1954",
+            "excerpt_sha256": "sha256:6eb739ad40ee094e307dfb76b9411efb2f868a072f1b58690e4882a81ae3ecac",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "analytics",
+        "name": "Product Analytics",
+        "responsibility": "Owns product-journey measurement: the funnel events and beta feedback reports that let the product learn without becoming a second source of domain truth.",
+        "subdomain": "supporting",
+        "implementation_path": "product/learning",
+        "requirement_prefixes": [
+          "O11Y",
+          "PDM"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/learning/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:db34ff3db69b6d3609a7c0148b8cd128b4fe42e2b16ab4ef5163aa1646eba020",
+            "excerpt_sha256": "sha256:b18edd553af433b43f4db8b80daa21b66eda5127524b33baa60db013d30bf208",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "credit",
+        "name": "Credit Ledger",
+        "responsibility": "Owns the platform's unit of account: a user's credit balance, the ledgers that explain it, and the cost statistics that decide whether a paid call may start.",
+        "subdomain": "supporting",
+        "implementation_path": "creator/credit",
+        "requirement_prefixes": [
+          "CRED"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:1062b7f1f60b0e30e16a2f92d107899cca0c0ac643c6703ee35654689f2644c6",
+            "excerpt_sha256": "sha256:8db4bee7c617a7481427d85cb6a175ea5f9769f46221a942cca0b20f666e65ac",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T10:27:24.111820Z",
+      "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+        "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
+      }
+    }
+  ],
+  "supersedes": "contexts-carry-their-identity"
+}
