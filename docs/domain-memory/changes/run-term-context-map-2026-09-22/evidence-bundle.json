@@ -83,5 +83,15 @@
     "The definition is derived from the runs and run_attempts schema and the Run state machine and recorded in the Context Map; a later change to what a Run references makes that line and this record wrong together.",
     "Five reviewed records plus this term cover two of the repository's Bounded Contexts; the rest of the Context Map remains unmodelled.",
     "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
-  ]
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "05fc4b4ea80a81591373a86df8f2da568b3981a4",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "0fcaf21749935f738c16873f551125264bbee0b9",
+      "registry_digest": "sha256:8a5371beb57549437f9312f6b02bcb90cb7b235728bbf5361ac190f70e06171a"
+    }
+  }
 }
