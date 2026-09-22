@@ -2,6 +2,8 @@
 
 Domain Memory is portable because its durable state is files in the repository and its behavior is Skills plus scripts. The Plugin manifest does not define `agents` or `subagents`; do not add either field.
 
+A plugin install and a direct Skill read of the Plugin root are different entry points. `claude plugin details <name>` on an installed Domain Memory lists only the Skills under `skills/`; the Plugin-root `SKILL.md` router is not itself a Skill under a plugin install, so an agent working through the installed plugin never sees the router page, its readiness-first instruction, or this file, which the router alone links to. Each leaf Skill's `description` is sufficient on its own for a host to pick a capability, but the readiness step below is not restated in any leaf Skill. A host must call `readiness` itself before dispatching to a Domain Memory Skill, or route through a direct read of the Plugin-root `SKILL.md` instead of the installed plugin, to keep that step from being silently lost.
+
 The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
 1. `domain-memory-read` before implementation.

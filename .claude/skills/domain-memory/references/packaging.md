@@ -12,7 +12,7 @@ domain-memory/
 └── skills/domain-memory-implementation-hygiene/SKILL.md
 ```
 
-The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the five Skill directories share the references, templates, and scripts at the Plugin root.
+The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the five Skill directories share the references, templates, and scripts at the Plugin root. A plugin install exposes exactly those five Skills; it does not expose the Plugin-root `SKILL.md` as a Skill, so the router page and its readiness-first instruction are not part of what an installed plugin surfaces to a host. See [host integration](host-integration.md) for what a host must do to keep that step.
 
 The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords`, and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry, not here; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
 
