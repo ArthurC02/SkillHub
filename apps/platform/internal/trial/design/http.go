@@ -115,6 +115,40 @@ type datasetResponse struct {
 	ExpiresAt   string `json:"expires_at"`
 }
 
+type testCaseListResponse struct {
+	TestCases []testCaseListItem `json:"test_cases"`
+}
+
+type deletedTestCaseResponse struct {
+	Deleted         bool   `json:"deleted"`
+	DatasetsDeleted int    `json:"datasets_deleted"`
+	Note            string `json:"note"`
+}
+
+type suggestionsResponse struct {
+	Suggestions []Suggestion `json:"suggestions"`
+}
+
+type datasetLimitsResponse struct {
+	MaxFileBytes        int64    `json:"max_file_bytes"`
+	MaxTestCaseBytes    int64    `json:"max_test_case_bytes"`
+	MaxFilesPerTestCase int      `json:"max_files_per_test_case"`
+	RetentionDays       int      `json:"retention_days"`
+	AllowedKinds        []string `json:"allowed_kinds"`
+	Note                string   `json:"note"`
+}
+
+type datasetListResponse struct {
+	Datasets   []datasetResponse `json:"datasets"`
+	TotalBytes int64             `json:"total_bytes"`
+}
+
+type deletedDatasetResponse struct {
+	Deleted   bool   `json:"deleted"`
+	DatasetID string `json:"dataset_id"`
+	Note      string `json:"note"`
+}
+
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBytes)).Decode(v); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "請求內容不是合法的 JSON")
@@ -201,7 +235,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if raw := r.URL.Query().Get("skill_id"); raw != "" {
 		if err := skillID.Scan(raw); err != nil {
 
-			httpx.WriteJSON(w, http.StatusOK, map[string]any{"test_cases": []testCaseListItem{}})
+			httpx.WriteJSON(w, http.StatusOK, testCaseListResponse{TestCases: []testCaseListItem{}})
 			return
 		}
 	}
@@ -225,7 +259,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		item.HasRubric = item.Rubric != nil
 		out = append(out, item)
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"test_cases": out})
+	httpx.WriteJSON(w, http.StatusOK, testCaseListResponse{TestCases: out})
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -321,10 +355,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "刪除失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"deleted":          true,
-		"datasets_deleted": res.DatasetsDeleted,
-		"note":             deleteTestCaseNote,
+	httpx.WriteJSON(w, http.StatusOK, deletedTestCaseResponse{
+		Deleted:         true,
+		DatasetsDeleted: res.DatasetsDeleted,
+		Note:            deleteTestCaseNote,
 	})
 }
 
@@ -370,7 +404,7 @@ func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "建議失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"suggestions": suggestions})
+	httpx.WriteJSON(w, http.StatusOK, suggestionsResponse{Suggestions: suggestions})
 }
 
 func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {
@@ -419,13 +453,13 @@ func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"max_file_bytes":          int64(MaxFileBytes),
-		"max_test_case_bytes":     int64(MaxTestCaseBytes),
-		"max_files_per_test_case": MaxFilesPerTestCase,
-		"retention_days":          int(DatasetRetention / (24 * time.Hour)),
-		"allowed_kinds":           allowedKindsWire,
-		"note":                    limitsNote,
+	httpx.WriteJSON(w, http.StatusOK, datasetLimitsResponse{
+		MaxFileBytes:        int64(MaxFileBytes),
+		MaxTestCaseBytes:    int64(MaxTestCaseBytes),
+		MaxFilesPerTestCase: MaxFilesPerTestCase,
+		RetentionDays:       int(DatasetRetention / (24 * time.Hour)),
+		AllowedKinds:        allowedKindsWire,
+		Note:                limitsNote,
 	})
 }
 
@@ -500,9 +534,9 @@ func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
 		out = append(out, toDatasetResponseDTO(d))
 		total += d.SizeBytes
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"datasets":    out,
-		"total_bytes": total,
+	httpx.WriteJSON(w, http.StatusOK, datasetListResponse{
+		Datasets:   out,
+		TotalBytes: total,
 	})
 }
 
@@ -531,9 +565,9 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "刪除失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"deleted":    true,
-		"dataset_id": pgconv.UUIDString(ds.ID),
-		"note":       deleteDatasetNote,
+	httpx.WriteJSON(w, http.StatusOK, deletedDatasetResponse{
+		Deleted:   true,
+		DatasetID: pgconv.UUIDString(ds.ID),
+		Note:      deleteDatasetNote,
 	})
 }
