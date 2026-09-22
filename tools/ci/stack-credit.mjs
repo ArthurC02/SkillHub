@@ -895,6 +895,104 @@ try {
   }
   await budgetPage.close();
 
+  if (typeof imported.skill_id === "string") {
+    const governancePage = await operator.newPage();
+    const governanceRead = governancePage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/admin/skills" &&
+        response.request().headers().accept === "application/json",
+    );
+    await governancePage.goto(
+      `${base}/admin/skills?q=${encodeURIComponent(imported.skill_id)}`,
+      { waitUntil: "networkidle" },
+    );
+    await governanceRead;
+    const restrictionNote = governancePage.locator("#admin-restriction-note");
+    await restrictionNote.waitFor({ state: "visible" });
+    await restrictionNote.fill("browser smoke licensing review");
+    const restrictResponse = await Promise.all([
+      governancePage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/admin/skills/${imported.skill_id}/restriction` &&
+          response.request().method() === "PUT",
+      ),
+      restrictionNote
+        .locator("xpath=ancestor::form")
+        .locator('button[type="submit"]')
+        .click(),
+    ]).then(([response]) => response);
+    const restrictedSkills = await (
+      await operator.request.get(`${base}/admin/skills?q=${imported.skill_id}`)
+    ).json();
+    await governancePage.getByRole("button", { name: "解除受限" }).waitFor();
+    await governancePage
+      .locator("#admin-restriction-note")
+      .fill("review complete");
+    const unrestrictResponse = await Promise.all([
+      governancePage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/admin/skills/${imported.skill_id}/restriction` &&
+          response.request().method() === "DELETE",
+      ),
+      governancePage.getByRole("button", { name: "解除受限" }).click(),
+    ]).then(([response]) => response);
+    const unrestrictedSkills = await (
+      await operator.request.get(`${base}/admin/skills?q=${imported.skill_id}`)
+    ).json();
+    check(
+      "the operator restricts and restores a skill through the browser",
+      restrictResponse.status() === 200 &&
+        restrictedSkills.skills?.[0]?.access_restriction === "license-review" &&
+        unrestrictResponse.status() === 204 &&
+        unrestrictedSkills.skills?.[0]?.access_restriction === null,
+      JSON.stringify({
+        restrict: restrictResponse.status(),
+        restrictedSkills,
+        unrestrict: unrestrictResponse.status(),
+        unrestrictedSkills,
+      }),
+    );
+
+    await governancePage
+      .locator("#admin-takedown-reason")
+      .fill("browser smoke takedown");
+    await governancePage.getByRole("button", { name: "下架" }).click();
+    const takedownResponse = await Promise.all([
+      governancePage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/admin/skills/${imported.skill_id}/takedown` &&
+          response.request().method() === "PUT",
+      ),
+      governancePage.getByRole("button", { name: "確認下架" }).click(),
+    ]).then(([response]) => response);
+    const takenDownSkills = await (
+      await operator.request.get(`${base}/admin/skills?q=${imported.skill_id}`)
+    ).json();
+    check(
+      "the operator takes down a skill through the browser and it reads back",
+      takedownResponse.status() === 200 &&
+        takenDownSkills.skills?.[0]?.takedown_at !== null &&
+        takenDownSkills.skills?.[0]?.takedown_reason ===
+          "browser smoke takedown",
+      JSON.stringify({ takedown: takedownResponse.status(), takenDownSkills }),
+    );
+    await governancePage.close();
+  } else {
+    check(
+      "the operator restricts and restores a skill through the browser",
+      false,
+      "no browser-imported skill available",
+    );
+    check(
+      "the operator takes down a skill through the browser and it reads back",
+      false,
+      "no browser-imported skill available",
+    );
+  }
+
   credits = await balanceOf(member);
   check(
     "the member's balance follows and it can start",
