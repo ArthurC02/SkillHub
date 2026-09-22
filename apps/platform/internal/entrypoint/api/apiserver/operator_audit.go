@@ -51,6 +51,10 @@ type operatorAuditEventView struct {
 	Metadata     map[string]any `json:"metadata"`
 }
 
+type operatorAuditResponse struct {
+	Events []operatorAuditEventView `json:"events"`
+}
+
 func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit, err := queryInt32(r, "limit", defaultAuditPageSize, 1, maxAuditPageSize)
 	if err != nil {
@@ -75,7 +79,7 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 			OccurredAt: rec.OccurredAt.UTC().Format(time.RFC3339), Metadata: rec.Metadata,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"events": events})
+	httpx.WriteJSON(w, http.StatusOK, operatorAuditResponse{Events: events})
 }
 
 func queryInt32(r *http.Request, name string, fallback, low, high int64) (int32, error) {

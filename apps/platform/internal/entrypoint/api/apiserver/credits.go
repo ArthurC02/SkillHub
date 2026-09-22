@@ -116,6 +116,12 @@ type creditGrantRequest struct {
 	Reason        string `json:"reason"`
 }
 
+type creditGrantResponse struct {
+	WorkspaceID    string `json:"workspace_id"`
+	BalanceCredits int64  `json:"balance_credits"`
+	AmountCredits  int64  `json:"amount_credits"`
+}
+
 func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 	var workspaceID pgtype.UUID
 	if err := workspaceID.Scan(r.PathValue("workspace_id")); err != nil {
@@ -148,10 +154,9 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "grant failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"workspace_id":    pgconv.UUIDString(workspaceID),
-		"balance_credits": balance,
-		"amount_credits":  body.AmountCredits,
+	httpx.WriteJSON(w, http.StatusOK, creditGrantResponse{
+		WorkspaceID: pgconv.UUIDString(workspaceID), BalanceCredits: balance,
+		AmountCredits: body.AmountCredits,
 	})
 }
 
@@ -161,6 +166,12 @@ type creditEntryView struct {
 	RefType      *string `json:"ref_type"`
 	Estimated    bool    `json:"estimated"`
 	CreatedAt    string  `json:"created_at"`
+}
+
+type creditAccountResponse struct {
+	WorkspaceID    string            `json:"workspace_id"`
+	BalanceCredits int64             `json:"balance_credits"`
+	Entries        []creditEntryView `json:"entries"`
 }
 
 func (h *creditsHandler) Account(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +201,9 @@ func (h *creditsHandler) Account(w http.ResponseWriter, r *http.Request) {
 			Estimated: e.Estimated, CreatedAt: e.CreatedAt.UTC().Format(time.RFC3339),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"workspace_id":    pgconv.UUIDString(workspaceID),
-		"balance_credits": ledger.Balance,
-		"entries":         entries,
+	httpx.WriteJSON(w, http.StatusOK, creditAccountResponse{
+		WorkspaceID: pgconv.UUIDString(workspaceID), BalanceCredits: ledger.Balance,
+		Entries: entries,
 	})
 }
 
@@ -206,6 +216,10 @@ type costStatisticsView struct {
 	P90UsdMicros *int64 `json:"p90_usd_micros"`
 	P95UsdMicros *int64 `json:"p95_usd_micros"`
 	MaxUsdMicros *int64 `json:"max_usd_micros"`
+}
+
+type costStatisticsResponse struct {
+	Statistics []costStatisticsView `json:"statistics"`
 }
 
 func (h *creditsHandler) CostStatistics(w http.ResponseWriter, r *http.Request) {
@@ -223,5 +237,5 @@ func (h *creditsHandler) CostStatistics(w http.ResponseWriter, r *http.Request) 
 			P95UsdMicros: s.P95UsdMicros, MaxUsdMicros: s.MaxUsdMicros,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"statistics": views})
+	httpx.WriteJSON(w, http.StatusOK, costStatisticsResponse{Statistics: views})
 }
