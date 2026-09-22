@@ -1,0 +1,106 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "the-run-aggregate-cites-its-decision",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "a-reviewed-fact-rests-on-a-decision",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-22T11:44:47.859589Z",
+  "verified_at": "2026-09-22T11:44:48.436209Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+    "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": [
+      "docs/adr/ADR-018-aggregates-and-domain-events.md:16"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged. Only the evidence behind an existing Aggregate moves from a handbook onto the decision that established it.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/adr/ADR-018-aggregates-and-domain-events.md:16"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The Run Aggregate cited a handbook line describing where the code currently keeps its transition table, which changes whenever the code is rearranged.",
+      "The decision that Run has an aggregate root whose state only its own methods change is what the record actually asserts."
+    ],
+    "decision": "Re-cite the Run Aggregate onto the decision that gave it a root.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Leave the handbook citation: a reviewed fact would go stale every time the handbook's table is re-ordered.",
+      "Cite the state machine listing instead: that names the transitions, not who owns them."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "the-cited-source-is-a-decision",
+      "no-reviewed-record-cites-a-handbook",
+      "a-changed-excerpt-is-caught",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "a-changed-excerpt-is-caught"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "run",
+        "context": "run",
+        "root": "Run",
+        "invariants": [
+          "Run owns lifecycle transitions."
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-018-aggregates-and-domain-events.md",
+            "lines": {
+              "start": 16,
+              "end": 16
+            },
+            "content_sha256": "sha256:d0c1cd45b0b52608b28904af6e9de3ece91fcb0c4439520fe42b835988f1ef56",
+            "excerpt_sha256": "sha256:2b2d63568af5302c0bf85b734b4cb22d148975db95244390d93b9ee110de22c3",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T11:44:48.133061Z",
+      "scope": "the Run Aggregate's evidence",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+        "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+      }
+    }
+  ],
+  "supersedes": "run-registry-reviewed-facts-signed"
+}

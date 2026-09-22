@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "a-reviewed-fact-rests-on-a-decision",
+  "proposal_id": "the-run-aggregate-cites-its-decision",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-run-aggregate-rests-on-a-decision",
+      "expected_outcome": "The validator accepts the re-cited Aggregate under --require-reviewed.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on the staged replacement"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "the-run-aggregate-rests-on-a-decision",
+      "expected_outcome": "Every cited excerpt hashes to what the record was written against.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the staged replacement"
+    },
+    {
+      "id": "the-cited-source-is-a-decision",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-run-aggregate-rests-on-a-decision",
+      "expected_outcome": "The Run Aggregate's only citation classifies as a decision source.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a scan of the staged Aggregate"
+    },
+    {
+      "id": "no-reviewed-record-cites-a-handbook",
+      "source_type": "acceptance-criterion",
+      "source_id": "no-reviewed-record-rests-on-a-handbook",
+      "expected_outcome": "No reviewed record in any asset cites a path under docs/development.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a scan of every staged asset"
+    },
+    {
+      "id": "a-changed-excerpt-is-caught",
+      "source_type": "invariant",
+      "source_id": "the-run-aggregate-rests-on-a-decision",
+      "expected_outcome": "A citation whose excerpt digest no longer matches the line is refused.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on a mutated copy"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "no-reviewed-record-rests-on-a-handbook",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "no-reviewed-record-rests-on-a-handbook",
+      "expected_outcome": "Governance readiness reports ready with no blocks.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

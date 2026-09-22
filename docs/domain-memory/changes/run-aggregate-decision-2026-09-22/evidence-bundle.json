@@ -1,0 +1,90 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "a-reviewed-fact-rests-on-a-decision",
+  "proposal_id": "the-run-aggregate-cites-its-decision",
+  "registry_revision": {
+    "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+    "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-changed-excerpt-is-caught",
+    "mutated_protection": "the digest that ties a citation to the line it was written against",
+    "failure_evidence": "Replacing the citation excerpt digest with zeroes made verify-evidence exit 1 and report docs/adr/ADR-018-aggregates-and-domain-events.md stale, 48 current and 1 stale; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-018-aggregates-and-domain-events.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding the re-cited Aggregate reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:f1a3a417fe8a396485a572ab6ea0582e9bb5f59f0135d4746392c212f1b9c88d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "the-cited-source-is-a-decision",
+      "status": "passed",
+      "evidence": "the Run Aggregate's only citation classifies as a decision source",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:bf34685916c6140e85138e7706400d76a145494720b7fe9ec37edc2496ad3ca3",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-reviewed-record-cites-a-handbook",
+      "status": "passed",
+      "evidence": "across every staged asset no reviewed record cites a path under docs/development",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:e3bfc8c56ebf88dc691a69009c79d19ace42aa8d649d9aa81264ab09b82bfeeb",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-changed-excerpt-is-caught",
+      "status": "passed",
+      "evidence": "replacing the citation's excerpt digest made verify-evidence refuse it and exit non-zero; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:65a1194700a8f1c71c27152439e6960cfd53827287c91d840f1d6e66d558338d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:42492bb9ed247849e06d1a8b0a7119e9d279e958410ed93cd40a000a249065bc",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

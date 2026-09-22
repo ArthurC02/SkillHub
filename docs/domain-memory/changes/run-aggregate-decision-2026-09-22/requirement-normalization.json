@@ -1,0 +1,27 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "a-reviewed-fact-rests-on-a-decision",
+  "status": "draft",
+  "intent": "A reviewed record stands on a decision the project made, not on a handbook describing how the code happens to be arranged today.",
+  "actor": "A coding Agent asking the Registry who owns Run's lifecycle",
+  "observable_outcome": "The Run Aggregate cites the decision that gave it its root, and no reviewed record cites a handbook.",
+  "acceptance_criteria": [
+    {
+      "id": "the-run-aggregate-rests-on-a-decision",
+      "statement": "The Run Aggregate's evidence is a decision source."
+    },
+    {
+      "id": "no-reviewed-record-rests-on-a-handbook",
+      "statement": "No reviewed record cites a path under docs/development."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-018-aggregates-and-domain-events.md"
+  ]
+}
