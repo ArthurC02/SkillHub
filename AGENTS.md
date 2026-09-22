@@ -13,7 +13,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 3. **Go Worker** 是唯一的佇列消費者，以內部 HTTP 呼叫兩個能力提供者：**`apps/llm`**（Python FastAPI，所有模型呼叫經 LiteLLM 閘道）與 **`apps/sandbox`**（gVisor 隔離的 VM 池，跑釘選 digest 的 runtime image；契約 `contracts/openapi/sandbox-provider.yaml`）。
 4. 結果以結構化回應回到 Go；領域狀態變更與對外事件同一交易（outbox）。**執行平面永遠碰不到核心資料庫。**
 
-`apps/platform/internal/` 依 DDD 切成 creator／product／skill／trial 四群 Bounded Context，逐套件對照表在 [platform-context-map.md](docs/development/platform-context-map.md)（有機器對帳）。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
+`apps/platform/internal/` 依 DDD 切成 creator／product／skill／trial 四群 Bounded Context，Bounded Context 是經審查的 [Domain Memory](docs/domain-memory/) 記錄，技術套件的 identity 在 `apps/platform/architecture-identity.yaml`；兩者都有機器對帳。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
 
 ## 現在在哪
 
@@ -79,7 +79,7 @@ ADR 一個主題一份、內容永遠是現行版本，歷史在 git；只有 AD
 4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
 5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行；提交前一律 `task gen:check`；generated 目錄的衝突在來源解決後重生。
 6. **Go 側只生成 models，沒有 generated router 可以 mount**：contract 的 Go 產出是型別，server 與 client 都不生成；每一條 route 在 `router.go` 逐條掛上並逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，每移一條要加 route 測試。重新打開 server 生成會被 `TestTheGeneratedGoPackageCarriesModelsAndNoServer` 擋下。
-7. **Bounded Context 治理**：每個套件屬於且僅屬於一個 context，新套件先在 [context map](docs/development/platform-context-map.md) 登記再建目錄；跨 context 的新 import **同一個 commit** 改 context map 的白名單與 `apps/platform/.golangci.yml` 的 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
+7. **Bounded Context 治理**：每個套件屬於且僅屬於一個 context，新套件先登記再建目錄（Bounded Context 進 Registry，技術套件進 identity 檔）；跨 context 的新 import 先在 Registry 立下 dependency policy，**同一個 commit** 改 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
 8. **Query ownership**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
 9. **修好一個東西之後，把修法弄壞一次**：綠燈只證明測試存在。把修正那一行還原、跑對應測試、確認變紅、再改回來（`git diff` 為空）。不適用純文案與純註解；適用任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。三次前例在 automation.md。
 

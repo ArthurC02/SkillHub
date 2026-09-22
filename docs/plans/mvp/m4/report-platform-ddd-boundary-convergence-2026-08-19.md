@@ -9,7 +9,7 @@ DDD-001～DDD-060 已完成。Platform 維持 modular monolith：11 個 Bounded 
 
 現行的權威來源是：
 
-- [Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)：依賴方向與 composition 規則；Context Map 見 [platform-context-map.md](../../../development/platform-context-map.md)。
+- [Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)：依賴方向與 composition 規則；Context Map 見 platform-context-map.md。
 - [Query 與寫入所有權](../../../adr/README.md#query-與寫入所有權)：query ownership 與 read/write 強制。
 - [Query 與寫入所有權](../../../adr/README.md#query-與寫入所有權)：跨 Context 寫入的依賴反轉。
 - [Platform Bounded Context 與 Context Map](../../../adr/README.md#platform-bounded-context-與-context-map)：產品價值流、Shared Kernel、Foundation 與 Entrypoint 拓撲。

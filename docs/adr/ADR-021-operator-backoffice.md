@@ -69,7 +69,7 @@ operator 能做的事窮舉在 `02` SEC-011：授予點數、設定／解除受�
 - 授予點數的 handler 可以留在 `apiserver` 做轉譯，只要理由檢查、冪等與 audit 都留在 `credit` 的 Service 裡。
 - 一個畫面要同時顯示多個 context 的東西時（例如帳號頁同時有身分與點數），由前端分別呼叫各條端點再拼起來，不在後端新增聚合端點；這樣每條端點只有一個 owner，授權也只在一個地方。
 - operator 動作紀錄的過濾條件（哪些 action 算 operator 動作）由組裝層（`apiserver`）依它掛了哪些 operator 路由提供；`audit` 本身不知道這份清單。
-- 不新增套件、不新增跨 context 的 import；Context 對照表在 [platform-context-map.md](../development/platform-context-map.md)，後台不需要在那裡登記新項目。
+- 不新增套件、不新增跨 context 的 import；架構 identity 的兩個家是經審查的 Domain Memory Registry 與 `apps/platform/architecture-identity.yaml`，後台不需要在那裡登記新項目。
 
 一次全平台的 query 稽核，逐條比對每條 query 實際碰到的表（見 [ADR-017](./ADR-017-query-and-write-ownership.md)），確認後台上的每一項事實都已有明確擁有者，沒有一條需要移動 context 邊界。切 context 的依據是語言、資料、規則與組織是否不同，不是畫面或角色：operator 用的是與一般使用者相同的詞彙、同一個團隊、同一組規則，四個訊號一個也沒出現。
 

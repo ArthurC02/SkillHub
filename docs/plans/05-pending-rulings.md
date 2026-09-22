@@ -2125,7 +2125,7 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 
 [帳號清除與 Credit](../adr/README.md#帳號清除與-credit)決策 5 要求記錄搜尋的成本事件，但明講「沒有裁定搜尋本身要不要扣使用者 Credit」，並把試跑一起留著。兩個都問完了：
 
-**搜尋不扣點。** 現狀就是答案——`catalog` 對 credit 只寫入、不查門檻（[context map](../development/platform-context-map.md) 附錄 A 那一列早就是這樣寫的），CRED-005 落地時也是照這個形狀接的。所以這一半不需要任何程式改動，它只是從「還沒決定」變成「決定了就是這樣」。理由值得寫下來：搜尋是進入這個平台的第一個動作，把它變成要付費的動作，等於要求一個還不知道這裡有什麼的人先付錢才能知道。這筆錢平台照樣要付（一次 embedding 約 $0.00001），只是不轉嫁——而它照樣進 `cost_events`，所以它照樣進滾動窗、照樣影響閘門①的門檻。**不扣點不等於不記帳。**
+**搜尋不扣點。** 現狀就是答案——`catalog` 對 credit 只寫入、不查門檻（context map 附錄 A 那一列早就是這樣寫的），CRED-005 落地時也是照這個形狀接的。所以這一半不需要任何程式改動，它只是從「還沒決定」變成「決定了就是這樣」。理由值得寫下來：搜尋是進入這個平台的第一個動作，把它變成要付費的動作，等於要求一個還不知道這裡有什麼的人先付錢才能知道。這筆錢平台照樣要付（一次 embedding 約 $0.00001），只是不轉嫁——而它照樣進 `cost_events`，所以它照樣進滾動窗、照樣影響閘門①的門檻。**不扣點不等於不記帳。**
 
 **試跑要扣點。** 這一條有程式要寫，而且它讓 [R-73](#r-73) 的推導從「一個合理的類比」變成「就是這件事」：13,000 credit ＝ 20 × $0.50 × 1.3 ÷ $0.001，那個 $0.50 是每 Run 的閘道 `max_budget`，而那條算式一直假設 Run 會扣點。裁定之前它是一個沒有對應機制的數字；裁定之後它就是額度本身。
 
@@ -2195,12 +2195,12 @@ SEC-009 是 gVisor 下的沙箱相容性驗收（`docs/plans/mvp/m4/sec-009-acce
 4. **第一批範圍**：後台外殼、帳號與點數、Skill 治理、派送煞車；第二批是 operator 動作紀錄與成本統計。建議：同意。
 5. **後台在 DDD 裡的位置**（負責人 2026-09-12 追問「該視為什麼樣的 Bounded Context」）。
    - 建議：它不是 Bounded Context，只是組裝層。後台上的每一項都已經有擁有者：點數歸 `credit`，Skill 治理歸 `catalog`，派送煞車歸 `run`，帳號與名冊歸 `identity`，動作紀錄歸 `audit`。
-   - 所以 [context map](../development/platform-context-map.md) 不用改。
+   - 所以 context map 不用改。
    - 等出現有自己生命週期的東西（例如濫用檢舉案件），再另立一個 Supporting context。
 
 **決定之後誰動**：主 Agent 把營運後台的規劃改成 Accepted，補上 `02`／`03` 的需求與 `01` §7，先改契約再寫程式。
 
-**第五題定案（2026-09-12）**：稽核逐條比對每條 query 碰到的表，找到並收掉 31 條讀寫別人表的 query（55 處）（分六組，做法與理由見[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)）。每一條的事實都有明確的擁有者，修法都是讓查詢回到擁有者，沒有一條需要移動 context 的邊界。所以照建議：後台是組裝層，不是 Bounded Context，[context map](../development/platform-context-map.md) 不改；`db/query-owners.yaml` 從此多一段 `tables:`，機器擋下任何碰到別人表的 query。營運後台的規劃改為 Accepted。
+**第五題定案（2026-09-12）**：稽核逐條比對每條 query 碰到的表，找到並收掉 31 條讀寫別人表的 query（55 處）（分六組，做法與理由見[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)）。每一條的事實都有明確的擁有者，修法都是讓查詢回到擁有者，沒有一條需要移動 context 的邊界。所以照建議：後台是組裝層，不是 Bounded Context，context map 不改；`db/query-owners.yaml` 從此多一段 `tables:`，機器擋下任何碰到別人表的 query。營運後台的規劃改為 Accepted。
 
 ---
 

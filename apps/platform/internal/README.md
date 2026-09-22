@@ -48,7 +48,7 @@ Skill 生命週期
 
 ## 架構治理位置
 
-產品價值流不是 import 規則。以下是目前 Go layout 的 machine-readable identity；`Core`／`Supporting` 是治理 metadata，不是產品領域名稱。完整事實來源是 [context map](../../../docs/development/platform-context-map.md)。
+產品價值流不是 import 規則。以下是目前 Go layout 的 machine-readable identity；`Core`／`Supporting` 是治理 metadata，不是產品領域名稱。完整事實來源是 [Domain Memory](../../../docs/domain-memory/) 的已審查 Context 與 [`architecture-identity.yaml`](../architecture-identity.yaml)。
 
 ```text
 internal/
@@ -90,7 +90,7 @@ internal/
 4. **Composition root 注入**：不能由 Generic package 反向 import domain，也不能形成
    cycle 時，在 process root 組裝 owner API／callback；這不是 consumer 自己建 Service。
 
-跨 Context import 必須同一批更新 [context map](../../../docs/development/platform-context-map.md) 的白名單與
+跨 Context import 必須先在 Registry 立下 [dependency policy](../../../docs/domain-memory/registry/dependency-policies.json)，同一批更新
 [`apps/platform/.golangci.yml`](../.golangci.yml)；資料 query 的 owner 由
 [`db/query-owners.yaml`](../../../db/query-owners.yaml) 宣告與檢查。Read ownership 的
 細節見 [Query 與寫入所有權](../../../docs/adr/README.md#query-與寫入所有權)，
@@ -112,4 +112,4 @@ unit 的 root 建構所需服務。詳見 [Platform Bounded Context 與 Context 
 
 ## 互動創作的後續能力
 
-[互動創作](../../../docs/adr/README.md#互動創作) 由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。尚未實作的新能力必須先定義契約，新增套件須依 [context map](../../../docs/development/platform-context-map.md) 登記 owner。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。
+[互動創作](../../../docs/adr/README.md#互動創作) 由 Python LangGraph 編排創作，Go 持有會話、授權、成本、版本與 Run 的事實。尚未實作的新能力必須先定義契約，新增套件須先登記 owner（Bounded Context 進 [Domain Memory](../../../docs/domain-memory/)，技術套件進 [`architecture-identity.yaml`](../architecture-identity.yaml)）。[GEN-007～012](../../../docs/plans/02-specifications-and-acceptance-criteria.md) 是允收來源。
