@@ -136,6 +136,14 @@ func TestADRCitationProblems(t *testing.T) {
 			count: 0,
 		},
 		{
+			name: "a Domain Memory audit event names the ADR it cited",
+			change: func(_ string, write func(string, string)) {
+				write("docs/domain-memory/audit/events.jsonl",
+					"{\"operation\": \"refine-sources\", \"path\": \"docs/adr/"+one+"-alpha.md\"}\n")
+			},
+			count: 0,
+		},
+		{
 			name: "a Domain Memory draft PR's prose is not exempt",
 			change: func(_ string, write func(string, string)) {
 				write("docs/domain-memory/changes/x/draft-pr.md", "依 "+one+"。\n")
