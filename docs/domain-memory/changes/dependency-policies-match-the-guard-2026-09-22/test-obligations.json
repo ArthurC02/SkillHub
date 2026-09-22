@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "the-recorded-policies-agree-with-the-guard",
+  "proposal_id": "dependency-policies-match-the-guard",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "The validator accepts all twenty-eight policies under --require-reviewed.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on the staged replacement"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "Every cited excerpt hashes to what the record was written against.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the staged replacement"
+    },
+    {
+      "id": "every-pair-is-denied-or-permitted-not-both",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "Computed independently from the compiled guard's deny lists, every ordered pair of Bounded Contexts is either denied there or permitted here, and never both.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a cross-check of the staged policies against apps/platform/.golangci.yml"
+    },
+    {
+      "id": "a-prohibition-carries-its-reason",
+      "source_type": "acceptance-criterion",
+      "source_id": "a-prohibition-keeps-its-reason",
+      "expected_outcome": "Every forbidden policy carries a rationale.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a scan of the staged policies"
+    },
+    {
+      "id": "a-policy-names-two-known-contexts",
+      "source_type": "invariant",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "A policy naming a Context the Registry does not hold is refused by the validator.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on a mutated copy"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-guard-and-the-registry-agree",
+      "expected_outcome": "Governance readiness reports ready with no blocks.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry governance-readiness"
+    }
+  ]
+}

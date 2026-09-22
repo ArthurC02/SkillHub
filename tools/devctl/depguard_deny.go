@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,12 +20,6 @@ var alwaysDenied = append(slices.Clone(compositionRoots), "objreconcile")
 func isCompositionRoot(id string) bool { return slices.Contains(compositionRoots, id) }
 
 var (
-	appendixHeading = "## 跨 context import 白名單"
-
-	// A backticked lowercase identifier; the appendix writes everything else
-	// (plain prose) unbacked.
-	appendixID = regexp.MustCompile("`([a-z][a-z0-9_]*)`")
-
 	depguardRuleName = regexp.MustCompile(`^ {8}([A-Za-z0-9_-]+):\s*$`)
 	depguardListKey  = regexp.MustCompile(`^ {10}(files|deny):\s*$`)
 	depguardDenyPkg  = regexp.MustCompile(`^ {12}- pkg:\s*(\S+)\s*$`)
@@ -38,19 +33,15 @@ func depguardDenyProblems(root string) []string {
 	if len(declared) == 0 {
 		return append(problems, fmt.Sprintf("depguard-deny: %s declares no contexts; this check has lost its subject", identityHomes))
 	}
-	adr, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(contextWhitelistDoc)))
-	if err != nil {
-		return append(problems, fmt.Sprintf("depguard-deny: %s: %v", contextWhitelistDoc, err))
-	}
 	lint, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(lintPath)))
 	if err != nil {
 		return append(problems, fmt.Sprintf("depguard-deny: %s: %v", lintPath, err))
 	}
 
-	permitted, wildcard, appendixRows := appendixPermissions(string(adr), declared)
-	if appendixRows == 0 {
+	permitted, policies, problems := reviewedDependencyPermissions(root, problems)
+	if policies == 0 {
 		return append(problems, fmt.Sprintf(
-			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", contextWhitelistDoc, appendixHeading))
+			"depguard-deny: %s holds no reviewed dependency policy; this check has lost its subject", dependencyPoliciesFile))
 	}
 
 	universe := map[string]bool{}
@@ -104,15 +95,15 @@ func depguardDenyProblems(root string) []string {
 			case target == self:
 			case denied[target] && permitted[self][target]:
 				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies %q, but %s appendix A keeps `%s` → `%s`; "+
+					"depguard-deny: %s rule %q denies %q, but %s keeps `%s` → `%s`; "+
 						"the two sides disagree about that collaboration",
-					lintPath, rule, target, contextWhitelistDoc, self, target))
-			case !denied[target] && !permitted[self][target] && !wildcard[target]:
+					lintPath, rule, target, dependencyPoliciesFile, self, target))
+			case !denied[target] && !permitted[self][target]:
 				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q does not deny %q and %s appendix A does not permit `%s` → `%s`; "+
+					"depguard-deny: %s rule %q does not deny %q and %s does not permit `%s` → `%s`; "+
 						"a deletion from a deny list IS a new permission (\"legal but unlisted = denied\"), so add the "+
 						"appendix row or restore the deny entry",
-					lintPath, rule, target, contextWhitelistDoc, self, target))
+					lintPath, rule, target, dependencyPoliciesFile, self, target))
 			}
 		}
 	}
@@ -249,64 +240,6 @@ func copySet(source map[string]bool) map[string]bool {
 	return result
 }
 
-func appendixPermissions(adr string, declared map[string]packageIdentity) (permitted map[string]map[string]bool, wildcard map[string]bool, rows int) {
-	permitted, wildcard = map[string]map[string]bool{}, map[string]bool{}
-	inAppendix := false
-	for _, line := range strings.Split(adr, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			inAppendix = strings.HasPrefix(line, appendixHeading)
-			continue
-		}
-		trimmed := strings.TrimSpace(line)
-		if !inAppendix || !strings.HasPrefix(trimmed, "|") {
-			continue
-		}
-		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
-
-		// A row is "| A → B、C | ... | 保留 |": left of the arrow is the
-		// importer, right is what it may import; a row no longer saying 保留
-		// is no longer a permission.
-		if len(cells) != 3 || !strings.HasPrefix(strings.TrimSpace(cells[2]), "保留") {
-			continue
-		}
-		from, to, arrow := strings.Cut(cells[0], "→")
-		if !arrow {
-			continue
-		}
-		var sources, targets []string
-		for _, m := range appendixID.FindAllStringSubmatch(from, -1) {
-			if knownBoundaryID(declared, m[1]) {
-				sources = append(sources, m[1])
-			}
-		}
-		for _, m := range appendixID.FindAllStringSubmatch(to, -1) {
-			if knownBoundaryID(declared, m[1]) {
-				targets = append(targets, m[1])
-			}
-		}
-		if len(targets) == 0 {
-			continue
-		}
-		rows++
-		if len(sources) == 0 {
-			// A blank left side is a blanket grant to every context.
-			for _, target := range targets {
-				wildcard[target] = true
-			}
-			continue
-		}
-		for _, source := range sources {
-			if permitted[source] == nil {
-				permitted[source] = map[string]bool{}
-			}
-			for _, target := range targets {
-				permitted[source][target] = true
-			}
-		}
-	}
-	return permitted, wildcard, rows
-}
-
 // Reads rule blocks by fixed indentation level rather than a full YAML parser.
 func depguardRules(lint string) map[string]map[string][]string {
 	rules := map[string]map[string][]string{}
@@ -384,4 +317,42 @@ func stripYAMLComments(text string) string {
 		lines[i] = line
 	}
 	return strings.Join(lines, "\n")
+}
+
+func reviewedDependencyPermissions(root string, problems []string) (map[string]map[string]bool, int, []string) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(dependencyPoliciesFile)))
+	if err != nil {
+		return nil, 0, append(problems, fmt.Sprintf("depguard-deny: %s: %v", dependencyPoliciesFile, err))
+	}
+	var doc struct {
+		Dependencies []struct {
+			ID     string `json:"id"`
+			From   string `json:"from_context"`
+			To     string `json:"to_context"`
+			Policy string `json:"policy"`
+			Status string `json:"status"`
+		} `json:"dependencies"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, 0, append(problems, fmt.Sprintf("depguard-deny: %s: %v", dependencyPoliciesFile, err))
+	}
+	permitted := map[string]map[string]bool{}
+	counted := 0
+	for _, entry := range doc.Dependencies {
+		if entry.Status != "reviewed" {
+			problems = append(problems, fmt.Sprintf(
+				"depguard-deny: %s:%s is %q; only a reviewed policy permits a collaboration",
+				dependencyPoliciesFile, entry.ID, entry.Status))
+			continue
+		}
+		counted++
+		if entry.Policy != "allowed" {
+			continue
+		}
+		if permitted[entry.From] == nil {
+			permitted[entry.From] = map[string]bool{}
+		}
+		permitted[entry.From][entry.To] = true
+	}
+	return permitted, counted, problems
 }

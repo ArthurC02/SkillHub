@@ -109,7 +109,7 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	write("apps/platform/.golangci.yml", "version: \"2\"\n")
 	write(contextMapDoc, "packages:\n")
 	write(registryContextsFile, `{"contexts": []}`)
-	write(contextWhitelistDoc, "# Context map\n\n沒有白名單。\n")
+	write(dependencyPoliciesFile, `{"dependencies": []}`)
 
 	write(genDirRelative+"/fake.sql.go", `package gen
 

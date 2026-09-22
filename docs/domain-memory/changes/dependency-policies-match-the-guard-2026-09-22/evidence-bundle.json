@@ -1,0 +1,91 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "the-recorded-policies-agree-with-the-guard",
+  "proposal_id": "dependency-policies-match-the-guard",
+  "registry_revision": {
+    "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+    "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-policy-names-two-known-contexts",
+    "mutated_protection": "the rule that a dependency policy names two Contexts the Registry holds",
+    "failure_evidence": "Renaming one policy's to_context to ghost made validate exit 1 with \"ERROR: dependency-policies.json:run-may-use-testlab references unknown context\"; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/.golangci.yml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding all twenty-eight policies reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5587ed6ae1aaad6118ebc393d1a5e6d678d2569ec9dd85df9eedb9ae1f6d6744",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "every-pair-is-denied-or-permitted-not-both",
+      "status": "passed",
+      "evidence": "across the 13 guarded Contexts every ordered pair is either denied by the compiled guard or permitted here, never both and never neither",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9eace41237dcecc2fd793cf88494b80062add70fac8358316003ac38866257da",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-prohibition-carries-its-reason",
+      "status": "passed",
+      "evidence": "every forbidden policy carries a rationale saying why",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:40e0f7ade86ab35b243e76bd8b1b9b0eef35cff9c5e4942414c8e1dfa6446785",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-policy-names-two-known-contexts",
+      "status": "passed",
+      "evidence": "renaming one policy's to_context to a Context the Registry does not hold made validate refuse it and exit 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9bd7643f3e0d52080229c5dae00ec29ca4d6279d3a0ab389d013d93afc575b1f",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:32d51e226ec2c7d496b290ccf1cdf992aebcb220b80f4bb8f50213b6edd602fb",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

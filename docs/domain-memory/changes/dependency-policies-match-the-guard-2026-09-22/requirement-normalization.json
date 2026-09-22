@@ -1,0 +1,30 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "the-recorded-policies-agree-with-the-guard",
+  "status": "draft",
+  "intent": "The recorded collaborations and the compiled guard say the same thing, so neither can quietly widen the other.",
+  "actor": "A developer relying on the Registry to know what a Context may call",
+  "observable_outcome": "For every ordered pair of Bounded Contexts, exactly one of two things holds: the guard denies it, or the Registry permits it.",
+  "acceptance_criteria": [
+    {
+      "id": "the-guard-and-the-registry-agree",
+      "statement": "No pair is both denied by the compiled guard and permitted by the Registry, and none is neither."
+    },
+    {
+      "id": "a-prohibition-keeps-its-reason",
+      "statement": "A collaboration the guard forbids is recorded as a forbidden policy carrying why, not left absent."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/.golangci.yml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ]
+}

@@ -820,10 +820,10 @@ func sqlPrefix(sql string) string {
 }
 
 const (
-	contextMapDoc        = "apps/platform/architecture-identity.yaml"
-	contextWhitelistDoc  = "docs/development/platform-context-map.md"
-	registryContextsFile = "docs/domain-memory/registry/contexts.json"
-	identityListKey      = "packages:"
+	contextMapDoc          = "apps/platform/architecture-identity.yaml"
+	dependencyPoliciesFile = "docs/domain-memory/registry/dependency-policies.json"
+	registryContextsFile   = "docs/domain-memory/registry/contexts.json"
+	identityListKey        = "packages:"
 
 	identityHomes = registryContextsFile + " or " + contextMapDoc
 )

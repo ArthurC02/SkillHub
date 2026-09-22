@@ -34,7 +34,7 @@ const denyADRTable = `## 跨 context import 白名單
 | --- | --- | --- |
 | ` + "`apiserver`" + ` → 全部 context | 表現層，合法 | 保留 |
 | ` + "`catalog`" + ` → ` + "`trace`" + `（同步查詢） | 同步查詢，合法 | 保留（DDD-004） |
-| 各 context → ` + "`identity`" + `（Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
+| ` + "`catalog`" + ` → ` + "`identity`" + `（Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
 `
 
 const denyPrefix = "github.com/ArthurC02/skillhub/apps/platform/internal/"
@@ -63,9 +63,11 @@ func denyConfig() string {
 func writeDenyFixture(t *testing.T, adr, lint string, alsoDeclared ...string) string {
 	t.Helper()
 	root := t.TempDir()
-	writeIdentitySources(t, root, denyIdentities+strings.Join(alsoDeclared, ""))
+	identities := denyIdentities + strings.Join(alsoDeclared, "")
+	writeIdentitySources(t, root, identities)
+	declared, _ := identityEntriesAsIdentities(identities)
+	writeDependencyPolicies(t, root, adr, declared)
 	for relative, contents := range map[string]string{
-		contextWhitelistDoc:           adr,
 		"apps/platform/.golangci.yml": lint,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(relative))
@@ -79,10 +81,10 @@ func writeDenyFixture(t *testing.T, adr, lint string, alsoDeclared ...string) st
 	return root
 }
 
-func TestDepguardDenyAcceptsRulesThatMatchAppendixA(t *testing.T) {
+func TestDepguardDenyAcceptsRulesThatMatchTheReviewedPolicies(t *testing.T) {
 	t.Parallel()
 	if problems := depguardDenyProblems(writeDenyFixture(t, denyADRTable, denyConfig())); len(problems) != 0 {
-		t.Fatalf("a config that matches appendix A was rejected: %v", problems)
+		t.Fatalf("a config that matches the reviewed policies was rejected: %v", problems)
 	}
 }
 
@@ -111,23 +113,23 @@ func TestDepguardDenyRejectsAPermissionGrantedByDeletion(t *testing.T) {
 		want: `rule "identity" does not deny "apiserver"`,
 	}, {
 
-		name: "the lint denies a pair the appendix keeps",
+		name: "the lint denies a pair the policies keep",
 		adr:  denyADRTable,
 		lint: strings.Replace(denyConfig(),
 			rule("catalog", "**/internal/skill/discovery/**",
 				"entrypoint/api/apiserver", "foundation/storage/objreconcile"),
 			rule("catalog", "**/internal/skill/discovery/**",
 				"trial/evidence", "entrypoint/api/apiserver", "foundation/storage/objreconcile"), 1),
-		want: "appendix A keeps `catalog` → `trace`",
+		want: "keeps `catalog` → `trace`",
 	}, {
 
-		name: "the appendix row was removed and the rule still allows it",
+		name: "the policy was withdrawn and the rule still allows it",
 		adr:  strings.Replace(denyADRTable, "| 同步查詢，合法 | 保留（DDD-004） |", "| 事件化 | 移出 |", 1),
 		lint: denyConfig(),
 		want: `rule "catalog" does not deny "trace"`,
 	}, {
 
-		name: "a deny entry names a package no §1 row declares",
+		name: "a deny entry names a package no architecture identity declares",
 		adr:  denyADRTable,
 		lint: strings.Replace(denyConfig(), denyPrefix+"skill/discovery", denyPrefix+"skill/discovry", 1),
 		want: "denies internal/skill/discovry, which is not an exact",
@@ -214,13 +216,20 @@ func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
 	}
 }
 
-func TestDepguardDenyAllowsARuleToRefuseTheBlanketGrant(t *testing.T) {
+func TestDepguardDenyReadsIdentityAccessFromThePoliciesLikeAnyOther(t *testing.T) {
 	t.Parallel()
 
 	for _, problem := range depguardDenyProblems(writeDenyFixture(t, denyADRTable, denyConfig())) {
-		if strings.Contains(problem, "identity") {
-			t.Fatalf("refusing the blanket identity grant was reported: %q", problem)
+		if strings.Contains(problem, `"trace"`) && strings.Contains(problem, "identity") {
+			t.Fatalf("trace denying identity with no policy for it was reported: %q", problem)
 		}
+	}
+
+	granted := strings.Replace(denyADRTable,
+		"`catalog`"+` → `+"`identity`", "`trace`"+` → `+"`identity`", 1)
+	problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, granted, denyConfig())), "\n")
+	if !strings.Contains(problems, `rule "trace" denies "identity"`) {
+		t.Fatalf("a policy the lint contradicts was accepted: %s", problems)
 	}
 }
 
@@ -257,11 +266,11 @@ func TestDepguardSelectorsRejectMalformedGlobs(t *testing.T) {
 
 func TestDepguardDenySaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
-	t.Run("no appendix rows", func(t *testing.T) {
+	t.Run("no reviewed policies", func(t *testing.T) {
 		adr := denyADRTable[:strings.Index(denyADRTable, "## 跨 context import 白名單")]
 		problems := depguardDenyProblems(writeDenyFixture(t, adr, denyConfig()))
 		if len(problems) == 0 {
-			t.Fatal("an ADR with no appendix A rows was accepted")
+			t.Fatal("a Registry with no reviewed dependency policy was accepted")
 		}
 	})
 	t.Run("no context rules", func(t *testing.T) {
