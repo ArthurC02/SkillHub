@@ -54,6 +54,18 @@ A repository without that reviewer uses `git-signed-commit`: the maintainer sign
 
 Authorize a key by its fingerprint rather than its principal when the address it was created under may change. Both are reported by `init-signing-key` and either satisfies the check.
 
+## Commands outside the lifecycle
+
+No Skill instructs these. They serve setup, migration, and checks that stand on their own.
+
+| Capability | Command | Machine guarantee |
+| --- | --- | --- |
+| Create an empty Registry skeleton | `init --output <path>` | Copies the asset templates and manifest into a new directory and refuses one that already holds files. It writes no policy and no source map, so the Registry it produces cannot establish a reviewed record at all. `init-domain-memory` is the entry point that records the choices a Registry needs. |
+| Add asset files a Registry predates | `migrate-registry --registry-root <path>` | Creates only the asset files that are absent, registers every asset in the manifest, and reports what it created. It does not rewrite an existing asset file. |
+| Re-snapshot the selected sources | `refresh-sources --registry-root <path> --repo-root <repo>` | Rebuilds the snapshots of the paths already selected and returns the selection to agent-asserted, so a developer confirms the sources again before they back reviewed records. |
+| Scan for secrets | `scan-secrets --repo-root <repo>` | Reports findings, skipped paths, and how much was read. Exit 1 means it found something. Exit 2 means the scan was incomplete, so its silence proves nothing. |
+| Check a contract schema file | `validate-contract --schema <file>` | Parses a local JSON schema file and reports `valid`, `invalid`, `missing`, or `unverified`; only `valid` exits 0. A contract it cannot parse locally is `unverified` rather than valid, because the command does not claim a result it did not compute. |
+
 All command output is JSON except success or error messages. Registry-dependent commands require `--registry-root`; `readiness` may omit it when assessing a repository before Domain Memory exists. The scripts do not grant authorization: call a write command only when the current user and repository process authorize it.
 
 For an update, include `registry_updates` in `domain-change-proposal.json`. Each update uses `operation: "upsert"`, names an asset, and contains the complete record. Submission records a deterministic digest of all standard Registry files plus the observed Git HEAD when available. Finalize and apply require the Registry digest to remain current; an unrelated Git commit alone does not invalidate review. They do not traverse Git history. `verify-proposal` validates submitted test results as attestations; it does not run an arbitrary command from the package. The apply command validates the Change Package, then rejects an update that would overwrite a reviewed record. Create a new record or an explicitly governed superseding proposal for a reviewed change.
