@@ -1339,8 +1339,33 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / ".github" / "workflows").mkdir(parents=True)
         self.assertEqual(["github-actions"], discover_ci_tools(self.repo))
         discovered = discover_sources(self.repo)
-        self.assertEqual("scm-review", discovered["governance_candidates"]["recommended_verifier"])
+        self.assertEqual("github-pr", discovered["governance_candidates"]["recommended_verifier"])
         self.assertEqual("discovered", discovered["selection_status"])
+
+    def test_discovery_only_recommends_governance_a_policy_accepts(self) -> None:
+        def policy_from(candidates: dict) -> dict:
+            value = json.loads(
+                (self.repo / "memory" / "domain-memory-policy.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            value["review_mode"] = "scm-verified"
+            value["review_governance"] = {
+                "verifier": candidates["recommended_verifier"],
+                "trigger": candidates["recommended_trigger"],
+                "ci_requirement": "optional",
+                "authorized_signers": ["ABCD"],
+            }
+            return value
+
+        with self.subTest("no CI discovered"):
+            candidates = discover_sources(self.repo)["governance_candidates"]
+            self.assertEqual([], validate_policy(policy_from(candidates)))
+
+        (self.repo / ".github" / "workflows").mkdir(parents=True)
+        with self.subTest("CI discovered"):
+            candidates = discover_sources(self.repo)["governance_candidates"]
+            self.assertEqual([], validate_policy(policy_from(candidates)))
 
     def test_resolve_terms_reads_the_definition_and_not_the_rest_of_the_record(
         self,

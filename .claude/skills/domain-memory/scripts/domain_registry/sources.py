@@ -199,8 +199,8 @@ def discover_sources(root: Path) -> dict[str, Any]:
         "selection_status": "discovered",
         "governance_candidates": {
             "ci_tools": discover_ci_tools(root),
-            "recommended_verifier": "scm-review" if discover_ci_tools(root) else "git-signed-commit",
-            "recommended_trigger": "external-scm" if discover_ci_tools(root) else "git-commit",
+            "recommended_verifier": "github-pr" if discover_ci_tools(root) else "git-signed-commit",
+            "recommended_trigger": "external-scm" if discover_ci_tools(root) else "git-push",
         },
         "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
     }
