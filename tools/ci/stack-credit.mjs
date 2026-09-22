@@ -137,6 +137,56 @@ try {
     }).slice(0, 500),
   );
 
+  if (typeof imported.skill_id === "string") {
+    await page.goto(`${base}/skills/${imported.skill_id}`, {
+      waitUntil: "networkidle",
+    });
+  }
+  await page.locator("#skill-version-file").setInputFiles({
+    name: `${importName}-v2.zip`,
+    mimeType: "application/zip",
+    buffer: zipOneFile(
+      "SKILL.md",
+      `---\nname: ${importName}\ndescription: Browser-uploaded skill version two for integration coverage.\nlicense: MIT\n---\n\n# Task\n\nReply with the requested format and include the version marker.\n`,
+    ),
+  });
+  const saveVersionResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/skills/${imported.skill_id}/versions` &&
+        response.request().method() === "POST",
+    ),
+    page
+      .locator("#skill-version-file")
+      .locator("xpath=ancestor::form")
+      .locator('button[type="submit"]')
+      .click(),
+  ]).then(([response]) => response);
+  const savedVersion = await saveVersionResponse.json().catch(() => ({}));
+  const versionHistory =
+    typeof imported.skill_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/skills/${imported.skill_id}/versions`,
+          )
+        ).json()
+      : {};
+  check(
+    "the browser uploads a new skill version and the immutable history reads back",
+    saveVersionResponse.status() === 201 &&
+      savedVersion.duplicate === false &&
+      savedVersion.version_number === 2 &&
+      versionHistory.versions?.length === 2 &&
+      versionHistory.versions[0]?.version_id === savedVersion.version_id &&
+      versionHistory.versions[0]?.version_number === 2,
+    JSON.stringify({
+      status: saveVersionResponse.status(),
+      savedVersion,
+      versionHistory,
+    }).slice(0, 500),
+  );
+
   const testCaseName = "Browser-created test case";
   const testCasePrompt = "Return the requested answer in a concise form.";
   await page.goto(base + "/lab/test-cases", { waitUntil: "networkidle" });
