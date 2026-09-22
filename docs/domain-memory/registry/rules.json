@@ -1,5 +1,69 @@
 {
   "format": "domain-rules/v1",
   "status": "candidate",
-  "rules": []
+  "rules": [
+    {
+      "id": "run-terminal-status-is-final",
+      "contexts": [
+        "run"
+      ],
+      "statement": "A Run that has reached a terminal status never transitions again. succeeded, failed, cancelled and timed_out have no successors, and a command asking a Run to leave one of them is refused as an illegal transition.",
+      "examples": [
+        "A cancel arriving after the Run already succeeded is refused, not applied.",
+        "A late provider callback reporting failure on a Run that already timed out is refused, so the recorded outcome does not change after the fact.",
+        "A Run in evaluating may still move to succeeded, failed, cancelled or timed_out, because evaluating is not terminal."
+      ],
+      "evidence": [
+        {
+          "path": "apps/platform/internal/trial/execution/statemachine.go",
+          "lines": {
+            "start": 59,
+            "end": 80
+          },
+          "content_sha256": "sha256:9692965940ab4112e6be9b29e089b4e85825b7e32f32cdab7c5921f923cc7e93",
+          "excerpt_sha256": "sha256:2b24d1bfc40e17508f9b41163d986c73853f889a335b9e2b5a679853382d0504",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/statemachine.go",
+          "lines": {
+            "start": 103,
+            "end": 106
+          },
+          "content_sha256": "sha256:9692965940ab4112e6be9b29e089b4e85825b7e32f32cdab7c5921f923cc7e93",
+          "excerpt_sha256": "sha256:6dd7b2e7a94fc3753f72114d807cf544fd975da385086d33b97fd39ed6f2d5cf",
+          "source_kind": "implementation"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/statemachine.go",
+          "lines": {
+            "start": 178,
+            "end": 180
+          },
+          "content_sha256": "sha256:9692965940ab4112e6be9b29e089b4e85825b7e32f32cdab7c5921f923cc7e93",
+          "excerpt_sha256": "sha256:403523b7886f9a7fe5d0410a2c5d1fd06e6ef99d834e335ca5ff384f6bcab486",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "run-terminal-status-is-final",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T09:34:29.095115Z",
+            "scope": "The finality of a terminal Run status, as the transition table, the terminality test and the transition guard establish it",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "ffc7614d19e0431d0ca0458799d34762345e3191",
+              "registry_digest": "sha256:fa3519bf575eaf760126e3d665125bfa7854111ee0f949e9478260f46a78cae8"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    }
+  ]
 }

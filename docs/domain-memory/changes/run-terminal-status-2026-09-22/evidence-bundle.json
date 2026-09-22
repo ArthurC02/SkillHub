@@ -80,5 +80,15 @@
     "The rule is evidenced by the transition table rather than by a test that drives a Run out of a terminal status; the Registry records the constraint, it does not execute it.",
     "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled.",
     "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
-  ]
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "f99264e104892f3d7dfc6514892cdfb9626df1db",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "ffc7614d19e0431d0ca0458799d34762345e3191",
+      "registry_digest": "sha256:fa3519bf575eaf760126e3d665125bfa7854111ee0f949e9478260f46a78cae8"
+    }
+  }
 }
