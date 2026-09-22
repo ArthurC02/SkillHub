@@ -1,5 +1,1098 @@
 {
   "format": "domain-dependencies/v1",
   "status": "candidate",
-  "dependencies": []
+  "dependencies": [
+    {
+      "id": "run-may-use-testlab",
+      "from_context": "run",
+      "to_context": "testlab",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Creating a Run freezes a Test Case snapshot, grants its dataset and reads its schedule.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "run-may-use-trace",
+      "from_context": "run",
+      "to_context": "trace",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "A Run writes its trace events as execution proceeds.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "run-may-use-policy",
+      "from_context": "run",
+      "to_context": "policy",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: create-run asks the current allowance inside its own transaction and reads quota for display. The rule lives in policy; the enforcement point is the Context asking.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "packaging-may-use-policy",
+      "from_context": "packaging",
+      "to_context": "policy",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: no Download Artifact is built before an approved retention period exists.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "packaging-may-use-testlab",
+      "from_context": "packaging",
+      "to_context": "testlab",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "A package names the Test Cases a Skill Version was proved against.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "ingest-may-use-policy",
+      "from_context": "ingest",
+      "to_context": "policy",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: admission asks the generation allowance before generating, the same shape as run asking for a run allowance.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "ingest-may-use-registry",
+      "from_context": "ingest",
+      "to_context": "registry",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: the validation pipeline lives in admission, but writing skills and skill versions returns to their owner; a second version-creation path would be a second truth.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "ingest-may-use-credit",
+      "from_context": "ingest",
+      "to_context": "credit",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: admission checks the threshold before a paid call and writes the cost event and debit entry after, including the enrichment done at import.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-may-use-testlab",
+      "from_context": "eval",
+      "to_context": "testlab",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Judging a Run reads the acceptance criteria it was frozen against.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-may-use-trace",
+      "from_context": "eval",
+      "to_context": "trace",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Judging and comparing Runs reads their recorded evidence.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-may-use-ingest",
+      "from_context": "eval",
+      "to_context": "ingest",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: adopting a suggestion must reuse the whole import validation pipeline; a second version-creation path would be a second truth.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-may-use-credit",
+      "from_context": "eval",
+      "to_context": "credit",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: judging and suggesting are paid calls, so they write the cost event and debit entry.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "catalog-may-use-analytics",
+      "from_context": "catalog",
+      "to_context": "analytics",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Discovery projects measured facts into its ranking; it does not own them.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "catalog-may-use-registry",
+      "from_context": "catalog",
+      "to_context": "registry",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: the reason code, the displayable sentence, the operator routing and the audit all live in discovery, but writing the takedown flag and taking the lock return to the owner.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "catalog-may-use-credit",
+      "from_context": "catalog",
+      "to_context": "credit",
+      "mode": "synchronous-write",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: search embeddings are a paid call, so discovery writes the cost event. It checks no threshold, because search is not gated.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "creation-may-use-credit",
+      "from_context": "creation",
+      "to_context": "credit",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Customer-Supplier: an interactive creation step checks the balance and threshold before settling, then writes the cost event and debit entry.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "analytics-may-use-identity",
+      "from_context": "analytics",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "catalog-may-use-identity",
+      "from_context": "catalog",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "creation-may-use-identity",
+      "from_context": "creation",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "credit-may-use-identity",
+      "from_context": "credit",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "eval-may-use-identity",
+      "from_context": "eval",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "ingest-may-use-identity",
+      "from_context": "ingest",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "packaging-may-use-identity",
+      "from_context": "packaging",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "policy-may-use-identity",
+      "from_context": "policy",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "registry-may-use-identity",
+      "from_context": "registry",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "run-may-use-identity",
+      "from_context": "run",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "testlab-may-use-identity",
+      "from_context": "testlab",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    },
+    {
+      "id": "trace-may-use-identity",
+      "from_context": "trace",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T10:50:00.113059Z",
+            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
+    }
+  ]
 }

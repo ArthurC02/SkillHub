@@ -6,8 +6,30 @@
     "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
     "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T10:50:00.113059Z",
+      "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+        "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "b7e16f7d33050b9a30e17ee4d3f6643194d6b1b1",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+      "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "a-policy-names-two-known-contexts",

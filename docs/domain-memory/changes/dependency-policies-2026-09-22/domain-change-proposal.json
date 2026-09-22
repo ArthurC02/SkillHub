@@ -3,12 +3,12 @@
   "proposal_id": "dependency-policies-enter-the-registry",
   "proposer": "domain-memory-agent",
   "requirement_id": "the-import-whitelist-becomes-reviewed-domain-knowledge",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-22T10:49:59.830937Z",
   "verified_at": "2026-09-22T10:50:00.465056Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-22T10:50:22.133148Z",
+  "applied_at": "2026-09-22T10:50:22.566896Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
@@ -771,5 +771,9 @@
         "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b7e16f7d33050b9a30e17ee4d3f6643194d6b1b1",
+    "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
+  }
 }
