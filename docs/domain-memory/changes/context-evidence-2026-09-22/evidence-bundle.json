@@ -1,0 +1,86 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "contexts-cite-their-owners",
+  "proposal_id": "contexts-cite-their-owners",
+  "registry_revision": {
+    "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+    "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
+  },
+  "approvals": [],
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-context-needs-its-responsibility",
+    "mutated_protection": "the responsibility on a reviewed Context",
+    "failure_evidence": "Staging both replacements with responsibility removed made validate report 'contexts.json:run is reviewed but missing responsibility' and exit 1; run on a copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/skill/library/doc.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate on a staged copy holding both replacement records reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5a9da351aea682303bc48bb5b46a2f9b92256f70232c7e0bd2b281f9af940c36",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence on that staged copy reported 8 of 8 citations current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:142170709639586aa609660e528d869a76c1de6a69a08092942c6e56c1c2cdb8",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-context-needs-its-responsibility",
+      "status": "passed",
+      "evidence": "validate on a staged copy with responsibility removed reported 'contexts.json:run is reviewed but missing responsibility' and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:515e57dbdca11540ecc3b2b527c85fc6704210b894935ae66ec346e069e32d95",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-citation-into-the-retired-map",
+      "status": "passed",
+      "evidence": "the same verify-evidence output lists 8 citations and none of them is into docs/development/platform-context-map.md",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:142170709639586aa609660e528d869a76c1de6a69a08092942c6e56c1c2cdb8",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 34 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:4290ffc37b3df89928b317cdb199f9c74ea4a62ae24a2df9970956d2e3a4e895",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "registry_tools.py governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:981f75fca230fb9dfb22dd8586a925080e633f8573e4bd1934b361ced2f770c7",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "aggregates/run still cites the DDD convergence handbook; that document is not scheduled for removal, but it is a handbook rather than a decision.",
+    "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled, so deleting that document still loses the other eleven rows.",
+    "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
+  ]
+}

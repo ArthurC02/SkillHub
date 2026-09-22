@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "contexts-cite-their-owners",
+  "status": "draft",
+  "intent": "Let the Contexts rest on the code that holds them instead of on a document being retired.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent reading the Run and Registry Contexts sees a responsibility stated by the package that owns it, and no reviewed record depends on the Context Map.",
+  "acceptance_criteria": [
+    {
+      "id": "a-context-cites-the-package-that-holds-it",
+      "statement": "Each Context's responsibility is evidenced by the doc comment of the package that owns it, and its name by the decision that draws the boundaries."
+    },
+    {
+      "id": "no-reviewed-record-rests-on-the-retired-map",
+      "statement": "No reviewed record cites the Context Map, the document this Plugin is meant to replace."
+    },
+    {
+      "id": "replacement-externally-verifiable",
+      "statement": "The approval that replaces the previous reviewed records names the approval it replaces, and is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [
+    "Run Orchestration",
+    "Skill Registry & Versioning"
+  ],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/skill/library/doc.go"
+  ]
+}

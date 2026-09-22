@@ -1,0 +1,146 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "contexts-cite-their-owners",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "contexts-cite-their-owners",
+  "status": "verified",
+  "change_classification": "material",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+    "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
+  },
+  "affected_contexts": [
+    "run",
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": [
+      "docs/development/platform-ddd-convergence.md:120"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged. This moves the evidence under two Context records and alters no collaboration.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md:46"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Both Contexts were evidenced by rows of the Context Map, a document scheduled for removal once this Plugin can carry what it holds.",
+      "A record whose evidence lives in a document that is going away loses its evidence when that document goes.",
+      "The responsibility of a Context is stated by the package that holds it, in that package's own doc comment, which is where it is least likely to drift from the code."
+    ],
+    "decision": "Cite the owning package's doc comment for each responsibility and the boundary decision for each name, and stop citing the Context Map.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Copy the responsibilities into a decision document: the package doc comment is closer to the code and already says it.",
+      "Keep the Context Map citation alongside the new one: the dependency is the thing being removed.",
+      "Leave the records as they are until the Context Map is actually deleted: that schedules a broken Registry instead of preventing one."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "a-context-needs-its-responsibility",
+      "no-citation-into-the-retired-map",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "a-context-needs-its-responsibility"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "run",
+        "name": "Run Orchestration",
+        "responsibility": "Owns a Skill trial Run's lifecycle: its state machine, dispatch to a sandbox provider, following execution to completion, and cleanup.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 46,
+              "end": 46
+            },
+            "content_sha256": "sha256:47d38be926ecb794014d50a5da34de3ccde40ac704cddaa8df265bf164bdad06",
+            "excerpt_sha256": "sha256:b875ad4837d57a0657a6448fab0ee907257ded0b45eb1bce504acb894ab12ea1",
+            "source_kind": "decisions"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 2
+            },
+            "content_sha256": "sha256:9b94d8b60748c567792cd49862c965fbfc20a8147e0ea7ed975fe3e8050c6ba1",
+            "excerpt_sha256": "sha256:2258f2bf42ecea1fa2980f67aa7bbfbf667741dc3d73a979e210d503a3397149",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "registry",
+        "name": "Skill Registry & Versioning",
+        "responsibility": "Owns Skills and their immutable versions: identity, lineage, fork, delete, takedown, and the licensing and redistribution gates on a Skill's materials.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 46,
+              "end": 46
+            },
+            "content_sha256": "sha256:47d38be926ecb794014d50a5da34de3ccde40ac704cddaa8df265bf164bdad06",
+            "excerpt_sha256": "sha256:b875ad4837d57a0657a6448fab0ee907257ded0b45eb1bce504acb894ab12ea1",
+            "source_kind": "decisions"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:1064604c520ad5f1792d01cb7bd1cfac49c67c610afc06057b4a39be98965218",
+            "excerpt_sha256": "sha256:6065d37fd70c10f03121d0275a55300cba22ec04130f0072338b52ea7e6d0c4f",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T09:30:11.718101Z",
+      "scope": "Moving both Context records off the Context Map onto the boundary decision and the owning packages' doc comments",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+        "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
+      }
+    }
+  ],
+  "supersedes": "run-registry-reviewed-facts-signed",
+  "submitted_at": "2026-09-22T09:30:11.487437Z",
+  "verified_at": "2026-09-22T09:30:11.996687Z"
+}
