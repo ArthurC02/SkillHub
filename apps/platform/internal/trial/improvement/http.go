@@ -190,27 +190,27 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, view)
 }
 
-func (s *Service) Current(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.Evaluation, error) {
+func (s *Service) Current(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationRecord, error) {
 	ev, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Evaluation{}, ErrNotFound
+		return EvaluationRecord{}, ErrNotFound
 	}
-	return ev, err
+	return evaluationRecordOf(ev), err
 }
 
-func (s *Service) Revision(ctx context.Context, workspaceID, runID, id pgtype.UUID) (gen.Evaluation, error) {
+func (s *Service) Revision(ctx context.Context, workspaceID, runID, id pgtype.UUID) (EvaluationRecord, error) {
 	ev, err := s.queries().GetEvaluationRevision(ctx, gen.GetEvaluationRevisionParams{
 		ID: id, RunID: runID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Evaluation{}, ErrNotFound
+		return EvaluationRecord{}, ErrNotFound
 	}
-	return ev, err
+	return evaluationRecordOf(ev), err
 }
 
-func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.Evaluation, error) {
+func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID) ([]EvaluationRecord, error) {
 	rows, err := s.queries().ListEvaluationRevisions(ctx, gen.ListEvaluationRevisionsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
@@ -220,33 +220,37 @@ func (s *Service) Revisions(ctx context.Context, workspaceID, runID pgtype.UUID)
 	if len(rows) == 0 {
 		return nil, ErrNotFound
 	}
-	return rows, nil
+	revisions := make([]EvaluationRecord, len(rows))
+	for i, row := range rows {
+		revisions[i] = evaluationRecordOf(row)
+	}
+	return revisions, nil
 }
 
 func (s *Service) SetFeedback(
 	ctx context.Context, workspaceID, runID pgtype.UUID, helpful bool, comment string,
-) (gen.Evaluation, error) {
+) (EvaluationRecord, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.Evaluation{}, err
+		return EvaluationRecord{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	current, err := loadCurrentEvaluation(ctx, s.queries().WithTx(tx), workspaceID, runID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Evaluation{}, ErrNotFound
+		return EvaluationRecord{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Evaluation{}, err
+		return EvaluationRecord{}, err
 	}
 	current.RecordFeedback(helpful, comment)
 	if err := saveUnlessRefused(ctx, tx, current); err != nil {
-		return gen.Evaluation{}, err
+		return EvaluationRecord{}, err
 	}
-	return current.row, tx.Commit(ctx)
+	return evaluationRecordOf(current.row), tx.Commit(ctx)
 }
 
-func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Evaluation) (evaluationView, error) {
+func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev EvaluationRecord) (evaluationView, error) {
 	var results []CriterionResult
 	if len(ev.CriterionResults) > 0 {
 		if err := json.Unmarshal(ev.CriterionResults, &results); err != nil {
@@ -382,15 +386,15 @@ func markAvailability(refs []EvidenceRef, live liveEvidence) {
 	}
 }
 
-func costViewOf(ev gen.Evaluation, credits func(float64) (int64, bool)) costView {
+func costViewOf(ev EvaluationRecord, credits func(float64) (int64, bool)) costView {
 
 	v := costView{Source: "unreported"}
 	if ev.CostSource != nil {
 		v.Source = *ev.CostSource
 	}
 
-	if ev.CostUsd.Valid && credits != nil {
-		if f, err := ev.CostUsd.Float64Value(); err == nil && f.Valid {
+	if ev.CostUSD.Valid && credits != nil {
+		if f, err := ev.CostUSD.Float64Value(); err == nil && f.Valid {
 			if c, ok := credits(f.Float64); ok {
 				v.EvaluationCredits = &c
 			}

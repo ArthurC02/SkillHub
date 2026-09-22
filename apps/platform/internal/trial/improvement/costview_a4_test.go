@@ -5,12 +5,10 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func TestAnUnpricedEvaluationIsUnreportedAndNotAnEstimate(t *testing.T) {
-	v := costViewOf(gen.Evaluation{}, testCredits)
+	v := costViewOf(EvaluationRecord{}, testCredits)
 	if v.Source == "estimated" {
 		t.Fatal("an evaluation with no gateway figure was labelled an estimate; nothing estimated anything")
 	}
@@ -29,7 +27,7 @@ func TestAnUnpricedEvaluationIsUnreportedAndNotAnEstimate(t *testing.T) {
 	if err := cost.Scan("0.0123"); err != nil {
 		t.Fatal(err)
 	}
-	priced := costViewOf(gen.Evaluation{CostSource: &gateway, CostUsd: cost}, testCredits)
+	priced := costViewOf(EvaluationRecord{CostSource: &gateway, CostUSD: cost}, testCredits)
 	if priced.Source != "gateway" {
 		t.Errorf("source = %q, want the stored label %q", priced.Source, "gateway")
 	}
