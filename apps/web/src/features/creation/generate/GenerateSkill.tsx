@@ -134,7 +134,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             aria-describedby="generate-diagram-note"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || reading}
             onChange={handleDiagramChange}
           />
         </div>

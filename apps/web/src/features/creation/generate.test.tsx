@@ -596,11 +596,13 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
     (b) => b.textContent === "生成一個 Skill",
   )!;
   expect(submitBtn.disabled).toBe(true);
+  expect(fileInput.disabled).toBe(true);
 
   await act(async () => {
     capturedReader!.onerror?.();
   });
 
+  expect(fileInput.disabled).toBe(false);
   const alert = container.querySelector('[role="alert"]');
   expect(alert?.textContent).toContain("讀取圖片失敗，請重新選擇。");
   expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
