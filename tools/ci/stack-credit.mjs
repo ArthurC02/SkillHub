@@ -993,6 +993,53 @@ try {
     );
   }
 
+  const deletionMember = await signIn("smoke-deletion-member");
+  const deletionPage = await deletionMember.newPage();
+  await deletionPage.goto(base + "/workspace/account", {
+    waitUntil: "networkidle",
+  });
+  await deletionPage.getByRole("button", { name: "刪除我的帳號" }).click();
+  const deletionResponse = await Promise.all([
+    deletionPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/me" &&
+        response.request().method() === "DELETE",
+    ),
+    deletionPage.getByRole("button", { name: "確認開始刪除" }).click(),
+  ]).then(([response]) => response);
+  const pendingDeletion = await (
+    await deletionMember.request.get(base + "/me")
+  ).json();
+  await deletionPage.getByRole("button", { name: "取消刪除申請" }).waitFor();
+  const cancellationResponse = await Promise.all([
+    deletionPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/me/deletion/cancel" &&
+        response.request().method() === "POST",
+    ),
+    deletionPage.getByRole("button", { name: "取消刪除申請" }).click(),
+  ]).then(([response]) => response);
+  const restoredAccount = await (
+    await deletionMember.request.get(base + "/me")
+  ).json();
+  check(
+    "the browser requests and cancels account deletion with state read-back",
+    deletionResponse.status() === 200 &&
+      pendingDeletion.deletion_requested_at !== null &&
+      pendingDeletion.purge_after !== null &&
+      cancellationResponse.status() === 200 &&
+      restoredAccount.deletion_requested_at === null &&
+      restoredAccount.purge_after === null,
+    JSON.stringify({
+      deletion: deletionResponse.status(),
+      pendingDeletion,
+      cancellation: cancellationResponse.status(),
+      restoredAccount,
+    }),
+  );
+  await deletionPage.close();
+  await deletionMember.close();
+
   credits = await balanceOf(member);
   check(
     "the member's balance follows and it can start",
