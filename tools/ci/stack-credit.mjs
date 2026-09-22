@@ -93,8 +93,16 @@ try {
 
   const page = await member.newPage();
   const problems = [];
+  let acceptingDeletedTestCaseReadBack = false;
   page.on("pageerror", (err) => problems.push(`uncaught: ${err.message}`));
   page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      acceptingDeletedTestCaseReadBack &&
+      message.text() ===
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    )
+      return;
     if (message.type() === "error") problems.push(`console: ${message.text()}`);
   });
 
@@ -601,6 +609,65 @@ try {
       500,
     ),
   );
+
+  if (typeof createdTestCase.test_case_id === "string") {
+    await page.goto(`${base}/lab/test-cases/${createdTestCase.test_case_id}`, {
+      waitUntil: "networkidle",
+    });
+    const deleteTestCaseSection = page
+      .getByRole("heading", { name: /Test Case/ })
+      .last()
+      .locator("xpath=following-sibling::p[1]");
+    await deleteTestCaseSection.locator('button[type="button"]').click();
+    acceptingDeletedTestCaseReadBack = true;
+    const deleteTestCaseResponse = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/test-cases/${createdTestCase.test_case_id}` &&
+          response.request().method() === "DELETE",
+      ),
+      page.locator("button.destructive").click(),
+    ]).then(([response]) => response);
+    const deletedTestCase = await deleteTestCaseResponse
+      .json()
+      .catch(() => ({}));
+    const deletedHeading = page.locator("h1").filter({ hasText: /Test Case/ });
+    await deletedHeading.waitFor({ state: "visible" });
+    const deletedScreen = await deletedHeading.textContent();
+    await page.waitForTimeout(100);
+    acceptingDeletedTestCaseReadBack = false;
+    const deletedReadBack = await member.request.get(
+      `${base}/test-cases/${createdTestCase.test_case_id}`,
+    );
+    const testCasesAfterDelete = await (
+      await member.request.get(`${base}/test-cases`)
+    ).json();
+    check(
+      "the browser deletes a test case and it no longer reads back",
+      deleteTestCaseResponse.status() === 200 &&
+        deletedTestCase.deleted === true &&
+        deletedTestCase.datasets_deleted === 0 &&
+        /Test Case/.test(deletedScreen ?? "") &&
+        deletedReadBack.status() === 404 &&
+        !testCasesAfterDelete.test_cases?.some(
+          (testCase) => testCase.test_case_id === createdTestCase.test_case_id,
+        ),
+      JSON.stringify({
+        status: deleteTestCaseResponse.status(),
+        deletedTestCase,
+        deletedScreen,
+        deletedReadBackStatus: deletedReadBack.status(),
+        testCasesAfterDelete,
+      }).slice(0, 500),
+    );
+  } else {
+    check(
+      "the browser deletes a test case and it no longer reads back",
+      false,
+      "test case missing",
+    );
+  }
 
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
