@@ -6,8 +6,30 @@
     "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
     "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T11:44:48.133061Z",
+      "scope": "the Run Aggregate's evidence",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+        "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "c59c4a13cf97bef09a32fc46bc039ad29040ac2b",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+      "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "a-changed-excerpt-is-caught",

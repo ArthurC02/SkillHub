@@ -11,30 +11,30 @@
       ],
       "evidence": [
         {
-          "path": "docs/development/platform-ddd-convergence.md",
+          "path": "docs/adr/ADR-018-aggregates-and-domain-events.md",
           "lines": {
-            "start": 120,
-            "end": 120
+            "start": 16,
+            "end": 16
           },
-          "content_sha256": "sha256:ae866e4bbae522dcbf5c740ab3bea6a6cc7c2c44c1adb1ff810afffe85c60366",
-          "excerpt_sha256": "sha256:7d913e495803508e0afb2a084abf9a187f5f45425a8f71d03326e5d92d89d318",
-          "source_kind": "unclassified"
+          "content_sha256": "sha256:d0c1cd45b0b52608b28904af6e9de3ece91fcb0c4439520fe42b835988f1ef56",
+          "excerpt_sha256": "sha256:2b2d63568af5302c0bf85b734b4cb22d148975db95244390d93b9ee110de22c3",
+          "source_kind": "decisions"
         }
       ],
       "review": {
-        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_id": "the-run-aggregate-cites-its-decision",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T07:46:22.726462Z",
-            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "approved_at": "2026-09-22T11:44:48.133061Z",
+            "scope": "the Run Aggregate's evidence",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
-              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+              "observed_commit": "16ab2e64bb290bcc14e0e804ec0a76b682dc137e",
+              "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
             }
           }
         ]
