@@ -36,6 +36,7 @@ async function render() {
       await router.navigate({ to: "/", search: {} });
     });
   }
+  await waitFor(() => container.querySelector("input") !== null);
 }
 
 const NO_RESULTS = {
@@ -56,6 +57,8 @@ function stubSession(
   generateResult?: unknown,
   generateRejection?: unknown,
   referenceSearch?: { query: string; result: unknown; ownSkills?: unknown },
+  generateError?: { status: number; error: string },
+  historyError?: { status: number; error: string },
 ) {
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
@@ -70,11 +73,25 @@ function stubSession(
       if (path === "/skills/generate" && generateRejection) {
         return Promise.resolve(new Response(JSON.stringify(generateRejection), { status: 422 }));
       }
+      if (path === "/skills/generate" && generateError) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: generateError.error }), {
+            status: generateError.status,
+          }),
+        );
+      }
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
       );
     }
     if (path === "/skills/generate/failures") {
+      if (historyError) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: historyError.error }), {
+            status: historyError.status,
+          }),
+        );
+      }
       return Promise.resolve(
         new Response(JSON.stringify({ failures: failures ?? [] }), { status: 200 }),
       );
@@ -169,6 +186,46 @@ test("GEN-008: with the flag on, the entry point appears in the no-results state
   expect(box).not.toBeNull();
   expect(container.textContent).toContain("試著說出你手上的檔案格式。");
   expect(box!.value).toBe("沒有人做過的事");
+});
+
+test("GEN-008: a session that expires while generating says 需要登入, not the server error", async () => {
+  const { posted } = stubSession({ generate_skill: true }, [], undefined, undefined, undefined, {
+    status: 401,
+    error: "not authenticated",
+  });
+  await render();
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
+  });
+  await waitFor(() => container.querySelector("#generate-task") !== null);
+
+  const task = container.querySelector<HTMLTextAreaElement>("#generate-task")!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(task, "寫一個摘要器");
+    task.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    task.closest("section")!.querySelector<HTMLButtonElement>('button[type="button"]')!.click();
+  });
+  await waitFor(() => (container.textContent ?? "").includes("需要登入"));
+
+  expect(posted).toHaveLength(1);
+  expect(container.textContent).not.toContain("not authenticated");
+});
+
+test("GEN-008: an expired session while reading failures says 需要登入, not the server error", async () => {
+  stubSession({ generate_skill: true }, [], undefined, undefined, undefined, undefined, {
+    status: 401,
+    error: "not authenticated",
+  });
+  await render();
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "寫一個摘要器" } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("需要登入"));
+
+  expect(container.textContent).not.toContain("not authenticated");
 });
 
 test("GEN-002/GEN-004: a generated skill's source is stated, and its two absences with it", async () => {

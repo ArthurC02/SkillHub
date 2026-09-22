@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ApiError } from "../../../core/api/client";
+import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateSkill } from "../generate.service";
 import { isCategorizedFindings } from "../import.service";
 import { useOwnSkills, useSkillSearch } from "../../skill";
@@ -204,7 +205,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
 
       {mutation.isPending && <GenerateInFlight />}
 
-      {mutation.error && !rejected && <p role="alert">生成失敗：{mutation.error.message}</p>}
+      {mutation.error && !rejected && (
+        <ReadFailure error={mutation.error} what="生成 Skill">
+          <p role="alert">生成失敗：{mutation.error.message}</p>
+        </ReadFailure>
+      )}
 
       {rejected && <GenerateFailed rejected={rejected} onRetry={submit} />}
 

@@ -1,6 +1,7 @@
 import { useGenerateFailures } from "../../generate.service";
 import { failureSentence } from "../../generate.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 
 const GENERATE_FAILURE_LIMIT = 20; // one-number: generateFailureLimit
 
@@ -9,9 +10,11 @@ export function GenerateHistory() {
 
   if (history.isError) {
     return (
-      <p className="note" role="status">
-        過去的生成紀錄讀取失敗。這不影響你現在能不能生成。
-      </p>
+      <ReadFailure error={history.error} what="生成失敗紀錄">
+        <p className="note" role="status">
+          過去的生成紀錄讀取失敗。這不影響你現在能不能生成。
+        </p>
+      </ReadFailure>
     );
   }
   const failures = history.data?.failures ?? [];
