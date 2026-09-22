@@ -36,17 +36,18 @@ export function ToolObservation({ raw }: { raw: string }) {
     const asFetch = parsed as Partial<FetchObservation>;
     if (asFetch.fetch && typeof asFetch.fetch.url === "string") {
       const f = asFetch.fetch;
+      const text = typeof f.text === "string" ? f.text : undefined;
       return (
         <>
           <span className="creation-text">
             讀取網頁 {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
             {f.bytes !== undefined && `（${f.bytes} 位元組）`}
           </span>
-          {!!f.text && (
+          {!!text && (
             <details>
-              <summary>讀到的網頁內容（{[...f.text].length} 字）</summary>
+              <summary>讀到的網頁內容（{[...text].length} 字）</summary>
               <pre className="skill-md">
-                <Reveal text={f.text} />
+                <Reveal text={text} />
               </pre>
             </details>
           )}

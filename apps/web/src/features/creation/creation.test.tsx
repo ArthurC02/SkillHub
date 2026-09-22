@@ -400,6 +400,28 @@ test("a fetch observation reads as a sentence, and the page text is not the defa
   expect(details.open, "網頁全文預設就攤開，把該讀的擠掉了").toBe(false);
   expect(details.textContent).toContain("這是抓回來的整頁文字");
 });
+
+test("a malformed fetched page body does not break the creation session", async () => {
+  const v = sample();
+  v.snapshot.messages = [
+    {
+      role: "tool",
+      content: JSON.stringify({
+        fetch: { url: "https://example.com/spec", status: "ok", text: 42 },
+      }),
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+
+  const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
+  expect(bubble.textContent).toContain("讀取網頁 https://example.com/spec：已讀取");
+  expect(bubble.querySelector("details")).toBeNull();
+});
 test("a run observation reads as a verdict, with the per-criterion detail behind it", async () => {
   const v = sample();
   v.snapshot.messages = [
