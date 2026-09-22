@@ -214,7 +214,7 @@ if [ "$login" = 204 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
 		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \
 			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
-			       cp /work/tools/ci/stack-credit.mjs /tmp/ && node /tmp/stack-credit.mjs'; then
+			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs'; then
 		rc=0
 	else
 		rc=1

@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { zipOneFile } from "./stack-seed.mjs";
 
 const base = process.env.BASE_URL;
 if (!base) {
@@ -81,6 +82,61 @@ try {
   page.on("console", (message) => {
     if (message.type() === "error") problems.push(`console: ${message.text()}`);
   });
+
+  const importName = `browser-upload-${crypto.randomUUID()}`;
+  await page.goto(base + "/workspace/import", { waitUntil: "networkidle" });
+  await page
+    .locator('input[name="skill-import-source"]')
+    .nth(1)
+    .check({ force: true });
+  await page.locator("#skill-import-file").setInputFiles({
+    name: `${importName}.zip`,
+    mimeType: "application/zip",
+    buffer: zipOneFile(
+      "SKILL.md",
+      `---\nname: ${importName}\ndescription: Browser-uploaded skill used to verify the platform integration.\nlicense: MIT\n---\n\n# Task\n\nReply with the requested format.\n`,
+    ),
+  });
+  const importResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.includes("/skills/import/upload") &&
+        response.request().method() === "POST",
+    ),
+    page
+      .locator("#skill-import-file")
+      .locator("xpath=ancestor::form")
+      .locator('button[type="submit"]')
+      .click(),
+  ]).then(([response]) => response);
+  const imported = await importResponse.json().catch(() => ({}));
+  const importLink = page.locator('a[href^="/skills/"]').last();
+  const versions =
+    typeof imported.skill_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/skills/${imported.skill_id}/versions`,
+          )
+        ).json()
+      : {};
+  check(
+    "the browser uploads a zip and the imported version reads back",
+    importResponse.status() === 201 &&
+      imported.duplicate === false &&
+      typeof imported.skill_id === "string" &&
+      typeof imported.version_id === "string" &&
+      (await importLink.getAttribute("href")) ===
+        `/skills/${imported.skill_id}` &&
+      versions.versions?.length === 1 &&
+      versions.versions[0]?.version_id === imported.version_id &&
+      versions.versions[0]?.version_number === imported.version_number,
+    JSON.stringify({
+      status: importResponse.status(),
+      imported,
+      versions,
+    }).slice(0, 500),
+  );
+
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
@@ -141,12 +197,15 @@ try {
   const createdRequests = [];
   const createdResponses = [];
   const isCreationStart = (message, method) =>
-    new URL(message.url()).pathname.includes("/creation-sessions") && method === "POST";
+    new URL(message.url()).pathname.includes("/creation-sessions") &&
+    method === "POST";
   page.on("request", (request) => {
-    if (isCreationStart(request, request.method())) createdRequests.push(request.url());
+    if (isCreationStart(request, request.method()))
+      createdRequests.push(request.url());
   });
   page.on("response", (response) => {
-    if (isCreationStart(response, response.request().method())) createdResponses.push(response);
+    if (isCreationStart(response, response.request().method()))
+      createdResponses.push(response);
   });
   await start.evaluate((button) => button.click());
   await page.waitForTimeout(500);
@@ -156,10 +215,14 @@ try {
     failure: document.querySelector(".notice-danger")?.textContent,
   }));
   const createdResponse = createdResponses.at(-1);
-  const created = createdResponse ? await createdResponse.json().catch(() => ({})) : {};
+  const created = createdResponse
+    ? await createdResponse.json().catch(() => ({}))
+    : {};
   const readBack =
     typeof created.id === "string"
-      ? await (await member.request.get(`${base}/creation-sessions/${created.id}`)).json()
+      ? await (
+          await member.request.get(`${base}/creation-sessions/${created.id}`)
+        ).json()
       : {};
   check(
     "the browser starts a creation session and its message reads back",
@@ -167,7 +230,9 @@ try {
       createdResponse?.status() === 200 &&
       readBack.id === created.id &&
       readBack.snapshot?.messages?.some(
-        (message) => message.role === "user" && message.content === "用真瀏覽器送出這次創作",
+        (message) =>
+          message.role === "user" &&
+          message.content === "用真瀏覽器送出這次創作",
       ),
     `${JSON.stringify({ createdRequests, status: createdResponse?.status(), readBack, submitState }).slice(0, 500)}`,
   );
