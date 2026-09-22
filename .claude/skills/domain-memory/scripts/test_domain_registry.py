@@ -55,6 +55,7 @@ from domain_registry.revision import (
 )
 from domain_registry.security import scan as scan_secrets
 from domain_registry.security import scan_report
+from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
 from domain_registry.sources import (
     confirm_sources,
     discover_sources,
@@ -500,6 +501,109 @@ class DomainRegistryTest(unittest.TestCase):
         with patch.dict("os.environ", {"DOMAIN_MEMORY_SCM_TOKEN": "token"}):
             with patch("domain_registry.attestations.github_json", side_effect=responses):
                 self.assertEqual([], verify_external_scm(attestation, "DOMAIN_MEMORY_SCM_TOKEN", False))
+
+    def sign_a_domain_memory_commit(self, message: str) -> str:
+        target = self.repo / "docs" / "domain-memory"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "note.txt").write_text(message, encoding="utf-8")
+        subprocess.run(["git", "add", "docs"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=Probe", "-c", "user.email=probe@example.com",
+             "commit", "-qS", "-m", message],
+            cwd=self.repo, check=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+    def test_a_generated_signing_key_signs_a_commit_git_can_verify(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            result = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        self.assertEqual("generated", result["source"])
+        self.assertTrue(result["fingerprint"].startswith("SHA256:"))
+        self.assertEqual(
+            ["probe@example.com", result["fingerprint"]], result["authorized_signers"]
+        )
+        commit = self.sign_a_domain_memory_commit("signed by the generated key")
+        for authorized in (["probe@example.com"], [result["fingerprint"]]):
+            with self.subTest(authorized=authorized[0]):
+                self.assertEqual(
+                    [],
+                    verify_git_signed_commit(
+                        {"commit": commit}, self.repo, self.repo / "docs" / "domain-memory",
+                        authorized,
+                    ),
+                )
+
+    def test_the_same_key_rebuilds_from_the_environment(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            first = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        material = (self.repo / "keys" / "signing-key").read_text(encoding="utf-8")
+        elsewhere = self.repo / "elsewhere"
+        subprocess.run(["git", "init", "-q", str(elsewhere)], check=True)
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
+            second = init_signing_key(
+                elsewhere, "probe@example.com", elsewhere / "keys" / "signing-key"
+            )
+        self.assertEqual("environment", second["source"])
+        self.assertEqual(first["fingerprint"], second["fingerprint"])
+
+    def test_unreadable_key_material_leaves_no_key_behind(self) -> None:
+        key_file = self.repo / "keys" / "signing-key"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: "-----BEGIN OPENSSH PRIVATE KEY-----\nnot a key\n"}):
+            with self.assertRaisesRegex(ValueError, "readable OpenSSH private key"):
+                init_signing_key(self.repo, "probe@example.com", key_file)
+        self.assertFalse(key_file.exists())
+
+    def test_the_reported_result_never_carries_private_key_material(self) -> None:
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: ""}):
+            result = init_signing_key(
+                self.repo, "probe@example.com", self.repo / "keys" / "signing-key"
+            )
+        self.assertNotIn("PRIVATE KEY", json.dumps(result))
+
+    def test_an_ssh_signed_commit_is_authorized_by_principal_or_fingerprint(self) -> None:
+        attestation = {"commit": "a" * 40}
+        signed = subprocess.CompletedProcess(
+            [],
+            0,
+            'Good "git" signature for arthur@example.com with ED25519 key '
+            "SHA256:HMt6j4Woy7Beu896pq7/ApyBUR9qPWi/JJXlPBOVvnk\n",
+            "",
+        )
+        changed = subprocess.CompletedProcess(
+            [], 0, "docs/domain-memory/registry/rules.json\n", ""
+        )
+        registry_root = self.repo / "docs" / "domain-memory"
+        for authorized in (
+            ["arthur@example.com"],
+            ["SHA256:HMt6j4Woy7Beu896pq7/ApyBUR9qPWi/JJXlPBOVvnk"],
+        ):
+            with self.subTest(authorized=authorized[0]):
+                with patch(
+                    "domain_registry.attestations.subprocess.run",
+                    side_effect=[signed, changed],
+                ):
+                    self.assertEqual(
+                        [],
+                        verify_git_signed_commit(
+                            attestation, self.repo, registry_root, authorized
+                        ),
+                    )
+        with patch(
+            "domain_registry.attestations.subprocess.run", side_effect=[signed, changed]
+        ):
+            self.assertEqual(
+                ["Git commit signer is not authorized by Domain Memory policy"],
+                verify_git_signed_commit(
+                    attestation, self.repo, registry_root, ["someone.else@example.com"]
+                ),
+            )
 
     def test_git_signed_commit_requires_authorized_signer_and_domain_memory_change(self) -> None:
         attestation = {"commit": "a" * 40}

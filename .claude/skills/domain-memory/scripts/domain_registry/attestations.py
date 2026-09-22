@@ -102,7 +102,8 @@ def verify_git_signed_commit(
         return ["Git commit signature is invalid"]
     output = verified.stdout + verified.stderr
     signers = set(re.findall(r"VALIDSIG ([0-9A-F]+)", output))
-    signers.update(re.findall(r'Good "git" signature for (.+)', output))
+    signers.update(re.findall(r'Good "git" signature for (\S+)', output))
+    signers.update(re.findall(r"key (SHA256:[A-Za-z0-9+/=]+)", output))
     if not signers.intersection(authorized_signers):
         return ["Git commit signer is not authorized by Domain Memory policy"]
     changed = subprocess.run(

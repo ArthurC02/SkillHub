@@ -40,6 +40,7 @@ from .registry import (
     verify_evidence,
 )
 from .security import scan_report
+from .signing import init_signing_key
 from .sources import (
     confirm_sources,
     discover_sources,
@@ -410,6 +411,18 @@ def handle_amend_policy(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_init_signing_key(args: argparse.Namespace) -> int:
+    result = init_signing_key(
+        args.repo_root.resolve(),
+        args.principal,
+        args.key_file,
+        args.force,
+        args.sign_every_commit,
+    )
+    print(json.dumps(result, indent=2))
+    return 0
+
+
 def handle_validate_policy(args: argparse.Namespace) -> int:
     errors = validate_policy(load_json(args.policy.resolve()))
     if errors:
@@ -590,6 +603,7 @@ HANDLERS = {
     "refresh-sources": handle_refresh_sources,
     "refine-sources": handle_refine_sources,
     "amend-policy": handle_amend_policy,
+    "init-signing-key": handle_init_signing_key,
     "validate-policy": handle_validate_policy,
     "scan-secrets": handle_scan_secrets,
     "validate-contract": handle_validate_contract,
