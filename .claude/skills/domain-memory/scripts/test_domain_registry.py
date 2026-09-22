@@ -1150,6 +1150,66 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(replaced["status"], "reviewed")
         self.assertEqual(replaced["review"]["proposal_id"], "PRO-2")
 
+    def redraft_removal(
+        self, package: Path, proposal_id: str, record_id: str, supersedes: str | None
+    ) -> None:
+        self.redraft_package(package, proposal_id, "unused", supersedes)
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"] = [
+            {"operation": "remove", "asset": "rules", "id": record_id}
+        ]
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+
+    def rule_ids(self) -> list[str]:
+        document = json.loads(
+            (self.repo / "memory" / "registry" / "rules.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return [entry["id"] for entry in document["rules"]]
+
+    def test_removing_a_reviewed_record_requires_superseding_its_approval(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_removal(package, "PRO-2", "order-total", None)
+        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def test_superseding_the_reviewing_proposal_removes_a_reviewed_record(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_removal(package, "PRO-2", "order-total", "PRO-1")
+        self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_removing_a_record_the_registry_does_not_hold_is_refused(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_removal(package, "PRO-2", "no-such-rule", "PRO-1")
+        with self.assertRaisesRegex(ValueError, "cannot remove absent record"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def test_a_registry_update_that_is_neither_an_upsert_nor_a_remove_is_refused(
+        self,
+    ) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_removal(package, "PRO-2", "order-total", "PRO-1")
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["operation"] = "replace"
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "must be an upsert or a remove"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), ["order-total"])
+
     def test_approved_package_applies_against_its_exact_revision(self) -> None:
         package = self.draft_package()
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")

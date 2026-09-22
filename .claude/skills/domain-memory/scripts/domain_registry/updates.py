@@ -238,15 +238,20 @@ def apply_approved_updates(
     def mutate(staging: Path) -> None:
         documents: dict[str, dict[str, Any]] = {}
         for update in updates:
-            if not isinstance(update, dict) or update.get("operation") != "upsert":
-                raise ValueError("each registry update must be an upsert")
+            if not isinstance(update, dict) or update.get("operation") not in (
+                "upsert",
+                "remove",
+            ):
+                raise ValueError("each registry update must be an upsert or a remove")
+            removing = update.get("operation") == "remove"
             asset = update.get("asset")
-            record = update.get("record")
+            record = update.get("id") if removing else update.get("record")
+            record_id = record if removing else (record or {}).get("id")
             if (
                 not isinstance(asset, str)
                 or f"{asset}.json" not in ASSET_KEYS
-                or not isinstance(record, dict)
-                or not completed_identifier(record.get("id"))
+                or (not removing and not isinstance(record, dict))
+                or not completed_identifier(record_id)
             ):
                 raise ValueError("registry update has an invalid asset or record")
             name = f"{asset}.json"
@@ -255,7 +260,7 @@ def apply_approved_updates(
             )
             records = document[ASSET_KEYS[name]]
             existing = next(
-                (entry for entry in records if entry.get("id") == record["id"]), None
+                (entry for entry in records if entry.get("id") == record_id), None
             )
             if (
                 existing is not None
@@ -265,9 +270,17 @@ def apply_approved_updates(
                 reviewed_by = (existing.get("review") or {}).get("proposal_id")
                 if not reviewed_by or proposal.get("supersedes") != reviewed_by:
                     raise ValueError(
-                        f"cannot overwrite reviewed record: {record['id']}; a proposal that "
+                        f"cannot overwrite reviewed record: {record_id}; a proposal that "
                         f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
                     )
+            if removing:
+                if existing is None:
+                    raise ValueError(
+                        f"cannot remove absent record: {asset}/{record_id}; a removal "
+                        "names a record the Registry holds"
+                    )
+                records.remove(existing)
+                continue
             promoted = dict(record)
             promoted["review"] = {
                 "proposal_id": proposal["proposal_id"],
