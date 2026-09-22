@@ -491,38 +491,74 @@
   },
   "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
   "selected_paths": [
+    "apps/platform/architecture-identity.yaml",
+    "apps/platform/internal/creator/creation/doc.go",
+    "apps/platform/internal/creator/credit/doc.go",
+    "apps/platform/internal/creator/workspace/doc.go",
     "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/product/entitlements/doc.go",
+    "apps/platform/internal/product/learning/doc.go",
+    "apps/platform/internal/skill/admission/doc.go",
+    "apps/platform/internal/skill/delivery/doc.go",
+    "apps/platform/internal/skill/discovery/doc.go",
     "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/trial/design/doc.go",
+    "apps/platform/internal/trial/evidence/doc.go",
     "apps/platform/internal/trial/execution/doc.go",
     "apps/platform/internal/trial/execution/preflight.go",
     "apps/platform/internal/trial/execution/statemachine.go",
+    "apps/platform/internal/trial/improvement/doc.go",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
     "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
     "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 8,
-    "total_bytes": 100390,
+    "files": 20,
+    "total_bytes": 105496,
     "oversized_files": [],
     "errors": []
   },
   "source_kinds": {
+    "apps/platform/architecture-identity.yaml": "unclassified",
+    "apps/platform/internal/creator/creation/doc.go": "bounded_contexts",
+    "apps/platform/internal/creator/credit/doc.go": "bounded_contexts",
+    "apps/platform/internal/creator/workspace/doc.go": "bounded_contexts",
     "apps/platform/internal/entrypoint/wiring/trial.go": "unclassified",
+    "apps/platform/internal/product/entitlements/doc.go": "bounded_contexts",
+    "apps/platform/internal/product/learning/doc.go": "bounded_contexts",
+    "apps/platform/internal/skill/admission/doc.go": "bounded_contexts",
+    "apps/platform/internal/skill/delivery/doc.go": "bounded_contexts",
+    "apps/platform/internal/skill/discovery/doc.go": "bounded_contexts",
     "apps/platform/internal/skill/library/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/design/doc.go": "bounded_contexts",
+    "apps/platform/internal/trial/evidence/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/preflight.go": "unclassified",
     "apps/platform/internal/trial/execution/statemachine.go": "unclassified",
+    "apps/platform/internal/trial/improvement/doc.go": "bounded_contexts",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "unclassified",
     "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "unclassified",
     "docs/development/platform-ddd-convergence.md": "architecture_guidance"
   },
   "git_state": {
     "tracked_objects": {
+      "apps/platform/architecture-identity.yaml": "0790187ab403ad5730b271e3f101367fdc1d027e",
+      "apps/platform/internal/creator/creation/doc.go": "06f3a6ab586afed215d23c6313d2f80e96fced9c",
+      "apps/platform/internal/creator/credit/doc.go": "4088f3f4758f43a2c0a85b2f7b2986699f83220e",
+      "apps/platform/internal/creator/workspace/doc.go": "3400fd7bb000a5d43f762eee2543270e7e847313",
       "apps/platform/internal/entrypoint/wiring/trial.go": "1867057373e61ef9fd04cd600bee6eadfc25e4b8",
+      "apps/platform/internal/product/entitlements/doc.go": "a14b159c4e30e510d2b72dd6d30b9525170e9da3",
+      "apps/platform/internal/product/learning/doc.go": "4fc3d5db88b3a93284946a3ca323c044e1cae162",
+      "apps/platform/internal/skill/admission/doc.go": "b8c4ce050f398e2a6227c32ff7aaeac1971924d6",
+      "apps/platform/internal/skill/delivery/doc.go": "a57768c1c344068620ef42bb18440f503da6103c",
+      "apps/platform/internal/skill/discovery/doc.go": "42d65d6e6de87b6d9500d8cfed5079b80bfe8f9c",
       "apps/platform/internal/skill/library/doc.go": "7c2ed38bb0ef78b8b980dc4b57db356575eb6720",
+      "apps/platform/internal/trial/design/doc.go": "a93d0952ff016d9ec4b22a70f3859bb7e3263d2e",
+      "apps/platform/internal/trial/evidence/doc.go": "a6413ace7968304bc94cdf7d59bcef054f6e658a",
       "apps/platform/internal/trial/execution/doc.go": "9feaa4cda0a38b34a100315274cf833692b24fd2",
       "apps/platform/internal/trial/execution/preflight.go": "22cc5ab2f4b85f02309ddcd71ddc08ed6503ee95",
       "apps/platform/internal/trial/execution/statemachine.go": "9e05a362c2dbba1ae6e29ed5f0bf458e9f550161",
+      "apps/platform/internal/trial/improvement/doc.go": "450b476fecea76e87cd95369f81408deac298873",
       "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "23e06c6d9d6ee9f31b749562eb96a466b8da2f2c",
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "5dda42da5ea7f0f8ec4639c19797d18e83386092",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
@@ -531,14 +567,69 @@
   },
   "source_snapshots": [
     {
+      "path": "apps/platform/architecture-identity.yaml",
+      "file_count": 1,
+      "digest": "sha256:50982de6092f5e8776edde7ec5c15b49b7793291bf57bb10dffa3ce4f2939936"
+    },
+    {
+      "path": "apps/platform/internal/creator/creation/doc.go",
+      "file_count": 1,
+      "digest": "sha256:00e58962cdfed20adbf0556983f6b6b4e6670abfbeca97d8929544213ceaf46e"
+    },
+    {
+      "path": "apps/platform/internal/creator/credit/doc.go",
+      "file_count": 1,
+      "digest": "sha256:729237d042c58ac8afb51600d83efbeab9a52978b91906d1d9246ff9ebcd3878"
+    },
+    {
+      "path": "apps/platform/internal/creator/workspace/doc.go",
+      "file_count": 1,
+      "digest": "sha256:29fb5025648a8cdc06767b0a4c87d6395c6801e9beac757de308b11564ac8521"
+    },
+    {
       "path": "apps/platform/internal/entrypoint/wiring/trial.go",
       "file_count": 1,
       "digest": "sha256:aba7dc81386646a93ca67eda71fc5623cf9644debe6bc279b4d7176f909efed7"
     },
     {
+      "path": "apps/platform/internal/product/entitlements/doc.go",
+      "file_count": 1,
+      "digest": "sha256:456d8430423750553398582cd2164cc4acd1a687208586d11d573a3626e2d6f8"
+    },
+    {
+      "path": "apps/platform/internal/product/learning/doc.go",
+      "file_count": 1,
+      "digest": "sha256:c92f2a889e2e162b8030455f2c6e1813cbba63a5a31b07bf3f6d620e1b950faa"
+    },
+    {
+      "path": "apps/platform/internal/skill/admission/doc.go",
+      "file_count": 1,
+      "digest": "sha256:295e64eee412ba6770aac77f6e218c84229ed7a8c4c048a6b1f67d5398422911"
+    },
+    {
+      "path": "apps/platform/internal/skill/delivery/doc.go",
+      "file_count": 1,
+      "digest": "sha256:ae8c8a336ba0bd28db719ee10530f47586acee40a801e9d511764e30274d491a"
+    },
+    {
+      "path": "apps/platform/internal/skill/discovery/doc.go",
+      "file_count": 1,
+      "digest": "sha256:709dffbf9b1596bf8fe1237bc631c89fa092f703c6f19bca339c457336afef21"
+    },
+    {
       "path": "apps/platform/internal/skill/library/doc.go",
       "file_count": 1,
       "digest": "sha256:a1e4619f7431e8b8a3da5bc63d53e3e3dee7221a6a952fe77a7303515a9f8d29"
+    },
+    {
+      "path": "apps/platform/internal/trial/design/doc.go",
+      "file_count": 1,
+      "digest": "sha256:b3b9337ee5153c3fc8e9600ae29ba6ce6d94101335d25af904152b47a2bab0af"
+    },
+    {
+      "path": "apps/platform/internal/trial/evidence/doc.go",
+      "file_count": 1,
+      "digest": "sha256:289b0fb6276bc6292d1f502f14e2e38227ff2d60e269a402639b54e8de9ca621"
     },
     {
       "path": "apps/platform/internal/trial/execution/doc.go",
@@ -554,6 +645,11 @@
       "path": "apps/platform/internal/trial/execution/statemachine.go",
       "file_count": 1,
       "digest": "sha256:2c32f279dba063eae1e2bd51525d9e973136b8a3b9df563a5fb16581b09136b8"
+    },
+    {
+      "path": "apps/platform/internal/trial/improvement/doc.go",
+      "file_count": 1,
+      "digest": "sha256:b44cfcd905611e607657260ee12c7692b70979be182a0a8747baa162756cd034"
     },
     {
       "path": "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
@@ -572,5 +668,5 @@
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T09:31:43.754731Z"
+  "confirmed_at": "2026-09-22T10:12:24.874986Z"
 }

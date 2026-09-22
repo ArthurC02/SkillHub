@@ -13,11 +13,23 @@
   },
   "source_policy": {
     "selected_paths": [
+      "apps/platform/architecture-identity.yaml",
+      "apps/platform/internal/creator/creation/doc.go",
+      "apps/platform/internal/creator/credit/doc.go",
+      "apps/platform/internal/creator/workspace/doc.go",
       "apps/platform/internal/entrypoint/wiring/trial.go",
+      "apps/platform/internal/product/entitlements/doc.go",
+      "apps/platform/internal/product/learning/doc.go",
+      "apps/platform/internal/skill/admission/doc.go",
+      "apps/platform/internal/skill/delivery/doc.go",
+      "apps/platform/internal/skill/discovery/doc.go",
       "apps/platform/internal/skill/library/doc.go",
+      "apps/platform/internal/trial/design/doc.go",
+      "apps/platform/internal/trial/evidence/doc.go",
       "apps/platform/internal/trial/execution/doc.go",
       "apps/platform/internal/trial/execution/preflight.go",
       "apps/platform/internal/trial/execution/statemachine.go",
+      "apps/platform/internal/trial/improvement/doc.go",
       "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
       "docs/development/platform-ddd-convergence.md"

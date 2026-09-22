@@ -1,0 +1,34 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "every-context-carries-its-own-identity",
+  "status": "draft",
+  "intent": "A Bounded Context says what it is, where its code lives and which requirements it owns, so that knowledge survives the document that used to hold it.",
+  "actor": "A coding Agent deciding which Context owns the work in front of it",
+  "observable_outcome": "Asking the Registry for a Context returns its subdomain, its implementation path and its requirement prefixes, for all thirteen and not only the two already modelled.",
+  "acceptance_criteria": [
+    {
+      "id": "thirteen-contexts-are-modelled",
+      "statement": "The Registry holds one reviewed Context record for each of the thirteen Bounded Contexts the platform declares, and none for a package that is Shared Kernel or Generic."
+    },
+    {
+      "id": "a-context-says-where-its-code-lives",
+      "statement": "Every reviewed Context record carries a subdomain, an implementation path and its requirement prefixes, and no two Contexts claim the same path or a path inside another's."
+    },
+    {
+      "id": "identity-is-cited-not-asserted",
+      "statement": "Each record's subdomain and path cite the machine identity file, and each responsibility cites the owning package's own doc comment."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/architecture-identity.yaml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ]
+}

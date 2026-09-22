@@ -1,0 +1,104 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "every-context-carries-its-own-identity",
+  "proposal_id": "contexts-carry-their-identity",
+  "registry_revision": {
+    "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
+    "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "no-two-contexts-claim-one-path",
+    "mutated_protection": "the one-Context-per-path rule on implementation_path",
+    "failure_evidence": "Widening eval's implementation_path from trial/improvement to trial made validate exit 1 with \"ERROR: contexts.json:eval claims trial, which overlaps trial/design claimed by testlab: code belongs to one Context\"; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/architecture-identity.yaml",
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+    "apps/platform/internal/creator/workspace/doc.go",
+    "apps/platform/internal/creator/creation/doc.go",
+    "apps/platform/internal/creator/credit/doc.go",
+    "apps/platform/internal/skill/discovery/doc.go",
+    "apps/platform/internal/skill/library/doc.go",
+    "apps/platform/internal/skill/admission/doc.go",
+    "apps/platform/internal/skill/delivery/doc.go",
+    "apps/platform/internal/trial/design/doc.go",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/trial/improvement/doc.go",
+    "apps/platform/internal/trial/evidence/doc.go",
+    "apps/platform/internal/product/entitlements/doc.go",
+    "apps/platform/internal/product/learning/doc.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding all thirteen records reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence on the staged copy found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:acaca4356b2f1b60062cffbe99b6b7153da4c12277e712cfbf7e581665959676",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-citation-into-the-retired-map",
+      "status": "passed",
+      "evidence": "the staged contexts.json names docs/development/platform-context-map.md zero times",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:36921d90643fb1b738a8c61cd78473d2c768d45892acac92756ed0b7f65cefbd",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-two-contexts-claim-one-path",
+      "status": "passed",
+      "evidence": "widening eval's implementation path to trial made validate refuse it as overlapping run's and testlab's and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:610e502369030616ab9285d3aaf8dc099cdffe62fc636d196abc7876b1c1b2de",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "an-unknown-subdomain-is-refused",
+      "status": "passed",
+      "evidence": "setting trace's subdomain to kernel made validate refuse it as outside the closed set and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:d96245c23f96072fc8c07ee68d2b60ed7e76978b65ac8e34cfe01b980e2a32da",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ccac95f2e8739b550500612b5d45bebaf02db85a3ecc40b48aebe6364e12bfbc",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
