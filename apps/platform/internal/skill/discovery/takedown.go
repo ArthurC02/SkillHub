@@ -18,6 +18,11 @@ type takedownRequest struct {
 	Reason string `json:"reason"`
 }
 
+type takedownResponse struct {
+	SkillID   string `json:"skill_id"`
+	TakenDown bool   `json:"taken_down"`
+}
+
 func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	var body takedownRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
@@ -52,10 +57,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id":   pgconv.UUIDString(skillID),
-		"taken_down": true,
-	})
+	httpx.WriteJSON(w, http.StatusOK, takedownResponse{SkillID: pgconv.UUIDString(skillID), TakenDown: true})
 }
 
 func (s *Service) Takedown(ctx context.Context, skillID, actor pgtype.UUID, reason string) error {

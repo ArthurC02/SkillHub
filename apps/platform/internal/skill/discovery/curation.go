@@ -20,6 +20,13 @@ type curationRequest struct {
 	Note  string `json:"note"`
 }
 
+type curationChangeResponse struct {
+	SkillID          string  `json:"skill_id"`
+	Tier             string  `json:"tier"`
+	CuratedVersionID *string `json:"curated_version_id"`
+	PreviousTier     string  `json:"previous_tier"`
+}
+
 func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 	var body curationRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
@@ -50,11 +57,9 @@ func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id":           pgconv.UUIDString(skillID),
-		"tier":               string(change.After),
-		"curated_version_id": optionalUUID(change.VersionID),
-		"previous_tier":      string(change.Before),
+	httpx.WriteJSON(w, http.StatusOK, curationChangeResponse{
+		SkillID: pgconv.UUIDString(skillID), Tier: string(change.After),
+		CuratedVersionID: optionalUUID(change.VersionID), PreviousTier: string(change.Before),
 	})
 }
 
@@ -122,9 +127,10 @@ func curationRefusal(refused registry.Refused) error {
 	return refused
 }
 
-func optionalUUID(id pgtype.UUID) any {
+func optionalUUID(id pgtype.UUID) *string {
 	if !id.Valid {
 		return nil
 	}
-	return pgconv.UUIDString(id)
+	value := pgconv.UUIDString(id)
+	return &value
 }

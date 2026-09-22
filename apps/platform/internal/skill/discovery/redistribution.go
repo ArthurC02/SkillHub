@@ -30,6 +30,18 @@ type redistributionRequest struct {
 	LicenseSource     string `json:"license_source"`
 }
 
+type redistributionView struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+}
+
+type redistributionChangeResponse struct {
+	SkillID        string             `json:"skill_id"`
+	Redistribution redistributionView `json:"redistribution"`
+	PreviousValue  string             `json:"previous_value"`
+}
+
 func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 	var body redistributionRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
@@ -66,14 +78,11 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 	value := Redistribution(strings.TrimSpace(body.Value))
 	display := value.Display()
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id": pgconv.UUIDString(skillID),
-		"redistribution": map[string]any{
-			"value": string(value),
-			"label": display.Label,
-			"note":  display.Note,
+	httpx.WriteJSON(w, http.StatusOK, redistributionChangeResponse{
+		SkillID: pgconv.UUIDString(skillID), Redistribution: redistributionView{
+			Value: string(value), Label: display.Label, Note: display.Note,
 		},
-		"previous_value": previous,
+		PreviousValue: previous,
 	})
 }
 

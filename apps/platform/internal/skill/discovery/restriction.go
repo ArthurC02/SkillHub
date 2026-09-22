@@ -24,6 +24,12 @@ type restrictionRequest struct {
 	Note   string `json:"note"`
 }
 
+type restrictionChangeResponse struct {
+	SkillID           string            `json:"skill_id"`
+	AccessRestriction accessRestriction `json:"access_restriction"`
+	PreviousReason    *string           `json:"previous_reason"`
+}
+
 func (h *Handler) SetRestriction(w http.ResponseWriter, r *http.Request) {
 	body, ok := decodeRestrictionRequest(w, r)
 	if !ok {
@@ -89,13 +95,12 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 	}
 	normalizedReason := strings.TrimSpace(*reason)
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id": pgconv.UUIDString(skillID),
-		"access_restriction": accessRestriction{
+	httpx.WriteJSON(w, http.StatusOK, restrictionChangeResponse{
+		SkillID: pgconv.UUIDString(skillID), AccessRestriction: accessRestriction{
 			Reason: normalizedReason,
 			Note:   restrictionNotes[normalizedReason],
 		},
-		"previous_reason": nullableString(previous),
+		PreviousReason: previous,
 	})
 }
 
