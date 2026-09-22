@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,6 +23,18 @@ class BuildStandaloneTest(unittest.TestCase):
             )
             self.assertTrue((output / "scripts/registry_tools.py").is_file())
             self.assertFalse((output / "scripts/test_domain_registry.py").exists())
+
+    def test_bundle_carries_the_entry_point_for_a_host_without_skills(self) -> None:
+        plugin = Path(__file__).parents[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "domain-memory-read"
+            build(plugin, "domain-memory-read", output)
+            entry = (output / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("python3 scripts/registry_tools.py", entry)
+            links = re.findall(r"\]\(([^)]+)\)", entry)
+            self.assertIn("references/script-api.md", links)
+            for link in links:
+                self.assertTrue((output / link).is_file(), link)
 
     def test_unknown_skill_does_not_create_output(self) -> None:
         plugin = Path(__file__).parents[1]

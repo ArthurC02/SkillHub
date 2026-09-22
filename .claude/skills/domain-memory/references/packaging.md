@@ -4,6 +4,7 @@ Use the Plugin layout when the host supports a Plugin containing multiple Skills
 
 ```text
 domain-memory/
+├── AGENTS.md
 ├── .claude-plugin/plugin.json
 ├── skills/domain-memory-read/SKILL.md
 ├── skills/domain-memory-design/SKILL.md
@@ -17,6 +18,8 @@ The Plugin is the complete Domain Memory capability. Its manifest points to `./s
 The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords`, and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry, not here; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
 
 The scripts need Python 3.10 or later and nothing outside its standard library, and they shell out to `git` alone. A host that cannot offer both runs the Skills without the controlled write boundary, which means no promotion and no audit chain, rather than partially.
+
+A manifest is read by the hosts that define one, and the Plugin root therefore also carries `AGENTS.md`: the entry point for an Agent that arrives in the directory with no manifest support and no concept of Skills. It states the runtime, the command form, and the two rules that hold whoever is reading — `readiness` first, and only `reviewed` records are facts — then sends the reader to the router. Keep it that shape. Restating the routing there would put the same list in two files that drift apart, and restating the command surface would duplicate `script-api.md`.
 
 When a host accepts only one standalone Skill, build a self-contained bundle first:
 
