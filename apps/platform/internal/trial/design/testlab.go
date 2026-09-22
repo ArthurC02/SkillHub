@@ -89,6 +89,28 @@ type Criterion struct {
 	ConfirmedAt *time.Time `json:"confirmed_at"`
 }
 
+type TestCase struct {
+	ID                 pgtype.UUID
+	WorkspaceID        pgtype.UUID
+	SkillID            pgtype.UUID
+	Name               string
+	UserPrompt         string
+	AcceptanceCriteria []byte
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	DeletedAt          pgtype.Timestamptz
+	Rubric             []byte
+}
+
+func testCaseOf(row gen.TestCase) TestCase {
+	return TestCase{
+		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID,
+		Name: row.Name, UserPrompt: row.UserPrompt,
+		AcceptanceCriteria: row.AcceptanceCriteria, CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt, DeletedAt: row.DeletedAt, Rubric: row.Rubric,
+	}
+}
+
 const (
 	SourceUser      = "user"
 	SourceSuggested = "suggested"
@@ -112,43 +134,43 @@ const MaxRubricItems = 50
 
 const MaxRubricVersionBytes = 200
 
-func (s *Service) SetRubric(ctx context.Context, ws identity.Workspace, id pgtype.UUID, r *Rubric) (gen.TestCase, error) {
+func (s *Service) SetRubric(ctx context.Context, ws identity.Workspace, id pgtype.UUID, r *Rubric) (TestCase, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, ErrNotFound
+		return TestCase{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 
 	var encoded []byte
 	if r != nil {
 		clean, err := validateRubric(*r, criteria)
 		if err != nil {
-			return gen.TestCase{}, err
+			return TestCase{}, err
 		}
 		if encoded, err = json.Marshal(clean); err != nil {
-			return gen.TestCase{}, err
+			return TestCase{}, err
 		}
 	}
 	updated, err := q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{
 		ID: tc.ID, WorkspaceID: ws.ID, Rubric: encoded,
 	})
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
-	return updated, tx.Commit(ctx)
+	return testCaseOf(updated), tx.Commit(ctx)
 }
 
 func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
@@ -202,74 +224,76 @@ func DecodeRubric(raw []byte) (*Rubric, error) {
 	return r, nil
 }
 
-func (s *Service) CreateTestCase(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, name, prompt string) (gen.TestCase, error) {
+func (s *Service) CreateTestCase(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, name, prompt string) (TestCase, error) {
 	name, prompt, err := validateDraft(name, prompt)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	if s.ReadSkill == nil {
-		return gen.TestCase{}, errRegistryReadNotConfigured
+		return TestCase{}, errRegistryReadNotConfigured
 	}
 	q := gen.New(s.Pool)
 	_, found, err := s.ReadSkill(ctx, ws.ID, skillID)
 	if !found && err == nil {
-		return gen.TestCase{}, ErrNotFound
+		return TestCase{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
-	return q.CreateTestCase(ctx, gen.CreateTestCaseParams{
+	row, err := q.CreateTestCase(ctx, gen.CreateTestCaseParams{
 		WorkspaceID:        ws.ID,
 		SkillID:            skillID,
 		Name:               name,
 		UserPrompt:         prompt,
 		AcceptanceCriteria: []byte("[]"),
 	})
+	return testCaseOf(row), err
 }
 
 func (s *Service) CreateTestCaseWithCriteria(
 	ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID, name, prompt string, criteria []string,
-) (gen.TestCase, error) {
+) (TestCase, error) {
 	name, prompt, err := validateDraft(name, prompt)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	if len(criteria) > maxConfirmedCreationCriteria {
-		return gen.TestCase{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, maxConfirmedCreationCriteria)
+		return TestCase{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, maxConfirmedCreationCriteria)
 	}
 	list := make([]Criterion, len(criteria))
 	now := time.Now().UTC()
 	for i, text := range criteria {
 		text, err = validateCriterion(text)
 		if err != nil {
-			return gen.TestCase{}, err
+			return TestCase{}, err
 		}
 		list[i] = Criterion{ID: newCriterionID(), Text: text, Source: SourceUser, ConfirmedAt: &now}
 	}
 
 	encoded, err := json.Marshal(list)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
-	return gen.New(tx).CreateTestCase(ctx, gen.CreateTestCaseParams{
+	row, err := gen.New(tx).CreateTestCase(ctx, gen.CreateTestCaseParams{
 		WorkspaceID:        ws.ID,
 		SkillID:            skillID,
 		Name:               name,
 		UserPrompt:         prompt,
 		AcceptanceCriteria: encoded,
 	})
+	return testCaseOf(row), err
 }
 
-func (s *Service) GetTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (gen.TestCase, error) {
+func (s *Service) GetTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID) (TestCase, error) {
 	tc, err := gen.New(s.Pool).GetTestCase(ctx, gen.GetTestCaseParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, ErrNotFound
+		return TestCase{}, ErrNotFound
 	}
-	return tc, err
+	return testCaseOf(tc), err
 }
 
 type TestCaseSummary struct {
-	TestCase  gen.TestCase
+	TestCase  TestCase
 	SkillName string
 }
 
@@ -313,7 +337,7 @@ func (s *Service) ListTestCases(
 			}
 			names[tc.SkillID] = name
 		}
-		out = append(out, TestCaseSummary{TestCase: tc, SkillName: name})
+		out = append(out, TestCaseSummary{TestCase: testCaseOf(tc), SkillName: name})
 	}
 	return out, nil
 }
@@ -435,18 +459,18 @@ func draftFromRow(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID, 
 	return draft, nil
 }
 
-func (s *Service) UpdateTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID, name, prompt string) (gen.TestCase, error) {
+func (s *Service) UpdateTestCase(ctx context.Context, ws identity.Workspace, id pgtype.UUID, name, prompt string) (TestCase, error) {
 	name, prompt, err := validateDraft(name, prompt)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	tc, err := gen.New(s.Pool).UpdateTestCase(ctx, gen.UpdateTestCaseParams{
 		ID: id, WorkspaceID: ws.ID, Name: name, UserPrompt: prompt,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, ErrNotFound
+		return TestCase{}, ErrNotFound
 	}
-	return tc, err
+	return testCaseOf(tc), err
 }
 
 func validateDraft(name, prompt string) (string, string, error) {
@@ -513,10 +537,10 @@ func (s *Service) DeleteTestCase(ctx context.Context, ws identity.Workspace, id 
 
 func (s *Service) AddCriterion(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID, text, source string,
-) (gen.TestCase, error) {
+) (TestCase, error) {
 	text, err := validateCriterion(text)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	if source != SourceSuggested {
 		source = SourceUser
@@ -529,12 +553,12 @@ func (s *Service) AddCriterion(
 	})
 }
 
-func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string, text *string, confirmed *bool) (gen.TestCase, error) {
+func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string, text *string, confirmed *bool) (TestCase, error) {
 	var newText string
 	if text != nil {
 		var err error
 		if newText, err = validateCriterion(*text); err != nil {
-			return gen.TestCase{}, err
+			return TestCase{}, err
 		}
 	}
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
@@ -560,7 +584,7 @@ func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id
 	})
 }
 
-func (s *Service) DeleteCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string) (gen.TestCase, error) {
+func (s *Service) DeleteCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string) (TestCase, error) {
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
 		i := indexOfCriterion(list, criterionID)
 		if i < 0 {
@@ -570,43 +594,43 @@ func (s *Service) DeleteCriterion(ctx context.Context, ws identity.Workspace, id
 	})
 }
 
-func (s *Service) mutateCriteria(ctx context.Context, ws identity.Workspace, id pgtype.UUID, fn func([]Criterion) ([]Criterion, error)) (gen.TestCase, error) {
+func (s *Service) mutateCriteria(ctx context.Context, ws identity.Workspace, id pgtype.UUID, fn func([]Criterion) ([]Criterion, error)) (TestCase, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, ErrNotFound
+		return TestCase{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	list, err := DecodeCriteria(tc.AcceptanceCriteria)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	if list, err = fn(list); err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	encoded, err := json.Marshal(list)
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 	updated, err := q.UpdateTestCaseCriteria(ctx, gen.UpdateTestCaseCriteriaParams{
 		ID: tc.ID, WorkspaceID: ws.ID, AcceptanceCriteria: encoded,
 	})
 	if err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
 
 	if updated, err = pruneRubric(ctx, q, ws, updated, list); err != nil {
-		return gen.TestCase{}, err
+		return TestCase{}, err
 	}
-	return updated, tx.Commit(ctx)
+	return testCaseOf(updated), tx.Commit(ctx)
 }
 
 func pruneRubric(ctx context.Context, q *gen.Queries, ws identity.Workspace, tc gen.TestCase, criteria []Criterion) (gen.TestCase, error) {

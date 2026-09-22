@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
@@ -85,7 +84,7 @@ type testCaseResponse struct {
 	UpdatedAt string  `json:"updated_at"`
 }
 
-func toTestCaseResponse(tc gen.TestCase) testCaseResponse {
+func toTestCaseResponse(tc TestCase) testCaseResponse {
 	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
 	if err != nil {
 		criteria = []Criterion{}
