@@ -131,7 +131,10 @@ AMENDABLE_FIELDS = {
     "review_verifier": ("review_governance", "verifier"),
     "review_trigger": ("review_governance", "trigger"),
     "ci_requirement": ("review_governance", "ci_requirement"),
+    "authorized_signers": ("review_governance", "authorized_signers"),
 }
+
+LIST_FIELDS = {"authorized_signers"}
 
 
 def amend_policy(
@@ -157,14 +160,17 @@ def amend_policy(
     target = value_document
     for key in keys[:-1]:
         target = target[key]
+    amended: Any = value
+    if field in LIST_FIELDS:
+        amended = [entry.strip() for entry in value.split(",") if entry.strip()]
     change = {
         "operation": "amend-policy",
         "field": field,
         "from": target.get(keys[-1]),
-        "to": value,
+        "to": amended,
         "reason": reason.strip(),
     }
-    target[keys[-1]] = value
+    target[keys[-1]] = amended
     if field == "review_mode" and value == "local-draft-only":
         value_document["review_governance"] = {
             "verifier": "none",

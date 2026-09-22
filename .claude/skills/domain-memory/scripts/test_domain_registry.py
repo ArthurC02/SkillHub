@@ -2235,6 +2235,35 @@ class DomainRegistryTest(unittest.TestCase):
             self.stored_policy()["review_governance"]["verifier"], "github-pr"
         )
 
+    def test_a_repository_without_ci_can_adopt_and_rotate_a_signer(self) -> None:
+        root = self.repo / "memory"
+        amend_policy(
+            root, "authorized_signers", "SHA256:first", "Register the maintainer key."
+        )
+        amend_policy(root, "review_trigger", "git-push", "Signing is enforced on push.")
+        amend_policy(
+            root,
+            "review_verifier",
+            "git-signed-commit",
+            "No CI reviewer exists, so the maintainer signs instead.",
+        )
+        governance = self.stored_policy()["review_governance"]
+        self.assertEqual("git-signed-commit", governance["verifier"])
+        self.assertEqual(["SHA256:first"], governance["authorized_signers"])
+        amend_policy(
+            root, "authorized_signers", "SHA256:second", "Rotate a compromised key."
+        )
+        self.assertEqual(
+            ["SHA256:second"],
+            self.stored_policy()["review_governance"]["authorized_signers"],
+        )
+        with self.assertRaisesRegex(ValueError, "amended policy is invalid"):
+            amend_policy(root, "authorized_signers", "   ", "Leave nobody able to sign.")
+        self.assertEqual(
+            ["SHA256:second"],
+            self.stored_policy()["review_governance"]["authorized_signers"],
+        )
+
     def test_amending_without_a_reason_leaves_the_policy_alone(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires a reason"):
             amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "   ")
