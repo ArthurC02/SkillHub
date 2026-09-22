@@ -34,6 +34,20 @@ type UploadResult struct {
 	Findings      skillpkg.CategorizedFindings `json:"findings"`
 }
 
+type importLimitsResponse struct {
+	MaxZipBytes      int64    `json:"max_zip_bytes"`
+	MaxUnpackedBytes int64    `json:"max_unpacked_bytes"`
+	MaxFiles         int      `json:"max_files"`
+	MaxFileBytes     int64    `json:"max_file_bytes"`
+	MaxPathDepth     int      `json:"max_path_depth"`
+	AllowedHosts     []string `json:"allowed_hosts"`
+	Note             string   `json:"note"`
+}
+
+type generationFailuresResponse struct {
+	Failures []GenerateFailure `json:"failures"`
+}
+
 func NewUploadResult(res Result) UploadResult {
 	return UploadResult{
 		SkillID:       pgconv.UUIDString(res.Skill.ID),
@@ -54,14 +68,14 @@ func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 	if named, ok := h.Svc.Fetcher.(interface{ AllowedHosts() []string }); ok {
 		hosts = named.AllowedHosts()
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"max_zip_bytes":      limits.ZipBytes,
-		"max_unpacked_bytes": limits.UnpackedBytes,
-		"max_files":          limits.Entries,
-		"max_file_bytes":     limits.EntryBytes,
-		"max_path_depth":     limits.EntryDepth,
-		"allowed_hosts":      hosts,
-		"note":               importLimitsNote,
+	httpx.WriteJSON(w, http.StatusOK, importLimitsResponse{
+		MaxZipBytes:      limits.ZipBytes,
+		MaxUnpackedBytes: limits.UnpackedBytes,
+		MaxFiles:         limits.Entries,
+		MaxFileBytes:     limits.EntryBytes,
+		MaxPathDepth:     limits.EntryDepth,
+		AllowedHosts:     hosts,
+		Note:             importLimitsNote,
 	})
 }
 
@@ -372,7 +386,7 @@ func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
 	for _, rec := range records {
 		out = append(out, generateFailureFrom(rec))
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"failures": out})
+	httpx.WriteJSON(w, http.StatusOK, generationFailuresResponse{Failures: out})
 }
 
 func generateFailureFrom(rec audit.Record) GenerateFailure {
