@@ -132,6 +132,20 @@ func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype
 	return versionDTO(row), true, nil
 }
 
+func (s *Service) Versions(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]Version, error) {
+	rows, err := gen.New(s.Pool).ListSkillVersions(ctx, gen.ListSkillVersionsParams{
+		WorkspaceID: workspaceID, SkillID: skillID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	versions := make([]Version, len(rows))
+	for i, row := range rows {
+		versions[i] = versionDTO(row)
+	}
+	return versions, nil
+}
+
 func (s *Service) WorkspaceVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (Version, bool, error) {
 	row, err := gen.New(s.Pool).GetSkillVersion(ctx, gen.GetSkillVersionParams{
 		ID: versionID, WorkspaceID: workspaceID,

@@ -262,9 +262,7 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := gen.New(h.Svc.Pool).ListSkillVersions(r.Context(), gen.ListSkillVersionsParams{
-		WorkspaceID: ws.ID, SkillID: skillID,
-	})
+	rows, err := h.Svc.Versions(r.Context(), ws.ID, skillID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
