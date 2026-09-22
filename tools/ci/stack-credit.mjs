@@ -78,6 +78,9 @@ try {
   const page = await member.newPage();
   const problems = [];
   page.on("pageerror", (err) => problems.push(`uncaught: ${err.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") problems.push(`console: ${message.text()}`);
+  });
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
@@ -129,11 +132,44 @@ try {
     (await page.getByText(/餘額 13,?000 點/).count()) > 0,
   );
 
-  started = await startSession(member);
+  const budget = page.locator('input[name="creation-budget"][value="500"]');
+  await budget.click({ force: true });
+  check("the browser selects a creation budget", await budget.isChecked());
+  await page.getByLabel("想完成的任務").fill("用真瀏覽器送出這次創作");
+  const start = page.locator("button.composer-send");
+  check("the selected budget enables creation", await start.isEnabled());
+  const createdRequests = [];
+  const createdResponses = [];
+  const isCreationStart = (message, method) =>
+    new URL(message.url()).pathname.includes("/creation-sessions") && method === "POST";
+  page.on("request", (request) => {
+    if (isCreationStart(request, request.method())) createdRequests.push(request.url());
+  });
+  page.on("response", (response) => {
+    if (isCreationStart(response, response.request().method())) createdResponses.push(response);
+  });
+  await start.evaluate((button) => button.click());
+  await page.waitForTimeout(500);
+  const submitState = await page.locator(".composer").evaluate((composer) => ({
+    message: composer.querySelector("textarea")?.value,
+    disabled: composer.querySelector("button.composer-send")?.disabled,
+    failure: document.querySelector(".notice-danger")?.textContent,
+  }));
+  const createdResponse = createdResponses.at(-1);
+  const created = createdResponse ? await createdResponse.json().catch(() => ({})) : {};
+  const readBack =
+    typeof created.id === "string"
+      ? await (await member.request.get(`${base}/creation-sessions/${created.id}`)).json()
+      : {};
   check(
-    "with the grant, a session starts",
-    started.status === 200,
-    `${started.status} ${started.body}`,
+    "the browser starts a creation session and its message reads back",
+    createdRequests.length === 1 &&
+      createdResponse?.status() === 200 &&
+      readBack.id === created.id &&
+      readBack.snapshot?.messages?.some(
+        (message) => message.role === "user" && message.content === "用真瀏覽器送出這次創作",
+      ),
+    `${JSON.stringify({ createdRequests, status: createdResponse?.status(), readBack, submitState }).slice(0, 500)}`,
   );
   check("no uncaught page errors", problems.length === 0, problems.join(" / "));
 } catch (err) {

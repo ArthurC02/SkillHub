@@ -60,6 +60,17 @@ const MAX_MESSAGE_RUNES = 4000;
 
 const points = (v: number) => v + " 點";
 
+const newCommandID = () => {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("").replace(
+    /(.{8})(.{4})(.{4})(.{4})(.{12})/,
+    "$1-$2-$3-$4-$5",
+  );
+};
+
 function NextStep({
   costCredits,
   remainingCredits,
@@ -191,7 +202,7 @@ export function CreationSession() {
       pending.current = {
         key,
         body: {
-          command_id: crypto.randomUUID(),
+          command_id: newCommandID(),
           expected_revision: value.revision,
           kind,
           ...extra,
@@ -305,7 +316,7 @@ export function CreationSession() {
         if (startPending.current?.key !== key)
           startPending.current = {
             key,
-            body: { id: crypto.randomUUID(), message: initial, budget_credits: amount },
+            body: { id: newCommandID(), message: initial, budget_credits: amount },
           };
         value = await createCreationSession(startPending.current.body);
         save(value);
