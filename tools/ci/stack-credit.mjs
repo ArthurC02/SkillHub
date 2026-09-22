@@ -440,6 +440,78 @@ try {
     );
   }
 
+  const removableCriterionText =
+    "The output does not include an unrelated field.";
+  if (typeof createdTestCase.test_case_id === "string") {
+    await page.locator("#new-criterion").fill(removableCriterionText);
+    const addRemovableCriterion = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/test-cases/${createdTestCase.test_case_id}/criteria` &&
+          response.request().method() === "POST",
+      ),
+      page
+        .locator("#new-criterion")
+        .locator("xpath=following-sibling::button")
+        .first()
+        .click(),
+    ]).then(([response]) => response);
+    const withRemovableCriterion = await (
+      await member.request.get(
+        `${base}/test-cases/${createdTestCase.test_case_id}`,
+      )
+    ).json();
+    const removableCriterion = withRemovableCriterion.acceptance_criteria?.find(
+      (item) => item.text === removableCriterionText,
+    );
+    if (typeof removableCriterion?.id === "string") {
+      await page.reload({ waitUntil: "networkidle" });
+      const removableRow = page
+        .locator(`#criterion-${removableCriterion.id}`)
+        .locator("xpath=ancestor::li");
+      await removableRow.getByRole("button", { name: "刪除這一條" }).click();
+      const deleteCriterionResponse = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname ===
+              `/test-cases/${createdTestCase.test_case_id}/criteria/${removableCriterion.id}` &&
+            response.request().method() === "DELETE",
+        ),
+        removableRow.getByRole("button", { name: "確認刪除這一條" }).click(),
+      ]).then(([response]) => response);
+      await removableRow.waitFor({ state: "detached" });
+      const afterCriterionDelete = await (
+        await member.request.get(
+          `${base}/test-cases/${createdTestCase.test_case_id}`,
+        )
+      ).json();
+      check(
+        "the browser deletes a criterion and it no longer reads back",
+        addRemovableCriterion.status() === 201 &&
+          !afterCriterionDelete.acceptance_criteria?.some(
+            (item) => item.id === removableCriterion.id,
+          ),
+        JSON.stringify({
+          add: addRemovableCriterion.status(),
+          afterCriterionDelete,
+        }).slice(0, 500),
+      );
+    } else {
+      check(
+        "the browser deletes a criterion and it no longer reads back",
+        false,
+        "removable criterion missing",
+      );
+    }
+  } else {
+    check(
+      "the browser deletes a criterion and it no longer reads back",
+      false,
+      "test case missing",
+    );
+  }
+
   const datasetName = "browser-upload.csv";
   const datasetContents = "name,value\nexample,1\n";
   if (typeof createdTestCase.test_case_id === "string") {
