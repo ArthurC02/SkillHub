@@ -2,11 +2,11 @@
   "format": "domain-memory-policy/v1",
   "storage_mode": "tracked",
   "data_classification": "internal",
-  "review_mode": "local-draft-only",
+  "review_mode": "scm-verified",
   "review_governance": {
-    "verifier": "none",
-    "trigger": "none",
-    "ci_requirement": "none",
+    "verifier": "github-pr",
+    "trigger": "external-scm",
+    "ci_requirement": "required",
     "authorized_signers": []
   },
   "source_policy": {

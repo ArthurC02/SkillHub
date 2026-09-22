@@ -1,0 +1,191 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-registry-reviewed-facts",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-registry-reviewed-facts",
+  "status": "submitted",
+  "change_classification": "material",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "6c6623f71bee15c015791217175c596cea2e05a0",
+    "registry_digest": "sha256:f3a40760674ae85bbac327830e69cbd619f44a3b40457bc013c4f20377d10e5e"
+  },
+  "affected_contexts": [
+    "run",
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": [
+      "docs/development/platform-ddd-convergence.md:120"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Run reads Registry-owned Skill and Version facts through a reader the composition root injects; Run never reaches into Registry storage.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run -> registry persistence"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/trial.go:14-30",
+      "apps/platform/internal/trial/execution/preflight.go:199-240"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A coding Agent that cannot tell a reviewed fact from a draft treats both as optional.",
+      "An earlier promotion of these same records was demoted because its approval was recorded inside the package instead of verified outside it."
+    ],
+    "decision": "Promote only the five records whose claims were re-read against their cited sources, and carry a provider-verifiable approval.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Promote all seven candidates: two do not survive a reading of their own evidence.",
+      "Hand-edit the policy or the review field to reach reviewed status: that establishes a trust root by evading the trust mechanism."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "audit-chain-intact",
+      "collaboration-is-registered",
+      "approval-path-is-external",
+      "fact-reader-contract-holds",
+      "reviewed-record-needs-evidence"
+    ],
+    "counterfactual_check": "reviewed-record-needs-evidence"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "run",
+        "name": "Run Orchestration",
+        "responsibility": "Owns Skill trial Run lifecycle.",
+        "evidence": [
+          {
+            "path": "docs/development/platform-context-map.md",
+            "lines": {
+              "start": 24,
+              "end": 24
+            },
+            "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
+            "excerpt_sha256": "sha256:a69319447f424b26bc5c20e6ea791732555128d2988bf5749c4bf28efa31e0b1",
+            "source_kind": "unclassified"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "registry",
+        "name": "Skill Registry",
+        "responsibility": "Owns Skill assets and version history.",
+        "evidence": [
+          {
+            "path": "docs/development/platform-context-map.md",
+            "lines": {
+              "start": 21,
+              "end": 21
+            },
+            "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
+            "excerpt_sha256": "sha256:850bc6dfefea6a0f6d49ccb82f2ec9e756ac672b1d72afdfe6f8d985bdbd078e",
+            "source_kind": "unclassified"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "run",
+        "context": "run",
+        "root": "Run",
+        "invariants": [
+          "Run owns lifecycle transitions."
+        ],
+        "evidence": [
+          {
+            "path": "docs/development/platform-ddd-convergence.md",
+            "lines": {
+              "start": 120,
+              "end": 120
+            },
+            "content_sha256": "sha256:ae866e4bbae522dcbf5c740ab3bea6a6cc7c2c44c1adb1ff810afffe85c60366",
+            "excerpt_sha256": "sha256:7d913e495803508e0afb2a084abf9a187f5f45425a8f71d03326e5d92d89d318",
+            "source_kind": "unclassified"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "registry-run-facts-v1",
+        "kind": "internal-fact-reader",
+        "producer_context": "registry",
+        "consumer_contexts": [
+          "run"
+        ],
+        "version": "v1",
+        "compatibility_policy": "consumer-specific facts evolve deliberately",
+        "data_classification": "internal",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 14,
+              "end": 30
+            },
+            "content_sha256": "sha256:035010fcec22c02af97300d6cb3418894b1b01ed44136845398b966c2e073bc6",
+            "excerpt_sha256": "sha256:1926ff2a48b702eab8c53e2ea80437d71a076ae43a4189c683658ff903f06395"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "registry-run-preflight-facts",
+        "producer_context": "registry",
+        "consumer_context": "run",
+        "contract_id": "registry-run-facts-v1",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/preflight.go",
+            "lines": {
+              "start": 199,
+              "end": 240
+            },
+            "content_sha256": "sha256:971c8d3e6dd9d01f11c6f41d341bb37c73b64d10fba8284efc4a2cffa117a996",
+            "excerpt_sha256": "sha256:d83b4da11631a3d911e05eb650ac97dd3cbf7ebbe1fd608b5a1f895219caea43"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [
+    "vocabulary/run defines Run as 'Skill trial lifecycle' while its cited line enumerates Run's commands rather than defining the term; it stays a candidate until a source that defines it is cited.",
+    "rules/run-lifecycle-owner restates the aggregate invariant verbatim, and an ownership statement is not the falsifiable business constraint a Rule asset is for; it stays a candidate pending a Design decision on whether the Rule should exist at all."
+  ],
+  "approvals": [],
+  "submitted_at": "2026-09-22T06:45:03.919938Z"
+}

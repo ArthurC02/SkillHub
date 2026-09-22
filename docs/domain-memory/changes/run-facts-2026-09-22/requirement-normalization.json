@@ -1,0 +1,42 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-registry-reviewed-facts",
+  "status": "draft",
+  "intent": "Let reviewed Run and Registry facts constrain implementation, after an earlier promotion was demoted for resting on an unverifiable approval.",
+  "actor": "coding-agent",
+  "observable_outcome": "A coding Agent reading Domain Memory receives Run ownership and the Run-Registry collaboration as reviewed constraints rather than working-memory drafts.",
+  "acceptance_criteria": [
+    {
+      "id": "run-ownership-reviewed",
+      "statement": "Run owns its lifecycle transitions and that ownership is a reviewed record backed by cited, current evidence."
+    },
+    {
+      "id": "registry-run-collaboration-reviewed",
+      "statement": "The Registry-to-Run fact reader is a reviewed contract with a reviewed synchronous interaction, so a future change cannot quietly widen it."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that promotes these records is verifiable through the configured provider, not asserted inside the package."
+    }
+  ],
+  "candidate_terms": [
+    "Run",
+    "Run Orchestration",
+    "Skill Registry"
+  ],
+  "open_questions": [
+    "vocabulary/run and rules/run-lifecycle-owner are deliberately out of scope; see the proposal's open_questions."
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/development/platform-context-map.md",
+    "docs/development/platform-ddd-convergence.md",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/trial/execution/preflight.go"
+  ]
+}
