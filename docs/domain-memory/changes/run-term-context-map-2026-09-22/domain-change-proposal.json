@@ -1,0 +1,105 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-term-reviewed-context-map",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-term-reviewed-context-map",
+  "status": "verified",
+  "change_classification": "material",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0fcaf21749935f738c16873f551125264bbee0b9",
+    "registry_digest": "sha256:8a5371beb57549437f9312f6b02bcb90cb7b235728bbf5361ac190f70e06171a"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": [
+      "docs/development/platform-ddd-convergence.md:120"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "None. The term is defined inside the Run Context and crosses no boundary.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/development/platform-context-map.md:58"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Run is used in every architecture decision, specification, handbook and package comment in this repository and is defined in none of them.",
+      "The previous record defined Run as 'Skill trial lifecycle.' and cited a line of the DDD convergence table that only enumerates the commands the Run aggregate accepts, so the definition rested on evidence that did not carry it."
+    ],
+    "decision": "Define Run in the Context Map, the document that already says what each Bounded Context is, and cite that line.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Promote the old definition: its cited line enumerates commands and does not define the term.",
+      "Define Run as one execution: run_attempts is unique on (run_id, attempt_number), so an attempt is the execution and the Run is the retryable unit.",
+      "Say the result is evaluated: running transitions directly to failed, cancelled or timed_out, so not every Run reaches evaluating.",
+      "Define it in the architecture decision that owns Run orchestration: this repository reserves decision numbers and filenames for those documents and their index, so a Registry citation to one is refused by the adr-citations gate."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "reviewed-term-needs-a-definition",
+      "definition-resolves-the-term",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "reviewed-term-needs-a-definition"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "run",
+        "name": "Run",
+        "definition": "One requested trial of a single Skill Version against a single frozen Test Case snapshot, within a Workspace, carried out through one or more attempts on a sandbox Provider, and ending in a single terminal status. An attempt is the execution; the Run is the retryable unit whose identity a reassignment does not change.",
+        "contexts": [
+          "run"
+        ],
+        "evidence": [
+          {
+            "path": "docs/development/platform-context-map.md",
+            "lines": {
+              "start": 58,
+              "end": 58
+            },
+            "content_sha256": "sha256:fe1b4b5b2d5c24fb4d701447aeee46887da447076abe5683657b2355989a507a",
+            "excerpt_sha256": "sha256:2a75ed4638df207d0777bacff76a7ce980cac8861e274e9d6f4d2f7461f80e77",
+            "source_kind": "architecture_guidance"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T08:49:20.719626Z",
+      "scope": "The definition of Run, derived from the runs and run_attempts schema and the Run state machine, as written into the Context Map",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "0fcaf21749935f738c16873f551125264bbee0b9",
+        "registry_digest": "sha256:8a5371beb57549437f9312f6b02bcb90cb7b235728bbf5361ac190f70e06171a"
+      }
+    }
+  ],
+  "supersedes": "run-term-reviewed",
+  "submitted_at": "2026-09-22T08:49:20.488378Z",
+  "verified_at": "2026-09-22T08:49:20.974403Z"
+}

@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-term-reviewed-context-map",
+  "status": "draft",
+  "intent": "Give the system's central term a definition a reader can rely on.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent that asks what a Run is receives a reviewed definition naming what it runs, what it runs against, and what ends it.",
+  "acceptance_criteria": [
+    {
+      "id": "run-term-defined-from-an-authority",
+      "statement": "Run's definition is a reviewed record whose evidence is a line that defines the term, not a line that enumerates the commands Run accepts."
+    },
+    {
+      "id": "run-term-resolves-for-a-reader",
+      "statement": "A reader asking a whole sentence about Run receives that definition rather than nothing."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that promotes the term is checkable outside the package, against the signature on the commit that carries it."
+    }
+  ],
+  "candidate_terms": [
+    "Run"
+  ],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/development/platform-context-map.md",
+    "db/migrations/0004_test_lab_and_runs.sql",
+    "db/migrations/0016_run_orchestration.sql",
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ]
+}

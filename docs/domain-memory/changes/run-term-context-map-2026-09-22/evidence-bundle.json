@@ -1,0 +1,87 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-term-reviewed-context-map",
+  "proposal_id": "run-term-reviewed-context-map",
+  "registry_revision": {
+    "observed_commit": "0fcaf21749935f738c16873f551125264bbee0b9",
+    "registry_digest": "sha256:8a5371beb57549437f9312f6b02bcb90cb7b235728bbf5361ac190f70e06171a"
+  },
+  "approvals": [],
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "reviewed-term-needs-a-definition",
+    "mutated_protection": "the definition on a reviewed term",
+    "failure_evidence": "Marking vocabulary/run reviewed with its definition removed made validate report 'vocabulary.json:run is reviewed but missing definition' and exit 1; run on a copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/development/platform-context-map.md",
+    "db/migrations/0004_test_lab_and_runs.sql",
+    "db/migrations/0016_run_orchestration.sql",
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5a9da351aea682303bc48bb5b46a2f9b92256f70232c7e0bd2b281f9af940c36",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence reported 6 of 6 citations current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:7b43fb15df2c41c01a11a6dcd5ee1c814ed1e94d8d4fdef34dbcd245af2e4c96",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "reviewed-term-needs-a-definition",
+      "status": "passed",
+      "evidence": "validate on a mutated copy reported 'vocabulary.json:run is reviewed but missing definition' and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:db72685f4c791a0159772e31966802b16d697f728f7a0c254156b47b5f393e07",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "definition-resolves-the-term",
+      "status": "passed",
+      "evidence": "registry_tools.py resolve-terms --query 'What does a Run execute against?' returned the Run term with this definition",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:b01809fc9a27bef19d7b9b4badc94e24f71fb3787974c13bf2dd7e3a928e95f8",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 26 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:43bab3df115f0589f2f5a1c0ead58374fc86206404ae7cb2d2d91c0463477c75",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "registry_tools.py governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:981f75fca230fb9dfb22dd8586a925080e633f8573e4bd1934b361ced2f770c7",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The definition is derived from the runs and run_attempts schema and the Run state machine and recorded in the Context Map; a later change to what a Run references makes that line and this record wrong together.",
+    "Five reviewed records plus this term cover two of the repository's Bounded Contexts; the rest of the Context Map remains unmodelled.",
+    "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
+  ]
+}

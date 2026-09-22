@@ -481,12 +481,12 @@
     }
   ],
   "missing_groups": [],
-  "selection_status": "agent-asserted",
+  "selection_status": "developer-confirmed",
   "governance_candidates": {
     "ci_tools": [
       "github-actions"
     ],
-    "recommended_verifier": "scm-review",
+    "recommended_verifier": "github-pr",
     "recommended_trigger": "external-scm"
   },
   "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
@@ -500,7 +500,7 @@
   ],
   "source_policy_report": {
     "files": 6,
-    "total_bytes": 70293,
+    "total_bytes": 70761,
     "oversized_files": [],
     "errors": []
   },
@@ -517,12 +517,12 @@
       "apps/platform/internal/entrypoint/wiring/trial.go": "1867057373e61ef9fd04cd600bee6eadfc25e4b8",
       "apps/platform/internal/skill/library/doc.go": "7c2ed38bb0ef78b8b980dc4b57db356575eb6720",
       "apps/platform/internal/trial/execution/doc.go": "9feaa4cda0a38b34a100315274cf833692b24fd2",
-      "apps/platform/internal/trial/execution/preflight.go": "d24680f2185b68ca32c6d19280780317280da078",
+      "apps/platform/internal/trial/execution/preflight.go": "22cc5ab2f4b85f02309ddcd71ddc08ed6503ee95",
       "docs/development/platform-context-map.md": "9a8df6978bbae4006acd255866dd7026a91a43e9",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
     "dirty_sources": [
-      " M apps/platform/internal/trial/execution/preflight.go"
+      " M docs/development/platform-context-map.md"
     ]
   },
   "source_snapshots": [
@@ -549,12 +549,14 @@
     {
       "path": "docs/development/platform-context-map.md",
       "file_count": 1,
-      "digest": "sha256:544d74e2639155579c7fa6471929617f596497e07bb306480f054413fa0dc758"
+      "digest": "sha256:7cc937a960f1341a8c29d3761a35ceca4e355b68dbb1adc94381e4412a75726f"
     },
     {
       "path": "docs/development/platform-ddd-convergence.md",
       "file_count": 1,
       "digest": "sha256:3291972d27b7303ed53febb94dd8b4925aa566184682718c1588f2f2be47ece0"
     }
-  ]
+  ],
+  "confirmed_by": "ArthurC",
+  "confirmed_at": "2026-09-22T08:47:34.517981Z"
 }

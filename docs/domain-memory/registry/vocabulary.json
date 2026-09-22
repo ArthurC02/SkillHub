@@ -5,20 +5,20 @@
     {
       "id": "run",
       "name": "Run",
-      "definition": "Skill trial lifecycle.",
+      "definition": "One requested trial of a single Skill Version against a single frozen Test Case snapshot, within a Workspace, carried out through one or more attempts on a sandbox Provider, and ending in a single terminal status. An attempt is the execution; the Run is the retryable unit whose identity a reassignment does not change.",
       "contexts": [
         "run"
       ],
       "evidence": [
         {
-          "path": "docs/development/platform-ddd-convergence.md",
+          "path": "docs/development/platform-context-map.md",
           "lines": {
-            "start": 120,
-            "end": 120
+            "start": 58,
+            "end": 58
           },
-          "content_sha256": "sha256:ae866e4bbae522dcbf5c740ab3bea6a6cc7c2c44c1adb1ff810afffe85c60366",
-          "excerpt_sha256": "sha256:7d913e495803508e0afb2a084abf9a187f5f45425a8f71d03326e5d92d89d318",
-          "source_kind": "unclassified"
+          "content_sha256": "sha256:fe1b4b5b2d5c24fb4d701447aeee46887da447076abe5683657b2355989a507a",
+          "excerpt_sha256": "sha256:2a75ed4638df207d0777bacff76a7ce980cac8861e274e9d6f4d2f7461f80e77",
+          "source_kind": "architecture_guidance"
         }
       ],
       "status": "candidate"

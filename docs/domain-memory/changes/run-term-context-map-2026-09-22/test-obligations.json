@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-term-reviewed-context-map",
+  "proposal_id": "run-term-reviewed-context-map",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-term-defined-from-an-authority",
+      "expected_outcome": "The validator accepts the term with its type-specific fields and evidence.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "run-term-defined-from-an-authority",
+      "expected_outcome": "The cited excerpt still hashes to the line the definition was written against.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence"
+    },
+    {
+      "id": "reviewed-term-needs-a-definition",
+      "source_type": "invariant",
+      "source_id": "run-term-defined-from-an-authority",
+      "expected_outcome": "A reviewed term stripped of its definition is refused by the validator.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on a mutated copy"
+    },
+    {
+      "id": "definition-resolves-the-term",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-term-resolves-for-a-reader",
+      "expected_outcome": "resolve-terms returns the Run record for a sentence that names it.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry resolve-terms"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head, including the retraction, the source reconfirmation and this revision.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready with no blocks, so a signature can decide promotion.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry governance-readiness"
+    }
+  ]
+}
