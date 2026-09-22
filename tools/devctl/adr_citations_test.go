@@ -128,6 +128,21 @@ func TestADRCitationProblems(t *testing.T) {
 			count: 0,
 		},
 		{
+			name: "a Domain Memory record cites an ADR by path",
+			change: func(_ string, write func(string, string)) {
+				write("docs/domain-memory/registry/vocabulary.json",
+					"{\"evidence\": [{\"path\": \"docs/adr/"+one+"-alpha.md\"}]}\n")
+			},
+			count: 0,
+		},
+		{
+			name: "a Domain Memory draft PR's prose is not exempt",
+			change: func(_ string, write func(string, string)) {
+				write("docs/domain-memory/changes/x/draft-pr.md", "依 "+one+"。\n")
+			},
+			want: "docs/domain-memory/changes/x/draft-pr.md:1 names " + one, count: 1,
+		},
+		{
 			name: "an index without ADRs is a broken scan",
 			change: func(root string, _ func(string, string)) {
 				for _, name := range []string{one + "-alpha.md", two + "-beta.md"} {

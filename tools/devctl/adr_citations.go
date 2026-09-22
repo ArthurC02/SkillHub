@@ -33,6 +33,9 @@ var adrCitationExemptions = []struct {
 	{"recorded output of a milestone run (transcripts, probes, logs)", func(r string) bool {
 		return strings.HasPrefix(r, "docs/plans/mvp/") && !strings.HasSuffix(r, ".md")
 	}},
+	{"a Domain Memory record, whose citations carry a content digest that verify-evidence stales the moment the cited line moves", func(r string) bool {
+		return strings.HasPrefix(r, "docs/domain-memory/") && strings.HasSuffix(r, ".json")
+	}},
 	{"recorded measurement results", func(r string) bool {
 		return (strings.HasPrefix(r, "tools/eval-regression/") && strings.Contains(r, "results") && strings.HasSuffix(r, ".jsonl")) ||
 			(strings.HasPrefix(r, "tools/goldenset/results") && strings.HasSuffix(r, ".txt"))
