@@ -671,6 +671,25 @@ class DomainRegistryTest(unittest.TestCase):
             [], governance_readiness(self.repo / "memory", self.repo)["blocks"]
         )
 
+    def test_the_generated_hook_carries_no_machine_specific_path(self) -> None:
+        (self.repo / ".githooks").mkdir()
+        subprocess.run(
+            ["git", "config", "core.hooksPath", ".githooks"], cwd=self.repo, check=True
+        )
+        (self.repo / ".githooks" / "pre-push").write_text(
+            "#!/bin/sh\nexit 0\n", encoding="utf-8"
+        )
+        hook = install_pre_push_hook(
+            self.repo / "memory", self.repo, self.repo / "registry_tools.py"
+        )
+        content = hook.read_bytes().decode("utf-8")
+        self.assertNotIn("\r", content)
+        self.assertNotIn(self.repo.resolve().as_posix(), content)
+        self.assertIn("tool='registry_tools.py'", content)
+        self.assertIn(
+            "existing='.githooks/pre-push.domain-memory-existing'", content
+        )
+
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
         self.assertEqual(

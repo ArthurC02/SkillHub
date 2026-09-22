@@ -7,6 +7,13 @@ from .attestations import verify_git_signed_commit
 from .policy import review_governance, review_mode
 
 
+def inside_repo(path: Path, repo_root: Path) -> str:
+    try:
+        return path.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
 def hooks_dir(repo_root: Path) -> Path:
     result = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "--git-path", "hooks"],
@@ -55,12 +62,12 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         if backup.exists():
             raise ValueError("existing Domain Memory pre-push hook backup already exists")
         hook.replace(backup)
-    hook.write_text(
+    script_text = (
         "#!/bin/sh\n"
         "# domain-memory-pre-push\n"
-        f"tool='{script.resolve().as_posix()}'\n"
+        f"tool='{inside_repo(script, repo_root)}'\n"
         f"memory='{relative}'\n"
-        f"existing='{backup.as_posix()}'\n"
+        f"existing='{inside_repo(backup, repo_root)}'\n"
         "test ! -x \"$existing\" || \"$existing\" \"$@\" || exit 1\n"
         "while read local_ref local_sha remote_ref remote_sha; do\n"
         "  test \"$local_sha\" = \"0000000000000000000000000000000000000000\" && continue\n"
@@ -69,7 +76,9 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         "  for commit in $(git rev-list $range -- \"$memory\"); do\n"
         "    python \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --commit \"$commit\" || exit 1\n"
         "  done\n"
-        "done\n",
-        encoding="utf-8",
+        "done\n"
     )
+    with open(hook, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(script_text)
+    hook.chmod(hook.stat().st_mode | 0o111)
     return hook
