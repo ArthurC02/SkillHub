@@ -142,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     amend_parser.add_argument("--value", required=True)
     amend_parser.add_argument("--reason", required=True)
+    amend_parser.add_argument("--verifier")
     policy_parser = commands.add_parser("validate-policy")
     policy_parser.add_argument("--policy", required=True, type=Path)
     secret_parser = commands.add_parser("scan-secrets")

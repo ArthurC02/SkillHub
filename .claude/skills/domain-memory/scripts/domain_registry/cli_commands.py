@@ -397,7 +397,11 @@ def handle_refine_sources(args: argparse.Namespace) -> int:
 
 def handle_amend_policy(args: argparse.Namespace) -> int:
     change = amend_policy(
-        args.registry_root.resolve(), args.field, args.value, args.reason
+        args.registry_root.resolve(),
+        args.field,
+        args.value,
+        args.reason,
+        args.verifier,
     )
     print(
         f"{change['field']}: {change['from']} -> {change['to']}. The Registry revision moved, so every captured "

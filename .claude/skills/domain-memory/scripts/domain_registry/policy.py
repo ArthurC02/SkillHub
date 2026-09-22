@@ -134,7 +134,9 @@ AMENDABLE_FIELDS = {
 }
 
 
-def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, Any]:
+def amend_policy(
+    root: Path, field: str, value: str, reason: str, verifier: str | None = None
+) -> dict[str, Any]:
     from .audit import append_locked
     from .common import writer_lock
 
@@ -170,6 +172,15 @@ def amend_policy(root: Path, field: str, value: str, reason: str) -> dict[str, A
             "ci_requirement": "none",
             "authorized_signers": [],
         }
+    elif field == "review_mode" and value == "scm-verified":
+        if not isinstance(verifier, str) or not verifier.strip():
+            raise ValueError(
+                "leaving local-draft-only requires the verifier that replaces it, "
+                f"one of {', '.join(sorted(GOVERNANCE_VERIFIERS - {'none'}))}: "
+                "a review mode and the authority that backs it move together"
+            )
+        value_document["review_governance"]["verifier"] = verifier.strip()
+        change["verifier"] = verifier.strip()
     errors = validate_policy(value_document)
     if errors:
         raise ValueError("amended policy is invalid: " + "; ".join(errors))

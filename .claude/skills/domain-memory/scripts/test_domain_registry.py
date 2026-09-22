@@ -2208,6 +2208,33 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertIn("reviewer", recorded["reason"])
         self.assertEqual("valid", verify_audit(self.repo / "memory")["status"])
 
+    def test_a_policy_can_leave_local_draft_only_for_external_review(self) -> None:
+        amend_policy(
+            self.repo / "memory",
+            "review_mode",
+            "local-draft-only",
+            "Drafting alone until a reviewer exists.",
+        )
+        with self.assertRaisesRegex(ValueError, "requires the verifier"):
+            amend_policy(
+                self.repo / "memory",
+                "review_mode",
+                "scm-verified",
+                "A reviewer exists now.",
+            )
+        self.assertEqual(self.stored_policy()["review_mode"], "local-draft-only")
+        amend_policy(
+            self.repo / "memory",
+            "review_mode",
+            "scm-verified",
+            "A reviewer exists now.",
+            verifier="github-pr",
+        )
+        self.assertEqual(self.stored_policy()["review_mode"], "scm-verified")
+        self.assertEqual(
+            self.stored_policy()["review_governance"]["verifier"], "github-pr"
+        )
+
     def test_amending_without_a_reason_leaves_the_policy_alone(self) -> None:
         with self.assertRaisesRegex(ValueError, "requires a reason"):
             amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "   ")
