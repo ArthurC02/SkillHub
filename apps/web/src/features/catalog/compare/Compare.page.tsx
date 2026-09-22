@@ -7,6 +7,7 @@ import { LicenseBadge, LicenseNotes } from "../../../shared/ui/LicenseBadge";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
 import { Timestamp } from "../../../shared/ui/Timestamp";
+import { ExternalLink } from "../../../shared/ui/ExternalLink";
 import type { SkillDetail, SkillTags } from "../../../core/api/types";
 import { IN_PROGRESS, type Absence } from "../../../shared/ui/absence";
 import "./Compare.page.css";
@@ -148,9 +149,7 @@ const ROWS: CompareRow[] = [
           <LabelledBadge kind="trust" value={skill.source.trust} />
           {skill.source.url ? (
             <p>
-              <a href={skill.source.url} rel="noreferrer noopener">
-                {skill.source.url}
-              </a>
+              <ExternalLink href={skill.source.url}>{skill.source.url}</ExternalLink>
             </p>
           ) : (
             <p className="note">

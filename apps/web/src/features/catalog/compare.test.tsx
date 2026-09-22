@@ -153,6 +153,18 @@ test("DISC-009 comparison gives absent fields their actual state", async () => {
   expect(versionRow?.querySelector("td")?.textContent).toBe("不適用");
 });
 
+test("DISC-009 source URLs become links only for HTTPS", async () => {
+  const unsafe = skillDetail("a", "Unsafe");
+  unsafe.source = { ...unsafe.source!, url: "http://example.test/source" };
+  const safe = skillDetail("b", "Safe");
+  safe.source = { ...safe.source!, url: "https://example.test/source" };
+  await render(<CompareTable skills={[unsafe, safe]} />);
+
+  expect(container.querySelector('a[href="http://example.test/source"]')).toBeNull();
+  expect(container.querySelector('a[href="https://example.test/source"]')).not.toBeNull();
+  expect(text()).toContain("http://example.test/source");
+});
+
 test("DISC-009 §2.9 量過而且是零的欄位印 0，不是未測量", async () => {
   const measuredZero = skillDetail("z", "Z");
   measuredZero.enrichment.tags = { inputs: [], outputs: ["markdown"], tools: [], dependencies: [] };

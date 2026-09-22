@@ -1,5 +1,6 @@
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { SkillSource } from "../../../../core/api/types";
+import { ExternalLink } from "../../../../shared/ui/ExternalLink";
 import { GeneratedSourceBlock } from "./GeneratedSourceBlock";
 
 export function SourceBlock({ source }: { source: SkillSource }) {
@@ -11,10 +12,7 @@ export function SourceBlock({ source }: { source: SkillSource }) {
       <p>匯入方式：{source.type === "git" ? "從 Git 來源擷取" : "使用者上傳"}</p>
       {source.url && (
         <p>
-          來源網址：{" "}
-          <a href={source.url} rel="noreferrer noopener">
-            {source.url}
-          </a>
+          來源網址： <ExternalLink href={source.url}>{source.url}</ExternalLink>
         </p>
       )}
       {source.fetched_at && (
