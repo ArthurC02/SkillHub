@@ -304,8 +304,12 @@ def owned_source_files(
 
 def source_snapshot(root: Path, path: str, files: list[Path]) -> dict[str, Any]:
     digest = hashlib.sha256()
+    listing = hashlib.sha256()
     for file in files:
-        digest.update(relative(root, file).encode("utf-8"))
+        name = relative(root, file).encode("utf-8")
+        listing.update(name)
+        listing.update(b"\0")
+        digest.update(name)
         digest.update(b"\0")
         digest.update(file.read_bytes())
         digest.update(b"\0")
@@ -313,7 +317,17 @@ def source_snapshot(root: Path, path: str, files: list[Path]) -> dict[str, Any]:
         "path": path,
         "file_count": len(files),
         "digest": f"sha256:{digest.hexdigest()}",
+        "listing_sha256": f"sha256:{listing.hexdigest()}",
     }
+
+
+def selection_moved(recorded: dict[str, Any], current: dict[str, Any]) -> bool:
+    if recorded.get("file_count") != current.get("file_count"):
+        return True
+    listing = recorded.get("listing_sha256")
+    if not isinstance(listing, str):
+        return False
+    return listing != current.get("listing_sha256")
 
 
 def source_snapshots(
@@ -531,18 +545,22 @@ def verify_source_map(
         for snapshot in source_snapshots(root, recorded_paths, policy)
     }
     changed = []
+    drifted = []
     for snapshot in snapshots:
+        current = actual[snapshot["path"]]
         if not (root / snapshot["path"]).exists():
             changed.append({"path": snapshot["path"], "status": "missing"})
-        elif actual[snapshot["path"]] != snapshot:
+        elif selection_moved(snapshot, current):
             changed.append(
                 {
                     "path": snapshot["path"],
                     "status": "changed",
                     "expected": snapshot,
-                    "actual": actual[snapshot["path"]],
+                    "actual": current,
                 }
             )
+        elif snapshot.get("digest") != current.get("digest"):
+            drifted.append({"path": snapshot["path"], "status": "content-changed"})
     if policy:
         report = source_policy_report(
             root, [root / path for path in source_map.get("selected_paths", [])], policy
@@ -558,6 +576,7 @@ def verify_source_map(
         "status": "current" if not changed else "stale",
         "selection_status": selection_status,
         "changed_sources": changed,
+        "content_changed": drifted,
     }
 
 

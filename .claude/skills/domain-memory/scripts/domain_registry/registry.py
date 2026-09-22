@@ -408,6 +408,34 @@ def declared_absences(contexts: list[dict[str, Any]]) -> dict[str, set[Any]]:
     return absent
 
 
+def is_reviewed(record: dict[str, Any]) -> bool:
+    return "reviewed" in (record.get("status"), record.get("review_status"))
+
+
+def evidence_gaps(root: Path) -> list[dict[str, Any]]:
+    from .evidence import classify_all, unclassified_paths
+
+    source_map = source_map_for(root)
+    gaps = []
+    for name in sorted(ASSET_KEYS):
+        if not (registry_dir(root) / name).is_file():
+            continue
+        for record in asset_records(root, name):
+            if not is_reviewed(record):
+                continue
+            entry = {"asset": name.removesuffix(".json"), "id": record.get("id")}
+            if not record.get("evidence"):
+                gaps.append(entry | {"reason": "no evidence"})
+                continue
+            outside = unclassified_paths(classify_all(dict(record), source_map))
+            if outside:
+                gaps.append(
+                    entry
+                    | {"reason": "outside the selected sources", "paths": outside}
+                )
+    return gaps
+
+
 def coverage(root: Path) -> dict[str, Any]:
     contexts = asset_records(root, "contexts.json")
     vocabulary = asset_records(root, "vocabulary.json")
@@ -442,6 +470,7 @@ def coverage(root: Path) -> dict[str, Any]:
             gap: [context for context in missing[gap] if context in absent[asset]]
             for asset, gap in ABSENCE_ASSETS.items()
         },
+        "evidence_gaps": evidence_gaps(root),
     }
 
 

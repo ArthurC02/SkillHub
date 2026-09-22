@@ -234,6 +234,7 @@ def apply_approved_updates(
     updates = proposal.get("registry_updates", [])
     if not isinstance(updates, list) or not updates:
         raise ValueError("approved proposal has no registry_updates")
+    source_map = source_map_for(registry_root)
 
     def mutate(staging: Path) -> None:
         documents: dict[str, dict[str, Any]] = {}
@@ -281,7 +282,16 @@ def apply_approved_updates(
                     )
                 records.remove(existing)
                 continue
-            promoted = dict(record)
+            promoted = classify_all(dict(record), source_map)
+            outside = unclassified_paths(promoted)
+            if outside:
+                raise ValueError(
+                    f"cannot review a record whose evidence rests outside the "
+                    f"confirmed sources: {asset}/{record_id} cites "
+                    + ", ".join(outside)
+                    + "; cite a confirmed source, or select that path before "
+                    "the record is reviewed"
+                )
             promoted["review"] = {
                 "proposal_id": proposal["proposal_id"],
                 "proposal_revision": proposal["proposal_revision"],

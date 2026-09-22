@@ -289,19 +289,79 @@ class DomainRegistryTest(unittest.TestCase):
             (self.repo / "memory" / ".domain-registry-transaction.json").exists()
         )
 
-    def test_source_snapshot_detects_drift(self) -> None:
+    def selected_docs(self) -> Path:
         source = self.repo / "docs"
-        source.mkdir()
+        source.mkdir(exist_ok=True)
         (source / "rules.md").write_text("first version\n", encoding="utf-8")
-        source_map = selected_source_map(self.repo, [source])
         source_map_path = self.repo / "memory" / "source-map.json"
-        write_source_map(source_map_path, source_map)
+        write_source_map(source_map_path, selected_source_map(self.repo, [source]))
         self.assertEqual(
             "current", verify_source_map(self.repo, source_map_path)["status"]
         )
-        (source / "rules.md").write_text("revised version\n", encoding="utf-8")
+        return source_map_path
+
+    def test_editing_a_selected_source_is_content_drift_not_selection_drift(
+        self,
+    ) -> None:
+        source_map_path = self.selected_docs()
+        (self.repo / "docs" / "rules.md").write_text(
+            "revised version\n", encoding="utf-8"
+        )
+        result = verify_source_map(self.repo, source_map_path)
+        self.assertEqual("current", result["status"])
+        self.assertEqual([], result["changed_sources"])
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["content_changed"]]
+        )
+
+    def test_a_file_added_under_a_selected_source_moves_the_selection(self) -> None:
+        source_map_path = self.selected_docs()
+        (self.repo / "docs" / "extra.md").write_text("second\n", encoding="utf-8")
+        result = verify_source_map(self.repo, source_map_path)
+        self.assertEqual("stale", result["status"])
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["changed_sources"]]
+        )
+        self.assertEqual([], result["content_changed"])
+
+    def test_a_file_removed_from_a_selected_source_moves_the_selection(self) -> None:
+        source_map_path = self.selected_docs()
+        (self.repo / "docs" / "rules.md").unlink()
+        result = verify_source_map(self.repo, source_map_path)
+        self.assertEqual("stale", result["status"])
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["changed_sources"]]
+        )
+
+    def test_a_snapshot_without_a_listing_digest_falls_back_to_the_file_count(
+        self,
+    ) -> None:
+        source_map_path = self.selected_docs()
+        source_map = json.loads(source_map_path.read_text(encoding="utf-8"))
+        for snapshot in source_map["source_snapshots"]:
+            del snapshot["listing_sha256"]
+        write_source_map(source_map_path, source_map)
+        untouched = verify_source_map(self.repo, source_map_path)
+        self.assertEqual("current", untouched["status"])
+        self.assertEqual([], untouched["content_changed"])
+        (self.repo / "docs" / "rules.md").write_text("revised\n", encoding="utf-8")
+        self.assertEqual(
+            "current", verify_source_map(self.repo, source_map_path)["status"]
+        )
+        (self.repo / "docs" / "extra.md").write_text("second\n", encoding="utf-8")
         self.assertEqual(
             "stale", verify_source_map(self.repo, source_map_path)["status"]
+        )
+
+    def test_a_renamed_file_moves_the_selection_when_the_listing_is_recorded(
+        self,
+    ) -> None:
+        source_map_path = self.selected_docs()
+        (self.repo / "docs" / "rules.md").rename(self.repo / "docs" / "renamed.md")
+        result = verify_source_map(self.repo, source_map_path)
+        self.assertEqual("stale", result["status"])
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["changed_sources"]]
         )
 
     def test_source_verification_rejects_a_path_outside_the_repository(self) -> None:
@@ -1161,6 +1221,132 @@ class DomainRegistryTest(unittest.TestCase):
         ]
         path.write_text(json.dumps(proposal), encoding="utf-8")
 
+    def select_docs_as_sources(self) -> None:
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "decision.md").write_text(
+            "the decision\n", encoding="utf-8"
+        )
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        write_source_map(
+            self.repo / "memory" / "source-map.json",
+            {
+                "selected_paths": ["docs"],
+                "selection_status": "developer-confirmed",
+                "source_kinds": {"docs": "decisions"},
+                "source_groups": [{"kind": "decisions", "paths": ["docs"]}],
+            },
+        )
+
+    def cite_in_proposal(self, package: Path, path: str) -> dict:
+        proposal_path = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["record"]["evidence"] = [
+            citation(self.repo, path, 1, 1)
+        ]
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        return proposal
+
+    def stored_rule(self) -> dict:
+        document = json.loads(
+            (self.repo / "memory" / "registry" / "rules.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return document["rules"][0]
+
+    def test_a_reviewed_record_may_not_cite_outside_the_selected_sources(self) -> None:
+        self.select_docs_as_sources()
+        package = self.draft_package()
+        self.cite_in_proposal(package, "README.md")
+        with self.assertRaisesRegex(ValueError, "outside the confirmed sources"):
+            self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), [])
+
+    def test_a_reviewed_record_citing_a_selected_source_is_applied(self) -> None:
+        self.select_docs_as_sources()
+        package = self.draft_package()
+        self.cite_in_proposal(package, "docs/decision.md")
+        self.approve_and_apply(package)
+        self.assertEqual(self.rule_ids(), ["order-total"])
+
+    def test_applying_a_record_derives_its_source_kind_rather_than_trusting_it(
+        self,
+    ) -> None:
+        self.select_docs_as_sources()
+        package = self.draft_package()
+        self.cite_in_proposal(package, "docs/decision.md")
+        proposal_path = package / "domain-change-proposal.json"
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        proposal["registry_updates"][0]["record"]["evidence"][0]["source_kind"] = (
+            "implementation"
+        )
+        proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+        self.approve_and_apply(package)
+        self.assertEqual(
+            self.stored_rule()["evidence"][0]["source_kind"], "decisions"
+        )
+
+    def reviewed_rule(self, evidence: list) -> None:
+        self.seed(
+            "rules.json",
+            [
+                {
+                    "id": "order-total",
+                    "contexts": ["orders"],
+                    "statement": "An order total is non-negative.",
+                    "evidence": evidence,
+                    "status": "reviewed",
+                }
+            ],
+        )
+
+    def test_coverage_names_a_reviewed_record_with_no_evidence(self) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([])
+        self.assertEqual(
+            [{"asset": "rules", "id": "order-total", "reason": "no evidence"}],
+            coverage(self.repo / "memory")["evidence_gaps"],
+        )
+
+    def test_coverage_names_a_reviewed_record_citing_outside_the_sources(self) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([citation(self.repo, "README.md", 1, 1)])
+        self.assertEqual(
+            [
+                {
+                    "asset": "rules",
+                    "id": "order-total",
+                    "reason": "outside the selected sources",
+                    "paths": ["README.md"],
+                }
+            ],
+            coverage(self.repo / "memory")["evidence_gaps"],
+        )
+
+    def test_coverage_says_nothing_about_a_record_citing_a_selected_source(
+        self,
+    ) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([citation(self.repo, "docs/decision.md", 1, 1)])
+        self.assertEqual([], coverage(self.repo / "memory")["evidence_gaps"])
+
+    def test_coverage_says_nothing_about_a_candidate_without_evidence(self) -> None:
+        self.select_docs_as_sources()
+        self.reviewed_rule([])
+        self.seed(
+            "rules.json",
+            [
+                {
+                    "id": "order-total",
+                    "contexts": ["orders"],
+                    "statement": "An order total is non-negative.",
+                    "evidence": [],
+                    "status": "candidate",
+                }
+            ],
+        )
+        self.assertEqual([], coverage(self.repo / "memory")["evidence_gaps"])
+
     def rule_ids(self) -> list[str]:
         document = json.loads(
             (self.repo / "memory" / "registry" / "rules.json").read_text(
@@ -1367,8 +1553,8 @@ class DomainRegistryTest(unittest.TestCase):
 
     def test_sources_that_moved_cannot_be_confirmed(self) -> None:
         path = self.committed_source_map()
-        (self.repo / "docs" / "kept.md").write_text(
-            "changed after the developer looked", encoding="utf-8"
+        (self.repo / "docs" / "appeared.md").write_text(
+            "added after the developer looked", encoding="utf-8"
         )
         with self.assertRaisesRegex(ValueError, "no longer there"):
             confirm_sources(self.repo / "memory", self.repo, "Arthur")
@@ -1536,7 +1722,7 @@ class DomainRegistryTest(unittest.TestCase):
         fresh = verify_source_map(self.repo, path)
         self.assertEqual(fresh["status"], "current")
         self.assertEqual(fresh["selection_status"], "agent-asserted")
-        kept.write_text("edited", encoding="utf-8")
+        kept.unlink()
         self.assertEqual(verify_source_map(self.repo, path)["status"], "stale")
 
     def test_a_map_without_snapshots_cannot_answer_the_question(self) -> None:
@@ -1573,12 +1759,26 @@ class DomainRegistryTest(unittest.TestCase):
         (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")
         result = probe_sources(self.repo, path)
         self.assertEqual(result["checked"], "hash")
-        self.assertEqual(result["status"], "stale")
+        self.assertEqual(result["status"], "current")
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["content_changed"]]
+        )
 
-    def test_a_committed_edit_to_a_source_is_reported_as_stale(self) -> None:
+    def test_a_committed_edit_to_a_source_is_reported_as_content_drift(self) -> None:
         path = self.committed_source_map()
         (self.repo / "docs" / "kept.md").write_text("edited", encoding="utf-8")
         self.commit_all("edit a source")
+        result = probe_sources(self.repo, path)
+        self.assertEqual(result["checked"], "hash")
+        self.assertEqual(result["status"], "current")
+        self.assertEqual(
+            ["docs"], [entry["path"] for entry in result["content_changed"]]
+        )
+
+    def test_a_committed_file_added_to_a_source_is_reported_as_stale(self) -> None:
+        path = self.committed_source_map()
+        (self.repo / "docs" / "added.md").write_text("added", encoding="utf-8")
+        self.commit_all("add a source file")
         result = probe_sources(self.repo, path)
         self.assertEqual(result["checked"], "hash")
         self.assertEqual(result["status"], "stale")
@@ -1613,17 +1813,29 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertEqual(counts["apps/svc/doc.go"], 1)
         self.assertEqual(counts["apps"], 1)
 
-    def test_editing_a_nested_source_leaves_its_parent_current(self) -> None:
+    def test_editing_a_nested_source_leaves_its_parent_alone(self) -> None:
         path = self.repo / "memory" / "source-map.json"
         write_source_map(path, self.nested_sources())
         (self.repo / "apps" / "svc" / "doc.go").write_text(
             "package svc // revised", encoding="utf-8"
         )
         result = verify_source_map(self.repo, path)
+        self.assertEqual(result["status"], "current")
+        self.assertEqual(
+            [source["path"] for source in result["content_changed"]],
+            ["apps/svc/doc.go"],
+        )
+
+    def test_a_file_added_beside_a_nested_source_moves_only_its_parent(self) -> None:
+        path = self.repo / "memory" / "source-map.json"
+        write_source_map(path, self.nested_sources())
+        (self.repo / "apps" / "svc" / "extra.go").write_text(
+            "package svc", encoding="utf-8"
+        )
+        result = verify_source_map(self.repo, path)
         self.assertEqual(result["status"], "stale")
         self.assertEqual(
-            [source["path"] for source in result["changed_sources"]],
-            ["apps/svc/doc.go"],
+            [source["path"] for source in result["changed_sources"]], ["apps"]
         )
 
     def test_the_most_specific_source_decides_what_a_citation_establishes(self) -> None:
