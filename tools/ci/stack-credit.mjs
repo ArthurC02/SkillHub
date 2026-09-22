@@ -746,6 +746,63 @@ try {
     `${grant.status()} ${JSON.stringify(granted)}`,
   );
 
+  const operatorPage = await operator.newPage();
+  await operatorPage.goto(base + "/admin/dispatch", {
+    waitUntil: "networkidle",
+  });
+  await operatorPage
+    .locator("#admin-halt-declare-note")
+    .fill("browser smoke halt");
+  const haltResponse = await Promise.all([
+    operatorPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/admin/dispatch/halt" &&
+        response.request().method() === "PUT",
+    ),
+    operatorPage
+      .locator("#admin-halt-declare-note")
+      .locator("xpath=ancestor::form")
+      .locator('button[type="submit"]')
+      .click(),
+  ]).then(([response]) => response);
+  const haltedDispatch = await (
+    await operator.request.get(`${base}/admin/dispatch`)
+  ).json();
+  await operatorPage
+    .locator("#admin-halt-lift-note")
+    .fill("browser smoke resume");
+  const resumeResponse = await Promise.all([
+    operatorPage.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/admin/dispatch/halt" &&
+        response.request().method() === "DELETE",
+    ),
+    operatorPage
+      .locator("#admin-halt-lift-note")
+      .locator("xpath=ancestor::form")
+      .locator('button[type="submit"]')
+      .click(),
+  ]).then(([response]) => response);
+  const resumedDispatch = await (
+    await operator.request.get(`${base}/admin/dispatch`)
+  ).json();
+  check(
+    "the operator halts and resumes dispatch through the browser",
+    haltResponse.status() === 200 &&
+      haltedDispatch.dispatching === false &&
+      haltedDispatch.halts?.length === 1 &&
+      resumeResponse.status() === 204 &&
+      resumedDispatch.dispatching === true &&
+      resumedDispatch.halts?.length === 0,
+    JSON.stringify({
+      halt: haltResponse.status(),
+      haltedDispatch,
+      resume: resumeResponse.status(),
+      resumedDispatch,
+    }),
+  );
+  await operatorPage.close();
+
   credits = await balanceOf(member);
   check(
     "the member's balance follows and it can start",
