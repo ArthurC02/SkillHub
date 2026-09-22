@@ -6,8 +6,30 @@
     "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
     "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T10:15:21.386765Z",
+      "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
+        "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "a8b021527abfb8d61913d131ee9eccd7625119e6",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
+      "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "no-two-contexts-claim-one-path",

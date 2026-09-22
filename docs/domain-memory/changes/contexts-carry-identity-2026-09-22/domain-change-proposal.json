@@ -3,12 +3,12 @@
   "proposal_id": "contexts-carry-their-identity",
   "proposer": "domain-memory-agent",
   "requirement_id": "every-context-carries-its-own-identity",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-22T10:15:15.601369Z",
   "verified_at": "2026-09-22T10:15:38.794738Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-22T10:17:05.669326Z",
+  "applied_at": "2026-09-22T10:17:11.490819Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
@@ -556,5 +556,9 @@
       }
     }
   ],
-  "supersedes": "contexts-cite-their-owners"
+  "supersedes": "contexts-cite-their-owners",
+  "applied_registry_revision": {
+    "observed_commit": "a8b021527abfb8d61913d131ee9eccd7625119e6",
+    "registry_digest": "sha256:d6ec112659974c82acb6ce4e0d7e139d16e50207bfeb4ad4f0314d6ab0a3ee53"
+  }
 }
