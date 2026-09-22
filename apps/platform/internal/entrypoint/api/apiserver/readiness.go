@@ -10,14 +10,18 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
+type readinessResponse struct {
+	Ready        bool          `json:"ready"`
+	Capabilities []envx.Status `json:"capabilities"`
+	Detail       string        `json:"detail,omitempty"`
+}
+
 func readinessHandler(reg *envx.Registry, clean bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if reg == nil {
 
-			httpx.WriteJSON(w, http.StatusOK, map[string]any{
-				"ready":        false,
-				"capabilities": []envx.Status{},
-				"detail":       "這個 build 沒有能力表，所以這裡量不到任何東西。",
+			httpx.WriteJSON(w, http.StatusOK, readinessResponse{
+				Ready: false, Capabilities: []envx.Status{}, Detail: "這個 build 沒有能力表，所以這裡量不到任何東西。",
 			})
 			return
 		}
@@ -34,9 +38,8 @@ func readinessHandler(reg *envx.Registry, clean bool) http.HandlerFunc {
 				rows[i].Fix = ""
 			}
 		}
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{
-			"ready":        envx.AllReady(rows),
-			"capabilities": rows,
+		httpx.WriteJSON(w, http.StatusOK, readinessResponse{
+			Ready: envx.AllReady(rows), Capabilities: rows,
 		})
 	}
 }
