@@ -538,6 +538,46 @@ try {
     }).slice(0, 500),
   );
 
+  if (typeof packaged.artifact_id === "string") {
+    await page.goto(base + "/workspace/downloads", {
+      waitUntil: "networkidle",
+    });
+    const downloadRow = page.locator("li.download-item").filter({
+      has: page.locator(`a[href="/downloads/${packaged.artifact_id}/content"]`),
+    });
+    await downloadRow.getByRole("button", { name: "刪除" }).click();
+    const deleteDownloadResponse = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/downloads/${packaged.artifact_id}` &&
+          response.request().method() === "DELETE",
+      ),
+      downloadRow.getByRole("button", { name: "確認刪除" }).click(),
+    ]).then(([response]) => response);
+    await downloadRow.waitFor({ state: "detached" });
+    const downloadsAfterDelete = await (
+      await member.request.get(`${base}/downloads`)
+    ).json();
+    check(
+      "the browser deletes a package and it no longer reads back",
+      deleteDownloadResponse.status() === 204 &&
+        !downloadsAfterDelete.downloads?.some(
+          (artifact) => artifact.artifact_id === packaged.artifact_id,
+        ),
+      JSON.stringify({
+        delete: deleteDownloadResponse.status(),
+        downloadsAfterDelete,
+      }),
+    );
+  } else {
+    check(
+      "the browser deletes a package and it no longer reads back",
+      false,
+      "no browser-created package available",
+    );
+  }
+
   if (
     typeof createdTestCase.test_case_id === "string" &&
     typeof uploadedDataset.dataset_id === "string"
