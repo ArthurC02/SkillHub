@@ -32,7 +32,11 @@ func domainMemoryProblems(root string) []string {
 	var problems []string
 	for _, args := range checks {
 		if output, err := domainMemoryTool(root, args...); err != nil {
-			problems = append(problems, fmt.Sprintf("Domain Memory %s: %s", args[0], firstLine(output)))
+			reason := firstLine(output)
+			if reason == "" {
+				reason = err.Error()
+			}
+			problems = append(problems, fmt.Sprintf("Domain Memory %s: %s", args[0], reason))
 		}
 	}
 	return problems

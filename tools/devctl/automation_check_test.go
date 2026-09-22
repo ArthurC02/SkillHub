@@ -66,6 +66,28 @@ func TestDomainMemoryProblemsRejectsAnyFailedVerification(t *testing.T) {
 	}
 }
 
+func TestDomainMemoryProblemsSaysWhyACheckCouldNotRun(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "domain-memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := domainMemoryTool
+	t.Cleanup(func() { domainMemoryTool = original })
+	domainMemoryTool = func(_ string, _ ...string) (string, error) {
+		return "", errors.New(`exec: "uv": executable file not found in $PATH`)
+	}
+
+	problems := domainMemoryProblems(root)
+	if len(problems) != 4 {
+		t.Fatalf("problems = %v, want one per check", problems)
+	}
+	for _, problem := range problems {
+		if !strings.Contains(problem, "executable file not found") {
+			t.Errorf("problem %q reports a failure without naming its cause", problem)
+		}
+	}
+}
+
 func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
