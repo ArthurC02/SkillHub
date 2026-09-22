@@ -803,6 +803,98 @@ try {
   );
   await operatorPage.close();
 
+  const modelBudgets = await (
+    await operator.request.get(`${base}/admin/model-budgets`)
+  ).json();
+  const modelBudget = modelBudgets.budgets?.find(
+    (budget) => budget.min_seconds !== budget.default_seconds,
+  );
+  const budgetPage = await operator.newPage();
+  const budgetResponse = budgetPage.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/admin/model-budgets" &&
+      response.request().method() === "GET" &&
+      response.request().headers().accept === "application/json",
+  );
+  await budgetPage.goto(base + "/admin/model-budgets", {
+    waitUntil: "networkidle",
+  });
+  await budgetResponse;
+  if (modelBudget?.kind) {
+    const seconds = modelBudget.min_seconds;
+    const secondsInput = budgetPage.locator(
+      `#admin-budget-${modelBudget.kind}-seconds`,
+    );
+    await secondsInput.waitFor({ state: "visible" });
+    await secondsInput.fill(String(seconds));
+    await secondsInput
+      .locator("xpath=ancestor::form")
+      .locator("textarea")
+      .fill("browser smoke budget");
+    const setBudgetResponse = await Promise.all([
+      budgetPage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/admin/model-budgets/${modelBudget.kind}` &&
+          response.request().method() === "PUT",
+      ),
+      secondsInput
+        .locator("xpath=ancestor::form")
+        .locator('button[type="submit"]')
+        .click(),
+    ]).then(([response]) => response);
+    const changedBudgets = await (
+      await operator.request.get(`${base}/admin/model-budgets`)
+    ).json();
+    const changedBudget = changedBudgets.budgets?.find(
+      (item) => item.kind === modelBudget.kind,
+    );
+    const clearForm = budgetPage.locator(
+      `#admin-budget-${modelBudget.kind}-clear-note`,
+    );
+    await clearForm.fill("browser smoke restore default");
+    const clearBudgetResponse = await Promise.all([
+      budgetPage.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/admin/model-budgets/${modelBudget.kind}` &&
+          response.request().method() === "DELETE",
+      ),
+      clearForm
+        .locator("xpath=ancestor::form")
+        .locator('button[type="submit"]')
+        .click(),
+    ]).then(([response]) => response);
+    const clearedBudgets = await (
+      await operator.request.get(`${base}/admin/model-budgets`)
+    ).json();
+    const clearedBudget = clearedBudgets.budgets?.find(
+      (item) => item.kind === modelBudget.kind,
+    );
+    check(
+      "the operator sets and clears a model budget through the browser",
+      setBudgetResponse.status() === 200 &&
+        changedBudget?.seconds === seconds &&
+        clearBudgetResponse.status() === 204 &&
+        clearedBudget?.seconds === null,
+      JSON.stringify({
+        kind: modelBudget.kind,
+        seconds,
+        set: setBudgetResponse.status(),
+        changedBudget,
+        clear: clearBudgetResponse.status(),
+        clearedBudget,
+      }),
+    );
+  } else {
+    check(
+      "the operator sets and clears a model budget through the browser",
+      false,
+      "no retimeable model budget available",
+    );
+  }
+  await budgetPage.close();
+
   credits = await balanceOf(member);
   check(
     "the member's balance follows and it can start",
