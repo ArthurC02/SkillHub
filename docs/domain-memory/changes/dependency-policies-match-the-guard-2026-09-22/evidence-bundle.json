@@ -6,8 +6,30 @@
     "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
     "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T10:57:32.208288Z",
+      "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+        "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "21b1b06832305ca3a45a5f2f0287ef184a48e75b",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+      "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "a-policy-names-two-known-contexts",

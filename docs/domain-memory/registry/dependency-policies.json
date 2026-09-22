@@ -22,19 +22,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -61,19 +61,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -100,19 +100,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -139,19 +139,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -178,19 +178,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -217,19 +217,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -256,19 +256,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -295,19 +295,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -334,19 +334,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -373,19 +373,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -412,19 +412,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -451,19 +451,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -490,19 +490,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -529,19 +529,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -568,19 +568,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -607,19 +607,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -646,19 +646,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -685,19 +685,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -724,19 +724,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -748,8 +748,8 @@
       "from_context": "credit",
       "to_context": "identity",
       "mode": "synchronous-query",
-      "policy": "allowed",
-      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "policy": "forbidden",
+      "rationale": "Forbidden. The credit ledger takes the workspace facts it needs as an injected function returning credit.WorkspaceFacts, one from each composition root, so the unit of account does not depend on the account. The record keeps its id because a reviewed record can only be replaced in place, never withdrawn.",
       "evidence": [
         {
           "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
@@ -763,19 +763,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -802,19 +802,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -841,19 +841,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -880,19 +880,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -904,8 +904,8 @@
       "from_context": "policy",
       "to_context": "identity",
       "mode": "synchronous-query",
-      "policy": "allowed",
-      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "policy": "forbidden",
+      "rationale": "Forbidden. Entitlements are decided from facts the asking Context supplies, so the rule holder never resolves scope for itself. The record keeps its id because a reviewed record can only be replaced in place, never withdrawn.",
       "evidence": [
         {
           "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
@@ -919,19 +919,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -958,19 +958,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -997,19 +997,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -1036,19 +1036,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]
@@ -1075,19 +1075,19 @@
         }
       ],
       "review": {
-        "proposal_id": "dependency-policies-enter-the-registry",
+        "proposal_id": "dependency-policies-match-the-guard",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:50:00.113059Z",
-            "scope": "Moving the cross-context import whitelist into the reviewed Registry as twenty-eight dependency policies, reproducing the retired table exactly and removing its blanket grant",
+            "approved_at": "2026-09-22T10:57:32.208288Z",
+            "scope": "Correcting two policies the previous proposal over-granted: credit and policy are forbidden from reaching identity, as the compiled guard always enforced",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
-              "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+              "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
+              "registry_digest": "sha256:3f3d73057cfd15ea129299184e83db5ac67dfb3b588d0251a7646f700f03296b"
             }
           }
         ]

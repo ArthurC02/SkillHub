@@ -3,12 +3,12 @@
   "proposal_id": "dependency-policies-match-the-guard",
   "proposer": "domain-memory-agent",
   "requirement_id": "the-recorded-policies-agree-with-the-guard",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-22T10:57:31.912651Z",
   "verified_at": "2026-09-22T10:57:32.541365Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-22T10:57:53.298875Z",
+  "applied_at": "2026-09-22T10:57:53.884033Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "0d49ccb38827d4b50491ea95c7bebbb0400efbfe",
@@ -769,5 +769,9 @@
       }
     }
   ],
-  "supersedes": "dependency-policies-enter-the-registry"
+  "supersedes": "dependency-policies-enter-the-registry",
+  "applied_registry_revision": {
+    "observed_commit": "21b1b06832305ca3a45a5f2f0287ef184a48e75b",
+    "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+  }
 }
