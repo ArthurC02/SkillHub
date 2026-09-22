@@ -7,20 +7,20 @@
 
 Platform 是一個模組化單體，會隨時間持續吸收新的領域知識與變動，且主要作者包含 Coding Agent。只靠文件與命名慣例維持的邊界會漂移而不自知：同一個 package 可能被多個呼叫端當成不同性質的東西用、依賴方向可能反轉成下游 context 被上游 import、composition root 可能被繞過而在方法內現場建構其他 context 的 Service、同一份職責可能同時散落在多個 package。這些問題沒有機器檢查就等於沒有規則——尤其對讀不到「言下之意」的 Agent 而言。
 
-本 ADR 把 Bounded Context 的邊界、彼此的合法互動方式，以及「一個 package 屬於哪個 context」這件事本身，收斂成可由 CI 機械驗證的規則。實際的 Context 對照表（每個 package 屬於哪個 Bounded Context、其 Boundary ID 與現行路徑）與跨 context import 白名單是會隨程式演進的存量清單，維護在 [docs/development/platform-context-map.md](../development/platform-context-map.md)；本 ADR 只定治理規則本身。
+本 ADR 把 Bounded Context 的邊界、彼此的合法互動方式，以及「一個 package 屬於哪個 context」這件事本身，收斂成可由 CI 機械驗證的規則。實際的清單是會隨程式演進的存量資料，依它們是不是領域知識分兩個家：每個 Bounded Context 的名稱、子領域、現行路徑、需求 ID 前綴與跨 context import 白名單，住在經審查的 Domain Memory Registry（`docs/domain-memory/registry/`）；Shared Kernel 與 Generic 套件沒有領域意義，它們的 architecture identity 住在 `apps/platform/architecture-identity.yaml`。本 ADR 只定治理規則本身。
 
 ## 決策
 
 ### 決策 1：每個 package 恰好一個 architecture identity，由 CI 三方對帳
 
-Context 對照表是唯一機器可讀的 package 對照來源，欄位固定為：產品／Bounded Context 名稱、類型、Boundary ID、現行 internal path、需求 ID 前綴。`類型` 是封閉集合 `Core`、`Supporting`、`Shared Kernel`、`Generic`：
+上述兩個家合起來是唯一機器可讀的 package 對照來源，每個 package 恰好由其中一筆宣告，欄位為：Bounded Context 名稱、類型、Boundary ID、現行 internal path、需求 ID 前綴。`類型` 是封閉集合 `Core`、`Supporting`、`Shared Kernel`、`Generic`：
 
-- `Core`、`Supporting` 必須有 Bounded Context 名稱；同名代表同一個 context，即使日後由多個 Go package 組成。
-- `Shared Kernel`、`Generic` 沒有 Bounded Context 名稱。
+- `Core`、`Supporting` 必須有 Bounded Context 名稱；同名代表同一個 context，即使日後由多個 Go package 組成。它們只由 Registry 宣告，而且只有 reviewed 的記錄算數——identity 檔宣告 `Core` 或 `Supporting` 一律 FAIL，一個 Bounded Context 不得有第二個家。
+- `Shared Kernel`、`Generic` 沒有 Bounded Context 名稱，只由 identity 檔宣告。
 - 同一個 package 在表上重複出現、類型未知、package 未登記，或缺少 depguard coverage，一律視為 CI 失敗。
 - `Boundary ID` 是遷移期間不變的機械鍵：實體路徑搬遷只改「現行 internal path」欄，不改 Boundary ID、Go package 名稱、公開 API 或資料 owner。
 
-`devctl automation-check` 讓三份清單互相對帳：實際的 Go package 目錄、對照表的 Boundary ID／現行 path、`apps/platform/.golangci.yml` 的 depguard `files` glob；任一方向缺漏即 FAIL。新增或搬移 package 必須先改對照表、再動目錄——「登記先於建目錄」因此有機械強制力；不需要 depguard coverage 的例外，以 devctl 的組裝套件名單（`compositionRoots`，見決策 5）與 generated transport（`entrypoint/api/gen`）為準。
+`devctl automation-check` 讓三份清單互相對帳：實際的 Go package 目錄、上述兩個家宣告的 Boundary ID／現行 path、`apps/platform/.golangci.yml` 的 depguard `files` glob；任一方向缺漏即 FAIL，而且每個問題點名它讀的是哪一個檔。新增或搬移 package 必須先登記、再動目錄——「登記先於建目錄」因此有機械強制力；不需要 depguard coverage 的例外，以 devctl 的組裝套件名單（`compositionRoots`，見決策 5）與 generated transport（`entrypoint/api/gen`）為準。
 
 ### 決策 2：Context 間關係只有四種，各有固定機制
 
@@ -39,7 +39,7 @@ Context 對照表是唯一機器可讀的 package 對照來源，欄位固定為
 
 ### 決策 3：邊界以 depguard 機械強制，移出的關係不得靜默加回
 
-`.golangci.yml` 的 depguard 規則是 Context 對照表與跨 context import 白名單的 CI 表述。任何跨 context 的新 import，必須在同一個 commit 內同時更新 [docs/development/platform-context-map.md](../development/platform-context-map.md) 的白名單與 depguard 規則——等於強制先過一次架構決策，才過得了編譯。曾經因治理問題移出白名單的跨 context 關係不得再加回；要恢復，必須有新的 ADR。
+`.golangci.yml` 的 depguard 規則是 architecture identity 與跨 context import 白名單的 CI 表述。任何跨 context 的新 import，必須先在 Registry 以一次經審查、帶簽章的 Change Package 立下對應的 dependency policy，並在同一個 commit 更新 depguard 規則——等於強制先過一次架構決策，才過得了編譯。曾經因治理問題移出白名單的跨 context 關係不得再加回；要恢復，必須有新的 ADR。
 
 ### 決策 4：戰術 DDD 刻意限縮
 
@@ -97,7 +97,7 @@ internal/
 | 產品營運 | 創作者使用權益與資料生命週期 | `policy` | 在可理解的額度、保存與未來方案規則下使用平台。 |
 | 產品營運 | 創作者旅程學習 | `analytics` | 讓產品依匿名化且受控的旅程訊號與回饋持續改善。 |
 
-`skillpkg` 是 Shared Kernel；其餘 Generic 與 composition root 是機制、防腐層或技術基座，不是創作者可直接選擇的產品領域，文件以「共同語言與技術機制」導覽，不硬湊成價值流。Boundary ID／package slug 與現行 Go path 的機械對照由 [docs/development/platform-context-map.md](../development/platform-context-map.md) 擁有，本表只維護價值流與創作者成果的產品語言。
+`skillpkg` 是 Shared Kernel；其餘 Generic 與 composition root 是機制、防腐層或技術基座，不是創作者可直接選擇的產品領域，文件以「共同語言與技術機制」導覽，不硬湊成價值流。Boundary ID／package slug 與現行 Go path 的機械對照由 Registry 與 identity 檔擁有，本表只維護價值流與創作者成果的產品語言。
 
 `Core`、`Supporting`、`Shared Kernel`、`Generic` 是治理 metadata，不是產品導覽的第一層分類；產品文件與 `doc.go`／`README` 一類的導覽先以創作者成果與價值流敘述 context，需要精確實作位置時才連到 Boundary ID／package slug，且不以 slug 作主語。「Skill 接納與信任」一類的產品領域名稱描述的是對創作者的成果，不是單一資料表或單一步驟，底層可能包含匯入、驗證與 provenance 等多個環節。新的產品用語必須先能回對產品目標與核心旅程，才納入受控用語表。
 

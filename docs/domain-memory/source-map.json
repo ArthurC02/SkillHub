@@ -450,6 +450,7 @@
         "tools/devctl/goldenset_mirror_test.go",
         "tools/devctl/harness_test.go",
         "tools/devctl/identifier_order_test.go",
+        "tools/devctl/identity_fixture_test.go",
         "tools/devctl/image_gate_test.go",
         "tools/devctl/image_version_test.go",
         "tools/devctl/isolation_levels_test.go",
@@ -513,7 +514,7 @@
   ],
   "source_policy_report": {
     "files": 19,
-    "total_bytes": 102474,
+    "total_bytes": 102870,
     "oversized_files": [],
     "errors": []
   },
@@ -560,7 +561,9 @@
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "5dda42da5ea7f0f8ec4639c19797d18e83386092",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
-    "dirty_sources": []
+    "dirty_sources": [
+      " M docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+    ]
   },
   "source_snapshots": [
     {
@@ -651,7 +654,7 @@
     {
       "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
       "file_count": 1,
-      "digest": "sha256:dd2091809df80d7f1fa0e2f5c76bfa487586058d980fc9f0f47e761971211633"
+      "digest": "sha256:f0521c3cd64bdda885481e90ae33cccda42709398fca65004994b88ea66faaf5"
     },
     {
       "path": "docs/development/platform-ddd-convergence.md",
@@ -660,5 +663,5 @@
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T10:25:31.582278Z"
+  "confirmed_at": "2026-09-22T10:47:18.073721Z"
 }

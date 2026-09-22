@@ -1,0 +1,90 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "the-import-whitelist-becomes-reviewed-domain-knowledge",
+  "proposal_id": "dependency-policies-enter-the-registry",
+  "registry_revision": {
+    "observed_commit": "3d1f1b4c8e0a7dc0aea6ab4593578c521d1d95ba",
+    "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-policy-names-two-known-contexts",
+    "mutated_protection": "the rule that a dependency policy names two Contexts the Registry holds",
+    "failure_evidence": "Renaming one policy's from_context to ghost made validate exit 1 with \"ERROR: dependency-policies.json:run-may-use-testlab references unknown context\"; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding all twenty-eight policies reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5587ed6ae1aaad6118ebc393d1a5e6d678d2569ec9dd85df9eedb9ae1f6d6744",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "the-whitelist-is-reproduced-exactly",
+      "status": "passed",
+      "evidence": "the staged policies are exactly the 28 ordered pairs the retired whitelist permits, its blanket grant on identity expanded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:c4dc05b471046f7e53eb9248de47048be2fd04adb5898f3239887d39b479661a",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-collaboration-rests-on-a-blank-source",
+      "status": "passed",
+      "evidence": "every staged policy names a from_context, so no collaboration is granted by a blank left-hand side",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:705d136cda1986312072c6a8814138038736e5c7b20936103341a868f8e49deb",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-policy-names-two-known-contexts",
+      "status": "passed",
+      "evidence": "renaming one policy's from_context to a Context the Registry does not hold made validate refuse it and exit 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9bd7643f3e0d52080229c5dae00ec29ca4d6279d3a0ab389d013d93afc575b1f",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:7c49d5f6e90c09e604473de1dfa412193a7cb6b8e22466b6add360638483597a",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

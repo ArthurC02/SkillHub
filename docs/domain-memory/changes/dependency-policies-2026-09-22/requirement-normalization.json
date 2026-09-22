@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "the-import-whitelist-becomes-reviewed-domain-knowledge",
+  "status": "draft",
+  "intent": "Which Context may call which is a domain decision, so it lives in the reviewed Registry and is read from there, not mirrored in a document.",
+  "actor": "A developer opening a new cross-context call",
+  "observable_outcome": "The machine check that enforces the boundary reads the reviewed dependency policies; opening a new call requires a signed Change Package, and nothing else grants it.",
+  "acceptance_criteria": [
+    {
+      "id": "every-permitted-collaboration-is-recorded",
+      "statement": "The Registry holds one reviewed dependency policy for each collaboration the retired whitelist permitted, and none that it did not."
+    },
+    {
+      "id": "a-policy-names-two-known-contexts",
+      "statement": "A dependency policy whose from or to is not a Context in the Registry is refused."
+    },
+    {
+      "id": "the-blanket-grant-is-gone",
+      "statement": "The permission every Context has on identity is recorded as one policy per Context, so no collaboration is granted by a blank left-hand side."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ]
+}
