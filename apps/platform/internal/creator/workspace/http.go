@@ -329,25 +329,26 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	var deletionRequestedAt any
+	var deletionRequestedAt *string
 	if found.DeletionRequestedAt.Valid {
-		deletionRequestedAt = pgconv.RFC3339(found.DeletionRequestedAt)
+		at := pgconv.RFC3339(found.DeletionRequestedAt)
+		deletionRequestedAt = &at
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"user_id":               pgconv.UUIDString(found.UserID),
-		"email":                 found.Email,
-		"display_name":          found.DisplayName,
-		"workspace_id":          pgconv.UUIDString(found.WorkspaceID),
-		"created_at":            pgconv.RFC3339(found.CreatedAt),
-		"deletion_requested_at": deletionRequestedAt,
-		"in_beta_allowlist":     h.allowlisted(found.ProviderUserIDs),
+	httpx.WriteJSON(w, http.StatusOK, accountLookupResponse{
+		UserID:              pgconv.UUIDString(found.UserID),
+		Email:               found.Email,
+		DisplayName:         found.DisplayName,
+		WorkspaceID:         pgconv.UUIDString(found.WorkspaceID),
+		CreatedAt:           pgconv.RFC3339(found.CreatedAt),
+		DeletionRequestedAt: deletionRequestedAt,
+		InBetaAllowlist:     h.allowlisted(found.ProviderUserIDs),
 	})
 }
 
 func (h *Handler) Rosters(w http.ResponseWriter, _ *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"operator_user_ids": rosterOf(h.Operators),
-		"beta_allowlist":    rosterOf(h.Invited),
+	httpx.WriteJSON(w, http.StatusOK, rostersResponse{
+		OperatorUserIDs: rosterOf(h.Operators),
+		BetaAllowlist:   rosterOf(h.Invited),
 	})
 }
 
@@ -415,6 +416,32 @@ type accountView struct {
 	Features            map[string]bool `json:"features,omitempty"`
 }
 
+type accountLookupResponse struct {
+	UserID              string  `json:"user_id"`
+	Email               string  `json:"email"`
+	DisplayName         string  `json:"display_name"`
+	WorkspaceID         string  `json:"workspace_id"`
+	CreatedAt           string  `json:"created_at"`
+	DeletionRequestedAt *string `json:"deletion_requested_at"`
+	InBetaAllowlist     bool    `json:"in_beta_allowlist"`
+}
+
+type rostersResponse struct {
+	OperatorUserIDs []string `json:"operator_user_ids"`
+	BetaAllowlist   []string `json:"beta_allowlist"`
+}
+
+type accountDeletionResponse struct {
+	DeletionRequestedAt string `json:"deletion_requested_at"`
+	PurgeAfter          string `json:"purge_after"`
+	Cancellable         bool   `json:"cancellable"`
+	Scope               string `json:"scope"`
+}
+
+type accountDeletionCancellationResponse struct {
+	DeletionRequestedAt *string `json:"deletion_requested_at"`
+}
+
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	ws, err := h.Service.PersonalWorkspace(r.Context(), user)
@@ -473,11 +500,11 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "刪除要求沒有記錄成功，可以再試一次")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"deletion_requested_at": updated.DeletionRequestedAt.Time.UTC().Format(time.RFC3339),
-		"purge_after":           updated.DeletionRequestedAt.Time.Add(AccountDeletionGrace).UTC().Format(time.RFC3339),
-		"cancellable":           true,
-		"scope":                 deletionScope,
+	httpx.WriteJSON(w, http.StatusOK, accountDeletionResponse{
+		DeletionRequestedAt: updated.DeletionRequestedAt.Time.UTC().Format(time.RFC3339),
+		PurgeAfter:          updated.DeletionRequestedAt.Time.Add(AccountDeletionGrace).UTC().Format(time.RFC3339),
+		Cancellable:         true,
+		Scope:               deletionScope,
 	})
 }
 
@@ -491,5 +518,5 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "取消刪除沒有記錄成功，可以再試一次")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"deletion_requested_at": nil})
+	httpx.WriteJSON(w, http.StatusOK, accountDeletionCancellationResponse{})
 }
