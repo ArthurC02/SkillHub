@@ -52,7 +52,12 @@ from .sources import (
     write_source_map,
 )
 from .transaction import recover_interrupted_update
-from .updates import apply_approved_updates, demote_local_reviews, upsert_candidate
+from .updates import (
+    apply_approved_updates,
+    demote_local_reviews,
+    retract_candidate,
+    upsert_candidate,
+)
 
 
 def probe_summary(result: dict, registry_root: Path) -> str:
@@ -174,6 +179,22 @@ def handle_cite(args: argparse.Namespace) -> int:
     if args.registry_root:
         reference = classified(reference, source_map_for(args.registry_root.resolve()))
     print(json.dumps(reference, indent=2, ensure_ascii=False))
+    return 0
+
+
+def handle_retract_candidate(args: argparse.Namespace) -> int:
+    try:
+        retract_candidate(
+            args.registry_root.resolve(),
+            args.repo_root.resolve(),
+            args.asset,
+            args.id,
+            args.reason,
+        )
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+    print("Candidate record retracted.")
     return 0
 
 
@@ -589,6 +610,7 @@ HANDLERS = {
     "analyze-boundary": handle_analyze_boundary,
     "cite": handle_cite,
     "upsert-candidate": handle_upsert_candidate,
+    "retract-candidate": handle_retract_candidate,
     "apply-approved-updates": handle_apply_approved_updates,
     "demote-local-reviews": handle_demote_local_reviews,
     "discover-sources": handle_discover_sources,

@@ -75,6 +75,7 @@ from domain_registry.updates import (
     apply_approved_updates,
     demote_local_reviews,
     reconcile_pending_update,
+    retract_candidate,
     upsert_candidate,
 )
 
@@ -1716,6 +1717,84 @@ class DomainRegistryTest(unittest.TestCase):
         )
         errors = validate(self.repo / "memory", self.repo, True)
         self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
+
+    def retracted_contexts(self) -> list[dict]:
+        document = self.repo / "memory" / "registry" / "contexts.json"
+        return json.loads(document.read_text(encoding="utf-8"))["contexts"]
+
+    def test_retracting_a_candidate_removes_it(self) -> None:
+        self.two_contexts()
+        retract_candidate(
+            self.repo / "memory",
+            self.repo,
+            "contexts",
+            "billing",
+            "Examination found no Billing boundary in this repository.",
+        )
+        self.assertEqual([entry["id"] for entry in self.retracted_contexts()], ["orders"])
+
+    def test_retracting_a_candidate_records_its_reason(self) -> None:
+        self.two_contexts()
+        retract_candidate(
+            self.repo / "memory", self.repo, "contexts", "billing", "Not a boundary."
+        )
+        recorded = json.loads(
+            (self.repo / "memory" / "audit" / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()[-1]
+        )
+        self.assertEqual(recorded["operation"], "retract-candidate")
+        self.assertEqual(recorded["record_id"], "billing")
+        self.assertEqual(recorded["reason"], "Not a boundary.")
+
+    def test_a_reviewed_record_cannot_be_retracted(self) -> None:
+        self.two_contexts()
+        document = self.repo / "memory" / "registry" / "contexts.json"
+        value = json.loads(document.read_text(encoding="utf-8"))
+        value["contexts"][0]["status"] = "reviewed"
+        document.write_text(json.dumps(value), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "superseding proposal"):
+            retract_candidate(
+                self.repo / "memory", self.repo, "contexts", "orders", "Changed my mind."
+            )
+        self.assertEqual(
+            [entry["id"] for entry in self.retracted_contexts()], ["orders", "billing"]
+        )
+
+    def test_retracting_an_absent_record_changes_nothing(self) -> None:
+        self.two_contexts()
+        with self.assertRaisesRegex(ValueError, "no such record"):
+            retract_candidate(
+                self.repo / "memory", self.repo, "contexts", "shipping", "Never existed."
+            )
+        self.assertEqual(
+            [entry["id"] for entry in self.retracted_contexts()], ["orders", "billing"]
+        )
+
+    def test_retracting_a_candidate_requires_a_reason(self) -> None:
+        self.two_contexts()
+        with self.assertRaisesRegex(ValueError, "requires the reason"):
+            retract_candidate(self.repo / "memory", self.repo, "contexts", "billing", "   ")
+
+    def test_a_referenced_candidate_cannot_be_retracted(self) -> None:
+        self.two_contexts()
+        self.seed(
+            "interactions.json",
+            [
+                {
+                    "id": "order-billed",
+                    "producer_context": "orders",
+                    "consumer_context": "billing",
+                }
+            ],
+        )
+        with self.assertRaises(ValueError):
+            retract_candidate(
+                self.repo / "memory", self.repo, "contexts", "billing", "No longer wanted."
+            )
+        self.assertEqual(
+            [entry["id"] for entry in self.retracted_contexts()], ["orders", "billing"]
+        )
 
     def test_a_candidate_record_is_named_by_reviewed_validation(self) -> None:
         self.two_contexts()

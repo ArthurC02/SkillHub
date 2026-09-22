@@ -168,6 +168,50 @@ def upsert_candidate(
     return sorted(set(outside))
 
 
+def retract_candidate(
+    root: Path, repo_root: Path | None, asset: str, record_id: str, reason: str
+) -> None:
+    name = f"{asset}.json"
+    if name not in ASSET_KEYS:
+        raise ValueError(f"unknown asset: {asset}")
+    if not reason.strip():
+        raise ValueError(
+            "retracting a candidate requires the reason it does not belong"
+        )
+
+    def mutate(staging: Path) -> None:
+        path = registry_dir(staging) / name
+        document = load_json(path)
+        records = document[ASSET_KEYS[name]]
+        existing = next(
+            (entry for entry in records if entry.get("id") == record_id), None
+        )
+        if existing is None:
+            raise ValueError(f"no such record: {asset}/{record_id}")
+        if (
+            review_status(asset, existing, document.get("status", "candidate"))
+            == "reviewed"
+        ):
+            raise ValueError(
+                f"cannot retract reviewed record: {record_id}; a reviewed record "
+                "is withdrawn through a superseding proposal"
+            )
+        records.remove(existing)
+        write_json(path, document)
+
+    mutate_registry(
+        root,
+        repo_root,
+        mutate,
+        audit_event=lambda: {
+            "operation": "retract-candidate",
+            "asset": asset,
+            "record_id": record_id,
+            "reason": reason.strip(),
+        },
+    )
+
+
 def apply_approved_updates(
     package_root: Path, registry_root: Path, repo_root: Path
 ) -> None:

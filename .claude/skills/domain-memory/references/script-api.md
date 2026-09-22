@@ -24,6 +24,7 @@
 | Inspect a boundary | `analyze-boundary --source-context <id> --target-context <id>` | Lists registered direct interactions and contracts. |
 | Search an asset | `lookup --asset <asset> --query <text>` | Performs deterministic file-backed text matching. |
 | Add or revise a candidate | `upsert-candidate --registry-root <path> --repo-root <repo> --asset <asset> --record-file <file>` | Validates a staged complete Registry and applies a recoverable update. |
+| Withdraw a candidate | `retract-candidate --registry-root <path> --repo-root <repo> --asset <asset> --id <id> --reason <text>` | Removes a candidate that examination rejected and records the reason in the audit chain. It refuses a reviewed record, which is withdrawn through a superseding proposal instead, and refuses a record the rest of the Registry still references. |
 | Apply an approved change | `apply-approved-updates --package-root <path> --registry-root <path> --repo-root <repo>` | Requires a valid approved current Change Package and promotes only new or candidate records through a recoverable update. |
 | Start a Change Package | `init-change-package --output <path>` | Writes the requirement, proposal, obligation, and evidence templates a material change is reviewed through. |
 | Validate a Change Package | `validate-change-package --package-root <path> --registry-root <path>` | Requires an obligation per acceptance criterion, rule, and contract, a named counterfactual check, and updates that reference existing assets. |

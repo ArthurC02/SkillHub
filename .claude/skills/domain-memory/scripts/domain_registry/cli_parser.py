@@ -67,6 +67,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[name.removesuffix(".json") for name in ASSET_KEYS],
     )
     candidate_update_parser.add_argument("--record-file", required=True, type=Path)
+    retract_parser = commands.add_parser("retract-candidate")
+    retract_parser.add_argument("--registry-root", required=True, type=Path)
+    retract_parser.add_argument("--repo-root", required=True, type=Path)
+    retract_parser.add_argument(
+        "--asset",
+        required=True,
+        choices=[name.removesuffix(".json") for name in ASSET_KEYS],
+    )
+    retract_parser.add_argument("--id", required=True)
+    retract_parser.add_argument("--reason", required=True)
     apply_updates_parser = commands.add_parser("apply-approved-updates")
     apply_updates_parser.add_argument("--package-root", required=True, type=Path)
     apply_updates_parser.add_argument("--registry-root", required=True, type=Path)
