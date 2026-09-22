@@ -137,6 +137,51 @@ try {
     }).slice(0, 500),
   );
 
+  const testCaseName = "Browser-created test case";
+  const testCasePrompt = "Return the requested answer in a concise form.";
+  await page.goto(base + "/lab/test-cases", { waitUntil: "networkidle" });
+  if (typeof imported.skill_id === "string") {
+    await page.locator("#tc-skill").selectOption(imported.skill_id);
+  }
+  await page.locator("#tc-name").fill(testCaseName);
+  await page.locator("#tc-prompt").fill(testCasePrompt);
+  const testCaseResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/test-cases" &&
+        response.request().method() === "POST",
+    ),
+    page
+      .locator("#tc-name")
+      .locator("xpath=ancestor::form")
+      .locator('button[type="submit"]')
+      .click(),
+  ]).then(([response]) => response);
+  const createdTestCase = await testCaseResponse.json().catch(() => ({}));
+  const testCaseReadBack =
+    typeof createdTestCase.test_case_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/test-cases/${createdTestCase.test_case_id}`,
+          )
+        ).json()
+      : {};
+  check(
+    "the browser creates a test case and its draft reads back",
+    testCaseResponse.status() === 201 &&
+      typeof imported.skill_id === "string" &&
+      createdTestCase.skill_id === imported.skill_id &&
+      page.url().endsWith(`/lab/test-cases/${createdTestCase.test_case_id}`) &&
+      testCaseReadBack.test_case_id === createdTestCase.test_case_id &&
+      testCaseReadBack.name === testCaseName &&
+      testCaseReadBack.user_prompt === testCasePrompt,
+    JSON.stringify({
+      status: testCaseResponse.status(),
+      createdTestCase,
+      testCaseReadBack,
+    }).slice(0, 500),
+  );
+
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
