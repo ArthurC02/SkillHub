@@ -64,6 +64,49 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "creation-reaches-its-collaborators-through-inversion",
+      "contexts": [
+        "creation"
+      ],
+      "statement": "Interactive Skill creation does not import the Contexts it collaborates with, and none of them imports it. Everything it needs from the reference, admission and trial Contexts arrives as a narrow interface injected by a composition root, so the creation loop can be replaced or removed without any other Context changing.",
+      "examples": [
+        "Enqueueing a creation job goes through an interface the wiring package supplies, not through the queue Context's own Service.",
+        "A Context that wants to know what a creation session produced reads the Skill Version the session created, not the session.",
+        "Credit and identity are reached the same way every other Context reaches them, because neither is part of the creation loop being kept replaceable."
+      ],
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 53,
+            "end": 53
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:5665a77570ab86754c4b5578e93d83c1657f67ffcc095b8bd8e4f5723b6b0c9b",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "creation-reaches-out-through-inversion",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T11:40:29.217542Z",
+            "scope": "the inversion rule and the two replaced policies",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+              "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

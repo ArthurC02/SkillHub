@@ -6,8 +6,30 @@
     "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
     "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T11:40:29.217542Z",
+      "scope": "the inversion rule and the two replaced policies",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+        "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "eca90b2334d835edeae7eed2af8b0440451df200",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+      "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "a-rule-needs-its-statement",

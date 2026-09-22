@@ -3,12 +3,12 @@
   "proposal_id": "creation-reaches-out-through-inversion",
   "proposer": "domain-memory-agent",
   "requirement_id": "nothing-the-retired-map-said-is-lost",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-22T11:40:28.918639Z",
   "verified_at": "2026-09-22T11:40:29.532294Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-22T11:40:55.927563Z",
+  "applied_at": "2026-09-22T11:41:00.141941Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
@@ -175,5 +175,9 @@
       }
     }
   ],
-  "supersedes": "dependency-policies-match-the-guard"
+  "supersedes": "dependency-policies-match-the-guard",
+  "applied_registry_revision": {
+    "observed_commit": "eca90b2334d835edeae7eed2af8b0440451df200",
+    "registry_digest": "sha256:a12d614bef0b775ece2977946ce7246cc66a7afb0bdc7ea396e33f4d78366ef1"
+  }
 }
