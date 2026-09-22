@@ -182,6 +182,57 @@ try {
     }).slice(0, 500),
   );
 
+  const datasetName = "browser-upload.csv";
+  const datasetContents = "name,value\nexample,1\n";
+  if (typeof createdTestCase.test_case_id === "string") {
+    await page.goto(
+      `${base}/lab/datasets?test_case=${createdTestCase.test_case_id}`,
+      { waitUntil: "networkidle" },
+    );
+  }
+  await page.locator("#dataset-file").setInputFiles({
+    name: datasetName,
+    mimeType: "text/csv",
+    buffer: Buffer.from(datasetContents),
+  });
+  const datasetResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/test-cases/${createdTestCase.test_case_id}/datasets` &&
+        response.request().method() === "POST",
+    ),
+    page
+      .locator("#dataset-file")
+      .locator("xpath=following-sibling::button")
+      .click(),
+  ]).then(([response]) => response);
+  const uploadedDataset = await datasetResponse.json().catch(() => ({}));
+  const datasetsReadBack =
+    typeof createdTestCase.test_case_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/test-cases/${createdTestCase.test_case_id}/datasets`,
+          )
+        ).json()
+      : {};
+  check(
+    "the browser uploads a dataset and it reads back with the test case",
+    datasetResponse.status() === 201 &&
+      uploadedDataset.file_name === datasetName &&
+      uploadedDataset.size_bytes === Buffer.byteLength(datasetContents) &&
+      datasetsReadBack.datasets?.some(
+        (dataset) =>
+          dataset.dataset_id === uploadedDataset.dataset_id &&
+          dataset.file_name === datasetName,
+      ),
+    JSON.stringify({
+      status: datasetResponse.status(),
+      uploadedDataset,
+      datasetsReadBack,
+    }).slice(0, 500),
+  );
+
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
