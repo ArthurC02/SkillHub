@@ -233,6 +233,47 @@ try {
     }).slice(0, 500),
   );
 
+  if (
+    typeof imported.skill_id === "string" &&
+    typeof imported.version_id === "string"
+  ) {
+    await page.goto(
+      `${base}/skills/${imported.skill_id}/package?version=${imported.version_id}`,
+      { waitUntil: "networkidle" },
+    );
+  }
+  const packageResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/skills/${imported.skill_id}/versions/${imported.version_id}/packaging` &&
+        response.request().method() === "POST",
+    ),
+    page.locator("button.action").click(),
+  ]).then(([response]) => response);
+  const packaged = await packageResponse.json().catch(() => ({}));
+  const packageReadBack =
+    typeof packaged.artifact_id === "string"
+      ? await (
+          await member.request.get(`${base}/downloads/${packaged.artifact_id}`)
+        ).json()
+      : {};
+  check(
+    "the browser builds a package and its artifact reads back",
+    packageResponse.status() === 201 &&
+      packaged.skill_id === imported.skill_id &&
+      packaged.skill_version_id === imported.version_id &&
+      packaged.includes_test_cases === false &&
+      packageReadBack.artifact_id === packaged.artifact_id &&
+      packageReadBack.skill_id === imported.skill_id &&
+      packageReadBack.skill_version_id === imported.version_id,
+    JSON.stringify({
+      status: packageResponse.status(),
+      packaged,
+      packageReadBack,
+    }).slice(0, 500),
+  );
+
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
