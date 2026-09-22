@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-terminal-status-is-final",
+  "status": "draft",
+  "intent": "Record the Run constraint that a terminal outcome is final.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent about to write code that changes a Run's status learns from the Registry that a terminal status cannot be left, before it writes the path that would try.",
+  "acceptance_criteria": [
+    {
+      "id": "terminal-status-is-a-recorded-constraint",
+      "statement": "The Run Context carries the finality of a terminal status as a reviewed Rule, evidenced by the transition table, the terminality test derived from it, and the refusal that enforces it."
+    },
+    {
+      "id": "a-reader-of-the-context-receives-it",
+      "statement": "An Agent loading the Run Context receives this rule alongside the aggregate and the contract."
+    },
+    {
+      "id": "approval-externally-verifiable",
+      "statement": "The approval that promotes the rule is checkable outside the package, against the signature on the commit that carries it."
+    }
+  ],
+  "candidate_terms": [
+    "Run"
+  ],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ]
+}

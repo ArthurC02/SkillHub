@@ -1,0 +1,84 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-terminal-status-is-final",
+  "proposal_id": "run-terminal-status-is-final",
+  "registry_revision": {
+    "observed_commit": "ffc7614d19e0431d0ca0458799d34762345e3191",
+    "registry_digest": "sha256:fa3519bf575eaf760126e3d665125bfa7854111ee0f949e9478260f46a78cae8"
+  },
+  "approvals": [],
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-rule-needs-its-statement",
+    "mutated_protection": "the statement on a reviewed Rule",
+    "failure_evidence": "Staging the rule with its statement removed made validate report 'rules.json:run-terminal-status-is-final is reviewed but missing statement' and exit 1; run on a copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate on a staged copy holding the rule reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5a9da351aea682303bc48bb5b46a2f9b92256f70232c7e0bd2b281f9af940c36",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence on that staged copy reported 11 of 11 citations current, including all three excerpts of the state machine",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:b48fd901427bc1f8c97f26c8be30bdcd992c5ccb2044578164766e226148e400",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-rule-needs-its-statement",
+      "status": "passed",
+      "evidence": "validate on a staged copy with the statement removed reported 'rules.json:run-terminal-status-is-final is reviewed but missing statement' and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:229ae721e2020e9486bd615c4448c1ab64ca400b1ec720e036599be000298091",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "rule-reaches-its-context",
+      "status": "passed",
+      "evidence": "registry_tools.py get-context --id run returned the Run Context with its rules, aggregates and contracts, which is the shape a reader receives",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:deee6d3b48b2b1b847f640e1915f49f03d593da21cb75dc12dc62f2b4be38d54",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 39 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ea4ded4c7cff6a8cc5c0aa75a4bb5a27a13119779cb166a2309b311ad66fe29a",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "registry_tools.py governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:981f75fca230fb9dfb22dd8586a925080e633f8573e4bd1934b361ced2f770c7",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The rule is evidenced by the transition table rather than by a test that drives a Run out of a terminal status; the Registry records the constraint, it does not execute it.",
+    "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled.",
+    "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
+  ]
+}
