@@ -669,6 +669,45 @@ try {
     );
   }
 
+  if (typeof forked.skill_id === "string") {
+    await page.goto(base + "/workspace/skills", { waitUntil: "networkidle" });
+    const forkedSkillCard = page
+      .locator(`a[href="/skills/${forked.skill_id}"]`)
+      .locator("xpath=ancestor::li[contains(@class, 'skill-card')]");
+    await forkedSkillCard.locator("summary").click();
+    await forkedSkillCard.locator(".skill-menu-delete button").click();
+    const deleteSkillResponse = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === `/skills/${forked.skill_id}` &&
+          response.request().method() === "DELETE",
+      ),
+      forkedSkillCard.locator("button.destructive").click(),
+    ]).then(([response]) => response);
+    const deletedSkill = await deleteSkillResponse.json().catch(() => ({}));
+    await forkedSkillCard.waitFor({ state: "detached" });
+    const deletedSkillReadBack = await member.request.get(
+      `${base}/api/skills/${forked.skill_id}`,
+    );
+    check(
+      "the browser deletes an owned skill and it no longer reads back",
+      deleteSkillResponse.status() === 200 &&
+        deletedSkill.deleted === true &&
+        deletedSkillReadBack.status() === 404,
+      JSON.stringify({
+        status: deleteSkillResponse.status(),
+        deletedSkill,
+        deletedReadBackStatus: deletedSkillReadBack.status(),
+      }),
+    );
+  } else {
+    check(
+      "the browser deletes an owned skill and it no longer reads back",
+      false,
+      "forked skill missing",
+    );
+  }
+
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
   check(
     "the creation page states the shortfall",
