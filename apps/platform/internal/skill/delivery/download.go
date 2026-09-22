@@ -71,6 +71,14 @@ type DownloadRecord struct {
 	Actor        string `json:"actor"`
 }
 
+type downloadsResponse struct {
+	Downloads []Artifact `json:"downloads"`
+}
+
+type downloadRecordsResponse struct {
+	Records []DownloadRecord `json:"records"`
+}
+
 func (s *Service) ListDownloadRecords(
 	ctx context.Context, ws identity.Workspace, id pgtype.UUID,
 ) ([]DownloadRecord, error) {
@@ -305,9 +313,7 @@ func (h *Handler) Downloads(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "download list failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Downloads []Artifact `json:"downloads"`
-	}{out})
+	httpx.WriteJSON(w, http.StatusOK, downloadsResponse{Downloads: out})
 }
 
 func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
@@ -349,9 +355,7 @@ func (h *Handler) DownloadRecords(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "download record lookup failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Records []DownloadRecord `json:"records"`
-	}{out})
+	httpx.WriteJSON(w, http.StatusOK, downloadRecordsResponse{Records: out})
 }
 
 func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {

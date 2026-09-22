@@ -55,6 +55,10 @@ type targetView struct {
 	Notes              []string     `json:"notes"`
 }
 
+type targetsResponse struct {
+	Targets []targetView `json:"targets"`
+}
+
 type envVarView struct {
 	Name        string `json:"name"`
 	Required    bool   `json:"required"`
@@ -92,9 +96,7 @@ func (h *Handler) Targets(w http.ResponseWriter, r *http.Request) {
 			Notes:              notes,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Targets []targetView `json:"targets"`
-	}{out})
+	httpx.WriteJSON(w, http.StatusOK, targetsResponse{Targets: out})
 }
 
 func installLocationLine(p Profile) string {
@@ -121,6 +123,11 @@ type previewView struct {
 	ExcludedFiles []ExcludedFile `json:"excluded_files"`
 
 	RetentionDays int `json:"retention_days"`
+}
+
+type artifactResponse struct {
+	Artifact
+	Duplicate bool `json:"duplicate"`
 }
 
 func retentionDays(d time.Duration) int { return int(d / (24 * time.Hour)) }
@@ -247,10 +254,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, out)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, struct {
-		Artifact
-		Duplicate bool `json:"duplicate"`
-	}{res.Artifact, res.Duplicate})
+	httpx.WriteJSON(w, http.StatusCreated, artifactResponse{Artifact: res.Artifact, Duplicate: res.Duplicate})
 }
 
 func (h *Handler) writeServiceError(w http.ResponseWriter, err error) bool {
