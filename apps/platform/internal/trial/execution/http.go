@@ -60,6 +60,11 @@ type runResponse struct {
 	Attempts          []attemptView    `json:"attempts,omitempty"`
 }
 
+type runCancellationResponse struct {
+	runResponse
+	Note string `json:"note"`
+}
+
 type labelled struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
@@ -320,6 +325,10 @@ type runListItem struct {
 	Evaluation json.RawMessage `json:"evaluation"`
 }
 
+type runListResponse struct {
+	Runs []runListItem `json:"runs"`
+}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, _, ok := h.workspace(w, r)
 	if !ok {
@@ -340,9 +349,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if raw := r.URL.Query().Get("test_case_id"); raw != "" {
 		if err := testCaseID.Scan(raw); err != nil {
 
-			httpx.WriteJSON(w, http.StatusOK, struct {
-				Runs []runListItem `json:"runs"`
-			}{[]runListItem{}})
+			httpx.WriteJSON(w, http.StatusOK, runListResponse{Runs: []runListItem{}})
 			return
 		}
 	}
@@ -385,9 +392,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			FinishedAt:     formatTime(row.FinishedAt),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Runs []runListItem `json:"runs"`
-	}{out})
+	httpx.WriteJSON(w, http.StatusOK, runListResponse{Runs: out})
 }
 
 type artifactView struct {
@@ -400,6 +405,11 @@ type artifactView struct {
 	ExpiresAt   string `json:"expires_at,omitempty"`
 
 	Purged bool `json:"purged"`
+}
+
+type artifactListResponse struct {
+	Artifacts []artifactView `json:"artifacts"`
+	Truncated bool           `json:"truncated"`
 }
 
 func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
@@ -429,10 +439,7 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 			Purged: a.Purged,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Artifacts []artifactView `json:"artifacts"`
-		Truncated bool           `json:"truncated"`
-	}{out, truncated})
+	httpx.WriteJSON(w, http.StatusOK, artifactListResponse{Artifacts: out, Truncated: truncated})
 }
 
 func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
@@ -570,10 +577,10 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	if !h.fillLinkage(w, r, ws.ID, runID, &body) {
 		return
 	}
-	resp := struct {
-		runResponse
-		Note string `json:"note"`
-	}{body, "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。"}
+	resp := runCancellationResponse{
+		runResponse: body,
+		Note:        "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。",
+	}
 	httpx.WriteJSON(w, http.StatusAccepted, resp)
 }
 
