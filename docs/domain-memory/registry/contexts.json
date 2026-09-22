@@ -14,16 +14,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 29,
-            "end": 32
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:5bee9fef127b348f6e7b2162e373c3f7a3cde47d9415b9cb81c665b2bcc233d7",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/trial/execution/doc.go",
           "lines": {
             "start": 1,
@@ -35,19 +25,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -65,16 +55,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 17,
-            "end": 20
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:9a5aa22cfdfcbc962eef413f9bda65d58e80b8a30422568f492169ed1b80d25f",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/skill/library/doc.go",
           "lines": {
             "start": 1,
@@ -86,19 +66,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -117,16 +97,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 5,
-            "end": 8
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:16a73a3dcb2e60750a62337322fa37044e24bc938be80c7325095f18d7bdd9ae",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/creator/workspace/doc.go",
           "lines": {
             "start": 1,
@@ -138,19 +108,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -168,16 +138,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 9,
-            "end": 12
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:e11bddad93c096dcb5f19e76390695125af6c102d1eb124cba95ce6e385614f7",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/creator/creation/doc.go",
           "lines": {
             "start": 1,
@@ -189,19 +149,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -219,16 +179,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 13,
-            "end": 16
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:49c2d5595f7c1fcf5de4aaa73a186c7a8a8ec3108f32c79e5543a91e99a621e8",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/skill/discovery/doc.go",
           "lines": {
             "start": 1,
@@ -240,19 +190,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -271,16 +221,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 21,
-            "end": 24
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:d7c0fed8f3e70cd73a0300efdddae5a39ba20ca7a1a97d5421ea6654a79cfba2",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/skill/admission/doc.go",
           "lines": {
             "start": 1,
@@ -292,19 +232,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -322,16 +262,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 25,
-            "end": 28
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:1030f95e8850396ab679c7c4a223b814e63cb5988419ad0bc35638d25d2763b7",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/trial/design/doc.go",
           "lines": {
             "start": 1,
@@ -343,19 +273,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -373,16 +303,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 33,
-            "end": 36
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:6e775be14659f5bff92e26e83f93a86042d96dcf369880c8511edcd9b44efba5",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/trial/improvement/doc.go",
           "lines": {
             "start": 1,
@@ -394,19 +314,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -424,16 +344,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 37,
-            "end": 40
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:75e5eacbe44555a31933ab00de769fcf4e8fe43574b6877733748c5b80b21222",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/skill/delivery/doc.go",
           "lines": {
             "start": 1,
@@ -445,19 +355,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -475,16 +385,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 41,
-            "end": 44
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:15f94f3f6afbe263f4e463e6ea63940449b05b7b98b3409310019582e27d1738",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/trial/evidence/doc.go",
           "lines": {
             "start": 1,
@@ -496,19 +396,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -527,16 +427,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 45,
-            "end": 48
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:16b16b6621ef36e08faedc62746e566a9081fa6e00d9d8f07b61f431055707fb",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/product/entitlements/doc.go",
           "lines": {
             "start": 1,
@@ -548,19 +438,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -579,16 +469,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 49,
-            "end": 52
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:1179e8762d34528f1d877aa84c35b924529535273567721b030490e7794352b7",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/product/learning/doc.go",
           "lines": {
             "start": 1,
@@ -600,19 +480,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]
@@ -630,16 +510,6 @@
       ],
       "evidence": [
         {
-          "path": "apps/platform/architecture-identity.yaml",
-          "lines": {
-            "start": 53,
-            "end": 56
-          },
-          "content_sha256": "sha256:1ebb73d03ebb2ce26183bde768d0b6e98f27c567ade2c36a8c45f81aca7be9ad",
-          "excerpt_sha256": "sha256:027193c8e66e3d62cfb01f968041a8214f389f2b979a8aa63bb2827bf6601309",
-          "source_kind": "implementation"
-        },
-        {
           "path": "apps/platform/internal/creator/credit/doc.go",
           "lines": {
             "start": 1,
@@ -651,19 +521,19 @@
         }
       ],
       "review": {
-        "proposal_id": "contexts-carry-their-identity",
+        "proposal_id": "contexts-rest-on-their-packages",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T10:15:21.386765Z",
-            "scope": "Modelling all thirteen Bounded Contexts with their subdomain, implementation path and requirement prefixes, as the second stage of the agreed split that retires the Context Map document",
+            "approved_at": "2026-09-22T10:27:24.111820Z",
+            "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "fe95a40bc789c85cf8ae54be9237bbb115b5c2e3",
-              "registry_digest": "sha256:a37c64f36165846fde517aec35d8979cea7a1f74c32ac1f88051be447578dcc9"
+              "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+              "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
             }
           }
         ]

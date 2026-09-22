@@ -3,12 +3,12 @@
   "proposal_id": "contexts-rest-on-their-packages",
   "proposer": "domain-memory-agent",
   "requirement_id": "a-context-rests-on-the-package-that-holds-it",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-22T10:27:23.873864Z",
   "verified_at": "2026-09-22T10:27:24.445237Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-22T10:27:40.580261Z",
+  "applied_at": "2026-09-22T10:27:41.018703Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
@@ -437,5 +437,9 @@
       }
     }
   ],
-  "supersedes": "contexts-carry-their-identity"
+  "supersedes": "contexts-carry-their-identity",
+  "applied_registry_revision": {
+    "observed_commit": "07dc16daa52a73d67cd811fa908bf4ee48367c82",
+    "registry_digest": "sha256:29e39c493efd876325b0fe4f82e383b934dd2a2ae4d591017ab77edbb8a22d60"
+  }
 }

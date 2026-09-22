@@ -6,8 +6,30 @@
     "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
     "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
   },
-  "approvals": [],
-  "scm_attestation": null,
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T10:27:24.111820Z",
+      "scope": "Taking the layout file out of the Registry's source corpus so adding a package no longer turns the machine checks red, and letting the checkers read the Registry directly instead",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+        "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
+      }
+    }
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "07dc16daa52a73d67cd811fa908bf4ee48367c82",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "e434f98264da8fe14397866428cf9bbb923ab71c",
+      "registry_digest": "sha256:4ca2b7fcd9b54d48b96cbde39e1be7d77910cb535f2cefccecc0f5885dae894b"
+    }
+  },
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "no-two-contexts-claim-one-path",
