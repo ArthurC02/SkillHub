@@ -407,7 +407,13 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         logger.exception("suggest-criteria LLM call failed")
         raise HTTPException(status_code=502, detail="gateway error") from e
 
-    content = (response.choices[0].message.content or "").strip()
+    try:
+        content = (response.choices[0].message.content or "").strip()
+    except AttributeError, IndexError, TypeError:
+        logger.warning("suggest-criteria provider returned a malformed envelope")
+        raise HTTPException(
+            status_code=502, detail="suggest-criteria provider returned malformed output"
+        ) from None
     usage = _usage(response, raw.headers)
     try:
         parsed = SuggestedCriteria.model_validate_json(content)

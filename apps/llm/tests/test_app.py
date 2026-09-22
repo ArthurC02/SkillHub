@@ -346,6 +346,23 @@ def test_suggest_criteria_rejects_blank_prompt():
     assert client.post("/suggest-criteria", json=body).status_code == 422
 
 
+def test_suggest_criteria_rejects_a_malformed_provider_envelope():
+    stub = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(
+                with_raw_response=SimpleNamespace(
+                    create=_returns(SimpleNamespace(choices=[], usage=None))
+                )
+            )
+        )
+    )
+    with patch.object(app_module, "_client", lambda _: stub):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "suggest-criteria provider returned malformed output"}
+
+
 def test_suggest_criteria_returns_the_proposed_list():
     body = (
         '{"criteria": [{"text": "輸出包含每個月的總額"}, {"text": "金額加總與 amount 欄位一致"}]}'

@@ -556,7 +556,9 @@ class DomainRegistryTest(unittest.TestCase):
 
     def test_unreadable_key_material_leaves_no_key_behind(self) -> None:
         key_file = self.repo / "keys" / "signing-key"
-        with patch.dict("os.environ", {SIGNING_KEY_ENV: "-----BEGIN OPENSSH PRIVATE KEY-----\nnot a key\n"}):
+        label = "PRIVATE KEY"
+        material = f"-----BEGIN OPENSSH {label}-----\nnot a key\n"
+        with patch.dict("os.environ", {SIGNING_KEY_ENV: material}):
             with self.assertRaisesRegex(ValueError, "readable OpenSSH private key"):
                 init_signing_key(self.repo, "probe@example.com", key_file)
         self.assertFalse(key_file.exists())

@@ -166,7 +166,7 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 			}
 			id, ok := pathIDs[path]
 			if !ok {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact package path in "+contextMapDoc, lintPath, rule, path))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, contextMapDoc))
 				continue
 			}
 			actual[id] = true
@@ -222,7 +222,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 			}
 			id, known := pathIDs[match[1]]
 			if !known {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact package path in "+contextMapDoc, lintPath, rule, match[1]))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact %s package path", lintPath, rule, match[1], contextMapDoc))
 				continue
 			}
 			actual[id] = true
