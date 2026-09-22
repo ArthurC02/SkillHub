@@ -74,6 +74,10 @@ type revisionView struct {
 	SupersededAt       *string `json:"superseded_at"`
 }
 
+type revisionListResponse struct {
+	Revisions []revisionView `json:"revisions"`
+}
+
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -141,9 +145,7 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 			SupersededAt:       optionalTime(ev.SupersededAt),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		Revisions []revisionView `json:"revisions"`
-	}{out})
+	httpx.WriteJSON(w, http.StatusOK, revisionListResponse{Revisions: out})
 }
 
 func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {

@@ -69,6 +69,11 @@ type suggestionView struct {
 	AppliedSkillVersionID string        `json:"applied_skill_version_id,omitempty"`
 }
 
+type suggestionListResponse struct {
+	EvaluationID string           `json:"evaluation_id"`
+	Suggestions  []suggestionView `json:"suggestions"`
+}
+
 func suggestionOf(row gen.EvaluationSuggestion) Suggestion {
 	return Suggestion{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, EvaluationID: row.EvaluationID,
@@ -146,10 +151,9 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	for _, refs := range sets {
 		markAvailability(refs, live)
 	}
-	httpx.WriteJSON(w, http.StatusOK, struct {
-		EvaluationID string           `json:"evaluation_id"`
-		Suggestions  []suggestionView `json:"suggestions"`
-	}{pgconv.UUIDString(ev.ID), out})
+	httpx.WriteJSON(w, http.StatusOK, suggestionListResponse{
+		EvaluationID: pgconv.UUIDString(ev.ID), Suggestions: out,
+	})
 }
 
 func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
@@ -254,6 +258,11 @@ type applyResponse struct {
 	RejectedSuggestions  []Blocked `json:"rejected_suggestions"`
 }
 
+type rejectedSuggestionsResponse struct {
+	Error               string    `json:"error"`
+	RejectedSuggestions []Blocked `json:"rejected_suggestions"`
+}
+
 func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -316,10 +325,9 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 	if !res.Created {
 
 		const message = "not one of the suggestions could be applied, so no version was created"
-		httpx.WriteJSON(w, http.StatusUnprocessableEntity, struct {
-			Error               string    `json:"error"`
-			RejectedSuggestions []Blocked `json:"rejected_suggestions"`
-		}{message, rejected})
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, rejectedSuggestionsResponse{
+			Error: message, RejectedSuggestions: rejected,
+		})
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, applyResponse{
