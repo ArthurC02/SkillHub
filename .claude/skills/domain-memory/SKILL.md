@@ -20,6 +20,7 @@ See [readiness](references/readiness.md) for the evidence and output contract.
 - **Design**: when a request changes a boundary, contract, event, consistency rule, or material business rule, prepare a reviewable Change Package. Use [domain-memory-design](skills/domain-memory-design/SKILL.md).
 - **Maintain**: after implementation or source drift, update the smallest affected asset as a candidate and preserve evidence. Use [domain-memory-maintain](skills/domain-memory-maintain/SKILL.md).
 - **Review**: before relying on domain facts or handing off work, validate the Registry, source evidence, audit chain, and proposal state. Use [domain-memory-review](skills/domain-memory-review/SKILL.md).
+- **Implementation hygiene**: after Read or Design, check that code expresses the reviewed boundary without turning generic style rules into Registry facts. Use [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
 
 For a brownfield refactoring that preserves the reviewed model, use the
 [brownfield refactoring fast path](references/brownfield-refactoring.md) before
@@ -40,4 +41,4 @@ Supporting references: [evidence rules](references/evidence-rules.md), [Registry
 
 Plugin portability stops at the host boundary: `plugin.json` packages Skills and optional scripts, but does not declare subagents. A host may delegate these capabilities to its own agents; otherwise run them sequentially. See [host integration](references/host-integration.md).
 
-Distribute the complete capability set as the Plugin. Distribute one directory under `skills/` when a host accepts only a standalone Skill; the root router is not a standalone replacement for the four capabilities. See [packaging](references/packaging.md).
+Distribute the complete capability set as the Plugin. Distribute one directory under `skills/` when a host accepts only a standalone Skill; the root router is not a standalone replacement for the lifecycle capabilities. See [packaging](references/packaging.md).
