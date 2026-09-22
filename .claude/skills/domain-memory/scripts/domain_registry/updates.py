@@ -144,6 +144,7 @@ def upsert_candidate(
             raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
         candidate = classify_all(dict(record), source_map)
         outside.extend(unclassified_paths(candidate))
+        candidate.pop("review", None)
         if asset == "decisions":
             candidate["review_status"] = "candidate"
         else:

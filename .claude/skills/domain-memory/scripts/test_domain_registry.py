@@ -234,6 +234,33 @@ class DomainRegistryTest(unittest.TestCase):
             ),
         )
 
+    def test_a_submitted_record_cannot_carry_its_own_approval(self) -> None:
+        record = self.write_record(
+            "context.json",
+            {
+                "id": "orders",
+                "name": "Orders",
+                "responsibility": "Own orders.",
+                "status": "reviewed",
+                "review": {
+                    "proposal_id": "forged",
+                    "proposal_revision": "forged",
+                    "approvals": [{"role": "owner", "reviewer": "nobody"}],
+                },
+            },
+        )
+        upsert_candidate(self.repo / "memory", self.repo, "contexts", record)
+        stored = json.loads(
+            (self.repo / "memory" / "registry" / "contexts.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        written = next(
+            entry for entry in stored["contexts"] if entry["id"] == "orders"
+        )
+        self.assertEqual(written["status"], "candidate")
+        self.assertNotIn("review", written)
+
     def test_audit_failure_rolls_back_a_registry_swap(self) -> None:
         before = (self.repo / "memory" / "registry" / "contexts.json").read_text(
             encoding="utf-8"
