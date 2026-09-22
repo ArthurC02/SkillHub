@@ -6,7 +6,20 @@
     "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
     "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
   },
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T07:46:22.726462Z",
+      "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+        "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+      }
+    }
+  ],
   "counterfactual_check": {
     "status": "passed",
     "obligation_id": "reviewed-record-needs-evidence",
@@ -92,5 +105,15 @@
     "Two of the seven candidate records stay candidates, so validate --require-reviewed still reports the Registry as not fully reviewed.",
     "Five reviewed records cover two of the repository's Bounded Contexts; the rest of the context map remains unmodelled.",
     "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
-  ]
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "e8b6d42e1cbcd15c032d2c24281c0bfe3e761f92",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+      "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+    }
+  }
 }

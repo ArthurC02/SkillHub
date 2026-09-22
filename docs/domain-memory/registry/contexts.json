@@ -18,7 +18,25 @@
           "source_kind": "unclassified"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T07:46:22.726462Z",
+            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     },
     {
       "id": "registry",
@@ -36,7 +54,25 @@
           "source_kind": "unclassified"
         }
       ],
-      "status": "candidate"
+      "review": {
+        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-22T07:46:22.726462Z",
+            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }
