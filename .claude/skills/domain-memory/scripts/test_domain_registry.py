@@ -1049,6 +1049,105 @@ class DomainRegistryTest(unittest.TestCase):
             path.write_text(json.dumps(value), encoding="utf-8")
         return package
 
+    def approve_and_apply(self, package: Path) -> None:
+        submit_proposal(package, self.repo / "memory", self.repo)
+        record_approval(package, "domain-owner", "reviewer", "entire proposal", None)
+        submitted = json.loads(
+            (package / "domain-change-proposal.json").read_text(encoding="utf-8")
+        )
+        evidence_path = package / "evidence-bundle.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["scm_attestation"] = {
+            "provider": "github",
+            "pull_request": "https://github.example/repo/pull/1",
+            "checks_url": "https://github.example/repo/actions/runs/1",
+            "commit": "a" * 40,
+            "status": "approved",
+            "proposal_revision": 1,
+            "base_registry_revision": submitted["base_registry_revision"],
+        }
+        evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+        verify_proposal(package, self.repo / "memory", self.repo)
+        with patch("domain_registry.hitl.verify_external_scm", return_value=[]):
+            finalize_proposal(package, self.repo / "memory", self.repo)
+        apply_approved_updates(package, self.repo / "memory", self.repo)
+
+    def redraft_package(
+        self, package: Path, proposal_id: str, statement: str, supersedes: str | None
+    ) -> None:
+        for name in (
+            "domain-change-proposal.json",
+            "test-obligations.json",
+            "evidence-bundle.json",
+        ):
+            path = package / name
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if "proposal_id" in value:
+                value["proposal_id"] = proposal_id
+            path.write_text(json.dumps(value), encoding="utf-8")
+        path = package / "domain-change-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        proposal.update(
+            {
+                "status": "draft",
+                "approvals": [],
+                "base_registry_revision": None,
+                "submitted_at": None,
+                "finalized_at": None,
+            }
+        )
+        proposal["registry_updates"][0]["record"]["statement"] = statement
+        if supersedes is not None:
+            proposal["supersedes"] = supersedes
+        path.write_text(json.dumps(proposal), encoding="utf-8")
+
+    def reviewed_order_total(self) -> dict:
+        document = json.loads(
+            (self.repo / "memory" / "registry" / "rules.json").read_text(encoding="utf-8")
+        )
+        return document["rules"][0]
+
+    def test_a_reviewed_record_is_not_replaced_without_superseding_its_approval(
+        self,
+    ) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_package(package, "PRO-2", "An order total may be negative.", None)
+        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+            self.approve_and_apply(package)
+        self.assertEqual(
+            self.reviewed_order_total()["statement"], "An order total is non-negative."
+        )
+
+    def test_superseding_a_different_proposal_does_not_replace_a_reviewed_record(
+        self,
+    ) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_package(
+            package, "PRO-2", "An order total may be negative.", "PRO-UNRELATED"
+        )
+        with self.assertRaisesRegex(ValueError, "must supersede PRO-1"):
+            self.approve_and_apply(package)
+        self.assertEqual(
+            self.reviewed_order_total()["statement"], "An order total is non-negative."
+        )
+
+    def test_superseding_the_reviewing_proposal_replaces_a_reviewed_record(self) -> None:
+        package = self.draft_package()
+        (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")
+        self.approve_and_apply(package)
+        self.redraft_package(
+            package, "PRO-2", "An order total is never below zero.", "PRO-1"
+        )
+        self.approve_and_apply(package)
+        replaced = self.reviewed_order_total()
+        self.assertEqual(replaced["statement"], "An order total is never below zero.")
+        self.assertEqual(replaced["status"], "reviewed")
+        self.assertEqual(replaced["review"]["proposal_id"], "PRO-2")
+
     def test_approved_package_applies_against_its_exact_revision(self) -> None:
         package = self.draft_package()
         (self.repo / "README.md").write_text("evidence\n", encoding="utf-8")

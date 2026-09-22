@@ -262,7 +262,12 @@ def apply_approved_updates(
                 and review_status(asset, existing, document.get("status", "candidate"))
                 == "reviewed"
             ):
-                raise ValueError(f"cannot overwrite reviewed record: {record['id']}")
+                reviewed_by = (existing.get("review") or {}).get("proposal_id")
+                if not reviewed_by or proposal.get("supersedes") != reviewed_by:
+                    raise ValueError(
+                        f"cannot overwrite reviewed record: {record['id']}; a proposal that "
+                        f"replaces it must supersede {reviewed_by or 'the proposal that reviewed it'}"
+                    )
             promoted = dict(record)
             promoted["review"] = {
                 "proposal_id": proposal["proposal_id"],
