@@ -16,6 +16,8 @@ The Plugin is the complete Domain Memory capability. Its manifest points to `./s
 
 The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords`, and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry, not here; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
 
+The scripts need Python 3.10 or later and nothing outside its standard library, and they shell out to `git` alone. A host that cannot offer both runs the Skills without the controlled write boundary, which means no promotion and no audit chain, rather than partially.
+
 When a host accepts only one standalone Skill, build a self-contained bundle first:
 
 ```bash
