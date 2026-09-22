@@ -22,6 +22,22 @@ type AppliedSuggestion struct {
 	TargetPath   string
 }
 
+type Suggestion struct {
+	ID                    pgtype.UUID
+	WorkspaceID           pgtype.UUID
+	EvaluationID          pgtype.UUID
+	Category              string
+	Problem               string
+	Evidence              []byte
+	TargetPath            string
+	ProposedContent       string
+	ExpectedImpact        string
+	Decision              string
+	DecidedAt             pgtype.Timestamptz
+	AppliedSkillVersionID pgtype.UUID
+	CreatedAt             pgtype.Timestamptz
+}
+
 func (s *Service) AppliedSuggestions(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]AppliedSuggestion, error) {
 	rows, err := gen.New(s.Pool).ListSuggestionsAppliedToVersion(ctx, gen.ListSuggestionsAppliedToVersionParams{
 		AppliedSkillVersionID: versionID,
@@ -53,7 +69,18 @@ type suggestionView struct {
 	AppliedSkillVersionID string        `json:"applied_skill_version_id,omitempty"`
 }
 
-func toSuggestionView(row gen.EvaluationSuggestion) suggestionView {
+func suggestionOf(row gen.EvaluationSuggestion) Suggestion {
+	return Suggestion{
+		ID: row.ID, WorkspaceID: row.WorkspaceID, EvaluationID: row.EvaluationID,
+		Category: row.Category, Problem: row.Problem, Evidence: row.Evidence,
+		TargetPath: row.TargetPath, ProposedContent: row.ProposedContent,
+		ExpectedImpact: row.ExpectedImpact, Decision: row.Decision,
+		DecidedAt: row.DecidedAt, AppliedSkillVersionID: row.AppliedSkillVersionID,
+		CreatedAt: row.CreatedAt,
+	}
+}
+
+func toSuggestionView(row Suggestion) suggestionView {
 	var evidence []EvidenceRef
 	if len(row.Evidence) > 0 {
 		_ = json.Unmarshal(row.Evidence, &evidence)
@@ -98,8 +125,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "evaluation lookup failed")
 		return
 	}
-	rows, err := h.Svc.queries().ListEvaluationSuggestions(r.Context(),
-		gen.ListEvaluationSuggestionsParams{EvaluationID: ev.ID, WorkspaceID: ws.ID})
+	rows, err := h.Svc.Suggestions(r.Context(), ws.ID, ev.ID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "suggestion lookup failed")
 		return
@@ -164,25 +190,40 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) Decide(
 	ctx context.Context, workspaceID, suggestionID pgtype.UUID, to Decision,
-) (gen.EvaluationSuggestion, error) {
+) (Suggestion, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.EvaluationSuggestion{}, err
+		return Suggestion{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	e, err := loadEvaluationOfSuggestion(ctx, s.queries().WithTx(tx), workspaceID, suggestionID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.EvaluationSuggestion{}, ErrNotFound
+		return Suggestion{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.EvaluationSuggestion{}, err
+		return Suggestion{}, err
 	}
 	e.Decide(suggestionID, to)
 	if err := saveUnlessRefused(ctx, tx, e); err != nil {
-		return gen.EvaluationSuggestion{}, err
+		return Suggestion{}, err
 	}
-	return e.suggestions[suggestionID], tx.Commit(ctx)
+	return suggestionOf(e.suggestions[suggestionID]), tx.Commit(ctx)
+}
+
+func (s *Service) Suggestions(
+	ctx context.Context, workspaceID, evaluationID pgtype.UUID,
+) ([]Suggestion, error) {
+	rows, err := s.queries().ListEvaluationSuggestions(ctx,
+		gen.ListEvaluationSuggestionsParams{EvaluationID: evaluationID, WorkspaceID: workspaceID})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]Suggestion, len(rows))
+	for i, row := range rows {
+		result[i] = suggestionOf(row)
+	}
+	return result, nil
 }
 
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
