@@ -8,13 +8,19 @@ import (
 	"testing"
 )
 
-const queryOwnerADRFixture = `## Context 對照表
-
-| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
-| --- | --- | --- | --- | --- |
-| Skill 試跑執行／Run Orchestration | Core | run | run | RUN |
-| 成果判定與改善／Evaluation & Improvement | Core | eval | eval | EVAL |
-| Skill 收藏與版本歷史／Skill Registry & Versioning | Core | registry | registry | SKILL |
+const queryOwnerADRFixture = `packages:
+  - id: run
+    kind: Core
+    path: run
+    context: Skill 試跑執行／Run Orchestration
+  - id: eval
+    kind: Core
+    path: eval
+    context: 成果判定與改善／Evaluation & Improvement
+  - id: registry
+    kind: Core
+    path: registry
+    context: Skill 收藏與版本歷史／Skill Registry & Versioning
 `
 
 func writeQueryOwnerFixture(t *testing.T, declaration string, sql map[string]string, callers map[string]string) string {
@@ -271,8 +277,8 @@ func TestOwnerDeclarationRejectsDuplicateSections(t *testing.T) {
 
 func TestQueryOwnerProblemsNestedCallerUsesBoundaryID(t *testing.T) {
 	t.Parallel()
-	adr := strings.Replace(queryOwnerADRFixture, "| run | run | RUN |", "| run | trial/execution | RUN |", 1)
-	adr = strings.Replace(adr, "| eval | eval | EVAL |", "| eval | trial/evidence | EVAL |", 1)
+	adr := strings.Replace(queryOwnerADRFixture, "    path: run\n", "    path: trial/execution\n", 1)
+	adr = strings.Replace(adr, "    path: eval\n", "    path: trial/evidence\n", 1)
 	root := writeQueryOwnerFixtureWithADR(t, adr,
 		decl("files:\n  runs.sql: run\nqueries:\nallow:\n"),
 		map[string]string{"runs.sql": "-- name: CreateRun :one\nINSERT INTO runs (id) VALUES ($1);\n"},
@@ -323,7 +329,9 @@ func TestQueryOwnerProblemsScansCommands(t *testing.T) {
 	t.Parallel()
 	const sql = "-- name: ReindexAll :execrows\nUPDATE search_documents SET stale = false;\n"
 	declaration := decl("files:\n  search.sql: catalog\nqueries:\nallow:\n")
-	adr := strings.Replace(queryOwnerADRFixture, "| eval | eval | EVAL |", "| catalog | skill/discovery | DISC |", 1)
+	adr := strings.Replace(queryOwnerADRFixture,
+		"  - id: eval\n    kind: Core\n    path: eval\n",
+		"  - id: catalog\n    kind: Core\n    path: skill/discovery\n", 1)
 
 	t.Run("a declared command calling its own context's query is fine", func(t *testing.T) {
 		t.Parallel()
@@ -361,7 +369,9 @@ func TestQueryOwnerProblemsRequireDeclarationWhereThereIsNoDefault(t *testing.T)
 	t.Parallel()
 	const sql = "-- name: InsertAuditEvent :exec\nINSERT INTO audit_events (id) VALUES ($1);\n\n" +
 		"-- name: AnonymizeUser :exec\nUPDATE users SET name = 'gone' WHERE id = $1;\n"
-	adr := strings.Replace(queryOwnerADRFixture, "| eval | eval | EVAL |", "| audit | foundation/observability/audit | — |", 1)
+	adr := strings.Replace(queryOwnerADRFixture,
+		"  - id: eval\n    kind: Core\n    path: eval\n    context: 成果判定與改善／Evaluation & Improvement\n",
+		"  - id: audit\n    kind: Generic\n    path: foundation/observability/audit\n", 1)
 
 	t.Run("a file with no default needs every query declared", func(t *testing.T) {
 		t.Parallel()

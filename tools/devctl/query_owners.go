@@ -569,7 +569,7 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 					return fmt.Errorf("apps/platform/cmd/%s calls sqlc but has no entry in commandContexts "+
 						"(tools/devctl/query_owners.go); name the context whose data it touches", directory)
 				}
-				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in the context map", directory)
+				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in %s", directory, contextMapDoc)
 			}
 
 			for name := range seen {
@@ -819,7 +819,11 @@ func sqlPrefix(sql string) string {
 	return flat
 }
 
-const contextMapDoc = "docs/development/platform-context-map.md"
+const (
+	contextMapDoc       = "apps/platform/architecture-identity.yaml"
+	contextWhitelistDoc = "docs/development/platform-context-map.md"
+	identityListKey     = "packages:"
+)
 
 type architectureKind string
 
@@ -838,10 +842,8 @@ type packageIdentity struct {
 }
 
 var (
-	contextTableHeading = "## Context 對照表"
-	contextTableHeader  = []string{"產品／Bounded Context", "類型", "Boundary ID", "現行 internal path", "需求 ID 前綴"}
-	boundaryIDPattern   = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	contextPathPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
+	boundaryIDPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	contextPathPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
 
 	depguardFilePattern     = regexp.MustCompile(`(?m)^\s*-\s*"\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*"\s*$`)
 	depguardSelectorPattern = regexp.MustCompile(`^\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*$`)
@@ -853,7 +855,7 @@ func contextMapProblems(root string) []string {
 
 	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(mapPath)), mapPath)
 	if len(declared) == 0 {
-		return append(problems, fmt.Sprintf("%s: %s has no package rows", mapPath, contextTableHeading))
+		return append(problems, fmt.Sprintf("%s: %s has no package rows", mapPath, identityListKey))
 	}
 
 	lint, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(lintPath)))
@@ -874,7 +876,7 @@ func contextMapProblems(root string) []string {
 	for _, path := range sortedKeys(present) {
 		if _, ok := resolveContextPath(path, declared); !ok {
 			problems = append(problems, fmt.Sprintf(
-				"apps/platform/internal/%s is not listed in %s §1; register it before adding the package (AGENTS.md 第 11 條)",
+				"apps/platform/internal/%s is not listed in %s; register it before adding the package (AGENTS.md 第 11 條)",
 				path, contextMapDoc))
 		}
 	}
@@ -893,7 +895,7 @@ func contextMapProblems(root string) []string {
 	for _, path := range sortedKeys(guarded) {
 		if !guardedPathDeclared(path, declared) {
 			problems = append(problems, fmt.Sprintf(
-				"%s guards apps/platform/internal/%s but no context-map Boundary ID declares that path", lintPath, path))
+				"%s guards apps/platform/internal/%s but no Boundary ID in %s declares that path", lintPath, path, contextMapDoc))
 		}
 	}
 	return problems
@@ -906,55 +908,25 @@ func contextTablePackages(path, relative string) (map[string]packageIdentity, []
 	}
 	declared := map[string]packageIdentity{}
 	var problems []string
-	inTable, sawHeader := false, false
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, "#") {
-			inTable = strings.HasPrefix(line, contextTableHeading)
-			continue
-		}
-		if !inTable || !strings.HasPrefix(strings.TrimSpace(line), "|") {
-			continue
-		}
-		cells := strings.Split(strings.Trim(strings.TrimSpace(line), "|"), "|")
-		for i := range cells {
-			cells[i] = strings.TrimSpace(cells[i])
-		}
-		if !sawHeader {
-			if !slices.Equal(cells, contextTableHeader) {
-				problems = append(problems, fmt.Sprintf("%s table header must be %q", relative, strings.Join(contextTableHeader, " | ")))
-				return declared, problems
-			}
-			sawHeader = true
-			continue
-		}
-		if len(cells) == len(contextTableHeader) && strings.Trim(cells[0], "- ") == "" {
-			continue
-		}
-		if len(cells) != len(contextTableHeader) {
-			problems = append(problems, fmt.Sprintf("%s row has %d cells; want %d", relative, len(cells), len(contextTableHeader)))
-			continue
-		}
-		kind := cells[1]
-		architecture := architectureKind(kind)
+	entries, problems := identityEntries(string(data), relative, problems)
+	for _, entry := range entries {
+		architecture := architectureKind(entry.kind)
 		switch architecture {
 		case architectureCore, architectureSupporting, architectureSharedKernel, architectureGeneric:
 		default:
-			problems = append(problems, fmt.Sprintf("%s has unknown architecture kind %q", relative, kind))
+			problems = append(problems, fmt.Sprintf("%s has unknown architecture kind %q", relative, entry.kind))
 			continue
 		}
-		context := cells[0]
-		if strings.Trim(context, " -—–") == "" {
-			context = ""
-		}
+		context := entry.context
 		if (architecture == architectureCore || architecture == architectureSupporting) && context == "" {
 			problems = append(problems, fmt.Sprintf("%s kind %q requires a context name", relative, architecture))
 			continue
 		}
 		if (architecture == architectureSharedKernel || architecture == architectureGeneric) && context != "" {
-			problems = append(problems, fmt.Sprintf("%s kind %q must use — instead of a context name", relative, architecture))
+			problems = append(problems, fmt.Sprintf("%s kind %q must not name a Bounded Context", relative, architecture))
 			continue
 		}
-		id, currentPath := cells[2], cells[3]
+		id, currentPath := entry.id, entry.path
 		if !boundaryIDPattern.MatchString(id) {
 			problems = append(problems, fmt.Sprintf("%s has invalid Boundary ID %q", relative, id))
 			continue
@@ -980,10 +952,65 @@ func contextTablePackages(path, relative string) (map[string]packageIdentity, []
 		}
 		declared[id] = identity
 	}
-	if !sawHeader {
-		problems = append(problems, fmt.Sprintf("%s table header must be %q", relative, strings.Join(contextTableHeader, " | ")))
-	}
 	return declared, problems
+}
+
+type identityEntry struct {
+	id      string
+	kind    string
+	path    string
+	context string
+}
+
+func identityEntries(data, relative string, problems []string) ([]identityEntry, []string) {
+	var entries []identityEntry
+	inPackages := false
+	for number, line := range strings.Split(data, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, " ") {
+			inPackages = trimmed == identityListKey
+			continue
+		}
+		if !inPackages {
+			continue
+		}
+		key, value, found := strings.Cut(strings.TrimPrefix(trimmed, "- "), ":")
+		if !found {
+			problems = append(problems, fmt.Sprintf("%s:%d is not a key and value", relative, number+1))
+			continue
+		}
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if strings.HasPrefix(trimmed, "- ") {
+			if key != "id" {
+				problems = append(problems, fmt.Sprintf("%s:%d starts an entry with %q; every entry starts with id", relative, number+1, key))
+				continue
+			}
+			entries = append(entries, identityEntry{id: value})
+			continue
+		}
+		if len(entries) == 0 {
+			problems = append(problems, fmt.Sprintf("%s:%d sets %q before any entry started", relative, number+1, key))
+			continue
+		}
+		entry := &entries[len(entries)-1]
+		switch key {
+		case "kind":
+			entry.kind = value
+		case "path":
+			entry.path = value
+		case "context":
+			entry.context = value
+		default:
+			problems = append(problems, fmt.Sprintf("%s:%d has unknown field %q", relative, number+1, key))
+		}
+	}
+	if len(entries) == 0 {
+		problems = append(problems, fmt.Sprintf("%s declares no package under %q", relative, identityListKey))
+	}
+	return entries, problems
 }
 
 func architectureNeedsDepguard(identity packageIdentity) bool {

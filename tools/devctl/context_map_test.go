@@ -27,20 +27,33 @@ func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) s
 	return root
 }
 
-const contextMapADRFixture = `## Context 對照表
-
-| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
-| --- | --- | --- | --- | --- |
-| Skill 試跑執行／Run Orchestration | Core | run | run | RUN |
-| Skill 接納與信任／Trust & Supply Chain | Core | ingest | ingest | SKILL |
-| — | Shared Kernel | skillpkg | shared/skillpkg | — |
-| — | Generic | audit | foundation/observability/audit | — |
-| — | Generic | queue | foundation/messaging/queue | — |
-| — | Generic | platform | foundation/persistence/db/gen | — |
-| — | Generic | apiserver | entrypoint/api/apiserver | — |
-| — | Generic | api | entrypoint/api/gen | — |
-
-## Governance
+const contextMapADRFixture = `packages:
+  - id: run
+    kind: Core
+    path: run
+    context: Skill 試跑執行／Run Orchestration
+  - id: ingest
+    kind: Core
+    path: ingest
+    context: Skill 接納與信任／Trust & Supply Chain
+  - id: skillpkg
+    kind: Shared Kernel
+    path: shared/skillpkg
+  - id: audit
+    kind: Generic
+    path: foundation/observability/audit
+  - id: queue
+    kind: Generic
+    path: foundation/messaging/queue
+  - id: platform
+    kind: Generic
+    path: foundation/persistence/db/gen
+  - id: apiserver
+    kind: Generic
+    path: entrypoint/api/apiserver
+  - id: api
+    kind: Generic
+    path: entrypoint/api/gen
 `
 
 const contextMapLintFixture = `      depguard:
@@ -69,7 +82,7 @@ func TestContextMapProblems(t *testing.T) {
 	t.Parallel()
 
 	flatPackages := []string{"run", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
-	nestedADR := strings.Replace(contextMapADRFixture, "| run | run | RUN |", "| run | trial/execution | RUN |", 1)
+	nestedADR := strings.Replace(contextMapADRFixture, "    path: run\n", "    path: trial/execution\n", 1)
 	nestedLint := strings.Replace(contextMapLintFixture, "**/internal/run/**", "**/internal/trial/execution/**", 1)
 	nestedPackages := []string{"trial/execution", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
 
@@ -101,21 +114,21 @@ func TestContextMapProblems(t *testing.T) {
 		},
 		{
 			name:     "overlapping selectors are rejected",
-			adr:      strings.Replace(nestedADR, "\n## Governance", "\n| 執行證據／Run Trace | Supporting | trace | trial/* | TRACE |\n\n## Governance", 1),
+			adr:      nestedADR + "  - id: trace\n    kind: Supporting\n    path: trial/*\n    context: 執行證據／Run Trace\n",
 			lint:     nestedLint,
 			packages: nestedPackages,
 			want:     `internal paths "trial/execution" (run) and "trial/*" (trace) overlap`,
 		},
 		{
 			name:     "duplicate Boundary ID is rejected",
-			adr:      strings.Replace(contextMapADRFixture, "\n## Governance", "\n| 重複 | Core | run | duplicate | RUN |\n\n## Governance", 1),
+			adr:      contextMapADRFixture + "  - id: run\n    kind: Core\n    path: duplicate\n    context: 重複\n",
 			lint:     contextMapLintFixture,
 			packages: flatPackages,
 			want:     `declares Boundary ID "run" twice`,
 		},
 		{
 			name:     "duplicate path is rejected",
-			adr:      strings.Replace(contextMapADRFixture, "\n## Governance", "\n| 重複 | Core | trace | run | TRACE |\n\n## Governance", 1),
+			adr:      contextMapADRFixture + "  - id: trace\n    kind: Core\n    path: run\n    context: 重複\n",
 			lint:     contextMapLintFixture,
 			packages: flatPackages,
 			want:     `declares internal path "run" twice (run and trace)`,
@@ -145,7 +158,7 @@ func TestContextMapProblems(t *testing.T) {
 			adr:      nestedADR,
 			lint:     strings.Replace(nestedLint, "              - \"!$test\"", "              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
 			packages: nestedPackages,
-			want:     "guards apps/platform/internal/ghost/nested but no context-map Boundary ID declares that path",
+			want:     "guards apps/platform/internal/ghost/nested but no Boundary ID in " + contextMapDoc + " declares that path",
 		},
 	}
 

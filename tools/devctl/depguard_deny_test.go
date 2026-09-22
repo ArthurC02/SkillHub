@@ -7,19 +7,28 @@ import (
 	"testing"
 )
 
-const denyADRTable = `## Context 對照表
+const denyIdentities = `packages:
+  - id: identity
+    kind: Core
+    path: creator/workspace
+    context: 創作者帳戶與工作區／Identity & Workspace
+  - id: catalog
+    kind: Core
+    path: skill/discovery
+    context: Skill 探索／Catalog & Discovery
+  - id: trace
+    kind: Supporting
+    path: trial/evidence
+    context: 執行證據／Run Trace
+  - id: apiserver
+    kind: Generic
+    path: entrypoint/api/apiserver
+  - id: objreconcile
+    kind: Generic
+    path: foundation/storage/objreconcile
+`
 
-| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
-| --- | --- | --- | --- | --- |
-| 創作者帳戶與工作區／Identity & Workspace | Core | identity | creator/workspace | WS |
-| Skill 探索／Catalog & Discovery | Core | catalog | skill/discovery | DISC |
-| 執行證據／Run Trace | Supporting | trace | trial/evidence | TRACE |
-| — | Generic | apiserver | entrypoint/api/apiserver | — |
-| — | Generic | objreconcile | foundation/storage/objreconcile | — |
-
-## 其他
-
-## 跨 context import 白名單
+const denyADRTable = `## 跨 context import 白名單
 
 | 依賴 | 判定 | 處置 |
 | --- | --- | --- |
@@ -51,11 +60,12 @@ func denyConfig() string {
 		rule("objreconcile", "**/internal/foundation/storage/objreconcile/**")
 }
 
-func writeDenyFixture(t *testing.T, adr, lint string) string {
+func writeDenyFixture(t *testing.T, adr, lint string, alsoDeclared ...string) string {
 	t.Helper()
 	root := t.TempDir()
 	for relative, contents := range map[string]string{
-		contextMapDoc:                 adr,
+		contextMapDoc:                 denyIdentities + strings.Join(alsoDeclared, ""),
+		contextWhitelistDoc:           adr,
 		"apps/platform/.golangci.yml": lint,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(relative))
@@ -153,12 +163,10 @@ func TestDepguardDenyStillChecksARuleWithDuplicateSelectors(t *testing.T) {
 
 func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
 	t.Parallel()
-	adr := strings.Replace(denyADRTable,
-		"| — | Generic | objreconcile | foundation/storage/objreconcile | — |",
-		"| — | Generic | objreconcile | foundation/storage/objreconcile | — |\n"+
-			"| — | Generic | worker | entrypoint/worker | — |\n"+
-			"| — | Generic | audit | foundation/observability/audit | — |\n"+
-			"| — | Shared Kernel | skillpkg | shared/skillpkg | — |", 1)
+	adr := denyADRTable
+	alsoDeclared := "  - id: worker\n    kind: Generic\n    path: entrypoint/worker\n" +
+		"  - id: audit\n    kind: Generic\n    path: foundation/observability/audit\n" +
+		"  - id: skillpkg\n    kind: Shared Kernel\n    path: shared/skillpkg\n"
 	bounded := []string{"creator/workspace", "skill/discovery", "trial/evidence"}
 	composition := []string{"entrypoint/api/apiserver", "entrypoint/worker", "foundation/storage/objreconcile"}
 	sharedDenied := append(append([]string{}, bounded...), composition...)
@@ -176,7 +184,7 @@ func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
 		identityRule + catalogRule +
 		traceRule
 	config := coreConfig + sharedRule + genericRule + objRule
-	if problems := depguardDenyProblems(writeDenyFixture(t, adr, config)); len(problems) != 0 {
+	if problems := depguardDenyProblems(writeDenyFixture(t, adr, config, alsoDeclared)); len(problems) != 0 {
 		t.Fatalf("complete prose-governed rules were rejected: %v", problems)
 	}
 
@@ -191,7 +199,7 @@ func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			mutated := strings.Replace(config, test.old, test.replacement, 1)
-			problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, mutated)), "\n")
+			problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, mutated, alsoDeclared)), "\n")
 			if !strings.Contains(problems, test.want) {
 				t.Fatalf("want %q after mutation, got %s", test.want, problems)
 			}
@@ -201,7 +209,7 @@ func TestDepguardDenyChecksProseGovernedRules(t *testing.T) {
 	misplaced := strings.Replace(config,
 		"            - \"**/internal/skill/discovery/**\"\n            - \"!$test\"",
 		"            - \"**/internal/skill/discovery/**\"\n            - \"**/internal/foundation/observability/audit/**\"\n            - \"!$test\"", 1)
-	if problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, misplaced)), "\n"); !strings.Contains(problems, `rule "catalog" unexpectedly selects "audit"`) {
+	if problems := strings.Join(depguardDenyProblems(writeDenyFixture(t, adr, misplaced, alsoDeclared)), "\n"); !strings.Contains(problems, `rule "catalog" unexpectedly selects "audit"`) {
 		t.Fatalf("moving a Generic selector under a context rule was accepted: %s", problems)
 	}
 }

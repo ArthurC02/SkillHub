@@ -7,15 +7,24 @@ import (
 	"testing"
 )
 
-const serviceConstructionADR = `## Context 對照表
-
-| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
-| --- | --- | --- | --- | --- |
-| Evaluation | Core | eval | trial/improvement | EVAL |
-| Run Trace | Supporting | trace | trial/evidence | TRACE |
-| — | Generic | apiserver | entrypoint/api/apiserver | — |
-| — | Generic | api | entrypoint/api/gen | — |
-| — | Generic | worker | entrypoint/worker | — |
+const serviceConstructionADR = `packages:
+  - id: eval
+    kind: Core
+    path: trial/improvement
+    context: Evaluation
+  - id: trace
+    kind: Supporting
+    path: trial/evidence
+    context: Run Trace
+  - id: apiserver
+    kind: Generic
+    path: entrypoint/api/apiserver
+  - id: api
+    kind: Generic
+    path: entrypoint/api/gen
+  - id: worker
+    kind: Generic
+    path: entrypoint/worker
 `
 
 func writeServiceConstructionFixture(t *testing.T, relative, source string) string {

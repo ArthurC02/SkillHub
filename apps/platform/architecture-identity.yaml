@@ -1,0 +1,110 @@
+# One architecture identity per Go package under apps/platform/internal.
+# Core and Supporting name a Bounded Context; Shared Kernel and Generic do not.
+# A package directory must match exactly one path here, and paths may not overlap.
+packages:
+  - id: identity
+    kind: Core
+    path: creator/workspace
+    context: 創作者帳戶與工作區／Identity & Workspace
+  - id: creation
+    kind: Core
+    path: creator/creation
+    context: 互動 Skill 創作／Skill Creation
+  - id: catalog
+    kind: Core
+    path: skill/discovery
+    context: Skill 探索／Catalog & Discovery
+  - id: registry
+    kind: Core
+    path: skill/library
+    context: Skill 資產與版本歷史／Skill Registry & Versioning
+  - id: ingest
+    kind: Core
+    path: skill/admission
+    context: Skill 接納與信任／Trust & Supply Chain
+  - id: testlab
+    kind: Core
+    path: trial/design
+    context: 試跑情境設計／Test Lab
+  - id: run
+    kind: Core
+    path: trial/execution
+    context: Skill 試跑執行／Run Orchestration
+  - id: eval
+    kind: Core
+    path: trial/improvement
+    context: 成果判定與改善／Evaluation & Improvement
+  - id: packaging
+    kind: Core
+    path: skill/delivery
+    context: Skill 交付與安裝／Packaging & Distribution
+  - id: trace
+    kind: Supporting
+    path: trial/evidence
+    context: 執行證據／Run Trace
+  - id: policy
+    kind: Supporting
+    path: product/entitlements
+    context: 創作者使用權益與資料生命週期／Policy & Usage
+  - id: analytics
+    kind: Supporting
+    path: product/learning
+    context: 創作者旅程學習／Product Analytics
+  - id: credit
+    kind: Supporting
+    path: creator/credit
+    context: 創作者 Credit 帳務／Credit Ledger
+  - id: skillpkg
+    kind: Shared Kernel
+    path: shared/skillpkg
+  - id: audit
+    kind: Generic
+    path: foundation/observability/audit
+  - id: outbox
+    kind: Generic
+    path: foundation/messaging/outbox
+  - id: objreconcile
+    kind: Generic
+    path: foundation/storage/objreconcile
+  - id: llmclient
+    kind: Generic
+    path: foundation/integration/llmclient
+  - id: modelbudget
+    kind: Generic
+    path: foundation/integration/modelbudget
+  - id: queue
+    kind: Generic
+    path: foundation/messaging/queue
+  - id: objstore
+    kind: Generic
+    path: foundation/storage/objstore
+  - id: metrics
+    kind: Generic
+    path: foundation/observability/metrics
+  - id: partition
+    kind: Generic
+    path: foundation/persistence/partition
+  - id: pgconv
+    kind: Generic
+    path: foundation/persistence/pgconv
+  - id: envx
+    kind: Generic
+    path: foundation/runtime/envx
+  - id: httpx
+    kind: Generic
+    path: foundation/runtime/httpx
+  - id: platform
+    kind: Generic
+    path: foundation/persistence/db/gen
+  - id: apiserver
+    kind: Generic
+    path: entrypoint/api/apiserver
+  - id: api
+    kind: Generic
+    path: entrypoint/api/gen
+  - id: worker
+    kind: Generic
+    path: entrypoint/worker
+  - id: wiring
+    kind: Generic
+    path: entrypoint/wiring

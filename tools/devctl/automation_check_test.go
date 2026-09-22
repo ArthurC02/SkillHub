@@ -107,7 +107,8 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 		"見 [規則](./docs/rules/missing.md)。\n")
 
 	write("apps/platform/.golangci.yml", "version: \"2\"\n")
-	write(contextMapDoc, "# Context map\n\n沒有對照表，也沒有白名單。\n")
+	write(contextMapDoc, "packages:\n")
+	write(contextWhitelistDoc, "# Context map\n\n沒有白名單。\n")
 
 	write(genDirRelative+"/fake.sql.go", `package gen
 
