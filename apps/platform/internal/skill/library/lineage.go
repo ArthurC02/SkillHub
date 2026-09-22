@@ -45,3 +45,16 @@ func inheritsScan(fork gen.ListSkillsRow, ancestor scanAncestor, catalogues []pg
 		!ancestor.DeletedAt.Valid && !ancestor.TakedownAt.Valid &&
 		ancestor.ContentHash == fork.NewestContentHash
 }
+
+func scanVerificationOf(row gen.ListSkillsRow, ancestor scanAncestor, inherits bool) ScanVerification {
+	switch {
+	case !row.VerifiedAt.Valid:
+		return ScanVerification{State: ScanNotApplicable}
+	case inherits:
+		return ScanVerification{State: ScanInherited, ScannedAt: ancestor.CreatedAt, AncestorName: ancestor.Name}
+	case !row.VerifiedSourceID.Valid:
+		return ScanVerification{State: ScanNotMeasured}
+	default:
+		return ScanVerification{State: ScanMeasured, ScannedAt: row.VerifiedAt}
+	}
+}

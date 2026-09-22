@@ -6,15 +6,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 	at := pgtype.Timestamptz{Time: time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC), Valid: true}
-	src := pgtype.UUID{Valid: true}
-
-	imported := verificationOf(gen.ListSkillsRow{VerifiedAt: at, VerifiedSourceID: src}, scanAncestor{}, false)
+	imported := verificationOf(ScanVerification{State: ScanMeasured, ScannedAt: at})
 	if imported.Value != "scanned" || imported.ScannedAt == nil {
 		t.Fatalf("an imported version is the one case with a real scan time: %+v", imported)
 	}
@@ -22,7 +18,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 		t.Errorf("scanned_at = %q", *imported.ScannedAt)
 	}
 
-	forked := verificationOf(gen.ListSkillsRow{VerifiedAt: at}, scanAncestor{}, false)
+	forked := verificationOf(ScanVerification{State: ScanNotMeasured})
 	if forked.Value != "not_measured" {
 		t.Errorf("a fork was measured nowhere in this workspace, got %q", forked.Value)
 	}
@@ -31,7 +27,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 	}
 
 	older := pgtype.Timestamptz{Time: time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC), Valid: true}
-	inh := verificationOf(gen.ListSkillsRow{VerifiedAt: at}, scanAncestor{Name: "PDF Summariser", CreatedAt: older}, true)
+	inh := verificationOf(ScanVerification{State: ScanInherited, AncestorName: "PDF Summariser", ScannedAt: older})
 	if inh.Value != "scanned" || inh.ScannedAt == nil {
 		t.Fatalf("identical bytes carry the ancestor's scan: %+v", inh)
 	}
@@ -45,7 +41,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 		t.Errorf("inheriting silently is forbidden; the ancestor is unnamed: %q", inh.Note)
 	}
 
-	empty := verificationOf(gen.ListSkillsRow{}, scanAncestor{}, false)
+	empty := verificationOf(ScanVerification{State: ScanNotApplicable})
 	if empty.Value != "not_applicable" {
 		t.Errorf("no version means nothing to scan, got %q", empty.Value)
 	}

@@ -95,6 +95,25 @@ func toSkillResponse(s gen.Skill) skillResponse {
 	return out
 }
 
+func toSkillResponseFromSkill(s Skill) skillResponse {
+	out := skillResponse{
+		SkillID: pgconv.UUIDString(s.ID), Name: s.Name, Redistribution: s.Redistribution,
+		AccessRestriction: s.AccessRestriction,
+	}
+	if s.Summary != nil {
+		out.Summary = *s.Summary
+	}
+	if s.ForkedFromSkillID.Valid {
+		value := pgconv.UUIDString(s.ForkedFromSkillID)
+		out.ForkedFromSkillID = &value
+	}
+	if s.ForkedFromVersionID.Valid {
+		value := pgconv.UUIDString(s.ForkedFromVersionID)
+		out.ForkedFromVersionID = &value
+	}
+	return out
+}
+
 func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -310,78 +329,26 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const listSkillsLimit = 100
-	catalogs, err := h.Svc.catalogWorkspaceIDs(r.Context(), h.Svc.Pool)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
-		return
-	}
-	q := gen.New(h.Svc.Pool)
-	rows, err := q.ListSkills(r.Context(), gen.ListSkillsParams{
-		WorkspaceID: ws.ID, RowLimit: listSkillsLimit + 1, RowOffset: 0,
-	})
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
-		return
-	}
-	truncated := len(rows) > listSkillsLimit
-
-	var total int64
-	if len(rows) > 0 {
-		total = rows[0].TotalMatches
-	}
-	if truncated {
-		rows = rows[:listSkillsLimit]
-	}
-	scanAncestors, err := readScanAncestors(r.Context(), q, rows, catalogs)
+	listing, err := h.Svc.Listing(r.Context(), ws.ID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
 	}
 
-	if h.Svc.SkillRisks == nil || h.Svc.CatalogSkillRisks == nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
-		return
-	}
-	ids := make([]pgtype.UUID, 0, len(rows))
-
-	ancestors := make([]pgtype.UUID, 0, len(rows))
-	for _, row := range rows {
-		ids = append(ids, row.Skill.ID)
-		if ancestor, ok := scanAncestors[row.Skill.ID]; ok {
-			ancestors = append(ancestors, ancestor.SkillID)
-		}
-	}
-	risks, err := h.Svc.SkillRisks(r.Context(), ws.ID, ids)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
-		return
-	}
-	inherited, err := h.Svc.CatalogSkillRisks(r.Context(), ancestors)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
-		return
-	}
-
-	out := make([]ownSkillResponse, 0, len(rows))
-	for _, row := range rows {
-		risk := risks[pgconv.UUIDString(row.Skill.ID)]
-		ancestor, inheritsScan := scanAncestors[row.Skill.ID]
-		if inheritsScan {
-			risk = inherited[pgconv.UUIDString(ancestor.SkillID)]
-		}
+	out := make([]ownSkillResponse, 0, len(listing.Skills))
+	for _, row := range listing.Skills {
 		out = append(out, ownSkillResponse{
-			skillResponse: toSkillResponse(row.Skill),
-			Risk:          risk,
-			Verification:  verificationOf(row, ancestor, inheritsScan),
+			skillResponse: toSkillResponseFromSkill(row.Skill),
+			Risk:          row.Risk,
+			Verification:  verificationOf(row.Verification),
 		})
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, skillsResponse{
 		Skills:    out,
-		Limit:     listSkillsLimit,
-		Truncated: truncated,
-		Total:     total,
+		Limit:     skillListingLimit,
+		Truncated: listing.Truncated,
+		Total:     listing.Total,
 	})
 }
 
@@ -399,26 +366,25 @@ type skillVerification struct {
 	ScannedAt *string `json:"scanned_at"`
 }
 
-func verificationOf(row gen.ListSkillsRow, ancestor scanAncestor, inheritsScan bool) skillVerification {
-	switch {
-	case !row.VerifiedAt.Valid:
+func verificationOf(scan ScanVerification) skillVerification {
+	switch scan.State {
+	case ScanNotApplicable:
 		return skillVerification{
 			Value: "not_applicable",
 			Label: "不適用",
 			Note:  "這個 Skill 還沒有任何版本,沒有可掃描的內容。",
 		}
-	case inheritsScan:
-
-		at := ancestor.CreatedAt.Time.UTC().Format(time.RFC3339)
+	case ScanInherited:
+		at := scan.ScannedAt.Time.UTC().Format(time.RFC3339)
 		return skillVerification{
 			Value: "scanned",
 			Label: "已掃描（來源）",
-			Note: "這個版本是 Fork 進來的複本,內容雜湊與來源「" + ancestor.Name +
+			Note: "這個版本是 Fork 進來的複本,內容雜湊與來源「" + scan.AncestorName +
 				"」相同,所以沿用來源匯入時的靜態掃描結果。時間是來源掃描的時間,不是 Fork 的時間;" +
 				"相容性與試跑結果不沿用,那些量的是內容在某個環境下的行為。",
 			ScannedAt: &at,
 		}
-	case !row.VerifiedSourceID.Valid:
+	case ScanNotMeasured:
 
 		return skillVerification{
 			Value: "not_measured",
@@ -427,7 +393,7 @@ func verificationOf(row gen.ListSkillsRow, ancestor scanAncestor, inheritsScan b
 				"(已下架、不在公開目錄,或內容已經不同),平台也沒有在你的工作區重跑。",
 		}
 	default:
-		at := row.VerifiedAt.Time.UTC().Format(time.RFC3339)
+		at := scan.ScannedAt.Time.UTC().Format(time.RFC3339)
 		return skillVerification{
 			Value:     "scanned",
 			Label:     "已掃描",

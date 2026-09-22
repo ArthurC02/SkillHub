@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -67,6 +68,91 @@ type LineageStep struct {
 
 type OldestVersion struct {
 	SourceID pgtype.UUID
+}
+
+type SkillListing struct {
+	Skills    []ListedSkill
+	Total     int64
+	Truncated bool
+}
+
+type ListedSkill struct {
+	Skill        Skill
+	Risk         json.RawMessage
+	Verification ScanVerification
+}
+
+type ScanVerification struct {
+	State        ScanState
+	ScannedAt    pgtype.Timestamptz
+	AncestorName string
+}
+
+type ScanState string
+
+const (
+	ScanNotApplicable ScanState = "not_applicable"
+	ScanNotMeasured   ScanState = "not_measured"
+	ScanMeasured      ScanState = "measured"
+	ScanInherited     ScanState = "inherited"
+)
+
+const skillListingLimit = 100
+
+func (s *Service) Listing(ctx context.Context, workspaceID pgtype.UUID) (SkillListing, error) {
+	catalogs, err := s.catalogWorkspaceIDs(ctx, s.Pool)
+	if err != nil {
+		return SkillListing{}, err
+	}
+	q := gen.New(s.Pool)
+	rows, err := q.ListSkills(ctx, gen.ListSkillsParams{
+		WorkspaceID: workspaceID, RowLimit: skillListingLimit + 1,
+	})
+	if err != nil {
+		return SkillListing{}, err
+	}
+	listing := SkillListing{Truncated: len(rows) > skillListingLimit}
+	if len(rows) > 0 {
+		listing.Total = rows[0].TotalMatches
+	}
+	if listing.Truncated {
+		rows = rows[:skillListingLimit]
+	}
+	ancestors, err := readScanAncestors(ctx, q, rows, catalogs)
+	if err != nil {
+		return SkillListing{}, err
+	}
+	if s.SkillRisks == nil || s.CatalogSkillRisks == nil {
+		return SkillListing{}, errors.New("registry: skill risk reads not injected")
+	}
+	ids := make([]pgtype.UUID, 0, len(rows))
+	ancestorIDs := make([]pgtype.UUID, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.Skill.ID)
+		if ancestor, ok := ancestors[row.Skill.ID]; ok {
+			ancestorIDs = append(ancestorIDs, ancestor.SkillID)
+		}
+	}
+	risks, err := s.SkillRisks(ctx, workspaceID, ids)
+	if err != nil {
+		return SkillListing{}, err
+	}
+	inherited, err := s.CatalogSkillRisks(ctx, ancestorIDs)
+	if err != nil {
+		return SkillListing{}, err
+	}
+	listing.Skills = make([]ListedSkill, 0, len(rows))
+	for _, row := range rows {
+		ancestor, inherits := ancestors[row.Skill.ID]
+		risk := risks[pgconv.UUIDString(row.Skill.ID)]
+		if inherits {
+			risk = inherited[pgconv.UUIDString(ancestor.SkillID)]
+		}
+		listing.Skills = append(listing.Skills, ListedSkill{
+			Skill: skillDTO(row.Skill), Risk: risk, Verification: scanVerificationOf(row, ancestor, inherits),
+		})
+	}
+	return listing, nil
 }
 
 func SkillByName(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name string) (Skill, bool, error) {
