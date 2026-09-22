@@ -51,12 +51,6 @@
 - Core、Supporting、Shared Kernel 與 Generic 都要求 depguard coverage。例外是組裝套件（`apiserver`、`worker`、`wiring`，名單是 `tools/devctl` 的 `compositionRoots`）與 generated transport `entrypoint/api/gen`。
 - Generic 列不得包含領域規則：`audit` 與 `outbox` 是交易內外送事件的機制；`llmclient` 與 `run` 的 provider gateway 是防腐層；`modelbudget` 只存一個秒數與是誰設的，哪些 kind 存在、值可以低到哪裡由呼叫端的 context 決定；`foundation/*`（含 generated persistence）是純技術基座；`entrypoint/*` 是表現層與組裝。
 
-## 核心術語
-
-各 Context 的名稱說明它負責什麼，這裡定義它經手的東西是什麼。
-
-**Run**：一次對單一 Skill Version、針對單一凍結 Test Case 快照所請求的試跑，屬於某個 Workspace，經由一到多次 attempt 在 Sandbox Provider 上執行，最終落在單一終態。一次 attempt 才是一次實際執行；Run 是可以重試的那個單位，改派換掉的是 attempt 與它的 Provider，不是 Run 的身分。
-
 ## 跨 context import 白名單
 
 「A → B」表示 A import B。Generic 套件（`foundation/*`、`foundation/persistence/db/gen`、`entrypoint/api/gen`）與 Shared Kernel `shared/skillpkg` 對所有 context 開放，不列。機器版是 `apps/platform/.golangci.yml` 的 depguard 規則：任何跨 context 的新 import，同一個 commit 同時改這張表與 depguard。測試檔（`_test.go`）不受規則約束。

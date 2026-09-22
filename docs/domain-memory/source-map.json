@@ -495,12 +495,13 @@
     "apps/platform/internal/skill/library/doc.go",
     "apps/platform/internal/trial/execution/doc.go",
     "apps/platform/internal/trial/execution/preflight.go",
+    "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
     "docs/development/platform-context-map.md",
     "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 6,
-    "total_bytes": 70761,
+    "files": 7,
+    "total_bytes": 86458,
     "oversized_files": [],
     "errors": []
   },
@@ -509,6 +510,7 @@
     "apps/platform/internal/skill/library/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/doc.go": "bounded_contexts",
     "apps/platform/internal/trial/execution/preflight.go": "unclassified",
+    "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "unclassified",
     "docs/development/platform-context-map.md": "architecture_guidance",
     "docs/development/platform-ddd-convergence.md": "architecture_guidance"
   },
@@ -518,10 +520,12 @@
       "apps/platform/internal/skill/library/doc.go": "7c2ed38bb0ef78b8b980dc4b57db356575eb6720",
       "apps/platform/internal/trial/execution/doc.go": "9feaa4cda0a38b34a100315274cf833692b24fd2",
       "apps/platform/internal/trial/execution/preflight.go": "22cc5ab2f4b85f02309ddcd71ddc08ed6503ee95",
-      "docs/development/platform-context-map.md": "9a8df6978bbae4006acd255866dd7026a91a43e9",
+      "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "ffb98c7f5112c1c24a443d79d4a03d69bb204f52",
+      "docs/development/platform-context-map.md": "043b8fe280470bef764b2926f2835d2a53ba5e0f",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
     "dirty_sources": [
+      " M docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
       " M docs/development/platform-context-map.md"
     ]
   },
@@ -547,9 +551,14 @@
       "digest": "sha256:f058965db2746e8aa0fdfd870bfdefdde5fc9d116a571a71a17c692124f2c342"
     },
     {
+      "path": "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
+      "file_count": 1,
+      "digest": "sha256:b4e05a789e44ff1a2a3b31f06ebecf5b985ed5361865a76664db23b26f86d898"
+    },
+    {
       "path": "docs/development/platform-context-map.md",
       "file_count": 1,
-      "digest": "sha256:7cc937a960f1341a8c29d3761a35ceca4e355b68dbb1adc94381e4412a75726f"
+      "digest": "sha256:544d74e2639155579c7fa6471929617f596497e07bb306480f054413fa0dc758"
     },
     {
       "path": "docs/development/platform-ddd-convergence.md",
@@ -558,5 +567,5 @@
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T08:47:34.517981Z"
+  "confirmed_at": "2026-09-22T09:17:31.213011Z"
 }

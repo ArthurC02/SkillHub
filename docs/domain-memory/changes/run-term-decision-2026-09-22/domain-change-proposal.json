@@ -1,0 +1,104 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-term-reviewed-decision",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-term-reviewed-decision",
+  "status": "verified",
+  "change_classification": "material",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "499549461544be0075c2a393d1d61b8c90ff86d5",
+    "registry_digest": "sha256:d701a890a4e9bebbd652bee0edc1b59e20e2ee4b350fc519b993639bd3d86665"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run owns lifecycle transitions.",
+    "evidence": [
+      "docs/development/platform-ddd-convergence.md:120"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "None. The term is defined inside the Run Context and crosses no boundary.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "docs/adr/ADR-003-run-orchestration-and-async-workflows.md:8"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The definition was placed in the Context Map only because the adr-citations gate refused a Registry citation to a decision document; that gate now exempts digest-backed Domain Memory records.",
+      "The Context Map is scheduled for removal once this Plugin matures, so a definition living there would take the record's evidence with it.",
+      "Git already keeps the history of a decision document, which is the property the definition needs."
+    ],
+    "decision": "Move the definition into the decision that owns Run orchestration and repoint the record's evidence at it.",
+    "invariants_preserved": [
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Leave the definition in the Context Map: that document is going away.",
+      "Leave the record citing a line that no longer exists: verify-evidence reports it stale and a stale reviewed record is worse than a candidate."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "reviewed-term-needs-a-definition",
+      "definition-resolves-the-term",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "reviewed-term-needs-a-definition"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "run",
+        "name": "Run",
+        "definition": "One requested trial of a single Skill Version against a single frozen Test Case snapshot, within a Workspace, carried out through one or more attempts on a sandbox Provider, and ending in a single terminal status. An attempt is the execution; the Run is the retryable unit whose identity a reassignment does not change.",
+        "contexts": [
+          "run"
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
+            "lines": {
+              "start": 8,
+              "end": 8
+            },
+            "content_sha256": "sha256:ea7cdbec6e6ba130e12c5fd433a1a72fcee195902489852a8f5ff95b2c88457c",
+            "excerpt_sha256": "sha256:dc42b71eceff8e533c671d0f7cbce4203a3221566d25c99508d90727b124f67b",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T09:19:06.131820Z",
+      "scope": "Moving Run's definition into the decision that owns Run orchestration, replacing the approval that placed it in the Context Map",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "499549461544be0075c2a393d1d61b8c90ff86d5",
+        "registry_digest": "sha256:d701a890a4e9bebbd652bee0edc1b59e20e2ee4b350fc519b993639bd3d86665"
+      }
+    }
+  ],
+  "supersedes": "run-term-reviewed-context-map",
+  "submitted_at": "2026-09-22T09:19:05.921090Z",
+  "verified_at": "2026-09-22T09:19:06.379546Z"
+}

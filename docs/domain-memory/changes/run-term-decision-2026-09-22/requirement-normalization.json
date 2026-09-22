@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-term-reviewed-decision",
+  "status": "draft",
+  "intent": "Move the definition of Run to the decision document that owns it.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent that asks what a Run is receives a reviewed definition evidenced by the architecture decision that owns Run orchestration.",
+  "acceptance_criteria": [
+    {
+      "id": "run-term-cites-the-decision-that-owns-it",
+      "statement": "Run's definition is evidenced by the architecture decision that owns Run orchestration, which Git keeps the history of, rather than by a handbook scheduled for removal."
+    },
+    {
+      "id": "run-term-resolves-for-a-reader",
+      "statement": "A reader asking a whole sentence about Run receives that definition rather than nothing."
+    },
+    {
+      "id": "replacement-externally-verifiable",
+      "statement": "The approval that replaces the previous reviewed record names the approval it replaces, and is checkable outside the package."
+    }
+  ],
+  "candidate_terms": [
+    "Run"
+  ],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
+    "db/migrations/0004_test_lab_and_runs.sql",
+    "db/migrations/0016_run_orchestration.sql",
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ]
+}

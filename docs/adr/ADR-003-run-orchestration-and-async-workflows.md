@@ -5,6 +5,8 @@
 
 ## 背景
 
+Run 是一次對單一 Skill Version、針對單一凍結 Test Case 快照所請求的試跑，屬於某個 Workspace，經由一到多次 attempt 在 Sandbox Provider 上執行，最終落在單一終態。一次 attempt 才是一次實際執行；Run 是可以重試的那個單位，改派換掉的是 attempt 與它的 Provider，不是 Run 的身分。
+
 Skill Hub 需要在不綁死單一 Sandbox 供應商的前提下執行 Run，而 Skill 匯入、掃描、Run、評估、清理、打包、刪除這些流程都可能持續數秒到數分鐘、跨越資料庫、物件儲存、Provider 與外部服務——單一同步 HTTP Request 會造成逾時、不可恢復與難以追蹤的部分失敗。兩個問題共用同一個答案：一個不綁供應商的 Run 生命週期契約，加上以持久化狀態與事件驅動的非同步工作流程。
 
 ## 決策

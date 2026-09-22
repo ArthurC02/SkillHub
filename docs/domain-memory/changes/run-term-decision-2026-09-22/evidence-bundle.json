@@ -1,0 +1,87 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-term-reviewed-decision",
+  "proposal_id": "run-term-reviewed-decision",
+  "registry_revision": {
+    "observed_commit": "499549461544be0075c2a393d1d61b8c90ff86d5",
+    "registry_digest": "sha256:d701a890a4e9bebbd652bee0edc1b59e20e2ee4b350fc519b993639bd3d86665"
+  },
+  "approvals": [],
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "reviewed-term-needs-a-definition",
+    "mutated_protection": "the definition on a reviewed term",
+    "failure_evidence": "Staging the replacement with its definition removed made validate report 'vocabulary.json:run is reviewed but missing definition' and exit 1; run on a copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
+    "db/migrations/0004_test_lab_and_runs.sql",
+    "db/migrations/0016_run_orchestration.sql",
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate on a staged copy holding the replacement record reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5a9da351aea682303bc48bb5b46a2f9b92256f70232c7e0bd2b281f9af940c36",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence on that staged copy reported 6 of 6 citations current, including the decision line this record now cites",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:0b5d5952f524c735d545798c7c196ef690f9dda449241ed14f5d7b7933cf4519",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "reviewed-term-needs-a-definition",
+      "status": "passed",
+      "evidence": "validate on a staged copy with the definition removed reported 'vocabulary.json:run is reviewed but missing definition' and exited 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:db72685f4c791a0159772e31966802b16d697f728f7a0c254156b47b5f393e07",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "definition-resolves-the-term",
+      "status": "passed",
+      "evidence": "registry_tools.py resolve-terms --query 'What does a Run execute against?' returned the Run term with this definition",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:59623718557bd26697ad2535e136ae967ed51202634c2733748e85fa5e1969fa",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 31 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5ad19c6aca8380ac59c163f22ee6150b9a386405a2ddb6a52127f77d9a71fa2a",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "registry_tools.py governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:981f75fca230fb9dfb22dd8586a925080e633f8573e4bd1934b361ced2f770c7",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The definition is derived from the runs and run_attempts schema and the Run state machine; a later change to what a Run references makes the decision line and this record wrong together.",
+    "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled.",
+    "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
+  ]
+}
