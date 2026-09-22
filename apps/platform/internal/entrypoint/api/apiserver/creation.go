@@ -23,6 +23,16 @@ type creationHandler struct {
 	Credit    *credit.Service
 }
 
+type creationLimitsResponse struct {
+	MinBudgetCredits      int64 `json:"min_budget_credits"`
+	MaxBudgetCredits      int64 `json:"max_budget_credits"`
+	MaxSteps              int   `json:"max_steps"`
+	MaxToolCalls          int   `json:"max_tool_calls"`
+	CallTimeoutSeconds    int64 `json:"call_timeout_seconds"`
+	SessionTimeoutSeconds int64 `json:"session_timeout_seconds"`
+	RetentionSeconds      int64 `json:"retention_seconds"`
+}
+
 var errNoCreditRate = errors.New("creation: credit conversion unavailable")
 
 type snapshotCreditField struct {
@@ -304,15 +314,7 @@ func (h *creationHandler) Limits(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
 		return
 	}
-	httpx.WriteJSON(w, 200, struct {
-		MinBudgetCredits      int64 `json:"min_budget_credits"`
-		MaxBudgetCredits      int64 `json:"max_budget_credits"`
-		MaxSteps              int   `json:"max_steps"`
-		MaxToolCalls          int   `json:"max_tool_calls"`
-		CallTimeoutSeconds    int64 `json:"call_timeout_seconds"`
-		SessionTimeoutSeconds int64 `json:"session_timeout_seconds"`
-		RetentionSeconds      int64 `json:"retention_seconds"`
-	}{
+	httpx.WriteJSON(w, http.StatusOK, creationLimitsResponse{
 		MinBudgetCredits:      minCredits,
 		MaxBudgetCredits:      maxCredits,
 		MaxSteps:              l.MaxSteps,
