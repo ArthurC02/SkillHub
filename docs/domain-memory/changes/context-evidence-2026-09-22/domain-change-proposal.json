@@ -3,7 +3,7 @@
   "proposal_id": "contexts-cite-their-owners",
   "proposer": "domain-memory-agent",
   "requirement_id": "contexts-cite-their-owners",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "proposal_revision": 1,
   "base_registry_revision": {
@@ -142,5 +142,11 @@
   ],
   "supersedes": "run-registry-reviewed-facts-signed",
   "submitted_at": "2026-09-22T09:30:11.487437Z",
-  "verified_at": "2026-09-22T09:30:11.996687Z"
+  "verified_at": "2026-09-22T09:30:11.996687Z",
+  "finalized_at": "2026-09-22T09:30:35.562767Z",
+  "applied_at": "2026-09-22T09:30:36.031613Z",
+  "applied_registry_revision": {
+    "observed_commit": "8bb38e919b96e04f6d001b363d135ad7f0939c9d",
+    "registry_digest": "sha256:02045c835610cfee48ad89f007d8678d4f8aee4414098785d5de5050f9a503ca"
+  }
 }

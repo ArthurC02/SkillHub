@@ -497,12 +497,11 @@
     "apps/platform/internal/trial/execution/preflight.go",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
     "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
-    "docs/development/platform-context-map.md",
     "docs/development/platform-ddd-convergence.md"
   ],
   "source_policy_report": {
-    "files": 8,
-    "total_bytes": 100848,
+    "files": 7,
+    "total_bytes": 92479,
     "oversized_files": [],
     "errors": []
   },
@@ -513,7 +512,6 @@
     "apps/platform/internal/trial/execution/preflight.go": "unclassified",
     "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "unclassified",
     "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "unclassified",
-    "docs/development/platform-context-map.md": "architecture_guidance",
     "docs/development/platform-ddd-convergence.md": "architecture_guidance"
   },
   "git_state": {
@@ -524,7 +522,6 @@
       "apps/platform/internal/trial/execution/preflight.go": "22cc5ab2f4b85f02309ddcd71ddc08ed6503ee95",
       "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "23e06c6d9d6ee9f31b749562eb96a466b8da2f2c",
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "5dda42da5ea7f0f8ec4639c19797d18e83386092",
-      "docs/development/platform-context-map.md": "9a8df6978bbae4006acd255866dd7026a91a43e9",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
     "dirty_sources": []
@@ -561,16 +558,11 @@
       "digest": "sha256:dd2091809df80d7f1fa0e2f5c76bfa487586058d980fc9f0f47e761971211633"
     },
     {
-      "path": "docs/development/platform-context-map.md",
-      "file_count": 1,
-      "digest": "sha256:544d74e2639155579c7fa6471929617f596497e07bb306480f054413fa0dc758"
-    },
-    {
       "path": "docs/development/platform-ddd-convergence.md",
       "file_count": 1,
       "digest": "sha256:3291972d27b7303ed53febb94dd8b4925aa566184682718c1588f2f2be47ece0"
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T09:28:38.130974Z"
+  "confirmed_at": "2026-09-22T09:30:51.579339Z"
 }

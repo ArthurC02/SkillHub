@@ -19,7 +19,6 @@
       "apps/platform/internal/trial/execution/preflight.go",
       "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
       "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
-      "docs/development/platform-context-map.md",
       "docs/development/platform-ddd-convergence.md"
     ],
     "include": [

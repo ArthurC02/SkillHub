@@ -5,33 +5,43 @@
     {
       "id": "run",
       "name": "Run Orchestration",
-      "responsibility": "Owns Skill trial Run lifecycle.",
+      "responsibility": "Owns a Skill trial Run's lifecycle: its state machine, dispatch to a sandbox provider, following execution to completion, and cleanup.",
       "evidence": [
         {
-          "path": "docs/development/platform-context-map.md",
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
           "lines": {
-            "start": 24,
-            "end": 24
+            "start": 46,
+            "end": 46
           },
-          "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
-          "excerpt_sha256": "sha256:a69319447f424b26bc5c20e6ea791732555128d2988bf5749c4bf28efa31e0b1",
-          "source_kind": "unclassified"
+          "content_sha256": "sha256:47d38be926ecb794014d50a5da34de3ccde40ac704cddaa8df265bf164bdad06",
+          "excerpt_sha256": "sha256:b875ad4837d57a0657a6448fab0ee907257ded0b45eb1bce504acb894ab12ea1",
+          "source_kind": "decisions"
+        },
+        {
+          "path": "apps/platform/internal/trial/execution/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 2
+          },
+          "content_sha256": "sha256:9b94d8b60748c567792cd49862c965fbfc20a8147e0ea7ed975fe3e8050c6ba1",
+          "excerpt_sha256": "sha256:2258f2bf42ecea1fa2980f67aa7bbfbf667741dc3d73a979e210d503a3397149",
+          "source_kind": "bounded_contexts"
         }
       ],
       "review": {
-        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_id": "contexts-cite-their-owners",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T07:46:22.726462Z",
-            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "approved_at": "2026-09-22T09:30:11.718101Z",
+            "scope": "Moving both Context records off the Context Map onto the boundary decision and the owning packages' doc comments",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
-              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+              "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+              "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
             }
           }
         ]
@@ -40,34 +50,44 @@
     },
     {
       "id": "registry",
-      "name": "Skill Registry",
-      "responsibility": "Owns Skill assets and version history.",
+      "name": "Skill Registry & Versioning",
+      "responsibility": "Owns Skills and their immutable versions: identity, lineage, fork, delete, takedown, and the licensing and redistribution gates on a Skill's materials.",
       "evidence": [
         {
-          "path": "docs/development/platform-context-map.md",
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
           "lines": {
-            "start": 21,
-            "end": 21
+            "start": 46,
+            "end": 46
           },
-          "content_sha256": "sha256:a46e1cebf48e3f0f40efc55461d5e0d74fc026fba2fe37b9d023ffa6a7ba3c09",
-          "excerpt_sha256": "sha256:850bc6dfefea6a0f6d49ccb82f2ec9e756ac672b1d72afdfe6f8d985bdbd078e",
-          "source_kind": "unclassified"
+          "content_sha256": "sha256:47d38be926ecb794014d50a5da34de3ccde40ac704cddaa8df265bf164bdad06",
+          "excerpt_sha256": "sha256:b875ad4837d57a0657a6448fab0ee907257ded0b45eb1bce504acb894ab12ea1",
+          "source_kind": "decisions"
+        },
+        {
+          "path": "apps/platform/internal/skill/library/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 3
+          },
+          "content_sha256": "sha256:1064604c520ad5f1792d01cb7bd1cfac49c67c610afc06057b4a39be98965218",
+          "excerpt_sha256": "sha256:6065d37fd70c10f03121d0275a55300cba22ec04130f0072338b52ea7e6d0c4f",
+          "source_kind": "bounded_contexts"
         }
       ],
       "review": {
-        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_id": "contexts-cite-their-owners",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T07:46:22.726462Z",
-            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "approved_at": "2026-09-22T09:30:11.718101Z",
+            "scope": "Moving both Context records off the Context Map onto the boundary decision and the owning packages' doc comments",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
-              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+              "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+              "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
             }
           }
         ]

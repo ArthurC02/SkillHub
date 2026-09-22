@@ -82,5 +82,15 @@
     "aggregates/run still cites the DDD convergence handbook; that document is not scheduled for removal, but it is a handbook rather than a decision.",
     "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled, so deleting that document still loses the other eleven rows.",
     "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
-  ]
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "8bb38e919b96e04f6d001b363d135ad7f0939c9d",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "579cb4926189df7da986d806c16ca9d200a7980b",
+      "registry_digest": "sha256:693c6eaeb3a76985fb6ec0859b2c8c168a868d818da8595f5992df4248cf7d4d"
+    }
+  }
 }
