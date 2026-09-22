@@ -1,0 +1,96 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-registry-reviewed-facts-signed",
+  "proposal_id": "run-registry-reviewed-facts-signed",
+  "registry_revision": {
+    "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+    "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+  },
+  "approvals": [],
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "reviewed-record-needs-evidence",
+    "mutated_protection": "evidence on a reviewed record",
+    "failure_evidence": "Marking both contexts reviewed with evidence removed made validate report 'contexts.json:run is reviewed but lacks evidence' and the same for registry; run on a copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/development/platform-context-map.md",
+    "docs/development/platform-ddd-convergence.md",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/trial/execution/preflight.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence reported 7 of 7 citations current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2c392c59f0eddee9918b5fe53b742d7b07f5b2f62048050e7b5ada6cbc4bcb38",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 20 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb4aca72bbb3a75b2ef62e932d3413673b40e24e554a1bed412bc31cc4f20564",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "collaboration-is-registered",
+      "status": "passed",
+      "evidence": "registry_tools.py analyze-boundary --source-context registry --target-context run reported status known",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:7dc1d256ebf367af9d149f69cae597df6fc986e3724046b40145a38b202d6f65",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "fact-reader-contract-holds",
+      "status": "passed",
+      "evidence": "the same analyze-boundary run resolved registry-run-facts-v1 with producer registry, consumer run and synchronous delivery",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:7dc1d256ebf367af9d149f69cae597df6fc986e3724046b40145a38b202d6f65",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "registry_tools.py governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:2b6a3a27f1223e6cc1dc91aae0d304d9226040ff5508b5e8d4133a1df04930ec",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "reviewed-record-needs-evidence",
+      "status": "passed",
+      "evidence": "validate on a mutated copy reported 'reviewed but lacks evidence' for both contexts; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "Two of the seven candidate records stay candidates, so validate --require-reviewed still reports the Registry as not fully reviewed.",
+    "Five reviewed records cover two of the repository's Bounded Contexts; the rest of the context map remains unmodelled.",
+    "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
+  ]
+}

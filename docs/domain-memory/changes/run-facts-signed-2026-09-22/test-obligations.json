@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-registry-reviewed-facts-signed",
+  "proposal_id": "run-registry-reviewed-facts-signed",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-ownership-reviewed",
+      "expected_outcome": "The validator accepts every promoted record with its type-specific fields and evidence.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "run-ownership-reviewed",
+      "expected_outcome": "Every cited excerpt still hashes to what the record was written against.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "The audit chain validates from its recorded head, including the amendments that named the signer.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "collaboration-is-registered",
+      "source_type": "acceptance-criterion",
+      "source_id": "registry-run-collaboration-reviewed",
+      "expected_outcome": "The Registry-to-Run boundary resolves to a known collaboration carrying its interaction and contract.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry analyze-boundary"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "approval-externally-verifiable",
+      "expected_outcome": "Governance readiness reports ready with no blocks, so a signature can decide promotion.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry governance-readiness"
+    },
+    {
+      "id": "fact-reader-contract-holds",
+      "source_type": "contract",
+      "source_id": "registry-run-facts-v1",
+      "expected_outcome": "The contract resolves from the boundary query with its producer, consumers and synchronous delivery intact.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry analyze-boundary"
+    },
+    {
+      "id": "reviewed-record-needs-evidence",
+      "source_type": "invariant",
+      "source_id": "run-ownership-reviewed",
+      "expected_outcome": "A reviewed record stripped of its evidence is refused by the validator.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on a mutated copy"
+    }
+  ]
+}

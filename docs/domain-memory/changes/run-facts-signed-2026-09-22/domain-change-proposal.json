@@ -1,14 +1,14 @@
 {
   "format": "domain-change-proposal/v1",
-  "proposal_id": "run-registry-reviewed-facts",
+  "proposal_id": "run-registry-reviewed-facts-signed",
   "proposer": "domain-memory-agent",
-  "requirement_id": "run-registry-reviewed-facts",
-  "status": "superseded",
+  "requirement_id": "run-registry-reviewed-facts-signed",
+  "status": "verified",
   "change_classification": "material",
   "proposal_revision": 1,
   "base_registry_revision": {
-    "observed_commit": "6c6623f71bee15c015791217175c596cea2e05a0",
-    "registry_digest": "sha256:f3a40760674ae85bbac327830e69cbd619f44a3b40457bc013c4f20377d10e5e"
+    "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+    "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
   },
   "affected_contexts": [
     "run",
@@ -41,7 +41,7 @@
       "A coding Agent that cannot tell a reviewed fact from a draft treats both as optional.",
       "An earlier promotion of these same records was demoted because its approval was recorded inside the package instead of verified outside it."
     ],
-    "decision": "Promote only the five records whose claims were re-read against their cited sources, and carry a provider-verifiable approval.",
+    "decision": "Promote only the five records whose claims were re-read against their cited sources, under an approval carried by a signed commit.",
     "invariants_preserved": [
       "Run owns lifecycle transitions."
     ],
@@ -183,13 +183,24 @@
     "cross_context"
   ],
   "open_questions": [
-    "vocabulary/run defines Run as 'Skill trial lifecycle' while its cited line enumerates Run's commands rather than defining the term; it stays a candidate until a source that defines it is cited.",
-    "rules/run-lifecycle-owner restates the aggregate invariant verbatim, and an ownership statement is not the falsifiable business constraint a Rule asset is for; it stays a candidate pending a Design decision on whether the Rule should exist at all."
+    "vocabulary/run defines Run from a line that enumerates Run's commands rather than defining the term; it stays a candidate until a source that defines it is cited.",
+    "rules/run-lifecycle-owner restates the aggregate invariant verbatim, and an ownership statement is not the falsifiable business constraint a Rule asset is for; it stays a candidate pending a Design decision."
   ],
-  "approvals": [],
-  "submitted_at": "2026-09-22T06:45:03.919938Z",
-  "superseded_from_status": "submitted",
-  "superseded_at": "2026-09-22T07:44:16.108034Z",
-  "superseded_reason": "The governance policy moved to git-signed-commit after this proposal was submitted, and the Registry digest covers the policy, so the base revision it froze no longer describes the Registry it would apply to.",
-  "superseded_by": "run-registry-reviewed-facts-signed"
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T07:46:22.726462Z",
+      "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
+        "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+      }
+    }
+  ],
+  "supersedes": "run-registry-reviewed-facts",
+  "submitted_at": "2026-09-22T07:46:22.515478Z",
+  "verified_at": "2026-09-22T07:46:29.901510Z"
 }
