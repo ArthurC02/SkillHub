@@ -1895,6 +1895,84 @@ class DomainRegistryTest(unittest.TestCase):
             [entry["id"] for entry in self.retracted_contexts()], ["orders", "billing"]
         )
 
+    def placed_contexts(self, *placements: tuple[str, str]) -> list[str]:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": identifier,
+                    "name": identifier.title(),
+                    "responsibility": f"Own {identifier}.",
+                    "implementation_path": path,
+                }
+                for identifier, path in placements
+            ],
+        )
+        return validate(self.repo / "memory", self.repo, False)
+
+    def test_two_contexts_cannot_claim_the_same_code(self) -> None:
+        errors = self.placed_contexts(("orders", "sales/orders"), ("billing", "sales/orders"))
+        self.assertTrue(any("overlaps" in error for error in errors), errors)
+
+    def test_a_context_cannot_claim_code_inside_another_context(self) -> None:
+        errors = self.placed_contexts(("sales", "sales"), ("orders", "sales/orders"))
+        self.assertTrue(any("overlaps" in error for error in errors), errors)
+
+    def test_sibling_paths_that_share_a_name_prefix_do_not_overlap(self) -> None:
+        errors = self.placed_contexts(("orders", "sales/order"), ("ordering", "sales/ordering"))
+        self.assertEqual([error for error in errors if "overlaps" in error], [])
+
+    def test_a_context_subdomain_is_a_closed_set(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "subdomain": "strategic",
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, False)
+        self.assertTrue(any("unknown subdomain" in error for error in errors), errors)
+
+    def test_a_known_subdomain_is_accepted(self) -> None:
+        for subdomain in ("core", "supporting", "generic", "shared-kernel"):
+            with self.subTest(subdomain=subdomain):
+                self.seed(
+                    "contexts.json",
+                    [
+                        {
+                            "id": "orders",
+                            "name": "Orders",
+                            "responsibility": "Own orders.",
+                            "subdomain": subdomain,
+                        }
+                    ],
+                )
+                errors = validate(self.repo / "memory", self.repo, False)
+                self.assertEqual(
+                    [error for error in errors if "subdomain" in error], []
+                )
+
+    def test_requirement_prefixes_must_be_a_list_of_names(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "requirement_prefixes": "ORD",
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, False)
+        self.assertTrue(
+            any("requirement_prefixes" in error for error in errors), errors
+        )
+
     def test_a_candidate_record_is_named_by_reviewed_validation(self) -> None:
         self.two_contexts()
         errors = validate(self.repo / "memory", self.repo, True)

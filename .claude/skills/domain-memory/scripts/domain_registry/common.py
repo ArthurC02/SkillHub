@@ -79,6 +79,7 @@ PROPOSAL_STATUSES = {
 OBLIGATION_SOURCE_TYPES = {"acceptance-criterion", "rule", "contract", "invariant"}
 OBLIGATION_STATUSES = {"planned", "executed", "blocked"}
 REGISTRY_STATUSES = {"candidate", "reviewed", "deprecated", "superseded"}
+CONTEXT_SUBDOMAINS = {"core", "supporting", "generic", "shared-kernel"}
 REVIEW_REQUIRED_FIELDS = {
     "contexts.json": ("name", "responsibility", "review"),
     "vocabulary.json": ("name", "definition", "contexts", "review"),

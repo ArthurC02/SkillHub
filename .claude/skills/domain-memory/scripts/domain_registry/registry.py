@@ -7,6 +7,7 @@ from typing import Any
 from .common import (
     ASSET_FORMATS,
     ASSET_KEYS,
+    CONTEXT_SUBDOMAINS,
     REGISTRY_STATUSES,
     REVIEW_REQUIRED_FIELDS,
     load_json,
@@ -122,7 +123,53 @@ def _validate_asset_records(
                     )
             if require_reviewed and status != "reviewed":
                 errors.append(f"{name}:{entry.get('id')} is not reviewed")
+    errors.extend(_context_placement_problems(records.get("contexts.json", [])))
     return errors
+
+
+def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
+    errors: list[str] = []
+    claimed: dict[str, str] = {}
+    for entry in entries:
+        identifier = entry.get("id")
+        subdomain = entry.get("subdomain")
+        if subdomain is not None and subdomain not in CONTEXT_SUBDOMAINS:
+            errors.append(
+                f"contexts.json:{identifier} has an unknown subdomain: "
+                f"{subdomain!r} is not one of {', '.join(sorted(CONTEXT_SUBDOMAINS))}"
+            )
+        prefixes = entry.get("requirement_prefixes")
+        if prefixes is not None and (
+            not isinstance(prefixes, list)
+            or not all(isinstance(p, str) and p.strip() for p in prefixes)
+        ):
+            errors.append(
+                f"contexts.json:{identifier} requirement_prefixes must be "
+                "a list of non-empty strings"
+            )
+        path = entry.get("implementation_path")
+        if path is None:
+            continue
+        if not isinstance(path, str) or not path.strip():
+            errors.append(
+                f"contexts.json:{identifier} implementation_path must be a non-empty string"
+            )
+            continue
+        for other, owner in claimed.items():
+            if _paths_overlap(path, other):
+                errors.append(
+                    f"contexts.json:{identifier} claims {path}, which overlaps "
+                    f"{other} claimed by {owner}: code belongs to one Context"
+                )
+        claimed[path] = str(identifier)
+    return errors
+
+
+def _paths_overlap(one: str, other: str) -> bool:
+    first = one.strip("/").split("/")
+    second = other.strip("/").split("/")
+    shared = min(len(first), len(second))
+    return first[:shared] == second[:shared]
 
 
 def _validate_confirmed_absences(
