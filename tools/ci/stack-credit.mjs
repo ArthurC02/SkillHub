@@ -531,6 +531,55 @@ try {
   );
 
   if (
+    typeof createdTestCase.test_case_id === "string" &&
+    typeof uploadedDataset.dataset_id === "string"
+  ) {
+    await page.goto(`${base}/lab/test-cases/${createdTestCase.test_case_id}`, {
+      waitUntil: "networkidle",
+    });
+    const datasetRow = page
+      .locator(".file-tree > li")
+      .filter({ hasText: datasetName });
+    await datasetRow.locator('button[type="button"]').first().click();
+    const deleteDatasetResponse = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/test-cases/${createdTestCase.test_case_id}/datasets/${uploadedDataset.dataset_id}` &&
+          response.request().method() === "DELETE",
+      ),
+      datasetRow.locator("button.destructive").click(),
+    ]).then(([response]) => response);
+    const deletedDataset = await deleteDatasetResponse.json().catch(() => ({}));
+    await datasetRow.waitFor({ state: "detached" });
+    const datasetsAfterDelete = await (
+      await member.request.get(
+        `${base}/test-cases/${createdTestCase.test_case_id}/datasets`,
+      )
+    ).json();
+    check(
+      "the browser deletes a dataset and it no longer reads back",
+      deleteDatasetResponse.status() === 200 &&
+        deletedDataset.deleted === true &&
+        deletedDataset.dataset_id === uploadedDataset.dataset_id &&
+        !datasetsAfterDelete.datasets?.some(
+          (dataset) => dataset.dataset_id === uploadedDataset.dataset_id,
+        ),
+      JSON.stringify({
+        status: deleteDatasetResponse.status(),
+        deletedDataset,
+        datasetsAfterDelete,
+      }).slice(0, 500),
+    );
+  } else {
+    check(
+      "the browser deletes a dataset and it no longer reads back",
+      false,
+      "test case or dataset missing",
+    );
+  }
+
+  if (
     typeof imported.skill_id === "string" &&
     typeof imported.version_id === "string" &&
     typeof createdTestCase.test_case_id === "string"
