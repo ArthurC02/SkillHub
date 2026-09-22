@@ -83,5 +83,15 @@
     "The definition is derived from the runs and run_attempts schema and the Run state machine; a later change to what a Run references makes the decision line and this record wrong together.",
     "Two of the Context Map's thirteen Core and Supporting Contexts are modelled; the rest remain unmodelled.",
     "The pre-push hook that checks signatures is local, so a machine without it, or a push with --no-verify, does not enforce this policy."
-  ]
+  ],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "01d09449620c578c0063da2620865494a3742b82",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "499549461544be0075c2a393d1d61b8c90ff86d5",
+      "registry_digest": "sha256:d701a890a4e9bebbd652bee0edc1b59e20e2ee4b350fc519b993639bd3d86665"
+    }
+  }
 }
