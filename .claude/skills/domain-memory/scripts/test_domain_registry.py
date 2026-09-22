@@ -690,6 +690,55 @@ class DomainRegistryTest(unittest.TestCase):
             "existing='.githooks/pre-push.domain-memory-existing'", content
         )
 
+    def test_an_existing_hook_reading_stdin_does_not_disarm_the_check(self) -> None:
+        amend_policy(
+            self.repo / "memory", "authorized_signers", "SHA256:NOBODY", "A key."
+        )
+        amend_policy(self.repo / "memory", "review_trigger", "git-push", "On push.")
+        amend_policy(
+            self.repo / "memory",
+            "review_verifier",
+            "git-signed-commit",
+            "The maintainer signs.",
+        )
+        hooks = self.repo / ".git" / "hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        with open(hooks / "pre-push", "w", encoding="utf-8", newline="\n") as handle:
+            handle.write("#!/bin/sh\ncat >/dev/null\nexit 0\n")
+        (hooks / "pre-push").chmod(0o755)
+        hook = install_pre_push_hook(
+            self.repo / "memory",
+            self.repo,
+            Path(__file__).resolve().parent / "registry_tools.py",
+        )
+        (self.repo / "memory" / "registry" / "rules.json").write_text(
+            json.dumps({"format": "domain-rules/v1", "status": "candidate", "rules": []}),
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", "memory"], cwd=self.repo, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=T", "-c", "user.email=t@example.com",
+             "commit", "-qm", "unsigned domain memory change"],
+            cwd=self.repo, check=True,
+        )
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        parent = subprocess.run(
+            ["git", "rev-parse", "HEAD~1"], cwd=self.repo,
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        result = subprocess.run(
+            ["sh", str(hook), "origin", "https://example.com/repo.git"],
+            cwd=self.repo,
+            input=f"refs/heads/main {head} refs/heads/main {parent}\n",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
         self.assertEqual(

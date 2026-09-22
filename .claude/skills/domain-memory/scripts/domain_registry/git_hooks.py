@@ -68,15 +68,19 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         f"tool='{inside_repo(script, repo_root)}'\n"
         f"memory='{relative}'\n"
         f"existing='{inside_repo(backup, repo_root)}'\n"
-        "test ! -x \"$existing\" || \"$existing\" \"$@\" || exit 1\n"
-        "while read local_ref local_sha remote_ref remote_sha; do\n"
+        "refs=$(cat)\n"
+        "if [ -x \"$existing\" ]; then\n"
+        "  printf '%s\\n' \"$refs\" | \"$existing\" \"$@\" || exit 1\n"
+        "fi\n"
+        "printf '%s\\n' \"$refs\" | while read local_ref local_sha remote_ref remote_sha; do\n"
+        "  test -n \"$local_sha\" || continue\n"
         "  test \"$local_sha\" = \"0000000000000000000000000000000000000000\" && continue\n"
         "  range=$local_sha\n"
         "  test \"$remote_sha\" = \"0000000000000000000000000000000000000000\" || range=$remote_sha..$local_sha\n"
         "  for commit in $(git rev-list $range -- \"$memory\"); do\n"
         "    python \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --commit \"$commit\" || exit 1\n"
         "  done\n"
-        "done\n"
+        "done || exit 1\n"
     )
     with open(hook, "w", encoding="utf-8", newline="\n") as handle:
         handle.write(script_text)

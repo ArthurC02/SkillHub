@@ -3,12 +3,16 @@
 tool='.claude/skills/domain-memory/scripts/registry_tools.py'
 memory='docs/domain-memory'
 existing='.githooks/pre-push.domain-memory-existing'
-test ! -x "$existing" || "$existing" "$@" || exit 1
-while read local_ref local_sha remote_ref remote_sha; do
+refs=$(cat)
+if [ -x "$existing" ]; then
+  printf '%s\n' "$refs" | "$existing" "$@" || exit 1
+fi
+printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do
+  test -n "$local_sha" || continue
   test "$local_sha" = "0000000000000000000000000000000000000000" && continue
   range=$local_sha
   test "$remote_sha" = "0000000000000000000000000000000000000000" || range=$remote_sha..$local_sha
   for commit in $(git rev-list $range -- "$memory"); do
     python "$tool" verify-git-governance --registry-root "$memory" --repo-root . --commit "$commit" || exit 1
   done
-done
+done || exit 1
