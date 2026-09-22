@@ -1,0 +1,8 @@
+{
+  "name": "domain-memory",
+  "version": "0.1.0",
+  "description": "File-backed Domain Memory for continuous DDD-guided Agent development: read reviewed domain facts before coding, design governed changes, maintain the Registry, and review consistency after implementation.",
+  "author": { "name": "SkillHub" },
+  "keywords": ["ddd", "domain-model", "architecture", "code-review"],
+  "skills": "./skills/"
+}

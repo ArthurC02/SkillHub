@@ -4,7 +4,7 @@ Use the Plugin layout when the host supports a Plugin containing multiple Skills
 
 ```text
 domain-memory/
-├── .codex-plugin/plugin.json
+├── .claude-plugin/plugin.json
 ├── skills/domain-memory-read/SKILL.md
 ├── skills/domain-memory-design/SKILL.md
 ├── skills/domain-memory-maintain/SKILL.md
@@ -12,7 +12,9 @@ domain-memory/
 └── skills/domain-memory-implementation-hygiene/SKILL.md
 ```
 
-The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the four Skill directories share the references, templates, and scripts at the Plugin root.
+The Plugin is the complete Domain Memory capability. Its manifest points to `./skills/`, and the five Skill directories share the references, templates, and scripts at the Plugin root.
+
+The manifest carries packaging identity only: `name`, `version`, `description`, `author`, `keywords`, and the component pointers. Presentation and catalogue fields belong to the host or the marketplace entry, not here; a host ignores unknown fields, so anything it does not define is silent drift rather than configuration.
 
 When a host accepts only one standalone Skill, build a self-contained bundle first:
 

@@ -2,7 +2,7 @@
 
 Domain Memory is portable because its durable state is files in the repository and its behavior is Skills plus scripts. The Plugin manifest does not define `agents` or `subagents`; do not add either field.
 
-The host chooses execution. It may assign the four capabilities to separate agents when it supports delegation, or run them in one agent in this order:
+The host chooses execution. It may assign the four lifecycle capabilities to separate agents when it supports delegation, or run them in one agent in this order:
 
 1. `domain-memory-read` before implementation.
 2. `domain-memory-design` when the change affects a boundary, contract, invariant, event, or material business rule.
@@ -10,9 +10,11 @@ The host chooses execution. It may assign the four capabilities to separate agen
 4. `domain-memory-maintain` after implementation or source drift.
 5. `domain-memory-review` before relying on the maintained result.
 
+`domain-memory-implementation-hygiene` is a companion check on that sequence rather than a sixth step: the host runs it on a code change between Read or Design and the Review handoff. It reads the handoff and produces a routing decision, so a host that cannot delegate still runs it in the implementing context.
+
 Delegated work must use the same repository, Registry, evidence rules, and Git review boundary. A subagent may prepare a proposal or evidence, but it must not treat a candidate as reviewed or bypass the host's write and approval controls.
 
-Host-specific role files, model settings, concurrency, and orchestration belong outside the Plugin manifest. A host adapter may map these four capability names to its own agent mechanism without changing the Registry format or the Skills.
+Host-specific role files, model settings, concurrency, and orchestration belong outside the Plugin manifest. A host adapter may map these capability names to its own agent mechanism without changing the Registry format or the Skills.
 
 When delegation is available, pass the implementation handoff from Read or Design to the coding Agent as the task's reviewed context. The receiving Agent may choose different language-native constructs, but it must return evidence for the handoff's proof obligations. If the host cannot carry this handoff between agents, run the capabilities sequentially in one context and label the result unverified when the handoff is lost.
 
@@ -27,6 +29,7 @@ The lifecycle adapter should wire these command groups to its own events:
 | Brownfield repository before implementation | Read | `probe`, `validate --require-reviewed`, then term and Context lookup |
 | Dead or unusable Registry | Router / Review | Stop, report the readiness block, and recover or reconfirm sources before relying on facts |
 | Before a material domain change | Design | `init-change-package`, package validation, and the seven-step workflow |
+| While implementing a code change | Implementation hygiene | No Registry command; read the implementation handoff, then route a changed owner, invariant, contract, event, or consistency rule to Design |
 | Before implementation handoff | Review | Registry, source, evidence, audit, and Change Package validation |
 | After implementation or source drift | Maintain | `verify-sources`, `verify-evidence`, `verify-audit`, then candidate or Change Package preparation |
 | Before relying on the result | Review | Registry, source, evidence, audit, and Change Package validation |
