@@ -34,6 +34,10 @@ type budgetView struct {
 	SetAt          *string `json:"set_at"`
 }
 
+type budgetsResponse struct {
+	Budgets []budgetView `json:"budgets"`
+}
+
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.actor(w, r); !ok {
 		return
@@ -47,7 +51,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	for i, e := range endpoints {
 		views = append(views, viewOf(e, settings[i]))
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"budgets": views})
+	httpx.WriteJSON(w, http.StatusOK, budgetsResponse{Budgets: views})
 }
 
 func (h *Handler) Set(w http.ResponseWriter, r *http.Request) {
