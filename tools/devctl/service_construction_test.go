@@ -30,8 +30,8 @@ const serviceConstructionADR = `packages:
 func writeServiceConstructionFixture(t *testing.T, relative, source string) string {
 	t.Helper()
 	root := t.TempDir()
+	writeIdentitySources(t, root, serviceConstructionADR)
 	for name, contents := range map[string]string{
-		contextMapDoc: serviceConstructionADR,
 		"apps/platform/internal/" + relative + "/x.go": source,
 	} {
 		path := filepath.Join(root, filepath.FromSlash(name))

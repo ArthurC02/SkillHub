@@ -32,11 +32,11 @@ var (
 )
 
 func depguardDenyProblems(root string) []string {
-	const mapPath, lintPath = contextMapDoc, "apps/platform/.golangci.yml"
+	const lintPath = "apps/platform/.golangci.yml"
 
-	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(mapPath)), mapPath)
+	declared, problems := architectureIdentities(root)
 	if len(declared) == 0 {
-		return append(problems, fmt.Sprintf("depguard-deny: %s declares no contexts; this check has lost its subject", mapPath))
+		return append(problems, fmt.Sprintf("depguard-deny: %s declares no contexts; this check has lost its subject", identityHomes))
 	}
 	adr, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(contextWhitelistDoc)))
 	if err != nil {
@@ -50,7 +50,7 @@ func depguardDenyProblems(root string) []string {
 	permitted, wildcard, appendixRows := appendixPermissions(string(adr), declared)
 	if appendixRows == 0 {
 		return append(problems, fmt.Sprintf(
-			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", mapPath, appendixHeading))
+			"depguard-deny: %s %s has no `A → B` rows; this check has lost its subject", contextWhitelistDoc, appendixHeading))
 	}
 
 	universe := map[string]bool{}
@@ -93,7 +93,7 @@ func depguardDenyProblems(root string) []string {
 			id, known := pathIDs[path]
 			if !known {
 				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, contextMapDoc))
+					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, identityHomes))
 				continue
 			}
 			denied[id] = true
@@ -106,13 +106,13 @@ func depguardDenyProblems(root string) []string {
 				problems = append(problems, fmt.Sprintf(
 					"depguard-deny: %s rule %q denies %q, but %s appendix A keeps `%s` → `%s`; "+
 						"the two sides disagree about that collaboration",
-					lintPath, rule, target, contextMapDoc, self, target))
+					lintPath, rule, target, contextWhitelistDoc, self, target))
 			case !denied[target] && !permitted[self][target] && !wildcard[target]:
 				problems = append(problems, fmt.Sprintf(
 					"depguard-deny: %s rule %q does not deny %q and %s appendix A does not permit `%s` → `%s`; "+
 						"a deletion from a deny list IS a new permission (\"legal but unlisted = denied\"), so add the "+
 						"appendix row or restore the deny entry",
-					lintPath, rule, target, contextMapDoc, self, target))
+					lintPath, rule, target, contextWhitelistDoc, self, target))
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 			}
 			id, ok := pathIDs[path]
 			if !ok {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, contextMapDoc))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, identityHomes))
 				continue
 			}
 			actual[id] = true
@@ -222,7 +222,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 			}
 			id, known := pathIDs[match[1]]
 			if !known {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact %s package path", lintPath, rule, match[1], contextMapDoc))
+				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact %s package path", lintPath, rule, match[1], identityHomes))
 				continue
 			}
 			actual[id] = true

@@ -44,7 +44,7 @@ func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql ma
 		t.Fatal(err)
 	}
 	write("db/"+queryOwnersFile, declaration)
-	write(contextMapDoc, adr)
+	writeIdentitySources(t, root, adr)
 	for name, contents := range sql {
 		write("db/queries/"+name, contents)
 	}

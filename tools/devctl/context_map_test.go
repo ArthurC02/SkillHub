@@ -19,7 +19,7 @@ func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) s
 			t.Fatal(err)
 		}
 	}
-	write(contextMapDoc, adr)
+	writeIdentitySources(t, root, adr)
 	write("apps/platform/.golangci.yml", lint)
 	for _, name := range packages {
 		write("apps/platform/internal/"+name+"/doc.go", "package "+filepath.Base(name)+"\n")
@@ -158,7 +158,7 @@ func TestContextMapProblems(t *testing.T) {
 			adr:      nestedADR,
 			lint:     strings.Replace(nestedLint, "              - \"!$test\"", "              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
 			packages: nestedPackages,
-			want:     "guards apps/platform/internal/ghost/nested but no Boundary ID in " + contextMapDoc + " declares that path",
+			want:     "guards apps/platform/internal/ghost/nested but no Boundary ID in " + identityHomes + " declares that path",
 		},
 	}
 
@@ -179,6 +179,66 @@ func TestContextMapProblems(t *testing.T) {
 				}
 			}
 			t.Fatalf("no problem mentions %q, got %#v", test.want, problems)
+		})
+	}
+}
+
+func TestAnArchitectureIdentityComesFromExactlyOneHome(t *testing.T) {
+	t.Parallel()
+	packages := []string{"run", "ingest", "shared/skillpkg", "foundation/observability/audit",
+		"foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
+
+	for _, test := range []struct {
+		name     string
+		layout   string
+		reviewed func(string) string
+		want     string
+	}{
+		{
+			name:   "a Bounded Context declared in the layout file too is rejected",
+			layout: "  - id: run\n    kind: Core\n    path: run\n",
+			want:   `apps/platform/architecture-identity.yaml gives "run" architecture kind "Core"`,
+		},
+		{
+			name:     "a candidate Context carries no architecture identity",
+			reviewed: func(body string) string { return strings.Replace(body, `"reviewed"`, `"candidate"`, 2) },
+			want:     `is "candidate"; only a reviewed Context carries an architecture identity`,
+		},
+		{
+			name:     "a subdomain outside core and supporting is rejected",
+			reviewed: func(body string) string { return strings.Replace(body, `"core"`, `"generic"`, 1) },
+			want:     `has subdomain "generic"; a Bounded Context is core or supporting`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeContextMapFixture(t, contextMapADRFixture, contextMapLintFixture, packages)
+			if test.layout != "" {
+				path := filepath.Join(root, filepath.FromSlash(contextMapDoc))
+				existing, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, append(existing, []byte(test.layout)...), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if test.reviewed != nil {
+				path := filepath.Join(root, filepath.FromSlash(registryContextsFile))
+				existing, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(test.reviewed(string(existing))), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, problem := range contextMapProblems(root) {
+				if strings.Contains(problem, test.want) {
+					return
+				}
+			}
+			t.Fatalf("no problem mentions %q, got %#v", test.want, contextMapProblems(root))
 		})
 	}
 }

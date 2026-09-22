@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -37,8 +38,7 @@ type callSite struct {
 }
 
 func queryOwnerProblems(root string) []string {
-	identities, problems := contextTablePackages(
-		filepath.Join(root, filepath.FromSlash(contextMapDoc)), contextMapDoc)
+	identities, problems := architectureIdentities(root)
 	sections, err := parseOwnerDeclaration(filepath.Join(root, "db", queryOwnersFile))
 	if err != nil {
 		return append(problems, fmt.Sprintf("db/%s: %v", queryOwnersFile, err))
@@ -569,7 +569,7 @@ func queryCallSites(platform string, names map[string]bool, identities map[strin
 					return fmt.Errorf("apps/platform/cmd/%s calls sqlc but has no entry in commandContexts "+
 						"(tools/devctl/query_owners.go); name the context whose data it touches", directory)
 				}
-				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in %s", directory, contextMapDoc)
+				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in %s", directory, identityHomes)
 			}
 
 			for name := range seen {
@@ -820,10 +820,18 @@ func sqlPrefix(sql string) string {
 }
 
 const (
-	contextMapDoc       = "apps/platform/architecture-identity.yaml"
-	contextWhitelistDoc = "docs/development/platform-context-map.md"
-	identityListKey     = "packages:"
+	contextMapDoc        = "apps/platform/architecture-identity.yaml"
+	contextWhitelistDoc  = "docs/development/platform-context-map.md"
+	registryContextsFile = "docs/domain-memory/registry/contexts.json"
+	identityListKey      = "packages:"
+
+	identityHomes = registryContextsFile + " or " + contextMapDoc
 )
+
+var subdomainKinds = map[string]architectureKind{
+	"core":       architectureCore,
+	"supporting": architectureSupporting,
+}
 
 type architectureKind string
 
@@ -839,6 +847,7 @@ type packageIdentity struct {
 	Kind    architectureKind
 	ID      string
 	Path    string
+	Source  string
 }
 
 var (
@@ -853,7 +862,7 @@ func contextMapProblems(root string) []string {
 
 	const mapPath, lintPath = contextMapDoc, "apps/platform/.golangci.yml"
 
-	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(mapPath)), mapPath)
+	declared, problems := architectureIdentities(root)
 	if len(declared) == 0 {
 		return append(problems, fmt.Sprintf("%s: %s has no package rows", mapPath, identityListKey))
 	}
@@ -877,7 +886,7 @@ func contextMapProblems(root string) []string {
 		if _, ok := resolveContextPath(path, declared); !ok {
 			problems = append(problems, fmt.Sprintf(
 				"apps/platform/internal/%s is not listed in %s; register it before adding the package (AGENTS.md 第 11 條)",
-				path, contextMapDoc))
+				path, identityHomes))
 		}
 	}
 	for _, id := range sortedKeys(declared) {
@@ -885,36 +894,52 @@ func contextMapProblems(root string) []string {
 		switch {
 		case !selectorExists(identity.Path, present):
 			problems = append(problems, fmt.Sprintf(
-				"%s lists Boundary ID %q at internal/%s but no Go package directory exists there", contextMapDoc, id, identity.Path))
+				"%s lists Boundary ID %q at internal/%s but no Go package directory exists there", identity.Source, id, identity.Path))
 		case architectureNeedsDepguard(identity) && !guardCovers(identity.Path, guarded):
 			problems = append(problems, fmt.Sprintf(
 				"%s gives Boundary ID %q architecture kind %q but %s has no depguard rule covering internal/%s",
-				contextMapDoc, id, identity.Kind, lintPath, identity.Path))
+				identity.Source, id, identity.Kind, lintPath, identity.Path))
 		}
 	}
 	for _, path := range sortedKeys(guarded) {
 		if !guardedPathDeclared(path, declared) {
 			problems = append(problems, fmt.Sprintf(
-				"%s guards apps/platform/internal/%s but no Boundary ID in %s declares that path", lintPath, path, contextMapDoc))
+				"%s guards apps/platform/internal/%s but no Boundary ID in %s declares that path", lintPath, path, identityHomes))
 		}
 	}
 	return problems
 }
 
-func contextTablePackages(path, relative string) (map[string]packageIdentity, []string) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, []string{fmt.Sprintf("%s: %v", relative, err)}
-	}
-	declared := map[string]packageIdentity{}
+func architectureIdentities(root string) (map[string]packageIdentity, []string) {
 	var problems []string
-	entries, problems := identityEntries(string(data), relative, problems)
-	for _, entry := range entries {
+	var entries []identityEntry
+
+	reviewed, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(registryContextsFile)))
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", registryContextsFile, err)}
+	}
+	entries, problems = reviewedContextEntries(string(reviewed), problems)
+
+	layout, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(contextMapDoc)))
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", contextMapDoc, err)}
+	}
+	technical, problems := identityEntries(string(layout), contextMapDoc, problems)
+
+	declared := map[string]packageIdentity{}
+	for _, entry := range append(entries, technical...) {
+		relative := entry.source
 		architecture := architectureKind(entry.kind)
 		switch architecture {
 		case architectureCore, architectureSupporting, architectureSharedKernel, architectureGeneric:
 		default:
 			problems = append(problems, fmt.Sprintf("%s has unknown architecture kind %q", relative, entry.kind))
+			continue
+		}
+		if relative == contextMapDoc && (architecture == architectureCore || architecture == architectureSupporting) {
+			problems = append(problems, fmt.Sprintf(
+				"%s gives %q architecture kind %q; a Bounded Context is declared in %s",
+				relative, entry.id, architecture, registryContextsFile))
 			continue
 		}
 		context := entry.context
@@ -939,7 +964,7 @@ func contextTablePackages(path, relative string) (map[string]packageIdentity, []
 			problems = append(problems, fmt.Sprintf("%s declares Boundary ID %q twice", relative, id))
 			continue
 		}
-		identity := packageIdentity{Product: context, Kind: architecture, ID: id, Path: currentPath}
+		identity := packageIdentity{Product: context, Kind: architecture, ID: id, Path: currentPath, Source: relative}
 		for _, previous := range declared {
 			if previous.Path == identity.Path {
 				problems = append(problems, fmt.Sprintf("%s declares internal path %q twice (%s and %s)", relative, identity.Path, previous.ID, identity.ID))
@@ -960,6 +985,46 @@ type identityEntry struct {
 	kind    string
 	path    string
 	context string
+	source  string
+}
+
+func reviewedContextEntries(data string, problems []string) ([]identityEntry, []string) {
+	var doc struct {
+		Contexts []struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Subdomain string `json:"subdomain"`
+			Path      string `json:"implementation_path"`
+			Status    string `json:"status"`
+		} `json:"contexts"`
+	}
+	if err := json.Unmarshal([]byte(data), &doc); err != nil {
+		return nil, append(problems, fmt.Sprintf("%s: %v", registryContextsFile, err))
+	}
+	var entries []identityEntry
+	for _, context := range doc.Contexts {
+		if context.Status != "reviewed" {
+			problems = append(problems, fmt.Sprintf(
+				"%s:%s is %q; only a reviewed Context carries an architecture identity",
+				registryContextsFile, context.ID, context.Status))
+			continue
+		}
+		kind, ok := subdomainKinds[context.Subdomain]
+		if !ok {
+			problems = append(problems, fmt.Sprintf(
+				"%s:%s has subdomain %q; a Bounded Context is core or supporting",
+				registryContextsFile, context.ID, context.Subdomain))
+			continue
+		}
+		entries = append(entries, identityEntry{
+			id: context.ID, kind: string(kind), path: context.Path,
+			context: context.Name, source: registryContextsFile,
+		})
+	}
+	if len(entries) == 0 {
+		problems = append(problems, fmt.Sprintf("%s declares no reviewed Bounded Context", registryContextsFile))
+	}
+	return entries, problems
 }
 
 func identityEntries(data, relative string, problems []string) ([]identityEntry, []string) {
@@ -988,7 +1053,7 @@ func identityEntries(data, relative string, problems []string) ([]identityEntry,
 				problems = append(problems, fmt.Sprintf("%s:%d starts an entry with %q; every entry starts with id", relative, number+1, key))
 				continue
 			}
-			entries = append(entries, identityEntry{id: value})
+			entries = append(entries, identityEntry{id: value, source: relative})
 			continue
 		}
 		if len(entries) == 0 {
@@ -1006,9 +1071,6 @@ func identityEntries(data, relative string, problems []string) ([]identityEntry,
 		default:
 			problems = append(problems, fmt.Sprintf("%s:%d has unknown field %q", relative, number+1, key))
 		}
-	}
-	if len(entries) == 0 {
-		problems = append(problems, fmt.Sprintf("%s declares no package under %q", relative, identityListKey))
 	}
 	return entries, problems
 }

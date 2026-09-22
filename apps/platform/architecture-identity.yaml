@@ -1,59 +1,7 @@
-# One architecture identity per Go package under apps/platform/internal.
-# Core and Supporting name a Bounded Context; Shared Kernel and Generic do not.
-# A package directory must match exactly one path here, and paths may not overlap.
+# One architecture identity per Shared Kernel or Generic package under
+# apps/platform/internal; Bounded Contexts are declared in the reviewed
+# Domain Memory Registry. One package, one path, and paths may not overlap.
 packages:
-  - id: identity
-    kind: Core
-    path: creator/workspace
-    context: 創作者帳戶與工作區／Identity & Workspace
-  - id: creation
-    kind: Core
-    path: creator/creation
-    context: 互動 Skill 創作／Skill Creation
-  - id: catalog
-    kind: Core
-    path: skill/discovery
-    context: Skill 探索／Catalog & Discovery
-  - id: registry
-    kind: Core
-    path: skill/library
-    context: Skill 資產與版本歷史／Skill Registry & Versioning
-  - id: ingest
-    kind: Core
-    path: skill/admission
-    context: Skill 接納與信任／Trust & Supply Chain
-  - id: testlab
-    kind: Core
-    path: trial/design
-    context: 試跑情境設計／Test Lab
-  - id: run
-    kind: Core
-    path: trial/execution
-    context: Skill 試跑執行／Run Orchestration
-  - id: eval
-    kind: Core
-    path: trial/improvement
-    context: 成果判定與改善／Evaluation & Improvement
-  - id: packaging
-    kind: Core
-    path: skill/delivery
-    context: Skill 交付與安裝／Packaging & Distribution
-  - id: trace
-    kind: Supporting
-    path: trial/evidence
-    context: 執行證據／Run Trace
-  - id: policy
-    kind: Supporting
-    path: product/entitlements
-    context: 創作者使用權益與資料生命週期／Policy & Usage
-  - id: analytics
-    kind: Supporting
-    path: product/learning
-    context: 創作者旅程學習／Product Analytics
-  - id: credit
-    kind: Supporting
-    path: creator/credit
-    context: 創作者 Credit 帳務／Credit Ledger
   - id: skillpkg
     kind: Shared Kernel
     path: shared/skillpkg

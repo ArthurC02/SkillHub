@@ -63,8 +63,8 @@ func denyConfig() string {
 func writeDenyFixture(t *testing.T, adr, lint string, alsoDeclared ...string) string {
 	t.Helper()
 	root := t.TempDir()
+	writeIdentitySources(t, root, denyIdentities+strings.Join(alsoDeclared, ""))
 	for relative, contents := range map[string]string{
-		contextMapDoc:                 denyIdentities + strings.Join(alsoDeclared, ""),
 		contextWhitelistDoc:           adr,
 		"apps/platform/.golangci.yml": lint,
 	} {
