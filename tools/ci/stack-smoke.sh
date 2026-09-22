@@ -197,10 +197,14 @@ check "public routes render in a browser against the real API" "$rc"
 echo "--- credit"
 login="$(hget -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' \
 	-d '{"user":"smoke-operator"}' http://platform-api:8080/auth/dev/login)" || login=""
+fork_source_login="$(hget -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' \
+	-d '{"user":"smoke-fork-source"}' http://platform-api:8080/auth/dev/login)" || fork_source_login=""
 operator="$(docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc \
 	"select id from users where email = 'smoke-operator@dev.local'")" || operator=""
+catalogued="$(docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc \
+	"update workspaces set is_catalog = true where owner_user_id = (select id from users where email = 'smoke-fork-source@dev.local')")" || catalogued=""
 limits="$(grep '^CREATION_LIMITS_JSON=' "$REPO_ROOT/.env.example" | cut -d= -f2-)"
-if [ "$login" = 204 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
+if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPDATE\ 1 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
 	docker rm -f smoke-api >/dev/null
 	docker run -d --name smoke-api --network "$NET" --network-alias platform-api \
 		"${api_env[@]}" \
@@ -220,7 +224,7 @@ if [ "$login" = 204 ] && [ -n "$operator" ] && [ -n "$limits" ]; then
 		rc=1
 	fi
 else
-	echo "credit setup: login=$login operator=${operator:-none} limits=${limits:+set}" >&2
+	echo "credit setup: login=$login fork_source_login=$fork_source_login catalogued=${catalogued:-none} operator=${operator:-none} limits=${limits:+set}" >&2
 	rc=1
 fi
 check "credit refuses at 0 and an operator grant unblocks it, on the real images" "$rc"

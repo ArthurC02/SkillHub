@@ -76,12 +76,64 @@ try {
     `${started.status} ${started.body}`,
   );
 
+  const forkSource = await signIn("smoke-fork-source");
+  const forkSourceName = `browser-fork-source-${crypto.randomUUID()}`;
+  const forkSourceResponse = await forkSource.request.post(
+    base + "/skills/import/upload",
+    {
+      headers: { "content-type": "application/zip" },
+      data: zipOneFile(
+        "SKILL.md",
+        `---\nname: ${forkSourceName}\ndescription: Browser fork source used for integration coverage.\nlicense: MIT\n---\n\n# Task\n\nReply with the requested format.\n`,
+      ),
+    },
+  );
+  const forkSourceSkill = await forkSourceResponse.json().catch(() => ({}));
+  await forkSource.close();
+
   const page = await member.newPage();
   const problems = [];
   page.on("pageerror", (err) => problems.push(`uncaught: ${err.message}`));
   page.on("console", (message) => {
     if (message.type() === "error") problems.push(`console: ${message.text()}`);
   });
+
+  if (typeof forkSourceSkill.skill_id === "string") {
+    await page.goto(`${base}/skills/${forkSourceSkill.skill_id}`, {
+      waitUntil: "networkidle",
+    });
+  }
+  const forkResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/skills/${forkSourceSkill.skill_id}/fork` &&
+        response.request().method() === "POST",
+    ),
+    page.locator(".detail-rail button[type=button]").first().click(),
+  ]).then(([response]) => response);
+  const forked = await forkResponse.json().catch(() => ({}));
+  const forkVersions =
+    typeof forked.skill_id === "string"
+      ? await (
+          await member.request.get(`${base}/skills/${forked.skill_id}/versions`)
+        ).json()
+      : {};
+  check(
+    "the browser forks another workspace's skill and its v1 reads back",
+    forkSourceResponse.status() === 201 &&
+      forkResponse.status() === 201 &&
+      forked.version_number === 1 &&
+      forked.skill_id !== forkSourceSkill.skill_id &&
+      forkVersions.versions?.length === 1 &&
+      forkVersions.versions[0]?.version_id === forked.version_id,
+    JSON.stringify({
+      source: forkSourceSkill,
+      status: forkResponse.status(),
+      forked,
+      forkVersions,
+    }).slice(0, 500),
+  );
 
   const importName = `browser-upload-${crypto.randomUUID()}`;
   await page.goto(base + "/workspace/import", { waitUntil: "networkidle" });
