@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const distAssets = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "assets");
+const INITIAL_BUNDLE_LIMIT = 300 * 1024;
 
 const STOCK = [
   "http://www.w3.org/1998/Math/MathML",
@@ -47,6 +48,17 @@ if (unexpected.length > 0) {
       "若它確實是函式庫發出的、與 API 無關，把它加進本檔的 STOCK 並寫明是誰發的。",
       "",
     ].join("\n"),
+  );
+  process.exit(1);
+}
+
+const initialBundle = readdirSync(distAssets).find((file) => /^index-.*\.js$/.test(file));
+const initialBundleSize = initialBundle
+  ? readFileSync(join(distAssets, initialBundle)).byteLength
+  : 0;
+if (initialBundleSize > INITIAL_BUNDLE_LIMIT) {
+  console.error(
+    `initial bundle is ${initialBundleSize} bytes, above the ${INITIAL_BUNDLE_LIMIT}-byte limit`,
   );
   process.exit(1);
 }
