@@ -122,8 +122,6 @@ def _validate_asset_records(
                     )
             if require_reviewed and status != "reviewed":
                 errors.append(f"{name}:{entry.get('id')} is not reviewed")
-        if require_reviewed and asset_status != "reviewed":
-            errors.append(f"{name} is not reviewed")
     return errors
 
 

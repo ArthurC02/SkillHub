@@ -1717,6 +1717,28 @@ class DomainRegistryTest(unittest.TestCase):
         errors = validate(self.repo / "memory", self.repo, True)
         self.assertTrue(any("cannot satisfy" in error for error in errors), errors)
 
+    def test_a_candidate_record_is_named_by_reviewed_validation(self) -> None:
+        self.two_contexts()
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertIn("contexts.json:orders is not reviewed", errors)
+
+    def test_a_registry_of_reviewed_records_satisfies_reviewed_validation(self) -> None:
+        self.seed(
+            "contexts.json",
+            [
+                {
+                    "id": "orders",
+                    "name": "Orders",
+                    "responsibility": "Own orders.",
+                    "status": "reviewed",
+                    "review": {"proposal_id": "P-1"},
+                    "evidence": ["docs/kept.md:1"],
+                }
+            ],
+        )
+        errors = validate(self.repo / "memory", self.repo, True)
+        self.assertEqual([error for error in errors if "not reviewed" in error], [])
+
     def test_demoting_local_reviews_removes_reviewed_status(self) -> None:
         amend_policy(
             self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."
