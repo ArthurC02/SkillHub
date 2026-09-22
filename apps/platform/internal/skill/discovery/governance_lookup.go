@@ -21,6 +21,10 @@ type governanceView struct {
 	TakedownReason    *string `json:"takedown_reason"`
 }
 
+type governanceSearchResponse struct {
+	Skills []governanceView `json:"skills"`
+}
+
 func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
@@ -48,5 +52,5 @@ func (h *Handler) FindSkillsForGovernance(w http.ResponseWriter, r *http.Request
 		}
 		views = append(views, view)
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"skills": views})
+	httpx.WriteJSON(w, http.StatusOK, governanceSearchResponse{Skills: views})
 }
