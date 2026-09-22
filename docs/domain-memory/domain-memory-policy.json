@@ -4,10 +4,12 @@
   "data_classification": "internal",
   "review_mode": "scm-verified",
   "review_governance": {
-    "verifier": "github-pr",
-    "trigger": "external-scm",
+    "verifier": "git-signed-commit",
+    "trigger": "git-push",
     "ci_requirement": "required",
-    "authorized_signers": []
+    "authorized_signers": [
+      "SHA256:NudA/rlZWxLf7QYpp1/ev/hlet5LUVXzFBsM6Uk+6vg"
+    ]
   },
   "source_policy": {
     "selected_paths": [

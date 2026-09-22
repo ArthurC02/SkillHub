@@ -641,6 +641,36 @@ class DomainRegistryTest(unittest.TestCase):
             (self.repo / ".git" / "hooks" / "pre-push.domain-memory-existing").read_text(encoding="utf-8"),
         )
 
+    def test_the_hook_installs_where_a_configured_hooks_path_points(self) -> None:
+        amend_policy(
+            self.repo / "memory", "authorized_signers", "SHA256:AAA", "Register a key."
+        )
+        amend_policy(
+            self.repo / "memory", "review_trigger", "git-push", "Enforce on push."
+        )
+        amend_policy(
+            self.repo / "memory",
+            "review_verifier",
+            "git-signed-commit",
+            "The maintainer signs.",
+        )
+        (self.repo / ".githooks").mkdir()
+        subprocess.run(
+            ["git", "config", "core.hooksPath", ".githooks"], cwd=self.repo, check=True
+        )
+        self.assertEqual(
+            ["Git HITL pre-push hook is not installed on this machine"],
+            governance_readiness(self.repo / "memory", self.repo)["blocks"],
+        )
+        hook = install_pre_push_hook(
+            self.repo / "memory", self.repo, self.repo / "registry_tools.py"
+        )
+        self.assertEqual(self.repo / ".githooks" / "pre-push", hook)
+        self.assertFalse((self.repo / ".git" / "hooks" / "pre-push").exists())
+        self.assertEqual(
+            [], governance_readiness(self.repo / "memory", self.repo)["blocks"]
+        )
+
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")
         self.assertEqual(

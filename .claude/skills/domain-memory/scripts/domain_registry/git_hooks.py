@@ -1,9 +1,23 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from .attestations import verify_git_signed_commit
 from .policy import review_governance, review_mode
+
+
+def hooks_dir(repo_root: Path) -> Path:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--git-path", "hooks"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return repo_root / ".git" / "hooks"
+    reported = Path(result.stdout.strip())
+    return reported if reported.is_absolute() else repo_root / reported
 
 
 def governance_readiness(registry_root: Path, repo_root: Path) -> dict[str, object]:
@@ -15,7 +29,7 @@ def governance_readiness(registry_root: Path, repo_root: Path) -> dict[str, obje
     if governance["verifier"] == "git-signed-commit":
         if not governance["authorized_signers"]:
             blocks.append("no authorized Git signers")
-        hook = repo_root / ".git" / "hooks" / "pre-push"
+        hook = hooks_dir(repo_root) / "pre-push"
         if not hook.is_file() or "domain-memory-pre-push" not in hook.read_text(encoding="utf-8"):
             blocks.append("Git HITL pre-push hook is not installed on this machine")
     return {"status": "ready" if not blocks else "needs-setup", "blocks": blocks}
@@ -31,9 +45,9 @@ def verify_git_governance(registry_root: Path, repo_root: Path, commit: str) -> 
 
 
 def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) -> Path:
-    hooks = repo_root / ".git" / "hooks"
+    hooks = hooks_dir(repo_root)
     if not hooks.is_dir():
-        raise ValueError("Git hooks require a repository with a .git/hooks directory")
+        raise ValueError(f"Git hooks require an existing hooks directory at {hooks}")
     relative = registry_root.resolve().relative_to(repo_root.resolve()).as_posix()
     hook = hooks / "pre-push"
     backup = hooks / "pre-push.domain-memory-existing"
