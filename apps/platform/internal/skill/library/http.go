@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
@@ -74,27 +73,6 @@ type skillsResponse struct {
 	Total     int64              `json:"total"`
 }
 
-func toSkillResponse(s gen.Skill) skillResponse {
-	out := skillResponse{
-		SkillID:           pgconv.UUIDString(s.ID),
-		Name:              s.Name,
-		Redistribution:    s.Redistribution,
-		AccessRestriction: s.AccessRestriction,
-	}
-	if s.Summary != nil {
-		out.Summary = *s.Summary
-	}
-	if s.ForkedFromSkillID.Valid {
-		v := pgconv.UUIDString(s.ForkedFromSkillID)
-		out.ForkedFromSkillID = &v
-	}
-	if s.ForkedFromVersionID.Valid {
-		v := pgconv.UUIDString(s.ForkedFromVersionID)
-		out.ForkedFromVersionID = &v
-	}
-	return out
-}
-
 func toSkillResponseFromSkill(s Skill) skillResponse {
 	out := skillResponse{
 		SkillID: pgconv.UUIDString(s.ID), Name: s.Name, Redistribution: s.Redistribution,
@@ -142,7 +120,7 @@ func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 		skillResponse
 		VersionID     string `json:"version_id"`
 		VersionNumber int32  `json:"version_number"`
-	}{toSkillResponse(fork), pgconv.UUIDString(ver.ID), ver.VersionNumber}
+	}{toSkillResponseFromSkill(fork), pgconv.UUIDString(ver.ID), ver.VersionNumber}
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
@@ -260,7 +238,7 @@ func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "set category failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toSkillResponse(skill))
+	httpx.WriteJSON(w, http.StatusOK, toSkillResponseFromSkill(skill))
 }
 
 type skillVersionResponse struct {

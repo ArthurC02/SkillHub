@@ -76,13 +76,13 @@ func (s *Service) catalogSkillIn(ctx context.Context, db gen.DBTX, skillID pgtyp
 	return gen.New(db).GetCatalogSkill(ctx, gen.GetCatalogSkillParams{ID: skillID, CatalogWorkspaceIds: catalogs})
 }
 
-func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (gen.Skill, gen.SkillVersion, error) {
+func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (Skill, Version, error) {
 	if err := s.requireProjection(); err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
@@ -92,36 +92,36 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		src, err = s.catalogSkillIn(ctx, tx, skillID)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+		return Skill{}, Version{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 
 	if src.TakedownAt.Valid {
-		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+		return Skill{}, Version{}, ErrNotFound
 	}
 	srcVer, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
 		SkillID: src.ID, WorkspaceID: src.WorkspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+		return Skill{}, Version{}, ErrNotFound
 	}
 	if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 
 	name, err := s.forkName(ctx, tx, ws.ID, src.Name)
 	if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 	root := forkOf(ws.ID, name, src, srcVer)
 	if err := SaveSkill(ctx, tx, root); isUniqueViolation(err) {
-		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken
+		return Skill{}, Version{}, ErrNameTaken
 	} else if err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
-	fork, ver := root.row, root.added
+	fork := root.row
 
 	summary := ""
 	if fork.Summary != nil {
@@ -133,7 +133,7 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		Name:        fork.Name,
 		Summary:     summary,
 	}); err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        ws.OwnerUserID,
@@ -146,9 +146,12 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 			"source_version_id": pgconv.UUIDString(srcVer.ID),
 		},
 	}); err != nil {
-		return gen.Skill{}, gen.SkillVersion{}, err
+		return Skill{}, Version{}, err
 	}
-	return fork, ver, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return Skill{}, Version{}, err
+	}
+	return root.Skill(), root.AddedVersion(), nil
 }
 
 type DeleteResult struct {
@@ -200,27 +203,27 @@ var (
 	ErrTakedownReasonRequired = errors.New("reason is required")
 )
 
-func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, reason string) (gen.Skill, error) {
+func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, reason string) (Skill, error) {
 	if err := s.requireProjection(); err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	root, err := loadSkill(ctx, gen.New(tx), ws.ID, skillID)
 	if err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
 	root.TakeDown(reason)
 	if err := SaveSkill(ctx, tx, root); err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
 	skill := root.row
 
 	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor:        ws.OwnerUserID,
@@ -229,9 +232,12 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skill.ID,
 	}); err != nil {
-		return gen.Skill{}, err
+		return Skill{}, err
 	}
-	return skill, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return Skill{}, err
+	}
+	return root.Skill(), nil
 }
 
 func isUniqueViolation(err error) bool {
