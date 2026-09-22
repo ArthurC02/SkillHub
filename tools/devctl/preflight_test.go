@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -158,17 +159,52 @@ func TestTheRepoHookRunsPreflight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root, ".githooks", "pre-push"))
+	entry := ".githooks/pre-push"
+	data, err := os.ReadFile(filepath.Join(root, entry))
 	if err != nil {
 		t.Fatal(err)
 	}
+	required := []string{entry}
 	if !strings.Contains(string(data), "preflight --hook") {
-		t.Fatalf(".githooks/pre-push does not run devctl preflight --hook:\n%s", data)
+		delegated := hooksReferencedBy(string(data), entry)
+		if len(delegated) == 0 {
+			t.Fatalf("%s neither runs devctl preflight --hook nor delegates to a hook that does:\n%s", entry, data)
+		}
+		reached := false
+		for _, hook := range delegated {
+			body, err := os.ReadFile(filepath.Join(root, hook))
+			if err != nil {
+				t.Fatalf("%s delegates to %s, which is missing: %v", entry, hook, err)
+			}
+			required = append(required, hook)
+			if strings.Contains(string(body), "preflight --hook") {
+				reached = true
+			}
+		}
+		if !reached {
+			t.Fatalf("no hook reached from %s runs devctl preflight --hook: %v", entry, delegated)
+		}
 	}
-	mode := strings.Fields(runIn(t, root, "git", "ls-files", "-s", "--", ".githooks/pre-push"))
-	if len(mode) == 0 || mode[0] != "100755" {
-		t.Fatalf(".githooks/pre-push is not executable in the index (%v); git on Linux and macOS will not run it", mode)
+	for _, hook := range required {
+		mode := strings.Fields(runIn(t, root, "git", "ls-files", "-s", "--", hook))
+		if len(mode) == 0 || mode[0] != "100755" {
+			t.Fatalf("%s is not executable in the index (%v); git on Linux and macOS will not run it", hook, mode)
+		}
 	}
+}
+
+func hooksReferencedBy(script, entry string) []string {
+	split := func(r rune) bool { return r == '\'' || r == '"' || r == '\n' || r == ' ' || r == '\t' }
+	var found []string
+	for _, field := range strings.FieldsFunc(script, split) {
+		if !strings.HasPrefix(field, ".githooks/") || field == entry {
+			continue
+		}
+		if !slices.Contains(found, field) {
+			found = append(found, field)
+		}
+	}
+	return found
 }
 
 func runIn(t *testing.T, dir, name string, args ...string) string {
