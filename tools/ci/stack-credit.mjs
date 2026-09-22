@@ -233,6 +233,12 @@ try {
     }).slice(0, 500),
   );
 
+  const preflightWait = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/skills/${imported.skill_id}/runs/preflight` &&
+      response.request().method() === "GET",
+  );
   if (
     typeof imported.skill_id === "string" &&
     typeof imported.version_id === "string"
@@ -272,6 +278,29 @@ try {
       packaged,
       packageReadBack,
     }).slice(0, 500),
+  );
+
+  if (
+    typeof imported.skill_id === "string" &&
+    typeof imported.version_id === "string" &&
+    typeof createdTestCase.test_case_id === "string"
+  ) {
+    await page.goto(
+      `${base}/lab/run?skill=${imported.skill_id}&version=${imported.version_id}&test_case=${createdTestCase.test_case_id}`,
+      { waitUntil: "networkidle" },
+    );
+  }
+  const preflightResponse = await preflightWait;
+  const preflight = await preflightResponse.json().catch(() => ({}));
+  check(
+    "the browser shows the offline run preflight block before it can start",
+    preflightResponse.status() === 200 &&
+      typeof preflight.blocked === "string" &&
+      (await page.locator("button.action").count()) === 0,
+    JSON.stringify({ status: preflightResponse.status(), preflight }).slice(
+      0,
+      500,
+    ),
   );
 
   await page.goto(base + "/workspace/creations", { waitUntil: "networkidle" });
