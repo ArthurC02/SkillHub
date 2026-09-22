@@ -1,0 +1,179 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-reaches-out-through-inversion",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "nothing-the-retired-map-said-is-lost",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-22T11:40:28.918639Z",
+  "verified_at": "2026-09-22T11:40:29.532294Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+    "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+  },
+  "affected_contexts": [
+    "creation",
+    "credit",
+    "policy",
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Interactive Skill creation reaches its collaborators only through interfaces a composition root injects.",
+    "evidence": [
+      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md:53"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged. The guard already enforced every pair this records; what is added is why, and two ids stop saying the opposite of what they mean.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "creation",
+      "credit",
+      "policy"
+    ],
+    "evidence": [
+      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md:42"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The retired Context Map carried two things the guard cannot: why creation stays isolated, and why credit and policy are kept away from identity.",
+      "Recording creation's isolation as twenty-two forbidden pairs would restate what unlisted-means-denied already says, and would bury the one reason that matters under a matrix.",
+      "Two records written in error kept ids reading may-use while recording a prohibition, because until now a reviewed record could only be overwritten."
+    ],
+    "decision": "State creation's inversion once as a reviewed rule on that Context, and replace the two mis-named policies now that an approved change can remove a record.",
+    "invariants_preserved": [
+      "Interactive Skill creation reaches its collaborators only through interfaces a composition root injects."
+    ],
+    "rejected_alternatives": [
+      "Record all twenty-two forbidden pairs: unlisted already means denied, and the reason is one reason, not twenty-two.",
+      "Leave the reason in a handbook: the guard would keep enforcing a rule whose why lives outside the reviewed model.",
+      "Leave the two ids alone: a record that reads as the opposite of what it says is worse than no record."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "cited-evidence-current",
+      "no-id-contradicts-its-policy",
+      "the-guard-and-the-registry-still-agree",
+      "a-rule-needs-its-statement",
+      "audit-chain-intact",
+      "approval-path-is-external"
+    ],
+    "counterfactual_check": "a-rule-needs-its-statement"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "creation-reaches-its-collaborators-through-inversion",
+        "contexts": [
+          "creation"
+        ],
+        "statement": "Interactive Skill creation does not import the Contexts it collaborates with, and none of them imports it. Everything it needs from the reference, admission and trial Contexts arrives as a narrow interface injected by a composition root, so the creation loop can be replaced or removed without any other Context changing.",
+        "examples": [
+          "Enqueueing a creation job goes through an interface the wiring package supplies, not through the queue Context's own Service.",
+          "A Context that wants to know what a creation session produced reads the Skill Version the session created, not the session.",
+          "Credit and identity are reached the same way every other Context reaches them, because neither is part of the creation loop being kept replaceable."
+        ],
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 53,
+              "end": 53
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:5665a77570ab86754c4b5578e93d83c1657f67ffcc095b8bd8e4f5723b6b0c9b",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "remove",
+      "asset": "dependency-policies",
+      "id": "credit-may-use-identity"
+    },
+    {
+      "operation": "upsert",
+      "asset": "dependency-policies",
+      "record": {
+        "id": "credit-must-not-use-identity",
+        "from_context": "credit",
+        "to_context": "identity",
+        "mode": "none",
+        "policy": "forbidden",
+        "rationale": "The credit ledger takes the workspace facts it needs as an injected function returning credit.WorkspaceFacts, one from each composition root, so the unit of account does not depend on the account.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "remove",
+      "asset": "dependency-policies",
+      "id": "policy-may-use-identity"
+    },
+    {
+      "operation": "upsert",
+      "asset": "dependency-policies",
+      "record": {
+        "id": "policy-must-not-use-identity",
+        "from_context": "policy",
+        "to_context": "identity",
+        "mode": "none",
+        "policy": "forbidden",
+        "rationale": "Entitlements are decided from facts the asking Context supplies, so the rule holder never resolves scope for itself.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-22T11:40:29.217542Z",
+      "scope": "the inversion rule and the two replaced policies",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+        "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+      }
+    }
+  ],
+  "supersedes": "dependency-policies-match-the-guard"
+}

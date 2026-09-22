@@ -1,0 +1,29 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "nothing-the-retired-map-said-is-lost",
+  "status": "draft",
+  "intent": "Everything the retired Context Map said that was not already enforced has a home, and no record reads as the opposite of what it means.",
+  "actor": "A coding Agent reading the Registry to decide how a Context may reach another",
+  "observable_outcome": "The reason creation stays isolated is a reviewed rule, and the two prohibitions on identity carry ids that say they are prohibitions.",
+  "acceptance_criteria": [
+    {
+      "id": "the-inversion-has-a-home",
+      "statement": "A reviewed rule on creation states that its collaborators arrive by injection and that no Context imports it."
+    },
+    {
+      "id": "a-prohibition-does-not-read-as-a-permission",
+      "statement": "No dependency policy carries an id that contradicts its policy field."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
+  ]
+}

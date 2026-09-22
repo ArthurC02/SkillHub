@@ -1,0 +1,91 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "nothing-the-retired-map-said-is-lost",
+  "proposal_id": "creation-reaches-out-through-inversion",
+  "registry_revision": {
+    "observed_commit": "d7fac323fcac56c4a9af8ee3020eecb759289981",
+    "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "a-rule-needs-its-statement",
+    "mutated_protection": "the statement a reviewed rule must carry",
+    "failure_evidence": "Removing the new rule's statement made validate exit 1 with \"ERROR: rules.json:creation-reaches-its-collaborators-through-inversion is reviewed but missing statement\"; run on a staged copy, the copy discarded, the tracked Registry unchanged.",
+    "restored": true
+  },
+  "sources": [
+    "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+    "apps/platform/.golangci.yml"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "validate --require-reviewed on a staged copy holding the new rule and the replaced policies reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:dc8d0501c000907f41a8abfe3a81b7636c9b68ae81d900cd4bcfba190a932d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "cited-evidence-current",
+      "status": "passed",
+      "evidence": "verify-evidence found every cited excerpt current",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:c9f1d4bc457adef2418bb8481cd98fb1f569f0f3170ca4545c0bd02c1b33bc5e",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "no-id-contradicts-its-policy",
+      "status": "passed",
+      "evidence": "no policy carries an id that contradicts its policy field",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:4b94b34c5ce98658f792c52be79d43a3e11869c3bac30631c27b5f48aaca3d3d",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "the-guard-and-the-registry-still-agree",
+      "status": "passed",
+      "evidence": "across the 13 guarded Contexts every ordered pair is either denied by the compiled guard or permitted here, never both and never neither",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:9eace41237dcecc2fd793cf88494b80062add70fac8358316003ac38866257da",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "a-rule-needs-its-statement",
+      "status": "passed",
+      "evidence": "removing the new rule's statement made validate refuse it and exit 1; the copy was discarded",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:a957fdb3fe70bf22d9491ae9db035acc91e632af5e3f071db4f9f9ee3132cc00",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "verify-audit validated the chain from its recorded head",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ce7fabd279dc025ec9cc4bbcd96a156e4cdac009fd119dc6b853d562bb875e8",
+      "finished_at": "2026-09-22T00:00:00Z"
+    },
+    {
+      "obligation_id": "approval-path-is-external",
+      "status": "passed",
+      "evidence": "governance-readiness reported ready with no blocks",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:3efeec685adf47e66592feb095ba9fa8a8f26693e7973fc3fe45500c6c92b637",
+      "finished_at": "2026-09-22T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

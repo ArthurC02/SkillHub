@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "nothing-the-retired-map-said-is-lost",
+  "proposal_id": "creation-reaches-out-through-inversion",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-inversion-has-a-home",
+      "expected_outcome": "The validator accepts the new rule and the replaced policies under --require-reviewed.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on the staged replacement"
+    },
+    {
+      "id": "cited-evidence-current",
+      "source_type": "invariant",
+      "source_id": "the-inversion-has-a-home",
+      "expected_outcome": "Every cited excerpt hashes to what the record was written against.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the staged replacement"
+    },
+    {
+      "id": "no-id-contradicts-its-policy",
+      "source_type": "acceptance-criterion",
+      "source_id": "a-prohibition-does-not-read-as-a-permission",
+      "expected_outcome": "No policy whose id says may-use is forbidden, and none whose id says must-not-use is allowed.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a scan of the staged policies"
+    },
+    {
+      "id": "the-guard-and-the-registry-still-agree",
+      "source_type": "invariant",
+      "source_id": "a-prohibition-does-not-read-as-a-permission",
+      "expected_outcome": "Every ordered pair of Bounded Contexts is either denied by the compiled guard or permitted here, never both and never neither.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "a cross-check of the staged policies against apps/platform/.golangci.yml"
+    },
+    {
+      "id": "a-rule-needs-its-statement",
+      "source_type": "invariant",
+      "source_id": "the-inversion-has-a-home",
+      "expected_outcome": "A reviewed rule stripped of its statement is refused by the validator.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on a mutated copy"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "the-inversion-has-a-home",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "approval-path-is-external",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-inversion-has-a-home",
+      "expected_outcome": "Governance readiness reports ready with no blocks.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry governance-readiness"
+    }
+  ]
+}
