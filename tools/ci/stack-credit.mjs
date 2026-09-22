@@ -182,6 +182,124 @@ try {
     }).slice(0, 500),
   );
 
+  const revisedName = "Browser revised test case";
+  const revisedPrompt = "Return the requested value after revision.";
+  if (typeof createdTestCase.test_case_id === "string") {
+    await page.goto(`${base}/lab/test-cases/${createdTestCase.test_case_id}`, {
+      waitUntil: "networkidle",
+    });
+  }
+  await page.locator("#edit-name").fill(revisedName);
+  await page.locator("#edit-prompt").fill(revisedPrompt);
+  const updateTestCaseWait = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/test-cases/${createdTestCase.test_case_id}` &&
+      response.request().method() === "PATCH",
+  );
+  await page
+    .locator("#edit-prompt")
+    .locator("xpath=ancestor::p/following-sibling::button[1]")
+    .click();
+  const updateTestCaseResponse = await updateTestCaseWait;
+  const revised =
+    typeof createdTestCase.test_case_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/test-cases/${createdTestCase.test_case_id}`,
+          )
+        ).json()
+      : {};
+  check(
+    "the browser revises a test case and its revision reads back",
+    updateTestCaseResponse.status() === 200 &&
+      revised.name === revisedName &&
+      revised.user_prompt === revisedPrompt,
+    JSON.stringify({ status: updateTestCaseResponse.status(), revised }).slice(
+      0,
+      500,
+    ),
+  );
+
+  const criterionText = "The response includes the requested value.";
+  await page.locator("#new-criterion").fill(criterionText);
+  const addCriterionWait = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/test-cases/${createdTestCase.test_case_id}/criteria` &&
+      response.request().method() === "POST",
+  );
+  const addCriterionResponse = await Promise.all([
+    addCriterionWait,
+    page
+      .locator("#new-criterion")
+      .locator("xpath=following-sibling::button")
+      .first()
+      .click(),
+  ]).then(([response]) => response);
+  const withCriterion =
+    typeof createdTestCase.test_case_id === "string"
+      ? await (
+          await member.request.get(
+            `${base}/test-cases/${createdTestCase.test_case_id}`,
+          )
+        ).json()
+      : {};
+  const criterion = withCriterion.acceptance_criteria?.find(
+    (item) => item.text === criterionText,
+  );
+  check(
+    "the browser adds a criterion and its draft reads back",
+    addCriterionResponse.status() === 201 && criterion?.confirmed_at === null,
+    JSON.stringify({
+      status: addCriterionResponse.status(),
+      withCriterion,
+    }).slice(0, 500),
+  );
+
+  if (
+    typeof criterion?.id === "string" &&
+    typeof createdTestCase.test_case_id === "string"
+  ) {
+    await page.reload({ waitUntil: "networkidle" });
+    const criterionRow = page
+      .locator(`#criterion-${criterion.id}`)
+      .locator("xpath=ancestor::li");
+    const confirmCriterionWait = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/test-cases/${createdTestCase.test_case_id}/criteria/${criterion.id}` &&
+        response.request().method() === "PATCH",
+    );
+    const confirmCriterionResponse = await Promise.all([
+      confirmCriterionWait,
+      criterionRow.locator('button[type="button"]').nth(1).click(),
+    ]).then(([response]) => response);
+    const confirmed = await (
+      await member.request.get(
+        `${base}/test-cases/${createdTestCase.test_case_id}`,
+      )
+    ).json();
+    const confirmedCriterion = confirmed.acceptance_criteria?.find(
+      (item) => item.id === criterion.id,
+    );
+    check(
+      "the browser confirms a criterion and its confirmation reads back",
+      confirmCriterionResponse.status() === 200 &&
+        typeof confirmedCriterion?.confirmed_at === "string",
+      JSON.stringify({
+        status: confirmCriterionResponse.status(),
+        confirmed,
+      }).slice(0, 500),
+    );
+  } else {
+    check(
+      "the browser confirms a criterion and its confirmation reads back",
+      false,
+      "criterion missing",
+    );
+  }
+
   const datasetName = "browser-upload.csv";
   const datasetContents = "name,value\nexample,1\n";
   if (typeof createdTestCase.test_case_id === "string") {
