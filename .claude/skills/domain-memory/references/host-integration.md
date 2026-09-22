@@ -20,6 +20,8 @@ Host-specific role files, model settings, concurrency, and orchestration belong 
 
 When delegation is available, pass the implementation handoff from Read or Design to the coding Agent as the task's reviewed context. The receiving Agent may choose different language-native constructs, but it must return evidence for the handoff's proof obligations. If the host cannot carry this handoff between agents, run the capabilities sequentially in one context and label the result unverified when the handoff is lost.
 
+A host that carries approvals must also prepare the authority behind them, once per repository and once per machine. `governance-readiness` reports what is still missing, and the API reference's *Preparing the approval authority* section covers both situations and the commands that settle them. Until that is done the Registry holds candidates, which is a legitimate state to work in and not a state to present as reviewed.
+
 The first repository event is readiness routing. Run `readiness --repo-root <repo>` before any capability that expects a Registry. An empty or greenfield repository must go through source discovery and explicit Registry initialization before Read; do not call `probe` as the first command.
 
 The lifecycle adapter should wire these command groups to its own events:

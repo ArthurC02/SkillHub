@@ -31,6 +31,8 @@ Reviewed records constrain code; candidates are handoff material and do not auth
 
 Read [the seven-step workflow](references/seven-step-workflow.md) for material domain changes and [the file-backed API](references/script-api.md) for command shapes. The scripts are the controlled write boundary; Git remains the collaboration and review boundary.
 
+A Registry that has never named an approval authority holds candidates only, and no capability can promote one. The API reference's *Preparing the approval authority* section covers the two situations: a repository whose pull requests are reviewed, and a repository where the maintainer signs instead.
+
 Use [tactical design reasoning](references/tactical-reasoning.md) when guiding implementation. Preserve domain boundaries and invariants, then let the Agent choose the language-idiomatic tactical pattern; do not turn this Plugin into a code template library.
 
 For a material change, pass the compact [implementation handoff](references/implementation-handoff.md) from Read or Design to the coding Agent. It carries facts and proof obligations, not code shape.
