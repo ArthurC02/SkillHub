@@ -46,6 +46,34 @@ type skillResponse struct {
 	ForkedFromVersionID *string `json:"forked_from_version_id,omitempty"`
 }
 
+type deletedSkillResponse struct {
+	Deleted          bool   `json:"deleted"`
+	VersionsRetained int64  `json:"versions_retained"`
+	Note             string `json:"note"`
+}
+
+type takenDownSkillResponse struct {
+	SkillID     string `json:"skill_id"`
+	TakenDownAt string `json:"takedown_at"`
+	Reason      string `json:"reason"`
+	Note        string `json:"note"`
+}
+
+type skillVersionsResponse struct {
+	Versions []skillVersionResponse `json:"versions"`
+}
+
+type fileDiffResponse struct {
+	Files []FileDiff `json:"files"`
+}
+
+type skillsResponse struct {
+	Skills    []ownSkillResponse `json:"skills"`
+	Limit     int                `json:"limit"`
+	Truncated bool               `json:"truncated"`
+	Total     int64              `json:"total"`
+}
+
 func toSkillResponse(s gen.Skill) skillResponse {
 	out := skillResponse{
 		SkillID:           pgconv.UUIDString(s.ID),
@@ -120,10 +148,10 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"deleted":           true,
-		"versions_retained": res.VersionsRetained,
-		"note":              deletionNote,
+	httpx.WriteJSON(w, http.StatusOK, deletedSkillResponse{
+		Deleted:          true,
+		VersionsRetained: res.VersionsRetained,
+		Note:             deletionNote,
 	})
 }
 
@@ -164,11 +192,11 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id":    pgconv.UUIDString(skill.ID),
-		"takedown_at": skill.TakedownAt.Time.UTC().Format(time.RFC3339),
-		"reason":      body.Reason,
-		"note": "removed from search and from the fork path; the skill, its versions " +
+	httpx.WriteJSON(w, http.StatusOK, takenDownSkillResponse{
+		SkillID:     pgconv.UUIDString(skill.ID),
+		TakenDownAt: skill.TakedownAt.Time.UTC().Format(time.RFC3339),
+		Reason:      body.Reason,
+		Note: "removed from search and from the fork path; the skill, its versions " +
 			"and their sources are retained, and existing forks and past runs are unaffected",
 	})
 }
@@ -250,7 +278,7 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:     v.CreatedAt.Time.UTC().Format(time.RFC3339),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"versions": out})
+	httpx.WriteJSON(w, http.StatusOK, skillVersionsResponse{Versions: out})
 }
 
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +303,7 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "diff failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"files": diffs})
+	httpx.WriteJSON(w, http.StatusOK, fileDiffResponse{Files: diffs})
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -351,11 +379,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skills":    out,
-		"limit":     listSkillsLimit,
-		"truncated": truncated,
-		"total":     total,
+	httpx.WriteJSON(w, http.StatusOK, skillsResponse{
+		Skills:    out,
+		Limit:     listSkillsLimit,
+		Truncated: truncated,
+		Total:     total,
 	})
 }
 
