@@ -239,6 +239,36 @@ try {
     }).slice(0, 500),
   );
 
+  await page.locator("#skill-category").selectOption("data");
+  const setCategoryResponse = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/skills/${imported.skill_id}/category` &&
+        response.request().method() === "PUT",
+    ),
+    page
+      .locator("#skill-category")
+      .locator("xpath=ancestor::section")
+      .locator('button[type="button"]')
+      .click(),
+  ]).then(([response]) => response);
+  const categorized =
+    typeof imported.skill_id === "string"
+      ? await (
+          await member.request.get(`${base}/api/skills/${imported.skill_id}`)
+        ).json()
+      : {};
+  check(
+    "the browser categorizes an owned skill and its category reads back",
+    setCategoryResponse.status() === 200 &&
+      categorized.category?.value === "data",
+    JSON.stringify({ status: setCategoryResponse.status(), categorized }).slice(
+      0,
+      500,
+    ),
+  );
+
   const testCaseName = "Browser-created test case";
   const testCasePrompt = "Return the requested answer in a concise form.";
   await page.goto(base + "/lab/test-cases", { waitUntil: "networkidle" });
