@@ -1,5 +1,16 @@
 export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 
+const API_ORIGIN = "https://api.skillhub.invalid";
+
+export function internalAPIPath(value: string | undefined): string | undefined {
+  if (!value?.startsWith("/") || value.startsWith("//")) return undefined;
+  try {
+    return new URL(value, API_ORIGIN).origin === API_ORIGIN ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class ApiError extends Error {
   status: number;
   body?: unknown;

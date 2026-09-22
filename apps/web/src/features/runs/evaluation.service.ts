@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch } from "../../core/api/client";
+import { ApiError, apiFetch, internalAPIPath } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
@@ -327,10 +327,12 @@ export function useRunComparison(runId: string, against: string) {
 }
 
 export function useVersionDiff(url: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.evaluation.versionDiff(url ?? ""),
+  const path = internalAPIPath(url);
+  const query = useQuery({
+    queryKey: queryKeys.evaluation.versionDiff(path ?? ""),
     queryFn: () =>
-      apiFetch<{ files: { path: string; status: string; diff?: string }[] }>(url as string),
-    enabled: Boolean(url),
+      apiFetch<{ files: { path: string; status: string; diff?: string }[] }>(path as string),
+    enabled: Boolean(path),
   });
+  return { ...query, invalidURL: Boolean(url) && !path };
 }

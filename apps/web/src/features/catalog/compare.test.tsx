@@ -85,6 +85,26 @@ test("EVAL-003 waits for the Test Case before loading candidate runs", async () 
   expect(runLists.every((url) => url.includes(`test_case_id=${TEST_CASE}`))).toBe(true);
 });
 
+test("EVAL-003 comparison does not fetch a version diff outside the platform", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    calls.push(url);
+    if (pathOf(url).endsWith("/comparison"))
+      return json({ ...COMPARISON, version_diff_url: "https://example.test/version-diff" });
+    if (pathOf(url) === "/runs") {
+      return json(url.includes(`test_case_id=${TEST_CASE}`) ? RUNS : { runs: [FOREIGN_RUN] });
+    }
+    const { body, status } = platformResponse(url);
+    return json(body, status);
+  });
+  search = { against: OTHER_RUN };
+  await render(<RunCompare />);
+  await waitFor(() => text().includes("無法讀取版本差異"));
+
+  expect(calls.some((url) => url.includes("example.test/version-diff"))).toBe(false);
+});
+
 async function render(node: ReactNode) {
   await act(async () => {
     root = createRoot(container);

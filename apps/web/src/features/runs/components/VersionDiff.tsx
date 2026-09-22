@@ -5,6 +5,9 @@ import { Reveal } from "../../../shared/ui/Reveal";
 
 export function VersionDiff({ url }: { url: string }) {
   const diff = useVersionDiff(url);
+  if (diff.invalidURL) {
+    return <ReadFailure error={new Error("位置不在平台內。")} what="版本差異" />;
+  }
   if (diff.isPending) return <Loading what="版本差異" />;
   if (diff.error) return <ReadFailure error={diff.error} what="版本差異" />;
   if (diff.data.files.length === 0) return <p>兩個版本的檔案內容相同。</p>;
