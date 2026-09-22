@@ -21,6 +21,16 @@ type Handler struct {
 	Identity *identity.Service
 }
 
+type workspaceSearchHit struct {
+	SkillID string `json:"skill_id"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+}
+
+type workspaceSearchResponse struct {
+	Results []workspaceSearchHit `json:"results"`
+}
+
 const (
 	reasonSourceModel    = "model"
 	reasonSourceTemplate = "template"
@@ -578,14 +588,9 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type searchHit struct {
-		SkillID string `json:"skill_id"`
-		Name    string `json:"name"`
-		Summary string `json:"summary"`
-	}
-	hits := make([]searchHit, 0, len(rows))
+	hits := make([]workspaceSearchHit, 0, len(rows))
 	for _, row := range rows {
-		hits = append(hits, searchHit(row))
+		hits = append(hits, workspaceSearchHit(row))
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": hits})
+	httpx.WriteJSON(w, http.StatusOK, workspaceSearchResponse{Results: hits})
 }
