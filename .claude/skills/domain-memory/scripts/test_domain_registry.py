@@ -684,6 +684,15 @@ class DomainRegistryTest(unittest.TestCase):
         source.write_text("one\nchanged\n", encoding="utf-8")
         self.assertEqual("stale", verify(reference, self.repo)["status"])
 
+    def test_structured_evidence_allows_changes_outside_the_cited_excerpt(self) -> None:
+        source = self.repo / "evidence.md"
+        source.write_text("before\nfact\nafter\n", encoding="utf-8")
+        reference = citation(self.repo, "evidence.md", 2, 2)
+
+        source.write_text("changed\nfact\nafter\n", encoding="utf-8")
+
+        self.assertEqual("current", verify(reference, self.repo)["status"])
+
     def draft_package(self) -> Path:
         self.add_context()
         package = self.repo / "proposal"

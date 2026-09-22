@@ -131,9 +131,7 @@ def verify(reference: Any, repo_root: Path) -> dict[str, Any]:
             "path": path_text,
         }
     excerpt = "".join(rows[start - 1 : end]).encode("utf-8")
-    if reference.get("content_sha256") != digest(content) or reference.get(
-        "excerpt_sha256"
-    ) != digest(excerpt):
+    if reference.get("excerpt_sha256") != digest(excerpt):
         return {"status": "stale", "path": path_text}
     return {
         "status": "current",

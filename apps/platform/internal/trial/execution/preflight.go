@@ -399,6 +399,12 @@ type PermissionConfirmation struct {
 	ConfirmedAt *time.Time
 }
 
+type confirmedPreflightResponse struct {
+	Confirmed   bool   `json:"confirmed"`
+	SummaryHash string `json:"summary_hash"`
+	ConfirmedAt string `json:"confirmed_at"`
+}
+
 func (s *Service) ConfirmPermissions(
 	ctx context.Context, workspaceID, actor, skillID, versionID, testCaseID pgtype.UUID, hash string,
 ) (PermissionConfirmation, error) {
@@ -515,10 +521,8 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "confirmation failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
-		"confirmed":    true,
-		"summary_hash": row.SummaryHash,
-		"confirmed_at": formatTime(row.ConfirmedAt),
+	httpx.WriteJSON(w, http.StatusCreated, confirmedPreflightResponse{
+		Confirmed: true, SummaryHash: row.SummaryHash, ConfirmedAt: formatTime(row.ConfirmedAt),
 	})
 }
 

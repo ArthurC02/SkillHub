@@ -94,7 +94,6 @@
       "kind": "tests",
       "authority": "evidence that a specific behavior is checked",
       "paths": [
-        "apps/platform/apiserver.test.exe",
         "apps/platform/cmd/api/capabilities_packaging_test.go",
         "apps/platform/cmd/api/capabilities_web_test.go",
         "apps/platform/cmd/api/main_test.go",
@@ -149,6 +148,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/creation_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_materialize_rollback_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_measure_batch_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/creation_presentation_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_python_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_reuse_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_ruling_integration_test.go",
@@ -204,6 +204,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/trace_fold_a4_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/trace_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/trends_integration_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/trends_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/worklist_fairness_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/workspace_history_integration_test.go",
         "apps/platform/internal/entrypoint/wiring/creation_environment_test.go",
@@ -311,6 +312,7 @@
         "apps/platform/internal/trial/design/purge_test.go",
         "apps/platform/internal/trial/design/reconcile_test.go",
         "apps/platform/internal/trial/design/snapshot_test.go",
+        "apps/platform/internal/trial/design/test_case_test.go",
         "apps/platform/internal/trial/design/testlab_test.go",
         "apps/platform/internal/trial/evidence/evaluation_event_test.go",
         "apps/platform/internal/trial/evidence/general_test.go",
@@ -350,6 +352,7 @@
         "apps/platform/internal/trial/improvement/creation_feedback_test.go",
         "apps/platform/internal/trial/improvement/deterministic_test.go",
         "apps/platform/internal/trial/improvement/eval_test.go",
+        "apps/platform/internal/trial/improvement/evaluation_record_test.go",
         "apps/platform/internal/trial/improvement/evaluation_test.go",
         "apps/platform/internal/trial/improvement/judge_citation_test.go",
         "apps/platform/internal/trial/improvement/mailbox_test.go",
@@ -479,6 +482,13 @@
   ],
   "missing_groups": [],
   "selection_status": "agent-asserted",
+  "governance_candidates": {
+    "ci_tools": [
+      "github-actions"
+    ],
+    "recommended_verifier": "scm-review",
+    "recommended_trigger": "external-scm"
+  },
   "note": "The map locates candidate sources. It does not establish a domain fact or source authority by itself.",
   "selected_paths": [
     "apps/platform/internal/entrypoint/wiring/trial.go",
@@ -490,7 +500,7 @@
   ],
   "source_policy_report": {
     "files": 6,
-    "total_bytes": 70129,
+    "total_bytes": 70293,
     "oversized_files": [],
     "errors": []
   },
@@ -511,7 +521,9 @@
       "docs/development/platform-context-map.md": "9a8df6978bbae4006acd255866dd7026a91a43e9",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
-    "dirty_sources": []
+    "dirty_sources": [
+      " M apps/platform/internal/trial/execution/preflight.go"
+    ]
   },
   "source_snapshots": [
     {
@@ -532,7 +544,7 @@
     {
       "path": "apps/platform/internal/trial/execution/preflight.go",
       "file_count": 1,
-      "digest": "sha256:d0e2761b21c6c72d65cf00e3fe844023f6b440e3b4f8420fe83a28a7ec31a086"
+      "digest": "sha256:f058965db2746e8aa0fdfd870bfdefdde5fc9d116a571a71a17c692124f2c342"
     },
     {
       "path": "docs/development/platform-context-map.md",

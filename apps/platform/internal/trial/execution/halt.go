@@ -360,6 +360,28 @@ type haltRequest struct {
 	Note     string `json:"note"`
 }
 
+type dispatchHaltResponse struct {
+	Target            string `json:"target"`
+	Source            string `json:"source"`
+	Reason            string `json:"reason"`
+	DeclaredAt        string `json:"declared_at"`
+	ClearRounds       int32  `json:"clear_rounds"`
+	AutomaticRecovery bool   `json:"automatic_recovery"`
+}
+
+type dispatchHaltsResponse struct {
+	Dispatching bool                   `json:"dispatching"`
+	Halts       []dispatchHaltResponse `json:"halts"`
+}
+
+type declaredHaltResponse struct {
+	Target     string `json:"target"`
+	Source     string `json:"source"`
+	Reason     string `json:"reason"`
+	DeclaredAt string `json:"declared_at"`
+	Note       string `json:"note"`
+}
+
 func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
 	user, ok := identity.SessionUser(r.Context())
 	if !ok {
@@ -378,21 +400,16 @@ func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch halt lookup failed")
 		return
 	}
-	halts := make([]map[string]any, 0, len(state.byTarget))
+	halts := make([]dispatchHaltResponse, 0, len(state.byTarget))
 	for target, halt := range state.byTarget {
-		halts = append(halts, map[string]any{
-			"target":       haltTarget(target),
-			"source":       halt.Source,
-			"reason":       halt.Reason,
-			"declared_at":  pgconv.RFC3339(halt.DeclaredAt),
-			"clear_rounds": halt.ClearRounds,
-
-			"automatic_recovery": HaltSource(halt.Source).RecoversAutomatically(),
+		halts = append(halts, dispatchHaltResponse{
+			Target: haltTarget(target), Source: halt.Source, Reason: halt.Reason,
+			DeclaredAt: pgconv.RFC3339(halt.DeclaredAt), ClearRounds: halt.ClearRounds,
+			AutomaticRecovery: HaltSource(halt.Source).RecoversAutomatically(),
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"dispatching": len(state.byTarget) == 0 || !state.dispatchPaused(h.Svc.providers()),
-		"halts":       halts,
+	httpx.WriteJSON(w, http.StatusOK, dispatchHaltsResponse{
+		Dispatching: len(state.byTarget) == 0 || !state.dispatchPaused(h.Svc.providers()), Halts: halts,
 	})
 }
 
@@ -410,12 +427,9 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch halt failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"target":      haltTarget(halt.Provider),
-		"source":      halt.Source,
-		"reason":      halt.Reason,
-		"declared_at": formatTime(halt.DeclaredAt),
-		"note": "new runs are refused and nothing is dispatched to this target; " +
+	httpx.WriteJSON(w, http.StatusOK, declaredHaltResponse{
+		Target: haltTarget(halt.Provider), Source: string(halt.Source), Reason: halt.Reason,
+		DeclaredAt: formatTime(halt.DeclaredAt), Note: "new runs are refused and nothing is dispatched to this target; " +
 			"cleanup and orphan teardown stand down so the scene is preserved. " +
 			"This halt is never lifted automatically.",
 	})
