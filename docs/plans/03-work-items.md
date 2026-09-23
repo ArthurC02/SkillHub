@@ -500,3 +500,11 @@ hello in-process s3
 - [x] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)、[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)；鐵律 7、8）
 - [x] OPS-009 營運趨勢圖：`apps/web` 新增 `chart.js` 依賴（[營運後台](../adr/README.md#營運後台)，§4.8 的具名例外）與 `/admin/trends`；四條每日彙總端點（`credit` 兩條、`run`、`audit`），逐條 `RequireOperator` 並列入 authz 矩陣。（對應 `02:OPS-008`；第三批）
 - [x] OPS-010 模型呼叫逾時：契約六個 request schema 加 `timeout_seconds` 並由 `apps/llm` 取 `min()`；migration `0082` 的 `model_call_budgets` 與新的 Generic 套件 `foundation/integration/modelbudget`；三條 `RequireOperator` 端點（理由必填、與 audit 同交易）；`apps/web` 的 `/admin/model-budgets`。（對應 `02:OPS-009`；[`05` R-84](05-pending-rulings.md)；第四批）
+
+## 23. 測試的容器依賴（2026-09-23 新增）
+
+> 目標是讓 `apps/sandbox` 的測試不必有容器 daemon 也跑得完整，**但隔離證明留在 gVisor**：非 root、唯讀 rootfs、drop caps、無宿主路徑與 docker socket、網路 default-deny、資源上限真的攔得住、OOM 與逃逸，換到沒有隔離的後端上只會變成假綠。判準一句話：這條測試跑在完全沒有隔離的後端上，還在測同一件事嗎——是，就是驅動契約；會變得空洞或誤導，就是隔離證明，不准搬。
+
+- [x] SBX-014 驅動契約寫一次、每個後端各跑一次：`internal/drivertest` 的 `Subject` 只提供各後端不同的部分（建構、handle、請求），斷言寫在契約裡；`localdrv` 永遠跑，`dockerdrv` 有 daemon 才跑。一條契約測試搬進去時必須從原本的檔案刪掉，否則是第二個會漂移的地方。
+- [x] SBX-015 CI 有一條沒有容器執行期可用的工作（`sandbox-nodocker`，`DOCKER_HOST` 指向沒人在聽的位址），新長出來的 daemon 依賴在那裡是紅的，不是靜默跳過。既有的 `SKILLHUB_REQUIRE_DOCKER=1` 守的是相反方向：有 daemon 的工作不得整批跳過還報成功。
+- [ ] SBX-016 Unix 的 `resourceEnforcement()` 兩項皆為 false（`apps/sandbox/internal/localdrv/tree_unix.go`），Windows 兩項皆為 true；在補上之前，Linux 上的 `localdrv` 宣告不了記憶體與行程數上限，這兩項的強制只有容器那條路徑證明得了。

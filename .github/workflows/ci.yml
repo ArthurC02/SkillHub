@@ -344,6 +344,30 @@ jobs:
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
+  sandbox-nodocker:
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/sandbox
+    env:
+      DOCKER_HOST: tcp://127.0.0.1:1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/sandbox/go.mod
+          cache-dependency-path: apps/sandbox/go.sum
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Sandbox tests with no container runtime in reach
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests without a container runtime' go test -count=1 ./...
+
   sandbox-windows:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
