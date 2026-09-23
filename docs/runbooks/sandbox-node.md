@@ -18,7 +18,7 @@
 
 1. **釘閘道位址**：獨立 PR 只改 `infra/egress/allowlist.yaml` 的 `model_gateway.pinned_ip`，填閘道的私有位址（**不是控制平面的位址**），同一個 PR 更新威脅模型文件。合併前 `python tools/egress/render.py --check` 會要求一併重新產生 `infra/egress/rendered/`。**沒有這一步，節點會正常起來，而每個 Run 都到不了閘道。**
 2. **控制平面收得到記錄**：控制平面的供應商防火牆要讓這台的私有位址連 19532（[控制平面 runbook](control-plane.md) §1.2）。沒有這一步節點照樣服務，出口記錄只留在本機，換新時跟著主機一起刪掉。
-3. **選 commit**：要包含上一步的合併，而且 main 的 CI 已經推過那個 commit 的映像（`go -C tools/devctl run . ci-status <40 碼 sha>` 是 green）。節點上的規則是從這個 commit 的允許清單渲染的。
+3. **選 commit**：要包含上一步的合併，且已有受控、釘定的節點映像。此專案目前由 main 的 CI 發布映像，可用 `go -C tools/devctl run . ci-status <40 碼 sha>` 確認 green；若部署管線不同，使用它選定的 provenance 證據。節點上的規則一律從這個 commit 的允許清單渲染，不能拿另一個 commit 的規則配映像。
 
 ## 2. 建節點
 

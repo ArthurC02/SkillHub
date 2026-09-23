@@ -18,14 +18,14 @@
 
 ### 1.1 產生 user-data
 
-只能部署**main 的 CI 已經推過映像**的 commit：
+只能部署已經有受控、釘定映像的 commit。此專案目前由 main 的 CI 發布至 GHCR，所以先確認它的驗證結果：
 
 ```bash
 go -C tools/devctl run . ci-status <40 碼 sha>          # 必須是 green
 python tools/deploy/render.py control-plane --release <40 碼 sha> --settings control-plane.settings > user-data.yaml
 ```
 
-`control-plane.settings` 是 `KEY=VALUE`（不進 repo）：`SKILLHUB_DOMAIN`、`SKILLHUB_ACME_EMAIL`、`SKILLHUB_PRIVATE_IP`（私有網路上這台的位址）、`SKILLHUB_ALERT_EMAIL`、`SKILLHUB_SMTP_SMARTHOST`（`host:587`）、`SKILLHUB_SMTP_FROM`、`SKILLHUB_SMTP_USERNAME`、`SKILLHUB_GATEWAY_URL`（模型閘道的私有位址，`http://<位址>:4000`；閘道還沒建時先填預定位址，[閘道 runbook](gateway.md) §4）。少一個、多一個拼錯的、或值帶 shell 會重新解讀的字元，render 都會拒絕；某個映像沒有被那個 commit 推出來也會拒絕。
+`control-plane.settings` 是 `KEY=VALUE`（不進 repo）：`SKILLHUB_DOMAIN`、`SKILLHUB_ACME_EMAIL`、`SKILLHUB_PRIVATE_IP`（私有網路上這台的位址）、`SKILLHUB_ALERT_EMAIL`、`SKILLHUB_SMTP_SMARTHOST`（`host:587`）、`SKILLHUB_SMTP_FROM`、`SKILLHUB_SMTP_USERNAME`、`SKILLHUB_GATEWAY_URL`（模型閘道的私有位址，`http://<位址>:4000`；閘道還沒建時先填預定位址，[閘道 runbook](gateway.md) §4）。少一個、多一個拼錯的、或值帶 shell 會重新解讀的字元，render 都會拒絕；目前的 GHCR renderer 也會拒絕沒有對應映像的 commit。若移植到沒有 CI 或 GHCR 的 repo，先替換 renderer 與映像 provenance 流程，再使用本手冊；不要把 `ci-status` 假裝成通用驗證器。
 
 ### 1.2 開機
 

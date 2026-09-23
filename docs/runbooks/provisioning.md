@@ -16,7 +16,7 @@
 
 ## 2. 所有模式共有的起點
 
-1. 取得要部署的 commit，確認工作樹沒有未知變更。正式部署只能使用已通過驗證、已產出映像的 commit。
+1. 取得要部署的 commit，確認工作樹沒有未知變更。正式部署只能使用已通過團隊選定驗證、且可解析為釘定 digest 映像的 commit。本專案目前的 renderer 從 GHCR 取映像；CI 是目前部署管線的驗證來源，不是所有 repo 都必備的前提。沒有 CI 時，依 Domain Memory 治理政策的簽署 commit、push 與授權簽署者留下等效證據，並先確認映像如何被受控地建出與發布。
 2. 執行 `task doctor`；沒有 Task 時執行 `go -C tools/devctl run . doctor`。依它指出的實際版本修正 Go、Node、uv、Docker 與 Compose，不要從本文猜版本。
 3. 執行 `task env:init` 與 `task bootstrap`。前者只在 `.env` 不存在時由 `.env.example` 建立檔案；後者取得各語言依賴。
 4. 執行 `task gen:check`。跨程序契約、SQL query 與 generated output 必須在服務啟動前對齊。

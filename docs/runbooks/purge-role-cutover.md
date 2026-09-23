@@ -1,6 +1,6 @@
 # 清除工作切到 skillhub_purge 角色 Runbook
 
-適用於部署 migration `0059`（`skillhub_purge` 角色）之後，把 `cmd/maintenance` 的清除工作從 API 角色換成最小權限角色。R-25、OWASP GenAI LLM01 的縱深防禦立場都是同一句話：清除工作只該有它需要的權限，應用角色不該對每張表都有 `DELETE`。`0059` 只建立角色與授權，不指派給任何登入帳號、也不 revoke 任何東西——那兩步都是這份 runbook 的操作者動作。
+這是一次性相容切換，只適用於既有資料庫在 migration `0059` 已部署後，第一次把 `cmd/maintenance` 的清除工作從 API 角色換成最小權限角色。新建環境應由部署設定直接使用清除角色；已完成切換的環境與一般換版不得重跑 revoke。清除工作只該有它需要的權限，應用角色不該對每張表都有 `DELETE`。`0059` 只建立角色與授權，不指派給任何登入帳號、也不 revoke 任何東西——那兩步都是這份 runbook 的操作者動作。
 
 每一步都要保存執行時間、操作者與輸出；任何一步不成立就停止，不要跳到下一步。
 
@@ -28,7 +28,7 @@
 在關掉 API 角色的 `DELETE` 之前，下面每一項都要有證據（時間、輸出、操作者），缺一項就不算完成，不能靠「應該沒問題」跳過：
 
 1. **啟動檢查**：`maintenance` 任一子命令的啟動日誌**不是** `SKILLHUB_PURGE_DATABASE_URL not set; purging under the API role (DATABASE_URL)`——沒有這行代表確實吃到新的環境變數。
-2. **七個子命令逐一跑過一輪成功**，且輸出的計數合理（不是因為權限不足而回傳 0 或直接失敗）：
+2. **八個子命令逐一跑過一輪成功**，且輸出的計數合理（不是因為權限不足而回傳 0 或直接失敗）：
    `purge-accounts`、`purge-audit`、`purge-feedback`、`purge-run-artifacts`、`purge-datasets`、`purge-deleted-skills`、`collect-objects`、`check-sources`。
 3. 任何一個子命令若回報 Postgres `42501 permission denied`，代表 `0059` 的授權清單漏了某張表或某個動詞（`SELECT`／`INSERT`／`UPDATE`／`DELETE`）——回去改 migration 補授權，重新從第 0 步開始，不要在這個角色上手動 `GRANT` 補丁而不回頭改 migration，否則下一個環境重建資料庫時會漏掉。
 4. 確認 API／Worker 的既有刪除路徑（例如使用者自己刪除 Dataset、刪除 Skill、登出清 session）在這段驗證期間仍然正常——它們此時仍走 API 角色，第 3 節之前不受影響，但值得跑一次確認沒有被步驟 1 的部署變更意外波及。

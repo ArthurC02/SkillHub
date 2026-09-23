@@ -1,223 +1,99 @@
-# Runbook：P1 停止派送（`SEC-010` / `SEC-012`）
+# Runbook：P1 停止派送
 
-- 對應需求：[`02:SEC-010`](../plans/02-specifications-and-acceptance-criteria.md)（「流程以 runbook 形式產出，可被值班人員直接執行」）、`03:SEC-012`
-- 對應決策：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) X-02／X-04、`02:SEC-010` 的嚴重度分級表
-- 歷史殘項（已結案）：[`04` 丙-26](../plans/04-backlog-and-handoffs.md)
+**讀者是正在處理派送停止的人。** 先讀 §1 確認目前狀態，再依 §2 的來源處理。這個開關只控制 Run：它不會取代節點關機、秘密輪替、Trace 清除或映像重建。
 
-**這份文件的讀者是停派送當下的那個人。** 前三節照順序讀就能動作，背景在後面。
-
----
-
-## 0. 開關是什麼
-
-一張表、一列。`dispatch_halts` 有一列未 lift 的紀錄，平台就不派送。
-
-- `provider = ''`（空字串）代表**整池**；填 provider 名字代表只停那一個節點池。
-- `source = 'p1_incident'`：人或偵測器宣告的 P1。**永遠不會自動解除。**
-- `source = 'orphan_threshold'`：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) X-04 的容量事件，Reconciler 連續 2 輪乾淨會**自己解除**。
-- **三個讀者都 fail-closed，但「有列在」對三者不是同一件事**（**2026-08-25 訂正**：原本這一行寫「有列在 → 建立 Run 直接回錯誤」，那句話只有在**停整池**時成立）：
-  - **建立 Run**（`requireDispatchable` → `incidentPaused`）：**整池的 `p1_incident` 列，或「已設定的每一個 provider 各自都有 `p1_incident` 列」**，才會直接回 `the execution environment is temporarily unavailable`。門檻類（`orphan_threshold`）的列**不擋建立**，多 provider 部署下只停其中一個也不擋。
-  - **派送已排入的 Run**（`dispatchPaused`）：整池的列（**不分 source**），或**所有已設定的 provider 各自都有列**時，Run 留在 `queued` 等；只要還有沒被停的 provider，就改派給它。
-  - **清理與遺留資源拆除**（`incidentHeld`）：只有 `source = 'p1_incident'` 才**停手**（保留現場）——整池的列擋全部，單一 provider 的列只擋那一個池；`orphan_threshold` **不停清理**，因為清理正是清掉觸發它的那些洩漏。
-- ⚠️ **單一 provider 部署（目前的形態）下，「停那一個 provider」與「停整池」對建立的效果相同**：`incidentPaused` 要的是「每一個已設定的 provider 都被停」，而那台機器上只有一個。差別在**清理**——單一 provider 的列只擋那一個池的清理，整池的列擋全部。`p1_incident` **沒有自動解除**，兩種形式都一樣。
-
-使用者看到的那句話**不含任何事故細節**——開不了 Run 的人不是事故關於的人。
-
----
-
-## 1. 先確認：現在是不是真的停著
+## 1. 先讀目前狀態
 
 ```bash
 # 需要 operator session（OPERATOR_USER_IDS 含你的 user_id）
 curl -s -b <cookie> http://<api>/admin/dispatch | python -m json.tool
 ```
 
-回傳的 `dispatching` 是 true／false，每一列有 `target`、`source`、`reason`、`declared_at`、`automatic_recovery`。
-
-**`automatic_recovery` 是這裡最該先看的欄位**：true 代表門檻類、它會自己走；false 代表在等人，也就是等你。
-
-直接查資料庫（API 起不來時）：
+回應有 `dispatching` 與每個未解除 halt 的 `target`、`source`、`reason`、`declared_at`、`automatic_recovery`。API 無法使用時，直接查核心資料庫：
 
 ```sql
-select provider, source, declared_at, lifted_at, left(reason, 200)
-from dispatch_halts where lifted_at is null;
+select provider, source, reason, declared_at, lifted_at, clear_rounds
+from dispatch_halts
+where lifted_at is null
+order by declared_at;
 ```
 
----
+`provider = ''` 代表整個 pool；其他值代表一個 Provider。不要只看 `dispatching`：它只說現在是否所有 Provider 都被擋，沒有說事故範圍。
 
-## 2. 分辨真事故與誤觸
-
-~~五條 P1 判準裡**只有兩條會自己翻開關**（③ 與 ⑤），而③有兩個偵測器，共三個。~~**2026-08-26 更新：三條會自己翻開關（②③⑤），共四個偵測器。** ② 的探針在該日落地（見 2.3 的補記）。**先判斷是哪一個翻的，再決定要不要調查**——四個裡有兩個可能誤觸（`TraceMaskingStopped` 的流量判準、Reconciler 停擺），兩個不會（masker canary、P-02）。**不會誤觸的那兩個要當成真的**：canary 讀的是規則本身，P-02 讀的是一次真的連上了。
-
-### 2.1 `TraceMaskingStopped`
-
-**這條判準有兩個偵測器，`reason` 的第一行就分得出來是哪一個。** 兩個都掛在 supervisor 每 30 秒那一輪的尾巴，都不會自動解除。
-
-| `reason` 開頭 | 偵測器 | 它憑什麼下結論 |
+| `source` | 意義 | 是否自動解除 |
 | --- | --- | --- |
-| `TraceMaskingStopped, canary` | **canary**（`trace.MaskerCanary`） | 平台自己造一份**每一種形狀各一個**的假 Secret 餵過 masker，有任何一個沒被遮掉。**不看流量、不看資料庫、不打模型、不建 Run。** |
-| `TraceMaskingStopped:` | **流量判準** | 兩小時的 `source = 'sandbox'` 事件（窗的兩端都要有量）而 `masked_fields` 全空 |
+| `p1_incident` | 安全事故或偵測到 P1 條件 | 否；只能由 operator 在修復與保留證據後解除 |
+| `orphan_threshold` | 遺留 Sandbox 達容量門檻的保護 | 是；連續兩輪乾淨的 Reconciler 會解除，operator 也可在確認已處理後手動解除 |
 
-**先看是哪一個，因為要做的事不一樣。**
+## 2. 停止的是什麼
 
-#### 2.1a canary 失敗（`TraceMaskingStopped, canary`）
+三個行為各自 fail-closed，不能互相推論：
 
-`reason` 會直接點名哪幾種形狀沒被遮，例如 `openai style key`、`platform-issued value`。
+| 動作 | 哪些 halt 會擋住 |
+| --- | --- |
+| 建立新的 Run | 整池 `p1_incident`，或每一個已設定 Provider 都各有 `p1_incident`；使用者只會得到暫時無法執行的訊息 |
+| 派送已排入的 Run | 整池的任何 halt，或每一個已設定 Provider 都各有 halt；若仍有未停的 Provider，Worker 可改派給它 |
+| 清理與拆除遺留資源 | `p1_incident` 才停手以保留現場；整池 halt 擋所有清理，單一 Provider halt 只擋該 Provider；`orphan_threshold` 不擋清理 |
 
-**這不是推論，是直接證據**：那幾個值是平台在那一瞬間自己造的，餵進去、沒遮出來。**沒有「誤觸」這個選項**——masker 是一個對編譯進去的規則做的純函數，不會抖動。
+單一 Provider 部署時，停該 Provider 與停整池都會使建立與派送停止；仍要選正確範圍，因為清理的影響不同。
 
-1. 先在同一個 build 上重現（不需要資料庫）：
+## 3. 來源導向的處置
 
-   ```bash
-   go -C apps/platform test ./internal/trial/evidence/ -run TestMaskerCanaryPassesOnAnIntactMasker -count=1 -v
-   ```
+先讀 `reason`，不要先解除或重啟。下表的「立即動作」是為了止血；修復與證據完成前，P1 一律維持 halt。
 
-   **它會紅，而且紅的內容和 `reason` 一致**——測試呼叫的就是生產偵測器呼叫的那一個函數。
+| `reason` 的訊號 | 判定 | 立即動作 | 解除前證據 |
+| --- | --- | --- | --- |
+| `TraceMaskingStopped, canary` | masker 對平台合成 Secret 已失效；不是流量推論 | 停止調查前的任何解除，輪替可能外洩的憑證並依秘密處置程序清除受影響 Trace | 同一 build 的 canary 恢復、規則修正已部署、受影響資料與憑證已處理 |
+| `TraceMaskingStopped:` | Sandbox Trace 持續有流量但沒有遮罩欄位 | 先確認事件來源與遮罩結果；若 Sandbox 資料確實零遮罩，照秘密處置程序止血與清除 | 重新查詢顯示問題已排除；若只是合成或無 Secret 語料，仍要留下判定證據再解除 |
+| `P-02` | 節點常駐探針從 Sandbox 網路位置連上禁止位址 | 保留節點現場；節點已自行拒收新工作，調查 egress 規則與 pinned 位址 | 節點網路政策已修正、節點重新准入，且探針讀數為乾淨；`unknown` 不是 breach，但不得把它當作通過 |
+| `orphan reconciler` | 遺留資源掃描超過容許間隔未執行 | 恢復 Worker 與掃描；不要在掃描仍停擺時解除 | `run_orphan_scan` 的最近執行時間持續前進 |
+| 人工宣告的逃逸疑慮或隔離技術高風險 CVE | 外部安全訊號，平台無法自行判定 | 宣告整池 halt、保留現場，依節點換新與漏洞處置程序處理 | 受影響節點已 drain／重建，或風險已由負責人明確排除 |
+| `orphan_threshold` | 容量保護，不等於已證實安全事故 | 讓 Reconciler 清理；必要時先將該節點從 Provider 清單移除 | 遺留資源低於門檻並連續兩輪乾淨，或已完成有證據的人工清理 |
 
-2. 看 `apps/platform/internal/trial/evidence/mask.go` 的 `secretPatterns` 與 `redact` 的 Known 那一段：被點名 `platform-issued value` ＝ **精確比對那一臂**壞了（平台自己發出的憑證，例如 ingest token，不再被遮）；被點名某個形狀名 ＝ **對應的那條 pattern** 沒了或被改壞。
-3. **在修好並重新部署之前不要解除。** 解除等於讓不受信任的工作負載繼續把輸出寫進 `trace_events`，而遮罩少一條規則。
-4. 已經寫進去的東西照 [`02:SEC-010` §(3)](../plans/02-specifications-and-acceptance-criteria.md) 的遮罩失敗程序處理（撤銷 → 清除 → 通知 → 事後）。
+### 3.1 Trace 遮罩的最小判讀
 
-#### 2.1b 流量判準（`TraceMaskingStopped:`）
-
-`reason` 長這樣：
-
-```
-02:SEC-010 P1 (TraceMaskingStopped): N trace events were stored over the last 2h0m0s
-(M of them in the last 1h0m0s) and not one field was redacted in any of them; ...
-```
-
-**先跑這一句**，它會告訴你那些事件是誰寫的：
+流量型訊號只統計 `source = 'sandbox'`。先確認它不是控制平面自己寫出的事件：
 
 ```sql
-select source, event_type, count(*),
-       sum(case when jsonb_typeof(masked_fields)='array'
+select source, event_type, count(*) as events,
+       sum(case when jsonb_typeof(masked_fields) = 'array'
                 then jsonb_array_length(masked_fields) else 0 end) as masked
 from trace_events
 where occurred_at > now() - interval '2 hours'
-group by 1, 2 order by 3 desc;
+group by 1, 2
+order by events desc;
 ```
 
-- **全部是 `source = 'orchestrator'`** → 誤觸的舊形態，**2026-08-23 已修**（偵測器只數 `source = 'sandbox'`）。若在修正之後仍看到這個形態，那是回歸，開 issue。
-- **有 `source = 'sandbox'` 的量而 `masked` 全 0** → 這才是判準要抓的形態。**照 [`02:SEC-010` §(3) 遮罩失敗 runbook](../plans/02-specifications-and-acceptance-criteria.md) 走**（撤銷 → 清除 → 通知 → 事後），**不要先解除停派送**。
-- **`sandbox` 的量很小（幾十筆以下）** → 見 §5 的量測邊界；判準的前提在低流量下不成立，但**不確定時一律以 P1 處理**（`02:SEC-010` 的升級規則）。
+canary 與流量型訊號保護不同邊界：canary 檢查 masker 規則本身，即使零流量也有效；流量型訊號檢查 ingest 呼叫端是否仍然使用 masker。合成或沒有 Secret 的語料可使流量型訊號不具判讀力，不能用來推翻 canary。
 
-### 2.2 `Reconciler 停擺 > 10 分鐘`
-
-判準來自 `river_job` 裡孤兒掃描的最後生命跡象。最常見的原因是 **worker 根本沒在跑**。
+### 3.2 Reconciler 的最小判讀
 
 ```sql
-select max(coalesce(finalized_at, attempted_at)) from river_job where kind = 'run_orphan_scan';
+select max(coalesce(finalized_at, attempted_at))
+from river_job
+where kind = 'run_orphan_scan';
 ```
 
-worker 停了就把 worker 起回來，確認掃描恢復（時間戳往前走）之後再解除。**掃描沒恢復就解除，等於把看門狗關掉繼續開門。**
+時間戳不再前進通常代表 Worker 或排程無法執行。先修 Worker、佇列或資料庫，確認新的掃描完成，再討論解除。
 
-### 2.2a `P-02 探針回報 fail`（2026-08-26 新增）
+## 4. 人工宣告與解除
 
-**這一個不會誤觸，所以不要先找誤觸。** 它翻開關的條件是**一個沙箱真的連上了它不該連的位址**，而不是「探針掛了」——探針跑不完是 `unknown`，`unknown` 只讓該節點退出輪替，不停整池。
-
-節點在讀到 `fail` 的當下就已經 `Destroy` 掉自己所有在跑的 Run 並拒收新工作，**所以現場在節點上不在平台上**。
-
-```sql
--- 哪一個節點、什麼時候、碰到了什麼（detail 只有位址與 port，沒有酬載）
-select provider, source, reason, declared_at from dispatch_halts
-where lifted_at is null and source = 'p1_incident' order by declared_at desc;
-```
-
-**解除前要回答的是「那條規則為什麼放行了」，不是「探針還會不會再叫」**——把探針關掉或把節點重開機都會讓它安靜，而兩者都沒有改變放行的那條規則。
-
-**⚠️ 這個探針到今天為止從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，綠燈只證明程式會動，不證明那台機器的網路政策成立。
-
-### 2.3 另外~~三~~**兩**條：沒有東西會自動翻開關
-
-> **2026-08-26：②（P-02）離開這一節，改為自動。** 下表的 ② 那一列原樣保留在下面（劃掉），因為它記的是當時的查證，而那次查證**對的是障礙、錯的是結論**——見該列的補記。**本節現在只剩 ① 與 ④ 需要人宣告。**
-
-| 判準 | 為什麼是人工（2026-08-25 逐條查證，證據在右欄） |
-| --- | --- |
-| ① 逃逸疑慮 | 這是**判斷**，不是量測。沒有一個查詢能回答「這看起來像不像逃逸」。**「疑慮」不是一個訊號**——真的量得到的那些形態（連上核心資料庫、遺留超標、Reconciler 停擺）各自已經是另外幾條判準；這一條剩下的正是**還沒有形態的那部分**，所以它沒有可接的線，不是漏接 |
-| ~~② P-02 探針偵測到 Sandbox → 核心資料庫連線~~ **已自動（2026-08-26）** | ~~**那個探針今天不存在**（`03:SBX-005` 未勾、[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線~~<br>**上面那段的第一層是對的（探針當時確實不存在），第二層的結論錯了。** 「節點沒有往控制平面推的通道」是真的，**但不需要推**——控制平面本來就在輪詢 `GET /capability`。所以做法不是開一條反向通道（那會把 DoS 手把交給不受信任工作負載，該顧慮成立），而是讓節點在既有的被呼叫端多報一個欄位：`ProviderCapability.security.p02_probe` 帶它自己的最後一次讀數。**契約仍然單向，推的仍然是控制平面。**<br>**現在的行為**：節點自己起一個與 Run 同組態的一次性容器去撥號，讀到 `fail` 就地 `Destroy` 所有在跑的 Run 並拒新工作；平台端 `detectP02Breach` 掛在既有 sweep 的尾巴，冪等、不自動 lift。**三個邊界要記在值班的地方**：①**節點聯絡不上不等於 fail**（那是節點健康問題，翻成 P1 會讓一次網路抖動停掉整池）；②**`unknown` 不停整池**，只讓該節點退出輪替——剛開機還沒讀數的節點不該停掉全池；③**節點自己恢復不會自動解除**，解除仍只有 operator 一條路。<br>**⚠️ 值班時要知道的一件事**：這個探針量的是**那台節點的網路政策**，而它**從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，它的讀數只證明程式會動 |
-| ④ 隔離技術逃逸類 CVE 揭露 | 訊號來自 `.github/workflows/gvisor-baseline.yml`，而 **CI 看得到的東西到不了生產 DB**。不自動翻開關的理由：要自己翻開關就得讓 CI 持有一把能停整池的平台憑證，**「a credential that can stop the fleet, held by CI, is a worse exposure than the minutes a person takes to paste one command」**。反方向（平台自己去拉 GitHub advisory feed）要為控制平面開對外網路出口，並讓派送能力取決於一個外部 feed 的可達性。兩者都是**部署期決策**。<br>順帶查證兩件事：`runsc` **不在任何 image 裡**（它是節點主機的執行檔，repo 內唯一的版本釘點是 `infra/nodes/gvisor-baseline.txt`，目前是 `release-20260817.0`），所以 `runtime-image.yml` 的 `rescan` 掃的是 Agent SDK image，**掃不到 gVisor**；`ProviderCapability` 也沒有回報 `runsc` 版本的欄位 |
-
-這三條**由人宣告**：
+只有「逃逸疑慮」與「隔離技術高風險 CVE」需要由人主動宣告；canary、流量型遮罩、P-02、Reconciler 停擺會由平台建立整池 `p1_incident`。不確定是 P1 或較低等級時，按 P1 處理。
 
 ```bash
+# 宣告整池 P1；填 provider 才只停止該 Provider
 curl -s -b <cookie> -X PUT http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
-  -d '{"note":"<為什麼>"}'          # 省略 provider = 整池
-```
+  -d '{"note":"<觸發條件與已採取的止血動作>"}'
 
-`note` 是**必填**——停整池而事後沒人說得出為什麼，比不停更糟。省略 `provider` 停整池，填了就只停那一個池（不認得的名字會被拒絕，不會被當成整池）。
-
-重複宣告是冪等的：它改寫 reason 並再寫一筆稽核事件，因為**同一個人重做一次同一件事不是錯誤**。
-
-`02:SEC-010` 的升級規則在這裡：**不確定是 P1 還是 P2，一律當 P1**。P1 的代價是停止派送（可回復），誤判為 P2 的代價是繼續讓不受信任的工作負載執行（不可回復）。
-
----
-
-## 3. 解除
-
-```bash
+# 修復、驗證與證據完成後解除；同樣可填 provider
 curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
   -H 'Content-Type: application/json' \
-  -d '{"note":"<做了什麼、為什麼現在安全>"}'
+  -d '{"note":"<修復內容、驗證結果與為何現在安全>"}'
 ```
 
-`note` 同樣必填。解除**沒有自動路徑**（`03:SEC-012`：自動解除等於讓觸發條件自己決定何時恢復服務）。解除門檻類（`orphan_threshold`）也走同一條——處理完洩漏的人不必再等 Reconciler 跑兩輪。
+兩個操作都要求非空 `note`，並寫入 audit event。重複宣告與解除是冪等的。解除前必須同時確認：觸發條件已消失、現場與處置證據已保存、負責人可追溯事件的記錄已建立。對 `p1_incident` 而言，節點自己恢復、重啟程序或探針暫時安靜都不是解除理由。
 
-解除是冪等的：沒有東西可解除時回 204，因為呼叫者要的狀態已經成立。
+## 5. 事故結束後
 
-**解除前的三個檢查**：
-
-1. 觸發它的那個條件現在**還成立嗎**？（重跑 §2 的查詢）
-2. 現場保留了嗎？停派送期間清理是停手的，**一旦解除，拆除就會繼續**。
-3. issue 開了嗎？`02:SEC-010`：**issue 是事件的唯一事實來源**，聊天記錄與告警訊息都不是。
-
----
-
-## 4. 實際發生過一次（2026-08-23）
-
-留這段是因為它是唯一一次真的跑過這條路徑，而它是誤觸。
-
-- **症狀**：建立 Run 五次全部回 `the execution environment is temporarily unavailable`。
-- **`reason`**：`TraceMaskingStopped`，「兩小時內 274 筆 trace 事件、零遮罩」。
-- **實際情形**：那 274 筆**全部是平台自己的 `evaluation_started`／`evaluation_completed`**——由平台從自己的狀態寫出，裡面沒有任何不受信任的內容，**masker 按定義永遠不可能從其中遮掉任何東西**。當天跑了一批重評，就足以讓那個表達式為真。
-- **這是「忙碌時的誤判」**，方向與 `for: 1h` 防的「安靜時誤判」相反，而 `for` 看不見它，因為流量是真的。
-- **處置**：修偵測器（只數 `source = 'sandbox'`），再以 operator 身分解除。
-
-`04` 丙-26 當時就記過一句：**「在告警裡這只是一個會吵人的誤判，接上停派送之後它會自己把自己停掉。」** 那天它就是這樣做的。
-
----
-
-## 5. 讀 `TraceMaskingStopped` 時要知道的一件事（量測邊界）
-
-**流量判準**的前提是 **「正常流量下 `tool_call` 的 arguments 與 `script_log` 的 message 幾乎必然有東西被遮」**。
-
-**這個前提在目前唯一有資料的語料上不成立。** 2026-08-23 量過：dev 庫 **2,444 筆 `source = 'sandbox'` 的 trace 事件，遮罩總數是 0**。
-
-那批是合成資料、本來就沒有 Secrets，所以這**不代表 masker 壞了**——但它代表：
-
-- **「零遮罩」本身不是強證據**，在低流量或乾淨語料下它是常態。撐起這條判準的是「有量而且持續」，不是「零」。
-- 判準真正要抓的是**規則失效**（事件仍被標為 `masked` 而 `masked_fields` 空），`0019` 的 `CHECK (masked)` 讓「未遮罩就入庫」在資料庫層不可能，所以那是唯一剩下的失敗形態。
-- **要不要因此調門檻，是 `02:SEC-010` 的決定，不是這份 runbook 的。** 目前的做法是：照升級規則當 P1 處理，走 §2.1b 分辨形態。
-
-**2026-08-25：這個量測邊界不再是「等封測真實流量才知道」。** canary（§2.1a）從另一個方向問同一個問題，而且**在零流量、合成流量、真實流量下讀數一樣**：直接把一份平台自己造的假 Secret 餵過 masker，遮不掉就是壞了。上面那一整段仍然成立，但它現在只約束流量判準這一半。
-
-**兩個偵測器都留著，因為它們壞在不同的地方，而且誰都看不見對方的失敗**：
-
-| | canary | 流量判準 |
-| --- | --- | --- |
-| 它讀的是 | **規則**（本 process，無流量） | **路徑**（生產，真實事件） |
-| 抓得到 | pattern 被刪改、Known 精確比對那一臂壞掉 | 有人把 ingest 路徑上那一步 mask **整個拿掉**（呼叫端有兩個，各自 `new` 自己的 Masker） |
-| 抓不到 | 呼叫端根本沒呼叫 masker——canary 自己呼叫，所以它永遠是綠的 | 任何規則失效，只要語料裡本來就沒有可遮的東西（＝目前的處境） |
-| 在合成語料上 | 有效 | **無效** |
-
-刪掉流量判準會拿一個「目前量不到但唯一看得見接線的偵測器」換成「那一半沒有偵測器」。
-
----
-
-## 6. 這份 runbook 不涵蓋的
-
-- **遮罩失敗的實際處置**（撤銷 Virtual Key、以外洩值重掃、輪替 ingest secret）在 [`02:SEC-010` §(3)](../plans/02-specifications-and-acceptance-criteria.md)。
-- **節點 drain 與重建**在 [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) P-03／X-04。
-- **`SEC-012` 仍未勾**：本需求的字面是「**偵測到** P1 判準即立即停止派送」，而五條裡只有兩條是自動的（③⑤）。這份 runbook 讓另外三條可被直接執行，**它不讓那三條變成自動的**。
-- **2026-08-25 補**：③ 多了一個 canary 偵測器（§2.1a），但那是**同一條判準的第二個讀法**，不是第三條判準變自動。①②④ 一格都沒動——理由見 §2.3，三者的訊號都在本 process 之外。
+解除只恢復派送，不會補做被保留的清理。確認 Worker 已重新接走 queued Run、`cleanup_status` 回到正常收斂，並依需要重建受影響 Sandbox 節點。若事故涉及 Trace 或憑證，另外確認秘密已輪替、歷史資料已依處置程序清除或遮罩；這些工作不能用一個綠色健康檢查取代。
