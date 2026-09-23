@@ -715,7 +715,9 @@ func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testi
 	clearRunBacklog(t, pool)
 	f := newFixture(t, a, pool, "alice-slot-wait")
 	ctx := context.Background()
-	within, past := f.start(t), f.start(t)
+	within := f.start(t)
+	pastFixture := newFixture(t, a, pool, "alice-slot-wait-past")
+	past := pastFixture.start(t)
 
 	for runID, waited := range map[string]time.Duration{
 		within.RunID: run.SlotWaitLimit - time.Minute,
@@ -739,7 +741,7 @@ func TestTimeSpentWaitingForASlotIsBoundedByTheWaitLimitNotTheWallClock(t *testi
 		t.Errorf("a run waiting %s with a 1s wall clock is %q (%s), want still queued: waiting is not running",
 			run.SlotWaitLimit-time.Minute, view.Status, view.StatusReason)
 	}
-	_, view := f.getRun(t, past.RunID)
+	_, view := pastFixture.getRun(t, past.RunID)
 	if view.Status != string(gen.RunStatusTimedOut) || view.FailureClass.Value != "timeout" {
 		t.Fatalf("a run waiting past the limit is %q/%q, want timed_out/timeout", view.Status, view.FailureClass.Value)
 	}
@@ -1584,8 +1586,17 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, uniqueWorklistLabel("alice-run-paging"))
 
-	f.start(t)
-	f.start(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
+	seedRunAt(t, tx, f, "succeeded", "2020-01-01T11:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, query := range []string{
 		"limit=0", "limit=201", "limit=abc", "limit=", "limit=-1", "limit=1.5",

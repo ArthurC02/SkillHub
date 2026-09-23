@@ -525,6 +525,10 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	f := newFixture(t, a, pool, "rerun-owner")
 
 	first := f.start(t)
+	if _, err := pool.Exec(context.Background(), `
+		UPDATE runs SET status = 'succeeded', finished_at = now() WHERE id = $1`, mustUUID(t, first.RunID)); err != nil {
+		t.Fatal(err)
+	}
 	staleHash := f.confirmPermissions(t)
 
 	v2 := seedVersion(t, pool, f.workspaceID, f.skillID, "hash-rerun-v2")
@@ -563,7 +567,7 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	}
 
 	_, before := f.getRun(t, first.RunID)
-	if before.Status != "queued" {
+	if before.Status != "succeeded" {
 		t.Errorf("the earlier run changed to %q", before.Status)
 	}
 

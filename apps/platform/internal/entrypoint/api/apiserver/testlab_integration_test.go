@@ -748,6 +748,10 @@ func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-deleted-testcase")
 
 	before := f.start(t)
+	if _, err := pool.Exec(context.Background(), `
+		UPDATE runs SET status = 'succeeded', finished_at = now() WHERE id = $1`, mustUUID(t, before.RunID)); err != nil {
+		t.Fatal(err)
+	}
 
 	if code, _ := f.doJSON(t, http.MethodDelete, "/test-cases/"+f.testCaseID, ""); code != http.StatusOK {
 		t.Fatalf("DELETE test case: got %d", code)

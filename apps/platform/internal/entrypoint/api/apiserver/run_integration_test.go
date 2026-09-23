@@ -461,7 +461,7 @@ func TestAnUndeliverableEventIsIsolatedAndReleasesTheBacklog(t *testing.T) {
 	f := newFixture(t, a, pool, "alice-outbox-poison")
 
 	poisoned := f.start(t)
-	behind := f.start(t)
+	behind := newFixture(t, a, pool, "alice-outbox-behind").start(t)
 	poisonedID := mustUUID(t, poisoned.RunID)
 
 	var attempts int

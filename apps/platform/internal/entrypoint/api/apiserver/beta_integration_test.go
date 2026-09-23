@@ -233,7 +233,9 @@ func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-concurrency-race")
 
-	seedBetaRun(t, pool, f, "running", nil, nil)
+	for range run.MaxConcurrentRunsPerWorkspace - 1 {
+		seedBetaRun(t, pool, f, "running", nil, nil)
+	}
 
 	hash := f.confirmPermissions(t)
 	var (

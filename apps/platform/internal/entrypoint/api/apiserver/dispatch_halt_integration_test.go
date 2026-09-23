@@ -279,8 +279,9 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		t.Error("the reconciler's halt did not reach the scheduler: work was dispatched anyway")
 	}
 
-	hash := f.confirmPermissions(t)
-	if code, view := f.startWithHash(t, hash); code != http.StatusCreated {
+	queuedElsewhere := newFixture(t, a, pool, "alice-x04-halt-second")
+	hash := queuedElsewhere.confirmPermissions(t)
+	if code, view := queuedElsewhere.startWithHash(t, hash); code != http.StatusCreated {
 		t.Errorf("creating a run under an X-04 pause: got %d (%s), want 201", code, view.Error)
 	}
 
