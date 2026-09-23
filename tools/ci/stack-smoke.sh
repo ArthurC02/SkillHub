@@ -29,6 +29,10 @@ fi
 
 names=(smoke-web smoke-llm smoke-worker smoke-api smoke-s3 smoke-pg)
 
+# The browser scripts buffer their results and print them in one go, which the
+# container logs then bury; keep a copy so cleanup can quote the failed ones.
+nodelog="$(mktemp)"
+
 dump() {
 	for c in "${names[@]}"; do
 		if docker inspect "$c" >/dev/null 2>&1; then
@@ -43,11 +47,16 @@ cleanup() {
 	rc=$?
 	if [ "$rc" -ne 0 ]; then
 		dump
+		if grep -q '^FAIL' "$nodelog" 2>/dev/null; then
+			echo "stack-smoke: failed browser checks:" >&2
+			grep '^FAIL' "$nodelog" >&2
+		fi
 		if [ -n "${failures:-}" ]; then
 			echo "stack-smoke: failed assertions:" >&2
 			printf '  FAIL %s\n' "${failures[@]}" >&2
 		fi
 	fi
+	rm -f "$nodelog"
 	if [ "${SMOKE_KEEP:-}" = "1" ]; then
 		echo "stack-smoke: SMOKE_KEEP=1, leaving ${names[*]} and network $NET up" >&2
 		return "$rc"
@@ -198,7 +207,7 @@ docker run --rm --network "$NET" \
 	-e BASE_URL=http://smoke-web \
 	"$PLAYWRIGHT_IMAGE" \
 	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
-	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
+	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
 # 6. Credit on the real images: refused at 0, an operator grant, then allowed.
@@ -228,7 +237,7 @@ if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPD
 		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \
 			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
-			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs'; then
+			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs' 2>&1 | tee -a "$nodelog"; then
 		rc=0
 	else
 		rc=1
