@@ -368,7 +368,6 @@ jobs:
       - name: Sandbox tests with no container runtime in reach
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests without a container runtime' go test -count=1 ./...
       - name: The local driver's ceilings hold without a container
-        continue-on-error: true
         env:
           SKILLHUB_REQUIRE_CGROUP: "1"
         run: |
