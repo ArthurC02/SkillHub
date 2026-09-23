@@ -2923,8 +2923,9 @@ func (*CreationLimits) getCreationLimitsRes() {}
 
 // Ref: #/components/schemas/CreationMessage
 type CreationMessage struct {
-	Role    CreationMessageRole `json:"role"`
-	Content string              `json:"content"`
+	Role      CreationMessageRole `json:"role"`
+	Content   string              `json:"content"`
+	CreatedAt OptDateTime         `json:"created_at"`
 }
 
 // GetRole returns the value of Role.
@@ -2937,6 +2938,11 @@ func (s *CreationMessage) GetContent() string {
 	return s.Content
 }
 
+// GetCreatedAt returns the value of CreatedAt.
+func (s *CreationMessage) GetCreatedAt() OptDateTime {
+	return s.CreatedAt
+}
+
 // SetRole sets the value of Role.
 func (s *CreationMessage) SetRole(val CreationMessageRole) {
 	s.Role = val
@@ -2945,6 +2951,11 @@ func (s *CreationMessage) SetRole(val CreationMessageRole) {
 // SetContent sets the value of Content.
 func (s *CreationMessage) SetContent(val string) {
 	s.Content = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *CreationMessage) SetCreatedAt(val OptDateTime) {
+	s.CreatedAt = val
 }
 
 type CreationMessageRole string

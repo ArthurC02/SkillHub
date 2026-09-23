@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -27,6 +27,10 @@ export interface CreationMessage {
      * 
      */
     content: string;
+    /**
+     * 
+     */
+    createdAt?: Date;
 }
 
 
@@ -62,6 +66,7 @@ export function CreationMessageFromJSONTyped(json: any, ignoreDiscriminator: boo
         
         'role': json['role'],
         'content': json['content'],
+        'createdAt': json['created_at'] == null ? undefined : (parseDateTime(json['created_at'])),
     };
 }
 
@@ -78,6 +83,7 @@ export function CreationMessageToJSONTyped(value?: CreationMessage | null, ignor
         
         'role': value['role'],
         'content': value['content'],
+        'created_at': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
     };
 }
 

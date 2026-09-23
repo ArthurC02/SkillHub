@@ -41,11 +41,11 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 		return "", false, ErrUnavailable
 	}
 	if strings.TrimSpace(intent.Query) == "" {
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: "目錄搜尋需要關鍵字；這次沒有搜尋。"})
+		p.appendMessage("tool", "目錄搜尋需要關鍵字；這次沒有搜尋。")
 		return StateQueued, true, nil
 	}
 	if p.SearchRounds >= MaxSearchRounds {
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。"})
+		p.appendMessage("tool", "目錄已搜過兩回都沒有相近的 Skill；請直接依需求起草。")
 		return StateQueued, true, nil
 	}
 	refs, err := s.search(ctx, ws, p, searchQueries(intent))
@@ -54,7 +54,7 @@ func (s *Service) searchCatalog(ctx context.Context, ws identity.Workspace, p *S
 	}
 	if len(refs) == 0 {
 		p.SearchRounds++
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: emptySearchNote(p.SearchRounds)})
+		p.appendMessage("tool", emptySearchNote(p.SearchRounds))
 		return StateQueued, true, nil
 	}
 	p.References = shortlist(refs)
@@ -98,7 +98,7 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 	}
 	clean, err := validateFetchURL(query)
 	if err != nil {
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。"})
+		p.appendMessage("tool", "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。")
 		return StateQueued, true, nil
 	}
 	p.PendingFetchURL = clean
@@ -123,12 +123,12 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	}
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
 		p.PendingAction = NothingPending
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。"})
+		p.appendMessage("tool", "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。")
 		return StateDraftReady, false, nil
 	}
 	p.PreviousDraft = e.PreviousDraft
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
-	p.Messages = append(p.Messages, Message{Role: "tool", Content: fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked)})
+	p.appendMessage("tool", fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked))
 	return StateQueued, true, nil
 }
 

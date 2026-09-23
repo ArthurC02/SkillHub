@@ -229,7 +229,7 @@ func (s *Service) fetchPending(ctx context.Context, p *Snapshot) {
 	rec, text := s.Fetch(ctx, url)
 	p.PendingFetchURL = ""
 	p.Fetches = append(p.Fetches, rec)
-	p.Messages = append(p.Messages, Message{Role: "tool", Content: fetchObservation(rec, s.masked(text))})
+	p.appendMessage("tool", fetchObservation(rec, s.masked(text)))
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {
@@ -354,7 +354,7 @@ func stepFailureMessage(err, callErr error) string {
 
 func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, refusal attemptRefusal) error {
 	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "assistant", Content: refusal.sentence(e.Snapshot, e.Limits)})
+	e.Snapshot.appendMessage("assistant", refusal.sentence(e.Snapshot, e.Limits))
 	if _, err := s.advance(ctx, tx, row, abandonedState(e.Snapshot), "attempt_refused", e); err != nil {
 		return err
 	}
@@ -463,7 +463,7 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 		state = StateNeedsReupload
 	}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, Message{Role: "assistant", Content: stepFailureMessage(err, callErr)})
+	p.appendMessage("assistant", stepFailureMessage(err, callErr))
 	if errors.Is(callErr, ErrNotFound) {
 		state = StateWaitingConfirmation
 		p.PendingAction = PendingReferenceChoice
@@ -471,12 +471,12 @@ func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
 			p.References[i].Available = false
 			p.References[i].Confirmed = false
 		}
-		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "參考內容目前不可用，請換選後再確認。"})
+		p.appendMessage("assistant", "參考內容目前不可用，請換選後再確認。")
 	}
 	if errors.Is(callErr, ErrCreditFloor) {
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
-		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。"})
+		p.appendMessage("assistant", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。")
 	}
 	return state
 }
@@ -490,7 +490,7 @@ func (s *Service) logStepFailure(a JobArgs, callErr error) {
 
 func (s *Service) queueNextStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (State, error) {
 	if !canSpend(e.Snapshot, e.Limits) {
-		e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "assistant", Content: limitSentence(e.Snapshot, e.Limits)})
+		e.Snapshot.appendMessage("assistant", limitSentence(e.Snapshot, e.Limits))
 		return StateWaitingInput, nil
 	}
 	if _, err := s.enqueue(ctx, tx, row, e, false); err != nil {

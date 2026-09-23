@@ -1,0 +1,42 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-message-timestamps-2026-09-23",
+  "proposer": "coding-agent",
+  "requirement_id": "creation-message-timestamps",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {"observed_commit": "acbccedb3a0ed7e2bc110d66634162106b311900", "registry_digest": "sha256:32aded026e5ddbce58d9f0465643b3534828997a48180f8ec2d31fef167839ef"},
+  "affected_contexts": ["creation"],
+  "rule_ids": ["creation-reaches-its-collaborators-through-inversion"],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "Every newly persisted message has its own UTC timestamp; a timestamp is never part of the model-provider message.",
+    "evidence": [{"path": "apps/platform/internal/creator/creation/doc.go", "lines": {"start": 1, "end": 2}, "content_sha256": "sha256:5d2951845dc0228f36c237be53fe41d6c94db8586921768a8ab5daf581d33a99", "excerpt_sha256": "sha256:5946916feb42af8748934caf0f39eeecde3cd335a9cd64d46bc91a3603151354", "source_kind": "bounded_contexts"}]
+  },
+  "boundary_decision": {
+    "interaction": "The existing Creation Context public snapshot exposes an optional timestamp; the existing model adapter projects only role and content.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": ["No new Creation-to-provider field or cross-context dependency.", "No parallel message-timestamp collection indexed by message position."],
+    "evidence": [{"path": "apps/platform/internal/creator/creation/model_adapter.go", "lines": {"start": 59, "end": 64}, "content_sha256": "sha256:6600d349381158662c0a759f6acf540259ba6a339a0ef2a96f01a65e8c3dfefc", "excerpt_sha256": "sha256:6525ad5499b44d583bedc3ae1b5ba0f7b2b9863b18c9e9671e1590bd8ea857c8", "source_kind": "implementation"}]
+  },
+  "implementation_design": {
+    "domain_forces": ["Creation owns its checkpoints and the public snapshot.", "The model provider must not receive UI-only metadata.", "Legacy serialized snapshots omit the new field."],
+    "decision": "No tactical pattern: one Creation message value carries an optional creation time, and one owner-local append operation creates both facts together.",
+    "invariants_preserved": ["New messages are timestamped together with their content and role.", "The model wire representation remains role plus content only.", "Legacy messages remain valid to present."],
+    "rejected_alternatives": ["A parallel timestamp array can silently drift from its message index.", "Adding a timestamp to the provider request changes model context and cost for a UI concern."],
+    "proof_obligations": ["creation-message-timestamps-visible", "creation-message-timestamps-model-private", "creation-message-timestamps-inversion"],
+    "counterfactual_check": "Remove timestamp assignment from the owner-local append operation; the focused Creation test must fail, then restoration must pass."
+  },
+  "event_change": null,
+  "contract_change": {"producer": "Skill Creation", "consumers": ["web client"], "version": "public API 0.1.0", "compatibility": "backward compatible optional response field", "data_classification": "workspace-scoped creation session metadata", "retry_behavior": "unchanged", "breaking_change": false},
+  "registry_updates": [],
+  "risk_flags": ["public_contract"],
+  "open_questions": [],
+  "approvals": []
+}

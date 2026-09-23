@@ -126,6 +126,18 @@ func TestCanSpendRefusesNearMessageCeiling(t *testing.T) {
 	}
 }
 
+func TestAppendMessageRecordsTheCreationTimeInUTC(t *testing.T) {
+	p := Snapshot{}
+	p.appendMessage("assistant", "已收到。")
+
+	if len(p.Messages) != 1 || p.Messages[0].CreatedAt == nil {
+		t.Fatalf("messages = %+v, want one timestamped message", p.Messages)
+	}
+	if p.Messages[0].CreatedAt.Location() != time.UTC {
+		t.Fatalf("created at location = %s, want UTC", p.Messages[0].CreatedAt.Location())
+	}
+}
+
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
 	if got := allowedTools(3, 3, false, false, true); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)

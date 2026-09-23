@@ -70,7 +70,7 @@ func (s *Service) openingEnvelope(ctx context.Context, ws identity.Workspace, me
 	if strings.TrimSpace(message) == "" {
 		return e, StateWaitingInput
 	}
-	e.Snapshot.Messages = append(e.Snapshot.Messages, Message{Role: "user", Content: s.masked(message)})
+	e.Snapshot.appendMessage("user", s.masked(message))
 	if s.CatalogCheck == nil {
 		return e, StateQueued
 	}

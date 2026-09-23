@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
@@ -14,6 +15,15 @@ import (
 type fakeStepModel struct {
 	result *StepResult
 	asked  StepRequest
+}
+
+func TestTheStepAdapterLeavesMessageTimesInsideCreation(t *testing.T) {
+	at := time.Date(2026, time.September, 23, 8, 0, 0, 0, time.UTC)
+	wired := wireMessages([]Message{{Role: "user", Content: "keep this", CreatedAt: &at}})
+
+	if len(wired) != 1 || wired[0].Role != "user" || wired[0].Content != "keep this" {
+		t.Fatalf("wire messages = %+v, want the role and content only", wired)
+	}
 }
 
 func (f *fakeStepModel) CreationStep(_ context.Context, req StepRequest) (*StepResult, error) {

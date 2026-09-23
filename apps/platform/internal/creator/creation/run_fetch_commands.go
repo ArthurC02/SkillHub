@@ -18,9 +18,9 @@ func (s *Service) attachRun(ctx context.Context, ws identity.Workspace, p *Snaps
 	p.RunUnmet = runUnmet(observation)
 	observation = s.masked(observation)
 	p.EvaluationText = evaluationFreeText(observation)
-	p.Messages = append(p.Messages, Message{Role: "tool", Content: observation})
+	p.appendMessage("tool", observation)
 	if questions := trialQuestions(observation); p.RunUnmet && questions != "" {
-		p.Messages = append(p.Messages, Message{Role: "assistant", Content: questions})
+		p.appendMessage("assistant", questions)
 		p.PendingAction = NothingPending
 		return settledIn(StateWaitingInput), nil
 	}
@@ -45,7 +45,7 @@ func declineFetch(p *Snapshot) (commandOutcome, error) {
 	}
 	rec := Fetch{URL: p.PendingFetchURL, Status: "declined"}
 	p.Fetches = append(p.Fetches, rec)
-	p.Messages = append(p.Messages, Message{Role: "tool", Content: fetchObservation(rec, "")})
+	p.appendMessage("tool", fetchObservation(rec, ""))
 	p.PendingFetchURL = ""
 	p.PendingAction = NothingPending
 	return stepQueued(), nil

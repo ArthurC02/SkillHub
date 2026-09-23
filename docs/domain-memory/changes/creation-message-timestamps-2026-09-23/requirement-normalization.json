@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "creation-message-timestamps",
+  "status": "draft",
+  "intent": "Let a creator see when every persisted interactive-creation message was recorded.",
+  "actor": "creator",
+  "observable_outcome": "A returned creation snapshot carries a timestamp for every newly recorded message, while a legacy message without one remains readable.",
+  "acceptance_criteria": [
+    {
+      "id": "creation-message-timestamps-visible",
+      "statement": "The conversation renders each timestamp supplied by the snapshot and does not render an invalid timestamp for a legacy message."
+    },
+    {
+      "id": "creation-message-timestamps-model-private",
+      "statement": "A message timestamp stays in the Creation Context snapshot and is absent from the request sent to the model provider."
+    }
+  ],
+  "candidate_terms": ["interactive creation session", "message", "checkpoint"],
+  "open_questions": [],
+  "risk_flags": ["public_contract"],
+  "required_approval_roles": ["developer"],
+  "sources": ["docs/plans/04-backlog-and-handoffs.md#丙-204", "contracts/openapi/public.yaml#/components/schemas/CreationMessage"]
+}

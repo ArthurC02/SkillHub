@@ -9181,6 +9181,9 @@ components:
             - "tool"
         content:
           type: "string"
+        created_at:
+          type: "string"
+          format: "date-time"
 
     CreationSkill:
       type: "object"

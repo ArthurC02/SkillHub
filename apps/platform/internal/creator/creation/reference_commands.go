@@ -71,7 +71,7 @@ func declineReferences(p *Snapshot) (commandOutcome, error) {
 	}
 	p.References = []Reference{}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, Message{Role: "tool", Content: "使用者不採用目錄裡的 Skill；請依需求撰寫。"})
+	p.appendMessage("tool", "使用者不採用目錄裡的 Skill；請依需求撰寫。")
 	return stepQueued(), nil
 }
 

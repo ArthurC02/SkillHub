@@ -63,7 +63,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		r.Message = sentence
 		if retries := missingOutputRetries(e, r.Reason); retriesMissingOutput(retries, *p, e.Limits) {
 			*retries++
-			p.Messages = append(p.Messages, Message{Role: "assistant", Content: "模型這一步沒有交出草稿，已自動再試一次。"})
+			p.appendMessage("assistant", "模型這一步沒有交出草稿，已自動再試一次。")
 			p.PendingAction = NothingPending
 			return StateQueued, true, nil
 		}
@@ -137,7 +137,7 @@ func admitReply(r *StepResult, p Snapshot) error {
 func recordReply(p *Snapshot, r *StepResult) {
 	p.Model = r.Model
 	p.PromptVersion = r.PromptVersion
-	p.Messages = append(p.Messages, Message{Role: "assistant", Content: r.Message})
+	p.appendMessage("assistant", r.Message)
 }
 
 func reinterpretDiagram(p *Snapshot, understanding string) State {
@@ -234,12 +234,12 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	objection := objectionsTo(*p, *r.Draft, hash)
 	if objection.raised() && p.Nudges < MaxNudges && canSpend(*p, e.Limits) {
 		p.Nudges++
-		p.Messages = append(p.Messages, Message{Role: "tool", Content: objection.toModel(p.EvaluationText)})
+		p.appendMessage("tool", objection.toModel(p.EvaluationText))
 		p.PendingAction = NothingPending
 		return StateQueued, true, nil
 	}
 	if note := objection.toPerson(); note != "" {
-		p.Messages = append(p.Messages, Message{Role: "assistant", Content: note})
+		p.appendMessage("assistant", note)
 	}
 	p.PreviousDraft = e.PreviousDraft
 	if p.Draft == nil || p.Draft.ContentHash != hash {
@@ -254,7 +254,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 		p.BlockedRepeats = 0
 	}
 	if p.BlockedRepeats >= MaxBlockedRepeats {
-		p.Messages = append(p.Messages, Message{Role: "assistant", Content: "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。"})
+		p.appendMessage("assistant", "同一個結構問題連續三次沒有修好；請看驗證報告，告訴模型要改哪裡。")
 		return StateWaitingInput, false, nil
 	}
 	return StateDraftReady, false, nil

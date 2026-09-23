@@ -48,7 +48,7 @@ export interface CreationModelChange {
   sample_input?: string;
 }
 export interface CreationSnapshot {
-  messages: { role: "user" | "assistant" | "tool"; content: string }[];
+  messages: { role: "user" | "assistant" | "tool"; content: string; created_at?: string }[];
   brief: string;
   brief_confirmed: boolean;
   acceptance_criteria: string[];

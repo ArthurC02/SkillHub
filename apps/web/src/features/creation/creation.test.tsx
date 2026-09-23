@@ -73,6 +73,28 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
+
+test("a persisted message shows its timestamp without inventing one for a legacy message", async () => {
+  const session = sample();
+  session.snapshot.messages = [
+    { role: "user", content: "新的訊息", created_at: "2026-09-23T08:00:00Z" },
+    { role: "assistant", content: "舊的訊息" },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [session], session)),
+  );
+
+  await render();
+  await resume();
+
+  expect(box.querySelectorAll('time[datetime="2026-09-23T08:00:00Z"]')).toHaveLength(1);
+  expect(
+    [...box.querySelectorAll(".creation-log > li")]
+      .find((row) => row.textContent?.includes("舊的訊息"))
+      ?.querySelector("time"),
+  ).toBe(null);
+});
 const START = "開始創作";
 function routeGet(url: string, list: unknown, single: unknown) {
   if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);

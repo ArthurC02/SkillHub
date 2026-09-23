@@ -7387,11 +7387,18 @@ func (s *CreationMessage) encodeFields(e *jx.Encoder) {
 		e.FieldStart("content")
 		e.Str(s.Content)
 	}
+	{
+		if s.CreatedAt.Set {
+			e.FieldStart("created_at")
+			s.CreatedAt.Encode(e, json.EncodeDateTime)
+		}
+	}
 }
 
-var jsonFieldsNameOfCreationMessage = [2]string{
+var jsonFieldsNameOfCreationMessage = [3]string{
 	0: "role",
 	1: "content",
+	2: "created_at",
 }
 
 // Decode decodes CreationMessage from json.
@@ -7424,6 +7431,16 @@ func (s *CreationMessage) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"content\"")
+			}
+		case "created_at":
+			if err := func() error {
+				s.CreatedAt.Reset()
+				if err := s.CreatedAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		default:
 			return errors.Errorf("unexpected field %q", k)

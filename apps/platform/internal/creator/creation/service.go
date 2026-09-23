@@ -160,6 +160,11 @@ const (
 
 func (p Snapshot) hasRoomFor(messages int) bool { return len(p.Messages)+messages <= MaxMessages }
 
+func (p *Snapshot) appendMessage(role, content string) {
+	now := time.Now().UTC()
+	p.Messages = append(p.Messages, Message{Role: role, Content: content, CreatedAt: &now})
+}
+
 type Snapshot struct {
 	Messages []Message `json:"messages"`
 	Brief    string    `json:"brief"`

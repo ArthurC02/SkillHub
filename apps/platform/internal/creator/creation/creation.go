@@ -132,7 +132,7 @@ func (s *Service) attachNote(p *Snapshot, note string) error {
 	if utf8.RuneCountInString(note) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return ErrInvalidCommand
 	}
-	p.Messages = append(p.Messages, Message{Role: "user", Content: s.masked(note)})
+	p.appendMessage("user", s.masked(note))
 	return nil
 }
 
@@ -278,7 +278,7 @@ func stopStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelo
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	p.PendingAction = NothingPending
-	p.Messages = append(p.Messages, Message{Role: "assistant", Content: stopStepNote(beforeSending)})
+	p.appendMessage("assistant", stopStepNote(beforeSending))
 	return settledIn(StateWaitingInput), nil
 }
 
@@ -306,7 +306,7 @@ func (s *Service) acceptMessage(p *Snapshot, message string) (commandOutcome, er
 	if strings.TrimSpace(message) == "" || utf8.RuneCountInString(message) > maxPersonMessageRunes || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	p.Messages = append(p.Messages, Message{Role: "user", Content: s.masked(message)})
+	p.appendMessage("user", s.masked(message))
 	p.PendingAction = NothingPending
 	return stepQueued(), nil
 }

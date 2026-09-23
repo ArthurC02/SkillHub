@@ -567,6 +567,7 @@ export function CreationSession() {
                           <span className="creation-who">
                             {{ user: "你", assistant: "Agent", tool: "工具結果" }[m.role]}
                           </span>
+                          {m.created_at && <Timestamp at={m.created_at} />}
                           {m.role === "tool" ? (
                             <ToolObservation raw={m.content} />
                           ) : m.role === "assistant" ? (
