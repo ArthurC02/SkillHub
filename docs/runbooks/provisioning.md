@@ -61,6 +61,31 @@ task dev:llm
 
 驗：LiteLLM 健康端點有回應，`apps/llm` 使用 Virtual Key；沒有這一層時，搜尋會退回 FTS，評估判定會是 `undetermined`，但核心 API 不應假裝模型能力可用。
 
+### 4.2.1 模型能力的可用條件
+
+模型 profile 的密鑰檢查只回答 Gateway 能否啟動，不能證明 Go 或 Python 已能使用模型。要讓本機能力可用，`.env` 還必須把下列三個層次接起來：
+
+| 層次 | 必要設定 | 驗證方式 |
+| --- | --- | --- |
+| Gateway 位址與管理 | `LITELLM_BASE_URL`、`SKILLHUB_MODEL_GATEWAY_URL`、`SKILLHUB_MODEL_GATEWAY_ADMIN_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` | Gateway 可簽發受限 Virtual Key；不要把 master key 傳給 Python 或 Sandbox |
+| Python 服務 | `LLM_SERVICE_TOKEN` | 帶同一個 Bearer token 呼叫 `/readyz` 得到 `200` 且 `gateway_configured=true` |
+| 控制平面 | `LLM_SERVICE_URL`、相同的 `LLM_SERVICE_TOKEN` | API／Worker 以 `/readyz` 驗證服務，而不是只看行程或容器仍在執行 |
+
+`task dev:llm` 需要簽發 Virtual Key 時會使用新的 alias；Gateway 的 key alias 不能重複。啟動器會保留可辨識的前綴並加上唯一尾碼，避免前一次行程留下的 alias 使下一次 Provision 在簽發階段失敗。
+
+### 4.2.2 分層驗收與成本邊界
+
+先完成不花費模型費用的契約與本機服務檢查，再選擇需要的實際驗收層。`task dev:model` 只使 Gateway 可用，不等於已付費；只有送到模型的測試才會花費費用。
+
+| 目的 | 驗收層 | 必要前提 |
+| --- | --- | --- |
+| 確認每個已設定模型 tier 接受服務採樣參數 | `apps/llm/tests/test_gateway_live.py` | 明確設定 `SKILLHUB_LIVE_GATEWAY=1`；以短效 Virtual Key 執行 |
+| 確認 Run 的產物、Gateway 計費 trace 與 key cleanup | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` | PostgreSQL、物件儲存、Sandbox、Gateway 與可由 Sandbox 存取的 trace 位址 |
+| 確認生成結果寫入 Gateway 實際成本 | `TestARealGatewayGenerationRecordsWhatItActuallyCost` | 正在執行且 `/readyz` 成功的 `apps/llm`，以及測試資料庫 |
+| 基準量測 | GEN-009、模式批次、創作量測 | 使用其受版本控制的 corpus／圖檔與獨立輸出目錄；它們是多次付費工作，不能以單次 E2E 取代或自動宣稱完成 |
+
+驗收結束時，確認 Run 的 `cleanup_status` 為 `cleaned`、Gateway 回報的成本來源為 `gateway`，並停止這次才啟動的 Python 行程。暫存輸出可以刪除；不要將 Virtual Key、master key 或服務 token 寫入輸出檔、文件或 shell history。
+
 ### 4.3 啟動應用程式
 
 在不同終端啟動下列五個程序：
