@@ -334,11 +334,6 @@ def test_acceptance_criteria_locked_once_brief_confirmed():
             {"outcome": "draft", "draft": SKILL},
             "validation_unavailable",
         ),
-        (
-            {"diagram_understanding": diagram_text()},
-            {"outcome": "confirm_diagram", "diagram_understanding": "A -> B"},
-            "diagram_incomplete",
-        ),
     ],
 )
 def test_guard_rails_set_reason_and_english_message(req_changes, decision_changes, reason):
@@ -386,7 +381,7 @@ def test_image_is_only_multimodal_and_requires_confirmation():
     response, calls = invoke(
         request(diagram=diagram),
         decision(
-            outcome="confirm_diagram",
+            outcome="confirm_diagram_description",
             diagram_understanding=diagram_text("Input -> validation -> CSV"),
             diagram_description="先驗證輸入，再輸出 CSV。",
         ),
@@ -647,22 +642,22 @@ def test_invalid_hash_cannot_complete_a_draft(content_hash):
         json.dumps({"nodes": ["A"], "conditions": [], "branches": [], "uncertainties": [""]}),
     ],
 )
-def test_diagram_confirmation_requires_all_four_sections(interpretation):
+def test_incomplete_legacy_diagram_is_refused(interpretation):
     response, _ = invoke(
         request(diagram_understanding=diagram_text()),
-        decision(outcome="confirm_diagram", diagram_understanding=interpretation),
+        decision(outcome="confirm_diagram_description", diagram_understanding=interpretation),
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["outcome"] == "clarification"
-    assert body["reason"] == "diagram_incomplete"
-    assert body["diagram_understanding"] == ""
+    assert response.status_code == 502
 
 
 def test_an_invented_diagram_in_a_text_session_is_dropped_at_the_source():
     response, _ = invoke(
         request(brief="b", brief_confirmed=True),
-        decision(outcome="confirm_diagram", message="請確認流程理解", diagram_understanding="x"),
+        decision(
+            outcome="confirm_diagram_description",
+            message="請確認流程理解",
+            diagram_understanding="x",
+        ),
     )
     assert response.status_code == 200
     body = response.json()

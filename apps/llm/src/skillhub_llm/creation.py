@@ -36,7 +36,6 @@ TOOL_TAG = "untrusted_tool_observation"
 Outcome = Literal[
     "clarification",
     "confirm_brief",
-    "confirm_diagram",
     "confirm_diagram_description",
     "confirm_diagram_interpretation",
     "tool_intent",
@@ -640,7 +639,6 @@ def _reason_node(gateway_key: str, phase: str):
                 decision.diagram_description = None
                 decision.diagram_interpretation = None
                 if decision.outcome in (
-                    "confirm_diagram",
                     "confirm_diagram_description",
                     "confirm_diagram_interpretation",
                 ):
