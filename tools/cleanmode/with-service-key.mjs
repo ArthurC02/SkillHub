@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { childOverlay, readDotEnv, resolve } from "./env.mjs";
-import { gatewayModels, llmChildEnv, mintServiceKey, serviceKeyPlan } from "./servicekey.mjs";
+import { gatewayModels, llmChildEnv, mintServiceKey, serviceKeyAlias, serviceKeyPlan } from "./servicekey.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -46,7 +47,7 @@ if (plan.action === "mint") {
       adminKey: deployment.SKILLHUB_MODEL_GATEWAY_KEY,
       models,
       budgetUsd,
-      alias: process.env.SKILLHUB_SERVICE_KEY_ALIAS || "skillhub-llm-service",
+      alias: serviceKeyAlias(process.env.SKILLHUB_SERVICE_KEY_ALIAS, randomUUID()),
     });
   } catch (err) {
     console.error(`${err.message}；apps/llm 不會拿 master key 啟動（${plan.reason}）`);

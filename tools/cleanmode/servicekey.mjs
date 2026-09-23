@@ -18,6 +18,10 @@ export function serviceKeyPlan(deployment) {
   return { action: "keep", reason: "an operator supplied a distinct LITELLM_API_KEY" };
 }
 
+export function serviceKeyAlias(base, suffix) {
+  return `${base || "skillhub-llm-service"}-${suffix}`;
+}
+
 export async function mintServiceKey({ fetchImpl, adminUrl, adminKey, models, budgetUsd, alias }) {
   const response = await fetchImpl(`${adminUrl.replace(/\/$/, "")}/key/generate`, {
     method: "POST",

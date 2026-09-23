@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { gatewayModels, llmChildEnv, mintServiceKey, serviceKeyPlan } from "./servicekey.mjs";
+import {
+  gatewayModels,
+  llmChildEnv,
+  mintServiceKey,
+  serviceKeyAlias,
+  serviceKeyPlan,
+} from "./servicekey.mjs";
 
 test("mints when nothing is configured yet", () => {
   const plan = serviceKeyPlan({
@@ -56,6 +62,12 @@ test("skips when no gateway is configured", () => {
     serviceKeyPlan({ SKILLHUB_MODEL_GATEWAY_URL: "http://127.0.0.1:4000" }).action,
     "skip",
   );
+});
+
+test("service key aliases keep the stable label while making each mint unique", () => {
+  assert.equal(serviceKeyAlias(undefined, "first"), "skillhub-llm-service-first");
+  assert.equal(serviceKeyAlias("interactive", "second"), "interactive-second");
+  assert.notEqual(serviceKeyAlias(undefined, "first"), serviceKeyAlias(undefined, "second"));
 });
 
 test("mintServiceKey posts to /key/generate with the admin bearer and returns the key", async () => {
