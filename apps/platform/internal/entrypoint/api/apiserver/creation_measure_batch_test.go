@@ -179,6 +179,10 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 	if sandboxURL == "" {
 		return nil
 	}
+	gatewayURL := os.Getenv("SKILLHUB_E2E_GATEWAY_URL")
+	if gatewayURL == "" {
+		t.Fatal("SKILLHUB_E2E_GATEWAY_URL is required so trial runs use the sandbox-routable gateway")
+	}
 	ctx := context.Background()
 	store, err := objstore.New(
 		os.Getenv("OBJSTORE_ENDPOINT"), os.Getenv("OBJSTORE_ACCESS_KEY"),
@@ -197,6 +201,9 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 	if a.runs.Gateway == nil {
 		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required alongside SKILLHUB_E2E_SANDBOX_URL")
 	}
+	a.runs.Deployment.GatewayURL = gatewayURL
+	a.runs.Deployment.Model = os.Getenv("SKILLHUB_RUN_MODEL")
+	a.runs.Deployment.MinimumIsolation = run.WeakIsolation
 	a.runs.PollInterval = time.Second
 	a.runs.MaxAttempts = 1
 	a.runs.TraceSigner = traceSigner
@@ -409,6 +416,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 	a := &api{
+		creditPool: pool, startingCredits: betaGrantCredits,
 		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
 		versions: app.Versions, runs: app.RunSvc, evaluations: app.EvalSvc, traceSigner: traceSigner,
 	}
