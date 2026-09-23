@@ -18,6 +18,7 @@ func TestARunningRunDoesNotHoldAWorkerSoMoreRunsThanWorkersAllStart(t *testing.T
 	a := newAPI(t, pool)
 	alice := newFixture(t, a, pool, "alice-no-held-worker")
 	bob := newFixture(t, a, pool, "bob-no-held-worker")
+	carol := newFixture(t, a, pool, "carol-no-held-worker")
 	withProvider(t, a, pool, providertest.Plan{StuckRunning: true})
 
 	started := []struct {
@@ -25,8 +26,8 @@ func TestARunningRunDoesNotHoldAWorkerSoMoreRunsThanWorkersAllStart(t *testing.T
 		runID string
 	}{
 		{alice, alice.start(t).RunID},
-		{alice, alice.start(t).RunID},
 		{bob, bob.start(t).RunID},
+		{carol, carol.start(t).RunID},
 	}
 	for _, s := range started {
 		waitForStatus(t, s.f.client, s.runID, string(gen.RunStatusRunning))
@@ -34,13 +35,13 @@ func TestARunningRunDoesNotHoldAWorkerSoMoreRunsThanWorkersAllStart(t *testing.T
 }
 
 type turnScene struct {
-	ctx             context.Context
-	pool            *pgxpool.Pool
-	svc             run.Service
-	fake            *providertest.Fake
-	alice, bob      fixture
-	alicesQueued    string
-	bobsQueuedLater string
+	ctx               context.Context
+	pool              *pgxpool.Pool
+	svc               run.Service
+	fake              *providertest.Fake
+	alice, bob, carol fixture
+	bobsQueued        string
+	carolsQueuedLater string
 }
 
 func newTurnScene(t *testing.T, name string) turnScene {
@@ -52,6 +53,7 @@ func newTurnScene(t *testing.T, name string) turnScene {
 		pool:  pool,
 		alice: newFixture(t, a, pool, "alice-"+name),
 		bob:   newFixture(t, a, pool, "bob-"+name),
+		carol: newFixture(t, a, pool, "carol-"+name),
 	}
 	clearRunBacklog(t, pool)
 	s.fake = providertest.New("fake_sandbox", "test-token")
@@ -67,16 +69,16 @@ func newTurnScene(t *testing.T, name string) turnScene {
 	if s.fake.Dispatches() != 1 {
 		t.Fatalf("precondition: dispatches = %d, want alice holding one sandbox", s.fake.Dispatches())
 	}
-	s.alicesQueued = s.alice.start(t).RunID
-	s.bobsQueuedLater = s.bob.start(t).RunID
+	s.bobsQueued = s.bob.start(t).RunID
+	s.carolsQueuedLater = s.carol.start(t).RunID
 	return s
 }
 
 func (s turnScene) expectWaits(t *testing.T, runID, what string) {
 	t.Helper()
-	ws := mustUUID(t, s.alice.workspaceID)
-	if runID == s.bobsQueuedLater {
-		ws = mustUUID(t, s.bob.workspaceID)
+	ws := mustUUID(t, s.bob.workspaceID)
+	if runID == s.carolsQueuedLater {
+		ws = mustUUID(t, s.carol.workspaceID)
 	}
 	err := s.svc.Drive(s.ctx, ws, mustUUID(t, runID))
 	if !errors.Is(err, run.ErrTryAgainLater) {
@@ -84,34 +86,29 @@ func (s turnScene) expectWaits(t *testing.T, runID, what string) {
 	}
 }
 
-func TestAFreeSlotGoesToTheWorkspaceHoldingFewerSandboxesBeforeAnEarlierRun(t *testing.T) {
+func TestEarlierQueuedRunWinsWhenWorkspacesHoldEqualSandboxes(t *testing.T) {
 	s := newTurnScene(t, "fewer-held-first")
 	s.fake.SetFreeSlots(1)
 
-	s.expectWaits(t, s.alicesQueued, "alice's earlier run")
-	if _, view := s.alice.getRun(t, s.alicesQueued); view.Status != string(gen.RunStatusQueued) || s.fake.Dispatches() != 1 {
-		t.Fatalf("alice's run is %q after %d dispatches, want queued after 1: bob holds no sandbox yet",
-			view.Status, s.fake.Dispatches())
-	}
-
-	s.expectWaits(t, s.bobsQueuedLater, "bob's later run")
+	s.expectWaits(t, s.bobsQueued, "bob's earlier run")
 	if s.fake.Dispatches() != 2 {
-		t.Fatalf("dispatches = %d, want bob's run dispatched", s.fake.Dispatches())
+		t.Fatalf("dispatches = %d, want bob's earlier run dispatched", s.fake.Dispatches())
 	}
 
-	s.expectWaits(t, s.alicesQueued, "alice's run once both hold one sandbox")
+	s.expectWaits(t, s.carolsQueuedLater, "carol's later run")
 	if s.fake.Dispatches() != 3 {
-		t.Errorf("dispatches = %d, want alice's run to go once both workspaces hold the same", s.fake.Dispatches())
+		t.Fatalf("dispatches = %d, want carol's run dispatched", s.fake.Dispatches())
 	}
+
 }
 
 func TestARunDoesNotYieldWhenMoreSlotsAreFreeThanRunsAheadOfIt(t *testing.T) {
 	s := newTurnScene(t, "enough-slots")
 	s.fake.SetFreeSlots(2)
 
-	s.expectWaits(t, s.alicesQueued, "alice's run with two slots free")
+	s.expectWaits(t, s.bobsQueued, "bob's run with two slots free")
 	if s.fake.Dispatches() != 2 {
-		t.Errorf("dispatches = %d, want alice's run dispatched beside bob's waiting one", s.fake.Dispatches())
+		t.Errorf("dispatches = %d, want bob's run dispatched beside carol's waiting one", s.fake.Dispatches())
 	}
 }
 
@@ -119,12 +116,12 @@ func TestARunDoesNotYieldToARunThatCannotUseTheFreeSlot(t *testing.T) {
 	s := newTurnScene(t, "unplaceable-ahead")
 	s.fake.SetFreeSlots(1)
 	if _, err := s.pool.Exec(s.ctx, `UPDATE runs SET policy_snapshot = jsonb_set(policy_snapshot,
-		'{resource_limits,vcpu}', '999') WHERE id = $1`, mustUUID(t, s.bobsQueuedLater)); err != nil {
+		'{resource_limits,vcpu}', '999') WHERE id = $1`, mustUUID(t, s.bobsQueued)); err != nil {
 		t.Fatal(err)
 	}
 
-	s.expectWaits(t, s.alicesQueued, "alice's run behind one no provider can place")
+	s.expectWaits(t, s.carolsQueuedLater, "carol's run behind one no provider can place")
 	if s.fake.Dispatches() != 2 {
-		t.Errorf("dispatches = %d, want alice's run dispatched: bob's needs more vCPU than any slot offers", s.fake.Dispatches())
+		t.Errorf("dispatches = %d, want carol's run dispatched: bob's needs more vCPU than any slot offers", s.fake.Dispatches())
 	}
 }
