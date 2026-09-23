@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -59,6 +58,21 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	if sandboxURL == "" {
 		t.Skip("SKILLHUB_E2E_SANDBOX_URL not set; skipping the paid end to end run")
 	}
+	gatewayURL := os.Getenv("SKILLHUB_E2E_GATEWAY_URL")
+	if gatewayURL == "" {
+		t.Fatal("SKILLHUB_E2E_GATEWAY_URL is required so the sandbox can reach the model gateway")
+	}
+	adminGatewayURL := os.Getenv("SKILLHUB_MODEL_GATEWAY_ADMIN_URL")
+	if adminGatewayURL == "" {
+		adminGatewayURL = os.Getenv("SKILLHUB_MODEL_GATEWAY_URL")
+	}
+	if adminGatewayURL == "" {
+		t.Fatal("SKILLHUB_MODEL_GATEWAY_ADMIN_URL is required so the test can issue a virtual key")
+	}
+	model := os.Getenv("SKILLHUB_RUN_MODEL")
+	if model == "" {
+		t.Fatal("SKILLHUB_RUN_MODEL is required so the run uses the virtual key's allowed model")
+	}
 	pool := requireDB(t)
 	ctx := context.Background()
 
@@ -78,7 +92,14 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	a.runs.Store = store
 	a.runs.Providers = run.NewRegistry(run.NewProvider(
 		"self_hosted", sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
-	a.runs.Gateway = wiring.GatewayFromEnv()
+	a.runs.Gateway = run.NewGateway(run.GatewayConfig{
+		AdminBaseURL:   adminGatewayURL,
+		AdminKey:       os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY"),
+		SandboxBaseURL: gatewayURL,
+		Model:          model,
+	})
+	a.runs.Deployment.Model = model
+	a.runs.Deployment.GatewayURL = gatewayURL
 	if a.runs.Gateway == nil {
 		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required for this test")
 	}
