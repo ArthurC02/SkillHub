@@ -524,16 +524,15 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "rerun-owner")
 
-	ctx := context.Background()
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
+	first := f.start(t)
+	for _, status := range []string{"preparing", "running", "succeeded"} {
+		if _, err := pool.Exec(context.Background(), `
+			UPDATE runs SET status = $2, finished_at = CASE WHEN $2 = 'succeeded' THEN now() END WHERE id = $1`,
+			mustUUID(t, first.RunID), status); err != nil {
+			t.Fatal(err)
+		}
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	firstRunID := seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
+	firstRunID := first.RunID
 	staleHash := f.confirmPermissions(t)
 
 	v2 := seedVersion(t, pool, f.workspaceID, f.skillID, "hash-rerun-v2")
