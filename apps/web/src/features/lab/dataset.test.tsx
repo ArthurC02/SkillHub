@@ -73,6 +73,11 @@ async function renderUpload() {
   await act(async () => {
     await router.navigate({ to: "/lab/datasets", search: { test_case: TEST_CASE } });
   });
+  await waitFor(
+    () =>
+      container.querySelector("footer") !== null &&
+      container.querySelector("[data-loading]") === null,
+  );
 }
 
 test("02:TEST-002 the upload rules are on screen before anything is uploaded", async () => {

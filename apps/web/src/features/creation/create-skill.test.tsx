@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { router } from "../../app/router";
 
 let container: HTMLDivElement;
@@ -46,7 +47,7 @@ function stubMe(features?: Record<string, boolean>) {
   });
 }
 
-async function visit() {
+async function visit(rendered: () => boolean) {
   router.update({ history: createMemoryHistory({ initialEntries: ["/workspace/creations"] }) });
   await act(async () => {
     root = createRoot(container);
@@ -56,14 +57,25 @@ async function visit() {
       </QueryClientProvider>,
     );
   });
-  await act(async () => new Promise((r) => setTimeout(r, 40)));
+  await waitFor(() => queryClient.getQueryState(queryKeys.me)?.status === "success" && rendered());
+}
+
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
 
 const text = () => container.textContent ?? "";
 
 test("⛔ with the flag off, /workspace/creations is not a workbench and says so", async () => {
   stubMe();
-  await visit();
+  await visit(() => text().includes("這一頁現在不存在"));
 
   expect(text()).toContain("這一頁現在不存在");
   expect(container.querySelector("#generate-task"), "旗標關著卻渲染了生成表單").toBeNull();
@@ -74,7 +86,7 @@ test("⛔ with the flag off, /workspace/creations is not a workbench and says so
 
 test("with generate_skill on, the page is the generation workbench", async () => {
   stubMe({ generate_skill: true });
-  await visit();
+  await visit(() => container.querySelector("#generate-task") !== null);
 
   expect(container.querySelector("#generate-task")).not.toBeNull();
   expect(text()).not.toContain("這一頁現在不存在");
@@ -85,7 +97,7 @@ test.each([
   ["旗標關著", undefined],
 ] as const)("%s 時這一頁都有一條回得去的路", async (_label, features) => {
   stubMe(features);
-  await visit();
+  await visit(() => container.querySelector("main a[href='/workspace/skills']") !== null);
 
   const back = Array.from(container.querySelectorAll("main a")).filter(
     (a) => a.getAttribute("href") === "/workspace/skills",
@@ -96,7 +108,7 @@ test.each([
 
 test("with creation_skill on as well, the page is the conversation", async () => {
   stubMe({ generate_skill: true, creation_skill: true });
-  await visit();
+  await visit(() => text().includes("和 Agent 一起創作"));
 
   expect(text()).toContain("和 Agent 一起創作");
   expect(container.querySelector("#generate-task"), "兩個工作台同時掛上了").toBeNull();

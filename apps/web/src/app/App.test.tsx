@@ -4,6 +4,17 @@ import { act } from "react";
 import { expect, test } from "vitest";
 import App from "./App";
 
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error("waitFor timed out");
+}
+
 test("renders the app shell", async () => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -15,6 +26,11 @@ test("renders the app shell", async () => {
       </StrictMode>,
     );
   });
+  await waitFor(
+    () =>
+      container.querySelector("footer") !== null &&
+      container.querySelector("[data-loading]") === null,
+  );
 
   expect(container.textContent).toContain("Skill Hub");
 
