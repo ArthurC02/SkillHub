@@ -4,7 +4,7 @@ export function RetentionNotice({ preview }: { preview: PackagingPreview }) {
   const days = preview.retention_days;
   if (typeof days !== "number" || !Number.isFinite(days) || days < 0) {
     return (
-      <p className="note" role="status">
+      <p className="note" role="status" data-role="evidence">
         這個部署沒有回答打包產物會保留多久，所以這裡不寫數字——
         寫一個沒有人裁定過的期限，比不寫更糟。
       </p>

@@ -37,7 +37,7 @@ export function WorkspaceRuns() {
             <Link to="/lab/test-cases">Test Case</Link> 建立一個再試跑。
           </p>
         ) : (
-          <ul className="download-list">
+          <ul className="download-list" data-role="evidence">
             {rows.map((run) => (
               <RunRow key={run.run_id} run={run} />
             ))}

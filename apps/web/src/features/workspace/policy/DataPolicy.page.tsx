@@ -41,7 +41,7 @@ export function DataPolicy() {
           <p className="note">{policy.data.note}</p>
 
           <div className="table-scroll" tabIndex={0}>
-            <table className="compare-table">
+            <table className="compare-table" data-role="evidence">
               <caption>
                 全部只有這 {policy.data.events.length} 個事件。要再加一個，得先說明既有的資料表
                 為什麼答不出那個問題。

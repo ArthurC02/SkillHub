@@ -53,7 +53,7 @@ export function SkillDetail() {
             </section>
           )}
 
-          <div className="verdict-grid">
+          <div className="verdict-grid" data-role="evidence">
             <section>
               <h2>風險揭露</h2>
               <RiskIndicator risk={skill.risk} />

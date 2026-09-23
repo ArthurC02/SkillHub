@@ -18,9 +18,6 @@ export function RunHistory({
   return (
     <>
       <h2>執行歷史</h2>
-      <p className="note" data-role="teaching">
-        逐條驗收結果在各自的 Run 頁面上。
-      </p>
       {runs.isPending && <Loading what="執行歷史" />}
       <ReadFailure error={runs.error} what="執行歷史" />
       {runs.data && (
@@ -35,7 +32,7 @@ export function RunHistory({
         (history.length === 0 ? (
           <p>尚無執行。這個 Test Case 還沒有跑過任何 Run。</p>
         ) : (
-          <ul className="download-list">
+          <ul className="download-list" data-role="evidence">
             {history.map((run) => (
               <li key={run.run_id} className="download-item">
                 <p>

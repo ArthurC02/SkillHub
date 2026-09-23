@@ -29,10 +29,8 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
   return (
     <>
       <h3>Rubric（選用）</h3>
-      <p className="note" data-role="teaching">
-        Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
-        條件上，只是額外說明「做到什麼程度算過」以及「要不要引原文」。權重只是給模型看的相對
-        重要性，平台不拿它算分。
+      <p className="note" data-role="evidence">
+        Rubric 補充每條驗收條件的「怎樣算過」與引文要求；平台不拿權重計分。
       </p>
       {testCase.acceptance_criteria.length === 0 ? (
         <p>要先有驗收條件才能寫 rubric——rubric 的每一條都是掛在某一條驗收條件上的。</p>
@@ -49,11 +47,11 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               placeholder="例如 content-007/writing/v1"
             />
             <br />
-            <span className="note" data-role="teaching">
-              改任何一條的文字、權重或引文要求就是新版本；評估報告會記下這次判定是在哪個版本下做的。
+            <span className="note" data-role="evidence">
+              改動文字、權重或引文要求會建立新版本；評估報告會記下版本。
             </span>
           </p>
-          <ul className="criterion-list">
+          <ul className="criterion-list" data-role="evidence">
             {testCase.acceptance_criteria.map((c) => {
               const item = items[c.id];
               return (

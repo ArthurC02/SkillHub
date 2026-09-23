@@ -151,7 +151,7 @@ export function Packaging() {
             <summary>相容性細項（每一軸的備註與實測環境）</summary>
             <CompatibilityStatus compatibility={skill.data.compatibility} />
           </details>
-          <p className="note">
+          <p className="note" data-role="caveat">
             <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
           </p>
 
@@ -162,7 +162,7 @@ export function Packaging() {
           {targets.isPending && <Loading what="打包目標" />}
           <ReadFailure error={targets.error} what="打包目標" />
           {targets.data && (
-            <ul className="packaging-targets">
+            <ul className="packaging-targets" data-role="evidence">
               {targets.data.targets.map((t) => (
                 <TargetOption
                   key={t.id}

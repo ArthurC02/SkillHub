@@ -40,7 +40,7 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
       {limits.data && (
         <>
           <h2>上傳前請先確認</h2>
-          <dl>
+          <dl data-role="evidence">
             <dt>大小限制</dt>
             <dd>
               單一檔案最大 {roundedBytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}

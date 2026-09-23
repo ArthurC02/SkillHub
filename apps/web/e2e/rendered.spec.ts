@@ -462,6 +462,7 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
     for (const [name, url] of ROUTES) {
       await page.goto(url);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
+      await expect(page.locator("[data-loading]")).toHaveCount(0);
       const blocks = await page.evaluate(() =>
         Array.from(document.querySelectorAll('[data-role="teaching"]')).map((el) => ({
           flat: !el.closest("[hidden]") && el.getClientRects().length > 0,
@@ -492,6 +493,49 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
       bad,
       `§2.13 D 類預算: ${bad.join(" / ")}\nmeasured: ${JSON.stringify(measured)}`,
     ).toEqual([]);
+  });
+
+  test("flat teaching and identifiers never outweigh visible evidence, reasons, and caveats", async ({
+    page,
+  }) => {
+    test.slow();
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    const bad: string[] = [];
+    for (const [name, url] of ROUTES) {
+      await page.goto(url);
+      await expect(page.locator(".app-nav a").first()).toBeVisible();
+      await expect(page.locator("[data-loading]")).toHaveCount(0);
+      const measured = await page.evaluate(() => {
+        const runes = (role: string) => {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          let total = 0;
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const parent = node.parentElement;
+            if (!parent || parent.closest("[hidden]") || parent.getClientRects().length === 0)
+              continue;
+            if (parent.closest("[data-role]")?.getAttribute("data-role") !== role) continue;
+            total += [...(node.textContent ?? "").replace(/\s+/g, "")].length;
+          }
+          return total;
+        };
+        return {
+          teaching: runes("teaching"),
+          evidence: runes("evidence"),
+          reason: runes("reason"),
+          caveat: runes("caveat"),
+        };
+      });
+      const basis = measured.evidence + measured.reason + measured.caveat;
+      if (measured.teaching > basis) {
+        bad.push(
+          `${name}: ${measured.teaching} flat D/F runes, but only ${basis} A/B/C runes (${JSON.stringify(measured)})`,
+        );
+      }
+    }
+
+    expect(bad, `§2.13 D＋F ≤ A＋B＋C: ${bad.join(" / ")}`).toEqual([]);
   });
 
   test("a Tip opens without moving a neighbour, and Escape closes it", async ({ page }) => {

@@ -35,7 +35,7 @@ export function GeneralMode({ runId }: { runId: string }) {
       <RunCleanupStatus runId={runId} />
 
       <h3>進度</h3>
-      <ol>
+      <ol data-role="evidence">
         {trace.steps.map((step, i) => (
           <li key={`${i}-${step.status}`}>
             <strong>{runStatusLabel(step.status)}</strong>

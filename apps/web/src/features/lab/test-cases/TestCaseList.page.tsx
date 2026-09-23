@@ -60,7 +60,7 @@ export function TestCaseList() {
             <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
           )
         ) : (
-          <ul className="search-results">
+          <ul className="search-results" data-role="evidence">
             {rows.map((tc) => (
               <li key={tc.test_case_id} className="search-result">
                 <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: tc.test_case_id }}>

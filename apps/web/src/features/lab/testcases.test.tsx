@@ -447,7 +447,7 @@ test("執行歷史 with no runs says 尚無執行 rather than rendering a zero",
   await waitFor(() => (container.textContent ?? "").includes("執行歷史"));
 
   expect(container.textContent).toContain("尚無執行");
-  expect(container.textContent).toContain("要跑哪一個 Skill Version 在那個頁面上選");
+  expect(container.textContent).toContain("開始 Run 前會再次顯示權限摘要並要求確認");
   expect(container.textContent).not.toContain("還需要填入");
 });
 

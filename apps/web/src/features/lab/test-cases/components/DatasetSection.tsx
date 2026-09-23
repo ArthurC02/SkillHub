@@ -21,9 +21,6 @@ export function DatasetSection({ testCaseId }: { testCaseId: string }) {
           上傳檔案
         </Link>
       </p>
-      <p className="note" data-role="teaching">
-        （上傳規則會在選檔前顯示）。
-      </p>
       {datasets.isPending && <Loading what="檔案清單" />}
       <ReadFailure error={datasets.error} what="檔案清單" />
       {datasets.data &&
@@ -35,7 +32,7 @@ export function DatasetSection({ testCaseId }: { testCaseId: string }) {
               目前 {datasets.data.datasets.length} 個檔案，合計 {bytes(datasets.data.total_bytes)}
               。上限在上傳頁的「大小限制」。
             </p>
-            <ul className="file-tree">
+            <ul className="file-tree" data-role="evidence">
               {datasets.data.datasets.map((d) => (
                 <li key={d.dataset_id}>
                   {d.file_name}{" "}

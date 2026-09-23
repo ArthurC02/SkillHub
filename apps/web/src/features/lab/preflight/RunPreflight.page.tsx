@@ -157,7 +157,7 @@ function Preflight({
     <>
       <p>以下是這次 Run 可以接觸的範圍。確認後才會開始執行。</p>
 
-      <dl>
+      <dl data-role="evidence">
         <dt>預估點數（估計值）</dt>
         <dd>
           {cost ? (

@@ -153,6 +153,7 @@ export function WorkspaceSkills() {
 
       {hasSkills && (
         <ul
+          data-role="evidence"
           className="search-results skill-grid"
           onPointerMove={followPointer}
           onPointerLeave={releasePointer}

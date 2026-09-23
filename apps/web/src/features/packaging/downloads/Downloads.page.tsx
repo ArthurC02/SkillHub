@@ -41,7 +41,7 @@ export function Downloads() {
           </p>
         ) : (
           <>
-            <ul className="download-list">
+            <ul className="download-list" data-role="evidence">
               {downloads.data.downloads.map((artifact) => (
                 <li key={artifact.artifact_id} className="download-item">
                   <DownloadArtifactFacts artifact={artifact} />

@@ -64,7 +64,7 @@ export function WorkspaceAccount() {
               }
             />
           ) : (
-            <p>
+            <p data-role="reason">
               <ConfirmDelete
                 scopeId="account-delete-scope"
                 label="刪除我的帳號"
@@ -87,10 +87,8 @@ export function WorkspaceAccount() {
               />
             </p>
           )}
-
-          <p className="note" data-role="teaching">
-            只想刪掉某幾樣東西，不想刪帳號？哪一樣刪在哪裡、刪掉之後什麼會留下，見
-            <Link to="/policy">資料保存政策</Link>。
+          <p>
+            <Link to="/policy">個別資料的保存與刪除政策</Link>
           </p>
         </>
       )}

@@ -70,10 +70,8 @@ export function TestCaseDetail() {
           前往執行前權限確認
         </Link>
       </p>
-      <p className="note" data-role="teaching">
-        （要跑哪一個 Skill Version 在那個頁面上選
-        {lastVersion ? "，預設是這個 Test Case 上次跑的那一版" : ""}）。開始 Run
-        前一定會再顯示一次權限摘要並要求確認。
+      <p className="note" data-role="evidence">
+        開始 Run 前會再次顯示權限摘要並要求確認。
       </p>
       <RunHistory runs={runs} history={history} />
       <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />

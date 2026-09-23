@@ -33,16 +33,14 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
   return (
     <>
       <h2>驗收條件</h2>
-      <p className="note" data-role="teaching">
-        每一條都會被逐項判定為通過／未通過／無法判斷。 開始 Run
-        時，這一頁的內容會被凍結成快照：之後修改只影響<strong>下一次</strong>
-        Run，不會改寫任何已經完成的 Run 或已經寫好的評估。
+      <p className="note" data-role="evidence">
+        每條驗收條件各自判定。開始 Run 時會凍結成快照；修改只影響<strong>下一次</strong> Run。
       </p>
 
       {testCase.acceptance_criteria.length === 0 ? (
         <p>還沒有驗收條件。沒有驗收條件的 Run 沒有可逐條判定的依據。</p>
       ) : (
-        <ul className="criterion-list">
+        <ul className="criterion-list" data-role="evidence">
           {testCase.acceptance_criteria.map((c) => (
             <CriterionRow key={c.id} testCaseId={testCase.test_case_id} criterion={c} />
           ))}
