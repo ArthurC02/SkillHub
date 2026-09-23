@@ -686,21 +686,30 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	a := newAPI(t, pool)
 	tag := uniqueWorklistLabel("history-per-case")
 	f := newFixture(t, a, pool, tag)
-	mine := f.start(t)
 
 	other := f
 	other.testCaseID = seedTestCase(t, pool, f.workspaceID, f.skillID)
-	theirs := other.start(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	mineRunID := seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
+	otherRunID := seedRunAt(t, tx, other, "succeeded", "2020-01-01T11:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	rows := f.listRunsForTestCase(t, f.testCaseID)
 	if len(rows) != 1 {
 		t.Fatalf("filtered history = %d runs, want 1: %+v", len(rows), rows)
 	}
-	if rows[0].RunID != mine.RunID {
-		t.Errorf("filtered history returned run %s, want %s", rows[0].RunID, mine.RunID)
+	if rows[0].RunID != mineRunID {
+		t.Errorf("filtered history returned run %s, want %s", rows[0].RunID, mineRunID)
 	}
-	if rows[0].RunID == theirs.RunID {
-		t.Errorf("the other test case's run %s is in this filtered history", theirs.RunID)
+	if rows[0].RunID == otherRunID {
+		t.Errorf("the other test case's run %s is in this filtered history", otherRunID)
 	}
 	if rows[0].TestCaseID != f.testCaseID {
 		t.Errorf("test_case_id = %q, want %q", rows[0].TestCaseID, f.testCaseID)
@@ -720,7 +729,7 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 
 	var otherSnapshotID string
 	if err := pool.QueryRow(context.Background(),
-		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, theirs.RunID),
+		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, otherRunID),
 	).Scan(&otherSnapshotID); err != nil {
 		t.Fatal(err)
 	}
@@ -733,13 +742,13 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows = f.listRunsForTestCase(t, f.testCaseID)
-	if len(rows) != 1 || rows[0].RunID != mine.RunID {
+	if len(rows) != 1 || rows[0].RunID != mineRunID {
 		t.Fatalf("filtered history lost a matching run older than 500 unrelated rows: %+v", rows)
 	}
 
 	var mineSnapshotID string
 	if err := pool.QueryRow(context.Background(),
-		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, mine.RunID),
+		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, mineRunID),
 	).Scan(&mineSnapshotID); err != nil {
 		t.Fatal(err)
 	}
@@ -758,7 +767,7 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	if code := getJSON(t, f.Client, url, &page); code != http.StatusOK {
 		t.Fatalf("GET filtered second page: got %d", code)
 	}
-	if len(page.Runs) != 1 || page.Runs[0].RunID != mine.RunID || page.Runs[0].RunID == newerMatchingID {
+	if len(page.Runs) != 1 || page.Runs[0].RunID != mineRunID || page.Runs[0].RunID == newerMatchingID {
 		t.Fatalf("filter pagination was applied before filtering: %+v", page.Runs)
 	}
 
