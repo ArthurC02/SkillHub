@@ -12,10 +12,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -196,6 +199,89 @@ func TestCleanModeCanDeliverEvaluationOnOneConnection(t *testing.T) {
 	if view.EvaluationID == "" || view.Status != "completed" || view.Overall != "undetermined" {
 		t.Fatalf("evaluation = %+v, want a completed undetermined verdict", view)
 	}
+}
+
+func TestCleanModeCanAdvanceCreationOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+	limits := creationLimits()
+	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/creation/step" {
+			http.NotFound(w, r)
+			return
+		}
+		cost := 0.01
+		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{
+			Outcome: "confirm_brief", Message: "請確認任務與成功條件。",
+			Brief: "整理輸入資料，依指定格式輸出摘要。",
+			Model: "fixture-model", PromptVersion: "creation-test/v1",
+			Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway},
+		})
+	}))
+	t.Cleanup(model.Close)
+	set, err := worker.BuildWorkers(pool, worker.Deps{
+		CreationLimits: limits,
+		LLM:            &llmclient.Client{BaseURL: model.URL, Token: "test-service"},
+	})
+	if err != nil {
+		t.Fatalf("build creation worker: %v", err)
+	}
+	set.Creation.IssueKey = func(context.Context, string, string, float64, time.Duration) (string, error) {
+		return "test-attempt-key", nil
+	}
+	set.Creation.RevokeKey = func(context.Context, string) error { return nil }
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &worker.CreationStepWorker{Svc: set.Creation})
+	consumer, err := queue.New(pool, &river.Config{
+		Workers: workers,
+		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
+	})
+	if err != nil {
+		t.Fatalf("create creation queue: %v", err)
+	}
+	if err := consumer.Start(context.Background()); err != nil {
+		t.Fatalf("start creation queue: %v", err)
+	}
+	t.Cleanup(func() { _ = consumer.Stop(context.Background()) })
+
+	packages := packageStore{}
+	app, err := apiserver.NewApp(apiserver.Config{
+		Pool: pool, Store: packages, OAuth: &identity.GitHubOAuth{}, DevLogin: true,
+		GenerateExposed: true, CreationExposed: true, CreationLimits: limits, CleanMode: true,
+		CreationTransient: func(context.Context, creation.JobArgs, *creation.Diagram) error { return nil },
+	})
+	if err != nil {
+		t.Fatalf("create API: %v", err)
+	}
+	server := httptest.NewServer(app.Handler())
+	t.Cleanup(server.Close)
+	a := &api{Server: server, auth: app.Auth, creditPool: pool, startingCredits: betaGrantCredits}
+	c := a.login(t, "clean-mode-creation")
+
+	view := creationPost(t, c, "/creation-sessions", map[string]any{
+		"id": uuid.NewString(), "message": "開始創作", "budget_credits": 650,
+	}, http.StatusOK)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		response, err := c.Get(c.base + "/creation-sessions/" + view.ID)
+		if err != nil {
+			t.Fatalf("GET creation session: %v", err)
+		}
+		var current creation.View
+		decodeErr := json.NewDecoder(response.Body).Decode(&current)
+		_ = response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("GET creation session: got %d, want 200", response.StatusCode)
+		}
+		if decodeErr != nil {
+			t.Fatalf("decode creation session: %v", decodeErr)
+		}
+		if current.Snapshot.PendingAction == "confirm_brief" {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("creation worker never produced the brief confirmation on one connection")
 }
 
 func TestCleanModeCanSearchOnOneConnection(t *testing.T) {
