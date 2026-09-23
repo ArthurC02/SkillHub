@@ -507,4 +507,4 @@ hello in-process s3
 
 - [x] SBX-014 驅動契約寫一次、每個後端各跑一次：`internal/drivertest` 的 `Subject` 只提供各後端不同的部分（建構、handle、請求），斷言寫在契約裡；`localdrv` 永遠跑，`dockerdrv` 有 daemon 才跑。一條契約測試搬進去時必須從原本的檔案刪掉，否則是第二個會漂移的地方。
 - [x] SBX-015 CI 有一條沒有容器執行期可用的工作（`sandbox-nodocker`，`DOCKER_HOST` 指向沒人在聽的位址），新長出來的 daemon 依賴在那裡是紅的，不是靜默跳過。既有的 `SKILLHUB_REQUIRE_DOCKER=1` 守的是相反方向：有 daemon 的工作不得整批跳過還報成功。
-- [ ] SBX-016 Unix 的 `resourceEnforcement()` 兩項皆為 false（`apps/sandbox/internal/localdrv/tree_unix.go`），Windows 兩項皆為 true；在補上之前，Linux 上的 `localdrv` 宣告不了記憶體與行程數上限，這兩項的強制只有容器那條路徑證明得了。
+- [x] SBX-016 Linux 的 `localdrv` 以 cgroup v2 強制記憶體與行程數上限（`cgroup_linux.go`；非 Linux 的 Unix 沒有 cgroup，回報無強制）。**能力是探測出來的，不是宣告的**：取得不到可寫的委派子樹就回報 false，且 `attach` 只對回報得出的那幾項設上限——宣告得了才可以被派工。受 cgroup v2「父層有行程就不得委派 controller」所限，driver 啟動時會把自己移進自有 cgroup 的葉節點，移不動就整項放棄並歸位。`SKILLHUB_REQUIRE_CGROUP=1` 讓「環境不支援」由跳過變成失敗，守的方向與 `SKILLHUB_REQUIRE_DOCKER` 相同。

@@ -3,6 +3,7 @@
 package localdrv
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
@@ -10,8 +11,9 @@ import (
 )
 
 type pgroupTree struct {
-	mu  sync.Mutex
-	pid int
+	mu    sync.Mutex
+	pid   int
+	limit *cgroup
 }
 
 func newProcessTree() processTree { return &pgroupTree{} }
@@ -27,6 +29,29 @@ func (t *pgroupTree) attach(pid int, lim treeLimits) error {
 	t.mu.Lock()
 	t.pid = pid
 	t.mu.Unlock()
+
+	enf := resourceEnforcement()
+	if !enf.Memory {
+		lim.MemoryBytes = 0
+	}
+	if !enf.Processes {
+		lim.MaxProcesses = 0
+	}
+	if lim.MemoryBytes == 0 && lim.MaxProcesses == 0 {
+		return nil
+	}
+
+	limit, err := newCgroup(fmt.Sprintf("run-%d", pid), lim)
+	if err != nil {
+		return fmt.Errorf("bind the workload to the ceilings this driver claims: %w", err)
+	}
+	if err := limit.add(pid); err != nil {
+		_ = limit.remove()
+		return fmt.Errorf("move the workload under its ceilings: %w", err)
+	}
+	t.mu.Lock()
+	t.limit = limit
+	t.mu.Unlock()
 	return nil
 }
 
@@ -38,11 +63,18 @@ func (t *pgroupTree) terminate(pid int) error {
 	return nil
 }
 
-func (t *pgroupTree) release() error { return nil }
-
-func resourceEnforcement() ResourceEnforcement {
-	return ResourceEnforcement{}
+func (t *pgroupTree) release() error {
+	t.mu.Lock()
+	limit := t.limit
+	t.limit = nil
+	t.mu.Unlock()
+	if limit == nil {
+		return nil
+	}
+	return limit.remove()
 }
+
+func resourceEnforcement() ResourceEnforcement { return cgroupEnforcement() }
 
 func reaping() Reaping { return Reaping{Descendants: true, Detached: false} }
 
