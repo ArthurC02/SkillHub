@@ -41,7 +41,13 @@ dump() {
 
 cleanup() {
 	rc=$?
-	if [ "$rc" -ne 0 ]; then dump; fi
+	if [ "$rc" -ne 0 ]; then
+		dump
+		if [ -n "${failures:-}" ]; then
+			echo "stack-smoke: failed assertions:" >&2
+			printf '  FAIL %s\n' "${failures[@]}" >&2
+		fi
+	fi
 	if [ "${SMOKE_KEEP:-}" = "1" ]; then
 		echo "stack-smoke: SMOKE_KEEP=1, leaving ${names[*]} and network $NET up" >&2
 		return "$rc"
@@ -56,15 +62,17 @@ hget() { # curl from inside the network; stdout comes back to this shell
 	docker run --rm --network "$NET" "$CURL_IMAGE" "$@"
 }
 
-wait_for() { # wait_for <label> <seconds> <command...>
+wait_for() { # wait_for <label> <attempts> <command...>
 	label="$1"
 	limit="$2"
 	shift 2
+	started=$SECONDS
 	for _ in $(seq "$limit"); do
 		if "$@" >/dev/null 2>&1; then return 0; fi
 		sleep 1
 	done
-	echo "stack-smoke: $label never became ready within ${limit}s" >&2
+	echo "stack-smoke: $label never became ready in $limit attempts over $((SECONDS - started))s; last probe:" >&2
+	"$@" >&2 2>&1 || true
 	return 1
 }
 
@@ -132,11 +140,13 @@ wait_for "llm" 60 docker exec smoke-llm python -c \
 	"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"
 
 fail=0
+failures=()
 check() { # check <description> <condition-exit-code>
 	if [ "$2" -eq 0 ]; then
 		echo "ok   $1"
 	else
 		echo "FAIL $1" >&2
+		failures+=("$1")
 		fail=1
 	fi
 }
@@ -187,7 +197,7 @@ docker run --rm --network "$NET" \
 	-v "$HOST_ROOT:/work:ro" -w /work \
 	-e BASE_URL=http://smoke-web \
 	"$PLAYWRIGHT_IMAGE" \
-	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
+	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
 	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
@@ -217,7 +227,7 @@ if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPD
 		wait_for "web (credit)" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/ &&
 		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \
-			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 >/dev/null 2>&1 &&
+			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
 			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs'; then
 		rc=0
 	else
