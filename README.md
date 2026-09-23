@@ -1,7 +1,7 @@
 <h1 align="center">Skill Hub</h1>
 
 <p align="center">
-  An open platform for finding, building, trialling and sharing Agent Skills.
+  An open platform for discovering, creating, trialling and distributing Agent Skills with evidence, provenance and controlled execution.
 </p>
 
 <p align="center">
@@ -10,122 +10,151 @@
   <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
-## What it does
+> [!IMPORTANT]
+> Skill Hub is pre-release software. The repository contains working product paths, but public exposure, paid model use and production deployment remain governed by explicit configuration and verification. Read the [current plan and milestone status](docs/plans/01-goals-and-plan.md) before treating a capability as released.
 
-- **Catalog and search** — keyword and semantic search over published skills, with the two combined into one ranking.
-- **Sandboxed trials** — every run executes in an isolated sandbox, and the run keeps its trace and its cost.
-- **Evaluation** — test cases and judged results per skill version, so "it got better" is a measurement rather than an impression.
-- **Immutable versions and portable packages** — a published version never changes, and a skill exports as a package that carries its licence, its provenance and, if you want, its test cases.
-- **Guided creation** — a conversational flow that drafts a skill from a plain request. Off by default.
-- **Clean test mode** — the same system, running on a machine that cannot install software or reach the internet. See [below](#clean-test-mode).
+## Why Skill Hub
 
-## System model
+Agent Skills are useful only when people can answer practical questions: where did this come from, what can it access, will it work for my task, what did it cost, and can I take the result elsewhere? Skill Hub makes those questions part of the product rather than leaving them to convention.
 
-Skill Hub has one **control plane** and two capability providers. The React web app talks only to the Go platform API. That API and its Go Worker own authorization, domain rules, Run state, PostgreSQL and object storage; the Worker is the only queue consumer. The Python LLM service and the Sandbox execute bounded capability requests and return structured results. They never read or write the core database directly.
+- **Discover** Skills through keyword and semantic search, with source, licence, dependency, permission and compatibility context.
+- **Create and improve** Skills from a task description or guided conversation, while preserving an auditable version history.
+- **Trial** a frozen Skill Version with an explicit prompt, test data, acceptance criteria, cost boundary and trace.
+- **Evaluate** results as met, partially met, unmet or undetermined, then turn approved improvements into a new immutable version.
+- **Package and distribute** portable Skill packages that retain provenance, licence and selected test material.
 
-Every model call passes through the model gateway. For a Run, the control plane issues a short-lived Virtual Key, the Sandbox uses it under its egress policy, and the control plane records the resulting state, trace, artifacts, cost and cleanup. A healthy API response alone is therefore not evidence that a Run completed: the Worker, Sandbox and cleanup path must also converge.
+The product deliberately does not use a global quality leaderboard: evidence is meaningful only in the context of the task and acceptance criteria that produced it.
 
-Choose the operating mode before starting anything:
+## Architecture at a glance
 
-| Mode | Use it for | Does not prove |
-| --- | --- | --- |
-| Clean test mode | a cost-free product demonstration without Docker or model keys | real infrastructure, isolation, object URLs, concurrency or model calls |
-| Local full development | integration work against local Postgres and SeaweedFS | production TLS, strong-isolation nodes or production secret handling |
-| Production Provision | untrusted Skill trials or public service | developer login, weak local Sandbox wiring or convenience settings |
-
-## Quick start
-
-The fastest way to see the product running is **clean test mode**: one command, no Docker, no API keys, no cost.
-
-```bash
-task bootstrap                    # Go, npm and uv dependencies
-npm ci --prefix tools/pglite      # the embedded PostgreSQL carrier
-npm --prefix apps/web run build   # clean mode serves this build itself
-task clean-mode                   # starts everything, then prints the URL
+```text
+Browser
+  │
+  ▼
+React web ───────────────► Go control plane API ───► PostgreSQL + S3-compatible object storage
+                                  │                         │
+                                  │                         └── transactional outbox
+                                  ▼
+                           Go Worker (only queue consumer)
+                              │                    │
+                 internal HTTP│                    │internal HTTP
+                              ▼                    ▼
+                     Python LLM capability     sandboxd on isolated nodes
+                              │                    │
+                              ▼                    ▼
+                        LiteLLM gateway       gVisor runtime image
+                              │
+                              ▼
+                        model provider
 ```
 
-`task clean-mode` starts three processes and prints `open http://127.0.0.1:8080/`. It refuses to start with a named reason and the exact command to fix it when something is missing, so you can also just run it first and follow what it says.
+The Go control plane owns authorization, Workspace scope, domain rules, Run state and all core data. The Python LLM service and Sandbox are capability providers: they accept structured requests and return structured results, but never access the core database. Every model call goes through LiteLLM; provider credentials stay at the gateway. A Run receives a short-lived Virtual Key, and its state transition plus outward event are recorded transactionally.
 
-The app itself works straight away; the bundled demo skills only reach the catalog once the model-facing service is running too, because a package stays unindexed until it has been enriched.
+The platform code is organized into reviewed bounded contexts for creator, product, skill and trial work. External systems sit behind ports and adapters, while package ownership, query ownership and cross-context dependencies are checked mechanically. See the [architecture identity](apps/platform/architecture-identity.yaml), [bounded-context model](docs/adr/README.md#platform-bounded-context-與-context-map) and [architecture decisions](docs/adr/README.md).
 
-Without [Task](https://taskfile.dev/), every command has a plain equivalent: `go -C tools/devctl run . bootstrap` and `node tools/cleanmode/start.mjs --seed`.
+## Security model
 
-## Requirements
+- Untrusted Skills, scripts and uploaded data never run in the web or API process.
+- The execution plane cannot connect to the core database.
+- User data is Workspace-scoped from the authenticated session, not a client-supplied workspace id.
+- Skill Versions, Test Case snapshots and historical Runs are immutable; adopting an improvement creates a new version.
+- Secrets must not appear in packages, logs, traces or analytics. Traces are masked before storage.
+- Production Sandbox nodes use gVisor with default-deny egress controls and are replaced rather than repaired.
 
-| Tool | Needed for |
-| --- | --- |
-| Go | the control plane and the sandbox provider |
-| Node.js | the web app, the clean-mode launcher and the database carrier |
-| [uv](https://docs.astral.sh/uv/) | the Python service and its interpreter |
-| Docker | the development database, object storage and model gateway |
-| [Task](https://taskfile.dev/) | optional; every task has a plain command equivalent |
+Clean test mode is intentionally **not** a security boundary. It uses in-process stand-ins so the product can be demonstrated without Docker, keys or network access; do not use it for untrusted Skills or real data.
 
-Exact versions live in the files the tooling actually reads — `go.mod`, `.node-version`, `apps/llm/.python-version` and [`tools/toolchain.yaml`](tools/toolchain.yaml) — never in prose. `task doctor` compares your machine against them and names whatever is off.
+## Quick start: clean test mode
 
-A [Dev Container](.devcontainer/README.md) is available with everything pinned and installed; clean test mode needs only Node and Go.
-
-## Running the full system
-
-Clean test mode swaps three pieces out. To run the real thing, start the infrastructure and then the four services:
+The shortest path to a running product is a cost-free demonstration mode. It needs Go and Node.js, but not Docker or model credentials.
 
 ```bash
-task doctor      # versions and prerequisites
-task env:init    # create .env from .env.example; never overwrites an existing one
-task bootstrap   # dependencies; also points git's hooksPath at .githooks
-task dev         # Postgres and SeaweedFS containers, no secrets, no cost
-```
-
-| Service | Command | Port |
-| --- | --- | --- |
-| Control plane API (Go) | `go -C apps/platform run ./cmd/api` | 8080 |
-| Queue worker (Go) | `go -C apps/platform run ./cmd/worker` | — |
-| Model-facing service (Python) | `uv run uvicorn skillhub_llm.app:app` in `apps/llm` | 8000 |
-| Sandbox provider (Go) | `go -C apps/sandbox run ./cmd/sandboxd` | 9000 |
-| Web app (React) | `npm --prefix apps/web run dev` | 5173 |
-
-The API needs `DATABASE_URL`; the sandbox provider refuses to start without `SKILLHUB_SANDBOX_TOKEN`. [`.env.example`](.env.example) lists every variable — fill values into the ignored `.env`, never into the example.
-
-Model calls go through a gateway that is **off by default**. `task dev:model` starts it and checks that the required keys are present; `task dev:llm` then starts the Python capability provider with a budget-limited Virtual Key rather than the gateway master key. Anything that reaches a provider after that costs money. Everything else in this section is free.
-
-Running the SPA against a local API also needs `DEV_CORS_ORIGIN=http://localhost:5173` on the API process: in development the two are separate origins, in production they are not, so the allowance is opt-in per process.
-
-## Clean test mode
-
-Skill Hub normally needs a real database, real object storage and a real isolated sandbox. Clean test mode is the **same program** with those three swapped for stand-ins that run in-process: PostgreSQL compiled to WebAssembly, an in-memory object store, and a local-process execution driver. It exists because some demonstrations happen on machines that cannot install software and have no general network access.
-
-```bash
+task doctor
+task bootstrap
+npm ci --prefix tools/pglite
+npm --prefix apps/web run build
 task clean-mode
 ```
 
-> [!WARNING]
-> This mode is weaker than production on purpose, and it says so on screen: **the sandbox provides no isolation**, presigned object URLs are **not verified**, and the database serves **a single connection**, so concurrency does not behave the way production does. Never point it at untrusted skills or real data.
+The launcher prints a local URL and explains any unmet prerequisite. Without [Task](https://taskfile.dev/), use `go -C tools/devctl run . doctor`, `go -C tools/devctl run . bootstrap`, and `node tools/cleanmode/start.mjs --seed`.
 
-Setting no flag changes nothing: without `SKILLHUB_CLEAN_MODE` the program builds exactly the production wiring.
+Clean mode substitutes an embedded database, in-memory object storage and a local-process driver. It demonstrates the browser-to-API journey, not production isolation, presigned object URLs, concurrency, object storage or paid model capability.
 
-## Repository layout
+## Local full-stack development
 
-| Path | Contents |
+Start with the portable diagnostics; exact tool versions are owned by `go.mod`, `.node-version`, `apps/llm/.python-version` and [`tools/toolchain.yaml`](tools/toolchain.yaml), not this README.
+
+```bash
+task doctor
+task env:init
+task bootstrap
+task gen:check
+task dev
+```
+
+`task dev` starts local PostgreSQL and SeaweedFS without model cost. Then run the product processes in separate terminals:
+
+| Component | Command | Responsibility |
+| --- | --- | --- |
+| API | `go -C apps/platform run ./cmd/api` | HTTP, authentication, authorization and domain commands |
+| Worker | `go -C apps/platform run ./cmd/worker` | Run dispatch, cleanup, outbox and periodic work |
+| LLM capability | `cd apps/llm && uv run uvicorn skillhub_llm.app:app` | structured model-backed capabilities |
+| Sandbox provider | `go -C apps/sandbox run ./cmd/sandboxd` | local execution-provider boundary |
+| Web | `npm --prefix apps/web run dev` | React development UI |
+
+For a local SPA, set `DEV_CORS_ORIGIN=http://localhost:5173` on the API process. For a real Run, API and Worker must share the same database, object-storage, Sandbox, model-gateway and Trace settings; the full dependency and verification sequence is in the [Provision guide](docs/runbooks/provisioning.md).
+
+### Optional model capability and cost
+
+Model capability is off by default.
+
+```bash
+task dev:model
+task dev:llm
+```
+
+The first command starts LiteLLM after checking required secrets. The second mints a budget-limited Virtual Key for `apps/llm`; it does not give that service the gateway master key. A model request can incur cost, so paid live tests are opt-in and never part of the default test command.
+
+## Test and verify
+
+```bash
+task gen:check     # generated contracts and SQL output match their sources
+task test          # normal test suites; paid E2E remains opt-in
+task ci            # deterministic, secret-free local CI sequence
+task preflight     # checks unpushed commits against CI-facing rules
+```
+
+A green local check is evidence about this machine, not proof of hosted CI or production readiness. [CI diagnostics](docs/runbooks/ci-red.md) explain how to distinguish a skipped, opaque or genuinely failing workflow result. When fixing behaviour, tests are expected to prove that the un-fixed behaviour fails before claiming a fix.
+
+## Repository map
+
+| Path | Purpose |
 | --- | --- |
-| `apps/` | The four deployable programs: `web`, `platform`, `llm`, `sandbox` |
-| `packages/` | Libraries other programs import, including generated API clients |
-| `contracts/` | The source of truth for every cross-process interface (OpenAPI, events, packaging) |
-| `db/` | Migrations, queries and database tests |
-| `infra/` | Compose files, runtime images, networking and observability |
-| `tools/` | Developer, CI and operations commands |
-| `docs/` | Architecture decisions, plans and runbooks |
+| `apps/web` | React and TypeScript user interface |
+| `apps/platform` | Go control plane, Worker and bounded contexts |
+| `apps/llm` | Python FastAPI capability provider |
+| `apps/sandbox` | Go Sandbox provider |
+| `packages` | Reusable libraries and generated API clients |
+| `contracts` | Source of truth for cross-process OpenAPI, events and packaging contracts |
+| `db` | Migrations, queries, SQL ownership and sqlc configuration |
+| `infra` | Compose, deployment, runtime images, egress and observability |
+| `tools` | Development, CI, data-maintenance and operations commands |
+| `docs` | Product plans, architecture decisions, design guidance and runbooks |
 
 ## Documentation
 
-- [Architecture decisions](docs/adr/README.md) — why the system is shaped the way it is.
-- [Development handbook](docs/development/automation.md) — setup, code generation, CI and troubleshooting.
-- [Runbooks](docs/runbooks/) — start with the [Provision guide](docs/runbooks/provisioning.md) to build or recover a system; use a node guide for one host, and the P1 guide only during an incident.
-- [`AGENTS.md`](AGENTS.md) — the conventions and hard rules, written for coding agents and equally binding on people.
-
-The CI badge describes this repository's hosted integration status. Local setup and the documented governance model do not assume that every Git repository uses GitHub or any CI service.
+- [Product plan and current milestone status](docs/plans/01-goals-and-plan.md)
+- [Specifications and acceptance criteria](docs/plans/02-specifications-and-acceptance-criteria.md)
+- [Architecture decisions](docs/adr/README.md)
+- [Developer automation](docs/development/automation.md)
+- [Platform DDD practices](docs/development/platform-ddd-practices.md)
+- [Provision and operations runbooks](docs/runbooks/README.md)
+- [`AGENTS.md`](AGENTS.md), the repository rules for people and coding agents
 
 ## Contributing
 
-Issues and pull requests are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md), which covers what to run before opening one and the few rules that catch most review comments. Found a vulnerability? Report it privately: see [SECURITY.md](SECURITY.md).
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), keep generated files generated, define cross-process interfaces in `contracts/` first, and run the checks appropriate to the change. Do not commit `.env`, credentials, paid-test outputs or secrets.
+
+For a security issue, do not open a public issue. Use the private process in [SECURITY.md](SECURITY.md).
 
 ## License
 

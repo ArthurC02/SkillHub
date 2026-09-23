@@ -1,7 +1,7 @@
 <h1 align="center">Skill Hub</h1>
 
 <p align="center">
-  尋找、建立、試跑與散布 Agent Skill 的開放平台。
+  以證據、來源溯及與受控執行為核心，探索、創建、試跑與散布 Agent Skill 的開放平台。
 </p>
 
 <p align="center">
@@ -10,122 +10,151 @@
   <a href="README.md">English</a>
 </p>
 
-## 它做什麼
+> [!IMPORTANT]
+> Skill Hub 仍是 pre-release 軟體。repo 內已有可運作的產品路徑，但公開曝光、付費模型使用與正式部署仍受明確設定與驗證約束。把某項能力當作已發布前，請先讀[目前計畫與里程碑狀態](docs/plans/01-goals-and-plan.md)。
 
-- **目錄與搜尋**——對已發布的 Skill 做關鍵字與語意搜尋，兩者合併成同一份排序。
-- **隔離試跑**——每次執行都在隔離沙箱裡，並且留下它的軌跡與花費。
-- **評估**——每個版本有測試案例與評審結果，讓「變好了」是量出來的而不是感覺。
-- **版本不可變與可攜套件**——發布過的版本不再改動；Skill 可以匯出成套件，帶著授權、來源與（你要的話）測試案例一起走。
-- **引導式創作**——用一句話描述需求就能起草一個 Skill。**預設關閉。**
-- **淨測試模式**——同一套系統，跑在不能安裝軟體、也上不了網的機器上。見[下方](#淨測試模式)。
+## 為什麼需要 Skill Hub
 
-## 系統模型
+Agent Skill 是否值得使用，不只取決於能不能跑，還包括來源在哪裡、能存取什麼、是否符合自己的任務、花了多少成本，以及成果能不能帶走。Skill Hub 把這些問題做成產品的一部分，而不是留給使用者靠習慣判斷。
 
-Skill Hub 有一個**控制平面**與兩個能力提供者。React Web 只呼叫 Go Platform API；API 與 Go Worker 擁有授權、領域規則、Run 狀態、PostgreSQL 與物件儲存，Worker 是唯一的佇列消費者。Python LLM 服務與 Sandbox 只執行受限的能力請求並回傳結構化結果，不能直接讀寫核心資料庫。
+- **探索**：以關鍵字與語意搜尋尋找 Skill，同時看見來源、授權、依賴、權限與相容性資訊。
+- **創建與改善**：從任務描述或引導式會話創作 Skill，並保留可稽核的版本歷史。
+- **試跑**：以明確的 Prompt、測試資料、驗收條件、成本邊界與 Trace 執行凍結的 Skill Version。
+- **評估**：將結果判為符合、部分符合、未符合或無法判斷；核可的改善會產生新的不可變版本。
+- **打包與散布**：匯出保留來源、授權與選定測試材料的可攜 Skill 套件。
 
-每次模型呼叫都經模型閘道。Run 由控制平面簽發短效 Virtual Key，Sandbox 在 egress 政策下使用它，控制平面再記錄狀態、Trace、產物、成本與清理。因此 API 健康回應不等於 Run 已完成：還要看到 Worker、Sandbox 與清理路徑一起收斂。
+產品刻意不做全域品質排行榜：證據只有放回產生它的任務與驗收條件才有意義。
 
-啟動前先選擇模式：
+## 架構總覽
 
-| 模式 | 用途 | 不足以證明 |
-| --- | --- | --- |
-| 淨測試模式 | 不需 Docker 或模型金鑰、零成本的產品展示 | 真實基礎設施、隔離、物件 URL、併發或模型呼叫 |
-| 本機完整開發 | 對本機 Postgres 與 SeaweedFS 做整合開發 | 正式 TLS、強隔離節點或正式秘密管理 |
-| 正式 Provision | 不受信任 Skill 的試跑或對外服務 | 開發登入、弱本機 Sandbox 接線或便利設定 |
-
-## 快速開始
-
-最快看到產品跑起來的方式是**淨測試模式**：一個指令，不需要 Docker、不需要金鑰、不花錢。
-
-```bash
-task bootstrap                    # Go、npm 與 uv 的相依
-npm ci --prefix tools/pglite      # 內嵌的 PostgreSQL 承載
-npm --prefix apps/web run build   # 這個模式自己供應這份建置結果
-task clean-mode                   # 全部啟動，然後印出網址
+```text
+瀏覽器
+  │
+  ▼
+React Web ───────────────► Go 控制平面 API ───► PostgreSQL + S3 相容物件儲存
+                                  │                         │
+                                  │                         └── transactional outbox
+                                  ▼
+                           Go Worker（唯一佇列消費者）
+                              │                    │
+                 internal HTTP│                    │internal HTTP
+                              ▼                    ▼
+                     Python LLM 能力服務       獨立節點上的 sandboxd
+                              │                    │
+                              ▼                    ▼
+                        LiteLLM 閘道           gVisor Runtime Image
+                              │
+                              ▼
+                          模型供應商
 ```
 
-`task clean-mode` 會起三個行程，並印出 `open http://127.0.0.1:8080/`。缺東西時它會拒絕啟動，直接指名缺什麼、該下哪一條指令，所以你也可以先跑它、照它說的做。
+Go 控制平面擁有授權、Workspace Scope、領域規則、Run 狀態與全部核心資料。Python LLM 與 Sandbox 是能力提供者：收結構化請求、回結構化結果，但不能直接存取核心資料庫。每次模型呼叫都經 LiteLLM；供應商憑證只留在 Gateway。Run 使用短效 Virtual Key，領域狀態變更與對外事件則在同一交易中寫入。
 
-畫面本身馬上就能用；附帶的示範 Skill 要等模型服務也起著才會進到目錄——套件在被增強索引之前不會出現在任何查詢裡。
+Platform 程式依 creator、product、skill、trial 的 Bounded Context 組織。外部系統透過 Port 與 Adapter 接入；套件、query 與跨 context 依賴都有機器檢查。詳見[架構身份](apps/platform/architecture-identity.yaml)、[Bounded Context 模型](docs/adr/README.md#platform-bounded-context-與-context-map)與[架構決策](docs/adr/README.md)。
 
-沒有 [Task](https://taskfile.dev/) 也可以：每個 task 都有等價的原生指令，例如 `go -C tools/devctl run . bootstrap` 與 `node tools/cleanmode/start.mjs --seed`。
+## 安全模型
 
-## 環境需求
+- 不受信任的 Skill、Script 與上傳資料不會在 Web 或 API 行程執行。
+- 執行平面不能連到核心資料庫。
+- 使用者資料的 Workspace Scope 來自登入 Session，不信任用戶端傳入的 workspace id。
+- Skill Version、Test Case 快照與歷史 Run 都不可變；採用改善＝建立新版本。
+- Secret 不得進入套件、Log、Trace 或分析資料；Trace 入庫前會遮罩。
+- 正式 Sandbox 節點採 gVisor 與 default-deny egress，節點以換新取代原機修理。
 
-| 工具 | 用在哪 |
-| --- | --- |
-| Go | 控制平面與沙箱提供者 |
-| Node.js | 前端、淨模式啟動器與資料庫承載 |
-| [uv](https://docs.astral.sh/uv/) | Python 服務與它的直譯器 |
-| Docker | 開發用的資料庫、物件儲存與模型閘道 |
-| [Task](https://taskfile.dev/) | 可選；每個 task 都有等價的原生指令 |
+淨測試模式刻意**不是**安全邊界。它用行程內替身讓產品可在沒有 Docker、金鑰與網路的機器展示；不可拿它執行不受信任的 Skill 或真實資料。
 
-版本的權威來源是工具實際會讀的那幾個檔——`go.mod`、`.node-version`、`apps/llm/.python-version` 與 [`tools/toolchain.yaml`](tools/toolchain.yaml)——不寫在說明文字裡。`task doctor` 會拿你的機器跟它們逐項比對並指出哪裡不合。
+## 快速開始：淨測試模式
 
-也可以用[開發容器](.devcontainer/README.md)，裡面所有工具都已釘版本並裝好；淨測試模式則只需要 Node 與 Go。
-
-## 跑起整套系統
-
-淨測試模式換掉了三個實作。要跑真的那一套，先起基礎設施，再起四個服務：
+最快看到產品運作的方式是零成本展示模式。它需要 Go 與 Node.js，不需要 Docker 或模型金鑰。
 
 ```bash
-task doctor      # 版本與前置需求
-task env:init    # 從 .env.example 建立 .env，已存在就不覆寫
-task bootstrap   # 相依；同時把 git 的 hooksPath 指到 .githooks
-task dev         # Postgres 與 SeaweedFS 容器；不需要 secret、不花錢
-```
-
-| 服務 | 指令 | 埠 |
-| --- | --- | --- |
-| 控制平面 API（Go） | `go -C apps/platform run ./cmd/api` | 8080 |
-| 佇列 Worker（Go） | `go -C apps/platform run ./cmd/worker` | — |
-| 模型服務（Python） | 在 `apps/llm` 下 `uv run uvicorn skillhub_llm.app:app` | 8000 |
-| 沙箱提供者（Go） | `go -C apps/sandbox run ./cmd/sandboxd` | 9000 |
-| 前端（React） | `npm --prefix apps/web run dev` | 5173 |
-
-API 需要 `DATABASE_URL`；沙箱提供者缺 `SKILLHUB_SANDBOX_TOKEN` 會直接拒絕啟動。[`.env.example`](.env.example) 列出所有變數——真正的值填進被 ignore 的 `.env`，永遠不要填進範例檔。
-
-模型呼叫走一個**預設關閉**的閘道。`task dev:model` 會啟動它並檢查必要金鑰是否齊全；接著 `task dev:llm` 以有預算上限的 Virtual Key 啟動 Python 能力服務，而不是把閘道 master key 交給它。在那之後任何打到供應商的呼叫都會產生費用。本節其餘一切都免費。
-
-前端要打本機 API 時，API 行程還需要 `DEV_CORS_ORIGIN=http://localhost:5173`：開發時兩者是不同來源、正式環境是同源，所以這個放行是逐行程選擇性開啟的。
-
-## 淨測試模式
-
-Skill Hub 平常需要真的資料庫、真的物件儲存與真的隔離沙箱。淨測試模式是**同一支程式**，把這三樣換成跑在行程內的替身：編譯成 WebAssembly 的 PostgreSQL、記憶體內的物件儲存，以及本機行程的執行 Driver。它存在的理由是：有些展示發生在不能安裝軟體、也沒有一般對外網路的機器上。
-
-```bash
+task doctor
+task bootstrap
+npm ci --prefix tools/pglite
+npm --prefix apps/web run build
 task clean-mode
 ```
 
-> [!WARNING]
-> 這個模式刻意比正式環境弱，而且會在畫面上說出來：**沙箱沒有任何隔離**、物件儲存**不驗證** presigned URL、資料庫**只有一條連線**，因此併發行為與正式環境不同。不要拿它跑不受信任的 Skill 或真實資料。
+啟動器會印出本機網址；若缺少前提，也會指出原因。沒有 [Task](https://taskfile.dev/) 時，可改用 `go -C tools/devctl run . doctor`、`go -C tools/devctl run . bootstrap` 與 `node tools/cleanmode/start.mjs --seed`。
 
-不設旗標就什麼都不會變：沒有 `SKILLHUB_CLEAN_MODE` 時，程式組出來的就是正式環境那一套接線。
+淨測試模式以嵌入式資料庫、記憶體物件儲存與本機程序 Driver 取代正式元件。它能證明瀏覽器到 API 的產品旅程，不能證明正式隔離、預簽物件 URL、併發、物件儲存或付費模型能力。
+
+## 本機完整開發
+
+先執行可攜診斷。工具版本以 `go.mod`、`.node-version`、`apps/llm/.python-version` 與 [`tools/toolchain.yaml`](tools/toolchain.yaml) 為準，不由本 README 複寫。
+
+```bash
+task doctor
+task env:init
+task bootstrap
+task gen:check
+task dev
+```
+
+`task dev` 啟動不花模型費用的本機 PostgreSQL 與 SeaweedFS。接著在不同終端啟動產品程序：
+
+| 元件 | 指令 | 責任 |
+| --- | --- | --- |
+| API | `go -C apps/platform run ./cmd/api` | HTTP、身分、授權與領域命令 |
+| Worker | `go -C apps/platform run ./cmd/worker` | Run 派送、清理、outbox 與週期工作 |
+| LLM 能力服務 | `cd apps/llm && uv run uvicorn skillhub_llm.app:app` | 結構化、模型驅動的能力 |
+| Sandbox Provider | `go -C apps/sandbox run ./cmd/sandboxd` | 本機執行提供者邊界 |
+| Web | `npm --prefix apps/web run dev` | React 開發介面 |
+
+本機 SPA 需要讓 API 明確設定 `DEV_CORS_ORIGIN=http://localhost:5173`。若要跑真實 Run，API 與 Worker 必須共享同一組資料庫、物件儲存、Sandbox、模型閘道與 Trace 設定；完整依賴與驗證順序見[Provision 手冊](docs/runbooks/provisioning.md)。
+
+### 可選模型能力與成本
+
+模型能力預設關閉：
+
+```bash
+task dev:model
+task dev:llm
+```
+
+前者在檢查必要 Secret 後啟動 LiteLLM；後者替 `apps/llm` 簽發有預算上限的 Virtual Key，而不是把 Gateway master key 交給它。只要請求到模型供應商就可能付費，因此付費 live test 一律 opt-in，不會出現在預設測試命令中。
+
+## 測試與驗證
+
+```bash
+task gen:check     # generated contract 與 SQL output 是否仍對齊來源
+task test          # 一般測試；付費 E2E 仍是 opt-in
+task ci            # 可重現、無 Secret 的本機 CI 流程
+task preflight     # 檢查未推送 commit 的 CI 相關規則
+```
+
+本機綠燈只證明目前機器的結果，不等於託管 CI 或正式環境已成立。[CI 診斷手冊](docs/runbooks/ci-red.md)說明如何分辨跳過、看不懂與真正失敗的 workflow。修正行為時，測試必須先證明未修正版本會失敗，才能宣稱修好。
 
 ## 專案結構
 
-| 路徑 | 內容 |
+| 路徑 | 用途 |
 | --- | --- |
-| `apps/` | 四個可部署的程式：`web`、`platform`、`llm`、`sandbox` |
-| `packages/` | 供其他程式 import 的 library，含生成的 API client |
-| `contracts/` | 所有跨程序介面的唯一來源（OpenAPI、事件、封裝格式） |
-| `db/` | Migration、查詢與資料庫測試 |
-| `infra/` | Compose、runtime 映像、網路與可觀測性 |
-| `tools/` | 開發、CI 與維運指令 |
-| `docs/` | 架構決策、計畫與 runbook |
+| `apps/web` | React／TypeScript 使用者介面 |
+| `apps/platform` | Go 控制平面、Worker 與 Bounded Context |
+| `apps/llm` | Python FastAPI 能力提供者 |
+| `apps/sandbox` | Go Sandbox Provider |
+| `packages` | 可重用 library 與生成的 API client |
+| `contracts` | 跨程序 OpenAPI、事件與套件契約的唯一來源 |
+| `db` | Migration、query、SQL ownership 與 sqlc 設定 |
+| `infra` | Compose、部署、Runtime Image、egress 與可觀測性 |
+| `tools` | 開發、CI、資料維護與維運指令 |
+| `docs` | 產品計畫、架構決策、設計規範與 Runbook |
 
-## 文件
+## 文件入口
 
-- [架構決策](docs/adr/README.md)——系統為什麼長這樣。
-- [開發手冊](docs/development/automation.md)——環境設定、程式碼生成、CI 與疑難排解。
-- [Runbook](docs/runbooks/)——建置或遺失設定後重建時先看[整體 Provision](docs/runbooks/provisioning.md)；只處理一台主機時讀節點手冊；發生事故才讀 P1 手冊。
-- [`AGENTS.md`](AGENTS.md)——本專案的慣例與鐵律，寫給 coding agent，對人一樣有效。
+- [產品計畫與目前里程碑狀態](docs/plans/01-goals-and-plan.md)
+- [規格與驗收準則](docs/plans/02-specifications-and-acceptance-criteria.md)
+- [架構決策](docs/adr/README.md)
+- [開發自動化](docs/development/automation.md)
+- [Platform DDD 實務](docs/development/platform-ddd-practices.md)
+- [Provision 與維運 Runbook](docs/runbooks/README.md)
+- [`AGENTS.md`](AGENTS.md)：人與 Coding Agent 都要遵守的 repo 規則
 
-CI badge 表示這個 repo 的託管整合狀態；本機啟動與文件中的治理模型不假設每個 Git repo 都使用 GitHub 或任何 CI 服務。
+## 貢獻
 
-## 參與貢獻
+歡迎貢獻。請先讀 [CONTRIBUTING.md](CONTRIBUTING.md)，generated 檔一律由來源生成，跨程序介面先改 `contracts/`，並依改動範圍執行對應檢查。不得提交 `.env`、憑證、付費測試輸出或任何 Secret。
 
-歡迎開 issue 與 pull request——先看 [CONTRIBUTING.md](CONTRIBUTING.md)，裡面寫了動手前該跑什麼，以及少數幾條能擋掉多數審查意見的規則。發現資安問題請走私下回報：見 [SECURITY.md](SECURITY.md)。
+資安問題不要開 public issue，請走 [SECURITY.md](SECURITY.md) 的私下回報程序。
 
 ## 授權
 
