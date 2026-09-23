@@ -309,6 +309,75 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 	assertEvaluationTraceEvents(t, pool, runID, "ok")
 }
 
+func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
+	python := creationPythonExecutable(t)
+	var calls atomic.Int32
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/chat/completions" {
+			t.Errorf("gateway request = %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-service-key" {
+			t.Errorf("gateway authorization = %q", got)
+		}
+		calls.Add(1)
+		content, err := json.Marshal(llmclient.JudgeVerdict{
+			CriterionResults: []llmclient.CriterionVerdict{
+				{CriterionID: "c1", Result: "passed", Reason: "the final output states the duplicates were removed",
+					EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
+				{CriterionID: "c2", Result: "passed", Reason: "the artifact manifest contains the spreadsheet",
+					EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+			},
+			Overall: "met", Summary: "both acceptance criteria have evidence",
+		})
+		if err != nil {
+			t.Errorf("marshal gateway verdict: %v", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("x-litellm-response-cost", "0.01")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-evaluation-test", "object": "chat.completion", "created": 1,
+			"model": "fixture-model", "choices": []map[string]any{{
+				"index": 0, "message": map[string]any{"role": "assistant", "content": string(content)}, "finish_reason": "stop",
+			}},
+			"usage": map[string]int{"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+		})
+	}))
+	t.Cleanup(gateway.Close)
+	pythonURL := startCreationPython(t, python, gateway.URL)
+
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-go-python-gateway")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-go-python-gateway")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows and saved output.xlsx.")
+	a.evaluations.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
+
+	if err := a.evaluations.Evaluate(t.Context(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate through Python: %v", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("gateway calls = %d, want 1", got)
+	}
+	status, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if status != http.StatusOK {
+		t.Fatalf("GET evaluation: got %d (%s)", status, body.Error)
+	}
+	if body.Status != "completed" || body.Overall != "met" {
+		t.Fatalf("evaluation = status %q, overall %q, want completed met", body.Status, body.Overall)
+	}
+	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run/v2" {
+		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
+	}
+	if len(body.CriterionResults) != 2 || len(body.CriterionResults[0].Evidence) == 0 || len(body.CriterionResults[1].Evidence) == 0 {
+		t.Errorf("persisted criterion evidence = %+v", body.CriterionResults)
+	}
+	assertEvaluationTraceEvents(t, pool, runID, "ok")
+}
+
 func assertEvaluationTraceEvents(t *testing.T, pool *pgxpool.Pool, runID, wantStatus string) {
 	t.Helper()
 	rows, err := pool.Query(context.Background(), `
