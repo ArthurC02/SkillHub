@@ -527,7 +527,8 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	first := f.start(t)
 	for _, status := range []string{"preparing", "running", "succeeded"} {
 		if _, err := pool.Exec(context.Background(), `
-			UPDATE runs SET status = $2, finished_at = CASE WHEN $2 = 'succeeded' THEN now() END WHERE id = $1`,
+			UPDATE runs SET status = $2::run_status,
+			finished_at = CASE WHEN $2::text = 'succeeded' THEN now() END WHERE id = $1`,
 			mustUUID(t, first.RunID), status); err != nil {
 			t.Fatal(err)
 		}

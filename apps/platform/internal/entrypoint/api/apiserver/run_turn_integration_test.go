@@ -64,8 +64,8 @@ func newTurnScene(t *testing.T, name string) turnScene {
 	s.svc.Providers.TTL = time.Millisecond
 	s.svc.Store = a.packages
 
-	s.fake.SetFreeSlots(1)
 	held := s.alice.start(t).RunID
+	s.fake.SetFreeSlots(1)
 	s.expectWaits(t, held, "the run that takes alice's first sandbox")
 	if s.fake.Dispatches() != 1 {
 		t.Fatalf("precondition: dispatches = %d, want alice holding one sandbox", s.fake.Dispatches())
