@@ -227,3 +227,42 @@ func TestCleanModeCanImportOnOneConnection(t *testing.T) {
 		t.Fatal("POST /skills/import/upload never returned on a single-connection pool")
 	}
 }
+
+func TestCleanModeCanPackageOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+	a := newAPI(t, pool)
+	c := a.login(t, uniqueWorklistLabel("clean-mode-package"))
+	skillID, versionID := packagedSkill(t, a, pool, c, uniqueWorklistLabel("clean-mode-package-skill"))
+
+	type result struct {
+		code int
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		resp, err := c.Post(
+			c.base+packagingPath(skillID, versionID),
+			"application/json",
+			bytes.NewBufferString(`{"target":"standard"}`),
+		)
+		if err != nil {
+			done <- result{err: err}
+			return
+		}
+		defer resp.Body.Close()
+		done <- result{code: resp.StatusCode}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatalf("POST packaging: %v", got.err)
+		}
+		if got.code != http.StatusCreated {
+			t.Fatalf("POST packaging: got %d, want 201", got.code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("POST packaging never returned on a single-connection pool")
+	}
+}
