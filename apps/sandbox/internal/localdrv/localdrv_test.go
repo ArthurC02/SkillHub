@@ -96,6 +96,59 @@ func TestAdoptReturnsNothing(t *testing.T) {
 	}
 }
 
+func TestNewRemovesResidueFromAnEarlierDriver(t *testing.T) {
+	base := t.TempDir()
+	left := filepath.Join(base, "run-from-before-restart")
+	if err := os.MkdirAll(filepath.Join(left, "work"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := New(Config{NodeBin: requireNode(t), RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base}); err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if _, err := os.Stat(left); !os.IsNotExist(err) {
+		t.Fatalf("restart residue still exists: %v", err)
+	}
+}
+
+func TestNewTerminatesAnEarlierDriversWorkload(t *testing.T) {
+	base := t.TempDir()
+	d, err := New(Config{NodeBin: requireNode(t), RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "restart-termination"
+	if err := d.Start(t.Context(), id, minimalRequest(id)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	_, outDir := d.paths(id)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(outDir, ".workload-done")); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("workload did not start before simulated restart")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if _, err := New(Config{NodeBin: requireNode(t), RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base}); err != nil {
+		t.Fatalf("New after restart: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	outcome, err := d.Wait(ctx, id)
+	if err != nil {
+		t.Fatalf("Wait after restart: %v", err)
+	}
+	if outcome.ExitCode == 0 {
+		t.Fatal("the earlier workload survived a driver restart")
+	}
+	if _, err := os.Stat(filepath.Join(base, id)); !os.IsNotExist(err) {
+		t.Fatalf("restart did not remove the earlier workload directory: %v", err)
+	}
+}
+
 func TestRemoveAndStopAreIdempotentOnUnknownID(t *testing.T) {
 	nodeBin := requireNode(t)
 	d, err := New(Config{NodeBin: nodeBin, RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: t.TempDir()})

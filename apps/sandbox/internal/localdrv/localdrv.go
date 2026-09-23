@@ -17,6 +17,8 @@ import (
 
 const logTailBytes = 32 << 10
 
+const runPIDFile = ".pid"
+
 const (
 	grantBaseURLVar = "ANTHROPIC_BASE_URL"
 	grantTokenVar   = "ANTHROPIC_AUTH_TOKEN"
@@ -68,7 +70,11 @@ func New(cfg Config) (*Driver, error) {
 	if cfg.BaseDir == "" {
 		cfg.BaseDir = filepath.Join(os.TempDir(), "skillhub-clean")
 	}
-	return &Driver{cfg: cfg, runs: map[string]*run{}}, nil
+	d := &Driver{cfg: cfg, runs: map[string]*run{}}
+	if err := d.reclaimResidue(); err != nil {
+		return nil, err
+	}
+	return d, nil
 }
 
 func (d *Driver) Close() error {
@@ -141,6 +147,12 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		_ = cmd.Process.Kill()
 		_ = tree.release()
 		return fmt.Errorf("bind workload to its reap boundary: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(workDir), runPIDFile), []byte(strconv.Itoa(cmd.Process.Pid)), 0o600); err != nil {
+		_ = tree.terminate(cmd.Process.Pid)
+		_ = tree.release()
+		_ = os.RemoveAll(filepath.Dir(workDir))
+		return fmt.Errorf("record workload for restart cleanup: %w", err)
 	}
 
 	d.mu.Lock()
@@ -216,6 +228,33 @@ func (d *Driver) removeResidue(id string) error {
 	}
 	if err := os.RemoveAll(target); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
+	}
+	return nil
+}
+
+func (d *Driver) reclaimResidue() error {
+	entries, err := os.ReadDir(d.cfg.BaseDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read sandbox residue: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pidRaw, err := os.ReadFile(filepath.Join(d.cfg.BaseDir, entry.Name(), runPIDFile))
+		if err == nil {
+			if pid, parseErr := strconv.Atoi(strings.TrimSpace(string(pidRaw))); parseErr == nil && pid > 0 {
+				if err := terminateResidue(pid); err != nil {
+					return fmt.Errorf("terminate abandoned workload %q: %w", entry.Name(), err)
+				}
+			}
+		}
+		if err := d.removeResidue(entry.Name()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
