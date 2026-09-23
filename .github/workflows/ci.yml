@@ -367,11 +367,10 @@ jobs:
           node-version-file: .node-version
       - name: Sandbox tests with no container runtime in reach
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests without a container runtime' go test -count=1 ./...
-      - name: Does this runner delegate a cgroup the local driver can enforce in
-        continue-on-error: true
+      - name: The local driver's ceilings hold without a container
         env:
           SKILLHUB_REQUIRE_CGROUP: "1"
-        run: go test -count=1 -v -run 'Ceiling' ./internal/localdrv/
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Local driver ceilings' go test -count=1 -run Ceiling ./internal/localdrv/
 
   sandbox-windows:
     needs: changes
