@@ -83,6 +83,7 @@ type Overrides = {
 
 function stubPlatform(over: Overrides = {}) {
   const calls: { url: string; method: string; body?: string }[] = [];
+  let removed = false;
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -109,12 +110,16 @@ function stubPlatform(over: Overrides = {}) {
       return json(draft, 201);
     }
     if (path === "/test-cases") return json({ test_cases: over.testCases ?? [] });
-    if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`)
+    if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`) {
+      removed = true;
       return json({
         deleted: true,
         datasets_deleted: 2,
         note: "Test Case 與它上傳的檔案已移除，檔案本身也刪了；過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
       });
+    }
+    if (removed && path === `/test-cases/${TEST_CASE}`)
+      return json({ error: "找不到這個 Test Case" }, 404);
     return json(over.testCase ?? draft);
   });
 
@@ -462,6 +467,21 @@ test("02:WS-002 deleting states its scope before it runs and its actual reach af
   expect(container.textContent).toContain("2 個上傳檔案");
   expect(container.textContent).toContain("快照與歷史 Run 不受影響");
   expect(container.textContent).toContain("回到 Test Case 列表");
+});
+
+test("02:WS-002 deleting a test case does not ask the server for it again", async () => {
+  const calls = stubPlatform({ runs: [] });
+  await render();
+  const fetched = () =>
+    calls.filter((c) => c.method === "GET" && c.url === `/test-cases/${TEST_CASE}`).length;
+  const before = fetched();
+
+  await act(async () => button("刪除整個 Test Case").click());
+  await act(async () => button("確認刪除整個 Test Case").click());
+  await waitFor(() => (container.textContent ?? "").includes("已刪除這個 Test Case"));
+
+  expect(fetched()).toBe(before);
+  expect(container.textContent).not.toContain("找不到這個 Test Case");
 });
 
 const LIST_ROW = {

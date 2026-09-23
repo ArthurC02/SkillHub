@@ -176,7 +176,7 @@ export function useDeleteTestCase(testCaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => deleteTestCase(testCaseId),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.lists }),
   });
 }
 

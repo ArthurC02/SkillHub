@@ -41,6 +41,7 @@ export const queryKeys = {
   },
   testCases: {
     all: ["test-cases"],
+    lists: ["test-cases", "list"],
     list: (skillId?: string) => ["test-cases", "list", skillId ?? ""],
     detail: (testCaseId: string) => ["test-cases", testCaseId],
     datasets: (testCaseId: string) => ["test-cases", testCaseId, "datasets"],
