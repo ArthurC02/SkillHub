@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -211,6 +213,70 @@ func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
 	if n := evaluations(t, pool, created.RunID); n != 1 {
 		t.Fatalf("after redelivery the run has %d evaluations, want 1", n)
 	}
+}
+
+func TestWorkerDeliversEvaluationThroughGoPythonAndGateway(t *testing.T) {
+	python := creationPythonExecutable(t)
+	marker := "worker-gateway-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/chat/completions" {
+			t.Errorf("gateway request = %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer test-service-key" {
+			t.Errorf("gateway authorization = %q", got)
+		}
+		content, err := json.Marshal(llmclient.JudgeVerdict{
+			CriterionResults: []llmclient.CriterionVerdict{{
+				CriterionID: "c1", Result: "undetermined", Reason: "the fixture run has no final output to verify", EvidenceRefs: []llmclient.JudgeEvidenceRef{},
+			}},
+			Overall: "undetermined", Summary: marker,
+		})
+		if err != nil {
+			t.Errorf("marshal gateway verdict: %v", err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("x-litellm-response-cost", "0.01")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "chatcmpl-worker-evaluation", "object": "chat.completion", "created": 1,
+			"model": "fixture-model", "choices": []map[string]any{{
+				"index": 0, "message": map[string]any{"role": "assistant", "content": string(content)}, "finish_reason": "stop",
+			}},
+			"usage": map[string]int{"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+		})
+	}))
+	t.Cleanup(gateway.Close)
+	pythonURL := startCreationPython(t, python, gateway.URL)
+
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	evaluator := *a.evaluations
+	evaluator.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: pythonURL, Token: "test-service"})
+	f := newFixture(t, a, pool, "worker-go-python-evaluation")
+	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, &evaluator)
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+	deadline := time.Now().Add(20 * time.Second)
+	for evaluations(t, pool, created.RunID) == 0 && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if got := evaluations(t, pool, created.RunID); got != 1 {
+		t.Fatalf("worker evaluations = %d, want 1", got)
+	}
+	body := waitForEvaluation(t, f.client, created.RunID, 20*time.Second)
+	if body.Status != "completed" || body.Overall != "undetermined" {
+		t.Fatalf("worker evaluation = status %q, overall %q", body.Status, body.Overall)
+	}
+	if body.Summary != marker {
+		t.Fatalf("worker evaluation summary = %q, want the gateway's unique response %q", body.Summary, marker)
+	}
+	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run/v2" {
+		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
+	}
+	assertEvaluationTraceEvents(t, pool, created.RunID, "ok")
 }
 
 func evaluations(t *testing.T, pool *pgxpool.Pool, runID string) int {
