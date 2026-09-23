@@ -17,7 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-const MaxConcurrentRunsPerWorkspace = 2
+const MaxConcurrentRunsPerWorkspace = 1
 
 var (
 	ErrScanBlocked = errors.New("the skill version's static scan blocks it from running")

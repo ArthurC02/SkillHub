@@ -75,22 +75,19 @@ func TestABlockingCodeIsNamedOnceHoweverManyFilesCarryIt(t *testing.T) {
 	}
 }
 
-func TestAWorkspaceMayFillEverySlotButNotOneMore(t *testing.T) {
-	for _, active := range []int64{0, MaxConcurrentRunsPerWorkspace - 1} {
-		if err := runSlotVerdict(active); err != nil {
-			t.Errorf("%d of %d runs in progress left no slot free: %v",
-				active, MaxConcurrentRunsPerWorkspace, err)
-		}
+func TestAWorkspaceLeavesOneNodeSlotForAnotherWorkspace(t *testing.T) {
+	if MaxConcurrentRunsPerWorkspace != 1 {
+		t.Fatalf("per-workspace concurrency = %d, want 1", MaxConcurrentRunsPerWorkspace)
 	}
-	for _, active := range []int64{MaxConcurrentRunsPerWorkspace, MaxConcurrentRunsPerWorkspace + 1} {
-		err := runSlotVerdict(active)
-		if got := reasonOf(t, err); got != ReasonWorkspaceConcurrency {
-			t.Errorf("%d runs in progress: reason = %q, want %q",
-				active, got, ReasonWorkspaceConcurrency)
-		}
-		if !strings.Contains(err.Error(), strconv.FormatInt(active, 10)) {
-			t.Errorf("the refusal does not say how many are already running: %v", err)
-		}
+	if err := runSlotVerdict(0); err != nil {
+		t.Fatalf("an idle workspace was refused: %v", err)
+	}
+	err := runSlotVerdict(1)
+	if got := reasonOf(t, err); got != ReasonWorkspaceConcurrency {
+		t.Errorf("one run in progress: reason = %q, want %q", got, ReasonWorkspaceConcurrency)
+	}
+	if !strings.Contains(err.Error(), strconv.FormatInt(1, 10)) {
+		t.Errorf("the refusal does not say how many are already running: %v", err)
 	}
 }
 
