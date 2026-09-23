@@ -2,19 +2,19 @@
 
 ## 先建立共同模型
 
-一次 CI 失敗不會直接出現在你面前，它要**穿過通道**才會到；每一層通道各丟掉一些東西，而你手上有哪幾層，取決於你有沒有憑證。
+一次 CI 失敗不會直接出現在你面前，它要**穿過通道**才會到；每一層通道各丟掉一些東西，而你手上有哪幾層，取決於 repository 可見性、使用的 API 與憑證。以下的「無憑證」只指公開 repository 可讀的 API 視角；private repository 一律先確認讀取權限。
 
 | 通道 | 拿得到什麼 | 丟掉了什麼 | 要憑證嗎 |
 | --- | --- | --- | --- |
 | workflow run 的結論 | 綠或紅 | 哪一個 job、哪一步 | 否 |
 | job 與 step 的結論 | **哪一步**失敗 | 為什麼 | 否 |
 | check-run 的 annotation | 那一步**自己publish 的文字**（尾端數 KB） | 它沒 publish 的一切 | 否 |
-| step summary | 同上但寬得多 | — | 是 |
-| 完整 log | 全部 | — | 是（見下） |
+| step summary | 該 step 寫出的較完整報告 | 它沒有寫出的內容 | 依 repository 與 endpoint；不要假定匿名一定讀得到 |
+| 完整 log | 全部 | — | 依 repository 與 endpoint；通常需要可讀取 Actions 的權限 |
 
 這張表的重點不是層數，是**第三層的那句「自己 publish 的」**：annotation 不是 GitHub 去翻 log 翻出來的，是那一步主動送出去的。**沒有主動送的步驟，在沒有憑證的視角裡就是一句「Process completed with exit code 1.」**——那句話不代表失敗訊息很短，只代表沒有人把它送出來。
 
-所以在這個 repo 裡：**每一個會失敗的 step 都要包在 [`tools/ci/report-failure.sh`](../../tools/ci/report-failure.sh) 裡**。它 tee 住輸出，失敗時同時寫 step summary 與一則 `::error::` annotation。沒包的步驟不是「比較安靜」，是**在無憑證視角下不可診斷**。
+所以在這個 repo 裡，**需要靠命令輸出判斷產品、測試或驗收失敗的 step 都要包在 [`tools/ci/report-failure.sh`](../../tools/ci/report-failure.sh) 裡**。它 tee 住輸出，失敗時同時寫 step summary 與一則 `::error::` annotation。checkout、安裝或單純設定等基礎 step 不必假裝有同樣的診斷內容；它們失敗時應保留原始輸出，並從本機重現或有權限的 log 查原因。新增或修改 step 時，先判斷它屬於哪一類，不能只因未包報告器就宣稱它在無憑證視角可診斷。
 
 借本機 Git 憑證庫的權杖讀完整 log 是最後手段：先窮盡 `task ci:status`、匿名 REST 與本機重現。多數情況下你根本不需要走到那一步——**把「看不見」修好，比猜根因便宜**，而且下一次失敗會自己說出原因。
 
@@ -32,7 +32,7 @@
 每一步都有它能回答與不能回答的問題；答不出來就往下一步，不要跳著猜。
 
 1. **`task ci:status`**（`devctl ci-status [ref] [--wait]`）。得到：哪些 workflow run、哪個 job、哪一個 step 失敗、哪些 job 被 path filter 跳過。**驗證**：它列出的 step 名稱要和你預期動到的區域對得上；對不上就先懷疑你的改動與這次失敗無關。
-2. **匿名 REST 讀那個 job 的 annotation。** 得到：那一步自己送出來的文字。**驗證**：annotation 裡如果只有 `Process completed with exit code 1.`，**結論不是「查不到」，而是「那一步沒包 `report-failure.sh`」**——跳到第 4 步。
+2. **在可用存取範圍內讀那個 job 的 annotation。** 公開 repository 可先用匿名 REST；private repository 用可讀取它的憑證。得到：那一步自己送出來的文字。**驗證**：annotation 裡如果只有 `Process completed with exit code 1.`，**結論不是「查不到」，而是「那一步沒有發布可讀的診斷」**——跳到第 4 步。
 3. **本機以相同輸入重現。** 映像要自己建、環境變數照抄 workflow。**驗證**：跑得出同一個失敗才算重現；一次綠不代表不存在，間歇性失敗要多跑幾次。
 4. **把那一步改成會自己說話**，推上去，讓下一次失敗回答你。包 `report-failure.sh`、停止丟棄輸出、把判決印在傾印之後。這一步**不是繞路**：它一次修好所有後續的同類失敗，而猜根因只修這一次。
 5. **最後才是借權杖讀 log。**

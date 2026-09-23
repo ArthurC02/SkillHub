@@ -91,7 +91,7 @@ sudo systemctl start skillhub-serving
 
 節點不升級、不修，到期或有下列事件就換一台新的：`gvisor-baseline.txt` 變了、允許清單變了、有逃逸疑慮、清理連續失敗。
 
-1. 照 §1～§4 建一台新的（`--release` 用最新的綠色 commit），接入 §5，兩台並存。
+1. 照 §1～§4 建一台新的（`--release` 用最新已通過團隊選定驗證、且可解析為釘定映像的 commit；本專案目前以 CI green 為證據），接入 §5，兩台並存。
 2. 從 `SKILLHUB_SANDBOX_PROVIDERS` 拿掉舊的那台，重啟控制平面。
 3. 等舊節點上沒有執行中的 Run：`sudo docker ps --filter label=skillhub.sandbox.managed` 是空的。
 4. 在舊節點 `sudo systemctl stop skillhub-sandboxd`，然後在控制平面確認這台的記錄推完了：`sudo journalctl --directory=/var/log/journal/remote -u skillhub-sandboxd.service _HOSTNAME=<舊節點主機名> -n 3` 裡有剛才的 `Stopped Skill Hub sandbox provider`。
