@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 type comparisonBody struct {
@@ -524,16 +525,7 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "rerun-owner")
 
-	first := f.start(t)
-	for _, status := range []string{"preparing", "running", "succeeded"} {
-		if _, err := pool.Exec(context.Background(), `
-			UPDATE runs SET status = $2::run_status,
-			finished_at = CASE WHEN $2::text = 'succeeded' THEN now() END WHERE id = $1`,
-			mustUUID(t, first.RunID), status); err != nil {
-			t.Fatal(err)
-		}
-	}
-	firstRunID := first.RunID
+	firstRunID := seedSucceededRunForCase(t, pool, f)
 	staleHash := f.confirmPermissions(t)
 
 	v2 := seedVersion(t, pool, f.workspaceID, f.skillID, "hash-rerun-v2")
@@ -592,4 +584,34 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 			t.Errorf("side %d invented a judgement: %+v", i, side.Evaluation)
 		}
 	}
+}
+
+func seedSucceededRunForCase(t *testing.T, pool *pgxpool.Pool, f fixture) string {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	snapshot, err := (&testlab.Service{Pool: pool}).CreateSnapshot(ctx, tx,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var runID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+		                  runtime_snapshot, policy_snapshot, status, finished_at)
+		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, 'succeeded', now())
+		RETURNING id::text`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshot.ID,
+	).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	return runID
 }

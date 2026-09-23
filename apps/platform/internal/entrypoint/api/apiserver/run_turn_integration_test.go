@@ -77,7 +77,10 @@ func newTurnScene(t *testing.T, name string) turnScene {
 
 func (s turnScene) expectWaits(t *testing.T, runID, what string) {
 	t.Helper()
-	ws := mustUUID(t, s.bob.workspaceID)
+	ws := mustUUID(t, s.alice.workspaceID)
+	if runID == s.bobsQueued {
+		ws = mustUUID(t, s.bob.workspaceID)
+	}
 	if runID == s.carolsQueuedLater {
 		ws = mustUUID(t, s.carol.workspaceID)
 	}
