@@ -118,6 +118,12 @@ test.describe("QA-008 real layout", () => {
     await page.setViewportSize({ width: 375, height: 900 });
     await page.goto("/workspace/skills");
     await expect(page.locator(".app-nav a").first()).toBeVisible();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
 
     const header = await page.evaluate(() => {
       const el = document.querySelector(".app-header")!;

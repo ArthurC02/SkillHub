@@ -165,16 +165,25 @@ main,
      把上下內距從 16 收到 12 換回那 8px：手機上的頁首本來就不需要桌機那一份呼吸，
      而按鈕變大這件事要留著（它才是這次視覺修正的主體）。 */
   .app-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title auth"
+      "nav nav";
     padding-block: 12px;
   }
 
   .app-title {
-    margin-right: auto;
+    grid-area: title;
+  }
+
+  .app-header > [data-auth-controls] {
+    grid-area: auth;
+    justify-self: end;
   }
 
   .app-header > .app-nav {
-    order: 1;
-    flex-basis: 100%;
+    grid-area: nav;
     margin-right: 0;
     gap: 4px 12px;
   }
