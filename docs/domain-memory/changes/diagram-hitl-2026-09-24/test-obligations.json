@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "c-176-diagram-two-phase-hitl",
+  "proposal_id": "diagram-hitl-2026-09-24",
+  "obligations": [
+    {
+      "id": "diagram-description-before-decomposition",
+      "source_type": "acceptance-criterion",
+      "source_id": "diagram-description-before-decomposition",
+      "expected_outcome": "The first image response leaves the structured interpretation empty, waits at description confirmation, and cannot admit a draft.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test ./internal/creator/creation -run Diagram"
+    },
+    {
+      "id": "diagram-uncertainties-block-drafting",
+      "source_type": "acceptance-criterion",
+      "source_id": "diagram-uncertainties-block-drafting",
+      "expected_outcome": "Blank, unknown and incomplete answers cannot advance the session; all platform-issued question ids with nonblank answers are required before interpretation confirmation queues a model step.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test ./internal/creator/creation -run Diagram"
+    },
+    {
+      "id": "diagram-confirmed-interpretation-only",
+      "source_type": "acceptance-criterion",
+      "source_id": "diagram-confirmed-interpretation-only",
+      "expected_outcome": "A draft result is rejected for an unconfirmed description, unconfirmed interpretation, incomplete answer set, changed image or changed interpretation.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test ./internal/creator/creation -run Diagram"
+    },
+    {
+      "id": "diagram-replacement-invalidates-checkpoints",
+      "source_type": "acceptance-criterion",
+      "source_id": "diagram-replacement-invalidates-checkpoints",
+      "expected_outcome": "A replacement image clears description, interpretation, every answer, confirmation and draft before its transient read starts.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test ./internal/creator/creation -run Diagram"
+    },
+    {
+      "id": "diagram-answer-concurrency-and-replay",
+      "source_type": "acceptance-criterion",
+      "source_id": "diagram-answer-concurrency-and-replay",
+      "expected_outcome": "The public route rejects stale or malformed answer commands and exact replay returns the recorded snapshot without applying the answer twice.",
+      "level": "integration",
+      "status": "planned",
+      "check": "task test:platform"
+    },
+    {
+      "id": "creation-diagram-port-inversion",
+      "source_type": "rule",
+      "source_id": "creation-reaches-its-collaborators-through-inversion",
+      "expected_outcome": "Only the existing injected LLM port carries the two phase fields; no new context import or provider-owned session state is introduced.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "task automation:check and task gen:check"
+    }
+  ]
+}

@@ -2312,10 +2312,12 @@ func (*CreateTestCaseUnauthorized) createTestCaseRes() {}
 // Stop_step ends the step in flight, not the session: permitted only while the session is queued or
 // working, it releases the attempt so the Worker refuses to start it (or its in-flight call is
 // cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid
-// for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize,
-// a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision
-// binds the exact displayed snapshot including draft revision and candidate identity. These
-// conditional requirements are enforced by the domain service.
+// for and the session says so. confirm_diagram confirms the description only;
+// answer_diagram_uncertainty records one answer; confirm_diagram_interpretation queues the next step
+// only after every displayed uncertainty is answered. Go requires a nonempty matching content_hash for
+// materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for
+// raise_budget. expected_revision binds the exact displayed snapshot including draft revision and
+// candidate identity. These conditional requirements are enforced by the domain service.
 // Ref: #/components/schemas/CreationAction
 type CreationAction struct {
 	CommandID        uuid.UUID          `json:"command_id"`
@@ -2335,7 +2337,11 @@ type CreationAction struct {
 	ReferenceSkillIds []uuid.UUID        `json:"reference_skill_ids"`
 	ContentHash       OptString          `json:"content_hash"`
 	Diagram           OptGenerateDiagram `json:"diagram"`
-	RunID             OptUUID            `json:"run_id"`
+	// Answer_diagram_uncertainty only: an id returned in the current snapshot's diagram_interpretation.
+	DiagramUncertaintyID OptUUID `json:"diagram_uncertainty_id"`
+	// Answer_diagram_uncertainty only: the creator's answer to that exact question.
+	DiagramAnswer OptString `json:"diagram_answer"`
+	RunID         OptUUID   `json:"run_id"`
 }
 
 // GetCommandID returns the value of CommandID.
@@ -2376,6 +2382,16 @@ func (s *CreationAction) GetContentHash() OptString {
 // GetDiagram returns the value of Diagram.
 func (s *CreationAction) GetDiagram() OptGenerateDiagram {
 	return s.Diagram
+}
+
+// GetDiagramUncertaintyID returns the value of DiagramUncertaintyID.
+func (s *CreationAction) GetDiagramUncertaintyID() OptUUID {
+	return s.DiagramUncertaintyID
+}
+
+// GetDiagramAnswer returns the value of DiagramAnswer.
+func (s *CreationAction) GetDiagramAnswer() OptString {
+	return s.DiagramAnswer
 }
 
 // GetRunID returns the value of RunID.
@@ -2423,6 +2439,16 @@ func (s *CreationAction) SetDiagram(val OptGenerateDiagram) {
 	s.Diagram = val
 }
 
+// SetDiagramUncertaintyID sets the value of DiagramUncertaintyID.
+func (s *CreationAction) SetDiagramUncertaintyID(val OptUUID) {
+	s.DiagramUncertaintyID = val
+}
+
+// SetDiagramAnswer sets the value of DiagramAnswer.
+func (s *CreationAction) SetDiagramAnswer(val OptString) {
+	s.DiagramAnswer = val
+}
+
 // SetRunID sets the value of RunID.
 func (s *CreationAction) SetRunID(val OptUUID) {
 	s.RunID = val
@@ -2431,23 +2457,25 @@ func (s *CreationAction) SetRunID(val OptUUID) {
 type CreationActionKind string
 
 const (
-	CreationActionKindMessage           CreationActionKind = "message"
-	CreationActionKindConfirmBrief      CreationActionKind = "confirm_brief"
-	CreationActionKindConfirmDiagram    CreationActionKind = "confirm_diagram"
-	CreationActionKindSelectReferences  CreationActionKind = "select_references"
-	CreationActionKindConfirmReferences CreationActionKind = "confirm_references"
-	CreationActionKindMaterialize       CreationActionKind = "materialize"
-	CreationActionKindFinalize          CreationActionKind = "finalize"
-	CreationActionKindCancel            CreationActionKind = "cancel"
-	CreationActionKindDiagram           CreationActionKind = "diagram"
-	CreationActionKindAttachRun         CreationActionKind = "attach_run"
-	CreationActionKindRaiseBudget       CreationActionKind = "raise_budget"
-	CreationActionKindConfirmFetch      CreationActionKind = "confirm_fetch"
-	CreationActionKindDeclineFetch      CreationActionKind = "decline_fetch"
-	CreationActionKindAdoptReference    CreationActionKind = "adopt_reference"
-	CreationActionKindDeclineReferences CreationActionKind = "decline_references"
-	CreationActionKindConfirmDuplicate  CreationActionKind = "confirm_duplicate"
-	CreationActionKindStopStep          CreationActionKind = "stop_step"
+	CreationActionKindMessage                      CreationActionKind = "message"
+	CreationActionKindConfirmBrief                 CreationActionKind = "confirm_brief"
+	CreationActionKindConfirmDiagram               CreationActionKind = "confirm_diagram"
+	CreationActionKindAnswerDiagramUncertainty     CreationActionKind = "answer_diagram_uncertainty"
+	CreationActionKindConfirmDiagramInterpretation CreationActionKind = "confirm_diagram_interpretation"
+	CreationActionKindSelectReferences             CreationActionKind = "select_references"
+	CreationActionKindConfirmReferences            CreationActionKind = "confirm_references"
+	CreationActionKindMaterialize                  CreationActionKind = "materialize"
+	CreationActionKindFinalize                     CreationActionKind = "finalize"
+	CreationActionKindCancel                       CreationActionKind = "cancel"
+	CreationActionKindDiagram                      CreationActionKind = "diagram"
+	CreationActionKindAttachRun                    CreationActionKind = "attach_run"
+	CreationActionKindRaiseBudget                  CreationActionKind = "raise_budget"
+	CreationActionKindConfirmFetch                 CreationActionKind = "confirm_fetch"
+	CreationActionKindDeclineFetch                 CreationActionKind = "decline_fetch"
+	CreationActionKindAdoptReference               CreationActionKind = "adopt_reference"
+	CreationActionKindDeclineReferences            CreationActionKind = "decline_references"
+	CreationActionKindConfirmDuplicate             CreationActionKind = "confirm_duplicate"
+	CreationActionKindStopStep                     CreationActionKind = "stop_step"
 )
 
 // AllValues returns all CreationActionKind values.
@@ -2456,6 +2484,8 @@ func (CreationActionKind) AllValues() []CreationActionKind {
 		CreationActionKindMessage,
 		CreationActionKindConfirmBrief,
 		CreationActionKindConfirmDiagram,
+		CreationActionKindAnswerDiagramUncertainty,
+		CreationActionKindConfirmDiagramInterpretation,
 		CreationActionKindSelectReferences,
 		CreationActionKindConfirmReferences,
 		CreationActionKindMaterialize,
@@ -2481,6 +2511,10 @@ func (s CreationActionKind) MarshalText() ([]byte, error) {
 	case CreationActionKindConfirmBrief:
 		return []byte(s), nil
 	case CreationActionKindConfirmDiagram:
+		return []byte(s), nil
+	case CreationActionKindAnswerDiagramUncertainty:
+		return []byte(s), nil
+	case CreationActionKindConfirmDiagramInterpretation:
 		return []byte(s), nil
 	case CreationActionKindSelectReferences:
 		return []byte(s), nil
@@ -2526,6 +2560,12 @@ func (s *CreationActionKind) UnmarshalText(data []byte) error {
 		return nil
 	case CreationActionKindConfirmDiagram:
 		*s = CreationActionKindConfirmDiagram
+		return nil
+	case CreationActionKindAnswerDiagramUncertainty:
+		*s = CreationActionKindAnswerDiagramUncertainty
+		return nil
+	case CreationActionKindConfirmDiagramInterpretation:
+		*s = CreationActionKindConfirmDiagramInterpretation
 		return nil
 	case CreationActionKindSelectReferences:
 		*s = CreationActionKindSelectReferences
@@ -2723,6 +2763,91 @@ func (s *CreationCandidate) SetRunID(val OptUUID) {
 // SetTestCaseID sets the value of TestCaseID.
 func (s *CreationCandidate) SetTestCaseID(val OptUUID) {
 	s.TestCaseID = val
+}
+
+// Ref: #/components/schemas/CreationDiagramInterpretation
+type CreationDiagramInterpretation struct {
+	Nodes         []string                     `json:"nodes"`
+	Conditions    []string                     `json:"conditions"`
+	Branches      []string                     `json:"branches"`
+	Uncertainties []CreationDiagramUncertainty `json:"uncertainties"`
+}
+
+// GetNodes returns the value of Nodes.
+func (s *CreationDiagramInterpretation) GetNodes() []string {
+	return s.Nodes
+}
+
+// GetConditions returns the value of Conditions.
+func (s *CreationDiagramInterpretation) GetConditions() []string {
+	return s.Conditions
+}
+
+// GetBranches returns the value of Branches.
+func (s *CreationDiagramInterpretation) GetBranches() []string {
+	return s.Branches
+}
+
+// GetUncertainties returns the value of Uncertainties.
+func (s *CreationDiagramInterpretation) GetUncertainties() []CreationDiagramUncertainty {
+	return s.Uncertainties
+}
+
+// SetNodes sets the value of Nodes.
+func (s *CreationDiagramInterpretation) SetNodes(val []string) {
+	s.Nodes = val
+}
+
+// SetConditions sets the value of Conditions.
+func (s *CreationDiagramInterpretation) SetConditions(val []string) {
+	s.Conditions = val
+}
+
+// SetBranches sets the value of Branches.
+func (s *CreationDiagramInterpretation) SetBranches(val []string) {
+	s.Branches = val
+}
+
+// SetUncertainties sets the value of Uncertainties.
+func (s *CreationDiagramInterpretation) SetUncertainties(val []CreationDiagramUncertainty) {
+	s.Uncertainties = val
+}
+
+// Ref: #/components/schemas/CreationDiagramUncertainty
+type CreationDiagramUncertainty struct {
+	ID       uuid.UUID `json:"id"`
+	Question string    `json:"question"`
+	Answer   OptString `json:"answer"`
+}
+
+// GetID returns the value of ID.
+func (s *CreationDiagramUncertainty) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetQuestion returns the value of Question.
+func (s *CreationDiagramUncertainty) GetQuestion() string {
+	return s.Question
+}
+
+// GetAnswer returns the value of Answer.
+func (s *CreationDiagramUncertainty) GetAnswer() OptString {
+	return s.Answer
+}
+
+// SetID sets the value of ID.
+func (s *CreationDiagramUncertainty) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetQuestion sets the value of Question.
+func (s *CreationDiagramUncertainty) SetQuestion(val string) {
+	s.Question = val
+}
+
+// SetAnswer sets the value of Answer.
+func (s *CreationDiagramUncertainty) SetAnswer(val OptString) {
+	s.Answer = val
 }
 
 // Ref: #/components/schemas/CreationDraft
@@ -3582,11 +3707,18 @@ type CreationSnapshot struct {
 	AcceptanceCriteria []string `json:"acceptance_criteria"`
 	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
 	// of the candidate's Test Case. Empty until proposed.
-	SampleInput          OptString              `json:"sample_input"`
-	BriefConfirmed       bool                   `json:"brief_confirmed"`
-	ModelChanged         OptCreationModelChange `json:"model_changed"`
-	DiagramUnderstanding string                 `json:"diagram_understanding"`
-	DiagramConfirmed     bool                   `json:"diagram_confirmed"`
+	SampleInput    OptString              `json:"sample_input"`
+	BriefConfirmed bool                   `json:"brief_confirmed"`
+	ModelChanged   OptCreationModelChange `json:"model_changed"`
+	// Legacy one-phase diagram interpretation. It remains readable for an existing session but cannot
+	// authorize a draft; upload the image again to use the checkpointed flow.
+	DiagramUnderstanding string `json:"diagram_understanding"`
+	// The model's plain-language description of the newest uploaded diagram. It is confirmed before
+	// structural decomposition.
+	DiagramDescription          OptString                        `json:"diagram_description"`
+	DiagramDescriptionConfirmed OptBool                          `json:"diagram_description_confirmed"`
+	DiagramInterpretation       OptCreationDiagramInterpretation `json:"diagram_interpretation"`
+	DiagramConfirmed            bool                             `json:"diagram_confirmed"`
 	// The NEWEST picture's digest - the one the model reads and materialize records. `attachments` is the
 	// conversation's own history; a second upload overwrites this field but adds to that list.
 	DiagramFingerprint OptString `json:"diagram_fingerprint"`
@@ -3681,6 +3813,21 @@ func (s *CreationSnapshot) GetModelChanged() OptCreationModelChange {
 // GetDiagramUnderstanding returns the value of DiagramUnderstanding.
 func (s *CreationSnapshot) GetDiagramUnderstanding() string {
 	return s.DiagramUnderstanding
+}
+
+// GetDiagramDescription returns the value of DiagramDescription.
+func (s *CreationSnapshot) GetDiagramDescription() OptString {
+	return s.DiagramDescription
+}
+
+// GetDiagramDescriptionConfirmed returns the value of DiagramDescriptionConfirmed.
+func (s *CreationSnapshot) GetDiagramDescriptionConfirmed() OptBool {
+	return s.DiagramDescriptionConfirmed
+}
+
+// GetDiagramInterpretation returns the value of DiagramInterpretation.
+func (s *CreationSnapshot) GetDiagramInterpretation() OptCreationDiagramInterpretation {
+	return s.DiagramInterpretation
 }
 
 // GetDiagramConfirmed returns the value of DiagramConfirmed.
@@ -3866,6 +4013,21 @@ func (s *CreationSnapshot) SetModelChanged(val OptCreationModelChange) {
 // SetDiagramUnderstanding sets the value of DiagramUnderstanding.
 func (s *CreationSnapshot) SetDiagramUnderstanding(val string) {
 	s.DiagramUnderstanding = val
+}
+
+// SetDiagramDescription sets the value of DiagramDescription.
+func (s *CreationSnapshot) SetDiagramDescription(val OptString) {
+	s.DiagramDescription = val
+}
+
+// SetDiagramDescriptionConfirmed sets the value of DiagramDescriptionConfirmed.
+func (s *CreationSnapshot) SetDiagramDescriptionConfirmed(val OptBool) {
+	s.DiagramDescriptionConfirmed = val
+}
+
+// SetDiagramInterpretation sets the value of DiagramInterpretation.
+func (s *CreationSnapshot) SetDiagramInterpretation(val OptCreationDiagramInterpretation) {
+	s.DiagramInterpretation = val
 }
 
 // SetDiagramConfirmed sets the value of DiagramConfirmed.
@@ -11161,6 +11323,52 @@ func (o OptCreationCandidate) Get() (v CreationCandidate, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCreationCandidate) Or(d CreationCandidate) CreationCandidate {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCreationDiagramInterpretation returns new OptCreationDiagramInterpretation with value set to v.
+func NewOptCreationDiagramInterpretation(v CreationDiagramInterpretation) OptCreationDiagramInterpretation {
+	return OptCreationDiagramInterpretation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCreationDiagramInterpretation is optional CreationDiagramInterpretation.
+type OptCreationDiagramInterpretation struct {
+	Value CreationDiagramInterpretation
+	Set   bool
+}
+
+// IsSet returns true if OptCreationDiagramInterpretation was set.
+func (o OptCreationDiagramInterpretation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCreationDiagramInterpretation) Reset() {
+	var v CreationDiagramInterpretation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCreationDiagramInterpretation) SetTo(v CreationDiagramInterpretation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCreationDiagramInterpretation) Get() (v CreationDiagramInterpretation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCreationDiagramInterpretation) Or(d CreationDiagramInterpretation) CreationDiagramInterpretation {
 	if v, ok := o.Get(); ok {
 		return v
 	}

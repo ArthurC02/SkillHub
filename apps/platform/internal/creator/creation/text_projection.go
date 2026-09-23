@@ -1,7 +1,6 @@
 package creation
 
 import (
-	"encoding/json"
 	"strings"
 	"unicode"
 )
@@ -32,14 +31,10 @@ func personText(messages []Message) string {
 	return b.String()
 }
 
-func missingDiagramNodes(understanding, body string) []string {
-	var sections map[string][]string
-	if json.Unmarshal([]byte(understanding), &sections) != nil {
-		return nil
-	}
+func missingNodes(nodes []string, body string) []string {
 	haystack := foldForMatch(body)
 	var missing []string
-	for _, node := range sections["nodes"] {
+	for _, node := range nodes {
 		if needle := foldForMatch(node); needle != "" && !strings.Contains(haystack, needle) {
 			missing = append(missing, node)
 		}

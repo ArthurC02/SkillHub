@@ -1,0 +1,15 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "c-176-diagram-two-phase-hitl",
+  "proposal_id": "diagram-hitl-2026-09-24",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [{"path": "docs/plans/04-backlog-and-handoffs.md", "lines": {"start": 572, "end": 572}, "content_sha256": "sha256:f98b14cf3fbbdb4769d7dfd5c4b7adee61ee8cd2106e38bd1fb2be2bacc1d6c4", "excerpt_sha256": "sha256:d87974e5273acba4d620470e67379daf48e2c38cecf63357c6b092d1a7dd00ba", "source_kind": "requirements"}, {"path": "docs/plans/05-pending-rulings.md", "lines": {"start": 151, "end": 151}, "content_sha256": "sha256:5a782204258033415825b0f25f2e5f26042c48f1f66b87c5c76ebad35d6cd658", "excerpt_sha256": "sha256:b03ee7a3a4348959959b518b537bd758bc5263fd267b590c28e59be97f99bf17", "source_kind": "requirements"}],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": ["The source image remains intentionally transient. A legacy one-phase snapshot therefore cannot be safely promoted and must be re-uploaded."]
+}

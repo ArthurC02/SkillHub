@@ -73,8 +73,17 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		return "", false, err
 	}
 	recordReply(p, r)
-	if r.DiagramUnderstanding != "" && r.DiagramUnderstanding != p.DiagramUnderstanding {
-		return reinterpretDiagram(p, r.DiagramUnderstanding), false, nil
+	if r.DiagramDescription != "" {
+		if r.Outcome != "confirm_diagram_description" || r.DiagramInterpretation != nil || r.Draft != nil || p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+			return "", false, ErrInvalidCommand
+		}
+		return describeDiagram(p, r.DiagramDescription), false, nil
+	}
+	if r.DiagramInterpretation != nil {
+		if r.Outcome != "confirm_diagram_interpretation" || r.Draft != nil || !p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+			return "", false, ErrInvalidCommand
+		}
+		return interpretDiagram(p, r.DiagramInterpretation), false, nil
 	}
 	if change := briefChangeIn(*p, r); change.any() {
 		return reviseBrief(p, r, change), false, nil
@@ -85,8 +94,8 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 		return StateWaitingInput, false, nil
 	case "confirm_brief":
 		return askToConfirmBrief(p)
-	case "confirm_diagram":
-		return askToConfirmDiagram(p)
+	case "confirm_diagram", "confirm_diagram_description", "confirm_diagram_interpretation":
+		return "", false, ErrInvalidCommand
 	case "draft":
 		return s.acceptDraft(ctx, revision, e, r)
 	case "tool_intent":
@@ -112,6 +121,8 @@ func retriesMissingOutput(retries *int, p Snapshot, l Limits) bool {
 func normalizeReply(r *StepResult, diagramUploaded bool) {
 	if !diagramUploaded {
 		r.DiagramUnderstanding = ""
+		r.DiagramDescription = ""
+		r.DiagramInterpretation = nil
 	}
 	if r.Message == "" && r.Draft != nil {
 		r.Message = "草稿已更新，請看驗證結果。"
@@ -119,7 +130,10 @@ func normalizeReply(r *StepResult, diagramUploaded bool) {
 }
 
 func admitReply(r *StepResult, p Snapshot) error {
-	if r.DiagramUnderstanding != "" && !validDiagramInterpretation(r.DiagramUnderstanding) {
+	if r.DiagramDescription != "" && !validDiagramDescription(r.DiagramDescription) {
+		return ErrInvalidCommand
+	}
+	if r.DiagramInterpretation != nil && !validDiagramDecomposition(r.DiagramInterpretation) {
 		return ErrInvalidCommand
 	}
 	if r.Message == "" || utf8.RuneCountInString(r.Message) > MaxTextRunes || utf8.RuneCountInString(r.Brief) > MaxTextRunes || utf8.RuneCountInString(r.DiagramUnderstanding) > MaxTextRunes || !p.hasRoomFor(1) {
@@ -140,11 +154,29 @@ func recordReply(p *Snapshot, r *StepResult) {
 	p.appendMessage("assistant", r.Message)
 }
 
-func reinterpretDiagram(p *Snapshot, understanding string) State {
-	p.DiagramUnderstanding = understanding
+func describeDiagram(p *Snapshot, description string) State {
+	if p.DiagramFingerprint == "" || p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+		return StateFailed
+	}
+	p.DiagramDescription = description
 	p.DiagramConfirmed = false
 	invalidate(p)
-	p.PendingAction = PendingDiagramConfirmation
+	p.PendingAction = PendingDiagramDescription
+	return StateWaitingConfirmation
+}
+
+func interpretDiagram(p *Snapshot, decomposition *DiagramDecomposition) State {
+	if p.DiagramFingerprint == "" || !p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+		return StateFailed
+	}
+	p.DiagramInterpretation = newDiagramInterpretation(decomposition)
+	p.DiagramConfirmed = false
+	invalidate(p)
+	if len(p.DiagramInterpretation.Uncertainties) > 0 {
+		p.PendingAction = PendingDiagramAnswers
+	} else {
+		p.PendingAction = PendingDiagramInterpretation
+	}
 	return StateWaitingConfirmation
 }
 
@@ -205,20 +237,12 @@ func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 	return StateWaitingConfirmation, false, nil
 }
 
-func askToConfirmDiagram(p *Snapshot) (State, bool, error) {
-	if p.DiagramUnderstanding == "" {
-		return "", false, ErrInvalidCommand
-	}
-	p.DiagramConfirmed = false
-	p.PendingAction = PendingDiagramConfirmation
-	return StateWaitingConfirmation, false, nil
-}
-
 func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
 	return confirmed(p) && r.Brief == p.Brief &&
 		(len(r.AcceptanceCriteria) == 0 || equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) &&
 		(r.SampleInput == "" || r.SampleInput == p.SampleInput) &&
-		(p.DiagramFingerprint == "" || r.DiagramUnderstanding == p.DiagramUnderstanding) &&
+		(p.DiagramFingerprint == "" || (r.DiagramDescription == "" || r.DiagramDescription == p.DiagramDescription)) &&
+		r.DiagramInterpretation == nil &&
 		r.Draft != nil
 }
 
@@ -278,8 +302,8 @@ type draftObjection struct {
 
 func objectionsTo(p Snapshot, d GeneratedSkill, hash string) draftObjection {
 	o := draftObjection{unchanged: p.RunUnmet && p.Draft != nil && p.Draft.ContentHash == hash}
-	if p.DiagramFingerprint != "" && p.DiagramConfirmed && p.DiagramUnderstanding != "" {
-		o.missingNodes = missingDiagramNodes(p.DiagramUnderstanding, d.Body)
+	if p.DiagramFingerprint != "" && p.DiagramConfirmed && p.DiagramInterpretation != nil {
+		o.missingNodes = missingNodes(p.DiagramInterpretation.Nodes, d.Body)
 	}
 	if p.EvaluationText == "" {
 		return o

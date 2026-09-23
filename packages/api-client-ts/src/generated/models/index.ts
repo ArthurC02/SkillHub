@@ -28,6 +28,8 @@ export * from './CreateTestCaseRequest';
 export * from './CreationAction';
 export * from './CreationAttachment';
 export * from './CreationCandidate';
+export * from './CreationDiagramInterpretation';
+export * from './CreationDiagramUncertainty';
 export * from './CreationDraft';
 export * from './CreationFetch';
 export * from './CreationLimits';

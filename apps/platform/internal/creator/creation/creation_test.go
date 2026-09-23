@@ -72,20 +72,27 @@ func TestLimitsFailClosed(t *testing.T) {
 	}
 }
 
-func TestDiagramInterpretationRequiresAllSectionsBeforeSaving(t *testing.T) {
-	valid := `{"nodes":["start"],"conditions":[],"branches":[],"uncertainties":[]}`
-	for _, value := range []string{"legacy paragraph", `{"nodes":["start"]}`, `{"nodes":[],"conditions":[],"branches":[],"uncertainties":[]}`, `{"nodes":["start"],"conditions":[],"branches":[],"uncertainties":[" "]}`} {
-		p := Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramConfirmed: true, DiagramUnderstanding: value}
-		if validDiagramInterpretation(value) || confirmed(p) {
-			t.Errorf("invalid interpretation accepted: %s", value)
-		}
-		p.DiagramFingerprint = ""
-		if confirmed(p) {
-			t.Errorf("interpretation without an uploaded image bypassed confirmation: %s", value)
-		}
+func TestDiagramInterpretationRequiresConfirmedDescriptionAndEveryAnswer(t *testing.T) {
+	interpretation := &DiagramInterpretation{Nodes: []string{"start"}, Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "who", Answer: "owner"}}}
+	p := Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramDescription: "start", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: interpretation}
+	if !validDiagramInterpretation(interpretation) || !confirmed(p) {
+		t.Fatal("complete confirmed interpretation rejected")
 	}
-	if !validDiagramInterpretation(valid) {
-		t.Fatal("complete sections rejected")
+	p.DiagramDescriptionConfirmed = false
+	if confirmed(p) {
+		t.Fatal("unconfirmed description authorized drafting")
+	}
+	p.DiagramDescriptionConfirmed = true
+	p.DiagramInterpretation.Uncertainties[0].Answer = ""
+	if confirmed(p) {
+		t.Fatal("unanswered uncertainty authorized drafting")
+	}
+	p.DiagramInterpretation.Uncertainties[0].Answer = "owner"
+	p.DiagramUnderstanding = understoodDiagram
+	p.DiagramDescription = ""
+	p.DiagramDescriptionConfirmed = false
+	if confirmed(p) {
+		t.Fatal("legacy understanding authorized drafting")
 	}
 }
 func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
@@ -309,9 +316,8 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 		return "h-" + d.Body, "{}", false, nil
 	}}
 	zero := 0.0
-	understanding := `{"nodes":["收到報帳申請","送經理簽核","寄出付款通知"],"conditions":[],"branches":[],"uncertainties":[]}`
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramUnderstanding: understanding, DiagramConfirmed: true, DiagramFingerprint: "fp", BudgetUSD: 1, SpentUSD: &zero}}
-	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
+	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, half)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
 		t.Fatalf("half a flow was accepted: state=%q next=%v err=%v", state, next, err)
@@ -319,7 +325,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "寄出付款通知") || strings.Contains(last.Content, "收到報帳申請") {
 		t.Fatalf("the missing node was not named, or a present one was: %+v", last)
 	}
-	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", DiagramUnderstanding: understanding, Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
+	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, full)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("a full walk was refused: state=%q next=%v err=%v", state, next, err)

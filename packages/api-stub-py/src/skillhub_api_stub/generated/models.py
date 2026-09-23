@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from uuid import UUID
 
 from pydantic import (
     AwareDatetime,
@@ -575,6 +576,51 @@ class CreationToolIntent(BaseModel):
     )
 
 
+class CreationDiagramUncertainty(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: UUID
+    question: constr(max_length=2000)
+    answer: constr(max_length=2000) | None = None
+
+
+class Node(RootModel[constr(max_length=2000)]):
+    root: constr(max_length=2000)
+
+
+class Condition(RootModel[constr(max_length=2000)]):
+    root: constr(max_length=2000)
+
+
+class Branch(RootModel[constr(max_length=2000)]):
+    root: constr(max_length=2000)
+
+
+class CreationDiagramInterpretation(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    nodes: list[Node] = Field(..., max_length=64, min_length=1)
+    conditions: list[Condition] = Field(..., max_length=64)
+    branches: list[Branch] = Field(..., max_length=128)
+    uncertainties: list[CreationDiagramUncertainty] = Field(..., max_length=64)
+
+
+class Uncertainty(RootModel[constr(max_length=2000)]):
+    root: constr(max_length=2000)
+
+
+class CreationDiagramDecomposition(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    nodes: list[Node] = Field(..., max_length=64, min_length=1)
+    conditions: list[Condition] = Field(..., max_length=64)
+    branches: list[Branch] = Field(..., max_length=128)
+    uncertainties: list[Uncertainty] = Field(..., max_length=64)
+
+
 class AcceptanceCriterion(RootModel[constr(max_length=500)]):
     root: constr(max_length=500)
 
@@ -589,7 +635,8 @@ class AllowedTool(Enum):
 class Outcome(Enum):
     clarification = 'clarification'
     confirm_brief = 'confirm_brief'
-    confirm_diagram = 'confirm_diagram'
+    confirm_diagram_description = 'confirm_diagram_description'
+    confirm_diagram_interpretation = 'confirm_diagram_interpretation'
     tool_intent = 'tool_intent'
     draft = 'draft'
 
@@ -773,6 +820,12 @@ class CreationStepRequest(BaseModel):
         ...,
         description='Empty before interpretation; otherwise a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays. Nodes must be nonempty. Legacy plain text must be reinterpreted and reconfirmed.',
     )
+    diagram_description: constr(max_length=2000) = Field(
+        ...,
+        description='The creator-confirmed plain-language description of the newest diagram. Empty before its first checkpoint.',
+    )
+    diagram_description_confirmed: bool
+    diagram_interpretation: CreationDiagramInterpretation | None = None
     diagram_confirmed: bool
     diagram: GenerateDiagram | None = None
     references: list[GenerateReference] = Field(
@@ -813,6 +866,8 @@ class CreationStepResponse(BaseModel):
         ...,
         description='Empty or a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays; nodes must be nonempty.',
     )
+    diagram_description: constr(max_length=2000)
+    diagram_interpretation: CreationDiagramDecomposition | None = None
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
     model: str

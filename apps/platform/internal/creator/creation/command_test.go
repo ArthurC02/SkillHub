@@ -165,16 +165,30 @@ func TestConfirmingTheBriefNeedsTheQuestionAndABrief(t *testing.T) {
 	}
 }
 
-func TestConfirmingTheDiagramNeedsTheQuestionAndACompleteUnderstanding(t *testing.T) {
-	for name, p := range map[string]Snapshot{"nobody asked": {DiagramUnderstanding: understoodDiagram}, "incomplete": {PendingAction: "confirm_diagram", DiagramUnderstanding: `{"nodes":["start"]}`}} {
-		if _, err := confirmDiagram(&p); !errors.Is(err, ErrInvalidCommand) {
+func TestDiagramCheckpointsRequireDescriptionAnswersAndFinalConfirmation(t *testing.T) {
+	for name, p := range map[string]Snapshot{"nobody asked": {DiagramDescription: "start"}, "already decomposed": {PendingAction: PendingDiagramDescription, DiagramDescription: "start", DiagramInterpretation: &DiagramInterpretation{}}} {
+		if _, err := confirmDiagramDescription(&p); !errors.Is(err, ErrInvalidCommand) {
 			t.Errorf("%s: err = %v, want ErrInvalidCommand", name, err)
 		}
 	}
-	p := Snapshot{PendingAction: "confirm_diagram", DiagramUnderstanding: understoodDiagram}
-	got, err := confirmDiagram(&p)
-	if err != nil || !got.queueStep || !p.DiagramConfirmed || p.PendingAction != "" {
+	p := Snapshot{DiagramFingerprint: "digest", PendingAction: PendingDiagramDescription, DiagramDescription: "開始處理資料"}
+	got, err := confirmDiagramDescription(&p)
+	if err != nil || !got.queueStep || !p.DiagramDescriptionConfirmed || p.DiagramConfirmed || p.PendingAction != "" {
 		t.Fatalf("outcome = %+v, snapshot = %+v, err = %v", got, p, err)
+	}
+	p.DiagramInterpretation = &DiagramInterpretation{Nodes: []string{"開始"}, Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "誰核准？"}}}
+	p.PendingAction = PendingDiagramAnswers
+	if _, err = answerDiagramUncertainty(&p, "missing", "主管"); !errors.Is(err, ErrInvalidCommand) {
+		t.Fatalf("unknown uncertainty = %v, want ErrInvalidCommand", err)
+	}
+	if _, err = answerDiagramUncertainty(&p, "11111111-1111-4111-8111-111111111111", " "); !errors.Is(err, ErrInvalidCommand) {
+		t.Fatalf("blank answer = %v, want ErrInvalidCommand", err)
+	}
+	if got, err = answerDiagramUncertainty(&p, "11111111-1111-4111-8111-111111111111", "主管"); err != nil || got.state != StateWaitingConfirmation || p.PendingAction != PendingDiagramInterpretation {
+		t.Fatalf("answer outcome = %+v, err = %v", got, err)
+	}
+	if got, err = confirmDiagramInterpretation(&p); err != nil || !got.queueStep || !p.DiagramConfirmed || p.PendingAction != "" {
+		t.Fatalf("interpretation outcome = %+v, snapshot = %+v, err = %v", got, p, err)
 	}
 }
 

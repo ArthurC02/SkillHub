@@ -31,10 +31,10 @@ func TestADraftMustRestateEveryConfirmedInput(t *testing.T) {
 	}
 }
 
-func TestANewReadingOfTheDiagramDropsWhatWasBuiltOnTheOldOne(t *testing.T) {
-	p := Snapshot{DiagramConfirmed: true, Draft: &Draft{}, Candidate: &Candidate{}, Duplicates: []Reference{{SkillID: "s"}}, PendingAction: "confirm_duplicate"}
-	state := reinterpretDiagram(&p, "new reading")
-	if state != StateWaitingConfirmation || p.DiagramUnderstanding != "new reading" || p.DiagramConfirmed || p.Draft != nil || p.Candidate != nil || p.Duplicates != nil || p.PendingAction != "confirm_diagram" {
+func TestADiagramDescriptionDropsWhatWasBuiltOnTheOldOne(t *testing.T) {
+	p := Snapshot{DiagramFingerprint: "digest", DiagramConfirmed: true, Draft: &Draft{}, Candidate: &Candidate{}, Duplicates: []Reference{{SkillID: "s"}}, PendingAction: "confirm_duplicate"}
+	state := describeDiagram(&p, "new reading")
+	if state != StateWaitingConfirmation || p.DiagramDescription != "new reading" || p.DiagramConfirmed || p.Draft != nil || p.Candidate != nil || p.Duplicates != nil || p.PendingAction != PendingDiagramDescription {
 		t.Fatalf("state = %s, snapshot = %+v", state, p)
 	}
 }

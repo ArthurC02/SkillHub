@@ -994,6 +994,54 @@ test("structured diagram understanding renders all four sections", async () => {
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
 });
+test("diagram checkpoints submit the description, each answer and the final interpretation", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.diagram_description = "先驗證資料，再輸出結果。";
+  v.snapshot.diagram_description_confirmed = false;
+  v.snapshot.pending_action = "confirm_diagram";
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        if (posts.length === 1) {
+          v.snapshot.diagram_description_confirmed = true;
+          v.snapshot.diagram_interpretation = {
+            nodes: ["驗證資料"],
+            conditions: [],
+            branches: [],
+            uncertainties: [{ id: "11111111-1111-4111-8111-111111111111", question: "誰核准？" }],
+          };
+          v.snapshot.pending_action = "answer_diagram_uncertainties";
+        } else if (posts.length === 2) {
+          v.snapshot.diagram_interpretation!.uncertainties[0].answer = "主管";
+          v.snapshot.pending_action = "confirm_diagram_interpretation";
+        }
+        return response(v);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  await click("確認這是流程圖要表達的內容");
+  await waitFor(() => posts.length === 1);
+  expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });
+  expect(box.textContent).not.toContain("確認完整流程圖拆解");
+  await input("誰核准？", "主管");
+  await click("確認這一題的答案");
+  await waitFor(() => posts.length === 2);
+  expect(posts[1]).toMatchObject({
+    kind: "answer_diagram_uncertainty",
+    diagram_uncertainty_id: "11111111-1111-4111-8111-111111111111",
+    diagram_answer: "主管",
+  });
+  expect(box.textContent).toContain("確認完整流程圖拆解");
+  await click("確認完整流程圖拆解");
+  await waitFor(() => posts.length === 3);
+  expect(posts[2]).toMatchObject({ kind: "confirm_diagram_interpretation" });
+});
 test("legacy diagram understanding stays visible with refresh notice", async () => {
   const v = sample({ state: "waiting_confirmation" });
   v.snapshot.diagram_understanding = "開始 → 摘要";

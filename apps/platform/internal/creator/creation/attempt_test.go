@@ -59,7 +59,7 @@ func TestAnAbandonedAttemptAsksForTheDiagramOnlyWhenItWasNeverRead(t *testing.T)
 	}{
 		{"no diagram", Snapshot{}, StateFailed},
 		{"a diagram never read", Snapshot{DiagramFingerprint: "fp"}, StateNeedsReupload},
-		{"a diagram already read", Snapshot{DiagramFingerprint: "fp", DiagramUnderstanding: understoodDiagram}, StateFailed},
+		{"a diagram already read", Snapshot{DiagramFingerprint: "fp", DiagramDescription: "diagram", DiagramDescriptionConfirmed: true}, StateFailed},
 	} {
 		if got := abandonedState(c.p); got != c.want {
 			t.Errorf("%s: state = %s, want %s", c.name, got, c.want)

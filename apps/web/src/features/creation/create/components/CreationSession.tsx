@@ -133,6 +133,7 @@ export function CreationSession() {
     [file, setFile] = useState<File>(),
     [refs, setRefs] = useState<{ id: string; name: string }[]>([]),
     [raiseBudget, setRaiseBudget] = useState(""),
+    [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({}),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<"submit" | [CreationAction["kind"], Extra]>();
@@ -746,6 +747,101 @@ export function CreationSession() {
                         onClick={() => void perform("confirm_diagram")}
                       >
                         確認流程圖理解
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
+              {p.diagram_description && (
+                <section>
+                  <header className="card-header">
+                    <h4>流程圖描述</h4>
+                    <span
+                      className="card-tag"
+                      data-tone={p.diagram_description_confirmed ? "done" : undefined}
+                    >
+                      {p.diagram_description_confirmed ? "已確認" : "等待確認"}
+                    </span>
+                  </header>
+                  <p>{p.diagram_description}</p>
+                  {p.pending_action === "confirm_diagram" && (
+                    <div className="card-actions">
+                      <button
+                        className="card-primary"
+                        disabled={locked}
+                        onClick={() => void perform("confirm_diagram")}
+                      >
+                        確認這是流程圖要表達的內容
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
+              {p.diagram_interpretation && (
+                <section>
+                  <header className="card-header">
+                    <h4>流程圖拆解</h4>
+                    <span className="card-tag" data-tone={p.diagram_confirmed ? "done" : undefined}>
+                      {p.diagram_confirmed ? "已確認" : "等待確認"}
+                    </span>
+                  </header>
+                  {(["nodes", "conditions", "branches"] as const).map((section) => (
+                    <div key={section}>
+                      <h5>{{ nodes: "節點", conditions: "條件", branches: "分支" }[section]}</h5>
+                      {p.diagram_interpretation![section].length ? (
+                        <ul>
+                          {p.diagram_interpretation![section].map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>未列出</p>
+                      )}
+                    </div>
+                  ))}
+                  {p.diagram_interpretation.uncertainties.map((uncertainty) => (
+                    <div key={uncertainty.id}>
+                      <label>
+                        <span>{uncertainty.question}</span>
+                        <textarea
+                          aria-label={uncertainty.question}
+                          disabled={locked || p.pending_action !== "answer_diagram_uncertainties"}
+                          value={diagramAnswers[uncertainty.id] ?? uncertainty.answer ?? ""}
+                          onChange={(event) =>
+                            setDiagramAnswers((old) => ({
+                              ...old,
+                              [uncertainty.id]: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      {p.pending_action === "answer_diagram_uncertainties" && (
+                        <button
+                          disabled={
+                            locked ||
+                            !(diagramAnswers[uncertainty.id] ?? uncertainty.answer ?? "").trim()
+                          }
+                          onClick={() =>
+                            void perform("answer_diagram_uncertainty", {
+                              diagram_uncertainty_id: uncertainty.id,
+                              diagram_answer:
+                                diagramAnswers[uncertainty.id] ?? uncertainty.answer ?? "",
+                            })
+                          }
+                        >
+                          確認這一題的答案
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {p.pending_action === "confirm_diagram_interpretation" && (
+                    <div className="card-actions">
+                      <button
+                        className="card-primary"
+                        disabled={locked}
+                        onClick={() => void perform("confirm_diagram_interpretation")}
+                      >
+                        確認完整流程圖拆解
                       </button>
                     </div>
                   )}

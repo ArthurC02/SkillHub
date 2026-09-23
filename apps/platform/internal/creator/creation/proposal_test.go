@@ -22,10 +22,14 @@ func diagramJSON(nodes ...string) string {
 	return string(b)
 }
 
+func confirmedDiagram(nodes ...string) Snapshot {
+	return Snapshot{DiagramFingerprint: "fp", DiagramDescription: "diagram", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: nodes}}
+}
+
 func TestProposalRejectsAnInvalidDiagramInterpretationBeforeRecording(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{DiagramFingerprint: "fp"}}
-	r := &StepResult{Message: "ok", Outcome: "clarification", DiagramUnderstanding: "not json"}
+	r := &StepResult{Message: "ok", Outcome: "clarification", DiagramDescription: " "}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -198,25 +202,22 @@ func TestProposalConfirmBriefReopensConfirmationWhenUnconfirmed(t *testing.T) {
 	}
 }
 
-func TestProposalConfirmDiagramRequiresAnUnderstanding(t *testing.T) {
+func TestProposalRejectsAConfirmationWithoutADescription(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal()}
-	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram"}
+	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram_description"}
 	_, _, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
 	if !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("an empty understanding must not be confirmable: %v", err)
 	}
 }
 
-func TestProposalConfirmDiagramReopensConfirmation(t *testing.T) {
-	understanding := diagramJSON("start")
+func TestProposalDiagramDescriptionStartsConfirmation(t *testing.T) {
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-		DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding,
-	}}
-	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram", DiagramUnderstanding: understanding}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{DiagramFingerprint: "fp"}}
+	r := &StepResult{Message: "confirm diagram", Outcome: "confirm_diagram_description", DiagramDescription: "從申請到核准"}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.DiagramConfirmed || e.Snapshot.PendingAction != "confirm_diagram" {
+	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.DiagramConfirmed || e.Snapshot.PendingAction != PendingDiagramDescription {
 		t.Fatalf("state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
 	}
 }
@@ -329,7 +330,6 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 }
 
 func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
-	understanding := diagramJSON("核准請款")
 	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
 	zero := 0.0
 	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
@@ -337,10 +337,10 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
-		DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding,
+		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 		EvaluationText: evaluationFreeText(attackObservation),
 	}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", DiagramUnderstanding: understanding,
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 || e.Snapshot.Draft != prior {
@@ -375,16 +375,15 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 }
 
 func TestNudgeNamesMissingDiagramNodes(t *testing.T) {
-	understanding := diagramJSON("寄出付款通知")
 	zero := 0.0
 	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
-		DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding,
+		DiagramFingerprint: "fp", DiagramDescription: "付款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"寄出付款通知"}},
 	}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", DiagramUnderstanding: understanding,
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "沒有提到那個步驟"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 {
@@ -438,12 +437,11 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
 	}}
-	understanding := diagramJSON("核准請款")
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: ran, RunUnmet: true, Candidate: candidate, Nudges: MaxNudges,
-		DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding,
+		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 	}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", DiagramUnderstanding: understanding,
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "此份沒有處理該步驟"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
 	if err != nil || next || state != StateDraftReady {
@@ -459,17 +457,16 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 }
 
 func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
-	understanding := diagramJSON("核准請款")
 	prior := &Draft{Revision: 1, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
 	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
-		DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding,
+		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 		EvaluationText: evaluationFreeText(attackObservation),
 	}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", DiagramUnderstanding: understanding,
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
 		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容，但没提到那个步骤", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
 	if err != nil || next || state != StateDraftReady {

@@ -10,23 +10,46 @@ import (
 )
 
 type CreationStepRequest struct {
-	SessionID            string                   `json:"session_id"`
-	Revision             int64                    `json:"revision"`
-	Messages             []CreationMessage        `json:"messages"`
-	Brief                string                   `json:"brief"`
-	AcceptanceCriteria   []string                 `json:"acceptance_criteria"`
-	SampleInput          string                   `json:"sample_input"`
-	BriefConfirmed       bool                     `json:"brief_confirmed"`
-	DiagramUnderstanding string                   `json:"diagram_understanding"`
-	DiagramConfirmed     bool                     `json:"diagram_confirmed"`
-	Diagram              *GenerateDiagram         `json:"diagram,omitempty"`
-	References           []GenerateReference      `json:"references"`
-	Draft                *GeneratedSkill          `json:"draft,omitempty"`
-	DraftValidation      *CreationDraftValidation `json:"draft_validation,omitempty"`
-	AllowedTools         []string                 `json:"allowed_tools"`
-	TimeoutSeconds       int                      `json:"timeout_seconds"`
-	MaxOutputTokens      int                      `json:"max_output_tokens"`
-	GatewayKey           string                   `json:"-"`
+	SessionID                   string                   `json:"session_id"`
+	Revision                    int64                    `json:"revision"`
+	Messages                    []CreationMessage        `json:"messages"`
+	Brief                       string                   `json:"brief"`
+	AcceptanceCriteria          []string                 `json:"acceptance_criteria"`
+	SampleInput                 string                   `json:"sample_input"`
+	BriefConfirmed              bool                     `json:"brief_confirmed"`
+	DiagramUnderstanding        string                   `json:"diagram_understanding"`
+	DiagramDescription          string                   `json:"diagram_description"`
+	DiagramDescriptionConfirmed bool                     `json:"diagram_description_confirmed"`
+	DiagramInterpretation       *DiagramInterpretation   `json:"diagram_interpretation,omitempty"`
+	DiagramConfirmed            bool                     `json:"diagram_confirmed"`
+	Diagram                     *GenerateDiagram         `json:"diagram,omitempty"`
+	References                  []GenerateReference      `json:"references"`
+	Draft                       *GeneratedSkill          `json:"draft,omitempty"`
+	DraftValidation             *CreationDraftValidation `json:"draft_validation,omitempty"`
+	AllowedTools                []string                 `json:"allowed_tools"`
+	TimeoutSeconds              int                      `json:"timeout_seconds"`
+	MaxOutputTokens             int                      `json:"max_output_tokens"`
+	GatewayKey                  string                   `json:"-"`
+}
+
+type DiagramUncertainty struct {
+	ID       string `json:"id"`
+	Question string `json:"question"`
+	Answer   string `json:"answer,omitempty"`
+}
+
+type DiagramInterpretation struct {
+	Nodes         []string             `json:"nodes"`
+	Conditions    []string             `json:"conditions"`
+	Branches      []string             `json:"branches"`
+	Uncertainties []DiagramUncertainty `json:"uncertainties"`
+}
+
+type DiagramDecomposition struct {
+	Nodes         []string `json:"nodes"`
+	Conditions    []string `json:"conditions"`
+	Branches      []string `json:"branches"`
+	Uncertainties []string `json:"uncertainties"`
 }
 type CreationDraftValidation struct {
 	ContentHash string `json:"content_hash"`
@@ -44,12 +67,14 @@ type CreationToolIntent struct {
 	Queries []string `json:"queries"`
 }
 type CreationStepResponse struct {
-	Outcome              string   `json:"outcome"`
-	Message              string   `json:"message"`
-	Brief                string   `json:"brief"`
-	AcceptanceCriteria   []string `json:"acceptance_criteria"`
-	SampleInput          string   `json:"sample_input"`
-	DiagramUnderstanding string   `json:"diagram_understanding"`
+	Outcome               string                `json:"outcome"`
+	Message               string                `json:"message"`
+	Brief                 string                `json:"brief"`
+	AcceptanceCriteria    []string              `json:"acceptance_criteria"`
+	SampleInput           string                `json:"sample_input"`
+	DiagramUnderstanding  string                `json:"diagram_understanding"`
+	DiagramDescription    string                `json:"diagram_description"`
+	DiagramInterpretation *DiagramDecomposition `json:"diagram_interpretation,omitempty"`
 
 	Reason        string              `json:"reason,omitempty"`
 	ToolIntent    *CreationToolIntent `json:"tool_intent,omitempty"`

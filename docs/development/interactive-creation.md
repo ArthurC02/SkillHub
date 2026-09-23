@@ -14,13 +14,13 @@ Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `c
 
 ## LangGraph 階段與實際回饋
 
-「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、compose、revise 或 review，再回傳確認、工具意圖或草稿。新內容一律先交 Go 靜態驗證；下一個工作攜帶同一草稿的 draft_validation（content hash、blocked、finding report），讓修訂階段針對問題修改。只有與 Go 驗證通過內容完全相同的草稿，Python 才回傳完成提案。Go 仍獨立驗證、綁定確認與控制狀態，模型不能自行越過。
+「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、decompose、compose、revise 或 review，再回傳確認、工具意圖或草稿。`decompose` 只在流程圖描述已確認而結構拆解尚不存在時運行；新內容一律先交 Go 靜態驗證；下一個工作攜帶同一草稿的 draft_validation（content hash、blocked、finding report），讓修訂階段針對問題修改。只有與 Go 驗證通過內容完全相同的草稿，Python 才回傳完成提案。Go 仍獨立驗證、綁定確認與控制狀態，模型不能自行越過。
 
 工具邊界結束本次 graph invocation；Go 持久化結果、保留前一草稿並核准下一次工作，再進入 observe。這個循環每次只有一次模型呼叫，費用與取消仍受 receipt 控制；沒有另建 Python checkpointer 或讓 Python 接管平台狀態。
 
 附加 Run 後的回饋包含實際執行狀態、failure class，以及 evaluation owner 提供的驗收條件、判定原因、已驗證且重新檢查可用性的證據摘錄。沒有評估時明示 evaluation_available:false。評估投影最多 16,000 字元，摘要最多 2,000 字元；刪減時保留判定並附截斷及省略數量，不能把不完整證據當成成功。原始 Trace、完整產物和評估留言不送入創作模型。
 
-流程圖上限為 4,000,000 bytes。diagram_understanding 是 JSON 編碼字串，必須恰含 nodes、conditions、branches、uncertainties 四個字串陣列；節點不能為空，其餘無內容時仍傳空陣列。Python 與 Go 都檢查結構，前端逐節呈現後要求確認。舊版純文字仍可閱讀，但必須重新整理並確認，才能繼續保存。
+流程圖上限為 4,000,000 bytes。流程圖創作有兩個人機關卡：第一個模型工作只產生 `diagram_description`，人確認描述後才排入第二個工作；第二個工作產生節點、條件、分支與不確定處。Go 為每條不確定處指派快照內唯一 ID，使用者必須逐題送出非空答案，並明確確認完整拆解，才允許下一個模型工作交草稿。替換圖片會清除描述、拆解、答案、確認與草稿。舊版 `diagram_understanding` 仍可閱讀，但因原圖沒有保存，不能轉成已確認的新快照，必須重新上傳。
 
 Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需求，不從最新版 API 補資料。選擇或搜尋新參考會取消需求確認；模型比較做法、限制、採用與捨棄部分後，重新提出需求供人確認。
 
@@ -67,7 +67,7 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 - 試跑未達成而草稿 hash 沒變，或流程圖節點在 body 找不到 → Go 用 tool 訊息說明再排一次；`MaxNudges` ＝ 2，用盡交還給人。
 - 同一份阻擋報告連續第三次 → 交還給人（`MaxBlockedRepeats` ＝ 2）。
-- 沒有 `DiagramFingerprint` 就不收 `diagram_understanding`；已通過、沒改的草稿再驗一次直接 `draft_ready`。
+- 沒有 `DiagramFingerprint` 就不收流程圖描述或拆解；有圖片的草稿必須同時有已確認描述、完整已回答拆解與最終確認。已通過、沒改的草稿再驗一次直接 `draft_ready`。
 - `raise_budget`：額度被拒的會話可提高預算後從 `waiting_input` 繼續，區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
 - Python 護欄只回 `reason` 碼，句子由 Go 出；`creation.py` 裡沒有中文。
 

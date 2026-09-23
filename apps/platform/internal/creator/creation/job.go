@@ -211,7 +211,7 @@ func (r attemptRefusal) sentence(p Snapshot, l Limits) string {
 }
 
 func diagramUnread(p Snapshot) bool {
-	return p.DiagramFingerprint != "" && p.DiagramUnderstanding == ""
+	return p.DiagramFingerprint != "" && !p.DiagramDescriptionConfirmed
 }
 
 func abandonedState(p Snapshot) State {
@@ -263,7 +263,7 @@ func sessionMoved(current gen.CreationSession, err error) bool {
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
 	p := e.Snapshot
-	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, p.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramDescription: p.DiagramDescription, DiagramDescriptionConfirmed: p.DiagramDescriptionConfirmed, DiagramInterpretation: p.DiagramInterpretation, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, p.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	req.Draft, req.DraftValidation = draftForModel(p.Draft, e.PreviousDraft)
 	return req
 }
@@ -451,7 +451,7 @@ func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.Creatio
 	if callErr != nil || response == nil || !live(row) || !e.Deadline.After(time.Now()) {
 		return "", false, ErrUnavailable
 	}
-	if hadDiagram && response.DiagramUnderstanding == "" {
+	if hadDiagram && !validDiagramDescription(response.DiagramDescription) {
 		return "", false, ErrInvalidCommand
 	}
 	return s.proposal(ctx, identity.Workspace{ID: a.WorkspaceID}, row.Revision+1, e, response)

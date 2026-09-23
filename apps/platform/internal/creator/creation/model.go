@@ -63,32 +63,37 @@ type ToolIntent struct {
 }
 
 type StepRequest struct {
-	SessionID            string
-	Revision             int64
-	Messages             []Message
-	Brief                string
-	AcceptanceCriteria   []string
-	SampleInput          string
-	BriefConfirmed       bool
-	DiagramUnderstanding string
-	DiagramConfirmed     bool
-	Diagram              *Diagram
-	References           []ReferenceSkill
-	Draft                *GeneratedSkill
-	DraftValidation      *DraftValidation
-	AllowedTools         []string
-	TimeoutSeconds       int
-	MaxOutputTokens      int
-	GatewayKey           string
+	SessionID                   string
+	Revision                    int64
+	Messages                    []Message
+	Brief                       string
+	AcceptanceCriteria          []string
+	SampleInput                 string
+	BriefConfirmed              bool
+	DiagramUnderstanding        string
+	DiagramDescription          string
+	DiagramDescriptionConfirmed bool
+	DiagramInterpretation       *DiagramInterpretation
+	DiagramConfirmed            bool
+	Diagram                     *Diagram
+	References                  []ReferenceSkill
+	Draft                       *GeneratedSkill
+	DraftValidation             *DraftValidation
+	AllowedTools                []string
+	TimeoutSeconds              int
+	MaxOutputTokens             int
+	GatewayKey                  string
 }
 
 type StepResult struct {
-	Outcome              string
-	Message              string
-	Brief                string
-	AcceptanceCriteria   []string
-	SampleInput          string
-	DiagramUnderstanding string
+	Outcome               string
+	Message               string
+	Brief                 string
+	AcceptanceCriteria    []string
+	SampleInput           string
+	DiagramUnderstanding  string
+	DiagramDescription    string
+	DiagramInterpretation *DiagramDecomposition
 
 	Reason        string
 	ToolIntent    *ToolIntent

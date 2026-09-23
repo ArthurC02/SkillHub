@@ -33,7 +33,15 @@ PROMPT_VERSION = "creation-step/v17"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
-Outcome = Literal["clarification", "confirm_brief", "confirm_diagram", "tool_intent", "draft"]
+Outcome = Literal[
+    "clarification",
+    "confirm_brief",
+    "confirm_diagram",
+    "confirm_diagram_description",
+    "confirm_diagram_interpretation",
+    "tool_intent",
+    "draft",
+]
 Reason = Literal[
     "draft_missing",
     "tool_unavailable",
@@ -69,10 +77,25 @@ class CreationDraftValidation(BaseModel):
 
 class DiagramInterpretation(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    nodes: list[str]
+    conditions: list[str]
+    branches: list[str]
+    uncertainties: list[str]
+
+
+class DiagramUncertainty(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    question: str
+    answer: str | None
+
+
+class ConfirmedDiagramInterpretation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     nodes: list[str] = Field(..., min_length=1, max_length=64)
     conditions: list[str] = Field(..., max_length=64)
     branches: list[str] = Field(..., max_length=128)
-    uncertainties: list[str] = Field(..., max_length=64)
+    uncertainties: list[DiagramUncertainty] = Field(..., max_length=64)
 
 
 def _diagram_text(value: str) -> str:
@@ -80,7 +103,7 @@ def _diagram_text(value: str) -> str:
         return value
     try:
         interpretation = DiagramInterpretation.model_validate_json(value)
-        if any(
+        if not interpretation.nodes or any(
             not item.strip() or len(item) > 2000
             for items in interpretation.model_dump().values()
             for item in items
@@ -103,6 +126,9 @@ class CreationStepRequest(BaseModel):
     sample_input: str = Field(..., max_length=4000)
     brief_confirmed: bool
     diagram_understanding: str = Field(..., max_length=20000)
+    diagram_description: str = Field(..., max_length=2000)
+    diagram_description_confirmed: bool
+    diagram_interpretation: ConfirmedDiagramInterpretation | None = None
     diagram_confirmed: bool
     diagram: GenerateDiagram | None = None
     references: list[GenerateReference] = Field(..., max_length=3)
@@ -125,6 +151,8 @@ class CreationDecision(BaseModel):
     acceptance_criteria: list[str] | None
     sample_input: str | None
     diagram_understanding: str | None
+    diagram_description: str | None
+    diagram_interpretation: DiagramInterpretation | None
     tool_intent: CreationToolIntent | None
     draft: GeneratedSkill | None
 
@@ -138,6 +166,8 @@ class CreationStepResponse(BaseModel):
     acceptance_criteria: list[str]
     sample_input: str
     diagram_understanding: str
+    diagram_description: str
+    diagram_interpretation: DiagramInterpretation | None = None
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
     model: str
@@ -191,10 +221,13 @@ def _prepare(state: _State) -> dict:
 
 def _observe(state: _State) -> dict:
     req = state["request"]
-    pending_diagram = (
-        req.diagram is not None or bool(req.diagram_understanding)
-    ) and not req.diagram_confirmed
-    if not req.brief_confirmed or pending_diagram:
+    if req.diagram is not None or (
+        req.diagram_understanding and not req.diagram_description_confirmed
+    ):
+        phase = "understand"
+    elif req.diagram_description_confirmed and req.diagram_interpretation is None:
+        phase = "decompose"
+    elif not req.brief_confirmed:
         phase = "understand"
     elif req.draft is None:
         phase = "compose"
@@ -276,9 +309,16 @@ def _add_usage(a: GatewayUsage | None, b: GatewayUsage | None) -> GatewayUsage |
 PHASE_INSTRUCTIONS = {
     "understand": (
         "Resolve missing requirements and propose concrete confirmations. Do not draft "
-        "before confirmation. Legacy plain-text diagram understanding must be reorganized "
-        "into the four explicit sections and confirmed again; never invent missing "
-        "branches."
+        "before confirmation. For an uploaded diagram, return only a concise natural-language "
+        "diagram_description and outcome confirm_diagram_description. Do not return nodes, "
+        "conditions, branches or uncertainties in this phase."
+    ),
+    "decompose": (
+        "The user confirmed the diagram description. Return outcome "
+        "confirm_diagram_interpretation with diagram_understanding as a JSON object containing "
+        "exactly nodes, conditions, branches and uncertainties. Each value is an array of "
+        "concrete strings; nodes is nonempty; missing sections are empty arrays. Ask an "
+        "uncertainty for every information gap that would require an assumption. Do not draft."
     ),
     "compose": (
         "Compose a first draft from the exact confirmed requirements. Go must validate it "
@@ -349,14 +389,14 @@ def _reason_node(gateway_key: str, phase: str):
             "confirm_brief covers all three; once "
             "brief_confirmed, keep brief, acceptance_criteria and sample_input unchanged or "
             "propose a new confirmation. "
-            "Read diagrams into named nodes, conditions, branches and explicit uncertainties; "
-            "diagram_understanding is only for an uploaded diagram (the diagram field); a "
-            "reference Skill or the user's text is never a diagram and gets no interpretation. "
+            "For an uploaded diagram, first return a concise diagram_description and request "
+            "confirmation. Only after diagram_description_confirmed may you return its named "
+            "nodes, conditions, branches and explicit uncertainties in diagram_understanding. "
+            "A reference Skill or the user's text is never a diagram and gets no interpretation. "
             "diagram_understanding must be a JSON-encoded object with exactly nodes, conditions, "
-            "branches, uncertainties: each is an array of concrete strings; "
-            "nodes must be nonempty, "
-            "and absent conditions, branches or uncertainties are empty arrays. "
-            "request confirmation of this understanding before drafting. "
+            "branches and uncertainties: each is an array of concrete strings, nodes must be "
+            "nonempty, and absent sections are empty arrays. The person must answer every "
+            "uncertainty and confirm the interpretation before drafting. "
             "Use search_catalog (keywords) or search_knowledge (a sentence describing the "
             "task; Go searches by meaning, across languages) when existing Skills could help: "
             "put the intent in query and up to three rewrites in queries (a synonym, the same "
@@ -560,9 +600,50 @@ def _reason_node(gateway_key: str, phase: str):
                 )
                 raise HTTPException(status_code=502, detail="creation model output was truncated")
             decision = CreationDecision.model_validate_json(choice.message.content or "")
-            if req.diagram is None and not req.diagram_understanding:
+            if req.diagram is not None:
+                description = (decision.diagram_description or decision.message).strip()
+                if not description:
+                    raise ValueError("missing diagram description")
+                decision = decision.model_copy(
+                    update={
+                        "outcome": "confirm_diagram_description",
+                        "diagram_description": description,
+                        "diagram_understanding": None,
+                        "diagram_interpretation": None,
+                        "draft": None,
+                        "tool_intent": None,
+                    }
+                )
+            elif (
+                req.diagram_description_confirmed
+                and req.diagram_interpretation is None
+                and decision.diagram_understanding
+            ):
+                decomposition = DiagramInterpretation.model_validate_json(
+                    decision.diagram_understanding
+                )
+                decision = decision.model_copy(
+                    update={
+                        "outcome": "confirm_diagram_interpretation",
+                        "diagram_interpretation": decomposition,
+                        "diagram_understanding": None,
+                        "draft": None,
+                        "tool_intent": None,
+                    }
+                )
+            if (
+                req.diagram is None
+                and not req.diagram_understanding
+                and not req.diagram_description
+            ):
                 decision.diagram_understanding = None
-                if decision.outcome == "confirm_diagram":
+                decision.diagram_description = None
+                decision.diagram_interpretation = None
+                if decision.outcome in (
+                    "confirm_diagram",
+                    "confirm_diagram_description",
+                    "confirm_diagram_interpretation",
+                ):
                     decision.outcome = "clarification"
             if decision.diagram_understanding:
                 try:
@@ -571,7 +652,12 @@ def _reason_node(gateway_key: str, phase: str):
                     pass
             if any(
                 len(v or "") > 20000
-                for v in [decision.message, decision.brief, decision.diagram_understanding]
+                for v in [
+                    decision.message,
+                    decision.brief,
+                    decision.diagram_understanding,
+                    decision.diagram_description,
+                ]
             ) or (decision.tool_intent and len(decision.tool_intent.query) > 4000):
                 raise ValueError("over cap: message, brief, diagram or tool query")
             if decision.acceptance_criteria is not None and (
@@ -641,8 +727,8 @@ def _confirmation(state: _State) -> dict:
             "reason": "brief_missing",
         }
     if (
-        d.outcome == "confirm_diagram"
-        and not (d.diagram_understanding or state["request"].diagram_understanding).strip()
+        d.outcome == "confirm_diagram_description"
+        and not (d.diagram_description or state["request"].diagram_description).strip()
     ):
         raise HTTPException(
             status_code=502, detail="creation returned an empty diagram interpretation"
@@ -706,7 +792,11 @@ def _tool(state: _State) -> dict:
 def _draft(state: _State) -> dict:
     req, d = state["request"], state["decision"]
     diagram_pending = (
-        req.diagram is not None or bool(req.diagram_understanding) or bool(d.diagram_understanding)
+        req.diagram is not None
+        or bool(req.diagram_understanding)
+        or bool(req.diagram_description)
+        or req.diagram_interpretation is not None
+        or bool(d.diagram_understanding)
     ) and not req.diagram_confirmed
     diagram_changed = req.diagram_confirmed and d.diagram_understanding not in (
         None,
@@ -718,7 +808,7 @@ def _draft(state: _State) -> dict:
         return {
             "decision": d.model_copy(
                 update={
-                    "outcome": "confirm_diagram",
+                    "outcome": "confirm_diagram_description",
                     "draft": None,
                     "tool_intent": None,
                     "message": "confirm diagram first",
@@ -797,7 +887,7 @@ def _render(state: _State) -> dict:
         brief = req.brief
         acceptance_criteria = req.acceptance_criteria
         sample_input = req.sample_input
-    if req.diagram_confirmed and d.outcome != "confirm_diagram":
+    if req.diagram_confirmed and d.outcome != "confirm_diagram_description":
         diagram = req.diagram_understanding
     if diagram:
         try:
@@ -822,6 +912,8 @@ def _render(state: _State) -> dict:
             acceptance_criteria=acceptance_criteria,
             sample_input=sample_input,
             diagram_understanding=diagram,
+            diagram_description=d.diagram_description or req.diagram_description,
+            diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
             draft=d.draft,
             model=MODEL,

@@ -47,6 +47,17 @@ export interface CreationModelChange {
   acceptance_criteria?: string[];
   sample_input?: string;
 }
+export interface CreationDiagramUncertainty {
+  id: string;
+  question: string;
+  answer?: string;
+}
+export interface CreationDiagramInterpretation {
+  nodes: string[];
+  conditions: string[];
+  branches: string[];
+  uncertainties: CreationDiagramUncertainty[];
+}
 export interface CreationSnapshot {
   messages: { role: "user" | "assistant" | "tool"; content: string; created_at?: string }[];
   brief: string;
@@ -55,6 +66,9 @@ export interface CreationSnapshot {
   sample_input?: string;
   model_changed?: CreationModelChange;
   diagram_understanding: string;
+  diagram_description?: string;
+  diagram_description_confirmed?: boolean;
+  diagram_interpretation?: CreationDiagramInterpretation;
   diagram_confirmed: boolean;
   attachments?: CreationAttachment[];
   references: CreationReference[];
@@ -118,6 +132,8 @@ export interface CreationAction {
     | "message"
     | "confirm_brief"
     | "confirm_diagram"
+    | "answer_diagram_uncertainty"
+    | "confirm_diagram_interpretation"
     | "select_references"
     | "confirm_references"
     | "materialize"
@@ -136,6 +152,8 @@ export interface CreationAction {
   reference_skill_ids?: string[];
   content_hash?: string;
   diagram?: { media_type: string; data: string };
+  diagram_uncertainty_id?: string;
+  diagram_answer?: string;
   run_id?: string;
   budget_credits?: number;
 }

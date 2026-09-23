@@ -1916,10 +1916,69 @@ components:
             type: string
             maxLength: 200
           description: For the two search kinds, up to three rewrites of the intent (a synonym, the other language, one distinctive term). Go runs the hybrid retrieval for the query and every rewrite and fuses the rankings (reciprocal rank) before the person sees the candidates; at most two empty rounds per session, then the model drafts without a reference (04 丙-177).
+    CreationDiagramUncertainty:
+      type: object
+      additionalProperties: false
+      required: [id, question]
+      properties:
+        id:
+          type: string
+          format: uuid
+        question:
+          type: string
+          maxLength: 2000
+        answer:
+          type: string
+          maxLength: 2000
+    CreationDiagramInterpretation:
+      type: object
+      additionalProperties: false
+      required: [nodes, conditions, branches, uncertainties]
+      properties:
+        nodes:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items: {type: string, maxLength: 2000}
+        conditions:
+          type: array
+          maxItems: 64
+          items: {type: string, maxLength: 2000}
+        branches:
+          type: array
+          maxItems: 128
+          items: {type: string, maxLength: 2000}
+        uncertainties:
+          type: array
+          maxItems: 64
+          items:
+            $ref: '#/components/schemas/CreationDiagramUncertainty'
+    CreationDiagramDecomposition:
+      type: object
+      additionalProperties: false
+      required: [nodes, conditions, branches, uncertainties]
+      properties:
+        nodes:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items: {type: string, maxLength: 2000}
+        conditions:
+          type: array
+          maxItems: 64
+          items: {type: string, maxLength: 2000}
+        branches:
+          type: array
+          maxItems: 128
+          items: {type: string, maxLength: 2000}
+        uncertainties:
+          type: array
+          maxItems: 64
+          items: {type: string, maxLength: 2000}
     CreationStepRequest:
       type: object
       additionalProperties: false
-      required: [session_id, revision, messages, brief, acceptance_criteria, sample_input, brief_confirmed, diagram_understanding, diagram_confirmed, references, allowed_tools, timeout_seconds, max_output_tokens]
+      required: [session_id, revision, messages, brief, acceptance_criteria, sample_input, brief_confirmed, diagram_understanding, diagram_description, diagram_description_confirmed, diagram_confirmed, references, allowed_tools, timeout_seconds, max_output_tokens]
       properties:
         session_id:
           type: string
@@ -1952,6 +2011,14 @@ components:
           type: string
           maxLength: 20000
           description: Empty before interpretation; otherwise a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays. Nodes must be nonempty. Legacy plain text must be reinterpreted and reconfirmed.
+        diagram_description:
+          type: string
+          maxLength: 2000
+          description: The creator-confirmed plain-language description of the newest diagram. Empty before its first checkpoint.
+        diagram_description_confirmed:
+          type: boolean
+        diagram_interpretation:
+          $ref: '#/components/schemas/CreationDiagramInterpretation'
         diagram_confirmed:
           type: boolean
         diagram:
@@ -1983,11 +2050,11 @@ components:
     CreationStepResponse:
       type: object
       additionalProperties: false
-      required: [outcome, message, brief, acceptance_criteria, sample_input, diagram_understanding, model, prompt_version]
+      required: [outcome, message, brief, acceptance_criteria, sample_input, diagram_understanding, diagram_description, model, prompt_version]
       properties:
         outcome:
           type: string
-          enum: [clarification, confirm_brief, confirm_diagram, tool_intent, draft]
+          enum: [clarification, confirm_brief, confirm_diagram_description, confirm_diagram_interpretation, tool_intent, draft]
         message:
           type: string
           maxLength: 20000
@@ -2013,6 +2080,11 @@ components:
           type: string
           maxLength: 20000
           description: Empty or a JSON-encoded object with exactly nodes, conditions, branches and uncertainties string arrays; nodes must be nonempty.
+        diagram_description:
+          type: string
+          maxLength: 2000
+        diagram_interpretation:
+          $ref: '#/components/schemas/CreationDiagramDecomposition'
         tool_intent:
           $ref: '#/components/schemas/CreationToolIntent'
         draft:

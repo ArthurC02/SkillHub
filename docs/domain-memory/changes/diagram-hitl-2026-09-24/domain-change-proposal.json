@@ -1,0 +1,42 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "diagram-hitl-2026-09-24",
+  "proposer": "coding-agent",
+  "requirement_id": "c-176-diagram-two-phase-hitl",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": ["creation"],
+  "rule_ids": ["creation-reaches-its-collaborators-through-inversion"],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "A draft influenced by a diagram is admissible only after the newest diagram's description and complete, answered interpretation were separately confirmed by the creator; all answer identities belong to that snapshot.",
+    "evidence": [{"path": "docs/plans/04-backlog-and-handoffs.md", "lines": {"start": 572, "end": 572}, "content_sha256": "sha256:f98b14cf3fbbdb4769d7dfd5c4b7adee61ee8cd2106e38bd1fb2be2bacc1d6c4", "excerpt_sha256": "sha256:d87974e5273acba4d620470e67379daf48e2c38cecf63357c6b092d1a7dd00ba", "source_kind": "requirements"}]
+  },
+  "boundary_decision": {
+    "interaction": "The existing Creation Context sends a versioned CreationStep request through its injected model port and projects the returned description or interpretation into its own session snapshot; the web client only reads the public snapshot and submits commands.",
+    "consistency": "synchronous for each checkpoint command; existing queued worker execution remains asynchronous after a checkpoint is accepted",
+    "prohibited_dependencies": ["No new Creation-to-testlab, Creation-to-registry or web-to-provider dependency.", "No provider-generated uncertainty identity, answer store or session state.", "No image bytes in the durable snapshot or public response."],
+    "evidence": [{"path": "apps/platform/internal/creator/creation/creation.go", "lines": {"start": 94, "end": 106}, "content_sha256": "sha256:06de5fa79bbc72d9d5d18bde324783df0a075ee817783fb1ccd829eaede8f788", "excerpt_sha256": "sha256:c93a1d6f59f5a8659d6cac1e413289b4b63d8465c6a08f9cc868465999e9d54f", "source_kind": "implementation"}]
+  },
+  "implementation_design": {
+    "domain_forces": ["The model can see an image only during the transient first step, while the platform intentionally stores metadata rather than image bytes.", "A creator needs to correct or reconsider individual answers before the next billable model call.", "The existing session revision and command receipt are the authority for concurrent tabs and retries.", "Legacy snapshots contain one undifferentiated diagram_understanding field and must never be silently treated as a new confirmed interpretation."],
+    "decision": "Use owner-local value objects in the existing Creation snapshot: a description checkpoint, a structured interpretation, and platform-assigned uncertainty ids with optional answers. The first model response may contain only the description. Confirmation queues the second model step; its interpretation is stored without a draft. Each answer command persists exactly one answer. A separate confirmation, enabled only when every answer is valid, queues the first step allowed to create a draft. Replacing the image clears all three value objects and downstream work. Legacy diagram snapshots remain readable but require re-upload before this flow can continue because the original image is deliberately unavailable.",
+    "invariants_preserved": ["Creation owns session state and checkpoint transitions.", "The Worker remains the sole queue consumer and the model remains a structured capability provider.", "A command, its receipt, state transition, event and queued follow-up remain in the same transaction.", "The model provider receives only data the creator can inspect in the snapshot, excluding UI-only command metadata and image bytes after the transient step."],
+    "rejected_alternatives": ["A single JSON blob with a single confirmation cannot prove that each uncertainty was answered.", "Letting the model assign ids makes an answer vulnerable to reordered or substituted questions.", "Queueing after the last typed answer removes the creator's chance to review all answers before a billable step.", "Backfilling legacy diagrams as confirmed would manufacture human consent for an image that cannot be re-read."],
+    "proof_obligations": ["diagram-description-before-decomposition", "diagram-uncertainties-block-drafting", "diagram-confirmed-interpretation-only", "diagram-replacement-invalidates-checkpoints", "diagram-answer-concurrency-and-replay", "creation-diagram-port-inversion"],
+    "counterfactual_check": "Temporarily remove the all-answers-complete guard from interpretation confirmation; the focused Creation state-transition test must accept the command before restoration and fail while the guard is absent. Separately remove the draft admission checkpoint; the draft-rejection test must fail."
+  },
+  "event_change": null,
+  "contract_change": {"producer": "Skill Creation", "consumers": ["web client", "LLM capability provider"], "version": "public API 0.1.0 and llm-internal API 0.1.0", "compatibility": "additive response fields and action kinds; existing legacy fields remain readable but cannot authorize a new diagram draft", "data_classification": "workspace-scoped creation-session metadata", "retry_behavior": "existing command id and expected revision rules apply to every new answer and confirmation action", "breaking_change": false},
+  "registry_updates": [{"operation": "upsert", "asset": "rules", "record": {"id": "creation-diagram-checkpoints-precede-draft", "contexts": ["creation"], "statement": "The newest diagram may influence a draft only after its description and complete, answered interpretation are separately confirmed by the creator.", "examples": ["A draft returned before all recorded uncertainties are answered is refused.", "Replacing the diagram clears confirmations and answers for the prior image."], "evidence": [{"path": "docs/plans/04-backlog-and-handoffs.md", "lines": {"start": 572, "end": 572}, "content_sha256": "sha256:f98b14cf3fbbdb4769d7dfd5c4b7adee61ee8cd2106e38bd1fb2be2bacc1d6c4", "excerpt_sha256": "sha256:d87974e5273acba4d620470e67379daf48e2c38cecf63357c6b092d1a7dd00ba", "source_kind": "requirements"}]}}],
+  "risk_flags": ["public_contract"],
+  "open_questions": [],
+  "approvals": []
+}

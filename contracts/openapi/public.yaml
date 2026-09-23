@@ -9392,6 +9392,14 @@ components:
           $ref: "#/components/schemas/CreationModelChange"
         diagram_understanding:
           type: "string"
+          description: "Legacy one-phase diagram interpretation. It remains readable for an existing session but cannot authorize a draft; upload the image again to use the checkpointed flow."
+        diagram_description:
+          type: "string"
+          description: "The model's plain-language description of the newest uploaded diagram. It is confirmed before structural decomposition."
+        diagram_description_confirmed:
+          type: "boolean"
+        diagram_interpretation:
+          $ref: "#/components/schemas/CreationDiagramInterpretation"
         diagram_confirmed:
           type: "boolean"
         diagram_fingerprint:
@@ -9591,6 +9599,8 @@ components:
             - "message"
             - "confirm_brief"
             - "confirm_diagram"
+            - "answer_diagram_uncertainty"
+            - "confirm_diagram_interpretation"
             - "select_references"
             - "confirm_references"
             - "materialize"
@@ -9623,7 +9633,53 @@ components:
           type: "string"
         diagram:
           $ref: "#/components/schemas/GenerateDiagram"
+        diagram_uncertainty_id:
+          type: "string"
+          format: "uuid"
+          description: "answer_diagram_uncertainty only: an id returned in the current snapshot's diagram_interpretation."
+        diagram_answer:
+          type: "string"
+          maxLength: 2000
+          description: "answer_diagram_uncertainty only: the creator's answer to that exact question."
         run_id:
           type: "string"
           format: "uuid"
-      description: "stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."
+      description: "stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. confirm_diagram confirms the description only; answer_diagram_uncertainty records one answer; confirm_diagram_interpretation queues the next step only after every displayed uncertainty is answered. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service."
+
+    CreationDiagramUncertainty:
+      type: "object"
+      additionalProperties: false
+      required: ["id", "question"]
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+        question:
+          type: "string"
+          maxLength: 2000
+        answer:
+          type: "string"
+          maxLength: 2000
+    CreationDiagramInterpretation:
+      type: "object"
+      additionalProperties: false
+      required: ["nodes", "conditions", "branches", "uncertainties"]
+      properties:
+        nodes:
+          type: "array"
+          minItems: 1
+          maxItems: 64
+          items: {type: "string", maxLength: 2000}
+        conditions:
+          type: "array"
+          maxItems: 64
+          items: {type: "string", maxLength: 2000}
+        branches:
+          type: "array"
+          maxItems: 128
+          items: {type: "string", maxLength: 2000}
+        uncertainties:
+          type: "array"
+          maxItems: 64
+          items:
+            $ref: "#/components/schemas/CreationDiagramUncertainty"

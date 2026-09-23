@@ -6271,6 +6271,18 @@ func (s *CreationAction) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.DiagramUncertaintyID.Set {
+			e.FieldStart("diagram_uncertainty_id")
+			s.DiagramUncertaintyID.Encode(e)
+		}
+	}
+	{
+		if s.DiagramAnswer.Set {
+			e.FieldStart("diagram_answer")
+			s.DiagramAnswer.Encode(e)
+		}
+	}
+	{
 		if s.RunID.Set {
 			e.FieldStart("run_id")
 			s.RunID.Encode(e)
@@ -6278,16 +6290,18 @@ func (s *CreationAction) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationAction = [9]string{
-	0: "command_id",
-	1: "expected_revision",
-	2: "kind",
-	3: "message",
-	4: "budget_credits",
-	5: "reference_skill_ids",
-	6: "content_hash",
-	7: "diagram",
-	8: "run_id",
+var jsonFieldsNameOfCreationAction = [11]string{
+	0:  "command_id",
+	1:  "expected_revision",
+	2:  "kind",
+	3:  "message",
+	4:  "budget_credits",
+	5:  "reference_skill_ids",
+	6:  "content_hash",
+	7:  "diagram",
+	8:  "diagram_uncertainty_id",
+	9:  "diagram_answer",
+	10: "run_id",
 }
 
 // Decode decodes CreationAction from json.
@@ -6392,6 +6406,26 @@ func (s *CreationAction) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"diagram\"")
 			}
+		case "diagram_uncertainty_id":
+			if err := func() error {
+				s.DiagramUncertaintyID.Reset()
+				if err := s.DiagramUncertaintyID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram_uncertainty_id\"")
+			}
+		case "diagram_answer":
+			if err := func() error {
+				s.DiagramAnswer.Reset()
+				if err := s.DiagramAnswer.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram_answer\"")
+			}
 		case "run_id":
 			if err := func() error {
 				s.RunID.Reset()
@@ -6481,6 +6515,10 @@ func (s *CreationActionKind) Decode(d *jx.Decoder) error {
 		*s = CreationActionKindConfirmBrief
 	case CreationActionKindConfirmDiagram:
 		*s = CreationActionKindConfirmDiagram
+	case CreationActionKindAnswerDiagramUncertainty:
+		*s = CreationActionKindAnswerDiagramUncertainty
+	case CreationActionKindConfirmDiagramInterpretation:
+		*s = CreationActionKindConfirmDiagramInterpretation
 	case CreationActionKindSelectReferences:
 		*s = CreationActionKindSelectReferences
 	case CreationActionKindConfirmReferences:
@@ -6859,6 +6897,329 @@ func (s *CreationCandidate) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *CreationCandidate) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *CreationDiagramInterpretation) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreationDiagramInterpretation) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("nodes")
+		e.ArrStart()
+		for _, elem := range s.Nodes {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("conditions")
+		e.ArrStart()
+		for _, elem := range s.Conditions {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("branches")
+		e.ArrStart()
+		for _, elem := range s.Branches {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("uncertainties")
+		e.ArrStart()
+		for _, elem := range s.Uncertainties {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfCreationDiagramInterpretation = [4]string{
+	0: "nodes",
+	1: "conditions",
+	2: "branches",
+	3: "uncertainties",
+}
+
+// Decode decodes CreationDiagramInterpretation from json.
+func (s *CreationDiagramInterpretation) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationDiagramInterpretation to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "nodes":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				s.Nodes = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Nodes = append(s.Nodes, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"nodes\"")
+			}
+		case "conditions":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Conditions = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Conditions = append(s.Conditions, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"conditions\"")
+			}
+		case "branches":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Branches = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.Branches = append(s.Branches, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"branches\"")
+			}
+		case "uncertainties":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				s.Uncertainties = make([]CreationDiagramUncertainty, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem CreationDiagramUncertainty
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Uncertainties = append(s.Uncertainties, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"uncertainties\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreationDiagramInterpretation")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreationDiagramInterpretation) {
+					name = jsonFieldsNameOfCreationDiagramInterpretation[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreationDiagramInterpretation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationDiagramInterpretation) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *CreationDiagramUncertainty) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreationDiagramUncertainty) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("id")
+		json.EncodeUUID(e, s.ID)
+	}
+	{
+		e.FieldStart("question")
+		e.Str(s.Question)
+	}
+	{
+		if s.Answer.Set {
+			e.FieldStart("answer")
+			s.Answer.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfCreationDiagramUncertainty = [3]string{
+	0: "id",
+	1: "question",
+	2: "answer",
+}
+
+// Decode decodes CreationDiagramUncertainty from json.
+func (s *CreationDiagramUncertainty) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationDiagramUncertainty to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.ID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"id\"")
+			}
+		case "question":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Question = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"question\"")
+			}
+		case "answer":
+			if err := func() error {
+				s.Answer.Reset()
+				if err := s.Answer.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"answer\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreationDiagramUncertainty")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreationDiagramUncertainty) {
+					name = jsonFieldsNameOfCreationDiagramUncertainty[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreationDiagramUncertainty) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationDiagramUncertainty) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -8622,6 +8983,24 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 		e.Str(s.DiagramUnderstanding)
 	}
 	{
+		if s.DiagramDescription.Set {
+			e.FieldStart("diagram_description")
+			s.DiagramDescription.Encode(e)
+		}
+	}
+	{
+		if s.DiagramDescriptionConfirmed.Set {
+			e.FieldStart("diagram_description_confirmed")
+			s.DiagramDescriptionConfirmed.Encode(e)
+		}
+	}
+	{
+		if s.DiagramInterpretation.Set {
+			e.FieldStart("diagram_interpretation")
+			s.DiagramInterpretation.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("diagram_confirmed")
 		e.Bool(s.DiagramConfirmed)
 	}
@@ -8803,7 +9182,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreationSnapshot = [37]string{
+var jsonFieldsNameOfCreationSnapshot = [40]string{
 	0:  "messages",
 	1:  "brief",
 	2:  "acceptance_criteria",
@@ -8811,36 +9190,39 @@ var jsonFieldsNameOfCreationSnapshot = [37]string{
 	4:  "brief_confirmed",
 	5:  "model_changed",
 	6:  "diagram_understanding",
-	7:  "diagram_confirmed",
-	8:  "diagram_fingerprint",
-	9:  "attachments",
-	10: "references",
-	11: "draft",
-	12: "candidate",
-	13: "pending_action",
-	14: "budget_credits",
-	15: "reserved_credits",
-	16: "spent_credits",
-	17: "usage_unknown",
-	18: "steps",
-	19: "tool_calls",
-	20: "draft_retries",
-	21: "run_unmet",
-	22: "nudges",
-	23: "blocked_repeats",
-	24: "search_rounds",
-	25: "catalog_checked",
-	26: "duplicates",
-	27: "pending_materialize",
-	28: "duplicate_acknowledged",
-	29: "adopted",
-	30: "pending_fetch_url",
-	31: "fetches",
-	32: "model",
-	33: "prompt_version",
-	34: "diagram_media_type",
-	35: "diagram_bytes",
-	36: "previous_draft",
+	7:  "diagram_description",
+	8:  "diagram_description_confirmed",
+	9:  "diagram_interpretation",
+	10: "diagram_confirmed",
+	11: "diagram_fingerprint",
+	12: "attachments",
+	13: "references",
+	14: "draft",
+	15: "candidate",
+	16: "pending_action",
+	17: "budget_credits",
+	18: "reserved_credits",
+	19: "spent_credits",
+	20: "usage_unknown",
+	21: "steps",
+	22: "tool_calls",
+	23: "draft_retries",
+	24: "run_unmet",
+	25: "nudges",
+	26: "blocked_repeats",
+	27: "search_rounds",
+	28: "catalog_checked",
+	29: "duplicates",
+	30: "pending_materialize",
+	31: "duplicate_acknowledged",
+	32: "adopted",
+	33: "pending_fetch_url",
+	34: "fetches",
+	35: "model",
+	36: "prompt_version",
+	37: "diagram_media_type",
+	38: "diagram_bytes",
+	39: "previous_draft",
 }
 
 // Decode decodes CreationSnapshot from json.
@@ -8946,8 +9328,38 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"diagram_understanding\"")
 			}
+		case "diagram_description":
+			if err := func() error {
+				s.DiagramDescription.Reset()
+				if err := s.DiagramDescription.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram_description\"")
+			}
+		case "diagram_description_confirmed":
+			if err := func() error {
+				s.DiagramDescriptionConfirmed.Reset()
+				if err := s.DiagramDescriptionConfirmed.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram_description_confirmed\"")
+			}
+		case "diagram_interpretation":
+			if err := func() error {
+				s.DiagramInterpretation.Reset()
+				if err := s.DiagramInterpretation.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"diagram_interpretation\"")
+			}
 		case "diagram_confirmed":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Bool()
 				s.DiagramConfirmed = bool(v)
@@ -8986,7 +9398,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"attachments\"")
 			}
 		case "references":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				s.References = make([]CreationReference, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -9024,7 +9436,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate\"")
 			}
 		case "pending_action":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.PendingAction = string(v)
@@ -9036,7 +9448,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"pending_action\"")
 			}
 		case "budget_credits":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.BudgetCredits = int(v)
@@ -9048,7 +9460,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"budget_credits\"")
 			}
 		case "reserved_credits":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.ReservedCredits = int(v)
@@ -9070,7 +9482,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"spent_credits\"")
 			}
 		case "usage_unknown":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.UsageUnknown = bool(v)
@@ -9082,7 +9494,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage_unknown\"")
 			}
 		case "steps":
-			requiredBitSet[2] |= 1 << 2
+			requiredBitSet[2] |= 1 << 5
 			if err := func() error {
 				v, err := d.Int()
 				s.Steps = int(v)
@@ -9094,7 +9506,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"steps\"")
 			}
 		case "tool_calls":
-			requiredBitSet[2] |= 1 << 3
+			requiredBitSet[2] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.ToolCalls = int(v)
@@ -9299,9 +9711,9 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [5]uint8{
-		0b11010111,
-		0b11100100,
-		0b00001110,
+		0b01010111,
+		0b00100100,
+		0b01110111,
 		0b00000000,
 		0b00000000,
 	} {
@@ -27321,6 +27733,39 @@ func (s OptCreationCandidate) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptCreationCandidate) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationDiagramInterpretation as json.
+func (o OptCreationDiagramInterpretation) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes CreationDiagramInterpretation from json.
+func (o *OptCreationDiagramInterpretation) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptCreationDiagramInterpretation to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptCreationDiagramInterpretation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptCreationDiagramInterpretation) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

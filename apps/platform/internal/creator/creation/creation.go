@@ -15,14 +15,16 @@ import (
 )
 
 type Command struct {
-	ID                pgtype.UUID `json:"command_id"`
-	ExpectedRevision  int64       `json:"expected_revision"`
-	Kind              string      `json:"kind"`
-	Message           string      `json:"message,omitempty"`
-	ReferenceSkillIDs []string    `json:"reference_skill_ids,omitempty"`
-	ContentHash       string      `json:"content_hash,omitempty"`
-	Diagram           *Diagram    `json:"diagram,omitempty"`
-	RunID             string      `json:"run_id,omitempty"`
+	ID                   pgtype.UUID `json:"command_id"`
+	ExpectedRevision     int64       `json:"expected_revision"`
+	Kind                 string      `json:"kind"`
+	Message              string      `json:"message,omitempty"`
+	ReferenceSkillIDs    []string    `json:"reference_skill_ids,omitempty"`
+	ContentHash          string      `json:"content_hash,omitempty"`
+	Diagram              *Diagram    `json:"diagram,omitempty"`
+	DiagramUncertaintyID string      `json:"diagram_uncertainty_id,omitempty"`
+	DiagramAnswer        string      `json:"diagram_answer,omitempty"`
+	RunID                string      `json:"run_id,omitempty"`
 
 	BudgetUSD float64 `json:"budget_usd,omitempty"`
 }
@@ -95,7 +97,8 @@ func confirmed(p Snapshot) bool {
 	if !p.BriefConfirmed || strings.TrimSpace(p.Brief) == "" {
 		return false
 	}
-	if (p.DiagramFingerprint != "" || p.DiagramUnderstanding != "") && (!p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramUnderstanding)) {
+	if p.DiagramFingerprint != "" &&
+		(!p.DiagramDescriptionConfirmed || !p.DiagramConfirmed || !validDiagramInterpretation(p.DiagramInterpretation) || !allDiagramUncertaintiesAnswered(p.DiagramInterpretation)) {
 		return false
 	}
 	for _, r := range p.References {
@@ -231,7 +234,11 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 	case "confirm_brief":
 		return confirmBrief(p)
 	case "confirm_diagram":
-		return confirmDiagram(p)
+		return confirmDiagramDescription(p)
+	case "answer_diagram_uncertainty":
+		return answerDiagramUncertainty(p, c.DiagramUncertaintyID, c.DiagramAnswer)
+	case "confirm_diagram_interpretation":
+		return confirmDiagramInterpretation(p)
 	case "select_references":
 		return s.selectReferences(ctx, ws, p, c)
 	case "adopt_reference":
@@ -321,8 +328,33 @@ func confirmBrief(p *Snapshot) (commandOutcome, error) {
 	return stepQueued(), nil
 }
 
-func confirmDiagram(p *Snapshot) (commandOutcome, error) {
-	if p.PendingAction != PendingDiagramConfirmation || !validDiagramInterpretation(p.DiagramUnderstanding) {
+func confirmDiagramDescription(p *Snapshot) (commandOutcome, error) {
+	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramDescription || !validDiagramDescription(p.DiagramDescription) || p.DiagramInterpretation != nil {
+		return commandOutcome{}, ErrInvalidCommand
+	}
+	p.DiagramDescriptionConfirmed = true
+	p.PendingAction = NothingPending
+	return stepQueued(), nil
+}
+
+func answerDiagramUncertainty(p *Snapshot, id, answer string) (commandOutcome, error) {
+	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramAnswers || !validDiagramAnswer(answer) || !validDiagramInterpretation(p.DiagramInterpretation) {
+		return commandOutcome{}, ErrInvalidCommand
+	}
+	for i := range p.DiagramInterpretation.Uncertainties {
+		if p.DiagramInterpretation.Uncertainties[i].ID == id {
+			p.DiagramInterpretation.Uncertainties[i].Answer = answer
+			if allDiagramUncertaintiesAnswered(p.DiagramInterpretation) {
+				p.PendingAction = PendingDiagramInterpretation
+			}
+			return settledIn(StateWaitingConfirmation), nil
+		}
+	}
+	return commandOutcome{}, ErrInvalidCommand
+}
+
+func confirmDiagramInterpretation(p *Snapshot) (commandOutcome, error) {
+	if p.DiagramFingerprint == "" || p.PendingAction != PendingDiagramInterpretation || !p.DiagramDescriptionConfirmed || !allDiagramUncertaintiesAnswered(p.DiagramInterpretation) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
 	p.DiagramConfirmed = true

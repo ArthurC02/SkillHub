@@ -26,6 +26,9 @@ func (s *Service) attachDiagram(p *Snapshot, c Command) (commandOutcome, error) 
 		SHA256:       p.DiagramFingerprint,
 	})
 	p.DiagramUnderstanding = ""
+	p.DiagramDescription = ""
+	p.DiagramDescriptionConfirmed = false
+	p.DiagramInterpretation = nil
 	p.DiagramConfirmed = false
 	p.BriefConfirmed = false
 	invalidate(p)

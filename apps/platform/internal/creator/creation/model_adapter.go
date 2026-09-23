@@ -19,41 +19,66 @@ func ModelOrNone(c *llmclient.Client) StepModel {
 
 func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepResult, error) {
 	resp, err := a.client.CreationStep(ctx, llmclient.CreationStepRequest{
-		SessionID:            req.SessionID,
-		Revision:             req.Revision,
-		Messages:             wireMessages(req.Messages),
-		Brief:                req.Brief,
-		AcceptanceCriteria:   req.AcceptanceCriteria,
-		SampleInput:          req.SampleInput,
-		BriefConfirmed:       req.BriefConfirmed,
-		DiagramUnderstanding: req.DiagramUnderstanding,
-		DiagramConfirmed:     req.DiagramConfirmed,
-		Diagram:              wireDiagram(req.Diagram),
-		References:           wireReferences(req.References),
-		Draft:                wireSkill(req.Draft),
-		DraftValidation:      wireValidation(req.DraftValidation),
-		AllowedTools:         req.AllowedTools,
-		TimeoutSeconds:       req.TimeoutSeconds,
-		MaxOutputTokens:      req.MaxOutputTokens,
-		GatewayKey:           req.GatewayKey,
+		SessionID:                   req.SessionID,
+		Revision:                    req.Revision,
+		Messages:                    wireMessages(req.Messages),
+		Brief:                       req.Brief,
+		AcceptanceCriteria:          req.AcceptanceCriteria,
+		SampleInput:                 req.SampleInput,
+		BriefConfirmed:              req.BriefConfirmed,
+		DiagramUnderstanding:        req.DiagramUnderstanding,
+		DiagramDescription:          req.DiagramDescription,
+		DiagramDescriptionConfirmed: req.DiagramDescriptionConfirmed,
+		DiagramInterpretation:       wireDiagramInterpretation(req.DiagramInterpretation),
+		DiagramConfirmed:            req.DiagramConfirmed,
+		Diagram:                     wireDiagram(req.Diagram),
+		References:                  wireReferences(req.References),
+		Draft:                       wireSkill(req.Draft),
+		DraftValidation:             wireValidation(req.DraftValidation),
+		AllowedTools:                req.AllowedTools,
+		TimeoutSeconds:              req.TimeoutSeconds,
+		MaxOutputTokens:             req.MaxOutputTokens,
+		GatewayKey:                  req.GatewayKey,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &StepResult{
-		Outcome:              resp.Outcome,
-		Message:              resp.Message,
-		Brief:                resp.Brief,
-		AcceptanceCriteria:   resp.AcceptanceCriteria,
-		SampleInput:          resp.SampleInput,
-		DiagramUnderstanding: resp.DiagramUnderstanding,
-		Reason:               resp.Reason,
-		ToolIntent:           intentFromWire(resp.ToolIntent),
-		Draft:                skillFromWire(resp.Draft),
-		Model:                resp.Model,
-		PromptVersion:        resp.PromptVersion,
-		Usage:                usageFromWire(resp.Usage),
+		Outcome:               resp.Outcome,
+		Message:               resp.Message,
+		Brief:                 resp.Brief,
+		AcceptanceCriteria:    resp.AcceptanceCriteria,
+		SampleInput:           resp.SampleInput,
+		DiagramUnderstanding:  resp.DiagramUnderstanding,
+		DiagramDescription:    resp.DiagramDescription,
+		DiagramInterpretation: diagramDecompositionFromWire(resp.DiagramInterpretation),
+		Reason:                resp.Reason,
+		ToolIntent:            intentFromWire(resp.ToolIntent),
+		Draft:                 skillFromWire(resp.Draft),
+		Model:                 resp.Model,
+		PromptVersion:         resp.PromptVersion,
+		Usage:                 usageFromWire(resp.Usage),
 	}, nil
+}
+
+func wireDiagramInterpretation(value *DiagramInterpretation) *llmclient.DiagramInterpretation {
+	if value == nil {
+		return nil
+	}
+	result := &llmclient.DiagramInterpretation{
+		Nodes: append([]string(nil), value.Nodes...), Conditions: append([]string(nil), value.Conditions...), Branches: append([]string(nil), value.Branches...),
+	}
+	for _, uncertainty := range value.Uncertainties {
+		result.Uncertainties = append(result.Uncertainties, llmclient.DiagramUncertainty{ID: uncertainty.ID, Question: uncertainty.Question, Answer: uncertainty.Answer})
+	}
+	return result
+}
+
+func diagramDecompositionFromWire(value *llmclient.DiagramDecomposition) *DiagramDecomposition {
+	if value == nil {
+		return nil
+	}
+	return &DiagramDecomposition{Nodes: append([]string(nil), value.Nodes...), Conditions: append([]string(nil), value.Conditions...), Branches: append([]string(nil), value.Branches...), Uncertainties: append([]string(nil), value.Uncertainties...)}
 }
 
 func wireMessages(messages []Message) []llmclient.CreationMessage {

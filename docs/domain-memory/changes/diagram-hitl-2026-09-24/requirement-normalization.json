@@ -1,0 +1,35 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "c-176-diagram-two-phase-hitl",
+  "status": "draft",
+  "intent": "Make a diagram-led Skill creation safe to review before its structure influences a generated draft.",
+  "actor": "creator",
+  "observable_outcome": "A creator first confirms the platform's plain-language description of an uploaded diagram, then reviews its node, condition and branch interpretation, answers every identified uncertainty, and explicitly confirms that complete interpretation before another model step may draft from it.",
+  "acceptance_criteria": [
+    {
+      "id": "diagram-description-before-decomposition",
+      "statement": "An uploaded diagram produces a description checkpoint before the platform stores or presents a node, condition, branch or uncertainty decomposition."
+    },
+    {
+      "id": "diagram-uncertainties-block-drafting",
+      "statement": "Every uncertainty in a stored diagram interpretation has a stable platform-owned identity and a nonblank creator answer before the creator can confirm the interpretation or a draft can be accepted."
+    },
+    {
+      "id": "diagram-confirmed-interpretation-only",
+      "statement": "Only an explicitly confirmed, complete interpretation for the newest diagram can authorize a model result that contains a draft."
+    },
+    {
+      "id": "diagram-replacement-invalidates-checkpoints",
+      "statement": "Uploading a replacement diagram clears its predecessor's description, decomposition, answers, confirmations and derived draft so no answer can be applied to a different image."
+    },
+    {
+      "id": "diagram-answer-concurrency-and-replay",
+      "statement": "A stale revision, an unknown uncertainty id, a blank answer, or a reused command id with changed content is rejected without changing the session; an exact retry returns the recorded result."
+    }
+  ],
+  "candidate_terms": ["diagram description", "diagram interpretation", "diagram uncertainty", "diagram answer", "description checkpoint", "interpretation checkpoint"],
+  "open_questions": [],
+  "risk_flags": ["public_contract"],
+  "required_approval_roles": ["developer"],
+  "sources": ["docs/plans/04-backlog-and-handoffs.md#丙-176", "docs/plans/05-pending-rulings.md#R-45"]
+}

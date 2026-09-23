@@ -40,6 +40,8 @@ def request(**changes):
         "sample_input": "",
         "brief_confirmed": False,
         "diagram_understanding": "",
+        "diagram_description": "",
+        "diagram_description_confirmed": False,
         "diagram_confirmed": False,
         "references": [],
         "allowed_tools": [],
@@ -57,6 +59,8 @@ def decision(**changes):
         "acceptance_criteria": None,
         "sample_input": None,
         "diagram_understanding": None,
+        "diagram_description": None,
+        "diagram_interpretation": None,
         "tool_intent": None,
         "draft": None,
     } | changes
@@ -159,7 +163,7 @@ def test_multiround_confirmation_and_tool_observation_revision():
                 "diagram_understanding": diagram_text(),
                 "diagram_confirmed": False,
             },
-            "confirm_diagram",
+            "confirm_diagram_description",
         ),
     ],
 )
@@ -179,7 +183,8 @@ def test_unconfirmed_inputs_cannot_produce_draft(changes, outcome):
 
 
 @pytest.mark.parametrize(
-    "field,outcome", [("brief", "confirm_brief"), ("diagram_understanding", "confirm_diagram")]
+    "field,outcome",
+    [("brief", "confirm_brief"), ("diagram_understanding", "confirm_diagram_description")],
 )
 def test_changed_confirmed_input_requires_new_confirmation(field, outcome):
     req = request(
@@ -207,7 +212,7 @@ def test_changed_confirmed_input_requires_new_confirmation(field, outcome):
         ({}, "confirm_brief"),
         (
             {"brief": "agreed", "brief_confirmed": True, "diagram_understanding": diagram_text()},
-            "confirm_diagram",
+            "confirm_diagram_description",
         ),
         (
             {
@@ -216,7 +221,7 @@ def test_changed_confirmed_input_requires_new_confirmation(field, outcome):
                 "diagram_understanding": diagram_text("A"),
                 "diagram_confirmed": True,
             },
-            "confirm_diagram",
+            "confirm_diagram_description",
         ),
         ({"brief": "agreed", "brief_confirmed": True}, "confirm_brief"),
     ],
@@ -225,7 +230,7 @@ def test_validate_intent_cannot_bypass_confirmation(changes, outcome):
     req = request(allowed_tools=["validate_draft"], **changes)
     changed = (
         {"diagram_understanding": diagram_text("changed")}
-        if outcome == "confirm_diagram" and changes.get("diagram_confirmed")
+        if outcome == "confirm_diagram_description" and changes.get("diagram_confirmed")
         else {"brief": "changed"}
         if outcome == "confirm_brief" and changes.get("brief_confirmed")
         else {}
@@ -383,13 +388,39 @@ def test_image_is_only_multimodal_and_requires_confirmation():
         decision(
             outcome="confirm_diagram",
             diagram_understanding=diagram_text("Input -> validation -> CSV"),
+            diagram_description="先驗證輸入，再輸出 CSV。",
         ),
     )
     assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_diagram_description"
+    assert response.json()["diagram_description"] == "先驗證輸入，再輸出 CSV。"
+    assert response.json()["diagram_understanding"] == ""
     parts = calls[0]["messages"][1]["content"]
     assert diagram["data"] not in parts[0]["text"]
     assert parts[1]["image_url"]["url"].endswith(diagram["data"])
     assert diagram["data"] not in response.text
+
+
+def test_confirmed_description_requires_a_structured_interpretation_before_a_draft():
+    response, calls = invoke(
+        request(
+            brief="agreed",
+            brief_confirmed=True,
+            diagram_description="先驗證輸入，再輸出 CSV。",
+            diagram_description_confirmed=True,
+        ),
+        decision(outcome="draft", draft=SKILL, diagram_understanding=diagram_text("驗證輸入")),
+    )
+    assert response.status_code == 200
+    assert "Current phase: decompose" in calls[0]["messages"][0]["content"]
+    assert response.json()["outcome"] == "confirm_diagram_interpretation"
+    assert response.json()["draft"] is None
+    assert response.json()["diagram_interpretation"] == {
+        "nodes": ["驗證輸入"],
+        "conditions": [],
+        "branches": [],
+        "uncertainties": [],
+    }
 
 
 def test_unauthorized_tool_never_escapes():
@@ -967,7 +998,7 @@ def test_legacy_diagram_requires_structured_reconfirmation():
     )
     assert response.status_code == 200
     assert "Current phase: understand" in calls[0]["messages"][0]["content"]
-    assert response.json()["outcome"] == "confirm_diagram"
+    assert response.json()["outcome"] == "confirm_diagram_description"
     assert response.json()["draft"] is None
     assert json.loads(response.json()["diagram_understanding"])["nodes"] == ["A -> B"]
     response, _ = invoke(req, decision())

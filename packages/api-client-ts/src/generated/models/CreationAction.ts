@@ -22,7 +22,7 @@ import {
 } from './GenerateDiagram';
 
 /**
- * stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
+ * stop_step ends the step in flight, not the session: permitted only while the session is queued or working, it releases the attempt so the Worker refuses to start it (or its in-flight call is cancelled) and the model's reply, if one arrives, is not adopted. A call already sent is still paid for and the session says so. confirm_diagram confirms the description only; answer_diagram_uncertainty records one answer; confirm_diagram_interpretation queues the next step only after every displayed uncertainty is answered. Go requires a nonempty matching content_hash for materialize/finalize, a diagram for diagram, run_id for attach_run, and budget_credits for raise_budget. expected_revision binds the exact displayed snapshot including draft revision and candidate identity. These conditional requirements are enforced by the domain service.
  * @export
  * @interface CreationAction
  */
@@ -60,6 +60,14 @@ export interface CreationAction {
      */
     diagram?: GenerateDiagram;
     /**
+     * answer_diagram_uncertainty only: an id returned in the current snapshot's diagram_interpretation.
+     */
+    diagramUncertaintyId?: string;
+    /**
+     * answer_diagram_uncertainty only: the creator's answer to that exact question.
+     */
+    diagramAnswer?: string;
+    /**
      * 
      */
     runId?: string;
@@ -73,6 +81,8 @@ export const CreationActionKindEnum = {
     Message: 'message',
     ConfirmBrief: 'confirm_brief',
     ConfirmDiagram: 'confirm_diagram',
+    AnswerDiagramUncertainty: 'answer_diagram_uncertainty',
+    ConfirmDiagramInterpretation: 'confirm_diagram_interpretation',
     SelectReferences: 'select_references',
     ConfirmReferences: 'confirm_references',
     Materialize: 'materialize',
@@ -119,6 +129,8 @@ export function CreationActionFromJSONTyped(json: any, ignoreDiscriminator: bool
         'referenceSkillIds': json['reference_skill_ids'] == null ? undefined : json['reference_skill_ids'],
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
         'diagram': json['diagram'] == null ? undefined : GenerateDiagramFromJSON(json['diagram']),
+        'diagramUncertaintyId': json['diagram_uncertainty_id'] == null ? undefined : json['diagram_uncertainty_id'],
+        'diagramAnswer': json['diagram_answer'] == null ? undefined : json['diagram_answer'],
         'runId': json['run_id'] == null ? undefined : json['run_id'],
     };
 }
@@ -142,6 +154,8 @@ export function CreationActionToJSONTyped(value?: CreationAction | null, ignoreD
         'reference_skill_ids': value['referenceSkillIds'],
         'content_hash': value['contentHash'],
         'diagram': GenerateDiagramToJSON(value['diagram']),
+        'diagram_uncertainty_id': value['diagramUncertaintyId'],
+        'diagram_answer': value['diagramAnswer'],
         'run_id': value['runId'],
     };
 }

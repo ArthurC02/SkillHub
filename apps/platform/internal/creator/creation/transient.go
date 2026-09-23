@@ -14,29 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
 	"net/http"
-	"strings"
 	"time"
-	"unicode/utf8"
 )
-
-func validDiagramInterpretation(value string) bool {
-	var sections map[string][]string
-	if json.Unmarshal([]byte(value), &sections) != nil || len(sections) != 4 || len(sections["nodes"]) == 0 {
-		return false
-	}
-	for name, limit := range map[string]int{"nodes": 64, "conditions": 64, "branches": 128, "uncertainties": 64} {
-		items, ok := sections[name]
-		if !ok || items == nil || len(items) > limit {
-			return false
-		}
-		for _, item := range items {
-			if strings.TrimSpace(item) == "" || utf8.RuneCountInString(item) > 2000 {
-				return false
-			}
-		}
-	}
-	return utf8.RuneCountInString(value) <= 20000
-}
 
 type TransientRequest struct {
 	WorkspaceID      pgtype.UUID `json:"workspace_id"`

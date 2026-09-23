@@ -78,7 +78,9 @@ func TestEachPendingActionTravelsAsTheWordTheInterfaceReads(t *testing.T) {
 	for action, word := range map[PendingAction]string{
 		NothingPending:                  "",
 		PendingBriefConfirmation:        "confirm_brief",
-		PendingDiagramConfirmation:      "confirm_diagram",
+		PendingDiagramDescription:       "confirm_diagram",
+		PendingDiagramAnswers:           "answer_diagram_uncertainties",
+		PendingDiagramInterpretation:    "confirm_diagram_interpretation",
 		PendingReferenceChoice:          "confirm_references",
 		PendingDuplicateAcknowledgement: "confirm_duplicate",
 		PendingFetchPermission:          "confirm_fetch",

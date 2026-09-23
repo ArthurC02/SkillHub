@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CreationDiagramInterpretation } from './CreationDiagramInterpretation';
+import {
+    CreationDiagramInterpretationFromJSON,
+    CreationDiagramInterpretationFromJSONTyped,
+    CreationDiagramInterpretationToJSON,
+    CreationDiagramInterpretationToJSONTyped,
+} from './CreationDiagramInterpretation';
 import type { CreationAttachment } from './CreationAttachment';
 import {
     CreationAttachmentFromJSON,
@@ -94,9 +101,21 @@ export interface CreationSnapshot {
      */
     modelChanged?: CreationModelChange;
     /**
-     * 
+     * Legacy one-phase diagram interpretation. It remains readable for an existing session but cannot authorize a draft; upload the image again to use the checkpointed flow.
      */
     diagramUnderstanding: string;
+    /**
+     * The model's plain-language description of the newest uploaded diagram. It is confirmed before structural decomposition.
+     */
+    diagramDescription?: string;
+    /**
+     * 
+     */
+    diagramDescriptionConfirmed?: boolean;
+    /**
+     * 
+     */
+    diagramInterpretation?: CreationDiagramInterpretation;
     /**
      * 
      */
@@ -256,6 +275,9 @@ export function CreationSnapshotFromJSONTyped(json: any, ignoreDiscriminator: bo
         'briefConfirmed': json['brief_confirmed'],
         'modelChanged': json['model_changed'] == null ? undefined : CreationModelChangeFromJSON(json['model_changed']),
         'diagramUnderstanding': json['diagram_understanding'],
+        'diagramDescription': json['diagram_description'] == null ? undefined : json['diagram_description'],
+        'diagramDescriptionConfirmed': json['diagram_description_confirmed'] == null ? undefined : json['diagram_description_confirmed'],
+        'diagramInterpretation': json['diagram_interpretation'] == null ? undefined : CreationDiagramInterpretationFromJSON(json['diagram_interpretation']),
         'diagramConfirmed': json['diagram_confirmed'],
         'diagramFingerprint': json['diagram_fingerprint'] == null ? undefined : json['diagram_fingerprint'],
         'attachments': json['attachments'] == null ? undefined : ((json['attachments'] as Array<any>).map(CreationAttachmentFromJSON)),
@@ -307,6 +329,9 @@ export function CreationSnapshotToJSONTyped(value?: CreationSnapshot | null, ign
         'brief_confirmed': value['briefConfirmed'],
         'model_changed': CreationModelChangeToJSON(value['modelChanged']),
         'diagram_understanding': value['diagramUnderstanding'],
+        'diagram_description': value['diagramDescription'],
+        'diagram_description_confirmed': value['diagramDescriptionConfirmed'],
+        'diagram_interpretation': CreationDiagramInterpretationToJSON(value['diagramInterpretation']),
         'diagram_confirmed': value['diagramConfirmed'],
         'diagram_fingerprint': value['diagramFingerprint'],
         'attachments': value['attachments'] == null ? undefined : ((value['attachments'] as Array<any>).map(CreationAttachmentToJSON)),
