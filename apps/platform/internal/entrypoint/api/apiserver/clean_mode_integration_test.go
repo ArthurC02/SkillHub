@@ -156,3 +156,37 @@ func TestCleanModeCanStartARunOnOneConnection(t *testing.T) {
 			"clean test mode cannot start a run at all (04 丙-99)")
 	}
 }
+
+func TestCleanModeCanSearchOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "clean-mode-search")
+
+	type result struct {
+		code int
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		resp, err := c.Get(c.base + "/skills/search?q=clean")
+		if err != nil {
+			done <- result{err: err}
+			return
+		}
+		defer resp.Body.Close()
+		done <- result{code: resp.StatusCode}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatalf("GET /skills/search: %v", got.err)
+		}
+		if got.code != http.StatusOK {
+			t.Fatalf("GET /skills/search: got %d, want 200", got.code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("GET /skills/search never returned on a single-connection pool")
+	}
+}
