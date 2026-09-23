@@ -117,6 +117,8 @@ Sandbox 是另一個網路觀點。它需要同時能存取物件儲存的預簽
 
 模型閘道的主機名稱、Sandbox egress allowlist 與其 pinned IP 也必須相符。只改其中一處會造成「Sandbox 已建立、Run 最後失敗」的延遲錯誤。正式節點的正確做法在[沙箱節點](sandbox-node.md) §1 與 §5；不要把本機的寬鬆網路設定複製過去。
 
+同一個差異也適用於容器化的驗收 runner：它與主機上的 `apps/llm` 不是同一個 loopback。若 runner 要呼叫主機暫時啟動的能力服務，服務須監聽主機可路由的位址，runner 則以該 Docker 環境提供的主機名稱（例如 `host.docker.internal`）連線；兩端仍以服務 token 驗證。先從 runner 網路命名空間呼叫 `/readyz`，成功後才啟動會付費的測試。這只是本機驗收的接線方式，不能取代正式部署中服務對服務的私有網路與 egress 規則。
+
 ## 5. 正式部署：固定的依賴順序
 
 正式部署由三種主機組成，順序不可顛倒：

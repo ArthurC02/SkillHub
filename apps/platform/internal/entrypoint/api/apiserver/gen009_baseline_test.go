@@ -63,6 +63,10 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	if llmURL == "" || sandboxURL == "" {
 		t.Fatal("SKILLHUB_E2E_LLM_URL and SKILLHUB_E2E_SANDBOX_URL are both required")
 	}
+	gatewayURL := os.Getenv("SKILLHUB_E2E_GATEWAY_URL")
+	if gatewayURL == "" {
+		t.Fatal("SKILLHUB_E2E_GATEWAY_URL is required so generated runs use the sandbox-routable gateway")
+	}
 	raw, err := os.ReadFile(corpusPath)
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +101,8 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	if a.runs.Gateway == nil {
 		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required")
 	}
+	a.runs.Deployment.GatewayURL = gatewayURL
+	a.runs.Deployment.Model = os.Getenv("SKILLHUB_RUN_MODEL")
 	a.runs.PollInterval = time.Second
 	a.runs.MaxAttempts = 1
 
