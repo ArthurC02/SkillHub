@@ -8,10 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 func seedWorkspaceWithSkill(t *testing.T) (ws identity.Workspace, skillID pgtype.UUID) {
@@ -47,6 +49,70 @@ func testCaseServiceWithSkill(pool *pgxpool.Pool, ws identity.Workspace, skillID
 			}
 			return SkillFacts{Name: "test-skill"}, true, nil
 		},
+		LockLiveSkillForCreate: func(_ context.Context, _ pgx.Tx, workspaceID, id pgtype.UUID) (bool, error) {
+			return workspaceID == ws.ID && id == skillID, nil
+		},
+	}
+}
+
+func TestCreateTestCaseCommitsBeforeConcurrentSkillDeletion(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, skillID := seedWorkspaceWithSkill(t)
+	registrySvc := &registry.Service{Pool: pool}
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	svc := &Service{
+		Pool: pool,
+		LockLiveSkillForCreate: func(ctx context.Context, tx pgx.Tx, workspaceID, id pgtype.UUID) (bool, error) {
+			_, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, id)
+			if found {
+				close(locked)
+				select {
+				case <-release:
+				case <-ctx.Done():
+					return false, ctx.Err()
+				}
+			}
+			return found, err
+		},
+	}
+
+	created := make(chan error, 1)
+	go func() {
+		_, err := svc.CreateTestCase(t.Context(), ws, skillID, "n", "p")
+		created <- err
+	}()
+	select {
+	case <-locked:
+	case <-time.After(time.Second):
+		t.Fatal("creating a test case did not lock its live skill")
+	}
+
+	deleted := make(chan error, 1)
+	go func() {
+		_, err := pool.Exec(t.Context(), `UPDATE skills SET deleted_at = NOW() WHERE id = $1 AND workspace_id = $2`, skillID, ws.ID)
+		deleted <- err
+	}()
+	select {
+	case err := <-deleted:
+		t.Fatalf("skill deletion completed before test case creation committed: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(release)
+	if err := <-created; err != nil {
+		t.Fatalf("CreateTestCase: %v", err)
+	}
+	if err := <-deleted; err != nil {
+		t.Fatalf("delete skill: %v", err)
+	}
+
+	var count int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM test_cases WHERE workspace_id = $1 AND skill_id = $2`, ws.ID, skillID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("test cases after serialized create then delete = %d, want 1", count)
 	}
 }
 

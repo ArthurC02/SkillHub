@@ -205,6 +205,17 @@ func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtyp
 	return skillDTO(row), true, nil
 }
 
+func (s *Service) LockLiveWorkspaceSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
+	root, err := LoadSkill(ctx, tx, workspaceID, skillID)
+	if errors.Is(err, ErrNotFound) {
+		return Skill{}, false, nil
+	}
+	if err != nil {
+		return Skill{}, false, err
+	}
+	return root.Skill(), true, nil
+}
+
 func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype.UUID) (Version, bool, error) {
 	row, err := gen.New(s.Pool).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
 		SkillID: skillID, WorkspaceID: workspaceID,

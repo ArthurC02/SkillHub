@@ -68,8 +68,9 @@ type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
 
-	ReadSkill       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
-	MayStoreObjects func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
+	ReadSkill              func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	LockLiveSkillForCreate func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (bool, error)
+	MayStoreObjects        func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
 
 	ClearSightings func(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error
 
@@ -229,25 +230,37 @@ func (s *Service) CreateTestCase(ctx context.Context, ws identity.Workspace, ski
 	if err != nil {
 		return TestCase{}, err
 	}
-	if s.ReadSkill == nil {
+	if s.LockLiveSkillForCreate == nil {
 		return TestCase{}, errRegistryReadNotConfigured
 	}
-	q := gen.New(s.Pool)
-	_, found, err := s.ReadSkill(ctx, ws.ID, skillID)
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return TestCase{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	found, err := s.LockLiveSkillForCreate(ctx, tx, ws.ID, skillID)
 	if !found && err == nil {
 		return TestCase{}, ErrNotFound
 	}
 	if err != nil {
 		return TestCase{}, err
 	}
-	row, err := q.CreateTestCase(ctx, gen.CreateTestCaseParams{
+
+	row, err := gen.New(tx).CreateTestCase(ctx, gen.CreateTestCaseParams{
 		WorkspaceID:        ws.ID,
 		SkillID:            skillID,
 		Name:               name,
 		UserPrompt:         prompt,
 		AcceptanceCriteria: []byte("[]"),
 	})
-	return testCaseOf(row), err
+	if err != nil {
+		return TestCase{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return TestCase{}, err
+	}
+	return testCaseOf(row), nil
 }
 
 func (s *Service) CreateTestCaseWithCriteria(

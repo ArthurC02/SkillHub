@@ -162,6 +162,10 @@ func NewApp(cfg Config) (*App, error) {
 		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
 		return testlab.SkillFacts{Name: skill.Name, Summary: skill.Summary}, found, err
 	}
+	testlabSvc.LockLiveSkillForCreate = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (bool, error) {
+		_, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
+		return found, err
+	}
 
 	runSvc := &run.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Queue: wiring.NewRunQueue(jobs), Providers: cfg.Providers, Store: cfg.Store,
