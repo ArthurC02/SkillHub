@@ -19,6 +19,20 @@
 - **引導式創作**——用一句話描述需求就能起草一個 Skill。**預設關閉。**
 - **淨測試模式**——同一套系統，跑在不能安裝軟體、也上不了網的機器上。見[下方](#淨測試模式)。
 
+## 系統模型
+
+Skill Hub 有一個**控制平面**與兩個能力提供者。React Web 只呼叫 Go Platform API；API 與 Go Worker 擁有授權、領域規則、Run 狀態、PostgreSQL 與物件儲存，Worker 是唯一的佇列消費者。Python LLM 服務與 Sandbox 只執行受限的能力請求並回傳結構化結果，不能直接讀寫核心資料庫。
+
+每次模型呼叫都經模型閘道。Run 由控制平面簽發短效 Virtual Key，Sandbox 在 egress 政策下使用它，控制平面再記錄狀態、Trace、產物、成本與清理。因此 API 健康回應不等於 Run 已完成：還要看到 Worker、Sandbox 與清理路徑一起收斂。
+
+啟動前先選擇模式：
+
+| 模式 | 用途 | 不足以證明 |
+| --- | --- | --- |
+| 淨測試模式 | 不需 Docker 或模型金鑰、零成本的產品展示 | 真實基礎設施、隔離、物件 URL、併發或模型呼叫 |
+| 本機完整開發 | 對本機 Postgres 與 SeaweedFS 做整合開發 | 正式 TLS、強隔離節點或正式秘密管理 |
+| 正式 Provision | 不受信任 Skill 的試跑或對外服務 | 開發登入、弱本機 Sandbox 接線或便利設定 |
+
 ## 快速開始
 
 最快看到產品跑起來的方式是**淨測試模式**：一個指令，不需要 Docker、不需要金鑰、不花錢。
@@ -71,7 +85,7 @@ task dev         # Postgres 與 SeaweedFS 容器；不需要 secret、不花錢
 
 API 需要 `DATABASE_URL`；沙箱提供者缺 `SKILLHUB_SANDBOX_TOKEN` 會直接拒絕啟動。[`.env.example`](.env.example) 列出所有變數——真正的值填進被 ignore 的 `.env`，永遠不要填進範例檔。
 
-模型呼叫走一個**預設關閉**的閘道。`task dev:model` 會啟動它並檢查必要金鑰是否齊全；在那之後任何打到供應商的呼叫都會產生費用。本節其餘一切都免費。
+模型呼叫走一個**預設關閉**的閘道。`task dev:model` 會啟動它並檢查必要金鑰是否齊全；接著 `task dev:llm` 以有預算上限的 Virtual Key 啟動 Python 能力服務，而不是把閘道 master key 交給它。在那之後任何打到供應商的呼叫都會產生費用。本節其餘一切都免費。
 
 前端要打本機 API 時，API 行程還需要 `DEV_CORS_ORIGIN=http://localhost:5173`：開發時兩者是不同來源、正式環境是同源，所以這個放行是逐行程選擇性開啟的。
 
@@ -104,8 +118,10 @@ task clean-mode
 
 - [架構決策](docs/adr/README.md)——系統為什麼長這樣。
 - [開發手冊](docs/development/automation.md)——環境設定、程式碼生成、CI 與疑難排解。
-- [Runbook](docs/runbooks/)——出事的時候看這裡。
+- [Runbook](docs/runbooks/)——建置或遺失設定後重建時先看[整體 Provision](docs/runbooks/provisioning.md)；只處理一台主機時讀節點手冊；發生事故才讀 P1 手冊。
 - [`AGENTS.md`](AGENTS.md)——本專案的慣例與鐵律，寫給 coding agent，對人一樣有效。
+
+CI badge 表示這個 repo 的託管整合狀態；本機啟動與文件中的治理模型不假設每個 Git repo 都使用 GitHub 或任何 CI 服務。
 
 ## 參與貢獻
 

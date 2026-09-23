@@ -19,6 +19,20 @@
 - **Guided creation** — a conversational flow that drafts a skill from a plain request. Off by default.
 - **Clean test mode** — the same system, running on a machine that cannot install software or reach the internet. See [below](#clean-test-mode).
 
+## System model
+
+Skill Hub has one **control plane** and two capability providers. The React web app talks only to the Go platform API. That API and its Go Worker own authorization, domain rules, Run state, PostgreSQL and object storage; the Worker is the only queue consumer. The Python LLM service and the Sandbox execute bounded capability requests and return structured results. They never read or write the core database directly.
+
+Every model call passes through the model gateway. For a Run, the control plane issues a short-lived Virtual Key, the Sandbox uses it under its egress policy, and the control plane records the resulting state, trace, artifacts, cost and cleanup. A healthy API response alone is therefore not evidence that a Run completed: the Worker, Sandbox and cleanup path must also converge.
+
+Choose the operating mode before starting anything:
+
+| Mode | Use it for | Does not prove |
+| --- | --- | --- |
+| Clean test mode | a cost-free product demonstration without Docker or model keys | real infrastructure, isolation, object URLs, concurrency or model calls |
+| Local full development | integration work against local Postgres and SeaweedFS | production TLS, strong-isolation nodes or production secret handling |
+| Production Provision | untrusted Skill trials or public service | developer login, weak local Sandbox wiring or convenience settings |
+
 ## Quick start
 
 The fastest way to see the product running is **clean test mode**: one command, no Docker, no API keys, no cost.
@@ -71,7 +85,7 @@ task dev         # Postgres and SeaweedFS containers, no secrets, no cost
 
 The API needs `DATABASE_URL`; the sandbox provider refuses to start without `SKILLHUB_SANDBOX_TOKEN`. [`.env.example`](.env.example) lists every variable — fill values into the ignored `.env`, never into the example.
 
-Model calls go through a gateway that is **off by default**. `task dev:model` starts it and checks that the required keys are present; anything that reaches a provider after that costs money. Everything else in this section is free.
+Model calls go through a gateway that is **off by default**. `task dev:model` starts it and checks that the required keys are present; `task dev:llm` then starts the Python capability provider with a budget-limited Virtual Key rather than the gateway master key. Anything that reaches a provider after that costs money. Everything else in this section is free.
 
 Running the SPA against a local API also needs `DEV_CORS_ORIGIN=http://localhost:5173` on the API process: in development the two are separate origins, in production they are not, so the allowance is opt-in per process.
 
@@ -104,8 +118,10 @@ Setting no flag changes nothing: without `SKILLHUB_CLEAN_MODE` the program build
 
 - [Architecture decisions](docs/adr/README.md) — why the system is shaped the way it is.
 - [Development handbook](docs/development/automation.md) — setup, code generation, CI and troubleshooting.
-- [Runbooks](docs/runbooks/) — what to do when something breaks.
+- [Runbooks](docs/runbooks/) — start with the [Provision guide](docs/runbooks/provisioning.md) to build or recover a system; use a node guide for one host, and the P1 guide only during an incident.
 - [`AGENTS.md`](AGENTS.md) — the conventions and hard rules, written for coding agents and equally binding on people.
+
+The CI badge describes this repository's hosted integration status. Local setup and the documented governance model do not assume that every Git repository uses GitHub or any CI service.
 
 ## Contributing
 
