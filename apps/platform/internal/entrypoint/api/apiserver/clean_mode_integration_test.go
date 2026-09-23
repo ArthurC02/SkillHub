@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -155,6 +156,45 @@ func TestCleanModeCanStartARunOnOneConnection(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("POST /skills/{id}/runs never returned on a single-connection pool: " +
 			"clean test mode cannot start a run at all (04 丙-99)")
+	}
+}
+
+func TestCleanModeCanDeliverEvaluationOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+	a := newAPI(t, pool)
+	fake := providertest.New("clean_mode_evaluation", "test-token")
+	t.Cleanup(fake.Close)
+	a.runs.Providers = run.NewRegistry(fake.Provider())
+	f := newFixture(t, a, pool, "clean-mode-evaluation")
+	if _, err := pool.Exec(context.Background(),
+		`UPDATE test_cases SET acceptance_criteria = '[]'::jsonb WHERE id = $1`, mustUUID(t, f.testCaseID)); err != nil {
+		t.Fatalf("clear evaluation criteria: %v", err)
+	}
+	startWorker(t, a)
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, "succeeded")
+	waitForAutomaticEvaluation(t, pool, created.RunID)
+
+	resp, err := f.client.Get(f.base + "/runs/" + created.RunID + "/evaluation")
+	if err != nil {
+		t.Fatalf("GET evaluation: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET evaluation: got %d, want 200", resp.StatusCode)
+	}
+	var view struct {
+		EvaluationID string `json:"evaluation_id"`
+		Status       string `json:"status"`
+		Overall      string `json:"overall"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&view); err != nil {
+		t.Fatalf("decode evaluation: %v", err)
+	}
+	if view.EvaluationID == "" || view.Status != "completed" || view.Overall != "undetermined" {
+		t.Fatalf("evaluation = %+v, want a completed undetermined verdict", view)
 	}
 }
 
