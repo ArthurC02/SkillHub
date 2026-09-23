@@ -747,9 +747,14 @@ func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-deleted-testcase")
 
-	before := f.start(t)
-	if _, err := pool.Exec(context.Background(), `
-		UPDATE runs SET status = 'succeeded', finished_at = now() WHERE id = $1`, mustUUID(t, before.RunID)); err != nil {
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	beforeRunID := seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -764,7 +769,7 @@ func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
 	if view.Error == "" {
 		t.Error("refusal carried no reason")
 	}
-	if code, _ := f.getRun(t, before.RunID); code != http.StatusOK {
+	if code, _ := f.getRun(t, beforeRunID); code != http.StatusOK {
 		t.Errorf("deleting the draft broke an existing run: got %d", code)
 	}
 }

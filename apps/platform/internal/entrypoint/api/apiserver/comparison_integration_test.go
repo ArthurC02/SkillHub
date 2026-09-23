@@ -524,9 +524,14 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "rerun-owner")
 
-	first := f.start(t)
-	if _, err := pool.Exec(context.Background(), `
-		UPDATE runs SET status = 'succeeded', finished_at = now() WHERE id = $1`, mustUUID(t, first.RunID)); err != nil {
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	firstRunID := seedRunAt(t, tx, f, "succeeded", "2020-01-01T10:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
 	staleHash := f.confirmPermissions(t)
@@ -542,7 +547,7 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 	}
 
 	second := next.start(t)
-	if second.RunID == first.RunID {
+	if second.RunID == firstRunID {
 		t.Fatal("a re-run is a new run")
 	}
 
@@ -551,7 +556,7 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 		runID string
 		hash  *string
 		snap  *string
-	}{{first.RunID, &firstHash, &firstSnapshot}, {second.RunID, &secondHash, &secondSnapshot}} {
+	}{{firstRunID, &firstHash, &firstSnapshot}, {second.RunID, &secondHash, &secondSnapshot}} {
 		if err := pool.QueryRow(context.Background(), `
 			SELECT s.content_hash, s.id::text FROM test_case_snapshots s
 			JOIN runs r ON r.test_case_snapshot_id = s.id
@@ -566,12 +571,12 @@ func TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight(t *testing.T)
 		t.Error("each run freezes its own snapshot; sharing one would let a later edit rewrite history")
 	}
 
-	_, before := f.getRun(t, first.RunID)
+	_, before := f.getRun(t, firstRunID)
 	if before.Status != "succeeded" {
 		t.Errorf("the earlier run changed to %q", before.Status)
 	}
 
-	status, body := f.compare(t, first.RunID, second.RunID)
+	status, body := f.compare(t, firstRunID, second.RunID)
 	if status != http.StatusOK {
 		t.Fatalf("comparing the two runs: got %d (%s)", status, body.Error)
 	}

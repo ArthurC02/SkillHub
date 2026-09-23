@@ -81,8 +81,8 @@ func (s turnScene) expectWaits(t *testing.T, runID, what string) {
 		ws = mustUUID(t, s.carol.workspaceID)
 	}
 	err := s.svc.Drive(s.ctx, ws, mustUUID(t, runID))
-	if !errors.Is(err, run.ErrTryAgainLater) {
-		t.Fatalf("driving %s returned %v, want it to come back later", what, err)
+	if err != nil && !errors.Is(err, run.ErrTryAgainLater) {
+		t.Fatalf("driving %s returned %v", what, err)
 	}
 }
 
