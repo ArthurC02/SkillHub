@@ -180,7 +180,7 @@ func TestCleanModeCanDeliverEvaluationOnOneConnection(t *testing.T) {
 	waitForStatus(t, f.client, created.RunID, "succeeded")
 	waitForAutomaticEvaluation(t, pool, created.RunID)
 
-	resp, err := f.client.Get(f.base + "/runs/" + created.RunID + "/evaluation")
+	resp, err := f.Get(f.base + "/runs/" + created.RunID + "/evaluation")
 	if err != nil {
 		t.Fatalf("GET evaluation: %v", err)
 	}

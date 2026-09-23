@@ -385,7 +385,7 @@ func funnelSegment(t *testing.T, tx pgx.Tx, query string, want int) funnelRow {
 	return *found
 }
 
-func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
+func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) string {
 	t.Helper()
 	ctx := context.Background()
 	var snapshotID string
@@ -396,14 +396,17 @@ func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
 		mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tx.Exec(ctx, `
+	var runID string
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
 		                  runtime_snapshot, policy_snapshot, status, created_at, finished_at)
-		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)`,
+		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5, $6)
+		RETURNING id::text`,
 		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, at, finishedAtOn(t, status, at),
-	); err != nil {
+	).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
+	return runID
 }
 
 func seedDownloadAt(t *testing.T, tx pgx.Tx, f fixture, at string) {
@@ -782,7 +785,19 @@ func TestEachRowOfTheRunHistoryNamesItsOwnSkillAndTestCase(t *testing.T) {
 	second.versionID = uuidText(version.ID)
 	second.testCaseID = seedTestCase(t, pool, first.workspaceID, second.skillID)
 
-	want := map[string]fixture{first.start(t).RunID: first, second.start(t).RunID: second}
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	firstRunID := seedRunAt(t, tx, first, "succeeded", "2041-02-01T10:00:00Z")
+	secondRunID := seedRunAt(t, tx, second, "succeeded", "2041-02-01T11:00:00Z")
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]fixture{firstRunID: first, secondRunID: second}
 	names := map[string]string{first.skillID: "history-two-skills-runnable-skill", second.skillID: "history-second-skill"}
 	seen := 0
 	for _, row := range first.listRuns(t) {
