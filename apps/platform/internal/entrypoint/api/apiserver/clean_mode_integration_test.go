@@ -1,6 +1,7 @@
 package apiserver_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -188,5 +189,41 @@ func TestCleanModeCanSearchOnOneConnection(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("GET /skills/search never returned on a single-connection pool")
+	}
+}
+
+func TestCleanModeCanImportOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+	a := newAPI(t, pool)
+	name := uniqueWorklistLabel("clean-mode-import")
+	c := a.login(t, name)
+	pkg := namedPackage(t, name, false)
+
+	type result struct {
+		code int
+		err  error
+	}
+	done := make(chan result, 1)
+	go func() {
+		resp, err := c.Post(c.base+"/skills/import/upload", "application/zip", bytes.NewReader(pkg))
+		if err != nil {
+			done <- result{err: err}
+			return
+		}
+		defer resp.Body.Close()
+		done <- result{code: resp.StatusCode}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatalf("POST /skills/import/upload: %v", got.err)
+		}
+		if got.code != http.StatusCreated {
+			t.Fatalf("POST /skills/import/upload: got %d, want 201", got.code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("POST /skills/import/upload never returned on a single-connection pool")
 	}
 }
