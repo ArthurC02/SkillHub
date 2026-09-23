@@ -135,6 +135,29 @@ func TestEveryFailurePathSpeaksTheInterfaceLanguage(t *testing.T) {
 	}
 }
 
+func TestAttemptErrorsNeverExposeTheStoredDetail(t *testing.T) {
+	const rawDetail = "provider returned secret detail"
+	for _, class := range []string{
+		"", errClassProvision, errClassExecution, errClassCleanup, errClassCapabilityMismatch,
+		errClassBudgetExhausted, errClassProviderLost, errClassTimeout, errClassCancelled, "provider_specific",
+	} {
+		view := attemptViewOf(Attempt{ErrorClass: class, ErrorMessage: rawDetail})
+		said := view.ErrorMessage
+		if class == "" {
+			if said != "" {
+				t.Errorf("empty error class rendered %q", said)
+			}
+			continue
+		}
+		if !hasHan(said) {
+			t.Errorf("%s rendered %q, not the interface language", class, said)
+		}
+		if strings.Contains(said, rawDetail) {
+			t.Errorf("%s exposed a stored provider detail: %q", class, said)
+		}
+	}
+}
+
 func TestEveryRefusedRunSpeaksTheInterfaceLanguage(t *testing.T) {
 	if len(refusedRuns) == 0 {
 		t.Fatal("no refusal carries a message of its own")

@@ -141,6 +141,44 @@ type attemptView struct {
 	FinishedAt    string `json:"finished_at,omitempty"`
 }
 
+func attemptErrorMessage(errorClass string) string {
+	switch errorClass {
+	case "":
+		return ""
+	case errClassProvision:
+		return "準備執行環境時發生問題。"
+	case errClassExecution:
+		return "執行工作負載時發生問題。"
+	case errClassCleanup:
+		return "清理執行環境時發生問題。"
+	case errClassCapabilityMismatch:
+		return "執行環境不符合這次試跑所需的能力。"
+	case errClassBudgetExhausted:
+		return "這次試跑已用完可用的資源預算。"
+	case errClassProviderLost:
+		return "執行環境已無法再回報這次嘗試。"
+	case errClassTimeout:
+		return "這次嘗試超過時間上限。"
+	case errClassCancelled:
+		return "這次嘗試已取消。"
+	default:
+		return "這次嘗試失敗，請聯絡管理者。"
+	}
+}
+
+func attemptViewOf(a Attempt) attemptView {
+	return attemptView{
+		RunAttemptID:  pgconv.UUIDString(a.ID),
+		AttemptNumber: a.Number,
+		Provider:      a.Provider,
+		ProviderRunID: a.ProviderRunID,
+		ErrorClass:    a.ErrorClass,
+		ErrorMessage:  attemptErrorMessage(a.ErrorClass),
+		StartedAt:     formatTime(a.StartedAt),
+		FinishedAt:    formatTime(a.FinishedAt),
+	}
+}
+
 const (
 	messageCreditBalance = "點數不足，無法開始這次試跑。請聯絡管理者為這個帳號加點；已經開始的試跑不受影響。"
 
@@ -535,16 +573,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, a := range attempts {
-		resp.Attempts = append(resp.Attempts, attemptView{
-			RunAttemptID:  pgconv.UUIDString(a.ID),
-			AttemptNumber: a.Number,
-			Provider:      a.Provider,
-			ProviderRunID: a.ProviderRunID,
-			ErrorClass:    a.ErrorClass,
-			ErrorMessage:  a.ErrorMessage,
-			StartedAt:     formatTime(a.StartedAt),
-			FinishedAt:    formatTime(a.FinishedAt),
-		})
+		resp.Attempts = append(resp.Attempts, attemptViewOf(a))
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
