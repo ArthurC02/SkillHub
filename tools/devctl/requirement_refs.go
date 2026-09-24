@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +16,39 @@ var requirementCiters = []string{
 	"docs/plans/03-work-items.md",
 	"docs/plans/04-backlog-and-handoffs.md",
 	"docs/plans/05-pending-rulings.md",
+}
+
+var requirementCiterTrees = []string{
+	"docs/adr",
+	"docs/design",
+	"docs/development",
+	"docs/runbooks",
+}
+
+func requirementCiterFiles(root string) ([]string, []string) {
+	files := append([]string(nil), requirementCiters...)
+	var problems []string
+	for _, tree := range requirementCiterTrees {
+		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(tree)), func(path string, entry fs.DirEntry, err error) error {
+			switch {
+			case err != nil:
+				return err
+			case entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md"):
+				return nil
+			}
+			relative, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			files = append(files, filepath.ToSlash(relative))
+			return nil
+		})
+		if err != nil && !os.IsNotExist(err) {
+			problems = append(problems, fmt.Sprintf("requirement-refs: %v", err))
+		}
+	}
+	sort.Strings(files)
+	return files, problems
 }
 
 var (
@@ -73,8 +107,11 @@ func requirementRefProblems(root string) []string {
 		}
 	}
 
+	citers, walkProblems := requirementCiterFiles(root)
+	problems = append(problems, walkProblems...)
+
 	var citations int
-	for _, relative := range requirementCiters {
+	for _, relative := range citers {
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("requirement-refs: %v", err))

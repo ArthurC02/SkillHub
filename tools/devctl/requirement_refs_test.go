@@ -72,6 +72,22 @@ func TestRequirementRefsAcceptsCitationsThatResolve(t *testing.T) {
 	}
 }
 
+func TestRequirementRefsReadsCitationsOutsideThePlansDirectory(t *testing.T) {
+	t.Parallel()
+	root := writeRefFixture(t, "", "- [x] 做完了（允收：`02:DISC-001`）\n")
+	writeAt(t, root, "docs/runbooks/a-runbook.md", "帳號清除（`02:CORE-007`）必須是不可逆的終點。\n")
+
+	problems := requirementRefProblems(root)
+	if len(problems) != 1 {
+		t.Fatalf("want one problem, got %d: %v", len(problems), problems)
+	}
+	for _, want := range []string{"docs/runbooks/a-runbook.md", "CORE-007"} {
+		if !strings.Contains(problems[0], want) {
+			t.Errorf("problem does not name %q: %s", want, problems[0])
+		}
+	}
+}
+
 func TestRequirementRefsRejectsTheThreeShapesTheTreeHasToday(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
