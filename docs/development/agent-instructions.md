@@ -16,7 +16,7 @@
 | 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | [身分、Workspace、准入與額度](../adr/README.md#身分workspace准入與額度) |
 | Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny、沙箱沒有 DNS，不部署 L7 Proxy | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
 | Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全) |
-| LLM 觀測 | **不外接第三方服務**（2026-09-10 `05` R-24 裁定 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [模型閘道與可觀測性](../adr/README.md#模型閘道與可觀測性) |
+| LLM 觀測 | **不外接第三方服務**（[`05` R-24](../plans/05-pending-rulings.md) 取 (b)）：花多少看 `cost_events`、發生了什麼看 Trace 分割表、品質有沒有退步看 `tools/eval-regression`。**Langfuse 不做**——回呼那半邊要在閘道之外多存一把金鑰，撞鐵律 11 | [模型閘道與可觀測性](../adr/README.md#模型閘道與可觀測性) |
 | 互動創作 | Python LangGraph 分階段編排、Go／Postgres 會話快照與事件；已接線，曝光與品質驗收仍待核准，見[開發與驗證](interactive-creation.md) | [互動創作](../adr/README.md#互動創作) |
 | 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | [系統情境、平面與部署路徑](../adr/README.md#系統情境平面與部署路徑)、[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理) |
 
