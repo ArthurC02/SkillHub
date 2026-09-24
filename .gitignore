@@ -26,6 +26,10 @@ dist/
 /apps/web/playwright-report/
 /apps/web/blob-report/
 
+# Tool caches that land here when HOME or XDG_CACHE_HOME resolves to the repo
+# (Go build and module cache, uv, ogen). Regenerable; nothing here is authoritative.
+/.cache/
+
 # Go build output
 /apps/*/bin/
 *.exe
