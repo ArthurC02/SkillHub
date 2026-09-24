@@ -42,8 +42,8 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 		cost := .01
 		out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}}
 		if in.Diagram != nil {
-			out.Outcome = "confirm_diagram"
-			out.DiagramUnderstanding = `{"nodes":["開始","整理輸入","輸出摘要"],"conditions":[],"branches":[],"uncertainties":["需確認格式"]}`
+			out.Outcome = "confirm_diagram_description"
+			out.DiagramDescription = "先整理輸入，再輸出摘要。"
 			out.Brief = ""
 		}
 		if in.BriefConfirmed {
@@ -242,7 +242,7 @@ func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	const image = "cHJpdmF0ZS1mbG93Y2hhcnQtYnl0ZXMtY3JlYXRpb24="
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram", "diagram": map[string]string{"media_type": "image/png", "data": image}}, 200)
-	if v.State != "waiting_confirmation" || v.Snapshot.PendingAction != "confirm_diagram" || calls.Load() != 1 {
+	if v.State != "waiting_confirmation" || v.Snapshot.PendingAction != "confirm_diagram" || v.Snapshot.DiagramDescription == "" || calls.Load() != 1 {
 		t.Fatalf("diagram not processed: %+v", v)
 	}
 	var found bool

@@ -165,6 +165,7 @@ func creationDecision(outcome, message string, brief *string, draft map[string]a
 	return map[string]any{
 		"outcome": outcome, "message": message, "brief": brief,
 		"acceptance_criteria": nil, "sample_input": nil, "diagram_understanding": nil,
+		"diagram_description": nil, "diagram_interpretation": nil,
 		"tool_intent": nil, "draft": draft,
 	}
 }

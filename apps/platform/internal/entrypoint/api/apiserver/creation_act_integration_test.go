@@ -273,7 +273,7 @@ func TestActMessageInputValidation(t *testing.T) {
 
 func TestActConfirmDiagram(t *testing.T) {
 	pool, ws, svc := newActFixture(t)
-	const validUnderstanding = `{"nodes":["開始"],"conditions":[],"branches":[],"uncertainties":[]}`
+	const validDescription = "從申請到核准"
 	t.Run("not pending confirm_diagram", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_diagram"})
@@ -294,13 +294,14 @@ func TestActConfirmDiagram(t *testing.T) {
 	t.Run("valid confirmation queues a step", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		setCreationSnapshotField(t, pool, id, "pending_action", "confirm_diagram")
-		setCreationSnapshotField(t, pool, id, "diagram_understanding", validUnderstanding)
+		setCreationSnapshotField(t, pool, id, "diagram_fingerprint", "fingerprint")
+		setCreationSnapshotField(t, pool, id, "diagram_description", validDescription)
 		out, job, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "confirm_diagram"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !out.Snapshot.DiagramConfirmed || out.Snapshot.PendingAction != "" || out.State != "queued" {
-			t.Fatalf("out = %+v, want diagram confirmed/pending cleared/queued", out)
+		if !out.Snapshot.DiagramDescriptionConfirmed || out.Snapshot.DiagramConfirmed || out.Snapshot.PendingAction != "" || out.State != "queued" {
+			t.Fatalf("out = %+v, want description confirmed, interpretation unconfirmed, pending cleared and queued", out)
 		}
 		if job != nil {
 			t.Fatalf("confirm_diagram is not transient, job = %+v", job)
