@@ -95,6 +95,7 @@ Skill Hub 把外部與使用者自帶的 Skill 收進目錄、打包、交付下
 
 - 兩者都在契約上出現，缺一個使用者就得拿它回答它答不了的問題。`manifest_hash` 不含 manifest 自身，否則自我指涉算不出來——這一條寫進 schema description。
 - **冪等鍵是 `manifest_hash` 這一側的語意**：同一個 (skill_version, target, include_test_cases, packager_version) 重打包，回既有那一筆並標 `duplicate: true`，不產生第二份位元組；**去重不跨打包器版本**（`packager_version` 是冪等鍵的一部分）。
+- **`expires_at` 是部署設定算出來的，不是 migration 寫死的**：值取自 `DOWNLOAD_ARTIFACT_RETENTION`，在建立 Artifact 的當下加到現在時間上。期限不得短於當期的使用者觀察窗，理由與其他保存期限的相互約束一起寫在規格裡。
 - **zip 寫入一律規範化**：entry 依 path 排序、mtime 固定寫 `1980-01-01T00:00:00Z`、外部屬性固定、不寫 extra field、壓縮等級固定。同一個打包器版本對同一來源版本重打包，得到逐位元組相同的 zip；**跨打包器版本不保證，且刻意不保證**——為了位元組穩定把壓縮器實作釘成公開契約不值得。可重現性只寫成「同一版本可隨時重新打包」，不寫成「這個檔案永遠可以被重新產生」。
 
 ### 決策 6：MVP 不對 Download Artifact 簽章
@@ -175,7 +176,6 @@ manifest 另需記載：來源 Skill Version、Packaging Profile 及版本、打
 
 ## 待決策
 
-- Download Artifact 保存期限（提案 90 天）尚未追認；本 ADR 不代為定值，`expires_at` 的值放部署設定並在建立時計算，migration 只留註解指向該待裁定事項。
 - MVP 首批支援的 Agent Packaging Profile 名單（提案：標準套件 ＋ 兩個已驗證安裝 Profile）尚待負責人追認。
 - 授權辨識是否從 marker 比對升級為相似度比對，觸發訊號為誤判／漏判申訴量。
 - 「宣稱寬鬆授權但內容並非作者所有」的偵測啟發式歸屬哪個能力範圍，以及是否自動轉人工。

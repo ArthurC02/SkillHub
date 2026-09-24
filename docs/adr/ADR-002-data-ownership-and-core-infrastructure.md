@@ -64,6 +64,9 @@ MVP 規模下由單一 PostgreSQL 同時承載交易資料、全文與向量檢�
 4. 團隊具備至少一名可負責 Kubernetes 版本升級的成員——這是必要條件而非加分項；前三項成立但此項不成立時，正確動作是先做 PostgreSQL 備援，不是上 Kubernetes。
 
 切換時應重新試算成本，不沿用切換前的數字。
+### 決策 11：控制平面的編排層是 docker compose，設定由 cloud-init 產生，機密只以檔案手動注入
+
+編排層取 docker compose，不預先建設 k3s 或 Kubernetes；升遷的觸發條件見決策 10。生產控制平面的組合定義是 `infra/compose/control-plane.yml`（`infra/compose/docker-compose.yml` 是本機開發用），節點設定由 cloud-init 產生、`tools/deploy/render.py` 渲染，節點上只 checkout 部署需要的路徑，不放應用程式原始碼。不含秘密的設定（角色、commit、網域、釘住 digest 的映像）進 `/etc/skillhub/release.env`；秘密一律是 `/etc/skillhub/secrets/` 底下的檔案，目錄 700、檔案 600、由人手動放置，不進 git、不進 compose 檔、不進映像。操作步驟見 [控制平面 Runbook](../runbooks/control-plane.md)。
 
 ## 影響
 
@@ -81,8 +84,3 @@ MVP 規模下由單一 PostgreSQL 同時承載交易資料、全文與向量檢�
 - 資料庫備份不再等同完整系統備份，且必須定期演練還原，否則備份形同不存在。
 - PostgreSQL 單實例是目前架構下的單一故障域：無自動 failover，故障即全平台停機至人工還原；維運工時因此高於受管方案，不靠自架省錢回本，理由是資料主權與延遲風險控制而非成本。
 - 必須另外定義並落成 Policy 設定：Skill／Dataset／Trace／Artifact／Secrets／Usage 的保存與到期規則，不得停留在原則層級。
-
-## 待決策
-
-- 控制平面節點的編排層取 docker compose 或 k3s 單機尚未定案（兩者皆在單節點範圍內；k3s 較接近未來遷移至受管 Kubernetes 的路徑，compose 較簡單）。
-- 控制平面節點的部署與設定管理方式（IaC 工具、機密注入路徑）尚未定案；Sandbox 節點已有對應規範，見 [ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)。

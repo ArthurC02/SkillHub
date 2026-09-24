@@ -52,8 +52,8 @@ Aggregate 的公開命令方法：
 以下維持依賴反轉、同交易的既有形狀，理由與做法見 [ADR-017](./ADR-017-query-and-write-ownership.md)：
 
 - 跨 context 的讀取由組裝層注入 Facts，owner 的判定以具名欄位送出。
-- 搜尋投影 `search_documents` 是讀取模型，不是 aggregate：匯入成功的當下即可被搜尋（[`02`](../plans/02-specifications-and-acceptance-criteria.md) INGEST-009）仍靠同交易寫入。
-- 帳號刪除 purge 是合規上的全有全無（[`02`](../plans/02-specifications-and-acceptance-criteria.md) CORE-007）：identity 在同一個交易依序呼叫各 context 的清除函式。改成事件等於把「單一交易清完」換成「陸續清完」，是對外行為的改變，仍待 [`05`](../plans/05-pending-rulings.md) 裁定。
+- 搜尋投影 `search_documents` 是讀取模型，不是 aggregate：匯入成功的當下即可被搜尋（[`03`](../plans/03-work-items.md) INGEST-009）仍靠同交易寫入。
+- 帳號刪除 purge 是合規上的全有全無（[`03`](../plans/03-work-items.md) CORE-007）：identity 在同一個交易依序呼叫各 context 的清除函式。改成事件等於把「單一交易清完」換成「陸續清完」，是對外行為的改變，仍待 [`05`](../plans/05-pending-rulings.md) 裁定。
 
 ### 決策 6：SQL 的原子性守衛全部保留
 

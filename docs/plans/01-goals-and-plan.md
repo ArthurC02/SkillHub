@@ -245,7 +245,7 @@ MVP 先提供：
 
 四項目標全數達成：
 
-- Cloud Sandbox、Dataset、Prompt 與 Run Trace 完成，經 45 個真實 Skill 端到端驗證。Test Case 的建立、Prompt 與驗收條件編輯介面在 `apps/web/src/features/lab/test-cases/`，路由 `/lab/test-cases` 與 `/lab/test-cases/$testCaseId`。**仍缺 preflight 的 Skill Version 選擇器**（見 `04`）。
+- Cloud Sandbox、Dataset、Prompt 與 Run Trace 完成，經 45 個真實 Skill 端到端驗證。Test Case 的建立、Prompt 與驗收條件編輯介面在 `apps/web/src/features/lab/test-cases/`，路由 `/lab/test-cases` 與 `/lab/test-cases/$testCaseId`。**仍缺 preflight 的 Skill Version 選擇器**（見 ）。
 - 權限確認、逾時、取消及清理完成（`03:TEST-008`／`009`、`RUN-006`／`007`、`SBX-009`）。
 - 精選 Skill 的範例資料、Prompt、驗收條件與基準試跑完成（`03:CONTENT-007`／`008`）；`writing` 的 rubric 內容、資料層、產品路徑、編輯介面與回歸 harness 在 M3 內補齊。
 - 搜尋的 Agent 相容篩選維度依 Sandbox 實測結果啟用（`02:DISC-002`）：建表、實測值回填、`?agent=` 篩選與 UI 控制項上線。
