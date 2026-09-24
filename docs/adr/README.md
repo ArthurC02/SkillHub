@@ -32,7 +32,7 @@
 
 ## 打包、授權溯源與散布
 
-[ADR-007](./ADR-007-packaging-license-provenance-and-redistribution.md)｜可攜套件的形狀與完整性、License 溯源，以及能不能再散布。
+[ADR-007](./ADR-007-packaging-license-provenance-and-redistribution.md)｜可攜套件的形狀與完整性、匯入認得哪些來源形狀（單一 Skill、Agent Plugin、含多個 Skill 的 repo）、License 溯源，以及能不能再散布。
 
 ## 意圖搜尋
 

@@ -142,9 +142,9 @@
 
 允收準則：
 
-- 系統可從支援的 URL 或上傳套件建立匯入工作。
+- 系統可從支援的 URL 或上傳套件建立匯入工作；來源形狀可以是單一 Agent Skill、Agent Plugin，或含有一個以上 Skill 的 repo（`SKILL-006`）。
 - 匯入前後均不得直接執行套件內 Script。
-- 匯入結果顯示成功、警告或失敗，並列出原因。
+- 匯入結果顯示成功、警告或失敗，並列出原因；一個來源展開出多個 Skill 時逐筆各自呈現。
 - 重複內容可透過內容雜湊識別，且不覆蓋既有版本。
 
 **2026-09-07 補充（`05` R-52 裁定，負責人「先資安確認、再抽 metadata、才入庫」）**：入庫的機器順序固定為**資安確認（`skillpkg.Validate`＋靜態掃描）→ LLM 抽 metadata（索引時增強，見[意圖搜尋](../adr/README.md#意圖搜尋)）→ 進目錄**。前兩步不變（阻擋級 finding 一律先擋、增強在同一交易寫索引）；**改變的是第三步**——**沒有 metadata 的文件不進公開目錄**：版本仍然建立、擁有者仍然看得到自己的東西，只是還沒有 metadata（`enrichment_status` 不是 `enriched` 且沒有向量）的版本不出現在 `PublicSearchSkills`／`BrowseCatalogSkills`／`PublicHybridSearchSkills`／`CreationLexicalSearchSkills` 的結果裡，直到每小時的 backfill 幫它補上。這不推翻 `SKILL-001` 第一條「匯入前後均不得直接執行套件內 Script」與[意圖搜尋](../adr/README.md#意圖搜尋)「匯入不因增強失敗而失敗」的原則——**建版本與進目錄是兩件事**，失敗的仍然建版本。
@@ -196,6 +196,24 @@
 - 每筆訊息至少顯示該主機的 URL 總數、數個代表性 URL，以及未列出的相異 URL 數量。
 - 聚合不得造成事實遺失：所有原始 URL 與其出處檔案路徑均保留於該筆揭露的明細中。
 - 揭露順序穩定：相同套件重複掃描產生相同順序的結果。
+
+#### SKILL-006：Agent Plugin 與含多個 Skill 的來源
+
+背景：匯入把「一個壓縮檔 ＝ 一個 Skill」當成唯一形狀，而 GitHub repo URL 匯入抓回來的是整個 repo 的位元組——repo 極少剛好在根目錄放一份 `SKILL.md`。指著一個真實 repo 的使用者因此收到「缺少 `SKILL.md`」，那句話沒有告訴他系統要的是什麼形狀。決策依據見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)。
+
+允收準則：
+
+- 匯入接受三種來源形狀並走同一條驗證管線：單一 Agent Skill、Agent Plugin（`.claude-plugin/plugin.json`）、以及沒有 plugin manifest 但目錄樹含有一個以上 `SKILL.md` 的來源。
+- Skill 目錄的探索順序固定且可列舉：plugin manifest 的 `skills` 欄位（字串或陣列，加到預設掃描而非取代）、`skills/`、`.claude/skills/`、來源根目錄。
+- 找不到任何 `SKILL.md` 時，失敗訊息列出系統找過的位置；不得只回報缺少 `SKILL.md`。
+- 每個找到的 Skill 各自建立一個 Skill Version，各自有內容雜湊、授權事實與驗證報告；不建立 Plugin 實體，也不建立跨 Skill 的版本聚合。
+- 每個 Skill Version 記錄它的 Plugin 來源事實：plugin `name`、`version`、`repository`，以及該 Skill 在來源內的相對路徑。
+- 逐個 Skill 獨立判定：部分通過時建立通過的部分並逐個列出被擋者的原因；全部被擋才是匯入失敗。
+- 非 Skill 元件（`commands/`、`agents/`、`workflows/`、`output-styles/`、`hooks/`、`.mcp.json`、`.lsp.json`）不得被匯入或執行，且必須出現在排除揭露中，原因可辨識為 Plugin 元件。
+- plugin manifest 只有 `name` 缺少或不符 kebab-case 是阻擋錯誤；其餘未知欄位為資訊層級，不得阻擋匯入。
+- plugin manifest 宣告的授權不得寫入 `license_source`；該來源的授權解析依 `SKILL-004` 的既有層級進行。
+- 單次匯入建立的 Skill 數量超過部署設定的上限時整批拒絕，訊息同時說出上限與實際數量。
+- 同一個來源重複匯入時，逐個 Skill 依 `SKILL-001` 的內容雜湊判定重複，不覆蓋既有版本。
 
 #### WS-001：Fork 與版本
 
@@ -422,6 +440,7 @@ Run 至少支援：
 允收準則：
 
 - 下載內容保留正確的 Skill 目錄結構與 `SKILL.md`。
+- 產出一律是標準 Agent Skill 套件；來源是 Agent Plugin 或含多個 Skill 的 repo（`SKILL-006`）不改變產出形狀，平台不產出 Plugin。
 - 打包前再次執行規格驗證；若有阻擋錯誤則不得標示為有效套件。
 - 套件保留必要 License、作者、原始來源及衍生關係資訊。
 
