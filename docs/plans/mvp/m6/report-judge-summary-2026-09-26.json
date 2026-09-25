@@ -1,0 +1,30 @@
+{
+  "measurement": "2026-09-26",
+  "baseline_runs": 45,
+  "baseline_scored": 90,
+  "baseline_matches": 88,
+  "baseline_wrong": 0,
+  "baseline_undetermined": 2,
+  "repeatability": {
+    "raw": 5,
+    "stored": 10,
+    "total": 60,
+    "raw_scored": 0,
+    "stored_scored": 6,
+    "scored": 40
+  },
+  "costs": {
+    "baseline_and_repetitions": 1.0498126000000003,
+    "controls": 0.042641200000000004
+  },
+  "artifacts": [
+    {
+      "path": "docs/plans/mvp/m6/report-judge-regression-2026-09-26.jsonl",
+      "sha256": "f39a8e697b457a22e84f201e52d99378a4c61af6eb7a286f78e8c9641fa70a94"
+    },
+    {
+      "path": "docs/plans/mvp/m6/report-judge-incomplete-2026-09-26.jsonl",
+      "sha256": "d13ad22161126b0206dc06917b86e1c65460c2510bf85edca751ee7243e5b8f9"
+    }
+  ]
+}

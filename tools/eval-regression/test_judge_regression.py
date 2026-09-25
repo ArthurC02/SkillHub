@@ -3,6 +3,7 @@ no database, no money — runnable directly or collected by pytest."""
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -12,7 +13,9 @@ from judge_regression import (  # noqa: E402
     MATCH_EXACT,
     MATCH_NORMALIZED,
     MATCH_NOT_CHECKED,
+    MAX_DIGEST_ENTRY,
     MIN_NORMALIZED_QUOTE,
+    record,
     store,
     verify,
 )
@@ -154,10 +157,54 @@ def test_a_verified_quote_satisfies_evidence_required():
 
 def test_a_passed_verdict_on_an_incomplete_trace_is_downgraded():
     request = request_of(criteria=[("r1", "produces a report")], complete=False)
-    verdict = verdict_of("r1", "passed", [])
-    got = store(verdict, request, {}, [], "")[0]
+    verdict = verdict_of("r1", "passed", [{"kind": "agent_output", "quote": "report"}])
+    got = store(verdict, request, {}, [], "report")[0]
     assert got["result"] == "undetermined", got
     assert got["downgrade"] == "incomplete_evidence", got
+
+
+def test_a_verdict_without_citations_is_undetermined():
+    request = request_of(criteria=[("r1", "produces a report")])
+    for result in ("passed", "failed"):
+        got = store(verdict_of("r1", result, []), request, {}, [], "report")[0]
+        assert got["result"] == "undetermined", got
+        assert got["downgrade"] == "evidence_unverifiable", got
+
+
+def test_model_uncertainty_is_not_scored_as_a_wrong_answer():
+    request = request_of(criteria=[("c1", "Run 的 trace 中出現對指定 Skill 的 skill_activation")])
+    request.update(evaluation_id="evaluation", artifacts=[])
+    row = dict(skill_name="example", runtime_image="baseline", run_id="run", run_status="succeeded")
+    response = dict(model="judge", prompt_version="v1", temperature=0, seed=123,
+                    verdict=dict(overall="undetermined", summary="insufficient evidence"))
+    results = store(verdict_of("c1", "undetermined", []), request, {}, [], "")
+    line = record("regression", "start", "", "explicit_run_ids", row, request,
+                  {"activation": "passed"}, results, response, {})
+    assert line["criteria"][0]["outcome"] == "undetermined", line
+    assert line["temperature_requested"] == 0, line
+    assert line["seed_requested"] == 123, line
+
+
+def test_excerpt_cuts_only_downgrade_passes_using_the_trimmed_source():
+    for size in (MAX_DIGEST_ENTRY, MAX_DIGEST_ENTRY + 1):
+        payload = {"text": "x" * (size - len(json.dumps({"text": ""})))}
+        assert len(json.dumps(payload, ensure_ascii=False)) == size
+        digest = digest_of(payload)
+        for kind in ("trace_event", "agent_output", "artifact"):
+            for result in ("passed", "failed"):
+                for batch_cut in (False, True):
+                    cuts = ["trace_digest.entries[].excerpt"] if size > MAX_DIGEST_ENTRY else []
+                    if batch_cut:
+                        cuts.append("trace_digest.entries")
+                    request = request_of(criteria=[("r1", "produces a report")], truncation=cuts)
+                    ref = {"kind": kind, "trace_event_id": EVENT, "artifact_path": "report.md"}
+                    if kind == "agent_output":
+                        ref["quote"] = "report"
+                    got = store(verdict_of("r1", result, [ref]), request, digest,
+                                [{"path": "report.md"}], "report")[0]
+                    cut = batch_cut or (kind == "trace_event" and size > MAX_DIGEST_ENTRY)
+                    expected = "undetermined" if result == "passed" and cut else result
+                    assert got["result"] == expected, (size, kind, result, batch_cut, got)
 
 
 def test_a_verdict_citing_an_unresolvable_reference_is_downgraded():

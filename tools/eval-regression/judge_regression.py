@@ -464,7 +464,13 @@ def store(verdict, request, digest, artifacts, final_output):
     after downgrading unresolved evidence, quoteless artifact citations, and
     passes reached on cut or gapped material, each to its own reason."""
     answers = {c["criterion_id"]: c for c in verdict["criterion_results"]}
-    incomplete = not request["trace_digest"]["complete"] or bool(request["truncation"])
+    incomplete = not request["trace_digest"]["complete"] or any(
+        cut != "trace_digest.entries[].excerpt" for cut in request["truncation"]
+    )
+    trimmed_events = {
+        event_id for event_id, event in digest.items()
+        if len(json.dumps(event["payload"], ensure_ascii=False)) > MAX_DIGEST_ENTRY
+    }
     evidence_required = {
         item["id"]: bool(item.get("evidence_required"))
         for item in (request.get("rubric") or {}).get("items", [])
@@ -496,10 +502,15 @@ def store(verdict, request, digest, artifacts, final_output):
         downgrade = None
         if unverifiable and result != "undetermined":
             result, downgrade = "undetermined", "evidence_unverifiable"
+        elif not evidence and result != "undetermined":
+            result, downgrade = "undetermined", "evidence_unverifiable"
         elif (evidence_required.get(c["id"]) and result != "undetermined"
               and not any(verified_quote(e["match"]) for e in evidence)):
             result, downgrade = "undetermined", "evidence_unverifiable"
-        elif result == "passed" and incomplete:
+        elif result == "passed" and (incomplete or any(
+            e.get("kind") == "trace_event" and e.get("trace_event_id") in trimmed_events
+            for e in evidence
+        )):
             result, downgrade = "undetermined", "incomplete_evidence"
 
         results.append({
@@ -621,7 +632,7 @@ def main() -> None:
         lines.append(line)
         for r in line["criteria"]:
             mark = {"match": "ok", "mismatch": "MISMATCH", "unscored": "--",
-                    "downgraded": "undet"}[r["outcome"]]
+                    "downgraded": "undet", "undetermined": "undet"}[r["outcome"]]
             print(f"    {r['kind']:<12} want={r['expected'] or '-':<12} got={r['result']:<12} {mark}")
         print(f"    ${cost if cost is not None else float('nan'):.4f}  "
               f"running total ${total_cost:.4f}")
@@ -651,6 +662,8 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
             outcome = "match"
         elif got["downgrade"]:
             outcome = "downgraded"
+        elif got["result"] == "undetermined":
+            outcome = "undetermined"
         else:
             outcome = "mismatch"
         criteria.append({**got, "kind": kind, "expected": exp, "outcome": outcome})
@@ -661,6 +674,8 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
         "note": note,
         "judge_model": response["model"],
         "judge_prompt_version": response["prompt_version"],
+        "temperature_requested": response.get("temperature"),
+        "seed_requested": response.get("seed"),
         "rubric_version": rubric_version,
         "truncation_budget": {
             "final_output": MAX_FINAL_OUTPUT, "criteria": MAX_CRITERIA,
@@ -701,10 +716,12 @@ def summarise(lines, total_cost, unreported) -> None:
     match = sum(c["outcome"] == "match" for c in scored)
     mismatch = [c for c in scored if c["outcome"] == "mismatch"]
     downgraded = [c for c in scored if c["outcome"] == "downgraded"]
+    undetermined = [c for c in scored if c["outcome"] == "undetermined"]
     print(f"\nscored {len(scored)} criteria over {len(lines)} runs")
     print(f"  agreement   {match}/{len(scored)} = {match / len(scored):.1%}")
     print(f"  mismatch    {len(mismatch)}")
     print(f"  downgraded  {len(downgraded)} (undetermined, counted apart from wrong)")
+    print(f"  model undetermined {len(undetermined)} (counted apart from wrong)")
     print(f"  cost        ${total_cost:.4f}" + (f", {unreported} calls unreported" if unreported else ""))
     for c in mismatch:
         print(f"    ! {c['kind']}: want {c['expected']}, got {c['result']} - {c['reason'][:120]}")

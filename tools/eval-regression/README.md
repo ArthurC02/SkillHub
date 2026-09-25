@@ -26,6 +26,8 @@ Fork Run 的 rubric 以來源 Skill 名稱選取，但送往 Judge 的 Skill 名
 
 方法、逐筆結果、差異歸因與結論見 [`docs/plans/mvp/m3/report-judge-regression.md`](../../docs/plans/mvp/m3/report-judge-regression.md)；重跑指令見該報告 §10，帶 rubric 的那一輪見 §11，注入抵抗那一輪見 §12。
 
+現行量測見 [Judge 回歸與重複性報告](../../docs/plans/mvp/m6/report-judge-regression-2026-09-26.md)：45 筆原始基準、5 筆各重複 5 次、證據缺漏與無效引用，附原始請求／回應及費用。工具依現行平台對單一 excerpt 截斷採引用來源局部降級；缺引用的判定不可採信；模型自身的 `undetermined` 與判錯分開統計。採樣欄位記錄的是 requested 參數，不保證供應商支援或結果確定。
+
 與 `tools/goldenset` 同一種東西：**驗證工具，不是產品程式碼**——不被服務引用，重跑要花真實的模型費用（**回歸本體不進 CI；上表的 `test_judge_regression.py` 例外，它不花錢**）（45 筆全量約 $0.72，帶 rubric 的 5 筆約 $0.14，注入 13 樣本約 $0.05）。
 
 `injection_regression.py --dry-run` 不呼叫模型也不花錢，並會跑樣本集的 self-check（重複 id、缺對照組、攻擊要的答案剛好等於誠實答案）——改樣本檔之後先跑它。

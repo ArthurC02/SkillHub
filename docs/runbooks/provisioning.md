@@ -83,6 +83,9 @@ task dev:llm
 | 確認 Run 的產物、Gateway 計費 trace 與 key cleanup | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` | PostgreSQL、物件儲存、Sandbox、Gateway 與可由 Sandbox 存取的 trace 位址 |
 | 確認生成結果寫入 Gateway 實際成本 | `TestARealGatewayGenerationRecordsWhatItActuallyCost` | 正在執行且 `/readyz` 成功的 `apps/llm`，以及測試資料庫 |
 | 基準量測 | GEN-009、模式批次、創作量測 | 使用其受版本控制的 corpus／圖檔與獨立輸出目錄；它們是多次付費工作，不能以單次 E2E 取代或自動宣稱完成 |
+| Judge 歷史回歸 | `tools/eval-regression/judge_regression.py --dry-run`，之後才付費 | 必須連到保有原始 Run／Trace／快照的 PostgreSQL 與相應 S3；空白 clean-mode 資料庫不能取代基準庫 |
+
+Judge 回歸不需要重跑 Sandbox。先確認 45 個原始 Run ID 與標註出處，逐筆讀封存索引，再以重複的 `--run-id` 參數固定取樣；不要為了讓預設查詢選到新 Run 而修改歷史 compatibility 記錄。封存 404 只有在原標註已確認無產物時才可接受，連線或授權錯誤不能當作「沒有檔案」。呼叫 `/judge-run` 的 service token 必須與 Python 服務一致，金鑰應有獨立預算；多次量測宜逐筆保存，重啟前先檢查已存在的 evaluation ID，避免整批重新付費。成本以 response 的 `cost_source=gateway` 與該次專用 key 的閘道支出對帳；自訂 metadata 是否持久保存取決於閘道設定，不能假定一定能由資料庫反查 evaluation ID。
 
 需要 Sandbox Run 的量測有三個不同的連線角色：控制平面用 Gateway 管理端簽發 Virtual Key，Sandbox 用受 egress allowlist 保護的 Gateway 位址執行，容器化 runner 用服務 token 呼叫主機上的 `apps/llm`。三者不可混用 loopback 或測試用假位址。測試用的控制平面也必須明確採用本機 Sandbox 實際宣告的隔離強度，並為每個測試 Workspace 建立足以支付已核准 session 預算的點數餘額；否則 422 是正確的准入拒絕，不是模型失效。
 
