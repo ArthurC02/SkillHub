@@ -6,7 +6,7 @@
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": null,
-  "sources": [{"path": "docs/plans/04-backlog-and-handoffs.md", "lines": {"start": 68, "end": 68}, "content_sha256": "sha256:0edaa9422b69c2ca3e46e625d1517ed3cbe3721f0fe774524dd53f9170b32bff", "excerpt_sha256": "sha256:7891c478714374bb41e86553e2f301ebaf717d59a70fd6fa6f387a950dd65d7e", "source_kind": "requirements"}, {"path": "docs/plans/05-pending-rulings.md", "lines": {"start": 165, "end": 165}, "content_sha256": "sha256:584c684d986c57f0c473c54ac4549ede0eb854531840f7168f6ca3dc606481f7", "excerpt_sha256": "sha256:ed35733e93ee815dcd66fa88597a39f61aba424a1755f9bbeec4f47887b0e7de", "source_kind": "requirements"}],
+  "sources": [{"path": "docs/plans/04-backlog-and-handoffs.md", "lines": {"start": 68, "end": 68}, "content_sha256": "sha256:0edaa9422b69c2ca3e46e625d1517ed3cbe3721f0fe774524dd53f9170b32bff", "excerpt_sha256": "sha256:7891c478714374bb41e86553e2f301ebaf717d59a70fd6fa6f387a950dd65d7e", "source_kind": "requirements"}, {"path": "docs/plans/05-pending-rulings.md", "lines": {"start": 166, "end": 166}, "content_sha256": "sha256:7559d1ea1a59d61e3d407ebf0c4cfb7df834c6431efb5b4d50aa7100094af045", "excerpt_sha256": "sha256:ed35733e93ee815dcd66fa88597a39f61aba424a1755f9bbeec4f47887b0e7de", "source_kind": "requirements"}],
   "test_results": [],
   "contract_checks": [],
   "architecture_checks": [],
