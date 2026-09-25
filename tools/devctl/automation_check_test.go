@@ -14,7 +14,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	want := []string{
 		"depguard-deny", "service-construction", "identifier-order", "one-number", "sandbox-node-facts", "query-owner", "query-scope", "sql-logic",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
-		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
+		"baseline-tally", "immutability-proof", "retention-floor", "sdk-version", "single-data-layer",
 
 		"require-db-guard",
 

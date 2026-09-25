@@ -110,6 +110,7 @@ func documentCheckers() []namedChecker {
 		{"milestone-tally", milestoneTallyProblems},
 		{"backlog-tally", backlogTallyProblems},
 		{"baseline-tally", baselineTallyProblems},
+		{"immutability-proof", immutabilityProofProblems},
 		{"retention-floor", retentionFloorProblems},
 		{"sdk-version", sdkVersionProblems},
 		{"single-data-layer", secondDataLayerProblems},

@@ -159,6 +159,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `milestone-tally` | M5 的勾選數只有 `03` §19 的 checkbox 能說，其餘四份文件不得出現這個數 | `tools/devctl/milestone_tally.go` |
 | `backlog-tally` | `04` 每個帳目格的數字＝`<!-- open: … -->` 清單長度；清單上每個 id 都是真的列；沒有一列自稱已結案 | `tools/devctl/backlog_tally.go` |
 | `baseline-tally` | SEC-002 基線在六處自述的規模等於逐列重數（含分區表的合計列） | `tools/devctl/baseline_tally.go` |
+| `immutability-proof` | 每個現行 `*_immutable` trigger 守的每個 operation，在 `db/tests/immutability_test.sql` 都有一條 `must_*` 反證案例 | `tools/devctl/immutability_proof.go` |
 | `retention-floor` | `02:NFR-002a` 的三條保存期**下界**，逐條檢查而不是取平均 | `tools/devctl/retention_floor.go` |
 | `sdk-version` | Agent SDK 版本字串在 Dockerfile `ARG`、`sandboxd/main.go` fallback、`apps/sandbox/README.md` 三處一致 | `tools/devctl/sdk_version.go` |
 | `single-data-layer` | `db/gen` 之外不得長出第二個資料層（`02:PORT-008`） | `tools/devctl/second_data_layer.go` |

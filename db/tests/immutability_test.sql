@@ -35,6 +35,22 @@ BEGIN
 END;
 $$;
 
+-- Passes only when the message matches, because a trigger that raises without an
+-- ERRCODE shares raise_exception with every unrelated failure in this file.
+CREATE FUNCTION must_fail_saying(stmt text, fragment text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    BEGIN
+        EXECUTE stmt;
+    EXCEPTION WHEN raise_exception THEN
+        IF position(fragment IN SQLERRM) = 0 THEN
+            RAISE EXCEPTION 'rejected for the wrong reason (%): %', SQLERRM, stmt;
+        END IF;
+        RETURN;
+    END;
+    RAISE EXCEPTION 'expected immutability rejection but statement succeeded: %', stmt;
+END;
+$$;
+
 CREATE FUNCTION must_violate_unique(stmt text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
     BEGIN
@@ -316,6 +332,97 @@ BEGIN
 END;
 $$;
 SET LOCAL skillhub.purge = 'off';
+
+INSERT INTO run_attempts (id, run_id, workspace_id, attempt_number, provider)
+VALUES ('a0000000-0000-4000-8000-000000000001', '77777777-7777-7777-7777-777777777777',
+        '22222222-2222-2222-2222-222222222222', 1, 'self-hosted');
+
+UPDATE run_attempts SET finished_at = now(), object_grants_state = 'closed'
+WHERE id = 'a0000000-0000-4000-8000-000000000001';
+DO $$
+BEGIN
+    IF (SELECT finished_at IS NULL OR object_grants_state <> 'closed' FROM run_attempts
+        WHERE id = 'a0000000-0000-4000-8000-000000000001') THEN
+        RAISE EXCEPTION 'the attempt guard refused a column it lists as mutable';
+    END IF;
+END;
+$$;
+SELECT must_fail($$UPDATE run_attempts SET attempt_number = 2
+                   WHERE id = 'a0000000-0000-4000-8000-000000000001'$$);
+SELECT must_fail($$UPDATE run_attempts SET provider = 'swapped'
+                   WHERE id = 'a0000000-0000-4000-8000-000000000001'$$);
+SELECT must_fail($$DELETE FROM run_attempts
+                   WHERE id = 'a0000000-0000-4000-8000-000000000001'$$);
+
+INSERT INTO evaluation_model_usage (evaluation_id, workspace_id, operation, model,
+                                    prompt_version, prompt_tokens, completion_tokens,
+                                    cost_usd, cost_source)
+VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222',
+        'judge', 'gpt-5.6-terra', 'judge-1', 1200, 300, 0.004500, 'gateway');
+SELECT must_fail($$UPDATE evaluation_model_usage SET prompt_tokens = 1
+                   WHERE operation = 'judge'$$);
+SELECT must_fail($$DELETE FROM evaluation_model_usage WHERE operation = 'judge'$$);
+
+INSERT INTO evaluation_suggestion_applications (workspace_id, suggestion_id, skill_version_id)
+VALUES ('22222222-2222-2222-2222-222222222222', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        '44444444-4444-4444-4444-444444444444');
+SELECT must_fail($$UPDATE evaluation_suggestion_applications
+                   SET skill_version_id = '44444444-4444-4444-4444-444444444444',
+                       applied_at = now() - interval '1 day'
+                   WHERE suggestion_id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'$$);
+SELECT must_fail($$DELETE FROM evaluation_suggestion_applications
+                   WHERE suggestion_id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'$$);
+
+INSERT INTO credit_accounts (user_id, balance_credits)
+VALUES ('11111111-1111-1111-1111-111111111111', 100);
+INSERT INTO cost_events (id, kind, model, prompt_version, prompt_tokens, completion_tokens,
+                         usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id,
+                         idempotency_key)
+VALUES ('c0000000-0000-4000-8000-000000000001', 'run', 'gpt-5.6-terra', 'run-1', 900, 120,
+        3400, 'gateway', '22222222-2222-2222-2222-222222222222',
+        '11111111-1111-1111-1111-111111111111', 'run',
+        '77777777-7777-7777-7777-777777777777', 'cost-run-77-1');
+INSERT INTO credit_entries (id, user_id, kind, delta_credits, usd_micros, markup_bps, model,
+                            prompt_version, ref_type, ref_id, cost_event_id, idempotency_key)
+VALUES ('c0000000-0000-4000-8000-000000000002', '11111111-1111-1111-1111-111111111111',
+        'debit', -4, 3400, 2000, 'gpt-5.6-terra', 'run-1', 'run',
+        '77777777-7777-7777-7777-777777777777', 'c0000000-0000-4000-8000-000000000001',
+        'entry-run-77-1');
+
+SELECT must_fail($$UPDATE cost_events SET usd_micros = 1
+                   WHERE idempotency_key = 'cost-run-77-1'$$);
+SELECT must_fail($$DELETE FROM cost_events WHERE idempotency_key = 'cost-run-77-1'$$);
+SELECT must_fail($$UPDATE credit_entries SET delta_credits = -1
+                   WHERE idempotency_key = 'entry-run-77-1'$$);
+SELECT must_fail($$UPDATE credit_entries SET markup_bps = 500
+                   WHERE idempotency_key = 'entry-run-77-1'$$);
+SELECT must_fail($$DELETE FROM credit_entries WHERE idempotency_key = 'entry-run-77-1'$$);
+
+SET LOCAL skillhub.purge = 'on';
+DELETE FROM credit_entries WHERE idempotency_key = 'entry-run-77-1';
+DELETE FROM cost_events WHERE idempotency_key = 'cost-run-77-1';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM credit_entries WHERE idempotency_key = 'entry-run-77-1')
+       OR EXISTS (SELECT 1 FROM cost_events WHERE idempotency_key = 'cost-run-77-1') THEN
+        RAISE EXCEPTION 'the purge flag did not open the ledger tables for deletion';
+    END IF;
+END;
+$$;
+SET LOCAL skillhub.purge = 'off';
+
+INSERT INTO creation_sessions (id, workspace_id, state, revision, snapshot, expires_at)
+VALUES ('e0000000-0000-4000-8000-000000000001', '22222222-2222-2222-2222-222222222222',
+        'gathering', 1, '{}'::jsonb, now() + interval '7 days');
+INSERT INTO creation_session_events (session_id, workspace_id, revision, event_type, snapshot)
+VALUES ('e0000000-0000-4000-8000-000000000001', '22222222-2222-2222-2222-222222222222',
+        1, 'session_started', '{"state":"gathering"}'::jsonb);
+SELECT must_fail_saying($$UPDATE creation_session_events SET snapshot = '{"state":"rewritten"}'::jsonb
+                          WHERE session_id = 'e0000000-0000-4000-8000-000000000001'$$,
+                        'immutable');
+SELECT must_fail_saying($$UPDATE creation_session_events SET event_type = 'rewritten'
+                          WHERE session_id = 'e0000000-0000-4000-8000-000000000001'$$,
+                        'immutable');
 
 \echo 'immutability_test: OK'
 ROLLBACK;
