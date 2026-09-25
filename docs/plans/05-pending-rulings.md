@@ -26,7 +26,7 @@
 ### R-25｜purge 與資料庫層的清除權限屬於誰
 
 - **要決定的是什麼**：要不要在部署裡真的切到最小權限的清除角色，並對 API 角色收回 DELETE。
-- **已經查到的事實**：**角色與授權已經在 repo 裡**——`0059_skillhub_purge_role.sql` 建 `skillhub_purge` 並逐表授權，`maintenance` 讀 `SKILLHUB_PURGE_DATABASE_URL`，沒設時退回 API 角色並在啟動日誌說出這件事，切換與回退步驟在[清除角色切換](../runbooks/purge-role-cutover.md)。**沒有被做的是操作者那兩步**：`0059` 刻意不指派登入帳號、也不 revoke 任何東西，而 `.env.example` 裡那個變數是空的——所以今天七個 purge 子命令仍跑在與 API 相同的角色上，**那個角色對每一張表都有 DELETE**。清除路徑是這個系統唯一會不可逆銷毀使用者資料的東西，而它與服務請求的路徑共用同一組憑證。
+- **已經查到的事實**：**角色與授權已經在 repo 裡**——`0059_skillhub_purge_role.sql` 建 `skillhub_purge` 並逐表授權，`maintenance` 讀 `SKILLHUB_PURGE_DATABASE_URL`，沒設時退回 API 角色並在啟動日誌說出這件事，切換與回退步驟在[清除角色切換](../runbooks/purge-role-cutover.md)。**沒有被做的是操作者那兩步**：`0059` 刻意不指派登入帳號、也不 revoke 任何東西，而 `.env.example` 裡那個變數是空的——所以今天 `maintenance` 的九個子命令全部跑在與 API 相同的角色上——角色在建連線池時一次決定，不是逐個子命令決定，所以連 `rotate-partitions` 也跟著走，而它要建與刪分割表、`skillhub_purge` 沒有那個權限，**那個角色對每一張表都有 DELETE**。清除路徑是這個系統唯一會不可逆銷毀使用者資料的東西，而它與服務請求的路徑共用同一組憑證。
 - **原本反對拆角色的理由已經不成立**：退回機制讓淨測試模式那條唯一連線維持不變（變數不設，行為與今天一樣），所以「拆角色會撞出例外」不再是代價。
 - **選項**：(a) 照 runbook 切過去並收回 API 角色的 DELETE；(b) 維持退回 API 角色，**把理由寫下來**，並說明 repo 裡那套角色是為誰準備的。
 - **建議**：(b)。封測 12 人、operator 一人，(a) 的縱深買不到相稱的風險降低。

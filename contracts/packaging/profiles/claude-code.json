@@ -38,6 +38,6 @@
   "notes": [
     "安裝位置依照 Claude Code 文件所寫的 Skill 探索規則：個人層級 ~/.claude/skills/、專案層級 .claude/skills/，再加上往上到 repository 根層為止每一層的 .claude/skills/。（原文：Install locations follow Claude Code's documented Skill discovery: personal level ~/.claude/skills/, project level .claude/skills/, plus .claude/skills/ in parent directories up to the repository root.）",
     "壓縮檔裡帶著一個以 Skill 命名的最上層目錄，所以在 ~/.claude/skills/ 或 .claude/skills/ 裡面解壓縮，一步就得到正確的版面。（原文：The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step.）",
-    "verification_steps 裡「已經被監看的目錄不必重啟就會看到新 Skill」這句話，在 2026-08-23 之前只是文件；那一次安裝確認了它（~/.claude/skills/ 本來就存在，Skill 在同一個 session 裡就出現了）。（原文：The claim in verification_steps that an already-watched directory picks up a new Skill without a restart was documentation until 2026-08-23; it was confirmed on that install (~/.claude/skills/ already existed, the Skill appeared in the same session).）"
+    "verification_steps 裡「已經被監看的目錄不必重啟就會看到新 Skill」這句話有實測佐證：2026-08-23 的那次安裝裡，~/.claude/skills/ 本來就存在，Skill 在同一個 session 裡就出現了。（原文：The claim in verification_steps that an already-watched directory picks up a new Skill without a restart rests on a measurement: on the 2026-08-23 install, ~/.claude/skills/ already existed and the Skill appeared in the same session.）"
   ]
 }
