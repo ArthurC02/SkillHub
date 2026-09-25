@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -69,6 +70,7 @@ var allowedDocWords = map[string]string{
 	"dangerouslySetInnerHTML": "React prop",
 	"toHaveScreenshot":        "Playwright matcher",
 	"agentType":               "an option of the host's workflow script API, not repository code",
+	"InstructionsLoaded":      "the host's hook event, configured in a settings file this repository does not track",
 	"firstRefusal":            "the name the convergence note gives a generic it argues against writing; it exists so the argument can name it",
 
 	"pg_bigm":                "PostgreSQL extension",
@@ -123,10 +125,28 @@ func docIdentifierFiles(root string) ([]string, []string) {
 	return files, problems
 }
 
+func trackedFiles(root string) map[string]bool {
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output()
+	if err != nil {
+		return nil
+	}
+	tracked := map[string]bool{}
+	for _, name := range strings.Split(string(out), "\x00") {
+		if name != "" {
+			tracked[name] = true
+		}
+	}
+	if len(tracked) == 0 {
+		return nil
+	}
+	return tracked
+}
+
 func docIdentifierProblems(root string) []string {
 	declared := map[string]bool{}
 	word := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
 	skip := map[string]bool{".git": true, "node_modules": true, ".venv": true, ".devctl": true, "dist": true, "__pycache__": true}
+	tracked := trackedFiles(root)
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -144,6 +164,12 @@ func docIdentifierProblems(root string) []string {
 
 		if filepath.Base(path) == "doc_identifiers.go" {
 			return nil
+		}
+		if tracked != nil {
+			relative, err := filepath.Rel(root, path)
+			if err != nil || !tracked[filepath.ToSlash(relative)] {
+				return nil
+			}
 		}
 		body, err := os.ReadFile(path)
 		if err != nil {

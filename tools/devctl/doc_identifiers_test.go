@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -143,6 +144,37 @@ func TestDocIdentifierReadsTheTreesItWalks(t *testing.T) {
 				t.Fatalf("want exactly one problem containing %q, got %v", want, problems)
 			}
 		})
+	}
+}
+
+func TestDocIdentifierCountsOnlyWhatTheRepositoryTracks(t *testing.T) {
+	t.Parallel()
+	root := writeDocScope(t,
+		"hook 寫下 `InstructionsLoadedHere`。\n",
+		map[string]string{
+			".claude/settings.local.json": `{"hooks":{"InstructionsLoadedHere":[]}}`,
+			".gitignore":                  "/.claude/settings.local.json\n",
+		})
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Skipf("no git available to build the fixture: %v %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "add", "AGENTS.md", ".gitignore").CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v %s", err, out)
+	}
+
+	problems := docIdentifierProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "InstructionsLoadedHere") {
+		t.Fatalf("a name declared only in an untracked file was accepted as a declaration: %v", problems)
+	}
+}
+
+func TestDocIdentifierOutsideAGitRepositoryReadsEveryFile(t *testing.T) {
+	t.Parallel()
+	root := writeDocScope(t,
+		"hook 寫下 `InstructionsLoadedHere`。\n",
+		map[string]string{".claude/settings.local.json": `{"hooks":{"InstructionsLoadedHere":[]}}`})
+	if problems := docIdentifierProblems(root); len(problems) != 0 {
+		t.Fatalf("without git there is nothing to call untracked, so every file counts: %v", problems)
 	}
 }
 
