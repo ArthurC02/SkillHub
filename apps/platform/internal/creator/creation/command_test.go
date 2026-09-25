@@ -41,6 +41,17 @@ func saveableSnapshot() Snapshot {
 	}
 }
 
+func attachConfirmedDiagram(p *Snapshot) {
+	p.DiagramFingerprint = "fp"
+	p.DiagramDescription = "起點到終點"
+	p.DiagramDescriptionConfirmed = true
+	p.DiagramConfirmed = true
+	p.DiagramInterpretation = &DiagramInterpretation{
+		Nodes:         []string{"起點"},
+		Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "誰核准？", Answer: "主管"}},
+	}
+}
+
 func materializer() func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
 	return func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error {
 		return nil
@@ -521,6 +532,14 @@ func TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash(t *testing.T) {
 		"no hash":           func(p *Snapshot) { p.Draft.ContentHash = "" },
 		"another hash":      func(p *Snapshot) { p.Draft.ContentHash = "other" },
 		"unconfirmed brief": func(p *Snapshot) { p.BriefConfirmed = false },
+		"unanswered diagram uncertainty": func(p *Snapshot) {
+			attachConfirmedDiagram(p)
+			p.DiagramInterpretation.Uncertainties[0].Answer = ""
+		},
+		"unconfirmed diagram description": func(p *Snapshot) {
+			attachConfirmedDiagram(p)
+			p.DiagramDescriptionConfirmed = false
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := saveableSnapshot()
@@ -530,6 +549,18 @@ func TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash(t *testing.T) {
 				t.Fatalf("err = %v, want ErrInvalidCommand", err)
 			}
 		})
+	}
+}
+
+func TestADiagramSessionWithEveryUncertaintyAnsweredIsSaveable(t *testing.T) {
+	p := saveableSnapshot()
+	attachConfirmedDiagram(&p)
+
+	got, err := (&Service{Materialize: materializer()}).save(
+		context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"})
+
+	if err != nil || got.materialize != "materialize" {
+		t.Fatalf("a diagram session with every uncertainty answered was refused: outcome=%+v err=%v", got, err)
 	}
 }
 

@@ -94,7 +94,7 @@
 | GEN-005 | 有測試 | `TestADiagramOnlyGenerationIsCreated`、`TestExactlyTheDiagramSizeCapIsNotRefused`、`TestADisallowedDiagramMediaTypeIs400` | |
 | GEN-006 | 有測試 | `TestFourReferencesIsRefusedBeforeTheGateway`、`TestAReferenceToAnotherUsersPrivateSkillIs422`、`TestALongReferenceIsCutToLeaveRoomForTheMarker` | |
 | GEN-007 | 有測試 | `TestChangedConfirmedBriefCannotProduceDraft`、`TestDiagramInterpretationRequiresConfirmedDescriptionAndEveryAnswer` | |
-| GEN-008 | 部分 | `TestActConfirmDiagram`、`TestActConfirmReferences`、`TestUnavailableReferenceBlocksDraft` | 流程圖組的 uncertainties 在 Go 沒有閘門，`confirmed` 的純函式邏輯成立不代表上層呼叫方不能繞過 |
+| GEN-008 | 有測試 | `TestActConfirmDiagram`、`TestActConfirmReferences`、`TestUnavailableReferenceBlocksDraft`、`TestProposalDraftGuardClauses`、`TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash`、`TestADiagramSessionWithEveryUncertaintyAnsweredIsSaveable` | |
 | GEN-009 | 有測試 | `TestTheDraftIsCopiedAsThePreviousDraftBeforeTheCommandRuns`、`TestActConfirmFetch`、`TestActDeclineFetch` | |
 | GEN-010 | 有測試 | `TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash`、`TestAnExistingCandidateIsSavedWithoutMaterializingAgain` | |
 | GEN-011 | 有測試 | `TestCreationBatchForeignSessionIDIsNotAnOracle` | |

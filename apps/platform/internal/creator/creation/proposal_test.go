@@ -22,10 +22,6 @@ func diagramJSON(nodes ...string) string {
 	return string(b)
 }
 
-func confirmedDiagram(nodes ...string) Snapshot {
-	return Snapshot{DiagramFingerprint: "fp", DiagramDescription: "diagram", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: nodes}}
-}
-
 func TestProposalRejectsAnInvalidDiagramInterpretationBeforeRecording(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{DiagramFingerprint: "fp"}}
@@ -249,6 +245,24 @@ func TestProposalDraftGuardClauses(t *testing.T) {
 				understanding := diagramJSON("start")
 				return Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "fp", DiagramConfirmed: true, DiagramUnderstanding: understanding},
 					&StepResult{Message: "ok", Brief: "task", DiagramUnderstanding: "", Draft: newDraft()}
+			},
+		},
+		{
+			name: "diagram uncertainty still unanswered",
+			build: func() (Snapshot, *StepResult) {
+				p := Snapshot{Brief: "task", BriefConfirmed: true}
+				attachConfirmedDiagram(&p)
+				p.DiagramInterpretation.Uncertainties[0].Answer = ""
+				return p, &StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
+			},
+		},
+		{
+			name: "diagram description read back but not confirmed",
+			build: func() (Snapshot, *StepResult) {
+				p := Snapshot{Brief: "task", BriefConfirmed: true}
+				attachConfirmedDiagram(&p)
+				p.DiagramDescriptionConfirmed = false
+				return p, &StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
 			},
 		},
 		{
