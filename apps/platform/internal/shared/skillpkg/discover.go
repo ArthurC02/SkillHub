@@ -1,7 +1,10 @@
 package skillpkg
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"path"
 	"regexp"
@@ -215,4 +218,28 @@ func (d *Discovery) collectTreeSkills(fsys fs.FS) {
 func hasSkillFile(fsys fs.FS, dir string) bool {
 	info, err := fs.Stat(fsys, path.Join(dir, "SKILL.md"))
 	return err == nil && info.Mode().IsRegular()
+}
+
+func SubtreeHash(fsys fs.FS) (string, error) {
+	sum := sha256.New()
+	err := fs.WalkDir(fsys, ".", func(p string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil || !info.Mode().IsRegular() {
+			return err
+		}
+		data, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(sum, "%s\x00%d\x00", p, len(data))
+		sum.Write(data)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(sum.Sum(nil)), nil
 }
