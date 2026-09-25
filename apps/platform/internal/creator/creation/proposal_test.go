@@ -781,7 +781,7 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 		return "new-hash", "report text", false, nil
 	}}
 	candidate := &Candidate{SkillID: "s1"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
 	if err != nil || !next || state != StateQueued {
@@ -800,6 +800,14 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	if last.Role != "tool" || !strings.Contains(last.Content, "blocked=false") {
 		t.Fatalf("wrong tool message: %+v", last)
 	}
+	if e.Snapshot.RunUnmet {
+		t.Fatal("the untested revision must not inherit the previous run verdict")
+	}
+	r.Outcome, r.ToolIntent = "draft", nil
+	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
+	if err != nil || next || state != StateDraftReady || e.Snapshot.Nudges != 0 {
+		t.Fatalf("accepting the validated revision must not nudge: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
+	}
 }
 
 func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.T) {
@@ -808,7 +816,7 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 		return "same-hash", "now passes", false, nil
 	}}
 	candidate := &Candidate{SkillID: "keep-me"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
 	if err != nil || !next || state != StateQueued {
@@ -819,6 +827,9 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 	}
 	if e.Snapshot.Candidate != candidate {
 		t.Fatalf("the candidate should survive a same-hash revalidation: %+v", e.Snapshot.Candidate)
+	}
+	if !e.Snapshot.RunUnmet {
+		t.Fatal("same-hash revalidation must preserve the run verdict")
 	}
 	if e.Snapshot.Draft == blockedDraft || e.Snapshot.Draft.ContentHash != "same-hash" {
 		t.Fatalf("the draft was not restored: %+v", e.Snapshot.Draft)

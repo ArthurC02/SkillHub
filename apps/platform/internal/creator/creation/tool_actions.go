@@ -120,6 +120,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	}
 	if p.Draft == nil || p.Draft.ContentHash != hash {
 		p.Candidate = nil
+		p.RunUnmet = false
 	}
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
 		p.PendingAction = NothingPending
