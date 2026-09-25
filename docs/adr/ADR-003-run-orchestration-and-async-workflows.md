@@ -82,7 +82,7 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 
 ### 決策 2：長時間或跨邊界流程一律走可持久化非同步工作流，核心狀態先落地再發事件
 
-所有長時間或跨邊界流程（Skill 匯入、掃描、Run、評估、清理、打包）採可持久化的非同步工作流：核心狀態先寫入領域資料庫，再透過 Transactional Outbox 發出事件；Consumer 必須支援至少一次傳遞下的冪等處理（鐵律 9）。Outbox 與佇列共用同一個 PostgreSQL（見ADR-002），佇列以 River 實作，Go Worker 是唯一的佇列消費者（鐵律 7）。
+所有長時間或跨邊界流程（Skill 匯入、掃描、Run、評估、清理、打包）採可持久化的非同步工作流：核心狀態先寫入領域資料庫，再透過 Transactional Outbox 發出事件；Consumer 必須支援至少一次傳遞下的冪等處理（鐵律 9）。Outbox 與佇列共用同一個 PostgreSQL（見 ADR-002），佇列以 River 實作，Go Worker 是唯一的佇列消費者（鐵律 7）。
 
 典型的事件序列（現行實作以 [contracts/events/domain-events.md](../../contracts/events/domain-events.md) 的事件目錄為準）：
 
@@ -90,13 +90,13 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 - Run：`RunRequested → PolicyApproved → ProviderSelected → RunProvisioned → RunStarted → RunExecutionCompleted → EvaluationCompleted → CleanupCompleted`
 - Packaging：`PackageRequested → VersionValidated → LicenseChecked → SecretsScanCompleted → PackageCreated → DownloadReady`
 
-帳號刪除等合規性清除流程有自己的時序與一致性要求，不套用此處的事件鏈模型，見ADR-023。
+帳號刪除等合規性清除流程有自己的時序與一致性要求，不套用此處的事件鏈模型，見 ADR-023。
 
 每個領域事件至少包含 `event_id`、`event_type`、`event_version`、`occurred_at`、`correlation_id`、`causation_id`、`workspace_id`（適用時）、`aggregate_id`，以及不含 Secrets 的必要 Payload；Run 相關事件使用平台 `run_id` 作為主要 Correlation，不以 Provider ID 取代。
 
 一致性與冪等規則：領域狀態與 Outbox Event 使用同一資料庫交易；Consumer 以 `event_id` 或業務 Idempotency Key 去重；狀態轉移以預期前置狀態或版本檢查防止倒退；外部呼叫保存 Request Key 與結果，避免不確定重試建立重複資源；Poison Message 進入隔離佇列並告警，不無限制重送。
 
-事件的送達與消化：Outbox publisher 發布後由 `outbox.Dispatcher` 依事件類型路由到訂閱者所屬 context 自己的 Mailbox（一條 River 佇列，以事件識別去重）；Worker 從 Mailbox 取出事件、呼叫訂閱者的消化方法、存回。每一種事件都要有訂閱者或具名的忽略理由。Aggregate root 內部如何定義命令與記錄事件見ADR-018；本決策只規範跨 context 的傳遞機制。
+事件的送達與消化：Outbox publisher 發布後由 `outbox.Dispatcher` 依事件類型路由到訂閱者所屬 context 自己的 Mailbox（一條 River 佇列，以事件識別去重）；Worker 從 Mailbox 取出事件、呼叫訂閱者的消化方法、存回。每一種事件都要有訂閱者或具名的忽略理由。Aggregate root 內部如何定義命令與記錄事件見 ADR-018；本決策只規範跨 context 的傳遞機制。
 
 命令與事件的差異：命令表示希望某個擁有者執行動作（例如 `StartRun`），事件表示已發生的事實（例如 `RunStarted`）；Event Consumer 不應依賴可變的隱含順序，需要順序時使用 Aggregate Version；使用者可見進度由持久化工作流狀態產生，不直接依賴暫時性 Queue 訊息。
 
@@ -106,7 +106,7 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 
 ### 決策 3：Run 終態與 Evaluation 判定分屬兩個問題、兩個欄位、兩個表
 
-`runs.status` 回答「這次執行發生了什麼」；`evaluations.overall` 回答「任務達成了嗎」。Evaluation 的判定不回寫 `runs.status`，也不回寫 `runs.failure_class`；Run 狀態機的 `evaluating → succeeded` 路徑不變，評估是這條路徑上的一個步驟，不是第二個狀態機。判定值域與 Judge 信任邊界見ADR-009。
+`runs.status` 回答「這次執行發生了什麼」；`evaluations.overall` 回答「任務達成了嗎」。Evaluation 的判定不回寫 `runs.status`，也不回寫 `runs.failure_class`；Run 狀態機的 `evaluating → succeeded` 路徑不變，評估是這條路徑上的一個步驟，不是第二個狀態機。判定值域與 Judge 信任邊界見 ADR-009。
 
 落地要求：`evaluating → succeeded` 路徑不變，評估寫入 `evaluations`，不 UPDATE `runs` 的任何欄位；沒有評估的 Run 顯示「未評估」而非「通過」；評估未完成（`evaluations.status = failed`）與「未評估」分開顯示；Run 終態文案採執行語意（執行完成／執行失敗），任務判定另起一列顯示。
 
@@ -114,7 +114,7 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 
 理由 2（資料庫已經回答過一次）：Run 終態不可變（鐵律 4；`runs_terminal_immutable` trigger 禁止改寫已終態的 Run），而 Evaluation 的重評是 append-only、可在 rubric 或 Judge prompt 升版後對同一個 Run 產生新的判定；若終態由評估決定，該 Run 的終態就得跟著變，直接與不可變 trigger 衝突。
 
-理由 3（執行事實與判斷分開）：Run Trace 是執行事實，Evaluation 是判斷；把判斷寫回執行事實等於抹除這條邊界，也讓「判斷來源」這個欄位失去落點（見ADR-005）。
+理由 3（執行事實與判斷分開）：Run Trace 是執行事實，Evaluation 是判斷；把判斷寫回執行事實等於抹除這條邊界，也讓「判斷來源」這個欄位失去落點（見 ADR-005）。
 
 ## 影響
 
@@ -123,7 +123,7 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 - 可逐步加入第三方、自建、區域或高安全 Provider，Run、Trace、Evaluation 與歷史資料不綁定供應商。
 - 長時間流程可恢復、取消、追蹤與重試；模組之間降低同步耦合，支援未來拆分 Worker 或服務。
 - 重試分類器只處理它該處理的事，「執行成功但任務沒完成」變成一個說得出口的狀態，不必靠使用者自己讀 Trace 才發現落差。
-- 重評（見ADR-009）與歷史 Run 的不可變性可以同時成立。
+- 重評（見 ADR-009）與歷史 Run 的不可變性可以同時成立。
 
 ### 成本與限制
 
