@@ -138,7 +138,62 @@ func requirementRefProblems(root string) []string {
 				"the citation scan is broken rather than the citations removed",
 			strings.Join(requirementCiters, ", ")))
 	}
+	problems = append(problems, uncarriedRequirements(root, headings)...)
 	sort.Strings(problems)
+	return problems
+}
+
+var requirementsWithNoWorkItem = map[string]string{
+	"NFR-004": "the performance figures the spec itself defers until the infrastructure is confirmed; " +
+		"nothing can be built against a threshold that has no value",
+}
+
+var workItemLine = regexp.MustCompile(`(?m)^- \[[ x~]\] ([A-Z][A-Z0-9]{1,7}-\d{3})`)
+
+func uncarriedRequirements(root string, headings map[string][]headingOccurrence) []string {
+	spec, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(requirementSpec)))
+	if err != nil {
+		return []string{fmt.Sprintf("requirement-refs: %v", err)}
+	}
+	work, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(requirementCiters[0])))
+	if err != nil {
+		return []string{fmt.Sprintf("requirement-refs: %v", err)}
+	}
+
+	carried := map[string]bool{}
+	for _, m := range requirementCitation.FindAllStringSubmatch(string(work), -1) {
+		carried[m[1]] = true
+	}
+	for _, m := range workItemLine.FindAllStringSubmatch(string(work), -1) {
+		carried[m[1]] = true
+	}
+
+	var required []string
+	for _, line := range strings.Split(string(spec), "\n") {
+		m := requirementHeading.FindStringSubmatch(line)
+		if m == nil || strings.Contains(line, "後 MVP") {
+			continue
+		}
+		if ids := requirementID.FindAllString(m[2], -1); len(ids) > 0 {
+			required = append(required, ids[0])
+		}
+	}
+
+	seen, problems := map[string]bool{}, []string(nil)
+	for _, id := range required {
+		if seen[id] || carried[id] || len(headings[id]) == 0 {
+			continue
+		}
+		seen[id] = true
+		if reason := requirementsWithNoWorkItem[id]; reason != "" {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf(
+			"requirement-refs: %s is MVP-required in %s and no work item in %s names it. "+
+				"Cite it from the item that carries it, or add it to requirementsWithNoWorkItem with the "+
+				"reason nothing can carry it",
+			id, requirementSpec, requirementCiters[0]))
+	}
 	return problems
 }
 

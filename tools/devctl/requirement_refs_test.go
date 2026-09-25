@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -55,7 +57,16 @@ func writeRefFixture(t *testing.T, extraHeadings, citer string) string {
 	}
 	spec.WriteString(extraHeadings)
 	writeAt(t, root, requirementSpec, spec.String())
-	writeAt(t, root, requirementCiters[0], citer)
+
+	var work strings.Builder
+	for i := 1; i <= 41; i++ {
+		fmt.Fprintf(&work, "- [x] DISC-%03d 做完了\n", i)
+	}
+	for _, id := range requirementID.FindAllString(extraHeadings, -1) {
+		fmt.Fprintf(&work, "- [x] %s 做完了\n", id)
+	}
+	work.WriteString(citer)
+	writeAt(t, root, requirementCiters[0], work.String())
 	writeAt(t, root, requirementCiters[1], "沒有引用。\n")
 	writeAt(t, root, requirementCiters[2], "也沒有。\n")
 	return root
@@ -155,4 +166,38 @@ func TestRequirementRefsSaysSoWhenItHasLostItsSubject(t *testing.T) {
 			t.Fatal("a missing spec was accepted")
 		}
 	})
+}
+
+func TestRequirementRefsNamesARequirementNoWorkItemCarries(t *testing.T) {
+	t.Parallel()
+	carried := "- [x] 引用一次（允收：`02:DISC-001`）\n"
+	root := writeRefFixture(t, "### PACK-001：打包\n\n允收準則：無。\n\n", carried)
+	problems := requirementRefProblems(root)
+	if len(problems) != 0 {
+		t.Fatalf("a fully carried plan was rejected: %v", problems)
+	}
+
+	orphaned := writeRefFixture(t, "", carried)
+	spec, err := os.ReadFile(filepath.Join(orphaned, filepath.FromSlash(requirementSpec)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAt(t, orphaned, requirementSpec, string(spec)+"### PACK-001：打包\n\n允收準則：無。\n\n")
+	problems = requirementRefProblems(orphaned)
+	if len(problems) != 1 || !strings.Contains(problems[0], "PACK-001 is MVP-required") {
+		t.Fatalf("expected exactly the uncarried report for PACK-001, got %v", problems)
+	}
+}
+
+func TestRequirementRefsLeavesAPostMVPRequirementAlone(t *testing.T) {
+	t.Parallel()
+	root := writeRefFixture(t, "", "- [x] 引用一次（允收：`02:DISC-001`）\n")
+	spec, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(requirementSpec)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAt(t, root, requirementSpec, string(spec)+"### PACK-001：打包（後 MVP）\n\n允收準則：無。\n\n")
+	if problems := requirementRefProblems(root); len(problems) != 0 {
+		t.Fatalf("a 後 MVP requirement was asked for a work item: %v", problems)
+	}
 }

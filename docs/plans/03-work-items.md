@@ -113,13 +113,13 @@
 
 ## 6. Skill 匯入、驗證與索引（M1）
 
-- [x] INGEST-001 支援從允許的 URL 匯入 Skill。
-- [x] INGEST-002 支援上傳 Skill 套件。
+- [x] INGEST-001 支援從允許的 URL 匯入 Skill。（允收：`02:SKILL-001`）
+- [x] INGEST-002 支援上傳 Skill 套件。（允收：`02:SKILL-001`）
 - [x] INGEST-003 解析 `SKILL.md` 與套件檔案樹。
 - [x] INGEST-004 保存來源 URL、版本／Commit、擷取時間與內容雜湊。
 - [x] INGEST-005 偵測重複內容並避免覆蓋既有版本。
-- [x] INGEST-006 實作 Agent Skills 規格驗證。
-- [x] INGEST-007 實作檔案引用、依賴、Script、外部 URL 與疑似 Secret 靜態檢查。
+- [x] INGEST-006 實作 Agent Skills 規格驗證。（允收：`02:SKILL-002`）
+- [x] INGEST-007 實作檔案引用、依賴、Script、外部 URL 與疑似 Secret 靜態檢查。（允收：`02:SKILL-002`）
 - [x] INGEST-008 分開呈現錯誤、警告與資訊訊息。
 - [x] INGEST-009 建立可搜尋索引與重新索引流程。
 - [x] INGEST-010 建立外部內容失效、來源更新及人工下架流程。
@@ -197,10 +197,10 @@
 - [x] RUN-003 定義平台 `run_id` 與 `provider_run_id` 映射。（0016 `run_attempts`；解掉 0004「重試覆寫 `provider_run_id`」的已知債）
 - [x] RUN-004 實作 queued 到 cleaning_up 的標準狀態機。
 - [x] RUN-005 實作 Run 排程、Provider 選擇與能力相容檢查。（Provider 註冊表為部署靜態設定 `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>`，不做動態註冊；`GET /capability` 以 30 秒 TTL 快取，worker 啟動時清空重讀；相容檢查涵蓋隔離強度（強／弱／無，部署設定可接受的最低值）、rootless、egress 模式、Runtime 家族與整合模式、六項資源上限，不相容者**在排入佇列前**回 422 並附逐一理由；派送時只選回報有空位的相容 Provider（空位多的優先），被以沒有空位拒絕就換下一個，全滿時 Run 留在 `queued` 等候、最多 30 分鐘，空位先給持有沙箱較少的 Workspace、同數時先建立的先，執行中的 Run 每次查詢後把工作延後再取、不佔住 Worker，硬性時間上限從 Provider 接受時起算；被接受時才把結果寫進 `runs.provider` 與 `runtime_snapshot`，`provider_run_id` 只寫 `run_attempts`；Provider 失聯滿 90 秒或回報不認得這個 Attempt 時改派一次到別的 Provider，第二次遺失以 provider_error 結束）
-- [x] RUN-006 實作取消、逾時、有限重試與失敗分類。（取消：`cancel_requested_at` → 輪詢時呼叫 provider cancel → 待 provider 回終態才轉移，符合「取消不得謊報已停止」；逾時：provider 回報 `timed_out` 為軟逾時，平台側以 `created_at + wall_clock_hard_seconds` 為硬逾時，driver 與 supervisor 雙重把關；重試：新增一筆 `run_attempts` 且上限入設定（預設 3），**僅 provider 側失敗可重試，workload 自身失敗不重試**；分類寫入 0018 新增的 `runs.failure_class`。**限制註記**：重試窗僅涵蓋 run 仍在 `provisioning` 的派送階段——狀態機無回退邊，離開 `provisioning` 後的 provider 失敗只分類不重試，要放寬需新 ADR）
-- [x] RUN-007 實作冪等清理與遺留 Sandbox 掃描。（終態轉移於同交易排入 cleanup job（River unique，重複排入為 no-op）；`DELETE` 依契約冪等且無 404，重跑安全；孤兒掃描以 `GET /runs?active=true` 比對平台狀態，僅在「平台已終態」或「平台不認得且 `observed_at - created_at` 超過 5 分鐘寬限」時 destroy，避免誤殺派送中的新 Run；清理失敗記 `cleanup_status='failed'` 並由 supervisor 重排）
-- [x] RUN-008 實作服務重新啟動後的 Run 狀態恢復或安全終止。（supervisor 為 River periodic job（30 秒，`RunOnStart`，僅 leader 執行）：掃非終態 Run，逾期者判 `timed_out`＋清理，其餘以 unique job 重新入列——已有在途 job 時自動 no-op，故不需讀 river 表；有在途 attempt 者重新掛回輪詢，已離開派送階段卻無 attempt 可接者判 `platform_error` 安全終止）
-- [x] RUN-009 建立 Provider 契約測試套件。（`internal/run/provider_contract_test.go`：冪等重送同資源／同鍵不同內容 409／cancel 已終態仍 202／DELETE 重複與未知 handle 皆 204／`active=false` 回 400／終態必帶 result／無 token 401；預設跑 in-repo fake（`internal/run/providertest`），設 `SKILLHUB_PROVIDER_CONTRACT_URL`＋`SKILLHUB_PROVIDER_CONTRACT_TOKEN` 即對真實服務跑同一套。狀態映射另以 `schedule_test.go` 的決策表驗證）
+- [x] RUN-006 實作取消、逾時、有限重試與失敗分類。（允收：`02:NFR-003` 第 1 條。取消：`cancel_requested_at` → 輪詢時呼叫 provider cancel → 待 provider 回終態才轉移，符合「取消不得謊報已停止」；逾時：provider 回報 `timed_out` 為軟逾時，平台側以 `created_at + wall_clock_hard_seconds` 為硬逾時，driver 與 supervisor 雙重把關；重試：新增一筆 `run_attempts` 且上限入設定（預設 3），**僅 provider 側失敗可重試，workload 自身失敗不重試**；分類寫入 0018 新增的 `runs.failure_class`。**限制註記**：重試窗僅涵蓋 run 仍在 `provisioning` 的派送階段——狀態機無回退邊，離開 `provisioning` 後的 provider 失敗只分類不重試，要放寬需新 ADR）
+- [x] RUN-007 實作冪等清理與遺留 Sandbox 掃描。（允收：`02:NFR-003` 第 2 條。終態轉移於同交易排入 cleanup job（River unique，重複排入為 no-op）；`DELETE` 依契約冪等且無 404，重跑安全；孤兒掃描以 `GET /runs?active=true` 比對平台狀態，僅在「平台已終態」或「平台不認得且 `observed_at - created_at` 超過 5 分鐘寬限」時 destroy，避免誤殺派送中的新 Run；清理失敗記 `cleanup_status='failed'` 並由 supervisor 重排）
+- [x] RUN-008 實作服務重新啟動後的 Run 狀態恢復或安全終止。（允收：`02:NFR-003` 第 3 條。supervisor 為 River periodic job（30 秒，`RunOnStart`，僅 leader 執行）：掃非終態 Run，逾期者判 `timed_out`＋清理，其餘以 unique job 重新入列——已有在途 job 時自動 no-op，故不需讀 river 表；有在途 attempt 者重新掛回輪詢，已離開派送階段卻無 attempt 可接者判 `platform_error` 安全終止）
+- [x] RUN-009 建立 Provider 契約測試套件。（允收：`02:NFR-006` 第 3 條。`internal/run/provider_contract_test.go`：冪等重送同資源／同鍵不同內容 409／cancel 已終態仍 202／DELETE 重複與未知 handle 皆 204／`active=false` 回 400／終態必帶 result／無 token 401；預設跑 in-repo fake（`internal/run/providertest`），設 `SKILLHUB_PROVIDER_CONTRACT_URL`＋`SKILLHUB_PROVIDER_CONTRACT_TOKEN` 即對真實服務跑同一套。狀態映射另以 `schedule_test.go` 的決策表驗證）
 
 ## 11. SelfHostedProvider（M2）
 
@@ -244,7 +244,7 @@
 - [x] TRACE-007 實作進階模式 Trace 檢視。（`?mode=advanced`：經遮罩的原始事件以不漏 commit 的 ingestion cursor 分頁、頁內依 `(occurred_at, emitted_by, attempt, seq)` 排序；需要單一跨來源時間軸的 API consumer 抓完所有頁再依同一 tuple 重建。Web 提供前後頁與手動重新整理，讓終態後才抵達的 late event 仍可取回。逐串流列出 bounded `missing_seq` sample、exact `missing_count` 與遲到計數；`complete: false` 時 UI 明示「部分事件未送達」。payload 一律以 inert text 呈現，不解讀 HTML／ANSI／SVG，有具名測試以注入 `<img onerror>` 驗證。UI 為 `apps/web` 的 `/runs/$runId`，一般／進階切換）
 - [x] TRACE-008 處理事件排序、重送、缺失與延遲。（去重鍵為 producer 產生的 `event_id`，`ON CONFLICT DO NOTHING`，重送回報為 `duplicate` 而非錯誤；順序以 per-producer 的 `seq` 重建，斷號＝該事件遺失且被逐一列出；終態後仍接受遲到事件並標記 `late`，因為沙箱關機時推送的最後一批正是失敗 Run 最需要的部分。sandboxd 側推送失敗不推進水位，下一輪重送）
 - [x] TRACE-009 讓 `usage` 事件不再依賴 SDK 的 `result` 訊息（[m2/README.md 丙-3](mvp/m2/README.md)、[content-baseline-report.md §7.2 #4](mvp/m2/content-baseline-report.md)）。
-- [x] O11Y-001 量測搜尋、Run 排隊、建立、成功、逾時與清理指標。（Prometheus 文字格式，`apps/platform` 與 `sandboxd` 各自曝露 `/metrics`；平台側走獨立 listener `METRICS_ADDR`，不掛在對外 API port 上。指標清單見 [infra/observability/README.md](../../infra/observability/README.md)）
+- [x] O11Y-001 量測搜尋、Run 排隊、建立、成功、逾時與清理指標。（允收：`02:NFR-005` 第 2 條。Prometheus 文字格式，`apps/platform` 與 `sandboxd` 各自曝露 `/metrics`；平台側走獨立 listener `METRICS_ADDR`，不掛在對外 API port 上。指標清單見 [infra/observability/README.md](../../infra/observability/README.md)）
 - [x] O11Y-002 建立 Provider 健康度與錯誤監控。（`skillhub_provider_capability_total{provider,result}` 區分 ok／unhealthy／error；`skillhub_provider_request_total{provider,operation,class}` 以狀態碼分級記 429 與 5xx；另有每操作延遲 histogram。告警規則四條見 `alerts.yml`）
 - [x] O11Y-003 建立遺留 Sandbox、資源異常及安全事件告警。（`skillhub_run_cleanup_backlog` gauge、`skillhub_orphan_scan_total`、`skillhub_orphan_sandbox_total{action}` 區分「殺掉的漏網 Sandbox」與「殺不掉的」，加上遮罩器靜默失效偵測（`TraceMaskingStopped`——NFR-002 沒有其他偵測器）。告警為 `infra/observability/alerts.yml` 的 rules 檔＋文件，**Alertmanager 部署、通知路由與 Grafana dashboard 屬部署期，明確未做**；門檻值為首發預設非實測校準值，已在文件標明需上線後回填）
 - [x] O11Y-004 建立核心漏斗的產品分析事件：四個新事件（搜尋送出、Skill 詳情查看、Session 開始、下載發起）的產生、儲存與查詢，其餘漏斗段以既有領域表回答。**（M4）**（承接 [m4/README.md §7 差-4](mvp/m4/README.md)：`BETA-002` 要量 `01` §11.2 的七段漏斗，而**此前沒有任何工作項承接「漏斗事件的產生與儲存」**——`O11Y-001`～`003` 量的是平台健康（聚合計數、無使用者維度），`CORE-008` 的 audit event 是合規紀錄（不含內容、400 天），拿任一者當分析來源都會同時做壞兩件事。
