@@ -962,7 +962,7 @@ export function CreationSession() {
                       <pre className="skill-md">
                         <Reveal text={p.previous_draft.skill.body} />
                       </pre>
-                      {p.previous_draft.skill.files.map((f) => (
+                      {p.previous_draft.skill.files?.map((f) => (
                         <pre key={f.path}>{f.path + "\n" + f.content}</pre>
                       ))}
                     </details>
@@ -970,7 +970,7 @@ export function CreationSession() {
                   <pre className="skill-md">
                     <Reveal text={p.draft.skill.body} />
                   </pre>
-                  {p.draft.skill.files.map((f) => (
+                  {p.draft.skill.files?.map((f) => (
                     <details key={f.path}>
                       <summary>{f.path}</summary>
                       <pre className="skill-md">

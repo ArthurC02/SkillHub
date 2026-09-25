@@ -20,7 +20,7 @@ export interface CreationSkill {
   compatibility: string;
   allowed_tools: string;
   body: string;
-  files: { path: string; content: string }[];
+  files: { path: string; content: string }[] | null;
 }
 export interface CreationReference {
   skill_id: string;
