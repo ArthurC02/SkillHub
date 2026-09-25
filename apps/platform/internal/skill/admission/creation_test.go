@@ -2,7 +2,9 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,12 +12,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
 
 const creationDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -195,5 +199,67 @@ func TestCreationCandidateMaterializeDuplicateIsReuseNotError(t *testing.T) {
 	}
 	if second.Skill.ID != first.Skill.ID {
 		t.Errorf("second materialize Skill.ID = %v, want %v", second.Skill.ID, first.Skill.ID)
+	}
+}
+
+func TestCreationRevisionEnrichesWithoutHoldingTheOnlyConnection(t *testing.T) {
+	for _, scenario := range []string{"owned", "foreign", "uploaded"} {
+		t.Run(scenario, func(t *testing.T) {
+			shared := requireCreationDB(t)
+			ws := seedCreationWorkspace(t, shared, "creation-enrich-"+scenario)
+			cfg := shared.Config()
+			cfg.MaxConns, cfg.MinConns = 1, 0
+			pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer pool.Close()
+			var projection SkillProjection
+			svc := &Service{Pool: pool, Store: &creationTestStore{}, IndexSkill: func(_ context.Context, _ pgx.Tx, p SkillProjection) error {
+				projection = p
+				return nil
+			}}
+			skill := goodGeneratedSkill()
+			prov := GeneratedCandidateProvenance{TaskDescription: "test task", Model: "test-model", PromptVersion: "v1"}
+			var first Result
+			if scenario == "uploaded" {
+				data, buildErr := buildGeneratedPackage(skill)
+				if buildErr != nil {
+					t.Fatal(buildErr)
+				}
+				first, err = svc.importZip(t.Context(), ws, data, sourceMeta{Type: SourceUpload})
+			} else {
+				first, err = svc.MaterializeGeneratedCandidate(t.Context(), ws, skill, prov, nil)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if scenario == "foreign" {
+				ws = seedCreationWorkspace(t, shared, "creation-enrich-other")
+			}
+			stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
+			svc.LLM = stub.start(t)
+			svc.Budgets = &modelbudget.Service{Pool: pool}
+			prov.ExistingSkillID = &first.Skill.ID
+			skill.Body += "\nReturn a concise summary.\n"
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			got, err := svc.MaterializeGeneratedCandidate(ctx, ws, skill, prov, nil)
+			if scenario != "owned" {
+				if !errors.Is(err, ErrGeneratedNameCollision) || len(stub.embedded) != 0 {
+					t.Fatalf("unauthorized revision: error=%v, embedded=%d", err, len(stub.embedded))
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("single-connection revision: %v", err)
+			}
+			if got.Skill.ID != first.Skill.ID || got.Version.ID == first.Version.ID || got.Version.VersionNumber != first.Version.VersionNumber+1 || got.Duplicate {
+				t.Fatalf("revision did not create the next version: %+v", got)
+			}
+			if len(stub.embedded) != 1 || projection.EnrichmentStatus != "enriched" || projection.EnrichedSummary != testEnrichedSummary {
+				t.Fatalf("revision lost enrichment: %+v", projection)
+			}
+		})
 	}
 }

@@ -39,22 +39,23 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil || prepared.report.Blocked {
 		return Result{Report: prepared.report}, err
 	}
+	if err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		_, err := loadGeneratedSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
+		return err
+	}); err != nil {
+		return Result{}, err
+	}
+	enriched := s.enrichPackage(ctx, prepared, ws.ID)
 	tx, release, err := s.beginPackageWrite(ctx, ws, prepared, data)
 	if err != nil {
 		return Result{}, err
 	}
 	defer release()
-	existing, err := registry.LoadSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
-	if errors.Is(err, registry.ErrNotFound) {
-		return Result{}, ErrGeneratedNameCollision
-	}
+	existing, err := loadGeneratedSkill(ctx, tx, ws.ID, *p.ExistingSkillID)
 	if err != nil {
 		return Result{}, err
 	}
-	if !existing.Generated() {
-		return Result{}, ErrGeneratedNameCollision
-	}
-	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, s.enrichPackage(ctx, prepared, ws.ID))
+	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, enriched)
 	if err != nil {
 		return Result{}, err
 	}
@@ -71,6 +72,20 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		}
 	}
 	return res, tx.Commit(ctx)
+}
+
+func loadGeneratedSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (*registry.SkillRoot, error) {
+	skill, err := registry.LoadSkill(ctx, tx, workspaceID, skillID)
+	if errors.Is(err, registry.ErrNotFound) {
+		return nil, ErrGeneratedNameCollision
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !skill.Generated() {
+		return nil, ErrGeneratedNameCollision
+	}
+	return skill, nil
 }
 
 type FixedCreationReference struct {
