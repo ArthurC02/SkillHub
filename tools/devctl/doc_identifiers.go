@@ -27,7 +27,8 @@ var docIdentifierTrees = []string{
 	"contracts",
 }
 
-var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,})`")
+var docIdentifierPattern = regexp.MustCompile(
+	"`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,}|[a-z][a-z0-9]*(?:[A-Z][A-Za-z0-9]*)+)`")
 
 var allowedDocWords = map[string]string{
 	"PurgeExpiredCostEvents":         "removed with the credit retention sweep (05 R-76); 03 CRED-006 records it as it was",
@@ -53,15 +54,21 @@ var allowedDocWords = map[string]string{
 	"CountUnreadableRunArtifacts":    "replaced by trial/execution's evaluationArtifacts over ListRunArtifactsWithLifecycle; 03 records past work under the old name",
 	"ResetCatalogueEnrichmentBefore": "replaced by skill/discovery's RequeueCatalogueEnrichment; 04 and 05 record the ruling under the old name",
 	"TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions": "renamed to TestRequeueingCatalogueEnrichmentQueuesOnlyOlderPromptVersions; 05 records the ruling under the old name",
-	"RunRequested":          "workflow vocabulary from the run orchestration decision; domain-events.md maps it to the wire type run.queued",
-	"RunStarted":            "the same vocabulary; the wire types are run.* and the commands are Go methods",
-	"StartRun":              "the same vocabulary, on the command side",
-	"RunExecutionCompleted": "the same vocabulary; maps to run.succeeded|failed|timed_out",
-	"CleanupCompleted":      "the same vocabulary; maps to run.cleanup_cleaned",
-	"NULLIF":                "SQL keyword",
-	"PGDATA":                "the Postgres image's environment variable",
-	"GOTOOLCHAIN":           "the Go toolchain's environment variable",
-	"XxxFacts":              "a naming pattern with a placeholder, not a type: <Collaborator>Facts",
+	"RunRequested":            "workflow vocabulary from the run orchestration decision; domain-events.md maps it to the wire type run.queued",
+	"RunStarted":              "the same vocabulary; the wire types are run.* and the commands are Go methods",
+	"StartRun":                "the same vocabulary, on the command side",
+	"RunExecutionCompleted":   "the same vocabulary; maps to run.succeeded|failed|timed_out",
+	"CleanupCompleted":        "the same vocabulary; maps to run.cleanup_cleaned",
+	"NULLIF":                  "SQL keyword",
+	"PGDATA":                  "the Postgres image's environment variable",
+	"GOTOOLCHAIN":             "the Go toolchain's environment variable",
+	"XxxFacts":                "a naming pattern with a placeholder, not a type: <Collaborator>Facts",
+	"activeProps":             "TanStack Router prop, not a SkillHub symbol",
+	"beforeLoad":              "TanStack Router route option",
+	"dangerouslySetInnerHTML": "React prop",
+	"toHaveScreenshot":        "Playwright matcher",
+	"agentType":               "an option of the host's workflow script API, not repository code",
+	"firstRefusal":            "the name the convergence note gives a generic it argues against writing; it exists so the argument can name it",
 }
 
 var codeExtensions = map[string]bool{

@@ -808,7 +808,7 @@ Run 至少支援：
 - **判準一之二（新增，不可協商）**：**兩條獨立連線對同一把 advisory lock，第二條必須拿不到。**<br>上面那五條由資料庫強制的行為**全部是單連線性質**，一條連線就驗得完——**所以它們全過，也不代表互斥還在**。實測 `pglite-socket` 的 multiplexer（`maxConnections > 1`）讓 N 個 client 共用同一個 Postgres session：`pg_backend_pid()` 兩邊同為 42、**兩邊同時拿到同一把 `pg_try_advisory_lock` 且無任何錯誤**、互相看得見 temp table。PostgreSQL 官方文件寫明「session 已持有某 advisory lock 時其後續請求一律成功」——併成一個 session，這句話就從保護變成漏洞。<br>**本專案有三處產品程式靠它互斥**（`creator/workspace` 的 `pg_advisory_xact_lock`、outbox 的單一 publisher 保證、`runs`），在該組態下它們會**全綠而毫無保證**。<br>**因此 `maxConnections > 1` 是禁用組態，不是效能取捨**；本條的檢查必須實際開兩條連線，不得以「設定檔寫了 1」代替。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §5.2。
 - 該模式**不得要求安裝軟體、不得要求管理員權限、不得下載並執行外來二進位**——三者任一成立即不符合本需求的目的。
 - 版本釘選：所使用的 PostgreSQL 主版本必須與 CI 同一個 major；WASM 發行版與 pgvector 套件版本釘進 `tools/toolchain.yaml` 並納入 `devctl doctor` 的對帳。
-- **（新增，見[淨測試模式](../adr/README.md#淨測試模式)）承載的形狀是定義的一部分**：**單一行程**（api 與 worker 合併）、`pool_max_conns=1`、**PGlite 的 multiplexer 關閉**、River 走它的 poll-only 模式。<br>**這四項不是調校參數**：關掉 multiplexer 是因為它會讓兩條連線同時拿到同一把 advisory lock（實測）；poll-only 是因為 River 的 notifier 會去要第二條連線（實測：關掉它即失敗）。<br>**單連線的併發語意與生產不同，而這是永久性質不是暫時缺陷**——必須明文記載，且任何「在淨測試模式下沒重現」的結論都要先排除它。
+- **（新增，見[淨測試模式](../adr/README.md#淨測試模式)）承載的形狀是定義的一部分**：**單一行程**（api 與 worker 合併）、**連線池上限一條**（在 composition root 設定，不在連線字串上）、**PGlite 的 multiplexer 關閉**（承載者只接受一條連線）、River 走它的 poll-only 模式。<br>**這四項不是調校參數**：關掉 multiplexer 是因為它會讓兩條連線同時拿到同一把 advisory lock（實測）；poll-only 是因為 River 的 notifier 會去要第二條連線（實測：關掉它即失敗）。<br>**單連線的併發語意與生產不同，而這是永久性質不是暫時缺陷**——必須明文記載，且任何「在淨測試模式下沒重現」的結論都要先排除它。
 
 #### （撤回）
 

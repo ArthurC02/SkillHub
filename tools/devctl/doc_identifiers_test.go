@@ -72,6 +72,26 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 		want: "",
 	}, {
 
+		name: "an unexported function the document names is gone",
+		doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
+		code: map[string]string{"apps/platform/cmd/api/main.go": "package main\n"},
+		want: "applyCleanModePool is named in AGENTS.md but declared in no file",
+	}, {
+
+		name: "an unexported function that is still there",
+		doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
+		code: map[string]string{
+			"apps/platform/cmd/api/main.go": "package main\n\nfunc applyCleanModePool(clean bool) {}\n",
+		},
+		want: "",
+	}, {
+
+		name: "a lowercase word with no hump is prose, not a symbol",
+		doc:  "`clean` 模式與 `gvisor` 都是值，不是符號。\n",
+		code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
+		want: "",
+	}, {
+
 		name: "a name that exists only in prose elsewhere",
 		doc:  "見 `ApplyPreview` 的行為。\n",
 		code: map[string]string{"docs/plans/03-work-items.md": "`ApplyPreview` 的行為如下。\n"},
