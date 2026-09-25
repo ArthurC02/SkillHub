@@ -216,3 +216,15 @@ func TestAllowedDocWordsEachCarryAReason(t *testing.T) {
 		}
 	}
 }
+
+func TestDocIdentifierReadsARenderedConfigTemplate(t *testing.T) {
+	t.Parallel()
+	root := writeDocScope(t,
+		"`critical` 的重寄間隔與 `send_resolved` 都在部署設定裡。\n",
+		map[string]string{
+			"infra/deploy/control-plane/alertmanager.yml.tmpl": "receivers:\n  - name: owner\n    email_configs:\n      - send_resolved: true\n",
+		})
+	if problems := docIdentifierProblems(root); len(problems) != 0 {
+		t.Fatalf("a key declared in a .tmpl deployment config was reported as undeclared: %v", problems)
+	}
+}

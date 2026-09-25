@@ -99,7 +99,7 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 **scrape 目標是宿主機不是別的容器**：`cmd/api` 與 `cmd/worker` 跑在開發者機器上（compose 裡還沒有它們，見 CORE-001 的 TODO），而兩者讀**同一個** `METRICS_ADDR`——同一台機器上要給兩個值（`:9090` 與 `:9091`），否則後起的那個綁不上。`sandboxd` 故意不列為 target：它的 `/metrics` 要 bearer，沒有 token 檔的 scrape 只會拿到 401，而**一個永遠 down 的 target 讀起來跟服務掛了一模一樣**。
 
-**未做的部分，明說**：沒有 Alertmanager、沒有通知路由、沒有 silence 政策、沒有 Grafana dashboard，**上面那個 Prometheus 是開發機的，不是生產部署**。那些是部署期的事（`04` 甲類），本批交付的是「什麼算異常、依據哪個指標、要人做什麼」，加上一個會真的去算它的東西。
+**未做的部分，明說**：沒有 silence 政策、沒有 Grafana dashboard，**上面那個 Prometheus 是開發機的，不是生產部署**。Alertmanager 與通知路由本身**不在這個目錄**——它們是控制平面部署的一部分（`infra/deploy/control-plane/alertmanager.yml.tmpl`，CI 以 `amtool check-config` 驗），缺的是收件位址與 SMTP 憑證這些不進 repo 的值，以及一台真的控制平面（`04` 甲類）。本批交付的是「什麼算異常、依據哪個指標、要人做什麼」，加上一個會真的去算它的東西。
 
 **門檻值多數是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，上線後第一個月應以實際分佈回填並註明校準日期。
 

@@ -97,6 +97,7 @@ var allowedDocWords = map[string]string{
 
 var codeExtensions = map[string]bool{
 	".go": true, ".ts": true, ".tsx": true, ".py": true, ".sql": true, ".yaml": true, ".yml": true, ".json": true,
+	".tmpl": true,
 }
 
 func docIdentifierFiles(root string) ([]string, []string) {
