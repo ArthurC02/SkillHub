@@ -410,7 +410,7 @@ go test -count=1 ./...
 | DISCOVER 的輸出與本檔描述不符 | 本檔過期，先對齊事實再動手 |
 | 新增的查詢沒有工作區條件，也挑不出 §4.1 六種理由之一 | 那是鐵律 3 的缺陷，不是宣告問題；進 [`05`](../plans/05-pending-rulings.md) |
 
-待裁定事項一律進 [`05`](../plans/05-pending-rulings.md)，不要在程式碼裡自行決定。creation 的終態只認 `saved` 與 `cancelled`，不含 `failed`，因此 `failed` 的會話能接受的指令遠多於直覺——`raise_budget` 把失敗會話帶回 `waiting_input` 是[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)的明文設計，其餘是這個定義的連帶結果。轉移表照現況記錄，**不得自行收緊**。
+待裁定事項一律進 [`05`](../plans/05-pending-rulings.md)，不要在程式碼裡自行決定。creation 的終態只認 `saved` 與 `cancelled`，不含 `failed`，因此 `failed` 的會話能接受的指令遠多於直覺——`raise_budget` 把失敗會話帶回 `waiting_input` 是[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)的明文設計，其餘是這個定義的連帶結果。轉移表照現況記錄，**不得自行收緊**。
 
 ---
 

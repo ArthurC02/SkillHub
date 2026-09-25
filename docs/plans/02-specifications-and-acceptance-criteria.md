@@ -908,7 +908,7 @@ Run 至少支援：
 
 ### 4.11 Credit 計價與扣點（CRED）
 
-依據：[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)決策，回應負責人本輪五點裁定（逐字引用見該決策背景）：Credit 是唯一計價單位且只在本系統內有意義；每個帳號記 Credit Balance，創作依 LLM 用量乘上加成換算扣除額，可能低於 0；負債下限 −50；餘額低於門檻可在開始前擋下；創作與搜尋的實際費用都要記錄，並在特定時機與固定時間統計以推導門檻。**本節不重複既有機制**：LiteLLM 閘道的 Virtual Key／`max_budget`／`tpm_limit`（`SEC-005`）、互動創作既有的 `max_cost_usd`／`raise_budget`、`RUN_QUOTA`／`GENERATE_QUOTA` 次數配額對它一體適用，本節只新增「使用者的 Credit 餘額」這一層，且與次數配額是平行機制、互不取代。
+依據：[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)決策，回應負責人本輪五點裁定（逐字引用見該決策背景）：Credit 是唯一計價單位且只在本系統內有意義；每個帳號記 Credit Balance，創作依 LLM 用量乘上加成換算扣除額，可能低於 0；負債下限 −50；餘額低於門檻可在開始前擋下；創作與搜尋的實際費用都要記錄，並在特定時機與固定時間統計以推導門檻。**本節不重複既有機制**：LiteLLM 閘道的 Virtual Key／`max_budget`／`tpm_limit`（`SEC-005`）、互動創作既有的 `max_cost_usd`／`raise_budget`、`RUN_QUOTA`／`GENERATE_QUOTA` 次數配額對它一體適用，本節只新增「使用者的 Credit 餘額」這一層，且與次數配額是平行機制、互不取代。
 
 里程碑：與互動創作、目錄搜尋同批，非後 MVP；本節屬 `01` §10 第十次放行（新功能凍結期間，負責人本輪指示即為放行依據）。封測受測者的報酬以本節 `CRED-007` 的機制發放（一筆帶理由的 `grant` 分錄），不再是現金金額。
 
@@ -919,7 +919,7 @@ Run 至少支援：
 - Given 一個 Workspace 有若干筆 `credit_entries`，When 讀取該 Workspace 的 Credit 餘額，Then 回傳值等於該 Workspace 名下全部分錄金額的代數和。有一條測試證明：對同一個 Workspace 寫入一組已知金額的 `debit`／`grant`／`adjustment` 分錄後，讀出的餘額與手算的和相等。
 - 分錄一經寫入不可修改（同 `skill_versions` 等表的既有不可變紀律，鐵律 4）。有一條測試證明：對既有分錄列的 `UPDATE`／`DELETE` 被資料庫拒絕（比照 `db/tests/immutability_test.sql` 的既有形狀）；更正一律以新的 `adjustment` 分錄表達，不得原地改寫。
 - 每一筆扣點分錄必須指向產生它的那一筆 `cost_events`。有一條測試證明：插入一筆沒有對應 `cost_events` 的扣點分錄被拒絕。
-- 物化的餘額欄位與分錄之和的同步為交易內同步（同[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)決策 4）。有一條測試證明：分錄寫入與物化欄位更新在同一個資料庫交易內；交易中止時兩者都不生效，不出現「分錄寫了、餘額沒動」或反過來的中間狀態。
+- 物化的餘額欄位與分錄之和的同步為交易內同步（同[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)決策 4）。有一條測試證明：分錄寫入與物化欄位更新在同一個資料庫交易內；交易中止時兩者都不生效，不出現「分錄寫了、餘額沒動」或反過來的中間狀態。
 - **冪等**：互動創作每一步的扣點以 `(session_id, revision)` 為冪等鍵，單次生成以生成請求 id、評審／建議以其 attempt id 為冪等鍵。有一條測試證明：對同一個冪等鍵重複呼叫結算兩次，只產生一筆扣點分錄與一筆 `cost_events`，餘額只被扣一次（同 `creator/creation` 既有的 `Revision` 樂觀鎖形狀，`settleCost` 之後才寫分錄）。
 
 #### CRED-002：扣點換算與無條件進位
@@ -946,7 +946,7 @@ Run 至少支援：
 
 - 門檻 = 最近一個 `cost_statistics` 滾動窗的 p95 × 當時生效的加成，無條件進位。有一條測試證明：對一組已知輸入計算 p95 並代入公式，結果與門檻查詢函式的回傳值相等。
 - 該滾動窗的樣本數少於 20 筆時，門檻改用部署設定的保守常數，且回傳值必須攜帶可供畫面判斷的估計值旗標，前端呈現時不得與統計推導值同樣呈現為精確值。有一條測試證明：樣本數為 0～19 時回傳的門檻等於設定常數而非任何統計函式的輸出，且回傳值的估計值旗標為真。
-- **未涵蓋（待決策）**：面額、加成、保守常數與滾動窗長度的最終值（[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)待決策）。
+- **未涵蓋（待決策）**：面額、加成、保守常數與滾動窗長度的最終值（[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)待決策）。
 
 #### CRED-005：成本事件涵蓋創作與搜尋，且不存查詢字
 
@@ -976,9 +976,9 @@ Run 至少支援：
 
 允收準則：
 
-- **改寫（[`05` R-76](05-pending-rulings.md)、[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)）**：Credit 紀錄永久保存，沒有保存期限，也沒有任何清除路徑。機器守著：`cost_events`／`credit_entries` 是不可變表，`db/query-owners.yaml` 的 `immutable_allow` 不列任何刪除它們的 query，新增一條會被 query-owners 檢查擋下。
-- **改寫（[`05` R-75](05-pending-rulings.md)、[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)）**：帳號刪除**不清** Credit 紀錄。有一條測試證明：對一個已標記刪除的帳號跑完既有 purge 流程後，其名下的 `credit_accounts`／`credit_entries`／`cost_events`／`cost_session_summaries` 列數與清除前相同。這些紀錄也不會因時間而清除（第一條）。
-- **未涵蓋（待決策）**：Credit 是否有效期、`grant`／`topup` 分錄是否應帶到期時間（[帳號清除與 Credit](../adr/README.md#帳號清除與-credit)待決策）；在裁定之前預設 Credit 不過期。
+- **改寫（[`05` R-76](05-pending-rulings.md)、[帳號清除](../adr/README.md#帳號清除)）**：Credit 紀錄永久保存，沒有保存期限，也沒有任何清除路徑。機器守著：`cost_events`／`credit_entries` 是不可變表，`db/query-owners.yaml` 的 `immutable_allow` 不列任何刪除它們的 query，新增一條會被 query-owners 檢查擋下。
+- **改寫（[`05` R-75](05-pending-rulings.md)、[帳號清除](../adr/README.md#帳號清除)）**：帳號刪除**不清** Credit 紀錄。有一條測試證明：對一個已標記刪除的帳號跑完既有 purge 流程後，其名下的 `credit_accounts`／`credit_entries`／`cost_events`／`cost_session_summaries` 列數與清除前相同。這些紀錄也不會因時間而清除（第一條）。
+- **未涵蓋（待決策）**：Credit 是否有效期、`grant`／`topup` 分錄是否應帶到期時間（[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)待決策）；在裁定之前預設 Credit 不過期。
 
 ### 4.12 營運後台（OPS）
 

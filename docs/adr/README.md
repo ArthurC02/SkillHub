@@ -94,9 +94,13 @@
 
 [ADR-022](./ADR-022-clean-test-mode.md)｜在裝不了東西的機器上跑同一套產品程式的條件與代價。
 
-## 帳號清除與 Credit
+## 帳號清除
 
-[ADR-023](./ADR-023-account-purge-and-credit.md)｜帳號清除涵蓋的範圍，以及 Credit 的計量與扣款。
+[ADR-023](./ADR-023-account-purge.md)｜帳號清除涵蓋哪些資料、怎麼序列化成不可逆的終點，以及它刻意不碰什麼。
+
+## Credit 計量與扣款
+
+[ADR-025](./ADR-025-credit-metering-and-charging.md)｜平台內部計價單位的面額、兩本帳、三道閘與門檻怎麼算。
 
 ## 外部系統的 Port 與 Adapter
 

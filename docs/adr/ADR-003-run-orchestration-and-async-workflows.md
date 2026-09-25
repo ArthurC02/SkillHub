@@ -1,7 +1,7 @@
 # ADR-003：Run 編排與非同步工作流程
 
 - 狀態：Accepted
-- 相關：[ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[ADR-023 帳號清除與 Credit](./ADR-023-account-purge-and-credit.md)、[ADR-024 外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)
+- 相關：[ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[ADR-023 帳號清除](./ADR-023-account-purge.md)、[ADR-025 Credit 計量與扣款](./ADR-025-credit-metering-and-charging.md)、[ADR-024 外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)
 
 ## 背景
 

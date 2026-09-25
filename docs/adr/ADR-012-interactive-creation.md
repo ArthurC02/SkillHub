@@ -1,7 +1,7 @@
 # ADR-012：互動創作
 
 - 狀態：Accepted
-- 相關：[ADR-001](./ADR-001-system-context-planes-and-deployment-path.md)（系統情境與能力提供者邊界）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Job／Outbox／冪等，試跑沿用既有 Run）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（試跑的沙箱執行）、[ADR-005](./ADR-005-model-gateway-and-observability.md)（LiteLLM 閘道、Trace 遮罩）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（既有單次生成額度、Workspace 私人資料的清除 fence）、[ADR-008](./ADR-008-intent-search.md)（目錄檢索）、[ADR-009](./ADR-009-evaluation-verdicts-and-judge-trust.md)（評估回饋的信任邊界）、[ADR-011](./ADR-011-generating-a-skill-from-a-description.md)（單次生成路徑，本 ADR 是它的多輪延伸）、[ADR-023](./ADR-023-account-purge-and-credit.md)（會話成本上限、帳號清除）
+- 相關：[ADR-001](./ADR-001-system-context-planes-and-deployment-path.md)（系統情境與能力提供者邊界）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Job／Outbox／冪等，試跑沿用既有 Run）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（試跑的沙箱執行）、[ADR-005](./ADR-005-model-gateway-and-observability.md)（LiteLLM 閘道、Trace 遮罩）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（既有單次生成額度、Workspace 私人資料的清除 fence）、[ADR-008](./ADR-008-intent-search.md)（目錄檢索）、[ADR-009](./ADR-009-evaluation-verdicts-and-judge-trust.md)（評估回饋的信任邊界）、[ADR-011](./ADR-011-generating-a-skill-from-a-description.md)（單次生成路徑，本 ADR 是它的多輪延伸）、[ADR-023](./ADR-023-account-purge.md)（帳號清除）、[ADR-025](./ADR-025-credit-metering-and-charging.md)（會話成本上限與扣點）
 
 ## 背景
 
@@ -59,7 +59,7 @@ Python 不執行不受信任的 Skill 或 Script、不直連核心資料庫、�
 
 ### 決策 13：互動會話的成本與既有額度分開結算
 
-互動會話的模型用量與總預算，和既有的單次生成次數額度、Run 額度分開計算；具體的單場成本上限與加碼機制見 [ADR-023](./ADR-023-account-purge-and-credit.md)。會話一開始就可能已經產生模型費用，失敗或取消也必須如實顯示花費，不得記為零。會話預算一經確認，Go 在預算範圍內逐次核准每一次模型呼叫；超出預算、要求提升權限，或要另開一次試跑，都要重新阻斷、要求使用者明確確認，不能默默放行。
+互動會話的模型用量與總預算，和既有的單次生成次數額度、Run 額度分開計算；具體的單場成本上限與加碼機制見 [ADR-025](./ADR-025-credit-metering-and-charging.md)。會話一開始就可能已經產生模型費用，失敗或取消也必須如實顯示花費，不得記為零。會話預算一經確認，Go 在預算範圍內逐次核准每一次模型呼叫；超出預算、要求提升權限，或要另開一次試跑，都要重新阻斷、要求使用者明確確認，不能默默放行。
 
 ### 決策 14：等待畫面串的是「步驟事件」，不是模型 token，且不需要額外的中繼儲存
 

@@ -1,7 +1,7 @@
 # ADR-002：資料所有權與核心基礎設施
 
 - 狀態：Accepted
-- 相關：[ADR-001](./ADR-001-system-context-planes-and-deployment-path.md)（系統情境、平面與部署路徑）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Run 編排與非同步工作流程）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（Sandbox 隔離與執行安全）、[ADR-005](./ADR-005-model-gateway-and-observability.md)（模型閘道與可觀測性）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（身分、Workspace、准入與額度）、[ADR-008](./ADR-008-intent-search.md)（意圖搜尋）、[ADR-023](./ADR-023-account-purge-and-credit.md)（帳號清除與 Credit）
+- 相關：[ADR-001](./ADR-001-system-context-planes-and-deployment-path.md)（系統情境、平面與部署路徑）、[ADR-003](./ADR-003-run-orchestration-and-async-workflows.md)（Run 編排與非同步工作流程）、[ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md)（Sandbox 隔離與執行安全）、[ADR-005](./ADR-005-model-gateway-and-observability.md)（模型閘道與可觀測性）、[ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)（身分、Workspace、准入與額度）、[ADR-008](./ADR-008-intent-search.md)（意圖搜尋）、[ADR-023](./ADR-023-account-purge.md)（帳號清除）
 
 ## 背景
 
@@ -36,7 +36,7 @@ Sandbox 取得的物件存取權限一律短效，且限定在單一物件或單
 
 ### 決策 5：刪除使用者輸入只清內容，不抹除可追溯性
 
-使用者刪除 Dataset 或 Run 輸入後，歷史 Run 保留內容雜湊、metadata 與 Trace 引用，並標示「輸入已刪除」；Run 維持可追溯（能證明當時用了什麼）但不再保證可重現（無法重新執行）。UI 與評估報告不得在輸入已刪除時暗示仍可重跑或比較。刪除跨越物件儲存、索引與 Trace 時，一律使用可追蹤的非同步工作流程，不宣稱瞬間完成；牽涉整個 Workspace 的不可逆清除另見 [ADR-023](./ADR-023-account-purge-and-credit.md)。
+使用者刪除 Dataset 或 Run 輸入後，歷史 Run 保留內容雜湊、metadata 與 Trace 引用，並標示「輸入已刪除」；Run 維持可追溯（能證明當時用了什麼）但不再保證可重現（無法重新執行）。UI 與評估報告不得在輸入已刪除時暗示仍可重跑或比較。刪除跨越物件儲存、索引與 Trace 時，一律使用可追蹤的非同步工作流程，不宣稱瞬間完成；牽涉整個 Workspace 的不可逆清除另見 [ADR-023](./ADR-023-account-purge.md)。
 
 ### 決策 6：一致性策略分三層
 
