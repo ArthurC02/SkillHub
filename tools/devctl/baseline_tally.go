@@ -18,6 +18,7 @@ var baselineQuoters = []string{
 	"docs/plans/mvp/m4/README.md",
 	"docs/plans/mvp/m4/beta-design.md",
 	"docs/plans/mvp/m4/release-checklist.md",
+	"docs/plans/mvp/m4/pdm-009-beta-proposal.md",
 	"tools/sec009/README.md",
 }
 
@@ -34,7 +35,7 @@ var (
 	// no leading zone letter.
 	baselineZoneTotal = regexp.MustCompile(`(?m)^\|\s*\*\*合計\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*$`)
 
-	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部|覆蓋|裡|全\s*pass)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
+	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部|覆蓋|裡|門檻|全\s*pass)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
 
 	// The same 「N 項全部」 shape counts work items and audit rows too, so a
 	// figure only answers to this check when its own line says which subject

@@ -150,7 +150,7 @@
 
 ### 5.2 時程
 
-以**封測開始日為 B 日**。B 日的前提是 `beta-design.md` §8 的 11 項檢查清單全數成立（其中甲類四項 ＋ `SEC-009` 45 項全 pass 0 unknown 是硬前提，[README.md §4](README.md)）。
+以**封測開始日為 B 日**。B 日的前提是 `beta-design.md` §8 的 11 項檢查清單全數成立（其中甲類四項 ＋ `SEC-009` 46 項全 pass 0 unknown 是硬前提，[README.md §4](README.md)）。
 
 | 階段 | 相對時間 | 內容 | 可否與別的事平行 |
 | --- | --- | --- | --- |

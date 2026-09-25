@@ -149,6 +149,7 @@ func TestBaselineTallyReadsTheLiveGateDocuments(t *testing.T) {
 		"docs/plans/mvp/m4/README.md",
 		"docs/plans/mvp/m4/beta-design.md",
 		"docs/plans/mvp/m4/release-checklist.md",
+		"docs/plans/mvp/m4/pdm-009-beta-proposal.md",
 	} {
 		found := false
 		for _, quoter := range baselineQuoters {
@@ -159,5 +160,14 @@ func TestBaselineTallyReadsTheLiveGateDocuments(t *testing.T) {
 		if !found {
 			t.Errorf("%s states the gate threshold a person reads before opening the beta, and is not among the quoters", want)
 		}
+	}
+}
+
+func TestBaselineTallyCatchesAFigureCalledAThreshold(t *testing.T) {
+	t.Parallel()
+	root := writeBaseline(t, baselineValidOwnerBody, "SEC-009 的 5 項門檻本身不變。\n")
+	problems := baselineTallyProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "names 5 baseline items") {
+		t.Fatalf("a threshold stated as 「N 項門檻」 was not read as a baseline figure: %v", problems)
 	}
 }

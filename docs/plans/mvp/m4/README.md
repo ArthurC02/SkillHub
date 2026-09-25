@@ -187,7 +187,7 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | PDM | 提案在哪 | 不追認的後果 |
 | --- | --- | --- |
 | **PDM-008** 首批打包 Profile | `m0/pdm-proposals.md` §7（1 標準套件 ＋ `claude-code` ＋ `claude-agent-sdk`；source-available 一律不產出任何 Download Artifact） | 批 3 沒有可實作的目標清單。**提案完整且與 PDM-003 的 Runtime 一致，建議直接追認** |
-| **PDM-009** 封測人數、招募方式、成功門檻 | ~~**完全沒有提案**~~ → **2026-08-17 已補**：[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)（**待追認**）。此前 `m0/pdm-proposals.md` 沒有 PDM-009 這一節，`pdm-proposals` 假設 30 人、`cost-estimation` 用 20 人，兩份文件互斥且都沒有推導 | `BETA-001`／`005` 與 `RELEASE-009` 全部不可判定。~~建議在批 1 之前先補一份提案~~ **提案已在，拍板仍在人**；殘項入列 [`../04` 乙-15](../../04-backlog-and-handoffs.md)。提案要點：12 人（三層各 4）、三條門檻＋不通過決策樹、招募與報酬整套重用 `gate-test/recruit.md`、測試期 14 天、先閘門再封測 |
+| **PDM-009** 封測人數、招募方式、成功門檻 | **提案在 [pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)，待追認**。在它之前 `m0/pdm-proposals.md` 沒有 PDM-009 這一節，`pdm-proposals` 假設 30 人、`cost-estimation` 用 20 人，兩份文件互斥且都沒有推導 | `BETA-001`／`005` 與 `RELEASE-009` 全部不可判定。**提案已在，拍板仍在人**；殘項入列 [`../04` 乙-15](../../04-backlog-and-handoffs.md)。提案要點：12 人（三層各 4）、三條門檻＋不通過決策樹、招募與報酬整套重用 `gate-test/recruit.md`、測試期 14 天、先閘門再封測 |
 | **PDM-010** 免費額度與 BYO Key | `m0/pdm-proposals.md` §8（首月 20 次、其後每月 30 次、每日 5 次、並行 2、退還語意）。**其中「首月 20 vs 20+30」提案自己標了「請負責人明確擇一，不要留給實作推斷」** | 批 5 的額度強制點沒有值可寫。**擇一即可** |
 | **PDM-006** 保存期限 | `m0/pdm-proposals.md` §6（Download Artifact **90 天**、Run Artifact 30 天、Trace 90 天、audit 400 天、帳號刪除的兩類處理） | `SEC-006` 仍不可判定；下載頁的到期日顯示沒有值 |
 | **PDM-004** Runtime 語言與版本 | 實質已定（`2026.08-3` ＋ SDK 0.3.233），缺的是定案紀錄與 `runsc` 上的完整 Run 生命週期實測（＝`SEC-009` T4） | 部署批一併帶掉 |
@@ -228,11 +228,11 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 
 **建議**：新增 `skills.redistribution`（`allowed`／`blocked`／`unknown`，預設 `unknown`，只有 `allowed` 放行），與 `access_restriction` 同層、隨 Fork 複製。形狀、判準與回填見 [contract-deltas.md](contract-deltas.md) §4.1、[packaging-design.md](packaging-design.md) §4.5。
 
-~~**要拍板的是兩件事**~~ → **2026-08-17 已由 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) 決策 4 定案**（負責人授權「依最佳實務做決策」），兩項皆採本節的建議值：①**欄位放 `skills`**（與 `access_restriction` 同層、隨 Fork 複製、可撤銷）——理由同 `0023` 的既有裁定，`skill_versions` 不可變、放不進一個可撤銷的判定；②**預設 `unknown`**（未知即擋）——[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) §5.3 記錄的那個真實誤判錯的正是放行方向，在放行方向上錯不起的欄位，預設值必須是保守的那一個。**兩道鎖都要**（人工 hold ＋內容屬性），且 `license_status = Confirmed` 不得成為放行條件。判準五條與回填方式見該 ADR。<br>**原文保留**：~~①欄位放 `skills`（可撤銷）還是 `skill_versions`（不可變）——建議 `skills`；②預設值是 `unknown` 還是 `allowed`——建議 `unknown`。建議併入同一個主題。~~
+**兩件事都已由 [打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) 決策 4 定案**（負責人授權「依最佳實務做決策」），兩項皆採本節的建議值：①**欄位放 `skills`**（與 `access_restriction` 同層、隨 Fork 複製、可撤銷）——理由同 `0023` 的既有裁定，`skill_versions` 不可變、放不進一個可撤銷的判定；②**預設 `unknown`**（未知即擋）——[打包、授權溯源與散布](../../../adr/README.md#打包授權溯源與散布) §5.3 記錄的那個真實誤判錯的正是放行方向，在放行方向上錯不起的欄位，預設值必須是保守的那一個。**兩道鎖都要**（人工 hold ＋內容屬性），且 `license_status = Confirmed` 不得成為放行條件。判準五條與回填方式見該 ADR。
 
 ### 8.5 `DESIGN` 系列 13 項零勾選的處置建議
 
-~~**三個選項，建議 (a)，但需要拍板。**~~ → **2026-08-17 已裁定取 (a) 並落地於 `03` §3**（負責人授權「依最佳實務做決策」）。落地形式：`DESIGN-001`～`011` 標「**不再追蹤**」並逐項指向已落地的畫面，**一律維持 `- [ ]` 不勾**（那些設計交付物確實從未產出，勾選是說謊）；`DESIGN-012`／`013` 保留為 M4 實作項並各自寫出範圍；章節里程碑改為 `M0–M4`。**兩處殘留缺口已具名交棒，沒有隨收斂消失**——`DESIGN-007` 的 preflight 版本選擇器 → [`../04` 丙-14](../../04-backlog-and-handoffs.md)；`DESIGN-010`／`011` 承接的 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 待決策 → 實質已由 `RunEvaluation.tsx`／`RunCompare.tsx` 的兩列狀態回答，剩餘的呈現缺口是 [`../04` 丙-10](../../04-backlog-and-handoffs.md)，**[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 的待決策已就地回填此裁定**。下表原文保留。
+**三個選項已裁定取 (a) 並落地於 `03` §3**（負責人授權「依最佳實務做決策」）。落地形式：`DESIGN-001`～`011` 標「**不再追蹤**」並逐項指向已落地的畫面，**一律維持 `- [ ]` 不勾**（那些設計交付物確實從未產出，勾選是說謊）；`DESIGN-012`／`013` 保留為 M4 實作項並各自寫出範圍；章節里程碑改為 `M0–M4`。**兩處殘留缺口已具名交棒，沒有隨收斂消失**——`DESIGN-007` 的 preflight 版本選擇器 → [`../04` 丙-14](../../04-backlog-and-handoffs.md)；`DESIGN-010`／`011` 承接的 [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 待決策 → 實質已由 `RunEvaluation.tsx`／`RunCompare.tsx` 的兩列狀態回答，剩餘的呈現缺口是 [`../04` 丙-10](../../04-backlog-and-handoffs.md)，**[評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界) 的待決策已就地回填此裁定**。下表原文保留。
 
 | 選項 | 內容 | 評價 |
 | --- | --- | --- |
@@ -458,7 +458,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 | # | 事項 | 誰接 |
 | --- | --- | --- |
 | 出-6 | **`seed_testcases.py` 尚未對執行中的 dev DB 或任何 live 部署執行過。** 阻擋原因與 §13.4 出-2 同源：執行中的 dev DB 停在 `0026`，沒有 `0027`～`0030`，而本工具本身只需要 `0026`（rubric 欄位）——**它其實跑得動**，不跑是因為 ①目錄 Workspace 的策展帳號是誰要先確認（`is_catalog` 由 SQL 設定，dev 上是哪個 user 未查），②同一工作樹上有平行批次，對共用 dev DB 的寫入該由需要它的那一批決定時機。套用步驟：`python tools/content/seed_testcases.py --api http://localhost:8080 --user <目錄策展帳號> --dry-run` 先看 15 筆是否都解析得到 Skill，再拿掉 `--dry-run` | 部署批／第 7 批後半 |
-| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | ~~`04` 丙類（本批同時回填該清單）~~ **已於 2026-08-18 同日修畢**：D-1／D-2 為 `entry-path-escape`（error，Blocked，讀原始 zip entry 名），D-3 為 `symlink-entry`（warning，匯出端本就以白名單剝除）；期望清單三列的 `gap` 已換成期望 finding，harness 24/24。逐項理由見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 丙-15 |
+| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | **已修畢**：D-1／D-2 為 `entry-path-escape`（error，Blocked，讀原始 zip entry 名），D-3 為 `symlink-entry`（warning，匯出端本就以白名單剝除）；期望清單三列的 `gap` 已換成期望 finding，harness 24/24。逐項理由見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 丙-15 |
 | 出-8 | **`QA-002` 未勾。** 資料集與 harness 已具備且全綠，但 `03` §17 的九項要一起對帳（第 7 批後半），且本項的允收字面是「建立測試資料集」——資料集成立，勾選仍留給對帳那一步一次處理 | 第 7 批後半 |
 | 出-9 | **驗證用的 SeaweedFS bucket `skillhub-seedtest` 留在 dev 物件儲存裡**（容器已刪，bucket 沒有）。無害且與 `skillhub` bucket 隔離，但下次清理 dev 環境時它是可以直接丟的一個 | 不需動作，記著即可 |
 

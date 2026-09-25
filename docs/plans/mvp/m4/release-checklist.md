@@ -13,18 +13,18 @@
 | 段 | 內容 | 誰 | 幾項 | 現況 |
 | --- | --- | --- | ---: | --- |
 | **§1 程式面已完成** | 已勾選、可作為後續各段的前提 | — | **11** | ✅ 全部成立 |
-| **§1.9 程式面尚缺** | 有承接者就做得完，**不需要任何新決策** | agent 或開發者 | **12** | ⬜ 全部開著 |
+| **§1.9 程式面** | 有承接者就做得完，**不需要任何新決策** | agent 或開發者 | **12** | ✅ 全部完成 |
 | **§2 部署期** | 真機、migration、種入、探針、告警 | 負責人 ＋ 真機 | **7 段** | ⬜ 一段都沒開始 |
 | **§3 負責人動作** | 拍板、追認、宣告、寄信 | 負責人 | **11** | ⬜ 全部開著 |
 | **§4 B 日當天** | 名單生效與最後確認 | 負責人 | **5** | ⬜ — |
 
 **三段之間的順序是硬的**：§1.9 與 §2 可並行 → §3 的前四項（乙-13、乙-14、PDM 追認、D 日）必須在 §2 完成之前就開始 → §4 是最後一道。
 
-**✅ 2026-08-29：這份文件第一次有日期了。**
+**這份文件有三個日期在旁邊。**
 
 | 日期 | 是什麼 | 對這份文件的意思 |
 | --- | --- | --- |
-| **2026-09-11** | **M1 閘門 D 日**（負責人宣告，[`05` R-5](../../05-pending-rulings.md)）；**同時是本輪夯實工作的最後期限** | §3 的 H-8 有值了。**先閘門、再封測**那條 ⛔ 邊界不變，所以封測的 B 日在 D 日 ＋ 10 天之後 |
+| **2026-09-11** | **M1 閘門 D 日**（負責人宣告，[`05` R-5](../../05-pending-rulings.md)）；**已過** | §3 的 H-8 有值了。**先閘門、再封測**那條 ⛔ 邊界不變，所以封測的 B 日在 D 日 ＋ 10 天之後。閘門本身的讀數要由跑過的人回填到 [`01` §10](../../01-goals-and-plan.md)，不在這份文件 |
 | **2026 年 9 月中下旬** | **Demo**（M6 的 Pitch） | 它不在這份文件的範圍內（這裡是封測），但它與 §2 搶同一台真機與同一個人 |
 | **M6 真正完成之後** | **凍結新功能** | 「真正完成」＝ `03` §20 的十一項全部收束，不是「程式面收斂」。凍結後只接受修既有缺陷的變更 |
 
@@ -58,17 +58,9 @@
 | `POST /feedback` | `analytics/feedback.go` ＋ `feedback_reports` | `BETA-003`／`004`／`005` 的管道（**缺前端入口**，見 §1.9） |
 | 停派送開關 | `internal/trial/execution/halt.go` ＋ `0030` ＋ `/admin/dispatch*` | P1 與 X-04 共用的同一個煞車 |
 
-### 1.9 程式面尚缺（十二項，不需要任何新決策）
+### 1.9 程式面（十二項，全部完成）
 
-**這一節每一項都對應 `04` 的一條丙類殘項，補完即可重新勾選對應工作項。**
-
-> **2026-08-18 補記（本檔凍結，只加這一段，表格原文不動）**：屬 Go／後端／工具的那些已補——**P-1／P-2／P-3／P-4／P-7／P-8／P-11 完成，P-5／P-9／P-10 的後端半邊完成**（commit `50624e2`／`8a17652`／`04bb5e6`）。`03` 的 `PACK-003`／`QA-007`／`QA-001` 三項改判勾選。**P-6／P-12 與 P-5／P-9／P-10 的前端半邊仍在 `apps/web`。**
->
-> **P-7 的表格文字要當作已被推翻讀**：「刪掉平台加的三樣檔案後重新匯入，得到同一個 `content_hash`」**寫不出來**——`content_hash` 是使用者當初上傳的那份壓縮檔位元組的 SHA-256，重新壓縮同一組檔案必然不同。落地的是同一句設計的另一半（「除平台新增檔案外逐位元組相同」），並把 `standard.json` 裡叫使用者做那個檢查的那一步一併改寫。逐項見 [audit.md §7](audit.md)。
-
-> **2026-08-18 第二次補記（本檔凍結，只加這一段，表格與其後的段落原文不動）**：**§1.9 的十二項全部完成。** P-6 與 P-12、以及 P-5／P-9／P-10 的前端半邊由 UI 批與其後的收尾批補上；`03` 的 `DESIGN-012`／`WS-004`／`PACK-007`／`CORE-007`／`O11Y-004` 五項改判勾選（前兩項見 [audit.md §8](audit.md)，後三項見 [§9](audit.md)）。
->
-> **本節末尾那句「另有兩項要先有 §3 的決策才能動」要當作已被推翻讀**（同 P-7 的處置）。**兩項都不需要新決策，而且兩項的可做部分都已經做完**：①`SEC-012` 的自動觸發——「接哪幾條判準」不是偏好而是查得出來的事實，平台自己看得見的兩條（`TraceMaskingStopped`、Reconciler 停擺 > 10 分鐘）已接上，其餘三條的訊號在本 process 之外，屬 §2 部署期；**`SEC-012` 仍不勾**。②無障礙的對比守門——`QA-008` 管的是**算繪後的合成像素**，而 token 層的靜態十六進位值不需要版面計算，已落地為 `apps/web/src/contrast.test.ts`；合成像素（alpha、`opacity`、真瀏覽器算繪）仍無守門，**`QA-009`／`DESIGN-013` 仍不勾**。**兩次是同一個形狀：一段不需要決策的工作，被掛在一個真的要人拍板的東西旁邊一起等。** 逐項見 [audit.md §9](audit.md) 與 [`04` 丙-21／丙-26](../../04-backlog-and-handoffs.md)。
+**這一節每一項都對應 `04` 的一條丙類殘項。十二項都已補完**，`03` 的 `PACK-003`／`PACK-007`／`PACK-009`／`QA-001`／`QA-007`／`DESIGN-012`／`WS-004`／`CORE-007`／`O11Y-004` 據此勾選；逐項證據見 [audit.md](audit.md) §7～§9。
 
 | # | 做什麼 | 驗什麼 | 解鎖 |
 | --- | --- | --- | --- |
@@ -78,14 +70,17 @@
 | P-4 | `dependencyNotes()` 納入 `undeclared-dependency` | INSTALL.md 出現「套件沒宣告但程式碼 import 了」那一類 | `PACK-007`（丙-18） |
 | P-5 | `targetView` 補 `env_vars` 與依賴摘要；前端型別跟上 | `02:PACK-002` 第 1 條的五項在**下載頁**都看得到 | `PACK-007`、`DESIGN-012`（丙-18） |
 | P-6 | `Packaging.tsx` 引用既有的 `CompatibilityStatus` | 三層相容性在打包／下載頁分開呈現 | `DESIGN-012`（丙-18） |
-| P-7 | `TestTheStandardPackageRoundTripsToTheSameContentHash` | 刪掉平台加的三樣檔案後重新匯入，得到同一個 `content_hash` | `PACK-009`（丙-19） |
+| P-7 | `TestTheStandardPackageRoundTripsToTheSameContentHash` | 除平台新增的三樣檔案外逐位元組相同。**不是同一個 `content_hash`**——那是使用者當初上傳的壓縮檔位元組的 SHA-256，重新壓縮同一組檔案必然不同；`standard.json` 裡叫使用者比雜湊的那一步一併改寫 | `PACK-009`（丙-19） |
 | P-8 | 一支以 API 為主的旅程測試（Fork → Test Case → preflight → Run → 評估 → 打包 → 下載，Provider 用既有 fake） | **接縫**，不是各段——四次退回都發生在兩段之間 | `QA-001`、`RELEASE-002`（丙-20） |
 | P-9 | Run Artifact 的單項刪除端點；`GET /me` 回 `deletion_requested_at` | `02:WS-002` 第 3 條的「Artifact」與 `02:SEC-006` 的「可追蹤狀態」 | `CORE-007`、`RELEASE-005`（丙-22） |
 | P-10 | `GET /runs` 列表端點；Run 列表與個人 Skill 列表兩個畫面；下載紀錄逐筆列出 | `02:WS-002` 第 1 條的五項都有使用者碰得到的平面 | `WS-004`（丙-24） |
 | P-11 | 漏斗的跨表查詢（七段，四段查 `analytics_events`、五段查領域表）＋報表要標明精度限制 | 同一個 session 能把漏斗事件與阻斷回報串起來（`BETA-004` 的判定尺） | `O11Y-004`、`BETA-002`／`004`（丙-25） |
 | P-12 | `POST /feedback` 的前端入口（全站可及，帶 `page_path` 與可選 `run_id`） | 卡住的人按得到；不自動抓畫面 | `BETA-003`／`004`（丙-27） |
 
-**另有兩項要先有 §3 的決策才能動**：`SEC-012` 的自動觸發（丙-26，要先決定接哪幾條判準）、無障礙的對比守門（丙-21，綁在 `QA-008` 的路線決策上）。
+**另有兩項當時被掛在「要先有 §3 的決策」旁邊等，兩項其實都不需要新決策**：
+
+- `SEC-012` 的自動觸發（丙-26）：「接哪幾條判準」不是偏好而是查得出來的事實。五條判準裡**自動接上三條**（`TraceMaskingStopped`、Reconciler 停擺 > 10 分鐘、P-02 探針）。**`SEC-012` 仍不勾**：逃逸疑慮是人的判斷，隔離類 CVE 揭露的訊號到不了生產資料庫，兩者維持人工宣告。
+- 無障礙的對比守門（丙-21）：token 層的靜態十六進位值不需要版面計算，已落地為 `apps/web/src/contrast.test.ts`；合成像素（alpha、`opacity`、真瀏覽器算繪）歸 `QA-008` 的瀏覽器測試。`QA-008`／`QA-009`／`DESIGN-013` 都已勾選，這一項關閉。
 
 ---
 
@@ -99,7 +94,7 @@
 
 **依據不是新的**：[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的既有決策。M0～M3 能把甲類當平行工作是因為**沒有任何外部使用者**；封測第一次讓外部人員在真實部署上建立 Run。裁定見 [README.md §4](README.md)，拍板見 [`04` 乙-14](../../04-backlog-and-handoffs.md)。
 
-### 2.1 甲類四項（~~封測阻擋項~~ **與封測並行**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)））
+### 2.1 甲類四項（**與封測並行**，見 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)）
 
 | # | 誰 | 做什麼 | 驗什麼 |
 | --- | --- | --- | --- |
@@ -113,7 +108,7 @@
 1. **gVisor 的 `systrap` 平台是否真的不需巢狀虛擬化**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)只說「待部署批第一台節點實測確認」）。**把「一台節點、跑通一個 Run」獨立成最小驗證，不要等其餘做完才發現節點跑不起來。**
 2. `infra/nodes/gvisor-baseline.txt` 必須填實際版本（**非 `unset`**），否則 `SEC-009` 的前置條件②不成立、整批判 unknown ＝ fail。
 
-- **`unset` 在兩個檔案裡都會安靜地通過**（2026-08-25 補記）：`infra/egress/allowlist.yaml` 的 `pinned_ip: unset` 與 `infra/nodes/gvisor-baseline.txt` 的 `unset` 都代表「還沒有節點」，兩者都 fail-closed（前者 render 不出任何 accept 規則，後者沒有可比對的基準），所以**節點會正常起來、Run 會安靜地到不了閘道**。`.github/workflows/egress-allowlist.yml` 只檢查 YAML 的不變式，**沒有任何檢查會說「這台活著的節點是用 `unset` 建的」**。因此：**節點建置後、跑第一個 Run 之前，在真機上確認 `nft list ruleset` 有指向閘道 IP:port 的 accept 規則、且 `runsc --version` 對得上 `gvisor-baseline.txt` 的實際版本；任一處仍是 `unset` 就停止建置**——不要用「Run 失敗」去發現它，那是部署日最難診斷的一種失敗。
+- **`unset` 在兩個檔案裡都會安靜地通過**：`infra/egress/allowlist.yaml` 的 `pinned_ip: unset` 與 `infra/nodes/gvisor-baseline.txt` 的 `unset` 都代表「還沒有節點」，兩者都 fail-closed（前者 render 不出任何 accept 規則，後者沒有可比對的基準），所以**節點會正常起來、Run 會安靜地到不了閘道**。`.github/workflows/egress-allowlist.yml` 只檢查 YAML 的不變式，**沒有任何檢查會說「這台活著的節點是用 `unset` 建的」**。因此：**節點建置後、跑第一個 Run 之前，在真機上確認 `nft list ruleset` 有指向閘道 IP:port 的 accept 規則、且 `runsc --version` 對得上 `gvisor-baseline.txt` 的實際版本；任一處仍是 `unset` 就停止建置**——不要用「Run 失敗」去發現它，那是部署日最難診斷的一種失敗。
 
 ### 2.2 Migration 套用（順序是硬的）
 
@@ -263,9 +258,9 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 - [ ] `cmd/maintenance purge-datasets` 接上**每日** cron。承諾對象：同意書 §3「上傳的 Dataset 90 天」。逐列 `expires_at`，**刻意沒有單一環境變數**（理由在 `cmd/maintenance/main.go`）。**同樣要驗位元組**
 - [ ] `cmd/maintenance purge-audit` 接上**每週** cron；`AUDIT_RETENTION` fail-closed（未設即拒絕啟動）。承諾對象：同意書 §3「稽核 400 天」。**這一類是 2026-08-25 才補上 job 的**——在那之前同意書從第一版就宣告了 400 天而那個 job 不存在
 - [ ] `cmd/maintenance purge-feedback` 接上**每週** cron；`FEEDBACK_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，見 §2.3）。承諾對象：`feedback_reports` 的自由文字——**受測者用自己的話描述他們卡在哪**，是三類裡最敏感的一種。**同批要驗 `GET /policy/data-retention` 真的把 feedback 列出來**：那個端點今天只列四個 analytics 事件，並逐字宣告「表裡沒有任何自由文字欄位」，那句話對 `analytics_events` 為真、對這個部署為假
-- [x] ~~`cmd/maintenance purge-credit` 接上**每週** cron；`CREDIT_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，未設即拒絕啟動）。承諾對象：同意書 §3 與[Credit 計量與扣款](../../../adr/README.md#credit-計量與扣款)決策 3 的兩本帳——`cost_events`（平台真實支出）與 `credit_entries`（使用者餘額異動）。**這一列 2026-09-10 隨 Credit 接線一起加**，而它與帳號刪除是**兩件事**：帳號刪除按使用者刪掉那個人的全部，這一個按時間刪掉所有人的舊列；`store.go` 的註解記著這個區分曾經被寫錯過一次（宣稱保存期查詢也涵蓋帳號刪除），**那會讓一個已刪帳號的支出留在檔案裡直到自然過期**。<br>**兩個 DELETE 在同一個交易裡，順序是硬的**：`credit_entries.cost_event_id` 是指向 `cost_events` 的外鍵，分錄先刪。**這件事是同日被帳號刪除的整合測試逼出來的**——兩行呼叫看起來沒有順序。~~ **2026-09-12 不再需要：這個子命令已移除**（[`05` R-76](../../05-pending-rulings.md)：Credit 紀錄永遠不清，沒有保存期限可以執行）。
+- [x] **Credit 的保存期清理不存在，也不需要**（[`05` R-76](../../05-pending-rulings.md)：Credit 紀錄永遠不清）。`cmd/maintenance purge-credit` 已移除，沒有 cron 要接。**帳號刪除是另一件事**，按使用者刪掉那個人的全部，仍在；它的兩個 DELETE 在同一個交易裡且順序是硬的——`credit_entries.cost_event_id` 指向 `cost_events`，分錄先刪
 - [ ] `cmd/maintenance purge-deleted-skills` 接上**每日** cron。**⚠️ 紅字：模板留空 ⇒ 承諾未執行。** `.env.example` 的 `SKILL_DELETION_GRACE=` 是**刻意的空值**（fail-closed，理由硬：那個 job 刪的是使用者自己的內容），後果是**照著模板部署的環境從來沒有執行過它**，而刪除畫面上逐字寫著「30 天寬限期後清除」。**這一列不是待辦，是一個正在對使用者說謊的狀態**：值由負責人簽 PDM-006 §6.1 的 30 天（§3），簽之前這句承諾在畫面上要能被關掉或改寫
-- [x] ~~**⏱ `cmd/maintenance rotate-partitions` 要在 2026-09-01 之前手動先跑一次**~~ **✅ 2026-08-30：不再需要人手，因為建立那一半已經不在這個子命令裡了。** 2026-08-29 的夯實批把建立與刪除拆開（`partition.CreateUpcoming`），建立的那一半成為 worker 的週期性工作 `PartitionCreateArgs`，**且以 `RunOnStart: true` 註冊**——`entrypoint/worker/worker.go` 的註解逐字寫著理由：「月底才上線的部署必須在月份翻過去之前就有下個月的分區，不是一個間隔之後」。刪除那一半仍留在本子命令，在它 fail-closed 的保存期變數後面（見下一行的 cron）。<br>**實測 2026-08-30**：淨測試模式一次冷啟動即印出 `partitions created table=analytics_events partitions="[analytics_events_2026_09 analytics_events_2026_10]"` 與 `trace_events` 的同一行——**在 9 月到來之前就有了 9 月與 10 月**。<br>**因此本項的殘餘義務只剩一句**：任何部署都必須真的有 worker 在跑（`cmd/worker`，或淨測試模式那種 in-process 的形態）。**只起 API 而不起 worker 的部署仍然會掉進 default 分割**，而那時的補救成本仍是一次抽乾。原文保留在刪除線裡，因為它記的是一個當時為真的期限。
+- [x] **`cmd/maintenance rotate-partitions` 的建立那一半不需要人手**：建立與刪除已拆開（`partition.CreateUpcoming`），建立成為 worker 的週期性工作 `PartitionCreateArgs` 並以 `RunOnStart: true` 註冊——月底才上線的部署必須在月份翻過去之前就有下個月的分區，不是一個間隔之後。刪除那一半仍留在本子命令，在它 fail-closed 的保存期變數後面（見下一行的 cron）。<br>**本項的殘餘義務只剩一句**：任何部署都必須真的有 worker 在跑（`cmd/worker`，或淨測試模式那種 in-process 的形態）。**只起 API 而不起 worker 的部署仍然會掉進 default 分割**，而那時的補救成本是一次抽乾
 - [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增；需要 `DATABASE_URL`）：一次執行同時處理 `trace_events` 與 `analytics_events`——建立**當月與其後兩個月**的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，兩者在任何語句之前一起讀，任一未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）。**排程至少每月一次**：預建兩個月是給「連續漏跑一次」的餘裕，連漏兩次就會開始寫進 default，而 default 是分割丟棄永遠碰不到的地方
 - [ ] `cmd/maintenance collect-objects` 接上**每日** cron（需要 `DATABASE_URL` 與 `OBJSTORE_*`）：刪掉已經沒有任何列宣稱持有的物件。沒有排程時不會壞任何東西，只會一直付無法觸及的物件儲存費用；告警 `OrphanObjectsNotCollected` 在最舊的待收物件超過兩天時響
 - [ ] `cmd/maintenance check-sources` 接上**每日** cron（需要 `DATABASE_URL` 與對外網路）：重新檢查每個以網址匯入的 Skill 來源是否仍可取得、內容是否變了，畫面上的「來源已失效／已更新」標示只靠它。告警 `SourceChecksStale` 在最久沒檢查的來源超過兩天時響
@@ -307,15 +302,15 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 
 | # | 誰 | 做什麼 | 驗什麼（什麼算完成） | 擋住什麼 |
 | --- | --- | --- | --- | --- |
-| ~~H-1~~ **已沒有二選一可裁** | 負責人 | ~~**乙-13 拍板**：G7／G8 二選一——(a) `artifact` 型引用不得滿足 `evidence_required`；(b) 保留但標示「此引文未經回驗」~~ **(a) 與 (b) 都已落地**：`artifact` 型引用只拿得到 `not_checked`，帶 `evidence_required` 的條目因此降成 `undetermined`；引用仍留著並標「未回驗引文」。一併要回答的正規化問題也有答案：接受正規化比對，短於長度下限的引文只接受原樣逐字 | [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)已逐條載明，程式與測試與它相符 | ~~`QA-006`、`RELEASE-007`~~ **已解除**（兩者皆已勾） |
-| ~~H-2~~ **已拍板 2026-08-23** | 負責人 | ~~**乙-14 拍板**：甲類四項是否在封測前到期。建議「到期」~~ **裁定為「並行」，與原建議相反**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)）。甲類四項不是封測 D 日的阻擋項；`02:SEC-009` 的 45 項門檻本身不變。**這項裁定產生一件新工作**：同意書必須據實說明執行環境尚未完成逃逸驗收（併入乙-16 的法務清單），**並留下三條待決策**，其中第一條（第一位外部使用者的 Run 之前要不要求 Suite 1 在該節點跑過一次）**沒有答案就等於「否」** | 裁定已寫進 `04` 乙-14 與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) | ~~封測 D 日取決於誰~~ **已解除**；改為該決策的待決策 2（甲類的目標完成日仍無人寫下） |
+| H-1 **已解除** | 負責人 | 乙-13 的 G7／G8 二選一沒有二選一可裁，**(a) 與 (b) 都已落地**：`artifact` 型引用只拿得到 `not_checked`，帶 `evidence_required` 的條目因此降成 `undetermined`；引用仍留著並標「未回驗引文」。一併要回答的正規化問題也有答案：接受正規化比對，短於長度下限的引文只接受原樣逐字 | [評估判定與 Judge 信任邊界](../../../adr/README.md#評估判定與-judge-信任邊界)已逐條載明，程式與測試與它相符 | `QA-006` 與 `RELEASE-007` **已解除**（兩者皆已勾） |
+| H-2 **已拍板** | 負責人 | 乙-14 的「甲類四項是否在封測前到期」**裁定為並行**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)）。甲類四項不是封測 D 日的阻擋項；`02:SEC-009` 的 46 項門檻本身不變。**這項裁定產生一件新工作**：同意書必須據實說明執行環境尚未完成逃逸驗收（併入乙-16 的法務清單），**並留下三條待決策**，其中第一條（第一位外部使用者的 Run 之前要不要求 Suite 1 在該節點跑過一次）**沒有答案就等於「否」** | 裁定已寫進 `04` 乙-14 與[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) | **已解除**；改為該決策的待決策 2（甲類的目標完成日仍無人寫下） |
 | H-3 | 負責人 | **PDM-009 追認**：[pdm-009-beta-proposal.md §8](pdm-009-beta-proposal.md) 的十項檢查清單全部 `- [x]`。**追認時一併過報酬預算**（最大單項支出，`cost-estimation.md` 沒有任何一行涵蓋它） | 該清單十項全勾 ＋ 回寫 `03` §1 與 `04` 乙-15 | `BETA-001`／`005`、`RELEASE-009` |
 | H-4 | 負責人 | **PDM-010 擇一**：首月 `min(20,30)=20` 或 20+30=50。提案自己要求「明確擇一，不要留給實作推斷」 | `internal/run/quota.go` 的四個常數拿掉「待追認」 ＋ `RUN_QUOTA` 開啟 | 配額**顯示**（強制可先做，顯示必須等值定案——乙-2 的教訓） |
 | H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION` 與 `TRACE_RETENTION` 三者都有值（第三個是 DDD-032 新增，未設時分割輪替整個停擺，見 §2.3／§2.6）＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
-| H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。~~**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9~~ **2026-08-23：H-9 已完成，這個數字現在是真的，追認時不必再處理它**；追認本身仍缺 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
+| H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。H-9 已完成，「2 個已驗證 Profile」這個數字現在是真的；**追認本身仍缺** | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
 | H-7 | 負責人 | **PDM-004／005 的定案紀錄**（值實質已定，缺追認；PDM-005 另有「兩份文件對是否已定案說法不一致」要裁一個，乙-9） | 同上 | `03` §1、乙-9 |
-| H-8 | 負責人 | **✅ 2026-08-29 已宣告：D 日 ＝ 2026-09-11。** 本列從「要一個日期」變成「要照那個日期做完」——**10 天的排程、9 位受測者的行事曆、以及在那之前必須簽完的同意書（H-11 ＋ [`05` R-11](../../05-pending-rulings.md) 的保存期改動要重走法務確認）**。⚠️ **這是本次唯一一個新的關鍵路徑風險**：R-11 把同意書 §3 的一列從 30 天改成 90 天，而那份文件自己立的規則是保存期限再變動就要重新確認一次。<br>~~**M1 閘門 D 日宣告**~~與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)<br>**⏳ 2026-08-23：有一個 PDM 暫時放行，本列不在它的範圍內。** 那個放行只解除 [`m5/README.md` §啟動條件](../m5/README.md) 的第 2 列，讓 M5 的**規劃**不必等閘門讀數。**本列一個字都沒被放行**——D 日仍要宣告、10 天仍要跑、`gate-test/analysis.md` 仍是本列的證據。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md)。**若有人拿那個放行來主張封測可以開始，那是誤讀**：M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。<br>**同日稍晚放行擴大到 M5 的三個啟動條件全部**（[從描述生成 Skill](../../../adr/README.md#從描述生成-skill)），**其中一項逐字就是「MVP 封測結束」**——但它被放行的是「阻擋 M5 開工」這個效力，**不是封測本身**。封測仍未開始，本列仍是它的前置。**這一條現在比擴大放行前更容易被誤讀，所以講第三次**：放行讓 M5 動得了，不讓封測動得了 | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
-| ~~H-9~~ **✅ 2026-08-23 完成** | 負責人 | ~~**一次本機安裝**：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt；落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號~~ **三步全部走完**：平台經真實 HTTP 路徑產出的 `claude-code` 套件（`content_hash 6be1065…`）→ 解進 `~/.claude/skills/` → `/skills` **同一個 session** 就列出（使用者與 agent 兩邊各自確認）→ 以 profile 的 `verification_prompt` 叫用，載入成功、回出約定 marker、讀到 SKILL.md 旁的 `reference.md` | `claude-code.json` `support_status=verified`、`version` 1.1.0，落點與**不成立的部分**同寫在 `known_limitations[0]`（一個套件／一個 OS／純提示型／未裝依賴未執行腳本） | `PACK-009` **已勾**、PDM-008 的「2 個已驗證」**現在是真的** |
+| H-8 | 負責人 | **D 日 ＝ 2026-09-11，已宣告也已過。** 本列現在要的是那 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）真的跑完，讀數回填 [`gate-test/analysis.md`](../gate-test/analysis.md) 與 [`01` §10](../../01-goals-and-plan.md)。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)。<br>⚠️ **關鍵路徑風險**：[`05` R-11](../../05-pending-rulings.md) 把同意書 §3 的一列從 30 天改成 90 天，而那份文件自己立的規則是保存期限再變動就要重新確認一次（H-11）。<br>**PDM 放行不及於本列**：那個放行解除的是 [M5 的三個啟動條件](../m5/README.md)（讓 M5 的規劃與開工不必等閘門讀數），**不是封測**。M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md) | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
+| H-9 **已完成** | 負責人 | **一次本機安裝，三步全部走完**：平台經真實 HTTP 路徑產出的 `claude-code` 套件（`content_hash 6be1065…`）→ 解進 `~/.claude/skills/` → `/skills` **同一個 session** 就列出（使用者與 agent 兩邊各自確認）→ 以 profile 的 `verification_prompt` 叫用，載入成功、回出約定 marker、讀到 SKILL.md 旁的 `reference.md` | `claude-code.json` `support_status=verified`、`version` 1.1.0，落點與**不成立的部分**同寫在 `known_limitations[0]`（一個套件／一個 OS／純提示型／未裝依賴未執行腳本） | `PACK-009` **已勾**、PDM-008 的「2 個已驗證」**現在是真的** |
 | H-10 | 負責人＋法務 | **`anthropics/skills` 法務終判**（乙-10）；並在寄詢問信前**擇一 4A／4B** 且**實測那四筆真的打不出包**（不得以政策文件代替實際試過） | 終判紀錄 ＋ 寄出的信 | `CONTENT-003`／`004`、`RELEASE-003` |
 | H-11 | 負責人＋法務 | **同意書定稿**：[`../gate-test/consent-and-data-policy.md` §9](../gate-test/consent-and-data-policy.md) 的待填清單全部有值 ＋ 法務確認用語與法域 ＋ 未成年受測者的處理（草稿未涵蓋） | §9 十一項全勾 | **招募寄確認信時沒有東西可簽**；`BETA-001`；乙-16 |
 
@@ -324,7 +319,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 - [ ] GHCR 上孤兒 image 的刪除（需 `delete:packages` scope，本機 token 沒有）
 - [ ] dev 物件儲存裡的 `skillhub-seedtest` bucket 可以直接丟（容器已刪、bucket 沒有；與 `skillhub` 隔離）
 
-**一項要決策而不只是寫程式的**：`QA-008` 的路線——要為 MVP 引入瀏覽器驅動（CI 時間、維護成本、單人團隊），還是改以人工在三個瀏覽器各走一次主要流程並落檔。**它連帶決定無障礙的對比能不能有自動守門**（丙-21）。
+**`QA-008` 的路線已拍板**：採引入瀏覽器驅動，否決人工在三個瀏覽器各走一次並落檔（[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)）。無障礙的對比守門（丙-21）因此結案，`QA-008`／`QA-009`／`DESIGN-013` 都已勾選。
 
 ---
 
@@ -342,14 +337,14 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 
 | # | 誰做 | 做什麼 | 驗什麼 |
 | --- | --- | --- | --- |
-| `RELEASE-001` | agent／開發者 | 產出**需求 ID × 測試**對照表（`QA-003`／`004`／`005` 的測試現在分別掛在 `RUN-*`／`SBX-*`／`TRACE-*` 名下） | 每個 MVP 必要需求 ID 至少對到一支具名測試，且該測試最近一次執行結果有記錄 |
-| `RELEASE-002` | 開發者 ＋ 一位真人 | §1.9 的 P-8（旅程測試）＋ §2.7 的第一次真實走查 | 六段的**接縫**都被走過一次；四次退回都發生在接縫上 |
+| `RELEASE-001` | agent／開發者 | 對照表[已產出](../../requirement-test-matrix.md)並由 `requirement-test-matrix` 逐列對帳。**剩下的是表上那些列**：兩個 ID 的功能沒實作、兩個只能在真機量、兩個要人工審、十四個只證明了一半 | 每個 MVP 必要需求 ID 至少對到一支具名測試——**尚未成立**；另需該測試最近一次執行結果有記錄，目前只有 CI 的 run，沒有對回需求 ID 的讀數 |
+| `RELEASE-002` | 一位真人 | §2.7 的第一次真實走查。P-8 的旅程測試已成立 | 走完全程的測試存在並會過；**剩下真機部署上由一位真人走一次** |
 | `RELEASE-003` | 負責人＋法務 | H-10；並補 2–3 個 OSI 授權的 `documents` 替代品 | `CONTENT-003`／`004` 可勾；**至少一個 `documents` 精選可下載** |
 | `RELEASE-004` | 負責人＋真機 | 甲-1～甲-4 | 46 項全 pass、**0 unknown**；證據落 `sec-009-acceptance/` |
 | `RELEASE-005` | 負責人 ＋ 開發者 | H-5（PDM-006）＋ §1.9 的 P-9 | 保存期限有值且可測；Run Artifact 刪得掉；刪除狀態查得到；稽核已成立（`CORE-008` 已勾） |
 | `RELEASE-006` | 負責人 | `SEC-010` 的 runbook 與一鍵停用流程本體 ＋ §2.5 的 Alertmanager | 告警**送得到那個人**；停派送與解除各走過一次 |
-| ~~`RELEASE-007`~~ **✅ 已勾** | 開發者 | ~~H-1（乙-13）＋ 依裁定改 defence 3~~ 兩個選項都已落地 | 帶 `evidence_required` 的條目不會被一段沒人驗過的引文滿足——已成立 |
-| ~~`RELEASE-008`~~ **✅ 已勾** | 開發者 ＋ 負責人 | §1.9 的 P-1／P-7 ＋ H-9 | 授權檔隨包走有測試；round-trip 得同一雜湊；`claude-code` 有人真的裝過——三者都已成立 |
+| `RELEASE-007` **已勾** | 開發者 | 兩個選項都已落地 | 帶 `evidence_required` 的條目不會被一段沒人驗過的引文滿足 |
+| `RELEASE-008` **已勾** | 開發者 ＋ 負責人 | §1.9 的 P-1／P-7 ＋ H-9 | 授權檔隨包走有測試；除平台新增檔案外 round-trip 逐位元組相同；`claude-code` 有人真的裝過 |
 | `RELEASE-009` | 負責人 | H-3 → 封測 14 天 → 三條門檻逐條計算 | B1 ≥ 8／12、B2 前六段無一段低於 50%、B3 未觸發；**不通過走決策樹，重測上限一次** |
 | `RELEASE-010` | 負責人 | 收斂「已知限制」（素材 ＝ [audit.md](audit.md) 的不勾清單 ＋ `04` 三類殘項 ＋ 各 ADR 的待決策）＋ 發佈決策 ＋ 下一階段範圍 | 三份素材都被讀過且逐項有處置；`BETA-005` 的複審已完成 |
 
@@ -363,11 +358,3 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 | **沒有把本檔做成可勾選的活文件** | 兩份清單一定會漂移（`04` 的既有教訓）。**勾選狀態只有一份**：`03` §18 與 `04` |
 | **沒有為「不通過」寫決策樹** | 封測的已經有了（[pdm-009-beta-proposal.md §4.4](pdm-009-beta-proposal.md)）；`SEC-009` 不通過的處置是 `02:SEC-009` 明文的「不得開放」，**無例外流程，沒有第二條路可寫** |
 | **沒有估工時** | 單人團隊 ＋ 大量項目取決於負責人什麼時候有空拍板。估出來的數字只會被拿去當承諾 |
-
-## 7. 補記（2026-08-22）：`QA-008` 的路線已拍板，兩處記載作廢
-
-**補記，不改寫上面任何一行。**
-
-- **§1.9 末尾與 §3 的「`QA-008` 的路線」不再是待決事項。** 負責人裁定採**引入瀏覽器驅動**，**否決人工在三個瀏覽器各走一次並落檔**（[Repo 結構、CI 與驗證層](../../../adr/README.md#repo-結構ci-與驗證層)，實作 commit `fe7aa13`）。
-- **因此 §1.9「另有兩項要先有 §3 的決策才能動」現在只剩一項**（`SEC-012` 的自動觸發）：**無障礙的對比守門（丙-21）已不再等任何決策**，該殘項**整列結案**，`QA-009`／`DESIGN-013` 同批改判勾選。
-- **`QA-008` 本身仍不勾**，因此 §5 對 `RELEASE-001` 的回答不變——它的字面判準含「與目標作業系統測試」，而 CI 仍只有 `ubuntu-latest`。**剩下的是一個尚未做的取捨（OS 矩陣要做哪幾格），不是一個沒有工具的缺口**：工具已經在了。
