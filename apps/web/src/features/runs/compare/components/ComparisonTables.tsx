@@ -4,6 +4,7 @@ import { CRITERION_LABEL } from "../../evaluation/evaluation.model";
 import { runStatusLabel } from "../../runs.model";
 import { verdictCell } from "./ComparisonLead";
 import { RerunCell } from "./RerunCell";
+import "./ComparisonTables.css";
 
 function costNote(side: ComparisonSide): string {
   return `${side.cost.is_lower_bound ? "這是下界，不是總額。" : ""}權威來源：${
@@ -67,7 +68,13 @@ export function ComparisonTables({ data }: { data: RunComparison }) {
             <tr>
               <th scope="row">最終輸出</th>
               {sides.map((s) => (
-                <td key={s.run_id}>{s.final_output ? <pre>{s.final_output}</pre> : "無"}</td>
+                <td key={s.run_id}>
+                  {s.final_output ? (
+                    <pre className="run-comparison-output">{s.final_output}</pre>
+                  ) : (
+                    "無"
+                  )}
+                </td>
               ))}
             </tr>
             <tr>
