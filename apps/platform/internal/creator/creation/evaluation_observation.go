@@ -28,7 +28,7 @@ func trialQuestions(observation string) string {
 		}
 		label := "沒過"
 		if r.Result == "undetermined" {
-			label = "這份樣本驗不到"
+			label = "尚無法判定"
 		}
 		line := fmt.Sprintf("- 「%s」：%s", truncateRunes(r.Text, 200), label)
 		if r.Reason != "" {

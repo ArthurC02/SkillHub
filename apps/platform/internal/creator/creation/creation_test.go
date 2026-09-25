@@ -452,7 +452,7 @@ func TestProposalHoldsAFetchUntilThePersonConfirms(t *testing.T) {
 func TestTrialQuestionsNameTheFailedCriteria(t *testing.T) {
 	obs := `{"evaluation":{"evaluation_available":true,"status":"completed","overall":"partially_met","criterion_results":[{"text":"輸出是核取方塊清單","result":"failed","reason":"輸出是表格"},{"text":"三條待辦","result":"passed"},{"text":"超過七天的分支","result":"undetermined","reason":"樣本沒有這個情境"}]}}`
 	q := trialQuestions(obs)
-	for _, want := range []string{"「輸出是核取方塊清單」：沒過——輸出是表格", "「超過七天的分支」：這份樣本驗不到——樣本沒有這個情境", "改草稿、還是改條件或範例輸入"} {
+	for _, want := range []string{"「輸出是核取方塊清單」：沒過——輸出是表格", "「超過七天的分支」：尚無法判定——樣本沒有這個情境", "改草稿、還是改條件或範例輸入"} {
 		if !strings.Contains(q, want) {
 			t.Fatalf("missing %q in:\n%s", want, q)
 		}
