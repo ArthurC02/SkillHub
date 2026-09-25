@@ -1,7 +1,12 @@
+export function gatewayAdminKey(deployment) {
+  return deployment.SKILLHUB_MODEL_GATEWAY_KEY || deployment.LITELLM_MASTER_KEY;
+}
+
 export function serviceKeyPlan(deployment) {
   const adminUrl =
-    deployment.SKILLHUB_MODEL_GATEWAY_ADMIN_URL || deployment.SKILLHUB_MODEL_GATEWAY_URL;
-  const adminKey = deployment.SKILLHUB_MODEL_GATEWAY_KEY;
+    deployment.SKILLHUB_MODEL_GATEWAY_ADMIN_URL ||
+    deployment.SKILLHUB_MODEL_GATEWAY_URL;
+  const adminKey = gatewayAdminKey(deployment);
   if (!adminUrl || !adminKey) {
     return { action: "skip", reason: "no model gateway is configured" };
   }
@@ -13,31 +18,49 @@ export function serviceKeyPlan(deployment) {
     return { action: "mint", reason: "LITELLM_API_KEY is the master key" };
   }
   if (current === adminKey) {
-    return { action: "mint", reason: "LITELLM_API_KEY is the gateway admin key" };
+    return {
+      action: "mint",
+      reason: "LITELLM_API_KEY is the gateway admin key",
+    };
   }
-  return { action: "keep", reason: "an operator supplied a distinct LITELLM_API_KEY" };
+  return {
+    action: "keep",
+    reason: "an operator supplied a distinct LITELLM_API_KEY",
+  };
 }
 
 export function serviceKeyAlias(base, suffix) {
   return `${base || "skillhub-llm-service"}-${suffix}`;
 }
 
-export async function mintServiceKey({ fetchImpl, adminUrl, adminKey, models, budgetUsd, alias }) {
-  const response = await fetchImpl(`${adminUrl.replace(/\/$/, "")}/key/generate`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      Authorization: `Bearer ${adminKey}`,
+export async function mintServiceKey({
+  fetchImpl,
+  adminUrl,
+  adminKey,
+  models,
+  budgetUsd,
+  alias,
+}) {
+  const response = await fetchImpl(
+    `${adminUrl.replace(/\/$/, "")}/key/generate`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${adminKey}`,
+      },
+      body: JSON.stringify({
+        key_alias: alias,
+        duration: "24h",
+        max_budget: budgetUsd,
+        models,
+      }),
     },
-    body: JSON.stringify({
-      key_alias: alias,
-      duration: "24h",
-      max_budget: budgetUsd,
-      models,
-    }),
-  });
+  );
   if (!response.ok) {
-    throw new Error(`向模型閘道簽發 apps/llm 的 Virtual Key 失敗（/key/generate -> ${response.status}）`);
+    throw new Error(
+      `向模型閘道簽發 apps/llm 的 Virtual Key 失敗（/key/generate -> ${response.status}）`,
+    );
   }
   const body = await response.json();
   if (!body.key) {
@@ -56,5 +79,7 @@ export function llmChildEnv(base, key) {
 }
 
 export function gatewayModels(configText) {
-  return [...configText.matchAll(/^\s*-\s*model_name:\s*(\S+)/gm)].map((m) => m[1]);
+  return [...configText.matchAll(/^\s*-\s*model_name:\s*(\S+)/gm)].map(
+    (m) => m[1],
+  );
 }

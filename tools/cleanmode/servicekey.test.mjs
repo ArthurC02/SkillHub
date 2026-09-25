@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  gatewayAdminKey,
   gatewayModels,
   llmChildEnv,
   mintServiceKey,
@@ -25,6 +26,21 @@ test("mints over the master key rather than handing it to apps/llm", () => {
     LITELLM_API_KEY: "sk-fake-master",
   });
   assert.equal(plan.action, "mint");
+});
+
+test("mints with the master key when no dedicated admin key is configured", () => {
+  const plan = serviceKeyPlan({
+    SKILLHUB_MODEL_GATEWAY_URL: "http://127.0.0.1:4000",
+    LITELLM_MASTER_KEY: "sk-fake-master",
+  });
+  assert.equal(plan.action, "mint");
+});
+
+test("uses the master key for the signing request when no dedicated admin key exists", () => {
+  assert.equal(
+    gatewayAdminKey({ LITELLM_MASTER_KEY: "sk-fake-master" }),
+    "sk-fake-master",
+  );
 });
 
 test("mints over the admin key too", () => {
@@ -59,15 +75,22 @@ test("keeps an operator-supplied distinct key", () => {
 test("skips when no gateway is configured", () => {
   assert.equal(serviceKeyPlan({}).action, "skip");
   assert.equal(
-    serviceKeyPlan({ SKILLHUB_MODEL_GATEWAY_URL: "http://127.0.0.1:4000" }).action,
+    serviceKeyPlan({ SKILLHUB_MODEL_GATEWAY_URL: "http://127.0.0.1:4000" })
+      .action,
     "skip",
   );
 });
 
 test("service key aliases keep the stable label while making each mint unique", () => {
-  assert.equal(serviceKeyAlias(undefined, "first"), "skillhub-llm-service-first");
+  assert.equal(
+    serviceKeyAlias(undefined, "first"),
+    "skillhub-llm-service-first",
+  );
   assert.equal(serviceKeyAlias("interactive", "second"), "interactive-second");
-  assert.notEqual(serviceKeyAlias(undefined, "first"), serviceKeyAlias(undefined, "second"));
+  assert.notEqual(
+    serviceKeyAlias(undefined, "first"),
+    serviceKeyAlias(undefined, "second"),
+  );
 });
 
 test("mintServiceKey posts to /key/generate with the admin bearer and returns the key", async () => {
@@ -76,7 +99,11 @@ test("mintServiceKey posts to /key/generate with the admin bearer and returns th
     seenUrl = url;
     seenHeaders = opts.headers;
     seenBody = JSON.parse(opts.body);
-    return { ok: true, status: 200, json: async () => ({ key: "sk-fake-minted" }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ key: "sk-fake-minted" }),
+    };
   };
   const key = await mintServiceKey({
     fetchImpl,
@@ -101,7 +128,11 @@ test("mintServiceKey does not double the slash when adminUrl already ends in one
   let seenUrl;
   const fetchImpl = async (url) => {
     seenUrl = url;
-    return { ok: true, status: 200, json: async () => ({ key: "sk-fake-minted" }) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ key: "sk-fake-minted" }),
+    };
   };
   await mintServiceKey({
     fetchImpl,
@@ -115,7 +146,11 @@ test("mintServiceKey does not double the slash when adminUrl already ends in one
 });
 
 test("mintServiceKey throws (no key value) on a non-2xx response", async () => {
-  const fetchImpl = async () => ({ ok: false, status: 401, json: async () => ({}) });
+  const fetchImpl = async () => ({
+    ok: false,
+    status: 401,
+    json: async () => ({}),
+  });
   await assert.rejects(
     mintServiceKey({
       fetchImpl,
@@ -148,19 +183,30 @@ test("llmChildEnv never carries the master key or the admin key into apps/llm", 
 });
 
 test("llmChildEnv with no key leaves apps/llm without LITELLM_API_KEY rather than a stale one", () => {
-  const env = llmChildEnv({ LITELLM_API_KEY: "sk-fake-master", LITELLM_MASTER_KEY: "sk-fake-master" }, "");
+  const env = llmChildEnv(
+    { LITELLM_API_KEY: "sk-fake-master", LITELLM_MASTER_KEY: "sk-fake-master" },
+    "",
+  );
   assert.equal(env.LITELLM_API_KEY, undefined);
   assert.equal(env.LITELLM_MASTER_KEY, undefined);
 });
 
 test("gatewayModels reads model_name entries and nothing else", () => {
-  const text = "model_list:\n  - model_name: gpt-4.1-mini\n    litellm_params:\n      model: openai/gpt-4.1-mini\n  - model_name: text-embedding-3-small\n";
-  assert.deepEqual(gatewayModels(text), ["gpt-4.1-mini", "text-embedding-3-small"]);
+  const text =
+    "model_list:\n  - model_name: gpt-4.1-mini\n    litellm_params:\n      model: openai/gpt-4.1-mini\n  - model_name: text-embedding-3-small\n";
+  assert.deepEqual(gatewayModels(text), [
+    "gpt-4.1-mini",
+    "text-embedding-3-small",
+  ]);
   assert.deepEqual(gatewayModels(""), []);
 });
 
 test("mintServiceKey throws when the response has no key field", async () => {
-  const fetchImpl = async () => ({ ok: true, status: 200, json: async () => ({}) });
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  });
   await assert.rejects(
     mintServiceKey({
       fetchImpl,
