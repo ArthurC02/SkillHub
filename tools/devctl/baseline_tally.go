@@ -14,6 +14,7 @@ const baselineOwner = "docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md"
 var baselineQuoters = []string{
 	"docs/plans/02-specifications-and-acceptance-criteria.md",
 	"docs/plans/03-work-items.md",
+	"tools/sec009/README.md",
 }
 
 var (
@@ -29,7 +30,7 @@ var (
 	// no leading zone letter.
 	baselineZoneTotal = regexp.MustCompile(`(?m)^\|\s*\*\*合計\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*$`)
 
-	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
+	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部|覆蓋|裡)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
 
 	// A sentence naming a date, which describes a past figure rather than
 	// current drift.

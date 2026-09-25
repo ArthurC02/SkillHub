@@ -29,13 +29,16 @@ func writeBaseline(t *testing.T, owner string, quoterBodies ...string) string {
 	if err := os.WriteFile(filepath.Join(ownerDir, "threat-model-and-sandbox-baseline.md"), []byte(owner), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	quoterNames := []string{"02-specifications-and-acceptance-criteria.md", "03-work-items.md"}
-	for i, name := range quoterNames {
+	for i, quoter := range baselineQuoters {
 		body := ""
 		if i < len(quoterBodies) {
 			body = quoterBodies[i]
 		}
-		if err := os.WriteFile(filepath.Join(root, "docs", "plans", name), []byte(body), 0o644); err != nil {
+		path := filepath.Join(root, filepath.FromSlash(quoter))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -86,5 +89,38 @@ func TestBaselineTallyCatchesAStaleProseFigureWithinTheFuzzyWindow(t *testing.T)
 	problems := strings.Join(baselineTallyProblems(root), "\n")
 	if !strings.Contains(problems, "names 5 baseline items") {
 		t.Fatalf("a stale prose figure within ±3 of the row count was not caught: %v", problems)
+	}
+}
+
+const sec009Quoter = "tools/sec009/README.md"
+
+func TestBaselineTallyReadsTheSec009Runbook(t *testing.T) {
+	t.Parallel()
+	at := -1
+	for i, quoter := range baselineQuoters {
+		if quoter == sec009Quoter {
+			at = i
+		}
+	}
+	if at < 0 {
+		t.Fatalf("%s is not among the quoters; it states the baseline size in five places", sec009Quoter)
+	}
+	for _, tc := range []struct {
+		name, prose string
+	}{
+		{"全數 after the count", "驗收的 5 項全數通過。\n"},
+		{"覆蓋 after the count", "10 個測項與 5 項覆蓋，證據落檔。\n"},
+		{"裡 after the count", "5 項裡有 2 項有證據。\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			bodies := make([]string, len(baselineQuoters))
+			bodies[at] = tc.prose
+			problems := strings.Join(baselineTallyProblems(writeBaseline(t, baselineValidOwnerBody, bodies...)), "\n")
+			want := sec009Quoter + ":1 names 5 baseline items"
+			if !strings.Contains(problems, want) {
+				t.Fatalf("want a problem containing %q, got %v", want, problems)
+			}
+		})
 	}
 }

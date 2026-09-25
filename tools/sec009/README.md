@@ -126,7 +126,7 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 
 ### 三個前置條件裡，只有第一個是成立的
 
-[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 45 項全部 fail**：
+[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把三個前置寫成「缺一即 T8 判 `unknown` ＝ fail」，也就是**缺一即整批 46 項全部 fail**：
 
 | # | 現況 |
 | --- | --- |
