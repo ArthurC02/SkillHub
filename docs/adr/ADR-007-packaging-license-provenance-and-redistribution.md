@@ -48,7 +48,7 @@ Skill Hub 把外部與使用者自帶的 Skill 收進目錄、打包、交付下
 
 - manifest 的自由文字正規化為 SPDX License List 的 canonical 大小寫，接受少量無歧義俗寫（`apache 2.0`、`GPLv3`）；**無法對應者原樣保留**，不猜測（裸寫的 `BSD`、`GPL` 沒說是哪個變體）。
 - 未知以 `license_expression IS NULL` ＋ `LicenseStatusUnknown` 表達，欄位本身只存純運算式；對外輸出 SPDX／SBOM 時再映射為 `NOASSERTION`。
-- 五層全部只到「已宣告」（`LicenseStatusDeclared`，`catalog/trust.go`），升級到「已人工確認」（`LicenseStatusConfirmed`）是另一條軸，只能由人工複核給予並留下判定理由；**`Confirmed` 不等於可再散布**——source-available 授權可以通過人工確認卻依然被決策 3 的散布閘門擋下。
+- 五層全部只到「已宣告」（`LicenseStatusDeclared`，`skill/discovery/trust.go`），升級到「已人工確認」（`LicenseStatusConfirmed`）是另一條軸，只能由人工複核給予並留下判定理由；**`Confirmed` 不等於可再散布**——source-available 授權可以通過人工確認卻依然被決策 3 的散布閘門擋下。
 
 ### 決策 3：可散布性是資料庫欄位 `skills.redistribution`，五態，兩道鎖分工不互相取代
 
