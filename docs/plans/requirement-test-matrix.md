@@ -25,7 +25,7 @@
 | DISC-003 | 有測試 | `TestAnonymousReadsCatalogSkillDetail` | |
 | DISC-004 | 有測試 | `DISC-009 comparison gives absent fields their actual state`、`DISC-009 相容性不同的兩個 Skill,那一列要說有差異` | |
 | DISC-005 | 未實作 | | 結構化意圖抽取與查詢改寫在 `discovery` 套件完全沒有程式碼，`Embed` 直接吃原句 |
-| DISC-006 | 部分 | `TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall`、`TestCategoryFiltersTheCatalogAndNamesTheAbsence`、`DISC-006: an empty catalog is distinct from a failed catalog read` | ⑧「搜尋的四個欄位在目錄回應上不存在」只由 struct 宣告保證，沒有一支測試會為它變紅 |
+| DISC-006 | 有測試 | `TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall`、`TestCategoryFiltersTheCatalogAndNamesTheAbsence`、`TestTheCatalogResponseDropsEveryFieldABrowseCouldOnlyFillWithAConstant`、`DISC-006: an empty catalog is distinct from a failed catalog read` | |
 
 ## 匯入與驗證
 
@@ -144,7 +144,7 @@
 
 | 需求 ID | 狀態 | 具名測試 | 缺口 |
 | --- | --- | --- | --- |
-| NFR-001 | 部分 | `TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured`、`TestTheRefusalCarriesRetryAfterAndASentence` | 畫面上「掃描通過不等於安全保證」這句防呆沒有測試在斷言 |
+| NFR-001 | 部分 | `TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured`、`TestTheRefusalCarriesRetryAfterAndASentence`、`NFR-001: a clean scan says what the scan found and carries the rider that it is not safety`、`NFR-001: a clean row in a list carries the same rider as the detail page` | 目錄列與詳情頁的但書有測試；打包頁乾淨掃描時永遠看得見的判定行沒有但書，那句話被折進 `<details>`（`05` R-90），所以那一面還沒有可以斷言的對象 |
 | NFR-002 | 有測試 | `TestTraceIngestionMasksBeforeStorageAndDedupesOnResend`、`TestARunArtifactCanBeListedAndDeletedOnItsOwn` | |
 | NFR-003 | 有測試 | `TestAProviderThatCannotBeReachedIsUnavailableRatherThanRefusing`、`TestAnUnrecognisedAndOldSandboxIsStillAnOrphan`、`TestSupervisorRecoversARunThatHasNoJob` | |
 | NFR-004 | 待真機 | | 搜尋 p95、建立 Run、Trace 上畫面的秒數門檻，規格自己寫「需在確認基礎設施後校準」 |

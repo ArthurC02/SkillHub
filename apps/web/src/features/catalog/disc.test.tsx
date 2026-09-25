@@ -1314,6 +1314,46 @@ test("DISC-004: an unreadable package is reported as unknown, never as a clean s
   expect(text).not.toContain("未發現錯誤或警告");
 });
 
+test("NFR-001: a clean scan says what the scan found and carries the rider that it is not safety", async () => {
+  await render(
+    <RiskIndicator
+      risk={{
+        scan_status: "scanned",
+        counts: { errors: 0, warnings: 0, infos: 0 },
+        highlights: [],
+        info_counts: {},
+        disclosures: [],
+        note: "以上為靜態掃描結果。",
+      }}
+    />,
+  );
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("靜態掃描未發現錯誤或警告");
+  expect(text).toContain("這不等於安全");
+  expect(text).not.toContain("掃描通過");
+});
+
+test("NFR-001: a clean row in a list carries the same rider as the detail page", async () => {
+  const { RiskSummary } = await import("../../shared/ui/RiskIndicator");
+  await render(
+    <RiskSummary
+      risk={{
+        scan_status: "scanned",
+        level: "none",
+        warnings: 0,
+        disclosures: [],
+        note: "以上為靜態掃描結果。",
+      }}
+    />,
+  );
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("靜態掃描未發現警告");
+  expect(text).toContain("這不等於安全");
+  expect(text).not.toContain("掃描通過");
+});
+
 function filterSelect(label: string): HTMLSelectElement {
   const group = [...container.querySelectorAll(".filter-bar label")].find((l) =>
     l.textContent?.startsWith(label),
