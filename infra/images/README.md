@@ -314,30 +314,29 @@ digest」保證會過期，而過期的那份看起來跟正確的一模一樣�
 # 版本從 Dockerfile 讀，不從這份文件抄
 IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
 docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:${IMAGE_VERSION}"
-
-> **建置指令請照同一個方式取 tag，不要手抄。** `Dockerfile` 檔頭那行 `docker build -t …:2026.08-6` 是**第二份**版本字串，而它已經漂過一次（ARG 是 `2026.08-7` 時它還寫 `-6`）。
-> **但那一行刻意不改**：`runtime-image.yml` 的 I-05 守門把 `infra/images/runtime-agent-sdk/` 底下**除 `*.md` 以外**的任何變更都當成映像內容變更，要求同批 diff 到 `ARG IMAGE_VERSION=`——**改一行註解也會觸發**。為了一行註解去 bump 版本，等於宣告一個需要重跑[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測的新映像，那比註解過期更糟。
-> 所以正確的用法寫在這裡（`.md` 是該守門唯一放行的路徑）：
-> ```bash
-> IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
-> docker build -t "skillhub/runtime-agent-sdk:${IMAGE_VERSION}" infra/images/runtime-agent-sdk
-> ```
-> 〔這一段屬於本檔而不是 Dockerfile 的註解——寫進註解會被 `comment-budget` 擋下。Dockerfile 檔頭那行 `docker build -t …` 已隨註解清理拿掉，第二份版本字串因此不存在。〕
+docker build -t "skillhub/runtime-agent-sdk:${IMAGE_VERSION}" infra/images/runtime-agent-sdk
 ```
+
+> **建置指令也照同一個方式取 tag，不要手抄。** `runtime-image.yml` 的 I-05 守門把
+> `infra/images/runtime-agent-sdk/` 底下**除 `*.md` 以外**的任何變更都當成映像內容變更，
+> 要求同批 diff 到 `ARG IMAGE_VERSION=`——改一行註解也會觸發。Dockerfile 因此只有
+> `ARG IMAGE_VERSION` 這一份版本字串，建置指令寫在這份文件（`.md` 是該守門唯一放行的
+> 路徑）；把指令抄回 Dockerfile 等於讓每次改它都宣告一個需要重跑
+> [Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測的新映像。
 
 > **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；
 > 「部署實際會跑哪一版」看 `apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設。
 > **兩者刻意可以不同**——移動預設是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測通過之後的動作——**未跑過四項實測的版本不會被移成預設**（見 `UPGRADES.md` 逐節）。
 
 **升版不會製造孤兒，同版重建才會。** workflow 的發佈步驟從 Dockerfile 的 `ARG IMAGE_VERSION`
-讀 tag（[runtime-image.yml](../../.github/workflows/runtime-image.yml) 第 175 行），所以
+讀 tag（[runtime-image.yml](../../.github/workflows/runtime-image.yml) 的「Publish only a version the registry does not have yet」那步），所以
 `2026.08-2` → `2026.08-3` 這種**版本一起改**的發佈，是把新 digest 掛到一個**新 tag** 上，
 舊 digest 的 `2026.08-2` tag 原地不動、仍指得到、attestation 仍對應——它是**被取代的版本**，
 不是孤兒。下表因此**沒有新增列**。孤兒只在「版本沒改而重跑發佈」時產生（tag 被移到新
 digest，舊 digest 失去指向），第三列是那個情況最早的實例，其餘都在表裡。
 
 > ⚠️ 但**被取代的版本會在 30 天後停止可用**：`rescan` job 同樣從 Dockerfile 讀版本
-> （同檔第 246 行），只重掃**當前**版本，所以 `2026.08-2` 的 `scanned_at` 不再更新，
+> （同檔 rescan job 的「Resolve the published digest」那步），只重掃**當前**版本，所以 `2026.08-2` 的 `scanned_at` 不再更新，
 > 30 天後依 I-04 判為過期 → 閘門 D 拒絕它被新 Run 引用。這是設計上正確的（不該有人
 > 長期釘在舊映像），但要知道它是**靜默**發生的：想留一個可回滾的舊版本，就得把它加進
 > rescan 的對象清單，那目前不存在。回滾窗口 ＝ **30 天**。
