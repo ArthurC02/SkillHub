@@ -62,7 +62,8 @@ groups:
           summary: "超過 10% 的 Run 逾時"
           description: >-
             PDM-005 的 wall clock 是 soft 600s / hard 900s。若逾時集中在特定時段，
-            先看節點資源；若普遍發生，可能是模型閘道變慢，查 Langfuse。
+            先看節點資源；若普遍發生，可能是模型閘道變慢——查 probe_success{job="gateway"}
+            與 /admin/cost-statistics 的每日延遲，平台沒有接任何模型觀測平台。
 
   - name: skillhub-provider-health
     rules:
