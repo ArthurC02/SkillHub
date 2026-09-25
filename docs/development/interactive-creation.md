@@ -4,9 +4,9 @@
 
 ## 已接通的路徑
 
-`/workspace/skills#create` 的自然語言、流程圖、目錄參考共用私人會話。Web 僅呼叫 Go API；Go Worker 每個工作以內部 HTTP 呼叫 Python `POST /v1/creation/step`。LangGraph 重建有界 workflow，回傳澄清、確認、草稿或工具意圖；Go 執行授權後的目錄文字檢索、套件驗證與後續排程。目錄的文字檢索與套件驗證不呼叫 embedding；`search_knowledge` 會呼叫，費用計入該會話的 `SpentUSD`。
+`/workspace/skills#create` 的自然語言、流程圖、目錄參考共用私人會話。Web 僅呼叫 Go API；Go Worker 每個工作以內部 HTTP 呼叫 Python `POST /v1/creation/step`。LangGraph 重建有界 workflow，回傳澄清、確認、草稿或工具意圖；Go 執行授權後的混合目錄檢索、套件驗證與後續排程。檢索的 embedding 費用計入該會話的 `SpentUSD`；套件靜態驗證不呼叫模型。檢索與降級規則見〈工具：連網、檢索與 Re-Use〉。
 
-Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `creation_receipts`，使用 Workspace scope、revision CAS 和命令識別碼。事件、receipt、快照及後續 River 工作在同一交易寫入。會話 UI 使用 scoped polling，沒有新增對外推播 consumer；既有 Run 仍走原本 Outbox。
+Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `creation_receipts`，使用 Workspace scope、revision CAS 和命令識別碼。事件、receipt、快照及後續 River 工作在同一交易寫入。會話 UI 透過具登入憑證的 SSE 接收快照；串流不可用時，`queued`／`working` 狀態退回 scoped polling。既有 Run 仍走原本 Outbox。
 
 流程圖由 API 將記憶體中的位元組傳給 Go Worker 內部 listener，再送 Python。資料庫只保存理解與 sha256／媒體類型／大小。中斷後不重播圖像工作，要求重新上傳。LangGraph 不持有跨工作 checkpoint，不連核心資料庫，也不消費 River。
 
@@ -16,7 +16,7 @@ Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `c
 
 「prepare → observe」根據確認狀態與草稿驗證結果選擇 understand、decompose、compose、revise 或 review，再回傳確認、工具意圖或草稿。`decompose` 只在流程圖描述已確認而結構拆解尚不存在時運行；新內容一律先交 Go 靜態驗證；下一個工作攜帶同一草稿的 draft_validation（content hash、blocked、finding report），讓修訂階段針對問題修改。只有與 Go 驗證通過內容完全相同的草稿，Python 才回傳完成提案。Go 仍獨立驗證、綁定確認與控制狀態，模型不能自行越過。
 
-工具邊界結束本次 graph invocation；Go 持久化結果、保留前一草稿並核准下一次工作，再進入 observe。這個循環每次只有一次模型呼叫，費用與取消仍受 receipt 控制；沒有另建 Python checkpointer 或讓 Python 接管平台狀態。
+工具邊界結束本次 graph invocation；Go 持久化結果、保留前一草稿並核准下一次工作，再進入 observe。一般工作一次模型呼叫；review 最多三次，合計用量與費用回傳 Go，並共用本次工作的逾時與取消。費用仍受 receipt 控制；沒有另建 Python checkpointer 或讓 Python 接管平台狀態。
 
 附加 Run 後的回饋包含實際執行狀態、failure class，以及 evaluation owner 提供的驗收條件、判定原因、已驗證且重新檢查可用性的證據摘錄。沒有評估時明示 evaluation_available:false。評估投影最多 16,000 字元，摘要最多 2,000 字元；刪減時保留判定並附截斷及省略數量，不能把不完整證據當成成功。原始 Trace、完整產物和評估留言不送入創作模型。
 
@@ -71,7 +71,9 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - `raise_budget`：額度被拒的會話可提高預算後從 `waiting_input` 繼續，區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
 - Python 護欄只回 `reason` 碼，句子由 Go 出；`creation.py` 裡沒有中文。
 
-**review 相是三次呼叫**：`ReviewDiagnosis` 先判 `target`（body／criteria／sample_input），body 的修法走純文字重寫且重寫結果覆蓋決策回的內容，非 body 的修法回 `confirm_brief` 讓人重新確認。
+**review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（body／criteria／sample_input）；body 的修法另做純文字重寫，再產生結構化決策，重寫結果覆蓋 `draft` 或 `validate_draft` 工具意圖中的本文。非 body 的修法不重寫本文，回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
+
+**回合時間線保留決策因果**：試跑判定、系統追問、使用者回答與模型建議依訊息順序串接。追問保留具體條件與原因；中間的工具訊息不切斷回答與修訂建議，新試跑則結束上一輪的待答關係。時間線不代表已保存；保存仍是使用者的明確動作。
 
 ## 工具：連網、檢索與 Re-Use
 
@@ -113,4 +115,4 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 ## 尚待量測與核准
 
-R-45 的實際部署預算／保存期限／量測門檻、三種輸入的真實模型多輪任務、與單次生成的效果比較及人類採用率仍待收齊。GEN-016～023 的 checkbox 保持未勾，直到各自完整允收證據齊備；已接線不等於產品品質或曝光驗收完成。本批沒有啟用曝光、部署服務或執行未核准的付費模型。
+R-45 的部署預算與保存期限已定值，見〈設定與預設〉。已完成的真實模型試跑與修訂證據見[多輪會話報告](../plans/mvp/m5/creation-measure/report-live-enrichment-2026-09-25.md)與[評估驅動重寫報告](../plans/mvp/m5/creation-measure/report-review-rewrite-2026-09-25.md)；這些是代理協助的功能驗證，不是人類獨立使用或採用率證據。三種輸入的完整量測、與單次生成的效果比較及人類採用率仍須依各項允收收齊。GEN-016～023 不因局部證據而整批勾選；已接線不等於產品品質、正式隔離部署或曝光驗收完成。現行殘項以 [04](../plans/04-backlog-and-handoffs.md) 為準。

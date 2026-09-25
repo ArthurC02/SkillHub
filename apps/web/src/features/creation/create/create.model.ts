@@ -116,8 +116,8 @@ export function buildRoundTimeline(messages: CreationSnapshot["messages"]): Time
   let afterQuestion = false;
   let afterTrialAnchor = false;
   messages.forEach((m, i) => {
-    let setQuestion = false;
-    let setTrialAnchor = false;
+    let setQuestion = m.role === "tool" && afterQuestion;
+    let setTrialAnchor = m.role === "tool" && afterTrialAnchor;
     if (m.role === "tool" && m.content.startsWith('{"evaluation"')) {
       try {
         const parsed = JSON.parse(m.content) as RunObservation;
@@ -130,6 +130,7 @@ export function buildRoundTimeline(messages: CreationSnapshot["messages"]): Time
             key: `t-${i}`,
             text: `第 ${round} 次試跑：${ROUND_OVERALL_LABEL[overall] ?? overall}（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`,
           });
+          setQuestion = false;
           setTrialAnchor = true;
         }
       } catch {}
@@ -142,7 +143,7 @@ export function buildRoundTimeline(messages: CreationSnapshot["messages"]): Time
         });
       } catch {}
     } else if (m.role === "assistant" && m.content.startsWith("這次試跑有條件沒過")) {
-      items.push({ key: `t-${i}`, text: `系統問你：${m.content.split("\n")[0]}` });
+      items.push({ key: `t-${i}`, text: `系統問你：${m.content}` });
       setQuestion = true;
     } else if (m.role === "user" && afterQuestion) {
       items.push({ key: `t-${i}`, text: `你回答：${truncateForTimeline(m.content)}` });
