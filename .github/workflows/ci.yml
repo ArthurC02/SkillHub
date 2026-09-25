@@ -344,6 +344,32 @@ jobs:
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
+  sandbox-escape:
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The negative control runs first and on its own: if the probes cannot
+      # see an escape without a sandbox, everything after it measures nothing.
+      - name: SEC-009 T1 negative control
+        env:
+          SEC009_NO_SANDBOX: "1"
+        run: bash tools/ci/report-failure.sh 'SEC-009 T1 negative control' bash tools/sec009/t1-escape-attempts.sh
+      - name: SEC-009 T1 escape attempts under gVisor
+        run: bash tools/ci/report-failure.sh 'SEC-009 T1 escape attempts' bash tools/sec009/t1-escape-attempts.sh
+      - name: gVisor smoke
+        run: bash tools/ci/report-failure.sh 'gVisor smoke' bash tools/sec009/gvisor-smoke.sh
+      # A short run is a procedure check. The acceptance duration is 4x1800s
+      # and belongs to the run on a real node, not to every pull request.
+      - name: SEC-009 T2 syscall fuzz (procedure check)
+        env:
+          SEC009_FUZZ_SECONDS: "60"
+        run: bash tools/ci/report-failure.sh 'SEC-009 T2 syscall fuzz' bash tools/sec009/t2-syscall-fuzz.sh
+
   sandbox-nodocker:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'

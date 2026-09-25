@@ -10,6 +10,14 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PREPARE="$(cat "$HERE/_prepare-runsc.sh")"
 
+# The same file node admission (gate A) compares a node against, so the probes
+# exercise the build the fleet actually admits.
+BASELINE="${SEC009_RUNSC_VERSION:-$(awk '!/^#/ && NF {print $1; exit}' "$HERE/../../infra/nodes/gvisor-baseline.txt")}"
+if [ -z "$BASELINE" ] || [ "$BASELINE" = unset ]; then
+  echo "infra/nodes/gvisor-baseline.txt is unset; there is no version to test" >&2
+  exit 1
+fi
+
 # With SEC009_NO_SANDBOX=1 the identical probes run with no sandbox, and the
 # script inverts its expectation: at least one attempt must then succeed, or
 # the suite is not measuring anything.
@@ -19,7 +27,7 @@ NO_SANDBOX="${SEC009_NO_SANDBOX:-0}"
 # docker attaches nothing there, so the container silently runs an empty
 # script and exits 0.
 docker run --rm -i --privileged --cgroupns=private \
-  -e NO_SANDBOX="$NO_SANDBOX" "$IMAGE" \
+  -e NO_SANDBOX="$NO_SANDBOX" -e SEC009_RUNSC_VERSION="$BASELINE" "$IMAGE" \
   bash -s <<INNER
 $PREPARE
 

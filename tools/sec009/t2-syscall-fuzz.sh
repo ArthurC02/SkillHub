@@ -14,6 +14,14 @@ ADR_WORKERS=4
 
 PREPARE="$(cat "$HERE/_prepare-runsc.sh")"
 
+# The same file node admission (gate A) compares a node against, so the probes
+# exercise the build the fleet actually admits.
+BASELINE="${SEC009_RUNSC_VERSION:-$(awk '!/^#/ && NF {print $1; exit}' "$HERE/../../infra/nodes/gvisor-baseline.txt")}"
+if [ -z "$BASELINE" ] || [ "$BASELINE" = unset ]; then
+  echo "infra/nodes/gvisor-baseline.txt is unset; there is no version to test" >&2
+  exit 1
+fi
+
 # base64 rather than a nested heredoc: the fuzzer is Python full of quotes,
 # backslashes and dollar signs, and every one of those is a way for it to arrive
 # inside the container subtly different from what is on disk.
@@ -30,6 +38,7 @@ echo
 # names with apostrophes, not backticks, inside it.
 docker run --rm -i --privileged --cgroupns=private \
   -e SECS="$SECS" -e WORKERS="$WORKERS" -e FUZZER_B64="$FUZZER_B64" \
+  -e SEC009_RUNSC_VERSION="$BASELINE" \
   "$IMAGE" bash -s <<INNER
 $PREPARE
 
