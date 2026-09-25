@@ -78,9 +78,9 @@
 | CONTENT-003 | 部分 | `TestDependencyExtraction` | 候選清單本身（repo URL、pin SHA、九項檢查值、來源多樣性）是一份策展文件 |
 | CONTENT-004 | 部分 | `TestEachGateRefusesAPackageAndSaysWhich`、`TestOperatorRedistributionVerdictIsGovernedLikeTheHold` | monorepo 逐目錄判定授權、逐 repo 查核日期與方法的紀錄沒有測試 |
 | CONTENT-005 | 待真人 | | 白話摘要的人工審核工序；`tools/content/review_summaries.py` 沒有任何測試檔，證據是一份一次性報告 |
-| CONTENT-006 | 部分 | `TestCategorizeSeparatesBySeverity`、`TestSecretsBlockWithoutEchoingValue`、`TestEmbeddedCodeIsDisclosed` | 精選檢查④「無 eval／動態下載／外連 subprocess」的機械量測沒有程式化掃描 |
+| CONTENT-006 | 部分 | `TestCategorizeSeparatesBySeverity`、`TestSecretsBlockWithoutEchoingValue`、`TestEmbeddedCodeIsDisclosed` | 精選檢查④「無 eval／動態下載／外連 subprocess」是一次人工掃描的讀數；現有 45 筆的判定被 `tools/content/seed-packages.sha256` 釘住（`import_seed.py --pack-only` 每次比對，不合 exit 2），所以缺的不是今天這批，是**新增或換掉一筆時沒有機械量測會重跑** |
 | CONTENT-007 | 有測試 | `TestOnlyCuratedTestCasesTravelAndTheRestAreNamed` | |
-| CONTENT-008 | 部分 | `TestCurationTierNeedsBothHalvesOfTheRecord` | 「精選標記需要至少一次符合的基準 Run」這條規則本身沒有測試；證據是一份實測報告 |
+| CONTENT-008 | 部分 | `TestCurationTierNeedsBothHalvesOfTheRecord` | 「未通過者不得標記為精選」在程式裡沒有前提條件——`PUT /admin/skills/{id}/tier` 只要求 operator 身分，不查有沒有一次「符合」的基準 Run；這條是綁人的程序規則，證據是一份實測報告 |
 | CONTENT-009 | 有測試 | `TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange`、`TestSourceAvailabilityIsAuditedOnlyWhenItChanges` | |
 
 ## 生成與互動創作
