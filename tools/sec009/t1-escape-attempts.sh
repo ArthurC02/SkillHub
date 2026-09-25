@@ -85,8 +85,9 @@ probe 'read /dev/mem' \
 probe 'see a host process' \
   'grep -qs docker /proc/1/cgroup 2>/dev/null && echo ESCAPED host cgroup visible || { [ "\$(cat /proc/1/comm 2>/dev/null)" = systemd ] && echo ESCAPED host init visible || echo REFUSED; }'
 
-# /tmp/runsc-do* is excluded: it's runsc's own control socket for the `do`
-# convenience mode these scripts use, not a host-provided door.
+# /tmp/runsc-do* is excluded: it's runsc's own control socket, not a door the
+# host opened. No backticks in this heredoc -- it is unquoted, so the host
+# shell runs what sits between them before the container sees the script.
 probe 'find any unix socket' \
   's=\$(find / -xdev -type s 2>/dev/null | grep -v "^/tmp/runsc-do" | head -3); [ -n "\$s" ] && echo ESCAPED sockets: \$s || echo REFUSED'
 

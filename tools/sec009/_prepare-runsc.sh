@@ -8,13 +8,17 @@ set -e
 # this apt silently consumes the rest of the script.
 if ! command -v runsc >/dev/null 2>&1; then
   apt-get update -qq >/dev/null 2>&1 </dev/null
-  apt-get install -y -qq curl ca-certificates >/dev/null 2>&1 </dev/null
+  apt-get install -y -qq curl ca-certificates bzip2 >/dev/null 2>&1 </dev/null
 
   ARCH=$(uname -m)
   URL=https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}
-  curl -fsSL -o /usr/local/bin/runsc "${URL}/runsc"
-  curl -fsSL -o /tmp/runsc.sha512 "${URL}/runsc.sha512"
-  ( cd /usr/local/bin && sha512sum -c /tmp/runsc.sha512 --ignore-missing )
+  # The release ships the binary beside a gvisor-bin/ directory it loads at
+  # run time, so both land in the same directory on PATH; a lone runsc
+  # installs cleanly and then fails to start a sandbox.
+  curl -fsSL -o /tmp/gvisor.tar.bz2 "${URL}/gvisor.tar.bz2"
+  curl -fsSL -o /tmp/gvisor.tar.bz2.sha512 "${URL}/gvisor.tar.bz2.sha512"
+  ( cd /tmp && sha512sum -c gvisor.tar.bz2.sha512 --ignore-missing )
+  tar xjf /tmp/gvisor.tar.bz2 -C /usr/local/bin runsc gvisor-bin
   chmod 755 /usr/local/bin/runsc
 fi
 
