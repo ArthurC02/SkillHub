@@ -19,8 +19,7 @@ var matrixStatuses = map[string]bool{
 }
 
 var (
-	matrixHeading  = regexp.MustCompile(`^#{2,6}\s+(.*)$`)
-	matrixRow      = regexp.MustCompile("^\\|\\s*([A-Z][A-Z0-9]{1,7}-\\d{3})\\s*\\|([^|]*)\\|([^|]*)\\|([^|]*)\\|\\s*$")
+	matrixRow      = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]{1,7}-\d{3})\s*\|([^|]*)\|([^|]*)\|([^|]*)\|\s*$`)
 	matrixQuoted   = regexp.MustCompile("`([^`]+)`")
 	matrixTestFile = regexp.MustCompile(`(_test\.go|\.test\.tsx?|_test\.py|_test\.sql)$`)
 )
