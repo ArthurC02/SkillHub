@@ -1,7 +1,7 @@
 # ADR-003：Run 編排與非同步工作流程
 
 - 狀態：Accepted
-- 相關：[ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[ADR-023 帳號清除](./ADR-023-account-purge.md)、[ADR-025 Credit 計量與扣款](./ADR-025-credit-metering-and-charging.md)、[ADR-024 外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)
+- 相關：[ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[ADR-005 模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)、[ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[ADR-018 Aggregate 與領域事件](./ADR-018-aggregates-and-domain-events.md)、[ADR-023 帳號清除](./ADR-023-account-purge.md)、[ADR-024 外部系統的 Port 與 Adapter](./ADR-024-ports-and-adapters-for-external-systems.md)、[ADR-025 Credit 計量與扣款](./ADR-025-credit-metering-and-charging.md)
 
 ## 背景
 
@@ -43,7 +43,7 @@ queued
 → cleaning_up
 ```
 
-執行結果與清理結果分開記錄；即使使用者已取得結果，清理失敗仍是需要處理的系統事件。
+執行結果與清理結果分開記錄；即使使用者已取得結果，清理失敗仍是需要處理的系統事件。`evaluating` 是這條路徑上的一個步驟，不是第二個狀態機：評估的判定寫在另一張表，不回寫 `runs.status` 或 `runs.failure_class`，規則與落地要求見 [ADR-009](./ADR-009-evaluation-verdicts-and-judge-trust.md) 決策 1。
 
 Run Request 至少涵蓋：平台 `run_id` 與 Attempt、Skill Package Reference 與內容雜湊、Test Case Snapshot／Prompt／Dataset Reference、Agent／模型與 Runtime Profile、MCP／工具／Secret Reference、網路與資源（CPU、記憶體、磁碟、程序數、時間）政策、Trace Level、Artifact Policy 與資料保存政策。
 
@@ -104,30 +104,15 @@ Provider 在 Attempt 執行中失聯（持續一段時間查不到，或回報�
 
 理由：Skill 匯入、掃描、Run、評估、清理、打包、刪除都可能持續數秒到數分鐘且跨越多個系統邊界，同步請求模型無法承受逾時與部分失敗；持久化狀態加上 Outbox 事件讓長時間流程可恢復、可取消、可追蹤、可重試，也讓模組之間降低同步耦合，為未來拆分 Worker 或服務留出空間。代價是最終一致性下 UI 需呈現處理中狀態，且需要事件版本、去重、Outbox、Reconciler 與 Dead-letter 處理；事件不能取代清楚的領域 API 與資料所有權。
 
-### 決策 3：Run 終態與 Evaluation 判定分屬兩個問題、兩個欄位、兩個表
-
-`runs.status` 回答「這次執行發生了什麼」；`evaluations.overall` 回答「任務達成了嗎」。Evaluation 的判定不回寫 `runs.status`，也不回寫 `runs.failure_class`；Run 狀態機的 `evaluating → succeeded` 路徑不變，評估是這條路徑上的一個步驟，不是第二個狀態機。判定值域與 Judge 信任邊界見 ADR-009。
-
-落地要求：`evaluating → succeeded` 路徑不變，評估寫入 `evaluations`，不 UPDATE `runs` 的任何欄位；沒有評估的 Run 顯示「未評估」而非「通過」；評估未完成（`evaluations.status = failed`）與「未評估」分開顯示；Run 終態文案採執行語意（執行完成／執行失敗），任務判定另起一列顯示。
-
-理由 1（失敗分類不被汙染）：`runs.failure_class` 區分 `provider_error`（平台問題，可重試）與 `workload_error`（Skill 問題，不重試），是重試決策的依據；若「輸出不符驗收條件」也變成 `failed`，等於把一個不該重試、也不是故障的結果塞進重試分類器，重試只會用同樣的 Skill 版本跑出同樣不符合的輸出。
-
-理由 2（資料庫已經回答過一次）：Run 終態不可變（鐵律 4；`runs_terminal_immutable` trigger 禁止改寫已終態的 Run），而 Evaluation 的重評是 append-only、可在 rubric 或 Judge prompt 升版後對同一個 Run 產生新的判定；若終態由評估決定，該 Run 的終態就得跟著變，直接與不可變 trigger 衝突。
-
-理由 3（執行事實與判斷分開）：Run Trace 是執行事實，Evaluation 是判斷；把判斷寫回執行事實等於抹除這條邊界，也讓「判斷來源」這個欄位失去落點（見 ADR-005）。
-
 ## 影響
 
 ### 正面
 
 - 可逐步加入第三方、自建、區域或高安全 Provider，Run、Trace、Evaluation 與歷史資料不綁定供應商。
 - 長時間流程可恢復、取消、追蹤與重試；模組之間降低同步耦合，支援未來拆分 Worker 或服務。
-- 重試分類器只處理它該處理的事，「執行成功但任務沒完成」變成一個說得出口的狀態，不必靠使用者自己讀 Trace 才發現落差。
-- 重評（見 ADR-009）與歷史 Run 的不可變性可以同時成立。
 
 ### 成本與限制
 
 - 最小公分母的 Provider Port 可能隱藏特有能力，需要可控 Extension 機制；不同 Provider 仍可能有行為差異，不能宣稱完全一致。
 - Provider 遺失後改派，使用者要多等一次派送；前一個 Attempt 已花掉的模型費用不會退回，只是總額仍受同一筆 Run 預算限制。
 - 最終一致性下 UI 需呈現處理中狀態；需要事件版本、去重、Outbox、Reconciler 與 Dead-letter 處理。
-- UI 需同時顯示執行結果與任務判定兩個狀態，資訊密度上升；對外部消費者而言，「Run 成功」不再是可單獨判斷結果的欄位，必須一併讀 evaluation。
