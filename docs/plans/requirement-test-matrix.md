@@ -36,7 +36,7 @@
 | SKILL-003 | 有測試 | `TestEmbeddedCodeIsDisclosed`、`TestEmbeddedCodeBoundaryLines` | |
 | SKILL-004 | 有測試 | `TestLicenseProvenancePrecedence` | |
 | SKILL-005 | 有測試 | `TestURLDisclosuresAggregateByHost` | |
-| SKILL-006 | 未實作 | | Agent Plugin 匯入在 `apps/platform` 與 `apps/web` 都沒有程式碼；裁定已下，實作未落地 |
+| SKILL-006 | 未實作 | | Agent Plugin 匯入在 `apps/platform` 與 `apps/web` 都沒有程式碼；`skillpkg.PackageRoot` 仍只認「根有 `SKILL.md`」或「單一頂層目錄」兩種形狀 |
 
 ## 工作區與試跑
 

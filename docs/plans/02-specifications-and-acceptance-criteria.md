@@ -199,18 +199,21 @@
 
 #### SKILL-006：Agent Plugin 與含多個 Skill 的來源
 
-背景：匯入把「一個壓縮檔 ＝ 一個 Skill」當成唯一形狀，而 GitHub repo URL 匯入抓回來的是整個 repo 的位元組——repo 極少剛好在根目錄放一份 `SKILL.md`。指著一個真實 repo 的使用者因此收到「缺少 `SKILL.md`」，那句話沒有告訴他系統要的是什麼形狀。決策依據見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)。
+背景：匯入把「一個壓縮檔 ＝ 一個 Skill」當成唯一形狀，而 GitHub repo URL 匯入抓回來的是整個 repo 的位元組——repo 極少剛好在根目錄放一份 `SKILL.md`。指著一個真實 repo 的使用者因此收到「缺少 `SKILL.md`」，那句話沒有告訴他系統要的是什麼形狀。**平台只讀公開且跨供應商的規格**，宿主專屬的 Plugin 形狀不被當成 manifest 讀；判準與代價見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)。
 
 允收準則：
 
-- 匯入接受三種來源形狀並走同一條驗證管線：單一 Agent Skill、Agent Plugin（`.claude-plugin/plugin.json`）、以及沒有 plugin manifest 但目錄樹含有一個以上 `SKILL.md` 的來源。
-- Skill 目錄的探索順序固定且可列舉：plugin manifest 的 `skills` 欄位（字串或陣列，加到預設掃描而非取代）、`skills/`、`.claude/skills/`、來源根目錄。
+- 匯入接受三種來源形狀並走同一條驗證管線：單一 Agent Skill、Agent Plugin（來源根目錄的 `plugin.json`）、以及沒有合規 manifest 但目錄樹含有一個以上 `SKILL.md` 的來源。
+- 只有來源**根目錄**的 `plugin.json` 被當成 plugin manifest 讀。其他路徑上的 manifest（宿主專屬形狀）不讀、不報錯，該來源依第三種形狀處理。
+- 一個來源被判為 Agent Plugin 的條件是兩件事都成立：`plugin.json` 的 schema 識別字等於規格發佈的 canonical 值，且 `name` 為 1–64 字元、只含小寫英數與 `-`／`.`、首尾為英數、不含連續 `-` 或 `.`。任一不成立即為阻擋錯誤，訊息指名是哪一項；不得默默改用第三種形狀處理。
+- Agent Plugin 的 Skill 探索位置固定為 `skills/` 的直接子目錄，每個含 `SKILL.md` 的子目錄為一個 Skill，不向更深層遞迴。
 - 找不到任何 `SKILL.md` 時，失敗訊息列出系統找過的位置；不得只回報缺少 `SKILL.md`。
 - 每個找到的 Skill 各自建立一個 Skill Version，各自有內容雜湊、授權事實與驗證報告；不建立 Plugin 實體，也不建立跨 Skill 的版本聚合。
-- 每個 Skill Version 記錄它的 Plugin 來源事實：plugin `name`、`version`、`repository`，以及該 Skill 在來源內的相對路徑。
+- 第二種形狀的每個 Skill Version 記錄它的 Plugin 來源事實：plugin `name`、`version`、`repository`，以及該 Skill 在來源內的相對路徑。第三種形狀只記相對路徑，沒有 Plugin 層事實可記。
 - 逐個 Skill 獨立判定：部分通過時建立通過的部分並逐個列出被擋者的原因；全部被擋才是匯入失敗。
-- 非 Skill 元件（`commands/`、`agents/`、`workflows/`、`output-styles/`、`hooks/`、`.mcp.json`、`.lsp.json`）不得被匯入或執行，且必須出現在排除揭露中，原因可辨識為 Plugin 元件。
-- plugin manifest 只有 `name` 缺少或不符 kebab-case 是阻擋錯誤；其餘未知欄位為資訊層級，不得阻擋匯入。
+- Skill 以外的元件不得被匯入或執行，且必須出現在排除揭露中，原因可辨識為 Plugin 元件。涵蓋規格的另一種標準元件（`mcp.json` 宣告的 MCP server）與規格劃為宿主專屬的一切——後者在來源中是反向網域命名空間的頂層目錄。
+- plugin manifest 的 `extensions` 一律忽略，且不驗證其值的內容；平台不實作任何宿主命名空間。
+- plugin manifest 的未知欄位為資訊層級，不得阻擋匯入。
 - plugin manifest 宣告的授權不得寫入 `license_source`；該來源的授權解析依 `SKILL-004` 的既有層級進行。
 - 單次匯入建立的 Skill 數量超過部署設定的上限時整批拒絕，訊息同時說出上限與實際數量。
 - 同一個來源重複匯入時，逐個 Skill 依 `SKILL-001` 的內容雜湊判定重複，不覆蓋既有版本。

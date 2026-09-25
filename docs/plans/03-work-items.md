@@ -130,9 +130,9 @@
 - [x] INGEST-016 大小拒絕要說得出數字，並且被計數。
 - [x] INGEST-014 實作匯入抓取器的 SSRF 與內部網路防護：scheme 白名單、解析後逐一比對位址封鎖清單、DNS Rebinding 防護（解析與連線綁同一位址、每跳重驗）、redirect 上限 3 跳且跨主機不帶憑證、回應體 10 MB 邊讀邊中止、連線 10 秒／整體 60 秒逾時、fail-closed、錯誤訊息不洩漏內部位址。
 
-- [ ] INGEST-017 匯入認得三種來源形狀並展開成多個 Skill Version：plugin manifest 的 `skills` 欄位、`skills/`、`.claude/skills/`、根目錄的固定探索順序；找不到任何 `SKILL.md` 時訊息列出找過的位置（`02:SKILL-006`）。今天的 `PackageRoot` 只認「根有 `SKILL.md`」或「單一頂層目錄」兩種，而 GitHub repo 的壓縮檔永遠是後者——指著一個真實 repo 的人一律收到「缺少 `SKILL.md`」。
-- [ ] INGEST-018 Plugin 的非 Skill 元件只揭露不匯入：`commands/`、`agents/`、`workflows/`、`output-styles/`、`hooks/`、`.mcp.json`、`.lsp.json` 進排除揭露並可辨識為 Plugin 元件，不進任何會被複製進沙箱的位元組（`02:SKILL-006`、實作鐵律 1）。**hooks 與 MCP／LSP 的定義本身就是執行指令**，這一項守的是「匯入不得替使用者決定要執行什麼」。
-- [ ] INGEST-019 plugin manifest 的驗證與來源事實：只有 `name` 缺少或不符 kebab-case 是阻擋錯誤、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；單次匯入的 Skill 數量上限由部署設定，超過即整批拒絕並說出兩個數字（`02:SKILL-006`）。**上限值本身未定**，見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)的待決策。
+- [ ] INGEST-017 匯入認得三種來源形狀並展開成多個 Skill Version：根目錄 `plugin.json` 的 `skills/` 直接子目錄（不遞迴）、單一 Skill、以及走訪整棵樹找 `SKILL.md`；找不到任何 `SKILL.md` 時訊息列出找過的位置（`02:SKILL-006`）。今天的 `PackageRoot` 只認「根有 `SKILL.md`」或「單一頂層目錄」兩種，而 GitHub repo 的壓縮檔永遠是後者——指著一個真實 repo 的人一律收到「缺少 `SKILL.md`」。
+- [ ] INGEST-018 Skill 以外的元件只揭露不匯入：`mcp.json` 與反向網域命名空間的頂層目錄進排除揭露並可辨識為 Plugin 元件，不進任何會被複製進沙箱的位元組（`02:SKILL-006`、實作鐵律 1）。**MCP server 與 hook 的定義本身就是執行指令**，這一項守的是「匯入不得替使用者決定要執行什麼」。命名空間目錄不逐一列舉宿主名稱——規格把那一層劃給宿主，列舉等於替每一家維護一份清單。
+- [ ] INGEST-019 plugin manifest 的驗證與來源事實：schema 識別字與 `name` 兩者其一不合規格即為阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；單次匯入的 Skill 數量上限由部署設定，超過即整批拒絕並說出兩個數字（`02:SKILL-006`）。**上限值本身未定**，見[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)的待決策。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 
