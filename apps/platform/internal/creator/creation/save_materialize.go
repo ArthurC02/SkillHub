@@ -21,6 +21,29 @@ func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old ge
 	if outcome.materialize != "" {
 		return s.materialize(ctx, ws, old, c, outcome.materialize, e)
 	}
+	return s.commitPreparedCommand(ctx, ws, old, c, e, outcome)
+}
+
+func (s *Service) readCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
+	var outcome commandOutcome
+	var err error
+	switch c.Kind {
+	case "select_references":
+		outcome, err = s.selectReferences(ctx, ws, &e.Snapshot, c)
+	case "confirm_references":
+		outcome, err = s.confirmReferences(ctx, ws, &e.Snapshot)
+	case "attach_run":
+		outcome, err = s.attachRun(ctx, ws, &e.Snapshot, c.RunID)
+	default:
+		return View{}, nil, ErrInvalidCommand
+	}
+	if err != nil {
+		return View{}, nil, err
+	}
+	return s.commitPreparedCommand(ctx, ws, old, c, e, outcome)
+}
+
+func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope, outcome commandOutcome) (View, *JobArgs, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return View{}, nil, err

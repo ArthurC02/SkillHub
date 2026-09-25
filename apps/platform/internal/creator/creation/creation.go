@@ -192,6 +192,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		}
 		return s.saveCommand(ctx, ws, row, c, e)
 	}
+	if c.Kind == "select_references" || c.Kind == "confirm_references" || c.Kind == "attach_run" {
+		if err := tx.Rollback(ctx); err != nil {
+			return View{}, nil, err
+		}
+		return s.readCommand(ctx, ws, row, c, e)
+	}
 	outcome, err := s.apply(ctx, tx, ws, row, c, &e)
 	if err != nil {
 		return View{}, nil, err
