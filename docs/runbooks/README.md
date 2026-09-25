@@ -23,6 +23,7 @@ Skill Hub 的控制平面是唯一能改變領域狀態的地方：Web 只呼叫
 | 目的 | 手冊 |
 | --- | --- |
 | 從零開始建置整個系統、恢復遺失的部署設定 | [整體 Provision](provisioning.md) |
+| 重建 Skill 啟用展示並保留啟用／未啟用對照 | [Skill 啟用 Demo](skill-activation-demo.md) |
 | 建置、換版、還原控制平面 | [控制平面節點](control-plane.md) |
 | 建置、換版、重建模型閘道 | [模型閘道節點](gateway.md) |
 | 建置、驗收、換新沙箱節點 | [沙箱節點](sandbox-node.md) |

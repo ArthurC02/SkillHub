@@ -1,0 +1,374 @@
+{
+  "run": {
+    "status": 200,
+    "body": {
+      "run_id": "8f6d7fca-12c7-46d0-84b0-c6cc0076190f",
+      "status": "succeeded",
+      "status_reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+      "skill_id": "8cf869a1-6887-4fcb-8a1c-97163f7e4f45",
+      "skill_version_id": "9ca0e0ed-ea5c-4841-9361-360278fced32",
+      "test_case_snapshot_id": "af1e67d4-ec18-4ef6-842f-c0036a3b5690",
+      "test_case_id": "fa5a9956-d0e8-47b1-bada-650bd4765600",
+      "provider": "self_hosted",
+      "cleanup_status": {
+        "value": "cleaned",
+        "label": "已清理",
+        "note": "沙箱與其資源已回收。"
+      },
+      "created_at": "2026-09-25T15:34:23.964Z",
+      "started_at": "2026-09-25T15:34:24.555199Z",
+      "finished_at": "2026-09-25T15:34:38.270067Z",
+      "transitions": [
+        {
+          "to_status": "queued",
+          "reason": "已收到這次 Run 的請求",
+          "occurred_at": "2026-09-25T15:34:23.964Z"
+        },
+        {
+          "from_status": "queued",
+          "to_status": "provisioning",
+          "reason": "已選定 Provider:self_hosted",
+          "occurred_at": "2026-09-25T15:34:24.542Z"
+        },
+        {
+          "from_status": "provisioning",
+          "to_status": "preparing",
+          "reason": "Provider 已接下這次派送",
+          "occurred_at": "2026-09-25T15:34:24.547Z"
+        },
+        {
+          "from_status": "preparing",
+          "to_status": "running",
+          "reason": "工作負載已開始執行",
+          "occurred_at": "2026-09-25T15:34:24.553Z"
+        },
+        {
+          "from_status": "running",
+          "to_status": "evaluating",
+          "reason": "工作負載已結束,正在收集結果",
+          "occurred_at": "2026-09-25T15:34:38.263Z"
+        },
+        {
+          "from_status": "evaluating",
+          "to_status": "succeeded",
+          "reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+          "occurred_at": "2026-09-25T15:34:38.268Z"
+        }
+      ],
+      "attempts": [
+        {
+          "run_attempt_id": "5d5d455f-a8c4-49fb-835d-5804ce271f6d",
+          "attempt_number": 1,
+          "provider": "self_hosted",
+          "provider_run_id": "c2f9c6ee4ae69ac3739f372ba838b03a",
+          "started_at": "2026-09-25T15:34:24.538473Z",
+          "finished_at": "2026-09-25T15:34:38.261099Z"
+        }
+      ]
+    }
+  },
+  "general": {
+    "status": 200,
+    "body": {
+      "run_id": "8f6d7fca-12c7-46d0-84b0-c6cc0076190f",
+      "status": "succeeded",
+      "status_reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+      "complete": true,
+      "skills": [
+        {
+          "name": "run-comparison-acceptance",
+          "decision": "activated"
+        }
+      ],
+      "skills_total": 1,
+      "resources_read": 0,
+      "tool_calls": {
+        "total": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "total_duration_ms": 9,
+        "slowest_duration_ms": 9,
+        "slowest_tool": "Skill"
+      },
+      "errors": [],
+      "errors_total": 0,
+      "summary_truncated": false,
+      "final_output": "BETA",
+      "usage": {
+        "model": "gpt-5.4-mini",
+        "input_tokens": 5079,
+        "output_tokens": 158,
+        "cost_credits": 11,
+        "cost_source": "gateway"
+      },
+      "steps": [
+        {
+          "status": "queued",
+          "reason": "已收到這次 Run 的請求"
+        },
+        {
+          "status": "provisioning",
+          "reason": "已選定 Provider:self_hosted"
+        },
+        {
+          "status": "preparing",
+          "reason": "Provider 已接下這次派送"
+        },
+        {
+          "status": "running",
+          "reason": "工作負載已開始執行"
+        },
+        {
+          "status": "evaluating",
+          "reason": "工作負載已結束,正在收集結果"
+        },
+        {
+          "status": "succeeded",
+          "reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)"
+        }
+      ],
+      "last_event_at": "2026-09-25T15:34:44Z"
+    }
+  },
+  "advanced": {
+    "status": 200,
+    "body": {
+      "run_id": "8f6d7fca-12c7-46d0-84b0-c6cc0076190f",
+      "complete": true,
+      "streams": [
+        {
+          "attempt": 1,
+          "emitted_by": "orchestrator",
+          "received": 2,
+          "highest_seq": 2,
+          "missing_count": 0,
+          "late_events": 2
+        },
+        {
+          "attempt": 1,
+          "emitted_by": "sandbox",
+          "received": 5,
+          "highest_seq": 5,
+          "missing_count": 0,
+          "late_events": 0
+        }
+      ],
+      "events": [
+        {
+          "event_id": "ec94ff13-0e28-4ffc-beac-99b78fc2f969",
+          "attempt": 1,
+          "seq": 1,
+          "occurred_at": "2026-09-25T15:34:28.775Z",
+          "emitted_by": "sandbox",
+          "type": "skill_activation",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "reason": null,
+            "decision": "activated",
+            "skill_name": "run-comparison-acceptance",
+            "skill_version_id": "9ca0e0ed-ea5c-4841-9361-360278fced32"
+          }
+        },
+        {
+          "event_id": "efdfa314-a088-4403-a757-2f26e1cf9836",
+          "attempt": 1,
+          "seq": 2,
+          "occurred_at": "2026-09-25T15:34:28.784Z",
+          "emitted_by": "sandbox",
+          "type": "tool_call",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "outcome": "succeeded",
+            "arguments": {
+              "skill": "run-comparison-acceptance"
+            },
+            "tool_name": "Skill",
+            "truncated": false,
+            "duration_ms": 9,
+            "invocation_id": "call_NF6CQpArPFo2yi869mvDQCKZ",
+            "result_summary": "Launching skill: run-comparison-acceptance"
+          }
+        },
+        {
+          "event_id": "97a6c1c8-292b-4440-87e3-a5b98f5c05c1",
+          "attempt": 1,
+          "seq": 3,
+          "occurred_at": "2026-09-25T15:34:30.251Z",
+          "emitted_by": "sandbox",
+          "type": "agent_output",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "kind": "intermediate",
+            "text": "BETA",
+            "truncated": false
+          }
+        },
+        {
+          "event_id": "f24ae242-8fe4-4ad4-a9a4-d099741633cb",
+          "attempt": 1,
+          "seq": 4,
+          "occurred_at": "2026-09-25T15:34:30.734Z",
+          "emitted_by": "sandbox",
+          "type": "agent_output",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "kind": "final",
+            "text": "BETA",
+            "truncated": false
+          }
+        },
+        {
+          "event_id": "36579cc0-943e-499c-81e0-efb3c8292428",
+          "attempt": 1,
+          "seq": 5,
+          "occurred_at": "2026-09-25T15:34:34.799Z",
+          "emitted_by": "sandbox",
+          "type": "usage",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "model": "gpt-5.4-mini",
+            "scope": "run_total",
+            "cost_usd": 0.00832185,
+            "cost_source": "gateway",
+            "duration_ms": 10209,
+            "input_tokens": 5079,
+            "token_source": "result",
+            "output_tokens": 158,
+            "cache_read_input_tokens": 50688,
+            "cache_write_input_tokens": null
+          }
+        },
+        {
+          "event_id": "ce0b0656-5e1c-43cc-ace4-ccdef1444f5d",
+          "attempt": 1,
+          "seq": 1,
+          "occurred_at": "2026-09-25T15:34:42.450647Z",
+          "emitted_by": "orchestrator",
+          "type": "evaluation_started",
+          "status": "ok",
+          "late": true,
+          "masked_fields": [],
+          "payload": {
+            "judge_model": "gpt-5.6-terra",
+            "evaluation_id": "9de1606b-dc6c-4398-bfd8-087abd75c037",
+            "rubric_version": null,
+            "judge_prompt_version": "unreported"
+          }
+        },
+        {
+          "event_id": "09e4a5b0-8a89-4542-ac37-c03589afdf48",
+          "attempt": 1,
+          "seq": 2,
+          "occurred_at": "2026-09-25T15:34:44.676586Z",
+          "emitted_by": "orchestrator",
+          "type": "evaluation_completed",
+          "status": "ok",
+          "late": true,
+          "masked_fields": [],
+          "payload": {
+            "overall": "met",
+            "cost_usd": 0.0033385000000000003,
+            "evaluation_id": "9de1606b-dc6c-4398-bfd8-087abd75c037",
+            "criteria_total": 1,
+            "failure_reason": null,
+            "criteria_failed": 0,
+            "criteria_passed": 1,
+            "evidence_complete": true,
+            "criteria_undetermined": 0
+          }
+        }
+      ],
+      "next_after": 14,
+      "has_more": false
+    }
+  },
+  "evaluation": {
+    "status": 200,
+    "body": {
+      "evaluation_id": "9de1606b-dc6c-4398-bfd8-087abd75c037",
+      "run_id": "8f6d7fca-12c7-46d0-84b0-c6cc0076190f",
+      "status": "completed",
+      "overall": "met",
+      "summary": "唯一的驗收條件已滿足：最終輸出為 BETA。",
+      "criterion_results": [
+        {
+          "criterion_id": "448d14e6-e20f-49c1-a4c8-4820a578426d",
+          "text": "最終輸出必須恰好為 BETA。",
+          "result": "passed",
+          "source": "model",
+          "evidence": [
+            {
+              "kind": "agent_output",
+              "match": "exact",
+              "char_range": {
+                "start": 0,
+                "end": 4
+              },
+              "excerpt": "BETA",
+              "excerpt_truncated": false,
+              "available": true
+            }
+          ],
+          "reason": "最終輸出恰好為 BETA。"
+        }
+      ],
+      "deterministic_findings": [
+        {
+          "category": "activation",
+          "severity": "info",
+          "message": "the skill version mounted for this run was activated",
+          "evidence": [
+            {
+              "kind": "trace_event",
+              "match": "exact",
+              "trace_event_id": "ec94ff13-0e28-4ffc-beac-99b78fc2f969",
+              "occurred_at": "2026-09-25T15:34:28.775Z",
+              "excerpt": "skill_activation {\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"run-comparison-acceptance\", \"skill_version_id\": \"9ca0e0ed-ea5c-4841-9361-360278fced32\"}",
+              "excerpt_truncated": false,
+              "available": true
+            }
+          ]
+        },
+        {
+          "category": "execution",
+          "severity": "info",
+          "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict",
+          "evidence": []
+        },
+        {
+          "category": "execution",
+          "severity": "warning",
+          "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say",
+          "evidence": []
+        },
+        {
+          "category": "compatibility",
+          "severity": "info",
+          "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way",
+          "evidence": []
+        },
+        {
+          "category": "cost",
+          "severity": "info",
+          "message": "the run used 5079 input and 158 output tokens on gpt-5.4-mini; reported cost $0.0083 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend",
+          "evidence": []
+        }
+      ],
+      "judge_model": "gpt-5.6-terra",
+      "judge_prompt_version": "judge-run/v2",
+      "evidence_complete": true,
+      "cost": {
+        "evaluation_credits": 5,
+        "source": "gateway",
+        "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+      },
+      "evaluated_at": "2026-09-25T15:34:44Z",
+      "superseded_at": null
+    }
+  }
+}

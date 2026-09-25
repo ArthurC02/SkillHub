@@ -220,6 +220,7 @@ JOB WORKED n=42, and 2 plain queries were served meanwhile
 | 檔案 | 內容 |
 | --- | --- |
 | `README.md` | 本檔。計畫、狀態、邊界、檔案地圖 |
+| [report-skill-activation-2026-09-25.md](report-skill-activation-2026-09-25.md) | 後續 Demo 補驗：三次真實付費 Run、完整 API 事件與一般／進階 UI 核對；明確區分 BETA 輸出與 Skill 啟用，附三份原始 JSON |
 | [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 起的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據；§9 是 `file://` 的瀏覽器界線、§10 是 `pgmock` 的多 session 實測。**本報告是時點證據，其中屬於已被推翻形狀的段落保留原樣不回溯改寫** |
 | [environment-probe.md](environment-probe.md) | **要交出去給坐在那台機器前面的人的清單**：Node 在不在白名單、使用者目錄的未簽章執行檔跑不跑得起來（以 `go test` 當探針）、實際生效的政策與是否只開稽核、Edge 開不開得了本機 HTML、對外通得到哪些網域。**每一項都是唯讀，且刻意不做任何繞過** |
 | [report-local-driver.md](report-local-driver.md) | 2026-08-28 的前期量測（本機執行 Driver）：**沒有值得加的相依**。逐一裁決十三個候選，含一個 1027★、README 承諾三平台、而 Windows 端是空殼的套件；**實測**只 kill 父行程會留下存活的孫行程，改用 Job Object 歸零。含動工前該知道的三件事（`Adopt()` 回空、資源上限兩平台不對稱、grace 不是合作式窗口） |

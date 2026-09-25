@@ -1,0 +1,321 @@
+{
+  "run": {
+    "status": 200,
+    "body": {
+      "run_id": "beb55c80-a14f-4856-b2fe-d114168dcf05",
+      "status": "succeeded",
+      "status_reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+      "skill_id": "8cf869a1-6887-4fcb-8a1c-97163f7e4f45",
+      "skill_version_id": "9ca0e0ed-ea5c-4841-9361-360278fced32",
+      "test_case_snapshot_id": "88341e90-791a-4628-9134-5e093e8b2471",
+      "test_case_id": "fa5a9956-d0e8-47b1-bada-650bd4765600",
+      "provider": "self_hosted",
+      "cleanup_status": {
+        "value": "cleaned",
+        "label": "已清理",
+        "note": "沙箱與其資源已回收。"
+      },
+      "created_at": "2026-09-25T15:34:50.659Z",
+      "started_at": "2026-09-25T15:34:50.870291Z",
+      "finished_at": "2026-09-25T15:35:02.352779Z",
+      "transitions": [
+        {
+          "to_status": "queued",
+          "reason": "已收到這次 Run 的請求",
+          "occurred_at": "2026-09-25T15:34:50.659Z"
+        },
+        {
+          "from_status": "queued",
+          "to_status": "provisioning",
+          "reason": "已選定 Provider:self_hosted",
+          "occurred_at": "2026-09-25T15:34:50.858Z"
+        },
+        {
+          "from_status": "provisioning",
+          "to_status": "preparing",
+          "reason": "Provider 已接下這次派送",
+          "occurred_at": "2026-09-25T15:34:50.864Z"
+        },
+        {
+          "from_status": "preparing",
+          "to_status": "running",
+          "reason": "工作負載已開始執行",
+          "occurred_at": "2026-09-25T15:34:50.868Z"
+        },
+        {
+          "from_status": "running",
+          "to_status": "evaluating",
+          "reason": "工作負載已結束,正在收集結果",
+          "occurred_at": "2026-09-25T15:35:02.344Z"
+        },
+        {
+          "from_status": "evaluating",
+          "to_status": "succeeded",
+          "reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+          "occurred_at": "2026-09-25T15:35:02.351Z"
+        }
+      ],
+      "attempts": [
+        {
+          "run_attempt_id": "8931c4fc-57b5-45d6-86b7-0975abb6b628",
+          "attempt_number": 1,
+          "provider": "self_hosted",
+          "provider_run_id": "ebb4195e19487896dc5519132dea8815",
+          "started_at": "2026-09-25T15:34:50.854049Z",
+          "finished_at": "2026-09-25T15:35:02.341947Z"
+        }
+      ]
+    }
+  },
+  "general": {
+    "status": 200,
+    "body": {
+      "run_id": "beb55c80-a14f-4856-b2fe-d114168dcf05",
+      "status": "succeeded",
+      "status_reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)",
+      "complete": true,
+      "skills": [],
+      "skills_total": 0,
+      "resources_read": 0,
+      "tool_calls": {
+        "total": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "total_duration_ms": 0,
+        "slowest_duration_ms": 0
+      },
+      "errors": [],
+      "errors_total": 0,
+      "summary_truncated": false,
+      "final_output": "BETA",
+      "usage": {
+        "model": "gpt-5.4-mini",
+        "input_tokens": 4759,
+        "output_tokens": 117,
+        "cost_credits": 8,
+        "cost_source": "gateway"
+      },
+      "steps": [
+        {
+          "status": "queued",
+          "reason": "已收到這次 Run 的請求"
+        },
+        {
+          "status": "provisioning",
+          "reason": "已選定 Provider:self_hosted"
+        },
+        {
+          "status": "preparing",
+          "reason": "Provider 已接下這次派送"
+        },
+        {
+          "status": "running",
+          "reason": "工作負載已開始執行"
+        },
+        {
+          "status": "evaluating",
+          "reason": "工作負載已結束,正在收集結果"
+        },
+        {
+          "status": "succeeded",
+          "reason": "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷(見這次 Run 的評估)"
+        }
+      ],
+      "last_event_at": "2026-09-25T15:35:09Z"
+    }
+  },
+  "advanced": {
+    "status": 200,
+    "body": {
+      "run_id": "beb55c80-a14f-4856-b2fe-d114168dcf05",
+      "complete": true,
+      "streams": [
+        {
+          "attempt": 1,
+          "emitted_by": "orchestrator",
+          "received": 2,
+          "highest_seq": 2,
+          "missing_count": 0,
+          "late_events": 2
+        },
+        {
+          "attempt": 1,
+          "emitted_by": "sandbox",
+          "received": 3,
+          "highest_seq": 3,
+          "missing_count": 0,
+          "late_events": 0
+        }
+      ],
+      "events": [
+        {
+          "event_id": "616fc089-5c9a-4dba-ac7e-7308ae629763",
+          "attempt": 1,
+          "seq": 1,
+          "occurred_at": "2026-09-25T15:34:54.532Z",
+          "emitted_by": "sandbox",
+          "type": "agent_output",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "kind": "intermediate",
+            "text": "BETA",
+            "truncated": false
+          }
+        },
+        {
+          "event_id": "24bf6acd-92a2-4887-a081-7403ab2aa20f",
+          "attempt": 1,
+          "seq": 2,
+          "occurred_at": "2026-09-25T15:34:54.869Z",
+          "emitted_by": "sandbox",
+          "type": "agent_output",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "kind": "final",
+            "text": "BETA",
+            "truncated": false
+          }
+        },
+        {
+          "event_id": "a8fd1885-3111-42e0-9a08-0aa4dc18fbcc",
+          "attempt": 1,
+          "seq": 3,
+          "occurred_at": "2026-09-25T15:34:58.921Z",
+          "emitted_by": "sandbox",
+          "type": "usage",
+          "status": "ok",
+          "masked_fields": [],
+          "payload": {
+            "model": "gpt-5.4-mini",
+            "scope": "run_total",
+            "cost_usd": 0.00582375,
+            "cost_source": "gateway",
+            "duration_ms": 8011,
+            "input_tokens": 4759,
+            "token_source": "result",
+            "output_tokens": 117,
+            "cache_read_input_tokens": 23040,
+            "cache_write_input_tokens": null
+          }
+        },
+        {
+          "event_id": "052f5280-0621-440f-b98a-9561b7c7836e",
+          "attempt": 1,
+          "seq": 1,
+          "occurred_at": "2026-09-25T15:35:07.477364Z",
+          "emitted_by": "orchestrator",
+          "type": "evaluation_started",
+          "status": "ok",
+          "late": true,
+          "masked_fields": [],
+          "payload": {
+            "judge_model": "gpt-5.6-terra",
+            "evaluation_id": "742997cf-7479-4eae-9ff6-258d1187eadd",
+            "rubric_version": null,
+            "judge_prompt_version": "unreported"
+          }
+        },
+        {
+          "event_id": "6fceb8fd-9d74-4d2f-8d32-b075745cbf5e",
+          "attempt": 1,
+          "seq": 2,
+          "occurred_at": "2026-09-25T15:35:09.662111Z",
+          "emitted_by": "orchestrator",
+          "type": "evaluation_completed",
+          "status": "ok",
+          "late": true,
+          "masked_fields": [],
+          "payload": {
+            "overall": "met",
+            "cost_usd": 0.0028345,
+            "evaluation_id": "742997cf-7479-4eae-9ff6-258d1187eadd",
+            "criteria_total": 1,
+            "failure_reason": null,
+            "criteria_failed": 0,
+            "criteria_passed": 1,
+            "evidence_complete": true,
+            "criteria_undetermined": 0
+          }
+        }
+      ],
+      "next_after": 19,
+      "has_more": false
+    }
+  },
+  "evaluation": {
+    "status": 200,
+    "body": {
+      "evaluation_id": "742997cf-7479-4eae-9ff6-258d1187eadd",
+      "run_id": "beb55c80-a14f-4856-b2fe-d114168dcf05",
+      "status": "completed",
+      "overall": "met",
+      "summary": "唯一的驗收條件已滿足：最終輸出恰好為 BETA。",
+      "criterion_results": [
+        {
+          "criterion_id": "448d14e6-e20f-49c1-a4c8-4820a578426d",
+          "text": "最終輸出必須恰好為 BETA。",
+          "result": "passed",
+          "source": "model",
+          "evidence": [
+            {
+              "kind": "agent_output",
+              "match": "exact",
+              "char_range": {
+                "start": 0,
+                "end": 4
+              },
+              "excerpt": "BETA",
+              "excerpt_truncated": false,
+              "available": true
+            }
+          ],
+          "reason": "最終輸出為恰好一個字串「BETA」。"
+        }
+      ],
+      "deterministic_findings": [
+        {
+          "category": "activation",
+          "severity": "warning",
+          "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)",
+          "evidence": []
+        },
+        {
+          "category": "execution",
+          "severity": "info",
+          "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict",
+          "evidence": []
+        },
+        {
+          "category": "execution",
+          "severity": "warning",
+          "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say",
+          "evidence": []
+        },
+        {
+          "category": "compatibility",
+          "severity": "info",
+          "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way",
+          "evidence": []
+        },
+        {
+          "category": "cost",
+          "severity": "info",
+          "message": "the run used 4759 input and 117 output tokens on gpt-5.4-mini; reported cost $0.0058 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend",
+          "evidence": []
+        }
+      ],
+      "judge_model": "gpt-5.6-terra",
+      "judge_prompt_version": "judge-run/v2",
+      "evidence_complete": true,
+      "cost": {
+        "evaluation_credits": 4,
+        "source": "gateway",
+        "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+      },
+      "evaluated_at": "2026-09-25T15:35:09Z",
+      "superseded_at": null
+    }
+  }
+}
