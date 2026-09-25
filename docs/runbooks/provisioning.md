@@ -131,6 +131,14 @@ Sandbox 是另一個網路觀點。它需要同時能存取物件儲存的預簽
 
 同一個差異也適用於容器化的驗收 runner：它與主機上的 `apps/llm` 不是同一個 loopback。若 runner 要呼叫主機暫時啟動的能力服務，服務須監聽主機可路由的位址，runner 則以該 Docker 環境提供的主機名稱（例如 `host.docker.internal`）連線；兩端仍以服務 token 驗證。先從 runner 網路命名空間呼叫 `/readyz`，成功後才啟動會付費的測試。這只是本機驗收的接線方式，不能取代正式部署中服務對服務的私有網路與 egress 規則。
 
+### 4.5 打包下載的獨立前置條件
+
+API 健康、匯入成功、模型可用，都不能證明打包已配置完成。打包另外需要可讀的 `PACKAGING_PROFILES_DIR`、已接線的物件儲存，以及明確的 `DOWNLOAD_ARTIFACT_RETENTION`。期限格式使用 Go duration；本機驗收可採 `.env.example` 的 `720h`，正式部署依已核定的保存政策設定，不因本機範例而推定期限已獲核准。
+
+淨模式啟動器提供 profile 路徑與記憶體物件儲存，但不替部署決定下載保存期限。缺期限時打包回 503；`license_unknown` 則是另一層授權拒絕，回 422。先讓部署能力可用，再驗證授權閘門，不用改資料狀態來修 503。設定更動需重啟時，淨模式的資料庫與物件會一起消失，匯入、放行、Fork 與打包必須重新建立。
+
+淨模式沒有明確 `OPERATOR_USER_IDS` 時，以 catalog 匯入者 `seed-importer` 作為本次 operator；有明確設定時不覆寫。用 `/me` 核對身分，再透過既有 operator API 留下具名的授權判定與稽核。一般使用者仍須先 Fork 到自己的 Workspace 才能打包。完整驗收與安全拒絕對照見[可攜套件 Demo](portable-demo.md)。
+
 ## 5. 正式部署：固定的依賴順序
 
 正式部署由三種主機組成，順序不可顛倒：
