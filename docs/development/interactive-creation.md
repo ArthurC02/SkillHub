@@ -115,4 +115,6 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 
 ## 尚待量測與核准
 
+創作 enrichment 的功能與時間線驗收已依使用者授權，以代理模擬操作完成，見[結案範圍與證據](../plans/mvp/m5/creation-measure/report-enrichment-closure-2026-09-25.md)。不再以真人操作阻擋該項結案；此決定不替代下述人類採用量測，也不放寬正式部署或曝光邊界。
+
 R-45 的部署預算與保存期限已定值，見〈設定與預設〉。已完成的真實模型試跑與修訂證據見[多輪會話報告](../plans/mvp/m5/creation-measure/report-live-enrichment-2026-09-25.md)與[評估驅動重寫報告](../plans/mvp/m5/creation-measure/report-review-rewrite-2026-09-25.md)；這些是代理協助的功能驗證，不是人類獨立使用或採用率證據。三種輸入的完整量測、與單次生成的效果比較及人類採用率仍須依各項允收收齊。GEN-016～023 不因局部證據而整批勾選；已接線不等於產品品質、正式隔離部署或曝光驗收完成。現行殘項以 [04](../plans/04-backlog-and-handoffs.md) 為準。
