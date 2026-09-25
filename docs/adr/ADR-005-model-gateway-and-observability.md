@@ -1,7 +1,7 @@
 # ADR-005：模型閘道與可觀測性
 
 - 狀態：Accepted
-- 相關：[新 ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[新 ADR-003 Run 編排與非同步工作流程](./ADR-003-run-orchestration-and-async-workflows.md)、[新 ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[新 ADR-006 身分、Workspace、准入與額度](./ADR-006-identity-workspace-admission-and-allowances.md)、[新 ADR-008 意圖搜尋](./ADR-008-intent-search.md)、[新 ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[新 ADR-010 產品分析與稽核邊界](./ADR-010-product-analytics-and-audit-boundaries.md)、[新 ADR-023 帳號清除與 Credit](./ADR-023-account-purge-and-credit.md)
+- 相關：[ADR-002 資料所有權與核心基礎設施](./ADR-002-data-ownership-and-core-infrastructure.md)、[ADR-003 Run 編排與非同步工作流程](./ADR-003-run-orchestration-and-async-workflows.md)、[ADR-004 Sandbox 隔離與執行安全](./ADR-004-sandbox-isolation-and-execution-security.md)、[ADR-006 身分、Workspace、准入與額度](./ADR-006-identity-workspace-admission-and-allowances.md)、[ADR-008 意圖搜尋](./ADR-008-intent-search.md)、[ADR-009 評估判定與 Judge 信任邊界](./ADR-009-evaluation-verdicts-and-judge-trust.md)、[ADR-010 產品分析與稽核邊界](./ADR-010-product-analytics-and-audit-boundaries.md)、[ADR-023 帳號清除與 Credit](./ADR-023-account-purge-and-credit.md)
 
 ## 背景
 

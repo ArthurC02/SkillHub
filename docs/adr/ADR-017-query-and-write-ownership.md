@@ -68,9 +68,9 @@ Platform 的 Bounded Context 邊界（見 [ADR-016](./ADR-016-platform-bounded-c
 
 ### 決策 6：強制的前提是「所有讀寫都經過 sqlc」，此前提本身要有防線
 
-決策 1、2 的檢查只看得到 `db/queries/*.sql` 定義的 query；一行把字面 SQL 直接交給 pgx 執行的程式碼，會同時繞過 ownership 與寫入序列化兩道防線,且沒有任何地方會發現。因此 `automation-check` 另外掃描 `apps/platform/internal/**` 與 `apps/platform/cmd/**` 的非測試 Go 檔：只要 SELECT／INSERT／UPDATE／DELETE／SET／CREATE／ALTER／DROP／TRUNCATE 或 WITH 的字面 SQL（直接字面值、package 層常數、函式內區域變數、或 `fmt.Sprintf` 組出的樣板）被交給 pgx 的 `Exec`／`Query`／`QueryRow`／`Queue`，一律 FAIL；生成目錄與測試檔不在掃描範圍內。具名豁免登記在 `db/query-owners.yaml` 的 `raw_sql_allow:`，key 是精確到函式的原始碼位置、value 是理由，理由留空或該函式已無裸 SQL 均視為失效並 FAIL。
+決策 1、2 的檢查只看得到 `db/queries/*.sql` 定義的 query；一行把字面 SQL 直接交給 pgx 執行的程式碼，會同時繞過 ownership 與寫入序列化兩道防線，且沒有任何地方會發現。因此 `automation-check` 另外掃描 `apps/platform/internal/**` 與 `apps/platform/cmd/**` 的非測試 Go 檔：只要 SELECT／INSERT／UPDATE／DELETE／SET／CREATE／ALTER／DROP／TRUNCATE 或 WITH 的字面 SQL（直接字面值、package 層常數、函式內區域變數、或 `fmt.Sprintf` 組出的樣板）被交給 pgx 的 `Exec`／`Query`／`QueryRow`／`Queue`，一律 FAIL；生成目錄與測試檔不在掃描範圍內。具名豁免登記在 `db/query-owners.yaml` 的 `raw_sql_allow:`，key 是精確到函式的原始碼位置、value 是理由，理由留空或該函式已無裸 SQL 均視為失效並 FAIL。
 
-這道檢查是防護網（tripwire），不是完備證明：跨函式傳遞組好的 SQL、`database/sql` 或其他非 pgx 路徑、更複雜的動態拼接仍可能看不到。要完全封死唯一的路徑是把資料庫連線池收進只暴露 sqlc 產出的介面之後,讓「直接拿到連線池」變成不可能——這與拆分每個 context 專屬的 sqlc 產出成本相當，留待下一段的待決策。
+這道檢查是防護網（tripwire），不是完備證明：跨函式傳遞組好的 SQL、`database/sql` 或其他非 pgx 路徑、更複雜的動態拼接仍可能看不到。要完全封死唯一的路徑是把資料庫連線池收進只暴露 sqlc 產出的介面之後，讓「直接拿到連線池」變成不可能——這與拆分每個 context 專屬的 sqlc 產出成本相當，留待下一段的待決策。
 
 ## 影響
 

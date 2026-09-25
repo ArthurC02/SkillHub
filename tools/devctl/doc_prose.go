@@ -20,18 +20,39 @@ var docProseSkipTrees = []string{
 	"tools/goldenset/corpus",
 }
 
+const (
+	removalFix = "A sentence that lost an identifier keeps its grammar; " +
+		"rewrite it so it says the same thing without the name that went away."
+	widthFix = "Chinese prose here is written with full-width marks; a half-width one next to " +
+		"a Chinese character came from the keyboard, not from the sentence. Digits keep theirs."
+)
+
 var docProseShapes = []struct {
 	name    string
 	pattern *regexp.Regexp
+	fix     string
 }{
-	{"a control character", regexp.MustCompile(`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`)},
-	{"two spaces between CJK characters", regexp.MustCompile(`[\x{3000}-\x{9fff}]  +[\x{3000}-\x{9fff}\x{300c}\x{ff08}]`)},
-	{"a space before closing punctuation", regexp.MustCompile(`[\x{4e00}-\x{9fff}] +[\x{ff0c}\x{3002}\x{ff1b}\x{3001}\x{ff09}\x{300d}]`)},
-	{"doubled punctuation", regexp.MustCompile(`[\x{ff0c}\x{3002}\x{ff1b}\x{3001}]{2,}`)},
-	{"an opening bracket followed by punctuation", regexp.MustCompile(`\x{ff08}[\x{ff0c}\x{3002}\x{3001}\x{ff1b}\x{ff09}]`)},
+	{"a control character", regexp.MustCompile(`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`), removalFix},
+	{"two spaces between CJK characters", regexp.MustCompile(`[\x{3000}-\x{9fff}]  +[\x{3000}-\x{9fff}\x{300c}\x{ff08}]`), removalFix},
+	{"a space before closing punctuation", regexp.MustCompile(`[\x{4e00}-\x{9fff}] +[\x{ff0c}\x{3002}\x{ff1b}\x{3001}\x{ff09}\x{300d}]`), removalFix},
+	{"doubled punctuation", regexp.MustCompile(`[\x{ff0c}\x{3002}\x{ff1b}\x{3001}]{2,}`), removalFix},
+	{"an opening bracket followed by punctuation", regexp.MustCompile(`\x{ff08}[\x{ff0c}\x{3002}\x{3001}\x{ff1b}\x{ff09}]`), removalFix},
+	{"half-width punctuation in a Chinese sentence", regexp.MustCompile(`[\x{4e00}-\x{9fff}][,;]|[^0-9][,;][\x{4e00}-\x{9fff}]`), widthFix},
 }
 
 var docProseBoxDrawing = regexp.MustCompile(`[\x{2500}-\x{257f}]`)
+
+var docProseInlineCode = regexp.MustCompile("`[^`\n]*`")
+
+func docProseMaskInlineCode(line string) string {
+	masked := []byte(line)
+	for _, at := range docProseInlineCode.FindAllStringIndex(line, -1) {
+		for i := at[0]; i < at[1]; i++ {
+			masked[i] = '_'
+		}
+	}
+	return string(masked)
+}
 
 func docProseProblems(root string) []string {
 	var problems []string
@@ -82,15 +103,15 @@ func docProseLineProblems(relative, body string) []string {
 		if fenced || docProseBoxDrawing.MatchString(line) {
 			continue
 		}
+		scanned := docProseMaskInlineCode(line)
 		for _, shape := range docProseShapes {
-			at := shape.pattern.FindStringIndex(line)
+			at := shape.pattern.FindStringIndex(scanned)
 			if at == nil {
 				continue
 			}
 			problems = append(problems, fmt.Sprintf(
-				"doc-prose: %s:%d has %s: %q. A sentence that lost an identifier keeps its grammar; "+
-					"rewrite it so it says the same thing without the name that went away.",
-				relative, number+1, shape.name, docProseExcerpt(line, at[0], at[1])))
+				"doc-prose: %s:%d has %s: %q. %s",
+				relative, number+1, shape.name, docProseExcerpt(line, at[0], at[1]), shape.fix))
 		}
 	}
 	return problems

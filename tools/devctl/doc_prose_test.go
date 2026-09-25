@@ -22,7 +22,7 @@ func writeProse(t *testing.T, files map[string]string) string {
 	return root
 }
 
-func TestDocProseNamesEveryShapeARemovalLeavesBehind(t *testing.T) {
+func TestDocProseNamesEveryShapeItLooksFor(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name, line, shape string
@@ -32,6 +32,10 @@ func TestDocProseNamesEveryShapeARemovalLeavesBehind(t *testing.T) {
 		{"a space before the full stop", "屬部署期硬化項，見 。", "a space before closing punctuation"},
 		{"two full stops in a row", "含必補回歸測試）。，該提案為允收準則。", "doubled punctuation"},
 		{"an empty bracket opening", "修法見（）那一節。", "an opening bracket followed by punctuation"},
+		{"a half-width comma between characters", "每一次呼叫都記一筆,不分誰買單。", "half-width punctuation in a Chinese sentence"},
+		{"a half-width semicolon between characters", "這是平台的事實;使用者搜了什麼不是。", "half-width punctuation in a Chinese sentence"},
+		{"a half-width comma before a Latin word", "既有 Session 失效,OAuth 不得誤認。", "half-width punctuation in a Chinese sentence"},
+		{"a half-width comma after a Latin word", "存成 basis points,理由是整數運算不失真。", "half-width punctuation in a Chinese sentence"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -56,6 +60,9 @@ func TestDocProseAcceptsTheSameShapesOneStepInsideTheBoundary(t *testing.T) {
 		{"one full stop is a sentence", "含必補回歸測試）。該提案為允收準則。"},
 		{"a bracket that opens on a word", "拒絕規則（單一錯誤形狀 422）。"},
 		{"a full stop that follows a character", "屬部署期硬化項。"},
+		{"the full-width comma this repository writes", "每一次呼叫都記一筆，不分誰買單。"},
+		{"a thousands separator inside a Chinese sentence", "entries 上限是 2,000 個。"},
+		{"a comma between Latin words", "The order is script, validation, agent."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -76,6 +83,7 @@ func TestDocProseLeavesAloneWhatIsNotProse(t *testing.T) {
 		{"a box-drawing diagram", "README.zh-TW.md", "│ Python LLM 能力服務       獨立節點上的 sandboxd │\n"},
 		{"a milestone record", "docs/plans/mvp/m4/README.md", hole},
 		{"a corpus fixture", "tools/goldenset/corpus/writing/humanize.md", hole},
+		{"an inline code span", "AGENTS.md", "版本比大小用 `(release 日期, patch)` tuple。\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -50,32 +50,32 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 
 ## T1 的通用嘗試
 
-`tools/sec009/t1-escape-attempts.sh`——[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T1 裡**通用嘗試**那一半,八項:寫 `core_pattern`、`mount(2)`、載入核心模組、讀 `/dev/mem`、看見宿主程序、找 unix socket、碰 docker socket、在節點上放一個檔案;外加 T1 判準要求的兩項節點側觀察(沒有檔案被放上來、`dmesg` 沒有 taint)。
+`tools/sec009/t1-escape-attempts.sh`——[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) T1 裡**通用嘗試**那一半，八項:寫 `core_pattern`、`mount(2)`、載入核心模組、讀 `/dev/mem`、看見宿主程序、找 unix socket、碰 docker socket、在節點上放一個檔案；外加 T1 判準要求的兩項節點側觀察(沒有檔案被放上來、`dmesg` 沒有 taint)。
 
-**T1 點名的四個 CVE PoC 不在裡面**,而且刻意不放:它們需要真的 exploit 程式碼打真的宿主,在一個巢狀的開發機容器裡跑別人的 PoC,對一台它從沒碰過的節點證明不了任何事。那四項屬部署批。
+**T1 點名的四個 CVE PoC 不在裡面**，而且刻意不放:它們需要真的 exploit 程式碼打真的宿主，在一個巢狀的開發機容器裡跑別人的 PoC，對一台它從沒碰過的節點證明不了任何事。那四項屬部署批。
 
-### 它有一個負對照,而且那不是裝飾
+### 它有一個負對照，而且那不是裝飾
 
 ```bash
 tools/sec009/t1-escape-attempts.sh                    # 沙箱內,期望全部 REFUSED
 SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少一項 ESCAPED
 ```
 
-**一個不管有沒有沙箱都會綠的探針組,量的是零。** 負對照把期望反過來:沒有沙箱時至少要有一項成功,否則腳本自己判失敗。實跑結果——無沙箱下三項逃得出去:`core_pattern` 寫得進去、`/dev/mem` 讀得到、而 `mount` 掛上來的 proc **報的是宿主核心 `6.6.87.2-microsoft-standard-WSL2`**。加上沙箱之後這三項全部 REFUSED。
+**一個不管有沒有沙箱都會綠的探針組，量的是零。** 負對照把期望反過來:沒有沙箱時至少要有一項成功，否則腳本自己判失敗。實跑結果——無沙箱下三項逃得出去:`core_pattern` 寫得進去、`/dev/mem` 讀得到、而 `mount` 掛上來的 proc **報的是宿主核心 `6.6.87.2-microsoft-standard-WSL2`**。加上沙箱之後這三項全部 REFUSED。
 
-### 第一次跑抓到的三件事,全部是這支腳本自己的問題
+### 第一次跑抓到的三件事，全部是這支腳本自己的問題
 
 | # | 症狀 | 真相 |
 | --- | --- | --- |
-| 1 | `mount(2)` 判為 ESCAPED | **gVisor 有實作 mount**,給的是它自己的 procfs。**syscall 成功不等於逃逸**;探針改成把掛上來的 proc 讀回來,只有在它報出非 gVisor 核心時才算逃逸 |
-| 2 | 找到 unix socket | 那是 `runsc do` 自己的控制通道 `/tmp/runsc-do*/runsc-*.sock`。**生產不走 `do`**(sandboxd 走 Docker runtime),所以那是**探針量到自己**;現以路徑窄範圍排除 |
-| 3 | 全部通過而且**什麼都沒跑** | `bash -s` 從 stdin 讀腳本,而 `docker run` 少了 `-i` 時 stdin 什麼都沒有——容器跑了一個空腳本,**exit 0**。一個從沒執行過的測試給出綠燈,正是這個目錄存在的理由 |
+| 1 | `mount(2)` 判為 ESCAPED | **gVisor 有實作 mount**，給的是它自己的 procfs。**syscall 成功不等於逃逸**；探針改成把掛上來的 proc 讀回來，只有在它報出非 gVisor 核心時才算逃逸 |
+| 2 | 找到 unix socket | 那是 `runsc do` 自己的控制通道 `/tmp/runsc-do*/runsc-*.sock`。**生產不走 `do`**(sandboxd 走 Docker runtime)，所以那是**探針量到自己**；現以路徑窄範圍排除 |
+| 3 | 全部通過而且**什麼都沒跑** | `bash -s` 從 stdin 讀腳本，而 `docker run` 少了 `-i` 時 stdin 什麼都沒有——容器跑了一個空腳本，**exit 0**。一個從沒執行過的測試給出綠燈，正是這個目錄存在的理由 |
 
-**這三件全都會在部署日當天發生**,差別是那天有時間壓力、有一台剛建好沒人除錯過的機器,而且第 3 件會讓人以為驗收過了。
+**這三件全都會在部署日當天發生**，差別是那天有時間壓力、有一台剛建好沒人除錯過的機器，而且第 3 件會讓人以為驗收過了。
 
 ### 它仍然不是 SEC-009 的驗收
 
-一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界,核心也不是生產那個。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
+一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界，核心也不是生產那個。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全) 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
 
 **T3（資源耗盡）不在這個目錄裡，而它也不需要一台節點。**
 
@@ -89,7 +89,7 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 | C-12 暫存配額 | `TestScratchQuotaRefusesAWriteWithoutKillingTheRun` | 128 MiB 寫進 48 MiB 的 `/work` 必須失敗，**且 Run 要活著把失敗說出來**(ENOSPC 是工作負載該看到並處理的錯誤)，檔案大小不得超過配額 |
 | C-14 開檔上限 | `TestOpenFileCeilingReachesGuestTasks` | 沙箱內 `ulimit -n` 報得出上限(**那是 guest kernel 自己的說法**，在 runsc 上等於 sentry 真的把 rlimit 套到 task 上)，且開 200 個檔的工作負載跑不完 |
 
-三支都照 C-13 那套「兩個探針」的規矩寫:先證明同一個上限下跑得動一個瑣碎的工作負載,才分得出「上限沒咬」與「什麼都沒跑」。每一支都以**把強制拿掉**突變驗過會紅(`Memory` 改 0、tmpfs 的 `size=` 拿掉、`nofile` ulimit 刪掉),不是編譯錯誤那種紅。
+三支都照 C-13 那套「兩個探針」的規矩寫:先證明同一個上限下跑得動一個瑣碎的工作負載，才分得出「上限沒咬」與「什麼都沒跑」。每一支都以**把強制拿掉**突變驗過會紅(`Memory` 改 0、tmpfs 的 `size=` 拿掉、`nofile` ulimit 刪掉)，不是編譯錯誤那種紅。
 
 **T3 剩下的一半仍然沒有量**:「同節點其他 Run 劣化 < 20%」。那要一台安靜的專用節點——在 2 核的 CI runner 與巢狀 WSL2 VM 上，量測噪音大於它要判的門檻，寫出來會是擲硬幣不是檢查。
 
@@ -216,39 +216,39 @@ T1 的 `plant a file on the node` **每一次都判 ESCAPED**，而同一次執�
 
 ---
 
-## 2026-08-26 的兩次執行,兩支腳本都被自己抓到
+## 2026-08-26 的兩次執行，兩支腳本都被自己抓到
 
 證據落在 [`docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/)。
 
 ### T1:`no file planted on the node` 在這台機器上從寫出來就是假綠
 
-`MARKER` 以 `docker run -e` 傳入,而 Git Bash 會把 `/tmp/...` 改寫成 `C:/Users/.../Temp/...`;沙箱裡的 `touch` 因此失敗。**兩個後果疊在一起才被看見**:評分段還繼承著 `_prepare-runsc.sh` 的 `set -e`,那次失敗直接殺掉腳本,**節點側兩列觀察一行都沒跑**,rc=1 被報成「setup failed」。少了其中任一個,`[ -e "$MARKER" ]` 都會印 **PASS**——一個從沒執行過的動作拿到綠燈。
+`MARKER` 以 `docker run -e` 傳入，而 Git Bash 會把 `/tmp/...` 改寫成 `C:/Users/.../Temp/...`；沙箱裡的 `touch` 因此失敗。**兩個後果疊在一起才被看見**:評分段還繼承著 `_prepare-runsc.sh` 的 `set -e`，那次失敗直接殺掉腳本，**節點側兩列觀察一行都沒跑**,rc=1 被報成「setup failed」。少了其中任一個，`[ -e "$MARKER" ]` 都會印 **PASS**——一個從沒執行過的動作拿到綠燈。
 
-**負對照同樣是死的**:無沙箱時同一個 `touch` 也失敗,所以**整個套件裡沒有任何輸入能讓那一列變紅**。README 先前寫「現在無沙箱時真的把檔案放到節點上,該列如期 FAIL」——那句話在這台機器上不成立。
+**負對照同樣是死的**:無沙箱時同一個 `touch` 也失敗，所以**整個套件裡沒有任何輸入能讓那一列變紅**。README 先前寫「現在無沙箱時真的把檔案放到節點上，該列如期 FAIL」——那句話在這台機器上不成立。
 
-修法:MARKER 是常數,定義移進容器內(本來就不必跨主機邊界);評分段補 `set +e`(T2 早就學過這一課,T1 沒補)。重跑後負對照那一列如期紅。
+修法:MARKER 是常數，定義移進容器內(本來就不必跨主機邊界)；評分段補 `set +e`(T2 早就學過這一課，T1 沒補)。重跑後負對照那一列如期紅。
 
-**這是同一份檔案裡第四次同型錯誤**,而這一次的成因是**宿主**——前三次都在腳本裡面。
+**這是同一份檔案裡第四次同型錯誤**，而這一次的成因是**宿主**——前三次都在腳本裡面。
 
-### T2:第一次 4 × 1800s 在 48 分鐘處卡死,而腳本原本會說它 PASS
+### T2:第一次 4 × 1800s 在 48 分鐘處卡死，而腳本原本會說它 PASS
 
-**它為什麼是「卡住」而不是「慢」**:它跑了 48 分鐘,預算是 30 分鐘,而且沒有任何一個 worker 留下紀錄。
+**它為什麼是「卡住」而不是「慢」**:它跑了 48 分鐘，預算是 30 分鐘，而且沒有任何一個 worker 留下紀錄。
 
-**當時用來判定的兩個讀數是量錯的東西,寫在這裡免得下次再用**:「所有 sentry 執行緒在 S」與「`runsc` 程序十秒內 0 個 CPU tick」——後續一次**健康**的執行同樣是 21 個 `exe` 全在 S、`runsc` 父程序 0 ticks(它只是監督者,工作在 sentry 執行緒裡),而 `docker stats` 顯示 45% CPU、跨 `exe` 累計 112,278 ticks。**要看的是累計 ticks 或容器的 CPU%,不是父程序也不是執行緒狀態。**
+**當時用來判定的兩個讀數是量錯的東西，寫在這裡免得下次再用**:「所有 sentry 執行緒在 S」與「`runsc` 程序十秒內 0 個 CPU tick」——後續一次**健康**的執行同樣是 21 個 `exe` 全在 S、`runsc` 父程序 0 ticks(它只是監督者，工作在 sentry 執行緒裡)，而 `docker stats` 顯示 45% CPU、跨 `exe` 累計 112,278 ticks。**要看的是累計 ticks 或容器的 CPU%，不是父程序也不是執行緒狀態。**
 
-真正的證據來自修好之後那次全規模執行本身:**每個 worker 有 12～16 個切片超出預算被 `SIGKILL` 收掉**(4 × 60s 的程序試跑裡也已經有 4 個)。切片預算是 1 秒 ＋ 5 秒寬限,所以那個數字嚴格說是「超過六秒的切片」,不必然每一個都永不返回——**但 48 分鐘那次證明了至少有一次是無界的**,而在舊的 `os.waitpid(pid, 0)` 下,第一個這樣的切片就會讓那個 worker 停在那裡,而父程序的 `wait` 會跟著停。
+真正的證據來自修好之後那次全規模執行本身:**每個 worker 有 12～16 個切片超出預算被 `SIGKILL` 收掉**(4 × 60s 的程序試跑裡也已經有 4 個)。切片預算是 1 秒 ＋ 5 秒寬限，所以那個數字嚴格說是「超過六秒的切片」，不必然每一個都永不返回——**但 48 分鐘那次證明了至少有一次是無界的**，而在舊的 `os.waitpid(pid, 0)` 下，第一個這樣的切片就會讓那個 worker 停在那裡，而父程序的 `wait` 會跟著停。
 
-切片的時間上界靠 0.25s 的 `SIGALRM`,而 fuzzer 打得到武裝它的 syscall——一次隨機 `rt_sigprocmask(SIG_BLOCK, …)` 或 `rt_sigaction(SIGALRM, SIG_IGN)` 之後計時器就不再到達,下一個阻塞式 syscall 永不返回,監督者的 `os.waitpid(pid, 0)` 就永遠等下去。**與 DENY 裡那段 setuid 的註解同一個形狀:fuzzer 關掉量測自己的工具。**
+切片的時間上界靠 0.25s 的 `SIGALRM`，而 fuzzer 打得到武裝它的 syscall——一次隨機 `rt_sigprocmask(SIG_BLOCK, …)` 或 `rt_sigaction(SIGALRM, SIG_IGN)` 之後計時器就不再到達，下一個阻塞式 syscall 永不返回，監督者的 `os.waitpid(pid, 0)` 就永遠等下去。**與 DENY 裡那段 setuid 的註解同一個形狀:fuzzer 關掉量測自己的工具。**
 
-**刻意不用把那兩個 syscall 加進 DENY 的方式修**:blocklist 只涵蓋有人預料到的掛法,而每一條都是永久讓出的 fuzz 表面。`SIGKILL` 擋不掉、忽略不了、也接不住,所以改由監督者持有時間預算,fuzzer 一個 syscall 都不用讓。被殺掉的切片有計數並印出來,理由與 `child_crashes` 一樣:哪天它等於切片數,意思是 worker 不再 fuzz 了。
+**刻意不用把那兩個 syscall 加進 DENY 的方式修**:blocklist 只涵蓋有人預料到的掛法，而每一條都是永久讓出的 fuzz 表面。`SIGKILL` 擋不掉、忽略不了、也接不住，所以改由監督者持有時間預算，fuzzer 一個 syscall 都不用讓。被殺掉的切片有計數並印出來，理由與 `child_crashes` 一樣:哪天它等於切片數，意思是 worker 不再 fuzz 了。
 
-**更要緊的是第二半**:elapsed 檢查原本**只找提早返回**(「跑了 3 秒、預期 1800 秒」＝ sentry 死了),所以一個跑成兩倍半長度的 run 每一行都會印 PASS。**遲到現在也是 finding。**
+**更要緊的是第二半**:elapsed 檢查原本**只找提早返回**(「跑了 3 秒、預期 1800 秒」＝ sentry 死了)，所以一個跑成兩倍半長度的 run 每一行都會印 PASS。**遲到現在也是 finding。**
 
 ```bash
 python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
 ```
 
-自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘,`reap` 必須在預算內收掉它;反方向也驗(正常結束的子程序要被 reap 不是被殺),免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`,自檢會掛到 `timeout` 把它殺掉(rc=124)。
+自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘，`reap` 必須在預算內收掉它；反方向也驗(正常結束的子程序要被 reap 不是被殺)，免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`，自檢會掛到 `timeout` 把它殺掉(rc=124)。
 
 ## 2026-09-05 重跑：T1 抓到自己第四個同型 bug，T2 四項官方判準全過
 
