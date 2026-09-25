@@ -281,7 +281,7 @@ export function Compare() {
 
   return (
     <section>
-      <h1>並排比較</h1>
+      <h1>Skill 比較</h1>
       <p className="note">
         以下全部來自靜態資料（匯入時記錄與掃描結果），沒有任何一項是試跑出來的。
       </p>

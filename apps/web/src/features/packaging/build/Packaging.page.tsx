@@ -98,7 +98,7 @@ export function Packaging() {
 
   return (
     <section>
-      <h1>打包與下載</h1>
+      <h1>Skill 套件</h1>
       <p>
         <Link to="/skills/$skillId" params={{ skillId }}>
           {skill.data.name}

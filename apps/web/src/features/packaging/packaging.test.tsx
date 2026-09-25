@@ -484,7 +484,7 @@ const SKILL_WITH_DETAILS = {
 
 test("04 R-42(c)③ 風險與 License：判定行與最高嚴重度留在外面，逐項細節折進 <details>", async () => {
   stubPlatform({ skill: SKILL_WITH_DETAILS });
-  await render(<Packaging />, () => text().includes("打包與下載"));
+  await render(<Packaging />, () => text().includes("Skill 套件"));
 
   for (const verdict of ["有 8 項風險，最高為錯誤。", "可再散布", "已宣告"]) {
     expect(
@@ -512,7 +512,7 @@ test("風險判定行：只有警告時說最高為警告，只有提示時說�
       risk: { ...skill.risk, counts: { errors: 0, warnings: 2, infos: 0 } },
     },
   });
-  await render(<Packaging />, () => text().includes("打包與下載"));
+  await render(<Packaging />, () => text().includes("Skill 套件"));
 
   expect(text()).toContain("有 2 項風險，最高為警告。");
 });
@@ -524,7 +524,7 @@ test("風險判定行：只有提示時說最高為提示", async () => {
       risk: { ...skill.risk, counts: { errors: 0, warnings: 0, infos: 3 } },
     },
   });
-  await render(<Packaging />, () => text().includes("打包與下載"));
+  await render(<Packaging />, () => text().includes("Skill 套件"));
 
   expect(text()).toContain("有 3 項風險，最高為提示。");
 });
@@ -595,7 +595,7 @@ test("PACK-002 打包器拿掉的檔案要說出來，空與非空是兩個答�
 
 test("PACK-001 放行的時候也要說出授權判定，不是只在拒絕時才談", async () => {
   stubPlatform();
-  await render(<Packaging />, () => text().includes("打包與下載"));
+  await render(<Packaging />, () => text().includes("Skill 套件"));
 
   expect(text()).toContain("可再散布");
   expect(text()).toContain("已宣告");

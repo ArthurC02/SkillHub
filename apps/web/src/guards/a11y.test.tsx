@@ -407,7 +407,7 @@ test("QA-009: Skill 檔案（進階模式）", async () => {
   await scan("/skills/$skillId/files");
 }, 30000);
 
-test("QA-009: 打包與下載", async () => {
+test("QA-009: Skill 套件", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -439,7 +439,7 @@ test("QA-009: 下載紀錄", async () => {
   await scan("/workspace/downloads（確認刪除）");
 }, 30000);
 
-test("QA-009: 並排比較", async () => {
+test("QA-009: Skill 比較", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
