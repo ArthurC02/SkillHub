@@ -28,7 +28,8 @@ var docIdentifierTrees = []string{
 }
 
 var docIdentifierPattern = regexp.MustCompile(
-	"`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,}|[a-z][a-z0-9]*(?:[A-Z][A-Za-z0-9]*)+)`")
+	"`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,}" +
+		"|[a-z][a-z0-9]*(?:[A-Z][A-Za-z0-9]*)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)`")
 
 var allowedDocWords = map[string]string{
 	"PurgeExpiredCostEvents":         "removed with the credit retention sweep (05 R-76); 03 CRED-006 records it as it was",
@@ -69,6 +70,27 @@ var allowedDocWords = map[string]string{
 	"toHaveScreenshot":        "Playwright matcher",
 	"agentType":               "an option of the host's workflow script API, not repository code",
 	"firstRefusal":            "the name the convergence note gives a generic it argues against writing; it exists so the argument can name it",
+
+	"pg_bigm":                "PostgreSQL extension",
+	"pg_dumpall":             "PostgreSQL command",
+	"uv_build":               "uv's PEP 517 build backend",
+	"tool_use":               "a content block type of the model provider's API",
+	"tool_result":            "the same API's other block type",
+	"url_safe":               "another vendor's link-allowlist feature, named because it was bypassed",
+	"agent_type":             "a field of the host's agent definitions, not repository code",
+	"spawn_agent":            "the same host's tool name",
+	"session_start":          "the same host's hook event",
+	"load_reason":            "a field of the host's skill-loading report",
+	"path_glob_match":        "the same report's other field",
+	"nested_traversal":       "the same report's other field",
+	"stopped_because":        "a field of the host's run summary",
+	"project_doc_max_bytes":  "a setting of the host, not of this repository",
+	"skillhub_default":       "the name a deployment gives one of its own profiles; nothing in the tree declares it",
+	"first_exempted_at":      "the column name the image runbook gives its own CVE exemption table, which is a document and not a schema",
+	"opted_in_at":            "a column the trial-evidence opt-in will need; its work item is unticked",
+	"gateway_revoke_failed":  "a metric SBX-012 adds; that work item is unticked",
+	"sandbox_destroy_failed": "the other metric of the same unticked work item",
+	"plugin_component":       "the exclusion reason code the packaging decision names; INGEST-018 is unticked, so no code carries it yet",
 }
 
 var codeExtensions = map[string]bool{

@@ -86,6 +86,18 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 		want: "",
 	}, {
 
+		name: "a column the document names is gone",
+		doc:  "重試新增一筆 `run_attempts`。\n",
+		code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE runs (id uuid);\n"},
+		want: "run_attempts is named in AGENTS.md but declared in no file",
+	}, {
+
+		name: "a column that is still there",
+		doc:  "重試新增一筆 `run_attempts`。\n",
+		code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE run_attempts (id uuid);\n"},
+		want: "",
+	}, {
+
 		name: "a lowercase word with no hump is prose, not a symbol",
 		doc:  "`clean` 模式與 `gvisor` 都是值，不是符號。\n",
 		code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
