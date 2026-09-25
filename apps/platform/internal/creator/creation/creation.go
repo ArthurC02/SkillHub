@@ -186,6 +186,12 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	if err != nil {
 		return View{}, nil, err
 	}
+	if c.Kind == "materialize" || c.Kind == "finalize" || c.Kind == "confirm_duplicate" {
+		if err := tx.Rollback(ctx); err != nil {
+			return View{}, nil, err
+		}
+		return s.saveCommand(ctx, ws, row, c, e)
+	}
 	outcome, err := s.apply(ctx, tx, ws, row, c, &e)
 	if err != nil {
 		return View{}, nil, err

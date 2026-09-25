@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,6 +12,35 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/jackc/pgx/v5"
 )
+
+func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
+	outcome, err := s.save(ctx, ws, &e.Snapshot, c)
+	if err != nil {
+		return View{}, nil, err
+	}
+	if outcome.materialize != "" {
+		return s.materialize(ctx, ws, old, c, outcome.materialize, e)
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return View{}, nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: old.ID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
+		return View{}, nil, ErrNotFound
+	}
+	if err != nil {
+		return View{}, nil, err
+	}
+	if v, found, err := replay(ctx, tx, ws.ID, row.ID, c); found || err != nil {
+		return v, nil, err
+	}
+	if _, err := admitCommand(row, c); err != nil {
+		return View{}, nil, err
+	}
+	return s.commitCommand(ctx, tx, row, c, e, outcome)
+}
 
 func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
 	kind := c.Kind
