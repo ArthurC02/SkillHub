@@ -95,7 +95,7 @@ GitHub Actions 由 zizmor 稽核 `.github/workflows` 與 `.github/actions`，med
 | 上游 | compose 拉下來的第三方映像 | 只報告；只有每週排程才失敗，觸發後決定要升的目標版本或改換來源，不放寬閘門 |
 | 開發專用 | 開發容器（不部署、不處理使用者資料） | 永不失敗，只留存報告 |
 
-掃描器（syft、grype）版本進同一份工具鏈名冊，任何一處單獨升級都會被決策 8 的一致性比對擋下。Runtime Image 的映像掃描與發布流程的 attestation 綁在一起，走獨立節奏，不併入這裡的每週排程。
+掃描器（syft、grype）版本進同一份工具鏈名冊，任何一處單獨升級都會被決策 8 的一致性比對擋下。Runtime Image 不在這張表裡：它的掃描與發布流程的 attestation 綁在一起，走獨立節奏、不併入這裡的每週排程，門檻也比「會被部署」那一層嚴——可修的 Critical／High 沒有豁免路徑，不可修的要逐項具名並附複審日，掃描結論本身還有有效期。規則在 [ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md) 決策 12。
 
 ## 影響
 
