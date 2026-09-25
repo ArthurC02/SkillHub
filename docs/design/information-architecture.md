@@ -233,7 +233,19 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | 試跑情境 | 試跑情境設計 | `Test Case` | ✅ 保留術語 |
 | 資料集 | — | `Dataset`（`/lab/datasets` 的 h1） | ✅ **IA-8 已修正**（原為動詞「上傳 Dataset」） |
 
-**R5 的現行違規清單有一項**：`/workspace/import` 的 `<h1>` 是 **`匯入 Skill`**（`features/creation/import/ImportSkill.page.tsx`），動詞當標題，與修掉前的 `上傳 Dataset` 完全同型。§5 IA-8 裁定留著、不排工——它是已知且已裁定，不是不存在。<br>**R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性只能靠人比，而這一格會無聲過期。
+**R5 的現行違規清單有三項**，都是動詞當標題、與修掉前的 `上傳 Dataset` 完全同型：
+
+| 位址 | `<h1>` | 承載檔 | 處置 |
+| --- | --- | --- | --- |
+| `/workspace/import` | `匯入 Skill` | `features/creation/import/ImportSkill.page.tsx` | §5 IA-8 裁定留著、不排工——那一頁的**網址本身**也是動作，改它是路由遷移不是改標題 |
+| `/compare` | `並排比較` | `features/catalog/compare/Compare.page.tsx` | **未裁定**。IA-8 的成本理由在這裡不成立：網址是名詞，只有標題是動作，改它就只是改標題 |
+| `/skills/$skillId/package` | `打包與下載` | `features/packaging/build/Packaging.page.tsx` | **未裁定**，理由同上 |
+
+注意 `/runs/$runId/compare` 的 `Run 比較`（`features/runs/compare/RunCompare.page.tsx`）是另一頁，名詞當標題，合規——上表第二列指的不是它。
+
+首頁 `/` 的 `<h1>` 是整句指示 `用一句話描述你的任務`（`features/catalog/home/Home.page.tsx`），那是另一種形狀，不在這張清單上，也沒有被裁定過。
+
+**R5 沒有機器**（見 §0.1），所以這張盤點表與程式的一致性只能靠人比，而這一格會無聲過期。
 
 ---
 
@@ -473,7 +485,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | **§0.1 R3 的 0 與 1 入邊** | 同上 | 全部路由，雙向 |
 | **§2.2 的頁內連結圖** | **沒有** | 一列都沒有，而 §2.1、§2.3、§2.4 各有機器——這是那一節唯一會無聲過期的一格——它曾經一次過期三條邊 |
 | **反向連結的完整直方圖** | **沒有** | §2.3 的 0 與 1 兩列是機器守的；2 以上是同一次計算的輸出，但沒有斷言 |
-| **R1（一個位址一個答案）／R4（狀態該不該進網址）／R5（受控用語）** | **沒有** | 三條都是判斷題。R1 沒有現行違規；R5 的現行違規是 `/workspace/import`（IA-8）；R4 已裁定（IA-4） |
+| **R1（一個位址一個答案）／R4（狀態該不該進網址）／R5（受控用語）** | **沒有** | 三條都是判斷題。R1 沒有現行違規；R5 的現行違規有三處（`/workspace/import` 已由 IA-8 裁定留著，`/compare` 與 `/skills/$skillId/package` 未裁定）；R4 已裁定（IA-4） |
 | **命名與受控用語一致** | **沒有** | §3 是手比的 |
 | **一個位址只回答一個問題** | **沒有** | IA-3 就是這樣長出來的 |
 | **登出狀態可達性** | **部分**：[`session.test.tsx`](../../apps/web/src/guards/session.test.tsx) | **IA-6 已裁定並落地**：不由 router 守衛，由 401 這個具名狀態自己說。守著的是共用元件本身、七個抵達點，以及一條「`not authenticated` 不得抵達畫面」的斷言。**新頁面仍然沒有棘輪**——沒有任何東西阻止下一個人在新頁面直接印 `error.message`；要那個得再加一條像 `design-system.test.ts` 第 16 條那樣掃 markup 的守衛 |
