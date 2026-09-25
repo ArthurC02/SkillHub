@@ -288,7 +288,7 @@
 > 本節十項原本只有一行敘述、`02` 無 SEC-* 需求 ID（威脅模型開放問題 **Q19**）。允收準則已補於 **`02` 第 6 節「安全需求」**，取自 [m0/threat-model-and-sandbox-baseline.md](mvp/m0/threat-model-and-sandbox-baseline.md) v2 已落地的 32 條威脅與 45 項基線檢查，未新增安全要求；該文件未定的門檻值在 `02` 標為「未涵蓋（待決策）」。
 
 - [x] SEC-001 完成 Skill、Script、MCP、Dataset、Secrets 與 Local Runner 威脅模型。（允收：`02` §6）
-- [ ] SEC-002 定義 Sandbox 最低安全基線與阻擋條件。（允收：`02` §6）**部分完成**： **46 項**基線、四閘門與 fail-closed 語意已定（威脅模型 v2 §4～§5）；**六項無值語句已由[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)第二部分定值**（P-03 7 天／P-04 N·N−1 且 ≤90 天＋逃逸類 CVE 24 h／I-04 30 天／I-06 可修的 Critical·High 阻擋無豁免／X-02 每 5 分鐘／X-03 連 2 輪告警、X-04 單節點 ≥50% drain 與全池 ≥25% 下限 2 筆暫停），**勾選前提 Q1～Q3 亦已定案**（同 ADR 第一部分）。（`internal/run/gateb.go`）——靜態掃描等級判斷改為在 Create 重新掃描套件並套用 `skillpkg` 既有的 severity 政策（`error` 級 ＝ `SKILL-002` 的阻擋級），掃不成即拒（fail-closed，SEC-002「檢查無法執行視同未通過」），因此不必等威脅模型 Q7；Workspace 並行上限 ＝ 2 以交易內的 advisory lock ＋ 非終態計數強制。**仍不勾的唯一原因**：45 項基線尚未經 SEC-009 全數驗證。
+- [ ] SEC-002 定義 Sandbox 最低安全基線與阻擋條件。（允收：`02` §6）**部分完成**： **46 項**基線、四閘門與 fail-closed 語意已定（威脅模型 v2 §4～§5）；**六項無值語句已由[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)第二部分定值**（P-03 7 天／P-04 N·N−1 且 ≤90 天＋逃逸類 CVE 24 h／I-04 30 天／I-06 可修的 Critical·High 阻擋無豁免／X-02 每 5 分鐘／X-03 連 2 輪告警、X-04 單節點 ≥50% drain 與全池 ≥25% 下限 2 筆暫停），**勾選前提 Q1～Q3 亦已定案**（同 ADR 第一部分）。（`internal/trial/execution/specification.go`）——靜態掃描等級判斷在 Create 重新掃描套件並套用 `skillpkg` 既有的 severity 政策（`error` 級 ＝ `SKILL-002` 的阻擋級），掃不成即拒（fail-closed，SEC-002「檢查無法執行視同未通過」），因此不必等威脅模型 Q7；Workspace 並行上限 ＝ 2 以交易內的 advisory lock ＋ 非終態計數強制。**仍不勾的唯一原因**：45 項基線尚未經 SEC-009 全數驗證。
 
 - [x] SEC-003 建立 Skill 匯入與執行前靜態掃描政策。（允收：`02` §6）
 - [ ] SEC-004 建立遠端 MCP 的 SSRF、內部網路與資料外洩防護。（後 MVP，隨 MCP 啟動）（允收：`02` §6）

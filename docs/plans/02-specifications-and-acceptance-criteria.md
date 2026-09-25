@@ -350,7 +350,7 @@ Run 至少支援：
 | 程序數 ／ 檔案描述符 | 256 ／ 1024 | 已強制（`03` SBX-006） |
 | Wall clock | 軟上限 **10 分鐘**（進入 `timed_out`）／硬上限 **15 分鐘**（強制銷毀） | 已強制（`03` SBX-006、RUN-006） |
 | Artifact 輸出總量 | ≤ 100 MB，單檔 ≤ 25 MB，超過即截斷並在 Trace 標記 | 已強制（`03` SBX-008） |
-| 同一 Workspace 並行 Run | **2** | **已強制**——`trial/execution/gateb.go` 的 `requireRunSlot` 先取 advisory lock（`LockWorkspaceRunSlots`）再 `CountActiveRuns`，超過即 `refused("workspace_concurrency", …)`，fail-closed，四支具名測試押著。`ConcurrentRunSlots` 是 Provider 側容量、與這個 Workspace 配額不是同一個量；`SEC-002` 閘門 B 仍把它列為阻擋條件 |
+| 同一 Workspace 並行 Run | **2** | **已強制**——`trial/execution/specification.go` 的 `requireRunSlot` 先取 advisory lock（`LockWorkspaceRunSlots`）再 `CountActiveRuns`，超過即 `refused("workspace_concurrency", …)`，fail-closed，四支具名測試押著。`ConcurrentRunSlots` 是 Provider 側容量、與這個 Workspace 配額不是同一個量；`SEC-002` 閘門 B 仍把它列為阻擋條件 |
 | 模型 Token | 每 Run ≤ **300K input ／ 60K output** | 已強制（`03` SBX-013）——強制點為沙箱 harness 的逐回應累計 |
 
 - **Token 上限必須連同輪數換算表一起呈現，不得只寫「300K」**（PDM-005 §5.2a-2）。harness 固定開銷實測約 **19.4K input tokens／次 API 呼叫**，而每一次工具結果回填都要重送整個前綴，因此每輪 input ≈ 19.4K ×（1 ＋ 該輪工具呼叫次數）：
@@ -1179,7 +1179,7 @@ Run 至少支援：
 
  **重新判定 I-03／I-04／X-03／X-04：前置條件已成立，判定仍待真機——四項都不改記為自動通過。** 理由逐條，不是保守：<br>• **I-03／I-04**：可自動判定的是**流水線側**（過不了 I-06 的映像到不了 registry，attestation 隨 digest 存在）。閘門判的卻是**節點上跑的那個映像**，而**閘門 A 的節點准入探針要在真實節點上查得到這兩份 attestation**——那一步逐字記在 `03:SBX-002` 的「仍不勾的唯一原因」，屬部署批（`SEC-009` 前置條件①）。另外 **I-04 的「到期前 7 天告警」發送端未接**（`03:SBX-011` 自己明說：判定材料在 attestation 裡，讀它並叫人是探針的工作）。<br>• **X-03／X-04**：指標與 orphan 表都在，`infra/observability/alerts.yml` 的規則也已升為正式形式，**但 drain 與暫停派送這兩條路徑在真實節點上一次都沒有被執行過**——`SEC-009` 的 T7 之所以要求「人工注入假遺留資源」，理由逐字就是「否則 X-04 的 drain 與暫停路徑沒有任何測項會執行到」。<br>**改寫後的規則**：原句的「兩者完成前不得記為自動通過」已滿足；**接續的條件是 `SEC-009` 的部署期驗收（T7、T10 與前置條件①）**，在那之前這四項一律記為 `unknown`，而依 `SEC-009` 的通過判準 **`unknown` ＝ fail**。
 - **已成立**：Q1 節點編排採 compose-per-VM（一節點一個 `sandboxd`，不裝叢集排程器）；Q2 節點為**執行平面單租戶**（節點只承載不受信任工作負載，不與應用混排；同節點多 Run 併存，橫向風險為明示的殘餘風險）；Q3 沙箱層 egress 採 nftables default-deny ＋節點固定 DNS 解析器，允許清單存於 `infra/egress/allowlist.yaml` 並有變更、複審與記錄流程。三者見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)第一部分。
-- **定值與有答案 ≠ 46 項全過。** 本需求仍未完全符合，**但不勾的理由只剩一個**：46 項基線尚未經 SEC-009 全數驗證。<br>**閘門 B 的四項額外阻擋都已落地**：權限摘要未確認在 `preflight.go`、能力超出 Provider 在 `schedule.go`，靜態掃描等級判斷與 Workspace 並行上限在 `apps/platform/internal/trial/execution/gateb.go`（`requireScanNotBlocking` 重新掃描套件位元組、`requireRunSlot` 取並行上限），四者都 fail-closed。
+- **定值與有答案 ≠ 46 項全過。** 本需求仍未完全符合，**但不勾的理由只剩一個**：46 項基線尚未經 SEC-009 全數驗證。<br>**閘門 B 的四項額外阻擋都已落地**：權限摘要未確認在 `preflight.go`、能力超出 Provider 在 `schedule.go`，靜態掃描等級判斷與 Workspace 並行上限在 `apps/platform/internal/trial/execution/specification.go`（`requireScanNotBlocking` 重新掃描套件位元組、`requireRunSlot` 取並行上限，由 `service.go` 在建立 Run 的交易裡逐條呼叫），四者都 fail-closed。
 
 ### SEC-003：Skill 匯入與執行前靜態掃描政策
 

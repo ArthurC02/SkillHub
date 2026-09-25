@@ -35,7 +35,7 @@
 **`causation_id` 填寫規則**：有 UUID 型別直接成因者一律填，NULL 只允許兩種情形，兩種都由本節列舉、不得擴充：
 
 1. **還沒有 attempt 時的 run 狀態事件**——genesis 事件 `run.queued`，以及開出第一個 attempt 之前的轉移：選定 Provider 後的 `run.provisioning`，和派送前就取消、逾時、找不到 Provider、需求組不出來或重啟後沒有 attempt 可接的終態。它們之前沒有 attempt，也就沒有 UUID 型別的直接成因。
-2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `CleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`run.cancel_requested`、`run.provider_assigned`，以及 `evaluation` 與 `skill` aggregate 的事件同屬此類：成因是使用者的一次取消請求、`run_execute` job、`evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
+2. **成因識別不是 UUID 者**——`run.cleanup_cleaned`／`run.cleanup_failed`。一次 cleanup pass 釋放該 Run 的**全部** attempt，沒有單一 attempt 是它的成因；真正的成因是 `run_cleanup` job，而 River 的 job id 是 bigint。把終態轉移的 attempt id 塞進去既是假資料，也會改變 `RunCleanupArgs` 的 `ByArgs` 唯一鍵，讓 supervisor 的補派送不再與終態轉移合流，變成兩個 worker 同時拆同一個 sandbox。要真正填上它，需要一個 UUID 型別的 job 識別，那是本目錄之外的變更。`run.cancel_requested`、`run.provider_assigned`，以及 `evaluation` 與 `skill` aggregate 的事件同屬此類：成因是使用者的一次取消請求、`run_execute` job、`evaluate_run` job、使用者或營運者的一次請求，都沒有 UUID 識別。
 
 ## 3. 事件目錄（現行 33 型，v1＝忠實記錄現況）
 
@@ -60,7 +60,7 @@
 | `run.attempt_started` | 一次新的 attempt 建立（`CreateRunAttempt`） | `attempt_id`、`attempt_number`、`provider` | 已結束的 Run 拒絕；物件授權從「未發出」開始 |
 | `run.attempt_dispatched` | Provider 回報這次 attempt 的沙箱識別（`SetAttemptProviderRunID`） | `attempt_id` | Provider 臨時識別不進 payload（鐵律 10） |
 | `run.attempt_finished` | attempt 結束（`FinishRunAttempt`） | `attempt_id`、`error_class`（成功時為 null） | 同一次 attempt 只結束一次；還沒發出的物件授權同時關上 |
-| `run.object_grants_recorded` | 記下這次 attempt 的物件授權到期時間（`SetRunAttemptObjectGrantsExpiry`） | `attempt_id` | 只從「未發出」或「已記下」走到「已記下」；已關上與舊資料的授權拒絕 |
+| `run.object_grants_recorded` | 記下這次 attempt 的物件授權到期時間（`SetRunAttemptObjectGrants`） | `attempt_id` | 只從「未發出」或「已記下」走到「已記下」；已關上與舊資料的授權拒絕 |
 
 以上四個 attempt 事件的 `causation_id`＝那次 attempt 的 id。
 

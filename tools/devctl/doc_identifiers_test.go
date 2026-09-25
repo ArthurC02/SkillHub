@@ -96,6 +96,32 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 	}
 }
 
+func TestDocIdentifierReadsTheTreesItWalks(t *testing.T) {
+	t.Parallel()
+	for _, tree := range []string{"docs/adr", "docs/development", "contracts"} {
+		t.Run(tree, func(t *testing.T) {
+			t.Parallel()
+			root := writeDocScope(t, "沒有識別字。\n", map[string]string{
+				tree + "/a-topic.md":                       "搜尋回傳 `PublicSearchHit`。\n",
+				"apps/platform/internal/catalog/search.go": "package catalog\n\ntype SearchHit struct{}\n",
+			})
+			problems := docIdentifierProblems(root)
+			want := "PublicSearchHit is named in " + tree + "/a-topic.md"
+			if len(problems) != 1 || !strings.Contains(problems[0], want) {
+				t.Fatalf("want exactly one problem containing %q, got %v", want, problems)
+			}
+		})
+	}
+}
+
+func TestDocIdentifierAcceptsATreeThatIsNotThere(t *testing.T) {
+	t.Parallel()
+	root := writeDocScope(t, "沒有識別字。\n", nil)
+	if problems := docIdentifierProblems(root); len(problems) != 0 {
+		t.Fatalf("a repository without those trees was rejected: %v", problems)
+	}
+}
+
 func TestDocIdentifierDoesNotDeclareItsOwnExamples(t *testing.T) {
 	t.Parallel()
 	root := writeDocScope(t, "見 `GenerateQuotaFor`。\n", nil)

@@ -21,6 +21,12 @@ var docIdentifierScope = []string{
 	"docs/plans/mvp/m5/README.md",
 }
 
+var docIdentifierTrees = []string{
+	"docs/adr",
+	"docs/development",
+	"contracts",
+}
+
 var docIdentifierPattern = regexp.MustCompile("`(Test[A-Za-z0-9_]{3,}|test_[a-z0-9_]{3,}|[A-Z][A-Za-z0-9]{4,})`")
 
 var allowedDocWords = map[string]string{
@@ -47,10 +53,45 @@ var allowedDocWords = map[string]string{
 	"CountUnreadableRunArtifacts":    "replaced by trial/execution's evaluationArtifacts over ListRunArtifactsWithLifecycle; 03 records past work under the old name",
 	"ResetCatalogueEnrichmentBefore": "replaced by skill/discovery's RequeueCatalogueEnrichment; 04 and 05 record the ruling under the old name",
 	"TestResetCatalogueEnrichmentBeforeQueuesOnlyOlderPromptVersions": "renamed to TestRequeueingCatalogueEnrichmentQueuesOnlyOlderPromptVersions; 05 records the ruling under the old name",
+	"RunRequested":          "workflow vocabulary from the run orchestration decision; domain-events.md maps it to the wire type run.queued",
+	"RunStarted":            "the same vocabulary; the wire types are run.* and the commands are Go methods",
+	"StartRun":              "the same vocabulary, on the command side",
+	"RunExecutionCompleted": "the same vocabulary; maps to run.succeeded|failed|timed_out",
+	"CleanupCompleted":      "the same vocabulary; maps to run.cleanup_cleaned",
+	"NULLIF":                "SQL keyword",
+	"PGDATA":                "the Postgres image's environment variable",
+	"GOTOOLCHAIN":           "the Go toolchain's environment variable",
+	"XxxFacts":              "a naming pattern with a placeholder, not a type: <Collaborator>Facts",
 }
 
 var codeExtensions = map[string]bool{
 	".go": true, ".ts": true, ".tsx": true, ".py": true, ".sql": true, ".yaml": true, ".yml": true, ".json": true,
+}
+
+func docIdentifierFiles(root string) ([]string, []string) {
+	files := append([]string(nil), docIdentifierScope...)
+	var problems []string
+	for _, tree := range docIdentifierTrees {
+		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(tree)), func(path string, entry os.DirEntry, err error) error {
+			switch {
+			case err != nil:
+				return err
+			case entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md"):
+				return nil
+			}
+			relative, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			files = append(files, filepath.ToSlash(relative))
+			return nil
+		})
+		if err != nil && !os.IsNotExist(err) {
+			problems = append(problems, fmt.Sprintf("doc-identifier: %v", err))
+		}
+	}
+	sort.Strings(files)
+	return files, problems
 }
 
 func docIdentifierProblems(root string) []string {
@@ -86,7 +127,8 @@ func docIdentifierProblems(root string) []string {
 	})
 
 	missing := map[string][]string{}
-	for _, rel := range docIdentifierScope {
+	scope, walkProblems := docIdentifierFiles(root)
+	for _, rel := range scope {
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
 			continue
@@ -108,7 +150,7 @@ func docIdentifierProblems(root string) []string {
 	}
 	sort.Strings(names)
 
-	var problems []string
+	problems := walkProblems
 	for _, n := range names {
 		problems = append(problems, fmt.Sprintf(
 			"doc-identifier: %s is named in %s but declared in no file. "+
