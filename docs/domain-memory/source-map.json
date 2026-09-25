@@ -17,6 +17,7 @@
       "authority": "instructions to coding agents, not a statement of the business domain",
       "caution": "These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.",
       "paths": [
+        ".claude/skills/domain-memory/AGENTS.md",
         "AGENTS.md",
         "CLAUDE.md",
         "apps/llm/AGENTS.md",
@@ -44,7 +45,6 @@
       "kind": "architecture_guidance",
       "authority": "current boundary and convergence guidance; corroborate behavior with implementation",
       "paths": [
-        "docs/development/platform-context-map.md",
         "docs/development/platform-ddd-convergence.md"
       ]
     },
@@ -363,6 +363,7 @@
         "apps/platform/internal/trial/improvement/suggest_test.go",
         "apps/platform/internal/trial/improvement/verdicts_test.go",
         "apps/sandbox/cmd/sandboxd/main_test.go",
+        "apps/sandbox/internal/dockerdrv/contract_test.go",
         "apps/sandbox/internal/dockerdrv/docker_test.go",
         "apps/sandbox/internal/dockerdrv/harness_token_e2e_test.go",
         "apps/sandbox/internal/dockerdrv/injects_test.go",
@@ -373,6 +374,8 @@
         "apps/sandbox/internal/dockerdrv/transfer_test.go",
         "apps/sandbox/internal/dockerdrv/transfer_unit_test.go",
         "apps/sandbox/internal/egress/recorder_test.go",
+        "apps/sandbox/internal/localdrv/cgroup_linux_test.go",
+        "apps/sandbox/internal/localdrv/contract_test.go",
         "apps/sandbox/internal/localdrv/isolation_test.go",
         "apps/sandbox/internal/localdrv/localdrv_test.go",
         "apps/sandbox/internal/localdrv/rootless_unix_test.go",
@@ -442,6 +445,7 @@
         "tools/devctl/depguard_deny_test.go",
         "tools/devctl/doc_identifiers_test.go",
         "tools/devctl/doc_links_test.go",
+        "tools/devctl/doc_prose_test.go",
         "tools/devctl/domain_vocabulary_test.go",
         "tools/devctl/embedding_dims_test.go",
         "tools/devctl/env_declared_test.go",
@@ -514,7 +518,7 @@
   ],
   "source_policy_report": {
     "files": 19,
-    "total_bytes": 102870,
+    "total_bytes": 102822,
     "oversized_files": [],
     "errors": []
   },
@@ -557,111 +561,128 @@
       "apps/platform/internal/trial/execution/preflight.go": "22cc5ab2f4b85f02309ddcd71ddc08ed6503ee95",
       "apps/platform/internal/trial/execution/statemachine.go": "9e05a362c2dbba1ae6e29ed5f0bf458e9f550161",
       "apps/platform/internal/trial/improvement/doc.go": "450b476fecea76e87cd95369f81408deac298873",
-      "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "23e06c6d9d6ee9f31b749562eb96a466b8da2f2c",
-      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "5dda42da5ea7f0f8ec4639c19797d18e83386092",
+      "docs/adr/ADR-003-run-orchestration-and-async-workflows.md": "c46d91591039f8ee5b38d560f15d291dedd3ce98",
+      "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md": "e58e6e4742f0a82f50b0841e660936cccc2940f1",
       "docs/development/platform-ddd-convergence.md": "914da5d46415fc92f34d359181661e113630e170"
     },
-    "dirty_sources": [
-      " M docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md"
-    ]
+    "dirty_sources": []
   },
   "source_snapshots": [
     {
       "path": "apps/platform/internal/creator/creation/doc.go",
       "file_count": 1,
-      "digest": "sha256:00e58962cdfed20adbf0556983f6b6b4e6670abfbeca97d8929544213ceaf46e"
+      "digest": "sha256:00e58962cdfed20adbf0556983f6b6b4e6670abfbeca97d8929544213ceaf46e",
+      "listing_sha256": "sha256:d9709b04e876ee8914df14cdde8a60f2bc6d96d9d99c932b09f8f7ade3567909"
     },
     {
       "path": "apps/platform/internal/creator/credit/doc.go",
       "file_count": 1,
-      "digest": "sha256:729237d042c58ac8afb51600d83efbeab9a52978b91906d1d9246ff9ebcd3878"
+      "digest": "sha256:729237d042c58ac8afb51600d83efbeab9a52978b91906d1d9246ff9ebcd3878",
+      "listing_sha256": "sha256:b1eb94bf9c72a2d2006d83c34ecb7cb54c0975c38f8524ec3147cf1b8edaee3b"
     },
     {
       "path": "apps/platform/internal/creator/workspace/doc.go",
       "file_count": 1,
-      "digest": "sha256:29fb5025648a8cdc06767b0a4c87d6395c6801e9beac757de308b11564ac8521"
+      "digest": "sha256:29fb5025648a8cdc06767b0a4c87d6395c6801e9beac757de308b11564ac8521",
+      "listing_sha256": "sha256:d9f4fffb40bf0a37bfbf90f21ea3e45d206c4a391e040162f1a560e36ff1a33e"
     },
     {
       "path": "apps/platform/internal/entrypoint/wiring/trial.go",
       "file_count": 1,
-      "digest": "sha256:aba7dc81386646a93ca67eda71fc5623cf9644debe6bc279b4d7176f909efed7"
+      "digest": "sha256:aba7dc81386646a93ca67eda71fc5623cf9644debe6bc279b4d7176f909efed7",
+      "listing_sha256": "sha256:42351c2264332aba25c990d815836d0cca408fb49a70c87b732a573e91bcfb38"
     },
     {
       "path": "apps/platform/internal/product/entitlements/doc.go",
       "file_count": 1,
-      "digest": "sha256:456d8430423750553398582cd2164cc4acd1a687208586d11d573a3626e2d6f8"
+      "digest": "sha256:456d8430423750553398582cd2164cc4acd1a687208586d11d573a3626e2d6f8",
+      "listing_sha256": "sha256:5e275588b0d76eade5033c17e4dc74984d82b3214fd6a5537a35b56cab7d2b09"
     },
     {
       "path": "apps/platform/internal/product/learning/doc.go",
       "file_count": 1,
-      "digest": "sha256:c92f2a889e2e162b8030455f2c6e1813cbba63a5a31b07bf3f6d620e1b950faa"
+      "digest": "sha256:c92f2a889e2e162b8030455f2c6e1813cbba63a5a31b07bf3f6d620e1b950faa",
+      "listing_sha256": "sha256:2e1b515ed2e03b49e219f9ad0db8fd8e7bffecf1fa63ae202750e9a411bf6088"
     },
     {
       "path": "apps/platform/internal/skill/admission/doc.go",
       "file_count": 1,
-      "digest": "sha256:295e64eee412ba6770aac77f6e218c84229ed7a8c4c048a6b1f67d5398422911"
+      "digest": "sha256:295e64eee412ba6770aac77f6e218c84229ed7a8c4c048a6b1f67d5398422911",
+      "listing_sha256": "sha256:301be1c72f6a8a3406bf32f746a850e07765b53f31d5adb6dd3f2b478d3318dc"
     },
     {
       "path": "apps/platform/internal/skill/delivery/doc.go",
       "file_count": 1,
-      "digest": "sha256:ae8c8a336ba0bd28db719ee10530f47586acee40a801e9d511764e30274d491a"
+      "digest": "sha256:ae8c8a336ba0bd28db719ee10530f47586acee40a801e9d511764e30274d491a",
+      "listing_sha256": "sha256:5c8be388c6f6a10c4a93efc1160088b2fd138b78c2b50eb0672f750758e18154"
     },
     {
       "path": "apps/platform/internal/skill/discovery/doc.go",
       "file_count": 1,
-      "digest": "sha256:709dffbf9b1596bf8fe1237bc631c89fa092f703c6f19bca339c457336afef21"
+      "digest": "sha256:709dffbf9b1596bf8fe1237bc631c89fa092f703c6f19bca339c457336afef21",
+      "listing_sha256": "sha256:7ec881819f9979e9af2087622ea46c4ea657b6ef55746df8c5e2b896de44a41c"
     },
     {
       "path": "apps/platform/internal/skill/library/doc.go",
       "file_count": 1,
-      "digest": "sha256:a1e4619f7431e8b8a3da5bc63d53e3e3dee7221a6a952fe77a7303515a9f8d29"
+      "digest": "sha256:a1e4619f7431e8b8a3da5bc63d53e3e3dee7221a6a952fe77a7303515a9f8d29",
+      "listing_sha256": "sha256:2a6954f1bf2054f792cb12ac59b99eb7b177892a14231cb2f4c7afed0dae082d"
     },
     {
       "path": "apps/platform/internal/trial/design/doc.go",
       "file_count": 1,
-      "digest": "sha256:b3b9337ee5153c3fc8e9600ae29ba6ce6d94101335d25af904152b47a2bab0af"
+      "digest": "sha256:b3b9337ee5153c3fc8e9600ae29ba6ce6d94101335d25af904152b47a2bab0af",
+      "listing_sha256": "sha256:ef4e981b02a31d582f40350556a7f59f0b781895675def9d6a7c37e073415080"
     },
     {
       "path": "apps/platform/internal/trial/evidence/doc.go",
       "file_count": 1,
-      "digest": "sha256:289b0fb6276bc6292d1f502f14e2e38227ff2d60e269a402639b54e8de9ca621"
+      "digest": "sha256:289b0fb6276bc6292d1f502f14e2e38227ff2d60e269a402639b54e8de9ca621",
+      "listing_sha256": "sha256:ed0ee391dbf2d4a4199d83f6da5c8dc02098c78ef683540daa0150da605f7ddc"
     },
     {
       "path": "apps/platform/internal/trial/execution/doc.go",
       "file_count": 1,
-      "digest": "sha256:d41d9c23c1314b9483cb58c21273f7f608dba7ec5d4e041e0dbfb966e5a8bf76"
+      "digest": "sha256:d41d9c23c1314b9483cb58c21273f7f608dba7ec5d4e041e0dbfb966e5a8bf76",
+      "listing_sha256": "sha256:33f87545bf5a2376e7537d372ced9ed96a18366d8489f8a1581db4571b756650"
     },
     {
       "path": "apps/platform/internal/trial/execution/preflight.go",
       "file_count": 1,
-      "digest": "sha256:f058965db2746e8aa0fdfd870bfdefdde5fc9d116a571a71a17c692124f2c342"
+      "digest": "sha256:f058965db2746e8aa0fdfd870bfdefdde5fc9d116a571a71a17c692124f2c342",
+      "listing_sha256": "sha256:eec107b8d42d3366f1f026cb007d6525ede08a4eef99e82cce85a777d9d44ae1"
     },
     {
       "path": "apps/platform/internal/trial/execution/statemachine.go",
       "file_count": 1,
-      "digest": "sha256:2c32f279dba063eae1e2bd51525d9e973136b8a3b9df563a5fb16581b09136b8"
+      "digest": "sha256:2c32f279dba063eae1e2bd51525d9e973136b8a3b9df563a5fb16581b09136b8",
+      "listing_sha256": "sha256:7877500ba292af459b8b8784e27d5983ea10d1e11cf7fb8bdebed888584a37dd"
     },
     {
       "path": "apps/platform/internal/trial/improvement/doc.go",
       "file_count": 1,
-      "digest": "sha256:b44cfcd905611e607657260ee12c7692b70979be182a0a8747baa162756cd034"
+      "digest": "sha256:b44cfcd905611e607657260ee12c7692b70979be182a0a8747baa162756cd034",
+      "listing_sha256": "sha256:c3295cfd34e453c6fa6cc1ab6ce8aa4b484e35a8d683480fee100a726c595a04"
     },
     {
       "path": "docs/adr/ADR-003-run-orchestration-and-async-workflows.md",
       "file_count": 1,
-      "digest": "sha256:b4e05a789e44ff1a2a3b31f06ebecf5b985ed5361865a76664db23b26f86d898"
+      "digest": "sha256:b65a8100abdb2f6076be1404bd35637660744c80f521aef7cc61f68524865f2b",
+      "listing_sha256": "sha256:e7d3d6d3a1f3893bafce265111937eeb7ec5485a69ca27ce5fec34e9920b52ea"
     },
     {
       "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
       "file_count": 1,
-      "digest": "sha256:f0521c3cd64bdda885481e90ae33cccda42709398fca65004994b88ea66faaf5"
+      "digest": "sha256:f0521c3cd64bdda885481e90ae33cccda42709398fca65004994b88ea66faaf5",
+      "listing_sha256": "sha256:598664abcc32400484de732e945a63a8df5bc7af6f741353a388f578002e5196"
     },
     {
       "path": "docs/development/platform-ddd-convergence.md",
       "file_count": 1,
-      "digest": "sha256:3291972d27b7303ed53febb94dd8b4925aa566184682718c1588f2f2be47ece0"
+      "digest": "sha256:3291972d27b7303ed53febb94dd8b4925aa566184682718c1588f2f2be47ece0",
+      "listing_sha256": "sha256:02c13ddeca616589d2dfae554f8e771c90ac33ec2332b4719f8bbc1ea1492491"
     }
   ],
   "confirmed_by": "ArthurC",
-  "confirmed_at": "2026-09-22T10:47:18.073721Z"
+  "confirmed_at": "2026-09-25T07:52:23.048731Z"
 }

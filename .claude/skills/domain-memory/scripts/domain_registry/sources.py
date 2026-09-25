@@ -71,6 +71,11 @@ def existing_directories(root: Path, candidates: tuple[str, ...]) -> list[str]:
     return [candidate for candidate in candidates if (root / candidate).is_dir()]
 
 
+def without_ignored(root: Path, relatives: list[str]) -> list[str]:
+    ignored = git_ignored(root, [root / entry for entry in relatives])
+    return [entry for entry in relatives if (root / entry) not in ignored]
+
+
 def instruction_files(root: Path) -> list[str]:
     files = []
     for path in root.rglob("AGENTS.md"):
@@ -79,7 +84,7 @@ def instruction_files(root: Path) -> list[str]:
     for path in root.rglob("CLAUDE.md"):
         if not any(part in EXCLUDED_DIRECTORIES for part in path.parts):
             files.append(relative(root, path))
-    return sorted(set(files))
+    return without_ignored(root, sorted(set(files)))
 
 
 def boundary_files(root: Path) -> list[str]:
@@ -91,7 +96,7 @@ def boundary_files(root: Path) -> list[str]:
         for path in directory.rglob("doc.go"):
             if not any(part in EXCLUDED_DIRECTORIES for part in path.parts):
                 files.append(relative(root, path))
-    return sorted(files)
+    return without_ignored(root, sorted(files))
 
 
 def test_locations(root: Path) -> list[str]:
@@ -122,7 +127,7 @@ def test_locations(root: Path) -> list[str]:
                 or ".spec." in path.name
             ):
                 locations.add(relative(root, path))
-    return sorted(locations)
+    return without_ignored(root, sorted(locations))
 
 
 def discover_sources(root: Path) -> dict[str, Any]:

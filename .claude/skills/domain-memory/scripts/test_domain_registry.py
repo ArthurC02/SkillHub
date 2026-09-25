@@ -1662,6 +1662,61 @@ class DomainRegistryTest(unittest.TestCase):
         self.assertIn("not a statement of the business domain", group["authority"])
         self.assertIn("loses its evidence", group["caution"])
 
+    def discovery_groups(self, kind: str) -> list[str]:
+        return next(
+            group
+            for group in discover_sources(self.repo)["source_groups"]
+            if group["kind"] == kind
+        )["paths"]
+
+    def seed_generated_cache(self) -> None:
+        (self.repo / "AGENTS.md").write_text("How agents work here.", encoding="utf-8")
+        (self.repo / "apps" / "core").mkdir(parents=True)
+        (self.repo / "apps" / "core" / "doc.go").write_text(
+            "package core\n", encoding="utf-8"
+        )
+        (self.repo / "apps" / "core" / "core_test.go").write_text(
+            "package core\n", encoding="utf-8"
+        )
+        for cache in (self.repo / ".agents" / "skills", self.repo / "apps" / ".cache"):
+            cache.mkdir(parents=True)
+        (self.repo / ".agents" / "skills" / "AGENTS.md").write_text(
+            "A copy this host generated.", encoding="utf-8"
+        )
+        (self.repo / "apps" / ".cache" / "doc.go").write_text(
+            "package cache\n", encoding="utf-8"
+        )
+        (self.repo / "apps" / ".cache" / "cached_test.go").write_text(
+            "package cache\n", encoding="utf-8"
+        )
+
+    def test_discovery_leaves_out_what_the_repository_ignores(self) -> None:
+        self.seed_generated_cache()
+        (self.repo / ".gitignore").write_text(
+            "/.agents/\napps/.cache/\n", encoding="utf-8"
+        )
+
+        self.assertEqual(self.discovery_groups("repository_instructions"), ["AGENTS.md"])
+        self.assertEqual(self.discovery_groups("bounded_contexts"), ["apps/core/doc.go"])
+        self.assertEqual(self.discovery_groups("tests"), ["apps/core/core_test.go"])
+
+    def test_discovery_outside_a_git_repository_keeps_every_file_it_finds(self) -> None:
+        with tempfile.TemporaryDirectory() as plain:
+            root = Path(plain)
+            (root / "AGENTS.md").write_text("How agents work here.", encoding="utf-8")
+            (root / ".agents" / "skills").mkdir(parents=True)
+            (root / ".agents" / "skills" / "AGENTS.md").write_text(
+                "A copy this host generated.", encoding="utf-8"
+            )
+            (root / ".gitignore").write_text("/.agents/\n", encoding="utf-8")
+
+            paths = next(
+                group
+                for group in discover_sources(root)["source_groups"]
+                if group["kind"] == "repository_instructions"
+            )["paths"]
+            self.assertEqual(paths, [".agents/skills/AGENTS.md", "AGENTS.md"])
+
     def defined_term(self) -> None:
         self.seed(
             "vocabulary.json",
