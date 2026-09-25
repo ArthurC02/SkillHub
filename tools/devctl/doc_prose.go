@@ -37,7 +37,7 @@ var docProseShapes = []struct {
 	{"a space before closing punctuation", regexp.MustCompile(`[\x{4e00}-\x{9fff}] +[\x{ff0c}\x{3002}\x{ff1b}\x{3001}\x{ff09}\x{300d}]`), removalFix},
 	{"doubled punctuation", regexp.MustCompile(`[\x{ff0c}\x{3002}\x{ff1b}\x{3001}]{2,}`), removalFix},
 	{"an opening bracket followed by punctuation", regexp.MustCompile(`\x{ff08}[\x{ff0c}\x{3002}\x{3001}\x{ff1b}\x{ff09}]`), removalFix},
-	{"half-width punctuation in a Chinese sentence", regexp.MustCompile(`[\x{4e00}-\x{9fff}][,;]|[^0-9][,;][\x{4e00}-\x{9fff}]`), widthFix},
+	{"half-width punctuation in a Chinese sentence", regexp.MustCompile(`[\x{4e00}-\x{9fff}\x{300d}\x{300f}\x{ff09}\x{3011}\x{300b}][,;]|[^0-9][,;][\x{4e00}-\x{9fff}]`), widthFix},
 }
 
 var docProseBoxDrawing = regexp.MustCompile(`[\x{2500}-\x{257f}]`)

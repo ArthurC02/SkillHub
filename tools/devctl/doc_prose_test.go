@@ -36,6 +36,8 @@ func TestDocProseNamesEveryShapeItLooksFor(t *testing.T) {
 		{"a half-width semicolon between characters", "這是平台的事實;使用者搜了什麼不是。", "half-width punctuation in a Chinese sentence"},
 		{"a half-width comma before a Latin word", "既有 Session 失效,OAuth 不得誤認。", "half-width punctuation in a Chinese sentence"},
 		{"a half-width comma after a Latin word", "存成 basis points,理由是整數運算不失真。", "half-width punctuation in a Chinese sentence"},
+		{"a half-width comma after a closing quote", "次數配額問「還能跑幾次」,Credit 閘問餘額夠不夠。", "half-width punctuation in a Chinese sentence"},
+		{"a half-width comma after a closing bracket", "改派換掉的是 attempt（不是 Run）,Run 的身分不變。", "half-width punctuation in a Chinese sentence"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
