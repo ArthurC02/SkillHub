@@ -84,7 +84,7 @@ task dev:llm
 | 確認生成結果寫入 Gateway 實際成本 | `TestARealGatewayGenerationRecordsWhatItActuallyCost` | 正在執行且 `/readyz` 成功的 `apps/llm`，以及測試資料庫 |
 | 基準量測 | GEN-009、模式批次、創作量測 | 使用其受版本控制的 corpus／圖檔與獨立輸出目錄；它們是多次付費工作，不能以單次 E2E 取代或自動宣稱完成 |
 
-需要 Sandbox Run 的量測有三個不同的連線角色：控制平面用 Gateway 管理端簽發 Virtual Key，Sandbox 用受 egress allowlist 保護的 Gateway 位址執行，容器化 runner 用服務 token 呼叫主機上的 `apps/llm`。三者不可混用 loopback 或測試用假位址。測試用的控制平面也必須明確採用本機 Sandbox 實際宣告的隔離等級，並為每個測試 Workspace 建立足以支付已核准 session 預算的點數餘額；否則 422 是正確的准入拒絕，不是模型失效。
+需要 Sandbox Run 的量測有三個不同的連線角色：控制平面用 Gateway 管理端簽發 Virtual Key，Sandbox 用受 egress allowlist 保護的 Gateway 位址執行，容器化 runner 用服務 token 呼叫主機上的 `apps/llm`。三者不可混用 loopback 或測試用假位址。測試用的控制平面也必須明確採用本機 Sandbox 實際宣告的隔離強度，並為每個測試 Workspace 建立足以支付已核准 session 預算的點數餘額；否則 422 是正確的准入拒絕，不是模型失效。
 
 驗收結束時，確認 Run 的 `cleanup_status` 為 `cleaned`、Gateway 回報的成本來源為 `gateway`，並停止這次才啟動的 Python 行程。暫存輸出可以刪除；不要將 Virtual Key、master key 或服務 token 寫入輸出檔、文件或 shell history。
 

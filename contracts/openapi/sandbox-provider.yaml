@@ -991,7 +991,7 @@ components:
                 left the process group or job it was started in - `setsid()` on
                 POSIX, which Node spells `detached: true`.
 
-                It is a separate field from the isolation level because the two
+                It is a separate field from the isolation strength because the two
                 platforms of one driver can differ on it: a Windows job object
                 holds every descendant whether or not it wants to be held, while
                 a POSIX process group is something a descendant walks out of.

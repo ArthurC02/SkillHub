@@ -15,7 +15,7 @@
 
 | 方法與路徑 | 行為 |
 | --- | --- |
-| `GET /capability` | 目前可承接的 Runtime、資源上限、隔離等級與空 slot 數（RUN-002） |
+| `GET /capability` | 目前可承接的 Runtime、資源上限、隔離強度與空 slot 數（RUN-002） |
 | `POST /runs` | 派送一次 attempt。冪等鍵＝body 的 `(run_id, attempt)`：首次 201、重送 200 回同一資源且**不開第二個沙箱**、同鍵不同內容 409、能力不符 422（`RunError`）、無 slot 429 |
 | `GET /runs/{provider_run_id}` | 輪詢單一 attempt；`result` 只在終態出現 |
 | `POST /runs/{provider_run_id}/cancel` | 記錄意圖回 202；**已終態也回 202**，不回 409 |
@@ -47,10 +47,10 @@
 | 項目 | dev（本機） | prod（執行節點池） |
 | --- | --- | --- |
 | 容器 runtime | 主機預設（runc） | `runsc`（`SKILLHUB_SANDBOX_RUNTIME=runsc`） |
-| Capability 宣告的隔離等級 | `container` | `gvisor` |
+| Capability 宣告的隔離強度 | `weak` | `strong` |
 | 網路 | 無出口需求＝`--network none`；有出口需求＝`internal: true` 的 Docker network，上面只有 LiteLLM 閘道 | Egress Proxy 專用網路，default-deny＋允許清單、DNS 固定解析、目的地記錄 |
 
-宣告等級跟著實際設定走：在跑 runc 的機器上宣告 `gvisor` 會讓 RUN-005 依錯誤的前提派工。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的其餘基線（非 root、唯讀 rootfs、drop 全部 capability、無管理 Socket、無主機掛載、資源上限）**兩邊完全相同**——gVisor 是多加一層，不替代其中任何一項。
+宣告強度不是一個旁的設定值，driver 看 `SKILLHUB_SANDBOX_RUNTIME` 自己推：是 `runsc` 就回 `strong`，否則 `weak`。在沒有 runsc 的機器上把那個變數設成 `runsc` 會讓 RUN-005 依錯誤的前提派工。[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的其餘基線（非 root、唯讀 rootfs、drop 全部 capability、無管理 Socket、無主機掛載、資源上限）**兩邊完全相同**——gVisor 是多加一層，不替代其中任何一項。
 
 ### 每個沙箱的實際隔離參數
 

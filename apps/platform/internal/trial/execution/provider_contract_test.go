@@ -108,7 +108,7 @@ func TestProviderContract(t *testing.T) {
 			t.Error("capability declares no runtime, so nothing could ever be dispatched to it")
 		}
 		if capability.Isolation.Strength == "" {
-			t.Error("capability declares no isolation level")
+			t.Error("capability declares no isolation strength")
 		}
 	})
 
