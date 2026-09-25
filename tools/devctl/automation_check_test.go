@@ -28,6 +28,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"capability-table", "env-declared",
 
 		"doc-links",
+		"doc-prose",
 		"adr-citations",
 
 		"dependency-policy",
@@ -104,7 +105,8 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	write("Taskfile.yml", "version: \"3\"\ntasks:\n")
 
 	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
-		"見 [規則](./docs/rules/missing.md)。\n")
+		"見 [規則](./docs/rules/missing.md)。\n"+
+		"而那正是  修好的那個形狀。\n")
 
 	write("apps/platform/.golangci.yml", "version: \"2\"\n")
 	write(contextMapDoc, "packages:\n")

@@ -137,6 +137,7 @@ func documentCheckers() []namedChecker {
 		{"env-declared", envDeclaredProblems},
 
 		{"doc-links", docLinkProblems},
+		{"doc-prose", docProseProblems},
 		{"adr-citations", adrCitationProblems},
 
 		{"dependency-policy", dependencyPolicyProblems},

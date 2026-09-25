@@ -145,7 +145,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 `go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表逐條對應那個函式回傳的檢查。**條數會變**——以 `documentCheckers()` 的實際回傳為準，不以本節的敘述為準。
 
-**撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔；它為什麼存在、抓到過什麼，看那個檔的 `git log`（程式裡不寫施工日誌，見根 `AGENTS.md`〈慣例〉）。**本節只給名字與落點；下面的散文只保留有故事的那五條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`），其餘不在此重述。
+**撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔；它為什麼存在、抓到過什麼，看那個檔的 `git log`（程式裡不寫施工日誌，見根 `AGENTS.md`〈慣例〉）。**本節只給名字與落點；下面的散文只保留有故事的那六條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`、`doc-prose`），其餘不在此重述。
 
 | 名字 | 它比對什麼 | 規則寫在哪 |
 | --- | --- | --- |
@@ -176,6 +176,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `env-declared` | 反方向：`cmd/api`、`cmd/worker`、`cmd/maintenance`、`cmd/reindex`、`sandboxd` 與 `apps/llm` 讀的每個環境變數，`.env.example` 都要列出（Go 以 AST 追到包裝函式與常數，Python 以 `os.getenv`／`os.environ` 比對）。空值必須等於預設值 | `tools/devctl/env_declared.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
+| `doc-prose` | 活文件的句子不得留著移除指標後的洞：控制字元、CJK 之間的連續兩個空白、收尾標點前的空白、連續的標點、開括號後面直接接標點 | `tools/devctl/doc_prose.go` |
 | `adr-citations` | 只有 `docs/adr/` 裡的 ADR 與索引 `docs/adr/README.md` 可以寫 ADR 編號或檔名；其他檔案寫規則本身，需要理由時連索引的主題標題。`docs/adr/` 只放 `ADR-NNN-<slug>.md` 與 `README.md`；每份 ADR 都要列在索引、且所在標題逐字等於該 ADR 的標題（標題就是別人連的錨點）；連到索引的 `README.md#錨點` 必須對得上某個標題。里程碑的機器輸出、量測結果與第三方語料照原樣保存，不受此限（豁免清單連同理由寫在檢查器裡） | `tools/devctl/adr_citations.go` |
 | `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
 | `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
@@ -280,7 +281,7 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 
 實際抓到的三個：`04` 拿一個叫 `PublicSearchHit` 的型別論證「我的 Skill 清單少了四項證據」（真名是 `PublicSearchResult`）；一次結案數字掛在 `ApplyPreview` 上（真名是 `improvement.Diff`／契約 `SuggestionDiff`，那個名字是 m3 報告發明的，被抄了三次）；`03` 在函式刪掉之後還說它「已備好」。**三個都是六輪對抗式審查裡人工抓到的，而它們是機器抓得到的那一類。**
 
-**範圍只有活文件**（`AGENTS.md`、`docs/plans/01`～`05`、`docs/design/`、`m5/README`），而這個限制是整個設計：同一種檢查套在 ADR 與凍結的里程碑報告上，量到 **18 個命中，每一個都是「寫的當下是對的」的歷史**（DDD 搬檔、已刪除的 spike），而 AGENTS.md 明文要求不要順手修正那些。**一個會要求人違反明文規則的檢查，比沒有檢查更糟——人會學會忽略它。**
+**範圍是活文件**（`AGENTS.md`、`docs/plans/01`～`05`、`docs/design/`、`m5/README`，加上 `docs/adr/`、`docs/development/` 與 `contracts/` 三棵樹），**凍結的里程碑報告不在內**，而這個界線是整個設計：同一種檢查套在里程碑報告上，量到的命中每一個都是「寫的當下是對的」的歷史（DDD 搬檔、已刪除的 spike），而 AGENTS.md 明文要求不要順手修正那些。**一個會要求人違反明文規則的檢查，比沒有檢查更糟——人會學會忽略它。**
 
 量測值（寫下時）：410 個引用、6 個命中、3 個是真的。誤報那三個由 `allowedDocWords` 記著理由，形狀比照 `db/query-owners.yaml` 的 `allow:`——**是存量清單，不是擴充點**。
 
@@ -288,6 +289,28 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 
 1. **死掉的名字不要穿反引號。** 反引號的意思是「這是一個真的符號」；訂正句裡提到一個從來不存在的名字時寫成純文字，檢查就不會命中，而讀者看到的資訊完全一樣。
 2. **`declared` 是「這個字出現在任何一個程式檔裡」，不是「這個符號有宣告」。** 便宜、不需要 parser，代價是**一個被刪掉但名字還留在某段註解裡的函式會溜過去**。寫這個檢查的當天就踩到了：它自己的說明註解引用了三個要抓的名字，於是把它們全部漂白——所以掃描時跳過 `doc_identifiers.go` 自己。
+
+### 一句話掉了一個指標之後，要留著它的文法
+
+同一個家族的第三條，抓的是**整理文件時自己製造的傷**。把一個不再存在的殘項編號從句子裡拿掉，剩下的句子長這樣：
+
+```text
+而那正是  修好的那個形狀
+屬部署期硬化項，見 。
+含必補回歸測試）。，該提案
+```
+
+**讀者看不出那裡原本有東西，只看得出這句話讀不通**。最糟的一種是連內容一起掉：一個工作項目結束在上面第三種形狀的半句話，後面的 provenance 規則、允收編號與五條測試義務全部不見，而檔案本身沒有任何地方說它不完整。
+
+五個形狀：控制字元、CJK 字元之間的連續兩個以上空白、收尾標點前的空白、連續的標點、開括號後面直接接標點。都是**移除留下的痕跡**，不是排版偏好——`（`、`。`、`，` 在正常的句子裡不會這樣相鄰。
+
+刻意不看三種東西：
+
+1. **圍籬程式碼區塊**（含引言裡的），裡面的空白是對齊。
+2. **有製表符號的行**（`─│┌└`），架構圖靠空白對齊，`README.zh-TW.md` 的方塊圖是唯一的實例。
+3. **歸位字元**。工作樹的行尾由 `.gitattributes` 決定，Windows clone 的 CRLF 是那台機器的狀態、不是 repo 的內容；把它當成文件缺陷會讓整份檢查在某些機器上一開就紅。
+
+範圍與 `doc-identifier` 不同：**所有活文件**（任何 `.md`），只排除 `docs/plans/mvp/` 與 `tools/goldenset/corpus/`。差別的理由是這條檢查跟內容對不對無關——一個句子在 2026 年是對的，也不會因為時間過去就允許它缺一半文法。
 
 ## 跑一次真實的端到端 Run
 
