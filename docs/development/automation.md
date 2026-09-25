@@ -179,7 +179,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `adr-citations` | 只有 `docs/adr/` 裡的 ADR 與索引 `docs/adr/README.md` 可以寫 ADR 編號或檔名；其他檔案寫規則本身，需要理由時連索引的主題標題。`docs/adr/` 只放 `ADR-NNN-<slug>.md` 與 `README.md`；每份 ADR 都要列在索引、且所在標題逐字等於該 ADR 的標題（標題就是別人連的錨點）；連到索引的 `README.md#錨點` 必須對得上某個標題。里程碑的機器輸出、量測結果與第三方語料照原樣保存，不受此限（豁免清單連同理由寫在檢查器裡） | `tools/devctl/adr_citations.go` |
 | `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
 | `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
-| `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單：2026-09-11 全 repo 清理後歸零。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
+| `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單（全 repo 清理後歸零）。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 
@@ -272,7 +272,7 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 **兩個刻意的範圍限制**，兩個都是第一次跑出來的：
 
 - **帶日期的句子是在描述那個日期**，跳過。第一次跑的每一個誤報都是這一類：`v2 的 32 條威脅與 45 項基線檢查`、`2026-08-16 定案`、以及 N-08 那次自己補的「45 是 2026-08-15 到 2026-08-25 的數字」。**記下一個數字曾經是多少，正是文件對漂移誠實的方式**；一個禁止這件事的檢查，只會教人把歷史刪掉。
-- **[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)那份 ADR 不在被檢查的名單上。** 它有九個地方寫 45，每一個都是它定案當日的數字，而 AGENTS.md 明文不原地改寫已定案 ADR 的決策內容；它的 2026-08-26 補記承接現行讀法。**把它列進來，等於要求人做出那條規則禁止的編輯**——與 `doc-identifier` 只掃活文件是同一個判斷。
+- **[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)那份 ADR 不在被檢查的名單上，而它也不需要在**：它的通過判準寫成「全部測項須全數通過、零項為未知」，一個數字都不重述，所以沒有可漂移的東西。**ADR 的正確寫法就是這一種**——不重述別人擁有的數字，就不必跟著它改。
 
 ### 活文件裡的識別字必須存在
 

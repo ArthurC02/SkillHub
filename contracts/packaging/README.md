@@ -3,7 +3,7 @@
 - 檔案：[download-manifest.schema.json](download-manifest.schema.json)、[packaging-profile.schema.json](packaging-profile.schema.json)、[portable-test-case.schema.json](portable-test-case.schema.json)（皆為 JSON Schema 2020-12，內文英文）＋ [profiles/](profiles/) 三個打包目標的設定實體（§7）
 - 驗證：`python tools/contracts/validate_packaging.py`（驗三份 schema 的 `check_schema`、全部 `examples`、**`profiles/` 的三份實體**、以及 22 個反例必須被擋）
 - CI：`.github/workflows/ci.yml` 的 `contracts-drift` job，比照 M3 為 `contracts/events` 補的那一步（同一個 pinned `jsonschema`）
-- 狀態：**M4 第 1 批產出，實作未落地。** 形狀依 [m4/contract-deltas.md](../../docs/plans/mvp/m4/contract-deltas.md) §3 與 [m4/packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md)。
+- 狀態：契約與打包管線都已落地（`03` 的 `PACK-001`～`009`）。形狀依 [m4/contract-deltas.md](../../docs/plans/mvp/m4/contract-deltas.md) §3 與 [m4/packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md)。
 
 ## 1. 為什麼這三份不在 OpenAPI 裡
 
