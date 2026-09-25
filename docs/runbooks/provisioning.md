@@ -88,6 +88,16 @@ task dev:llm
 
 驗收結束時，確認 Run 的 `cleanup_status` 為 `cleaned`、Gateway 回報的成本來源為 `gateway`，並停止這次才啟動的 Python 行程。暫存輸出可以刪除；不要將 Virtual Key、master key 或服務 token 寫入輸出檔、文件或 shell history。
 
+### 4.2.3 互動創作的獨立本機驗收
+
+互動創作不只依賴 LLM 健康檢查。僅在不對封測使用者曝光的獨立本機驗收環境，設定 `GENERATE_SKILL_EXPOSED=on` 與 `CREATION_EXPOSED=on`；兩者都以字串 `on` 為開啟值，`1` 不會開啟。`CREATION_LIMITS_JSON` 使用 `.env.example` 的完整欄位，API 與 Worker 必須一致。登入後先確認 `/me` 包含 `creation_skill`，再讀取 `/creation-sessions/limits`；入口未掛載的 404 不等於會話服務無法連線。
+
+完整開發模式還需要 `CREATION_WORKER_INTERNAL_ADDR`、`CREATION_WORKER_INTERNAL_URL` 與相同的 `CREATION_WORKER_INTERNAL_TOKEN`，讓 API 能送出暫態創作工作。淨測試模式的 Worker 已在 API 行程內，不另起第二個 Worker。它的 PGlite 只有單一連線，物件儲存只在記憶體中：不可把它接到另一套部署的既有資料庫、不可另啟 API 共用同一個 carrier，也不能把重啟後遺失的套件誤判為掃描失敗。使用 launcher 建立完整的測試資料與物件生命週期。
+
+以新建測試 Workspace 驗收，經 operator 的點數發放入口提供足以支付 session 預算的測試點數，不關閉餘額檢查。逐步讀回「提問 → 真人回答 → 確認任務 → 草稿 → 保存候選 → 試跑與評估 → 掛接結果 → 定向追問／修訂 → 保存」的狀態、revision、訊息時間與費用。模型回答、真人回答和自動化測試輸入要分開記錄；自動代答不能作為真人驗收證據。純文字技能的本機程序試跑也不代表正式 Sandbox 隔離驗收通過。
+
+若 API 健康但操作逾時，先分辨路由開關、預算拒絕與連線等待。單一連線下，持有交易時再向同一個 pool 查詢，會形成等待；增加逾時或再啟一個 API 不會修好它。檢查需由程式的交易範圍與單連線回歸測試確認，不直接歸因於殘留程序。
+
 ### 4.3 啟動應用程式
 
 在不同終端啟動下列五個程序：
