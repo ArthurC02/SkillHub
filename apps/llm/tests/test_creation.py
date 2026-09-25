@@ -706,7 +706,11 @@ UNMET_EVALUATION = json.dumps(
 )
 
 
-def test_review_after_an_unmet_trial_names_the_edits_before_rewriting():
+@pytest.mark.parametrize("validation_after_trial", [False, True])
+@pytest.mark.parametrize("validate_before_accepting", [False, True])
+def test_review_after_an_unmet_trial_names_the_edits_before_rewriting(
+    validation_after_trial, validate_before_accepting
+):
     req = request(
         brief="b",
         brief_confirmed=True,
@@ -715,6 +719,8 @@ def test_review_after_an_unmet_trial_names_the_edits_before_rewriting():
         messages=request()["messages"] + [{"role": "tool", "content": UNMET_EVALUATION}],
         allowed_tools=["validate_draft"],
     )
+    if validation_after_trial:
+        req["messages"].append({"role": "tool", "content": "Go 靜態驗證完成，blocked=false"})
     revised = SKILL | {"body": "Output a Markdown checkbox list with three items."}
     calls = []
     seq = stub_seq(
@@ -730,7 +736,14 @@ def test_review_after_an_unmet_trial_names_the_edits_before_rewriting():
                 ]
             },
             revised["body"],
-            decision(outcome="draft", message="改了", draft=SKILL),
+            decision(
+                outcome="tool_intent" if validate_before_accepting else "draft",
+                message="改了",
+                draft=SKILL,
+                tool_intent={"kind": "validate_draft", "query": "", "queries": None}
+                if validate_before_accepting
+                else None,
+            ),
         ],
         calls,
     )
@@ -788,6 +801,29 @@ def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
     assert body["outcome"] == "confirm_brief"
     assert body["acceptance_criteria"] == ["decidable criterion"]
     assert body["draft"] is None
+
+
+def test_review_uses_the_latest_trial_even_after_static_validation():
+    met = json.loads(UNMET_EVALUATION)
+    met["evaluation"]["overall"] = "met"
+    for criterion in met["evaluation"]["criterion_results"]:
+        criterion["result"] = "passed"
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        draft=SKILL,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=[
+            {"role": "tool", "content": UNMET_EVALUATION},
+            {"role": "tool", "content": json.dumps(met)},
+            {"role": "tool", "content": "Go 靜態驗證完成，blocked=false"},
+        ],
+    )
+    response, calls = invoke(req, decision(outcome="draft", draft=SKILL))
+    assert response.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["response_format"]["json_schema"]["name"] == "creation_decision"
+    assert response.json()["draft"] == SKILL
 
 
 def test_an_empty_brief_is_a_reason_code_go_retries():

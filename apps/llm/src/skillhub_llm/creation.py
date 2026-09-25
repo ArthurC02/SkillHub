@@ -280,12 +280,12 @@ DIAGNOSIS_INSTRUCTIONS = (
 
 
 def _unmet_evaluation(messages) -> bool:
-    """True when the newest tool observation is an evaluation with a criterion not passed."""
+    """Whether the latest evaluation contains an unmet criterion."""
     for m in reversed(messages):
         if m.role != "tool":
             continue
         if not m.content.startswith('{"evaluation"'):
-            return False
+            continue
         try:
             results = json.loads(m.content)["evaluation"].get("criterion_results") or []
         except ValueError, KeyError, AttributeError, TypeError:
@@ -674,7 +674,18 @@ def _reason_node(gateway_key: str, phase: str):
                 )
             ):
                 raise ValueError("over cap: tool_intent.queries")
-            if rewritten_body and decision.outcome == "draft" and decision.draft is not None:
+            if (
+                rewritten_body
+                and decision.draft is not None
+                and (
+                    decision.outcome == "draft"
+                    or (
+                        decision.outcome == "tool_intent"
+                        and decision.tool_intent is not None
+                        and decision.tool_intent.kind == "validate_draft"
+                    )
+                )
+            ):
                 decision.draft = decision.draft.model_copy(update={"body": rewritten_body})
             usage = _usage(completion, raw.headers)
             if diagnosis_usage is not None:
