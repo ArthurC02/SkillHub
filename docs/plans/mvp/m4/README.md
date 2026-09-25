@@ -76,7 +76,7 @@
 
 | # | 項目 | 在 M4 的地位 | 誰做 |
 | --- | --- | --- | --- |
-| 甲-1 | `SEC-009` 十個測項、45 項基線全數 pass 且 0 unknown | **封測阻擋項**。無例外流程（`02:SEC-009`）。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`，該路徑已由 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) 預留 | 部署批（人 ＋ 真機） |
+| 甲-1 | `SEC-009` 十個測項、46 項基線全數 pass 且 0 unknown | **封測阻擋項**。無例外流程（`02:SEC-009`）。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`，該路徑已由 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) 預留 | 部署批（人 ＋ 真機） |
 | 甲-2 | `SBX-010` 同上的工作項側 | 同甲-1 | 同上 |
 | 甲-3 | `SBX-005`／`007` 的生產網路面 | **封測阻擋項，且是甲-1 的前置**——T5（網路外洩八子項）與 T10（P-02 常駐探針）測的正是這一面。含 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) Q2 強制條件 6：LiteLLM 必須移到沙箱面專屬節點 | 同上 |
 | 甲-4 | `SBX-002` 的閘門 A 節點准入探針 | **封測阻擋項**，是 `SEC-009` 的前置條件①（受測映像須已發佈至 GHCR 且附 SBOM 與掃描 attestation，且探針要在真實節點上查得到） | 同上 |
@@ -111,7 +111,7 @@
 | # | 事項 | 阻擋什麼 | 負責人動作是什麼 |
 | --- | --- | --- | --- |
 | H-1 | **真機部署**：Linux 節點、gVisor `systrap` 實測、nftables ＋固定 DNS、每 Run netns ＋ `--icc=false`、LiteLLM 移到沙箱面專屬節點 | 甲-1～甲-4 全部 | 開機器、跑部署、回填 `infra/nodes/gvisor-baseline.txt` 與 `infra/egress/allowlist.yaml` 的 `pinned_ip` |
-| H-2 | **`SEC-009` 十個測項實跑**，45 項全 pass、0 unknown | 封測開放 | 依 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) 第三部分逐項執行，判定表與 `versions.txt` 進 `m4/sec-009-acceptance/` |
+| H-2 | **`SEC-009` 十個測項實跑**，46 項全 pass、0 unknown | 封測開放 | 依 [Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全) 第三部分逐項執行，判定表與 `versions.txt` 進 `m4/sec-009-acceptance/` |
 | H-3 | **閘門 A 節點准入探針**在真實節點上查得到 SBOM 與掃描 attestation；到期前 7 天告警的**發送端** | 甲-4、`SBX-002` 勾選 | 部署探針、接 Alertmanager |
 | H-4 | **Alertmanager 部署、通知路由與 Grafana dashboard**；`O11Y-003` 的門檻值上線後回填 | `O11Y-003` 的完整性、`SEC-010` | 部署與校準 |
 | H-5 | **M1 閘門 D 日宣告**與其後 10 天的執行（9 場 ＋ pilot） | 見 §5.3 | 排程、凍結、找主持人與記錄員 |

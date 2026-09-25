@@ -14,6 +14,10 @@ const baselineOwner = "docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md"
 var baselineQuoters = []string{
 	"docs/plans/02-specifications-and-acceptance-criteria.md",
 	"docs/plans/03-work-items.md",
+	"docs/plans/04-backlog-and-handoffs.md",
+	"docs/plans/mvp/m4/README.md",
+	"docs/plans/mvp/m4/beta-design.md",
+	"docs/plans/mvp/m4/release-checklist.md",
 	"tools/sec009/README.md",
 }
 
@@ -30,7 +34,12 @@ var (
 	// no leading zone letter.
 	baselineZoneTotal = regexp.MustCompile(`(?m)^\|\s*\*\*合計\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*$`)
 
-	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部|覆蓋|裡)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
+	baselineProse = regexp.MustCompile(`(\d+)\s*項(?:檢查)?(?:全數|全部|全過|基線|的全部|覆蓋|裡|全\s*pass)|基線\s*(\d+)\s*項|覆蓋(?:核對)?（(\d+)\s*項）|(\d+)\s*項（阻擋`)
+
+	// The same 「N 項全部」 shape counts work items and audit rows too, so a
+	// figure only answers to this check when its own line says which subject
+	// it is counting.
+	baselineSubject = regexp.MustCompile(`SEC-009|基線|unknown|驗收|測項|覆蓋|證據`)
 
 	// A sentence naming a date, which describes a past figure rather than
 	// current drift.
@@ -125,6 +134,9 @@ func staleBaselineFigures(path, body string, total int) []string {
 	for i, line := range strings.Split(body, "\n") {
 
 		if baselineTotal.MatchString(line) || baselineDated.MatchString(line) {
+			continue
+		}
+		if !baselineSubject.MatchString(line) {
 			continue
 		}
 		for _, m := range baselineProse.FindAllStringSubmatch(line, -1) {

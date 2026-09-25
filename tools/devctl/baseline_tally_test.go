@@ -124,3 +124,40 @@ func TestBaselineTallyReadsTheSec009Runbook(t *testing.T) {
 		})
 	}
 }
+
+func TestBaselineTallyCatchesTheEnglishPassShape(t *testing.T) {
+	t.Parallel()
+	root := writeBaseline(t, baselineValidOwnerBody, "", "`SEC-009` 十個測項實跑，5 項全 pass、0 unknown。\n")
+	problems := strings.Join(baselineTallyProblems(root), "\n")
+	if !strings.Contains(problems, "names 5 baseline items") {
+		t.Fatalf("a gate threshold written as 「N 項全 pass」 was not caught: %v", problems)
+	}
+}
+
+func TestBaselineTallyLeavesAFigureCountingSomethingElseAlone(t *testing.T) {
+	t.Parallel()
+	root := writeBaseline(t, baselineValidOwnerBody, "", "M4 開工時這 5 項全部是 `- [ ]`，沒有任何一項被退回。\n")
+	if problems := baselineTallyProblems(root); len(problems) != 0 {
+		t.Fatalf("a work-item count that never named the baseline was reported: %v", problems)
+	}
+}
+
+func TestBaselineTallyReadsTheLiveGateDocuments(t *testing.T) {
+	t.Parallel()
+	for _, want := range []string{
+		"docs/plans/04-backlog-and-handoffs.md",
+		"docs/plans/mvp/m4/README.md",
+		"docs/plans/mvp/m4/beta-design.md",
+		"docs/plans/mvp/m4/release-checklist.md",
+	} {
+		found := false
+		for _, quoter := range baselineQuoters {
+			if quoter == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s states the gate threshold a person reads before opening the beta, and is not among the quoters", want)
+		}
+	}
+}

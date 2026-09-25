@@ -93,7 +93,7 @@
 
 > **2026-08-23 更正：本節標題原為「`SEC-009` 未過即不得開放外部使用者提交 Skill 執行」，而依[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的決策，負責人裁定**封測與甲類驗收並行**（`04` 乙-14）。**
 >
-> **甲類四項因此不再是封測 D 日的阻擋項**，下面 §2.1 的標題與 §5 的 H-2 一併更正。**但它們的內容一個字都沒改**：`02:SEC-009` 的門檻仍是 45 項全數 pass、0 項 unknown，`infra/nodes/gvisor-baseline.txt` 仍必須填實際版本才算數。改的是**這個門檻在什麼時點之前必須達成**，不是門檻本身。
+> **甲類四項因此不再是封測 D 日的阻擋項**，下面 §2.1 的標題與 §5 的 H-2 一併更正。**但它們的內容一個字都沒改**：`02:SEC-009` 的門檻仍是 46 項全數 pass、0 項 unknown，`infra/nodes/gvisor-baseline.txt` 仍必須填實際版本才算數。改的是**這個門檻在什麼時點之前必須達成**，不是門檻本身。
 >
 > **[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)明示接受的風險**：甲類通過前，不受信任程式碼會在**逃逸邊界尚未被驗證**的節點上執行。同一份決策同時寫下一件本節該知道的事——**Suite 1（T1／T2／T3／T4／T8 映像半）只要 Linux ＋ Docker ＋ runsc**，在那台節點跑一次是一天的事；「全部到期」與「什麼都不做」之間不是只有兩個選項。**要不要把它訂為第一位外部使用者之前的下限，是那份決策的待決策 1，目前沒有答案。**
 
@@ -103,7 +103,7 @@
 
 | # | 誰 | 做什麼 | 驗什麼 |
 | --- | --- | --- | --- |
-| 甲-1 | 負責人＋真機 | `SEC-009` 十個測項全跑 | **45 項基線全數 pass、0 項 unknown**。任一 fail 或 unknown 即不得開放，**無例外流程**。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`（判定表 ＋ `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結），保存 ≥ 1 年 |
+| 甲-1 | 負責人＋真機 | `SEC-009` 十個測項全跑 | **46 項基線全數 pass、0 項 unknown**。任一 fail 或 unknown 即不得開放，**無例外流程**。證據落 `m4/sec-009-acceptance/<日期>-<節點>/`（判定表 ＋ `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結），保存 ≥ 1 年 |
 | 甲-2 | 同上 | `SBX-010` 的工作項側 | 同甲-1。**現有的真實容器驗證（非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等）不等於逃逸測試通過** |
 | 甲-3 | 同上 | `SBX-005`／`007` 的生產網路面 | 每 Run netns ＋ `--icc=false`（關掉 dev 現存的**不需逃逸**的跨 Run 橫向路徑）；nftables default-deny、沙箱沒有 DNS（閘道位址是 IP 字面值）；`infra/egress/allowlist.yaml` 的 `pinned_ip` 已填實際值且**不是控制平面節點**（[Sandbox 隔離與執行安全](../../../adr/README.md#sandbox-隔離與執行安全)的強制條件，由測項 T5-7 抓）。**LiteLLM 必須移到沙箱面專屬節點**——現行 compose 的 `127.0.0.1:4000` 是 dev 形態，生產不可複製；出口記錄在控制平面查得到：送一個 Run 後照[控制平面 runbook](../../../runbooks/control-plane.md) §7，位址記錄的 `assigned`／`released` 與同一個位址在那段時間的出口記錄（放行的帶兩個方向的計數、被擋的帶擋下它的規則）對得起來 |
 | 甲-4 | 同上 | `SBX-002` 的閘門 A 節點准入探針 | 探針在**真實節點上**查得到已發佈映像的 SBOM 與掃描 attestation；到期前 7 天告警的**發送端**已接 |
@@ -330,7 +330,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 
 ## 4. B 日當天
 
-- [ ] §2 與 §3 全部成立（尤其 `SEC-009` 45 項全 pass、0 unknown）
+- [ ] §2 與 §3 全部成立（尤其 `SEC-009` 46 項全 pass、0 unknown）
 - [ ] 12 個 GitHub 帳號填入 `BETA_ALLOWLIST` 並重啟；**驗 `beta.roster` audit event 真的寫成了**（寫不成 ⇒ 誰都進不來）
 - [ ] 未受邀者的路徑走一次：可搜尋、可看詳情、Fork／Run／下載回 403 並指向 `POST /feedback`
 - [ ] 配額：`RUN_QUOTA=off` 時 `GET /me/quota` 回 404、畫面上沒有任何剩餘次數。**有一天打開 `RUN_QUOTA` 時才改走**：剩餘次數看得到、用完會擋、重置時間顯示得出來
@@ -345,7 +345,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 | `RELEASE-001` | agent／開發者 | 產出**需求 ID × 測試**對照表（`QA-003`／`004`／`005` 的測試現在分別掛在 `RUN-*`／`SBX-*`／`TRACE-*` 名下） | 每個 MVP 必要需求 ID 至少對到一支具名測試，且該測試最近一次執行結果有記錄 |
 | `RELEASE-002` | 開發者 ＋ 一位真人 | §1.9 的 P-8（旅程測試）＋ §2.7 的第一次真實走查 | 六段的**接縫**都被走過一次；四次退回都發生在接縫上 |
 | `RELEASE-003` | 負責人＋法務 | H-10；並補 2–3 個 OSI 授權的 `documents` 替代品 | `CONTENT-003`／`004` 可勾；**至少一個 `documents` 精選可下載** |
-| `RELEASE-004` | 負責人＋真機 | 甲-1～甲-4 | 45 項全 pass、**0 unknown**；證據落 `sec-009-acceptance/` |
+| `RELEASE-004` | 負責人＋真機 | 甲-1～甲-4 | 46 項全 pass、**0 unknown**；證據落 `sec-009-acceptance/` |
 | `RELEASE-005` | 負責人 ＋ 開發者 | H-5（PDM-006）＋ §1.9 的 P-9 | 保存期限有值且可測；Run Artifact 刪得掉；刪除狀態查得到；稽核已成立（`CORE-008` 已勾） |
 | `RELEASE-006` | 負責人 | `SEC-010` 的 runbook 與一鍵停用流程本體 ＋ §2.5 的 Alertmanager | 告警**送得到那個人**；停派送與解除各走過一次 |
 | ~~`RELEASE-007`~~ **✅ 已勾** | 開發者 | ~~H-1（乙-13）＋ 依裁定改 defence 3~~ 兩個選項都已落地 | 帶 `evidence_required` 的條目不會被一段沒人驗過的引文滿足——已成立 |
