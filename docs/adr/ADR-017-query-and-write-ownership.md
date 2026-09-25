@@ -57,7 +57,7 @@ Platform 的 Bounded Context 邊界（見 [ADR-016](./ADR-016-platform-bounded-c
 
 當某個跨 context 動作的 import 方向會造成編譯期循環——即兩個 context 互為對等關係、誰也不在誰之下——owner 公開一個收呼叫端交易控制代碼（`pgx.Tx` 或同交易的查詢代理）的函式，由組裝層（API 組裝根、Worker 組裝根，或維運／重建索引等命令行入口）在初始化時把函式注入呼叫端，呼叫端在自己既有的交易裡呼叫它。這不是 import，也不是事件：呼叫端與 owner 之間沒有新增依賴方向，動作也不離開原本的交易邊界。
 
-適用場景是那些請求当下就必須完成、失敗了就代表「這次請求沒有被正確處理」的動作——例如搜尋索引要跟著匯入結果同交易更新；帳號刪除目前也是在單一交易內清乾淨每個 context 的資料，這個形狀是否維持見待決策。判準是：**失敗的後果若是「當下這筆請求無法正確回應」，走同步注入；若只是「之後該發生的事沒發生」，才適合交由事件驅動**（同步與事件的完整判準見 [ADR-016 Platform Bounded Context 與 Context Map](./ADR-016-platform-bounded-contexts-and-context-map.md) 決策 2）。這與 aggregate 之間改用領域事件溝通（見 [ADR-018](./ADR-018-aggregates-and-domain-events.md)）是兩件事：搜尋投影與帳號清除不是 aggregate 對 aggregate 的溝通，而是讀取模型維護與合規上的全有全無要求，因此維持同步注入。
+適用場景是那些請求当下就必須完成、失敗了就代表「這次請求沒有被正確處理」的動作——例如搜尋索引要跟著匯入結果同交易更新；帳號刪除目前也是在單一交易內清乾淨每個 context 的資料，這個形狀是否維持由 [ADR-018](./ADR-018-aggregates-and-domain-events.md) 的待決策承接。判準是：**失敗的後果若是「當下這筆請求無法正確回應」，走同步注入；若只是「之後該發生的事沒發生」，才適合交由事件驅動**（同步與事件的完整判準見 [ADR-016 Platform Bounded Context 與 Context Map](./ADR-016-platform-bounded-contexts-and-context-map.md) 決策 2）。這與 aggregate 之間改用領域事件溝通（見 [ADR-018](./ADR-018-aggregates-and-domain-events.md)）是兩件事：搜尋投影與帳號清除不是 aggregate 對 aggregate 的溝通，而是讀取模型維護與合規上的全有全無要求，因此維持同步注入。
 
 配套規則：
 
@@ -92,5 +92,4 @@ Platform 的 Bounded Context 邊界（見 [ADR-016](./ADR-016-platform-bounded-c
 ## 待決策
 
 - 是否要拆分成每個 context 專屬的 sqlc 產出，或把資料庫連線池收進只暴露 sqlc 的介面之後以封死裸 SQL 的殘餘盲點——兩者成本相當，且都建議在跨 context 存量降到可控範圍後再評估。
-- 帳號刪除是否維持與其他 context 同交易的全有全無，還是改成各 context 各自消化事件的最終一致——這會改變對外行為（同交易失敗整批回滾，改事件後失敗的後果不同），仍待裁定。
 - 若日後搜尋索引因效能需求必須脫離目前的主資料庫，決策 5 的同步注入寫法將無法再與領域寫入同交易完成，屆時是否改為事件驅動需要與拆分服務的時機一併重新評估。
