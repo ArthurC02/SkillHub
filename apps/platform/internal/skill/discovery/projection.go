@@ -18,6 +18,7 @@ import (
 
 type PendingEnrichment struct {
 	SkillID          pgtype.UUID
+	VersionID        pgtype.UUID
 	WorkspaceID      pgtype.UUID
 	Name             string
 	PackageObjectKey string
@@ -39,6 +40,7 @@ func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]Pendin
 		}
 		result = append(result, PendingEnrichment{
 			SkillID:          row.SkillID,
+			VersionID:        row.VersionID,
 			WorkspaceID:      row.WorkspaceID,
 			Name:             row.Name,
 			PackageObjectKey: *row.PackageObjectKey,

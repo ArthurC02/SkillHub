@@ -471,7 +471,7 @@ func (q *Queries) ListHybridSearchDocuments(ctx context.Context, arg ListHybridS
 
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 WITH candidates AS (
-SELECT sd.skill_id, sd.latest_package_object_key AS package_object_key
+SELECT sd.skill_id, sd.latest_version_id AS version_id, sd.latest_package_object_key AS package_object_key
 FROM search_documents sd
 WHERE sd.enrichment_status = 'pending'
   AND sd.latest_package_object_key IS NOT NULL
@@ -483,7 +483,7 @@ LIMIT $2 FOR UPDATE OF sd SKIP LOCKED
     FROM candidates c WHERE sd.skill_id = c.skill_id
     RETURNING sd.skill_id, sd.workspace_id, sd.name
 )
-SELECT c.skill_id, c.workspace_id, c.name, candidates.package_object_key
+SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.package_object_key
 FROM claimed c JOIN candidates USING (skill_id)
 `
 
@@ -496,6 +496,7 @@ type ListPendingEnrichmentRow struct {
 	SkillID          pgtype.UUID
 	WorkspaceID      pgtype.UUID
 	Name             string
+	VersionID        pgtype.UUID
 	PackageObjectKey *string
 }
 
@@ -512,6 +513,7 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, arg ListPendingEnri
 			&i.SkillID,
 			&i.WorkspaceID,
 			&i.Name,
+			&i.VersionID,
 			&i.PackageObjectKey,
 		); err != nil {
 			return nil, err

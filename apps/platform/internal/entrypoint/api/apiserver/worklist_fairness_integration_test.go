@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
@@ -852,7 +853,7 @@ func TestReconciliationChecksASharedObjectOnlyOncePerBatch(t *testing.T) {
 	}
 }
 
-func TestEnrichmentLeavesASkillWithNoVersionUnclaimed(t *testing.T) {
+func TestEnrichmentClaimsTheExactVersionAndLeavesVersionlessSkillsUnclaimed(t *testing.T) {
 	pool := requireDB(t)
 	shelveExistingWorklists(t, pool)
 	a := newAPI(t, pool)
@@ -867,13 +868,16 @@ func TestEnrichmentLeavesASkillWithNoVersionUnclaimed(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	claimed, err := gen.New(pool).ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 10})
+	claimed, err := wiring.NewCatalogService(pool).PendingEnrichments(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var ids []string
 	for _, row := range claimed {
 		ids = append(ids, uuidText(row.SkillID))
+		if uuidText(row.SkillID) == versioned.skillID && uuidText(row.VersionID) != versioned.versionID {
+			t.Errorf("claimed version %s, want %s", uuidText(row.VersionID), versioned.versionID)
+		}
 	}
 	if !contains(ids, versioned.skillID) {
 		t.Fatalf("the pending skill with a version was not claimed: %v", ids)

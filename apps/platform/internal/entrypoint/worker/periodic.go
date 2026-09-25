@@ -137,7 +137,8 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 			out := make([]ingest.PendingEnrichment, len(rows))
 			for i, row := range rows {
 				out[i] = ingest.PendingEnrichment{
-					SkillID: row.SkillID, WorkspaceID: row.WorkspaceID,
+					VersionID: row.VersionID,
+					SkillID:   row.SkillID, WorkspaceID: row.WorkspaceID,
 					Name: row.Name, PackageObjectKey: row.PackageObjectKey,
 				}
 			}

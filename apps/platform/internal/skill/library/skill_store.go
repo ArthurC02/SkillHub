@@ -16,6 +16,31 @@ func LoadSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID)
 	return loadSkill(ctx, gen.New(tx), workspaceID, skillID)
 }
 
+func LockCurrentPackage(ctx context.Context, tx pgx.Tx, workspaceID, skillID, versionID pgtype.UUID, packageObjectKey string) (bool, error) {
+	if !versionID.Valid || packageObjectKey == "" {
+		return false, nil
+	}
+	q := gen.New(tx)
+	skill, err := q.LockSkill(ctx, gen.LockSkillParams{ID: skillID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if skill.TakedownAt.Valid {
+		return false, nil
+	}
+	version, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{SkillID: skillID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return version.ID == versionID && version.PackageObjectKey == packageObjectKey, nil
+}
+
 func LoadSkillNamed(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name string) (*SkillRoot, bool, error) {
 	q := gen.New(tx)
 	row, err := q.GetSkillByName(ctx, gen.GetSkillByNameParams{WorkspaceID: workspaceID, Name: name})

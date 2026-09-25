@@ -109,6 +109,7 @@ func pendingEnrichments(ctx context.Context, svc *catalog.Service, limit int32) 
 	result := make([]ingest.PendingEnrichment, len(rows))
 	for i, row := range rows {
 		result[i] = ingest.PendingEnrichment{
+			VersionID:        row.VersionID,
 			SkillID:          row.SkillID,
 			WorkspaceID:      row.WorkspaceID,
 			Name:             row.Name,

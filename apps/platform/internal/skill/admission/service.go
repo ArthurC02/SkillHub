@@ -92,6 +92,7 @@ type SkillProjection struct {
 
 type PendingEnrichment struct {
 	SkillID          pgtype.UUID
+	VersionID        pgtype.UUID
 	WorkspaceID      pgtype.UUID
 	Name             string
 	PackageObjectKey string
@@ -549,6 +550,15 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 		tx, err := s.Pool.Begin(ctx)
 		if err != nil {
 			return done, failed, err
+		}
+		current, err := registry.LockCurrentPackage(ctx, tx, row.WorkspaceID, row.SkillID, row.VersionID, row.PackageObjectKey)
+		if err != nil || !current {
+			_ = tx.Rollback(ctx)
+			if err != nil {
+				return done, failed, err
+			}
+			failed++
+			continue
 		}
 		if err := s.upsertProjection(ctx, tx, row.WorkspaceID, row.SkillID, row.Name, e); err != nil {
 			_ = tx.Rollback(ctx)
