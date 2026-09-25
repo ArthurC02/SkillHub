@@ -28,10 +28,9 @@ export interface PackagingPreviewExcludedTestCasesInner {
      */
     name: string;
     /**
-     * The machine code. Until 2026-09-04 this was the only field and
-     * the page printed it raw (「not_curated」); `label` and `note`
-     * are the served words, the same three-part shape as
-     * `excluded_files` one field down (04 丙-154 ①).
+     * The machine code. On its own a page prints it raw
+     * (「not_curated」); `label` and `note` are the served words, the
+     * same three-part shape as `excluded_files` one field down.
      * 
      */
     reason: PackagingPreviewExcludedTestCasesInnerReasonEnum;

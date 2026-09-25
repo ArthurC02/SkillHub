@@ -18,7 +18,7 @@ import { mapValues } from '../runtime';
  * submitted at POST /feedback (BETA-003/004/005). Their `message` is
  * the only free-text column anywhere, so the disclosure names it
  * separately from the four events above. Served since the endpoint
- * existed; declared 2026-09-04 (04 丙-154 ②) so a page can render it.
+ * existed, and declared here so a page can render it.
  * 
  * @export
  * @interface DataRetentionPolicyFeedback

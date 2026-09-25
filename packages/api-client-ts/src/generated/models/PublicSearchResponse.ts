@@ -63,10 +63,10 @@ export interface PublicSearchResponse {
      * §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡
      * 顯示 M 筆，因為 X」.
      * 
-     * Added 2026-08-25. The page could previously only say 「超過 N 個」,
-     * which is a lower bound: a reader cannot tell 21 from 2100 from it,
-     * and the rule asks for 共, which a lower bound cannot say. The reason
-     * half was already there; this is the count half.
+     * Without it a page can say only 「超過 N 個」, which is a lower bound:
+     * a reader cannot tell 21 from 2100 from it, and the rule asks for 共,
+     * which a lower bound cannot say. `truncated` gives the reason half;
+     * this is the count half.
      * 
      * Computed by `count(*) OVER ()` inside the retrieval statement itself,
      * not by a second COUNT query. A parallel count would have to restate

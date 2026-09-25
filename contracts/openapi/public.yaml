@@ -31,17 +31,15 @@ paths:
       summary: Deployment capability table — what this deployment can do right now
       description: |
         The question people ask `/healthz`. That one is a liveness probe and a
-        constant, which is correct and was never the defect; the defect was that
-        it was the only endpoint that looked like it answered this one (05 R-36
-        第二段, 04 丙-110/118).
+        constant, which is correct; what it must not be is the only endpoint
+        that looks like it answers this one (05 R-36 第二段).
 
         **`ready` is reachable only by measurement.** A capability whose
         variables are all present and which nothing probed reports `unmeasured`,
-        a distinct value — configuration is not function, and every green tick
-        the launcher used to print was really this state. On 2026-09-01 three
-        greens in a row (a launcher that tested only whether a variable was set,
-        this platform's `/healthz`, and apps/llm's own `/healthz`) sat over a
-        service that could perform none of its four jobs.
+        a distinct value — configuration is not function. A launcher that tests
+        only whether a variable is set, this platform's `/healthz` and apps/llm's
+        own `/healthz` can all report green over a service that can perform none
+        of its four jobs; that is the state this value names.
 
         Always `200`, whatever the table says: a readiness endpoint that answered
         503 because an OPTIONAL capability is off would make "packaging is not
@@ -224,8 +222,7 @@ paths:
         "409":
           description: |
             The grace period has already ended and the deletion is irreversible;
-            there is nothing left to request or to cancel. Declared 2026-09-04
-            (04 丙-154 ④) — the handler answered it before the contract said so.
+            there is nothing left to request or to cancel.
           content:
             application/json:
               schema:
@@ -262,7 +259,7 @@ paths:
         "409":
           description: |
             The deletion is already irreversible and cannot be withdrawn (same
-            state as the 409 on DELETE /me). Declared 2026-09-04 (04 丙-154 ④).
+            state as the 409 on DELETE /me).
           content:
             application/json:
               schema:
@@ -284,8 +281,8 @@ paths:
 
         This endpoint exists only because the enforcement point does. Showing an
         allowance the platform does not apply is the exact mistake PDM-005 made
-        once already (04 乙-2): a ceiling displayed on the preflight screen and
-        enforced nowhere, which NFR-001 forbids. Read that order as binding —
+        once already: a ceiling displayed on the preflight screen and enforced
+        nowhere, which NFR-001 forbids. Read that order as binding —
         the numbers here are a report on a rule, not the rule.
       responses:
         "200":
@@ -303,7 +300,7 @@ paths:
             This deployment enforces no allowance, so there is none to report. The
             route is not mounted at all in that build — the same answer the mux
             gives for a path nobody wrote — because an endpoint that served zeroes
-            or nulls would be a claim that a ceiling exists (04 乙-2). The pre-run
+            or nulls would be a claim that a ceiling exists. The pre-run
             permission summary omits its `quota` block in the same builds.
           content:
             application/json:
@@ -388,7 +385,7 @@ paths:
         about where the report came from. Nothing is captured beyond them — no
         screenshot, no console, no automatic context grab (beta-design §5): the
         message is the user's own words and everything else is a field they can
-        see. `build_id` (2026-09-04, 資訊架構 IA-11) is the identifier the page
+        see. `build_id` (資訊架構 IA-11) is the identifier the page
         prints in its own footer; it names the software, not the person, and
         it is what makes a report reproducible against a rolling deployment.
       requestBody:
@@ -521,10 +518,9 @@ paths:
             client that treats it as an unknown error backs off wrongly or not
             at all.
 
-            Documented here from 2026-08-25. The limiter has been on the route
-            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
-            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
-            every generated client had a branch missing for the only answer that
+            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
+            operation that does not declare it leaves
+            every generated client with a branch missing for the only answer that
             tells it when to come back (02:NFR-001 clause 5).
           headers:
             Retry-After:
@@ -688,10 +684,9 @@ paths:
             client that treats it as an unknown error backs off wrongly or not
             at all.
 
-            Documented here from 2026-08-25. The limiter has been on the route
-            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
-            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
-            every generated client had a branch missing for the only answer that
+            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
+            operation that does not declare it leaves
+            every generated client with a branch missing for the only answer that
             tells it when to come back (02:NFR-001 clause 5).
           headers:
             Retry-After:
@@ -810,10 +805,9 @@ paths:
             client that treats it as an unknown error backs off wrongly or not
             at all.
 
-            Documented here from 2026-08-25. The limiter has been on the route
-            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
-            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
-            every generated client had a branch missing for the only answer that
+            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
+            operation that does not declare it leaves
+            every generated client with a branch missing for the only answer that
             tells it when to come back (02:NFR-001 clause 5).
           headers:
             Retry-After:
@@ -957,10 +951,9 @@ paths:
             client that treats it as an unknown error backs off wrongly or not
             at all.
 
-            Documented here from 2026-08-25. The limiter has been on the route
-            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
-            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
-            every generated client had a branch missing for the only answer that
+            The limiter is on unless a deployment sets `RATE_LIMIT=off`. An
+            operation that does not declare it leaves
+            every generated client with a branch missing for the only answer that
             tells it when to come back (02:NFR-001 clause 5).
           headers:
             Retry-After:
@@ -975,8 +968,7 @@ paths:
             A missing `q`, an oversized query, or an unusable filter. `q` is
             `required: true` above, which implies the first - but this list
             enumerates the causes, and a cause missing from it is how a handler
-            and its contract drift apart (this one answered 200 to a request
-            with no `q` at all until 2026-08-24). Either a query over 2,000
+            and its contract drift apart. Either a query over 2,000
             characters, a `script`/`validation`/`agent`/`tier`/`category`
             value outside its enum, or the one 02:DISC-002 dimension this
             build has no per-row data for — `mcp`. (`agent` left
@@ -1033,9 +1025,8 @@ paths:
         The five live DISC-002 filters apply here for the reason they exist: they
         are the controls on the same screen, and a filter that only bites after a
         search would be a live control that narrows nothing (設計系統 §2.2).
-        They are script, validation, agent, tier and category — category joined
-        them on 2026-09-03 with migration 0053, and this sentence said "four"
-        until then. DISC-003 is the work item that built them; the acceptance
+        They are script, validation, agent, tier and category. DISC-003 is the
+        work item that built them; the acceptance
         criteria are DISC-002's.
       security: []
       parameters:
@@ -1141,7 +1132,7 @@ paths:
             comparison). Such a read records no `skill_detail_viewed`, because
             01 §11.2's first segment counts sessions in which somebody opened a
             skill, and Compare was minting that event for skills whose detail
-            page was never opened (04 丙-57 follow-up).
+            page was never opened.
       responses:
         "200":
           description: The skill as visible in the caller's widest scope.
@@ -1167,7 +1158,7 @@ paths:
           description: |
             The catalog or workspace lookup itself failed (a database error, not
             a missing skill). A client must not read it as 404: the skill may
-            well exist. Declared 2026-09-04 (04 丙-154 ⑤).
+            well exist.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1321,9 +1312,8 @@ paths:
                       How many skills the workspace holds, before `limit` cut the
                       page down. 設計系統 §4.3 asks a truncated list for 「共 N 筆，
                       這裡顯示 M 筆，因為 X」; `truncated` above gave the reason and
-                      this is the count, added 2026-08-25. The page could
-                      previously say only 「超過 100 個」, and a lower bound cannot
-                      distinguish 101 from 10100.
+                      this is the count. A lower bound such as 「超過 100 個」
+                      cannot distinguish 101 from 10100.
 
                       Exact: computed by `count(*) OVER ()` inside the listing
                       statement, so it is produced by the same predicate as the
@@ -1432,10 +1422,10 @@ paths:
       operationId: setSkillCategory
       summary: The owner says what their own skill is for (DISC-002 類別, 05 R-19)
       description: |
-        A user-imported skill has no category until somebody assigns one, and
-        until 2026-09-08 nobody could: the value was written by the curation
-        backfill and by nothing else, so `?category=` matched no imported skill
-        and the taxonomy existed only for the 45 seeded rows (migration 0053).
+        A user-imported skill has no category until somebody assigns one. Without
+        this route the value would be written by the curation backfill and by
+        nothing else, `?category=` would match no imported skill, and the
+        taxonomy would exist only for the seeded rows (migration 0053).
 
         The platform does not guess it. A model could be asked, and that was the
         recorded upgrade path, but a guessed shelf is exactly what DISC-004 and
@@ -2042,10 +2032,8 @@ paths:
 
         The workspace-scoped `POST /skills/{id}/takedown` has existed since
         INGEST-010: a curator withdraws content from the workspace they own.
-        What had no path at all until 2026-08-28 was the other case — an abuse
-        report or a DMCA notice about a fork sitting in somebody else's
-        workspace. `registry.go` carried a comment saying so, and saying exactly
-        how to fix it, since the method was written (`04` 丙-80).
+        This operation is the other case — an abuse report or a DMCA notice
+        about a fork sitting in somebody else's workspace.
 
         Not a second mechanism. It writes the same `takedown_at` the scoped
         route writes, so the same 410 Gone answers the detail view and the same
@@ -2064,7 +2052,7 @@ paths:
         the projection would come back carrying only name and summary and would
         silently lose the enrichment, the embedding and the scan. Today the
         answer is to clear the column and run `maintenance reindex`. Recorded
-        rather than half-built (`04` 丙-80).
+        rather than half-built.
 
         The column write, the search removal and the audit event share one
         transaction (iron rule 9): content that is down in the registry and
@@ -2134,11 +2122,10 @@ paths:
         Operator only. Sets the redistribution verdict on one skill and records
         who changed it and why.
 
-        This gate and the `restriction` above block the same download, and until
-        2026-08-23 this was the one of the two with no route, no operator check
-        and no audit event (`05` R-3c). It then spent a further two days with a
-        route and no contract, which is the same gap one layer up: an operator
-        tool generated from this file could set a hold and not release content.
+        This gate and the `restriction` above block the same download, so both
+        need a route, an operator check and an audit event (`05` R-3c). A route
+        without a contract entry is the same gap one layer up: an operator tool
+        generated from this file could set a hold and not release content.
 
         Idempotent, for the same reason as `restriction`: writing the value a
         skill already has is a second audit event and no change to the row.
@@ -2152,8 +2139,8 @@ paths:
         is about a *source*, so it has to reach the catalogue entry and every
         fork alike. Nothing here reads workspace-private data.
 
-        Operator-only is now a ruling rather than a holding position (2026-08-27,
-        `05` R-3a). The route was written narrow while the question was
+        Operator-only is a ruling rather than a holding position (`05` R-3a).
+        The route was written narrow while the question was
         open, on the grounds that widening later adds callers where narrowing
         later takes something away; the ruling kept it there, because that repo-root-license false positive
         was made by people who audit licences for a living.
@@ -3553,7 +3540,7 @@ paths:
             answered with a different view than the one asked for looks exactly
             like a correct answer.
 
-            Added 2026-08-25 -- the handler has always returned it.
+            The handler has always returned it.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -4574,8 +4561,7 @@ paths:
           description: |
             This deployment has no packaging targets configured, so there is
             nothing to list. The same three-cause 503 the preview and create
-            operations below declare; it was answered here all along and only
-            declared on 2026-09-04 (04 丙-154 ③).
+            operations below declare.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -4970,9 +4956,8 @@ paths:
             is back. Its two siblings on this store -- `previewPackaging` and
             `createDownloadArtifact` -- have documented this condition all
             along; the operation that actually serves the bytes did not, so a
-            client reading only this contract had 404 as its only not-served
-            answer and would tell the user their package was gone. Added
-            2026-08-25.
+            client reading only this contract would have 404 as its only
+            not-served answer and would tell the user their package was gone.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -5617,13 +5602,13 @@ components:
             history - and never reconstructed by replaying run_lifecycle events
             (iron rule 5).
 
-            **Two fields and not one pre-joined sentence, since 2026-09-01.**
-            This was `array of string`, each item built server-side as
+            **Two fields and not one pre-joined sentence.**
+            A single `array of string` whose items are built server-side as
             `"<status>: <reason>"`, which put a decision that belongs to the
             surface — how to write a status for a reader — in the one place that
             cannot make it: the client already owns that mapping and used it four
-            lines higher on the same screen, so `/runs/{id}` showed
-            「執行完成」and`succeeded:`at once (04 丙-115 ①).
+            lines higher on the same screen, so `/runs/{id}` would show
+            「執行完成」and`succeeded:`at once.
           items:
             type: object
             required: [status]
@@ -5964,7 +5949,7 @@ components:
         A row of the caller's own skill list. `Skill` plus the two facets that
         make the list decidable rather than merely enumerable: this is a page of
         code the caller owns and will run, and without them there was nothing on
-        it to decide by (設計系統 §1.1, 04 丙-31). Not folded into `Skill`,
+        it to decide by (設計系統 §1.1). Not folded into `Skill`,
         because the fork reply shares that schema and a fork one second old has
         neither.
 
@@ -6001,8 +5986,8 @@ components:
         scanned; serving a blank instead is what 設計系統 §2.9 forbids. So the
         state is named, and the timestamp appears only in the state that has one.
 
-        `Labelled` rather than a bare enum, which is the 04 丙-29 ruling applied
-        at birth instead of retrofitted: one field, one consumer, three values,
+        `Labelled` rather than a bare enum, applied at birth instead of
+        retrofitted: one field, one consumer, three values,
         and the alternative is a twenty-first enum→中文 map on the client for a
         state whose entire job is to be worded carefully.
 
@@ -6120,10 +6105,10 @@ components:
             §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡
             顯示 M 筆，因為 X」.
 
-            Added 2026-08-25. The page could previously only say 「超過 N 個」,
-            which is a lower bound: a reader cannot tell 21 from 2100 from it,
-            and the rule asks for 共, which a lower bound cannot say. The reason
-            half was already there; this is the count half.
+            Without it a page can say only 「超過 N 個」, which is a lower bound:
+            a reader cannot tell 21 from 2100 from it, and the rule asks for 共,
+            which a lower bound cannot say. `truncated` gives the reason half;
+            this is the count half.
 
             Computed by `count(*) OVER ()` inside the retrieval statement itself,
             not by a second COUNT query. A parallel count would have to restate
@@ -6370,8 +6355,8 @@ components:
     Disclosure:
       description: |
         One thing a package declares about itself, with the words to show for it
-        (04 丙-29 ④). It replaces the parallel `has_*` booleans that used to sit
-        on `SkillRisk` and `SearchResultRisk`.
+        It replaces the parallel `has_*` booleans that used to sit on
+        `SkillRisk` and `SearchResultRisk`.
 
         Booleans could not become `Labelled`: `Labelled` describes one enum
         value, and six independent flags are not one. The list form fixes what
@@ -6585,8 +6570,8 @@ components:
           items: { $ref: "#/components/schemas/Disclosure" }
           description: |
             The same list the search row carries, from the same catalogue —
-            including `dependency-file`, which this view used to be missing while
-            the row above it showed it (04 丙-29 ④).
+            including `dependency-file`: a view that omits a code the row above
+            it shows is the drift this shared list prevents.
 
             `embedded-script` stays its own code rather than folding into
             `script-file`: runnable code inside SKILL.md is SKILL-003's case and
@@ -6637,8 +6622,8 @@ components:
             skill is safe to run or effective (SKILL-002). `value` is `passed`,
             `failed` or `unverified`.
 
-            Labelled rather than a bare enum (04 丙-29 ③): two screens had
-            already worded this axis differently, and one of them wrote
+            Labelled rather than a bare enum: two screens can word this axis
+            differently, and one of them wrote
             `passed ? 通過 : 未驗證`, which reports **`failed` as 未驗證** — the
             one reading a client-side table makes easy and a served label makes
             impossible.
@@ -7391,7 +7376,7 @@ components:
             submitted at POST /feedback (BETA-003/004/005). Their `message` is
             the only free-text column anywhere, so the disclosure names it
             separately from the four events above. Served since the endpoint
-            existed; declared 2026-09-04 (04 丙-154 ②) so a page can render it.
+            existed, and declared here so a page can render it.
           required: [what, collected, free_text, kind, page_path, run_id, on_account_deletion, retention_days]
           properties:
             what: { type: string }
@@ -7456,7 +7441,7 @@ components:
 
             Absent when the deployment enforces no allowance. Absent rather than
             zeroed or filled with nulls: a number on this screen is a claim that
-            it is applied (04 乙-2), so a build with no enforcement shows nothing
+            it is applied, so a build with no enforcement shows nothing
             at all.
         blocked:
           type: string
@@ -7716,7 +7701,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            The second axis (04 丙-32). Required and never null: a run
+            The second axis. Required and never null: a run
             with no evaluation carries `not_evaluated` / 未評估, because an absent
             verdict beside a column of 「執行完成」 reads as a pass — which is the
             precise misreading the evaluation/status split exists to prevent. A list
@@ -7743,8 +7728,7 @@ components:
             language. Some are relayed verbatim from the provider that ran the
             workload (`state_reason` on the provider contract), and the platform
             does not rewrite another system's words — so a reader can meet an
-            English sentence here, and that is the mark of a relayed one
-            (04 丙-115 ①).
+            English sentence here, and that is the mark of a relayed one.
         skill_id: { type: string, format: uuid }
         skill_name:
           type: string
@@ -7782,10 +7766,9 @@ components:
 
             `Labelled` and not a bare enum, for the reason `cleanup_status`
             below records having learned: a client-side enum→中文 table fails by
-            rendering a value it has no word for, and it fails silently. This
-            was a bare enum until 2026-09-01, and every screen that showed it
-            interpolated the raw token into a Chinese sentence —「失敗類別
-            capability_mismatch」(04 丙-115 ②).
+            rendering a value it has no word for, and it fails silently. As a
+            bare enum, every screen that showed it interpolated the raw token
+            into a Chinese sentence —「失敗類別 capability_mismatch」.
         cleanup_status:
           $ref: "#/components/schemas/Labelled"
           description: |
@@ -7793,10 +7776,10 @@ components:
             (0004_test_lab_and_runs.sql): `pending`, `cleaning_up`, `cleaned`,
             `failed`. The handler puts that value on the wire unmapped.
 
-            Labelled rather than a bare enum (04 丙-29 ②) because of what went
-            wrong here: the contract said `cleaning` until 2026-08-22 while the
-            database said `cleaning_up`, so the one state this field exists to
-            report — the sandbox is being torn down right now — arrived as a
+            Labelled rather than a bare enum because of what a mismatch costs
+            here: a contract saying `cleaning` while the database says
+            `cleaning_up` makes the one state this field exists to
+            report — the sandbox is being torn down right now — arrive as a
             value no client had a word for and **rendered as a blank row**. A
             client-side enum→中文 table can only fail that way; a served label
             cannot. One field, one consumer, four values: the cheapest place to
@@ -7866,8 +7849,7 @@ components:
             language. Some are relayed verbatim from the provider that ran the
             workload (`state_reason` on the provider contract), and the platform
             does not rewrite another system's words — so a reader can meet an
-            English sentence here, and that is the mark of a relayed one
-            (04 丙-115 ①).
+            English sentence here, and that is the mark of a relayed one.
         skill_id:
           type: string
           format: uuid
@@ -7912,8 +7894,8 @@ components:
             The same field, the same values and the same words as
             `RunListItem.failure_class` — see there.
 
-            **Declared here on 2026-09-01, having been served long before.**
-            `GET /runs/{id}` returned it while this schema did not mention it, so
+            **Declared here, and it must stay declared.**
+            While `GET /runs/{id}` returned it and this schema did not mention it,
             every generated client was missing the one field that says why a run
             failed — and nothing could notice: the Go side is models-only with
             hand-written handlers, so a handler can
@@ -8153,8 +8135,8 @@ components:
               opened in the control plane (evaluation-design §2.2), so no quote
               of its **contents** was verified against anything.
 
-              `not_checked` and `not_found` were one value until 2026-08-22 and
-              are not the same claim. `not_found` says the platform searched and
+              `not_checked` and `not_found` are not the same claim, and must not
+              be folded into one value. `not_found` says the platform searched and
               the quote is nowhere, which is close to an accusation; this says
               the platform never looked. Filing the second under the first made
               the report sound certain about something it had not examined. It
@@ -8282,8 +8264,7 @@ components:
             and must be labelled as such wherever it is shown. `unreported` is
             what the server sends when the gateway reported nothing: it goes
             with a null `evaluation_usd`, and a page must not attach either of
-            the other two labels to it (the value was on the wire before it was
-            in this enum; 04 丙-147).
+            the other two labels to it.
         note: { type: string }
     EvaluationRevision:
       description: |
@@ -8860,10 +8841,9 @@ components:
               reason:
                 type: string
                 description: |
-                  The machine code. Until 2026-09-04 this was the only field and
-                  the page printed it raw (「not_curated」); `label` and `note`
-                  are the served words, the same three-part shape as
-                  `excluded_files` one field down (04 丙-154 ①).
+                  The machine code. On its own a page prints it raw
+                  (「not_curated」); `label` and `note` are the served words, the
+                  same three-part shape as `excluded_files` one field down.
                 enum: [user_uploaded_dataset, not_curated, user_opted_out, unsafe_dataset_file_name]
               label: { type: string }
               note: { type: string }
@@ -8961,7 +8941,7 @@ components:
             Which version these bytes are, in the monotonic per-skill numbering
             the immutability trigger protects. The uuid beside it identifies the
             row; this is the only field on this schema a person can read as an
-            answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+            answer to "which one is this" (`02:WS-002` 1「版本」).
         latest_version_number:
           type: integer
           description: |
@@ -9015,7 +8995,7 @@ components:
             Whether GET /downloads/{artifactId}/content would hand the bytes over
             **right now**: `status == available` AND the stored object has not
             been purged AND `expires_at` is still in the future
-            (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤)
+            (skill/delivery/download.go). Served rather than derived
             because one of its three inputs — the purge — is not on this schema
             at all, so no client can compute it and every client that tried was
             computing something else.
@@ -9035,7 +9015,7 @@ components:
             would have fought the word on the screen instead of settling it
             (設計系統 §2.2 顯示但不強制).
 
-            `lost` is separated from `expired` on purpose (04 丙-91). Both mean
+            `lost` is separated from `expired` on purpose. Both mean
             the bytes are gone and both are answered by packaging the same
             version again, but expiry is the retention promise being kept while
             loss is the platform dropping something inside that promise. Telling
@@ -9446,7 +9426,7 @@ components:
           description: "Consecutive blocked validations with the same report; at two the session waits for the person instead of a further model call."
         search_rounds:
           type: "integer"
-          description: "Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177)."
+          description: "Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference."
         catalog_checked:
           type: "boolean"
           description: "Go searched the catalogue with the first message before any model call (05 R-49). When it found something the session waits at confirm_references with the hits in `references`; the person confirms them as references, adopts one (adopt_reference) or declines them all (decline_references)."

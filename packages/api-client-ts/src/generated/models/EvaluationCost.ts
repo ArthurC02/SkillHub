@@ -42,8 +42,7 @@ export interface EvaluationCost {
      * and must be labelled as such wherever it is shown. `unreported` is
      * what the server sends when the gateway reported nothing: it goes
      * with a null `evaluation_usd`, and a page must not attach either of
-     * the other two labels to it (the value was on the wire before it was
-     * in this enum; 04 丙-147).
+     * the other two labels to it.
      * 
      */
     source: EvaluationCostSourceEnum;

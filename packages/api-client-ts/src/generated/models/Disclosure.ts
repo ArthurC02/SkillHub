@@ -15,8 +15,8 @@
 import { mapValues } from '../runtime';
 /**
  * One thing a package declares about itself, with the words to show for it
- * (04 丙-29 ④). It replaces the parallel `has_*` booleans that used to sit
- * on `SkillRisk` and `SearchResultRisk`.
+ * It replaces the parallel `has_*` booleans that used to sit on
+ * `SkillRisk` and `SearchResultRisk`.
  * 
  * Booleans could not become `Labelled`: `Labelled` describes one enum
  * value, and six independent flags are not one. The list form fixes what

@@ -62,8 +62,8 @@ export interface EvidenceRef {
      *   opened in the control plane (evaluation-design §2.2), so no quote
      *   of its **contents** was verified against anything.
      * 
-     *   `not_checked` and `not_found` were one value until 2026-08-22 and
-     *   are not the same claim. `not_found` says the platform searched and
+     *   `not_checked` and `not_found` are not the same claim, and must not
+     *   be folded into one value. `not_found` says the platform searched and
      *   the quote is nowhere, which is close to an accusation; this says
      *   the platform never looked. Filing the second under the first made
      *   the report sound certain about something it had not examined. It

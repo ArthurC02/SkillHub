@@ -68,8 +68,8 @@ export interface SkillRisk {
     infoCounts: { [key: string]: number; };
     /**
      * The same list the search row carries, from the same catalogue —
-     * including `dependency-file`, which this view used to be missing while
-     * the row above it showed it (04 丙-29 ④).
+     * including `dependency-file`: a view that omits a code the row above
+     * it shows is the drift this shared list prevents.
      * 
      * `embedded-script` stays its own code rather than folding into
      * `script-file`: runnable code inside SKILL.md is SKILL-003's case and

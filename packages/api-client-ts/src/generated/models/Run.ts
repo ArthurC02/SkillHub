@@ -71,8 +71,7 @@ export interface Run {
      * language. Some are relayed verbatim from the provider that ran the
      * workload (`state_reason` on the provider contract), and the platform
      * does not rewrite another system's words — so a reader can meet an
-     * English sentence here, and that is the mark of a relayed one
-     * (04 丙-115 ①).
+     * English sentence here, and that is the mark of a relayed one.
      * 
      */
     statusReason?: string;
@@ -122,8 +121,8 @@ export interface Run {
      * The same field, the same values and the same words as
      * `RunListItem.failure_class` — see there.
      * 
-     * **Declared here on 2026-09-01, having been served long before.**
-     * `GET /runs/{id}` returned it while this schema did not mention it, so
+     * **Declared here, and it must stay declared.**
+     * While `GET /runs/{id}` returned it and this schema did not mention it,
      * every generated client was missing the one field that says why a run
      * failed — and nothing could notice: the Go side is models-only with
      * hand-written handlers, so a handler can

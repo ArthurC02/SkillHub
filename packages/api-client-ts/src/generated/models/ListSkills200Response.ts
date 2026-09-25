@@ -51,9 +51,8 @@ export interface ListSkills200Response {
      * How many skills the workspace holds, before `limit` cut the
      * page down. 設計系統 §4.3 asks a truncated list for 「共 N 筆，
      * 這裡顯示 M 筆，因為 X」; `truncated` above gave the reason and
-     * this is the count, added 2026-08-25. The page could
-     * previously say only 「超過 100 個」, and a lower bound cannot
-     * distinguish 101 from 10100.
+     * this is the count. A lower bound such as 「超過 100 個」
+     * cannot distinguish 101 from 10100.
      * 
      * Exact: computed by `count(*) OVER ()` inside the listing
      * statement, so it is produced by the same predicate as the

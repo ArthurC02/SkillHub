@@ -46,8 +46,8 @@ export interface SkillCompatibility {
      * skill is safe to run or effective (SKILL-002). `value` is `passed`,
      * `failed` or `unverified`.
      * 
-     * Labelled rather than a bare enum (04 丙-29 ③): two screens had
-     * already worded this axis differently, and one of them wrote
+     * Labelled rather than a bare enum: two screens can word this axis
+     * differently, and one of them wrote
      * `passed ? 通過 : 未驗證`, which reports **`failed` as 未驗證** — the
      * one reading a client-side table makes easy and a served label makes
      * impossible.

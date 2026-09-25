@@ -80,7 +80,7 @@ export interface RunPermissionSummary {
      * 
      * Absent when the deployment enforces no allowance. Absent rather than
      * zeroed or filled with nulls: a number on this screen is a claim that
-     * it is applied (04 乙-2), so a build with no enforcement shows nothing
+     * it is applied, so a build with no enforcement shows nothing
      * at all.
      * 
      */

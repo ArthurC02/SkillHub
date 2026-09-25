@@ -711,7 +711,7 @@ type CancelRunAccepted struct {
 	// are served in the interface language. Some are relayed verbatim from the provider that ran the
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
-	// one (04 丙-115 ①).
+	// one.
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -739,10 +739,10 @@ type CancelRunAccepted struct {
 	Provider string `json:"provider"`
 	// The same field, the same values and the same words as `RunListItem.failure_class` — see there.
 	//
-	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
-	// schema did not mention it, so every generated client was missing the one field that says why a run
-	// failed — and nothing could notice: the Go side is models-only with hand-written handlers, so a
-	// handler can serve what the contract never declared.
+	// Declared here, and it must stay declared. While `GET /runs/{id}` returned it and this schema did not
+	// mention it, every generated client was missing the one field that says why a run failed — and
+	// nothing could notice: the Go side is models-only with hand-written handlers, so a handler can serve
+	// what the contract never declared.
 	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
@@ -1666,7 +1666,7 @@ type CreateDownloadArtifactCreated struct {
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
 	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
-	// read as an answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+	// read as an answer to "which one is this" (`02:WS-002` 1「版本」).
 	VersionNumber int `json:"version_number"`
 	// The highest version number this skill currently has. Present so the client never has to fetch a
 	// second resource to find out whether it is showing a stale package, and equal to `version_number`
@@ -1701,9 +1701,9 @@ type CreateDownloadArtifactCreated struct {
 	Status CreateDownloadArtifactCreatedStatus `json:"status"`
 	// Whether GET /downloads/{artifactId}/content would hand the bytes over right now:
 	// `status == available` AND the stored object has not been purged AND `expires_at` is still in the
-	// future (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤) because one of its
-	// three inputs — the purge — is not on this schema at all, so no client can compute it and every
-	// client that tried was computing something else.
+	// future (skill/delivery/download.go). Served rather than derived because one of its three inputs —
+	// the purge — is not on this schema at all, so no client can compute it and every client that tried
+	// was computing something else.
 	//
 	// The three parts stay visible beside it: `status` says which check, `expires_at` says when, and this
 	// says the answer. Folding them into one flag would lose why (`quarantined` is not over, `rejected`
@@ -1716,12 +1716,12 @@ type CreateDownloadArtifactCreated struct {
 	// `status` at all, which is why a label on `status` alone would have fought the word on the screen
 	// instead of settling it (設計系統 §2.2 顯示但不強制).
 	//
-	// `lost` is separated from `expired` on purpose (04 丙-91). Both mean the bytes are gone and both are
-	// answered by packaging the same version again, but expiry is the retention promise being kept while
-	// loss is the platform dropping something inside that promise. Telling an owner their file expired
-	// when it was lost is a true sentence about the wrong cause, and it removes the one reason they had to
-	// report it. The server decides which; a client must not re-derive it, and must not print retention
-	// copy beside `lost`.
+	// `lost` is separated from `expired` on purpose. Both mean the bytes are gone and both are answered by
+	// packaging the same version again, but expiry is the retention promise being kept while loss is the
+	// platform dropping something inside that promise. Telling an owner their file expired when it was
+	// lost is a true sentence about the wrong cause, and it removes the one reason they had to report it.
+	// The server decides which; a client must not re-derive it, and must not print retention copy beside
+	// `lost`.
 	ServeState Labelled `json:"serve_state"`
 	// When the object is deleted. The retention period is deployment configuration; PDM-006 proposes 90
 	// days for download packages and that proposal is not ratified yet, so no number is fixed here.
@@ -3748,7 +3748,7 @@ type CreationSnapshot struct {
 	// instead of a further model call.
 	BlockedRepeats OptInt `json:"blocked_repeats"`
 	// Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts
-	// without a reference (04 丙-177).
+	// without a reference.
 	SearchRounds OptInt `json:"search_rounds"`
 	// Go searched the catalogue with the first message before any model call (05 R-49). When it found
 	// something the session waits at confirm_references with the hits in `references`; the person confirms
@@ -4807,8 +4807,8 @@ type DataRetentionPolicy struct {
 	Note   string                          `json:"note"`
 	// The one other collected class this deployment holds: reports submitted at POST /feedback
 	// (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-	// it separately from the four events above. Served since the endpoint existed; declared 2026-09-04 (04
-	// 丙-154 ②) so a page can render it.
+	// it separately from the four events above. Served since the endpoint existed, and declared here so a
+	// page can render it.
 	Feedback DataRetentionPolicyFeedback `json:"feedback"`
 }
 
@@ -4969,8 +4969,8 @@ func (s *DataRetentionPolicyEventsItemName) UnmarshalText(data []byte) error {
 
 // The one other collected class this deployment holds: reports submitted at POST /feedback
 // (BETA-003/004/005). Their `message` is the only free-text column anywhere, so the disclosure names
-// it separately from the four events above. Served since the endpoint existed; declared 2026-09-04 (04
-// 丙-154 ②) so a page can render it.
+// it separately from the four events above. Served since the endpoint existed, and declared here so a
+// page can render it.
 type DataRetentionPolicyFeedback struct {
 	What string `json:"what"`
 	// The columns a report writes, one entry each.
@@ -5865,8 +5865,8 @@ type DiffSkillVersionsUnauthorized Error
 
 func (*DiffSkillVersionsUnauthorized) diffSkillVersionsRes() {}
 
-// One thing a package declares about itself, with the words to show for it (04 丙-29 ④). It
-// replaces the parallel `has_*` booleans that used to sit on `SkillRisk` and `SearchResultRisk`.
+// One thing a package declares about itself, with the words to show for it It replaces the parallel
+// `has_*` booleans that used to sit on `SkillRisk` and `SearchResultRisk`.
 //
 // Booleans could not become `Labelled`: `Labelled` describes one enum value, and six independent flags
 // are not one. The list form fixes what the booleans made easy to get wrong — the two payloads
@@ -5935,7 +5935,7 @@ type DownloadArtifact struct {
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
 	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
-	// read as an answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+	// read as an answer to "which one is this" (`02:WS-002` 1「版本」).
 	VersionNumber int `json:"version_number"`
 	// The highest version number this skill currently has. Present so the client never has to fetch a
 	// second resource to find out whether it is showing a stale package, and equal to `version_number`
@@ -5970,9 +5970,9 @@ type DownloadArtifact struct {
 	Status DownloadArtifactStatus `json:"status"`
 	// Whether GET /downloads/{artifactId}/content would hand the bytes over right now:
 	// `status == available` AND the stored object has not been purged AND `expires_at` is still in the
-	// future (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤) because one of its
-	// three inputs — the purge — is not on this schema at all, so no client can compute it and every
-	// client that tried was computing something else.
+	// future (skill/delivery/download.go). Served rather than derived because one of its three inputs —
+	// the purge — is not on this schema at all, so no client can compute it and every client that tried
+	// was computing something else.
 	//
 	// The three parts stay visible beside it: `status` says which check, `expires_at` says when, and this
 	// says the answer. Folding them into one flag would lose why (`quarantined` is not over, `rejected`
@@ -5985,12 +5985,12 @@ type DownloadArtifact struct {
 	// `status` at all, which is why a label on `status` alone would have fought the word on the screen
 	// instead of settling it (設計系統 §2.2 顯示但不強制).
 	//
-	// `lost` is separated from `expired` on purpose (04 丙-91). Both mean the bytes are gone and both are
-	// answered by packaging the same version again, but expiry is the retention promise being kept while
-	// loss is the platform dropping something inside that promise. Telling an owner their file expired
-	// when it was lost is a true sentence about the wrong cause, and it removes the one reason they had to
-	// report it. The server decides which; a client must not re-derive it, and must not print retention
-	// copy beside `lost`.
+	// `lost` is separated from `expired` on purpose. Both mean the bytes are gone and both are answered by
+	// packaging the same version again, but expiry is the retention promise being kept while loss is the
+	// platform dropping something inside that promise. Telling an owner their file expired when it was
+	// lost is a true sentence about the wrong cause, and it removes the one reason they had to report it.
+	// The server decides which; a client must not re-derive it, and must not print retention copy beside
+	// `lost`.
 	ServeState Labelled `json:"serve_state"`
 	// When the object is deleted. The retention period is deployment configuration; PDM-006 proposes 90
 	// days for download packages and that proposal is not ratified yet, so no number is fixed here.
@@ -6617,8 +6617,7 @@ type EvaluationCost struct {
 	// `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure.
 	// `estimated` is a computed one and must be labelled as such wherever it is shown. `unreported` is
 	// what the server sends when the gateway reported nothing: it goes with a null `evaluation_usd`, and a
-	// page must not attach either of the other two labels to it (the value was on the wire before it was
-	// in this enum; 04 丙-147).
+	// page must not attach either of the other two labels to it.
 	Source EvaluationCostSource `json:"source"`
 	Note   string               `json:"note"`
 }
@@ -6656,8 +6655,7 @@ func (s *EvaluationCost) SetNote(val string) {
 // `gateway` is the LiteLLM per-key spend for this evaluation, which is the authoritative figure.
 // `estimated` is a computed one and must be labelled as such wherever it is shown. `unreported` is
 // what the server sends when the gateway reported nothing: it goes with a null `evaluation_usd`, and a
-// page must not attach either of the other two labels to it (the value was on the wire before it was
-// in this enum; 04 丙-147).
+// page must not attach either of the other two labels to it.
 type EvaluationCostSource string
 
 const (
@@ -7007,7 +7005,7 @@ type EvidenceRef struct {
 	//    is on the run's manifest, so the file exists and is that size and that hash, but the archive is
 	//    never opened in the control plane (evaluation-design §2.2), so no quote of its contents was
 	//    verified against anything.
-	//    `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
+	//    `not_checked` and `not_found` are not the same claim, and must not be folded into one value.
 	//    `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
 	//    this says the platform never looked. Filing the second under the first made the report sound
 	//    certain about something it had not examined. It is the independent field that telling misfiled
@@ -7268,7 +7266,7 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 //     is on the run's manifest, so the file exists and is that size and that hash, but the archive is
 //     never opened in the control plane (evaluation-design §2.2), so no quote of its contents was
 //     verified against anything.
-//     `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
+//     `not_checked` and `not_found` are not the same claim, and must not be folded into one value.
 //     `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
 //     this says the platform never looked. Filing the second under the first made the report sound
 //     certain about something it had not examined. It is the independent field that telling misfiled
@@ -10233,8 +10231,8 @@ type ListSkillsOK struct {
 	Truncated bool `json:"truncated"`
 	// How many skills the workspace holds, before `limit` cut the page down. 設計系統 §4.3 asks a
 	// truncated list for 「共 N 筆， 這裡顯示 M 筆，因為 X」; `truncated` above gave the
-	// reason and this is the count, added 2026-08-25. The page could previously say only 「超過 100
-	// 個」, and a lower bound cannot distinguish 101 from 10100.
+	// reason and this is the count. A lower bound such as 「超過 100 個」 cannot distinguish 101 from
+	// 10100.
 	//
 	// Exact: computed by `count(*) OVER ()` inside the listing statement, so it is produced by the same
 	// predicate as the rows and equals `skills.length` whenever `truncated` is false. A second COUNT query
@@ -14725,9 +14723,8 @@ func (s *PackagingPreviewExcludedFilesItemReason) UnmarshalText(data []byte) err
 type PackagingPreviewExcludedTestCasesItem struct {
 	TestCaseID uuid.UUID `json:"test_case_id"`
 	Name       string    `json:"name"`
-	// The machine code. Until 2026-09-04 this was the only field and the page printed it raw
-	// (「not_curated」); `label` and `note` are the served words, the same three-part shape as
-	// `excluded_files` one field down (04 丙-154 ①).
+	// The machine code. On its own a page prints it raw (「not_curated」); `label` and `note` are the
+	// served words, the same three-part shape as `excluded_files` one field down.
 	Reason PackagingPreviewExcludedTestCasesItemReason `json:"reason"`
 	Label  string                                      `json:"label"`
 	Note   string                                      `json:"note"`
@@ -14783,9 +14780,8 @@ func (s *PackagingPreviewExcludedTestCasesItem) SetNote(val string) {
 	s.Note = val
 }
 
-// The machine code. Until 2026-09-04 this was the only field and the page printed it raw
-// (「not_curated」); `label` and `note` are the served words, the same three-part shape as
-// `excluded_files` one field down (04 丙-154 ①).
+// The machine code. On its own a page prints it raw (「not_curated」); `label` and `note` are the
+// served words, the same three-part shape as `excluded_files` one field down.
 type PackagingPreviewExcludedTestCasesItemReason string
 
 const (
@@ -15273,9 +15269,9 @@ type PublicSearchResponse struct {
 	// 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡 顯示
 	// M 筆，因為 X」.
 	//
-	// Added 2026-08-25. The page could previously only say 「超過 N 個」, which is a lower bound: a
-	// reader cannot tell 21 from 2100 from it, and the rule asks for 共, which a lower bound cannot say.
-	// The reason half was already there; this is the count half.
+	// Without it a page can say only 「超過 N 個」, which is a lower bound: a reader cannot tell 21
+	// from 2100 from it, and the rule asks for 共, which a lower bound cannot say. `truncated` gives the
+	// reason half; this is the count half.
 	//
 	// Computed by `count(*) OVER ()` inside the retrieval statement itself, not by a second COUNT query. A
 	// parallel count would have to restate every predicate, and the first time the two restatements
@@ -16160,7 +16156,7 @@ type Run struct {
 	// are served in the interface language. Some are relayed verbatim from the provider that ran the
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
-	// one (04 丙-115 ①).
+	// one.
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -16188,10 +16184,10 @@ type Run struct {
 	Provider string `json:"provider"`
 	// The same field, the same values and the same words as `RunListItem.failure_class` — see there.
 	//
-	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
-	// schema did not mention it, so every generated client was missing the one field that says why a run
-	// failed — and nothing could notice: the Go side is models-only with hand-written handlers, so a
-	// handler can serve what the contract never declared.
+	// Declared here, and it must stay declared. While `GET /runs/{id}` returned it and this schema did not
+	// mention it, every generated client was missing the one field that says why a run failed — and
+	// nothing could notice: the Go side is models-only with hand-written handlers, so a handler can serve
+	// what the contract never declared.
 	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
@@ -17343,10 +17339,10 @@ func (s *RunCostEstimate) SetBasis(val string) {
 // Ref: #/components/schemas/RunListItem
 type RunListItem struct {
 	RunID uuid.UUID `json:"run_id"`
-	// The second axis (04 丙-32). Required and never null: a run with no evaluation carries
-	// `not_evaluated` / 未評估, because an absent verdict beside a column of 「執行完成」 reads
-	// as a pass — which is the precise misreading the evaluation/status split exists to prevent. A list
-	// rendering these must put the verdict ahead of `status`.
+	// The second axis. Required and never null: a run with no evaluation carries `not_evaluated` /
+	// 未評估, because an absent verdict beside a column of 「執行完成」 reads as a pass — which
+	// is the precise misreading the evaluation/status split exists to prevent. A list rendering these must
+	// put the verdict ahead of `status`.
 	//
 	// `value` folds the evaluation's own status into the verdict, and only the evaluation context may do
 	// that: an evaluation is created carrying `undetermined` and keeps it until the judge finishes, so
@@ -17361,7 +17357,7 @@ type RunListItem struct {
 	// are served in the interface language. Some are relayed verbatim from the provider that ran the
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
-	// one (04 丙-115 ①).
+	// one.
 	StatusReason OptString `json:"status_reason"`
 	SkillID      uuid.UUID `json:"skill_id"`
 	// Joined into the row rather than resolved per item by the client: a history page is the one place
@@ -17385,18 +17381,17 @@ type RunListItem struct {
 	//
 	// `Labelled` and not a bare enum, for the reason `cleanup_status` below records having learned: a
 	// client-side enum→中文 table fails by rendering a value it has no word for, and it fails
-	// silently. This was a bare enum until 2026-09-01, and every screen that showed it interpolated the
-	// raw token into a Chinese sentence —「失敗類別 capability_mismatch」(04 丙-115 ②).
+	// silently. As a bare enum, every screen that showed it interpolated the raw token into a Chinese
+	// sentence —「失敗類別 capability_mismatch」.
 	FailureClass OptLabelled `json:"failure_class"`
 	// `value` is the database type run_cleanup_status (0004_test_lab_and_runs.sql): `pending`,
 	// `cleaning_up`, `cleaned`, `failed`. The handler puts that value on the wire unmapped.
 	//
-	// Labelled rather than a bare enum (04 丙-29 ②) because of what went wrong here: the contract said
-	// `cleaning` until 2026-08-22 while the database said `cleaning_up`, so the one state this field
-	// exists to report — the sandbox is being torn down right now — arrived as a value no client had a
-	// word for and rendered as a blank row. A client-side enum→中文 table can only fail that way; a
-	// served label cannot. One field, one consumer, four values: the cheapest place to stop the whole
-	// failure mode.
+	// Labelled rather than a bare enum because of what a mismatch costs here: a contract saying `cleaning`
+	// while the database says `cleaning_up` makes the one state this field exists to report — the
+	// sandbox is being torn down right now — arrive as a value no client had a word for and rendered as
+	// a blank row. A client-side enum→中文 table can only fail that way; a served label cannot. One
+	// field, one consumer, four values: the cheapest place to stop the whole failure mode.
 	CleanupStatus Labelled    `json:"cleanup_status"`
 	CreatedAt     time.Time   `json:"created_at"`
 	StartedAt     OptDateTime `json:"started_at"`
@@ -17656,8 +17651,8 @@ type RunPermissionSummary struct {
 	// finishing elsewhere in the workspace must not invalidate a confirmation the user is holding.
 	//
 	// Absent when the deployment enforces no allowance. Absent rather than zeroed or filled with nulls: a
-	// number on this screen is a claim that it is applied (04 乙-2), so a build with no enforcement shows
-	// nothing at all.
+	// number on this screen is a claim that it is applied, so a build with no enforcement shows nothing at
+	// all.
 	Quota OptRunQuota `json:"quota"`
 	// Why this pair cannot start a run at all, absent when it can. A code rather than a sentence: the
 	// wording belongs to the interface, and an English message from the server would be the only English
@@ -20323,9 +20318,9 @@ type SkillCompatibility struct {
 	// Format and static validation only. Passing is never a claim that the skill is safe to run or
 	// effective (SKILL-002). `value` is `passed`, `failed` or `unverified`.
 	//
-	// Labelled rather than a bare enum (04 丙-29 ③): two screens had already worded this axis
-	// differently, and one of them wrote `passed ? 通過 : 未驗證`, which reports `failed` as
-	// 未驗證 — the one reading a client-side table makes easy and a served label makes impossible.
+	// Labelled rather than a bare enum: two screens can word this axis differently, and one of them wrote
+	// `passed ? 通過 : 未驗證`, which reports `failed` as 未驗證 — the one reading a client-side
+	// table makes easy and a served label makes impossible.
 	SpecValidation Labelled `json:"spec_validation"`
 	// Does the agent actually pick this skill up when it is mounted, read from the run trace. `value` is
 	// `activated`, `not_activated` or `unverified`.
@@ -21596,8 +21591,8 @@ type SkillRisk struct {
 	// Info-level disclosures folded to a count per finding code. One seed package produced 321 URL
 	// findings; a list nobody reads hides the findings that matter.
 	InfoCounts SkillRiskInfoCounts `json:"info_counts"`
-	// The same list the search row carries, from the same catalogue — including `dependency-file`, which
-	// this view used to be missing while the row above it showed it (04 丙-29 ④).
+	// The same list the search row carries, from the same catalogue — including `dependency-file`: a
+	// view that omits a code the row above it shows is the drift this shared list prevents.
 	//
 	// `embedded-script` stays its own code rather than folding into `script-file`: runnable code inside
 	// SKILL.md is SKILL-003's case and no file list can show it.
@@ -23352,11 +23347,11 @@ type TraceSummary struct {
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
 	//
-	// Two fields and not one pre-joined sentence, since 2026-09-01. This was `array of string`, each item
-	// built server-side as `"<status>: <reason>"`, which put a decision that belongs to the surface —
-	// how to write a status for a reader — in the one place that cannot make it: the client already owns
-	// that mapping and used it four lines higher on the same screen, so `/runs/{id}` showed
-	// 「執行完成」and`succeeded:`at once (04 丙-115 ①).
+	// Two fields and not one pre-joined sentence. A single `array of string` whose items are built
+	// server-side as `"<status>: <reason>"`, which put a decision that belongs to the surface — how to
+	// write a status for a reader — in the one place that cannot make it: the client already owns that
+	// mapping and used it four lines higher on the same screen, so `/runs/{id}` would show
+	// 「執行完成」and`succeeded:`at once.
 	Steps []TraceSummaryStepsItem `json:"steps"`
 }
 

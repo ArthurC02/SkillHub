@@ -135,13 +135,13 @@ export interface TraceSummary {
      * history - and never reconstructed by replaying run_lifecycle events
      * (iron rule 5).
      * 
-     * **Two fields and not one pre-joined sentence, since 2026-09-01.**
-     * This was `array of string`, each item built server-side as
+     * **Two fields and not one pre-joined sentence.**
+     * A single `array of string` whose items are built server-side as
      * `"<status>: <reason>"`, which put a decision that belongs to the
      * surface — how to write a status for a reader — in the one place that
      * cannot make it: the client already owns that mapping and used it four
-     * lines higher on the same screen, so `/runs/{id}` showed
-     * 「執行完成」and`succeeded:`at once (04 丙-115 ①).
+     * lines higher on the same screen, so `/runs/{id}` would show
+     * 「執行完成」and`succeeded:`at once.
      * 
      */
     steps: Array<TraceSummaryStepsInner>;

@@ -25,8 +25,8 @@ import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime }
  * scanned; serving a blank instead is what 設計系統 §2.9 forbids. So the
  * state is named, and the timestamp appears only in the state that has one.
  * 
- * `Labelled` rather than a bare enum, which is the 04 丙-29 ruling applied
- * at birth instead of retrofitted: one field, one consumer, three values,
+ * `Labelled` rather than a bare enum, applied at birth instead of
+ * retrofitted: one field, one consumer, three values,
  * and the alternative is a twenty-first enum→中文 map on the client for a
  * state whose entire job is to be worded carefully.
  * 

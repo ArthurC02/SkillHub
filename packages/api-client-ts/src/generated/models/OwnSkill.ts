@@ -32,7 +32,7 @@ import {
  * A row of the caller's own skill list. `Skill` plus the two facets that
  * make the list decidable rather than merely enumerable: this is a page of
  * code the caller owns and will run, and without them there was nothing on
- * it to decide by (設計系統 §1.1, 04 丙-31). Not folded into `Skill`,
+ * it to decide by (設計系統 §1.1). Not folded into `Skill`,
  * because the fork reply shares that schema and a fork one second old has
  * neither.
  * 

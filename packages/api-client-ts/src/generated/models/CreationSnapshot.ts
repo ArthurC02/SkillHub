@@ -185,7 +185,7 @@ export interface CreationSnapshot {
      */
     blockedRepeats?: number;
     /**
-     * Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference (04 丙-177).
+     * Catalogue searches that found nothing; at two the search tools are withdrawn and the model drafts without a reference.
      */
     searchRounds?: number;
     /**

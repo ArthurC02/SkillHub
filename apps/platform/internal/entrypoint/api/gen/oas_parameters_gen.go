@@ -212,7 +212,7 @@ type GetSkillDetailParams struct {
 	// `embedded` marks a read that is NOT a detail-page view: a surface that needs the same data for its
 	// own purpose (packaging, side-by-side comparison). Such a read records no `skill_detail_viewed`,
 	// because 01 §11.2's first segment counts sessions in which somebody opened a skill, and Compare was
-	// minting that event for skills whose detail page was never opened (04 丙-57 follow-up).
+	// minting that event for skills whose detail page was never opened.
 	View OptGetSkillDetailView `json:",omitempty,omitzero"`
 }
 

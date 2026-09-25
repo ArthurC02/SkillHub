@@ -40,7 +40,7 @@ export interface RunListItem {
      */
     runId: string;
     /**
-     * The second axis (04 丙-32). Required and never null: a run
+     * The second axis. Required and never null: a run
      * with no evaluation carries `not_evaluated` / 未評估, because an absent
      * verdict beside a column of 「執行完成」 reads as a pass — which is the
      * precise misreading the evaluation/status split exists to prevent. A list
@@ -68,8 +68,7 @@ export interface RunListItem {
      * language. Some are relayed verbatim from the provider that ran the
      * workload (`state_reason` on the provider contract), and the platform
      * does not rewrite another system's words — so a reader can meet an
-     * English sentence here, and that is the mark of a relayed one
-     * (04 丙-115 ①).
+     * English sentence here, and that is the mark of a relayed one.
      * 
      */
     statusReason?: string;
@@ -118,10 +117,9 @@ export interface RunListItem {
      * 
      * `Labelled` and not a bare enum, for the reason `cleanup_status`
      * below records having learned: a client-side enum→中文 table fails by
-     * rendering a value it has no word for, and it fails silently. This
-     * was a bare enum until 2026-09-01, and every screen that showed it
-     * interpolated the raw token into a Chinese sentence —「失敗類別
-     * capability_mismatch」(04 丙-115 ②).
+     * rendering a value it has no word for, and it fails silently. As a
+     * bare enum, every screen that showed it interpolated the raw token
+     * into a Chinese sentence —「失敗類別 capability_mismatch」.
      * 
      */
     failureClass?: Labelled;
@@ -130,10 +128,10 @@ export interface RunListItem {
      * (0004_test_lab_and_runs.sql): `pending`, `cleaning_up`, `cleaned`,
      * `failed`. The handler puts that value on the wire unmapped.
      * 
-     * Labelled rather than a bare enum (04 丙-29 ②) because of what went
-     * wrong here: the contract said `cleaning` until 2026-08-22 while the
-     * database said `cleaning_up`, so the one state this field exists to
-     * report — the sandbox is being torn down right now — arrived as a
+     * Labelled rather than a bare enum because of what a mismatch costs
+     * here: a contract saying `cleaning` while the database says
+     * `cleaning_up` makes the one state this field exists to
+     * report — the sandbox is being torn down right now — arrive as a
      * value no client had a word for and **rendered as a blank row**. A
      * client-side enum→中文 table can only fail that way; a served label
      * cannot. One field, one consumer, four values: the cheapest place to

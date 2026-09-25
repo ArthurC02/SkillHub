@@ -60,7 +60,7 @@ export interface DownloadArtifact {
      * Which version these bytes are, in the monotonic per-skill numbering
      * the immutability trigger protects. The uuid beside it identifies the
      * row; this is the only field on this schema a person can read as an
-     * answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+     * answer to "which one is this" (`02:WS-002` 1「版本」).
      * 
      */
     versionNumber: number;
@@ -130,7 +130,7 @@ export interface DownloadArtifact {
      * Whether GET /downloads/{artifactId}/content would hand the bytes over
      * **right now**: `status == available` AND the stored object has not
      * been purged AND `expires_at` is still in the future
-     * (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤)
+     * (skill/delivery/download.go). Served rather than derived
      * because one of its three inputs — the purge — is not on this schema
      * at all, so no client can compute it and every client that tried was
      * computing something else.
@@ -151,7 +151,7 @@ export interface DownloadArtifact {
      * would have fought the word on the screen instead of settling it
      * (設計系統 §2.2 顯示但不強制).
      * 
-     * `lost` is separated from `expired` on purpose (04 丙-91). Both mean
+     * `lost` is separated from `expired` on purpose. Both mean
      * the bytes are gone and both are answered by packaging the same
      * version again, but expiry is the retention promise being kept while
      * loss is the platform dropping something inside that promise. Telling
