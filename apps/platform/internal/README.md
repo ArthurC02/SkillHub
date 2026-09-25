@@ -52,32 +52,20 @@ Skill 生命週期
 
 ```text
 internal/
-├── creator/workspace skill/discovery skill/library skill/admission skill/delivery                    Bounded Context packages
-├── trial/design trial/execution trial/evidence trial/improvement product/entitlements product/learning Bounded Context packages
-├── shared/skillpkg                                                Shared Kernel
+├── creator/{workspace,creation,credit}                             Bounded Context packages
+├── skill/{discovery,library,admission,delivery}                    Bounded Context packages
+├── trial/{design,execution,evidence,improvement}                   Bounded Context packages
+├── product/{entitlements,learning}                                 Bounded Context packages
+├── shared/skillpkg                                                 Shared Kernel
 ├── foundation/{persistence,messaging,storage,observability,integration,runtime}
                                                                     Generic mechanisms
 ├── foundation/persistence/db/gen                                   Generated persistence
-└── entrypoint/api/{apiserver,gen}                                  HTTP composition / generated transport
+└── entrypoint/{api/apiserver,api/gen,wiring,worker}                Composition roots and generated transport
 ```
 
-`shared/skillpkg` 是共同語言的純函式庫；`foundation/*` 是機制、ACL 與技術基座；`foundation/persistence/db/gen` 與 `entrypoint/api/{apiserver,gen}` 分別是 generated persistence、composition root 與 generated transport，不是創作者直接選擇的產品領域。資料夾遷移已完成；現行拓撲、收斂範圍與驗證基準見 [DDD 邊界收斂報告](../../../docs/plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md) 與 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
+`shared/skillpkg` 是共同語言的純函式庫；`foundation/*` 是機制、ACL 與技術基座；`foundation/persistence/db/gen` 是 generated persistence。`entrypoint/` 底下四件事各自分開：`api/apiserver` 是 API process 的組裝根、`api/gen` 是 generated transport、`wiring` 讀環境變數並交出設定好的相依、`worker` 是 worker process 的組裝根。這些都不是創作者直接選擇的產品領域。
 
-## 現行拓撲（待最終驗收）
-
-產品領域、Shared Kernel、Foundation 與 Entrypoint 的路徑均已完成搬遷；下列即為目前 import path。詳細 gate 見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)：
-
-```text
-internal/
-├── creator/  skill/  trial/  product/             # Bounded Contexts（現況）
-├── shared/skillpkg/                               # 唯一 Shared Kernel（現況）
-├── foundation/                                    # Generic 技術基座（含 persistence/db/gen）
-│   ├── persistence/  messaging/  storage/
-│   ├── observability/  integration/  runtime/
-└── entrypoint/api/                                 # HTTP composition／generated transport
-```
-
-`cmd/` 留在 `apps/platform/cmd/`，因為它是可執行程序入口。Foundation、Shared Kernel 與 Entrypoint 仍必須留在 `internal/`，才能保有 Go 的編譯器級私有邊界；不可為了收納而移到 `apps/platform/` 直層。
+`cmd/` 留在 `apps/platform/cmd/`，因為它是可執行程序入口。Foundation、Shared Kernel 與 Entrypoint 仍必須留在 `internal/`，才能保有 Go 的編譯器級私有邊界；不可為了收納而移到 `apps/platform/` 直層。收斂範圍與驗證基準見 [DDD 邊界收斂報告](../../../docs/plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md)，逐條 gate 見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
 ## 跨 Context 的四種關係
 
@@ -106,8 +94,8 @@ internal/
 
 因此不要為了目錄外觀重命名或搬移 package，也**禁止**在 consumer 的方法內現場建構
 另一個 context 的 `Service`。API process 的 wiring 在
-[`apiserver.NewApp`](entrypoint/api/apiserver/app.go)，worker process 的 wiring 在
-[`cmd/worker/main.go`](../cmd/worker/main.go)；maintenance 與 reindex 則各自於其 deployment
+[`apiserver.NewApp`](entrypoint/api/apiserver/app.go)，worker process 的在
+[`worker.BuildWorkers`](entrypoint/worker/worker.go)；兩者都不讀環境變數，讀的那一層是 [`entrypoint/wiring`](entrypoint/wiring/)，`cmd/` 底下的 `main.go` 只把兩者接起來。maintenance 與 reindex 則各自於其 deployment
 unit 的 root 建構所需服務。詳見 [Platform Bounded Context 與 Context Map](../../../docs/adr/README.md#platform-bounded-context-與-context-map)。
 
 ## 互動創作的後續能力
