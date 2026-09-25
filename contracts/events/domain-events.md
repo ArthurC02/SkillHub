@@ -1,6 +1,6 @@
 # Platform 領域事件目錄
 
-- 狀態：目錄首版 2026-08-19；**2026-08-20（DDD-012）§5 七項缺口關閉六項**，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
+- 狀態：§5 的七項缺口關閉六項，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
 - 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*`、`evaluation.*` 與 `skill.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
 - 位置理由：`contracts/` 是跨程序介面的唯一來源；領域事件今天雖只在 Go 程序內流動，`internal/run/service.go` 的既有註解早已預告 schema 落點是 `contracts/events/`，本目錄兌現該預告。
 
@@ -111,15 +111,15 @@
 ## 4. 規範（新增或修改事件時強制）
 
 1. **命名**：`<aggregate>.<小寫snake過去式事實>`。狀態機鏡像型（`run.<status>`）是既有例外，不再擴散——新事件描述「發生了什麼」，不是「進入了什麼狀態」。
-2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地（2026-08-20，DDD-012）**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0070`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
+2. **值域封閉**：`event_type` 不得由字串拼接產生；目錄未列的 type 不得發出。**已落地**：值域宣告在三處——`outbox.EventTypes`、最新一支換上 `CHECK` 的 migration（現為 `db/migrations/0070`）、本目錄 §3——`internal/outbox` 的 conformance test 比對三方，任一處漏改即紅。producer 用 `outbox.StatusEvent`／`outbox.CleanupEvent` 映射，未知 status 回 error 讓交易回滾，不會靜默生出新 type。
 3. **payload 為 consumer 設計**：欄位存在性必須固定——可缺的欄位明示 nullable，不得「空字串就不放 key」；不得直接重用 audit metadata bag（現況待收斂）。唯一的既有例外是狀態轉移族（`run.<status>`）的 `from_status` 與 `reason`：照 §3 空值時缺席，與規則 1 的狀態機鏡像同一個例外，不再擴散。
 4. **同 commit 四件事**：新事件＝目錄 §3 加列＋`outbox` 常數與映射＋新 migration 換上新的 `CHECK` 清單＋producer 實作。目錄與程式分岔視同 contract drift，conformance test 就是抓這件事。
-5. **觸發源唯一**：跨 context 的「後續反應」以事件 consumer 為唯一觸發源；同 context 的內部工序才可直接入隊 River。2026-08-20（DDD-005）起，`run.succeeded`／`run.failed` 的 consumer（`internal/eval` 的 `RunEventConsumer`）是 `evaluate_run` 入隊的唯一觸發源；終態轉移交易只入隊 `run_cleanup`，那是 Run 自己的內部工序。
+5. **觸發源唯一**：跨 context 的「後續反應」以事件 consumer 為唯一觸發源；同 context 的內部工序才可直接入隊 River。`run.succeeded`／`run.failed` 的 consumer（`internal/eval` 的 `RunEventConsumer`）是 `evaluate_run` 入隊的唯一觸發源；終態轉移交易只入隊 `run_cleanup`，那是 Run 自己的內部工序。
 6. **consumer 義務**：以 `event_id` 冪等；不得依賴跨 aggregate 順序；對 Run 狀態的認知與 `runs` 表衝突時以表為準（鐵律 5 同理）。
 
 ## 5. 缺口盤點
 
-原本七項，**2026-08-20（DDD-012）關閉六項**；第 6 項刻意保持 open。
+七項中**六項已關閉**；第 6 項刻意保持 open。
 
 | # | 缺口 | 狀態 |
 | --- | --- | --- |

@@ -120,7 +120,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 | `skills` | `"all"` | 0.3.x 起 skill 啟用的唯一開關 |
 | `allowedTools` | 工作負載可用的工具清單 | 傳 `'Skill'` 已 **deprecated**，改由 `skills` 負責 |
 
-> **`settingSources` 的行為在 SDK 0.3.233 上與 PDM-003 Spike（claude-agent-sdk 0.2.137）相反。** 2026-08-16 實測：`settingSources: ["project"]` 在 0.3.233 **完全發現不到**專案 skill（`init.skills` 只剩內建 plugin），**省略**該選項才發現得到。Spike 當初列出 `["project"]` 是為了排除 `user` 以免映像裡的 `~/.claude` 滲進 Run；`HOME` 指向每個 Run 專屬的 `/work` tmpfs，沒有別的家目錄可滲，所以省略它不損失什麼。
+> **`settingSources` 的行為在 SDK 0.3.233 上與 PDM-003 Spike（claude-agent-sdk 0.2.137）相反。** 實測：`settingSources: ["project"]` 在 0.3.233 **完全發現不到**專案 skill（`init.skills` 只剩內建 plugin），**省略**該選項才發現得到。Spike 當初列出 `["project"]` 是為了排除 `user` 以免映像裡的 `~/.claude` 滲進 Run；`HOME` 指向每個 Run 專屬的 `/work` tmpfs，沒有別的家目錄可滲，所以省略它不損失什麼。
 >
 > **SDK 版本升級時，以上每一條都必須重新實測，不得用推理帶過**——它們全是靜默失效，而這一條已經反轉過一次（`run.mjs` 檔頭有同樣的警語）。
 

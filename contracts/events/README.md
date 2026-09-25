@@ -3,7 +3,7 @@
 - 檔案：[trace-event.schema.json](trace-event.schema.json)（JSON Schema 2020-12，英文）
 - 驗證：`python tools/contracts/validate_trace_events.py`（驗 schema 內所有範例實例 + 三個反例）
 - 樣本：[samples/](samples/) 是管線兩端的真實輸出（生產端未遮罩、入庫端已遮罩），validator 一併逐行驗證
-- 狀態：契約為 M2 第一批產出；**收集管線於第三批（2026-08-16）落地**——事件產生見 `infra/images/runtime-agent-sdk/run.mjs`，收集與推送見 `apps/sandbox/internal/sandbox/trace.go`，遮罩、入庫與兩種讀取模式見 `apps/platform/internal/trial/evidence`。§8 的四個表欄位缺口已由 `db/migrations/0019_trace_ingestion.sql` 全數關閉。
+- 狀態：契約與收集管線都已落地——事件產生見 `infra/images/runtime-agent-sdk/run.mjs`，收集與推送見 `apps/sandbox/internal/sandbox/trace.go`，遮罩、入庫與兩種讀取模式見 `apps/platform/internal/trial/evidence`。§8 的四個表欄位缺口已由 `db/migrations/0019_trace_ingestion.sql` 全數關閉。
 
 ## 1. 這份 schema 的位置（可觀測性邊界）
 
@@ -134,19 +134,19 @@ envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` �
 | — | `late`（`boolean`） | 平台指派：事件抵達時該 Run 已終態（TRACE-008） |
 | — | `id`（`uuid`，DB 產生） | 保留為 PK 的一部分；冪等鍵是 `event_id` |
 
-### 缺口清單（**2026-08-16 由 `db/migrations/0019_trace_ingestion.sql` 全數關閉**）
+### 這四個欄位的規則（由 `db/migrations/0019_trace_ingestion.sql` 建立）
 
-1. ~~**`event_id` 無欄位。**~~ **已補**：`event_id uuid NOT NULL` ＋ `UNIQUE (event_id, occurred_at)`（分割表的唯一索引必須含分割鍵），寫入用 `ON CONFLICT DO NOTHING`——重送更新零列，呼叫端據此計算重複數而不必再查一次。
-2. ~~**`attempt` 無欄位。**~~ **已補**：`attempt integer NOT NULL DEFAULT 1 CHECK (attempt >= 1)`，並新增索引 `(run_id, attempt, source, seq)`。0004 的 `(run_id, seq)` 保留供範圍掃描。
-3. ~~**`schema_version` 無欄位。**~~ **已補**：`schema_version text NOT NULL DEFAULT '1.0'`，存 producer 宣告的版本。
-4. ~~**遮罩狀態無欄位。**~~ **已補**：`masked boolean NOT NULL DEFAULT false` ＋ `masked_fields jsonb NOT NULL DEFAULT '[]'`。**`CHECK (masked)` 已加**——db 負責人裁定如下：鐵律 11 沒有例外，「故意保留未遮罩以供事故調查」不是本系統存在的路徑，而那正是這條約束要擋的違規本身。因此「跳過遮罩」在資料庫層不可能，不只在程式碼層。
+1. **冪等鍵**：`event_id uuid NOT NULL` ＋ `UNIQUE (event_id, occurred_at)`（分割表的唯一索引必須含分割鍵），寫入用 `ON CONFLICT DO NOTHING`——重送更新零列，呼叫端據此計算重複數而不必再查一次。
+2. **重試軸**：`attempt integer NOT NULL DEFAULT 1 CHECK (attempt >= 1)`，並新增索引 `(run_id, attempt, source, seq)`。0004 的 `(run_id, seq)` 保留供範圍掃描。
+3. **版本**：`schema_version text NOT NULL DEFAULT '1.0'`，存 producer 宣告的版本。
+4. **遮罩狀態**：`masked boolean NOT NULL DEFAULT false` ＋ `masked_fields jsonb NOT NULL DEFAULT '[]'`，並帶 `CHECK (masked)`——鐵律 11 沒有例外，「故意保留未遮罩以供事故調查」不是本系統存在的路徑，而那正是這條約束要擋的違規本身。因此「跳過遮罩」在資料庫層不可能，不只在程式碼層。
 
 ### 0019 另外處理的兩件事
 
-- **`late boolean NOT NULL DEFAULT false`**（非原缺口）：TRACE-008 要求終態後仍收遲到事件。沙箱關機時推送的最後一批經常晚於平台判定終態，而那恰好是失敗 Run 最需要的部分（RUN-004），所以照收並標記，讓進階模式能說「這筆是遲到的」而不是默默重排時間軸。
+- **`late boolean NOT NULL DEFAULT false`**：TRACE-008 要求終態後仍收遲到事件。沙箱關機時推送的最後一批經常晚於平台判定終態，而那恰好是失敗 Run 最需要的部分（RUN-004），所以照收並標記，讓進階模式能說「這筆是遲到的」而不是默默重排時間軸。
 - **DEFAULT 分割區**：0004 只建了 2026-08 一個月分割，並把後續分割稱為「維運工作」——但那個維運工作不存在，九月的第一筆事件會直接 INSERT 失敗、整條 Trace 消失。0019 加了 `trace_events_default`。代價寫在 migration 裡：日後要掛真正的月分割，必須先把 default 裡該月的資料清空（detach／搬移／re-attach）。
 
-非缺口、但需注意：0004 的索引 `(run_id, seq)` 在 `seq` 改為 per-producer 範圍後不再具區別性（同一 Run 內 `seq=1` 會有三筆，分別來自三個 producer）。它仍能用於範圍掃描，但不應被當成唯一性保證——這是設計如此，不是缺陷。
+**需注意**：0004 的索引 `(run_id, seq)` 在 `seq` 改為 per-producer 範圍後不再具區別性（同一 Run 內 `seq=1` 會有三筆，分別來自三個 producer）。它仍能用於範圍掃描，但不應被當成唯一性保證——這是設計如此，不是缺陷。
 
 ## 9. 版本演進規則
 

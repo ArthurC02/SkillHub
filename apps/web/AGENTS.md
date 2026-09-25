@@ -20,11 +20,11 @@
 ## 會咬人的地方
 
 - **IDE diagnostics 經常是 stale 的**（多人平行編輯時尤其），判準是實跑 `npm run typecheck`。
-- **`prettier --check` 曾經 ubuntu 紅而 windows 綠**（2026-09-03 的 CI）。CI 信的是 Linux；push 前跑 `npm run format:check`，而且判準是**有沒有出現** `All matched files use Prettier code style!` 那一行——命令輸出會被過濾，「沒看到抱怨」不等於通過。
-- **`npm run test:e2e` 預設跑三個引擎，而本機很可能只裝了 chromium。** 缺的那兩個不會讓你看到「跳過」，會看到 `browserType.launch: Executable doesn't exist` ——很容易被當成環境缺件略過，而 CI 上**唯一會紅的那一格就是 ubuntu 的三引擎那格**（2026-09-09 實測：同一個 commit 在 windows/chromium 綠、在 ubuntu 三引擎紅，紅的還是一頁我沒有動過的畫面）。開工前補齊：`npm --prefix apps/web exec -- playwright install firefox webkit`。跑的時候讓機器安靜——2026-09-10 一次與 `docker build` 並行的三引擎跑出兩個 firefox 紅，單獨重跑 74/74 全綠，那兩個是逾時不是缺陷。
+- **`prettier --check` 曾經 ubuntu 紅而 windows 綠**。CI 信的是 Linux；push 前跑 `npm run format:check`，而且判準是**有沒有出現** `All matched files use Prettier code style!` 那一行——命令輸出會被過濾，「沒看到抱怨」不等於通過。
+- **`npm run test:e2e` 預設跑三個引擎，而本機很可能只裝了 chromium。** 缺的那兩個不會讓你看到「跳過」，會看到 `browserType.launch: Executable doesn't exist` ——很容易被當成環境缺件略過，而 CI 上**唯一會紅的那一格就是 ubuntu 的三引擎那格**（實測過：同一個 commit 在 windows/chromium 綠、在 ubuntu 三引擎紅，紅的還是一頁沒有人動過的畫面）。開工前補齊：`npm --prefix apps/web exec -- playwright install firefox webkit`。跑的時候讓機器安靜——一次與 `docker build` 並行的三引擎跑出兩個 firefox 紅，單獨重跑全綠，那兩個是逾時不是缺陷。
 - **本機 API（含淨測試模式）開著時，不要照一般方式建置前端。** `cmd/api` 送的是磁碟上的 `apps/web/dist`，而且 index.html 在啟動時就讀進記憶體。`npm run build` 會覆寫 dist，`npm run test:e2e` 的 webServer 也會先建置一次；之後 API 手上的 index.html 指向已經不存在的資產，畫面是空白頁（API 的 capabilities 檢查會報「重建之後沒有重啟？」）。要驗證就建到別的目錄：`npx vite build --outDir <暫存目錄>`，再 `npx vite preview --outDir <同一個目錄> --port 4173 --strictPort`，Playwright 在本機會沿用已經在 4173 的伺服器；不然就重建之後重啟 API。
 - **react-query 的結果要到下一輪事件迴圈才進畫面。** 它以 `setTimeout(0)` 批次通知訂閱者，所以點擊或送出之後的斷言要包在 `waitFor` 裡，不能緊接著同步斷言——本機常碰巧綠，CI 會紅。同一件事的另一半：hook 層的 `onError` 若回傳 promise，mutation 會停在 pending，直到那個 promise 完成。
-- ⛔ **M5 的生成入口不得對封測使用者出現**；**「也不得變得更顯眼」自 2026-09-10（`05` R-57）起只約束「旗標開著、且正在量漏斗的部署」**，Demo 與淨測試模式不受它約束。邊界原文在 [`01` §10](../../docs/plans/01-goals-and-plan.md)，不要憑記憶判斷它是否仍然生效。
+- ⛔ **M5 的生成入口不得對封測使用者出現**；**「也不得變得更顯眼」只約束「旗標開著、且正在量漏斗的部署」**（`05` R-57），Demo 與淨測試模式不受它約束。邊界原文在 [`01` §10](../../docs/plans/01-goals-and-plan.md)，不要憑記憶判斷它是否仍然生效。
 - **沒有凍結，也不會有**（根 `AGENTS.md`〈現在在哪〉）：不要去 [`01` §10](../../docs/plans/01-goals-and-plan.md) 找「放行紀錄」或「閘門期間」來判斷能不能改；能不能出貨，只看上表那些閘門與 CI。
 
 ## 哪些檔案不屬於單一寫入者

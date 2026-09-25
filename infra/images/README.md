@@ -22,7 +22,7 @@
 | --- | --- |
 | `node:22-bookworm-slim`（digest pin） | PDM-003 與[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選定的 Agent SDK 執行環境 |
 | `@anthropic-ai/claude-agent-sdk`（版本 pin） | 工作負載本體；版本即 `runtime_version`（I-05） |
-| ~~`unzip`~~ ——**現為：不在裡面**（`2026.08-4`，2026-08-29 移除） | 原本的理由是「Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1）」。**現在解壓由 `run.mjs` 自帶的 ZIP 解析器做**，絕對路徑／`..` 路徑段／非普通檔的拒絕規則一併移進該解析器（`2026.08-7` 起函式名為 `provisionPackage`），因此本映像的 `apt-get install` 只剩 `python3 python3-pip`。理由與逐條拒絕規則見 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的註解與 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) 的 `-4`／`-5`／`-7` 三節 |
+| `unzip` ——**不在裡面** | 曾經在裡面，理由是「Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1）」。**現在解壓由 `run.mjs` 自帶的 ZIP 解析器做**，絕對路徑／`..` 路徑段／非普通檔的拒絕規則一併移進該解析器（`2026.08-7` 起函式名為 `provisionPackage`），因此本映像的 `apt-get install` 只剩 `python3 python3-pip`。理由與逐條拒絕規則見 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的註解與 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) 的 `-4`／`-5`／`-7` 三節 |
 | **`python3` ＋ 下表 17 個套件** | 見下節 |
 | **不在裡面**：`npm`／`npx`／`corepack`／`pip` | 執行期不載入、沙箱無網路，套件管理器留在沙箱裡只是負債 |
 
@@ -116,7 +116,7 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 | --- | --- | --- | --- |
 | `pyarrow` | `add-iso3166`、`add-data-dictionary`、`data-comparability`、`data-cleanliness-scan` | 編譯擴充（Arrow C++），157 MB | **Parquet 讀寫不可用。** 四個 Skill 都把 Parquet 列為多種輸入格式之一，CSV／JSON／XLSX 路徑不受影響。這是 4 個 Skill、也是本次拒收清單中影響面最大的一項 |
 | `reportlab` | `pdf` | C 擴充（`_rl_accel`）＋需字型資源，31 MB | PDF **生成**不可用；讀取／抽取／合併（`pypdf`＋`pdfplumber`＋`pillow`）可用 |
-| `pypdfium2` | `pdf` | 綁 PDFium native，9 MB | 頁面點陣化不可用。**2026-09-05 訂正**：它其實從 `pdfplumber` 加入那次起就以必要依賴的身分在映像裡（`pip3 show -f pdfplumber` 逐字證實，`constraints.txt` 鎖 `5.13.0`）；本列「拒收」實際上只剩「不另外宣告給 Skill 使用」這一半，要不要正式收進依賴集是准入政策問題，留給負責人 |
+| `pypdfium2` | `pdf` | 綁 PDFium native，9 MB | 頁面點陣化不可用。**但它其實從 `pdfplumber` 加入那次起就以必要依賴的身分在映像裡**（`pip3 show -f pdfplumber` 逐字證實，`constraints.txt` 鎖 `5.13.0`）；本列「拒收」實際上只剩「不另外宣告給 Skill 使用」這一半，要不要正式收進依賴集是准入政策問題，留給負責人 |
 | `pdf2image` | `pdf` | 需 `poppler-utils` 系統二進位檔 | 同上 |
 | `pytesseract` | `pdf` | 需 `tesseract-ocr` 二進位檔＋語言資料 | **掃描件 OCR 不可用** |
 | `presidio-analyzer`／`presidio-anonymizer` | `pii-flag` | 拉進 spaCy（native）＋**首次使用時才下載語言模型**，357 MB | PII **偵測引擎**不可用；可用的是模型自身判讀 ＋ `phonenumbers`／`python-stdnum` 格式驗證。沙箱無網路，模型下載這條路在執行期必然失敗，**裝了也不會動** |
@@ -212,12 +212,12 @@ image 裡有什麼」可以不一致——而 I-03 與 I-04 正是要求兩者�
 次要理由：SPDX JSON 是外部審閱者不裝 Anchore 工具也讀得懂的格式；I-03 要的是可交付
 的依賴清單，不是掃描器的內部表示。
 
-## 門檻值（**已定案：見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)第二部分，2026-08-16**）
+## 門檻值（**已定案：見[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)第二部分**）
 
 SEC-002 的六項無值語句（威脅模型 Q18）已全部定值。屬本流水線的兩項是下面這兩個，
 [Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的決策**採納了本檔原本的提案值**並補上批准者與時效；程式無需改動。
 
-**SBX-002 的最後一個未勾原因已於 2026-08-16 由 SBX-011 解除**：I-03 的 SBOM 與 I-04 的
+**SBX-002 的最後一個未勾原因已由 SBX-011 解除**：I-03 的 SBOM 與 I-04 的
 `scanned_at` 現在是隨 GHCR digest 保存的 attestation，閘門 A 可用 digest 直接查詢，不再依賴
 90 天的 CI artifact 與人工維護的日期。**流水線側四項檢查（I-02／I-03／I-04／I-06）已全部
 可自動化判定**；SBX-002 的勾選仍待部署批以實際節點驗證閘門 A 的探針查得到這兩份
@@ -287,7 +287,7 @@ docker inspect --format '{{index .RepoDigests 0}}' node:22-bookworm-slim
 
 ## SBOM 與掃描報告保存位置
 
-**權威位置：GHCR 上隨 image digest 的 attestation**（SBX-011，2026-08-16）。
+**權威位置：GHCR 上隨 image digest 的 attestation**（SBX-011）。
 
 | Attestation | 內容 | 查法 |
 | --- | --- | --- |
@@ -307,7 +307,7 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 **現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:<最新版本>` 當下解析到的那個。**
 這裡不抄它——build 不是位元可重現的，每升一次版就換一個 digest，一份寫在文件裡的「現行
 digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
-**版本字串同理不抄**（原文寫死 `2026.08-3`，2026-09-03 訂正）：唯一來源是 Dockerfile 的
+**版本字串同理不抄**：唯一來源是 Dockerfile 的
 `ARG IMAGE_VERSION`，`runtime-image.yml` 的發佈步驟與 `rescan` job 讀的也是它。要拿當下的值：
 
 ```bash
@@ -322,14 +322,12 @@ docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:$
 > IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
 > docker build -t "skillhub/runtime-agent-sdk:${IMAGE_VERSION}" infra/images/runtime-agent-sdk
 > ```
-> 〔2026-09-03：這一段原本被寫進 Dockerfile 的註解裡，CI 當場擋下並且是對的——已還原成原樣，改記於此。〕
-> 〔2026-09-11：Dockerfile 檔頭那行 `docker build -t …` 在 `2026.08-10` 隨全 repo 註解清理拿掉了，第二份版本字串從此不存在；上面取 tag 的方式不變。〕
+> 〔這一段屬於本檔而不是 Dockerfile 的註解——寫進註解會被 `comment-budget` 擋下。Dockerfile 檔頭那行 `docker build -t …` 已隨註解清理拿掉，第二份版本字串因此不存在。〕
 ```
 
 > **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；
 > 「部署實際會跑哪一版」看 `apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設。
-> **兩者刻意可以不同**——移動預設是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測通過之後的動作。2026-09-03 當下前者是
-> `2026.08-7`、後者是 `2026.08-5`（`-6` 與 `-7` 的四項實測未跑，見 `UPGRADES.md` 該兩節與 `04` 丙-125）。
+> **兩者刻意可以不同**——移動預設是[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)四項實測通過之後的動作——**未跑過四項實測的版本不會被移成預設**（見 `UPGRADES.md` 逐節）。
 
 **升版不會製造孤兒，同版重建才會。** workflow 的發佈步驟從 Dockerfile 的 `ARG IMAGE_VERSION`
 讀 tag（[runtime-image.yml](../../.github/workflows/runtime-image.yml) 第 175 行），所以
@@ -372,11 +370,11 @@ filter 裡**，所以連「只改 filter」這種編輯也會重建一次、把�
 單人直推 main 而本專案確實這樣用，拿掉之後**一個改動 build 或閘門的 commit 會沒有任何東西
 驗它**——正是那一行 filter 存在的理由。一個有清理路徑的孤兒比一個沒被驗過的閘門便宜。
 
-**2026-09-11 起，同版重建不再推送，這個取捨也就不再有代價。** 發佈步驟先查 registry 有沒有
+**同版重建不再推送，這個取捨因此沒有代價。** 發佈步驟先查 registry 有沒有
 這個版本的 tag：有，就只跑閘門、不推送、不移 tag（job summary 會寫明）；只有新版本才會推。
 改 build 或閘門的 commit 仍然整套驗一次，只是不再把前一個 digest 孤立掉。**上表因此不會再長新列。**
 
-**表中後八列是 2026-09-12 補的**，證據直接取自 registry：每次發佈都另推一個 `sha-<commit 前 12 碼>`
+**後八列的證據直接取自 registry**：每次發佈都另推一個 `sha-<commit 前 12 碼>`
 tag，逐一 `docker buildx imagetools inspect` 之後，同一個版本底下只有最後一次發佈的 digest 仍被版本
 tag 指著，其餘就是孤兒。`8b16f56` 之後共 8 次同版重推：7 次在 `2026.08-3`，1 次在 `2026.08-7`。
 **`f3f8bb0` 不在其中**（09-11 的初稿誤列）：把版本升到 `-5` 的 `d4f3662` 那次沒有推上去（registry
@@ -583,9 +581,8 @@ origin＋CORS 迴避；`cmd/api` 的 clean mode（`SKILLHUB_CLEAN_MODE=1`）用
 
 例外兩條，寫在規則之前：`/auth/`（GitHub OAuth 的兩個 302 導向）與 `/downloads/`
 （`<a href>` 直接導覽拿檔案位元組，不是 `fetch()`）——這兩條是「真的需要瀏覽器導覽、
-且 API 必須自己回答」的路徑，一律直接轉發，不吃 `Accept: text/html` 那條規則。以
-2026-09-05 對照 `contracts/openapi/public.yaml` 與 `router.tsx` 的結果，這是目前唯二
-的例外。
+且 API 必須自己回答」的路徑，一律直接轉發，不吃 `Accept: text/html` 那條規則。對照
+`contracts/openapi/public.yaml` 與 `router.tsx`，這是目前唯二的例外。
 
 **誠實的已知落差**：這是用請求端訊號去逼近 clean mode 用回應端資訊做的決定，對現有
 路徑表是完整的，但**不會自動涵蓋未來**——如果之後新增一條頂層 GET 路徑，同時（a）是
