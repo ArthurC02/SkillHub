@@ -140,5 +140,4 @@ Usage Record 只追加、不因價格表更新而改寫；帳單由 Usage 與當
 - Local Runner 的配對憑證是否重用本 ADR 的 Session 機制，見 [ADR-001：系統情境、平面與部署路徑](./ADR-001-system-context-planes-and-deployment-path.md)。
 - 企業資料隔離設定檔（獨立資料庫、區域或加密金鑰）的觸發條件。
 - 封測結束後允許清單的退場方式：清空、保留為早期使用者名單，或改為開放註冊。
-- 是否提供自備模型金鑰（BYO Key）與對應的政策差異，見 [ADR-005：模型閘道與可觀測性](./ADR-005-model-gateway-and-observability.md)。
 - 公開釋出時 Run 額度與生成額度是否轉為強制，以及是否需要新的數值。

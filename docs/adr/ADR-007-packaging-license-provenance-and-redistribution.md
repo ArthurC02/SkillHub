@@ -12,6 +12,7 @@ Skill Hub 把外部與使用者自帶的 Skill 收進目錄、打包、交付下
 ### 決策 1：標準 Skill 為核心事實來源，平台差異只交給 Agent Packaging Profile
 
 - Skill Registry 以標準 Agent Skill Package 為核心事實來源；平台專屬差異（安裝路徑、工具命名、frontmatter 擴充欄位）由 **Agent Packaging Profile** 承載，不寫回標準 Skill Version。
+- MVP 首批名單已追認：標準套件 ＋ 兩個已驗證安裝 Profile，各一份 `contracts/packaging/profiles/*.json`。
 - Profile 是**資料**不是編譯常數：`contracts/packaging/profiles/*.json`（`schema_version 1.0`），程式面由 `skill/delivery/profile.go` 讀取。不引入外掛機制——MVP 打包目標全部內建（標準套件、`claude-code`、`claude-agent-sdk`），先做一套外掛系統是為一個不存在的第二方鋪路。
 - Adapter 不得靜默改變 Skill 的任務意圖，也不得移除必要安全限制。標準套件、目標平台產物與安裝說明分開版本化及驗證。
 - 相容性分三層，**不宣稱跨模型行為一致**：
@@ -176,7 +177,6 @@ manifest 另需記載：來源 Skill Version、Packaging Profile 及版本、打
 
 ## 待決策
 
-- MVP 首批支援的 Agent Packaging Profile 名單（提案：標準套件 ＋ 兩個已驗證安裝 Profile）尚待負責人追認。
 - 授權辨識是否從 marker 比對升級為相似度比對，觸發訊號為誤判／漏判申訴量。
 - 「宣稱寬鬆授權但內容並非作者所有」的偵測啟發式歸屬哪個能力範圍，以及是否自動轉人工。
 - 決策 2 第 5 層 `curated-declared` 的啟用時點與策展事實的審核流程形態。
