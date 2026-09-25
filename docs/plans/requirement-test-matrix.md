@@ -161,7 +161,7 @@
 | SEC-003 | 有測試 | `TestFetchRefusesHostResolvingToLoopback`、`TestFetchRefusesMetadataAddressBothSpellings`、`TestFetchRedirectLimit` | |
 | SEC-005 | 有測試 | `TestRevokeIsIdempotent`、`TestPresignedGrantIsShortLivedUnforgeableAndSingleDirection` | |
 | SEC-006 | 有測試 | `TestARunArtifactCanBeListedAndDeletedOnItsOwn`、`TestPresignedURLStatesItsExpiryAndBindsItsMethod` | |
-| SEC-007 | 部分 | `TestTakedownRemovesSkillFromPublicSurface` | 上游重抓頻率與失效判準尚未定值，這半部沒有可證的對象 |
+| SEC-007 | 部分 | `TestTakedownRemovesSkillFromPublicSurface` | 上游「失效」的判準尚未定值（`05` R-88），這半部沒有可證的對象 |
 | SEC-008 | 部分 | `TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources`、`TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator` | 測試證的是平台收到探針訊號後的反應；探針在真節點上真的擋得住連線，要在那台節點上驗 |
 | SEC-009 | 待真機 | `tools/sec009/t1-escape-attempts.sh`、`tools/sec009/t2-syscall-fuzz.sh`、`tools/sec009/gvisor-smoke.sh` | 46 項全 pass、0 unknown 的判定要在生產同規格節點跑滿前置條件後才成立；CI 跑的是程序檢查 |
 | SEC-010 | 部分 | `TestMaskingStoppedHaltsDispatchWithoutAnOperator`、`TestReconcilerStallHaltsDispatchWithoutAnOperator`、`TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator` | 「1 小時內接手」與通知真的送達是人的回應與外部系統，測試證不了 |
