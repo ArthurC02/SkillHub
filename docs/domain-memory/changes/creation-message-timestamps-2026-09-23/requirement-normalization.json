@@ -19,5 +19,5 @@
   "open_questions": [],
   "risk_flags": ["public_contract"],
   "required_approval_roles": ["developer"],
-  "sources": ["docs/plans/04-backlog-and-handoffs.md#丙-204", "contracts/openapi/public.yaml#/components/schemas/CreationMessage"]
+  "sources": ["docs/adr/README.md#互動創作", "contracts/openapi/public.yaml#/components/schemas/CreationMessage"]
 }

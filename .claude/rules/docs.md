@@ -12,4 +12,4 @@ paths:
 
 改完跑 `go -C tools/devctl run . automation-check`。
 
-有機器對帳的文件（`04` 的 tally、context map、設計兩把尺）改完要回報會被哪個檢查擋；`docs/plans/mvp/mX/` 是里程碑當時的證據，不回溯修正（這條只管那些文件，不限制程式修改）。
+有機器對帳的文件（`04` 的 tally、`docs/domain-memory/registry/` 的已審查 Registry、設計兩把尺）改完要回報會被哪個檢查擋；`docs/plans/mvp/mX/` 是里程碑當時的證據，不回溯修正（這條只管那些文件，不限制程式修改）。
