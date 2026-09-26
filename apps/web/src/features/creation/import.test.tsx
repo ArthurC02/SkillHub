@@ -138,29 +138,49 @@ test("an unclassified server error (500) gets the generic retry sentence", async
   expect(text()).not.toContain("internal error");
 });
 
-test("04 丙-152: a categorised 422 renders both real Chinese finding messages and their codes", async () => {
+test("04 丙-152: a 422 renders every refused folder's real Chinese finding messages and codes", async () => {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = typeof input === "string" ? input : String(input);
     if (path.endsWith("/me")) return json(ME);
     if (init?.method === "POST")
       return json(
         {
-          errors: [
+          shape: "plugin",
+          plugin: { name: "all-bad" },
+          skills: [],
+          refused: [
             {
-              severity: "error",
-              code: "skill-md-missing",
-              path: "SKILL.md",
-              message: "套件根目錄找不到 SKILL.md",
+              path: "skills/one",
+              findings: {
+                errors: [
+                  {
+                    severity: "error",
+                    code: "skill-md-missing",
+                    path: "SKILL.md",
+                    message: "套件根目錄找不到 SKILL.md",
+                  },
+                ],
+                warnings: [],
+                infos: [],
+              },
             },
             {
-              severity: "error",
-              code: "name-invalid",
-              path: "SKILL.md",
-              message: "name 只能使用小寫英文字母、數字與單一連字號",
+              path: "skills/two",
+              findings: {
+                errors: [
+                  {
+                    severity: "error",
+                    code: "name-invalid",
+                    path: "SKILL.md",
+                    message: "name 只能使用小寫英文字母、數字與單一連字號",
+                  },
+                ],
+                warnings: [],
+                infos: [],
+              },
             },
           ],
-          warnings: [],
-          infos: [],
+          excluded_components: [],
         },
         422,
       );
@@ -170,8 +190,116 @@ test("04 丙-152: a categorised 422 renders both real Chinese finding messages a
   await submitURL();
   await waitFor(() => text().includes("套件根目錄找不到 SKILL.md"));
 
-  expect(text()).toContain("套件根目錄找不到 SKILL.md");
   expect(text()).toContain("skill-md-missing");
+  expect(text()).toContain("skills/one");
   expect(text()).toContain("name 只能使用小寫英文字母、數字與單一連字號");
   expect(text()).toContain("name-invalid");
+  expect(text()).toContain("skills/two");
+});
+
+const PLUGIN_IMPORT = {
+  shape: "plugin",
+  plugin: { name: "desk-tools", version: "1.4.0" },
+  skills: [
+    {
+      path: "skills/tidy-notes",
+      skill_id: "s-1",
+      version_id: "v-1",
+      version_number: 1,
+      content_hash: "h1",
+      duplicate: false,
+      findings: { errors: [], warnings: [], infos: [] },
+    },
+    {
+      path: "skills/split-csv",
+      skill_id: "s-2",
+      version_id: "v-2",
+      version_number: 1,
+      content_hash: "h2",
+      duplicate: false,
+      findings: { errors: [], warnings: [], infos: [] },
+    },
+  ],
+  refused: [],
+  excluded_components: [
+    {
+      severity: "info",
+      code: "plugin-component",
+      path: "mcp.json",
+      message: "這個 Plugin 宣告了 MCP server。",
+    },
+  ],
+};
+
+function stubImport(body: unknown) {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = typeof input === "string" ? input : String(input);
+    if (path.endsWith("/me")) return json(ME);
+    if (init?.method === "POST") return json(body, 201);
+    return json({ error: "not found" }, 404);
+  });
+}
+
+test("a Plugin import lists every Skill it brought in, each with its own link", async () => {
+  stubImport(PLUGIN_IMPORT);
+
+  await submitURL();
+  await waitFor(() => text().includes("匯入完成"));
+
+  expect(text()).toContain("skills/tidy-notes");
+  expect(text()).toContain("skills/split-csv");
+  const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+  expect(links, "每個 Skill 都要有自己的連結，只列第一個等於把另一半藏起來").toEqual(
+    expect.arrayContaining(["/skills/s-1", "/skills/s-2"]),
+  );
+});
+
+test("a Plugin import says a raw download of one Skill hands over the whole Plugin", async () => {
+  stubImport(PLUGIN_IMPORT);
+
+  await submitURL();
+  await waitFor(() => text().includes("匯入完成"));
+
+  expect(text().replace(/\s+/g, "")).toContain("拿到的是整個Plugin");
+});
+
+test("a Plugin import discloses the components it did not import", async () => {
+  stubImport(PLUGIN_IMPORT);
+
+  await submitURL();
+  await waitFor(() => text().includes("匯入完成"));
+
+  expect(text()).toContain("mcp.json");
+  expect(text()).toContain("plugin-component");
+});
+
+test("one refused folder does not hide the Skills that did come in", async () => {
+  stubImport({
+    ...PLUGIN_IMPORT,
+    skills: [PLUGIN_IMPORT.skills[0]],
+    refused: [
+      {
+        path: "skills/broken",
+        findings: {
+          errors: [
+            {
+              severity: "error",
+              code: "skill-md-missing",
+              path: "SKILL.md",
+              message: "套件根目錄找不到 SKILL.md",
+            },
+          ],
+          warnings: [],
+          infos: [],
+        },
+      },
+    ],
+  });
+
+  await submitURL();
+  await waitFor(() => text().includes("匯入完成"));
+
+  expect(text()).toContain("skills/tidy-notes");
+  expect(text()).toContain("skills/broken");
+  expect(text()).toContain("skill-md-missing");
 });

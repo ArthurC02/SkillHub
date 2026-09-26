@@ -23,6 +23,7 @@ const (
 	CodeForeignManifest    = "foreign-plugin-manifest"
 	CodeNoSkillFound       = "no-skill-found"
 	CodePluginUnknownField = "plugin-manifest-unknown-field"
+	CodeDuplicateSkillName = "duplicate-skill-name"
 )
 
 type SourceShape string

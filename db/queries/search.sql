@@ -33,7 +33,8 @@ SET workspace_id = EXCLUDED.workspace_id,
 
 -- name: ListPendingEnrichment :many
 WITH candidates AS (
-SELECT sd.skill_id, sd.latest_version_id AS version_id, sd.latest_package_object_key AS package_object_key
+SELECT sd.skill_id, sd.latest_version_id AS version_id, sd.latest_package_object_key AS package_object_key,
+       sd.latest_source_path AS source_path
 FROM search_documents sd
 WHERE sd.enrichment_status = 'pending'
   AND sd.latest_package_object_key IS NOT NULL
@@ -45,7 +46,8 @@ LIMIT @batch_size FOR UPDATE OF sd SKIP LOCKED
     FROM candidates c WHERE sd.skill_id = c.skill_id
     RETURNING sd.skill_id, sd.workspace_id, sd.name
 )
-SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.package_object_key
+SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.package_object_key,
+       candidates.source_path
 FROM claimed c JOIN candidates USING (skill_id);
 
 -- name: SearchSkills :many
@@ -228,6 +230,7 @@ SET generated = sqlc.arg(generated),
     latest_version_id = sqlc.narg(latest_version_id),
     verified_at = sqlc.narg(verified_at),
     latest_package_object_key = sqlc.narg(latest_package_object_key),
+    latest_source_path = sqlc.arg(latest_source_path),
     curated_version_id = sqlc.narg(curated_version_id),
     curated = sqlc.arg(curated),
     agent_capability = sqlc.narg(agent_capability),

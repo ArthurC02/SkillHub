@@ -936,12 +936,20 @@ test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the sear
   vi.stubGlobal("fetch", () =>
     json(
       {
-        skill_id: SKILL,
-        version_id: "v1",
-        version_number: 1,
-        content_hash: "sha256:aaaa",
-        duplicate: false,
-        findings: { errors: [], warnings: [], infos: [] },
+        shape: "skill",
+        skills: [
+          {
+            path: "",
+            skill_id: SKILL,
+            version_id: "v1",
+            version_number: 1,
+            content_hash: "sha256:aaaa",
+            duplicate: false,
+            findings: { errors: [], warnings: [], infos: [] },
+          },
+        ],
+        refused: [],
+        excluded_components: [],
       },
       201,
     ),

@@ -25,7 +25,8 @@ func (r runRegistryReader) Skill(ctx context.Context, workspaceID, skillID pgtyp
 
 func (r runRegistryReader) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
 	version, found, err := r.service.WorkspaceVersion(ctx, workspaceID, versionID)
-	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash, PackageObjectKey: version.PackageObjectKey}, found, err
+	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
 }
 
 func (r runRegistryReader) VersionSummaries(
@@ -121,11 +122,13 @@ func WireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 func WireEvaluationRegistryReaders(service *eval.Service, registryService *registry.Service) {
 	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (eval.VersionFacts, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID, PackageObjectKey: version.PackageObjectKey}, found, err
+		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID,
+			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
 	}
 	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.VersionFacts, bool, error) {
 		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
-		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID, PackageObjectKey: version.PackageObjectKey}, found, err
+		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID,
+			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}, found, err
 	}
 	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.SkillFacts, bool, error) {
 		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)

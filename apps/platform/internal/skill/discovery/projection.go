@@ -22,6 +22,7 @@ type PendingEnrichment struct {
 	WorkspaceID      pgtype.UUID
 	Name             string
 	PackageObjectKey string
+	SourcePath       string
 }
 
 func (s *Service) OldestPendingEnrichment(ctx context.Context) (pgtype.Timestamptz, error) {
@@ -44,6 +45,7 @@ func (s *Service) PendingEnrichments(ctx context.Context, limit int32) ([]Pendin
 			WorkspaceID:      row.WorkspaceID,
 			Name:             row.Name,
 			PackageObjectKey: *row.PackageObjectKey,
+			SourcePath:       row.SourcePath,
 		})
 	}
 	return result, nil
@@ -133,6 +135,7 @@ func listingOf(skillID pgtype.UUID, facts ListingFacts) gen.SetSearchDocumentLis
 		VerifiedAt:      facts.VerifiedAt,
 		AgentMeasuredAt: facts.AgentMeasuredAt,
 	}
+	listing.LatestSourcePath = facts.LatestSourcePath
 	if facts.LatestVersionID.Valid {
 		listing.LatestPackageObjectKey = &facts.LatestPackageObjectKey
 	}

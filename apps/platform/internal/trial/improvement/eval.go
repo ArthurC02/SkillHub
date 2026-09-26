@@ -180,6 +180,11 @@ type VersionFacts struct {
 	ID               pgtype.UUID
 	SkillID          pgtype.UUID
 	PackageObjectKey string
+	SourcePath       string
+}
+
+func (v VersionFacts) stored() skillpkg.StoredSkill {
+	return skillpkg.StoredSkill{ObjectKey: v.PackageObjectKey, SourcePath: v.SourcePath}
 }
 
 type RuntimeCompatibility struct {
@@ -475,7 +480,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, err
 	}
 
-	m.report, m.reportOK = s.packageReport(ctx, m.version.PackageObjectKey)
+	m.report, m.reportOK = s.packageReport(ctx, m.version.stored())
 	return m, nil
 }
 
@@ -601,15 +606,15 @@ func (s *Service) fail(
 	return tx.Commit(ctx)
 }
 
-func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg.Report, bool) {
-	if s.Store == nil || objectKey == "" {
+func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+	if s.Store == nil || stored.ObjectKey == "" {
 		return skillpkg.Report{}, false
 	}
-	data, err := s.Store.Get(ctx, objectKey)
+	data, err := s.Store.Get(ctx, stored.ObjectKey)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := stored.Open(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

@@ -471,7 +471,8 @@ func (q *Queries) ListHybridSearchDocuments(ctx context.Context, arg ListHybridS
 
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 WITH candidates AS (
-SELECT sd.skill_id, sd.latest_version_id AS version_id, sd.latest_package_object_key AS package_object_key
+SELECT sd.skill_id, sd.latest_version_id AS version_id, sd.latest_package_object_key AS package_object_key,
+       sd.latest_source_path AS source_path
 FROM search_documents sd
 WHERE sd.enrichment_status = 'pending'
   AND sd.latest_package_object_key IS NOT NULL
@@ -483,7 +484,8 @@ LIMIT $2 FOR UPDATE OF sd SKIP LOCKED
     FROM candidates c WHERE sd.skill_id = c.skill_id
     RETURNING sd.skill_id, sd.workspace_id, sd.name
 )
-SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.package_object_key
+SELECT c.skill_id, c.workspace_id, c.name, candidates.version_id, candidates.package_object_key,
+       candidates.source_path
 FROM claimed c JOIN candidates USING (skill_id)
 `
 
@@ -498,6 +500,7 @@ type ListPendingEnrichmentRow struct {
 	Name             string
 	VersionID        pgtype.UUID
 	PackageObjectKey *string
+	SourcePath       string
 }
 
 func (q *Queries) ListPendingEnrichment(ctx context.Context, arg ListPendingEnrichmentParams) ([]ListPendingEnrichmentRow, error) {
@@ -515,6 +518,7 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, arg ListPendingEnri
 			&i.Name,
 			&i.VersionID,
 			&i.PackageObjectKey,
+			&i.SourcePath,
 		); err != nil {
 			return nil, err
 		}
@@ -895,13 +899,14 @@ SET generated = $1,
     latest_version_id = $4,
     verified_at = $5,
     latest_package_object_key = $6,
-    curated_version_id = $7,
-    curated = $8,
-    agent_capability = $9,
-    agent_runtime = $10,
-    agent_runtime_image = $11,
-    agent_measured_at = $12
-WHERE skill_id = $13
+    latest_source_path = $7,
+    curated_version_id = $8,
+    curated = $9,
+    agent_capability = $10,
+    agent_runtime = $11,
+    agent_runtime_image = $12,
+    agent_measured_at = $13
+WHERE skill_id = $14
 `
 
 type SetSearchDocumentListingParams struct {
@@ -911,6 +916,7 @@ type SetSearchDocumentListingParams struct {
 	LatestVersionID        pgtype.UUID
 	VerifiedAt             pgtype.Timestamptz
 	LatestPackageObjectKey *string
+	LatestSourcePath       string
 	CuratedVersionID       pgtype.UUID
 	Curated                bool
 	AgentCapability        *string
@@ -928,6 +934,7 @@ func (q *Queries) SetSearchDocumentListing(ctx context.Context, arg SetSearchDoc
 		arg.LatestVersionID,
 		arg.VerifiedAt,
 		arg.LatestPackageObjectKey,
+		arg.LatestSourcePath,
 		arg.CuratedVersionID,
 		arg.Curated,
 		arg.AgentCapability,

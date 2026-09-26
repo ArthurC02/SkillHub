@@ -259,7 +259,7 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	snap := defaultPolicy(s.Deployment)
-	report, scanned := s.packageReport(ctx, version.PackageObjectKey)
+	report, scanned := s.packageReport(ctx, version.stored())
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),

@@ -1,10 +1,10 @@
 -- name: CreateSkillVersion :one
 INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
-    content_hash, package_object_key, manifest, license_expression, license_source
+    content_hash, package_object_key, source_path, manifest, license_expression, license_source
 ) VALUES (
     @workspace_id, @skill_id, @source_id, @version_number,
-    @content_hash, @package_object_key, @manifest, @license_expression, @license_source
+    @content_hash, @package_object_key, @source_path, @manifest, @license_expression, @license_source
 )
 RETURNING *;
 

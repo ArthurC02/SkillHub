@@ -36,7 +36,7 @@ func TestVersionNumberIsNotCallerSupplied(t *testing.T) {
 func TestNewVersionCarriesNoMutableState(t *testing.T) {
 	want := map[string]bool{
 		"SourceID":    true,
-		"ContentHash": true, "PackageObjectKey": true, "Report": true,
+		"ContentHash": true, "PackageObjectKey": true, "SourcePath": true, "Report": true,
 	}
 	typ := reflect.TypeOf(NewVersion{})
 	for i := range typ.NumField() {

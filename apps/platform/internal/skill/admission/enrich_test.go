@@ -228,7 +228,7 @@ func TestReadPackageCollectsEnrichmentInputs(t *testing.T) {
 	p, err := readPackage(zipBytes(t, map[string]string{
 		"SKILL.md":         skillMD,
 		"scripts/split.py": "print('hi')",
-	}))
+	}), "")
 	if err != nil {
 		t.Fatal(err)
 	}

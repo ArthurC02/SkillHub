@@ -294,6 +294,11 @@ import {
     HealthToJSON,
 } from '../models/Health';
 import {
+    type ImportResult,
+    ImportResultFromJSON,
+    ImportResultToJSON,
+} from '../models/ImportResult';
+import {
     type ImportSkillFromURLRequest,
     ImportSkillFromURLRequestFromJSON,
     ImportSkillFromURLRequestToJSON,
@@ -2798,20 +2803,20 @@ export interface DefaultApiInterface {
     importSkillFromURLRequestOpts(requestParameters: ImportSkillFromURLOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
+     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The source goes through the same static validation, the same skill discovery and the same per-skill refusal as an upload (SKILL-006), which is what makes a repository holding several skills importable by URL. 
      * @summary Import a skill package from an allow-listed URL (SKILL-001)
      * @param {ImportSkillFromURLRequest} importSkillFromURLRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>>;
+    importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportResult>>;
 
     /**
-     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
+     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The source goes through the same static validation, the same skill discovery and the same per-skill refusal as an upload (SKILL-006), which is what makes a repository holding several skills importable by URL. 
      * Import a skill package from an allow-listed URL (SKILL-001)
      */
-    importSkillFromURL(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
+    importSkillFromURL(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult>;
 
     /**
      * Creates request options for ingestTraceEvents without sending the request
@@ -3848,20 +3853,20 @@ export interface DefaultApiInterface {
     uploadSkillPackageRequestOpts(requestParameters: UploadSkillPackageRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
+     * Requires a session. The archive is statically validated only; nothing inside it is executed. Identical content re-uploaded to the same skill returns the existing version.  One archive may hold more than one skill (SKILL-006): a single Agent Skill, an Agent Plugin, or a repository tree. The reply lists every skill the source produced with its own findings, and a blocking finding refuses that skill rather than the whole source - the source is refused only when nothing in it survived. 
      * @summary Import a skill package by uploading a zip archive (SKILL-001)
      * @param {Blob} body 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>>;
+    uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportResult>>;
 
     /**
-     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
+     * Requires a session. The archive is statically validated only; nothing inside it is executed. Identical content re-uploaded to the same skill returns the existing version.  One archive may hold more than one skill (SKILL-006): a single Agent Skill, an Agent Plugin, or a repository tree. The reply lists every skill the source produced with its own findings, and a blocking finding refuses that skill rather than the whole source - the source is refused only when nothing in it survived. 
      * Import a skill package by uploading a zip archive (SKILL-001)
      */
-    uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult>;
+    uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult>;
 
 }
 
@@ -6615,21 +6620,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
+     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The source goes through the same static validation, the same skill discovery and the same per-skill refusal as an upload (SKILL-006), which is what makes a repository holding several skills importable by URL. 
      * Import a skill package from an allow-listed URL (SKILL-001)
      */
-    async importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+    async importSkillFromURLRaw(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportResult>> {
         const requestOptions = await this.importSkillFromURLRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => UploadResultFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ImportResultFromJSON(jsonValue));
     }
 
     /**
-     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The package goes through the same static validation as uploads. 
+     * Requires a session. GitHub repo URLs are normalized to their zip archives; other allow-listed URLs must point directly at a zip. The source goes through the same static validation, the same skill discovery and the same per-skill refusal as an upload (SKILL-006), which is what makes a repository holding several skills importable by URL. 
      * Import a skill package from an allow-listed URL (SKILL-001)
      */
-    async importSkillFromURL(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult> {
+    async importSkillFromURL(requestParameters: ImportSkillFromURLOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult> {
         const response = await this.importSkillFromURLRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -8754,21 +8759,21 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
+     * Requires a session. The archive is statically validated only; nothing inside it is executed. Identical content re-uploaded to the same skill returns the existing version.  One archive may hold more than one skill (SKILL-006): a single Agent Skill, an Agent Plugin, or a repository tree. The reply lists every skill the source produced with its own findings, and a blocking finding refuses that skill rather than the whole source - the source is refused only when nothing in it survived. 
      * Import a skill package by uploading a zip archive (SKILL-001)
      */
-    async uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UploadResult>> {
+    async uploadSkillPackageRaw(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportResult>> {
         const requestOptions = await this.uploadSkillPackageRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => UploadResultFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ImportResultFromJSON(jsonValue));
     }
 
     /**
-     * Requires a session. The archive is statically validated only; nothing inside it is executed. Blocking findings reject the import; identical content re-uploaded to the same skill returns the existing version. 
+     * Requires a session. The archive is statically validated only; nothing inside it is executed. Identical content re-uploaded to the same skill returns the existing version.  One archive may hold more than one skill (SKILL-006): a single Agent Skill, an Agent Plugin, or a repository tree. The reply lists every skill the source produced with its own findings, and a blocking finding refuses that skill rather than the whole source - the source is refused only when nothing in it survived. 
      * Import a skill package by uploading a zip archive (SKILL-001)
      */
-    async uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UploadResult> {
+    async uploadSkillPackage(requestParameters: UploadSkillPackageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResult> {
         const response = await this.uploadSkillPackageRaw(requestParameters, initOverrides);
         return await response.value();
     }

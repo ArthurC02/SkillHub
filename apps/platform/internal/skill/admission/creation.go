@@ -46,7 +46,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return Result{}, err
 	}
 	enriched := s.enrichPackage(ctx, prepared, ws.ID)
-	tx, release, err := s.beginPackageWrite(ctx, ws, prepared, data)
+	tx, release, err := s.beginPackageWrite(ctx, ws, prepared.objectKey, data)
 	if err != nil {
 		return Result{}, err
 	}
@@ -124,7 +124,7 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if err != nil {
 		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
-	tree, err := skillpkg.PackageFS(data)
+	tree, err := skillpkg.SkillFS(data, version.SourcePath)
 	if err != nil {
 		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}

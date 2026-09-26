@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "plugin-skill-carries-its-own-root",
+  "proposal_id": "registry-run-facts-with-source-path",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "facts-reader-carries-the-root",
+      "expected_outcome": "The validator accepts the superseded contract record with its refreshed citation.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "refreshed-citation-reproduces",
+      "source_type": "invariant",
+      "source_id": "facts-reader-carries-the-root",
+      "expected_outcome": "Rebuilding the citation for the moved wiring produces exactly the digests this proposal carries.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry cite on the moved lines"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "facts-reader-carries-the-root",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "fact-reader-contract-holds",
+      "source_type": "contract",
+      "source_id": "registry-run-facts-v1",
+      "expected_outcome": "The contract resolves from the boundary query with its producer, consumers and synchronous delivery intact.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry analyze-boundary"
+    },
+    {
+      "id": "subtree-path-is-recorded",
+      "source_type": "acceptance-criterion",
+      "source_id": "subtree-path-is-recorded",
+      "expected_outcome": "Each Skill of a Plugin records the directory it was validated from, and a Skill that is the whole package records nothing.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/skill/admission/ -run TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom|TestASkillThatIsTheWholePackageRecordsNoSubdirectory"
+    },
+    {
+      "id": "plugin-skill-packages-alone",
+      "source_type": "acceptance-criterion",
+      "source_id": "plugin-skill-packages-alone",
+      "expected_outcome": "Both Skills of an imported Plugin build a downloadable package whose root is that Skill and which carries neither the Plugin manifest nor the sibling Skill.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn"
+    }
+  ]
+}

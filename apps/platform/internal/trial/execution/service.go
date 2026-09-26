@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
@@ -43,6 +44,11 @@ type VersionFacts struct {
 	SkillID          pgtype.UUID
 	ContentHash      string
 	PackageObjectKey string
+	SourcePath       string
+}
+
+func (v VersionFacts) stored() skillpkg.StoredSkill {
+	return skillpkg.StoredSkill{ObjectKey: v.PackageObjectKey, SourcePath: v.SourcePath}
 }
 
 type VersionSummary struct {
@@ -388,7 +394,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	if err := s.requireScanNotBlocking(ctx, version.PackageObjectKey); err != nil {
+	if err := s.requireScanNotBlocking(ctx, version.stored()); err != nil {
 		return gen.Run{}, err
 	}
 	tx, err := s.Pool.Begin(ctx)

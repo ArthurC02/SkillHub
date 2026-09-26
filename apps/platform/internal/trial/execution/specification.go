@@ -79,15 +79,15 @@ func accessVerdict(skill SkillFacts) (string, error) {
 		fmt.Errorf("%w (%s)", ErrAccessRestricted, skill.AccessRestrictionReason)
 }
 
-func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg.Report, bool) {
+func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
 	if s.store() == nil {
 		return skillpkg.Report{}, false
 	}
-	data, err := s.store().Get(ctx, objectKey)
+	data, err := s.store().Get(ctx, stored.ObjectKey)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := stored.Open(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
@@ -137,16 +137,16 @@ func blockingCodes(report skillpkg.Report) []string {
 	return codes
 }
 
-func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) error {
-	reason, err := s.scanRefusal(ctx, objectKey)
+func (s *Service) requireScanNotBlocking(ctx context.Context, stored skillpkg.StoredSkill) error {
+	reason, err := s.scanRefusal(ctx, stored)
 	if err != nil {
 		return refused(reason, err)
 	}
 	return nil
 }
 
-func (s *Service) scanRefusal(ctx context.Context, objectKey string) (string, error) {
-	report, scanned := s.packageReport(ctx, objectKey)
+func (s *Service) scanRefusal(ctx context.Context, stored skillpkg.StoredSkill) (string, error) {
+	report, scanned := s.packageReport(ctx, stored)
 	return scanVerdict(report, scanned)
 }
 

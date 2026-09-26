@@ -135,7 +135,8 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 		root.added, err = q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 			WorkspaceID: root.row.WorkspaceID, SkillID: root.row.ID, SourceID: content.sourceID,
 			VersionNumber: e.VersionNumber, ContentHash: content.contentHash, PackageObjectKey: content.packageObjectKey,
-			Manifest: content.manifest, LicenseExpression: content.license, LicenseSource: content.licenseSource,
+			SourcePath: content.sourcePath,
+			Manifest:   content.manifest, LicenseExpression: content.license, LicenseSource: content.licenseSource,
 		})
 		e.VersionID = root.added.ID
 		event = e

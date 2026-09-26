@@ -25,6 +25,7 @@ type NewVersion struct {
 	SourceID         pgtype.UUID
 	ContentHash      string
 	PackageObjectKey string
+	SourcePath       string
 	Report           skillpkg.Report
 }
 
@@ -49,6 +50,7 @@ type VersionContent struct {
 	sourceID         pgtype.UUID
 	contentHash      string
 	packageObjectKey string
+	sourcePath       string
 	manifest         []byte
 	license          *string
 	licenseSource    *string
@@ -94,15 +96,17 @@ func ContentFromPackage(v NewVersion, generated bool) (VersionContent, error) {
 	license, licenseSource := versionLicense(v.Report)
 	return VersionContent{
 		sourceID: v.SourceID, contentHash: v.ContentHash, packageObjectKey: v.PackageObjectKey,
-		manifest: encoded, license: license, licenseSource: licenseSource,
+		sourcePath: v.SourcePath,
+		manifest:   encoded, license: license, licenseSource: licenseSource,
 		summary: manifest.Description, generated: generated,
 	}, nil
 }
 
 func copiedContent(from gen.SkillVersion, generated bool) VersionContent {
 	return VersionContent{
-		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, manifest: slices.Clone(from.Manifest),
-		license: pgconv.Clone(from.LicenseExpression), licenseSource: pgconv.Clone(from.LicenseSource), generated: generated,
+		contentHash: from.ContentHash, packageObjectKey: from.PackageObjectKey, sourcePath: from.SourcePath,
+		manifest: slices.Clone(from.Manifest),
+		license:  pgconv.Clone(from.LicenseExpression), licenseSource: pgconv.Clone(from.LicenseSource), generated: generated,
 	}
 }
 

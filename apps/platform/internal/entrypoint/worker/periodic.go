@@ -140,6 +140,7 @@ func newBackfillService(pool *pgxpool.Pool, deps Deps) *ingest.Service {
 					VersionID: row.VersionID,
 					SkillID:   row.SkillID, WorkspaceID: row.WorkspaceID,
 					Name: row.Name, PackageObjectKey: row.PackageObjectKey,
+					SourcePath: row.SourcePath,
 				}
 			}
 			return out, nil

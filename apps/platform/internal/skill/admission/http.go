@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,24 @@ type UploadResult struct {
 	Findings      skillpkg.CategorizedFindings `json:"findings"`
 }
 
+type ImportResult struct {
+	Shape    string                `json:"shape"`
+	Plugin   *skillpkg.PluginFacts `json:"plugin,omitempty"`
+	Skills   []ImportedSkill       `json:"skills"`
+	Refused  []RefusedSkill        `json:"refused"`
+	Excluded []skillpkg.Finding    `json:"excluded_components"`
+}
+
+type ImportedSkill struct {
+	Path string `json:"path"`
+	UploadResult
+}
+
+type RefusedSkill struct {
+	Path     string                       `json:"path"`
+	Findings skillpkg.CategorizedFindings `json:"findings"`
+}
+
 type importLimitsResponse struct {
 	MaxZipBytes      int64    `json:"max_zip_bytes"`
 	MaxUnpackedBytes int64    `json:"max_unpacked_bytes"`
@@ -57,6 +76,26 @@ func NewUploadResult(res Result) UploadResult {
 		Duplicate:     res.Duplicate,
 		Findings:      res.Report.Categorize(),
 	}
+}
+
+func NewImportResult(res SourceResult) ImportResult {
+	out := ImportResult{
+		Shape:    string(res.Shape),
+		Plugin:   res.Plugin,
+		Skills:   make([]ImportedSkill, 0, len(res.Imported)),
+		Refused:  make([]RefusedSkill, 0, len(res.Refused)),
+		Excluded: res.Excluded,
+	}
+	if out.Excluded == nil {
+		out.Excluded = []skillpkg.Finding{}
+	}
+	for _, one := range res.Imported {
+		out.Skills = append(out.Skills, ImportedSkill{Path: one.Path, UploadResult: NewUploadResult(one.Result)})
+	}
+	for _, refused := range res.Refused {
+		out.Refused = append(out.Refused, RefusedSkill{Path: refused.Path, Findings: refused.Report.Categorize()})
+	}
+	return out
 }
 
 const importLimitsNote = "套件只做靜態檢查，匯入期間不執行其中的 Script；" +
@@ -116,7 +155,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.Svc.UploadZip(r.Context(), ws, data)
-	h.respond(w, res, err)
+	h.respondSource(w, res, err)
 }
 
 func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
@@ -177,20 +216,50 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.Svc.ImportURL(r.Context(), ws, body.URL)
-	h.respond(w, res, err)
+	h.respondSource(w, res, err)
+}
+
+func (h *Handler) respondSource(w http.ResponseWriter, res SourceResult, err error) {
+	if errors.Is(err, ErrTooManySkills) {
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge,
+			"這個來源裡的 Skill 超過一次匯入的上限 "+strconv.Itoa(MaxSkillsPerImport)+
+				" 個。請改成一個一個匯入，或先把來源拆小。")
+		return
+	}
+	if h.writeImportError(w, err) {
+		return
+	}
+	status := http.StatusCreated
+	if res.Blocked() {
+		status = http.StatusUnprocessableEntity
+	}
+	httpx.WriteJSON(w, status, NewImportResult(res))
 }
 
 func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
+	if h.writeImportError(w, err) {
+		return
+	}
+	if res.Report.Blocked {
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, res.Report.Categorize())
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, NewUploadResult(res))
+}
 
+func (h *Handler) writeImportError(w http.ResponseWriter, err error) bool {
+	if err == nil {
+		return false
+	}
 	if errors.Is(err, ErrFetch) {
 		httpx.WriteError(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), ErrFetch.Error()+": "))
-		return
+		return true
 	}
 
 	var badArchive *skillpkg.ArchiveError
 	if errors.As(err, &badArchive) {
 		httpx.WriteError(w, http.StatusBadRequest, badArchive.Message())
-		return
+		return true
 	}
 
 	if errors.Is(err, ErrGeneratedNameCollision) {
@@ -199,20 +268,10 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 				"接上去的版本會沿用生成 Skill 的搜尋排除，連你自己都再也搜不到它。"+
 				"要為生成的內容加你自己的版本，請把它匯入成一個新的 Skill；"+
 				"如果是匯入時撞到同名的生成 Skill，請先刪除它，或改掉套件裡的 name。")
-		return
+		return true
 	}
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "import failed")
-		return
-	}
-
-	if res.Report.Blocked {
-
-		httpx.WriteJSON(w, http.StatusUnprocessableEntity, res.Report.Categorize())
-		return
-	}
-
-	httpx.WriteJSON(w, http.StatusCreated, NewUploadResult(res))
+	httpx.WriteError(w, http.StatusInternalServerError, "import failed")
+	return true
 }
 
 type GenerateResponse struct {

@@ -379,7 +379,7 @@ func (s *Service) resolveReference(
 	if err != nil {
 		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := skillpkg.SkillFS(data, version.SourcePath)
 	if err != nil {
 		return ReferenceSkill{}, referenceProvenance{}, fmt.Errorf("%w: %v", ErrReferenceUnavailable, err)
 	}

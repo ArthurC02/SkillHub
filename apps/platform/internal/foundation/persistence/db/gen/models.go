@@ -576,6 +576,7 @@ type SearchDocument struct {
 	Curated                 bool
 	Listable                bool
 	HasScript               *bool
+	LatestSourcePath        string
 }
 
 type Session struct {
@@ -658,6 +659,7 @@ type SkillVersion struct {
 	CreatedAt         pgtype.Timestamptz
 	// Provenance tier of license_expression, strongest first: manifest (author declared it in SKILL.md frontmatter), manifest-referenced-file (frontmatter pointed at a package file, e.g. "SEE LICENSE IN LICENSE.txt", and that file's text was recognised), package-license-file (a LICENSE file in the package itself), repo-license-file (repository-level LICENSE carried into a package cut from a monorepo subdirectory). NULL whenever license_expression is NULL.
 	LicenseSource *string
+	SourcePath    string
 }
 
 type TestCase struct {

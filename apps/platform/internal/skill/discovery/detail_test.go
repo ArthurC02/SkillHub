@@ -66,7 +66,7 @@ func TestRiskSummarySeparatesFileScriptsFromEmbeddedCode(t *testing.T) {
 
 func TestDefaultRiskIsUnavailableNotClean(t *testing.T) {
 	s := &Service{}
-	if _, ok := s.scanPackage(t.Context(), "packages/missing.zip"); ok {
+	if _, ok := s.scanPackage(t.Context(), skillpkg.StoredSkill{ObjectKey: "packages/missing.zip"}); ok {
 		t.Fatal("scanPackage reported success with no object store")
 	}
 }

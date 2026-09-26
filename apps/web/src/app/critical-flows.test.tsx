@@ -107,12 +107,20 @@ test("URL import sends the source and links the imported skill", async () => {
   const fetchMock = vi.fn((_url: string | URL | Request, init?: RequestInit) =>
     json(
       {
-        skill_id: "skill-1",
-        version_id: "version-1",
-        version_number: 2,
-        content_hash: "abc",
-        duplicate: false,
-        findings: { errors: [], warnings: [], infos: [] },
+        shape: "skill",
+        skills: [
+          {
+            path: "",
+            skill_id: "skill-1",
+            version_id: "version-1",
+            version_number: 2,
+            content_hash: "abc",
+            duplicate: false,
+            findings: { errors: [], warnings: [], infos: [] },
+          },
+        ],
+        refused: [],
+        excluded_components: [],
       },
       init?.method === "POST" ? 201 : 200,
     ),

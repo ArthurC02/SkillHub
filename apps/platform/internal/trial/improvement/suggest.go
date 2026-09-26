@@ -265,7 +265,7 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []Tar
 	if s.Store == nil || m.version.PackageObjectKey == "" {
 		return nil, nil
 	}
-	fsys, _, err := s.readPackage(ctx, m.version.PackageObjectKey)
+	fsys, _, err := s.readPackage(ctx, m.version.stored())
 	if err != nil {
 		slog.Warn("suggestion inputs unavailable", "error", err)
 		return nil, nil

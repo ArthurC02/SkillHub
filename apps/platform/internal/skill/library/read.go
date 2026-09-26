@@ -41,6 +41,7 @@ type Version struct {
 	VersionNumber     int32
 	ContentHash       string
 	PackageObjectKey  string
+	SourcePath        string
 	LicenseExpression *string
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string
@@ -358,8 +359,9 @@ func versionDTO(row gen.SkillVersion) Version {
 	return Version{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, SourceID: row.SourceID,
 		VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
-		PackageObjectKey: row.PackageObjectKey, LicenseExpression: pgconv.Clone(row.LicenseExpression),
-		CreatedAt: row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
+		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
+		LicenseExpression: pgconv.Clone(row.LicenseExpression),
+		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
 	}
 }
 

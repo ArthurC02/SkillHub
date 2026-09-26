@@ -12,13 +12,36 @@ export type CategorizedFindings = {
   infos: ImportFinding[];
 };
 
-export type ImportResult = {
+export type UploadResult = {
   skill_id: string;
   version_id: string;
   version_number: number;
   content_hash: string;
   duplicate: boolean;
   findings: CategorizedFindings;
+};
+
+export type SourceShape = "skill" | "plugin" | "tree";
+
+export type ImportedPlugin = {
+  name: string;
+  version?: string;
+  repository?: string;
+};
+
+export type ImportedSkill = UploadResult & { path: string };
+
+export type RefusedSkill = {
+  path: string;
+  findings: CategorizedFindings;
+};
+
+export type ImportResult = {
+  shape: SourceShape;
+  plugin?: ImportedPlugin;
+  skills: ImportedSkill[];
+  refused: RefusedSkill[];
+  excluded_components: ImportFinding[];
 };
 
 export interface Me {
@@ -226,7 +249,7 @@ export interface GenerationFailure {
   collision?: boolean;
 }
 
-export interface GenerateSkillResult extends ImportResult {
+export interface GenerateSkillResult extends UploadResult {
   attempts: number;
   generator_model: string;
   generator_prompt_version: string;

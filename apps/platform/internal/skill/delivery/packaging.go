@@ -119,6 +119,7 @@ type VersionFacts struct {
 	VersionNumber     int32
 	ContentHash       string
 	PackageObjectKey  string
+	SourcePath        string
 	LicenseExpression *string
 	LicenseSource     *string
 	CreatedAt         pgtype.Timestamptz
@@ -324,7 +325,7 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 	if err != nil {
 		return fmt.Errorf("stored package unreadable: %w", err)
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := skillpkg.SkillFS(data, p.Version.SourcePath)
 	if err != nil {
 		return fmt.Errorf("stored package unreadable: %w", err)
 	}

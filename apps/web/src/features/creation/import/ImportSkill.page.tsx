@@ -4,7 +4,8 @@ import { Findings } from "../../../shared/ui/Findings";
 import { LoginRequired, ReadFailure, unauthenticated } from "../../../shared/ui/LoginRequired";
 import { useMe } from "../../../core/session/me.service";
 import { ApiError } from "../../../core/api/client";
-import { isCategorizedFindings, useImportSkill, useSkillImportLimits } from "../import.service";
+import { isImportResult, useImportSkill, useSkillImportLimits } from "../import.service";
+import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
 
 function mb(bytes: number): string {
   return (bytes / (1 << 20)).toFixed(1).replace(/\.0$/, "") + " MB";
@@ -21,7 +22,7 @@ export function ImportSkill() {
   const result = mutation.data;
   const failure = mutation.error;
   const rejected =
-    failure instanceof ApiError && isCategorizedFindings(failure.body) ? failure.body : undefined;
+    failure instanceof ApiError && isImportResult(failure.body) ? failure.body : undefined;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -131,32 +132,112 @@ export function ImportSkill() {
 
       {rejected && (
         <section role="alert">
-          <h2>匯入失敗：套件被擋下，沒有匯入任何東西</h2>
+          <h2>匯入失敗：這個來源沒有一個 Skill 進得來</h2>
           <p>
             這個工作區沒有新增任何 Skill，也沒有建立新版本。
-            下面每一則阻擋錯誤都要在套件裡修掉，再重新匯入一次；警告與資訊不擋匯入，一併列在後面。
+            下面每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次；警告與資訊不擋匯入，一併列在後面。
           </p>
-          <Findings findings={rejected} />
+          <RefusedList refused={rejected.refused} />
         </section>
       )}
 
-      {result && (
-        <>
-          <div role="status" className="notice">
-            <p>
-              {result.duplicate ? "相同內容已存在，沿用既有版本。" : "匯入完成。"}版本 #
-              {result.version_number}
-            </p>
-            <Link to="/skills/$skillId" params={{ skillId: result.skill_id }}>
-              查看 Skill
-            </Link>
-          </div>
-          <section>
-            <h2>靜態檢查結果</h2>
-            <Findings findings={result.findings} />
-          </section>
-        </>
-      )}
+      {result && <ImportOutcome result={result} />}
     </section>
+  );
+}
+
+function ImportOutcome({ result }: { result: ImportResult }) {
+  return (
+    <>
+      <div role="status" className="notice">
+        <p>
+          匯入完成，這個來源帶進 {result.skills.length} 個 Skill。
+          {result.plugin && (
+            <>
+              {" "}
+              它是一個 Agent Plugin（<code>{result.plugin.name}</code>
+              {result.plugin.version ? ` ${result.plugin.version}` : ""}）。
+            </>
+          )}
+        </p>
+        {result.plugin && (
+          <p className="note">
+            整個 Plugin 以原樣存成一份套件，Plugin 裡的每個 Skill 都指向它。
+            <strong>從其中任何一個 Skill 下載原始套件，拿到的是整個 Plugin</strong>
+            ；要只拿單一個 Skill，用那個 Skill 自己的可攜套件。
+          </p>
+        )}
+      </div>
+
+      <section>
+        <h2>進來的 Skill（{result.skills.length}）</h2>
+        <ul>
+          {result.skills.map((skill) => (
+            <li key={skill.version_id}>
+              <SkillOutcome skill={skill} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {result.refused.length > 0 && (
+        <section role="alert">
+          <h2>沒進來的 Skill（{result.refused.length}）</h2>
+          <p>
+            這幾個資料夾沒有建立
+            Skill，其餘的照樣進來了。每一則阻擋錯誤都要在來源裡修掉，再重新匯入一次。
+          </p>
+          <RefusedList refused={result.refused} />
+        </section>
+      )}
+
+      {result.excluded_components.length > 0 && (
+        <section>
+          <h2>沒有匯入的部分（{result.excluded_components.length}）</h2>
+          <p>這些是 Plugin 裡不是 Agent Skill 的部分。平台只把它們列出來，不匯入也不執行。</p>
+          <Findings findings={{ errors: [], warnings: [], infos: result.excluded_components }} />
+        </section>
+      )}
+    </>
+  );
+}
+
+function SkillOutcome({ skill }: { skill: ImportedSkill }) {
+  return (
+    <>
+      <p>
+        {skill.path && (
+          <>
+            <code>{skill.path}</code>{" "}
+          </>
+        )}
+        {skill.duplicate ? "相同內容已存在，沿用既有版本。" : "新版本已建立。"}版本 #
+        {skill.version_number}{" "}
+        <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
+          查看 Skill
+        </Link>
+      </p>
+      <details>
+        <summary>靜態檢查結果</summary>
+        <Findings findings={skill.findings} level={4} />
+      </details>
+    </>
+  );
+}
+
+function RefusedList({ refused }: { refused: RefusedSkill[] }) {
+  return (
+    <ul>
+      {refused.map((one, index) => (
+        <li key={`${one.path}-${index}`}>
+          {one.path && (
+            <p>
+              <code>{one.path}</code>
+            </p>
+          )}
+          <Findings findings={one.findings} level={4} />
+        </li>
+      ))}
+    </ul>
   );
 }

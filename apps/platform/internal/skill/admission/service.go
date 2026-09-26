@@ -96,6 +96,7 @@ type PendingEnrichment struct {
 	WorkspaceID      pgtype.UUID
 	Name             string
 	PackageObjectKey string
+	SourcePath       string
 }
 
 func (s *Service) GenerateFailures(ctx context.Context, workspaceID pgtype.UUID, limit int32) ([]audit.Record, error) {
@@ -181,33 +182,34 @@ func present(s *string) bool {
 	return s != nil && strings.TrimSpace(*s) != ""
 }
 
-func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (Result, error) {
-	return s.importZip(ctx, ws, data, sourceMeta{Type: SourceUpload})
+func (s *Service) UploadZip(ctx context.Context, ws identity.Workspace, data []byte) (SourceResult, error) {
+	return s.importSource(ctx, ws, data, sourceMeta{Type: SourceUpload})
 }
 
-func (s *Service) ImportURL(ctx context.Context, ws identity.Workspace, rawURL string) (Result, error) {
+func (s *Service) ImportURL(ctx context.Context, ws identity.Workspace, rawURL string) (SourceResult, error) {
 	if s.Fetcher == nil {
-		return Result{}, fmt.Errorf("%w: 這個部署沒有啟用「從網址匯入」。", ErrFetch)
+		return SourceResult{}, fmt.Errorf("%w: 這個部署沒有啟用「從網址匯入」。", ErrFetch)
 	}
 	sourceURL, err := s.Fetcher.Normalize(rawURL)
 	if err != nil {
-		return Result{}, err
+		return SourceResult{}, err
 	}
 	data, ref, err := s.Fetcher.Fetch(ctx, sourceURL)
 	if err != nil {
-		return Result{}, err
+		return SourceResult{}, err
 	}
 	meta := sourceMeta{Type: SourceGit, URL: &sourceURL}
 	if ref != "" {
 		meta.Ref = &ref
 	}
-	return s.importZip(ctx, ws, data, meta)
+	return s.importSource(ctx, ws, data, meta)
 }
 
 type preparedPackage struct {
 	report      skillpkg.Report
 	contentHash string
 	objectKey   string
+	sourcePath  string
 
 	skillMD  string
 	fileTree []string
@@ -218,12 +220,12 @@ const (
 	maxEnrichFiles   = 500
 )
 
-func readPackage(data []byte) (preparedPackage, error) {
-	fsys, err := skillpkg.PackageFS(data)
+func readPackage(data []byte, sourcePath string) (preparedPackage, error) {
+	fsys, err := skillpkg.SkillFS(data, sourcePath)
 	if err != nil {
 		return preparedPackage{}, err
 	}
-	p := preparedPackage{report: skillpkg.Validate(fsys)}
+	p := preparedPackage{report: skillpkg.Validate(fsys), sourcePath: sourcePath}
 	if p.report.Blocked {
 		return p, nil
 	}
@@ -245,7 +247,7 @@ func readPackage(data []byte) (preparedPackage, error) {
 }
 
 func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
-	p, err := readPackage(data)
+	p, err := readPackage(data, "")
 	if err != nil || p.report.Blocked {
 		return p, err
 	}
@@ -256,7 +258,7 @@ func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, er
 	return p, nil
 }
 
-func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, p preparedPackage, data []byte) (pgx.Tx, func(), error) {
+func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, objectKey string, data []byte) (pgx.Tx, func(), error) {
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -266,7 +268,7 @@ func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, 
 		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if objectLocked {
-			if err := registry.UnlockPackageObject(unlockCtx, conn, p.objectKey); err != nil {
+			if err := registry.UnlockPackageObject(unlockCtx, conn, objectKey); err != nil {
 				slog.Error("package object lock could not be released; closing connection", "error", err)
 				_ = conn.Hijack().Close(context.Background())
 				return
@@ -289,15 +291,15 @@ func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, 
 	if err != nil {
 		return fail(err)
 	}
-	if err := registry.LockPackageObject(ctx, conn, p.objectKey); err != nil {
+	if err := registry.LockPackageObject(ctx, conn, objectKey); err != nil {
 		return fail(err)
 	}
 	objectLocked = true
 
-	if err := registry.TrackPackageObject(ctx, conn, p.objectKey); err != nil {
+	if err := registry.TrackPackageObject(ctx, conn, objectKey); err != nil {
 		return fail(err)
 	}
-	if err := s.Store.Put(ctx, p.objectKey, data); err != nil {
+	if err := s.Store.Put(ctx, objectKey, data); err != nil {
 		return fail(err)
 	}
 	tx, err := conn.Begin(ctx)
@@ -319,40 +321,15 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}
-	res := Result{Report: p.report}
-
 	e := s.enrichPackage(ctx, p, ws.ID)
 
-	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
+	tx, release, err := s.beginPackageWrite(ctx, ws, p.objectKey, data)
 	if err != nil {
 		return Result{}, err
 	}
 	defer release()
-	root, found, err := registry.LoadSkillNamed(ctx, tx, ws.ID, p.report.Manifest.Name)
+	res, err := s.importOne(ctx, tx, ws, p, src, e)
 	if err != nil {
-		return Result{}, err
-	}
-	if found && src.Type == SourceGenerated {
-		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, root.Skill().Name)
-	}
-	if !found {
-		if root, err = registry.SkillFromPackage(ws.ID, p.report, redistributionFor(ws, src)); err != nil {
-			return Result{}, err
-		}
-		if err := registry.SaveSkill(ctx, tx, root); err != nil {
-			return Result{}, err
-		}
-	}
-	res.Skill = root.Skill()
-
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
-	if err != nil {
-		return Result{}, err
-	}
-	importMeta := map[string]any{"source_type": string(src.Type)}
-
-	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
-	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
 		return Result{}, err
 	}
 	if after != nil {
@@ -401,7 +378,7 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 
 	e := s.enrichPackage(ctx, p, ws.ID)
 
-	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
+	tx, release, err := s.beginPackageWrite(ctx, ws, p.objectKey, data)
 	if err != nil {
 		return Result{}, err
 	}
@@ -477,6 +454,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		SourceID:         source.ID,
 		ContentHash:      p.contentHash,
 		PackageObjectKey: p.objectKey,
+		SourcePath:       p.sourcePath,
 		Report:           p.report,
 	}, generated)
 	if err != nil {
@@ -536,7 +514,7 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 			failed++
 			continue
 		}
-		p, err := readPackage(data)
+		p, err := readPackage(data, row.SourcePath)
 		if err != nil || p.report.Blocked {
 			slog.Warn("backfill: stored package no longer parses", "skill", row.Name, "error", err)
 			failed++

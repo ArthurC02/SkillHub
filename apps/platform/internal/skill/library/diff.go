@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 type FileDiff struct {
@@ -45,11 +45,11 @@ func (s *Service) DiffVersions(ctx context.Context, ws identity.Workspace, skill
 		if err != nil {
 			return nil, err
 		}
-		zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+		fsys, err := skillpkg.SkillFS(data, v.SourcePath)
 		if err != nil {
 			return nil, fmt.Errorf("stored package unreadable: %w", err)
 		}
-		return zr, nil
+		return fsys, nil
 	}
 
 	fromFS, err := load(versions.From)

@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../core/api/client";
-import type { ImportResult } from "../../core/api/types";
+import type { UploadResult } from "../../core/api/types";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export function saveSkillVersion(skillId: string, file: File) {
-  return apiFetch<ImportResult>(`/skills/${skillId}/versions`, {
+  return apiFetch<UploadResult>(`/skills/${skillId}/versions`, {
     method: "POST",
     headers: { "Content-Type": "application/zip" },
     body: file,

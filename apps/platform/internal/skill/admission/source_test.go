@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -196,4 +197,84 @@ func TestPlanImportCarriesSourceLevelFindingsOntoEverySkillBelowTheRoot(t *testi
 	}
 	t.Fatalf("the archive reader's finding never reached the skill's report: %+v",
 		plan.admitted[0].pkg.report.Findings)
+}
+
+func TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken(t *testing.T) {
+	plan := planOf(t, map[string]string{
+		"plugin.json":           pluginManifest("twins"),
+		"skills/alpha/SKILL.md": namedSkillMD("alpha"),
+		"skills/beta/SKILL.md":  namedSkillMD("alpha"),
+	})
+
+	if got := strings.Join(admittedPaths(plan), ","); got != "skills/alpha" {
+		t.Fatalf("admitted = %q; a repeated name would become the first skill's version 2", got)
+	}
+	if plan.blocked() {
+		t.Error("the whole import was blocked; the first skill was fine")
+	}
+	if len(plan.refused) != 1 || plan.refused[0].path != "skills/beta" {
+		t.Fatalf("refused = %+v, want only skills/beta", plan.refused)
+	}
+	report := plan.refused[0].pkg.report
+	if !report.Blocked {
+		t.Error("the refused skill's report is not blocked, so it would still be imported")
+	}
+	var found *skillpkg.Finding
+	for i, f := range report.Findings {
+		if f.Code == skillpkg.CodeDuplicateSkillName {
+			found = &report.Findings[i]
+		}
+	}
+	if found == nil {
+		t.Fatalf("no %s finding: %+v", skillpkg.CodeDuplicateSkillName, report.Findings)
+	}
+	for _, want := range []string{"skills/alpha", "alpha"} {
+		if !strings.Contains(found.Message, want) {
+			t.Errorf("the refusal does not say %q, so the reader cannot find the other one: %s", want, found.Message)
+		}
+	}
+}
+
+func TestPlanImportAdmitsEveryDistinctNameInOneSource(t *testing.T) {
+	plan := planOf(t, map[string]string{
+		"plugin.json":           pluginManifest("triplets"),
+		"skills/alpha/SKILL.md": namedSkillMD("alpha"),
+		"skills/beta/SKILL.md":  namedSkillMD("beta"),
+		"skills/gamma/SKILL.md": namedSkillMD("gamma"),
+	})
+
+	if got := strings.Join(admittedPaths(plan), ","); got != "skills/alpha,skills/beta,skills/gamma" {
+		t.Fatalf("admitted = %q, want all three", got)
+	}
+	if len(plan.refused) != 0 {
+		t.Fatalf("refused = %+v, want none", plan.refused)
+	}
+}
+
+func TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom(t *testing.T) {
+	plan := planOf(t, map[string]string{
+		"plugin.json":            pluginManifest("routed"),
+		"skills/first/SKILL.md":  namedSkillMD("first"),
+		"skills/second/SKILL.md": namedSkillMD("second"),
+	})
+
+	got := map[string]string{}
+	for _, planned := range plan.admitted {
+		got[planned.path] = planned.pkg.sourcePath
+	}
+	want := map[string]string{"skills/first": "skills/first", "skills/second": "skills/second"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("source paths = %v, want %v; a wrong path sends every later reader at the wrong directory", got, want)
+	}
+}
+
+func TestASkillThatIsTheWholePackageRecordsNoSubdirectory(t *testing.T) {
+	plan := planOf(t, map[string]string{"SKILL.md": skillMD})
+
+	if len(plan.admitted) != 1 {
+		t.Fatalf("admitted = %v", admittedPaths(plan))
+	}
+	if got := plan.admitted[0].pkg.sourcePath; got != "" {
+		t.Fatalf("source path = %q, want empty; the package root is already this skill's root", got)
+	}
 }

@@ -352,8 +352,9 @@ func catalogVersionFacts(version registry.Version) catalog.VersionFacts {
 	return catalog.VersionFacts{
 		ID: version.ID, WorkspaceID: version.WorkspaceID, SourceID: version.SourceID,
 		VersionNumber: version.VersionNumber, ContentHash: version.ContentHash,
-		PackageObjectKey: version.PackageObjectKey, LicenseExpression: version.LicenseExpression,
-		CreatedAt: version.CreatedAt, LicenseSource: version.LicenseSource,
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath,
+		LicenseExpression: version.LicenseExpression,
+		CreatedAt:         version.CreatedAt, LicenseSource: version.LicenseSource,
 	}
 }
 
@@ -373,8 +374,9 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 		return packaging.VersionFacts{
 			ID: version.ID, SkillID: version.SkillID, SourceID: version.SourceID,
 			VersionNumber: version.VersionNumber, ContentHash: version.ContentHash,
-			PackageObjectKey: version.PackageObjectKey, LicenseExpression: version.LicenseExpression,
-			LicenseSource: version.LicenseSource, CreatedAt: version.CreatedAt,
+			PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath,
+			LicenseExpression: version.LicenseExpression,
+			LicenseSource:     version.LicenseSource, CreatedAt: version.CreatedAt,
 		}
 	}
 	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (packaging.VersionFacts, bool, error) {

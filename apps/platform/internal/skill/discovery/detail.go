@@ -341,7 +341,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		}
 	}
 
-	if report, ok := s.scanPackage(ctx, ver.PackageObjectKey); ok {
+	if report, ok := s.scanPackage(ctx, storedSkill(ver)); ok {
 		out.Risk = summarizeRisk(report)
 		out.Compat.SpecValidation = axis(specWords, specValidation(report))
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
@@ -416,7 +416,7 @@ func (s *Service) SkillFiles(ctx context.Context, skill SkillFacts) (skillFiles,
 	if err != nil {
 		return skillFiles{}, errPackageUnreadable
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := storedSkill(ver).Open(data)
 	if err != nil {
 		return skillFiles{}, errPackageUnreadable
 	}
@@ -551,12 +551,16 @@ func (s *Service) storeGet(ctx context.Context, key string) ([]byte, error) {
 	return s.Store.Get(ctx, key)
 }
 
-func (s *Service) scanPackage(ctx context.Context, key string) (skillpkg.Report, bool) {
-	data, err := s.storeGet(ctx, key)
+func storedSkill(ver VersionFacts) skillpkg.StoredSkill {
+	return skillpkg.StoredSkill{ObjectKey: ver.PackageObjectKey, SourcePath: ver.SourcePath}
+}
+
+func (s *Service) scanPackage(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+	data, err := s.storeGet(ctx, stored.ObjectKey)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := stored.Open(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

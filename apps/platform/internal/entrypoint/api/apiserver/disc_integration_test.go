@@ -301,13 +301,14 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Report.Blocked {
-		t.Fatalf("test package did not validate: %+v", res.Report.Findings)
+	if res.Blocked() {
+		t.Fatalf("test package did not validate: %+v", res.Refused)
 	}
-	id, _ := res.Skill.ID.Value()
+	imported := onlyImported(t, res)
+	id, _ := imported.Skill.ID.Value()
 	skillID, _ := id.(string)
 
-	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", res.Skill.ID); err != nil {
+	if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", imported.Skill.ID); err != nil {
 		t.Fatal(err)
 	}
 	return skillID

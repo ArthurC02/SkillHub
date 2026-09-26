@@ -1,0 +1,99 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "plugin-skill-carries-its-own-root",
+  "proposal_id": "registry-run-facts-with-source-path",
+  "registry_revision": {
+    "observed_commit": "a6a691175c04fc2b6cb458811f12d8b82a2d9359",
+    "registry_digest": "sha256:a6ee144bc2a069628c9fb821835cd5a5493852cce846618496487724bf89f6bc"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "subtree-path-is-recorded",
+    "mutated_protection": "the directory a Skill of a Plugin records as its own root",
+    "failure_evidence": "Replacing p.sourcePath = dir with path.Base(dir) in prepareSkillAt made the test report source paths = map[skills/first:first skills/second:second], want map[skills/first:skills/first skills/second:skills/second]; the file was restored from a copy and compares byte-identical.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/shared/skillpkg/discover.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "db/migrations/0084_skill_version_source_path.sql"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate --registry-root docs/domain-memory --repo-root .",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-09-26T00:00:00Z"
+    },
+    {
+      "obligation_id": "refreshed-citation-reproduces",
+      "status": "passed",
+      "evidence": "registry_tools.py cite --path apps/platform/internal/entrypoint/wiring/trial.go --start 15 --end 30 reproduced the digests this proposal carries",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:6645e71a15941ed494b51004509ae6c70f2964a89add1530bcf59869e915c9e8",
+      "finished_at": "2026-09-26T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 55 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:1612a09812c84c6f43add2c78d32d9b3c2f8c0bb8d1d5672a293a6a80ed21edd",
+      "finished_at": "2026-09-26T00:00:00Z"
+    },
+    {
+      "obligation_id": "fact-reader-contract-holds",
+      "status": "passed",
+      "evidence": "registry_tools.py analyze-boundary --source-context registry --target-context run reported status known and resolved registry-run-facts-v1 with producer registry, consumer run and synchronous delivery",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:27c25137d4752b85c3e68d2b3303164d54f546b5ac5c0ee8a77eb9e7f1948bac",
+      "finished_at": "2026-09-26T00:00:00Z"
+    },
+    {
+      "obligation_id": "subtree-path-is-recorded",
+      "status": "passed",
+      "evidence": "go test ./internal/skill/admission/ -run TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom|TestASkillThatIsTheWholePackageRecordsNoSubdirectory",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:59e66845037240ecefcbb65ed5196aba0312000e9818f408d2a88c4808565d72",
+      "finished_at": "2026-09-26T00:00:00Z"
+    },
+    {
+      "obligation_id": "plugin-skill-packages-alone",
+      "status": "passed",
+      "evidence": "go test ./internal/entrypoint/api/apiserver/ -run TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn against a migrated test database",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:251e5b768152871ba620bc603f5bca31604944d554717b998932c391a390d852",
+      "finished_at": "2026-09-26T00:00:00Z"
+    }
+  ],
+  "contract_checks": [
+    {
+      "contract_id": "registry-run-facts-v1",
+      "status": "passed",
+      "evidence": "The reader hands over the recorded root next to the object key, and the pair travels as one value so a consumer cannot take the key and forget the root."
+    }
+  ],
+  "architecture_checks": [
+    {
+      "id": "platform-suite",
+      "status": "passed",
+      "evidence": "go test ./... over apps/platform against a migrated test database, and golangci-lint run ./... reporting 0 issues."
+    }
+  ],
+  "security_checks": [],
+  "residual_risks": [
+    "A Run of a Plugin-sourced Skill still installs the whole archive, because the provider request carries only the object key. Closing it changes the provider contract and the runtime image and is outside this proposal."
+  ]
+}

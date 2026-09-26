@@ -21,6 +21,7 @@ func NewCatalogService(pool *pgxpool.Pool) *catalog.Service {
 				CurationTier: row.CurationTier, CuratedVersionID: row.CuratedVersionID,
 				LatestVersionID: row.LatestVersionID, VerifiedAt: row.VerifiedAt,
 				LatestPackageObjectKey: row.LatestPackageObjectKey,
+				LatestSourcePath:       row.LatestSourcePath,
 				AgentCapability:        row.AgentCapability, AgentRuntime: row.AgentRuntime,
 				AgentRuntimeImage: row.AgentRuntimeImage, AgentMeasuredAt: row.AgentMeasuredAt,
 			}, live, err

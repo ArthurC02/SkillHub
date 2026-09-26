@@ -171,13 +171,14 @@ const getLiveSkillListingFacts = `-- name: GetLiveSkillListingFacts :one
 SELECT sk.redistribution, sk.category, sk.category_source, sk.curation_tier, sk.curated_version_id,
        ver.id AS latest_version_id, ver.created_at AS verified_at,
        COALESCE(ver.package_object_key, '')::text AS latest_package_object_key,
+       COALESCE(ver.source_path, '')::text AS latest_source_path,
        COALESCE(cmp.capability, '')::text AS agent_capability,
        COALESCE(cmp.runtime, '')::text AS agent_runtime,
        COALESCE(cmp.runtime_image, '')::text AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at
 FROM skills sk
 LEFT JOIN LATERAL (
-    SELECT v.id, v.created_at, v.package_object_key
+    SELECT v.id, v.created_at, v.package_object_key, v.source_path
     FROM skill_versions v
     WHERE v.skill_id = sk.id
     ORDER BY v.version_number DESC
@@ -203,6 +204,7 @@ type GetLiveSkillListingFactsRow struct {
 	LatestVersionID        pgtype.UUID
 	VerifiedAt             pgtype.Timestamptz
 	LatestPackageObjectKey string
+	LatestSourcePath       string
 	AgentCapability        string
 	AgentRuntime           string
 	AgentRuntimeImage      string
@@ -221,6 +223,7 @@ func (q *Queries) GetLiveSkillListingFacts(ctx context.Context, id pgtype.UUID) 
 		&i.LatestVersionID,
 		&i.VerifiedAt,
 		&i.LatestPackageObjectKey,
+		&i.LatestSourcePath,
 		&i.AgentCapability,
 		&i.AgentRuntime,
 		&i.AgentRuntimeImage,

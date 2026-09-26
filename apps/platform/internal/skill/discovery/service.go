@@ -62,6 +62,7 @@ type ListingFacts struct {
 	LatestVersionID        pgtype.UUID
 	VerifiedAt             pgtype.Timestamptz
 	LatestPackageObjectKey string
+	LatestSourcePath       string
 	AgentCapability        string
 	AgentRuntime           string
 	AgentRuntimeImage      string
@@ -100,6 +101,7 @@ type VersionFacts struct {
 	VersionNumber     int32
 	ContentHash       string
 	PackageObjectKey  string
+	SourcePath        string
 	LicenseExpression *string
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string

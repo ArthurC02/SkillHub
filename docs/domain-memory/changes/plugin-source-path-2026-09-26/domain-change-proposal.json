@@ -1,0 +1,123 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-run-facts-with-source-path",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "plugin-skill-carries-its-own-root",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-26T06:13:59.750011Z",
+  "verified_at": "2026-09-26T06:14:08.861787Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "a6a691175c04fc2b6cb458811f12d8b82a2d9359",
+    "registry_digest": "sha256:a6ee144bc2a069628c9fb821835cd5a5493852cce846618496487724bf89f6bc"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry owns where a Skill Version's content lives, including which directory of the stored package is that Version's root.",
+    "evidence": [
+      "apps/platform/internal/skill/admission/source.go:101-127"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Run reads Registry-owned Skill and Version facts through a reader the composition root injects; Run never reaches into Registry storage.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run -> registry persistence"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/wiring/trial.go:15-30"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "An Agent Plugin arrives as one archive holding several Skills, so a package root is no longer a Skill root.",
+      "Every consumer of a stored package had the package root hard-coded, so a Skill imported from a Plugin was created and then refused by packaging, scanning and diffing."
+    ],
+    "decision": "The Version records the directory it was validated from, and the pair of object key and directory travels together as one value so a consumer cannot take the key and forget the directory.",
+    "invariants_preserved": [
+      "Registry owns where a Skill Version's content lives, including which directory of the stored package is that Version's root.",
+      "Run owns lifecycle transitions."
+    ],
+    "rejected_alternatives": [
+      "Re-zip each Skill of a Plugin into its own package: it keeps every consumer unchanged but stores content the Creator never supplied, and the Plugin is the unit that was imported.",
+      "Let each consumer find the Skill by walking for SKILL.md: a Plugin holds several, so the walk has to guess which one this Version is."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "refreshed-citation-reproduces",
+      "audit-chain-intact",
+      "fact-reader-contract-holds",
+      "subtree-path-is-recorded",
+      "plugin-skill-packages-alone"
+    ],
+    "counterfactual_check": "subtree-path-is-recorded"
+  },
+  "event_change": null,
+  "contract_change": {
+    "contract_id": "registry-run-facts-v1",
+    "kind": "additive",
+    "summary": "The Version facts Registry hands to Run gain the recorded root of the Version inside its stored package.",
+    "consumer_impact": "A consumer that ignores the field keeps the old behaviour, which is correct only for a Version whose root is the package root."
+  },
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "registry-run-facts-v1",
+        "kind": "internal-fact-reader",
+        "producer_context": "registry",
+        "consumer_contexts": [
+          "run"
+        ],
+        "version": "v1",
+        "compatibility_policy": "consumer-specific facts evolve deliberately",
+        "data_classification": "internal",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 15,
+              "end": 30
+            },
+            "content_sha256": "sha256:420c2c0cda05872ea6908d5fc6604927d5b79a19e25f6ffb9e299b3fd25ebf27",
+            "excerpt_sha256": "sha256:bcd1b51a81a93063be5b17e9caeed784478b0c1fc6e55c7886a419371c6aa457",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [
+    "The sandbox provider request still carries only the object key, so a Run of a Plugin-sourced Skill installs the whole archive and the agent discovers no Skill. Closing it changes the provider contract and the runtime image, so it is not in this proposal's scope."
+  ],
+  "supersedes": "run-registry-reviewed-facts-signed",
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-26T06:14:08.128459Z",
+      "scope": "Registry-to-Run version facts: the recorded root of a Skill Version inside its stored package",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "a6a691175c04fc2b6cb458811f12d8b82a2d9359",
+        "registry_digest": "sha256:a6ee144bc2a069628c9fb821835cd5a5493852cce846618496487724bf89f6bc"
+      }
+    }
+  ]
+}

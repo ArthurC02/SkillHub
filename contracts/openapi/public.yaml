@@ -482,8 +482,14 @@ paths:
       summary: Import a skill package by uploading a zip archive (SKILL-001)
       description: |
         Requires a session. The archive is statically validated only; nothing
-        inside it is executed. Blocking findings reject the import; identical
-        content re-uploaded to the same skill returns the existing version.
+        inside it is executed. Identical content re-uploaded to the same skill
+        returns the existing version.
+
+        One archive may hold more than one skill (SKILL-006): a single Agent
+        Skill, an Agent Plugin, or a repository tree. The reply lists every
+        skill the source produced with its own findings, and a blocking finding
+        refuses that skill rather than the whole source - the source is refused
+        only when nothing in it survived.
       requestBody:
         required: true
         content:
@@ -493,11 +499,11 @@ paths:
               format: binary
       responses:
         "201":
-          description: Package imported (or already present as this version).
+          description: At least one skill imported (or already present as that version).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UploadResult"
+                $ref: "#/components/schemas/ImportResult"
         "400":
           description: Not a valid zip archive, or uncompressed content too large.
           content:
@@ -537,11 +543,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
-          description: Package failed spec or static validation.
+          description: |
+            Nothing in the source became a skill. Same shape as the 201 with an
+            empty `skills`, so one reader handles both and a plugin whose every
+            skill failed still says which ones.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CategorizedFindings"
+                $ref: "#/components/schemas/ImportResult"
   /skills/generate:
     post:
       operationId: generateSkill
@@ -766,7 +775,9 @@ paths:
       description: |
         Requires a session. GitHub repo URLs are normalized to their zip
         archives; other allow-listed URLs must point directly at a zip. The
-        package goes through the same static validation as uploads.
+        source goes through the same static validation, the same skill
+        discovery and the same per-skill refusal as an upload (SKILL-006), which
+        is what makes a repository holding several skills importable by URL.
       requestBody:
         required: true
         content:
@@ -780,11 +791,11 @@ paths:
                   format: uri
       responses:
         "201":
-          description: Package imported (or already present as this version).
+          description: At least one skill imported (or already present as that version).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UploadResult"
+                $ref: "#/components/schemas/ImportResult"
         "400":
           description: Disallowed or unreachable URL, or content is not a valid archive.
           content:
@@ -818,11 +829,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: Package failed spec or static validation.
+          description: |
+            Nothing in the source became a skill. Same shape as the 201 with an
+            empty `skills`, so one reader handles both and a plugin whose every
+            skill failed still says which ones.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CategorizedFindings"
+                $ref: "#/components/schemas/ImportResult"
   /api/skills/search:
     get:
       operationId: publicSearchSkills
@@ -7110,6 +7124,91 @@ components:
         duplicate:
           type: boolean
           description: True when identical content already existed as a version of this skill.
+        findings:
+          $ref: "#/components/schemas/CategorizedFindings"
+    ImportResult:
+      type: object
+      required: [shape, skills, refused, excluded_components]
+      description: |
+        The result of importing one source (SKILL-006). A source is a single
+        Agent Skill, an Agent Plugin, or a tree that holds one or more skills,
+        so the reply is always a list and a single skill is a list of one -
+        a client that reads only the first entry silently drops the rest of a
+        plugin.
+
+        Returned on both 201 and 422. The status code carries the verdict and
+        `skills` carries the detail: an empty `skills` is the refusal, and
+        `refused` then says which candidates failed and why, rather than
+        collapsing a plugin whose every skill failed into one undifferentiated
+        error.
+
+        One stored package object backs every entry, because a plugin is stored
+        as it arrived. Downloading one skill of a plugin therefore returns the
+        whole plugin, and any screen offering that download has to say so.
+      properties:
+        shape:
+          type: string
+          enum: [skill, plugin, tree]
+          description: |
+            How the skills were located: `skill` for a source that is one skill,
+            `plugin` when a conforming root plugin.json named them, `tree` when
+            the platform walked the source. Conformance is judged by the
+            manifest's `$schema`, not by where the file sits, so a manifest
+            declaring another vendor's schema is disclosed and the source reads
+            as `tree` - its skills still import.
+        plugin:
+          $ref: "#/components/schemas/ImportedPlugin"
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImportedSkill"
+        refused:
+          type: array
+          description: Candidates the source held that the platform did not create.
+          items:
+            $ref: "#/components/schemas/RefusedSkill"
+        excluded_components:
+          type: array
+          description: |
+            Parts of the source that are not Agent Skills - an MCP server
+            declaration, a directory a client reserved for itself. Disclosed so
+            the reader knows what came in the archive and did not become a
+            skill; never imported and never executed.
+          items:
+            $ref: "#/components/schemas/Finding"
+    ImportedPlugin:
+      type: object
+      required: [name]
+      description: What the source's own manifest says about itself. Absent unless `shape` is `plugin`.
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        repository:
+          type: string
+    ImportedSkill:
+      allOf:
+        - type: object
+          required: [path]
+          properties:
+            path:
+              type: string
+              description: |
+                The directory inside the source that held this skill, so a reader
+                can tell two entries of one plugin apart. Empty when the source
+                itself is the skill.
+        - $ref: "#/components/schemas/UploadResult"
+    RefusedSkill:
+      type: object
+      required: [path, findings]
+      description: |
+        A candidate skill the platform found and did not create. One bad skill
+        does not refuse the rest of a source, so this list can sit beside a
+        non-empty `skills`.
+      properties:
+        path:
+          type: string
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
     GenerateDiagram:

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -8,7 +9,12 @@ import (
 	"io/fs"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 const MaxSkillsPerImport = 50
@@ -65,7 +71,31 @@ func planImport(data []byte) (importPlan, error) {
 		}
 		plan.admitted = append(plan.admitted, planned)
 	}
+	plan.refuseRepeatedNames()
 	return plan, nil
+}
+
+// Two directories carrying the same manifest name would otherwise become one
+// Skill and its second version, silently merging two different Skills.
+func (p *importPlan) refuseRepeatedNames() {
+	admitted := p.admitted
+	p.admitted = nil
+	claimedBy := make(map[string]string, len(admitted))
+	for _, planned := range admitted {
+		name := planned.pkg.report.Manifest.Name
+		first, taken := claimedBy[name]
+		if !taken {
+			claimedBy[name] = planned.path
+			p.admitted = append(p.admitted, planned)
+			continue
+		}
+		planned.pkg.report = withSourceFindings(planned.pkg.report, []skillpkg.Finding{{
+			Severity: skillpkg.SeverityError, Code: skillpkg.CodeDuplicateSkillName, Path: planned.path,
+			Message: "這個來源裡的 " + first + " 已經用了 name " + name +
+				"。一個名字在一次匯入裡只能建立一個 Skill——否則第二個會變成第一個的新版本，把兩個不同的 Skill 併成一個。",
+		}})
+		p.refused = append(p.refused, planned)
+	}
 }
 
 // A skill that IS the package keeps the package digest it has always had, so
@@ -80,6 +110,9 @@ func prepareSkillAt(fsys fs.FS, dir, objectKey, packageHash string, sourceFindin
 		}
 	}
 	p := preparedPackage{report: skillpkg.Validate(sub), objectKey: objectKey}
+	if dir != "." {
+		p.sourcePath = dir
+	}
 	if dir != "." {
 		p.report = withSourceFindings(p.report, archiveFindings(fsys), sourceFindings)
 	}
@@ -130,4 +163,104 @@ func withSourceFindings(r skillpkg.Report, groups ...[]skillpkg.Finding) skillpk
 		}
 	}
 	return r
+}
+
+type Refusal struct {
+	Path   string
+	Report skillpkg.Report
+}
+
+type SkillImport struct {
+	Path string
+	Result
+}
+
+type SourceResult struct {
+	Shape    skillpkg.SourceShape
+	Plugin   *skillpkg.PluginFacts
+	Excluded []skillpkg.Finding
+
+	Imported []SkillImport
+	Refused  []Refusal
+
+	Report skillpkg.Report
+}
+
+func (r SourceResult) Blocked() bool { return len(r.Imported) == 0 }
+
+func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta) (SourceResult, error) {
+	plan, err := planImport(data)
+	if err != nil {
+		return SourceResult{}, err
+	}
+	out := SourceResult{Shape: plan.shape, Plugin: plan.plugin, Excluded: plan.excluded}
+	for _, refused := range plan.refused {
+		out.Refused = append(out.Refused, Refusal{Path: refused.pkg.sourcePath, Report: refused.pkg.report})
+	}
+	if plan.blocked() {
+		out.Report = sourceLevelReport(plan)
+		return out, nil
+	}
+
+	enriched := make([]enrichment, len(plan.admitted))
+	for i, planned := range plan.admitted {
+		enriched[i] = s.enrichPackage(ctx, planned.pkg, ws.ID)
+	}
+
+	tx, release, err := s.beginPackageWrite(ctx, ws, plan.objectKey, data)
+	if err != nil {
+		return SourceResult{}, err
+	}
+	defer release()
+	for i, planned := range plan.admitted {
+		res, err := s.importOne(ctx, tx, ws, planned.pkg, src, enriched[i])
+		if err != nil {
+			return SourceResult{}, err
+		}
+		out.Imported = append(out.Imported, SkillImport{Path: planned.pkg.sourcePath, Result: res})
+	}
+	return out, tx.Commit(ctx)
+}
+
+// A source that yielded nothing has one report to show: the whole-source
+// refusal when no skill was found, otherwise the findings of the only skill.
+func sourceLevelReport(plan importPlan) skillpkg.Report {
+	if len(plan.refused) == 1 {
+		return plan.refused[0].pkg.report
+	}
+	return skillpkg.Report{Blocked: true}
+}
+
+func (s *Service) importOne(
+	ctx context.Context, tx pgx.Tx, ws identity.Workspace,
+	p preparedPackage, src sourceMeta, e enrichment,
+) (Result, error) {
+	res := Result{Report: p.report}
+	root, found, err := registry.LoadSkillNamed(ctx, tx, ws.ID, p.report.Manifest.Name)
+	if err != nil {
+		return Result{}, err
+	}
+	if found && src.Type == SourceGenerated {
+		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, root.Skill().Name)
+	}
+	if !found {
+		if root, err = registry.SkillFromPackage(ws.ID, p.report, redistributionFor(ws, src)); err != nil {
+			return Result{}, err
+		}
+		if err := registry.SaveSkill(ctx, tx, root); err != nil {
+			return Result{}, err
+		}
+	}
+	res.Skill = root.Skill()
+
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
+	if err != nil {
+		return Result{}, err
+	}
+	importMeta := map[string]any{"source_type": string(src.Type)}
+	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
+	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
+		return Result{}, err
+	}
+	return res, nil
 }

@@ -184,6 +184,14 @@ func importFilesEnriched(
 	t *testing.T, a *api, pool *pgxpool.Pool, owner *client, files map[string]string, llm *llmclient.Client,
 ) (skillID, versionID string) {
 	t.Helper()
+	imported := onlyImported(t, importSource(t, a, pool, owner, files, llm))
+	return uuidText(imported.Skill.ID), uuidText(imported.Version.ID)
+}
+
+func importSource(
+	t *testing.T, a *api, pool *pgxpool.Pool, owner *client, files map[string]string, llm *llmclient.Client,
+) ingest.SourceResult {
+	t.Helper()
 	ctx := context.Background()
 	ws, err := gen.New(pool).GetWorkspace(ctx, gen.GetWorkspaceParams{
 		ID: mustUUID(t, owner.workspaceID), OwnerUserID: mustUUID(t, owner.userID),
@@ -207,16 +215,17 @@ func importFilesEnriched(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Report.Blocked {
-		t.Fatalf("fixture package did not import: %+v", res.Report.Findings)
+	if res.Blocked() {
+		t.Fatalf("fixture source did not import: %+v", res.Refused)
 	}
 	if llm == nil {
-
-		if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", res.Skill.ID); err != nil {
-			t.Fatal(err)
+		for _, imported := range res.Imported {
+			if _, err := pool.Exec(ctx, "UPDATE search_documents SET enrichment_status = 'enriched', listable = true WHERE skill_id = $1", imported.Skill.ID); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
-	return uuidText(res.Skill.ID), uuidText(res.Version.ID)
+	return res
 }
 
 func allowRedistribution(t *testing.T, pool *pgxpool.Pool, skillID string) {

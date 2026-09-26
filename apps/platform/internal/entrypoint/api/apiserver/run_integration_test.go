@@ -25,6 +25,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
+	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
@@ -187,6 +188,16 @@ func cleanPackage(t *testing.T) []byte {
 	return zipOf(t, map[string]string{
 		"SKILL.md": "---\nname: clean-skill\ndescription: A skill with no script.\nlicense: MIT\n---\n\nJust prose.\n",
 	})
+}
+
+// A fixture source holds exactly one skill, so a test that reads Imported[0]
+// without this would report an index panic instead of the import's own reason.
+func onlyImported(t *testing.T, res ingest.SourceResult) ingest.SkillImport {
+	t.Helper()
+	if len(res.Imported) != 1 {
+		t.Fatalf("fixture source produced %d skills, want 1; refused = %+v", len(res.Imported), res.Refused)
+	}
+	return res.Imported[0]
 }
 
 func zipOf(t *testing.T, files map[string]string) []byte {

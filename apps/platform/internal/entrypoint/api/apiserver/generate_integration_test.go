@@ -1101,15 +1101,16 @@ func TestSavingAVersionGivesTheSkillTheNewVersionsSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UploadZip: %v", err)
 	}
+	firstSkill := onlyImported(t, first).Skill
 
-	if _, err := a.versions.SaveVersion(ctx, ws, first.Skill.ID, zipOf(t, map[string]string{
+	if _, err := a.versions.SaveVersion(ctx, ws, firstSkill.ID, zipOf(t, map[string]string{
 		"SKILL.md": "---\nname: tidy-notes\ndescription: The second summary.\n---\n\nDo it better.\n",
 	})); err != nil {
 		t.Fatalf("SaveVersion: %v", err)
 	}
 
 	var summary string
-	if err := pool.QueryRow(ctx, `SELECT summary FROM skills WHERE id = $1`, first.Skill.ID).Scan(&summary); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT summary FROM skills WHERE id = $1`, firstSkill.ID).Scan(&summary); err != nil {
 		t.Fatal(err)
 	}
 	if summary != "The second summary." {
@@ -1129,7 +1130,7 @@ func TestAGeneratedCandidateRevisesOnlyAGeneratedSkill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UploadZip: %v", err)
 	}
-	target := uploaded.Skill.ID
+	target := onlyImported(t, uploaded).Skill.ID
 
 	_, err = a.versions.MaterializeGeneratedCandidate(ctx, ws, ingest.GeneratedSkill{
 		Name:        "pdf-extract",

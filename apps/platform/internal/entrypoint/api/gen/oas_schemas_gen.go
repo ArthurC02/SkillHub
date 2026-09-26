@@ -1294,9 +1294,7 @@ func (s *CategorizedFindings) SetInfos(val []Finding) {
 	s.Infos = val
 }
 
-func (*CategorizedFindings) importSkillFromURLRes() {}
-func (*CategorizedFindings) saveSkillVersionRes()   {}
-func (*CategorizedFindings) uploadSkillPackageRes() {}
+func (*CategorizedFindings) saveSkillVersionRes() {}
 
 type ClearModelCallBudgetBadRequest Error
 
@@ -9532,9 +9530,143 @@ func (s *HealthStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+// The result of importing one source (SKILL-006). A source is a single Agent Skill, an Agent Plugin,
+// or a tree that holds one or more skills, so the reply is always a list and a single skill is a list
+// of one - a client that reads only the first entry silently drops the rest of a plugin.
+//
+// Returned on both 201 and 422. The status code carries the verdict and `skills` carries the detail:
+// an empty `skills` is the refusal, and `refused` then says which candidates failed and why, rather
+// than collapsing a plugin whose every skill failed into one undifferentiated error.
+//
+// One stored package object backs every entry, because a plugin is stored as it arrived. Downloading
+// one skill of a plugin therefore returns the whole plugin, and any screen offering that download has
+// to say so.
+// Ref: #/components/schemas/ImportResult
+type ImportResult struct {
+	// How the skills were located: `skill` for a source that is one skill, `plugin` when a conforming root
+	// plugin.json named them, `tree` when the platform walked the source. Conformance is judged by the
+	// manifest's `$schema`, not by where the file sits, so a manifest declaring another vendor's schema is
+	// disclosed and the source reads as `tree` - its skills still import.
+	Shape  ImportResultShape `json:"shape"`
+	Plugin OptImportedPlugin `json:"plugin"`
+	Skills []ImportedSkill   `json:"skills"`
+	// Candidates the source held that the platform did not create.
+	Refused []RefusedSkill `json:"refused"`
+	// Parts of the source that are not Agent Skills - an MCP server declaration, a directory a client
+	// reserved for itself. Disclosed so the reader knows what came in the archive and did not become a
+	// skill; never imported and never executed.
+	ExcludedComponents []Finding `json:"excluded_components"`
+}
+
+// GetShape returns the value of Shape.
+func (s *ImportResult) GetShape() ImportResultShape {
+	return s.Shape
+}
+
+// GetPlugin returns the value of Plugin.
+func (s *ImportResult) GetPlugin() OptImportedPlugin {
+	return s.Plugin
+}
+
+// GetSkills returns the value of Skills.
+func (s *ImportResult) GetSkills() []ImportedSkill {
+	return s.Skills
+}
+
+// GetRefused returns the value of Refused.
+func (s *ImportResult) GetRefused() []RefusedSkill {
+	return s.Refused
+}
+
+// GetExcludedComponents returns the value of ExcludedComponents.
+func (s *ImportResult) GetExcludedComponents() []Finding {
+	return s.ExcludedComponents
+}
+
+// SetShape sets the value of Shape.
+func (s *ImportResult) SetShape(val ImportResultShape) {
+	s.Shape = val
+}
+
+// SetPlugin sets the value of Plugin.
+func (s *ImportResult) SetPlugin(val OptImportedPlugin) {
+	s.Plugin = val
+}
+
+// SetSkills sets the value of Skills.
+func (s *ImportResult) SetSkills(val []ImportedSkill) {
+	s.Skills = val
+}
+
+// SetRefused sets the value of Refused.
+func (s *ImportResult) SetRefused(val []RefusedSkill) {
+	s.Refused = val
+}
+
+// SetExcludedComponents sets the value of ExcludedComponents.
+func (s *ImportResult) SetExcludedComponents(val []Finding) {
+	s.ExcludedComponents = val
+}
+
+// How the skills were located: `skill` for a source that is one skill, `plugin` when a conforming root
+// plugin.json named them, `tree` when the platform walked the source. Conformance is judged by the
+// manifest's `$schema`, not by where the file sits, so a manifest declaring another vendor's schema is
+// disclosed and the source reads as `tree` - its skills still import.
+type ImportResultShape string
+
+const (
+	ImportResultShapeSkill  ImportResultShape = "skill"
+	ImportResultShapePlugin ImportResultShape = "plugin"
+	ImportResultShapeTree   ImportResultShape = "tree"
+)
+
+// AllValues returns all ImportResultShape values.
+func (ImportResultShape) AllValues() []ImportResultShape {
+	return []ImportResultShape{
+		ImportResultShapeSkill,
+		ImportResultShapePlugin,
+		ImportResultShapeTree,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ImportResultShape) MarshalText() ([]byte, error) {
+	switch s {
+	case ImportResultShapeSkill:
+		return []byte(s), nil
+	case ImportResultShapePlugin:
+		return []byte(s), nil
+	case ImportResultShapeTree:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ImportResultShape) UnmarshalText(data []byte) error {
+	switch ImportResultShape(data) {
+	case ImportResultShapeSkill:
+		*s = ImportResultShapeSkill
+		return nil
+	case ImportResultShapePlugin:
+		*s = ImportResultShapePlugin
+		return nil
+	case ImportResultShapeTree:
+		*s = ImportResultShapeTree
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type ImportSkillFromURLBadRequest Error
 
 func (*ImportSkillFromURLBadRequest) importSkillFromURLRes() {}
+
+type ImportSkillFromURLCreated ImportResult
+
+func (*ImportSkillFromURLCreated) importSkillFromURLRes() {}
 
 type ImportSkillFromURLReq struct {
 	URL url.URL `json:"url"`
@@ -9553,6 +9685,133 @@ func (s *ImportSkillFromURLReq) SetURL(val url.URL) {
 type ImportSkillFromURLUnauthorized Error
 
 func (*ImportSkillFromURLUnauthorized) importSkillFromURLRes() {}
+
+type ImportSkillFromURLUnprocessableEntity ImportResult
+
+func (*ImportSkillFromURLUnprocessableEntity) importSkillFromURLRes() {}
+
+// What the source's own manifest says about itself. Absent unless `shape` is `plugin`.
+// Ref: #/components/schemas/ImportedPlugin
+type ImportedPlugin struct {
+	Name       string    `json:"name"`
+	Version    OptString `json:"version"`
+	Repository OptString `json:"repository"`
+}
+
+// GetName returns the value of Name.
+func (s *ImportedPlugin) GetName() string {
+	return s.Name
+}
+
+// GetVersion returns the value of Version.
+func (s *ImportedPlugin) GetVersion() OptString {
+	return s.Version
+}
+
+// GetRepository returns the value of Repository.
+func (s *ImportedPlugin) GetRepository() OptString {
+	return s.Repository
+}
+
+// SetName sets the value of Name.
+func (s *ImportedPlugin) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersion sets the value of Version.
+func (s *ImportedPlugin) SetVersion(val OptString) {
+	s.Version = val
+}
+
+// SetRepository sets the value of Repository.
+func (s *ImportedPlugin) SetRepository(val OptString) {
+	s.Repository = val
+}
+
+// Merged schema.
+// Ref: #/components/schemas/ImportedSkill
+type ImportedSkill struct {
+	// The directory inside the source that held this skill, so a reader can tell two entries of one plugin
+	// apart. Empty when the source itself is the skill.
+	Path          string    `json:"path"`
+	SkillID       uuid.UUID `json:"skill_id"`
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	ContentHash   string    `json:"content_hash"`
+	// True when identical content already existed as a version of this skill.
+	Duplicate bool                `json:"duplicate"`
+	Findings  CategorizedFindings `json:"findings"`
+}
+
+// GetPath returns the value of Path.
+func (s *ImportedSkill) GetPath() string {
+	return s.Path
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *ImportedSkill) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *ImportedSkill) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *ImportedSkill) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *ImportedSkill) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetDuplicate returns the value of Duplicate.
+func (s *ImportedSkill) GetDuplicate() bool {
+	return s.Duplicate
+}
+
+// GetFindings returns the value of Findings.
+func (s *ImportedSkill) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// SetPath sets the value of Path.
+func (s *ImportedSkill) SetPath(val string) {
+	s.Path = val
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *ImportedSkill) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *ImportedSkill) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *ImportedSkill) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *ImportedSkill) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetDuplicate sets the value of Duplicate.
+func (s *ImportedSkill) SetDuplicate(val bool) {
+	s.Duplicate = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *ImportedSkill) SetFindings(val CategorizedFindings) {
+	s.Findings = val
+}
 
 // One proposed improvement (EVAL-002). It belongs to the evaluation that produced it rather than to
 // the run: re-evaluating under another rubric produces its own set, and merging them would present
@@ -12348,6 +12607,52 @@ func (o OptGetSkillDetailView) Get() (v GetSkillDetailView, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetSkillDetailView) Or(d GetSkillDetailView) GetSkillDetailView {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptImportedPlugin returns new OptImportedPlugin with value set to v.
+func NewOptImportedPlugin(v ImportedPlugin) OptImportedPlugin {
+	return OptImportedPlugin{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptImportedPlugin is optional ImportedPlugin.
+type OptImportedPlugin struct {
+	Value ImportedPlugin
+	Set   bool
+}
+
+// IsSet returns true if OptImportedPlugin was set.
+func (o OptImportedPlugin) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptImportedPlugin) Reset() {
+	var v ImportedPlugin
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptImportedPlugin) SetTo(v ImportedPlugin) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptImportedPlugin) Get() (v ImportedPlugin, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptImportedPlugin) Or(d ImportedPlugin) ImportedPlugin {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -16387,6 +16692,34 @@ func (s *PublicSearchSkillsValidation) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// A candidate skill the platform found and did not create. One bad skill does not refuse the rest of a
+// source, so this list can sit beside a non-empty `skills`.
+// Ref: #/components/schemas/RefusedSkill
+type RefusedSkill struct {
+	Path     string              `json:"path"`
+	Findings CategorizedFindings `json:"findings"`
+}
+
+// GetPath returns the value of Path.
+func (s *RefusedSkill) GetPath() string {
+	return s.Path
+}
+
+// GetFindings returns the value of Findings.
+func (s *RefusedSkill) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// SetPath sets the value of Path.
+func (s *RefusedSkill) SetPath(val string) {
+	s.Path = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *RefusedSkill) SetFindings(val CategorizedFindings) {
+	s.Findings = val
 }
 
 // One suggestion the apply call refused, and why.
@@ -25043,13 +25376,15 @@ func (s *UploadResult) SetFindings(val CategorizedFindings) {
 	s.Findings = val
 }
 
-func (*UploadResult) importSkillFromURLRes() {}
-func (*UploadResult) saveSkillVersionRes()   {}
-func (*UploadResult) uploadSkillPackageRes() {}
+func (*UploadResult) saveSkillVersionRes() {}
 
 type UploadSkillPackageBadRequest Error
 
 func (*UploadSkillPackageBadRequest) uploadSkillPackageRes() {}
+
+type UploadSkillPackageCreated ImportResult
+
+func (*UploadSkillPackageCreated) uploadSkillPackageRes() {}
 
 type UploadSkillPackageReq struct {
 	Data io.Reader
@@ -25072,3 +25407,7 @@ func (*UploadSkillPackageRequestEntityTooLarge) uploadSkillPackageRes() {}
 type UploadSkillPackageUnauthorized Error
 
 func (*UploadSkillPackageUnauthorized) uploadSkillPackageRes() {}
+
+type UploadSkillPackageUnprocessableEntity ImportResult
+
+func (*UploadSkillPackageUnprocessableEntity) uploadSkillPackageRes() {}

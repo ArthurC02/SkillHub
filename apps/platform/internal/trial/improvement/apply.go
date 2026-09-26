@@ -114,7 +114,7 @@ func (s *Service) loadVersions(
 	}
 
 	originData := []byte(nil)
-	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.PackageObjectKey); err != nil {
+	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.stored()); err != nil {
 		return sc, err
 	}
 
@@ -122,21 +122,21 @@ func (s *Service) loadVersions(
 		sc.latestFS, sc.latestZip = sc.originFS, originData
 		return sc, nil
 	}
-	sc.latestFS, sc.latestZip, err = s.readPackage(ctx, sc.latest.PackageObjectKey)
+	sc.latestFS, sc.latestZip, err = s.readPackage(ctx, sc.latest.stored())
 	return sc, err
 }
 
 func (s *Service) store() ObjectStore { return s.Store }
 
-func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, error) {
+func (s *Service) readPackage(ctx context.Context, stored skillpkg.StoredSkill) (fs.FS, []byte, error) {
 	if s.store() == nil {
 		return nil, nil, errNoStore
 	}
-	data, err := s.store().Get(ctx, key)
+	data, err := s.store().Get(ctx, stored.ObjectKey)
 	if err != nil {
 		return nil, nil, err
 	}
-	fsys, err := skillpkg.PackageFS(data)
+	fsys, err := stored.Open(data)
 	if err != nil {
 		return nil, nil, err
 	}

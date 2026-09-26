@@ -1,0 +1,37 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "plugin-skill-carries-its-own-root",
+  "status": "draft",
+  "intent": "A Skill imported from an Agent Plugin has to be usable on its own although the whole Plugin is stored as a single package.",
+  "actor": "Creator importing an Agent Plugin",
+  "observable_outcome": "Every reader of a stored package opens the directory that Skill Version was validated from, so a Skill that arrived inside a Plugin packages, scans and diffs as the one Skill it is.",
+  "acceptance_criteria": [
+    {
+      "id": "subtree-path-is-recorded",
+      "statement": "A Skill Version records the directory inside its stored package that is its own root, and records nothing when the package root already is that root."
+    },
+    {
+      "id": "plugin-skill-packages-alone",
+      "statement": "Building a downloadable package for a Skill imported from a Plugin succeeds and the result carries that Skill's files at its root, not the Plugin's manifest or its sibling Skills."
+    },
+    {
+      "id": "facts-reader-carries-the-root",
+      "statement": "The Registry-to-Run fact reader hands over the recorded root alongside the object key, so the consumer never has to guess it."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [
+    "The sandbox provider request still carries only the object key, so a Run of a Plugin-sourced Skill installs the whole archive and the agent discovers no Skill. Closing it changes the provider contract and the runtime image."
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/shared/skillpkg/discover.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "apps/platform/internal/entrypoint/wiring/trial.go"
+  ]
+}

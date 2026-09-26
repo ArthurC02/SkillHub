@@ -12,7 +12,7 @@ import (
 )
 
 const getLatestSkillVersion = `-- name: GetLatestSkillVersion :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path FROM skill_versions
 WHERE skill_id = $1 AND workspace_id = $2
 ORDER BY version_number DESC
 LIMIT 1
@@ -38,6 +38,7 @@ func (q *Queries) GetLatestSkillVersion(ctx context.Context, arg GetLatestSkillV
 		&i.LicenseExpression,
 		&i.CreatedAt,
 		&i.LicenseSource,
+		&i.SourcePath,
 	)
 	return i, err
 }

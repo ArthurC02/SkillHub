@@ -323,3 +323,20 @@ func PackageRoot(zr *zip.Reader) string {
 	}
 	return ""
 }
+
+// A stored package may be a whole Agent Plugin or a repository holding several
+// Skills, so a Skill Version records which directory inside it is its own root.
+func SkillFS(data []byte, sourcePath string) (fs.FS, error) {
+	fsys, err := PackageFS(data)
+	if err != nil || sourcePath == "" {
+		return fsys, err
+	}
+	return fs.Sub(fsys, sourcePath)
+}
+
+type StoredSkill struct {
+	ObjectKey  string
+	SourcePath string
+}
+
+func (s StoredSkill) Open(data []byte) (fs.FS, error) { return SkillFS(data, s.SourcePath) }

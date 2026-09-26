@@ -33,6 +33,12 @@ export function useImportSkill() {
   });
 }
 
+export function isImportResult(value: unknown): value is ImportResult {
+  if (typeof value !== "object" || value === null) return false;
+  const body = value as Partial<ImportResult>;
+  return Array.isArray(body.skills) && Array.isArray(body.refused);
+}
+
 export function isCategorizedFindings(value: unknown): value is CategorizedFindings {
   if (typeof value !== "object" || value === null) return false;
   const body = value as Partial<CategorizedFindings>;
