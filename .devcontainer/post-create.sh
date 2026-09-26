@@ -79,6 +79,10 @@ for key in "${required_env_keys[@]}"; do
   value="${value%\"}"
   value="${value#\'}"
   value="${value%\'}"
+  if printf "%s" "${value}" | grep -Eq '^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$'; then
+    printf "unresolved placeholder in .env key: %s\n" "${key}" >&2
+    exit 1
+  fi
   if [ -z "${value}" ]; then
     printf "missing or empty required .env key: %s\n" "${key}" >&2
     exit 1
