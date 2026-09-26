@@ -367,7 +367,8 @@
         "cost_usd": {
           "type": ["number", "null"],
           "minimum": 0,
-          "description": "Cost as reported by the gateway. NULL when unavailable; the UI must not substitute a computed guess without flagging it.",
+          "description": "Cost as the gateway had recorded it for this run's own key when the producer last looked. It is a floor, not the settled charge: the final call's spend can flush after the producer stops polling. NULL when unavailable; the UI must not substitute a computed guess without flagging it, and must not present this figure as the amount billed - the settled figure is the platform's own cost record, read from the gateway after teardown.",
+          "$comment": "Measured 2026-09-26 on runtime image 2026.08-13: the producer's poll of /key/info converged at $0.02078535 while the gateway's own rows for that key summed to $0.02251035 - short by exactly the final call's $0.001725. The platform's cost event for the same run recorded 22511 micro-dollars, which reconciles with the gateway to the micro-dollar, so the floor is in this field only. Same cause as token_source `accumulated`: something the producer could not see yet.",
           "default": null
         },
         "cost_source": {

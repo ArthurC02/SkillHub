@@ -62,7 +62,7 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 
 envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` ＝評估跑完（`overall` 可能是 `undetermined`，那是**判不出來**這個判定本身），`error` ＝評估失敗，此時 `failure_reason` 有值。三者在 UI 上是三件事，不得合併為「沒通過」。
 
-## 5. Cache 用量欄位為何允許 `null`
+## 5. Cache 用量欄位為何允許 `null`，以及 `cost_usd` 為何是下界
 
 `pdm-003-litellm-spike-report.md` §11.5.2 實測：LiteLLM 1.96.2 在 `/v1/messages` 路由上**完全不輸出** `cache_read_input_tokens` 與 `cache_creation_input_tokens`（是缺欄，不是 0），`/v1/chat/completions` 則正常透傳。計費不受影響（LiteLLM 內部有正確套用快取折扣），**受損的是可觀測性**。
 
@@ -72,6 +72,7 @@ envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` �
 
 - `null` 一律呈現為「未回報」，**不得**顯示為 `0`——那會讓使用者以為快取沒命中。
 - `cost_source: estimated` 的金額在 UI 必須標示為估算值，不得與閘道回報值混為一談。
+- **`cost_usd` 是下界，不是帳單金額**，`cost_source: gateway` 也一樣。執行期在收尾時讀自己那把 Virtual Key 的 per-key 實付，而最後一次呼叫的 spend 常常晚於那次讀取才入帳（2026-09-26 實測：trace $0.02078535、閘道同一把金鑰合計 $0.02251035，差的正好是最後一次呼叫的 $0.001725；同一次 Run 的成本事件記的是 22511 µUSD，與閘道分毫不差）。顯示它的畫面必須說出「權威數字是閘道對這個 Run 的 per-key 實付」，與 Judge 花費那條規約同一個形狀；**不得**把兩個數字並陳而不說明差在哪。
 
 ## 6. 遮罩規約（schema 層；執行屬 TRACE-005）
 

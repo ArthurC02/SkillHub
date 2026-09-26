@@ -216,6 +216,42 @@ test("the advanced mode names the missing sequence numbers and renders payloads 
   expect(container.querySelector("pre")?.textContent).toContain("<img src=x onerror=alert(1)>");
 });
 
+test("the advanced mode says the raw cost in a payload is a floor, not the bill", async () => {
+  stubTrace(summary, {
+    ...advanced,
+    events: [
+      {
+        ...advanced.events[0],
+        type: "usage",
+        status: undefined,
+        masked_fields: [],
+        payload: {
+          scope: "run_total",
+          model: "gpt-5-mini",
+          input_tokens: 19746,
+          output_tokens: 443,
+          cost_usd: 0.02078535,
+          cost_source: "gateway",
+        },
+      },
+    ],
+  });
+  await render();
+
+  const advancedButton = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "進階模式",
+  );
+  await act(async () => {
+    advancedButton?.click();
+  });
+  await waitFor(() => container.querySelector("pre") !== null);
+
+  expect(container.querySelector("pre")?.textContent).toContain("0.02078535");
+  const text = container.textContent ?? "";
+  expect(text).toContain("下界");
+  expect(text).toContain("per-key 實付");
+});
+
 test("the advanced mode pages through the complete trace without retaining every payload", async () => {
   const requested: string[] = [];
   stubTrace(summary, (url) => {

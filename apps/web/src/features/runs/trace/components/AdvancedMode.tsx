@@ -109,6 +109,10 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
       </div>
 
       <h3>事件（已遮罩，依序重建）</h3>
+      <p className="note" data-role="teaching">
+        payload 照原樣顯示。<code>usage</code> 的 <code>cost_usd</code> 是<strong>下界</strong>
+        ，不是帳單金額——權威數字是模型閘道對這個 Run 的 per-key 實付。
+      </p>
       {trace.events.length === 0 ? (
         <p>尚無事件。</p>
       ) : (
