@@ -3,7 +3,13 @@ import { Link } from "@tanstack/react-router";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { SkillSource } from "../../../../core/api/types";
 import { ExternalLink } from "../../../../shared/ui/ExternalLink";
+import { StateIcon } from "../../../../shared/ui/StateIcon";
 import { GeneratedSourceBlock } from "./GeneratedSourceBlock";
+
+const AVAILABILITY_CLASS: Record<string, string> = {
+  lost: "badge badge-risk",
+  unreachable: "badge badge-unverified",
+};
 
 export function SourceBlock({ source }: { source: SkillSource }) {
   if (source.type === "generated") {
@@ -73,14 +79,18 @@ export function SourceBlock({ source }: { source: SkillSource }) {
         </>
       )}
 
-      {source.unavailable_since ? (
-        <p className="badge badge-risk">
-          來源已失效，自 <Timestamp at={source.unavailable_since} />{" "}
-          起無法取得。目前顯示的是失效前保存的內容。
+      {source.availability && source.availability.value !== "available" && (
+        <p className={AVAILABILITY_CLASS[source.availability.value] ?? "note"}>
+          {source.availability.value === "lost" && <StateIcon state="fail" />}
+          {source.availability.label}
+          {source.unavailable_since && (
+            <>
+              （自 <Timestamp at={source.unavailable_since} /> 起抓不到）
+            </>
+          )}
+          ：{source.availability.note}
         </p>
-      ) : !source.last_checked_at ? (
-        <p className="note">尚未檢查過來源是否仍可取得。</p>
-      ) : null}
+      )}
 
       {(source.source_version ||
         source.content_hash ||

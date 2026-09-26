@@ -320,3 +320,42 @@ func TestGeneratedSourceCarriesGenerationInputsVerbatim(t *testing.T) {
 		})
 	}
 }
+
+func TestASourceIsLostOnlyAfterSevenDaysOfFailedChecks(t *testing.T) {
+	url := "https://github.com/example/skills"
+	now := time.Date(2026, 9, 20, 12, 0, 0, 0, time.UTC)
+	checked := pgtype.Timestamptz{Time: now.Add(-time.Hour), Valid: true}
+	since := func(d time.Duration) pgtype.Timestamptz { return pgtype.Timestamptz{Time: now.Add(-d), Valid: true} }
+
+	cases := []struct {
+		name   string
+		facts  SourceFacts
+		want   string
+		absent bool
+	}{
+		{name: "an upload has no upstream to check", facts: SourceFacts{SourceType: "upload"}, absent: true},
+		{name: "a URL never probed", facts: SourceFacts{SourceType: "git", SourceURL: &url}, want: "unchecked"},
+		{name: "the last probe reached it", facts: SourceFacts{SourceType: "git", SourceURL: &url, LastCheckedAt: checked}, want: "available"},
+		{name: "one second short of seven days", facts: SourceFacts{SourceType: "git", SourceURL: &url, LastCheckedAt: checked,
+			UnavailableSince: since(sourceLostAfter - time.Second)}, want: "unreachable"},
+		{name: "exactly seven days", facts: SourceFacts{SourceType: "git", SourceURL: &url, LastCheckedAt: checked,
+			UnavailableSince: since(sourceLostAfter)}, want: "lost"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := availabilityOf(tc.facts, now)
+			if tc.absent {
+				if got != nil {
+					t.Fatalf("availability = %+v, want none", got)
+				}
+				return
+			}
+			if got == nil || got.Value != tc.want {
+				t.Fatalf("availability = %+v, want %s", got, tc.want)
+			}
+			if got.Label == tc.want || got.Note == "" {
+				t.Errorf("availability %s arrived without its words: %+v", tc.want, got)
+			}
+		})
+	}
+}

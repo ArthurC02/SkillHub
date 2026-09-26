@@ -115,7 +115,7 @@ export function Packaging() {
       <details>
         <summary>風險與 License 的逐項細節（與詳情頁同一次掃描結果）</summary>
         <LicenseNotes license={skill.data.license} />
-        <RiskIndicator risk={skill.data.risk} />
+        <RiskIndicator risk={skill.data.risk} cleanVerdict={false} />
       </details>
       {versionId === "" ? (
         <p role="alert">

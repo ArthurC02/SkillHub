@@ -23107,6 +23107,11 @@ type SkillSource struct {
 	// When the source started failing, not the latest failure, so a two-week outage stays distinguishable
 	// from a blip. Absent means the source answered on its last probe.
 	UnavailableSince OptDateTime `json:"unavailable_since"`
+	// Unchecked | available | unreachable | lost, judged by the platform so every screen draws the same
+	// line. `lost` means the daily probe has failed for seven days or more; before that the source is
+	// `unreachable`, because one upstream outage must not read as a vanished source. Neither value takes
+	// the skill down - that stays an operator's call. Absent when the source has no URL to probe.
+	Availability OptLabelled `json:"availability"`
 	// Unknown | traceable | manually_confirmed | generated. `traceable` requires a git import that
 	// recorded a URL; an upload has no verifiable origin. `manually_confirmed` needs a reviewer and has no
 	// store yet, so this endpoint never returns it. `generated` is not a rung above `unknown` on the same
@@ -23179,6 +23184,11 @@ func (s *SkillSource) GetLastCheckedAt() OptDateTime {
 // GetUnavailableSince returns the value of UnavailableSince.
 func (s *SkillSource) GetUnavailableSince() OptDateTime {
 	return s.UnavailableSince
+}
+
+// GetAvailability returns the value of Availability.
+func (s *SkillSource) GetAvailability() OptLabelled {
+	return s.Availability
 }
 
 // GetTrust returns the value of Trust.
@@ -23254,6 +23264,11 @@ func (s *SkillSource) SetLastCheckedAt(val OptDateTime) {
 // SetUnavailableSince sets the value of UnavailableSince.
 func (s *SkillSource) SetUnavailableSince(val OptDateTime) {
 	s.UnavailableSince = val
+}
+
+// SetAvailability sets the value of Availability.
+func (s *SkillSource) SetAvailability(val OptLabelled) {
+	s.Availability = val
 }
 
 // SetTrust sets the value of Trust.

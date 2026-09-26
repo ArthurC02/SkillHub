@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
@@ -214,13 +215,80 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 	}
 	defer release()
 	for i, planned := range plan.admitted {
+		held, err := nameHeldByAnotherSource(ctx, tx, ws, planned.pkg, src)
+		if err != nil {
+			return SourceResult{}, err
+		}
+		if held != nil {
+			report := withSourceFindings(planned.pkg.report, []skillpkg.Finding{*held})
+			out.Refused = append(out.Refused, Refusal{Path: planned.pkg.sourcePath, Report: report})
+			continue
+		}
 		res, err := s.importOne(ctx, tx, ws, planned.pkg, src, enriched[i])
 		if err != nil {
 			return SourceResult{}, err
 		}
 		out.Imported = append(out.Imported, SkillImport{Path: planned.pkg.sourcePath, Result: res})
 	}
+	if out.Blocked() {
+		out.Report = skillpkg.Report{Blocked: true}
+		if len(out.Refused) == 1 {
+			out.Report = out.Refused[0].Report
+		}
+	}
 	return out, tx.Commit(ctx)
+}
+
+func nameHeldByAnotherSource(
+	ctx context.Context, tx pgx.Tx, ws identity.Workspace, p preparedPackage, src sourceMeta,
+) (*skillpkg.Finding, error) {
+	incoming := originOf(pluginNameOf(src.Plugin), src.URL)
+	if incoming == "" || src.Type == SourceGenerated {
+		return nil, nil
+	}
+	name := p.report.Manifest.Name
+	root, found, err := registry.LoadSkillNamed(ctx, tx, ws.ID, name)
+	if err != nil || !found {
+		return nil, err
+	}
+	latest, found, err := registry.LatestVersionIn(ctx, tx, ws.ID, root.Skill().ID)
+	if err != nil || !found || !latest.SourceID.Valid {
+		return nil, err
+	}
+	source, err := gen.New(tx).GetSkillSource(ctx, gen.GetSkillSourceParams{ID: latest.SourceID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	held := originOf(source.PluginName, source.SourceUrl)
+	if held == "" || held == incoming {
+		return nil, nil
+	}
+	return &skillpkg.Finding{
+		Severity: skillpkg.SeverityError, Code: skillpkg.CodeNameHeldByAnotherSource, Path: p.sourcePath,
+		Message: "name " + name + " 已經屬於你工作區裡另一個來源（" + held + "）的 Skill。" +
+			"匯入不會把兩個不同來源的 Skill 併成一個。要把這一份當成那個 Skill 的新版本，" +
+			"到那個 Skill 的頁面用「上傳新版本」；要兩個都留，改掉這一份 SKILL.md 的 name 再匯入。",
+	}, nil
+}
+
+func pluginNameOf(p *skillpkg.PluginFacts) *string {
+	if p == nil {
+		return nil
+	}
+	return &p.Name
+}
+
+func originOf(pluginName, sourceURL *string) string {
+	if pluginName != nil && *pluginName != "" {
+		return "Plugin " + *pluginName
+	}
+	if sourceURL != nil && *sourceURL != "" {
+		return *sourceURL
+	}
+	return ""
 }
 
 // A source that yielded nothing has one report to show: the whole-source

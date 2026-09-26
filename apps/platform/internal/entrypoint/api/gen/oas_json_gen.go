@@ -45772,6 +45772,12 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Availability.Set {
+			e.FieldStart("availability")
+			s.Availability.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("trust")
 		s.Trust.Encode(e)
 	}
@@ -45799,7 +45805,7 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillSource = [15]string{
+var jsonFieldsNameOfSkillSource = [16]string{
 	0:  "type",
 	1:  "url",
 	2:  "task_description",
@@ -45811,10 +45817,11 @@ var jsonFieldsNameOfSkillSource = [15]string{
 	8:  "content_hash",
 	9:  "last_checked_at",
 	10: "unavailable_since",
-	11: "trust",
-	12: "path",
-	13: "plugin",
-	14: "siblings",
+	11: "availability",
+	12: "trust",
+	13: "path",
+	14: "plugin",
+	15: "siblings",
 }
 
 // Decode decodes SkillSource from json.
@@ -45936,8 +45943,18 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"unavailable_since\"")
 			}
+		case "availability":
+			if err := func() error {
+				s.Availability.Reset()
+				if err := s.Availability.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"availability\"")
+			}
 		case "trust":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Trust.Decode(d); err != nil {
 					return err
@@ -45994,7 +46011,7 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b00000001,
-		0b00001000,
+		0b00010000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

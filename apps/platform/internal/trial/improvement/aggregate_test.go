@@ -577,6 +577,47 @@ func TestASettledVerdictCannotBeRewritten(t *testing.T) {
 	}
 }
 
+func TestAFailedVerdictIsFrozenLikeASettledOne(t *testing.T) {
+	s := &Service{Pool: requireEvalDB(t)}
+	m := seedRun(t, s.Pool)
+	ctx := context.Background()
+
+	ev, err := s.begin(ctx, m)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	if err := s.fail(ctx, m, ev, nil, false, errors.New("the judge was unreachable")); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+	before := frozen(reload(t, s, m, ev.ID))
+
+	for column, value := range map[string]any{
+		"status":            string(StatusCompleted),
+		"overall":           OverallMet,
+		"summary":           "edited afterwards",
+		"evidence_complete": true,
+	} {
+		//nolint:gosec // column is a literal from the map above, not input.
+		_, err := s.Pool.Exec(ctx,
+			fmt.Sprintf("UPDATE evaluations SET %s = $1 WHERE id = $2", column), value, ev.ID)
+		if err == nil {
+			t.Fatalf("the database allowed %s to be rewritten on a failed evaluation", column)
+		}
+	}
+	if _, err := s.Pool.Exec(ctx, "DELETE FROM evaluations WHERE id = $1", ev.ID); err == nil {
+		t.Fatal("the database allowed a failed evaluation to be deleted")
+	}
+	if got := frozen(reload(t, s, m, ev.ID)); got != before {
+		t.Fatalf("a refused write still changed the row:\n before %+v\n after  %+v", before, got)
+	}
+
+	if _, err := s.Pool.Exec(ctx,
+		"UPDATE evaluations SET feedback_helpful = true, superseded_at = now(), updated_at = now() WHERE id = $1",
+		ev.ID); err != nil {
+		t.Fatalf("feedback and supersession must stay writable on a failed evaluation: %v", err)
+	}
+}
+
 func TestARevisionSettlesOnce(t *testing.T) {
 	s := &Service{Pool: requireEvalDB(t)}
 	ctx := context.Background()

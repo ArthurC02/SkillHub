@@ -114,6 +114,16 @@ export interface SkillSource {
      */
     unavailableSince?: Date;
     /**
+     * unchecked | available | unreachable | lost, judged by the platform
+     * so every screen draws the same line. `lost` means the daily probe
+     * has failed for seven days or more; before that the source is
+     * `unreachable`, because one upstream outage must not read as a
+     * vanished source. Neither value takes the skill down - that stays an
+     * operator's call. Absent when the source has no URL to probe.
+     * 
+     */
+    availability?: Labelled;
+    /**
      * unknown | traceable | manually_confirmed | generated. `traceable`
      * requires a git import that recorded a URL; an upload has no
      * verifiable origin. `manually_confirmed` needs a reviewer and has no
@@ -191,6 +201,7 @@ export function SkillSourceFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
         'lastCheckedAt': json['last_checked_at'] == null ? undefined : (parseDateTime(json['last_checked_at'])),
         'unavailableSince': json['unavailable_since'] == null ? undefined : (parseDateTime(json['unavailable_since'])),
+        'availability': json['availability'] == null ? undefined : LabelledFromJSON(json['availability']),
         'trust': LabelledFromJSON(json['trust']),
         'path': json['path'] == null ? undefined : json['path'],
         'plugin': json['plugin'] == null ? undefined : SourcePluginFromJSON(json['plugin']),
@@ -220,6 +231,7 @@ export function SkillSourceToJSONTyped(value?: SkillSource | null, ignoreDiscrim
         'content_hash': value['contentHash'],
         'last_checked_at': value['lastCheckedAt'] == null ? value['lastCheckedAt'] : serializeDateTime(value['lastCheckedAt']),
         'unavailable_since': value['unavailableSince'] == null ? value['unavailableSince'] : serializeDateTime(value['unavailableSince']),
+        'availability': LabelledToJSON(value['availability']),
         'trust': LabelledToJSON(value['trust']),
         'path': value['path'],
         'plugin': SourcePluginToJSON(value['plugin']),

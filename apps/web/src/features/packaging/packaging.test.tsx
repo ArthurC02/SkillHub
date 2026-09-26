@@ -529,6 +529,26 @@ test("風險判定行：只有提示時說最高為提示", async () => {
   expect(text()).toContain("有 3 項風險，最高為提示。");
 });
 
+test("乾淨掃描時，判定行帶「這不等於安全」的但書，且全頁只出現這一句", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("Skill 套件"));
+
+  expect(occurrences("這不等於安全")).toBe(1);
+  expect(elementSaying("這不等於安全").closest("details")).toBeNull();
+});
+
+test("有風險時，判定行只說風險數與最高嚴重度，不帶乾淨掃描的那句但書", async () => {
+  stubPlatform({
+    skill: {
+      ...skill,
+      risk: { ...skill.risk, counts: { errors: 0, warnings: 2, infos: 0 } },
+    },
+  });
+  await render(<Packaging />, () => text().includes("Skill 套件"));
+
+  expect(elementSaying("有 2 項風險，最高為警告。").textContent).not.toContain("這不等於安全");
+});
+
 test("04 R-42(c)③ 相容性：三軸的驗證狀態留在外面，逐軸備註與實測環境折進 <details>", async () => {
   stubPlatform({ skill: SKILL_WITH_DETAILS });
   await render(<Packaging />, () => text().includes("這個版本的相容性"));

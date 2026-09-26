@@ -184,6 +184,19 @@ func VersionByContent(
 	return versionDTO(row), true, nil
 }
 
+func LatestVersionIn(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (Version, bool, error) {
+	row, err := gen.New(tx).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
+		SkillID: skillID, WorkspaceID: workspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Version{}, false, nil
+	}
+	if err != nil {
+		return Version{}, false, err
+	}
+	return versionDTO(row), true, nil
+}
+
 func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill, bool, error) {
 	row, err := s.catalogSkillIn(ctx, s.Pool, skillID)
 	if errors.Is(err, pgx.ErrNoRows) {

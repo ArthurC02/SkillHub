@@ -55,7 +55,13 @@ export function RiskSummary({
   );
 }
 
-export function RiskIndicator({ risk }: { risk: SkillRisk }) {
+export function RiskIndicator({
+  risk,
+  cleanVerdict = true,
+}: {
+  risk: SkillRisk;
+  cleanVerdict?: boolean;
+}) {
   if (risk.scan_status === "unavailable") {
     return (
       <div>
@@ -103,7 +109,7 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
         </ul>
       )}
 
-      {risk.highlights.length === 0 && flags.length === 0 && (
+      {cleanVerdict && risk.highlights.length === 0 && flags.length === 0 && (
         <p className="badge">
           <StateIcon state="pass" />
           靜態掃描未發現錯誤或警告；這不等於安全。

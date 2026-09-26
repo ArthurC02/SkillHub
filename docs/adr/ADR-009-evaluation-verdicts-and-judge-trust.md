@@ -30,7 +30,7 @@ Run 執行完成不代表任務被完成——沙箱回報「成功」只代表�
 
 ### 決策 2：重評是 append-only，當前判定恰好一份
 
-rubric 或 Judge prompt 升版後，可以對同一個 Run 重新評估。`evaluations` 以 partial unique index `(run_id) WHERE superseded_at IS NULL` 取代「一個 Run 只能有一份評估」的限制；新評估寫入時，在同一交易內把前一份標上 `superseded_at`，歷史判定全部留著、不覆寫。`evaluations` 套用不可變 trigger，但保留三個可變欄位：`feedback_helpful`／`feedback_comment`（使用者可以多次表態）與 `superseded_at`（由下一份評估標記）。每一份判定都記下產生它的完整條件：`judge_prompt_version`、`rubric_version`、`judge_model`、`evidence_complete`。
+rubric 或 Judge prompt 升版後，可以對同一個 Run 重新評估。`evaluations` 以 partial unique index `(run_id) WHERE superseded_at IS NULL` 取代「一個 Run 只能有一份評估」的限制；新評估寫入時，在同一交易內把前一份標上 `superseded_at`，歷史判定全部留著、不覆寫。`evaluations` 在兩種終態（判定完成、判定失敗）都套用不可變 trigger，但保留三個可變欄位：`feedback_helpful`／`feedback_comment`（使用者可以多次表態）與 `superseded_at`（由下一份評估標記）。每一份判定都記下產生它的完整條件：`judge_prompt_version`、`rubric_version`、`judge_model`、`evidence_complete`。
 
 理由：一份「上週說通過、今天說未通過」卻查不到上週那份判定的評估，使用者無法判斷是 Skill 變了還是尺變了；append-only 讓「尺變了」成為看得見的事實。這也是決策 1 的另一面——終態必須不可變，判定卻要能重新產生，兩者只能分屬不同的欄位與不同的變動規則。
 

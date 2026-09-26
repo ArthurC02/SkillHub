@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
@@ -310,5 +312,156 @@ func TestASkillThatIsNotFromAPluginRecordsNoPluginFacts(t *testing.T) {
 	}
 	if name != nil || version != nil || repository != nil {
 		t.Errorf("plugin facts = %v/%v/%v, want all unset; there was no Plugin", name, version, repository)
+	}
+}
+
+func refusedCodes(t *testing.T, body map[string]any) map[string][]string {
+	t.Helper()
+	out := map[string][]string{}
+	refused, _ := body["refused"].([]any)
+	for _, r := range refused {
+		entry, _ := r.(map[string]any)
+		path, _ := entry["path"].(string)
+		findings, _ := entry["findings"].(map[string]any)
+		errs, _ := findings["errors"].([]any)
+		for _, e := range errs {
+			finding, _ := e.(map[string]any)
+			code, _ := finding["code"].(string)
+			out[path] = append(out[path], code)
+		}
+	}
+	return out
+}
+
+func workspaceSkillCount(t *testing.T, pool *pgxpool.Pool, c *client) int {
+	t.Helper()
+	var n int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skills WHERE workspace_id = $1 AND deleted_at IS NULL`, c.workspaceID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "cross-source-name")
+
+	if code, body := postSource(t, owner, zipOf(t, map[string]string{
+		"plugin.json":            conformingPlugin("desk-tools"),
+		"skills/review/SKILL.md": skillNamed("code-review"),
+	})); code != http.StatusCreated {
+		t.Fatalf("first plugin: want 201, got %d: %v", code, body)
+	}
+
+	code, body := postSource(t, owner, zipOf(t, map[string]string{
+		"plugin.json":            conformingPlugin("team-kit"),
+		"skills/review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
+		"skills/lint/SKILL.md":   skillNamed("lint-rules"),
+	}))
+	if code != http.StatusCreated {
+		t.Fatalf("second plugin with one colliding skill: want 201 for the part that came in, got %d: %v", code, body)
+	}
+	codes := refusedCodes(t, body)
+	if got := codes["skills/review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
+		t.Errorf("refusal codes for skills/review = %v, want [%s]; otherwise the second plugin's skill becomes a version of the first's",
+			got, skillpkg.CodeNameHeldByAnotherSource)
+	}
+	if got := len(skillsOf(t, body)); got != 1 {
+		t.Errorf("imported %d skills, want lint-rules alone; one collision must not refuse the rest", got)
+	}
+	var versions int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skill_versions v JOIN skills s ON s.id = v.skill_id
+		  WHERE s.workspace_id = $1 AND s.name = 'code-review'`, owner.workspaceID).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 1 {
+		t.Errorf("code-review has %d versions, want 1; the other plugin's text was appended to it", versions)
+	}
+}
+
+func TestAPluginWhoseEverySkillCollidesIsRefusedAsAWhole(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "cross-source-all")
+
+	if code, _ := postSource(t, owner, zipOf(t, map[string]string{
+		"plugin.json":            conformingPlugin("desk-tools"),
+		"skills/review/SKILL.md": skillNamed("code-review"),
+	})); code != http.StatusCreated {
+		t.Fatalf("first plugin: want 201, got %d", code)
+	}
+	code, body := postSource(t, owner, zipOf(t, map[string]string{
+		"plugin.json":            conformingPlugin("team-kit"),
+		"skills/review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
+	}))
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("a plugin whose only skill collides: want 422, got %d: %v", code, body)
+	}
+	if got := refusedCodes(t, body)["skills/review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
+		t.Errorf("refusal codes = %v, want [%s]", got, skillpkg.CodeNameHeldByAnotherSource)
+	}
+	if n := workspaceSkillCount(t, pool, owner); n != 1 {
+		t.Errorf("workspace holds %d skills, want 1", n)
+	}
+}
+
+func TestReimportingTheSamePluginStillAddsANewVersion(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "same-source-name")
+
+	for i, body := range []string{skillNamed("code-review"), skillNamed("code-review") + "\nRevised.\n"} {
+		code, res := postSource(t, owner, zipOf(t, map[string]string{
+			"plugin.json":            conformingPlugin("desk-tools"),
+			"skills/review/SKILL.md": body,
+		}))
+		if code != http.StatusCreated {
+			t.Fatalf("import %d of the same plugin: want 201, got %d: %v", i+1, code, res)
+		}
+	}
+	var versions int
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skill_versions v JOIN skills s ON s.id = v.skill_id
+		  WHERE s.workspace_id = $1 AND s.name = 'code-review'`, owner.workspaceID).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 2 {
+		t.Errorf("code-review has %d versions, want 2; an update from the same plugin is a new version", versions)
+	}
+}
+
+func TestAStandaloneUploadOnEitherSideKeepsAttachingAsANewVersion(t *testing.T) {
+	cases := []struct {
+		name          string
+		first, second map[string]string
+	}{
+		{
+			name:   "plugin skill then a standalone upload of the same name",
+			first:  map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/review/SKILL.md": skillNamed("code-review")},
+			second: map[string]string{"SKILL.md": skillNamed("code-review") + "\nHand-edited.\n"},
+		},
+		{
+			name:   "standalone upload then a plugin carrying the same name",
+			first:  map[string]string{"SKILL.md": skillNamed("code-review")},
+			second: map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/review/SKILL.md": skillNamed("code-review") + "\nFrom the plugin.\n"},
+		},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := requireDB(t)
+			a := newAPI(t, pool)
+			owner := a.login(t, fmt.Sprintf("standalone-%d", i))
+			for n, files := range []map[string]string{tc.first, tc.second} {
+				if code, res := postSource(t, owner, zipOf(t, files)); code != http.StatusCreated {
+					t.Fatalf("import %d: want 201, got %d: %v", n+1, code, res)
+				}
+			}
+			if n := workspaceSkillCount(t, pool, owner); n != 1 {
+				t.Errorf("workspace holds %d skills, want 1; a standalone upload has no source to conflict with", n)
+			}
+		})
 	}
 }

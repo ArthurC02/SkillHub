@@ -6609,6 +6609,16 @@ components:
             When the source *started* failing, not the latest failure, so a
             two-week outage stays distinguishable from a blip. Absent means the
             source answered on its last probe.
+        availability:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            unchecked | available | unreachable | lost, judged by the platform
+            so every screen draws the same line. `lost` means the daily probe
+            has failed for seven days or more; before that the source is
+            `unreachable`, because one upstream outage must not read as a
+            vanished source. Neither value takes the skill down - that stays an
+            operator's call. Absent when the source has no URL to probe.
         trust:
           allOf:
             - $ref: "#/components/schemas/Labelled"

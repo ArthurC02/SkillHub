@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -43,8 +44,9 @@ type sourceInfo struct {
 	FetchedAt     string `json:"fetched_at,omitempty"`
 	ContentHash   string `json:"content_hash,omitempty"`
 
-	LastCheckedAt    string `json:"last_checked_at,omitempty"`
-	UnavailableSince string `json:"unavailable_since,omitempty"`
+	LastCheckedAt    string    `json:"last_checked_at,omitempty"`
+	UnavailableSince string    `json:"unavailable_since,omitempty"`
+	Availability     *labelled `json:"availability,omitempty"`
 
 	TaskDescription        string `json:"task_description,omitempty"`
 	GeneratorModel         string `json:"generator_model,omitempty"`
@@ -697,6 +699,35 @@ func licenseFrom(v VersionFacts) licenseInfo {
 	return out
 }
 
+const sourceLostAfter = 7 * 24 * time.Hour
+
+var availabilityWords = axisWords{
+	"unchecked": {"尚未檢查", "還沒有檢查過這個來源現在是否仍可取得。"},
+	"available": {"可取得", "最近一次每日檢查時，來源仍可取得。"},
+	"unreachable": {"暫時無法取得",
+		"每日檢查抓不到這個來源，但還不到七天——可能只是上游暫時故障。目前顯示的是保存下來的內容。"},
+	"lost": {"來源已失效",
+		"這個來源連續七天以上抓不到。平台保存的內容照常可讀、可試跑，但上游已經無法用來核對或更新；" +
+			"是否下架由營運者逐筆判斷，不會自動下架。"},
+}
+
+func availabilityOf(s SourceFacts, now time.Time) *labelled {
+	if s.SourceURL == nil || *s.SourceURL == "" {
+		return nil
+	}
+	value := "unchecked"
+	switch {
+	case s.UnavailableSince.Valid && now.Sub(s.UnavailableSince.Time) >= sourceLostAfter:
+		value = "lost"
+	case s.UnavailableSince.Valid:
+		value = "unreachable"
+	case s.LastCheckedAt.Valid:
+		value = "available"
+	}
+	out := axis(availabilityWords, value)
+	return &out
+}
+
 func pluginFrom(s SourceFacts) *pluginInfo {
 	if s.PluginName == nil || *s.PluginName == "" {
 		return nil
@@ -757,6 +788,7 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 		out.GenerationInputs = json.RawMessage(s.GenerationInputs)
 	}
 	out.Plugin = pluginFrom(s)
+	out.Availability = availabilityOf(s, time.Now())
 	trust := SourceTrustUnknown
 	switch {
 	case sourceType(s.SourceType) == sourceGit && out.URL != "":

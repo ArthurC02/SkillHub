@@ -34,6 +34,8 @@ Sandbox 取得的物件存取權限一律短效，且限定在單一物件或單
 
 所有使用者擁有的資料至少包含 `workspace_id`，或能從父層資料無歧義地導出。查詢層預設要求 Workspace 範圍，不接受由 UI 單獨保證隔離、也不信任呼叫端傳入的 `workspace_id`。多租戶政策、准入與額度的完整規則見 [ADR-006](./ADR-006-identity-workspace-admission-and-allowances.md)；本決策只定資料層的預設邊界。
 
+**隔離只靠應用層，資料庫不做第二道（row-level security）。** 每條查詢自己帶 `workspace_id`，由 `automation-check` 的 `query-scope` 逐條擋住漏帶的；它擋得住「忘了寫」，擋不住「參數綁錯」，那一類由整合測試的越權案例守。不加 RLS 的理由是它不會真的消掉那一類錯誤，只會把它搬家：RLS 要求每條連線都帶對的 session 變數，而連線池與 `maintenance` 的角色切換會讓「這條連線現在是誰」變成一個新的、同樣靠正確性維持的問題。重看的觸發條件是出現第二個直接讀寫核心資料庫的程序，或一次真實的跨 Workspace 讀取事故。
+
 ### 決策 5：刪除使用者輸入只清內容，不抹除可追溯性
 
 使用者刪除 Dataset 或 Run 輸入後，歷史 Run 保留內容雜湊、metadata 與 Trace 引用，並標示「輸入已刪除」；Run 維持可追溯（能證明當時用了什麼）但不再保證可重現（無法重新執行）。UI 與評估報告不得在輸入已刪除時暗示仍可重跑或比較。刪除跨越物件儲存、索引與 Trace 時，一律使用可追蹤的非同步工作流程，不宣稱瞬間完成；牽涉整個 Workspace 的不可逆清除另見 [ADR-023](./ADR-023-account-purge.md)。

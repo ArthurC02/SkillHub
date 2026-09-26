@@ -24,6 +24,8 @@ const (
 	CodeNoSkillFound       = "no-skill-found"
 	CodePluginUnknownField = "plugin-manifest-unknown-field"
 	CodeDuplicateSkillName = "duplicate-skill-name"
+
+	CodeNameHeldByAnotherSource = "name-held-by-another-source"
 )
 
 type SourceShape string

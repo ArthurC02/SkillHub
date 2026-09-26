@@ -23,7 +23,7 @@ export function RiskVerdict({ risk }: { risk: SkillRisk }) {
     <p className="risk-counts">
       {highest
         ? `有 ${total} 項風險，最高為${SEVERITY_LABEL[highest]}。`
-        : "靜態掃描未發現錯誤、警告或提示。"}
+        : "靜態掃描未發現錯誤、警告或提示；這不等於安全。"}
     </p>
   );
 }

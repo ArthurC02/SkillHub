@@ -303,6 +303,41 @@ test("來源不是 Plugin 時，不編造一個 Plugin 也不編造同伴", asyn
   );
 });
 
+const GIT_SOURCE = {
+  type: "git",
+  url: "https://github.com/example/pdf",
+  fetched_at: "2026-08-01T10:00:00Z",
+  last_checked_at: "2026-09-20T10:00:00Z",
+  unavailable_since: "2026-09-01T10:00:00Z",
+  trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+};
+
+test("來源失效的判定照伺服器說的畫：失效才用風險色，暫時抓不到不是失效", async () => {
+  stubOwner({
+    source: {
+      ...GIT_SOURCE,
+      availability: { value: "lost", label: "來源已失效", note: "連續七天以上抓不到。" },
+    },
+  });
+  await render(<SkillDetail />, settledAsOwner);
+  expect(elementSaying("來源已失效").closest(".badge-risk")).not.toBeNull();
+  expect(text()).toContain("連續七天以上抓不到。");
+
+  await act(async () => root.unmount());
+  queryClient.clear();
+  stubOwner({
+    source: {
+      ...GIT_SOURCE,
+      availability: { value: "unreachable", label: "暫時無法取得", note: "還不到七天。" },
+    },
+  });
+  await render(<SkillDetail />, settledAsOwner);
+  expect(text(), "還不到七天就說失效，會讓一次上游故障看起來像來源消失").not.toContain(
+    "來源已失效",
+  );
+  expect(elementSaying("暫時無法取得").closest(".badge-risk")).toBeNull();
+});
+
 test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input)

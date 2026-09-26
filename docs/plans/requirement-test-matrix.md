@@ -36,7 +36,7 @@
 | SKILL-003 | 有測試 | `TestEmbeddedCodeIsDisclosed`、`TestEmbeddedCodeBoundaryLines` | |
 | SKILL-004 | 有測試 | `TestLicenseProvenancePrecedence` | |
 | SKILL-005 | 有測試 | `TestURLDisclosuresAggregateByHost` | |
-| SKILL-006 | 有測試 | `TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken`、`TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom`、`TestASkillThatIsTheWholePackageRecordsNoSubdirectory`、`TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage`、`TestASourceWhoseEverySkillFailedIsRefusedWithEachOneNamed`、`TestOneUnusableSkillDoesNotRefuseThePluginsGoodOnes`、`TestASourceOverTheSkillCeilingIsRefusedAndSaysTheCeiling`、`TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn`、`TestEverySkillOfAPluginKeepsThePluginsOwnFacts`、`TestASkillThatIsNotFromAPluginRecordsNoPluginFacts`、`a Plugin import lists every Skill it brought in, each with its own link`、`a Plugin import says what a download of one Skill actually hands over`、`TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt`、`TestSkillDetailOfASkillThatIsItsWholeSourceReportsNoPluginAndNoSiblings`、`一個來自 Plugin 的 Skill 說出 Plugin 是哪一個、自己在裡面的哪個目錄`、`同一份來源帶進來的其他 Skill 各自有連結，而且不含自己`、`來源不是 Plugin 時，不編造一個 Plugin 也不編造同伴`、`a Plugin import discloses the components it did not import`、`one refused folder does not hide the Skills that did come in`、`TestTheProviderIsToldWhichDirectoryOfTheStoredPackageTheSkillIs`、`TestASkillThatIsItsWholePackageIsDispatchedWithNoDirectory`、`TestTheSkillsOwnDirectoryInsideItsPackageReachesTheWorkload`、`a declared directory installs that skill of a plugin and nothing else`、`a plugin with no declared directory fails rather than installing the whole plugin as one skill`、`a declared directory that escapes the package is refused before anything is extracted`、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone`、`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` |  |
+| SKILL-006 | 有測試 | `TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken`、`TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom`、`TestASkillThatIsTheWholePackageRecordsNoSubdirectory`、`TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage`、`TestASourceWhoseEverySkillFailedIsRefusedWithEachOneNamed`、`TestOneUnusableSkillDoesNotRefuseThePluginsGoodOnes`、`TestASourceOverTheSkillCeilingIsRefusedAndSaysTheCeiling`、`TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn`、`TestEverySkillOfAPluginKeepsThePluginsOwnFacts`、`TestASkillThatIsNotFromAPluginRecordsNoPluginFacts`、`a Plugin import lists every Skill it brought in, each with its own link`、`a Plugin import says what a download of one Skill actually hands over`、`TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt`、`TestSkillDetailOfASkillThatIsItsWholeSourceReportsNoPluginAndNoSiblings`、`一個來自 Plugin 的 Skill 說出 Plugin 是哪一個、自己在裡面的哪個目錄`、`同一份來源帶進來的其他 Skill 各自有連結，而且不含自己`、`來源不是 Plugin 時，不編造一個 Plugin 也不編造同伴`、`a Plugin import discloses the components it did not import`、`one refused folder does not hide the Skills that did come in`、`TestTheProviderIsToldWhichDirectoryOfTheStoredPackageTheSkillIs`、`TestASkillThatIsItsWholePackageIsDispatchedWithNoDirectory`、`TestTheSkillsOwnDirectoryInsideItsPackageReachesTheWorkload`、`a declared directory installs that skill of a plugin and nothing else`、`a plugin with no declared directory fails rather than installing the whole plugin as one skill`、`a declared directory that escapes the package is refused before anything is extracted`、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone`、`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey`、`TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill`、`TestAPluginWhoseEverySkillCollidesIsRefusedAsAWhole`、`TestReimportingTheSamePluginStillAddsANewVersion`、`TestAStandaloneUploadOnEitherSideKeepsAttachingAsANewVersion` |  |
 
 ## 工作區與試跑
 
@@ -57,7 +57,7 @@
 
 | 需求 ID | 狀態 | 具名測試 | 缺口 |
 | --- | --- | --- | --- |
-| EVAL-001 | 有測試 | `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun`、`TestFeedbackIsRecordedAndCanBeChanged` | |
+| EVAL-001 | 有測試 | `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun`、`TestFeedbackIsRecordedAndCanBeChanged`、`TestAFailedVerdictIsFrozenLikeASettledOne` | |
 | EVAL-002 | 有測試 | `TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone`、`TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot` | |
 | EVAL-003 | 有測試 | `TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink`、`TestRerunningTheSameTestCaseOnANewVersionGoesThroughPreflight` | |
 | EVAL-013 | 部分 | `test_a_passed_verdict_on_an_incomplete_trace_is_downgraded`、`test_a_verdict_citing_an_unresolvable_reference_is_downgraded` | 降級機制有測試；一份用這把尺量出來的完整回歸讀數（符合率、逐筆歸因）還沒跑過 |
@@ -81,7 +81,7 @@
 | CONTENT-006 | 部分 | `TestCategorizeSeparatesBySeverity`、`TestSecretsBlockWithoutEchoingValue`、`TestEmbeddedCodeIsDisclosed` | 精選檢查④「無 eval／動態下載／外連 subprocess」是一次人工掃描的讀數；現有 45 筆的判定被 `tools/content/seed-packages.sha256` 釘住（`import_seed.py --pack-only` 每次比對，不合 exit 2），所以缺的不是今天這批，是**新增或換掉一筆時沒有機械量測會重跑** |
 | CONTENT-007 | 有測試 | `TestOnlyCuratedTestCasesTravelAndTheRestAreNamed` | |
 | CONTENT-008 | 部分 | `TestCurationTierNeedsBothHalvesOfTheRecord` | 「未通過者不得標記為精選」在程式裡沒有前提條件——`PUT /admin/skills/{id}/tier` 只要求 operator 身分，不查有沒有一次「符合」的基準 Run；這條是綁人的程序規則，證據是一份實測報告 |
-| CONTENT-009 | 有測試 | `TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange`、`TestSourceAvailabilityIsAuditedOnlyWhenItChanges` | |
+| CONTENT-009 | 有測試 | `TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange`、`TestSourceAvailabilityIsAuditedOnlyWhenItChanges`、`TestASourceIsLostOnlyAfterSevenDaysOfFailedChecks` | |
 
 ## 生成與互動創作
 
@@ -144,7 +144,7 @@
 
 | 需求 ID | 狀態 | 具名測試 | 缺口 |
 | --- | --- | --- | --- |
-| NFR-001 | 部分 | `TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured`、`TestTheRefusalCarriesRetryAfterAndASentence`、`NFR-001: a clean scan says what the scan found and carries the rider that it is not safety`、`NFR-001: a clean row in a list carries the same rider as the detail page` | 目錄列與詳情頁的但書有測試；打包頁乾淨掃描時永遠看得見的判定行沒有但書，那句話被折進 `<details>`（`05` R-90），所以那一面還沒有可以斷言的對象 |
+| NFR-001 | 有測試 | `TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured`、`TestTheRefusalCarriesRetryAfterAndASentence`、`NFR-001: a clean scan says what the scan found and carries the rider that it is not safety`、`NFR-001: a clean row in a list carries the same rider as the detail page`、`乾淨掃描時，判定行帶「這不等於安全」的但書，且全頁只出現這一句`、`有風險時，判定行只說風險數與最高嚴重度，不帶乾淨掃描的那句但書` | |
 | NFR-002 | 有測試 | `TestTraceIngestionMasksBeforeStorageAndDedupesOnResend`、`TestARunArtifactCanBeListedAndDeletedOnItsOwn` | |
 | NFR-003 | 有測試 | `TestAProviderThatCannotBeReachedIsUnavailableRatherThanRefusing`、`TestAnUnrecognisedAndOldSandboxIsStillAnOrphan`、`TestSupervisorRecoversARunThatHasNoJob` | |
 | NFR-004 | 待真機 | | 搜尋 p95、建立 Run、Trace 上畫面的秒數門檻，規格自己寫「需在確認基礎設施後校準」 |
@@ -161,7 +161,7 @@
 | SEC-003 | 有測試 | `TestFetchRefusesHostResolvingToLoopback`、`TestFetchRefusesMetadataAddressBothSpellings`、`TestFetchRedirectLimit` | |
 | SEC-005 | 有測試 | `TestRevokeIsIdempotent`、`TestPresignedGrantIsShortLivedUnforgeableAndSingleDirection` | |
 | SEC-006 | 有測試 | `TestARunArtifactCanBeListedAndDeletedOnItsOwn`、`TestPresignedURLStatesItsExpiryAndBindsItsMethod` | |
-| SEC-007 | 部分 | `TestTakedownRemovesSkillFromPublicSurface` | 上游「失效」的判準尚未定值（`05` R-88），這半部沒有可證的對象 |
+| SEC-007 | 有測試 | `TestTakedownRemovesSkillFromPublicSurface`、`TestASourceIsLostOnlyAfterSevenDaysOfFailedChecks`、`來源失效的判定照伺服器說的畫：失效才用風險色，暫時抓不到不是失效` | |
 | SEC-008 | 部分 | `TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources`、`TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator` | 測試證的是平台收到探針訊號後的反應；探針在真節點上真的擋得住連線，要在那台節點上驗 |
 | SEC-009 | 待真機 | `tools/sec009/t1-escape-attempts.sh`、`tools/sec009/t2-syscall-fuzz.sh`、`tools/sec009/gvisor-smoke.sh` | 46 項全 pass、0 unknown 的判定要在生產同規格節點跑滿前置條件後才成立；CI 跑的是程序檢查 |
 | SEC-010 | 部分 | `TestMaskingStoppedHaltsDispatchWithoutAnOperator`、`TestReconcilerStallHaltsDispatchWithoutAnOperator`、`TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator` | 「1 小時內接手」與通知真的送達是人的回應與外部系統，測試證不了 |

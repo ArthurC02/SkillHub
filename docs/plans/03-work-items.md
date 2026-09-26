@@ -78,6 +78,7 @@
 - [ ] DESIGN-011 設計重新試跑與版本／結果比較流程。（**不再追蹤**——落點：`EVAL-011`／`EVAL-012` 的 `RunCompare.page.tsx` 與 `AppliedResult` 的 preflight 交接。[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)的兩列狀態在比較畫面同樣成立，見 `DESIGN-010`）
 - [x] DESIGN-012 設計打包下載、安裝及驗證說明。**（M4 實作項，保留追蹤）**（本項與 `DESIGN-001`～`011` 不同：M4 有真正的新畫面。範圍＝下載頁與安裝說明的呈現面，對應 `PACK-006`／`PACK-007`／`PACK-008` 與 `02:PACK-002` 的三條允收準則；三層相容性分開呈現、未驗證必須顯示未驗證、到期日顯示絕對日期不顯示相對天數。排入 M4 第 6 批）
 - [x] DESIGN-013 完成鍵盤操作、文字標籤與錯誤訊息的無障礙檢查。**（M4 實作項，保留追蹤）**（判準取自 `02:NFR-007`：主要流程可鍵盤完成、表單具標籤與清楚驗證訊息、狀態不只依賴顏色。**與 `QA-009` 逐字重疊**（[m4/README.md §7 差-1](mvp/m4/README.md)）：兩者以**同一份檢查結果**判定，不做兩次也不各記一份帳——本項是檢查的執行，`QA-009` 是發佈檢查表上的同一格，勾選時互相引用。排入 M4 第 6 批）
+- [x] DESIGN-015 打包頁乾淨掃描的判定行帶「這不等於安全」，折疊裡的同一句拿掉，整頁只講一次（`02:NFR-001` 第 6 條）。
 - [ ] DESIGN-014 把畫面上的名詞換成日常用語。（**新增，`05` R-56 裁定 (a)、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)**。對照表在該 ADR 決策 1，已定死：`Skill`→小工具、`Run`→試跑／試跑紀錄、`Test Case`→測試題、`Fork`→複製一份，**`Workspace` 不改**。範圍：`apps/web/src` 的使用者可見字串 **382 處／31 個檔案**（無 i18n 集中層）＋ 2 個 Go 常數（`creator/workspace/http.go` 的 `deletionScope`、`entrypoint/api/apiserver/creation.go` 的 422 文字）＋ 10 份 `__outlines__` 標題快照。契約、資料庫、識別字、ADR 內文與需求 ID 一個字都不動。**不做括號並列、不做開關、不做逐頁分批**——三者都會讓同一個東西有兩個名字。**前置（寫死）：apps/web 的版面批合併之後**，理由是單一 Writer——兩個代理同時改同一批檔案是 AGENTS.md 直接禁止的。**必須單獨成一個 commit**，不與任何行為改動混在一起，否則 382 處的機械變動會把 review 淹掉。做完才結。允收：`02:NFR-001`、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的相關決策）
 
 ## 4. Skill 內容與供應（M1）
@@ -99,6 +100,7 @@
 - [ ] CONTENT-011 重跑 CONTENT-005 增強，使被拒收依賴造成的能力缺口進入「限制」欄。（**不得就地改寫**：`02:CONTENT-005` 規定 `需修改` 的處置是調整 prompt 或標記人工覆寫後**重跑增強與重新索引**，因此 `2026.08-3` 這批**只記錄建議、不執行**。對象三筆與應涵蓋內容：`pdf`——渲染／OCR 支路（`reportlab`／`pypdfium2`／`pdf2image`／`pytesseract`）與 Node 支路皆不可用，可用的是 `pypdf`＋`pdfplumber`＋`pillow` 的讀取／抽取／合併；`pii-flag`——`presidio-*` 偵測引擎不可用，可用的是模型判讀＋`phonenumbers`／`python-stdnum` 格式驗證，**NFR-001 的措辭紀律因此更吃重**；`document-format-skills`——`pywin32`／COM 的 `.doc`／`.wps` 轉檔在 Linux 沙箱上永久不可能，`.docx` 路徑可用。另 `pyarrow` 遭拒使 `add-iso3166`／`add-data-dictionary`／`data-comparability`／`data-cleanliness-scan` 四筆的 Parquet 格式支援不可用，亦應揭露。理由與逐項對照見 [infra/images/README.md](../../infra/images/README.md)「拒收」表。
 - [x] CONTENT-012 同步 [content/curated-skill-list.md](mvp/content/curated-skill-list.md) §2 三張表的「依賴」欄與 `tools/content/seed-skills.json`，並依負責人裁定更正檢查 ⑥。
 - [x] CONTENT-013 為已索引層補「依賴」欄或等價揭露。（由 CONTENT-012 發現：[content/curated-skill-list.md](mvp/content/curated-skill-list.md) §4.1／4.2／4.3 三張已索引表**只有 License 與 Tier，沒有依賴欄**，所以 `deps` 的修正在該層**沒有可同步的欄位**——12 筆已索引 Skill 的依賴更正只存在於 `seed-skills.json` 與 §3 腳註 7。已索引層依 PDM-002 不要求九項全過，故非阻擋，但「使用者看得到的依賴揭露」最終仍應由 DISC-003 的詳情頁承接而非本文件；先記錄缺口，實作歸屬待定）
+- [x] CONTENT-014 來源失效的判準：未滿七天「暫時無法取得」、滿七天「來源已失效」，由平台判定並回在詳情頁的來源區，只標示不下架（`02:CONTENT-009`、`02:SEC-007`）。
 
 ## 5. 核心領域與帳號（M1）
 
@@ -134,6 +136,7 @@
 - [x] INGEST-018 Skill 以外的元件只揭露不匯入、也不執行：`mcp.json` 與反向網域命名空間的頂層目錄進排除揭露並可辨識為 Plugin 元件；沙箱只安裝該 Skill 自己的目錄，其餘位元組不被安裝、也不留在沙箱檔案系統（整包仍以一份物件送入，這是「一個 Plugin 一份套件」的代價）（`02:SKILL-006`、實作鐵律 1）。**MCP server 與 hook 的定義本身就是執行指令**，這一項守的是「匯入不得替使用者決定要執行什麼」。命名空間目錄不逐一列舉宿主名稱——規格把那一層劃給宿主，列舉等於替每一家維護一份清單。
 - [x] INGEST-019 plugin manifest 的驗證與來源事實：宣告別份規格者為 info 並改走整棵樹、宣告公規卻 `name` 不合才是阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；一個 Plugin 只存一份套件物件（整包），各 Skill Version 共用它、內容雜湊取各自子目錄；單次匯入超過 50 個 Skill 即整批拒絕並說出兩個數字（`02:SKILL-006`）。
 - [x] INGEST-020 來源事實的讀取面：Skill 詳情頁揭露它來自哪個 Plugin（`name`／`version`／`repository`）、它在已存套件內的路徑，以及同一份已存套件帶進來的其他 Skill（可連過去，已刪除與已下架者不列），並說出「屬於一個 Plugin」在這裡代表什麼（只安裝自己的目錄、其他元件不匯入不執行、下載只有單一 Skill）；同批修掉匯入頁與契約裡那句「下載其中任一 Skill 拿到的是整包 Plugin」——平台從不交出已存套件物件（`02:SKILL-006`）。同伴的判準是**同一份已存套件物件**，不是 `skill_sources` 的列：一次匯入為每個 Skill 各建一列來源，共用的是那一份物件。
+- [x] INGEST-021 跨來源同名不併版本：工作區裡同名 Skill 的最新版本來自另一個來源（Plugin 名稱或來源網址不同）時，匯入逐個拒絕（`name-held-by-another-source`），說出占用它的來源與兩條出路，其餘 Skill 照常匯入；同一來源重新匯入與單獨上傳的 zip 行為不變（`02:SKILL-006`）。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 
@@ -389,6 +392,7 @@
 - [x] PACK-012 產出的套件上限與匯入上限解耦。
 - [ ] PACK-013 把平台對這個 Skill 的理解交給下游。（索引時的 LLM 增強每個版本花一次模型呼叫產出白話摘要與任務範例句，而**它的全部價值今天只兌現在平台內的搜尋列上**——使用者帶走的套件、以及他的 Agent 讀到的，仍然是作者原本那句 `description`。內容：(b) `skillhub-manifest.json` 加一個 `understanding` 區塊（摘要、任務範例句、生成時間、提示詞版本）；(c) `INSTALL.md` 加一句「這個 Skill 適合的任務」。**兩處都必須標明它是平台生成的、不是作者寫的**（缺席與來源詞彙照[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)），且**不得進 frontmatter**——[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)／PDM-008 禁止改變任務意圖，該禁令在 R-28 被逐條確認未被時間侵蝕。**前置（寫死，不是估時）：M1 驗證閘門的讀數。** 閘門量的正是「平台的理解對人有沒有用」，而如果那個讀數說沒有用，把它送到下游只是把沒有用的東西送得更遠。允收：`02:PACK-001`、`02:GEN-004` 的同一條紀律）
 - [x] EVAL-014 重評時區分「Artifact 已過期」與「Artifact 從未被記錄」。
+- [x] EVAL-015 判定失敗的評估整列凍結：不可變 trigger 涵蓋 `completed` 與 `failed` 兩種終態，放行欄位不變（`02:EVAL-001`）。
 - [x] GEN-008 UI（**受曝光旗標保護，預設為關**）：無結果狀態的生成入口、生成中的進行中狀態（`InFlight` 既有元件，設計系統 §2.12）、失敗時的兩條出路、詳情與列表上「沒有經過任何人工檢視、沒有任何試跑證據」的說明（措辭適用[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的缺席詞彙）。**首頁不提供與搜尋對等的生成入口。**（允收：`02:GEN-004`）
 - [x] GEN-009 生成品質基線：跑一批真實生成，記四個數——①第一次就通過 `skillpkg.Validate` 的比率、②被擋下來的錯誤分布、③生成物完成第一次試跑後的評估判定分布、④人看了會不會留著（這一項要人，前三項不用）。**◐ (甲)(乙) 已先跑掉** → [m5/report-generate-baseline.md](mvp/m5/report-generate-baseline.md)：**6／20 至少失敗一次、2／20 兩輪都失敗**（推翻[從描述生成 Skill](../adr/README.md#從描述生成-skill)「純隨機」理由，結論仍成立）；**mini 通過 19／20、便宜 21.4 倍**（依[從描述生成 Skill](../adr/README.md#從描述生成-skill)改預設）；**`possible-secret` 三輪 0／59**。
 - [x] GEN-010 資料保存政策補上生成這一類資料：任務描述原文的保存期限與刪除行為。（**任務描述是使用者主動提交的自由文字**，與 `O11Y-004` 的分析事件「不記查詢原文」是兩件事，不得互相援引）（允收：`02:GEN-002`、`SEC-006`）

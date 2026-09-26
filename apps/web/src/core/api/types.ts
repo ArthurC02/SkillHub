@@ -208,6 +208,7 @@ export interface SkillSource {
   content_hash?: string;
   last_checked_at?: string;
   unavailable_since?: string;
+  availability?: Labelled;
   task_description?: string;
   generator_model?: string;
   generator_prompt_version?: string;
