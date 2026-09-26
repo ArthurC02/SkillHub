@@ -74,10 +74,24 @@ export interface PackagingPreview {
   retention_days: number;
 }
 
-export interface DownloadArtifact {
-  artifact_id: string;
+export interface PluginContentsMember {
   skill_id: string;
   skill_version_id: string;
+  name: string;
+  version_number: number;
+}
+
+export interface PluginContents {
+  name: string;
+  version: string;
+  members: PluginContentsMember[];
+}
+
+export interface DownloadArtifact {
+  artifact_id: string;
+  plugin?: PluginContents;
+  skill_id?: string;
+  skill_version_id?: string;
   target: PackagingTargetId;
   file_name: string;
   size_bytes: number;
@@ -86,8 +100,8 @@ export interface DownloadArtifact {
   status: "quarantined" | "available" | "rejected";
   servable: boolean;
   serve_state: Labelled;
-  version_number: number;
-  latest_version_number: number;
+  version_number?: number;
+  latest_version_number?: number;
   version_state: Labelled;
   expires_at: string;
   created_at: string;

@@ -93,6 +93,7 @@
 | `/skills/$skillId` | `SkillDetail` | DISC-003、SKILL | Skill 生命週期／Skill 資產與版本歷史 |
 | `/skills/$skillId/files` | `SkillFiles` | SKILL | Skill 生命週期／Skill 資產與版本歷史 |
 | `/skills/$skillId/package` | `Packaging` | 02:PACK-001／002 | Skill 生命週期／**Skill 交付與安裝** |
+| `/p/$publisher/$name` | `PublicPublication` | 02:PACK-004 | Skill 生命週期／**Skill 發佈**〔不需登入；單筆的 id 是「發佈者／名稱」這一對，所以是兩段〕 |
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |

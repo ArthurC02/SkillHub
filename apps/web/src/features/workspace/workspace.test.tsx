@@ -11,8 +11,14 @@ import { WorkspaceSkills } from "./skills/WorkspaceSkills.page";
 import { SkillDetail } from "../skill/detail/SkillDetail.page";
 import { ImportSkill } from "../creation/import/ImportSkill.page";
 import { CancelRunControl } from "../runs/trace/components/CancelRunControl";
-import { SKILL_VERSIONS, VERSION_DIFF, skillDetail } from "../../testing/fixtures/platform";
+import {
+  SKILL_VERSIONS,
+  VERSION,
+  VERSION_DIFF,
+  skillDetail,
+} from "../../testing/fixtures/platform";
 import { useForkSkill } from "../skill/skills.service";
+import { BundleSection } from "../publishing";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
@@ -30,6 +36,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await act(async () => root?.unmount());
+  await act(async () => queryClient.cancelQueries());
   container.remove();
   vi.unstubAllGlobals();
 });
@@ -671,6 +678,10 @@ function stubAccountFetch(
       return json(statement(url.searchParams.get("before")));
     }
     if (url.pathname.endsWith("/me/credits")) return json(BALANCE);
+    if (url.pathname === "/skills") {
+      return json({ skills: [], limit: 100, truncated: false, total: 0 });
+    }
+    if (url.pathname === "/me/bundles") return json({ bundles: [] });
     return handler(input, init);
   });
 }
@@ -1271,4 +1282,240 @@ test("§2.12 第 6 條 a run history with nothing running carries no refresh con
 
   expect(button("重新整理")).toBeUndefined();
   expect(text()).not.toContain("上次取得於");
+});
+
+function stubBundleRoutes(opts: {
+  ownSkills?: Array<{ skill_id: string; embedded: unknown }>;
+  bundles?: unknown[];
+  onCreate?: (body: Record<string, unknown>) => { body: unknown; status?: number };
+  publication?: (name: string) => { body: unknown; status?: number };
+  onExport?: (name: string) => { body: unknown; status?: number };
+  onPublish?: (name: string, body: Record<string, unknown>) => { body: unknown; status?: number };
+  onDelist?: (name: string) => { body: unknown; status?: number };
+}) {
+  const calls: Array<{ path: string; method: string; body?: Record<string, unknown> }> = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = new URL(String(input), "http://localhost");
+    const path = url.pathname;
+    const method = init?.method ?? "GET";
+    const body = init?.body
+      ? (JSON.parse(String(init.body)) as Record<string, unknown>)
+      : undefined;
+    calls.push({ path, method, body });
+
+    if (path === "/skills" && method === "GET") {
+      return json({
+        skills: (opts.ownSkills ?? []).map((s) => ({
+          skill_id: s.skill_id,
+          name: "",
+          summary: "",
+          redistribution: "allowed",
+          access_restriction: null,
+        })),
+        limit: 100,
+        truncated: false,
+        total: (opts.ownSkills ?? []).length,
+      });
+    }
+    const embeddedMatch = path.match(/^\/api\/skills\/([^/]+)$/);
+    if (embeddedMatch && method === "GET") {
+      const found = (opts.ownSkills ?? []).find((s) => s.skill_id === embeddedMatch[1]);
+      return found ? json(found.embedded) : json({ error: "not found" }, 404);
+    }
+    if (path === "/me/bundles" && method === "GET") return json({ bundles: opts.bundles ?? [] });
+    if (path === "/me/bundles" && method === "POST") {
+      const result = opts.onCreate?.(body ?? {}) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 201);
+    }
+    const exportMatch = path.match(/^\/me\/bundles\/([^/]+)\/export$/);
+    if (exportMatch && method === "POST") {
+      const result = opts.onExport?.(exportMatch[1]) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 201);
+    }
+    const pubMatch = path.match(/^\/me\/bundles\/([^/]+)\/publication$/);
+    if (pubMatch && method === "GET") {
+      const result = opts.publication?.(pubMatch[1]) ?? {
+        body: { error: "not published" },
+        status: 404,
+      };
+      return json(result.body, result.status ?? 200);
+    }
+    if (pubMatch && method === "POST") {
+      const result = opts.onPublish?.(pubMatch[1], body ?? {}) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 200);
+    }
+    if (pubMatch && method === "DELETE") {
+      const result = opts.onDelist?.(pubMatch[1]) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 200);
+    }
+    return json({ error: "not found" }, 404);
+  });
+  return calls;
+}
+
+function bundleRow(bundle: string) {
+  return {
+    bundle,
+    version: "1.0.0",
+    description: "一組 PDF 工具",
+    content_hash: "sha256:bundle-1",
+    created_at: "2026-09-01T00:00:00Z",
+    members: [
+      {
+        skill_id: SKILL,
+        version_id: VERSION,
+        name: "summariser",
+        version_number: 2,
+        content_hash: "sha256:aa",
+      },
+    ],
+  };
+}
+
+test("PACK-018 Bundle 區塊列出既有 Bundle 的名稱、版本、說明與成員", async () => {
+  stubBundleRoutes({
+    bundles: [bundleRow("pdf-toolkit-list")],
+    publication: () => ({ body: { error: "not published" }, status: 404 }),
+  });
+  await render(<BundleSection />, () => text().includes("pdf-toolkit-list"));
+
+  expect(text()).toContain("v1.0.0");
+  expect(text()).toContain("一組 PDF 工具");
+  expect(text()).toContain("summariser v2");
+});
+
+test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按鈕旁", async () => {
+  stubBundleRoutes({
+    bundles: [bundleRow("pdf-toolkit-export")],
+    publication: () => ({ body: { error: "not published" }, status: 404 }),
+    onExport: () => ({
+      body: {
+        artifact_id: "art-2",
+        file_name: "pdf-toolkit-1.0.0-plugin.zip",
+        size_bytes: 10,
+        content_hash: "sha256:x",
+        expires_at: "2099-01-01T00:00:00Z",
+        duplicate: false,
+        content_url: "/downloads/art-2/content",
+      },
+    }),
+  });
+  await render(<BundleSection />, () => text().includes("pdf-toolkit-export"));
+
+  expect(text()).toContain("Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。");
+
+  await act(async () => button("匯出為 Plugin")?.click());
+  await waitFor(() => text().includes("pdf-toolkit-1.0.0-plugin.zip"));
+
+  const link = Array.from(container.querySelectorAll("a")).find((a) =>
+    (a.textContent ?? "").includes("pdf-toolkit-1.0.0-plugin.zip"),
+  );
+  expect(link?.getAttribute("href")).toBe("/downloads/art-2/content");
+});
+
+test("PACK-018 尚未發佈時可以送出發佈，422 顯示伺服器的字串", async () => {
+  stubBundleRoutes({
+    bundles: [bundleRow("pdf-toolkit-422")],
+    publication: () => ({ body: { error: "not published" }, status: 404 }),
+    onPublish: () => ({
+      body: { error: "Bundle 需要一段說明", reason: "description_missing" },
+      status: 422,
+    }),
+  });
+  await render(<BundleSection />, () => text().includes("pdf-toolkit-422"));
+  await waitFor(() => Boolean(button("發佈")));
+
+  await act(async () => button("發佈")?.click());
+  await waitFor(() => text().includes("Bundle 需要一段說明"));
+});
+
+test("PACK-018 已發佈時顯示公開位址、狀態與撤回按鈕", async () => {
+  stubBundleRoutes({
+    bundles: [bundleRow("pdf-toolkit-published")],
+    publication: () => ({
+      body: {
+        kind: "bundle",
+        publisher: "acme-tools",
+        name: "pdf-toolkit-published",
+        address: "/p/acme-tools/pdf-toolkit-published",
+        status: "published",
+        status_changed_at: "2026-09-01T00:00:00Z",
+        releases: [
+          {
+            bundle_version: "1.0.0",
+            content_hash: "sha256:bundle-1",
+            released_at: "2026-09-01T00:00:00Z",
+            rights_attested: false,
+            findings: { errors: [], warnings: [], infos: [] },
+          },
+        ],
+      },
+    }),
+  });
+  await render(<BundleSection />, () => text().includes("pdf-toolkit-published"));
+
+  await waitFor(() => text().includes("/p/acme-tools/pdf-toolkit-published"));
+  expect(text()).toContain("已發佈");
+  expect(button("撤回")).toBeDefined();
+});
+
+test("PACK-018 建立 Bundle Version 時，成員送出的是各自最新版本的 version_id", async () => {
+  const calls = stubBundleRoutes({
+    bundles: [],
+    ownSkills: [{ skill_id: SKILL, embedded: skillDetail(SKILL, "Summariser") }],
+    onCreate: (body) => ({
+      body: {
+        bundle: body.name,
+        version: body.version,
+        description: body.description,
+        content_hash: "sha256:new",
+        created_at: "2026-09-11T00:00:00Z",
+        members: [],
+      },
+    }),
+  });
+  await render(<BundleSection />, () => text().includes("Summariser"));
+
+  const form = Array.from(container.querySelectorAll("form")).find((f) =>
+    (f.textContent ?? "").includes("建立 Bundle Version"),
+  )!;
+  const [nameInput, versionInput] = Array.from(
+    form.querySelectorAll('input:not([type="checkbox"])'),
+  ) as HTMLInputElement[];
+  const textarea = form.querySelector("textarea")!;
+  const setValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const proto =
+      el instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  await act(async () => {
+    setValue(nameInput, "pdf-toolkit");
+    setValue(versionInput, "1.0.0");
+    setValue(textarea, "一組 PDF 工具");
+  });
+  const checkbox = form.querySelector('input[type="checkbox"]') as HTMLInputElement;
+  await act(async () => checkbox.click());
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await waitFor(() => calls.some((c) => c.path === "/me/bundles" && c.method === "POST"));
+
+  const created = calls.find((c) => c.path === "/me/bundles" && c.method === "POST")!;
+  expect(created.body?.member_version_ids).toEqual([VERSION]);
+  expect(created.body?.name).toBe("pdf-toolkit");
 });

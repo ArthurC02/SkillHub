@@ -95,6 +95,13 @@ export const queryKeys = {
     downloads: ["downloads"],
     downloadRecords: (artifactId: string) => ["downloads", artifactId, "records"],
   },
+  publishing: {
+    publisher: ["publisher"],
+    ownPublication: (skillId: string) => ["skills", skillId, "publication"],
+    publicPublication: (publisher: string, name: string) => ["publication", publisher, name],
+    bundles: ["bundles"],
+    ownBundlePublication: (bundle: string) => ["bundles", bundle, "publication"],
+  },
   admin: {
     account: (email: string) => ["admin", "account", email],
     ledger: (workspaceId: string) => ["admin", "ledger", workspaceId],

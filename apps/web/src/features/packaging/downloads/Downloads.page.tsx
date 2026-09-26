@@ -138,10 +138,14 @@ function DownloadActions({
       ) : (
         <span className="note">{artifact.serve_state.label}</span>
       )}
-      {" ｜ "}
-      <Link to="/skills/$skillId" params={{ skillId: artifact.skill_id }}>
-        來源 Skill
-      </Link>
+      {artifact.skill_id && (
+        <>
+          {" ｜ "}
+          <Link to="/skills/$skillId" params={{ skillId: artifact.skill_id }}>
+            來源 Skill
+          </Link>
+        </>
+      )}
       {" ｜ "}
       <ConfirmDelete
         scopeId={`delete-scope-${artifact.artifact_id}`}

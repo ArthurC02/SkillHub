@@ -3,8 +3,9 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
-import { useSkillDetail } from "../skills.service";
+import { useSkillDetail, useSkillVersions } from "../skills.service";
 import { useMe } from "../../../core/session/me.service";
+import { PublishPanel } from "../../publishing";
 import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { GeneratedNotice } from "../../creation";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
@@ -24,6 +25,7 @@ export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
   const { data: skill, isLoading, error } = useSkillDetail(skillId);
   const { data: me } = useMe();
+  const versions = useSkillVersions(skillId);
 
   if (isLoading) return <Loading what="這個 Skill" />;
   if (error instanceof ApiError && error.status === 410) {
@@ -168,6 +170,12 @@ export function SkillDetail() {
           <VersionUpload skillId={skillId} />
 
           <CategoryEditor skillId={skillId} category={skill.category} />
+
+          <PublishPanel
+            skill={skill}
+            isLoggedIn={!!me}
+            isOwner={(versions.data?.versions.length ?? 0) > 0}
+          />
         </aside>
       </div>
     </article>

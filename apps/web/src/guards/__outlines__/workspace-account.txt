@@ -1,3 +1,6 @@
 h1 帳號
 h2 點數與花費
+h2 發佈者名稱
+h2 Bundle
+h3 建立 Bundle Version
 h2 刪除帳號

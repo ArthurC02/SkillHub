@@ -1,5 +1,7 @@
 import {
   OTHER_RUN,
+  PUBLICATION,
+  PUBLISHER,
   RUN,
   SKILL,
   SKILL_B,
@@ -15,6 +17,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["skill-detail", `/skills/${SKILL}`],
   ["skill-files", `/skills/${SKILL}/files`],
   ["packaging", `/skills/${SKILL}/package?version=${VERSION}`],
+  ["public-publication", `/p/${PUBLISHER}/${PUBLICATION}`],
   ["lab-run", `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`],
   ["lab-datasets", `/lab/datasets?test_case=${TEST_CASE}`],
   ["lab-test-cases", "/lab/test-cases"],

@@ -11,6 +11,7 @@ import {
 } from "../../../core/session/me.service";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { CreditStatement } from "./CreditStatement";
+import { BundleSection, PublisherSection } from "../../publishing";
 
 function deletionFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
@@ -53,6 +54,9 @@ export function WorkspaceAccount() {
 
           <h2>點數與花費</h2>
           <CreditStatement />
+
+          <PublisherSection />
+          <BundleSection />
 
           <h2>刪除帳號</h2>
           {me.data.deletion_requested_at ? (

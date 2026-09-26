@@ -105,7 +105,7 @@ test("the walk sees every zone and every role, so an empty scan cannot pass", ()
     count((s) => s.zone === "app"),
     "app/",
   ).toBeGreaterThan(3);
-  expect(new Set(sources.map((s) => s.zone).filter((z) => z.startsWith("features/"))).size).toBe(8);
+  expect(new Set(sources.map((s) => s.zone).filter((z) => z.startsWith("features/"))).size).toBe(9);
   expect(
     count((s) => isService(s.path)),
     "*.service.ts",

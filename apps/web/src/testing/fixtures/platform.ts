@@ -19,6 +19,13 @@ import type {
   SkillFiles,
   SkillVersions,
 } from "../../core/api/types";
+import type {
+  BundleVersion,
+  Publication,
+  Publisher,
+  PublicPublication,
+} from "../../features/publishing/publishing.service";
+import type { DownloadArtifact } from "../../features/packaging/packaging.service";
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
@@ -28,6 +35,8 @@ export const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 export const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 export const OTHER_RUN = "5c2e8a10-4b6d-4c31-9f77-2ab3d4e5f608";
 export const ARTIFACT = "44444444-4444-4444-4444-444444444444";
+export const PUBLISHER = "acme-tools";
+export const PUBLICATION = "pdf-summariser";
 
 export const CATEGORIES = {
   documents: {
@@ -729,6 +738,160 @@ export const SKILL_VERSIONS = {
   ],
 } satisfies SkillVersions;
 
+export const OWN_PUBLISHER = {
+  name: PUBLISHER,
+  created_at: "2026-08-01T00:00:00Z",
+} satisfies Publisher;
+
+export const OWN_PUBLICATION = {
+  kind: "skill",
+  publisher: PUBLISHER,
+  name: PUBLICATION,
+  address: `/p/${PUBLISHER}/${PUBLICATION}`,
+  status: "published",
+  status_changed_at: "2026-08-10T00:00:00Z",
+  releases: [
+    {
+      version_id: VERSION,
+      version_number: 2,
+      content_hash: "sha256:aa",
+      released_at: "2026-08-10T00:00:00Z",
+      rights_attested: false,
+      findings: { errors: [], warnings: [], infos: [] },
+    },
+  ],
+} satisfies Publication;
+
+const DOWNLOAD_NOTE =
+  "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+
+const BUNDLE_DOWNLOAD_NOTE =
+  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+
+export const PUBLIC_PUBLICATION = {
+  kind: "skill",
+  publisher: PUBLISHER,
+  name: PUBLICATION,
+  address: `/p/${PUBLISHER}/${PUBLICATION}`,
+  availability: { value: "available", label: "提供中", note: "" },
+  skill: { name: "PDF Summariser", summary: "把 PDF 整理成摘要" },
+  release: {
+    version_number: 2,
+    content_hash: "sha256:aa",
+    released_at: "2026-08-10T00:00:00Z",
+    findings: { errors: [], warnings: [], infos: [] },
+    license: { expression: "MIT", source: "repo-license-file" },
+    redistribution: { value: "allowed", label: "可再散布", note: "MIT，可再散布。" },
+  },
+  releases: [{ version_number: 2, content_hash: "sha256:aa", released_at: "2026-08-10T00:00:00Z" }],
+  exposure: {
+    available: false,
+    note: "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。",
+  },
+  acquisition: { available: true, note: DOWNLOAD_NOTE },
+} satisfies PublicPublication;
+
+export const PUBLIC_BUNDLE_PUBLICATION = {
+  kind: "bundle",
+  publisher: PUBLISHER,
+  name: "pdf-toolkit",
+  address: `/p/${PUBLISHER}/pdf-toolkit`,
+  availability: { value: "available", label: "提供中", note: "" },
+  bundle: {
+    version: "1.1.0",
+    description: "一組跟 PDF 有關的 Skill。",
+    members: [
+      { name: "summariser", version_number: 3, content_hash: "sha256:cc" },
+      { name: "splitter", version_number: 1, content_hash: "sha256:dd" },
+    ],
+  },
+  bundle_release: {
+    version: "1.1.0",
+    content_hash: "sha256:bundle-2",
+    released_at: "2026-09-10T00:00:00Z",
+    findings: { errors: [], warnings: [], infos: [] },
+    changes: [
+      { name: "summariser", change: "changed", from: 2, to: 3 },
+      { name: "splitter", change: "added", to: 1 },
+    ],
+  },
+  releases: [
+    {
+      version: "1.1.0",
+      content_hash: "sha256:bundle-2",
+      released_at: "2026-09-10T00:00:00Z",
+      changes: [
+        { name: "summariser", change: "changed", from: 2, to: 3 },
+        { name: "splitter", change: "added", to: 1 },
+      ],
+    },
+    { version: "1.0.0", content_hash: "sha256:bundle-1", released_at: "2026-09-01T00:00:00Z" },
+  ],
+  exposure: {
+    available: false,
+    note: "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。",
+  },
+  acquisition: { available: true, note: BUNDLE_DOWNLOAD_NOTE },
+} satisfies PublicPublication;
+
+export const OWN_BUNDLE = {
+  bundle: "pdf-toolkit",
+  version: "1.1.0",
+  description: "一組跟 PDF 有關的 Skill。",
+  content_hash: "sha256:bundle-2",
+  created_at: "2026-09-10T00:00:00Z",
+  members: [
+    {
+      skill_id: SKILL,
+      version_id: VERSION,
+      name: "summariser",
+      version_number: 3,
+      content_hash: "sha256:cc",
+    },
+    {
+      skill_id: SKILL_B,
+      version_id: "22222222-2222-2222-2222-333333333333",
+      name: "splitter",
+      version_number: 1,
+      content_hash: "sha256:dd",
+    },
+  ],
+} satisfies BundleVersion;
+
+export const PLUGIN_DOWNLOAD_ARTIFACT = {
+  artifact_id: "55555555-5555-5555-5555-555555555555",
+  plugin: {
+    name: "pdf-toolkit",
+    version: "1.1.0",
+    members: [
+      { skill_id: SKILL, skill_version_id: VERSION, name: "summariser", version_number: 3 },
+      {
+        skill_id: SKILL_B,
+        skill_version_id: "22222222-2222-2222-2222-333333333333",
+        name: "splitter",
+        version_number: 1,
+      },
+    ],
+  },
+  target: "standard",
+  file_name: "pdf-toolkit-1.1.0-plugin.zip",
+  size_bytes: 8192,
+  content_hash: "sha256:plugin-aa",
+  manifest_hash: "sha256:plugin-bb",
+  status: "available",
+  servable: true,
+  serve_state: { value: "available", label: "可下載", note: "" },
+  version_state: {
+    value: "plugin",
+    label: "Plugin pdf-toolkit 1.1.0",
+    note: "這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent Skill，不含 MCP 設定或宿主專屬元件。",
+  },
+  expires_at: "2099-01-01T00:00:00Z",
+  created_at: "2026-09-10T00:00:00Z",
+  download_count: 0,
+  includes_test_cases: false,
+} satisfies DownloadArtifact;
+
 export const VERSION_DIFF = {
   files: [
     { path: "SKILL.md", status: "modified", diff: "@@ -1 +1 @@\n-old\n+new" },
@@ -973,6 +1136,9 @@ export function platformResponse(input: string): { body: unknown; status: number
       deletion_scope:
         "purging the account destroys its skills, versions, runs, traces, evaluations and packaged downloads; audit records of the deletion itself are retained",
     } satisfies Me);
+  if (path === "/me/publisher") return ok(OWN_PUBLISHER);
+  if (path === `/skills/${SKILL}/publication`) return ok(OWN_PUBLICATION);
+  if (path === `/publications/${PUBLISHER}/${PUBLICATION}`) return ok(PUBLIC_PUBLICATION);
   if (path === "/policy/data-retention") return ok(RETENTION_POLICY);
   if (path === "/packaging/targets") return ok(TARGETS);
   if (path.endsWith("/packaging/preview")) return ok(PREVIEW);

@@ -122,6 +122,15 @@ const packagingRoute = createRoute({
   }),
 });
 
+const publicPublicationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/p/$publisher/$name",
+  component: lazyRouteComponent(
+    () => import("../features/publishing/PublicPublication.page"),
+    "PublicPublication",
+  ),
+});
+
 const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workspace/downloads",
@@ -365,6 +374,7 @@ const routeTree = rootRoute.addChildren([
   skillDetailRoute,
   skillFilesRoute,
   packagingRoute,
+  publicPublicationRoute,
   downloadsRoute,
   workspaceSkillsRoute,
   importSkillRoute,

@@ -795,6 +795,50 @@ test("WS-002 an empty history says nothing was ever downloaded, not that records
   expect(container.querySelector(".badge-expired")).toBeNull();
 });
 
+const pluginArtifact: DownloadArtifact = {
+  artifact_id: "plugin-1",
+  plugin: {
+    name: "pdf-toolkit",
+    version: "1.1.0",
+    members: [
+      { skill_id: SKILL, skill_version_id: VERSION, name: "summariser", version_number: 3 },
+      { skill_id: "skill-b", skill_version_id: "version-b", name: "splitter", version_number: 1 },
+    ],
+  },
+  target: "standard",
+  file_name: "pdf-toolkit-1.1.0-plugin.zip",
+  size_bytes: 8192,
+  content_hash: "sha256:plugin-aa",
+  manifest_hash: "sha256:plugin-bb",
+  status: "available",
+  servable: true,
+  serve_state: { value: "available", label: "可下載", note: "" },
+  version_state: {
+    value: "plugin",
+    label: "Plugin pdf-toolkit 1.1.0",
+    note: "這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent Skill，不含 MCP 設定或宿主專屬元件。",
+  },
+  expires_at: "2099-01-01T00:00:00Z",
+  created_at: "2026-09-10T00:00:00Z",
+  download_count: 0,
+  includes_test_cases: false,
+};
+
+test("PACK-018 a Plugin download row shows the plugin's name, version and members instead of a skill version number", async () => {
+  vi.stubGlobal("fetch", () => json({ downloads: [pluginArtifact] }));
+  await render(<Downloads />, () => text().includes("pdf-toolkit-1.1.0-plugin.zip"));
+
+  expect(text()).toContain("Plugin pdf-toolkit 1.1.0");
+  expect(text()).toContain("summariser");
+  expect(text()).toContain("splitter");
+  expect(text()).not.toContain("Skill Version ID");
+  expect(text()).not.toContain("來源 Skill");
+
+  const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+  expect(hrefs).toContain(`/skills/${SKILL}`);
+  expect(hrefs).toContain("/skills/skill-b");
+});
+
 test("SEC-006 deleting states its scope first and then deletes", async () => {
   const calls: Array<{ url: string; method?: string }> = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {

@@ -7,6 +7,8 @@ import { queryClient } from "../core/api/queryClient";
 import { router } from "../app/router";
 import {
   OTHER_RUN,
+  PUBLICATION,
+  PUBLISHER,
   RUN,
   SEARCH,
   SKILL,
@@ -259,6 +261,7 @@ const SCANNED_ROUTES = [
   "/skills/$skillId",
   "/skills/$skillId/files",
   "/skills/$skillId/package",
+  "/p/$publisher/$name",
   "/lab/run",
   "/lab/datasets",
   "/lab/test-cases",
@@ -395,6 +398,19 @@ test("QA-009: Skill 詳情", async () => {
   });
   await waitFor(has("可散布性與打包"));
   await scan("/skills/$skillId");
+}, 30000);
+
+test("QA-009: 公開發佈頁", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/p/$publisher/$name",
+      params: { publisher: PUBLISHER, name: PUBLICATION },
+    });
+  });
+  await waitFor(has("靜態掃描"));
+  await scan("/p/$publisher/$name");
 }, 30000);
 
 test("QA-009: Skill 檔案（進階模式）", async () => {

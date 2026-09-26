@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { DownloadArtifact } from "../packaging.service";
 import { bytes } from "../../../shared/format";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -56,10 +57,26 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
           </li>
           <li>打包器版本：{artifact.packager_version ?? "未測量"}</li>
           <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
-          <li>
-            Skill Version ID：<code>{artifact.skill_version_id}</code>（v
-            {artifact.version_number}）
-          </li>
+          {artifact.plugin ? (
+            <li>
+              Plugin：{artifact.plugin.name} v{artifact.plugin.version}
+              <ul>
+                {artifact.plugin.members.map((member) => (
+                  <li key={member.skill_version_id}>
+                    <Link to="/skills/$skillId" params={{ skillId: member.skill_id }}>
+                      {member.name}
+                    </Link>
+                    （v{member.version_number}）
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ) : (
+            <li>
+              Skill Version ID：<code>{artifact.skill_version_id}</code>（v
+              {artifact.version_number}）
+            </li>
+          )}
         </ul>
       </details>
     </>
