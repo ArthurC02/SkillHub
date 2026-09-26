@@ -151,3 +151,40 @@ WHERE bv.id = ANY(@bundle_version_ids::uuid[]);
 
 -- name: PurgeWorkspaceBundles :execrows
 DELETE FROM bundles WHERE workspace_id = @workspace_id;
+
+-- name: ListExposureStates :many
+SELECT p.id AS publication_id, p.name, p.status, p.skill_id,
+       pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
+       r.id AS release_id, r.skill_version_id, r.version_number, r.content_hash, r.released_at,
+       coalesce(rv.sequence, 0)::integer AS sequence, rv.release_id AS reviewed_release_id,
+       coalesce(rv.decision, '')::text AS decision,
+       coalesce(rv.snapshot_digest, '')::text AS reviewed_snapshot_digest
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+JOIN LATERAL (
+    SELECT * FROM publication_releases pr WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC LIMIT 1
+) r ON true
+LEFT JOIN LATERAL (
+    SELECT * FROM exposure_reviews er WHERE er.publication_id = p.id
+    ORDER BY er.sequence DESC LIMIT 1
+) rv ON true
+WHERE p.skill_id IS NOT NULL
+  AND (sqlc.narg(publication_id)::uuid IS NULL OR p.id = sqlc.narg(publication_id))
+ORDER BY r.released_at, p.id;
+
+-- name: LockPublicationByAddress :one
+SELECT p.id FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+WHERE pb.name = @publisher_name AND p.name = @name
+FOR UPDATE OF p;
+
+-- name: InsertExposureReview :one
+INSERT INTO exposure_reviews (publication_id, sequence, release_id, content_hash, snapshot_digest,
+                              decision, reason, reviewer_user_id)
+VALUES (@publication_id, @sequence, @release_id, @content_hash, @snapshot_digest,
+        @decision, @reason, @reviewer_user_id)
+RETURNING *;
+
+-- name: ListExposureReviews :many
+SELECT * FROM exposure_reviews WHERE publication_id = @publication_id ORDER BY sequence DESC;

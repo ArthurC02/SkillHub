@@ -1,0 +1,44 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "publishing-exposes-reviewed-releases",
+  "status": "draft",
+  "intent": "Only a release an operator has read enters search and the catalog, and only while what readers find is still what the operator read.",
+  "actor": "Operator reviewing a publication",
+  "observable_outcome": "An approved, current release of a Skill publication appears in anonymous search and detail; a new release, changed text, a revocation or a governance change removes it on the next read.",
+  "acceptance_criteria": [
+    {
+      "id": "queue-and-snapshot",
+      "statement": "Operators see publications whose newest release has no conclusion, and the exact text search holds for that release with the current review sequence."
+    },
+    {
+      "id": "compare-and-set",
+      "statement": "Approving or revoking needs a reason and the release and sequence the operator saw; a stale premise is refused, and the review and its audit event share one transaction."
+    },
+    {
+      "id": "allowed-only",
+      "statement": "A redistribution verdict other than allowed cannot be approved."
+    },
+    {
+      "id": "exposed-means-current",
+      "statement": "Only a publication whose newest release carries an unrevoked approval, that is listed, available and allowed, enters search, browse and counts, checked on the same read."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/skill/publishing/doc.go",
+    "apps/platform/internal/skill/publishing/exposure.go",
+    "apps/platform/internal/skill/publishing/bundle.go",
+    "apps/platform/internal/skill/discovery/exposure.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+    "db/migrations/0088_bundles.sql",
+    "db/migrations/0089_exposure_reviews.sql",
+    "docs/adr/ADR-026-publication-publishers-and-bundled-distribution.md"
+  ]
+}

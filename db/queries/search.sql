@@ -69,7 +69,9 @@ SELECT s.skill_id, s.name,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]))
   AND (s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
        OR s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))
   AND s.listable
@@ -108,7 +110,9 @@ SELECT s.skill_id, s.name,
        s.category_source,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
-WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]))
   AND s.listable
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -141,7 +145,9 @@ WITH vec AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
-    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+    WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+            OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.embedding IS NOT NULL
     ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
     LIMIT sqlc.arg(vector_candidates)::int
@@ -150,7 +156,9 @@ fts AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
-    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+    WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+            OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.listable
       AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
     ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
@@ -160,7 +168,9 @@ lex AS (
     SELECT s.skill_id, (s.embedding IS NULL)::bool AS unembedded,
            COALESCE(s.embedding <=> sqlc.arg(query_embedding)::vector, 0)::float8 AS distance
     FROM search_documents s
-    WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+    WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+            OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+               = ANY(sqlc.arg(exposed_keys)::text[]))
       AND s.listable
       AND s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))
     ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, ''))) DESC
@@ -182,7 +192,9 @@ SELECT s.skill_id, s.name,
        s.category_source
 FROM search_documents s
 WHERE s.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
-  AND s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+  AND (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]))
   AND (
     sqlc.narg(has_script)::bool IS NULL
     OR s.has_script = sqlc.narg(has_script)::bool
@@ -248,7 +260,9 @@ WHERE workspace_id = $1 AND skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
 SELECT sd.skill_id, sd.scan
 FROM search_documents sd
 WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[])
-  AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
+  AND (sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]));
 
 -- name: ListSearchDocumentsMissingBigram :many
 SELECT skill_id, name, summary, enriched_summary, task_examples, tags
@@ -281,12 +295,16 @@ WHERE sd.skill_id = u.skill_id;
 SELECT sd.scan, sd.curated_version_id
 FROM search_documents sd
 WHERE sd.skill_id = sqlc.arg(skill_id)
-  AND sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[]);
+  AND (sd.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR sd.skill_id::text || ':' || coalesce(sd.latest_version_id::text, '') || ':' || sd.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]));
 
 -- name: CreationLexicalSearchSkills :many
 SELECT s.skill_id, s.name
 FROM search_documents s
-WHERE s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
+        OR s.skill_id::text || ':' || coalesce(s.latest_version_id::text, '') || ':' || s.exposure_digest
+           = ANY(sqlc.arg(exposed_keys)::text[]))
   AND s.listable
   AND s.bigram @@ to_tsquery('simple', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.bigram, to_tsquery('simple', sqlc.arg(query)::text)) DESC
@@ -295,3 +313,8 @@ LIMIT sqlc.arg(result_limit)::int;
 -- name: OldestPendingEnrichment :one
 SELECT min(updated_at)::timestamptz FROM search_documents
 WHERE enrichment_status = sqlc.arg(pending_status)::text AND latest_package_object_key IS NOT NULL;
+
+-- name: GetSearchSnapshot :one
+SELECT skill_id, latest_version_id, name, summary, enriched_summary, task_examples, tags, limitations,
+       enrichment_status, listable, exposure_digest
+FROM search_documents WHERE skill_id = @skill_id;

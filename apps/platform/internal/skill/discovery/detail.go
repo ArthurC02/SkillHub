@@ -564,7 +564,11 @@ func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (SkillFacts,
 	if s.ReadCatalogSkill == nil {
 		return SkillFacts{}, false, errOwnerReadNotConfigured
 	}
-	return s.ReadCatalogSkill(ctx, id)
+	skill, found, err := s.ReadCatalogSkill(ctx, id)
+	if err != nil || found {
+		return skill, found, err
+	}
+	return s.exposedSkill(ctx, id)
 }
 
 func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, id pgtype.UUID) (SkillFacts, bool, error) {

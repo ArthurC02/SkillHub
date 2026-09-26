@@ -328,6 +328,17 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "exposure decision",
+		sources: []vocabularySource{
+			sqlColumnCheck("exposure_reviews", "decision"),
+			goConstEnum("apps/platform/internal/skill/publishing/exposure.go", "ExposureDecision"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/publishing/exposure.go", "AllExposureDecisions",
+				"apps/platform/internal/skill/publishing/exposure.go", "ExposureDecision"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "ExposureDecision"),
+		},
+	},
+	{
 		name: "dispatch halt source",
 		sources: []vocabularySource{
 			sqlColumnCheck("dispatch_halts", "source"),

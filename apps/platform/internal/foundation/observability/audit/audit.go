@@ -85,6 +85,7 @@ const (
 	ActionPublicationRelease  = "publication.release"
 	ActionPublicationDelist   = "publication.delist"
 	ActionBundleVersionCreate = "bundle.version.create"
+	ActionExposureReview      = "publication.exposure.review"
 )
 
 const ScopeOperator = "operator"

@@ -2573,6 +2573,103 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/exposure-reviews:
+    get:
+      operationId: listExposureQueue
+      summary: Skill publications whose newest release waits for an exposure conclusion (DISC-007)
+      description: |
+        Operator only. A publication is waiting when its newest release has no
+        review yet, or when an approval no longer matches what search holds
+        (a later enrichment rewrote the text, or the author uploaded a newer
+        version). Bundles are not searched and never wait here.
+      responses:
+        "200":
+          description: The queue, oldest release first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publications]
+                properties:
+                  publications:
+                    type: array
+                    items: { $ref: "#/components/schemas/ExposureQueueEntry" }
+        "404":
+          description: The caller is not an operator, or no Skill publication has this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/publications/{publisher}/{name}/exposure:
+    parameters:
+      - name: publisher
+        in: path
+        required: true
+        schema: { type: string }
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getExposureCase
+      summary: One Skill publication's newest release, the exact text search would hold, and every review (DISC-007)
+      responses:
+        "200":
+          description: The case.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExposureCase" }
+        "404":
+          description: The caller is not an operator, or no Skill publication has this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: reviewExposure
+      summary: Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
+      description: |
+        The request names the release and the review sequence the reviewer
+        looked at; either being stale answers 409 and nothing is written.
+        Approval also needs the Skill available, its redistribution verdict
+        `allowed`, and search holding this release's finished text. The review
+        and its audit event share one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [release_id, expected_sequence, decision, reason]
+              properties:
+                release_id: { type: string, format: uuid }
+                expected_sequence: { type: integer }
+                decision: { $ref: "#/components/schemas/ExposureDecision" }
+                reason: { type: string }
+      responses:
+        "200":
+          description: Recorded; the case as it now stands.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExposureCase" }
+        "400":
+          description: The body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no Skill publication has this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The premise is stale (reason review_stale).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExposureRefusal" }
+        "422":
+          description: No reason, an unknown decision, or approval refused; the reason says which.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExposureRefusal" }
   /admin/skills/{id}/takedown:
     parameters:
       - name: id
@@ -7120,6 +7217,90 @@ components:
         releases:
           type: array
           items: { $ref: "#/components/schemas/PublicationRelease" }
+    ExposureDecision:
+      type: string
+      enum: [approved, revoked]
+    ExposureRefusal:
+      type: object
+      required: [error, reason]
+      properties:
+        error: { type: string }
+        reason:
+          type: string
+          enum:
+            - review_stale
+            - reason_missing
+            - decision_unknown
+            - not_published
+            - not_available
+            - redistribution_not_allowed
+            - snapshot_not_current
+            - snapshot_pending
+    ExposureRelease:
+      type: object
+      required: [release_id, version_id, version_number, content_hash, released_at]
+      properties:
+        release_id: { type: string, format: uuid }
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        content_hash: { type: string }
+        released_at: { type: string, format: date-time }
+    ExposureQueueEntry:
+      type: object
+      required: [publisher, name, address, release, sequence, reviewed_again]
+      properties:
+        publisher: { type: string }
+        name: { type: string }
+        address: { type: string }
+        release: { $ref: "#/components/schemas/ExposureRelease" }
+        sequence:
+          type: integer
+          description: The review sequence a reviewer must send back as expected_sequence.
+        reviewed_again:
+          type: boolean
+          description: True when this release was approved before and search no longer holds that text.
+    ExposureCase:
+      type: object
+      required: [publisher, name, address, status, release, sequence, exposed, history]
+      properties:
+        publisher: { type: string }
+        name: { type: string }
+        address: { type: string }
+        status: { type: string, enum: [published, delisted] }
+        release: { $ref: "#/components/schemas/ExposureRelease" }
+        sequence: { type: integer }
+        exposed: { type: boolean }
+        snapshot:
+          type: object
+          description: What search holds for this Skill right now; absent before it is indexed.
+          required: [version_id, current, name, summary, enriched_summary, task_examples, limitations, enriched, digest]
+          properties:
+            version_id: { type: string, format: uuid }
+            current:
+              type: boolean
+              description: Whether search holds the version this release pins.
+            name: { type: string }
+            summary: { type: string }
+            enriched_summary: { type: string }
+            task_examples: { type: string }
+            tags: {}
+            limitations: { type: string }
+            enriched: { type: boolean }
+            digest: { type: string }
+        history:
+          type: array
+          items:
+            type: object
+            required: [sequence, release_id, content_hash, snapshot_digest, decision, reason, reviewer_user_id, reviewed_at]
+            properties:
+              sequence: { type: integer }
+              release_id: { type: string, format: uuid }
+              content_hash: { type: string }
+              snapshot_digest: { type: string }
+              decision: { $ref: "#/components/schemas/ExposureDecision" }
+              reason: { type: string }
+              reviewer_user_id: { type: string, format: uuid }
+              reviewed_at: { type: string, format: date-time }
     PublicationKind:
       type: string
       enum: [skill, bundle]

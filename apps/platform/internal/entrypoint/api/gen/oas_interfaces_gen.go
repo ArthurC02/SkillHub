@@ -177,6 +177,10 @@ type GetDownloadArtifactRes interface {
 	getDownloadArtifactRes()
 }
 
+type GetExposureCaseRes interface {
+	getExposureCaseRes()
+}
+
 type GetFunnelTrendRes interface {
 	getFunnelTrendRes()
 }
@@ -285,6 +289,10 @@ type ListDownloadRecordsRes interface {
 	listDownloadRecordsRes()
 }
 
+type ListExposureQueueRes interface {
+	listExposureQueueRes()
+}
+
 type ListGenerationFailuresRes interface {
 	listGenerationFailuresRes()
 }
@@ -359,6 +367,10 @@ type RegisterPublisherRes interface {
 
 type RequestAccountDeletionRes interface {
 	requestAccountDeletionRes()
+}
+
+type ReviewExposureRes interface {
+	reviewExposureRes()
 }
 
 type SaveSkillVersionRes interface {

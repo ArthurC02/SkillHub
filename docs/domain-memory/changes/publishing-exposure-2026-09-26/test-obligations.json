@@ -1,0 +1,79 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-exposes-reviewed-releases",
+  "proposal_id": "publishing-exposure-review",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposed-means-current",
+      "expected_outcome": "The validator accepts the widened publishing context.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposed-means-current",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "guard-matches-policy",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposed-means-current",
+      "expected_outcome": "No new cross-context import: catalog and publishing exchange exposure and snapshot facts only through functions the composition root injects, and the platform lints clean.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "golangci-lint run ./..."
+    },
+    {
+      "id": "review-binds-exact-release",
+      "source_type": "acceptance-criterion",
+      "source_id": "compare-and-set",
+      "expected_outcome": "A review names the release and sequence it saw; a stale premise is refused and nothing is written.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test -run TestAReviewThatSawStaleFactsIsRefused"
+    },
+    {
+      "id": "new-release-not-exposed",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposed-means-current",
+      "expected_outcome": "A new release is out of search until reviewed and does not let the old approval keep old content exposed.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test -run TestANewReleaseIsNotExposedUntilReviewedAndTakesTheOldOneDownWithIt"
+    },
+    {
+      "id": "allowed-verdict-only",
+      "source_type": "acceptance-criterion",
+      "source_id": "allowed-only",
+      "expected_outcome": "Only an allowed redistribution verdict on finished, current text can be approved, and a later change of verdict or text withdraws exposure on the next read.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test -run TestOnlyAnAllowedVerdictOnCurrentFinishedTextCanBeApproved"
+    },
+    {
+      "id": "queue-shows-snapshot",
+      "source_type": "acceptance-criterion",
+      "source_id": "queue-and-snapshot",
+      "expected_outcome": "An unreviewed release waits in the queue with the exact text search holds, and leaves it once approved.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test -run TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone"
+    },
+    {
+      "id": "review-immutable",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposed-means-current",
+      "expected_outcome": "Exposure reviews cannot be updated or deleted outside an account purge.",
+      "level": "integration",
+      "status": "executed",
+      "check": "db/tests/immutability_test.sql"
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "publishing-exposure-review",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-exposes-reviewed-releases",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-26T14:16:50.070652Z",
+  "verified_at": "2026-09-26T14:17:43.021595Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "85c8ca97ab838d622c1149bbf02eebc237b15df9",
+    "registry_digest": "sha256:b2122e2c724c92e1e99f572b06c621cb3457c5d06d567814e8a4df6aea136b8f"
+  },
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "An exposure review is an immutable record binding one release, its content hash and the digest of the text search holds; only the newest review of the newest release decides exposure.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/doc.go:1-3",
+      "db/migrations/0089_exposure_reviews.sql"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Publishing reads the search snapshot from Catalog, and Catalog reads the exposed set from Publishing, each through a function the composition root injects; neither imports the other.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "publishing -> catalog package",
+      "catalog -> publishing package",
+      "catalog -> exposure_reviews table"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Sharing a Skill and the catalog vouching for it are different promises, so exposure cannot follow from publishing.",
+      "A reviewer must approve exactly what readers will find, and nothing they did not see may ride on their approval."
+    ],
+    "decision": "Publishing owns the review record, bound to the release and a digest of the searchable text; every public read asks Publishing for the exposed set and matches skill, version and digest in the same query, so a new release, a new upload, a re-enrichment or a governance change withdraws exposure on the next read.",
+    "invariants_preserved": [
+      "Catalog owns the search projection and the catalog workspaces keep their exposure without reviews.",
+      "Registry owns Skill facts, takedowns, holds and redistribution verdicts.",
+      "Releases stay immutable."
+    ],
+    "rejected_alternatives": [
+      "Reviews owned by Catalog: the reviewed thing is a release, which only Publishing has, and the architecture decision places reviews there.",
+      "A listed flag written into the search projection: an asynchronous refresh would let stale approvals stay public."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "audit-chain-intact",
+      "guard-matches-policy",
+      "review-binds-exact-release",
+      "new-release-not-exposed",
+      "allowed-verdict-only",
+      "queue-shows-snapshot",
+      "review-immutable"
+    ],
+    "counterfactual_check": "allowed-verdict-only"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "publishing",
+        "name": "Publishing",
+        "responsibility": "Owns who discloses what under which name: a creator's publisher namespace, the publications and Bundles in it, their immutable releases, and the operator reviews that expose a release to search.",
+        "subdomain": "core",
+        "implementation_path": "skill/publishing",
+        "requirement_prefixes": [],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:9ff77eb18bb6013a703623c4d1af47ac1ea5904d5039339966cd3979e5b56475",
+            "excerpt_sha256": "sha256:9b3298692a9a6e75f33b854c2bdd5116312aff5379e9ac778626f8167e5dceb4",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-26T14:16:50.511970Z",
+      "scope": "Publishing widens to Bundles and operator exposure reviews bound to a release and a search-text digest; Catalog and Publishing exchange exposure and snapshot facts through composition-root injection only",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "85c8ca97ab838d622c1149bbf02eebc237b15df9",
+        "registry_digest": "sha256:b2122e2c724c92e1e99f572b06c621cb3457c5d06d567814e8a4df6aea136b8f"
+      }
+    }
+  ]
+}

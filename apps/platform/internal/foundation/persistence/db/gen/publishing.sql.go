@@ -463,6 +463,52 @@ func (q *Queries) InsertBundleRelease(ctx context.Context, arg InsertBundleRelea
 	return i, err
 }
 
+const insertExposureReview = `-- name: InsertExposureReview :one
+INSERT INTO exposure_reviews (publication_id, sequence, release_id, content_hash, snapshot_digest,
+                              decision, reason, reviewer_user_id)
+VALUES ($1, $2, $3, $4, $5,
+        $6, $7, $8)
+RETURNING id, publication_id, sequence, release_id, content_hash, snapshot_digest, decision, reason, reviewer_user_id, reviewed_at
+`
+
+type InsertExposureReviewParams struct {
+	PublicationID  pgtype.UUID
+	Sequence       int32
+	ReleaseID      pgtype.UUID
+	ContentHash    string
+	SnapshotDigest string
+	Decision       string
+	Reason         string
+	ReviewerUserID pgtype.UUID
+}
+
+func (q *Queries) InsertExposureReview(ctx context.Context, arg InsertExposureReviewParams) (ExposureReview, error) {
+	row := q.db.QueryRow(ctx, insertExposureReview,
+		arg.PublicationID,
+		arg.Sequence,
+		arg.ReleaseID,
+		arg.ContentHash,
+		arg.SnapshotDigest,
+		arg.Decision,
+		arg.Reason,
+		arg.ReviewerUserID,
+	)
+	var i ExposureReview
+	err := row.Scan(
+		&i.ID,
+		&i.PublicationID,
+		&i.Sequence,
+		&i.ReleaseID,
+		&i.ContentHash,
+		&i.SnapshotDigest,
+		&i.Decision,
+		&i.Reason,
+		&i.ReviewerUserID,
+		&i.ReviewedAt,
+	)
+	return i, err
+}
+
 const insertPublicationRelease = `-- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
                                   findings, rights_attested, released_by)
@@ -534,6 +580,117 @@ func (q *Queries) ListBundleMembers(ctx context.Context, bundleVersionIds []pgty
 			&i.ManifestName,
 			&i.ContentHash,
 			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExposureReviews = `-- name: ListExposureReviews :many
+SELECT id, publication_id, sequence, release_id, content_hash, snapshot_digest, decision, reason, reviewer_user_id, reviewed_at FROM exposure_reviews WHERE publication_id = $1 ORDER BY sequence DESC
+`
+
+func (q *Queries) ListExposureReviews(ctx context.Context, publicationID pgtype.UUID) ([]ExposureReview, error) {
+	rows, err := q.db.Query(ctx, listExposureReviews, publicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExposureReview
+	for rows.Next() {
+		var i ExposureReview
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicationID,
+			&i.Sequence,
+			&i.ReleaseID,
+			&i.ContentHash,
+			&i.SnapshotDigest,
+			&i.Decision,
+			&i.Reason,
+			&i.ReviewerUserID,
+			&i.ReviewedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExposureStates = `-- name: ListExposureStates :many
+SELECT p.id AS publication_id, p.name, p.status, p.skill_id,
+       pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
+       r.id AS release_id, r.skill_version_id, r.version_number, r.content_hash, r.released_at,
+       coalesce(rv.sequence, 0)::integer AS sequence, rv.release_id AS reviewed_release_id,
+       coalesce(rv.decision, '')::text AS decision,
+       coalesce(rv.snapshot_digest, '')::text AS reviewed_snapshot_digest
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+JOIN LATERAL (
+    SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id FROM publication_releases pr WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC LIMIT 1
+) r ON true
+LEFT JOIN LATERAL (
+    SELECT id, publication_id, sequence, release_id, content_hash, snapshot_digest, decision, reason, reviewer_user_id, reviewed_at FROM exposure_reviews er WHERE er.publication_id = p.id
+    ORDER BY er.sequence DESC LIMIT 1
+) rv ON true
+WHERE p.skill_id IS NOT NULL
+  AND ($1::uuid IS NULL OR p.id = $1)
+ORDER BY r.released_at, p.id
+`
+
+type ListExposureStatesRow struct {
+	PublicationID          pgtype.UUID
+	Name                   string
+	Status                 string
+	SkillID                pgtype.UUID
+	PublisherName          string
+	PublisherWorkspaceID   pgtype.UUID
+	ReleaseID              pgtype.UUID
+	SkillVersionID         pgtype.UUID
+	VersionNumber          *int32
+	ContentHash            string
+	ReleasedAt             pgtype.Timestamptz
+	Sequence               int32
+	ReviewedReleaseID      pgtype.UUID
+	Decision               string
+	ReviewedSnapshotDigest string
+}
+
+func (q *Queries) ListExposureStates(ctx context.Context, publicationID pgtype.UUID) ([]ListExposureStatesRow, error) {
+	rows, err := q.db.Query(ctx, listExposureStates, publicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExposureStatesRow
+	for rows.Next() {
+		var i ListExposureStatesRow
+		if err := rows.Scan(
+			&i.PublicationID,
+			&i.Name,
+			&i.Status,
+			&i.SkillID,
+			&i.PublisherName,
+			&i.PublisherWorkspaceID,
+			&i.ReleaseID,
+			&i.SkillVersionID,
+			&i.VersionNumber,
+			&i.ContentHash,
+			&i.ReleasedAt,
+			&i.Sequence,
+			&i.ReviewedReleaseID,
+			&i.Decision,
+			&i.ReviewedSnapshotDigest,
 		); err != nil {
 			return nil, err
 		}
@@ -722,6 +879,25 @@ func (q *Queries) LockBundle(ctx context.Context, arg LockBundleParams) (Bundle,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const lockPublicationByAddress = `-- name: LockPublicationByAddress :one
+SELECT p.id FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+WHERE pb.name = $1 AND p.name = $2
+FOR UPDATE OF p
+`
+
+type LockPublicationByAddressParams struct {
+	PublisherName string
+	Name          string
+}
+
+func (q *Queries) LockPublicationByAddress(ctx context.Context, arg LockPublicationByAddressParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockPublicationByAddress, arg.PublisherName, arg.Name)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const lockPublicationForBundle = `-- name: LockPublicationForBundle :one

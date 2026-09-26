@@ -49,6 +49,7 @@ type Service struct {
 
 	LockSkillForRelease func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadSkill           func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadSearchSnapshot  func(ctx context.Context, skillID pgtype.UUID) (SearchSnapshot, bool, error)
 	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
 
@@ -95,6 +96,7 @@ type PublicPublication struct {
 	OwnerWorkspaceID  pgtype.UUID
 	Availability      Availability
 	UnavailableMember string
+	Exposed           bool
 	Skill             SkillFacts
 	Version           VersionFacts
 }
@@ -410,7 +412,12 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 		return out, true, nil
 	}
 	out.Skill, out.Version = skill, version
-	return out, true, nil
+	states, err := exposureStates(ctx, q, row.ID)
+	if err != nil || len(states) == 0 {
+		return out, err == nil, err
+	}
+	out.Exposed, _, err = s.exposedNow(ctx, states[0])
+	return out, err == nil, err
 }
 
 func (s *Service) Acquire(ctx context.Context, recipient identity.Workspace, publisherName, name string) (Acquisition, error) {

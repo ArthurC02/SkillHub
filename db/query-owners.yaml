@@ -212,6 +212,10 @@ scope:
   ListVersionSummariesByID: scoped-upstream
   ListBundleMembers: scoped-upstream
   ListReleasedBundleVersions: scoped-upstream
+  LockPublicationByAddress: operator
+  InsertExposureReview: operator
+  ListExposureReviews: operator
+  GetSearchSnapshot: operator
   ListWorkspacesByOwner: user
   SaveAccountDeletionRequest: user
   RequeueSearchDocumentEnrichment: user
@@ -336,6 +340,7 @@ immutable:
   bundle_versions: 一份組合釘住的成員清單；成員升版是新的 Bundle Version，不是改寫舊的
   bundle_members: Bundle Version 的成員；改了等於改寫別人安裝過的那一份組合
   download_artifact_members: Plugin 產物是由哪幾個版本組成的；重打包是新列
+  exposure_reviews: 曝光審核紀錄；撤銷是新的一筆，舊的判斷與它看過的快照要留著
 
 immutable_allow:
   PurgeSkillsByID: skill_versions
@@ -388,6 +393,7 @@ tables:
   bundles: publishing
   bundle_versions: publishing
   bundle_members: publishing
+  exposure_reviews: publishing
   download_artifact_members: packaging
   download_object_cleanup_intents: packaging
   evaluations: eval

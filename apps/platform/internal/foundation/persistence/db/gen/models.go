@@ -450,6 +450,19 @@ type EvaluationSuggestionApplication struct {
 	AppliedAt      pgtype.Timestamptz
 }
 
+type ExposureReview struct {
+	ID             pgtype.UUID
+	PublicationID  pgtype.UUID
+	Sequence       int32
+	ReleaseID      pgtype.UUID
+	ContentHash    string
+	SnapshotDigest string
+	Decision       string
+	Reason         string
+	ReviewerUserID pgtype.UUID
+	ReviewedAt     pgtype.Timestamptz
+}
+
 type FeedbackReport struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -644,6 +657,7 @@ type SearchDocument struct {
 	Listable                bool
 	HasScript               *bool
 	LatestSourcePath        string
+	ExposureDigest          *string
 }
 
 type Session struct {

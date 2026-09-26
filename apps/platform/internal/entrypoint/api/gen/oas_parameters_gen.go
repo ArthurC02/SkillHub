@@ -193,6 +193,12 @@ type GetDownloadArtifactParams struct {
 	ArtifactId uuid.UUID
 }
 
+// GetExposureCaseParams is parameters of getExposureCase operation.
+type GetExposureCaseParams struct {
+	Publisher string
+	Name      string
+}
+
 // GetFunnelTrendParams is parameters of getFunnelTrend operation.
 type GetFunnelTrendParams struct {
 	Days OptGetFunnelTrendDays `json:",omitempty,omitzero"`
@@ -431,6 +437,12 @@ type PublishBundleParams struct {
 // PublishSkillParams is parameters of publishSkill operation.
 type PublishSkillParams struct {
 	ID uuid.UUID
+}
+
+// ReviewExposureParams is parameters of reviewExposure operation.
+type ReviewExposureParams struct {
+	Publisher string
+	Name      string
 }
 
 // SaveSkillVersionParams is parameters of saveSkillVersion operation.

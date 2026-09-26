@@ -273,6 +273,7 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
 	publishingSvc := newPublishingService(cfg, registrySvc, packagingSvc)
+	wireExposure(catalogSvc, publishingSvc)
 
 	return &App{
 		Deps: Deps{

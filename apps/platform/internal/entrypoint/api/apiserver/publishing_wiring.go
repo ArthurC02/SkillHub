@@ -113,3 +113,28 @@ func describeRedistribution(value string) (label, note string) {
 	display := catalog.Redistribution(value).Display()
 	return display.Label, display.Note
 }
+
+func wireExposure(catalogSvc *catalog.Service, publishingSvc *publishing.Service) {
+	publishingSvc.ReadSearchSnapshot = func(ctx context.Context, skillID pgtype.UUID) (publishing.SearchSnapshot, bool, error) {
+		snapshot, found, err := catalogSvc.SearchSnapshotOf(ctx, skillID)
+		return publishing.SearchSnapshot{
+			VersionID: snapshot.VersionID, Name: snapshot.Name, Summary: snapshot.Summary,
+			EnrichedSummary: snapshot.EnrichedSummary, TaskExamples: snapshot.TaskExamples, Tags: snapshot.Tags,
+			Limitations: snapshot.Limitations, Enriched: snapshot.Enriched, Listable: snapshot.Listable,
+			Digest: snapshot.Digest,
+		}, found, err
+	}
+	catalogSvc.ExposedSkills = func(ctx context.Context) ([]catalog.ExposedSkill, error) {
+		exposed, err := publishingSvc.ExposedSkills(ctx)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]catalog.ExposedSkill, 0, len(exposed))
+		for _, e := range exposed {
+			out = append(out, catalog.ExposedSkill{
+				SkillID: e.SkillID, VersionID: e.VersionID, SnapshotDigest: e.SnapshotDigest, OwnerWorkspaceID: e.OwnerWorkspaceID,
+			})
+		}
+		return out, nil
+	}
+}

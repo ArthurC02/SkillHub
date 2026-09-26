@@ -244,6 +244,16 @@ import {
     EvaluationToJSON,
 } from '../models/Evaluation';
 import {
+    type ExposureCase,
+    ExposureCaseFromJSON,
+    ExposureCaseToJSON,
+} from '../models/ExposureCase';
+import {
+    type ExposureRefusal,
+    ExposureRefusalFromJSON,
+    ExposureRefusalToJSON,
+} from '../models/ExposureRefusal';
+import {
     type FindSkillsForGovernance200Response,
     FindSkillsForGovernance200ResponseFromJSON,
     FindSkillsForGovernance200ResponseToJSON,
@@ -353,6 +363,11 @@ import {
     ListDownloadRecords200ResponseFromJSON,
     ListDownloadRecords200ResponseToJSON,
 } from '../models/ListDownloadRecords200Response';
+import {
+    type ListExposureQueue200Response,
+    ListExposureQueue200ResponseFromJSON,
+    ListExposureQueue200ResponseToJSON,
+} from '../models/ListExposureQueue200Response';
 import {
     type ListModelCallBudgets200Response,
     ListModelCallBudgets200ResponseFromJSON,
@@ -468,6 +483,11 @@ import {
     RegisterPublisherRequestFromJSON,
     RegisterPublisherRequestToJSON,
 } from '../models/RegisterPublisherRequest';
+import {
+    type ReviewExposureRequest,
+    ReviewExposureRequestFromJSON,
+    ReviewExposureRequestToJSON,
+} from '../models/ReviewExposureRequest';
 import {
     type Run,
     RunFromJSON,
@@ -984,6 +1004,17 @@ export interface GetDownloadArtifactRequest {
     artifactId: string;
 }
 
+export interface GetExposureCaseRequest {
+    /**
+     * 
+     */
+    publisher: string;
+    /**
+     * 
+     */
+    name: string;
+}
+
 export interface GetFunnelTrendRequest {
     /**
      * 
@@ -1398,6 +1429,21 @@ export interface RegisterPublisherOperationRequest {
      * 
      */
     registerPublisherRequest: RegisterPublisherRequest;
+}
+
+export interface ReviewExposureOperationRequest {
+    /**
+     * 
+     */
+    publisher: string;
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    reviewExposureRequest: ReviewExposureRequest;
 }
 
 export interface SaveSkillVersionRequest {
@@ -2710,6 +2756,31 @@ export interface DefaultApiInterface {
     getDownloadArtifact(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DownloadArtifact>;
 
     /**
+     * Creates request options for getExposureCase without sending the request
+     * @param {string} publisher 
+     * @param {string} name 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getExposureCaseRequestOpts(requestParameters: GetExposureCaseRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary One Skill publication\'s newest release, the exact text search would hold, and every review (DISC-007)
+     * @param {string} publisher 
+     * @param {string} name 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getExposureCaseRaw(requestParameters: GetExposureCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>>;
+
+    /**
+     * One Skill publication\'s newest release, the exact text search would hold, and every review (DISC-007)
+     */
+    getExposureCase(requestParameters: GetExposureCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase>;
+
+    /**
      * Creates request options for getFunnelTrend without sending the request
      * @param {7 | 30 | 90} [days] 
      * @throws {RequiredError}
@@ -3398,6 +3469,28 @@ export interface DefaultApiInterface {
     listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response>;
 
     /**
+     * Creates request options for listExposureQueue without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listExposureQueueRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. A publication is waiting when its newest release has no review yet, or when an approval no longer matches what search holds (a later enrichment rewrote the text, or the author uploaded a newer version). Bundles are not searched and never wait here. 
+     * @summary Skill publications whose newest release waits for an exposure conclusion (DISC-007)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listExposureQueueRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListExposureQueue200Response>>;
+
+    /**
+     * Operator only. A publication is waiting when its newest release has no review yet, or when an approval no longer matches what search holds (a later enrichment rewrote the text, or the author uploaded a newer version). Bundles are not searched and never wait here. 
+     * Skill publications whose newest release waits for an exposure conclusion (DISC-007)
+     */
+    listExposureQueue(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListExposureQueue200Response>;
+
+    /**
      * Creates request options for listGenerationFailures without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3894,6 +3987,34 @@ export interface DefaultApiInterface {
      * Request deletion of the caller\'s account (CORE-007)
      */
     requestAccountDeletion(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountDeletion>;
+
+    /**
+     * Creates request options for reviewExposure without sending the request
+     * @param {string} publisher 
+     * @param {string} name 
+     * @param {ReviewExposureRequest} reviewExposureRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    reviewExposureRequestOpts(requestParameters: ReviewExposureOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * @summary Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
+     * @param {string} publisher 
+     * @param {string} name 
+     * @param {ReviewExposureRequest} reviewExposureRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>>;
+
+    /**
+     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
+     */
+    reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase>;
 
     /**
      * Creates request options for saveSkillVersion without sending the request
@@ -6630,6 +6751,59 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getExposureCase without sending the request
+     */
+    async getExposureCaseRequestOpts(requestParameters: GetExposureCaseRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['publisher'] == null) {
+            throw new runtime.RequiredError(
+                'publisher',
+                'Required parameter "publisher" was null or undefined when calling getExposureCase().'
+            );
+        }
+
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling getExposureCase().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/publications/{publisher}/{name}/exposure`;
+        urlPath = urlPath.replace('{publisher}', encodeURIComponent(String(requestParameters['publisher'])));
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One Skill publication\'s newest release, the exact text search would hold, and every review (DISC-007)
+     */
+    async getExposureCaseRaw(requestParameters: GetExposureCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>> {
+        const requestOptions = await this.getExposureCaseRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ExposureCaseFromJSON(jsonValue));
+    }
+
+    /**
+     * One Skill publication\'s newest release, the exact text search would hold, and every review (DISC-007)
+     */
+    async getExposureCase(requestParameters: GetExposureCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase> {
+        const response = await this.getExposureCaseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getFunnelTrend without sending the request
      */
     async getFunnelTrendRequestOpts(requestParameters: GetFunnelTrendRequest): Promise<runtime.RequestOpts> {
@@ -7962,6 +8136,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listExposureQueue without sending the request
+     */
+    async listExposureQueueRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/exposure-reviews`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. A publication is waiting when its newest release has no review yet, or when an approval no longer matches what search holds (a later enrichment rewrote the text, or the author uploaded a newer version). Bundles are not searched and never wait here. 
+     * Skill publications whose newest release waits for an exposure conclusion (DISC-007)
+     */
+    async listExposureQueueRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListExposureQueue200Response>> {
+        const requestOptions = await this.listExposureQueueRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListExposureQueue200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. A publication is waiting when its newest release has no review yet, or when an approval no longer matches what search holds (a later enrichment rewrote the text, or the author uploaded a newer version). Bundles are not searched and never wait here. 
+     * Skill publications whose newest release waits for an exposure conclusion (DISC-007)
+     */
+    async listExposureQueue(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListExposureQueue200Response> {
+        const response = await this.listExposureQueueRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listGenerationFailures without sending the request
      */
     async listGenerationFailuresRequestOpts(): Promise<runtime.RequestOpts> {
@@ -8924,6 +9137,71 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async requestAccountDeletion(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AccountDeletion> {
         const response = await this.requestAccountDeletionRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for reviewExposure without sending the request
+     */
+    async reviewExposureRequestOpts(requestParameters: ReviewExposureOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['publisher'] == null) {
+            throw new runtime.RequiredError(
+                'publisher',
+                'Required parameter "publisher" was null or undefined when calling reviewExposure().'
+            );
+        }
+
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling reviewExposure().'
+            );
+        }
+
+        if (requestParameters['reviewExposureRequest'] == null) {
+            throw new runtime.RequiredError(
+                'reviewExposureRequest',
+                'Required parameter "reviewExposureRequest" was null or undefined when calling reviewExposure().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/publications/{publisher}/{name}/exposure`;
+        urlPath = urlPath.replace('{publisher}', encodeURIComponent(String(requestParameters['publisher'])));
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ReviewExposureRequestToJSON(requestParameters['reviewExposureRequest']),
+        };
+    }
+
+    /**
+     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
+     */
+    async reviewExposureRaw(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ExposureCase>> {
+        const requestOptions = await this.reviewExposureRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ExposureCaseFromJSON(jsonValue));
+    }
+
+    /**
+     * The request names the release and the review sequence the reviewer looked at; either being stale answers 409 and nothing is written. Approval also needs the Skill available, its redistribution verdict `allowed`, and search holding this release\'s finished text. The review and its audit event share one transaction. 
+     * Approve or revoke exposure of the newest release, from the premise the reviewer saw (DISC-007)
+     */
+    async reviewExposure(requestParameters: ReviewExposureOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ExposureCase> {
+        const response = await this.reviewExposureRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -42,6 +42,7 @@ type Service struct {
 	ReadSourceSiblings func(ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, excludedSkillID pgtype.UUID) ([]SourceSiblingFacts, error)
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
+	ExposedSkills     func(context.Context) ([]ExposedSkill, error)
 
 	LLM            Model
 	IntentAnalyzer IntentAnalyzer
@@ -290,12 +291,13 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 }
 
 func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Queries, query, keywords string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	scope, err := s.publicScope(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	candidates, err := queries.ListHybridSearchCandidates(ctx, gen.ListHybridSearchCandidatesParams{
-		CatalogWorkspaceIds: catalogs,
+		CatalogWorkspaceIds: scope.catalogs,
+		ExposedKeys:         scope.exposedKeys,
 		Query:               keywords,
 		BigramQuery:         lexicalQuery(query, "&"),
 		QueryEmbedding:      embedding,
@@ -313,7 +315,8 @@ func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Que
 	}
 	rows, err := queries.ListHybridSearchDocuments(ctx, gen.ListHybridSearchDocumentsParams{
 		SkillIds:            admitted,
-		CatalogWorkspaceIds: catalogs,
+		CatalogWorkspaceIds: scope.catalogs,
+		ExposedKeys:         scope.exposedKeys,
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
 		AgentRuntime:        filters.AgentRuntime,
@@ -351,13 +354,14 @@ func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Que
 }
 
 func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters) ([]searchResult, int64, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	scope, err := s.publicScope(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	queries := gen.New(s.Pool)
 	rows, err := queries.BrowseCatalogSkills(ctx, gen.BrowseCatalogSkillsParams{
-		CatalogWorkspaceIds: catalogs,
+		CatalogWorkspaceIds: scope.catalogs,
+		ExposedKeys:         scope.exposedKeys,
 		ResultLimit:         limit,
 		HasScript:           filters.HasScript,
 		SpecValidated:       filters.SpecValidated,
@@ -392,12 +396,13 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 }
 
 func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, int64, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	scope, err := s.publicScope(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
-		CatalogWorkspaceIds: catalogs,
+		CatalogWorkspaceIds: scope.catalogs,
+		ExposedKeys:         scope.exposedKeys,
 		Query:               query,
 		BigramQuery:         lexicalQuery(query, "&"),
 		ResultLimit:         limit,

@@ -133,6 +133,10 @@ func NewRouter(d Deps) http.Handler {
 
 	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Search.Takedown))
 
+	mux.HandleFunc("GET /admin/exposure-reviews", auth.RequireOperator(d.Publishing.ExposureQueue))
+	mux.HandleFunc("GET /admin/publications/{publisher}/{name}/exposure", auth.RequireOperator(d.Publishing.ExposureCase))
+	mux.HandleFunc("POST /admin/publications/{publisher}/{name}/exposure", auth.RequireOperator(d.Publishing.ReviewExposure))
+
 	if d.Credits != nil {
 		mux.HandleFunc("POST /admin/credits/{workspace_id}/grants", auth.RequireOperator(d.Credits.Grant))
 		mux.HandleFunc("GET /admin/credits/{workspace_id}", auth.RequireOperator(d.Credits.Account))

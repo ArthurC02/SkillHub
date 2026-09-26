@@ -7036,11 +7036,13 @@ func (*Error) getCreditBalanceRes()                {}
 func (*Error) getCreditLedgerRes()                 {}
 func (*Error) getDatasetLimitsRes()                {}
 func (*Error) getDispatchStatusRes()               {}
+func (*Error) getExposureCaseRes()                 {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
+func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listSkillVersionsRes()               {}
@@ -8080,6 +8082,642 @@ func (*ExportBundleNotFound) exportBundleRes() {}
 type ExportBundleUnauthorized Error
 
 func (*ExportBundleUnauthorized) exportBundleRes() {}
+
+// Ref: #/components/schemas/ExposureCase
+type ExposureCase struct {
+	Publisher string             `json:"publisher"`
+	Name      string             `json:"name"`
+	Address   string             `json:"address"`
+	Status    ExposureCaseStatus `json:"status"`
+	Release   ExposureRelease    `json:"release"`
+	Sequence  int                `json:"sequence"`
+	Exposed   bool               `json:"exposed"`
+	// What search holds for this Skill right now; absent before it is indexed.
+	Snapshot OptExposureCaseSnapshot   `json:"snapshot"`
+	History  []ExposureCaseHistoryItem `json:"history"`
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *ExposureCase) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *ExposureCase) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *ExposureCase) GetAddress() string {
+	return s.Address
+}
+
+// GetStatus returns the value of Status.
+func (s *ExposureCase) GetStatus() ExposureCaseStatus {
+	return s.Status
+}
+
+// GetRelease returns the value of Release.
+func (s *ExposureCase) GetRelease() ExposureRelease {
+	return s.Release
+}
+
+// GetSequence returns the value of Sequence.
+func (s *ExposureCase) GetSequence() int {
+	return s.Sequence
+}
+
+// GetExposed returns the value of Exposed.
+func (s *ExposureCase) GetExposed() bool {
+	return s.Exposed
+}
+
+// GetSnapshot returns the value of Snapshot.
+func (s *ExposureCase) GetSnapshot() OptExposureCaseSnapshot {
+	return s.Snapshot
+}
+
+// GetHistory returns the value of History.
+func (s *ExposureCase) GetHistory() []ExposureCaseHistoryItem {
+	return s.History
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *ExposureCase) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *ExposureCase) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *ExposureCase) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetStatus sets the value of Status.
+func (s *ExposureCase) SetStatus(val ExposureCaseStatus) {
+	s.Status = val
+}
+
+// SetRelease sets the value of Release.
+func (s *ExposureCase) SetRelease(val ExposureRelease) {
+	s.Release = val
+}
+
+// SetSequence sets the value of Sequence.
+func (s *ExposureCase) SetSequence(val int) {
+	s.Sequence = val
+}
+
+// SetExposed sets the value of Exposed.
+func (s *ExposureCase) SetExposed(val bool) {
+	s.Exposed = val
+}
+
+// SetSnapshot sets the value of Snapshot.
+func (s *ExposureCase) SetSnapshot(val OptExposureCaseSnapshot) {
+	s.Snapshot = val
+}
+
+// SetHistory sets the value of History.
+func (s *ExposureCase) SetHistory(val []ExposureCaseHistoryItem) {
+	s.History = val
+}
+
+func (*ExposureCase) getExposureCaseRes() {}
+func (*ExposureCase) reviewExposureRes()  {}
+
+type ExposureCaseHistoryItem struct {
+	Sequence       int              `json:"sequence"`
+	ReleaseID      uuid.UUID        `json:"release_id"`
+	ContentHash    string           `json:"content_hash"`
+	SnapshotDigest string           `json:"snapshot_digest"`
+	Decision       ExposureDecision `json:"decision"`
+	Reason         string           `json:"reason"`
+	ReviewerUserID uuid.UUID        `json:"reviewer_user_id"`
+	ReviewedAt     time.Time        `json:"reviewed_at"`
+}
+
+// GetSequence returns the value of Sequence.
+func (s *ExposureCaseHistoryItem) GetSequence() int {
+	return s.Sequence
+}
+
+// GetReleaseID returns the value of ReleaseID.
+func (s *ExposureCaseHistoryItem) GetReleaseID() uuid.UUID {
+	return s.ReleaseID
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *ExposureCaseHistoryItem) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetSnapshotDigest returns the value of SnapshotDigest.
+func (s *ExposureCaseHistoryItem) GetSnapshotDigest() string {
+	return s.SnapshotDigest
+}
+
+// GetDecision returns the value of Decision.
+func (s *ExposureCaseHistoryItem) GetDecision() ExposureDecision {
+	return s.Decision
+}
+
+// GetReason returns the value of Reason.
+func (s *ExposureCaseHistoryItem) GetReason() string {
+	return s.Reason
+}
+
+// GetReviewerUserID returns the value of ReviewerUserID.
+func (s *ExposureCaseHistoryItem) GetReviewerUserID() uuid.UUID {
+	return s.ReviewerUserID
+}
+
+// GetReviewedAt returns the value of ReviewedAt.
+func (s *ExposureCaseHistoryItem) GetReviewedAt() time.Time {
+	return s.ReviewedAt
+}
+
+// SetSequence sets the value of Sequence.
+func (s *ExposureCaseHistoryItem) SetSequence(val int) {
+	s.Sequence = val
+}
+
+// SetReleaseID sets the value of ReleaseID.
+func (s *ExposureCaseHistoryItem) SetReleaseID(val uuid.UUID) {
+	s.ReleaseID = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *ExposureCaseHistoryItem) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetSnapshotDigest sets the value of SnapshotDigest.
+func (s *ExposureCaseHistoryItem) SetSnapshotDigest(val string) {
+	s.SnapshotDigest = val
+}
+
+// SetDecision sets the value of Decision.
+func (s *ExposureCaseHistoryItem) SetDecision(val ExposureDecision) {
+	s.Decision = val
+}
+
+// SetReason sets the value of Reason.
+func (s *ExposureCaseHistoryItem) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetReviewerUserID sets the value of ReviewerUserID.
+func (s *ExposureCaseHistoryItem) SetReviewerUserID(val uuid.UUID) {
+	s.ReviewerUserID = val
+}
+
+// SetReviewedAt sets the value of ReviewedAt.
+func (s *ExposureCaseHistoryItem) SetReviewedAt(val time.Time) {
+	s.ReviewedAt = val
+}
+
+// What search holds for this Skill right now; absent before it is indexed.
+type ExposureCaseSnapshot struct {
+	VersionID uuid.UUID `json:"version_id"`
+	// Whether search holds the version this release pins.
+	Current         bool   `json:"current"`
+	Name            string `json:"name"`
+	Summary         string `json:"summary"`
+	EnrichedSummary string `json:"enriched_summary"`
+	TaskExamples    string `json:"task_examples"`
+	Tags            jx.Raw `json:"tags"`
+	Limitations     string `json:"limitations"`
+	Enriched        bool   `json:"enriched"`
+	Digest          string `json:"digest"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *ExposureCaseSnapshot) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetCurrent returns the value of Current.
+func (s *ExposureCaseSnapshot) GetCurrent() bool {
+	return s.Current
+}
+
+// GetName returns the value of Name.
+func (s *ExposureCaseSnapshot) GetName() string {
+	return s.Name
+}
+
+// GetSummary returns the value of Summary.
+func (s *ExposureCaseSnapshot) GetSummary() string {
+	return s.Summary
+}
+
+// GetEnrichedSummary returns the value of EnrichedSummary.
+func (s *ExposureCaseSnapshot) GetEnrichedSummary() string {
+	return s.EnrichedSummary
+}
+
+// GetTaskExamples returns the value of TaskExamples.
+func (s *ExposureCaseSnapshot) GetTaskExamples() string {
+	return s.TaskExamples
+}
+
+// GetTags returns the value of Tags.
+func (s *ExposureCaseSnapshot) GetTags() jx.Raw {
+	return s.Tags
+}
+
+// GetLimitations returns the value of Limitations.
+func (s *ExposureCaseSnapshot) GetLimitations() string {
+	return s.Limitations
+}
+
+// GetEnriched returns the value of Enriched.
+func (s *ExposureCaseSnapshot) GetEnriched() bool {
+	return s.Enriched
+}
+
+// GetDigest returns the value of Digest.
+func (s *ExposureCaseSnapshot) GetDigest() string {
+	return s.Digest
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *ExposureCaseSnapshot) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetCurrent sets the value of Current.
+func (s *ExposureCaseSnapshot) SetCurrent(val bool) {
+	s.Current = val
+}
+
+// SetName sets the value of Name.
+func (s *ExposureCaseSnapshot) SetName(val string) {
+	s.Name = val
+}
+
+// SetSummary sets the value of Summary.
+func (s *ExposureCaseSnapshot) SetSummary(val string) {
+	s.Summary = val
+}
+
+// SetEnrichedSummary sets the value of EnrichedSummary.
+func (s *ExposureCaseSnapshot) SetEnrichedSummary(val string) {
+	s.EnrichedSummary = val
+}
+
+// SetTaskExamples sets the value of TaskExamples.
+func (s *ExposureCaseSnapshot) SetTaskExamples(val string) {
+	s.TaskExamples = val
+}
+
+// SetTags sets the value of Tags.
+func (s *ExposureCaseSnapshot) SetTags(val jx.Raw) {
+	s.Tags = val
+}
+
+// SetLimitations sets the value of Limitations.
+func (s *ExposureCaseSnapshot) SetLimitations(val string) {
+	s.Limitations = val
+}
+
+// SetEnriched sets the value of Enriched.
+func (s *ExposureCaseSnapshot) SetEnriched(val bool) {
+	s.Enriched = val
+}
+
+// SetDigest sets the value of Digest.
+func (s *ExposureCaseSnapshot) SetDigest(val string) {
+	s.Digest = val
+}
+
+type ExposureCaseStatus string
+
+const (
+	ExposureCaseStatusPublished ExposureCaseStatus = "published"
+	ExposureCaseStatusDelisted  ExposureCaseStatus = "delisted"
+)
+
+// AllValues returns all ExposureCaseStatus values.
+func (ExposureCaseStatus) AllValues() []ExposureCaseStatus {
+	return []ExposureCaseStatus{
+		ExposureCaseStatusPublished,
+		ExposureCaseStatusDelisted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ExposureCaseStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case ExposureCaseStatusPublished:
+		return []byte(s), nil
+	case ExposureCaseStatusDelisted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ExposureCaseStatus) UnmarshalText(data []byte) error {
+	switch ExposureCaseStatus(data) {
+	case ExposureCaseStatusPublished:
+		*s = ExposureCaseStatusPublished
+		return nil
+	case ExposureCaseStatusDelisted:
+		*s = ExposureCaseStatusDelisted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ExposureDecision
+type ExposureDecision string
+
+const (
+	ExposureDecisionApproved ExposureDecision = "approved"
+	ExposureDecisionRevoked  ExposureDecision = "revoked"
+)
+
+// AllValues returns all ExposureDecision values.
+func (ExposureDecision) AllValues() []ExposureDecision {
+	return []ExposureDecision{
+		ExposureDecisionApproved,
+		ExposureDecisionRevoked,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ExposureDecision) MarshalText() ([]byte, error) {
+	switch s {
+	case ExposureDecisionApproved:
+		return []byte(s), nil
+	case ExposureDecisionRevoked:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ExposureDecision) UnmarshalText(data []byte) error {
+	switch ExposureDecision(data) {
+	case ExposureDecisionApproved:
+		*s = ExposureDecisionApproved
+		return nil
+	case ExposureDecisionRevoked:
+		*s = ExposureDecisionRevoked
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ExposureQueueEntry
+type ExposureQueueEntry struct {
+	Publisher string          `json:"publisher"`
+	Name      string          `json:"name"`
+	Address   string          `json:"address"`
+	Release   ExposureRelease `json:"release"`
+	// The review sequence a reviewer must send back as expected_sequence.
+	Sequence int `json:"sequence"`
+	// True when this release was approved before and search no longer holds that text.
+	ReviewedAgain bool `json:"reviewed_again"`
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *ExposureQueueEntry) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *ExposureQueueEntry) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *ExposureQueueEntry) GetAddress() string {
+	return s.Address
+}
+
+// GetRelease returns the value of Release.
+func (s *ExposureQueueEntry) GetRelease() ExposureRelease {
+	return s.Release
+}
+
+// GetSequence returns the value of Sequence.
+func (s *ExposureQueueEntry) GetSequence() int {
+	return s.Sequence
+}
+
+// GetReviewedAgain returns the value of ReviewedAgain.
+func (s *ExposureQueueEntry) GetReviewedAgain() bool {
+	return s.ReviewedAgain
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *ExposureQueueEntry) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *ExposureQueueEntry) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *ExposureQueueEntry) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetRelease sets the value of Release.
+func (s *ExposureQueueEntry) SetRelease(val ExposureRelease) {
+	s.Release = val
+}
+
+// SetSequence sets the value of Sequence.
+func (s *ExposureQueueEntry) SetSequence(val int) {
+	s.Sequence = val
+}
+
+// SetReviewedAgain sets the value of ReviewedAgain.
+func (s *ExposureQueueEntry) SetReviewedAgain(val bool) {
+	s.ReviewedAgain = val
+}
+
+// Ref: #/components/schemas/ExposureRefusal
+type ExposureRefusal struct {
+	Error  string                `json:"error"`
+	Reason ExposureRefusalReason `json:"reason"`
+}
+
+// GetError returns the value of Error.
+func (s *ExposureRefusal) GetError() string {
+	return s.Error
+}
+
+// GetReason returns the value of Reason.
+func (s *ExposureRefusal) GetReason() ExposureRefusalReason {
+	return s.Reason
+}
+
+// SetError sets the value of Error.
+func (s *ExposureRefusal) SetError(val string) {
+	s.Error = val
+}
+
+// SetReason sets the value of Reason.
+func (s *ExposureRefusal) SetReason(val ExposureRefusalReason) {
+	s.Reason = val
+}
+
+type ExposureRefusalReason string
+
+const (
+	ExposureRefusalReasonReviewStale              ExposureRefusalReason = "review_stale"
+	ExposureRefusalReasonReasonMissing            ExposureRefusalReason = "reason_missing"
+	ExposureRefusalReasonDecisionUnknown          ExposureRefusalReason = "decision_unknown"
+	ExposureRefusalReasonNotPublished             ExposureRefusalReason = "not_published"
+	ExposureRefusalReasonNotAvailable             ExposureRefusalReason = "not_available"
+	ExposureRefusalReasonRedistributionNotAllowed ExposureRefusalReason = "redistribution_not_allowed"
+	ExposureRefusalReasonSnapshotNotCurrent       ExposureRefusalReason = "snapshot_not_current"
+	ExposureRefusalReasonSnapshotPending          ExposureRefusalReason = "snapshot_pending"
+)
+
+// AllValues returns all ExposureRefusalReason values.
+func (ExposureRefusalReason) AllValues() []ExposureRefusalReason {
+	return []ExposureRefusalReason{
+		ExposureRefusalReasonReviewStale,
+		ExposureRefusalReasonReasonMissing,
+		ExposureRefusalReasonDecisionUnknown,
+		ExposureRefusalReasonNotPublished,
+		ExposureRefusalReasonNotAvailable,
+		ExposureRefusalReasonRedistributionNotAllowed,
+		ExposureRefusalReasonSnapshotNotCurrent,
+		ExposureRefusalReasonSnapshotPending,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ExposureRefusalReason) MarshalText() ([]byte, error) {
+	switch s {
+	case ExposureRefusalReasonReviewStale:
+		return []byte(s), nil
+	case ExposureRefusalReasonReasonMissing:
+		return []byte(s), nil
+	case ExposureRefusalReasonDecisionUnknown:
+		return []byte(s), nil
+	case ExposureRefusalReasonNotPublished:
+		return []byte(s), nil
+	case ExposureRefusalReasonNotAvailable:
+		return []byte(s), nil
+	case ExposureRefusalReasonRedistributionNotAllowed:
+		return []byte(s), nil
+	case ExposureRefusalReasonSnapshotNotCurrent:
+		return []byte(s), nil
+	case ExposureRefusalReasonSnapshotPending:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ExposureRefusalReason) UnmarshalText(data []byte) error {
+	switch ExposureRefusalReason(data) {
+	case ExposureRefusalReasonReviewStale:
+		*s = ExposureRefusalReasonReviewStale
+		return nil
+	case ExposureRefusalReasonReasonMissing:
+		*s = ExposureRefusalReasonReasonMissing
+		return nil
+	case ExposureRefusalReasonDecisionUnknown:
+		*s = ExposureRefusalReasonDecisionUnknown
+		return nil
+	case ExposureRefusalReasonNotPublished:
+		*s = ExposureRefusalReasonNotPublished
+		return nil
+	case ExposureRefusalReasonNotAvailable:
+		*s = ExposureRefusalReasonNotAvailable
+		return nil
+	case ExposureRefusalReasonRedistributionNotAllowed:
+		*s = ExposureRefusalReasonRedistributionNotAllowed
+		return nil
+	case ExposureRefusalReasonSnapshotNotCurrent:
+		*s = ExposureRefusalReasonSnapshotNotCurrent
+		return nil
+	case ExposureRefusalReasonSnapshotPending:
+		*s = ExposureRefusalReasonSnapshotPending
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/ExposureRelease
+type ExposureRelease struct {
+	ReleaseID     uuid.UUID `json:"release_id"`
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	ContentHash   string    `json:"content_hash"`
+	ReleasedAt    time.Time `json:"released_at"`
+}
+
+// GetReleaseID returns the value of ReleaseID.
+func (s *ExposureRelease) GetReleaseID() uuid.UUID {
+	return s.ReleaseID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *ExposureRelease) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *ExposureRelease) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *ExposureRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *ExposureRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// SetReleaseID sets the value of ReleaseID.
+func (s *ExposureRelease) SetReleaseID(val uuid.UUID) {
+	s.ReleaseID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *ExposureRelease) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *ExposureRelease) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *ExposureRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *ExposureRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
 
 // Ref: #/components/schemas/FileDiff
 type FileDiff struct {
@@ -11127,6 +11765,22 @@ type ListDownloadRecordsUnauthorized Error
 
 func (*ListDownloadRecordsUnauthorized) listDownloadRecordsRes() {}
 
+type ListExposureQueueOK struct {
+	Publications []ExposureQueueEntry `json:"publications"`
+}
+
+// GetPublications returns the value of Publications.
+func (s *ListExposureQueueOK) GetPublications() []ExposureQueueEntry {
+	return s.Publications
+}
+
+// SetPublications sets the value of Publications.
+func (s *ListExposureQueueOK) SetPublications(val []ExposureQueueEntry) {
+	s.Publications = val
+}
+
+func (*ListExposureQueueOK) listExposureQueueRes() {}
+
 type ListGenerationFailuresForbidden Error
 
 func (*ListGenerationFailuresForbidden) listGenerationFailuresRes() {}
@@ -13006,6 +13660,52 @@ func (o OptEvidenceRefReattributedFrom) Get() (v EvidenceRefReattributedFrom, ok
 
 // Or returns value if set, or given parameter if does not.
 func (o OptEvidenceRefReattributedFrom) Or(d EvidenceRefReattributedFrom) EvidenceRefReattributedFrom {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptExposureCaseSnapshot returns new OptExposureCaseSnapshot with value set to v.
+func NewOptExposureCaseSnapshot(v ExposureCaseSnapshot) OptExposureCaseSnapshot {
+	return OptExposureCaseSnapshot{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptExposureCaseSnapshot is optional ExposureCaseSnapshot.
+type OptExposureCaseSnapshot struct {
+	Value ExposureCaseSnapshot
+	Set   bool
+}
+
+// IsSet returns true if OptExposureCaseSnapshot was set.
+func (o OptExposureCaseSnapshot) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptExposureCaseSnapshot) Reset() {
+	var v ExposureCaseSnapshot
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptExposureCaseSnapshot) SetTo(v ExposureCaseSnapshot) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptExposureCaseSnapshot) Get() (v ExposureCaseSnapshot, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptExposureCaseSnapshot) Or(d ExposureCaseSnapshot) ExposureCaseSnapshot {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -19204,6 +19904,69 @@ func (*RequestAccountDeletionConflict) requestAccountDeletionRes() {}
 type RequestAccountDeletionUnauthorized Error
 
 func (*RequestAccountDeletionUnauthorized) requestAccountDeletionRes() {}
+
+type ReviewExposureBadRequest Error
+
+func (*ReviewExposureBadRequest) reviewExposureRes() {}
+
+type ReviewExposureConflict ExposureRefusal
+
+func (*ReviewExposureConflict) reviewExposureRes() {}
+
+type ReviewExposureNotFound Error
+
+func (*ReviewExposureNotFound) reviewExposureRes() {}
+
+type ReviewExposureReq struct {
+	ReleaseID        uuid.UUID        `json:"release_id"`
+	ExpectedSequence int              `json:"expected_sequence"`
+	Decision         ExposureDecision `json:"decision"`
+	Reason           string           `json:"reason"`
+}
+
+// GetReleaseID returns the value of ReleaseID.
+func (s *ReviewExposureReq) GetReleaseID() uuid.UUID {
+	return s.ReleaseID
+}
+
+// GetExpectedSequence returns the value of ExpectedSequence.
+func (s *ReviewExposureReq) GetExpectedSequence() int {
+	return s.ExpectedSequence
+}
+
+// GetDecision returns the value of Decision.
+func (s *ReviewExposureReq) GetDecision() ExposureDecision {
+	return s.Decision
+}
+
+// GetReason returns the value of Reason.
+func (s *ReviewExposureReq) GetReason() string {
+	return s.Reason
+}
+
+// SetReleaseID sets the value of ReleaseID.
+func (s *ReviewExposureReq) SetReleaseID(val uuid.UUID) {
+	s.ReleaseID = val
+}
+
+// SetExpectedSequence sets the value of ExpectedSequence.
+func (s *ReviewExposureReq) SetExpectedSequence(val int) {
+	s.ExpectedSequence = val
+}
+
+// SetDecision sets the value of Decision.
+func (s *ReviewExposureReq) SetDecision(val ExposureDecision) {
+	s.Decision = val
+}
+
+// SetReason sets the value of Reason.
+func (s *ReviewExposureReq) SetReason(val string) {
+	s.Reason = val
+}
+
+type ReviewExposureUnprocessableEntity ExposureRefusal
+
+func (*ReviewExposureUnprocessableEntity) reviewExposureRes() {}
 
 // A user-editable strengthening of the acceptance criteria (CONTENT-007) — not a second mechanism.
 // Its items map onto the same `criterion_results` entries the criteria produce; a rubric only adds

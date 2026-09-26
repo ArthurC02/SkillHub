@@ -94,6 +94,9 @@ var anonymousRoutes = []anonCase{
 	{pattern: "PUT /admin/skills/{id}/redistribution", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/tier", want: http.StatusNotFound},
 	{pattern: "PUT /admin/skills/{id}/takedown", want: http.StatusNotFound},
+	{pattern: "GET /admin/exposure-reviews", want: http.StatusNotFound},
+	{pattern: "GET /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
+	{pattern: "POST /admin/publications/{publisher}/{name}/exposure", want: http.StatusNotFound},
 
 	{pattern: "POST /admin/credits/{workspace_id}/grants", want: http.StatusNotFound},
 	{pattern: "GET /admin/dispatch", want: http.StatusNotFound},

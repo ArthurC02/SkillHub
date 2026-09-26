@@ -119,6 +119,7 @@ type publicPublicationView struct {
 }
 
 const (
+	exposedNote           = "這個發佈物的這一版已經過目錄審核：它會出現在搜尋與目錄裡。"
 	notListedNote         = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
 	notOfferedNote        = "這個發佈物目前不提供下載，原因見上方。"
 	downloadNote          = "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
@@ -364,6 +365,13 @@ func unavailableNote(availability Availability, member string) string {
 	return "成員 " + member + "：" + note
 }
 
+func exposureNote(exposed bool) noteView {
+	if exposed {
+		return noteView{Available: true, Note: exposedNote}
+	}
+	return noteView{Available: false, Note: notListedNote}
+}
+
 func kindOf(p Publication) string {
 	if p.BundleID.Valid {
 		return kindBundle
@@ -411,7 +419,7 @@ func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 		Kind: kindOf(p.Publication), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
 		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: unavailableNote(p.Availability, p.UnavailableMember)},
 		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
-		Exposure:     noteView{Available: false, Note: notListedNote},
+		Exposure:     exposureNote(p.Exposed),
 		Acquisition:  h.acquisitionNote(p.Availability, kindOf(p.Publication)),
 	}
 	if p.Status == StatusDelisted {

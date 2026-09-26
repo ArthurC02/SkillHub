@@ -301,12 +301,12 @@ func (s *Service) CatalogSkillRisks(
 		return out, nil
 	}
 
-	catalogs, err := s.catalogWorkspaceIDs(ctx)
+	scope, err := s.publicScope(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, gen.ListCatalogSkillScansParams{
-		SkillIds: skillIDs, CatalogWorkspaceIds: catalogs,
+		SkillIds: skillIDs, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys,
 	})
 	if err != nil {
 		return nil, err
