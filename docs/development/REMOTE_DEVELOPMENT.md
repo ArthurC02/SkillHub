@@ -104,7 +104,7 @@ task clean-mode
 
 - 設定 `hostRequirements`（4 CPU / 8 GB RAM / 32 GB 儲存）作為建議最小規格。
 - 使用 named volumes 持久化 Go module、npm、uv 與 Docker layer 快取。
-- `post-create.sh` 在容器建立與內容更新時統一執行依賴初始化流程。
+- `post-create.sh` 用於首次建立容器的完整初始化；`updateContentCommand` 以 `SKILLHUB_SKIP_BOOTSTRAP=1` 模式只做輕量檢查與 `.env` 初始化。
 - `updateContentCommand` 也會執行同一支腳本，讓 Codespaces prebuild/更新內容時沿用同一初始化流程。
 
 ## 疑難排解

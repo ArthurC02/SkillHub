@@ -10,7 +10,7 @@ downloads language dependencies.
   `docker info` succeeds.
 - `postCreateCommand` runs `.devcontainer/post-create.sh`, which checks required
   tool binaries, verifies required `.env` keys, and runs dependency bootstrap.
-- `updateContentCommand` re-runs the same script for prebuild/content refresh.
+- `updateContentCommand` runs the same script in `SKILLHUB_SKIP_BOOTSTRAP=1` mode for lightweight content refresh.
 - Bootstrap execution is serialized with a filesystem lock so concurrent startup
   hooks do not race in one workspace.
 

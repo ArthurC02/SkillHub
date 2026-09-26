@@ -28,6 +28,11 @@ fi
 
 go -C tools/devctl run . env-init
 
+if [ "${skip_bootstrap}" = "1" ]; then
+  echo "SKILLHUB_SKIP_BOOTSTRAP=1 set; skipping bootstrap and runtime env validation"
+  exit 0
+fi
+
 required_env_keys=(
   DATABASE_URL
   OBJSTORE_ENDPOINT
@@ -41,11 +46,6 @@ for key in "${required_env_keys[@]}"; do
     exit 1
   fi
 done
-
-if [ "${skip_bootstrap}" = "1" ]; then
-  echo "SKILLHUB_SKIP_BOOTSTRAP=1 set; skipping bootstrap"
-  exit 0
-fi
 
 bootstrap_lock=.devcontainer/.bootstrap.lock
 lock_wait=0
