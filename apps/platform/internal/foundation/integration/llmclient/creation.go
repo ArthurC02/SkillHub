@@ -137,8 +137,7 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1024))
-		return nil, fmt.Errorf("llmclient: creation step returned %d", resp.StatusCode)
+		return nil, creationStepFailure(resp)
 	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
 	if err != nil {
@@ -152,6 +151,19 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 		return nil, fmt.Errorf("llmclient: decode creation step response: %w", err)
 	}
 	return &out, nil
+}
+
+func creationStepFailure(resp *http.Response) error {
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	var body struct {
+		Detail any `json:"detail"`
+	}
+	if json.Unmarshal(raw, &body) == nil {
+		if reason, ok := body.Detail.(string); ok {
+			return fmt.Errorf("llmclient: creation step returned %d: %s", resp.StatusCode, reason)
+		}
+	}
+	return fmt.Errorf("llmclient: creation step returned %d", resp.StatusCode)
 }
 
 func nonNil[T any](values []T) []T {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -54,6 +55,33 @@ func TestALinearDiagramInterpretationShipsEmptyListsAsArrays(t *testing.T) {
 	in := CreationStepRequest{GatewayKey: "short-lived", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"receive", "send"}}}
 	if _, err := c.CreationStep(context.Background(), in); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAFailedCreationStepNamesOnlyAFixedReason(t *testing.T) {
+	cases := []struct {
+		name, body, want, mustNotContain string
+		status                           int
+	}{
+		{name: "a fixed reason is carried", status: http.StatusBadGateway, body: `{"detail":"creation model returned unusable output"}`, want: "creation step returned 502: creation model returned unusable output"},
+		{name: "a validation echo is dropped", status: http.StatusUnprocessableEntity, body: `{"detail":[{"loc":["body","messages"],"input":"user wrote a secret"}]}`, want: "creation step returned 422", mustNotContain: "secret"},
+		{name: "a body that is not json is dropped", status: http.StatusBadGateway, body: `upstream exploded: user wrote a secret`, want: "creation step returned 502", mustNotContain: "secret"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer s.Close()
+			_, err := (&Client{BaseURL: s.URL}).CreationStep(context.Background(), CreationStepRequest{GatewayKey: "k"})
+			if err == nil || !strings.HasSuffix(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want suffix %q", err, tc.want)
+			}
+			if tc.mustNotContain != "" && strings.Contains(err.Error(), tc.mustNotContain) {
+				t.Fatalf("err leaked the request echo: %v", err)
+			}
+		})
 	}
 }
 
