@@ -11,7 +11,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-var TargetIDs = []string{"standard", "claude-code", "claude-agent-sdk"}
+const StandardTargetID = "standard"
+
+var TargetIDs = []string{StandardTargetID, "claude-code", "claude-agent-sdk"}
 
 var reservedFrontmatterKeys = map[string]bool{
 	"name": true, "description": true, "license": true,

@@ -42,7 +42,7 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 	for i, r := range rows {
 		versionIDs[i] = r.SkillVersionID
 	}
-	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, versionIDs)
+	summaries, err := s.ReadVersionSummaries(ctx, versionIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (s *Service) downloadRow(
 	if err != nil {
 		return downloadArtifact{}, err
 	}
-	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, []pgtype.UUID{row.SkillVersionID})
+	summaries, err := s.ReadVersionSummaries(ctx, []pgtype.UUID{row.SkillVersionID})
 	if err != nil {
 		return downloadArtifact{}, err
 	}

@@ -209,6 +209,7 @@ scope:
   InsertCreditEntry: user
   ListOwnCreditEntries: user
   ListPublicationReleases: scoped-upstream
+  ListVersionSummariesByID: scoped-upstream
   ListWorkspacesByOwner: user
   SaveAccountDeletionRequest: user
   RequeueSearchDocumentEnrichment: user

@@ -1524,6 +1524,61 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /publications/{publisher}/{name}/acquisitions:
+    post:
+      operationId: acquirePublication
+      summary: Build this publication's current release into a download in the caller's own workspace (PACK-006)
+      description: |
+        Builds the standard Agent Skill package of the version the newest
+        release pins, without test cases, and records it as a download
+        artifact in the caller's workspace, so its retention and download
+        records follow the same rules as a package the caller built. Fetch the
+        bytes from content_url. The availability check is the public
+        address's, made on the same read.
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema: { type: string }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: The download artifact, new or an identical one still being kept.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Acquisition" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: |
+            The caller is not on the invite list and this deployment keeps
+            publication downloads invite-only (the default). Absent from
+            deployments with no invite list configured or with
+            PUBLICATION_DOWNLOADS_UNINVITED=on.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No publication has this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The publication is not offered; the reason is its availability, as the public address says.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+        "422":
+          description: The packager refused to build it; the reason names which lock.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
   /skills/{id}/publication:
     parameters:
       - name: id
@@ -5289,7 +5344,10 @@ paths:
             The closed beta is running and the caller is not on the invite list
             (BETA-001). Distinct from the 404 below on purpose: that
             one hides whether an artifact exists, this one is about the caller and
-            says so. Absent from deployments with no invite list configured.
+            says so. Absent from deployments with no invite list configured, and
+            from deployments that open publication downloads to uninvited
+            accounts (PUBLICATION_DOWNLOADS_UNINVITED=on), where an uninvited
+            account can hold only artifacts it acquired from a publication.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -6807,6 +6865,11 @@ components:
             - license_unknown
             - validation_blocked
             - rights_not_attested
+            - file_removed_by_packager
+            - delisted
+            - withdrawn
+            - taken_down
+            - held
     PublicationRelease:
       type: object
       required: [version_id, version_number, content_hash, released_at, rights_attested, findings]
@@ -6838,6 +6901,19 @@ components:
         version_number: { type: integer }
         content_hash: { type: string }
         released_at: { type: string, format: date-time }
+    Acquisition:
+      type: object
+      required: [artifact_id, file_name, size_bytes, content_hash, expires_at, duplicate, content_url]
+      properties:
+        artifact_id: { type: string, format: uuid }
+        file_name: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        content_hash: { type: string }
+        expires_at: { type: string, format: date-time }
+        duplicate: { type: boolean }
+        content_url:
+          type: string
+          description: Where the bytes are, /downloads/{artifact_id}/content.
     PublicationNote:
       type: object
       required: [available, note]

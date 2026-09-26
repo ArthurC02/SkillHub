@@ -45,6 +45,11 @@ export const PublishingRefusalReasonEnum = {
     LicenseUnknown: 'license_unknown',
     ValidationBlocked: 'validation_blocked',
     RightsNotAttested: 'rights_not_attested',
+    FileRemovedByPackager: 'file_removed_by_packager',
+    Delisted: 'delisted',
+    Withdrawn: 'withdrawn',
+    TakenDown: 'taken_down',
+    Held: 'held',
 } as const;
 export type PublishingRefusalReasonEnum = typeof PublishingRefusalReasonEnum[keyof typeof PublishingRefusalReasonEnum];
 

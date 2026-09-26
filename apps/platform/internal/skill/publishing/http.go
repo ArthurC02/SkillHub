@@ -19,6 +19,9 @@ type Handler struct {
 	Identity *identity.Service
 
 	DescribeRedistribution func(value string) (label, note string)
+
+	DownloadsOpenToUninvited bool
+	InviteRosterConfigured   func() bool
 }
 
 type labelled struct {
@@ -92,9 +95,22 @@ type publicPublicationView struct {
 }
 
 const (
-	notListedNote   = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
-	noDownloadsNote = "這一頁目前還不提供下載。"
+	notListedNote         = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
+	notOfferedNote        = "這個發佈物目前不提供下載，原因見上方。"
+	downloadNote          = "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
+	invitedOnlyNote       = "這個部署目前只開放受邀者下載：沒有封測邀請的帳號按下下載會被拒絕。"
+	downloadContentPrefix = "/downloads/"
 )
+
+type acquisitionView struct {
+	ArtifactID  string `json:"artifact_id"`
+	FileName    string `json:"file_name"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
+	ExpiresAt   string `json:"expires_at"`
+	Duplicate   bool   `json:"duplicate"`
+	ContentURL  string `json:"content_url"`
+}
 
 var availabilityWords = map[Availability][2]string{
 	AvailabilityAvailable:        {"提供中", ""},
@@ -134,7 +150,10 @@ func writeReason(w http.ResponseWriter, code int, reason, message string) {
 func writePublishingError(w http.ResponseWriter, err error) {
 	var nameErr *NameError
 	var refused *RefusedError
+	var unavailable *UnavailableError
 	switch {
+	case errors.As(err, &unavailable):
+		writeReason(w, http.StatusConflict, string(unavailable.Availability), availabilityWords[unavailable.Availability][1])
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
 	case errors.Is(err, ErrNoPublisher):
@@ -284,6 +303,33 @@ func (h *Handler) PublicPublication(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, h.publicView(publication))
 }
 
+func (h *Handler) Acquire(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	acquisition, err := h.Svc.Acquire(r.Context(), ws, r.PathValue("publisher"), r.PathValue("name"))
+	if err != nil {
+		writePublishingError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, acquisitionView{
+		ArtifactID: acquisition.ArtifactID, FileName: acquisition.FileName, SizeBytes: acquisition.SizeBytes,
+		ContentHash: acquisition.ContentHash, ExpiresAt: acquisition.ExpiresAt, Duplicate: acquisition.Duplicate,
+		ContentURL: downloadContentPrefix + acquisition.ArtifactID + "/content",
+	})
+}
+
+func (h *Handler) acquisitionNote(availability Availability) noteView {
+	if availability != AvailabilityAvailable {
+		return noteView{Available: false, Note: notOfferedNote}
+	}
+	if !h.DownloadsOpenToUninvited && h.InviteRosterConfigured() {
+		return noteView{Available: true, Note: downloadNote + invitedOnlyNote}
+	}
+	return noteView{Available: true, Note: downloadNote}
+}
+
 func ownView(p Publication) publicationView {
 	releases := make([]releaseView, 0, len(p.Releases))
 	for _, release := range p.Releases {
@@ -306,7 +352,7 @@ func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: words[1]},
 		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
 		Exposure:     noteView{Available: false, Note: notListedNote},
-		Acquisition:  noteView{Available: false, Note: noDownloadsNote},
+		Acquisition:  h.acquisitionNote(p.Availability),
 	}
 	if p.Status == StatusDelisted {
 		view.DelistedAt = timestamp(p.StatusChangedAt)

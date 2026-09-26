@@ -279,6 +279,54 @@ func (q *Queries) ListVersionSummaries(ctx context.Context, arg ListVersionSumma
 	return items, nil
 }
 
+const listVersionSummariesByID = `-- name: ListVersionSummariesByID :many
+SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
+       sk.access_restriction, sk.redistribution,
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
+FROM skill_versions sv
+JOIN skills sk ON sk.id = sv.skill_id
+WHERE sv.id = ANY($1::uuid[])
+`
+
+type ListVersionSummariesByIDRow struct {
+	ID                  pgtype.UUID
+	SkillID             pgtype.UUID
+	VersionNumber       int32
+	SkillName           string
+	AccessRestriction   *string
+	Redistribution      string
+	LatestVersionNumber int32
+}
+
+func (q *Queries) ListVersionSummariesByID(ctx context.Context, versionIds []pgtype.UUID) ([]ListVersionSummariesByIDRow, error) {
+	rows, err := q.db.Query(ctx, listVersionSummariesByID, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVersionSummariesByIDRow
+	for rows.Next() {
+		var i ListVersionSummariesByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SkillID,
+			&i.VersionNumber,
+			&i.SkillName,
+			&i.AccessRestriction,
+			&i.Redistribution,
+			&i.LatestVersionNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockPackageObjectSession = `-- name: LockPackageObjectSession :exec
 SELECT pg_advisory_lock(hashtextextended('package-object:' || $1::text, 0))
 `

@@ -5,6 +5,7 @@ export * from './AcceptanceCriteriaSuggestionsSuggestionsInner';
 export * from './AcceptanceCriterion';
 export * from './AccountDeletion';
 export * from './AccountLookup';
+export * from './Acquisition';
 export * from './AddAcceptanceCriterionRequest';
 export * from './AmountTrend';
 export * from './CancelAccountDeletion200Response';

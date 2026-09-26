@@ -2,16 +2,19 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 )
 
-func newPublishingService(cfg Config, registrySvc *registry.Service) *publishing.Service {
+func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSvc *packaging.Service) *publishing.Service {
 	svc := &publishing.Service{Pool: cfg.Pool}
 	if cfg.Store != nil {
 		svc.Store = cfg.Store
@@ -31,6 +34,27 @@ func newPublishingService(cfg Config, registrySvc *registry.Service) *publishing
 	svc.LatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (publishing.VersionFacts, bool, error) {
 		version, found, err := registrySvc.LatestVersion(ctx, workspaceID, skillID)
 		return publishingVersionFacts(version), found, err
+	}
+	svc.PackageForRecipient = func(
+		ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID,
+	) (publishing.Acquisition, error) {
+		result, err := packagingSvc.CreateForRecipient(ctx, recipient, ownerWorkspaceID, skillID, versionID)
+		if errors.Is(err, packaging.ErrNotFound) {
+			return publishing.Acquisition{}, publishing.ErrNotFound
+		}
+		if err != nil {
+			return publishing.Acquisition{}, err
+		}
+		if result.Plan != nil && !result.Plan.Allowed {
+			return publishing.Acquisition{}, &publishing.RefusedError{
+				Reason: publishing.Refusal(result.Plan.BlockedReason), Message: result.Plan.BlockedMessage,
+			}
+		}
+		return publishing.Acquisition{
+			ArtifactID: result.Artifact.ArtifactID, FileName: result.Artifact.FileName,
+			SizeBytes: result.Artifact.SizeBytes, ContentHash: result.Artifact.ContentHash,
+			ExpiresAt: result.Artifact.ExpiresAt, Duplicate: result.Duplicate,
+		}, nil
 	}
 	return svc
 }

@@ -303,6 +303,25 @@ func (s *Service) VersionSummaries(
 	return summaries, nil
 }
 
+func (s *Service) VersionSummariesByID(ctx context.Context, versionIDs []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) {
+	summaries := make(map[pgtype.UUID]VersionSummary, len(versionIDs))
+	if len(versionIDs) == 0 {
+		return summaries, nil
+	}
+	rows, err := gen.New(s.Pool).ListVersionSummariesByID(ctx, versionIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		summaries[row.ID] = VersionSummary{
+			ID: row.ID, SkillID: row.SkillID, SkillName: row.SkillName,
+			VersionNumber: row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
+			AccessRestriction: row.AccessRestriction, Redistribution: row.Redistribution,
+		}
+	}
+	return summaries, nil
+}
+
 type SourceSibling struct {
 	SkillID    pgtype.UUID
 	Name       string

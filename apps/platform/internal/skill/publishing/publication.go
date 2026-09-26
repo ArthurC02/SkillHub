@@ -32,6 +32,7 @@ const (
 	RefusedLicenseUnknown     Refusal = "license_unknown"
 	RefusedValidation         Refusal = "validation_blocked"
 	RefusedRightsNotAttested  Refusal = "rights_not_attested"
+	RefusedFileRemoved        Refusal = "file_removed_by_packager"
 )
 
 var (
@@ -59,6 +60,14 @@ type RefusedError struct {
 }
 
 func (e *RefusedError) Error() string { return e.Message }
+
+type UnavailableError struct {
+	Availability Availability
+}
+
+func (e *UnavailableError) Error() string {
+	return "this publication is not offered: " + string(e.Availability)
+}
 
 const (
 	redistributionAllowed      = "allowed"

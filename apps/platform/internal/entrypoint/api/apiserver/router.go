@@ -112,6 +112,8 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /me/publisher", auth.RequireSession(d.Publishing.OwnPublisher))
 	mux.HandleFunc("POST /me/publisher", auth.RequireSession(d.Publishing.RegisterPublisher))
 	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(d.Publishing.PublicPublication))
+	mux.HandleFunc("POST /publications/{publisher}/{name}/acquisitions",
+		auth.RequireSession(publicationDownloadGate(d, d.Publishing.Acquire)))
 
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
 
@@ -212,7 +214,7 @@ func NewRouter(d Deps) http.Handler {
 		auth.RequireSession(d.Packaging.DownloadRecords))
 
 	mux.HandleFunc("GET /downloads/{artifactId}/content",
-		auth.RequireSession(auth.RequireInvited(d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
+		auth.RequireSession(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
 
 	mux.HandleFunc("POST /feedback", auth.RequireSession(d.Analytics.Feedback))
@@ -229,4 +231,11 @@ func limited(d Deps, route string, next http.HandlerFunc) http.HandlerFunc {
 		return next
 	}
 	return d.Limits.Limit(route, next)
+}
+
+func publicationDownloadGate(d Deps, next http.HandlerFunc) http.HandlerFunc {
+	if d.Publishing.DownloadsOpenToUninvited {
+		return next
+	}
+	return d.Auth.RequireInvited(next)
 }

@@ -29,6 +29,11 @@ import {
     AccountLookupToJSON,
 } from '../models/AccountLookup';
 import {
+    type Acquisition,
+    AcquisitionFromJSON,
+    AcquisitionToJSON,
+} from '../models/Acquisition';
+import {
     type AddAcceptanceCriterionRequest,
     AddAcceptanceCriterionRequestFromJSON,
     AddAcceptanceCriterionRequestToJSON,
@@ -598,6 +603,17 @@ import {
     UploadResultFromJSON,
     UploadResultToJSON,
 } from '../models/UploadResult';
+
+export interface AcquirePublicationRequest {
+    /**
+     * 
+     */
+    publisher: string;
+    /**
+     * 
+     */
+    name: string;
+}
 
 export interface ActOnCreationSessionRequest {
     /**
@@ -1527,6 +1543,32 @@ export interface UploadSkillPackageRequest {
  * @interface DefaultApiInterface
  */
 export interface DefaultApiInterface {
+    /**
+     * Creates request options for acquirePublication without sending the request
+     * @param {string} publisher 
+     * @param {string} name 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    acquirePublicationRequestOpts(requestParameters: AcquirePublicationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Builds the standard Agent Skill package of the version the newest release pins, without test cases, and records it as a download artifact in the caller\'s workspace, so its retention and download records follow the same rules as a package the caller built. Fetch the bytes from content_url. The availability check is the public address\'s, made on the same read. 
+     * @summary Build this publication\'s current release into a download in the caller\'s own workspace (PACK-006)
+     * @param {string} publisher 
+     * @param {string} name 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    acquirePublicationRaw(requestParameters: AcquirePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Acquisition>>;
+
+    /**
+     * Builds the standard Agent Skill package of the version the newest release pins, without test cases, and records it as a download artifact in the caller\'s workspace, so its retention and download records follow the same rules as a package the caller built. Fetch the bytes from content_url. The availability check is the public address\'s, made on the same read. 
+     * Build this publication\'s current release into a download in the caller\'s own workspace (PACK-006)
+     */
+    acquirePublication(requestParameters: AcquirePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Acquisition>;
+
     /**
      * Creates request options for actOnCreationSession without sending the request
      * @param {string} sessionId 
@@ -4162,6 +4204,61 @@ export interface DefaultApiInterface {
  * 
  */
 export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
+
+    /**
+     * Creates request options for acquirePublication without sending the request
+     */
+    async acquirePublicationRequestOpts(requestParameters: AcquirePublicationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['publisher'] == null) {
+            throw new runtime.RequiredError(
+                'publisher',
+                'Required parameter "publisher" was null or undefined when calling acquirePublication().'
+            );
+        }
+
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling acquirePublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/publications/{publisher}/{name}/acquisitions`;
+        urlPath = urlPath.replace('{publisher}', encodeURIComponent(String(requestParameters['publisher'])));
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Builds the standard Agent Skill package of the version the newest release pins, without test cases, and records it as a download artifact in the caller\'s workspace, so its retention and download records follow the same rules as a package the caller built. Fetch the bytes from content_url. The availability check is the public address\'s, made on the same read. 
+     * Build this publication\'s current release into a download in the caller\'s own workspace (PACK-006)
+     */
+    async acquirePublicationRaw(requestParameters: AcquirePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Acquisition>> {
+        const requestOptions = await this.acquirePublicationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AcquisitionFromJSON(jsonValue));
+    }
+
+    /**
+     * Builds the standard Agent Skill package of the version the newest release pins, without test cases, and records it as a download artifact in the caller\'s workspace, so its retention and download records follow the same rules as a package the caller built. Fetch the bytes from content_url. The availability check is the public address\'s, made on the same read. 
+     * Build this publication\'s current release into a download in the caller\'s own workspace (PACK-006)
+     */
+    async acquirePublication(requestParameters: AcquirePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Acquisition> {
+        const response = await this.acquirePublicationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for actOnCreationSession without sending the request

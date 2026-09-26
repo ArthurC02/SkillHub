@@ -283,6 +283,110 @@ func (s *AccountLookup) SetInBetaAllowlist(val bool) {
 
 func (*AccountLookup) lookupAccountRes() {}
 
+type AcquirePublicationConflict PublishingRefusal
+
+func (*AcquirePublicationConflict) acquirePublicationRes() {}
+
+type AcquirePublicationForbidden Error
+
+func (*AcquirePublicationForbidden) acquirePublicationRes() {}
+
+type AcquirePublicationNotFound Error
+
+func (*AcquirePublicationNotFound) acquirePublicationRes() {}
+
+type AcquirePublicationUnauthorized Error
+
+func (*AcquirePublicationUnauthorized) acquirePublicationRes() {}
+
+type AcquirePublicationUnprocessableEntity PublishingRefusal
+
+func (*AcquirePublicationUnprocessableEntity) acquirePublicationRes() {}
+
+// Ref: #/components/schemas/Acquisition
+type Acquisition struct {
+	ArtifactID  uuid.UUID `json:"artifact_id"`
+	FileName    string    `json:"file_name"`
+	SizeBytes   int64     `json:"size_bytes"`
+	ContentHash string    `json:"content_hash"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	Duplicate   bool      `json:"duplicate"`
+	// Where the bytes are, /downloads/{artifact_id}/content.
+	ContentURL string `json:"content_url"`
+}
+
+// GetArtifactID returns the value of ArtifactID.
+func (s *Acquisition) GetArtifactID() uuid.UUID {
+	return s.ArtifactID
+}
+
+// GetFileName returns the value of FileName.
+func (s *Acquisition) GetFileName() string {
+	return s.FileName
+}
+
+// GetSizeBytes returns the value of SizeBytes.
+func (s *Acquisition) GetSizeBytes() int64 {
+	return s.SizeBytes
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *Acquisition) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *Acquisition) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// GetDuplicate returns the value of Duplicate.
+func (s *Acquisition) GetDuplicate() bool {
+	return s.Duplicate
+}
+
+// GetContentURL returns the value of ContentURL.
+func (s *Acquisition) GetContentURL() string {
+	return s.ContentURL
+}
+
+// SetArtifactID sets the value of ArtifactID.
+func (s *Acquisition) SetArtifactID(val uuid.UUID) {
+	s.ArtifactID = val
+}
+
+// SetFileName sets the value of FileName.
+func (s *Acquisition) SetFileName(val string) {
+	s.FileName = val
+}
+
+// SetSizeBytes sets the value of SizeBytes.
+func (s *Acquisition) SetSizeBytes(val int64) {
+	s.SizeBytes = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *Acquisition) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *Acquisition) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+// SetDuplicate sets the value of Duplicate.
+func (s *Acquisition) SetDuplicate(val bool) {
+	s.Duplicate = val
+}
+
+// SetContentURL sets the value of ContentURL.
+func (s *Acquisition) SetContentURL(val string) {
+	s.ContentURL = val
+}
+
+func (*Acquisition) acquirePublicationRes() {}
+
 type ActOnCreationSessionBadRequest Error
 
 func (*ActOnCreationSessionBadRequest) actOnCreationSessionRes() {}
@@ -17867,17 +17971,22 @@ func (s *PublishingRefusal) SetReason(val PublishingRefusalReason) {
 type PublishingRefusalReason string
 
 const (
-	PublishingRefusalReasonNoPublisher        PublishingRefusalReason = "no_publisher"
-	PublishingRefusalReasonAlreadyRegistered  PublishingRefusalReason = "already_registered"
-	PublishingRefusalReasonNameTaken          PublishingRefusalReason = "name_taken"
-	PublishingRefusalReasonNameIsPermanent    PublishingRefusalReason = "name_is_permanent"
-	PublishingRefusalReasonNameShape          PublishingRefusalReason = "name_shape"
-	PublishingRefusalReasonNameReserved       PublishingRefusalReason = "name_reserved"
-	PublishingRefusalReasonLicenseHold        PublishingRefusalReason = "license_hold"
-	PublishingRefusalReasonNotRedistributable PublishingRefusalReason = "not_redistributable"
-	PublishingRefusalReasonLicenseUnknown     PublishingRefusalReason = "license_unknown"
-	PublishingRefusalReasonValidationBlocked  PublishingRefusalReason = "validation_blocked"
-	PublishingRefusalReasonRightsNotAttested  PublishingRefusalReason = "rights_not_attested"
+	PublishingRefusalReasonNoPublisher           PublishingRefusalReason = "no_publisher"
+	PublishingRefusalReasonAlreadyRegistered     PublishingRefusalReason = "already_registered"
+	PublishingRefusalReasonNameTaken             PublishingRefusalReason = "name_taken"
+	PublishingRefusalReasonNameIsPermanent       PublishingRefusalReason = "name_is_permanent"
+	PublishingRefusalReasonNameShape             PublishingRefusalReason = "name_shape"
+	PublishingRefusalReasonNameReserved          PublishingRefusalReason = "name_reserved"
+	PublishingRefusalReasonLicenseHold           PublishingRefusalReason = "license_hold"
+	PublishingRefusalReasonNotRedistributable    PublishingRefusalReason = "not_redistributable"
+	PublishingRefusalReasonLicenseUnknown        PublishingRefusalReason = "license_unknown"
+	PublishingRefusalReasonValidationBlocked     PublishingRefusalReason = "validation_blocked"
+	PublishingRefusalReasonRightsNotAttested     PublishingRefusalReason = "rights_not_attested"
+	PublishingRefusalReasonFileRemovedByPackager PublishingRefusalReason = "file_removed_by_packager"
+	PublishingRefusalReasonDelisted              PublishingRefusalReason = "delisted"
+	PublishingRefusalReasonWithdrawn             PublishingRefusalReason = "withdrawn"
+	PublishingRefusalReasonTakenDown             PublishingRefusalReason = "taken_down"
+	PublishingRefusalReasonHeld                  PublishingRefusalReason = "held"
 )
 
 // AllValues returns all PublishingRefusalReason values.
@@ -17894,6 +18003,11 @@ func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
 		PublishingRefusalReasonLicenseUnknown,
 		PublishingRefusalReasonValidationBlocked,
 		PublishingRefusalReasonRightsNotAttested,
+		PublishingRefusalReasonFileRemovedByPackager,
+		PublishingRefusalReasonDelisted,
+		PublishingRefusalReasonWithdrawn,
+		PublishingRefusalReasonTakenDown,
+		PublishingRefusalReasonHeld,
 	}
 }
 
@@ -17921,6 +18035,16 @@ func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
 	case PublishingRefusalReasonValidationBlocked:
 		return []byte(s), nil
 	case PublishingRefusalReasonRightsNotAttested:
+		return []byte(s), nil
+	case PublishingRefusalReasonFileRemovedByPackager:
+		return []byte(s), nil
+	case PublishingRefusalReasonDelisted:
+		return []byte(s), nil
+	case PublishingRefusalReasonWithdrawn:
+		return []byte(s), nil
+	case PublishingRefusalReasonTakenDown:
+		return []byte(s), nil
+	case PublishingRefusalReasonHeld:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -17962,6 +18086,21 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 		return nil
 	case PublishingRefusalReasonRightsNotAttested:
 		*s = PublishingRefusalReasonRightsNotAttested
+		return nil
+	case PublishingRefusalReasonFileRemovedByPackager:
+		*s = PublishingRefusalReasonFileRemovedByPackager
+		return nil
+	case PublishingRefusalReasonDelisted:
+		*s = PublishingRefusalReasonDelisted
+		return nil
+	case PublishingRefusalReasonWithdrawn:
+		*s = PublishingRefusalReasonWithdrawn
+		return nil
+	case PublishingRefusalReasonTakenDown:
+		*s = PublishingRefusalReasonTakenDown
+		return nil
+	case PublishingRefusalReasonHeld:
+		*s = PublishingRefusalReasonHeld
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

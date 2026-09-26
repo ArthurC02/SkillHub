@@ -367,6 +367,8 @@ func main() {
 		CreationExposed: wiring.CreationExposedFromEnv(), CreationLimits: creationLimits, CreationTransient: creationTransient,
 		RateLimits: rateLimits,
 
+		PublicationDownloadsOpen: publicationDownloadsOpenFromEnv(),
+
 		CleanMode: clean,
 	})
 	if err != nil {
@@ -545,6 +547,19 @@ func generateExposedFromEnv() bool {
 	case raw != "" && !strings.EqualFold(raw, "off"):
 
 		slog.Warn("GENERATE_SKILL_EXPOSED is neither `on` nor `off`; the M5 generation entry point stays hidden",
+			"value", raw)
+	}
+	return false
+}
+
+func publicationDownloadsOpenFromEnv() bool {
+	raw := os.Getenv("PUBLICATION_DOWNLOADS_UNINVITED")
+	switch {
+	case strings.EqualFold(raw, "on"):
+		slog.Warn("PUBLICATION_DOWNLOADS_UNINVITED=on; accounts outside the beta roster can download publications")
+		return true
+	case raw != "" && !strings.EqualFold(raw, "off"):
+		slog.Warn("PUBLICATION_DOWNLOADS_UNINVITED is neither `on` nor `off`; publication downloads stay invite-only",
 			"value", raw)
 	}
 	return false

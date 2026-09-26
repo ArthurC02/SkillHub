@@ -51,6 +51,17 @@ type Service struct {
 	ReadSkill           func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
+
+	PackageForRecipient func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID) (Acquisition, error)
+}
+
+type Acquisition struct {
+	ArtifactID  string
+	FileName    string
+	SizeBytes   int64
+	ContentHash string
+	ExpiresAt   string
+	Duplicate   bool
 }
 
 type Publisher struct {
@@ -78,9 +89,10 @@ type Publication struct {
 
 type PublicPublication struct {
 	Publication
-	Availability Availability
-	Skill        SkillFacts
-	Version      VersionFacts
+	OwnerWorkspaceID pgtype.UUID
+	Availability     Availability
+	Skill            SkillFacts
+	Version          VersionFacts
 }
 
 type PublishInput struct {
@@ -343,7 +355,7 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 	if err != nil {
 		return PublicPublication{}, false, err
 	}
-	out := PublicPublication{Publication: Publication{
+	out := PublicPublication{OwnerWorkspaceID: row.PublisherWorkspaceID, Publication: Publication{
 		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
 	}}
@@ -365,6 +377,23 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 	}
 	out.Skill, out.Version = skill, version
 	return out, true, nil
+}
+
+func (s *Service) Acquire(ctx context.Context, recipient identity.Workspace, publisherName, name string) (Acquisition, error) {
+	publication, found, err := s.PublicPublication(ctx, publisherName, name)
+	if err != nil {
+		return Acquisition{}, err
+	}
+	if !found {
+		return Acquisition{}, ErrNotFound
+	}
+	if publication.Availability != AvailabilityAvailable {
+		return Acquisition{}, &UnavailableError{Availability: publication.Availability}
+	}
+	if len(publication.Releases) == 0 {
+		return Acquisition{}, ErrNotFound
+	}
+	return s.PackageForRecipient(ctx, recipient, publication.OwnerWorkspaceID, publication.SkillID, publication.Releases[0].VersionID)
 }
 
 func PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {

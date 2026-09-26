@@ -149,6 +149,22 @@ func (s AcceptanceCriterionSource) Validate() error {
 	}
 }
 
+func (s *AcquirePublicationConflict) Validate() error {
+	alias := (*PublishingRefusal)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *AcquirePublicationUnprocessableEntity) Validate() error {
+	alias := (*PublishingRefusal)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *AddAcceptanceCriterionReq) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -5867,6 +5883,16 @@ func (s PublishingRefusalReason) Validate() error {
 	case "validation_blocked":
 		return nil
 	case "rights_not_attested":
+		return nil
+	case "file_removed_by_packager":
+		return nil
+	case "delisted":
+		return nil
+	case "withdrawn":
+		return nil
+	case "taken_down":
+		return nil
+	case "held":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

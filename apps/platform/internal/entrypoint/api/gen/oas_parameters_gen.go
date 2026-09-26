@@ -6,6 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// AcquirePublicationParams is parameters of acquirePublication operation.
+type AcquirePublicationParams struct {
+	Publisher string
+	Name      string
+}
+
 // ActOnCreationSessionParams is parameters of actOnCreationSession operation.
 type ActOnCreationSessionParams struct {
 	SessionID uuid.UUID

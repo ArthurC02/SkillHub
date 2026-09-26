@@ -163,6 +163,15 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 			Fix: "不要在 01 §11.2 第一段漏斗量到讀數之前設成 on——這是 M5 對封測使用者的曝光邊界（01 §10），" +
 				"不是一個等著被打開的功能",
 		},
+		{
+			ID:    "publication_downloads_uninvited",
+			Name:  "未受邀者取得發佈物",
+			Needs: []string{"PUBLICATION_DOWNLOADS_UNINVITED"},
+
+			Without: "刻意的狀態：有封測名單時，只有名單上的帳號能取得發佈物，公開位址在按鈕之前就說出這一點；" +
+				"發佈與公開閱讀不受影響",
+			Fix: "閘門與封測的結論出來之前不要設成 on——一個對所有人開放的下載入口就是一次沒有名單的封測",
+		},
 		creationCapability(servesWeb),
 	}
 	if servesWeb {

@@ -77,6 +77,8 @@ type Config struct {
 	CreationLimits    creation.Limits
 	CreationTransient func(context.Context, creation.JobArgs, *creation.Diagram) error
 
+	PublicationDownloadsOpen bool
+
 	RateLimits *httpx.RateLimiter
 
 	FeedbackRetention time.Duration
@@ -269,7 +271,7 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
-	publishingSvc := newPublishingService(cfg, registrySvc)
+	publishingSvc := newPublishingService(cfg, registrySvc, packagingSvc)
 
 	return &App{
 		Deps: Deps{
@@ -298,6 +300,8 @@ func NewApp(cfg Config) (*App, error) {
 			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
 			Publishing: &publishing.Handler{
 				Svc: publishingSvc, Identity: auth.Service, DescribeRedistribution: describeRedistribution,
+				DownloadsOpenToUninvited: cfg.PublicationDownloadsOpen,
+				InviteRosterConfigured:   func() bool { return len(auth.Invited) > 0 },
 			},
 			Credits: &creditsHandler{
 				Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
@@ -435,9 +439,9 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 		return packaging.CuratedSource{SkillID: skill.ID, WorkspaceID: skill.WorkspaceID}, found, err
 	}
 	service.ReadVersionSummaries = func(
-		ctx context.Context, workspaceID pgtype.UUID, versionIDs []pgtype.UUID,
+		ctx context.Context, versionIDs []pgtype.UUID,
 	) (map[pgtype.UUID]packaging.VersionSummary, error) {
-		summaries, err := registryService.VersionSummaries(ctx, workspaceID, versionIDs)
+		summaries, err := registryService.VersionSummariesByID(ctx, versionIDs)
 		if err != nil {
 			return nil, err
 		}

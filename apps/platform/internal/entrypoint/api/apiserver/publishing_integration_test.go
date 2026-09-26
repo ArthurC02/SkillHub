@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 )
 
 func freshName(prefix string) string {
@@ -296,5 +298,146 @@ func TestAccountPurgeRemovesThePublicationsAndKeepsTheNameReserved(t *testing.T)
 	}
 	if n := countRow(t, pool, `SELECT count(*) FROM publishers WHERE name = $1`, publisher); n != 1 {
 		t.Errorf("the purged account's publisher name is free for someone else to take (%d rows)", n)
+	}
+}
+
+func acquire(t *testing.T, c *client, address string) (int, map[string]any) {
+	t.Helper()
+	return postJSON(t, c, "/publications"+strings.TrimPrefix(address, "/p")+"/acquisitions", `{}`)
+}
+
+func publishedSkill(t *testing.T, author *client, prefix string) (skillID, skillName, address string) {
+	t.Helper()
+	registerPublisher(t, author, freshName(prefix))
+	skillName = freshName(prefix + "-skill")
+	skillID = uploadedSkill(t, author, skillName, "Do the thing carefully.")
+	code, body := publish(t, author, skillID, `{"rights_attested":true}`)
+	if code != http.StatusOK {
+		t.Fatalf("publishing %s: %d %v", skillName, code, body)
+	}
+	return skillID, skillName, body["address"].(string)
+}
+
+func TestAcquiringAPublicationRecordsADownloadInTheAcquirersOwnWorkspace(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("acquire-alice"))
+	bob := a.login(t, freshName("acquire-bob"))
+	_, skillName, address := publishedSkill(t, alice, "acquire")
+
+	code, body := acquire(t, bob, address)
+	if code != http.StatusCreated {
+		t.Fatalf("bob acquiring %s: %d %v", address, code, body)
+	}
+	artifactID, _ := body["artifact_id"].(string)
+	if body["content_url"] != "/downloads/"+artifactID+"/content" || body["duplicate"] != false {
+		t.Errorf("acquisition = %v, want a new artifact and the address of its bytes", body)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM download_artifacts WHERE artifact_id = $1 AND workspace_id = $2`,
+		mustUUID(t, artifactID), mustUUID(t, bob.workspaceID)); n != 1 {
+		t.Errorf("the acquired artifact is not recorded in bob's workspace (%d rows)", n)
+	}
+	if downloads := alice.listDownloads(t); len(downloads) != 0 {
+		t.Errorf("the author's downloads gained %d rows from someone else's acquisition", len(downloads))
+	}
+	downloads := bob.listDownloads(t)
+	if len(downloads) != 1 || downloads[0].ArtifactID != artifactID || downloads[0].IncludesTestCases ||
+		downloads[0].FileName != skillName+"-v1-standard.zip" {
+		t.Fatalf("bob's downloads = %+v, want the author's version 1 as a standard package without test cases", downloads)
+	}
+
+	resp, data := bob.fetchContent(t, artifactID)
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(string(data), "PK") {
+		t.Errorf("bob fetching the acquired bytes: %d (%d bytes), want 200 and a zip", resp.StatusCode, len(data))
+	}
+	if resp, _ := alice.fetchContent(t, artifactID); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("the author fetching bob's artifact: %d, want 404", resp.StatusCode)
+	}
+
+	if code, again := acquire(t, bob, address); code != http.StatusCreated || again["artifact_id"] != artifactID || again["duplicate"] != true {
+		t.Errorf("acquiring the same release again: %d %v, want the kept artifact %s", code, again, artifactID)
+	}
+}
+
+func TestAnUnofferedPublicationCannotBeAcquiredAndSaysWhyAsItsAddressDoes(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("unoffered-alice"))
+	bob := a.login(t, freshName("unoffered-bob"))
+	skillID, _, address := publishedSkill(t, alice, "unoffered")
+
+	for _, tc := range []struct {
+		name, assignment, want string
+	}{
+		{"held", "access_restriction = 'license-review'", "held"},
+		{"taken down", "access_restriction = NULL, takedown_at = now(), takedown_reason = 'fixture'", "taken_down"},
+	} {
+		setSkill(t, pool, skillID, tc.assignment)
+		_, public := publicRead(t, a, address)
+		availability, _ := public["availability"].(map[string]any)
+		code, body := acquire(t, bob, address)
+		if code != http.StatusConflict || body["reason"] != tc.want || body["error"] != availability["note"] {
+			t.Errorf("%s: acquiring gave %d %v, want 409 %s saying what the address says (%v)", tc.name, code, body, tc.want, availability)
+		}
+		if acquisition, _ := public["acquisition"].(map[string]any); acquisition["available"] != false {
+			t.Errorf("%s: the address still offers a download: %v", tc.name, acquisition)
+		}
+	}
+	setSkill(t, pool, skillID, "takedown_at = NULL, takedown_reason = NULL")
+	if code, body := deleteJSON(t, alice, "/skills/"+skillID+"/publication"); code != http.StatusOK {
+		t.Fatalf("delist: %d %v", code, body)
+	}
+	if code, body := acquire(t, bob, address); code != http.StatusConflict || body["reason"] != "delisted" {
+		t.Errorf("acquiring a delisted publication: %d %v, want 409 delisted", code, body)
+	}
+	if code, _ := acquire(t, bob, "/p/no-such-publisher/"+freshName("nothing")); code != http.StatusNotFound {
+		t.Errorf("acquiring an address nobody published: %d, want 404", code)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM download_artifacts WHERE workspace_id = $1`, mustUUID(t, bob.workspaceID)); n != 0 {
+		t.Errorf("refused acquisitions left %d artifacts in bob's workspace", n)
+	}
+}
+
+func TestUninvitedAccountsAcquireOnlyWhenTheDeploymentOpensDownloads(t *testing.T) {
+	pool := requireDB(t)
+	for _, tc := range []struct {
+		name        string
+		open        bool
+		want        int
+		saysInvited bool
+	}{
+		{"downloads kept to the invited", false, http.StatusForbidden, true},
+		{"downloads opened to everyone", true, http.StatusCreated, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			authorName, invitedName := freshName("gate-author"), freshName("gate-invited")
+			a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+				d.Auth.Invited = map[string]bool{authorName: true, invitedName: true}
+				d.Publishing.DownloadsOpenToUninvited = tc.open
+			})
+			author := a.login(t, authorName)
+			invited := a.login(t, invitedName)
+			stranger := a.login(t, freshName("gate-uninvited"))
+			_, _, address := publishedSkill(t, author, "gate")
+
+			code, body := acquire(t, stranger, address)
+			if code != tc.want {
+				t.Fatalf("an uninvited account acquiring: %d %v, want %d", code, body, tc.want)
+			}
+			if tc.open {
+				if resp, _ := stranger.fetchContent(t, body["artifact_id"].(string)); resp.StatusCode != http.StatusOK {
+					t.Errorf("an uninvited account fetching what it acquired: %d, want 200", resp.StatusCode)
+				}
+			}
+			if code, body := acquire(t, invited, address); code != http.StatusCreated {
+				t.Errorf("an invited account acquiring: %d %v, want 201", code, body)
+			}
+			_, public := publicRead(t, a, address)
+			acquisition, _ := public["acquisition"].(map[string]any)
+			note, _ := acquisition["note"].(string)
+			if strings.Contains(note, "這個部署目前只開放受邀者下載") != tc.saysInvited || acquisition["available"] != true {
+				t.Errorf("the address says %v, want it to say invite-only = %v before any button", acquisition, tc.saysInvited)
+			}
+		})
 	}
 }

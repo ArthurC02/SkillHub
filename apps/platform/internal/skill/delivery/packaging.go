@@ -91,7 +91,7 @@ type Service struct {
 	ReadLineage       func(context.Context, pgtype.UUID) (LineageStep, bool, error)
 	ReadOldest        func(context.Context, pgtype.UUID) (OldestVersion, bool, error)
 
-	ReadVersionSummaries func(context.Context, pgtype.UUID, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
+	ReadVersionSummaries func(context.Context, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error)
 	ReadDisplayNames     func(context.Context, []pgtype.UUID) (map[pgtype.UUID]string, error)
 }
 
@@ -265,7 +265,7 @@ func (s *Service) Plan(
 	if version.SkillID != skill.ID {
 		return nil, ErrNotFound
 	}
-	summaries, err := s.ReadVersionSummaries(ctx, ws.ID, []pgtype.UUID{version.ID})
+	summaries, err := s.ReadVersionSummaries(ctx, []pgtype.UUID{version.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -629,7 +629,19 @@ func (s *Service) Create(
 	ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID,
 	target string, includeTestCases bool,
 ) (Result, error) {
+	return s.create(ctx, ws, ws, skillID, versionID, target, includeTestCases)
+}
 
+func (s *Service) CreateForRecipient(
+	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
+) (Result, error) {
+	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, skillID, versionID, StandardTargetID, false)
+}
+
+func (s *Service) create(
+	ctx context.Context, source, recipient identity.Workspace, skillID, versionID pgtype.UUID,
+	target string, includeTestCases bool,
+) (Result, error) {
 	retention, err := s.Retention.Period()
 	if err != nil {
 		return Result{}, err
@@ -638,7 +650,7 @@ func (s *Service) Create(
 		return Result{}, err
 	}
 
-	skill, found, err := s.ReadSkill(ctx, ws.ID, skillID)
+	skill, found, err := s.ReadSkill(ctx, source.ID, skillID)
 	if !found && err == nil {
 		return Result{}, ErrNotFound
 	}
@@ -657,7 +669,7 @@ func (s *Service) Create(
 	if !isTargetID(target) {
 		return Result{}, ErrUnknownTarget
 	}
-	p, err := s.Plan(ctx, ws, skillID, versionID, target, includeTestCases)
+	p, err := s.Plan(ctx, source, skillID, versionID, target, includeTestCases)
 	if err != nil {
 		return Result{}, err
 	}
@@ -665,7 +677,7 @@ func (s *Service) Create(
 
 		return Result{Plan: p}, nil
 	}
-	return s.persist(ctx, ws, p, retention)
+	return s.persist(ctx, recipient, p, retention)
 }
 
 func (s *Service) persist(
