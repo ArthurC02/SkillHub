@@ -22,7 +22,12 @@ fi
 if [ -d /go ] && [ -d /home/vscode ]; then
   mkdir -p /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv
   if command -v sudo >/dev/null 2>&1; then
-    sudo chown -R vscode:vscode /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv
+    for cache_dir in /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv; do
+      owner="$(stat -c '%U:%G' "${cache_dir}" 2>/dev/null || true)"
+      if [ "${owner}" != "vscode:vscode" ]; then
+        sudo chown vscode:vscode "${cache_dir}"
+      fi
+    done
   fi
 fi
 

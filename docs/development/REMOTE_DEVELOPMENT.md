@@ -87,6 +87,7 @@ task clean-mode
 - `env-init` 會在 `.env` 不存在時由 `.env.example` 建立；若 `.env` 已存在則保持原值不覆寫。
 - 若你希望先準備遠端最小模板，可先將 `.devcontainer/.env.remote.example` 複製成 `.env`，再依需求補齊值。
 - `post-create.sh` 在完整初始化時要求以下 key 為非空：`DATABASE_URL`、`OBJSTORE_ENDPOINT`、`OBJSTORE_ACCESS_KEY`、`OBJSTORE_SECRET_KEY`、`LITELLM_BASE_URL`。
+- 因為 devcontainer 設定 `waitFor=postCreateCommand`，若上述 key 缺值，容器會在初始化階段就失敗；建議先準備好 `.env` 再建立 Codespace/Container。
 
 常見模式：
 

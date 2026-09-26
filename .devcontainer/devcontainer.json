@@ -90,7 +90,7 @@
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
         "python.testing.cwd": "${workspaceFolder}/apps/llm",
-        "python.testing.pytestArgs": ["apps/llm"]
+        "python.testing.pytestArgs": ["."]
       },
       "extensions": [
         "golang.go",
