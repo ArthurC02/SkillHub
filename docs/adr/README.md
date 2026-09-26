@@ -34,6 +34,10 @@
 
 [ADR-007](./ADR-007-packaging-license-provenance-and-redistribution.md)｜可攜套件的形狀與完整性、匯入認得哪些來源形狀（單一 Skill、Agent Plugin、含多個 Skill 的 repo）、License 溯源，以及能不能再散布。
 
+## 發佈、發佈者與組合散布
+
+[ADR-026](./ADR-026-publication-publishers-and-bundled-distribution.md)｜作者怎麼把東西發佈出去、發佈者命名空間與對外識別字的形狀、把多個 Skill 組成一份可版本化的 Bundle 並以 Agent Plugin 形狀匯出，以及信任怎麼在一份組合裡聚合。
+
 ## 意圖搜尋
 
 [ADR-008](./ADR-008-intent-search.md)｜Catalog 的混合檢索與 LLM 增強怎麼組合。
