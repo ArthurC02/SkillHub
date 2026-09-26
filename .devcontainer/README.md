@@ -10,6 +10,8 @@ downloads language dependencies.
   `docker info` succeeds.
 - `postCreateCommand` runs `.devcontainer/post-create.sh`, which checks required
   tool binaries, verifies required `.env` keys, and runs dependency bootstrap.
+- `updateContentCommand` re-runs the same script for prebuild/content refresh, and
+  lockfile-hash skipping keeps it fast when dependencies did not change.
 - Bootstrap is cached by lockfile hash and skipped when the dependency graph is
   unchanged.
 

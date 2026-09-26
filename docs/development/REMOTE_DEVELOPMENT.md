@@ -94,6 +94,7 @@ task clean-mode
 - 設定 `hostRequirements`（4 CPU / 8 GB RAM / 32 GB 儲存）作為建議最小規格。
 - 使用 named volumes 持久化 Go module、npm、uv 與 Docker layer 快取。
 - `post-create.sh` 用 lockfile 雜湊判斷是否需要重跑 bootstrap，減少重建時間。
+- `updateContentCommand` 也會執行同一支腳本，讓 Codespaces prebuild/更新內容時沿用同一初始化流程。
 
 ## 疑難排解
 
