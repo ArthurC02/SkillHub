@@ -39,6 +39,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["admin-model-budgets", "/admin/model-budgets"],
   ["admin-cost-statistics", "/admin/cost-statistics"],
   ["admin-trends", "/admin/trends"],
+  ["admin-exposure", `/admin/exposure?publication=${PUBLISHER}/${PUBLICATION}`],
 ];
 
 export const PHONE_ROUTES = ROUTES;

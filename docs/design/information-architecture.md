@@ -116,6 +116,7 @@
 | `/admin/model-budgets` | `AdminModelBudgets` | 02:OPS-009 | 產品營運／**營運後台** |
 | `/admin/cost-statistics` | `AdminCostStatistics` | 02:OPS-007 | 產品營運／**營運後台** |
 | `/admin/trends` | `AdminTrends` | 02:OPS-008 | 產品營運／**營運後台**〔圖表見 [營運後台](../adr/README.md#營運後台)〕 |
+| `/admin/exposure` | `AdminExposure` | 02:DISC-007 | 產品營運／**營運後台**〔發佈物的曝光審核：待審清單與一筆的精確快照〕 |
 
 > **營運後台是組裝層，不是 Bounded Context**（[營運後台](../adr/README.md#營運後台)）——上表 `/admin/*` 那幾列的「價值流／Bounded Context」欄寫的是它服務的價值流。
 >
@@ -207,7 +208,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/admin` 與 `/admin/*` 九頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
+| 2 | `/admin` 與 `/admin/*` 十頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
 | 3 | `/workspace/downloads` | ✅ |
 | 5 | `/`、`/lab/run`、`/runs/$runId`、`/workspace/skills` | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
@@ -265,6 +266,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
 | `/runs/$id` | `evaluation`、`events` | **這一格曾經寫「無」而且從來沒有更新過。** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（[資料所有權與核心基礎設施](../adr/README.md#資料所有權與核心基礎設施)／[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 | `/admin/skills` | `q` | 你在治理哪一個 Skill（`02:OPS-004`）：一個 UUID 就是那一個，其他字串是名稱片段；清單上「處理這一個」把 `q` 換成那個 UUID，所以處理中的那一個可以連結、撐得過重新整理 |
+| `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
 **其餘十六條路由沒有 `validateSearch`**（26 條路由減去上表的 10 條）（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。

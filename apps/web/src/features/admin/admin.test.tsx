@@ -9,7 +9,10 @@ import { createAppRouter } from "../../app/router";
 import { daysOf, seriesOf, usd } from "./admin.service";
 import {
   ADMIN_AUDIT_LOG,
+  ADMIN_EXPOSURE_CASE,
   ADMIN_SKILLS,
+  PUBLICATION,
+  PUBLISHER,
   SKILL,
   platformResponse,
 } from "../../testing/fixtures/platform";
@@ -133,6 +136,7 @@ const ADMIN_PATHS = [
   "/admin/rosters",
   "/admin/audit-log",
   "/admin/cost-statistics",
+  "/admin/exposure",
 ];
 
 test("OPS-001: the account menu offers 後台 to an operator", async () => {
@@ -672,4 +676,87 @@ test("OPS-008: a member who types the trends address gets the missing page and n
   await mountAt("/admin/trends");
   await waitFor(has("這一頁現在不存在"));
   expect(trendCalls()).toEqual([]);
+});
+
+const EXPOSURE_PUBLICATION = `${PUBLISHER}/${PUBLICATION}`;
+
+test("DISC-007: the queue lists a waiting release, and reviewing it shows the exact snapshot search holds", async () => {
+  stub(true);
+  await mountAt("/admin/exposure");
+  await waitFor(has(EXPOSURE_PUBLICATION));
+  expect(has("曾核准，之後內容有變，需要重新審核。")()).toBe(true);
+
+  await click(
+    Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "審這一筆")!,
+  );
+  await waitFor(has("目前未曝光"));
+  expect(new URLSearchParams(window.location.search).get("publication")).toBe(EXPOSURE_PUBLICATION);
+  expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(true);
+  expect(has(ADMIN_EXPOSURE_CASE.snapshot.task_examples)()).toBe(true);
+  expect(has("pdf、summary")()).toBe(true);
+  expect(has("內容符合規範")()).toBe(true);
+});
+
+test("DISC-007: submitting a review sends this screen's release_id and sequence as expected_sequence", async () => {
+  stub(true);
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核序號：2"));
+  await type("#admin-exposure-review-note", "看過了，符合規範");
+  await click(button("送出核准"));
+  await waitFor(() => calls.some((c) => c.method === "POST"));
+  expect(calls.find((c) => c.method === "POST")).toEqual({
+    method: "POST",
+    url: `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`,
+    body: {
+      release_id: ADMIN_EXPOSURE_CASE.release.release_id,
+      expected_sequence: ADMIN_EXPOSURE_CASE.sequence,
+      decision: "approved",
+      reason: "看過了，符合規範",
+    },
+  });
+});
+
+test("DISC-007: an empty reason blocks the submit button", async () => {
+  stub(true);
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  expect(button("送出核准").disabled).toBe(true);
+  expect(has("「送出核准」要等上面的欄位都填好。")()).toBe(true);
+  await type("#admin-exposure-review-note", "看過了");
+  expect(button("送出核准").disabled).toBe(false);
+});
+
+test("DISC-007: an empty queue is named as a genuine zero, not a blank list", async () => {
+  stub(true, (path) =>
+    path === "/admin/exposure-reviews" ? { body: { publications: [] }, status: 200 } : undefined,
+  );
+  await mountAt("/admin/exposure");
+  await waitFor(has("沒有等待審核的發佈物：0 筆。"));
+  expect(container.querySelectorAll(".download-item")).toHaveLength(0);
+});
+
+test("DISC-007: a stale review (409) shows the server's own words, not a generic failure", async () => {
+  const staleMessage =
+    "這份審核的前提已經過期：有新的 Release，或別人已經審過。重新打開這一筆，看過現在的內容再送出";
+  stub(true, (path, method) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure` && method === "POST"
+      ? { body: { error: staleMessage, reason: "review_stale" }, status: 409 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("審核這一版"));
+  await type("#admin-exposure-review-note", "看過了");
+  await click(button("送出核准"));
+  await waitFor(has(`沒有完成，伺服器說：${staleMessage}`));
+});
+
+test("DISC-007: a release search has not indexed yet says so instead of showing stale text", async () => {
+  stub(true, (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? { body: { ...ADMIN_EXPOSURE_CASE, snapshot: undefined }, status: 200 }
+      : undefined,
+  );
+  await mountAt("/admin/exposure", { publication: EXPOSURE_PUBLICATION });
+  await waitFor(has("尚未進索引"));
+  expect(has(ADMIN_EXPOSURE_CASE.snapshot.enriched_summary)()).toBe(false);
 });

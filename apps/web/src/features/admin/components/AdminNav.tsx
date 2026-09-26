@@ -30,6 +30,9 @@ export function AdminNav() {
       <Link to="/admin/trends" search={{}} className="chip">
         趨勢
       </Link>
+      <Link to="/admin/exposure" search={{}} className="chip">
+        曝光審核
+      </Link>
     </nav>
   );
 }

@@ -69,6 +69,14 @@ export function AdminHome() {
           </p>
           <p className="note">成本、點數、Run 與 operator 動作的每日走勢，只有彙總。</p>
         </li>
+        <li className="download-item">
+          <p>
+            <Link to="/admin/exposure" search={{}}>
+              <strong>曝光審核</strong>
+            </Link>
+          </p>
+          <p className="note">審核發佈物的最新 Release，決定要不要讓它出現在搜尋與目錄裡。</p>
+        </li>
       </ul>
     </AdminPage>
   );

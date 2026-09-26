@@ -70,6 +70,61 @@ export type OperatorAuditEvent = {
   metadata: Record<string, unknown>;
 };
 
+export type ExposureRelease = {
+  release_id: string;
+  version_id: string;
+  version_number: number;
+  content_hash: string;
+  released_at: string;
+};
+
+export type ExposureQueueEntry = {
+  publisher: string;
+  name: string;
+  address: string;
+  release: ExposureRelease;
+  sequence: number;
+  reviewed_again: boolean;
+};
+
+export type ExposureSnapshot = {
+  version_id: string;
+  current: boolean;
+  name: string;
+  summary: string;
+  enriched_summary: string;
+  task_examples: string;
+  tags: unknown;
+  limitations: string;
+  enriched: boolean;
+  digest: string;
+};
+
+export type ExposureDecision = "approved" | "revoked";
+
+export type ExposureReviewRecord = {
+  sequence: number;
+  release_id: string;
+  content_hash: string;
+  snapshot_digest: string;
+  decision: ExposureDecision;
+  reason: string;
+  reviewer_user_id: string;
+  reviewed_at: string;
+};
+
+export type ExposureCase = {
+  publisher: string;
+  name: string;
+  address: string;
+  status: "published" | "delisted";
+  release: ExposureRelease;
+  sequence: number;
+  exposed: boolean;
+  snapshot?: ExposureSnapshot;
+  history: ExposureReviewRecord[];
+};
+
 export type CostStatisticsWindow = {
   kind: string;
   window_start: string;
@@ -199,6 +254,38 @@ export function useOperatorAuditLog() {
       })),
     getNextPageParam: (last) => last.nextOffset,
     enabled: useOperator(),
+  });
+}
+
+export function useExposureQueue() {
+  return useQuery({
+    queryKey: queryKeys.admin.exposureQueue,
+    queryFn: () => apiFetch<{ publications: ExposureQueueEntry[] }>("/admin/exposure-reviews"),
+    enabled: useOperator(),
+  });
+}
+
+export function useExposureCase(publication: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.exposureCase(publication),
+    queryFn: () => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`),
+    enabled: useOperator() && publication !== "",
+  });
+}
+
+export function useReviewExposure(publication: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      release_id: string;
+      expected_sequence: number;
+      decision: ExposureDecision;
+      reason: string;
+    }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureCase(publication) });
+    },
   });
 }
 

@@ -113,5 +113,7 @@ export const queryKeys = {
     costStatistics: ["admin", "cost-statistics"],
     modelBudgets: ["admin", "model-budgets"],
     trend: (path: string, days: number) => ["admin", "trends", path, days],
+    exposureQueue: ["admin", "exposure"],
+    exposureCase: (publication: string) => ["admin", "exposure", publication],
   },
 } as const;

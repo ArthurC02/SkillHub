@@ -283,6 +283,7 @@ const SCANNED_ROUTES = [
   "/admin/model-budgets",
   "/admin/cost-statistics",
   "/admin/trends",
+  "/admin/exposure",
 ];
 
 function stubOperator() {
@@ -324,6 +325,19 @@ test("QA-009: 後台 /admin/skills（查到一個）", async () => {
   });
   await waitFor(has("對「PDF Summariser」的動作"));
   await scan("/admin/skills");
+}, 30000);
+
+test("QA-009: 後台 /admin/exposure（待審清單與一筆案例）", async () => {
+  stubOperator();
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/admin/exposure",
+      search: { publication: `${PUBLISHER}/${PUBLICATION}` },
+    });
+  });
+  await waitFor(has("審核這一版"));
+  await scan("/admin/exposure");
 }, 30000);
 
 test("QA-009: Skill import", async () => {

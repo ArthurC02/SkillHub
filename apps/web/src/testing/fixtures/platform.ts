@@ -3,6 +3,9 @@ import type {
   CostStatisticsWindow,
   CreditLedger,
   DispatchStatus,
+  ExposureCase,
+  ExposureQueueEntry,
+  ExposureRelease,
   OperatorAuditEvent,
   Rosters,
   SkillGovernance,
@@ -963,6 +966,61 @@ export const ADMIN_ROSTERS = {
   beta_allowlist: [],
 } satisfies Rosters;
 
+export const ADMIN_EXPOSURE_RELEASE = {
+  release_id: "55555555-5555-5555-5555-555555555555",
+  version_id: VERSION,
+  version_number: 2,
+  content_hash: "sha256:aa",
+  released_at: "2026-08-10T00:00:00Z",
+} satisfies ExposureRelease;
+
+export const ADMIN_EXPOSURE_QUEUE = {
+  publications: [
+    {
+      publisher: PUBLISHER,
+      name: PUBLICATION,
+      address: `/p/${PUBLISHER}/${PUBLICATION}`,
+      release: ADMIN_EXPOSURE_RELEASE,
+      sequence: 2,
+      reviewed_again: true,
+    },
+  ],
+} satisfies { publications: ExposureQueueEntry[] };
+
+export const ADMIN_EXPOSURE_CASE = {
+  publisher: PUBLISHER,
+  name: PUBLICATION,
+  address: `/p/${PUBLISHER}/${PUBLICATION}`,
+  status: "published",
+  release: ADMIN_EXPOSURE_RELEASE,
+  sequence: 2,
+  exposed: false,
+  snapshot: {
+    version_id: VERSION,
+    current: true,
+    name: "PDF Summariser",
+    summary: "把 PDF 整理成摘要",
+    enriched_summary: "把 PDF 整理成重點摘要，附上引用頁碼。",
+    task_examples: "把這份合約整理成三點摘要",
+    tags: ["pdf", "summary"],
+    limitations: "不處理掃描影像檔",
+    enriched: true,
+    digest: "sha256:snap-bb",
+  },
+  history: [
+    {
+      sequence: 1,
+      release_id: ADMIN_EXPOSURE_RELEASE.release_id,
+      content_hash: "sha256:aa",
+      snapshot_digest: "sha256:snap-aa",
+      decision: "approved",
+      reason: "內容符合規範",
+      reviewer_user_id: "u-1",
+      reviewed_at: "2026-08-11T00:00:00Z",
+    },
+  ],
+} satisfies ExposureCase;
+
 export const ADMIN_AUDIT_LOG = {
   events: [
     {
@@ -1108,6 +1166,9 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path === "/admin/audit-log") return ok(ADMIN_AUDIT_LOG);
   if (path === "/admin/cost-statistics") return ok(ADMIN_COST_STATISTICS);
   if (path === "/admin/model-budgets") return ok(ADMIN_MODEL_BUDGETS);
+  if (path === "/admin/exposure-reviews") return ok(ADMIN_EXPOSURE_QUEUE);
+  if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`)
+    return ok(ADMIN_EXPOSURE_CASE);
   if (path === "/admin/trends/cost") return ok(ADMIN_TREND_COST);
   if (path === "/admin/trends/credits") return ok(ADMIN_TREND_CREDITS);
   if (path === "/admin/trends/runs") return ok(ADMIN_TREND_RUNS);
