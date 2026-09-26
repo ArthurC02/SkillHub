@@ -249,7 +249,7 @@ jobs:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
       - run: go mod verify
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
       - name: Sync the creation service's interpreter (Go-to-Python test)
@@ -441,7 +441,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
       - run: uv sync --frozen
@@ -462,7 +462,7 @@ jobs:
           cache-dependency-path: |
             tools/devctl/go.mod
             apps/platform/go.sum
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: true
       - uses: ./.github/actions/golangci-lint
@@ -495,7 +495,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - name: Shipped dependencies — fixable vulnerabilities, licenses, workflow audit
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: go -C tools/devctl run . dep-audit
