@@ -75,7 +75,7 @@ for key in "${required_env_keys[@]}"; do
   fi
 done
 
-bootstrap_lock=.devcontainer/.bootstrap.lock
+bootstrap_lock=/tmp/skillhub-devcontainer-bootstrap.lock
 lock_wait=0
 until mkdir "${bootstrap_lock}" 2>/dev/null; do
   lock_wait=$((lock_wait + 1))
