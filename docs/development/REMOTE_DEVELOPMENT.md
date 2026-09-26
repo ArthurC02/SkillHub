@@ -95,10 +95,10 @@ task clean-mode
 1. **乾淨測試模式（無外部依賴）**
    - `task clean-mode`
 2. **完整堆疊模式（PostgreSQL + SeaweedFS + 各服務）**
-   - `task env:init`
-   - `task bootstrap`
+   - （容器初始化已自動執行 `env-init` 與 `bootstrap`）
    - `task dev`
    - 另開終端啟動 API / Worker / Sandbox / LLM / Web
+   - 若要手動重建依賴，再執行 `task env:init`、`task bootstrap`
 
 ## Codespaces 最佳化重點
 
