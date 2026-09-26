@@ -92,9 +92,9 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 			},
 			{
 				Name:        EventSessionStarted,
-				When:        "一次造訪開始時",
+				When:        "瀏覽器回傳分析 cookie 後，依 UTC 日期記錄當日造訪起點；並行請求可能重複，不等於人數",
 				Attributes:  []string{},
-				NotRecorded: "除了每一列都帶的那五個欄位以外什麼都沒有：這次造訪本身就是這個事件的全部。session_id 是一個不相干的隨機 cookie 值——不是登入用的 session token，也不是它的雜湊，而且反推不回去",
+				NotRecorded: "沒有專屬欄位，workspace_id 固定為 null；session_id 是獨立的隨機 cookie 值，不是登入憑證或其雜湊。保留作封測阻斷分析的預備資料，目前沒有自動讀取報表，也沒有與回報串接；不參與留存計算，不代表成功完成任務",
 			},
 
 			{
