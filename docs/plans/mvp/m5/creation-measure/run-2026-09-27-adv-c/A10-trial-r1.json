@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將以下文章摘要成 50 字以內，保留文中所有人名與數字：\n\n2024年3月，研究員林雅婷與工程師陳志豪共同發表城市降溫計畫。團隊在臺北、臺中與高雄進行實地測試，發現綠屋頂可使夏季室內平均溫度下降2.1度，並減少37%的冷氣用電。這項計畫獲得年度創新獎，政府補助由800萬元增加至1200萬元。林雅婷表示，團隊將在2025年完成第二階段，新增3.5公里的遮蔭步道，並希望三年內讓參與社區增加至18個。陳志豪指出，後續會公開感測器資料，讓居民檢視改善成效。研究團隊也提醒，測試結果會受建築朝向、樹木種類與降雨量影響，不能直接套用到所有地區。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑文章輸出單一摘要，不含標題、前言、解釋或字數說明。"
+    },
+    {
+      "text": "試跑文章的摘要長度不超過 50 個中文字元（不計輸出外的系統格式）。"
+    },
+    {
+      "text": "摘要逐字包含試跑文章中的人名「林雅婷」與「陳志豪」。"
+    },
+    {
+      "text": "摘要逐字包含試跑文章中的數字表達「2024年」、「37%」、「1200萬元」與「3.5公里」。"
+    },
+    {
+      "text": "摘要保留試跑文章的核心事件：計畫獲獎、經費增加，以及預計在 2025 年完成。"
+    }
+  ],
+  "final_output": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3b996d02-db81-473d-b7e7-f97ea6a701d1",
+    "run_id": "ada2c85d-7081-4e1c-9932-a413e2e2754f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出不是限字摘要，且長度超標，未保留核心事件敘述。不過文字中確實逐字出現指定的兩個人名與四項數字表達。",
+    "criterion_results": [
+      {
+        "criterion_id": "ad1bf34d-5357-4c58-b76b-8f5720670bce",
+        "text": "對試跑文章輸出單一摘要，不含標題、前言、解釋或字數說明。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出為無法完成的說明，而非單一文章摘要，且包含解釋性文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6600af3e-83da-4c9d-b202-f1a9117ac73f",
+        "text": "試跑文章的摘要長度不超過 50 個中文字元（不計輸出外的系統格式）。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出文字明顯超過50個字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4b37b939-a882-430f-b5df-c63c3804767e",
+        "text": "摘要逐字包含試跑文章中的人名「林雅婷」與「陳志豪」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐字包含「林雅婷」與「陳志豪」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "22cb3ff7-16b1-404e-aeeb-300b22d321e8",
+        "text": "摘要逐字包含試跑文章中的數字表達「2024年」、「37%」、「1200萬元」與「3.5公里」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐字包含「2024年」、「37%」、「1200萬元」與「3.5公里」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e50d666f-c389-4b8d-bc21-ee984df18f02",
+        "text": "摘要保留試跑文章的核心事件：計畫獲獎、經費增加，以及預計在 2025 年完成。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未敘述計畫獲獎、經費增加及預計於2025年完成這些核心事件；僅在列舉無法保留的項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "無法同時在50字內完整保留林雅婷、陳志豪、2024年3月、2.1度、37%、800萬元、1200萬元、2025年、3.5公里、18個與核心事件。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3073 input and 1078 output tokens on gpt-5.4-mini; reported cost $0.0103 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

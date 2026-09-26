@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請將以下客訴信整理成分類統計表：\n1. 「商品到貨時外盒破損，裡面的杯子裂開了，請協助退換貨。」\n2. 「我上週訂的耳機今天才收到，配送延誤太久，希望給我說明。」\n3. 「App 登入後一直閃退，更新後還是不能用。」\n4. 「收到的衣服尺寸與訂單不符，請協助更換。」\n5. 「客服回覆太慢，等了兩天才有人回信。」",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段包含多封客訴內容的文字後，輸出一個可讀的分類統計表。"
+    },
+    {
+      "text": "統計表中每個分類都包含件數。"
+    },
+    {
+      "text": "統計表中至少保留每個分類的一句代表性摘要或範例主旨。"
+    },
+    {
+      "text": "輸出只根據提供的內容完成，不要求外部資料。"
+    },
+    {
+      "text": "輸出使用中文。"
+    }
+  ],
+  "final_output": "以下為客訴分類統計表：\n\n| 類別 | 件數 | 代表性摘要或範例主旨 |\n|---|---:|---|\n| 商品破損／外盒破損 | 1 | 商品到貨時外盒破損，杯子裂開，要求退換貨 |\n| 配送延誤 | 1 | 耳機配送延誤太久，希望提供說明 |\n| App 異常／閃退 | 1 | App 登入後一直閃退，更新後仍無法使用 |\n| 尺寸不符／商品規格不符 | 1 | 收到的衣服尺寸與訂單不符，請協助更換 |\n| 客服回覆延遲 | 1 | 客服回覆太慢，等了兩天才有人回信 |\n\n| 合計 | 5 | 5 則客訴，分為 5 類 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cee18d0c-b244-4b8d-bcf1-6b2bd17033ac",
+    "run_id": "884d8b4f-5cd8-4fdf-86e1-7b823a282720",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完成中文客訴分類統計表，列出五個分類、各分類件數及對應代表性摘要，並提供合計。",
+    "criterion_results": [
+      {
+        "criterion_id": "2dd34a9c-70c3-4b1a-8a28-e78860762bf0",
+        "text": "在輸入一段包含多封客訴內容的文字後，輸出一個可讀的分類統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以 Markdown 表格呈現客訴類別、件數與摘要，具可讀性。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 代表性摘要或範例主旨 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9cdf45c5-a2ea-429a-a8cf-987ef94195f5",
+        "text": "統計表中每個分類都包含件數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每個列出的客訴分類皆有件數欄位，且均標示為 1。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 商品破損／外盒破損 | 1 | 商品到貨時外盒破損，杯子裂開，要求退換貨 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 客服回覆延遲 | 1 | 客服回覆太慢，等了兩天才有人回信 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d30ec48a-8dee-46aa-b4cc-6df342cfd87b",
+        "text": "統計表中至少保留每個分類的一句代表性摘要或範例主旨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格為每個分類保留了代表性摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 配送延誤 | 1 | 耳機配送延誤太久，希望提供說明 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| App 異常／閃退 | 1 | App 登入後一直閃退，更新後仍無法使用 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d516efc-668a-458d-8ced-4762ae07eea5",
+        "text": "輸出只根據提供的內容完成，不要求外部資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容僅彙整輸入的五則客訴，未顯示需要或引入外部資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 合計 | 5 | 5 則客訴，分為 5 類 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8012cce1-125b-452a-b7a7-91bb7533d4d1",
+        "text": "輸出使用中文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出內容與表格欄位皆使用中文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為客訴分類統計表：",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19027 input and 592 output tokens on gpt-5.4-mini; reported cost $0.0188 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 3,
+  "sample_input": "請分別回覆以下三筆訂單的運費說明：499 元、750 元、1000 元。\n499 元\n750 元\n1000 元",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段含訂單金額的文字時，輸出只回覆一句運費說明。"
+    },
+    {
+      "text": "金額低於 500 時，輸出明確寫出運費為 80 元。"
+    },
+    {
+      "text": "金額介於 500 到 999 時，輸出明確寫出運費為 40 元。"
+    },
+    {
+      "text": "金額 1000 元以上時，輸出明確寫出免運。"
+    },
+    {
+      "text": "輸出內容要以客戶可直接閱讀的說明句呈現。"
+    }
+  ],
+  "final_output": "499 元以下：運費 80 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c250818f-f14d-421d-9e42-0a9b188f4590",
+    "run_id": "f3ca3913-f09a-481b-a276-44de640b05ce",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆正確說明了 499 元訂單的 80 元運費，且呈現方式可直接閱讀；但未回覆 750 元應收 40 元運費及 1000 元免運的兩筆訂單。",
+    "criterion_results": [
+      {
+        "criterion_id": "ce66b41e-a31d-4652-acff-c56763865ec4",
+        "text": "輸入一段含訂單金額的文字時，輸出只回覆一句運費說明。",
+        "result": "failed",
+        "source": "model",
+        "reason": "使用者要求分別回覆三筆訂單，但最終只提供了 499 元相關的一句說明，未分別回覆全部三筆訂單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "499 元以下：運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ed717c0c-8fc4-4636-87fa-3b6894ed0743",
+        "text": "金額低於 500 時，輸出明確寫出運費為 80 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "針對 499 元的回覆明確寫出運費為 80 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "499 元以下：運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3bf3b233-4e72-4c9c-9c9b-964a5500c8c0",
+        "text": "金額介於 500 到 999 時，輸出明確寫出運費為 40 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有針對 750 元訂單寫出運費為 40 元的說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "499 元以下：運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "741dc5af-0d05-402a-91a5-22022e739463",
+        "text": "金額 1000 元以上時，輸出明確寫出免運。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有針對 1000 元訂單寫出免運說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "499 元以下：運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6dd462e-bb90-4d35-b891-8413232b48d9",
+        "text": "輸出內容要以客戶可直接閱讀的說明句呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "已使用可供客戶直接閱讀的運費說明句呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "499 元以下：運費 80 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3090 input and 504 output tokens on gpt-5.4-mini; reported cost $0.0075 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

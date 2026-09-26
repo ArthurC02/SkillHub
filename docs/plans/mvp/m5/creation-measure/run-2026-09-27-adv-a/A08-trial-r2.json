@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "Please improve the delivery experience. The package arrived late, and the tracking updates were confusing. The support team was helpful, but the issue took too long to resolve.",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段英文客戶回饋時，輸出會先提供繁體中文翻譯。"
+    },
+    {
+      "text": "同一輸出會再提供三點摘要。"
+    },
+    {
+      "text": "三點摘要的數量固定為三點。"
+    },
+    {
+      "text": "內容會以客戶回饋原意為基礎，不加入未提供的新資訊。"
+    },
+    {
+      "text": "回覆語言為繁體中文。"
+    }
+  ],
+  "final_output": "Here’s a more polished version of your feedback:\n\n**The delivery experience needs improvement. My package arrived later than expected, and the tracking updates were confusing. While the support team was helpful, the issue took too long to resolve.**\n\nIf you want, I can also make it:\n- more formal\n- shorter and more direct\n- translated into Traditional Chinese",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3067836e-6f32-4b6a-83fd-d25868432d63",
+    "run_id": "1c76c52a-4c64-47a9-8a99-1c4d988889fc",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此回覆僅將原始英文意見潤飾為英文，未輸出繁體中文翻譯，也未提供三點摘要。改寫本身大致維持原意，但未滿足主要格式與語言要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "44243c1d-e4ee-4afa-86ca-295c85904965",
+        "text": "輸入一段英文客戶回饋時，輸出會先提供繁體中文翻譯。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆未先提供繁體中文翻譯，而是以英文改寫回饋。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Here’s a more polished version of your feedback:",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38f22680-1628-4de2-8b8a-4cc2b0d67a22",
+        "text": "同一輸出會再提供三點摘要。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆沒有提供三點摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "If you want, I can also make it:\n- more formal\n- shorter and more direct\n- translated into Traditional Chinese",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce758224-c99f-468b-b26c-dd58737d55df",
+        "text": "三點摘要的數量固定為三點。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆沒有客戶回饋摘要，因此未提供固定三點的摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**The delivery experience needs improvement. My package arrived later than expected, and the tracking updates were confusing. While the support team was helpful, the issue took too long to resolve.**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2d69be6b-6398-484c-a265-b6e066abddf6",
+        "text": "內容會以客戶回饋原意為基礎，不加入未提供的新資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "英文改寫保留了原回饋的延遲送達、追蹤資訊混亂、客服有幫助及解決耗時等內容，未見新增的實質事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "My package arrived later than expected, and the tracking updates were confusing. While the support team was helpful, the issue took too long to resolve.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7d2294f-7d66-4fe3-8e9d-8d867de98563",
+        "text": "回覆語言為繁體中文。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆內容為英文，並未以繁體中文作答。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "The delivery experience needs improvement.",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2105 input and 534 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

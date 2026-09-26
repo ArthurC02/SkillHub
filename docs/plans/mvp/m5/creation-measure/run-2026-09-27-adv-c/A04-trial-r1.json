@@ -1,0 +1,134 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下本週業績資料，產生寄給全體業務部的電子郵件草稿，以及發布到 Slack 頻道 #sales-announcements 的公告；統計期間為 2026/09/21–2026/09/25：營收 1,250,000 元；成交案件 38 件；新客戶 12 家。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的週期與三項數字，輸出一封繁體中文郵件草稿，包含主旨、收件對象「全體業務部」及三項業績數字。"
+    },
+    {
+      "text": "對同一份試跑輸入，另外輸出一則繁體中文 Slack 公告，明確標示發布頻道「#sales-announcements」並包含相同三項業績數字。"
+    },
+    {
+      "text": "郵件草稿與 Slack 公告都清楚標示統計期間為「2026/09/21–2026/09/25」。"
+    },
+    {
+      "text": "輸出明確說明內容僅為待發送草稿，沒有聲稱已寄信或已發布 Slack。"
+    }
+  ],
+  "final_output": "### 電子郵件草稿（待發送）\n\n- **主旨**：2026/09/21–2026/09/25 業績週報\n- **收件對象**：全體業務部\n- **統計期間**：2026/09/21–2026/09/25\n- **業績摘要**：\n  - 營收：1,250,000 元\n  - 成交案件：38 件\n  - 新客戶：12 家\n\n---\n\n### Slack 公告（待發布）\n\n- **發布頻道**：#sales-announcements\n- **統計期間**：2026/09/21–2026/09/25\n- **業績摘要**：\n  - 營收：1,250,000 元\n  - 成交案件：38 件\n  - 新客戶：12 家",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a1a0700a-6706-4465-8322-b23a71b46c4d",
+    "run_id": "dfadf5fc-ed28-4032-88cd-888a88988387",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件皆由最終輸出直接滿足：提供待發送的繁體中文郵件草稿及待發布的 Slack 公告，含正確期間、對象或頻道，以及三項指定業績數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "84682d8d-6edc-4776-ab44-0c5ba0269879",
+        "text": "對試跑輸入中的週期與三項數字，輸出一封繁體中文郵件草稿，包含主旨、收件對象「全體業務部」及三項業績數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供繁體中文電子郵件草稿，列出主旨、收件對象「全體業務部」、統計期間及營收、成交案件、新客戶三項數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 電子郵件草稿（待發送）\n\n- **主旨**：2026/09/21–2026/09/25 業績週報\n- **收件對象**：全體業務部\n- **統計期間**：2026/09/21–2026/09/25\n- **業績摘要**：\n  - 營收：1,250,000 元\n  - 成交案件：38 件\n  - 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8961b1a8-0183-41ba-8844-d1880d1d3ce6",
+        "text": "對同一份試跑輸入，另外輸出一則繁體中文 Slack 公告，明確標示發布頻道「#sales-announcements」並包含相同三項業績數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出另有繁體中文 Slack 公告，明確標示頻道 #sales-announcements，並包含相同三項業績數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### Slack 公告（待發布）\n\n- **發布頻道**：#sales-announcements\n- **統計期間**：2026/09/21–2026/09/25\n- **業績摘要**：\n  - 營收：1,250,000 元\n  - 成交案件：38 件\n  - 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "779dc847-4f4d-4e6c-b6d1-1b0324dc8f27",
+        "text": "郵件草稿與 Slack 公告都清楚標示統計期間為「2026/09/21–2026/09/25」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "郵件草稿與 Slack 公告各自都標示統計期間為「2026/09/21–2026/09/25」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **統計期間**：2026/09/21–2026/09/25",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "93523e12-2e22-4f24-b4d3-e754bca4bc37",
+        "text": "輸出明確說明內容僅為待發送草稿，沒有聲稱已寄信或已發布 Slack。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將郵件標為「待發送」、Slack 標為「待發布」，未聲稱已寄送或已發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 電子郵件草稿（待發送）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### Slack 公告（待發布）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18837 input and 1233 output tokens on gpt-5.4-mini; reported cost $0.0215 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

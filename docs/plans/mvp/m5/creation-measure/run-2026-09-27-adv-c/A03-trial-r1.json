@@ -1,0 +1,139 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下 2026-09-14 至 2026-09-20 收到的客訴信，依主要客訴主題分類，輸出 Markdown 統計表與 CSV。\n\n日期：2026-09-15\n主旨：包裹延遲一週仍未收到\n內文：我在 9 月 8 日下單，原本承諾三天送達，但現在已經過了一週仍然沒有收到包裹，請協助查詢。\n\n日期：2026-09-17\n主旨：退款尚未入帳\n內文：商品退回並收到退款通知已經十天了，但信用卡帳單仍未看到退款，請確認退款進度。\n\n日期：2026-09-19\n主旨：一直無法登入會員帳號\n內文：我重設密碼後仍然無法登入網站，已嘗試清除瀏覽器快取，請協助處理。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例中的 3 封信，輸出 Markdown 表格且各分類數量加總為 3。"
+    },
+    {
+      "text": "對試跑範例中的信件，將配送延遲相關信件歸為「配送問題」、退款未入帳相關信件歸為「退款問題」、登入失敗相關信件歸為「帳號／登入問題」。"
+    },
+    {
+      "text": "輸出 CSV 內容包含分類與數量欄位，並列出「配送問題」1、「退款問題」1、「帳號／登入問題」1。"
+    },
+    {
+      "text": "輸出不新增試跑範例未提供的信件、日期或客訴內容。"
+    }
+  ],
+  "final_output": "# 客訴分類統計\n\n| 分類 | 數量 |\n|---|---:|\n| 配送問題 | 1 |\n| 退款問題 | 1 |\n| 帳號／登入問題 | 1 |\n\n## 分類判定說明\n\n- **2026-09-15｜主旨：包裹延遲一週仍未收到**  \n  判定為 **配送問題**：內文提到「原本承諾三天送達」但「已經過了一週仍然沒有收到包裹」，主要訴求是配送延遲與未收到包裹。\n\n- **2026-09-17｜主旨：退款尚未入帳**  \n  判定為 **退款問題**：內文指出已收到退款通知「已經十天了」但「信用卡帳單仍未看到退款」，主要訴求是退款入帳進度。\n\n- **2026-09-19｜主旨：一直無法登入會員帳號**  \n  判定為 **帳號／登入問題**：內文提到「重設密碼後仍然無法登入網站」且已嘗試清除快取，主要訴求是登入失敗。\n\n## CSV\n\n```csv\n分類,數量\n配送問題,1\n退款問題,1\n帳號／登入問題,1\n```",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3bf198b7-37c2-4dd7-a045-7064368003cc",
+    "run_id": "d17596d1-52eb-421a-a914-699f6f8e3f61",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此試跑輸出完整提供 Markdown 統計表與 CSV，三封信均被正確分類且各為 1，總計 3。輸出內容僅使用範例中提供的三封信資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "b02ca2f9-9a1f-4cf7-9030-ff0669858d8b",
+        "text": "對試跑範例中的 3 封信，輸出 Markdown 表格且各分類數量加總為 3。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出含有 Markdown 統計表，列出三個分類且數量均為 1，合計為 3。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 分類 | 數量 |\n|---|---:|\n| 配送問題 | 1 |\n| 退款問題 | 1 |\n| 帳號／登入問題 | 1 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd3c3406-fc61-495c-b027-cf263f3f068f",
+        "text": "對試跑範例中的信件，將配送延遲相關信件歸為「配送問題」、退款未入帳相關信件歸為「退款問題」、登入失敗相關信件歸為「帳號／登入問題」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將延遲未收到包裹、退款未入帳與無法登入，分別判定為指定的配送問題、退款問題與帳號／登入問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "判定為 **配送問題**：內文提到「原本承諾三天送達」但「已經過了一週仍然沒有收到包裹」，主要訴求是配送延遲與未收到包裹。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定為 **退款問題**：內文指出已收到退款通知「已經十天了」但「信用卡帳單仍未看到退款」，主要訴求是退款入帳進度。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定為 **帳號／登入問題**：內文提到「重設密碼後仍然無法登入網站」且已嘗試清除快取，主要訴求是登入失敗。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "618c1d5f-4109-43a0-8be9-dd3c681a8a71",
+        "text": "輸出 CSV 內容包含分類與數量欄位，並列出「配送問題」1、「退款問題」1、「帳號／登入問題」1。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含 CSV 區塊，具有「分類,數量」欄位及三個指定分類各 1 筆的統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "分類,數量\n配送問題,1\n退款問題,1\n帳號／登入問題,1",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e3faf9d-e846-4d8b-908f-3f424ad1a1ec",
+        "text": "輸出不新增試跑範例未提供的信件、日期或客訴內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出中的信件判定說明僅涵蓋三封範例信件及其原有日期、主旨與內容描述，未見新增信件、日期或客訴內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026-09-15｜主旨：包裹延遲一週仍未收到**  \n  判定為 **配送問題**：內文提到「原本承諾三天送達」但「已經過了一週仍然沒有收到包裹」，主要訴求是配送延遲與未收到包裹。\n\n- **2026-09-17｜主旨：退款尚未入帳**  \n  判定為 **退款問題**：內文指出已收到退款通知「已經十天了」但「信用卡帳單仍未看到退款」，主要訴求是退款入帳進度。\n\n- **2026-09-19｜主旨：一直無法登入會員帳號**  \n  判定為 **帳號／登入問題**：內文提到「重設密碼後仍然無法登入網站」且已嘗試清除快取，主要訴求是登入失敗。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19835 input and 916 output tokens on gpt-5.4-mini; reported cost $0.0209 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

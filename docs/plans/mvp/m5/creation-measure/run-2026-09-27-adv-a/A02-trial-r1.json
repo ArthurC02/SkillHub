@@ -1,0 +1,133 @@
+{
+  "round": 1,
+  "sample_input": "審核這筆請假申請：王小明申請事假，請假開始日是 2026-10-05，申請日是 2026-10-02，請判定是否通過並說明原因。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一筆事假且申請日比請假開始日少於 3 天時，輸出退回並指出「事假需提前 3 天申請」。"
+    },
+    {
+      "text": "輸入一筆事假且申請日比請假開始日至少早 3 天時，輸出通過。"
+    },
+    {
+      "text": "輸入一筆病假且為當天申請、天數為 1 天時，輸出通過。"
+    },
+    {
+      "text": "輸入一筆病假且天數為 3 天、沒有證明時，輸出退回並指出「病假超過 2 天需附證明」。"
+    },
+    {
+      "text": "輸入一筆病假且天數為 3 天、已附證明時，輸出通過。"
+    },
+    {
+      "text": "輸入不符合規則的申請時，輸出包含退回原因的說明文字。"
+    }
+  ],
+  "final_output": "審核結果：**通過**\n\n原因：這是**事假**，且申請日 **2026-10-02** 距離請假開始日 **2026-10-05** 為 **3 天前**，符合「事假需至少提前 3 天申請」的規則。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2a129482-f68e-431d-acd7-f4bf6a55c1b1",
+    "run_id": "c6c95995-ed0e-4895-95cb-f20a0ab9ce64",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次執行正確審核了申請日提前至少 3 天的事假並輸出通過。其餘事假不足 3 天與各病假情境未在本次輸入中測試，因此無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "deeb5171-d2ee-4fcb-aec1-024e40c76a7f",
+        "text": "輸入一筆事假且申請日比請假開始日少於 3 天時，輸出退回並指出「事假需提前 3 天申請」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入為申請日恰好早 3 天的事假，未涵蓋少於 3 天的事假情境，因此無法判定該退回規則是否會正確輸出。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "5f944adc-86e7-48a4-8c9f-401a9343cc3c",
+        "text": "輸入一筆事假且申請日比請假開始日至少早 3 天時，輸出通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸入為事假，申請日 2026-10-02 比開始日 2026-10-05 早 3 天；回覆判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "審核結果：**通過**\n\n原因：這是**事假**，且申請日 **2026-10-02** 距離請假開始日 **2026-10-05** 為 **3 天前**，符合「事假需至少提前 3 天申請」的規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c4080afd-a52c-47b7-b4ec-67a90a3edf4b",
+        "text": "輸入一筆病假且為當天申請、天數為 1 天時，輸出通過。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "證據中沒有病假、當天申請且請假 1 天的輸入或輸出，無法判定。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "70fc1f3a-a7b1-4675-9110-c8e2c66acbe4",
+        "text": "輸入一筆病假且天數為 3 天、沒有證明時，輸出退回並指出「病假超過 2 天需附證明」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "證據中沒有請假 3 天且未附證明的病假輸入或對應輸出，無法判定。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "321a6636-5168-4a2e-a187-1ea54298b94e",
+        "text": "輸入一筆病假且天數為 3 天、已附證明時，輸出通過。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "證據中沒有請假 3 天且已附證明的病假輸入或對應輸出，無法判定。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "ce4d0110-e7a7-4b4e-97ed-4f58cf6ceb99",
+        "text": "輸入不符合規則的申請時，輸出包含退回原因的說明文字。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次申請符合規則並被通過，未提供任何不符合規則申請時的退回原因輸出，無法判定。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18412 input and 474 output tokens on gpt-5.4-mini; reported cost $0.0177 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

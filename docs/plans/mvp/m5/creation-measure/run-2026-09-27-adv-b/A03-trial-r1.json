@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這批客服客訴信整理成分類統計表：\n1. 「訂單昨天顯示已出貨，但今天查詢仍然沒有物流更新，請協助確認。」\n2. 「收到的商品有破損，外箱也壓壞了，請安排換貨。」\n3. 「網站登入後一直跳出錯誤訊息，無法完成付款。」\n4. 「客服回覆太慢，我昨天留言到現在還沒有收到回信。」\n5. 「商品規格與頁面描述不符，請說明正確內容。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一批客訴信內容，輸出包含按類別彙總的統計表。"
+    },
+    {
+      "text": "統計表中每個類別都對應件數。"
+    },
+    {
+      "text": "輸出會指出採用的分類依據或規則。"
+    },
+    {
+      "text": "若輸入中出現多封信件，輸出會將它們分到對應類別後再統計。"
+    },
+    {
+      "text": "輸出內容是可直接貼到報告中的表格格式。"
+    }
+  ],
+  "final_output": "以下為依主訴內容整理的客訴分類統計表：\n\n| 類別 | 件數 | 代表性例項 |\n|---|---:|---|\n| 出貨／物流更新異常 | 1 | 「已出貨，但今天查詢仍然沒有物流更新」 |\n| 商品破損／換貨需求 | 1 | 「收到的商品有破損，外箱也壓壞了」 |\n| 網站登入／付款異常 | 1 | 「登入後一直跳出錯誤訊息，無法完成付款」 |\n| 客服回覆延遲 | 1 | 「昨天留言到現在還沒有收到回信」 |\n| 商品規格不符 | 1 | 「商品規格與頁面描述不符」 |\n| **合計** | **5** | — |\n\n分類依據以每封信的主要問題為準，每封歸入一個主要類別。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0e33bda6-1fde-475a-b2d5-6e38795c3af9",
+    "run_id": "f410bfea-e8ec-4eb6-a0fc-88a748f76e19",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有五項驗收條件均已滿足：回覆以可直接使用的 Markdown 統計表呈現五封客訴的分類、各類件數與合計，並說明以每封信的主要問題作為單一分類依據。",
+    "criterion_results": [
+      {
+        "criterion_id": "aabc520d-0f33-4f47-bc52-c3ce805196d7",
+        "text": "給定一批客訴信內容，輸出包含按類別彙總的統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供依類別彙總的客訴統計表，列出五個客訴類別及合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 代表性例項 |\n|---|---:|---|\n| 出貨／物流更新異常 | 1 | 「已出貨，但今天查詢仍然沒有物流更新」 |\n| 商品破損／換貨需求 | 1 | 「收到的商品有破損，外箱也壓壞了」 |\n| 網站登入／付款異常 | 1 | 「登入後一直跳出錯誤訊息，無法完成付款」 |\n| 客服回覆延遲 | 1 | 「昨天留言到現在還沒有收到回信」 |\n| 商品規格不符 | 1 | 「商品規格與頁面描述不符」 |\n| **合計** | **5** | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "31230262-04cb-4630-a23c-e779411f0e1f",
+        "text": "統計表中每個類別都對應件數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格含有「件數」欄，且每個類別均標示為 1 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 代表性例項 |\n|---|---:|---|\n| 出貨／物流更新異常 | 1 | 「已出貨，但今天查詢仍然沒有物流更新」 |\n| 商品破損／換貨需求 | 1 | 「收到的商品有破損，外箱也壓壞了」 |\n| 網站登入／付款異常 | 1 | 「登入後一直跳出錯誤訊息，無法完成付款」 |\n| 客服回覆延遲 | 1 | 「昨天留言到現在還沒有收到回信」 |\n| 商品規格不符 | 1 | 「商品規格與頁面描述不符」 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "18c56a7b-aed8-4851-9c4f-5c84c58daa2c",
+        "text": "輸出會指出採用的分類依據或規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明分類是依每封信的主要問題，且每封信只歸入一個主要類別。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "分類依據以每封信的主要問題為準，每封歸入一個主要類別。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4d92589-c309-4f3d-b4e7-f91370c3aa7c",
+        "text": "若輸入中出現多封信件，輸出會將它們分到對應類別後再統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五封信的主訴分別對應至五個不同類別，各自計為 1 件，合計為 5 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 出貨／物流更新異常 | 1 | 「已出貨，但今天查詢仍然沒有物流更新」 |\n| 商品破損／換貨需求 | 1 | 「收到的商品有破損，外箱也壓壞了」 |\n| 網站登入／付款異常 | 1 | 「登入後一直跳出錯誤訊息，無法完成付款」 |\n| 客服回覆延遲 | 1 | 「昨天留言到現在還沒有收到回信」 |\n| 商品規格不符 | 1 | 「商品規格與頁面描述不符」 |\n| **合計** | **5** | — |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8aa281d1-c024-40e2-b7f6-4ed78c2e1bf5",
+        "text": "輸出內容是可直接貼到報告中的表格格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為具欄位標題、資料列與合計列的 Markdown 表格，可直接貼入報告。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 代表性例項 |\n|---|---:|---|\n| 出貨／物流更新異常 | 1 | 「已出貨，但今天查詢仍然沒有物流更新」 |\n| 商品破損／換貨需求 | 1 | 「收到的商品有破損，外箱也壓壞了」 |\n| 網站登入／付款異常 | 1 | 「登入後一直跳出錯誤訊息，無法完成付款」 |\n| 客服回覆延遲 | 1 | 「昨天留言到現在還沒有收到回信」 |\n| 商品規格不符 | 1 | 「商品規格與頁面描述不符」 |\n| **合計** | **5** | — |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19015 input and 536 output tokens on gpt-5.4-mini; reported cost $0.0144 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

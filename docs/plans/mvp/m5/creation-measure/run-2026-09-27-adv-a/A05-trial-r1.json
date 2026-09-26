@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請幫我追蹤這三家對手的官網價格變動並輸出通知摘要：A公司 https://example.com/a-price 目前 1200、B公司 https://example.com/b-price 目前 980、C公司 https://example.com/c-price 目前 1500；前次記錄分別是 A公司 1180、B公司 980、C公司 1520。",
+  "acceptance_criteria": [
+    {
+      "text": "給定三個對手名稱、三個價格頁 URL 與前次價格記錄，輸出會逐一列出每個對手目前價格與前次價格的差異。"
+    },
+    {
+      "text": "當其中一個價格上升或下降時，輸出會明確標示該對手、舊價、新價與來源 URL。"
+    },
+    {
+      "text": "當三個價格都沒有變動時，輸出會明確表示「無價格變動」或同義結果。"
+    },
+    {
+      "text": "輸出會只依據輸入中的三個 URL 與提供的前次記錄，不會要求額外資料。"
+    },
+    {
+      "text": "輸出會保留每個對手各自的名稱與對應價格，不會把三者混在一起。"
+    },
+    {
+      "text": "輸出會以適合通知的簡短摘要呈現，而不是長篇分析。"
+    },
+    {
+      "text": "技能說明會明確限制為公開頁面與靜態可讀內容，不聲稱能處理登入後頁面。"
+    }
+  ],
+  "final_output": "價格變動通知：\n- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price\n- B公司：980，未變動｜https://example.com/b-price",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "23e80032-6503-49da-ba20-7a0b43565d5e",
+    "run_id": "a7d05158-035f-4ce4-83ea-56df2e2aaa2b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次通知正確且簡短地分別呈現三家對手的價格狀態，並為有變動者列出舊價、新價與 URL。三者皆未變動時的行為，以及技能說明是否明確限制公開靜態頁面與排除登入頁面，沒有足夠證據可判斷。",
+    "criterion_results": [
+      {
+        "criterion_id": "7e68efac-0c0b-4da6-9af4-f67eaeaf7e97",
+        "text": "給定三個對手名稱、三個價格頁 URL 與前次價格記錄，輸出會逐一列出每個對手目前價格與前次價格的差異。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知逐一列出 A、B、C 公司；A 與 C 顯示前次至目前的價格，B 標示價格未變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price\n- B公司：980，未變動｜https://example.com/b-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ae6ed684-aabb-4207-acb1-1b6e534a7be4",
+        "text": "當其中一個價格上升或下降時，輸出會明確標示該對手、舊價、新價與來源 URL。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個有變動的對手都列出舊價、新價及其來源 URL。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7c6099c-9002-4181-bf11-5f7e8e1fa11d",
+        "text": "當三個價格都沒有變動時，輸出會明確表示「無價格變動」或同義結果。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入中 A 與 C 的價格有變動，沒有三個價格皆未變動時的輸出可供判斷。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "fb422cc5-61ad-4c59-a3fc-30a5b392d97d",
+        "text": "輸出會只依據輸入中的三個 URL 與提供的前次記錄，不會要求額外資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出直接依三個提供的 URL 與價格記錄產生通知，未要求額外資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "價格變動通知：\n- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price\n- B公司：980，未變動｜https://example.com/b-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f2a74271-27a3-4ef7-ad7e-aad4925bee00",
+        "text": "輸出會保留每個對手各自的名稱與對應價格，不會把三者混在一起。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A、B、C 公司各自以獨立條目呈現，名稱、價格與 URL 的對應關係清楚。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price\n- B公司：980，未變動｜https://example.com/b-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce6ff87a-cbcd-498a-95ab-849ad63827e1",
+        "text": "輸出會以適合通知的簡短摘要呈現，而不是長篇分析。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為標題加三個條列的精簡價格變動通知，沒有長篇分析。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "價格變動通知：\n- A公司：1180 → 1200｜https://example.com/a-price\n- C公司：1520 → 1500｜https://example.com/c-price\n- B公司：980，未變動｜https://example.com/b-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7366d016-0921-445b-af34-21759218f211",
+        "text": "技能說明會明確限制為公開頁面與靜態可讀內容，不聲稱能處理登入後頁面。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "可見的執行輸出與追蹤事件未提供技能完整說明或其對公開、靜態可讀頁面及登入後頁面的限制，因此無法判斷。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18607 input and 506 output tokens on gpt-5.4-mini; reported cost $0.0180 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

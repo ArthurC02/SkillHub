@@ -1,0 +1,140 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇自我介紹。以下是我的資料：我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，現在在一家新創公司擔任產品企劃。我個性細心，喜歡和人合作，也常利用下班時間閱讀和跑步。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一篇可直接使用的自我介紹全文。"
+    },
+    {
+      "text": "內容會根據使用者提供的背景資料撰寫，不會憑空補寫未提供的經歷。"
+    },
+    {
+      "text": "文章語氣自然，適合自我介紹情境。"
+    },
+    {
+      "text": "如果使用者有指定場合或語氣，輸出會配合該要求。"
+    },
+    {
+      "text": "輸出會以完整段落呈現，而不是條列為主。"
+    }
+  ],
+  "final_output": "大家好，我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，目前在一家新創公司擔任產品企劃。我的個性細心，也很喜歡和人合作，平常工作上會盡力把事情做好，並重視團隊之間的溝通與配合。下班後，我常利用時間閱讀和跑步，讓自己保持持續學習與良好的生活節奏。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "50d468c3-525f-4bb5-b630-804255e283b6",
+    "run_id": "af0f7d8f-2b43-490c-8d22-549741152f9a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆提供了一篇自然、連貫且可直接使用的自我介紹，涵蓋使用者所給的背景、特質與興趣，並以完整段落呈現。使用者未提出特定場合或語氣要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "33e9b4c7-c3e2-450b-945c-b21499832ecf",
+        "text": "輸出是一篇可直接使用的自我介紹全文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一段完整、可直接使用的自我介紹。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，目前在一家新創公司擔任產品企劃。我的個性細心，也很喜歡和人合作，平常工作上會盡力把事情做好，並重視團隊之間的溝通與配合。下班後，我常利用時間閱讀和跑步，讓自己保持持續學習與良好的生活節奏。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "28638f2f-df53-49c0-96ab-f5e19707cc9f",
+        "text": "內容會根據使用者提供的背景資料撰寫，不會憑空補寫未提供的經歷。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容採用了姓名、年齡、學歷、職務、個性及興趣等提供資料；其餘描述是對已提供特質與工作情境的概括，未加入具體未提供的經歷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，目前在一家新創公司擔任產品企劃。我的個性細心，也很喜歡和人合作，平常工作上會盡力把事情做好，並重視團隊之間的溝通與配合。下班後，我常利用時間閱讀和跑步，讓自己保持持續學習與良好的生活節奏。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "972983b5-f9cd-42fb-9eb1-e4def957abe5",
+        "text": "文章語氣自然，適合自我介紹情境。",
+        "result": "passed",
+        "source": "model",
+        "reason": "以「大家好」開場，依序介紹背景、特質與日常興趣，語氣自然且符合自我介紹情境。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，目前在一家新創公司擔任產品企劃。我的個性細心，也很喜歡和人合作，平常工作上會盡力把事情做好，並重視團隊之間的溝通與配合。下班後，我常利用時間閱讀和跑步，讓自己保持持續學習與良好的生活節奏。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f1446af-1e14-484d-b329-10337450a4c2",
+        "text": "如果使用者有指定場合或語氣，輸出會配合該要求。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "the judge returned no verifiable evidence for this verdict. The judge's own reasoning was: 使用者未指定場合或特殊語氣，因此此條件沒有額外需配合的要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "4a4b8307-a0e6-4cf3-bcf8-869695b91407",
+        "text": "輸出會以完整段落呈現，而不是條列為主。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以連貫的完整段落呈現，沒有使用條列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫林子晴，今年 24 歲，畢業於國立台灣大學心理學系，目前在一家新創公司擔任產品企劃。我的個性細心，也很喜歡和人合作，平常工作上會盡力把事情做好，並重視團隊之間的溝通與配合。下班後，我常利用時間閱讀和跑步，讓自己保持持續學習與良好的生活節奏。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18610 input and 293 output tokens on gpt-5.4-mini; reported cost $0.0171 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將以下文章摘要成 50 字以內，並保留所有數字與人名：\n「2024 年 3 月，張明在台北發表報告，指出公司營收成長 18%，並預計 2025 年推出新產品。李雅也補充，該計畫將在 6 個月內完成。」",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一段 50 字以內的中文摘要。"
+    },
+    {
+      "text": "摘要保留原文中出現的所有數字。"
+    },
+    {
+      "text": "摘要保留原文中出現的人名。"
+    },
+    {
+      "text": "輸出只包含摘要內容，不附加解釋或分析。"
+    },
+    {
+      "text": "當原文較長時，仍需壓縮到 50 字以內。"
+    }
+  ],
+  "final_output": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e490a752-7de2-48f9-a58b-da9c73ab17a8",
+    "run_id": "f571c850-d41d-43d0-a30c-d38f12f8cd2e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出符合 50 字內中文摘要要求，完整保留所有數字與人名，且未加入額外內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "3cea97eb-1915-4cfc-826f-a6110c3aa709",
+        "text": "輸出是一段 50 字以內的中文摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單段中文摘要，且字數少於 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91b04655-ccbb-4801-bc50-6cb03cdc9eaa",
+        "text": "摘要保留原文中出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文全部數字：2024、3、18%、2025、6。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b1be3927-7918-4fcf-b96c-0d756ff96d6a",
+        "text": "摘要保留原文中出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了張明與李雅兩個人名。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "24f200c6-584e-4952-919a-186a7e422cd5",
+        "text": "輸出只包含摘要內容，不附加解釋或分析。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅包含摘要句，沒有附加解釋或分析。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "347bf1e1-0ec1-477f-b9b4-c7c81d9c9577",
+        "text": "當原文較長時，仍需壓縮到 50 字以內。",
+        "result": "passed",
+        "source": "model",
+        "reason": "此原文已被壓縮為少於 50 字的摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張明台北報告：營收成長18%，預計2025推新產品；李雅稱6個月內完成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2618 input and 513 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

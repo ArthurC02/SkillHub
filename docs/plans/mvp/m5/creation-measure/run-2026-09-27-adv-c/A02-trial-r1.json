@@ -1,0 +1,111 @@
+{
+  "round": 1,
+  "sample_input": "請審核這筆請假申請並依規格輸出結果：假別：事假；申請日期：2026-09-20；請假開始日：2026-09-22；請假天數：1 天；病假證明：不適用。",
+  "acceptance_criteria": [
+    {
+      "text": "對於申請日期為 2026-09-20、假別為事假、請假開始日為 2026-09-23、請假天數為 1 天的資料，輸出「結果：核准」並明確表示已提前 3 天。"
+    },
+    {
+      "text": "對於申請日期為 2026-09-20、假別為事假、請假開始日為 2026-09-22、請假天數為 1 天的資料，輸出「結果：退回」並指出事假未提前至少 3 天。"
+    },
+    {
+      "text": "對於申請日期為 2026-09-20、假別為病假、請假開始日為 2026-09-20、請假天數為 2 天、病假證明為未提供的資料，輸出「結果：核准」。"
+    },
+    {
+      "text": "對於申請日期為 2026-09-20、假別為病假、請假開始日為 2026-09-20、請假天數為 3 天、病假證明為未提供的資料，輸出「結果：退回」並指出超過 2 天但未附證明。"
+    }
+  ],
+  "final_output": "結果：退回；原因：事假未提前至少 3 天，申請日期至請假開始日僅提前 2 天。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "352dcc94-b847-40fc-9d98-d4cdffe246ed",
+    "run_id": "997c2f7d-6e05-4cbf-b8a5-f535fea07b64",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行正確退回事假開始日為 2026-09-22、僅提前 2 天的申請。其餘三種資料情境未在執行證據中出現，無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "4061d15f-3c1f-45d6-bec1-3db8c4d387ce",
+        "text": "對於申請日期為 2026-09-20、假別為事假、請假開始日為 2026-09-23、請假天數為 1 天的資料，輸出「結果：核准」並明確表示已提前 3 天。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "此執行的輸出僅涵蓋開始日為 2026-09-22 的事假申請，未提供開始日為 2026-09-23 時是否核准及是否明示提前 3 天的結果。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "f8a2777a-6795-4356-b1a1-bb28b2f371c2",
+        "text": "對於申請日期為 2026-09-20、假別為事假、請假開始日為 2026-09-22、請假天數為 1 天的資料，輸出「結果：退回」並指出事假未提前至少 3 天。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出判定為退回，且明確指出事假未提前至少 3 天，並說明僅提前 2 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "結果：退回；原因：事假未提前至少 3 天，申請日期至請假開始日僅提前 2 天。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "14789e4b-35a9-48b0-9cb0-99a66b435c0b",
+        "text": "對於申請日期為 2026-09-20、假別為病假、請假開始日為 2026-09-20、請假天數為 2 天、病假證明為未提供的資料，輸出「結果：核准」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有病假 2 天且未提供證明的申請輸出可供判定。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "56c0c820-ec80-4e42-a930-38a839c822b4",
+        "text": "對於申請日期為 2026-09-20、假別為病假、請假開始日為 2026-09-20、請假天數為 3 天、病假證明為未提供的資料，輸出「結果：退回」並指出超過 2 天但未附證明。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有病假 3 天且未提供證明的申請輸出可供判定。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18829 input and 452 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

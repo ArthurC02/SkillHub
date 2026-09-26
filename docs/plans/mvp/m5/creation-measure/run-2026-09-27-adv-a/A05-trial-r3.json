@@ -1,0 +1,174 @@
+{
+  "round": 3,
+  "sample_input": "請幫我追蹤這三家對手的官網價格變動並輸出通知摘要：A公司 https://example.com/a-price 目前 1200、B公司 https://example.com/b-price 目前 980、C公司 https://example.com/c-price 目前 1500；前次記錄分別是 A公司 1200、B公司 980、C公司 1500。再額外輸出一段技能說明摘錄，清楚寫明：只處理可直接讀取的公開頁面與靜態內容，不處理需要登入才能看到的頁面。",
+  "acceptance_criteria": [
+    {
+      "text": "給定三個對手名稱、三個價格頁 URL 與前次價格記錄，輸出會逐一列出每個對手目前價格與前次價格的差異。"
+    },
+    {
+      "text": "當其中一個價格上升或下降時，輸出會明確標示該對手、舊價、新價與來源 URL。"
+    },
+    {
+      "text": "當三個價格都沒有變動時，輸出會明確表示「無價格變動」或同義結果。"
+    },
+    {
+      "text": "輸出會只依據輸入中的三個 URL 與提供的前次記錄，不會要求額外資料。"
+    },
+    {
+      "text": "輸出會保留每個對手各自的名稱與對應價格，不會把三者混在一起。"
+    },
+    {
+      "text": "輸出會以適合通知的簡短摘要呈現，而不是長篇分析。"
+    },
+    {
+      "text": "技能說明會明確限制為公開頁面與靜態可讀內容，不聲稱能處理登入後頁面。"
+    }
+  ],
+  "final_output": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price\n\n技能說明摘錄：只處理可直接讀取的公開頁面與靜態內容，不處理需要登入才能看到的頁面。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bd064eb6-4d6a-481a-85f4-2c6c2e092754",
+    "run_id": "e1f9b9b0-2286-467e-b57c-a512f6b67dc5",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆完整且分別呈現三家公司的目前與前次價格，並清楚表示三者皆無變動，也提供了符合限制的技能說明。由於本次沒有價格變動，無法從此執行驗證變動情境下的舊價、新價與 URL 標示。",
+    "criterion_results": [
+      {
+        "criterion_id": "5e764e9f-02b5-4f40-a953-e92d63a5e668",
+        "text": "給定三個對手名稱、三個價格頁 URL 與前次價格記錄，輸出會逐一列出每個對手目前價格與前次價格的差異。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出 A、B、C 公司，並為每家顯示目前價格、前次價格及差異狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ff377c82-67e8-44e3-9fe6-9db4e72a9a52",
+        "text": "當其中一個價格上升或下降時，輸出會明確標示該對手、舊價、新價與來源 URL。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次三家價格均無變動，沒有價格上升或下降的情境可用來確認是否會在變動時標示舊價、新價與來源 URL。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "5f714059-9753-4035-9ca5-48356fa32543",
+        "text": "當三個價格都沒有變動時，輸出會明確表示「無價格變動」或同義結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三家公司均標示為「無變動」，明確表示本次沒有價格變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7d93397-4a66-4a61-9f90-cf718d20ea80",
+        "text": "輸出會只依據輸入中的三個 URL 與提供的前次記錄，不會要求額外資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接依三個提供的 URL 與前次價格完成比對，未要求補充任何額外資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2c6e234a-3294-4031-931c-5acf5fa8749b",
+        "text": "輸出會保留每個對手各自的名稱與對應價格，不會把三者混在一起。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A、B、C 公司各自以獨立項目呈現，名稱、目前價格、前次價格及 URL 對應清楚。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0f49b68-0954-4644-b8d8-7e413cf34f16",
+        "text": "輸出會以適合通知的簡短摘要呈現，而不是長篇分析。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為三行價格通知加上一段簡短技能說明，屬適合通知的簡短摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A公司｜目前 1200｜前次 1200｜無變動｜https://example.com/a-price\n- B公司｜目前 980｜前次 980｜無變動｜https://example.com/b-price\n- C公司｜目前 1500｜前次 1500｜無變動｜https://example.com/c-price\n\n技能說明摘錄：只處理可直接讀取的公開頁面與靜態內容，不處理需要登入才能看到的頁面。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da20cd08-6733-4ea8-a175-8d8f0a82e228",
+        "text": "技能說明會明確限制為公開頁面與靜態可讀內容，不聲稱能處理登入後頁面。",
+        "result": "passed",
+        "source": "model",
+        "reason": "技能說明明確限定可直接讀取的公開頁面與靜態內容，並明言不處理登入後頁面。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "技能說明摘錄：只處理可直接讀取的公開頁面與靜態內容，不處理需要登入才能看到的頁面。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18821 input and 557 output tokens on gpt-5.4-mini; reported cost $0.0149 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

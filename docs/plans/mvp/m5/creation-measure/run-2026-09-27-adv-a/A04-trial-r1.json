@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請自動整理本週業績數字，週五下午寄給全部門，並同步在 Slack 公告：\n本週業績數字如下：\nA 團隊：120 萬\nB 團隊：95 萬\nC 團隊：108 萬",
+  "acceptance_criteria": [
+    {
+      "text": "產出內容包含「本週業績數字」的摘要。"
+    },
+    {
+      "text": "產出內容會同時包含寄送給全部門與 Slack 公告兩個動作。"
+    },
+    {
+      "text": "描述中明確表達執行頻率是每週五下午。"
+    },
+    {
+      "text": "描述中明確表達這是自動化流程。"
+    },
+    {
+      "text": "內容以繁體中文表達。"
+    }
+  ],
+  "final_output": "以下為可直接使用的內容：\n\n---\n\n## 部門 Email 版本\n**主旨：本週業績摘要（預定週五下午發送）**\n\n各位同仁好，\n\n以下是本週業績數字摘要：\n\n- **A 團隊：120 萬**\n- **B 團隊：95 萬**\n- **C 團隊：108 萬**\n\n感謝大家本週的努力與投入，辛苦了！\n\n---\n\n## Slack 公告版本\n**本週業績數字（週五下午公告）**\n\n本週業績如下：\n- A 團隊：120 萬\n- B 團隊：95 萬\n- C 團隊：108 萬\n\n感謝大家本週的努力與付出！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "665e2bd9-8332-40e8-84b4-947b3fb322e2",
+    "run_id": "8d08f0a3-f447-4ef5-b073-99e89aa52415",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "產出提供了繁體中文的本週業績摘要，以及週五下午的 Email 與 Slack 公告版本。但沒有明確說明寄送對象為全部門，也沒有表達流程會自動化執行。",
+    "criterion_results": [
+      {
+        "criterion_id": "b4158849-c61a-4786-a300-85b7b9a6f575",
+        "text": "產出內容包含「本週業績數字」的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "產出明確提供「本週業績數字」摘要，並列出 A、B、C 團隊的業績。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是本週業績數字摘要：\n\n- **A 團隊：120 萬**\n- **B 團隊：95 萬**\n- **C 團隊：108 萬**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "82f5bbae-95cb-4eae-80ee-479a058a22f8",
+        "text": "產出內容會同時包含寄送給全部門與 Slack 公告兩個動作。",
+        "result": "failed",
+        "source": "model",
+        "reason": "產出有 Email 與 Slack 兩個版本，但未明確表達 Email 會寄送給「全部門」這個動作。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 部門 Email 版本",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## Slack 公告版本",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c2cfe4ea-be7f-4579-93ad-844b784dd785",
+        "text": "描述中明確表達執行頻率是每週五下午。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Email 主旨與 Slack 公告標題皆明確標示週五下午。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：本週業績摘要（預定週五下午發送）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**本週業績數字（週五下午公告）**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "191e9fdf-b04b-4544-a752-b6b78c73d1fe",
+        "text": "描述中明確表達這是自動化流程。",
+        "result": "failed",
+        "source": "model",
+        "reason": "產出僅說明預定發送及公告時間，沒有明確表示這是自動化流程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：本週業績摘要（預定週五下午發送）**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aca95d04-0208-460b-82cc-1e18a0468f38",
+        "text": "內容以繁體中文表達。",
+        "result": "passed",
+        "source": "model",
+        "reason": "整體內容以繁體中文撰寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位同仁好，\n\n以下是本週業績數字摘要：",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18434 input and 917 output tokens on gpt-5.4-mini; reported cost $0.0197 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

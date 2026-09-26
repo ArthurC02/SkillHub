@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我處理以下本週業績數字，並產生可寄給全部門、也可貼到 Slack 的公告：\n1/5 週一：A 產品 120 萬、B 產品 80 萬\n1/6 週二：A 產品 130 萬、B 產品 75 萬\n1/7 週三：A 產品 140 萬、B 產品 90 萬\n1/8 週四：A 產品 110 萬、B 產品 95 萬\n1/9 週五：A 產品 150 萬、B 產品 100 萬",
+  "acceptance_criteria": [
+    {
+      "text": "針對一段包含本週業績數字的輸入，輸出一份可直接寄送的通知內容。"
+    },
+    {
+      "text": "輸出同時包含「寄給全部門」與「Slack 公告」兩個動作的文字。"
+    },
+    {
+      "text": "輸出明確表達排程為「每週五下午」。"
+    },
+    {
+      "text": "輸出以中文撰寫。"
+    },
+    {
+      "text": "輸出不要求使用者再補充額外欄位即可閱讀。"
+    }
+  ],
+  "final_output": "以下是可直接寄給全部門、也可貼到 Slack 的公告內容：\n\n---\n\n**主旨：每週五下午｜本週業績公告**\n\n各位同仁您好，\n\n本週業績如下：\n\n- **1/5 週一**：A 產品 120 萬、B 產品 80 萬  \n- **1/6 週二**：A 產品 130 萬、B 產品 75 萬  \n- **1/7 週三**：A 產品 140 萬、B 產品 90 萬  \n- **1/8 週四**：A 產品 110 萬、B 產品 95 萬  \n- **1/9 週五**：A 產品 150 萬、B 產品 100 萬  \n\n**本週合計：**\n- A 產品：650 萬\n- B 產品：440 萬\n- 總計：1,090 萬\n\n本公告為**每週五下午**固定發布，供全體部門參考。\n\n---\n\n**Slack 版：**\n\n本週業績公告（每週五下午發布）：\n\n1/5 週一：A 產品 120 萬、B 產品 80 萬  \n1/6 週二：A 產品 130 萬、B 產品 75 萬  \n1/7 週三：A 產品 140 萬、B 產品 90 萬  \n1/8 週四：A 產品 110 萬、B 產品 95 萬  \n1/9 週五：A 產品 150 萬、B 產品 100 萬  \n\n本週合計：  \nA 產品 650 萬｜B 產品 440 萬｜總計 1,090 萬\n\n---",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "888db54a-206a-415d-ab26-101cd28fd038",
+    "run_id": "e12c4955-cd2a-4dd4-b6e6-bcc0beef0a17",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行產出完整的中文週業績通知與獨立 Slack 版本，包含正確的每日數據與合計，並明確標示每週五下午固定發布。內容不需要額外補充資訊即可使用。",
+    "criterion_results": [
+      {
+        "criterion_id": "8c004ddf-ea89-4c10-b3db-999671b7f3be",
+        "text": "針對一段包含本週業績數字的輸入，輸出一份可直接寄送的通知內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了包含主旨、稱呼、每日業績與本週合計的完整通知內容，可直接寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：每週五下午｜本週業績公告**\n\n各位同仁您好，\n\n本週業績如下：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**本週合計：**\n- A 產品：650 萬\n- B 產品：440 萬\n- 總計：1,090 萬",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2e51e996-7a08-4d12-bf23-05a25dbc9f1c",
+        "text": "輸出同時包含「寄給全部門」與「Slack 公告」兩個動作的文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確包含可寄給全部門的內容，並另列 Slack 版本。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是可直接寄給全部門、也可貼到 Slack 的公告內容：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**Slack 版：**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "67746394-c503-4db9-bd21-2a840a93b44f",
+        "text": "輸出明確表達排程為「每週五下午」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明公告固定於每週五下午發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本公告為**每週五下午**固定發布，供全體部門參考。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09e16a14-011a-4e92-b21f-57974612e599",
+        "text": "輸出以中文撰寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告內容以中文撰寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位同仁您好，\n\n本週業績如下：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c02cfad4-31a6-4d96-9f69-afba642d401b",
+        "text": "輸出不要求使用者再補充額外欄位即可閱讀。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出已列出每日數字、產品合計、總計及發布安排，未要求使用者補充任何欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1/5 週一：A 產品 120 萬、B 產品 80 萬  \n1/6 週二：A 產品 130 萬、B 產品 75 萬  \n1/7 週三：A 產品 140 萬、B 產品 90 萬  \n1/8 週四：A 產品 110 萬、B 產品 95 萬  \n1/9 週五：A 產品 150 萬、B 產品 100 萬",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2708 input and 1018 output tokens on gpt-5.4-mini; reported cost $0.0096 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

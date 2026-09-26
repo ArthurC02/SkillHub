@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面文章摘要成 50 字以內，並保留所有數字與人名：\n「2023 年，王小明在台北成立了 A 公司，2024 年營收達到 1200 萬元，並與李美華合作推動新計畫。這項計畫在 6 個月內完成，吸引 300 位使用者參與，成為當年最受關注的新創案例之一。」",
+  "acceptance_criteria": [
+    {
+      "text": "輸入是一篇長文時，輸出是一段 50 字以內的摘要。"
+    },
+    {
+      "text": "輸出保留原文中出現的所有數字。"
+    },
+    {
+      "text": "輸出保留原文中出現的人名。"
+    },
+    {
+      "text": "輸出內容是摘要，不是逐字複製原文。"
+    },
+    {
+      "text": "當原文同時包含數字與人名時，兩者都出現在摘要中。"
+    }
+  ],
+  "final_output": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c1f3cb58-2c69-4770-8572-14e36f14efe1",
+    "run_id": "4038d4de-d6f9-497f-9713-94c074b38060",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "摘要保留了全部數字與人名，且確實是摘要而非原文複製；但輸出共 51 字，超出 50 字以內的限制。",
+    "criterion_results": [
+      {
+        "criterion_id": "70237d80-5641-4c26-aa12-55e6b42bcce8",
+        "text": "輸入是一篇長文時，輸出是一段 50 字以內的摘要。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出為摘要，但以字元計（含數字、英文字母與標點）共 51 字，超過 50 字限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "970d6376-2cb0-4585-bd39-da64197b4c49",
+        "text": "輸出保留原文中出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文的數字 2023、2024、1200、6、300 均保留在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5599ef93-7aaf-4a76-9f7b-f90e9565fff6",
+        "text": "輸出保留原文中出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文人名王小明與李美華均出現在輸出中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4c8a2484-23e9-4600-83ad-0bba5c18e6fe",
+        "text": "輸出內容是摘要，不是逐字複製原文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以精簡語句概括成立公司、營收、合作與使用者參與等重點，並非逐字複製原文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b066b284-3462-4b9e-a3c3-81d694518e06",
+        "text": "當原文同時包含數字與人名時，兩者都出現在摘要中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時包含所有原文數字，以及王小明、李美華兩位人名。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023王小明台北創A公司，2024營收1200萬元；與李美華合作，6個月吸引300位使用者，受矚目。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2179 input and 2259 output tokens on gpt-5.4-mini; reported cost $0.0135 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

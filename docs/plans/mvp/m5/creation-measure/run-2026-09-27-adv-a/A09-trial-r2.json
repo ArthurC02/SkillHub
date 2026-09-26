@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請根據下面的出勤紀錄計算每個人的加班時數，並標出超過 46 小時的人：\n\n姓名,日期,上班,下班,休息時間(小時)\n王小明,2026-09-01,09:00,18:30,1\n王小明,2026-09-02,09:00,20:00,1\n李小華,2026-09-01,08:30,17:30,1\n李小華,2026-09-02,08:30,19:00,1\n陳志強,2026-09-01,10:00,19:00,1",
+  "acceptance_criteria": [
+    {
+      "text": "以單次輸入的出勤紀錄，輸出每個人的加班時數。"
+    },
+    {
+      "text": "輸出中明確標示加班時數超過 46 小時的人員。"
+    },
+    {
+      "text": "未超過 46 小時的人員也會被列出，但不會被標示為超過。"
+    },
+    {
+      "text": "結果包含所有出現在輸入中的人員，不遺漏任何一人。"
+    },
+    {
+      "text": "結果只根據輸入資料計算，不加入輸入外的新資訊。"
+    }
+  ],
+  "final_output": "資料不足，無法計算每個人的加班時數。\n\n目前缺少的必要規則：\n- 每日正常工時／加班起算標準\n- 加班計算方式（例如：超過幾小時才算加班、是否扣除休息時間後再計算）\n- 是否以「每日」或「每月」彙總加班\n\n目前只有上班、下班、休息時間，還不能唯一推得「加班時數」與是否超過 46 小時。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ea53429c-5459-4721-ae1c-565ad91df7a0",
+    "run_id": "55c84f16-5b8c-4bc8-a7da-cf8c0d6faf1b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次回覆因認定缺少加班計算基準而拒絕計算，未提供任何人員的加班時數或超過 46 小時標示，故核心輸出要求未達成。回覆沒有捏造輸入外的計算結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "4f19bab2-eb9f-47f1-9562-0c6052b8f076",
+        "text": "以單次輸入的出勤紀錄，輸出每個人的加班時數。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆未輸出任何人的加班時數，而是表示無法計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料不足，無法計算每個人的加班時數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "884892e8-2967-40bd-84d9-7c68d0659d51",
+        "text": "輸出中明確標示加班時數超過 46 小時的人員。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆沒有列出或明確標示任何加班超過 46 小時的人員。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前只有上班、下班、休息時間，還不能唯一推得「加班時數」與是否超過 46 小時。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a29d9269-ce9e-452a-b2a1-f5a4bcd7f2b0",
+        "text": "未超過 46 小時的人員也會被列出，但不會被標示為超過。",
+        "result": "failed",
+        "source": "model",
+        "reason": "未列出未超過 46 小時的人員，也沒有提供其加班時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料不足，無法計算每個人的加班時數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bdc4f80e-3756-4264-be7e-cb7c0d6358b8",
+        "text": "結果包含所有出現在輸入中的人員，不遺漏任何一人。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未列出輸入中的任何人員，因此沒有包含全部人員。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料不足，無法計算每個人的加班時數。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7fece78-9754-47ab-8e57-1e5628adb2c2",
+        "text": "結果只根據輸入資料計算，不加入輸入外的新資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未加入任何輸入外的人員、日期或加班數值；僅依輸入欄位不足而說明無法推得加班時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前只有上班、下班、休息時間，還不能唯一推得「加班時數」與是否超過 46 小時。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 4467 input and 2344 output tokens on gpt-5.4-mini; reported cost $0.0211 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

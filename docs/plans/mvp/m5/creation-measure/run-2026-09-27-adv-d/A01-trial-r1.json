@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請依訂單金額回覆客戶運費，一句話即可。\n訂單金額：500 元",
+  "acceptance_criteria": [
+    {
+      "text": "當試跑輸入的訂單金額為 500 元時，輸出明確表示運費為 40 元。"
+    },
+    {
+      "text": "輸出只有一句繁體中文客服回覆。"
+    },
+    {
+      "text": "輸出不提及 80 元、免運、折扣、離島或其他不適用於該筆訂單的規則。"
+    },
+    {
+      "text": "回覆語氣清楚且禮貌，可直接傳送給客戶。"
+    }
+  ],
+  "final_output": "您好，您的訂單運費為 40 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4be2e572-ddb6-4902-b79d-9043c28cc0a6",
+    "run_id": "0d698d8b-8069-4039-9c57-1914e32bf4dd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆以一句繁體中文禮貌說明訂單運費為 40 元，且未包含不適用的運費規則。",
+    "criterion_results": [
+      {
+        "criterion_id": "c2c0140b-09b4-4e9e-a957-e9010282b2b6",
+        "text": "當試跑輸入的訂單金額為 500 元時，輸出明確表示運費為 40 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示該訂單運費為 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單運費為 40 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8f072594-de71-4b6c-ba5e-03c057dc9602",
+        "text": "輸出只有一句繁體中文客服回覆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一句繁體中文客服回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單運費為 40 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43e56226-7a29-4bf7-abd1-e384ebcdaed4",
+        "text": "輸出不提及 80 元、免運、折扣、離島或其他不適用於該筆訂單的規則。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆僅說明 40 元運費，未提及 80 元、免運、折扣、離島或其他不適用規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單運費為 40 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7929dcd8-fbf1-4639-a55b-bab100bfe7b6",
+        "text": "回覆語氣清楚且禮貌，可直接傳送給客戶。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以「您好」開頭，清楚說明運費，語氣禮貌且可直接傳送給客戶。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單運費為 40 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19085 input and 135 output tokens on gpt-5.4-mini; reported cost $0.0166 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

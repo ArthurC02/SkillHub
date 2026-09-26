@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請計算這個月每個人的加班總時數，並標示加班總時數嚴格超過 46 小時的人員。\n\n姓名,日期,實際工時,應工作時數\nAlice,2026-09-01,20,8\nAlice,2026-09-02,20,8\nAlice,2026-09-03,15,8\nBob,2026-09-01,20,8\nBob,2026-09-02,20,8\nBob,2026-09-03,14,8\nCarol,2026-09-01,30,8\nCarol,2026-09-02,30,8\nDavid,2026-09-01,31,8\nDavid,2026-09-02,31,8\nEve,2026-09-01,32,8\nEve,2026-09-02,32,8",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑資料中的每位人員輸出一列 Markdown 表格，且包含姓名、加班總時數與超過 46 小時的標示。"
+    },
+    {
+      "text": "對 Alice，將 20−8、20−8、15−8 相加，輸出加班總時數 31 小時，並標示為未超過 46 小時。"
+    },
+    {
+      "text": "對 Bob，將 20−8、20−8、14−8 相加，輸出加班總時數 30 小時，並標示為未超過 46 小時。"
+    },
+    {
+      "text": "對 Carol，將 30−8、30−8 相加，輸出加班總時數 44 小時，並標示為未超過 46 小時。"
+    },
+    {
+      "text": "對 David，將 31−8、31−8 相加，輸出加班總時數 46 小時，且不得標示為超過 46 小時。"
+    },
+    {
+      "text": "對 Eve，將 32−8、32−8 相加，輸出加班總時數 48 小時，並標示為超過 46 小時。"
+    }
+  ],
+  "final_output": "| 姓名 | 加班總時數（小時） | 是否超過 46 小時 |\n|---|---:|---|\n| Alice | 31 | 未超過 46 小時 |\n| Bob | 30 | 未超過 46 小時 |\n| Carol | 44 | 未超過 46 小時 |\n| David | 46 | 未超過 46 小時 |\n| Eve | 48 | 超過 46 小時 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30adda9c-e3c2-4a16-9f48-cb5917c0e5f4",
+    "run_id": "afe30659-2881-4067-b2e8-cdc9c711bc65",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆正確列出五位人員的加班總時數，並依嚴格大於 46 小時的規則正確標示。",
+    "criterion_results": [
+      {
+        "criterion_id": "98dedd66-b7ae-44fe-be15-1c9350da4015",
+        "text": "對試跑資料中的每位人員輸出一列 Markdown 表格，且包含姓名、加班總時數與超過 46 小時的標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為 Markdown 表格，包含每位人員各一列，以及姓名、加班總時數與是否超過 46 小時欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 姓名 | 加班總時數（小時） | 是否超過 46 小時 |\n|---|---:|---|\n| Alice | 31 | 未超過 46 小時 |\n| Bob | 30 | 未超過 46 小時 |\n| Carol | 44 | 未超過 46 小時 |\n| David | 46 | 未超過 46 小時 |\n| Eve | 48 | 超過 46 小時 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99590744-8553-4ccc-8ff8-b2021de2d91d",
+        "text": "對 Alice，將 20−8、20−8、15−8 相加，輸出加班總時數 31 小時，並標示為未超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Alice 輸出加班總時數為 31 小時，且標示未超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Alice | 31 | 未超過 46 小時 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "325b6c7d-e663-4e79-abeb-bc28b48cc1c3",
+        "text": "對 Bob，將 20−8、20−8、14−8 相加，輸出加班總時數 30 小時，並標示為未超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Bob 輸出加班總時數為 30 小時，且標示未超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Bob | 30 | 未超過 46 小時 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4d6a306-2f28-4368-a01a-5eb231273c43",
+        "text": "對 Carol，將 30−8、30−8 相加，輸出加班總時數 44 小時，並標示為未超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Carol 輸出加班總時數為 44 小時，且標示未超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Carol | 44 | 未超過 46 小時 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "008ecb9a-5feb-4888-b3e1-c0d2a781f99d",
+        "text": "對 David，將 31−8、31−8 相加，輸出加班總時數 46 小時，且不得標示為超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "David 輸出加班總時數為 46 小時，並標示未超過 46 小時，符合嚴格超過 46 小時的門檻。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| David | 46 | 未超過 46 小時 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "17a74488-746c-485c-8407-d96caec908bf",
+        "text": "對 Eve，將 32−8、32−8 相加，輸出加班總時數 48 小時，並標示為超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Eve 輸出加班總時數為 48 小時，且標示超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Eve | 48 | 超過 46 小時 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3233 input and 443 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇適合求職使用的自我介紹，採繁體中文、專業親切語氣，約 150 字。姓名：林怡君；目前職位：軟體公司專案管理師；工作經驗：三年專案管理經驗；個人優勢：擅長跨部門溝通與協作、做事細心；求職目標：希望投入永續相關工作。",
+  "acceptance_criteria": [
+    {
+      "text": "對下方試跑輸入，輸出一篇繁體中文自我介紹，而不是分析、提問或寫作說明。"
+    },
+    {
+      "text": "輸出內容包含林怡君的姓名、目前職位、三年專案管理經驗、跨部門協作能力，以及希望投入永續相關工作的目標。"
+    },
+    {
+      "text": "輸出不加入試跑資料未提供的公司名稱、學歷、證照、具體業績數字或其他個人事實。"
+    },
+    {
+      "text": "輸出語氣專業親切，且篇幅約為 150 字，適合在求職場合直接使用。"
+    }
+  ],
+  "final_output": "您好，我是林怡君，目前任職於軟體公司擔任專案管理師，已有三年專案管理經驗。工作上我擅長跨部門溝通與協作，也重視細節與執行品質，能穩定推動專案進度。未來希望將這些經驗運用在永續相關工作中，持續為組織創造更長遠的價值。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1076721e-469f-4333-aa78-37e540fd4359",
+    "run_id": "f5276d4c-fd84-403e-8cce-16ece778bc3b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出是一篇可直接使用的繁體中文求職自我介紹，完整納入提供的身分、經驗、能力與永續職涯目標，且未加入未提供的具體個人資料。語氣專業親切、篇幅適中。",
+    "criterion_results": [
+      {
+        "criterion_id": "49b0e6ce-f9ae-4738-8c83-3787fbcffa76",
+        "text": "對下方試跑輸入，輸出一篇繁體中文自我介紹，而不是分析、提問或寫作說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為一篇繁體中文的連貫自我介紹，未包含分析、提問或寫作說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，目前任職於軟體公司擔任專案管理師，已有三年專案管理經驗。工作上我擅長跨部門溝通與協作，也重視細節與執行品質，能穩定推動專案進度。未來希望將這些經驗運用在永續相關工作中，持續為組織創造更長遠的價值。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8ec9a1b6-498a-4b80-9ecb-2039a0496425",
+        "text": "輸出內容包含林怡君的姓名、目前職位、三年專案管理經驗、跨部門協作能力，以及希望投入永續相關工作的目標。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確包含姓名、軟體公司專案管理師職位、三年專案管理經驗、跨部門溝通與協作能力，以及投入永續相關工作的目標。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，目前任職於軟體公司擔任專案管理師，已有三年專案管理經驗。工作上我擅長跨部門溝通與協作，也重視細節與執行品質，能穩定推動專案進度。未來希望將這些經驗運用在永續相關工作中，持續為組織創造更長遠的價值。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4aad398a-e586-4903-a8c1-a84e7095dad3",
+        "text": "輸出不加入試跑資料未提供的公司名稱、學歷、證照、具體業績數字或其他個人事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未提及未提供的公司名稱、學歷、證照、具體業績數字或其他可識別的個人事實；「重視細節與執行品質」及專案推動描述屬於既有優勢的概括表述。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "工作上我擅長跨部門溝通與協作，也重視細節與執行品質，能穩定推動專案進度。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e6de03b5-c0e5-4afa-ae1d-da8f0bd4cb70",
+        "text": "輸出語氣專業親切，且篇幅約為 150 字，適合在求職場合直接使用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文字採專業而親切的求職自我介紹語氣，並以簡潔篇幅涵蓋背景、能力與職涯目標，適合直接於求職場合使用；全文約百餘字，符合「約150字」的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，目前任職於軟體公司擔任專案管理師，已有三年專案管理經驗。工作上我擅長跨部門溝通與協作，也重視細節與執行品質，能穩定推動專案進度。未來希望將這些經驗運用在永續相關工作中，持續為組織創造更長遠的價值。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18941 input and 677 output tokens on gpt-5.4-mini; reported cost $0.0191 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

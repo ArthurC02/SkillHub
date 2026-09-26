@@ -1,0 +1,92 @@
+{
+  "interactive": [
+    {
+      "id": "A01",
+      "kind": "text",
+      "turns": 6,
+      "model_calls": 5,
+      "tool_calls": 3,
+      "auto_confirms": 1,
+      "clarifications": 0,
+      "cost_usd": 0.11433278,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        4.633411389,
+        4.460103947,
+        7.081375672,
+        15.814770891,
+        4.813154982
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 4,
+      "test_case_id": true,
+      "run_status": "succeeded",
+      "eval_status": "completed",
+      "overall": "met",
+      "met": true,
+      "rounds": 1,
+      "met_round": 1,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    },
+    {
+      "id": "A02",
+      "kind": "text",
+      "turns": 8,
+      "model_calls": 6,
+      "tool_calls": 3,
+      "auto_confirms": 1,
+      "clarifications": 1,
+      "cost_usd": 0.14893080000000003,
+      "usage_unknown": false,
+      "seconds_per_call": [
+        3.177940208,
+        4.11389663,
+        4.244291792,
+        13.177575401,
+        25.199336333,
+        7.570415343
+      ],
+      "p50_seconds": 0,
+      "p95_seconds": 0,
+      "final_state": "candidate_ready",
+      "draft": true,
+      "blocked": false,
+      "criteria_count": 7,
+      "test_case_id": true,
+      "run_status": "succeeded",
+      "eval_status": "completed",
+      "overall": "met",
+      "met": true,
+      "rounds": 1,
+      "met_round": 1,
+      "met_by_owner": null,
+      "kept_by_owner": null
+    }
+  ],
+  "single_shot": null,
+  "thresholds": {
+    "format_pass_min": 14,
+    "met_min": 9,
+    "kept_min": 12,
+    "cost_median_max": 0.5,
+    "p50_seconds_max": 60,
+    "p95_seconds_max": 90
+  },
+  "summary": {
+    "format_pass": 0,
+    "cost_median": 0,
+    "p50_seconds": 0,
+    "p95_seconds": 0,
+    "met_first_count": 0,
+    "met_count": 0,
+    "met_on_changed_criteria": 0,
+    "met_denominator": 0,
+    "diagram_met_count": 0,
+    "diagram_met_denominator": 0
+  }
+}

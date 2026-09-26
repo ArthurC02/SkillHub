@@ -1,0 +1,133 @@
+{
+  "round": 1,
+  "sample_input": "請幫我追蹤以下三家官網的價格變動，並在有變動時通知我：\nhttps://shop-alpha.example.com/pricing\nhttps://shop-beta.example.com/plans\nhttps://shop-gamma.example.com/products\n\n要追蹤的價格項目：\n- 單一方案月費\n- 年費\n- 首頁顯示的標價",
+  "acceptance_criteria": [
+    {
+      "text": "輸入三個官網網址與要追蹤的價格項目時，輸出會列出三家網站各自的價格資訊。"
+    },
+    {
+      "text": "若其中一家網站的價格與上次結果不同，輸出會明確標示「有變動」。"
+    },
+    {
+      "text": "若三家網站的價格都相同，輸出會明確標示「無變動」。"
+    },
+    {
+      "text": "輸出會以可直接用於通知的摘要格式呈現。"
+    },
+    {
+      "text": "若網站內容可公開讀取，Skill 會以該頁面內容為比對依據。"
+    }
+  ],
+  "final_output": "目前無法完成這三個頁面的價格比對：在此環境中，`shop-alpha.example.com`、`shop-beta.example.com`、`shop-gamma.example.com` 的公開頁面都無法驗證可讀取，因此無法取得現價，也無法判定是否有變動。\n\n**追蹤項目（上一筆價格：not given）**\n- **shop-alpha.example.com/pricing**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given\n- **shop-beta.example.com/plans**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given\n- **shop-gamma.example.com/products**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given\n\n若你願意，我可以在你提供可公開存取的頁面內容後，幫你整理成可直接發通知的「變動前 / 變動後」摘要。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d5a223ed-be8f-4c9b-b34c-872de6b6edc2",
+    "run_id": "560568f4-2fad-4b88-973a-71a967a0f2e4",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "本次未取得任何一家網站的實際價格，也未完成價格變動比對或產出通知摘要。由於頁面內容無法讀取，兩項針對特定比較情境與公開內容比對的條件無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "0edab2ad-ca97-4bf1-b8ff-db00adbf19f4",
+        "text": "輸入三個官網網址與要追蹤的價格項目時，輸出會列出三家網站各自的價格資訊。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出雖列出三個網站與追蹤欄位，但所有價格值皆為「not given」，未提供各網站各自的價格資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **shop-alpha.example.com/pricing**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given\n- **shop-beta.example.com/plans**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given\n- **shop-gamma.example.com/products**\n  - 單一方案月費：not given\n  - 年費：not given\n  - 首頁顯示的標價：not given",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "22613531-71dd-4008-8655-439dcae37702",
+        "text": "若其中一家網站的價格與上次結果不同，輸出會明確標示「有變動」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有任何網站的本次與上次價格可供比較，因此無法判定在價格不同時是否會明確標示「有變動」。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "f78f7821-8725-4777-9c5a-1894f91ba517",
+        "text": "若三家網站的價格都相同，輸出會明確標示「無變動」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有取得三家網站的價格或比較結果，因此無法判定在三家價格都相同時是否會明確標示「無變動」。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "b21e0165-dcfe-4c69-8212-12c1af21423a",
+        "text": "輸出會以可直接用於通知的摘要格式呈現。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出明確表示無法完成價格比對，且僅表示未來可協助整理通知摘要；本次未產出可直接用於通知的變動摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法完成這三個頁面的價格比對：在此環境中，`shop-alpha.example.com`、`shop-beta.example.com`、`shop-gamma.example.com` 的公開頁面都無法驗證可讀取，因此無法取得現價，也無法判定是否有變動。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "若你願意，我可以在你提供可公開存取的頁面內容後，幫你整理成可直接發通知的「變動前 / 變動後」摘要。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf84324a-2b04-4d78-a478-e4276437c08e",
+        "text": "若網站內容可公開讀取，Skill 會以該頁面內容為比對依據。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "三個頁面的讀取請求均未成功，沒有頁面內容可確認是否公開可讀，也沒有可驗證的頁面內容比對結果。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19350 input and 1855 output tokens on gpt-5.4-mini; reported cost $0.0210 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

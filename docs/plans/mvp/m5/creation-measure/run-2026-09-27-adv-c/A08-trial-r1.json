@@ -1,0 +1,112 @@
+{
+  "round": 1,
+  "sample_input": "請將以下英文客戶回饋翻成繁體中文，再摘要成三點：\n\nThe delivery was faster than I expected, and the product quality is excellent. However, the customer service team took two days to reply to my question.",
+  "acceptance_criteria": [
+    {
+      "text": "對下方試跑輸入，輸出包含完整的繁體中文翻譯，且涵蓋原文提到的送貨速度、產品品質與客服回覆三項內容。"
+    },
+    {
+      "text": "對下方試跑輸入，翻譯後另列出恰好三個繁體中文摘要項目。"
+    },
+    {
+      "text": "對下方試跑輸入，三個摘要項目分別涵蓋送貨速度、產品品質與客服回覆，且不加入原文未提及的資訊。"
+    }
+  ],
+  "final_output": "配送速度比我預期的還快，而且產品品質非常優秀。不過，客服團隊花了兩天才回覆我的問題。\n\n摘要\n1. 配送速度比預期更快。\n2. 產品品質非常優秀。\n3. 客服團隊回覆問題花了兩天。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "479cf9a8-5b43-4e8a-8485-92cddf2e5b2c",
+    "run_id": "2a0d17fa-144b-4037-ace0-7c6cbe6063d1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完成了忠實的繁體中文翻譯，並在其後提供恰好三點摘要。摘要逐一涵蓋原文的配送、品質與客服回覆內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "176aa75d-4965-438a-aebc-82eb23fbb1f1",
+        "text": "對下方試跑輸入，輸出包含完整的繁體中文翻譯，且涵蓋原文提到的送貨速度、產品品質與客服回覆三項內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供完整的繁體中文翻譯，涵蓋配送速度、產品品質，以及客服兩天後回覆問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "配送速度比我預期的還快，而且產品品質非常優秀。不過，客服團隊花了兩天才回覆我的問題。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eeb578a5-5465-4003-9edd-8d9e48090647",
+        "text": "對下方試跑輸入，翻譯後另列出恰好三個繁體中文摘要項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯後列有「摘要」並包含恰好三個繁體中文項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "摘要\n1. 配送速度比預期更快。\n2. 產品品質非常優秀。\n3. 客服團隊回覆問題花了兩天。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "85f2afa9-3715-4930-9e43-557a275bfc2f",
+        "text": "對下方試跑輸入，三個摘要項目分別涵蓋送貨速度、產品品質與客服回覆，且不加入原文未提及的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個摘要分別對應配送速度、產品品質與客服回覆時間，內容未增加原文未提及的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 配送速度比預期更快。\n2. 產品品質非常優秀。\n3. 客服團隊回覆問題花了兩天。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18412 input and 305 output tokens on gpt-5.4-mini; reported cost $0.0170 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
