@@ -87,7 +87,8 @@
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
         "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-        "python.testing.pytestEnabled": true
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false
       },
       "extensions": [
         "golang.go",

@@ -55,6 +55,23 @@ if [ "${skip_bootstrap}" = "1" ]; then
   exit 0
 fi
 
+bootstrap_lock=.devcontainer/.bootstrap.lock
+lock_wait=0
+until mkdir "${bootstrap_lock}" 2>/dev/null; do
+  lock_wait=$((lock_wait + 1))
+  if [ "${lock_wait}" -ge 120 ]; then
+    echo "timed out waiting for bootstrap lock" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+cleanup_lock() {
+  rm -f "${stamp_tmp:-}"
+  rm -rf "${bootstrap_lock}"
+}
+trap cleanup_lock EXIT INT TERM
+
 bootstrap_hash="$(sha256sum "${bootstrap_inputs[@]}" | sha256sum | awk '{print $1}')"
 bootstrap_stamp=.devcontainer/.bootstrap.stamp
 
@@ -65,7 +82,6 @@ fi
 
 go -C tools/devctl run . bootstrap
 stamp_tmp="${bootstrap_stamp}.tmp"
-trap 'rm -f "${stamp_tmp}"' EXIT INT TERM
 printf "%s" "${bootstrap_hash}" >"${stamp_tmp}"
 mv "${stamp_tmp}" "${bootstrap_stamp}"
-trap - EXIT INT TERM
+trap - INT TERM

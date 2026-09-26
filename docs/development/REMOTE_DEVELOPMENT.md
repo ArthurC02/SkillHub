@@ -67,11 +67,14 @@ task clean-mode
 
 ## 偵錯與埠轉發
 
-預設會轉發常用埠：
+預設會自動轉發：
 
 - `5173`：Web dev server
 - `8080`：Platform API
 - `4000`：LiteLLM gateway
+
+下列埠已在 `portsAttributes` 預先命名，需要時可手動轉發：
+
 - `5432`：PostgreSQL
 - `8333`：SeaweedFS S3 API
 
