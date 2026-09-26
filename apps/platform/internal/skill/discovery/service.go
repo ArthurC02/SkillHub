@@ -41,7 +41,8 @@ type Service struct {
 
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 
-	LLM Model
+	LLM            Model
+	IntentAnalyzer IntentAnalyzer
 
 	Budgets *modelbudget.Service
 
@@ -128,6 +129,7 @@ type SourceFacts struct {
 }
 
 type searchOutcome struct {
+	Interpretation SearchInterpretation
 	Hits           []searchResult
 	DegradedReason string
 	FilteredOut    bool
@@ -138,6 +140,20 @@ type searchOutcome struct {
 }
 
 func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters, silent bool) (searchOutcome, error) {
+	interpretation := s.interpret(ctx, query, filters, silent)
+	return s.searchInterpreted(ctx, query, limit, interpretation, silent)
+}
+
+func (s *Service) searchInterpreted(ctx context.Context, original string, limit int32, interpretation SearchInterpretation, silent bool) (searchOutcome, error) {
+	filters, err := parseFilterValues(interpretation.Filters)
+	if err != nil {
+		return searchOutcome{}, err
+	}
+	query := interpretation.retrievalQuery(original)
+	semanticQuery := original
+	if interpretation.Status == "corrected" {
+		semanticQuery = query
+	}
 	queries := gen.New(s.Pool)
 
 	var (
@@ -145,6 +161,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 
 		embedding *pgvector.Vector
 	)
+	out.Interpretation = interpretation
 
 	searchStart := time.Now()
 	searchMode := "hybrid"
@@ -154,10 +171,10 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 
 	if s.LLM == nil {
 		out.DegradedReason = "embedding service not configured; lexical search only"
-	} else if vec, err := s.embedQuery(ctx, query); err != nil {
+	} else if vec, err := s.embedQuery(ctx, semanticQuery); err != nil {
 		slog.Warn("query embedding failed, falling back to FTS", "error", err)
 		out.DegradedReason = "embedding unavailable; lexical search only"
-	} else if hybridHits, total, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters, MaxCosineDistance); err != nil {
+	} else if hybridHits, total, err := s.hybridSearchWithKeywords(ctx, queries, semanticQuery, query, vec, limit+1, filters, MaxCosineDistance); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
 		out.DegradedReason = "hybrid search unavailable; lexical search only"
 	} else {
@@ -194,7 +211,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 		)
 
 		if embedding != nil {
-			unfiltered, _, err = s.hybridSearch(ctx, queries, query, embedding, limit, searchFilters{}, MaxCosineDistance)
+			unfiltered, _, err = s.hybridSearchWithKeywords(ctx, queries, semanticQuery, query, embedding, limit, searchFilters{}, MaxCosineDistance)
 		} else {
 			unfiltered, _, err = s.ftsOnlySearch(ctx, queries, query, limit, searchFilters{})
 		}
@@ -206,13 +223,17 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	}
 
 	var reasons []MatchReason
-	if len(out.Hits) > 0 && s.LLM != nil && !silent {
-		reasons = s.matchReasons(ctx, query, out.Hits)
+	reasonQuery := original
+	if interpretation.Status == "corrected" {
+		reasonQuery = query
 	}
-	applyMatchReasons(out.Hits, query, reasons)
+	if len(out.Hits) > 0 && s.LLM != nil && !silent {
+		reasons = s.matchReasons(ctx, reasonQuery, out.Hits)
+	}
+	applyMatchReasons(out.Hits, reasonQuery, reasons)
 
 	if !silent {
-		s.Analytics.SearchPerformed(ctx, query, len(out.Hits), filters.active())
+		s.Analytics.SearchPerformed(ctx, original, len(out.Hits), filters.active())
 	}
 	return out, nil
 }
@@ -251,13 +272,17 @@ const (
 )
 
 func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
+	return s.hybridSearchWithKeywords(ctx, queries, query, query, embedding, limit, filters, maxDistance)
+}
+
+func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Queries, query, keywords string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
 	catalogs, err := s.catalogWorkspaceIDs(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	candidates, err := queries.ListHybridSearchCandidates(ctx, gen.ListHybridSearchCandidatesParams{
 		CatalogWorkspaceIds: catalogs,
-		Query:               query,
+		Query:               keywords,
 		BigramQuery:         lexicalQuery(query, "&"),
 		QueryEmbedding:      embedding,
 		VectorCandidates:    vectorCandidates,

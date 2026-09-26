@@ -9,6 +9,25 @@ import (
 
 type modelOverHTTP struct{ client *llmclient.Client }
 
+func IntentAnalyzerOrNone(c *llmclient.Client) IntentAnalyzer {
+	if c == nil {
+		return nil
+	}
+	return modelOverHTTP{client: c}
+}
+
+func (a modelOverHTTP) AnalyzeIntent(ctx context.Context, query string, within time.Duration) (*IntentAnalysis, error) {
+	resp, err := a.client.AnalyzeIntent(ctx, query, within.Seconds())
+	if err != nil {
+		return nil, err
+	}
+	return &IntentAnalysis{
+		Valid:          resp.Valid,
+		Interpretation: SearchInterpretation{Intent: resp.Intent, Keywords: resp.Keywords, Filters: resp.Filters, Model: resp.Model, PromptVersion: resp.PromptVersion},
+		Usage:          usageFromWire(resp.Usage),
+	}, nil
+}
+
 // A nil *Client inside a non-nil interface passes every `LLM != nil` guard
 // and panics on the first call.
 func ModelOrNone(c *llmclient.Client) Model {

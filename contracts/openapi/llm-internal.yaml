@@ -75,6 +75,43 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /v1/analyze-intent:
+    post:
+      operationId: analyzeSearchIntent
+      summary: Extract explicit search intent and propose retrieval terms (DISC-005)
+      description: |
+        A single structured model call through LiteLLM, without tools or
+        retries. Query text is untrusted data, never instructions. Go validates
+        the proposal and owns filter policy and fallback. Failure does not
+        authorize bypassing vector retrieval. Usage is returned even when the
+        model response cannot be used.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeSearchIntentRequest'
+      responses:
+        "200":
+          description: Model proposal or an invalid-output result with usage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzeSearchIntentResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "422":
+          description: Request failed validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        "502":
+          description: Model gateway call failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        "503":
+          $ref: '#/components/responses/Unavailable'
   /v1/enrich-skill:
     post:
       operationId: enrichSkill
@@ -790,6 +827,90 @@ components:
           type: string
         summary:
           type: string
+    AnalyzeSearchIntentRequest:
+      type: object
+      additionalProperties: false
+      required: [query, timeout_seconds]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: Caller deadline, capped by the service's own timeout.
+    AnalyzeSearchIntentResponse:
+      type: object
+      additionalProperties: false
+      required: [valid, model, prompt_version]
+      properties:
+        valid:
+          type: boolean
+          description: False when the model output failed structured validation.
+        intent:
+          $ref: '#/components/schemas/SearchIntent'
+        keywords:
+          $ref: '#/components/schemas/SearchKeywords'
+        filters:
+          $ref: '#/components/schemas/SearchFilters'
+        model:
+          type: string
+        prompt_version:
+          type: string
+        usage:
+          $ref: '#/components/schemas/GatewayUsage'
+    SearchIntent:
+      type: object
+      additionalProperties: false
+      required: [input, output, tools, data, environment]
+      properties:
+        input:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        output:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        tools:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        data:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        environment:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+    SearchKeywords:
+      type: array
+      maxItems: 8  # one-number: intentMaxKeywords
+      items:
+        type: string
+        minLength: 1
+        maxLength: 128  # one-number: intentMaxKeywordRunes
+    SearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        script:
+          type: string
+          enum: ['yes', 'no']
+        validation:
+          type: string
+          enum: [passed, unverified]
+        agent:
+          type: string
+          enum: [native, transpiled, failed, unverified]
+        tier:
+          type: string
+          enum: [curated, indexed]
+        category:
+          type: string
+          enum: [documents, writing, data]
     MatchReasonsRequest:
       type: object
       required: [query, candidates]

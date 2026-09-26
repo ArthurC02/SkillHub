@@ -20,6 +20,7 @@ from skillhub_llm.evaluate import (
 )
 from skillhub_llm.gateway import GatewayUsage
 from skillhub_llm.generate import GenerateDiagram
+from skillhub_llm.intent import SearchFilters
 
 MODELS: dict[str, type[BaseModel]] = {
     "CreationMessage": CreationMessage,
@@ -33,6 +34,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "ImprovementProposal": ImprovementProposal,
     "JudgeEvidenceRef": JudgeEvidenceRef,
     "JudgeVerdict": JudgeVerdict,
+    "SearchFilters": SearchFilters,
 }
 
 NOT_PRODUCED_HERE = {
@@ -42,6 +44,17 @@ NOT_PRODUCED_HERE = {
 CONTRACT = (
     pathlib.Path(__file__).resolve().parents[3] / "contracts" / "openapi" / "llm-internal.yaml"
 )
+
+
+@pytest.mark.parametrize("name", ["SearchIntent", "SearchKeywords", "SearchFilters"])
+def test_search_analysis_and_public_correction_share_schema_constraints(name):
+    internal = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))["components"]["schemas"][name]
+    public = yaml.safe_load(CONTRACT.with_name("public.yaml").read_text(encoding="utf-8"))[
+        "components"
+    ]["schemas"][name]
+    internal.pop("description", None)
+    public.pop("description", None)
+    assert internal == public
 
 
 def contract_enums() -> dict[str, list]:

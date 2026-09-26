@@ -845,7 +845,7 @@ paths:
         - name: q
           in: query
           required: true
-          schema: { type: string, maxLength: 2000 }
+          schema: { type: string, maxLength: 2000 } # one-number: searchMaxQueryRunes
           description: Natural language task description.
         - name: limit
           in: query
@@ -990,6 +990,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: searchSkillsWithCorrectedIntent
+      summary: Search with a user-corrected interpretation (DISC-005)
+      description: |
+        Searches only the public catalog, using the submitted interpretation
+        without another intent-analysis model call. The original query is
+        retained for display and analytics. Non-null intent fields in input,
+        output, tools, data, environment order, followed by keywords, drive
+        retrieval and match reasons. Exact duplicates are removed and the
+        remaining values are joined with spaces; the combined text must not
+        exceed 2000 characters. Only when all fields are null and keywords are
+        empty does retrieval use the original query. Submitted filters are the
+        complete selection: an empty object clears all filters. No workspace
+        scope or inferred filters can be added by the caller or the model.
+        Uses the same address rate limiter as GET /api/skills/search.
+        The request body is limited to 131072 bytes, including trailing whitespace.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectedSearchRequest'
+      responses:
+        "200":
+          description: Search results with the accepted correction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSearchResponse'
+        "400":
+          description: Invalid query, interpretation, keywords, filters or limit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        "429":
+          description: Too many requests from this address.
+          headers:
+            Retry-After:
+              required: true
+              description: Whole seconds before retrying.
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /api/skills/catalog:
     get:
       operationId: browseCatalog
@@ -6064,6 +6109,108 @@ components:
           description: |
             True when the catalogue holds more than this page shows.
             A truncated list must say so, or it reads as the whole answer.
+    SearchIntent:
+      type: object
+      additionalProperties: false
+      required: [input, output, tools, data, environment]
+      description: |
+        Explicit requirements extracted from the query or corrected by the
+        user. Null means not mentioned, never an inferred default or an empty
+        string. Model-extracted values quote the original query verbatim.
+      properties:
+        input:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        output:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        tools:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        data:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        environment:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+    SearchKeywords:
+      type: array
+      maxItems: 8  # one-number: intentMaxKeywords
+      items:
+        type: string
+        minLength: 1
+        maxLength: 128  # one-number: intentMaxKeywordRunes
+    SearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        script:
+          type: string
+          enum: ['yes', 'no']
+        validation:
+          type: string
+          enum: [passed, unverified]
+        agent:
+          type: string
+          enum: [native, transpiled, failed, unverified]
+        tier:
+          type: string
+          enum: [curated, indexed]
+        category:
+          type: string
+          enum: [documents, writing, data]
+    CorrectedSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, intent, keywords, filters]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000  # one-number: searchMaxQueryRunes
+        intent:
+          $ref: '#/components/schemas/SearchIntent'
+        keywords:
+          $ref: '#/components/schemas/SearchKeywords'
+        filters:
+          $ref: '#/components/schemas/SearchFilters'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    SearchInterpretation:
+      type: object
+      additionalProperties: false
+      required: [status, intent, keywords, filters]
+      properties:
+        status:
+          type: string
+          enum: [analyzed, corrected, fallback, skipped]
+          description: |
+            Fallback means analysis failed and retrieval used the original
+            query. Skipped means no analysis was attempted (reference picker
+            or an empty/unsearchable query). Neither means vector failure;
+            PublicSearchResponse.degraded describes that independently.
+        intent:
+          $ref: '#/components/schemas/SearchIntent'
+        keywords:
+          $ref: '#/components/schemas/SearchKeywords'
+        filters:
+          $ref: '#/components/schemas/SearchFilters'
+          description: Effective filters; explicit user selections override analysis.
+        model:
+          type: string
+        prompt_version:
+          type: string
+        fallback_reason:
+          type: string
+          enum: [unavailable, timeout, invalid_response, budget_exhausted]
     PublicSearchResponse:
       type: object
       required:
@@ -6073,6 +6220,8 @@ components:
         query:
           type: string
           description: The original query, echoed back (DISC-001).
+        interpretation:
+          $ref: '#/components/schemas/SearchInterpretation'
         results:
           type: array
           items:

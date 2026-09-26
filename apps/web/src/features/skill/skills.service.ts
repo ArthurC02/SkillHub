@@ -1,7 +1,8 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SetSkillCategoryRequest } from "@skillhub/api-client-ts";
+import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
 import { apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+import { readSearchCorrection } from "../../core/api/searchIntent";
 import type {
   CatalogResponse,
   ForkedSkill,
@@ -37,10 +38,26 @@ export function useSkillSearch(
   filters: SearchFilters,
   enabled: boolean,
   purpose?: "reference",
+  correction?: string,
 ) {
   return useQuery({
-    queryKey: queryKeys.skills.search(query, filters, purpose),
-    queryFn: () => searchSkills(query, filters, 20, purpose),
+    queryKey:
+      correction === undefined
+        ? queryKeys.skills.search(query, filters, purpose)
+        : queryKeys.skills.correctedSearch(query, filters, correction),
+    queryFn: () =>
+      correction === undefined
+        ? searchSkills(query, filters, 20, purpose)
+        : apiFetch<PublicSearchResponse>("/api/skills/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query,
+              ...readSearchCorrection(correction),
+              filters,
+              limit: 20,
+            } satisfies CorrectedSearchRequest),
+          }),
     enabled,
   });
 }

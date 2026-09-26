@@ -23,6 +23,12 @@
 
 驗：`task doctor` 與 `task gen:check` 成功；`.env` 仍未加入 Git；任何讀取環境的診斷都只報變數名稱、不回顯值。
 
+### 工具鏈切換與 Windows 原生模組鎖定
+
+Node 必須是 `.node-version` 指定的版本，而且 doctor、bootstrap、建置與測試必須在同一個 runtime 下執行。使用 fnm 時可用 `fnm exec --using <釘選版本> task bootstrap`；PowerShell 直接啟動 npm 時使用 `npm.cmd`。切換 Node 後仍要重新 bootstrap，不能把舊 `node_modules` 的成功當作新 runtime 的驗證。
+
+若 bootstrap 的 `npm ci` 在 `.node` 原生模組出現 `EPERM unlink`，先檢查是否仍有本 repo 的 Vite、Vitest 或其他 Node 程序載入它。核對完整命令列、repo 路徑與監聽埠，只停止已確認可重啟的那個開發程序；不要一次終止全部 Node 程序，也不要刪除使用者資料或 lockfile。重新執行 bootstrap 後，再以釘選 runtime、原位址與原埠恢復服務並確認 ready。安裝中斷可能已移除部分套件，因此隨後的「找不到 vite/client 或 node 型別」應先檢查安裝是否完整，不先修改 TypeScript 設定。
+
 ## 3. 淨測試模式：最低成本的產品驗證
 
 這條路不需要 Docker 或模型密鑰，適合先確認 Web 到 API 的基本旅程：
@@ -72,6 +78,8 @@ task dev:llm
 | 控制平面 | `LLM_SERVICE_URL`、相同的 `LLM_SERVICE_TOKEN` | API／Worker 以 `/readyz` 驗證服務，而不是只看行程或容器仍在執行 |
 
 `task dev:llm` 需要簽發 Virtual Key 時會使用新的 alias；Gateway 的 key alias 不能重複。啟動器會保留可辨識的前綴並加上唯一尾碼，避免前一次行程留下的 alias 使下一次 Provision 在簽發階段失敗。
+
+無論新簽或保留既有服務金鑰，啟動器都會先以該金鑰呼叫 Gateway 管理位址的 `/key/info`，確認 `max_budget` 是有限正數、`spend` 是非負數且低於上限；讀不到或已耗盡就不啟動 Python。遇到拒絕時先查管理位址的連通性、金鑰權限與額度，不改用 master key、不移除檢查。錯誤訊息不回顯金鑰或 Gateway 回應內容。這只是啟動前檢查：新簽金鑰的額度不是跨重啟總額，Gateway 未預留並行呼叫的費用時也不能宣稱絕不超支；其他直接啟動 Python 的入口仍需獨立驗證相同成本邊界。
 
 ### 4.2.2 分層驗收與成本邊界
 
@@ -127,6 +135,10 @@ npm --prefix apps/web run dev
 驗：Web 可以登入、建立 Skill 與 Test Case；從 Run 頁開始執行後，Run 到終態，產物可讀，`cleanup_status` 最終為 `cleaned`。只看到 API 回 201 不算完成；必須讀回終態與清理狀態。
 
 ### 4.4 本機常見的跨網路失敗
+
+**獨立瀏覽器整合驗收**：前端建置輸出到暫存目錄，不覆寫既有 API 正在使用的 `apps/web/dist`。若以同源代理提供靜態檔並轉送 `/api/`，API 的 `APP_URL` 應是瀏覽器看到的代理 origin，而不是 API 的內部監聽位址；保留請求方法、本文與標頭，不能用固定 JSON 代替上游。純 API 模式不提供 SPA 靜態檔；不要為了讓它提供畫面而開啟淨測試模式，否則資料層與 Worker 的執行方式也會跟著改變。使用獨立測試庫，不與會重建 schema 的 Go 整合測試並行。模型服務只持有限模型、有限預算的短效金鑰，驗收後關閉自己啟動的程序並撤銷金鑰。
+
+驗收時分開確認畫面與 HTTP 事實：原句仍在、五欄呈現、修正確實送出 POST、回應為修正後內容、重新載入仍保留修正。空結果可證明這段接線，但不能代替結果卡片與召回品質驗收；替身 API 的瀏覽器測試也不能代替這段真實服務檢查。
 
 Sandbox 是另一個網路觀點。它需要同時能存取物件儲存的預簽 URL、模型閘道與 Trace ingestion URL；主機上的 `localhost` 或 `127.0.0.1` 對 Sandbox 通常不是同一台主機。先以 Sandbox 內的連線驗證每個 URL，再開始排查程式。
 

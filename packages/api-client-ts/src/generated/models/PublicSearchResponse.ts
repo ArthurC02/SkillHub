@@ -20,6 +20,13 @@ import {
     PublicSearchResultToJSON,
     PublicSearchResultToJSONTyped,
 } from './PublicSearchResult';
+import type { SearchInterpretation } from './SearchInterpretation';
+import {
+    SearchInterpretationFromJSON,
+    SearchInterpretationFromJSONTyped,
+    SearchInterpretationToJSON,
+    SearchInterpretationToJSONTyped,
+} from './SearchInterpretation';
 
 /**
  * 
@@ -31,6 +38,10 @@ export interface PublicSearchResponse {
      * The original query, echoed back (DISC-001).
      */
     query: string;
+    /**
+     * 
+     */
+    interpretation?: SearchInterpretation;
     /**
      * 
      */
@@ -175,6 +186,7 @@ export function PublicSearchResponseFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'query': json['query'],
+        'interpretation': json['interpretation'] == null ? undefined : SearchInterpretationFromJSON(json['interpretation']),
         'results': ((json['results'] as Array<any>).map(PublicSearchResultFromJSON)),
         'degraded': json['degraded'],
         'degradedReason': json['degraded_reason'] == null ? undefined : json['degraded_reason'],
@@ -200,6 +212,7 @@ export function PublicSearchResponseToJSONTyped(value?: PublicSearchResponse | n
     return {
         
         'query': value['query'],
+        'interpretation': SearchInterpretationToJSON(value['interpretation']),
         'results': ((value['results'] as Array<any>).map(PublicSearchResultToJSON)),
         'degraded': value['degraded'],
         'degraded_reason': value['degradedReason'],

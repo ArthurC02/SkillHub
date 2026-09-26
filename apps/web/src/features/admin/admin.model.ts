@@ -22,6 +22,7 @@ export const COST_KIND: Record<string, string> = {
   creation_step: "創作步驟",
   creation_session: "創作會話",
   search_embedding: "搜尋向量",
+  search_intent: "搜尋意圖分析",
   index_enrich: "索引增強",
   review: "評審",
   suggestion: "改善建議",

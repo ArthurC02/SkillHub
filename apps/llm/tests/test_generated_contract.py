@@ -46,6 +46,10 @@ def test_generated_enrich_request_validates_the_internal_contract() -> None:
         "CreationDraftValidation",
         "CreationStepRequest",
         "CreationStepResponse",
+        "AnalyzeSearchIntentRequest",
+        "AnalyzeSearchIntentResponse",
+        "SearchIntent",
+        "SearchFilters",
     ],
 )
 def test_runtime_transport_shape_matches_generated_contract(name: str) -> None:

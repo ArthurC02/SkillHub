@@ -7,7 +7,7 @@ from test_enrich import REQUEST as ENRICH_REQUEST
 from test_evaluate import IMPROVE_REQUEST, JUDGE_REQUEST
 
 from skillhub_llm import app as app_module
-from skillhub_llm import enrich, evaluate, generate
+from skillhub_llm import enrich, evaluate, generate, intent
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -17,6 +17,13 @@ SUGGEST_BODY = {"user_prompt": "把逐字稿整理成決議摘要"}
 GENERATE_BODY = {"task_description": "把逐字稿整理成決議摘要的 Skill"}
 
 ENDPOINTS = [
+    (
+        "/v1/analyze-intent",
+        {"query": "CSV", "timeout_seconds": intent.TIMEOUT_SECONDS},
+        intent,
+        "client",
+        "TIMEOUT_SECONDS",
+    ),
     ("/embed", {"texts": ["one"]}, app_module, "_client", "EMBED_TIMEOUT_SECONDS"),
     (
         "/match-reasons",
@@ -88,6 +95,9 @@ def test_every_endpoint_rejects_a_ceiling_of_zero_or_less(
     bad: float, path: str, body: dict, module, attr: str, ceiling_name: str
 ):
     """`min()` would accept 0 and time the call out before it started."""
-    response = client.post(path, json={**body, "timeout_seconds": bad})
+    asked: list[float] = []
+    with patch.object(module, attr, _recorder(asked)):
+        response = client.post(path, json={**body, "timeout_seconds": bad})
 
     assert response.status_code == 422
+    assert asked == []

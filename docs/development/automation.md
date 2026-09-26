@@ -38,7 +38,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 | `task bootstrap` | 否 | 否 | 否 | Go download、npm ci/build、uv frozen sync |
 | `task dev`／`dev:core` | 是 | 否 | 否 | Postgres＋SeaweedFS |
 | `task dev:model` | 是 | **是** | 後續模型呼叫會 | 先 fail-closed 檢查 OPENAI/LiteLLM 變數，再啟動 gateway |
-| `task dev:llm` | 否 | **是** | 視後續呼叫而定 | 讀閘道的管理金鑰，替 `apps/llm` 簽一把有預算上限的 Virtual Key 再啟動它；沒設閘道變數就直接以空金鑰啟動 |
+| `task dev:llm` | 否 | **是** | 視後續呼叫而定 | 新簽或保留服務 Virtual Key；啟動前向閘道查證有限、未耗盡的預算，無法確認便拒絕啟動；沒設閘道變數則以空金鑰啟動 |
 | `task clean-mode` | 否 | 否 | 否 | 淨測試模式：內嵌資料庫、行程內物件儲存、本機行程 Driver，不碰閘道 |
 | `task dev:observability` | 是 | 否 | 否 | `docker compose --profile observability … up -d prometheus`：起一個**開發機**的 Prometheus，讓 `infra/observability/alerts.yml` 真的被求值（不是生產部署） |
 | `task down` | 是 | 否 | 否 | `docker compose … down`：停掉本機基礎設施（不刪 volume）。**它停的是共享的那一組**，唯讀／寫入 SubAgent 一律不得自行執行 |

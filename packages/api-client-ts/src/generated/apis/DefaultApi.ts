@@ -79,6 +79,11 @@ import {
     ConfirmRunPreflightRequestToJSON,
 } from '../models/ConfirmRunPreflightRequest';
 import {
+    type CorrectedSearchRequest,
+    CorrectedSearchRequestFromJSON,
+    CorrectedSearchRequestToJSON,
+} from '../models/CorrectedSearchRequest';
+import {
     type CountTrend,
     CountTrendFromJSON,
     CountTrendToJSON,
@@ -1234,6 +1239,13 @@ export interface SearchSkillsRequest {
      * 
      */
     limit?: number;
+}
+
+export interface SearchSkillsWithCorrectedIntentRequest {
+    /**
+     * 
+     */
+    correctedSearchRequest: CorrectedSearchRequest;
 }
 
 export interface SetEvaluationFeedbackOperationRequest {
@@ -3393,6 +3405,30 @@ export interface DefaultApiInterface {
      * Full-text search over the caller\'s skills (INGEST-009)
      */
     searchSkills(requestParameters: SearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchSkills200Response>;
+
+    /**
+     * Creates request options for searchSkillsWithCorrectedIntent without sending the request
+     * @param {CorrectedSearchRequest} correctedSearchRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    searchSkillsWithCorrectedIntentRequestOpts(requestParameters: SearchSkillsWithCorrectedIntentRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Searches only the public catalog, using the submitted interpretation without another intent-analysis model call. The original query is retained for display and analytics. Non-null intent fields in input, output, tools, data, environment order, followed by keywords, drive retrieval and match reasons. Exact duplicates are removed and the remaining values are joined with spaces; the combined text must not exceed 2000 characters. Only when all fields are null and keywords are empty does retrieval use the original query. Submitted filters are the complete selection: an empty object clears all filters. No workspace scope or inferred filters can be added by the caller or the model. Uses the same address rate limiter as GET /api/skills/search. The request body is limited to 131072 bytes, including trailing whitespace. 
+     * @summary Search with a user-corrected interpretation (DISC-005)
+     * @param {CorrectedSearchRequest} correctedSearchRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    searchSkillsWithCorrectedIntentRaw(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicSearchResponse>>;
+
+    /**
+     * Searches only the public catalog, using the submitted interpretation without another intent-analysis model call. The original query is retained for display and analytics. Non-null intent fields in input, output, tools, data, environment order, followed by keywords, drive retrieval and match reasons. Exact duplicates are removed and the remaining values are joined with spaces; the combined text must not exceed 2000 characters. Only when all fields are null and keywords are empty does retrieval use the original query. Submitted filters are the complete selection: an empty object clears all filters. No workspace scope or inferred filters can be added by the caller or the model. Uses the same address rate limiter as GET /api/skills/search. The request body is limited to 131072 bytes, including trailing whitespace. 
+     * Search with a user-corrected interpretation (DISC-005)
+     */
+    searchSkillsWithCorrectedIntent(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
 
     /**
      * Creates request options for setEvaluationFeedback without sending the request
@@ -7745,6 +7781,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async searchSkills(requestParameters: SearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchSkills200Response> {
         const response = await this.searchSkillsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for searchSkillsWithCorrectedIntent without sending the request
+     */
+    async searchSkillsWithCorrectedIntentRequestOpts(requestParameters: SearchSkillsWithCorrectedIntentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['correctedSearchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'correctedSearchRequest',
+                'Required parameter "correctedSearchRequest" was null or undefined when calling searchSkillsWithCorrectedIntent().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/skills/search`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CorrectedSearchRequestToJSON(requestParameters['correctedSearchRequest']),
+        };
+    }
+
+    /**
+     * Searches only the public catalog, using the submitted interpretation without another intent-analysis model call. The original query is retained for display and analytics. Non-null intent fields in input, output, tools, data, environment order, followed by keywords, drive retrieval and match reasons. Exact duplicates are removed and the remaining values are joined with spaces; the combined text must not exceed 2000 characters. Only when all fields are null and keywords are empty does retrieval use the original query. Submitted filters are the complete selection: an empty object clears all filters. No workspace scope or inferred filters can be added by the caller or the model. Uses the same address rate limiter as GET /api/skills/search. The request body is limited to 131072 bytes, including trailing whitespace. 
+     * Search with a user-corrected interpretation (DISC-005)
+     */
+    async searchSkillsWithCorrectedIntentRaw(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicSearchResponse>> {
+        const requestOptions = await this.searchSkillsWithCorrectedIntentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicSearchResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Searches only the public catalog, using the submitted interpretation without another intent-analysis model call. The original query is retained for display and analytics. Non-null intent fields in input, output, tools, data, environment order, followed by keywords, drive retrieval and match reasons. Exact duplicates are removed and the remaining values are joined with spaces; the combined text must not exceed 2000 characters. Only when all fields are null and keywords are empty does retrieval use the original query. Submitted filters are the complete selection: an empty object clears all filters. No workspace scope or inferred filters can be added by the caller or the model. Uses the same address rate limiter as GET /api/skills/search. The request body is limited to 131072 bytes, including trailing whitespace. 
+     * Search with a user-corrected interpretation (DISC-005)
+     */
+    async searchSkillsWithCorrectedIntent(requestParameters: SearchSkillsWithCorrectedIntentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse> {
+        const response = await this.searchSkillsWithCorrectedIntentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

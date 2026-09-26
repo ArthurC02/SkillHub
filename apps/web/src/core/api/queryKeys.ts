@@ -17,6 +17,13 @@ export const queryKeys = {
   credits: ["credits"],
   dataRetentionPolicy: ["policy", "data-retention"],
   skills: {
+    correctedSearch: (query: string, filters: SearchFilters, correction: string) => [
+      "skills",
+      "corrected-search",
+      query,
+      ...filterKey(filters),
+      correction,
+    ],
     importLimits: ["skills", "import-limits"],
     search: (query: string, filters: SearchFilters, purpose?: string) => [
       "skills",

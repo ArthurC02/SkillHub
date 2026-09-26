@@ -1,0 +1,81 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "catalog-correctable-intent",
+  "proposer": "coding-agent",
+  "requirement_id": "DISC-005",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "catalog",
+    "invariant": "Only Catalog validates retrieval inputs and controls public catalog scope.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Existing synchronous model provider and public catalog API.",
+    "consistency": "synchronous read-only; no new durable state or cross-context write",
+    "prohibited_dependencies": [
+      "Python must not own authorization, filter policy or fallback decisions.",
+      "Model output cannot select a workspace."
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Untrusted model output",
+      "Explicit correction wins",
+      "Anonymous bounded cost",
+      "Backward-compatible GET clients"
+    ],
+    "decision": "No new Aggregate. Catalog owns bounded intent values and orchestration. Extend GET responses additively; add corrected-search POST on the same resource that bypasses model rewriting. Model keywords expand FTS candidates without acquiring full-coverage priority; the original task controls vector semantics, bigram coverage and exact-name ranking until the user explicitly corrects it.",
+    "invariants_preserved": [
+      "Public catalog scope",
+      "Original query retained",
+      "Vector attempt survives rewrite failure",
+      "Reference picker remains outside the intent funnel"
+    ],
+    "rejected_alternatives": [
+      "Separate search subsystem adds no invariant protection.",
+      "Rewriting corrections discards user authority.",
+      "A shared failure flag silently hides vector loss.",
+      "Replacing the complete query embedding with extracted keywords regressed the fixed bilingual golden set.",
+      "Restoring original-query embeddings while giving shortened model keywords full-coverage priority recovered clean quality but increased poisoned Top-3 exposure."
+    ],
+    "proof_obligations": [
+      "intent-fields",
+      "filter-validity",
+      "user-correction",
+      "rewrite-failure-vector",
+      "chinese-retrieval",
+      "input-budgets",
+      "anonymous-cost"
+    ],
+    "counterfactual_check": "Make rewriter always fail and remove the original-query vector attempt; the named nonempty-hit test must fail, then pass after restoration."
+  },
+  "event_change": null,
+  "contract_change": {
+    "description": "Additive interpretation response, corrected-search POST and internal intent-analysis call.",
+    "breaking": false
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "open_questions": [
+    "Normalized bigram text with pg_trgm reaches clean rewritten Chinese Top-1 of 28/30 and 24/30 while rejecting all six Chinese distractors at a measured 1/4 query-trigram coverage threshold, but fails the poisoning redline (24/25 poisoned Top-3 queries). It is not adopted: decide how to reconcile the existing curated-catalog boundary and ranking redline before changing production lexical retrieval.",
+    "The same normalized rule with original queries reaches 23/30 and 25/30 at that threshold; do not claim the rewrite-plus-embedding outage path meets the floor on both corpora.",
+    "Real projections give all 62 clean and 6 poisoned rows identical curated=false, verified_at-present, enriched and listable flags. Restricting to curated would remove the clean corpus too. The user authorized design and implementation of version-bound content review and exposure eligibility. The catalog-exposure-review package covers the durable policy; authorization does not approve Registry records or make failed poisoning measurements pass.",
+    "Service startup checks finite remaining key budget and the real Gateway rejects a synthetic spent-at-cap key. Unrecorded concurrent charges, cross-restart totals, direct Python startup and full deployed E2E remain unverified; do not turn these partial proofs into a complete cost guarantee."
+  ],
+  "approvals": []
+}

@@ -17,6 +17,7 @@ func NewModelBudgets(pool *pgxpool.Pool) *modelbudget.Service {
 		Pool: pool,
 		Endpoints: []modelbudget.Endpoint{
 			catalog.MatchReasonsBudget,
+			catalog.IntentBudget,
 			ingest.EnrichBudget,
 			ingest.GenerateBudget,
 			testlab.SuggestCriteriaBudget,

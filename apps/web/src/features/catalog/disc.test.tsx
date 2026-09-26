@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import "./home/Home.page";
 import { join } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";

@@ -1,0 +1,39 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "DISC-005",
+  "status": "draft",
+  "intent": "Bind public exposure to the reviewed immutable version and retrieval content, independently of curation tier.",
+  "actor": "catalog operator and visitor",
+  "observable_outcome": "Only reviewed current content is exposed; changes cannot inherit approval and owner access remains unchanged.",
+  "acceptance_criteria": [
+    {
+      "id": "exposure-snapshot",
+      "statement": "Approval matches the exact current source version, package hash and retrieval/display snapshot inspected by the operator."
+    },
+    {
+      "id": "exposure-lifecycle",
+      "statement": "New versions, changed enrichment and revocation remove eligibility; stale background work cannot attach to a newer version or restore approval."
+    },
+    {
+      "id": "exposure-scope",
+      "statement": "All public discovery and material-access paths enforce eligibility, including direct IDs and creation references. Owners retain private access; approved indexed results remain possible."
+    },
+    {
+      "id": "exposure-transaction",
+      "statement": "Operator-only commands compare the snapshot and decision revision, atomically persisting decision, audit and outbox; stale commands conflict without changes."
+    },
+    {
+      "id": "exposure-recovery",
+      "statement": "Rebuild, retry and migration never manufacture approval from curated, verified, enriched or is_catalog flags; existing content requires explicit review rollout."
+    },
+    {
+      "id": "exposure-poisoning",
+      "statement": "Preserve fixed bilingual thresholds. Measure admitted-poison ranking separately from unreviewed replacement exclusion; approval decisions require content evidence, not fixture labels."
+    }
+  ],
+  "candidate_terms": ["catalog", "registry", "public exposure review", "review snapshot"],
+  "open_questions": [],
+  "risk_flags": ["cross_context", "public_contract"],
+  "required_approval_roles": ["developer"],
+  "sources": ["docs/plans/02-specifications-and-acceptance-criteria.md", "docs/adr/ADR-008-intent-search.md", "docs/adr/ADR-017-query-and-write-ownership.md"]
+}

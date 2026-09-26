@@ -10,7 +10,15 @@ const CATEGORY_CHIPS: Array<{ value: SkillCategory | undefined; label: string }>
   { value: "data", label: "資料" },
 ];
 
-export function CategoryNav({ filters, browsing }: { filters: SearchFilters; browsing: boolean }) {
+export function CategoryNav({
+  filters,
+  browsing,
+  correction,
+}: {
+  filters: SearchFilters;
+  browsing: boolean;
+  correction?: string;
+}) {
   const base: SearchFilters = { ...filters, category: undefined };
   const totals = [
     useCatalogTotal(base),
@@ -31,7 +39,13 @@ export function CategoryNav({ filters, browsing }: { filters: SearchFilters; bro
               key={label}
               className="chip"
               to="/"
-              search={(prev: HomeSearch) => ({ ...prev, category: value, compare: undefined })}
+              search={(prev: HomeSearch) => ({
+                ...prev,
+                ...filters,
+                correction,
+                category: value,
+                compare: undefined,
+              })}
               replace
               activeOptions={{ explicitUndefined: true }}
             >

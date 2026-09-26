@@ -21,12 +21,17 @@ func (s *Service) recordSearchCost(ctx context.Context, resp *Embeddings) {
 }
 
 func (s *Service) recordCallCost(ctx context.Context, kind credit.CostKind, model string, u *ModelUsage) {
+	s.recordVersionedCallCost(ctx, kind, model, "", u)
+}
+
+func (s *Service) recordVersionedCallCost(ctx context.Context, kind credit.CostKind, model, promptVersion string, u *ModelUsage) {
 	if s.Credit == nil {
 		return
 	}
 	e := credit.CostEvent{
 		Kind:           kind,
 		Model:          model,
+		PromptVersion:  promptVersion,
 		IdempotencyKey: string(kind) + ":" + uuid.NewString(),
 	}
 	if u != nil {

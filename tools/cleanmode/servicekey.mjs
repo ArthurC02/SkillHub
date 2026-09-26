@@ -33,6 +33,31 @@ export function serviceKeyAlias(base, suffix) {
   return `${base || "skillhub-llm-service"}-${suffix}`;
 }
 
+export async function verifyServiceKeyBudget({ fetchImpl, adminUrl, key }) {
+  try {
+    const response = await fetchImpl(
+      `${adminUrl.replace(/\/$/, "")}/key/info`,
+      {
+        headers: { Authorization: `Bearer ${key}` },
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!response.ok) throw new Error();
+    const { info } = await response.json();
+    if (
+      !Number.isFinite(info?.max_budget) ||
+      info.max_budget <= 0 ||
+      !Number.isFinite(info?.spend) ||
+      info.spend < 0 ||
+      info.spend >= info.max_budget
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error("無法確認服務金鑰具有未耗盡的有限預算；apps/llm 不會啟動");
+  }
+}
+
 export async function mintServiceKey({
   fetchImpl,
   adminUrl,

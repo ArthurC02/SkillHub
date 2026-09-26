@@ -11,6 +11,14 @@ func (s *AddAcceptanceCriterionReq) setDefaults() {
 }
 
 // setDefaults set default value of fields.
+func (s *CorrectedSearchRequest) setDefaults() {
+	{
+		val := int(20)
+		s.Limit.SetTo(val)
+	}
+}
+
+// setDefaults set default value of fields.
 func (s *CreateDownloadArtifactReq) setDefaults() {
 	{
 		val := bool(false)

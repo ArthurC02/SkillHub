@@ -208,6 +208,7 @@ func NewApp(cfg Config) (*App, error) {
 	catalogSvc := wiring.NewCatalogService(cfg.Pool)
 	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
 	catalogSvc.LLM = catalog.ModelOrNone(cfg.LLM)
+	catalogSvc.IntentAnalyzer = catalog.IntentAnalyzerOrNone(cfg.LLM)
 
 	budgets := wiring.NewModelBudgets(cfg.Pool)
 	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets

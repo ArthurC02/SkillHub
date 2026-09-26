@@ -1,0 +1,53 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "DISC-005",
+  "status": "draft",
+  "intent": "Make catalog search understanding visible, correctable and resilient.",
+  "actor": "catalog visitor",
+  "observable_outcome": "Visitors can inspect and correct intent without weakening catalog scope.",
+  "acceptance_criteria": [
+    {
+      "id": "DISC-005-1",
+      "statement": "Five explicit intent fields use source information or null; no guessed facts."
+    },
+    {
+      "id": "DISC-005-2",
+      "statement": "Keywords and supported filter values drive retrieval; invalid model filters reject rewriting."
+    },
+    {
+      "id": "DISC-005-3",
+      "statement": "Original query survives and user corrections drive retrieval without another model rewrite."
+    },
+    {
+      "id": "DISC-005-4",
+      "statement": "Failed rewriting still invokes original-query vector retrieval; embedding failure is separately disclosed."
+    },
+    {
+      "id": "DISC-005-5",
+      "statement": "Make the explicit Chinese retrieval decision required by DISC-005-5 without deleting existing capabilities. For pg_bigm, pgroonga or pg_trgm, prove self-hosted installability and fixed-golden Chinese Top-1 at least the historical English 14/18 and above 20% (at least 24/30 Chinese tasks). Preserving current bigram alone, using Top-5, or silently removing the Chinese lexical path does not satisfy this goal. Remeasure bilingual quality and the existing poisoning redline."
+    },
+    {
+      "id": "DISC-005-6",
+      "statement": "Every limit is enforced and has boundary tests and applicable one-number checks."
+    },
+    {
+      "id": "DISC-005-7",
+      "statement": "One bounded LiteLLM rewrite call has versioned prompts, cost reporting and anonymous rate limiting."
+    }
+  ],
+  "candidate_terms": [
+    "catalog",
+    "search intent"
+  ],
+  "open_questions": [],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/plans/02-specifications-and-acceptance-criteria.md",
+    "docs/adr/ADR-008-intent-search.md"
+  ]
+}

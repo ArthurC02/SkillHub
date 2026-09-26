@@ -3730,6 +3730,165 @@ func (s *ConfirmRunPreflightUnprocessableEntity) UnmarshalJSON(data []byte) erro
 }
 
 // Encode implements json.Marshaler.
+func (s *CorrectedSearchRequest) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CorrectedSearchRequest) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("query")
+		e.Str(s.Query)
+	}
+	{
+		e.FieldStart("intent")
+		s.Intent.Encode(e)
+	}
+	{
+		e.FieldStart("keywords")
+		s.Keywords.Encode(e)
+	}
+	{
+		e.FieldStart("filters")
+		s.Filters.Encode(e)
+	}
+	{
+		if s.Limit.Set {
+			e.FieldStart("limit")
+			s.Limit.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfCorrectedSearchRequest = [5]string{
+	0: "query",
+	1: "intent",
+	2: "keywords",
+	3: "filters",
+	4: "limit",
+}
+
+// Decode decodes CorrectedSearchRequest from json.
+func (s *CorrectedSearchRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CorrectedSearchRequest to nil")
+	}
+	var requiredBitSet [1]uint8
+	s.setDefaults()
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "query":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Query = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"query\"")
+			}
+		case "intent":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Intent.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"intent\"")
+			}
+		case "keywords":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Keywords.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"keywords\"")
+			}
+		case "filters":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Filters.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"filters\"")
+			}
+		case "limit":
+			if err := func() error {
+				s.Limit.Reset()
+				if err := s.Limit.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"limit\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CorrectedSearchRequest")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCorrectedSearchRequest) {
+					name = jsonFieldsNameOfCorrectedSearchRequest[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CorrectedSearchRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CorrectedSearchRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *CostStatisticsWindow) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -28886,6 +29045,237 @@ func (s *OptRunQuota) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes SearchFiltersAgent as json.
+func (o OptSearchFiltersAgent) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchFiltersAgent from json.
+func (o *OptSearchFiltersAgent) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchFiltersAgent to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchFiltersAgent) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchFiltersAgent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersCategory as json.
+func (o OptSearchFiltersCategory) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchFiltersCategory from json.
+func (o *OptSearchFiltersCategory) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchFiltersCategory to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchFiltersCategory) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchFiltersCategory) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersScript as json.
+func (o OptSearchFiltersScript) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchFiltersScript from json.
+func (o *OptSearchFiltersScript) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchFiltersScript to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchFiltersScript) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchFiltersScript) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersTier as json.
+func (o OptSearchFiltersTier) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchFiltersTier from json.
+func (o *OptSearchFiltersTier) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchFiltersTier to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchFiltersTier) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchFiltersTier) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersValidation as json.
+func (o OptSearchFiltersValidation) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchFiltersValidation from json.
+func (o *OptSearchFiltersValidation) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchFiltersValidation to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchFiltersValidation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchFiltersValidation) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchInterpretation as json.
+func (o OptSearchInterpretation) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes SearchInterpretation from json.
+func (o *OptSearchInterpretation) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchInterpretation to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchInterpretation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchInterpretation) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchInterpretationFallbackReason as json.
+func (o OptSearchInterpretationFallbackReason) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SearchInterpretationFallbackReason from json.
+func (o *OptSearchInterpretationFallbackReason) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSearchInterpretationFallbackReason to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSearchInterpretationFallbackReason) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSearchInterpretationFallbackReason) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes SetSkillRedistributionReqLicenseSource as json.
 func (o OptSetSkillRedistributionReqLicenseSource) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -31359,6 +31749,12 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 		e.Str(s.Query)
 	}
 	{
+		if s.Interpretation.Set {
+			e.FieldStart("interpretation")
+			s.Interpretation.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("results")
 		e.ArrStart()
 		for _, elem := range s.Results {
@@ -31408,18 +31804,19 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicSearchResponse = [11]string{
+var jsonFieldsNameOfPublicSearchResponse = [12]string{
 	0:  "query",
-	1:  "results",
-	2:  "degraded",
-	3:  "degraded_reason",
-	4:  "limit",
-	5:  "total",
-	6:  "truncated",
-	7:  "partial_index",
-	8:  "no_results",
-	9:  "filtered_out",
-	10: "query_suggestion",
+	1:  "interpretation",
+	2:  "results",
+	3:  "degraded",
+	4:  "degraded_reason",
+	5:  "limit",
+	6:  "total",
+	7:  "truncated",
+	8:  "partial_index",
+	9:  "no_results",
+	10: "filtered_out",
+	11: "query_suggestion",
 }
 
 // Decode decodes PublicSearchResponse from json.
@@ -31443,8 +31840,18 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"query\"")
 			}
+		case "interpretation":
+			if err := func() error {
+				s.Interpretation.Reset()
+				if err := s.Interpretation.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"interpretation\"")
+			}
 		case "results":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				s.Results = make([]PublicSearchResult, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -31462,7 +31869,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"results\"")
 			}
 		case "degraded":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Bool()
 				s.Degraded = bool(v)
@@ -31484,7 +31891,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"degraded_reason\"")
 			}
 		case "limit":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Int()
 				s.Limit = int(v)
@@ -31496,7 +31903,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"limit\"")
 			}
 		case "total":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.Total = int(v)
@@ -31508,7 +31915,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"total\"")
 			}
 		case "truncated":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.Truncated = bool(v)
@@ -31520,7 +31927,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"truncated\"")
 			}
 		case "partial_index":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Bool()
 				s.PartialIndex = bool(v)
@@ -31532,7 +31939,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"partial_index\"")
 			}
 		case "no_results":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.NoResults = bool(v)
@@ -31544,7 +31951,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"no_results\"")
 			}
 		case "filtered_out":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Bool()
 				s.FilteredOut = bool(v)
@@ -31575,8 +31982,8 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11110111,
-		0b00000011,
+		0b11101101,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -37790,6 +38197,343 @@ func (s *SaveSkillVersionUnauthorized) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *SearchFilters) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SearchFilters) encodeFields(e *jx.Encoder) {
+	{
+		if s.Script.Set {
+			e.FieldStart("script")
+			s.Script.Encode(e)
+		}
+	}
+	{
+		if s.Validation.Set {
+			e.FieldStart("validation")
+			s.Validation.Encode(e)
+		}
+	}
+	{
+		if s.Agent.Set {
+			e.FieldStart("agent")
+			s.Agent.Encode(e)
+		}
+	}
+	{
+		if s.Tier.Set {
+			e.FieldStart("tier")
+			s.Tier.Encode(e)
+		}
+	}
+	{
+		if s.Category.Set {
+			e.FieldStart("category")
+			s.Category.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfSearchFilters = [5]string{
+	0: "script",
+	1: "validation",
+	2: "agent",
+	3: "tier",
+	4: "category",
+}
+
+// Decode decodes SearchFilters from json.
+func (s *SearchFilters) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFilters to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "script":
+			if err := func() error {
+				s.Script.Reset()
+				if err := s.Script.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"script\"")
+			}
+		case "validation":
+			if err := func() error {
+				s.Validation.Reset()
+				if err := s.Validation.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"validation\"")
+			}
+		case "agent":
+			if err := func() error {
+				s.Agent.Reset()
+				if err := s.Agent.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"agent\"")
+			}
+		case "tier":
+			if err := func() error {
+				s.Tier.Reset()
+				if err := s.Tier.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"tier\"")
+			}
+		case "category":
+			if err := func() error {
+				s.Category.Reset()
+				if err := s.Category.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"category\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchFilters")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SearchFilters) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFilters) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersAgent as json.
+func (s SearchFiltersAgent) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchFiltersAgent from json.
+func (s *SearchFiltersAgent) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFiltersAgent to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchFiltersAgent(v) {
+	case SearchFiltersAgentNative:
+		*s = SearchFiltersAgentNative
+	case SearchFiltersAgentTranspiled:
+		*s = SearchFiltersAgentTranspiled
+	case SearchFiltersAgentFailed:
+		*s = SearchFiltersAgentFailed
+	case SearchFiltersAgentUnverified:
+		*s = SearchFiltersAgentUnverified
+	default:
+		*s = SearchFiltersAgent(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchFiltersAgent) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFiltersAgent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersCategory as json.
+func (s SearchFiltersCategory) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchFiltersCategory from json.
+func (s *SearchFiltersCategory) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFiltersCategory to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchFiltersCategory(v) {
+	case SearchFiltersCategoryDocuments:
+		*s = SearchFiltersCategoryDocuments
+	case SearchFiltersCategoryWriting:
+		*s = SearchFiltersCategoryWriting
+	case SearchFiltersCategoryData:
+		*s = SearchFiltersCategoryData
+	default:
+		*s = SearchFiltersCategory(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchFiltersCategory) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFiltersCategory) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersScript as json.
+func (s SearchFiltersScript) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchFiltersScript from json.
+func (s *SearchFiltersScript) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFiltersScript to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchFiltersScript(v) {
+	case SearchFiltersScriptYes:
+		*s = SearchFiltersScriptYes
+	case SearchFiltersScriptNo:
+		*s = SearchFiltersScriptNo
+	default:
+		*s = SearchFiltersScript(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchFiltersScript) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFiltersScript) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersTier as json.
+func (s SearchFiltersTier) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchFiltersTier from json.
+func (s *SearchFiltersTier) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFiltersTier to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchFiltersTier(v) {
+	case SearchFiltersTierCurated:
+		*s = SearchFiltersTierCurated
+	case SearchFiltersTierIndexed:
+		*s = SearchFiltersTierIndexed
+	default:
+		*s = SearchFiltersTier(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchFiltersTier) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFiltersTier) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchFiltersValidation as json.
+func (s SearchFiltersValidation) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchFiltersValidation from json.
+func (s *SearchFiltersValidation) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchFiltersValidation to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchFiltersValidation(v) {
+	case SearchFiltersValidationPassed:
+		*s = SearchFiltersValidationPassed
+	case SearchFiltersValidationUnverified:
+		*s = SearchFiltersValidationUnverified
+	default:
+		*s = SearchFiltersValidation(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchFiltersValidation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchFiltersValidation) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *SearchHit) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -37915,6 +38659,490 @@ func (s *SearchHit) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SearchHit) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SearchIntent) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SearchIntent) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("input")
+		s.Input.Encode(e)
+	}
+	{
+		e.FieldStart("output")
+		s.Output.Encode(e)
+	}
+	{
+		e.FieldStart("tools")
+		s.Tools.Encode(e)
+	}
+	{
+		e.FieldStart("data")
+		s.Data.Encode(e)
+	}
+	{
+		e.FieldStart("environment")
+		s.Environment.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfSearchIntent = [5]string{
+	0: "input",
+	1: "output",
+	2: "tools",
+	3: "data",
+	4: "environment",
+}
+
+// Decode decodes SearchIntent from json.
+func (s *SearchIntent) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchIntent to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "input":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Input.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"input\"")
+			}
+		case "output":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Output.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"output\"")
+			}
+		case "tools":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Tools.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"tools\"")
+			}
+		case "data":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Data.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"data\"")
+			}
+		case "environment":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				if err := s.Environment.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"environment\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchIntent")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00011111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSearchIntent) {
+					name = jsonFieldsNameOfSearchIntent[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SearchIntent) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchIntent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SearchInterpretation) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SearchInterpretation) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("status")
+		s.Status.Encode(e)
+	}
+	{
+		e.FieldStart("intent")
+		s.Intent.Encode(e)
+	}
+	{
+		e.FieldStart("keywords")
+		s.Keywords.Encode(e)
+	}
+	{
+		e.FieldStart("filters")
+		s.Filters.Encode(e)
+	}
+	{
+		if s.Model.Set {
+			e.FieldStart("model")
+			s.Model.Encode(e)
+		}
+	}
+	{
+		if s.PromptVersion.Set {
+			e.FieldStart("prompt_version")
+			s.PromptVersion.Encode(e)
+		}
+	}
+	{
+		if s.FallbackReason.Set {
+			e.FieldStart("fallback_reason")
+			s.FallbackReason.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfSearchInterpretation = [7]string{
+	0: "status",
+	1: "intent",
+	2: "keywords",
+	3: "filters",
+	4: "model",
+	5: "prompt_version",
+	6: "fallback_reason",
+}
+
+// Decode decodes SearchInterpretation from json.
+func (s *SearchInterpretation) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchInterpretation to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "status":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Status.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		case "intent":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Intent.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"intent\"")
+			}
+		case "keywords":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Keywords.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"keywords\"")
+			}
+		case "filters":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Filters.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"filters\"")
+			}
+		case "model":
+			if err := func() error {
+				s.Model.Reset()
+				if err := s.Model.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"model\"")
+			}
+		case "prompt_version":
+			if err := func() error {
+				s.PromptVersion.Reset()
+				if err := s.PromptVersion.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"prompt_version\"")
+			}
+		case "fallback_reason":
+			if err := func() error {
+				s.FallbackReason.Reset()
+				if err := s.FallbackReason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"fallback_reason\"")
+			}
+		default:
+			return errors.Errorf("unexpected field %q", k)
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchInterpretation")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSearchInterpretation) {
+					name = jsonFieldsNameOfSearchInterpretation[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SearchInterpretation) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchInterpretation) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchInterpretationFallbackReason as json.
+func (s SearchInterpretationFallbackReason) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchInterpretationFallbackReason from json.
+func (s *SearchInterpretationFallbackReason) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchInterpretationFallbackReason to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchInterpretationFallbackReason(v) {
+	case SearchInterpretationFallbackReasonUnavailable:
+		*s = SearchInterpretationFallbackReasonUnavailable
+	case SearchInterpretationFallbackReasonTimeout:
+		*s = SearchInterpretationFallbackReasonTimeout
+	case SearchInterpretationFallbackReasonInvalidResponse:
+		*s = SearchInterpretationFallbackReasonInvalidResponse
+	case SearchInterpretationFallbackReasonBudgetExhausted:
+		*s = SearchInterpretationFallbackReasonBudgetExhausted
+	default:
+		*s = SearchInterpretationFallbackReason(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchInterpretationFallbackReason) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchInterpretationFallbackReason) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchInterpretationStatus as json.
+func (s SearchInterpretationStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SearchInterpretationStatus from json.
+func (s *SearchInterpretationStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchInterpretationStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SearchInterpretationStatus(v) {
+	case SearchInterpretationStatusAnalyzed:
+		*s = SearchInterpretationStatusAnalyzed
+	case SearchInterpretationStatusCorrected:
+		*s = SearchInterpretationStatusCorrected
+	case SearchInterpretationStatusFallback:
+		*s = SearchInterpretationStatusFallback
+	case SearchInterpretationStatusSkipped:
+		*s = SearchInterpretationStatusSkipped
+	default:
+		*s = SearchInterpretationStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchInterpretationStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchInterpretationStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SearchKeywords as json.
+func (s SearchKeywords) Encode(e *jx.Encoder) {
+	unwrapped := []string(s)
+
+	e.ArrStart()
+	for _, elem := range unwrapped {
+		e.Str(elem)
+	}
+	e.ArrEnd()
+}
+
+// Decode decodes SearchKeywords from json.
+func (s *SearchKeywords) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchKeywords to nil")
+	}
+	var unwrapped []string
+	if err := func() error {
+		unwrapped = make([]string, 0)
+		if err := d.Arr(func(d *jx.Decoder) error {
+			var elem string
+			v, err := d.Str()
+			elem = string(v)
+			if err != nil {
+				return err
+			}
+			unwrapped = append(unwrapped, elem)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = SearchKeywords(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchKeywords) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchKeywords) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

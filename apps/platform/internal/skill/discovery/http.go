@@ -217,38 +217,47 @@ func parseLimit(r *http.Request) (int32, error) {
 }
 
 func parseFilters(r *http.Request) (searchFilters, error) {
-	q := r.URL.Query()
+	values := make(map[string]string)
+	for key, value := range r.URL.Query() {
+		if len(value) > 0 {
+			values[key] = value[0]
+		}
+	}
+	return parseFilterValues(values)
+}
+
+func parseFilterValues(q map[string]string) (searchFilters, error) {
 	for name, note := range unavailableFilters {
-		if q.Has(name) {
+		if _, exists := q[name]; exists {
 			return searchFilters{}, errors.New("filter not available: " + name + " — " + note)
 		}
 	}
 	var out searchFilters
 	var err error
 	for _, name := range []string{"script", "validation", "agent", "tier", "category"} {
-		if q.Has(name) && q.Get(name) == "" {
+		if value, exists := q[name]; exists && value == "" {
 			return searchFilters{}, errors.New(name + " must not be empty")
 		}
 	}
-	if out.HasScript, err = triState(q.Get("script"), "yes", "no"); err != nil {
+	if out.HasScript, err = triState(q["script"], "yes", "no"); err != nil {
 		return searchFilters{}, errors.New(`script must be "yes" or "no"`)
 	}
-	if out.SpecValidated, err = triState(q.Get("validation"), "passed", "unverified"); err != nil {
+	if out.SpecValidated, err = triState(q["validation"], "passed", "unverified"); err != nil {
 		return searchFilters{}, errors.New(`validation must be "passed" or "unverified"`)
 	}
-	if v := q.Get("agent"); v != "" {
+	if v := q["agent"]; v != "" {
 		if !agentRuntimeValues[v] {
 			return searchFilters{}, errors.New(`agent must be "native", "transpiled", "failed" or "unverified"`)
 		}
 		out.AgentRuntime = &v
 	}
-	if v := q.Get("tier"); v != "" {
+	if v := q["tier"]; v != "" {
 		if !slices.Contains(AllCurationTiers(), Tier(v)) {
 			return searchFilters{}, errors.New(`tier must be "curated" or "indexed"`)
 		}
 		out.CurationTier = &v
 	}
-	if v := q.Get("category"); v != "" {
+	if v := q["category"]; v != "" {
 		if !slices.Contains(AllStoredCategories(), Category(v)) {
 			return searchFilters{}, errors.New(`category must be "documents", "writing" or "data"`)
 		}
@@ -272,8 +281,9 @@ func triState(v, yes, no string) (*bool, error) {
 }
 
 type searchResponse struct {
-	Query   string         `json:"query"`
-	Results []searchResult `json:"results"`
+	Interpretation SearchInterpretation `json:"interpretation"`
+	Query          string               `json:"query"`
+	Results        []searchResult       `json:"results"`
 
 	Degraded       bool   `json:"degraded"`
 	DegradedReason string `json:"degraded_reason,omitempty"`
@@ -329,6 +339,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 			h.Svc.Analytics.SearchPerformed(r.Context(), q, 0, filters.active())
 		}
 		httpx.WriteJSON(w, http.StatusOK, searchResponse{
+			Interpretation:  emptyInterpretation("skipped", filters),
 			Query:           q,
 			Results:         []searchResult{},
 			NoResults:       true,
@@ -340,28 +351,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out, err := h.Svc.Search(r.Context(), q, limit, filters, silent)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
-		return
-	}
-
-	resp := searchResponse{
-		Query:          q,
-		Results:        out.Hits,
-		Degraded:       out.DegradedReason != "",
-		DegradedReason: out.DegradedReason,
-		PartialIndex:   anyUnranked(out.Hits),
-		FilteredOut:    out.FilteredOut,
-		Limit:          limit,
-		Truncated:      out.Truncated,
-		Total:          out.Total,
-	}
-
-	if len(out.Hits) == 0 && !out.FilteredOut {
-		resp.NoResults = true
-		resp.QuerySuggestion = noResultsSuggestion
-	}
-	httpx.WriteJSON(w, http.StatusOK, resp)
+	h.writeSearchResult(w, q, limit, out, err)
 }
 
 type catalogResponse struct {
@@ -519,7 +509,7 @@ func lastRune(s string) string {
 	return string(r[len(r)-1])
 }
 
-const maxQueryRunes = 2000
+const maxQueryRunes = 2000 // one-number: searchMaxQueryRunes
 
 func queryTooLong(q string) string {
 	if utf8.RuneCountInString(q) > maxQueryRunes {

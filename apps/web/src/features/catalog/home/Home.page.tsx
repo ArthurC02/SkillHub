@@ -8,7 +8,7 @@ import { GenerateSkill } from "../../creation";
 import { SignInAction } from "../../../shared/ui/SignIn";
 import { MAX_COMPARE } from "../../skill";
 import type { HomeSearch } from "../../../app/router";
-import type { SearchFilters } from "../../../core/api/types";
+import type { SearchCorrection, SearchFilters } from "../../../core/api/types";
 import { Catalog } from "./components/Catalog";
 import { CategoryNav } from "./components/CategoryNav";
 import { FilterBar } from "./components/FilterBar";
@@ -17,13 +17,14 @@ import { CompareBar } from "./components/CompareBar";
 import { liftedNotes, SearchFacetNotes } from "./components/SearchFacetNotes";
 import { MarkerLegend } from "./components/MarkerLegend";
 import { SearchResultRow } from "./components/SearchResultRow";
+import { IntentInterpretation } from "./components/IntentInterpretation";
 import "./Home.page.css";
 
 function parseSelection(value: string | undefined): string[] {
   return value ? value.split(",").filter(Boolean).slice(0, MAX_COMPARE) : [];
 }
 
-const SEARCH_MAX_QUERY = 2000;
+const SEARCH_MAX_QUERY = 2000; // one-number: searchMaxQueryRunes
 
 const runes = (s: string) => [...s].length;
 
@@ -48,7 +49,14 @@ export function Home() {
     search.q ?? "",
     filters,
     search.q !== undefined,
+    undefined,
+    search.correction,
   );
+  const effectiveFilters = data?.interpretation?.filters ?? filters;
+  const currentCorrection = data?.interpretation && {
+    intent: data.interpretation.intent,
+    keywords: data.interpretation.keywords,
+  };
   const browsing = search.q === undefined;
   const catalog = useCatalog(filters, browsing);
 
@@ -60,7 +68,26 @@ export function Home() {
   }
 
   function clearFilters() {
+    if (currentCorrection) {
+      applyCorrection(currentCorrection, true);
+      return;
+    }
     void navigate({ search: { q: search.q }, replace: true });
+  }
+
+  function applyCorrection(correction: SearchCorrection, clear = false) {
+    submitSearch({
+      ...(clear
+        ? {
+            script: undefined,
+            validation: undefined,
+            agent: undefined,
+            tier: undefined,
+            category: undefined,
+          }
+        : effectiveFilters),
+      correction: JSON.stringify(correction),
+    });
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -72,7 +99,7 @@ export function Home() {
       return;
     }
     setQueryError("");
-    submitSearch({ q: trimmed || undefined });
+    submitSearch({ q: trimmed || undefined, correction: undefined });
   }
 
   function toggleSelected(skillId: string) {
@@ -115,9 +142,22 @@ export function Home() {
         </form>
       </div>
 
-      <CategoryNav filters={filters} browsing={browsing} />
+      <CategoryNav
+        filters={effectiveFilters}
+        browsing={browsing}
+        correction={currentCorrection ? JSON.stringify(currentCorrection) : search.correction}
+      />
 
-      <FilterBar filters={filters} onChange={(next) => submitSearch(next)} />
+      <FilterBar
+        filters={effectiveFilters}
+        onChange={(next) =>
+          submitSearch({
+            ...effectiveFilters,
+            ...next,
+            correction: currentCorrection ? JSON.stringify(currentCorrection) : search.correction,
+          })
+        }
+      />
 
       {browsing && (
         <Catalog
@@ -137,6 +177,14 @@ export function Home() {
           <p>
             查詢：<q>{data.query}</q>
           </p>
+
+          {data.interpretation && data.interpretation.status !== "skipped" && (
+            <IntentInterpretation
+              key={`${data.query}:${JSON.stringify(data.interpretation)}`}
+              interpretation={data.interpretation}
+              onCorrect={applyCorrection}
+            />
+          )}
 
           {data.degraded && (
             <p className="notice" role="status">

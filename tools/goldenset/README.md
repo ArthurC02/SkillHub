@@ -1,5 +1,17 @@
 # tools/goldenset
 
+## 意圖分析重播
+
+`intent_analysis_v2.json` 是固定 60 題經 `search-intent/v2`、`gpt-5.6-luna` 的一次真實分析快照，包含原句、五欄意圖、關鍵詞、篩選、耗時與 Gateway 回報成本；合計 US$0.0181568。它不是人工理解品質標註，也不取代原本的 query gold。重新取樣須另存，不能覆寫這份證據。
+
+Platform 的 `TestRecordedIntentAnalysisUsesProductionValidationAndLexicalSearch` 直接讀取快照，以真實 Go 驗證與 PostgreSQL 投影／查詢重播，不呼叫付費服務。需要獨立測試資料庫與 `SKILLHUB_REQUIRE_DB=1`；`TestGoldenLexicalBaselineUsesProductionProjectionAndQueries` 是原句對照。兩者都是**量測器**：測試通過表示資料完整、查詢可執行，不代表召回或投毒門檻通過。
+
+設定 `SKILLHUB_INTENT_POISON=1` 可加入既有三份經增強的投毒樣本，以相同查詢同時輸出檢索 F1、recall 與投毒 Top-3 次數。原句基線也可用 `SKILLHUB_INTENT_SNAPSHOT` 指向另一份完整的 60 題快照。這些測試刻意不提供 embedding，量的是**詞法降級路徑**，不能當作混合搜尋的品質結論。
+
+`TestGoldenHybridBaselineUsesRecordedVectorsAndProductionQueries` 以固定快取跑兩版語料的原句混合搜尋；`TestRecordedIntentAnalysisUsesProductionValidationAndHybridSearch` 量 v2 改寫。兩者都不呼叫模型，且可用 `SKILLHUB_INTENT_POISON=1` 加入投毒對照。它們檢查文件向量入庫、每題使用查詢向量且未降級；缺少精確文字對應的向量便失敗，不會偷偷改走詞法搜尋。結果與限制見[意圖搜尋驗證](../../docs/plans/intent-search-validation.md#原句混合搜尋基線)。
+
+`intent_embeddings_v2.json` 保存上述重播額外需要的 94 份向量及六批 Gateway 成本紀錄，合計 US$0.00055458，不含金鑰。它只補充歷史快取，不覆蓋歷史向量；以模型名稱、換行及完整文字的 SHA256 作鍵。改寫效果須看配對品質結果，不能從快取完整性推論。
+
 ## 凍結量測證據
 
 `results.txt`、`results_v2_enriched.txt` 與其對應 cache 是 M1 的凍結量測證據，不是可隨意清理的

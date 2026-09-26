@@ -108,6 +108,74 @@ class SkillCandidate(BaseModel):
     summary: str
 
 
+class AnalyzeSearchIntentRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    query: constr(min_length=1, max_length=2000)
+    timeout_seconds: PositiveFloat = Field(
+        ..., description="Caller deadline, capped by the service's own timeout."
+    )
+
+
+class SearchIntent(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    input: constr(min_length=1, max_length=2000) | None
+    output: constr(min_length=1, max_length=2000) | None
+    tools: constr(min_length=1, max_length=2000) | None
+    data: constr(min_length=1, max_length=2000) | None
+    environment: constr(min_length=1, max_length=2000) | None
+
+
+class SearchKeyword(RootModel[constr(min_length=1, max_length=128)]):
+    root: constr(min_length=1, max_length=128)
+
+
+class SearchKeywords(RootModel[list[SearchKeyword]]):
+    root: list[SearchKeyword] = Field(..., max_length=8)
+
+
+class Script(Enum):
+    yes = 'yes'
+    no = 'no'
+
+
+class Validation(Enum):
+    passed = 'passed'
+    unverified = 'unverified'
+
+
+class Agent(Enum):
+    native = 'native'
+    transpiled = 'transpiled'
+    failed = 'failed'
+    unverified = 'unverified'
+
+
+class Tier(Enum):
+    curated = 'curated'
+    indexed = 'indexed'
+
+
+class Category(Enum):
+    documents = 'documents'
+    writing = 'writing'
+    data = 'data'
+
+
+class SearchFilters(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    script: Script | None = None
+    validation: Validation | None = None
+    agent: Agent | None = None
+    tier: Tier | None = None
+    category: Category | None = None
+
+
 class MatchReasonsRequest(BaseModel):
     query: constr(min_length=1, max_length=2000)
     candidates: list[SkillCandidate] = Field(..., max_length=20, min_length=1)
@@ -482,7 +550,7 @@ class SuggestImprovementsRequest(BaseModel):
     )
 
 
-class Category(Enum):
+class Category1(Enum):
     skill = 'skill'
     runtime = 'runtime'
     tool = 'tool'
@@ -493,7 +561,7 @@ class ImprovementProposal(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    category: Category = Field(
+    category: Category1 = Field(
         ...,
         description='Remote MCP is out of first release, so it is not part of this enum.\n',
     )
@@ -703,6 +771,21 @@ class EnrichSkillResponse(BaseModel):
         None,
         description="What this enrichment cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage. Enrichment runs once per Skill Version on\nthe flagship tier, so this is the platform's own spend that grows\nwith the catalogue rather than with usage.\n",
     )
+
+
+class AnalyzeSearchIntentResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    valid: bool = Field(
+        ..., description='False when the model output failed structured validation.'
+    )
+    intent: SearchIntent | None = None
+    keywords: SearchKeywords | None = None
+    filters: SearchFilters | None = None
+    model: str
+    prompt_version: str
+    usage: GatewayUsage | None = None
 
 
 class SuggestCriteriaResponse(BaseModel):

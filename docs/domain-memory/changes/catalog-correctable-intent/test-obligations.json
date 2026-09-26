@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "DISC-005",
+  "proposal_id": "catalog-correctable-intent",
+  "obligations": [
+    {
+      "id": "intent-fields",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-1",
+      "expected_outcome": "Five explicit intent fields use source information or null; no guessed facts.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 intent-fields boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "filter-validity",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-2",
+      "expected_outcome": "Keywords and supported filter values drive retrieval; invalid model filters reject rewriting.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 filter-validity boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "user-correction",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-3",
+      "expected_outcome": "Original query survives and user corrections drive retrieval without another model rewrite.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 user-correction boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "rewrite-failure-vector",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-4",
+      "expected_outcome": "Failed rewriting still invokes original-query vector retrieval; embedding failure is separately disclosed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 rewrite-failure-vector boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "chinese-retrieval",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-5",
+      "expected_outcome": "An explicit DISC-005-5 strategy preserves existing capabilities. Any selected pg_bigm, pgroonga or pg_trgm extension is installable and achieves fixed-golden Chinese Top-1 >= historical English 14/18 and >20% (>=24/30), with bilingual nonregression and poisoning results recorded. Current bigram, Top-5 recall and empty-result filtering cannot substitute for this proof.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 chinese-retrieval boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "input-budgets",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-6",
+      "expected_outcome": "Every limit is enforced and has boundary tests and applicable one-number checks.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 input-budgets boundary, integration and counterfactual tests"
+    },
+    {
+      "id": "anonymous-cost",
+      "source_type": "acceptance-criterion",
+      "source_id": "DISC-005-7",
+      "expected_outcome": "One bounded LiteLLM rewrite call has versioned prompts, cost reporting and anonymous rate limiting.",
+      "level": "integration",
+      "status": "planned",
+      "check": "DISC-005 anonymous-cost boundary, integration and counterfactual tests"
+    }
+  ]
+}

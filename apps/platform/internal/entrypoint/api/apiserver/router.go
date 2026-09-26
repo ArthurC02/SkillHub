@@ -87,6 +87,7 @@ func NewRouter(d Deps) http.Handler {
 	}
 
 	mux.HandleFunc("GET /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch))
+	mux.HandleFunc("POST /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch))
 
 	mux.HandleFunc("GET /api/skills/catalog", limited(d, metrics.RouteCatalog, d.Search.BrowseCatalog))
 

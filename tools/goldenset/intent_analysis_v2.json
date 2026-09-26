@@ -1,0 +1,1736 @@
+[
+  {
+    "id": "D01",
+    "query": "我要把一份會議記錄整理成有目錄和頁碼的 Word 文件",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "一份會議記錄",
+        "output": "有目錄和頁碼的 Word 文件",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "整理會議記錄",
+        "Word 文件",
+        "目錄",
+        "頁碼"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 743,
+        "completion_tokens": 210,
+        "cost_usd": 0.0004006,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 4.504
+  },
+  {
+    "id": "D02",
+    "query": "幫我從掃描的檔案裡抽出表格資料，再把好幾份合併成一份",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "掃描的檔案",
+        "output": "把好幾份合併成一份",
+        "tools": null,
+        "data": "表格資料",
+        "environment": null
+      },
+      "keywords": [
+        "抽取表格資料",
+        "合併多份檔案"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 753,
+        "completion_tokens": 88,
+        "cost_usd": 0.0002562,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.121
+  },
+  {
+    "id": "D03",
+    "query": "我想做一份給投資人看的簡報投影片，還要有講者備忘稿",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "一份給投資人看的簡報投影片，還要有講者備忘稿",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "投資人簡報",
+        "簡報投影片",
+        "講者備忘稿"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 747,
+        "completion_tokens": 92,
+        "cost_usd": 0.0002598,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.85
+  },
+  {
+    "id": "D04",
+    "query": "幫我開一份新的試算表，要有公式、圖表跟樞紐分析表",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "一份新的試算表",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "新的試算表",
+        "公式",
+        "圖表",
+        "樞紐分析表"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 747,
+        "completion_tokens": 78,
+        "cost_usd": 0.000243,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.56
+  },
+  {
+    "id": "D05",
+    "query": "這份報告看起來好陽春，幫我弄漂亮一點",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份報告",
+        "output": "弄漂亮一點",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "報告美化"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 742,
+        "completion_tokens": 148,
+        "cost_usd": 0.000326,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.154
+  },
+  {
+    "id": "D06",
+    "query": "把這篇長文變成可以直接傳連結給人看的線上投影片",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這篇長文",
+        "output": "可以直接傳連結給人看的線上投影片",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "長文",
+        "線上投影片"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 743,
+        "completion_tokens": 78,
+        "cost_usd": 0.00024219999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.574
+  },
+  {
+    "id": "D07",
+    "query": "做成一份可以雙擊打開的單一 HTML 檔對比報告，裡面要有指標和時間軸",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "一份可以雙擊打開的單一 HTML 檔對比報告",
+        "tools": null,
+        "data": null,
+        "environment": "可以雙擊打開"
+      },
+      "keywords": [
+        "對比報告",
+        "單一 HTML 檔",
+        "指標",
+        "時間軸"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 756,
+        "completion_tokens": 325,
+        "cost_usd": 0.0005411999999999999,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 3.977
+  },
+  {
+    "id": "D08",
+    "query": "幫我設計可以印出來的活動宣傳單張和一頁式提案書",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "可以印出來的活動宣傳單張和一頁式提案書",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "活動宣傳單張",
+        "一頁式提案書",
+        "可以印出來"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 746,
+        "completion_tokens": 197,
+        "cost_usd": 0.0003856,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.325
+  },
+  {
+    "id": "D09",
+    "query": "下週要跟老闆做專案結案匯報，我不想只念流水帳",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "專案",
+        "output": "專案結案匯報",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "專案結案匯報",
+        "避免流水帳"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 746,
+        "completion_tokens": 75,
+        "cost_usd": 0.0002392,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.952
+  },
+  {
+    "id": "D10",
+    "query": "這頁排版太素了，想要有深色模式跟分享出去時的預覽縮圖",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這頁",
+        "output": "有深色模式跟分享出去時的預覽縮圖",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "深色模式",
+        "分享預覽縮圖"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 747,
+        "completion_tokens": 197,
+        "cost_usd": 0.0003858,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.673
+  },
+  {
+    "id": "D11",
+    "query": "幫我訂下週去東京的機票和靠近車站的飯店",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "下週去東京",
+        "output": "機票和靠近車站的飯店",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "東京",
+        "下週",
+        "機票",
+        "靠近車站的飯店"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 743,
+        "completion_tokens": 207,
+        "cost_usd": 0.00039699999999999995,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 3.092
+  },
+  {
+    "id": "D12",
+    "query": "我跑完步膝蓋外側會痛，應該怎麼復健比較好",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "跑完步膝蓋外側會痛",
+        "output": "怎麼復健比較好",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "跑步",
+        "膝蓋外側疼痛",
+        "復健"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 746,
+        "completion_tokens": 86,
+        "cost_usd": 0.0002524,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.981
+  },
+  {
+    "id": "D13",
+    "query": "fill an existing Word template and gate-check the OpenXML against its schema",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "an existing Word template",
+        "output": "fill an existing Word template",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "fill Word template",
+        "gate-check OpenXML",
+        "OpenXML schema"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 738,
+        "completion_tokens": 76,
+        "cost_usd": 0.00023879999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.531
+  },
+  {
+    "id": "D14",
+    "query": "programmatically produce formatted .docx reports from a .NET pipeline",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": ".NET pipeline",
+        "output": "formatted .docx reports",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "programmatically produce",
+        "formatted .docx reports",
+        ".NET pipeline"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 737,
+        "completion_tokens": 75,
+        "cost_usd": 0.0002374,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.91
+  },
+  {
+    "id": "D15",
+    "query": "make this write-up into something I can actually present",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "this write-up",
+        "output": "something I can actually present",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "write-up",
+        "present"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 734,
+        "completion_tokens": 67,
+        "cost_usd": 0.0002272,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.562
+  },
+  {
+    "id": "D16",
+    "query": "one self-contained html file with a comparison matrix and a metrics dashboard",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "one self-contained html file with a comparison matrix and a metrics dashboard",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "self-contained html",
+        "comparison matrix",
+        "metrics dashboard"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 737,
+        "completion_tokens": 213,
+        "cost_usd": 0.000403,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.701
+  },
+  {
+    "id": "D17",
+    "query": "print-ready pdf one-pager and newsletter using our brand configuration",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "our brand configuration",
+        "output": "print-ready pdf one-pager and newsletter",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "print-ready PDF",
+        "one-pager",
+        "newsletter",
+        "brand configuration"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 736,
+        "completion_tokens": 78,
+        "cost_usd": 0.0002408,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.482
+  },
+  {
+    "id": "D18",
+    "query": "structure an investor pitch with a hook, evidence and a clear ask",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "structure an investor pitch with a hook, evidence and a clear ask",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "investor pitch",
+        "hook",
+        "evidence",
+        "clear ask"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 737,
+        "completion_tokens": 80,
+        "cost_usd": 0.0002434,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.37
+  },
+  {
+    "id": "D19",
+    "query": "set up a kubernetes ingress controller with TLS termination",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "set up a kubernetes ingress controller with TLS termination",
+        "tools": null,
+        "data": null,
+        "environment": "kubernetes"
+      },
+      "keywords": [
+        "kubernetes ingress controller",
+        "TLS termination"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 76,
+        "cost_usd": 0.0002382,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.737
+  },
+  {
+    "id": "D20",
+    "query": "what grind size should I use for pour-over coffee",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "what grind size should I use for pour-over coffee",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "grind size",
+        "pour-over coffee"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 734,
+        "completion_tokens": 73,
+        "cost_usd": 0.0002344,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.519
+  },
+  {
+    "id": "W01",
+    "query": "把這份文件套上我們公司官方的品牌色和字體",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份文件",
+        "output": "套上我們公司官方的品牌色和字體",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "文件",
+        "公司官方品牌色",
+        "公司官方字體"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 739,
+        "completion_tokens": 80,
+        "cost_usd": 0.0002438,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.594
+  },
+  {
+    "id": "W02",
+    "query": "幫我寫給全公司的每週進度更新與狀態報告",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "全公司的每週進度更新與狀態報告",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "每週進度更新",
+        "狀態報告",
+        "全公司"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 742,
+        "completion_tokens": 187,
+        "cost_usd": 0.00037279999999999995,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.226
+  },
+  {
+    "id": "W03",
+    "query": "我要跟你一起把技術規格文件寫出來，需要一步一步的協作流程",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "把技術規格文件寫出來",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "技術規格文件",
+        "一步一步",
+        "協作流程"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 744,
+        "completion_tokens": 165,
+        "cost_usd": 0.00034679999999999997,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.157
+  },
+  {
+    "id": "W04",
+    "query": "這段文字太囉嗦，幫我刪掉贅字、模糊詞和被動語態",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這段文字",
+        "output": "刪掉贅字、模糊詞和被動語態",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "刪除贅字",
+        "刪除模糊詞",
+        "修改被動語態"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 752,
+        "completion_tokens": 166,
+        "cost_usd": 0.0003496,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.204
+  },
+  {
+    "id": "W05",
+    "query": "這篇讀起來一股 AI 味，幫我改得像真人寫的",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這篇",
+        "output": "改得像真人寫的",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "AI 味",
+        "真人寫的"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 744,
+        "completion_tokens": 70,
+        "cost_usd": 0.00023279999999999997,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.562
+  },
+  {
+    "id": "W06",
+    "query": "幫我判斷這段文字是不是機器產生的，給我一個分數和理由",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這段文字",
+        "output": "一個分數和理由",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "機器產生",
+        "分數",
+        "理由"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 748,
+        "completion_tokens": 73,
+        "cost_usd": 0.00023720000000000002,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.308
+  },
+  {
+    "id": "W07",
+    "query": "我想講的東西都寫進去了，可是段落順序很亂，讀起來不順",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "我想講的東西都寫進去了",
+        "output": null,
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "段落順序",
+        "讀起來不順"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 748,
+        "completion_tokens": 366,
+        "cost_usd": 0.0005888,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 4.511
+  },
+  {
+    "id": "W08",
+    "query": "把採訪筆記寫成符合新聞體例的稿子，順便下標題",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "採訪筆記",
+        "output": "符合新聞體例的稿子",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "採訪筆記",
+        "新聞體例",
+        "下標題"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 744,
+        "completion_tokens": 78,
+        "cost_usd": 0.00024239999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.448
+  },
+  {
+    "id": "W09",
+    "query": "我要寫文獻回顧，還要整理投稿前的引用格式",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "寫文獻回顧，還要整理投稿前的引用格式",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "文獻回顧",
+        "投稿前",
+        "引用格式"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 741,
+        "completion_tokens": 197,
+        "cost_usd": 0.0003846,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 3.003
+  },
+  {
+    "id": "W10",
+    "query": "用嚴謹的編輯風格準則檢查這份文件的用詞精確度與簡潔度",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份文件",
+        "output": "用詞精確度與簡潔度",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "編輯風格準則",
+        "用詞精確度",
+        "用詞簡潔度"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 752,
+        "completion_tokens": 313,
+        "cost_usd": 0.000526,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 3.623
+  },
+  {
+    "id": "W11",
+    "query": "家裡水龍頭一直滴水，我要怎麼自己換墊片",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "家裡水龍頭一直滴水",
+        "output": "自己換墊片",
+        "tools": null,
+        "data": null,
+        "environment": "家裡"
+      },
+      "keywords": [
+        "水龍頭滴水",
+        "自己換墊片"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 742,
+        "completion_tokens": 83,
+        "cost_usd": 0.000248,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.649
+  },
+  {
+    "id": "W12",
+    "query": "推薦幾首適合通勤時聽的爵士樂",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "推薦幾首適合通勤時聽的爵士樂",
+        "tools": null,
+        "data": null,
+        "environment": "通勤時"
+      },
+      "keywords": [
+        "通勤",
+        "爵士樂"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 739,
+        "completion_tokens": 80,
+        "cost_usd": 0.0002438,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.44
+  },
+  {
+    "id": "W13",
+    "query": "rewrite this so it stops sounding robotic and reads like a person wrote it",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "this",
+        "output": "rewrite this so it stops sounding robotic and reads like a person wrote it",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "rewrite",
+        "natural-sounding writing"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 738,
+        "completion_tokens": 76,
+        "cost_usd": 0.00023879999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.535
+  },
+  {
+    "id": "W14",
+    "query": "score this draft for AI tells before I publish it",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "this draft",
+        "output": null,
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "score draft",
+        "AI tells",
+        "publish"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 734,
+        "completion_tokens": 65,
+        "cost_usd": 0.0002248,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.932
+  },
+  {
+    "id": "W15",
+    "query": "walk me through drafting a decision doc with iterative review rounds",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "decision doc",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "drafting decision doc",
+        "iterative review rounds"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 187,
+        "cost_usd": 0.0003714,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 3.12
+  },
+  {
+    "id": "W16",
+    "query": "revise my essay for logical movement between paragraphs, not proofreading",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "my essay",
+        "output": "revise my essay for logical movement between paragraphs",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "essay revision",
+        "logical movement between paragraphs"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 736,
+        "completion_tokens": 73,
+        "cost_usd": 0.00023480000000000002,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.717
+  },
+  {
+    "id": "W17",
+    "query": "apply AP style to attribution, numbers and dates in this article",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "this article",
+        "output": "apply AP style to attribution, numbers and dates in this article",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "AP style",
+        "attribution",
+        "numbers",
+        "dates"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 736,
+        "completion_tokens": 193,
+        "cost_usd": 0.0003788,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.653
+  },
+  {
+    "id": "W18",
+    "query": "grant proposal and preprint posting under Plan S open access rules",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": null,
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "grant proposal",
+        "preprint posting",
+        "Plan S",
+        "open access rules"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 736,
+        "completion_tokens": 70,
+        "cost_usd": 0.00023119999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.431
+  },
+  {
+    "id": "W19",
+    "query": "diagnose why my car rattles at 60 mph on the highway",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "diagnose why my car rattles at 60 mph on the highway",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "car rattles",
+        "60 mph",
+        "highway"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 738,
+        "completion_tokens": 79,
+        "cost_usd": 0.00024239999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.685
+  },
+  {
+    "id": "W20",
+    "query": "beginner deadlift form cues to protect my lower back",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "beginner deadlift form cues to protect my lower back",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "beginner deadlift form cues",
+        "protect lower back"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 77,
+        "cost_usd": 0.0002394,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.464
+  },
+  {
+    "id": "A01",
+    "query": "這份 Excel 有很多重複的列，幫我按照 email 欄位保留第一筆、其他刪掉",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份 Excel",
+        "output": "按照 email 欄位保留第一筆、其他刪掉",
+        "tools": null,
+        "data": "email 欄位",
+        "environment": null
+      },
+      "keywords": [
+        "Excel",
+        "email",
+        "移除重複列",
+        "保留第一筆"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 752,
+        "completion_tokens": 90,
+        "cost_usd": 0.0002584,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.687
+  },
+  {
+    "id": "A02",
+    "query": "把這個表裡金額小於一千的列全部刪掉，格式不要跑掉",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這個表裡金額小於一千的列",
+        "output": "全部刪掉，格式不要跑掉",
+        "tools": null,
+        "data": "金額",
+        "environment": null
+      },
+      "keywords": [
+        "刪除金額小於一千的列",
+        "保持表格格式"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 747,
+        "completion_tokens": 219,
+        "cost_usd": 0.0004122,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.765
+  },
+  {
+    "id": "A03",
+    "query": "我有十幾個欄位結構一樣的 Excel，幫我合併成一份",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "十幾個欄位結構一樣的 Excel",
+        "output": "合併成一份",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "合併 Excel",
+        "欄位結構一樣",
+        "多個 Excel 檔案"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 749,
+        "completion_tokens": 94,
+        "cost_usd": 0.0002626,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.084
+  },
+  {
+    "id": "A04",
+    "query": "檢查這份 CSV 的欄位型別有沒有不一致、日期格式會不會讓匯入資料庫失敗",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份 CSV",
+        "output": "欄位型別有沒有不一致、日期格式會不會讓匯入資料庫失敗",
+        "tools": null,
+        "data": null,
+        "environment": "資料庫"
+      },
+      "keywords": [
+        "CSV",
+        "欄位型別不一致",
+        "日期格式",
+        "匯入資料庫"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 754,
+        "completion_tokens": 101,
+        "cost_usd": 0.000272,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.913
+  },
+  {
+    "id": "A05",
+    "query": "把這份 CSV 轉成每行一個物件的 JSONL",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份 CSV",
+        "output": "每行一個物件的 JSONL",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "CSV",
+        "JSONL",
+        "每行一個物件"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 740,
+        "completion_tokens": 78,
+        "cost_usd": 0.0002416,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.545
+  },
+  {
+    "id": "A06",
+    "query": "金額那一欄長得像 $1,234.56 這種字串，沒辦法加總",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "金額那一欄長得像 $1,234.56 這種字串",
+        "output": "加總",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "金額欄位",
+        "$1,234.56",
+        "字串轉數字",
+        "加總"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 750,
+        "completion_tokens": 98,
+        "cost_usd": 0.0002676,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.672
+  },
+  {
+    "id": "A07",
+    "query": "掃一下這份名單裡有沒有身分證字號、電話這類個資，標出在哪幾格",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這份名單",
+        "output": "標出在哪幾格",
+        "tools": null,
+        "data": "身分證字號、電話這類個資",
+        "environment": null
+      },
+      "keywords": [
+        "身分證字號",
+        "電話",
+        "個資",
+        "標出儲存格"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 752,
+        "completion_tokens": 92,
+        "cost_usd": 0.0002608,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.643
+  },
+  {
+    "id": "A08",
+    "query": "把這三個 CSV 合併、清掉重複列，輸出一份異常值報告",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "這三個 CSV",
+        "output": "一份異常值報告",
+        "tools": null,
+        "data": "三個 CSV",
+        "environment": null
+      },
+      "keywords": [
+        "CSV 合併",
+        "清掉重複列",
+        "異常值報告"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 749,
+        "completion_tokens": 85,
+        "cost_usd": 0.0002518,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.688
+  },
+  {
+    "id": "A09",
+    "query": "我有一份 TSV，想跑基本的敘述統計跟欄位分佈",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "一份 TSV",
+        "output": "基本的敘述統計跟欄位分佈",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "TSV",
+        "敘述統計",
+        "欄位分佈"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 746,
+        "completion_tokens": 209,
+        "cost_usd": 0.00039999999999999996,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.652
+  },
+  {
+    "id": "A10",
+    "query": "這個決定會影響很大，我需要一份說得出處、別人可以重跑的分析",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "一份說得出處、別人可以重跑的分析",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "說得出處",
+        "別人可以重跑",
+        "分析"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 749,
+        "completion_tokens": 237,
+        "cost_usd": 0.00043419999999999993,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.635
+  },
+  {
+    "id": "A11",
+    "query": "我家的貓最近一直掉毛，需要帶去看醫生嗎",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "我家的貓最近一直掉毛",
+        "output": "需要帶去看醫生嗎",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "貓咪掉毛",
+        "貓咪脫毛",
+        "獸醫就診"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 739,
+        "completion_tokens": 87,
+        "cost_usd": 0.00025219999999999995,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.791
+  },
+  {
+    "id": "A12",
+    "query": "台北開車到高雄走國道大概要幾個小時",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "台北開車到高雄走國道",
+        "output": "大概要幾個小時",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "台北到高雄",
+        "開車",
+        "國道",
+        "行車時間"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 741,
+        "completion_tokens": 178,
+        "cost_usd": 0.0003618,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.931
+  },
+  {
+    "id": "A13",
+    "query": "drop repeated rows in a spreadsheet while preserving the cell formatting",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "a spreadsheet",
+        "output": "drop repeated rows",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "drop repeated rows",
+        "spreadsheet",
+        "preserving cell formatting"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 71,
+        "cost_usd": 0.0002322,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.526
+  },
+  {
+    "id": "A14",
+    "query": "build a financial model workbook with pivot tables and data validation",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "financial model workbook",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "financial model workbook",
+        "pivot tables",
+        "data validation"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 68,
+        "cost_usd": 0.00022859999999999997,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.485
+  },
+  {
+    "id": "A15",
+    "query": "read and validate an .xlsm workbook programmatically",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": ".xlsm workbook",
+        "output": "read and validate",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "read .xlsm workbook",
+        "validate .xlsm workbook",
+        "programmatically"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 734,
+        "completion_tokens": 325,
+        "cost_usd": 0.0005368,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 4.151
+  },
+  {
+    "id": "A16",
+    "query": "clean a messy public dataset and build charts and maps for a news story",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "a messy public dataset",
+        "output": "charts and maps for a news story",
+        "tools": null,
+        "data": "public dataset",
+        "environment": null
+      },
+      "keywords": [
+        "clean dataset",
+        "build charts",
+        "build maps",
+        "news story"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 738,
+        "completion_tokens": 78,
+        "cost_usd": 0.00024119999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.675
+  },
+  {
+    "id": "A17",
+    "query": "profile a jsonl file and summarise the numeric columns",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "a jsonl file",
+        "output": "summarise the numeric columns",
+        "tools": null,
+        "data": "numeric columns",
+        "environment": null
+      },
+      "keywords": [
+        "profile",
+        "JSONL",
+        "numeric columns"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 735,
+        "completion_tokens": 73,
+        "cost_usd": 0.0002346,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.569
+  },
+  {
+    "id": "A18",
+    "query": "our signups dropped last month and I need a defensible read on why",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "a defensible read on why",
+        "tools": null,
+        "data": "our signups",
+        "environment": null
+      },
+      "keywords": [
+        "signups dropped",
+        "last month",
+        "why signups dropped"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 739,
+        "completion_tokens": 75,
+        "cost_usd": 0.00023779999999999998,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.399
+  },
+  {
+    "id": "A19",
+    "query": "recommend a lightweight tent for a three day hike",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": null,
+        "output": "a lightweight tent",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "lightweight tent",
+        "three day hike"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 733,
+        "completion_tokens": 185,
+        "cost_usd": 0.00036859999999999996,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 2.591
+  },
+  {
+    "id": "A20",
+    "query": "how do I change the timing belt on a 2012 civic",
+    "response": {
+      "valid": true,
+      "model": "gpt-5.6-luna",
+      "prompt_version": "search-intent/v2",
+      "intent": {
+        "input": "2012 civic",
+        "output": "change the timing belt",
+        "tools": null,
+        "data": null,
+        "environment": null
+      },
+      "keywords": [
+        "2012 Civic",
+        "timing belt replacement"
+      ],
+      "filters": {},
+      "usage": {
+        "prompt_tokens": 737,
+        "completion_tokens": 70,
+        "cost_usd": 0.0002314,
+        "cost_source": "gateway"
+      }
+    },
+    "seconds": 1.448
+  }
+]

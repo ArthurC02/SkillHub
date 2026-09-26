@@ -1,0 +1,21 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "DISC-005",
+  "proposal_id": "catalog-exposure-review",
+  "obligations": [
+    {
+      "id": "review-snapshot",
+      "source_type": "acceptance-criterion",
+      "source_id": "exposure-snapshot",
+      "expected_outcome": "Changing retrieval material invalidates approval; canonically equivalent input retains snapshot identity.",
+      "level": "integration",
+      "status": "planned",
+      "check": "snapshot identity and stale-review integration checks"
+    },
+    {"id": "review-lifecycle", "source_type": "acceptance-criterion", "source_id": "exposure-lifecycle", "expected_outcome": "V2 cannot inherit V1 review; late V1 work is refused; changed enrichment is hidden; retry cannot undo revocation.", "level": "integration", "status": "planned", "check": "version and review state-transition checks with counterfactual mutations"},
+    {"id": "review-scope", "source_type": "acceptance-criterion", "source_id": "exposure-scope", "expected_outcome": "Public paths exclude unreviewed data before paging/counting; direct access and references cannot bypass. Owners retain access and approved indexed documents remain discoverable.", "level": "integration", "status": "planned", "check": "public endpoint and owner-access matrix"},
+    {"id": "review-transaction", "source_type": "acceptance-criterion", "source_id": "exposure-transaction", "expected_outcome": "Nonoperators denied; stale revision conflicts; concurrent commands serialize; audit/outbox failure rolls back; duplicate commands cannot create another transition.", "level": "integration", "status": "planned", "check": "authorization, rollback and concurrent command checks"},
+    {"id": "review-recovery", "source_type": "acceptance-criterion", "source_id": "exposure-recovery", "expected_outcome": "Rebuild cannot create review authority; changed derivation invalidates approval; migration defaults unreviewed and rollout records evidence per approval.", "level": "integration", "status": "planned", "check": "migration, rebuild and rollout checks"},
+    {"id": "review-poisoning", "source_type": "acceptance-criterion", "source_id": "exposure-poisoning", "expected_outcome": "Separate admitted-poison ranking from unreviewed exclusion, with positive reviewed hits and unchanged fixed bilingual thresholds; review is supported by inspected content.", "level": "security", "status": "planned", "check": "fixed golden quality, poisoning and content-review evidence checks"}
+  ]
+}

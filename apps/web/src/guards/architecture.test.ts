@@ -246,3 +246,28 @@ test("決策 3: retry is decided once, in core/api/queryClient.ts", () => {
     "a per-hook retry — the default lives in core/api/queryClient.ts",
   ).toEqual([]);
 });
+
+const GENERATED_CLIENT = "@skillhub/api-client-ts";
+
+test("產品程式只從 generated client 取型別——取一個值會把整包 model barrel 拉進瀏覽器", () => {
+  expect(
+    sources.filter((s) => s.body.includes(GENERATED_CLIENT)).length,
+    "沒有任何產品檔引用 generated client——這條檢查在看空集合",
+  ).toBeGreaterThan(0);
+
+  const offenders = sources.flatMap((source) =>
+    importsOf(source.body)
+      .filter((entry) => entry.from === GENERATED_CLIENT && !entry.typeOnly)
+      .map((entry) => ({
+        path: source.path,
+        values: entry.clause.includes("{") ? valueNames(entry.clause) : [entry.clause.trim()],
+      }))
+      .filter((entry) => entry.values.length > 0)
+      .map((entry) => `${entry.path}: ${entry.values.join(", ")}`),
+  );
+
+  expect(
+    offenders,
+    "generated 的 ToJSON／FromJSON 只是逐欄位照抄，換來的是整份 model barrel 進 bundle；改成 import type 並直接組物件",
+  ).toEqual([]);
+});

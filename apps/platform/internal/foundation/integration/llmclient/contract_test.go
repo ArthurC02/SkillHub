@@ -1,6 +1,7 @@
 package llmclient
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,8 @@ import (
 )
 
 var wireTypes = map[string]reflect.Type{
+	"AnalyzeSearchIntentRequest":    reflect.TypeOf(AnalyzeIntentRequest{}),
+	"AnalyzeSearchIntentResponse":   reflect.TypeOf(AnalyzeIntentResponse{}),
 	"CreationDraftValidation":       reflect.TypeOf(CreationDraftValidation{}),
 	"CreationDiagramDecomposition":  reflect.TypeOf(DiagramDecomposition{}),
 	"CreationDiagramInterpretation": reflect.TypeOf(DiagramInterpretation{}),
@@ -59,6 +62,74 @@ var wireTypes = map[string]reflect.Type{
 	"TaskExample":                   reflect.TypeOf(TaskExample{}),
 	"TraceDigest":                   reflect.TypeOf(TraceDigest{}),
 	"TraceDigestEntry":              reflect.TypeOf(TraceDigestEntry{}),
+}
+
+var collectionWireFields = map[string]string{
+	"SearchIntent":   "Intent",
+	"SearchFilters":  "Filters",
+	"SearchKeywords": "Keywords",
+}
+
+func TestSearchCollectionsPreserveEveryContractFieldForDomainValidation(t *testing.T) {
+	spec, tree := readContract(t)
+	schemas := tree["components"].(map[string]any)["schemas"].(map[string]any)
+	responseType := reflect.TypeOf(AnalyzeIntentResponse{})
+	for schemaName, fieldName := range collectionWireFields {
+		t.Run(schemaName, func(t *testing.T) {
+			schema, exists := spec.Components.Schemas[schemaName]
+			if !exists {
+				t.Fatalf("missing schema %s", schemaName)
+			}
+			field, exists := responseType.FieldByName(fieldName)
+			if !exists {
+				t.Fatalf("missing wire field %s", fieldName)
+			}
+			typ := schemas[schemaName].(map[string]any)["type"]
+			if typ == "array" {
+				if field.Type != reflect.TypeOf([]string{}) {
+					t.Fatalf("array wire type=%v", field.Type)
+				}
+				return
+			}
+			if typ != "object" || field.Type.Kind() != reflect.Map || field.Type.Key().Kind() != reflect.String {
+				t.Fatalf("object wire type=%v", field.Type)
+			}
+			if len(schema.Properties) == 0 {
+				t.Fatal("empty object schema")
+			}
+			for property := range schema.Properties {
+				for _, value := range []any{"stated value", nil} {
+					if value == nil && field.Type.Elem().Kind() != reflect.Pointer {
+						continue
+					}
+					payload, err := json.Marshal(map[string]any{strings.Split(field.Tag.Get("json"), ",")[0]: map[string]any{property: value}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					var decoded AnalyzeIntentResponse
+					if err := json.Unmarshal(payload, &decoded); err != nil {
+						t.Fatal(err)
+					}
+					mapped := reflect.ValueOf(decoded).FieldByName(fieldName).MapIndex(reflect.ValueOf(property))
+					if !mapped.IsValid() {
+						t.Fatalf("discarded field %s", property)
+					}
+					if value == nil {
+						if !mapped.IsNil() {
+							t.Fatalf("null %s changed", property)
+						}
+					} else {
+						if mapped.Kind() == reflect.Pointer {
+							mapped = mapped.Elem()
+						}
+						if mapped.String() != value {
+							t.Fatalf("changed field %s", property)
+						}
+					}
+				}
+			}
+		})
+	}
 }
 
 var notModelledInGo = map[string]string{
@@ -217,6 +288,9 @@ func TestEverySchemaTheServiceExchangesHasATypeOnThisSide(t *testing.T) {
 	var problems []string
 	for name := range exchanged {
 		if _, modelled := wireTypes[name]; modelled {
+			continue
+		}
+		if _, collected := collectionWireFields[name]; collected {
 			continue
 		}
 		if _, declared := notModelledInGo[name]; declared {

@@ -43,6 +43,8 @@ var sharedNumberRoster = []string{
 	"generateMaxReferenceChars",
 	"generateMaxReferences",
 	"generateMaxTaskRunes",
+	"intentMaxKeywordRunes",
+	"intentMaxKeywords",
 	"judgeMaxCriterionResults",
 	"judgeMaxEvidenceRefs",
 	"judgeMaxQuote",
@@ -54,6 +56,7 @@ var sharedNumberRoster = []string{
 	"maxDigestEntry",
 	"maxFinalOutput",
 	"maxSkillPackageEntries",
+	"searchMaxQueryRunes",
 
 	"suggestCriteriaMaxItems",
 	"suggestMaxDigestChars",

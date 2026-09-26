@@ -1,0 +1,42 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "catalog-exposure-review",
+  "proposer": "coding-agent",
+  "requirement_id": "DISC-005",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": ["catalog", "registry"],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "catalog",
+    "invariant": "Public exposure requires an unrevoked review of the exact current source version and retrieval snapshot; curation cannot grant exposure.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Catalog owns review decisions and requests lock-protected version facts from Registry through composition-root injection. Catalog does not write Registry tables. The allowed dependency exists; the review-specific contract is proposed.",
+    "consistency": "Synchronous compare-and-set review and revocation, atomic with audit and outbox. Lock Registry identity before Catalog state. Public reads enforce current owner eligibility in their database snapshot without waiting for projection refresh. Event retries cannot recreate approval.",
+    "prohibited_dependencies": ["Python cannot grant exposure.", "Catalog cannot write Registry facts.", "Registry cannot import Catalog to determine version identity.", "Asynchronous projection freshness cannot authorize public access."],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": ["Immutable versions but mutable enrichment", "Late background results", "Disposable projection versus durable review", "Direct-ID bypasses", "Concurrent review and revocation"],
+    "decision": "One Catalog-owned review decision per Skill with monotonic revision and exact snapshot identity; no new service or Context. Snapshot includes source version, package hash, canonical retrieval/display material, embedding identity and derivation versions. Enrichment carries source version and rejects stale writes. Every operator mutation requires expected snapshot and revision. Durable review evidence is separate from the rebuildable projection.",
+    "invariants_preserved": ["Registry owns version identity", "Catalog owns discovery policy", "Owners retain private access", "Reviewed indexed is distinct from curated", "State, audit and outbox commit together"],
+    "rejected_alternatives": ["Curated-only search removes indexed capability.", "Version-only approval misses same-version enrichment changes.", "A projection boolean loses review authority on rebuild.", "Workspace admission approves future unknown content.", "Hashing a late result after attaching it to the current version conceals provenance errors.", "A separate review service adds distributed consistency without another invariant."],
+    "proof_obligations": ["review-snapshot", "review-lifecycle", "review-scope", "review-transaction", "review-recovery", "review-poisoning"],
+    "counterfactual_check": "Individually remove source-version matching, snapshot matching and direct-ID enforcement. Each focused integration test must fail; restore each protection and rerun the same test."
+  },
+  "event_change": {"description": "Proposed versioned approval/revocation occurrences carry identifiers, decision revision and snapshot digest, not raw content. Transactional delivery and idempotent consumers must not recreate approval."},
+  "contract_change": {"description": "Operator-only snapshot read and compare-and-set commands with explicit stale conflicts. Public reads become fail-closed for unreviewed material; existing-content rollout is required, not additive-only compatibility.", "breaking": true},
+  "registry_updates": [],
+  "risk_flags": ["cross_context", "public_contract"],
+  "open_questions": ["Complete the public endpoint/consumer inventory before implementing the shared guard.", "Finalize canonical snapshot schema and derivation-version inputs before contract generation.", "Verify an explicit existing-content rollout without automatic approval backfill.", "Existing admitted-poison Top-3 failures remain failures; exclusion alone does not satisfy that redline. Any revised threat-boundary acceptance must be explicit and retain old diagnostic results."],
+  "approvals": []
+}

@@ -132,6 +132,7 @@ export interface CatalogResponse {
 }
 
 export interface PublicSearchResponse {
+  interpretation?: SearchInterpretation;
   query: string;
   results: PublicSearchResult[];
   degraded: boolean;
@@ -143,6 +144,27 @@ export interface PublicSearchResponse {
   no_results: boolean;
   filtered_out: boolean;
   query_suggestion?: string;
+}
+
+export interface SearchIntent {
+  input: string | null;
+  output: string | null;
+  tools: string | null;
+  data: string | null;
+  environment: string | null;
+}
+
+export interface SearchCorrection {
+  intent: SearchIntent;
+  keywords: string[];
+}
+
+export interface SearchInterpretation extends SearchCorrection {
+  status: "analyzed" | "corrected" | "fallback" | "skipped";
+  filters: SearchFilters;
+  model?: string;
+  prompt_version?: string;
+  fallback_reason?: "unavailable" | "timeout" | "invalid_response" | "budget_exhausted";
 }
 
 export interface SearchFilters {

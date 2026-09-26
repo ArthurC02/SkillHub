@@ -1,0 +1,15 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "DISC-005",
+  "proposal_id": "catalog-exposure-review",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": ["User authorization is not signed Registry approval or implementation evidence.", "The backfill guard locks Registry identity and compares both the claimed source version and package key with the latest version. State-transition tests include a new version sharing the same package key; NOWAIT lock, error propagation and claim mapping tests have protection-removal mutation evidence. Review-snapshot identity is not implemented.", "Local admission/library/discovery regression reports 420 passes and two optional corpus/catalog skips with real PostgreSQL required. The API claim test separately passes with no skips. Results are described in draft-pr.md; no complete digest-backed obligation attestation exists.", "Endpoint coverage, canonical snapshot schema and rollout remain to complete.", "Admitted-poison failures remain; eligibility is not semantic poison detection and cannot protect content an operator incorrectly approves.", "Environment access is restored; doctor, SQL generation, generation drift checks, affected lint and automation checks succeeded. The prerequisite is pushed as ccfdc84f20d7de128ecd71e949c4f5189c93cfa2; complete exposure implementation and final-goal CI evidence remain outstanding."]
+}

@@ -12,6 +12,7 @@ import {
   mintServiceKey,
   serviceKeyAlias,
   serviceKeyPlan,
+  verifyServiceKeyBudget,
 } from "./servicekey.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -86,6 +87,21 @@ if (plan.action === "mint") {
     "沒有設定模型閘道，apps/llm 不帶 LITELLM_API_KEY 啟動；需要模型的端點會回 503",
   );
   key = "";
+}
+
+if (key) {
+  try {
+    await verifyServiceKeyBudget({
+      fetchImpl: fetch,
+      adminUrl:
+        deployment.SKILLHUB_MODEL_GATEWAY_ADMIN_URL ||
+        deployment.SKILLHUB_MODEL_GATEWAY_URL,
+      key,
+    });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 }
 
 const env = llmChildEnv(

@@ -1456,6 +1456,65 @@ type ConfirmRunPreflightUnprocessableEntity Error
 
 func (*ConfirmRunPreflightUnprocessableEntity) confirmRunPreflightRes() {}
 
+// Ref: #/components/schemas/CorrectedSearchRequest
+type CorrectedSearchRequest struct {
+	Query    string         `json:"query"`
+	Intent   SearchIntent   `json:"intent"`
+	Keywords SearchKeywords `json:"keywords"`
+	Filters  SearchFilters  `json:"filters"`
+	Limit    OptInt         `json:"limit"`
+}
+
+// GetQuery returns the value of Query.
+func (s *CorrectedSearchRequest) GetQuery() string {
+	return s.Query
+}
+
+// GetIntent returns the value of Intent.
+func (s *CorrectedSearchRequest) GetIntent() SearchIntent {
+	return s.Intent
+}
+
+// GetKeywords returns the value of Keywords.
+func (s *CorrectedSearchRequest) GetKeywords() SearchKeywords {
+	return s.Keywords
+}
+
+// GetFilters returns the value of Filters.
+func (s *CorrectedSearchRequest) GetFilters() SearchFilters {
+	return s.Filters
+}
+
+// GetLimit returns the value of Limit.
+func (s *CorrectedSearchRequest) GetLimit() OptInt {
+	return s.Limit
+}
+
+// SetQuery sets the value of Query.
+func (s *CorrectedSearchRequest) SetQuery(val string) {
+	s.Query = val
+}
+
+// SetIntent sets the value of Intent.
+func (s *CorrectedSearchRequest) SetIntent(val SearchIntent) {
+	s.Intent = val
+}
+
+// SetKeywords sets the value of Keywords.
+func (s *CorrectedSearchRequest) SetKeywords(val SearchKeywords) {
+	s.Keywords = val
+}
+
+// SetFilters sets the value of Filters.
+func (s *CorrectedSearchRequest) SetFilters(val SearchFilters) {
+	s.Filters = val
+}
+
+// SetLimit sets the value of Limit.
+func (s *CorrectedSearchRequest) SetLimit(val OptInt) {
+	s.Limit = val
+}
+
 // Ref: #/components/schemas/CostStatisticsWindow
 type CostStatisticsWindow struct {
 	Kind         string    `json:"kind"`
@@ -6343,23 +6402,24 @@ func (s *Error) SetError(val string) {
 	s.Error = val
 }
 
-func (*Error) browseCatalogRes()          {}
-func (*Error) deleteDownloadArtifactRes() {}
-func (*Error) deleteRunArtifactRes()      {}
-func (*Error) devLoginRes()               {}
-func (*Error) getCostStatisticsRes()      {}
-func (*Error) getCreditBalanceRes()       {}
-func (*Error) getCreditLedgerRes()        {}
-func (*Error) getDatasetLimitsRes()       {}
-func (*Error) getDispatchStatusRes()      {}
-func (*Error) getMeRes()                  {}
-func (*Error) getOperatorRostersRes()     {}
-func (*Error) getSkillImportLimitsRes()   {}
-func (*Error) listDownloadArtifactsRes()  {}
-func (*Error) listModelCallBudgetsRes()   {}
-func (*Error) listSkillVersionsRes()      {}
-func (*Error) listSkillsRes()             {}
-func (*Error) publicSearchSkillsRes()     {}
+func (*Error) browseCatalogRes()                   {}
+func (*Error) deleteDownloadArtifactRes()          {}
+func (*Error) deleteRunArtifactRes()               {}
+func (*Error) devLoginRes()                        {}
+func (*Error) getCostStatisticsRes()               {}
+func (*Error) getCreditBalanceRes()                {}
+func (*Error) getCreditLedgerRes()                 {}
+func (*Error) getDatasetLimitsRes()                {}
+func (*Error) getDispatchStatusRes()               {}
+func (*Error) getMeRes()                           {}
+func (*Error) getOperatorRostersRes()              {}
+func (*Error) getSkillImportLimitsRes()            {}
+func (*Error) listDownloadArtifactsRes()           {}
+func (*Error) listModelCallBudgetsRes()            {}
+func (*Error) listSkillVersionsRes()               {}
+func (*Error) listSkillsRes()                      {}
+func (*Error) publicSearchSkillsRes()              {}
+func (*Error) searchSkillsWithCorrectedIntentRes() {}
 
 // ErrorHeaders wraps Error with response headers.
 type ErrorHeaders struct {
@@ -6387,11 +6447,12 @@ func (s *ErrorHeaders) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*ErrorHeaders) browseCatalogRes()      {}
-func (*ErrorHeaders) generateSkillRes()      {}
-func (*ErrorHeaders) importSkillFromURLRes() {}
-func (*ErrorHeaders) publicSearchSkillsRes() {}
-func (*ErrorHeaders) uploadSkillPackageRes() {}
+func (*ErrorHeaders) browseCatalogRes()                   {}
+func (*ErrorHeaders) generateSkillRes()                   {}
+func (*ErrorHeaders) importSkillFromURLRes()              {}
+func (*ErrorHeaders) publicSearchSkillsRes()              {}
+func (*ErrorHeaders) searchSkillsWithCorrectedIntentRes() {}
+func (*ErrorHeaders) uploadSkillPackageRes()              {}
 
 // One judgement of one run (EVAL-001), and a resource of its own because it answers a question `Run`
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
@@ -13507,6 +13568,328 @@ func (o OptRunQuota) Or(d RunQuota) RunQuota {
 	return d
 }
 
+// NewOptSearchFiltersAgent returns new OptSearchFiltersAgent with value set to v.
+func NewOptSearchFiltersAgent(v SearchFiltersAgent) OptSearchFiltersAgent {
+	return OptSearchFiltersAgent{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchFiltersAgent is optional SearchFiltersAgent.
+type OptSearchFiltersAgent struct {
+	Value SearchFiltersAgent
+	Set   bool
+}
+
+// IsSet returns true if OptSearchFiltersAgent was set.
+func (o OptSearchFiltersAgent) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchFiltersAgent) Reset() {
+	var v SearchFiltersAgent
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchFiltersAgent) SetTo(v SearchFiltersAgent) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchFiltersAgent) Get() (v SearchFiltersAgent, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchFiltersAgent) Or(d SearchFiltersAgent) SearchFiltersAgent {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchFiltersCategory returns new OptSearchFiltersCategory with value set to v.
+func NewOptSearchFiltersCategory(v SearchFiltersCategory) OptSearchFiltersCategory {
+	return OptSearchFiltersCategory{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchFiltersCategory is optional SearchFiltersCategory.
+type OptSearchFiltersCategory struct {
+	Value SearchFiltersCategory
+	Set   bool
+}
+
+// IsSet returns true if OptSearchFiltersCategory was set.
+func (o OptSearchFiltersCategory) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchFiltersCategory) Reset() {
+	var v SearchFiltersCategory
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchFiltersCategory) SetTo(v SearchFiltersCategory) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchFiltersCategory) Get() (v SearchFiltersCategory, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchFiltersCategory) Or(d SearchFiltersCategory) SearchFiltersCategory {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchFiltersScript returns new OptSearchFiltersScript with value set to v.
+func NewOptSearchFiltersScript(v SearchFiltersScript) OptSearchFiltersScript {
+	return OptSearchFiltersScript{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchFiltersScript is optional SearchFiltersScript.
+type OptSearchFiltersScript struct {
+	Value SearchFiltersScript
+	Set   bool
+}
+
+// IsSet returns true if OptSearchFiltersScript was set.
+func (o OptSearchFiltersScript) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchFiltersScript) Reset() {
+	var v SearchFiltersScript
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchFiltersScript) SetTo(v SearchFiltersScript) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchFiltersScript) Get() (v SearchFiltersScript, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchFiltersScript) Or(d SearchFiltersScript) SearchFiltersScript {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchFiltersTier returns new OptSearchFiltersTier with value set to v.
+func NewOptSearchFiltersTier(v SearchFiltersTier) OptSearchFiltersTier {
+	return OptSearchFiltersTier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchFiltersTier is optional SearchFiltersTier.
+type OptSearchFiltersTier struct {
+	Value SearchFiltersTier
+	Set   bool
+}
+
+// IsSet returns true if OptSearchFiltersTier was set.
+func (o OptSearchFiltersTier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchFiltersTier) Reset() {
+	var v SearchFiltersTier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchFiltersTier) SetTo(v SearchFiltersTier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchFiltersTier) Get() (v SearchFiltersTier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchFiltersTier) Or(d SearchFiltersTier) SearchFiltersTier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchFiltersValidation returns new OptSearchFiltersValidation with value set to v.
+func NewOptSearchFiltersValidation(v SearchFiltersValidation) OptSearchFiltersValidation {
+	return OptSearchFiltersValidation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchFiltersValidation is optional SearchFiltersValidation.
+type OptSearchFiltersValidation struct {
+	Value SearchFiltersValidation
+	Set   bool
+}
+
+// IsSet returns true if OptSearchFiltersValidation was set.
+func (o OptSearchFiltersValidation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchFiltersValidation) Reset() {
+	var v SearchFiltersValidation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchFiltersValidation) SetTo(v SearchFiltersValidation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchFiltersValidation) Get() (v SearchFiltersValidation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchFiltersValidation) Or(d SearchFiltersValidation) SearchFiltersValidation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchInterpretation returns new OptSearchInterpretation with value set to v.
+func NewOptSearchInterpretation(v SearchInterpretation) OptSearchInterpretation {
+	return OptSearchInterpretation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchInterpretation is optional SearchInterpretation.
+type OptSearchInterpretation struct {
+	Value SearchInterpretation
+	Set   bool
+}
+
+// IsSet returns true if OptSearchInterpretation was set.
+func (o OptSearchInterpretation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchInterpretation) Reset() {
+	var v SearchInterpretation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchInterpretation) SetTo(v SearchInterpretation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchInterpretation) Get() (v SearchInterpretation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchInterpretation) Or(d SearchInterpretation) SearchInterpretation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSearchInterpretationFallbackReason returns new OptSearchInterpretationFallbackReason with value set to v.
+func NewOptSearchInterpretationFallbackReason(v SearchInterpretationFallbackReason) OptSearchInterpretationFallbackReason {
+	return OptSearchInterpretationFallbackReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSearchInterpretationFallbackReason is optional SearchInterpretationFallbackReason.
+type OptSearchInterpretationFallbackReason struct {
+	Value SearchInterpretationFallbackReason
+	Set   bool
+}
+
+// IsSet returns true if OptSearchInterpretationFallbackReason was set.
+func (o OptSearchInterpretationFallbackReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSearchInterpretationFallbackReason) Reset() {
+	var v SearchInterpretationFallbackReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSearchInterpretationFallbackReason) SetTo(v SearchInterpretationFallbackReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSearchInterpretationFallbackReason) Get() (v SearchInterpretationFallbackReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSearchInterpretationFallbackReason) Or(d SearchInterpretationFallbackReason) SearchInterpretationFallbackReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptSetSkillRedistributionReqLicenseSource returns new OptSetSkillRedistributionReqLicenseSource with value set to v.
 func NewOptSetSkillRedistributionReqLicenseSource(v SetSkillRedistributionReqLicenseSource) OptSetSkillRedistributionReqLicenseSource {
 	return OptSetSkillRedistributionReqLicenseSource{
@@ -15252,8 +15635,9 @@ func (*PreviewPackagingUnauthorized) previewPackagingRes() {}
 // Ref: #/components/schemas/PublicSearchResponse
 type PublicSearchResponse struct {
 	// The original query, echoed back (DISC-001).
-	Query   string               `json:"query"`
-	Results []PublicSearchResult `json:"results"`
+	Query          string                  `json:"query"`
+	Interpretation OptSearchInterpretation `json:"interpretation"`
+	Results        []PublicSearchResult    `json:"results"`
 	// True when the vector leg did not run and the answer came from lexical matching alone. The vector leg
 	// is what carries cross-language recall, so a degraded answer has materially lower recall and must not
 	// be presented as "nothing matches".
@@ -15329,6 +15713,11 @@ func (s *PublicSearchResponse) GetQuery() string {
 	return s.Query
 }
 
+// GetInterpretation returns the value of Interpretation.
+func (s *PublicSearchResponse) GetInterpretation() OptSearchInterpretation {
+	return s.Interpretation
+}
+
 // GetResults returns the value of Results.
 func (s *PublicSearchResponse) GetResults() []PublicSearchResult {
 	return s.Results
@@ -15384,6 +15773,11 @@ func (s *PublicSearchResponse) SetQuery(val string) {
 	s.Query = val
 }
 
+// SetInterpretation sets the value of Interpretation.
+func (s *PublicSearchResponse) SetInterpretation(val OptSearchInterpretation) {
+	s.Interpretation = val
+}
+
 // SetResults sets the value of Results.
 func (s *PublicSearchResponse) SetResults(val []PublicSearchResult) {
 	s.Results = val
@@ -15434,7 +15828,8 @@ func (s *PublicSearchResponse) SetQuerySuggestion(val OptString) {
 	s.QuerySuggestion = val
 }
 
-func (*PublicSearchResponse) publicSearchSkillsRes() {}
+func (*PublicSearchResponse) publicSearchSkillsRes()              {}
+func (*PublicSearchResponse) searchSkillsWithCorrectedIntentRes() {}
 
 // Ref: #/components/schemas/PublicSearchResult
 type PublicSearchResult struct {
@@ -19044,6 +19439,291 @@ type SaveSkillVersionUnauthorized Error
 
 func (*SaveSkillVersionUnauthorized) saveSkillVersionRes() {}
 
+// Ref: #/components/schemas/SearchFilters
+type SearchFilters struct {
+	Script     OptSearchFiltersScript     `json:"script"`
+	Validation OptSearchFiltersValidation `json:"validation"`
+	Agent      OptSearchFiltersAgent      `json:"agent"`
+	Tier       OptSearchFiltersTier       `json:"tier"`
+	Category   OptSearchFiltersCategory   `json:"category"`
+}
+
+// GetScript returns the value of Script.
+func (s *SearchFilters) GetScript() OptSearchFiltersScript {
+	return s.Script
+}
+
+// GetValidation returns the value of Validation.
+func (s *SearchFilters) GetValidation() OptSearchFiltersValidation {
+	return s.Validation
+}
+
+// GetAgent returns the value of Agent.
+func (s *SearchFilters) GetAgent() OptSearchFiltersAgent {
+	return s.Agent
+}
+
+// GetTier returns the value of Tier.
+func (s *SearchFilters) GetTier() OptSearchFiltersTier {
+	return s.Tier
+}
+
+// GetCategory returns the value of Category.
+func (s *SearchFilters) GetCategory() OptSearchFiltersCategory {
+	return s.Category
+}
+
+// SetScript sets the value of Script.
+func (s *SearchFilters) SetScript(val OptSearchFiltersScript) {
+	s.Script = val
+}
+
+// SetValidation sets the value of Validation.
+func (s *SearchFilters) SetValidation(val OptSearchFiltersValidation) {
+	s.Validation = val
+}
+
+// SetAgent sets the value of Agent.
+func (s *SearchFilters) SetAgent(val OptSearchFiltersAgent) {
+	s.Agent = val
+}
+
+// SetTier sets the value of Tier.
+func (s *SearchFilters) SetTier(val OptSearchFiltersTier) {
+	s.Tier = val
+}
+
+// SetCategory sets the value of Category.
+func (s *SearchFilters) SetCategory(val OptSearchFiltersCategory) {
+	s.Category = val
+}
+
+type SearchFiltersAgent string
+
+const (
+	SearchFiltersAgentNative     SearchFiltersAgent = "native"
+	SearchFiltersAgentTranspiled SearchFiltersAgent = "transpiled"
+	SearchFiltersAgentFailed     SearchFiltersAgent = "failed"
+	SearchFiltersAgentUnverified SearchFiltersAgent = "unverified"
+)
+
+// AllValues returns all SearchFiltersAgent values.
+func (SearchFiltersAgent) AllValues() []SearchFiltersAgent {
+	return []SearchFiltersAgent{
+		SearchFiltersAgentNative,
+		SearchFiltersAgentTranspiled,
+		SearchFiltersAgentFailed,
+		SearchFiltersAgentUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchFiltersAgent) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchFiltersAgentNative:
+		return []byte(s), nil
+	case SearchFiltersAgentTranspiled:
+		return []byte(s), nil
+	case SearchFiltersAgentFailed:
+		return []byte(s), nil
+	case SearchFiltersAgentUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchFiltersAgent) UnmarshalText(data []byte) error {
+	switch SearchFiltersAgent(data) {
+	case SearchFiltersAgentNative:
+		*s = SearchFiltersAgentNative
+		return nil
+	case SearchFiltersAgentTranspiled:
+		*s = SearchFiltersAgentTranspiled
+		return nil
+	case SearchFiltersAgentFailed:
+		*s = SearchFiltersAgentFailed
+		return nil
+	case SearchFiltersAgentUnverified:
+		*s = SearchFiltersAgentUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SearchFiltersCategory string
+
+const (
+	SearchFiltersCategoryDocuments SearchFiltersCategory = "documents"
+	SearchFiltersCategoryWriting   SearchFiltersCategory = "writing"
+	SearchFiltersCategoryData      SearchFiltersCategory = "data"
+)
+
+// AllValues returns all SearchFiltersCategory values.
+func (SearchFiltersCategory) AllValues() []SearchFiltersCategory {
+	return []SearchFiltersCategory{
+		SearchFiltersCategoryDocuments,
+		SearchFiltersCategoryWriting,
+		SearchFiltersCategoryData,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchFiltersCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchFiltersCategoryDocuments:
+		return []byte(s), nil
+	case SearchFiltersCategoryWriting:
+		return []byte(s), nil
+	case SearchFiltersCategoryData:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchFiltersCategory) UnmarshalText(data []byte) error {
+	switch SearchFiltersCategory(data) {
+	case SearchFiltersCategoryDocuments:
+		*s = SearchFiltersCategoryDocuments
+		return nil
+	case SearchFiltersCategoryWriting:
+		*s = SearchFiltersCategoryWriting
+		return nil
+	case SearchFiltersCategoryData:
+		*s = SearchFiltersCategoryData
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SearchFiltersScript string
+
+const (
+	SearchFiltersScriptYes SearchFiltersScript = "yes"
+	SearchFiltersScriptNo  SearchFiltersScript = "no"
+)
+
+// AllValues returns all SearchFiltersScript values.
+func (SearchFiltersScript) AllValues() []SearchFiltersScript {
+	return []SearchFiltersScript{
+		SearchFiltersScriptYes,
+		SearchFiltersScriptNo,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchFiltersScript) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchFiltersScriptYes:
+		return []byte(s), nil
+	case SearchFiltersScriptNo:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchFiltersScript) UnmarshalText(data []byte) error {
+	switch SearchFiltersScript(data) {
+	case SearchFiltersScriptYes:
+		*s = SearchFiltersScriptYes
+		return nil
+	case SearchFiltersScriptNo:
+		*s = SearchFiltersScriptNo
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SearchFiltersTier string
+
+const (
+	SearchFiltersTierCurated SearchFiltersTier = "curated"
+	SearchFiltersTierIndexed SearchFiltersTier = "indexed"
+)
+
+// AllValues returns all SearchFiltersTier values.
+func (SearchFiltersTier) AllValues() []SearchFiltersTier {
+	return []SearchFiltersTier{
+		SearchFiltersTierCurated,
+		SearchFiltersTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchFiltersTier) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchFiltersTierCurated:
+		return []byte(s), nil
+	case SearchFiltersTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchFiltersTier) UnmarshalText(data []byte) error {
+	switch SearchFiltersTier(data) {
+	case SearchFiltersTierCurated:
+		*s = SearchFiltersTierCurated
+		return nil
+	case SearchFiltersTierIndexed:
+		*s = SearchFiltersTierIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SearchFiltersValidation string
+
+const (
+	SearchFiltersValidationPassed     SearchFiltersValidation = "passed"
+	SearchFiltersValidationUnverified SearchFiltersValidation = "unverified"
+)
+
+// AllValues returns all SearchFiltersValidation values.
+func (SearchFiltersValidation) AllValues() []SearchFiltersValidation {
+	return []SearchFiltersValidation{
+		SearchFiltersValidationPassed,
+		SearchFiltersValidationUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchFiltersValidation) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchFiltersValidationPassed:
+		return []byte(s), nil
+	case SearchFiltersValidationUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchFiltersValidation) UnmarshalText(data []byte) error {
+	switch SearchFiltersValidation(data) {
+	case SearchFiltersValidationPassed:
+		*s = SearchFiltersValidationPassed
+		return nil
+	case SearchFiltersValidationUnverified:
+		*s = SearchFiltersValidationUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // One workspace-scoped lexical hit, best first. No score is returned: this endpoint has only the FTS
 // leg, `ts_rank_cd` is unbounded and is not a similarity, and the ordering it produces is already in
 // the array order. Publishing the raw number as a 0..1 rank would be false precision — see
@@ -19084,6 +19764,268 @@ func (s *SearchHit) SetName(val string) {
 func (s *SearchHit) SetSummary(val string) {
 	s.Summary = val
 }
+
+// Explicit requirements extracted from the query or corrected by the user. Null means not mentioned,
+// never an inferred default or an empty string. Model-extracted values quote the original query
+// verbatim.
+// Ref: #/components/schemas/SearchIntent
+type SearchIntent struct {
+	Input       NilString `json:"input"`
+	Output      NilString `json:"output"`
+	Tools       NilString `json:"tools"`
+	Data        NilString `json:"data"`
+	Environment NilString `json:"environment"`
+}
+
+// GetInput returns the value of Input.
+func (s *SearchIntent) GetInput() NilString {
+	return s.Input
+}
+
+// GetOutput returns the value of Output.
+func (s *SearchIntent) GetOutput() NilString {
+	return s.Output
+}
+
+// GetTools returns the value of Tools.
+func (s *SearchIntent) GetTools() NilString {
+	return s.Tools
+}
+
+// GetData returns the value of Data.
+func (s *SearchIntent) GetData() NilString {
+	return s.Data
+}
+
+// GetEnvironment returns the value of Environment.
+func (s *SearchIntent) GetEnvironment() NilString {
+	return s.Environment
+}
+
+// SetInput sets the value of Input.
+func (s *SearchIntent) SetInput(val NilString) {
+	s.Input = val
+}
+
+// SetOutput sets the value of Output.
+func (s *SearchIntent) SetOutput(val NilString) {
+	s.Output = val
+}
+
+// SetTools sets the value of Tools.
+func (s *SearchIntent) SetTools(val NilString) {
+	s.Tools = val
+}
+
+// SetData sets the value of Data.
+func (s *SearchIntent) SetData(val NilString) {
+	s.Data = val
+}
+
+// SetEnvironment sets the value of Environment.
+func (s *SearchIntent) SetEnvironment(val NilString) {
+	s.Environment = val
+}
+
+// Ref: #/components/schemas/SearchInterpretation
+type SearchInterpretation struct {
+	// Fallback means analysis failed and retrieval used the original query. Skipped means no analysis was
+	// attempted (reference picker or an empty/unsearchable query). Neither means vector failure;
+	// PublicSearchResponse.degraded describes that independently.
+	Status   SearchInterpretationStatus `json:"status"`
+	Intent   SearchIntent               `json:"intent"`
+	Keywords SearchKeywords             `json:"keywords"`
+	// Effective filters; explicit user selections override analysis.
+	Filters        SearchFilters                         `json:"filters"`
+	Model          OptString                             `json:"model"`
+	PromptVersion  OptString                             `json:"prompt_version"`
+	FallbackReason OptSearchInterpretationFallbackReason `json:"fallback_reason"`
+}
+
+// GetStatus returns the value of Status.
+func (s *SearchInterpretation) GetStatus() SearchInterpretationStatus {
+	return s.Status
+}
+
+// GetIntent returns the value of Intent.
+func (s *SearchInterpretation) GetIntent() SearchIntent {
+	return s.Intent
+}
+
+// GetKeywords returns the value of Keywords.
+func (s *SearchInterpretation) GetKeywords() SearchKeywords {
+	return s.Keywords
+}
+
+// GetFilters returns the value of Filters.
+func (s *SearchInterpretation) GetFilters() SearchFilters {
+	return s.Filters
+}
+
+// GetModel returns the value of Model.
+func (s *SearchInterpretation) GetModel() OptString {
+	return s.Model
+}
+
+// GetPromptVersion returns the value of PromptVersion.
+func (s *SearchInterpretation) GetPromptVersion() OptString {
+	return s.PromptVersion
+}
+
+// GetFallbackReason returns the value of FallbackReason.
+func (s *SearchInterpretation) GetFallbackReason() OptSearchInterpretationFallbackReason {
+	return s.FallbackReason
+}
+
+// SetStatus sets the value of Status.
+func (s *SearchInterpretation) SetStatus(val SearchInterpretationStatus) {
+	s.Status = val
+}
+
+// SetIntent sets the value of Intent.
+func (s *SearchInterpretation) SetIntent(val SearchIntent) {
+	s.Intent = val
+}
+
+// SetKeywords sets the value of Keywords.
+func (s *SearchInterpretation) SetKeywords(val SearchKeywords) {
+	s.Keywords = val
+}
+
+// SetFilters sets the value of Filters.
+func (s *SearchInterpretation) SetFilters(val SearchFilters) {
+	s.Filters = val
+}
+
+// SetModel sets the value of Model.
+func (s *SearchInterpretation) SetModel(val OptString) {
+	s.Model = val
+}
+
+// SetPromptVersion sets the value of PromptVersion.
+func (s *SearchInterpretation) SetPromptVersion(val OptString) {
+	s.PromptVersion = val
+}
+
+// SetFallbackReason sets the value of FallbackReason.
+func (s *SearchInterpretation) SetFallbackReason(val OptSearchInterpretationFallbackReason) {
+	s.FallbackReason = val
+}
+
+type SearchInterpretationFallbackReason string
+
+const (
+	SearchInterpretationFallbackReasonUnavailable     SearchInterpretationFallbackReason = "unavailable"
+	SearchInterpretationFallbackReasonTimeout         SearchInterpretationFallbackReason = "timeout"
+	SearchInterpretationFallbackReasonInvalidResponse SearchInterpretationFallbackReason = "invalid_response"
+	SearchInterpretationFallbackReasonBudgetExhausted SearchInterpretationFallbackReason = "budget_exhausted"
+)
+
+// AllValues returns all SearchInterpretationFallbackReason values.
+func (SearchInterpretationFallbackReason) AllValues() []SearchInterpretationFallbackReason {
+	return []SearchInterpretationFallbackReason{
+		SearchInterpretationFallbackReasonUnavailable,
+		SearchInterpretationFallbackReasonTimeout,
+		SearchInterpretationFallbackReasonInvalidResponse,
+		SearchInterpretationFallbackReasonBudgetExhausted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchInterpretationFallbackReason) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchInterpretationFallbackReasonUnavailable:
+		return []byte(s), nil
+	case SearchInterpretationFallbackReasonTimeout:
+		return []byte(s), nil
+	case SearchInterpretationFallbackReasonInvalidResponse:
+		return []byte(s), nil
+	case SearchInterpretationFallbackReasonBudgetExhausted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchInterpretationFallbackReason) UnmarshalText(data []byte) error {
+	switch SearchInterpretationFallbackReason(data) {
+	case SearchInterpretationFallbackReasonUnavailable:
+		*s = SearchInterpretationFallbackReasonUnavailable
+		return nil
+	case SearchInterpretationFallbackReasonTimeout:
+		*s = SearchInterpretationFallbackReasonTimeout
+		return nil
+	case SearchInterpretationFallbackReasonInvalidResponse:
+		*s = SearchInterpretationFallbackReasonInvalidResponse
+		return nil
+	case SearchInterpretationFallbackReasonBudgetExhausted:
+		*s = SearchInterpretationFallbackReasonBudgetExhausted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Fallback means analysis failed and retrieval used the original query. Skipped means no analysis was
+// attempted (reference picker or an empty/unsearchable query). Neither means vector failure;
+// PublicSearchResponse.degraded describes that independently.
+type SearchInterpretationStatus string
+
+const (
+	SearchInterpretationStatusAnalyzed  SearchInterpretationStatus = "analyzed"
+	SearchInterpretationStatusCorrected SearchInterpretationStatus = "corrected"
+	SearchInterpretationStatusFallback  SearchInterpretationStatus = "fallback"
+	SearchInterpretationStatusSkipped   SearchInterpretationStatus = "skipped"
+)
+
+// AllValues returns all SearchInterpretationStatus values.
+func (SearchInterpretationStatus) AllValues() []SearchInterpretationStatus {
+	return []SearchInterpretationStatus{
+		SearchInterpretationStatusAnalyzed,
+		SearchInterpretationStatusCorrected,
+		SearchInterpretationStatusFallback,
+		SearchInterpretationStatusSkipped,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SearchInterpretationStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case SearchInterpretationStatusAnalyzed:
+		return []byte(s), nil
+	case SearchInterpretationStatusCorrected:
+		return []byte(s), nil
+	case SearchInterpretationStatusFallback:
+		return []byte(s), nil
+	case SearchInterpretationStatusSkipped:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SearchInterpretationStatus) UnmarshalText(data []byte) error {
+	switch SearchInterpretationStatus(data) {
+	case SearchInterpretationStatusAnalyzed:
+		*s = SearchInterpretationStatusAnalyzed
+		return nil
+	case SearchInterpretationStatusCorrected:
+		*s = SearchInterpretationStatusCorrected
+		return nil
+	case SearchInterpretationStatusFallback:
+		*s = SearchInterpretationStatusFallback
+		return nil
+	case SearchInterpretationStatusSkipped:
+		*s = SearchInterpretationStatusSkipped
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SearchKeywords []string
 
 // Compact risk hint for a result row (DISC-002 風險提示). Unlike `SkillRisk` on the detail view
 // this is read from the search projection, not from a fresh scan of the package, so it carries counts

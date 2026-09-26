@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { expect, test } from "vitest";
 import App from "./App";
+import "../features/catalog/home/Home.page";
 
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
   const deadline = Date.now() + timeoutMs;

@@ -55,6 +55,7 @@ const rootRoute = createRootRoute({ component: RootLayout });
 
 export type HomeSearch = {
   q?: string;
+  correction?: string;
   script?: "yes" | "no";
   validation?: "passed" | "unverified";
   agent?: AgentRuntime;
@@ -73,6 +74,8 @@ const indexRoute = createRoute({
   component: lazyRouteComponent(() => import("../features/catalog/home/Home.page"), "Home"),
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
+    correction:
+      typeof search.correction === "string" ? search.correction : JSON.stringify(search.correction),
     script: search.script === "yes" || search.script === "no" ? search.script : undefined,
     validation:
       search.validation === "passed" || search.validation === "unverified"

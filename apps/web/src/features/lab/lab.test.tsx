@@ -1,4 +1,5 @@
 import { StrictMode, act } from "react";
+import "../catalog/home/Home.page";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../../app/App";

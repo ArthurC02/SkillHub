@@ -1,0 +1,21 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "DISC-005",
+  "proposal_id": "catalog-correctable-intent",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "Local implementation and partial proof exist in docs/plans/intent-search-validation.md, including 2884 Platform passes with 14 explicit skips, browser/API-stub coverage, Go/Python integration, separate opt-in live Gateway and Chromium checks, and real Gateway budget rejection. They are not yet digest-backed attestations covering every obligation; this draft remains unverified.",
+    "Use the pinned Node runtime through fnm; default shell Node differs. Doctor passed under the pinned runtime, not under the default shell runtime.",
+    "Chinese extension selection and the poisoning redline remain unresolved. The user authorized the new review/exposure gate; catalog-exposure-review records its design. It is not yet implemented, proven or promoted to a reviewed Registry rule.",
+    "The Registry validates with reviewed records and 49 current citations; source selection is developer-confirmed. Two source files changed outside their cited spans, so this does not authorize refreshing sources or rewriting reviewed records.",
+    "No proposal approval, submitted base revision or complete signed SCM attestation exists for this draft. No final commit, push or full-SHA remote CI success has been established."
+  ]
+}

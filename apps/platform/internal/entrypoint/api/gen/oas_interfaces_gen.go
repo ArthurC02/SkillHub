@@ -309,6 +309,10 @@ type SearchSkillsRes interface {
 	searchSkillsRes()
 }
 
+type SearchSkillsWithCorrectedIntentRes interface {
+	searchSkillsWithCorrectedIntentRes()
+}
+
 type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
 }

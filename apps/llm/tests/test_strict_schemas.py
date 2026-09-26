@@ -14,6 +14,7 @@ from skillhub_llm.creation import CreationDecision
 from skillhub_llm.enrich import Enrichment
 from skillhub_llm.evaluate import ImprovementProposals, JudgeVerdict
 from skillhub_llm.generate import GeneratedSkill
+from skillhub_llm.intent import IntentProposal
 
 # https://platform.openai.com/docs/guides/structured-outputs - "Supported
 # properties". Anything else on a property is rejected rather than ignored.
@@ -52,6 +53,7 @@ MODEL_FACING = [
     ImprovementProposals,
     GeneratedSkill,
     CreationDecision,
+    IntentProposal,
 ]
 
 

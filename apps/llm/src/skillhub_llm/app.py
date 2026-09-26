@@ -27,6 +27,7 @@ from skillhub_llm.gateway import (
 )
 from skillhub_llm.gateway import client as _client
 from skillhub_llm.generate import router as generate_router
+from skillhub_llm.intent import router as intent_router
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 service_bearer = HTTPBearer(auto_error=False)
@@ -66,6 +67,7 @@ app.include_router(enrich_router, dependencies=protected)
 app.include_router(evaluate_router, dependencies=protected)
 app.include_router(generate_router, dependencies=protected)
 app.include_router(creation_router, dependencies=protected)
+app.include_router(intent_router, dependencies=protected)
 logger = logging.getLogger("skillhub_llm")
 
 
