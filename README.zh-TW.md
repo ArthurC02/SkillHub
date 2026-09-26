@@ -146,6 +146,7 @@ task preflight     # 檢查未推送 commit 的 CI 相關規則
 - [規格與驗收準則](docs/plans/02-specifications-and-acceptance-criteria.md)
 - [架構決策](docs/adr/README.md)
 - [開發自動化](docs/development/automation.md)
+- [遠端開發（Codespaces + Dev Containers）](docs/development/REMOTE_DEVELOPMENT.md)
 - [Platform DDD 實務](docs/development/platform-ddd-practices.md)
 - [Provision 與維運 Runbook](docs/runbooks/README.md)
 - [`AGENTS.md`](AGENTS.md)：人與 Coding Agent 都要遵守的 repo 規則

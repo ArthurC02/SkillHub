@@ -146,6 +146,7 @@ A green local check is evidence about this machine, not proof of hosted CI or pr
 - [Specifications and acceptance criteria](docs/plans/02-specifications-and-acceptance-criteria.md)
 - [Architecture decisions](docs/adr/README.md)
 - [Developer automation](docs/development/automation.md)
+- [Remote development (Codespaces + Dev Containers)](docs/development/REMOTE_DEVELOPMENT.md)
 - [Platform DDD practices](docs/development/platform-ddd-practices.md)
 - [Provision and operations runbooks](docs/runbooks/README.md)
 - [`AGENTS.md`](AGENTS.md), the repository rules for people and coding agents
