@@ -46,12 +46,39 @@ required_env_keys=(
   LITELLM_BASE_URL
 )
 
-set -a
-. ./.env
-set +a
+read_env_value() {
+  awk -F= -v want="${1}" '
+    {
+      line=$0
+      sub(/^[[:space:]]+/, "", line)
+      if (line == "" || substr(line, 1, 1) == "#") {
+        next
+      }
+      if (index(line, "export ") == 1) {
+        line = substr(line, 8)
+        sub(/^[[:space:]]+/, "", line)
+      }
+      eq = index(line, "=")
+      if (eq == 0) {
+        next
+      }
+      parsed_key = substr(line, 1, eq - 1)
+      sub(/[[:space:]]+$/, "", parsed_key)
+      if (parsed_key == want) {
+        print substr(line, eq + 1)
+        exit
+      }
+    }
+  ' .env
+}
 
 for key in "${required_env_keys[@]}"; do
-  value="${!key:-}"
+  value="$(read_env_value "${key}")"
+  value="$(printf "%s" "${value}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+  value="${value#\"}"
+  value="${value%\"}"
+  value="${value#\'}"
+  value="${value%\'}"
   if [ -z "${value}" ]; then
     printf "missing or empty required .env key: %s\n" "${key}" >&2
     exit 1
