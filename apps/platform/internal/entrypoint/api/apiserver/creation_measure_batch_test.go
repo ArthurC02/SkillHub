@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -44,6 +45,8 @@ func creationMeasureLimits() creation.Limits {
 }
 
 const creationMeasureLoopBudget = 12
+
+const creationMeasureRevisionReply = "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。"
 
 type sessionRow struct {
 	ID             string    `json:"id"`
@@ -88,6 +91,8 @@ type sessionRow struct {
 	Rounds   int `json:"rounds,omitempty"`
 	MetRound int `json:"met_round,omitempty"`
 
+	CriteriaChangedBeforeMet *bool `json:"criteria_changed_before_met,omitempty"`
+
 	MetByOwner  *bool `json:"met_by_owner"`
 	KeptByOwner *bool `json:"kept_by_owner"`
 }
@@ -118,6 +123,7 @@ type creationMeasureSummary struct {
 
 	MetFirstCount         int `json:"met_first_count"`
 	MetCount              int `json:"met_count"`
+	MetOnChangedCriteria  int `json:"met_on_changed_criteria"`
 	MetDenominator        int `json:"met_denominator"`
 	DiagramMetCount       int `json:"diagram_met_count"`
 	DiagramMetDenominator int `json:"diagram_met_denominator"`
@@ -231,6 +237,73 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 type trialOutcome struct {
 	runID, runStatus, evalStatus, overall, note string
 	met                                         *bool
+	record                                      trialRecord
+}
+
+type trialCriterion struct {
+	Text string `json:"text"`
+}
+
+type trialRecord struct {
+	Round       int              `json:"round"`
+	SampleInput string           `json:"sample_input"`
+	Criteria    []trialCriterion `json:"acceptance_criteria"`
+	FinalOutput string           `json:"final_output"`
+	Artifacts   []string         `json:"artifacts"`
+	Evaluation  evaluationBody   `json:"evaluation"`
+	ReadErrors  []string         `json:"read_errors,omitempty"`
+}
+
+func (r trialRecord) criteriaTexts() []string {
+	texts := make([]string, 0, len(r.Criteria))
+	for _, c := range r.Criteria {
+		texts = append(texts, c.Text)
+	}
+	return texts
+}
+
+func readTrialRecord(ctx context.Context, pool *pgxpool.Pool, runID string, ev evaluationBody) trialRecord {
+	record := trialRecord{Evaluation: ev}
+	failed := func(what string, err error) {
+		record.ReadErrors = append(record.ReadErrors, what+": "+err.Error())
+	}
+	var criteria []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT s.user_prompt, s.acceptance_criteria
+		FROM runs r JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+		WHERE r.id = $1`, runID).Scan(&record.SampleInput, &criteria); err != nil {
+		failed("test case snapshot", err)
+	} else if err := json.Unmarshal(criteria, &record.Criteria); err != nil {
+		failed("acceptance criteria", err)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT payload->>'text' FROM trace_events
+		WHERE run_id = $1 AND event_type = 'agent_output' AND payload->>'kind' = 'final'
+		ORDER BY seq DESC LIMIT 1`, runID).Scan(&record.FinalOutput); err != nil {
+		failed("final agent output", err)
+	}
+	rows, err := pool.Query(ctx, `SELECT file_name FROM artifacts WHERE run_id = $1 ORDER BY file_name`, runID)
+	if err != nil {
+		failed("artifacts", err)
+		return record
+	}
+	record.Artifacts, err = pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		failed("artifacts", err)
+	}
+	return record
+}
+
+func writeTrialRecord(t *testing.T, outDir, id string, round int, record trialRecord) {
+	t.Helper()
+	record.Round = round
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, fmt.Sprintf("%s-trial-r%d.json", id, round)), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial *trialRun, candidate *creation.Candidate) trialOutcome {
@@ -264,6 +337,7 @@ func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial 
 	ev := waitForEvaluation(t, c, rv.RunID, 4*time.Minute)
 	out.evalStatus = ev.Status
 	out.overall = ev.Overall
+	out.record = readTrialRecord(ctx, trial.pool, rv.RunID, ev)
 	switch ev.Status {
 	case "completed", "failed":
 		met := ev.Overall == "met"
@@ -272,6 +346,49 @@ func trialCandidate(t *testing.T, a *api, ctx context.Context, c *client, trial 
 		out.note = "evaluation did not finish: " + ev.Status
 	}
 	return out
+}
+
+type trialInputs struct {
+	draftHash   string
+	sampleInput string
+	criteria    []string
+}
+
+func trialInputsOf(s creation.Snapshot) trialInputs {
+	in := trialInputs{sampleInput: s.SampleInput, criteria: s.AcceptanceCriteria}
+	if s.Draft != nil {
+		in.draftHash = s.Draft.ContentHash
+	}
+	return in
+}
+
+func (a trialInputs) equal(b trialInputs) bool {
+	return a.draftHash == b.draftHash && a.sampleInput == b.sampleInput && slices.Equal(a.criteria, b.criteria)
+}
+
+func TestTheMeasureHarnessCountsAnyTrialInputChangeAsARevision(t *testing.T) {
+	draft := &creation.Draft{ContentHash: "h1"}
+	base := creation.Snapshot{Draft: draft, SampleInput: "499 元", AcceptanceCriteria: []string{"a", "b"}}
+	cases := []struct {
+		name    string
+		mutate  func(s *creation.Snapshot)
+		revised bool
+	}{
+		{"nothing changed", func(*creation.Snapshot) {}, false},
+		{"only the draft changed", func(s *creation.Snapshot) { s.Draft = &creation.Draft{ContentHash: "h2"} }, true},
+		{"only the sample changed", func(s *creation.Snapshot) { s.SampleInput = "499、500、999、1000 元" }, true},
+		{"only a criterion changed", func(s *creation.Snapshot) { s.AcceptanceCriteria = []string{"a", "b2"} }, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			after := base
+			after.AcceptanceCriteria = slices.Clone(base.AcceptanceCriteria)
+			tc.mutate(&after)
+			if got := !trialInputsOf(base).equal(trialInputsOf(after)); got != tc.revised {
+				t.Fatalf("revised = %v, want %v", got, tc.revised)
+			}
+		})
+	}
 }
 
 func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
@@ -286,14 +403,13 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 		return row, v
 	}
 	row.Rounds = 1
+	writeTrialRecord(t, outDir, row.ID, 1, last.record)
+	firstCriteria := last.record.criteriaTexts()
 	if last.met != nil && *last.met {
 		row.MetRound = 1
 	}
 	for round := 2; round <= rounds && row.MetRound == 0; round++ {
-		beforeHash := ""
-		if v.Snapshot.Draft != nil {
-			beforeHash = v.Snapshot.Draft.ContentHash
-		}
+		before := trialInputsOf(v.Snapshot)
 		v = creationAttachRun(t, c, v, last.runID)
 		answered := 0
 
@@ -317,16 +433,12 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 				}
 				answered++
 				row.Clarifications++
-				v = creationMessage(t, c, v, "照沒過的條件改草稿；條件或範例輸入驗不到的，就改條件或範例輸入。")
+				v = creationMessage(t, c, v, creationMeasureRevisionReply)
 				continue
 			}
 			break
 		}
-		afterHash := ""
-		if v.Snapshot.Draft != nil {
-			afterHash = v.Snapshot.Draft.ContentHash
-		}
-		revised := beforeHash != afterHash
+		revised := !before.equal(trialInputsOf(v.Snapshot))
 		if round == 2 {
 			row.RevisedAfterRun = &revised
 		}
@@ -348,8 +460,11 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 			break
 		}
 		row.Rounds = round
+		writeTrialRecord(t, outDir, row.ID, round, last.record)
 		if last.met != nil && *last.met {
 			row.MetRound = round
+			changed := !slices.Equal(firstCriteria, last.record.criteriaTexts())
+			row.CriteriaChangedBeforeMet = &changed
 		}
 	}
 	return row, v
@@ -506,6 +621,9 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 			}
 			if within {
 				results.Summary.MetCount++
+			}
+			if row.CriteriaChangedBeforeMet != nil && *row.CriteriaChangedBeforeMet {
+				results.Summary.MetOnChangedCriteria++
 			}
 		}
 	}
