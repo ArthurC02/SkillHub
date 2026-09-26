@@ -114,6 +114,27 @@ task dev:llm
 
 前者在檢查必要 Secret 後啟動 LiteLLM；後者替 `apps/llm` 簽發有預算上限的 Virtual Key，而不是把 Gateway master key 交給它。只要請求到模型供應商就可能付費，因此付費 live test 一律 opt-in，不會出現在預設測試命令中。
 
+## 遠端開發：Codespaces 與 Dev Containers
+
+Skill Hub 內建 repo 自帶的 Dev Container，設定放在
+[`.devcontainer`](.devcontainer/)。它會建置釘選的
+[`infra/images/devtools/Dockerfile`](infra/images/devtools/Dockerfile)，啟動
+供本機 Compose 與 codegen 使用的巢狀 Docker daemon，以 `.env.example`
+安全初始化 `.env`（若已存在則不覆寫），並 bootstrap Go、Node 與 Python
+依賴。
+
+- **GitHub Codespaces**：直接從 repo 建立 Codespace，等待 post-create 完成。
+- **VS Code Dev Containers**：先在本機 clone repo、安裝 Dev Containers
+  擴充套件，再選 **Reopen in Container**。
+
+轉送埠已預先標註：Web dev server（`5173`）、Platform API（`8080`）、
+LiteLLM（`4000`）、SeaweedFS（`8333`）與 PostgreSQL（`5432`）。容器也會
+推薦 Go、Python、Docker、YAML、ESLint 與 Prettier 的 VS Code 擴充套件，
+並把 Python 工具指到 `apps/llm/.venv`。
+
+完整的啟動流程、信任邊界與日常指令請看
+[`/.devcontainer/README.md`](.devcontainer/README.md)。
+
 ## 測試與驗證
 
 ```bash

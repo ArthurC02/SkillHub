@@ -107,7 +107,7 @@ for key in "${required_env_keys[@]}"; do
     printf "unresolved placeholder in .env key: %s\n" "${key}" >&2
     exit 1
   fi
-  if [ -z "${value}" ]; then
+  if [ -z "${value}"; then
     printf "missing or empty required .env key: %s\n" "${key}" >&2
     exit 1
   fi

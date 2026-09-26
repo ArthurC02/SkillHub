@@ -4,13 +4,24 @@ This is the recommended clean-machine path documented in [開發自動化與依�
 `infra/images/devtools` image, initializes `.env` without overwriting it, and
 downloads language dependencies.
 
+## Remote-development quick start
+
+- **GitHub Codespaces**: create a Codespace from the repository and wait for the
+  post-create step to finish.
+- **VS Code Dev Containers**: install the Dev Containers extension, clone the
+  repository locally, then run **Dev Containers: Reopen in Container**.
+
+`customizations.codespaces.openFiles` currently applies only to GitHub
+Codespaces.
+
 ## Startup and initialization flow
 
-- `postStartCommand` starts a nested Docker daemon (`dockerd`) and waits until
-  `docker info` succeeds.
+- `postStartCommand` runs `.devcontainer/post-start.sh`, starts a nested Docker
+  daemon (`dockerd`) when needed, and waits until `docker info` succeeds.
 - `postCreateCommand` runs `.devcontainer/post-create.sh`, which checks required
   tool binaries, verifies required `.env` keys, and runs dependency bootstrap.
-- `updateContentCommand` runs the same script in `SKILLHUB_SKIP_BOOTSTRAP=1` mode for lightweight content refresh.
+- `updateContentCommand` runs the same script in
+  `SKILLHUB_SKIP_BOOTSTRAP=1` mode for lightweight content refresh.
 - Bootstrap execution is serialized with a filesystem lock so concurrent startup
   hooks do not race in one workspace.
 

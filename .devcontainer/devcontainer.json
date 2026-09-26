@@ -25,7 +25,7 @@
     "UV_LINK_MODE": "copy",
     "SKILLHUB_REMOTE_DEV": "1"
   },
-  "postStartCommand": "sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &' && sh -c 'i=0; until docker info >/dev/null 2>&1; do i=$((i+1)); test $i -lt 60 || { sudo tail -80 /tmp/dockerd.log; exit 1; }; sleep 1; done'",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "updateContentCommand": "SKILLHUB_SKIP_BOOTSTRAP=1 bash .devcontainer/post-create.sh",
   "forwardPorts": [5173, 8080, 4000, 5432, 8333, 2345, 5678, 9229],
@@ -67,6 +67,7 @@
     "codespaces": {
       "openFiles": [
         "README.md",
+        ".devcontainer/README.md",
         "docs/development/REMOTE_DEVELOPMENT.md"
       ]
     },
@@ -86,9 +87,14 @@
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
+        "files.eol": "\n",
+        "go.toolsManagement.checkForUpdates": "off",
         "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+        "python.defaultInterpreterPath": "${workspaceFolder}/apps/llm/.venv/bin/python",
+        "python.testing.pytestArgs": ["apps/llm"],
         "python.testing.pytestEnabled": true,
-        "python.testing.unittestEnabled": false
+        "python.testing.unittestEnabled": false,
+        "python.terminal.activateEnvironment": true
       },
       "extensions": [
         "golang.go",

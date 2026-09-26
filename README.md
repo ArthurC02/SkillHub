@@ -114,6 +114,28 @@ task dev:llm
 
 The first command starts LiteLLM after checking required secrets. The second mints a budget-limited Virtual Key for `apps/llm`; it does not give that service the gateway master key. A model request can incur cost, so paid live tests are opt-in and never part of the default test command.
 
+## Remote development: Codespaces and Dev Containers
+
+Skill Hub ships a repository-owned Dev Container in
+[`.devcontainer`](.devcontainer/). It builds the pinned
+[`infra/images/devtools/Dockerfile`](infra/images/devtools/Dockerfile), starts a
+nested Docker daemon for local Compose and code generation, creates `.env` from
+`.env.example` without overwriting an existing file, and bootstraps Go, Node
+and Python dependencies.
+
+- **GitHub Codespaces**: create a Codespace from the repository and wait for the
+  post-create step to finish.
+- **VS Code Dev Containers**: clone the repository locally, install the Dev
+  Containers extension, and choose **Reopen in Container**.
+
+Forwarded ports are pre-labelled for the Web dev server (`5173`), Platform API
+(`8080`), LiteLLM (`4000`), SeaweedFS (`8333`) and PostgreSQL (`5432`). The
+container also recommends the Go, Python, Docker, YAML, ESLint and Prettier VS
+Code extensions and points Python tooling at `apps/llm/.venv`.
+
+For the exact startup flow, trust boundary and daily commands, see
+[`/.devcontainer/README.md`](.devcontainer/README.md).
+
 ## Test and verify
 
 ```bash
