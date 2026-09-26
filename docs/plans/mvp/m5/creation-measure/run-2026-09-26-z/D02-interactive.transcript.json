@@ -1,0 +1,38 @@
+{
+  "acceptance_criteria": [
+    "產出內容包含「Excel 轉 CSV」的結果。",
+    "產出內容包含缺漏欄位檢查的結果。",
+    "產出內容包含匯入 Shopify 後台的完成表述。",
+    "產出內容包含回覆客戶已入單的文字。",
+    "內容只涵蓋已確認流程，不額外加入未提及的分支或補救步驟。"
+  ],
+  "brief": "建立一個可重複使用的技能，用來把「客戶 Excel 訂單」轉為 CSV、檢查缺漏欄位、匯入 Shopify 後台，並回覆已入單。\n\n**inputs**：一份客戶 Excel 訂單內容。\n\n**outputs**：\n1. 轉好的 CSV 內容或可直接匯入的結果\n2. 缺漏欄位檢查結果\n3. 匯入 Shopify 後台後的完成回覆文字\n\n**tool requirements**：不要求外部工具；若需要驗證草稿格式，可用 validate_draft。\n\n**limitations**：只依照已確認流程描述，不補充圖上沒有的步驟或例外處理。",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我先給出這張流程圖的簡短描述，請你確認是否正確：\n\n**diagram_description**：流程是「收到客戶 Excel 訂單」後，先轉成 CSV 格式，再檢查缺漏欄位，接著匯入 Shopify 後台，最後回覆客戶已入單。\n\n如果正確，請回覆「確認」；如果要修正，請直接說要改哪一句。",
+      "created_at": "2026-09-26T16:04:03.739595631Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認我對流程圖節點、條件與分支的理解。",
+      "created_at": "2026-09-26T16:04:06.021365366Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認這個可執行的技能規格，之後我再開始草擬：\n\n**brief**：建立一個可重複使用的技能，用來把「客戶 Excel 訂單」轉為 CSV、檢查缺漏欄位、匯入 Shopify 後台，並回覆已入單。\n\n**inputs**：一份客戶 Excel 訂單內容。\n\n**outputs**：\n1. 轉好的 CSV 內容或可直接匯入的結果\n2. 缺漏欄位檢查結果\n3. 匯入 Shopify 後台後的完成回覆文字\n\n**tool requirements**：不要求外部工具；若需要驗證草稿格式，可用 validate_draft。\n\n**limitations**：只依照已確認流程描述，不補充圖上沒有的步驟或例外處理。\n\n**acceptance_criteria**：\n1. 產出內容包含「Excel 轉 CSV」的結果。\n2. 產出內容包含缺漏欄位檢查的結果。\n3. 產出內容包含匯入 Shopify 後台的完成表述。\n4. 產出內容包含回覆客戶已入單的文字。\n5. 內容只涵蓋已確認流程，不額外加入未提及的分支或補救步驟。\n\n**sample_input**：請把這份客戶 Excel 訂單轉成 CSV、檢查缺漏欄位，並說明匯入 Shopify 後台後要回覆客戶的文字。\n\nSKU,Name,Qty,Price\nA001,紅茶,2,120\nA002,綠茶,1,100\nA003,,3,90\n\n如果這個 brief 可以，請回覆「確認」；如果要改，我只需要你指出要改哪一段。",
+      "created_at": "2026-09-26T16:04:11.587830396Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認流程圖的理解；確認後再依它建立草稿。",
+      "created_at": "2026-09-26T16:04:18.294982308Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成：模型的回覆不符合會話規則，已保留進度與實際可取得的費用。請檢查後再繼續。",
+      "created_at": "2026-09-26T16:04:18.294982708Z"
+    }
+  ],
+  "state": "failed"
+}

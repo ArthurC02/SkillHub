@@ -1,0 +1,22 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "Diagram description: a linear support-ticket workflow. It starts with receiving a support ticket, then tagging it with a Zendesk category, drafting a reply in 200 words, and finally sending the reply and closing the ticket. Please confirm this description.",
+      "created_at": "2026-09-26T16:27:09.589365631Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Please confirm this interpretation of the diagram.",
+      "created_at": "2026-09-26T16:27:11.524247126Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成：平台這一側沒能完成這次模型呼叫，不是你寫的內容的問題。已保留進度與實際可取得的費用。請檢查後再繼續。",
+      "created_at": "2026-09-26T16:27:11.561307476Z"
+    }
+  ],
+  "state": "failed"
+}

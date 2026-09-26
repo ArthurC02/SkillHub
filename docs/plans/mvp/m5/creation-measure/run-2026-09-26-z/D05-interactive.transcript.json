@@ -1,0 +1,22 @@
+{
+  "acceptance_criteria": null,
+  "brief": "",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "這張圖描述一個新人到職入職流程：收到通知後，依序完成建立公司信箱、加入 Slack 頻道、準備筆電與門禁卡、安排第一週訓練、指派導師、進行第 30 天面談，最後記錄到人資系統。請確認這個 diagram_description 是否正確。",
+      "created_at": "2026-09-26T16:04:33.665873254Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已整理出流程重點，請確認這個解讀是否正確。",
+      "created_at": "2026-09-26T16:04:36.145765871Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這一步未完成：平台這一側沒能完成這次模型呼叫，不是你寫的內容的問題。已保留進度與實際可取得的費用。請檢查後再繼續。",
+      "created_at": "2026-09-26T16:04:36.173743013Z"
+    }
+  ],
+  "state": "failed"
+}

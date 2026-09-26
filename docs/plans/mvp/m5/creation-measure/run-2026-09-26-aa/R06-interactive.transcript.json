@@ -1,0 +1,38 @@
+{
+  "acceptance_criteria": [
+    "輸入是一段英文使用手冊內容時，輸出為繁體中文譯文。",
+    "輸出中保留手冊原有的段落結構或標題層級。",
+    "同一專有名詞第一次出現時，譯名後面附原文；之後再次出現時不重複附原文。",
+    "輸出不省略原文中的重要操作說明或警告。",
+    "輸出只包含翻譯結果，不額外加入與手冊無關的說明。"
+  ],
+  "brief": "將英文使用手冊翻譯成繁體中文；保留原意與原文格式；專有名詞第一次出現時附上原文；適用於使用者提供的英文手冊內容。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "把一份 30 頁的英文使用手冊翻成繁體中文，專有名詞第一次出現時附原文。",
+      "created_at": "2026-09-26T16:27:39.737253708Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的技能簡述：\n\n**brief**：將英文使用手冊翻譯成繁體中文；保留原意與原文格式；專有名詞第一次出現時附上原文；適用於使用者提供的英文手冊內容。\n\n**acceptance_criteria**：\n1. 輸入是一段英文使用手冊內容時，輸出為繁體中文譯文。\n2. 輸出中保留手冊原有的段落結構或標題層級。\n3. 同一專有名詞第一次出現時，譯名後面附原文；之後再次出現時不重複附原文。\n4. 輸出不省略原文中的重要操作說明或警告。\n5. 輸出只包含翻譯結果，不額外加入與手冊無關的說明。\n\n**sample_input**：\n請將以下英文使用手冊翻成繁體中文，專有名詞第一次出現時附原文：\n\n1. Introduction\nThis guide explains how to connect the device to the Power Hub and configure the settings.\n\n2. Safety Warnings\nDo not expose the device to water.\n\n3. Reset Procedure\nPress the reset button for 5 seconds to restore factory defaults.\n\n請確認這份 brief、acceptance_criteria 和 sample_input 是否符合你的需求；如果要，我也可以再幫你補成更精準的版本。",
+      "created_at": "2026-09-26T16:27:43.497369679Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是可交付的技能草案。",
+      "created_at": "2026-09-26T16:27:46.877469685Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-26T16:27:46.880731431Z"
+    },
+    {
+      "role": "assistant",
+      "content": "沒有失敗的驗證項目；目前只有一則非阻斷警告（license-unknown），依規則不需要修改。以下是可直接交付的草案。",
+      "created_at": "2026-09-26T16:27:49.730578521Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

@@ -71,7 +71,7 @@ SKILLHUB_MODEL_GATEWAY_URL / SKILLHUB_MODEL_GATEWAY_KEY
 
 **尚未跑。**
 
-三個路徑都用**絕對路徑**：`go -C apps/platform` 會把相對路徑從套件目錄解析（第一次實跑就撞到 `open …corpus.json: cannot find`）。第二把金鑰要帶 `SKILLHUB_SERVICE_KEY_ALIAS=<不同名字>`，LiteLLM 拒絕重複的 key alias；預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`（0～20）。
+三個路徑都用**絕對路徑**：`go -C apps/platform` 會把相對路徑從套件目錄解析（第一次實跑就撞到 `open …corpus.json: cannot find`）。第二把金鑰要帶 `SKILLHUB_SERVICE_KEY_ALIAS=<不同名字>`，LiteLLM 拒絕重複的 key alias；預算用 `SKILLHUB_SERVICE_KEY_BUDGET_USD`（0～20）。只跑其中一組時設 `CREATION_MEASURE_ONLY`（`text`、`diagram` 或 `reference`）。
 
 ## 常設紅線：改索引文本或檢索規則時要一起重跑的投毒量測（2026-09-07 `05` R-53）
 
