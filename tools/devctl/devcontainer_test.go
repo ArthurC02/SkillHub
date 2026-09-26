@@ -92,6 +92,9 @@ func TestDevContainerBootstrapsTheWorkspaceAndDockerDaemon(t *testing.T) {
 	if !strings.Contains(string(postStart), "dockerd") || !strings.Contains(string(postStart), "docker info") {
 		t.Fatalf("post-start.sh no longer starts and verifies the nested Docker daemon:\n%s", postStart)
 	}
+	if strings.Contains(string(postStart), "pgrep dockerd") {
+		t.Fatalf("post-start.sh fell back to a process-wide dockerd check instead of probing the configured socket:\n%s", postStart)
+	}
 }
 
 func TestDevContainerEditorDefaultsCoverTheRepoToolchain(t *testing.T) {
@@ -129,9 +132,6 @@ func TestDevContainerEditorDefaultsCoverTheRepoToolchain(t *testing.T) {
 	}
 	if args, ok := settings["python.testing.pytestArgs"].([]any); !ok || len(args) != 1 || args[0] != "apps/llm" {
 		t.Fatalf("python.testing.pytestArgs = %#v", settings["python.testing.pytestArgs"])
-	}
-	if dirs, ok := settings["eslint.workingDirectories"].([]any); !ok || len(dirs) != 2 || dirs[0] != "apps/web" || dirs[1] != "packages/api-client-ts" {
-		t.Fatalf("eslint.workingDirectories = %#v", settings["eslint.workingDirectories"])
 	}
 }
 

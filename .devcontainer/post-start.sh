@@ -1,7 +1,9 @@
 #!/bin/sh
 set -eu
 
-sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &'
+if ! docker info >/dev/null 2>&1; then
+	sudo sh -c 'nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &'
+fi
 
 i=0
 until docker info >/dev/null 2>&1; do

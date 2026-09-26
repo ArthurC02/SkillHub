@@ -47,7 +47,6 @@
     "vscode": {
       "settings": {
         "files.eol": "\n",
-        "eslint.workingDirectories": ["apps/web", "packages/api-client-ts"],
         "go.toolsManagement.checkForUpdates": "off",
         "python.defaultInterpreterPath": "${workspaceFolder}/apps/llm/.venv/bin/python",
         "python.testing.pytestArgs": ["apps/llm"],
