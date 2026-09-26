@@ -13,7 +13,7 @@
 
 ## 1. 現在要簽什麼
 
-**六項。** 沒有一項在擋正在執行的工作——擋著整條路徑的是 §2 的三件事，而那三件都不是簽名。
+**七項。** 沒有一項在擋正在執行的工作——擋著整條路徑的是 §2 的三件事，而那三件都不是簽名。
 
 ### R-22｜M6 算不算 MVP 完成度
 
@@ -113,6 +113,15 @@
 - **建議**：(a)。但書是判定的一部分，不是細節；而折疊裡那份一旦與外面重複，它保護的就不再是任何東西。
 - **不決定的代價**：`02:NFR-001` 第 6 條在三個畫面裡有兩個成立，而矩陣上這一列會一直停在「部分」——不是因為沒人寫測試，是因為沒有可以斷言的對象。
 - **決定之後誰動**：(a)／(b) 由 Agent 改 `RiskVerdict` 與打包頁測試；(c) 由 Agent 把理由寫進設計系統的跨頁複本那一格。
+
+### R-91｜兩個 Plugin 帶同名 Skill 時，是一個 Skill 的兩個版本還是兩個 Skill
+
+- **要決定的是什麼**：一個 Workspace 匯入兩個不同的 Plugin，各自帶一個 manifest `name` 相同的 Skill 時，第二個要成為第一個的新版本（今天的行為）、被拒絕，還是成為另一個 Skill。
+- **已經查到的事實**：Workspace 內的 Skill 身分是 manifest `name`——`apps/platform/internal/skill/admission/source.go:240` 以 `LoadSkillNamed(ws.ID, manifest.Name)` 查，落到 `GetSkillByName(workspace_id, name)`（`apps/platform/internal/skill/library/skill_store.go:44`），查到就掛新版本。這條路徑不看 Skill 來自哪個 Plugin。實測（一次性探針，已刪）依序匯入兩個不同 Plugin、兩個 Skill 目錄不同名而 manifest `name` 相同，結果：`skill=bed2c759-1c45-4e73-be9b-0e6865810e59 version=5d51b28e… n=1`、第二次 `skill=bed2c759-…（同一個）version=b9bdf123… n=2`、`skills in the workspace: 1`。同一個問題在**單一來源之內**已經被擋：`refuseRepeatedNames`（同檔 `:80`）對同一次匯入裡的重名發 `duplicate-skill-name` 錯誤，理由逐字是「否則第二個會變成第一個的新版本，把兩個不同的 Skill 併成一個」；生成來源撞名也已經被擋（`ErrGeneratedNameCollision`，同檔 `:245`）。**唯一沒被擋的，是跨來源的匯入。**
+- **選項**：(a) 跨來源重名也拒絕，訊息告訴使用者哪個 Skill 已經占用這個名字；(b) Skill 身分改成「Plugin ＋ name」，來自不同 Plugin 的同名 Skill 各自獨立，獨立 Skill 仍以 name 為身分；(c) 維持現狀，明寫「同名即同一個 Skill，不論從哪裡來」，並讓匯入畫面在掛上新版本時說出來。
+- **建議**：(a)。你確認的概念是「Plugin 是打包工具，不是結構上的上下層」——(b) 會把 Plugin 變成身分的一部分，也就是把它變成結構；(c) 讓一次匯入安靜地改掉一個既有 Skill 的內容，而 Skill Version 不可變的保護擋不住這件事（它擋的是覆寫，不是誤接血脈）。(a) 與單一來源內已經成立的規則同一條，且 `duplicate-skill-name` 這個代碼與訊息形狀已經存在。
+- **不決定的代價**：匯入兩個各自維護的 Plugin，如果它們剛好有一個常見名字（`code-review`、`commit`、`test`），第二個 Plugin 的那個 Skill 會被記成第一個的新版本。使用者看到的是「我的 Skill 變成了別人的內容」，而目錄裡只剩一個。沒有任何測試在守這件事。
+- **決定之後誰動**：(a) 由 Agent 在 `importOne` 的 `found` 分支加來源判斷與新的拒絕碼，補跨來源重名的整合測試；(b) 需要 migration（`skills` 的唯一鍵）與 ADR 的 Skill 身分那一段改寫，成本最高；(c) 由 Agent 把規則寫進 [ADR 索引](../adr/README.md) 的資料模型那一段與匯入畫面文案。
 
 ## 2. 不是簽名，但在等人的三件事
 
