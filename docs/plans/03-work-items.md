@@ -499,3 +499,15 @@ hello in-process s3
 - [x] SBX-015 CI 有一條沒有容器執行期可用的工作（`sandbox-nodocker`，`DOCKER_HOST` 指向沒人在聽的位址），新長出來的 daemon 依賴在那裡是紅的，不是靜默跳過。既有的 `SKILLHUB_REQUIRE_DOCKER=1` 守的是相反方向：有 daemon 的工作不得整批跳過還報成功。
 - [x] SBX-016 Linux 的 `localdrv` 以 cgroup v2 強制記憶體與行程數上限（`cgroup_linux.go`；非 Linux 的 Unix 沒有 cgroup，回報無強制）。**能力是探測出來的，不是宣告的**：取得不到可寫的委派子樹就回報 false，且 `attach` 只對回報得出的那幾項設上限——宣告得了才可以被派工。受 cgroup v2「父層有行程就不得委派 controller」所限，driver 啟動時會把自己移進自有 cgroup 的葉節點，移不動就整項放棄並歸位。`SKILLHUB_REQUIRE_CGROUP=1` 讓「環境不支援」由跳過變成失敗，守的方向與 `SKILLHUB_REQUIRE_DOCKER` 相同。**已在具委派子樹的 Linux 上以非 root 實證，四項突變各自會紅**；CI 帶著它跑上限那幾條，所以這項能力是被強制檢查的，不是靠宣告。
 - [x] SBX-017 CI 上的上限檢查是閘門而非探測。hosted runner 的 job 位於 root 擁有、不可寫、`subtree_control` 為空的系統服務 cgroup，controller 都在、缺的只是委派；`tools/ci/with-delegated-cgroup.sh` 以 sudo 補上那三個寫入（建 slice、開 controller、chown、把 shell 移進去），**exec 之後全部非 root**，測試二進位先編譯再 exec 以獨佔該 cgroup。
+
+## 24. 發佈與組合散布（M7，後 MVP）
+
+> 依[發佈、發佈者與組合散布](../adr/README.md#發佈發佈者與組合散布)（[`05` R-92～94](05-pending-rulings.md)），允收準則見 [`02` §4.13](02-specifications-and-acceptance-criteria.md)。發佈者、發佈物、Bundle 與曝光審核屬於一個新的 Bounded Context（那份 ADR 決策 16），**先在 Domain Memory 登記再建目錄**；它向 Skill 的擁有者讀版本與治理事實、向打包要求建出套件。
+
+- [ ] PACK-014 登記新的 Bounded Context 與它對 Skill 擁有者、打包的 dependency policy，同一個 commit 改 depguard。（依鐵律 7）
+- [ ] PACK-015 發佈者：資料表、註冊與讀取端點、名稱規則與保留字（名稱規則由 Agent Skill 的 `name` 規則匯出同一份實作，不另寫一份）。（對應 `02:PACK-003`）
+- [ ] PACK-016 發佈與 Release：發佈、再發佈、撤回端點，散布閘與作者聲明，公開位址的匿名讀取與治理事實的即時核對；帳號頁的發佈者註冊、Skill 頁的發佈入口與 `/p/{發佈者}/{名稱}` 公開頁。（對應 `02:PACK-004`）
+- [ ] PACK-017 取得：登入後下載發佈物、下載記在取得者工作區、未受邀者的部署設定（預設關）。（對應 `02:PACK-006`）
+- [ ] PACK-018 Bundle：Bundle 與 Bundle Version 的資料表與不可變守衛、建立端點與驗證、Plugin zip 匯出（打包那一側）、信任取最壞；發佈 Bundle 與公開頁上的成員變更。（對應 `02:PACK-005`）
+- [ ] DISC-013 曝光審核：審核紀錄、營運者的清單／快照／核准／撤銷端點與後台頁，搜尋、目錄瀏覽、分類數量納入曝光中的發佈物，公開讀取同一次核對資格。（對應 `02:DISC-007`）
+
