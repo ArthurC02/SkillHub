@@ -51,6 +51,7 @@ type Service struct {
 
 	VersionsInRuns      ReferenceRead
 	VersionsInDownloads ReferenceRead
+	VersionsInBundles   ReferenceRead
 	SkillsWithTestCases ReferenceRead
 }
 

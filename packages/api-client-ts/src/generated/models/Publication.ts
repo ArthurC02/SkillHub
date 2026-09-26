@@ -20,6 +20,13 @@ import {
     PublicationReleaseToJSON,
     PublicationReleaseToJSONTyped,
 } from './PublicationRelease';
+import type { PublicationKind } from './PublicationKind';
+import {
+    PublicationKindFromJSON,
+    PublicationKindFromJSONTyped,
+    PublicationKindToJSON,
+    PublicationKindToJSONTyped,
+} from './PublicationKind';
 
 /**
  * 
@@ -27,6 +34,10 @@ import {
  * @interface Publication
  */
 export interface Publication {
+    /**
+     * 
+     */
+    kind: PublicationKind;
     /**
      * 
      */
@@ -68,6 +79,7 @@ export type PublicationStatusEnum = typeof PublicationStatusEnum[keyof typeof Pu
  * Check if a given object implements the Publication interface.
  */
 export function instanceOfPublication(value: object): value is Publication {
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('publisher' in value) || value['publisher'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('address' in value) || value['address'] === undefined) return false;
@@ -87,6 +99,7 @@ export function PublicationFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
+        'kind': PublicationKindFromJSON(json['kind']),
         'publisher': json['publisher'],
         'name': json['name'],
         'address': json['address'],
@@ -107,6 +120,7 @@ export function PublicationToJSONTyped(value?: Publication | null, ignoreDiscrim
 
     return {
         
+        'kind': PublicationKindToJSON(value['kind']),
         'publisher': value['publisher'],
         'name': value['name'],
         'address': value['address'],

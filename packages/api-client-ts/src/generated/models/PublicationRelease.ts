@@ -22,7 +22,7 @@ import {
 } from './CategorizedFindings';
 
 /**
- * 
+ * A Skill release carries version_id and version_number; a Bundle release carries bundle_version.
  * @export
  * @interface PublicationRelease
  */
@@ -30,11 +30,15 @@ export interface PublicationRelease {
     /**
      * 
      */
-    versionId: string;
+    versionId?: string;
     /**
      * 
      */
-    versionNumber: number;
+    versionNumber?: number;
+    /**
+     * 
+     */
+    bundleVersion?: string;
     /**
      * 
      */
@@ -57,8 +61,6 @@ export interface PublicationRelease {
  * Check if a given object implements the PublicationRelease interface.
  */
 export function instanceOfPublicationRelease(value: object): value is PublicationRelease {
-    if ((!('versionId' in (value as Record<string, any>)) && !('version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionId'] === undefined && (value as Record<string, any>)['version_id'] === undefined)) return false;
-    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
     if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if ((!('releasedAt' in (value as Record<string, any>)) && !('released_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['releasedAt'] === undefined && (value as Record<string, any>)['released_at'] === undefined)) return false;
     if ((!('rightsAttested' in (value as Record<string, any>)) && !('rights_attested' in (value as Record<string, any>))) || ((value as Record<string, any>)['rightsAttested'] === undefined && (value as Record<string, any>)['rights_attested'] === undefined)) return false;
@@ -76,8 +78,9 @@ export function PublicationReleaseFromJSONTyped(json: any, ignoreDiscriminator: 
     }
     return {
         
-        'versionId': json['version_id'],
-        'versionNumber': json['version_number'],
+        'versionId': json['version_id'] == null ? undefined : json['version_id'],
+        'versionNumber': json['version_number'] == null ? undefined : json['version_number'],
+        'bundleVersion': json['bundle_version'] == null ? undefined : json['bundle_version'],
         'contentHash': json['content_hash'],
         'releasedAt': (json['released_at'] == null ? json['released_at'] : parseDateTime(json['released_at'])),
         'rightsAttested': json['rights_attested'],
@@ -98,6 +101,7 @@ export function PublicationReleaseToJSONTyped(value?: PublicationRelease | null,
         
         'version_id': value['versionId'],
         'version_number': value['versionNumber'],
+        'bundle_version': value['bundleVersion'],
         'content_hash': value['contentHash'],
         'released_at': value['releasedAt'] == null ? value['releasedAt'] : serializeDateTime(value['releasedAt']),
         'rights_attested': value['rightsAttested'],

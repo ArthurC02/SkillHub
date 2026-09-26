@@ -36,7 +36,7 @@ func forkedSkills(ctx context.Context, db gen.DBTX, skillIDs []pgtype.UUID) ([]p
 }
 
 func (s *Service) requirePurgeReads() error {
-	if s.VersionsInRuns == nil || s.VersionsInDownloads == nil || s.SkillsWithTestCases == nil {
+	if s.VersionsInRuns == nil || s.VersionsInDownloads == nil || s.VersionsInBundles == nil || s.SkillsWithTestCases == nil {
 		return errPurgeReadsNotInjected
 	}
 	return nil
@@ -79,6 +79,7 @@ func (s *Service) purgeHolds(ctx context.Context, db gen.DBTX, candidates []purg
 		{s.SkillsWithTestCases, skillIDs, holds.skills},
 		{s.VersionsInRuns, versionIDs, holds.versions},
 		{s.VersionsInDownloads, versionIDs, holds.versions},
+		{s.VersionsInBundles, versionIDs, holds.versions},
 	} {
 		ids, err := hold.read(ctx, db, hold.ids)
 		if err != nil {

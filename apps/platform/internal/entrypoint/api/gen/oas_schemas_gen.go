@@ -386,6 +386,7 @@ func (s *Acquisition) SetContentURL(val string) {
 }
 
 func (*Acquisition) acquirePublicationRes() {}
+func (*Acquisition) exportBundleRes()       {}
 
 type ActOnCreationSessionBadRequest Error
 
@@ -769,6 +770,237 @@ func (s *BrowseCatalogValidation) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+// Ref: #/components/schemas/BundleMember
+type BundleMember struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	VersionID uuid.UUID `json:"version_id"`
+	// The member's manifest name, its directory in the exported Plugin.
+	Name          string `json:"name"`
+	VersionNumber int    `json:"version_number"`
+	ContentHash   string `json:"content_hash"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *BundleMember) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *BundleMember) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetName returns the value of Name.
+func (s *BundleMember) GetName() string {
+	return s.Name
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *BundleMember) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *BundleMember) GetContentHash() string {
+	return s.ContentHash
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *BundleMember) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *BundleMember) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetName sets the value of Name.
+func (s *BundleMember) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *BundleMember) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *BundleMember) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// Ref: #/components/schemas/BundleMemberChange
+type BundleMemberChange struct {
+	Name   string                   `json:"name"`
+	Change BundleMemberChangeChange `json:"change"`
+	// The member's version number in the earlier release; absent when added.
+	From OptInt `json:"from"`
+	// The member's version number in this release; absent when removed.
+	To OptInt `json:"to"`
+}
+
+// GetName returns the value of Name.
+func (s *BundleMemberChange) GetName() string {
+	return s.Name
+}
+
+// GetChange returns the value of Change.
+func (s *BundleMemberChange) GetChange() BundleMemberChangeChange {
+	return s.Change
+}
+
+// GetFrom returns the value of From.
+func (s *BundleMemberChange) GetFrom() OptInt {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *BundleMemberChange) GetTo() OptInt {
+	return s.To
+}
+
+// SetName sets the value of Name.
+func (s *BundleMemberChange) SetName(val string) {
+	s.Name = val
+}
+
+// SetChange sets the value of Change.
+func (s *BundleMemberChange) SetChange(val BundleMemberChangeChange) {
+	s.Change = val
+}
+
+// SetFrom sets the value of From.
+func (s *BundleMemberChange) SetFrom(val OptInt) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *BundleMemberChange) SetTo(val OptInt) {
+	s.To = val
+}
+
+type BundleMemberChangeChange string
+
+const (
+	BundleMemberChangeChangeAdded   BundleMemberChangeChange = "added"
+	BundleMemberChangeChangeRemoved BundleMemberChangeChange = "removed"
+	BundleMemberChangeChangeChanged BundleMemberChangeChange = "changed"
+)
+
+// AllValues returns all BundleMemberChangeChange values.
+func (BundleMemberChangeChange) AllValues() []BundleMemberChangeChange {
+	return []BundleMemberChangeChange{
+		BundleMemberChangeChangeAdded,
+		BundleMemberChangeChangeRemoved,
+		BundleMemberChangeChangeChanged,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BundleMemberChangeChange) MarshalText() ([]byte, error) {
+	switch s {
+	case BundleMemberChangeChangeAdded:
+		return []byte(s), nil
+	case BundleMemberChangeChangeRemoved:
+		return []byte(s), nil
+	case BundleMemberChangeChangeChanged:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BundleMemberChangeChange) UnmarshalText(data []byte) error {
+	switch BundleMemberChangeChange(data) {
+	case BundleMemberChangeChangeAdded:
+		*s = BundleMemberChangeChangeAdded
+		return nil
+	case BundleMemberChangeChangeRemoved:
+		*s = BundleMemberChangeChangeRemoved
+		return nil
+	case BundleMemberChangeChangeChanged:
+		*s = BundleMemberChangeChangeChanged
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/BundleVersion
+type BundleVersion struct {
+	Bundle      string `json:"bundle"`
+	Version     string `json:"version"`
+	Description string `json:"description"`
+	// Over the ordered member manifest names and version content hashes.
+	ContentHash string         `json:"content_hash"`
+	CreatedAt   time.Time      `json:"created_at"`
+	Members     []BundleMember `json:"members"`
+}
+
+// GetBundle returns the value of Bundle.
+func (s *BundleVersion) GetBundle() string {
+	return s.Bundle
+}
+
+// GetVersion returns the value of Version.
+func (s *BundleVersion) GetVersion() string {
+	return s.Version
+}
+
+// GetDescription returns the value of Description.
+func (s *BundleVersion) GetDescription() string {
+	return s.Description
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *BundleVersion) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *BundleVersion) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetMembers returns the value of Members.
+func (s *BundleVersion) GetMembers() []BundleMember {
+	return s.Members
+}
+
+// SetBundle sets the value of Bundle.
+func (s *BundleVersion) SetBundle(val string) {
+	s.Bundle = val
+}
+
+// SetVersion sets the value of Version.
+func (s *BundleVersion) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetDescription sets the value of Description.
+func (s *BundleVersion) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *BundleVersion) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *BundleVersion) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetMembers sets the value of Members.
+func (s *BundleVersion) SetMembers(val []BundleMember) {
+	s.Members = val
+}
+
+func (*BundleVersion) createBundleVersionRes() {}
 
 type CancelAccountDeletionConflict Error
 
@@ -1749,6 +1981,74 @@ func (s *CountTrend) SetBuckets(val []DailyCount) {
 func (*CountTrend) getOperatorActionTrendRes() {}
 func (*CountTrend) getRunTrendRes()            {}
 
+type CreateBundleVersionBadRequest Error
+
+func (*CreateBundleVersionBadRequest) createBundleVersionRes() {}
+
+type CreateBundleVersionConflict PublishingRefusal
+
+func (*CreateBundleVersionConflict) createBundleVersionRes() {}
+
+type CreateBundleVersionNotFound Error
+
+func (*CreateBundleVersionNotFound) createBundleVersionRes() {}
+
+type CreateBundleVersionReq struct {
+	Name string `json:"name"`
+	// Semantic version, MAJOR.MINOR.PATCH with an optional pre-release label.
+	Version          string      `json:"version"`
+	Description      string      `json:"description"`
+	MemberVersionIds []uuid.UUID `json:"member_version_ids"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateBundleVersionReq) GetName() string {
+	return s.Name
+}
+
+// GetVersion returns the value of Version.
+func (s *CreateBundleVersionReq) GetVersion() string {
+	return s.Version
+}
+
+// GetDescription returns the value of Description.
+func (s *CreateBundleVersionReq) GetDescription() string {
+	return s.Description
+}
+
+// GetMemberVersionIds returns the value of MemberVersionIds.
+func (s *CreateBundleVersionReq) GetMemberVersionIds() []uuid.UUID {
+	return s.MemberVersionIds
+}
+
+// SetName sets the value of Name.
+func (s *CreateBundleVersionReq) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersion sets the value of Version.
+func (s *CreateBundleVersionReq) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreateBundleVersionReq) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetMemberVersionIds sets the value of MemberVersionIds.
+func (s *CreateBundleVersionReq) SetMemberVersionIds(val []uuid.UUID) {
+	s.MemberVersionIds = val
+}
+
+type CreateBundleVersionUnauthorized Error
+
+func (*CreateBundleVersionUnauthorized) createBundleVersionRes() {}
+
+type CreateBundleVersionUnprocessableEntity PublishingRefusal
+
+func (*CreateBundleVersionUnprocessableEntity) createBundleVersionRes() {}
+
 // An empty message creates an unbilled session awaiting its first diagram or reference selection. The
 // supplied budget is a user-approved ceiling, bounded again by deployment policy.
 // Ref: #/components/schemas/CreateCreationSession
@@ -1822,17 +2122,18 @@ func (*CreateDownloadArtifactBadRequest) createDownloadArtifactRes() {}
 
 // Merged schema.
 type CreateDownloadArtifactCreated struct {
-	ArtifactID     uuid.UUID `json:"artifact_id"`
-	SkillID        uuid.UUID `json:"skill_id"`
-	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	ArtifactID     uuid.UUID         `json:"artifact_id"`
+	Plugin         OptPluginContents `json:"plugin"`
+	SkillID        OptUUID           `json:"skill_id"`
+	SkillVersionID OptUUID           `json:"skill_version_id"`
 	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
 	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
 	// read as an answer to "which one is this" (`02:WS-002` 1「版本」).
-	VersionNumber int `json:"version_number"`
+	VersionNumber OptInt `json:"version_number"`
 	// The highest version number this skill currently has. Present so the client never has to fetch a
 	// second resource to find out whether it is showing a stale package, and equal to `version_number`
 	// when this is the newest.
-	LatestVersionNumber int `json:"latest_version_number"`
+	LatestVersionNumber OptInt `json:"latest_version_number"`
 	// `current` or `superseded`, with the wording — including the numbers — from the server
 	// (設計系統 §4.4).
 	//
@@ -1911,23 +2212,28 @@ func (s *CreateDownloadArtifactCreated) GetArtifactID() uuid.UUID {
 	return s.ArtifactID
 }
 
+// GetPlugin returns the value of Plugin.
+func (s *CreateDownloadArtifactCreated) GetPlugin() OptPluginContents {
+	return s.Plugin
+}
+
 // GetSkillID returns the value of SkillID.
-func (s *CreateDownloadArtifactCreated) GetSkillID() uuid.UUID {
+func (s *CreateDownloadArtifactCreated) GetSkillID() OptUUID {
 	return s.SkillID
 }
 
 // GetSkillVersionID returns the value of SkillVersionID.
-func (s *CreateDownloadArtifactCreated) GetSkillVersionID() uuid.UUID {
+func (s *CreateDownloadArtifactCreated) GetSkillVersionID() OptUUID {
 	return s.SkillVersionID
 }
 
 // GetVersionNumber returns the value of VersionNumber.
-func (s *CreateDownloadArtifactCreated) GetVersionNumber() int {
+func (s *CreateDownloadArtifactCreated) GetVersionNumber() OptInt {
 	return s.VersionNumber
 }
 
 // GetLatestVersionNumber returns the value of LatestVersionNumber.
-func (s *CreateDownloadArtifactCreated) GetLatestVersionNumber() int {
+func (s *CreateDownloadArtifactCreated) GetLatestVersionNumber() OptInt {
 	return s.LatestVersionNumber
 }
 
@@ -2016,23 +2322,28 @@ func (s *CreateDownloadArtifactCreated) SetArtifactID(val uuid.UUID) {
 	s.ArtifactID = val
 }
 
+// SetPlugin sets the value of Plugin.
+func (s *CreateDownloadArtifactCreated) SetPlugin(val OptPluginContents) {
+	s.Plugin = val
+}
+
 // SetSkillID sets the value of SkillID.
-func (s *CreateDownloadArtifactCreated) SetSkillID(val uuid.UUID) {
+func (s *CreateDownloadArtifactCreated) SetSkillID(val OptUUID) {
 	s.SkillID = val
 }
 
 // SetSkillVersionID sets the value of SkillVersionID.
-func (s *CreateDownloadArtifactCreated) SetSkillVersionID(val uuid.UUID) {
+func (s *CreateDownloadArtifactCreated) SetSkillVersionID(val OptUUID) {
 	s.SkillVersionID = val
 }
 
 // SetVersionNumber sets the value of VersionNumber.
-func (s *CreateDownloadArtifactCreated) SetVersionNumber(val int) {
+func (s *CreateDownloadArtifactCreated) SetVersionNumber(val OptInt) {
 	s.VersionNumber = val
 }
 
 // SetLatestVersionNumber sets the value of LatestVersionNumber.
-func (s *CreateDownloadArtifactCreated) SetLatestVersionNumber(val int) {
+func (s *CreateDownloadArtifactCreated) SetLatestVersionNumber(val OptInt) {
 	s.LatestVersionNumber = val
 }
 
@@ -5978,6 +6289,14 @@ type DeleteTestCaseUnauthorized Error
 
 func (*DeleteTestCaseUnauthorized) deleteTestCaseRes() {}
 
+type DelistBundleNotFound Error
+
+func (*DelistBundleNotFound) delistBundleRes() {}
+
+type DelistBundleUnauthorized Error
+
+func (*DelistBundleUnauthorized) delistBundleRes() {}
+
 type DelistSkillNotFound Error
 
 func (*DelistSkillNotFound) delistSkillRes() {}
@@ -6279,19 +6598,23 @@ func (s *Disclosure) SetNote(val string) {
 // not covering the manifest itself, and answers "is the content the same as last time" — which is
 // what deduplication and "did the skill change or only the profile" need, and what a byte hash cannot
 // answer across packager versions (packaging-design §2.4).
+//
+// A Plugin carries `plugin` instead of one Skill. `skill_id`, `skill_version_id`, `version_number` and
+// `latest_version_number` are absent, and `version_state` is `plugin`.
 // Ref: #/components/schemas/DownloadArtifact
 type DownloadArtifact struct {
-	ArtifactID     uuid.UUID `json:"artifact_id"`
-	SkillID        uuid.UUID `json:"skill_id"`
-	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	ArtifactID     uuid.UUID         `json:"artifact_id"`
+	Plugin         OptPluginContents `json:"plugin"`
+	SkillID        OptUUID           `json:"skill_id"`
+	SkillVersionID OptUUID           `json:"skill_version_id"`
 	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
 	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
 	// read as an answer to "which one is this" (`02:WS-002` 1「版本」).
-	VersionNumber int `json:"version_number"`
+	VersionNumber OptInt `json:"version_number"`
 	// The highest version number this skill currently has. Present so the client never has to fetch a
 	// second resource to find out whether it is showing a stale package, and equal to `version_number`
 	// when this is the newest.
-	LatestVersionNumber int `json:"latest_version_number"`
+	LatestVersionNumber OptInt `json:"latest_version_number"`
 	// `current` or `superseded`, with the wording — including the numbers — from the server
 	// (設計系統 §4.4).
 	//
@@ -6369,23 +6692,28 @@ func (s *DownloadArtifact) GetArtifactID() uuid.UUID {
 	return s.ArtifactID
 }
 
+// GetPlugin returns the value of Plugin.
+func (s *DownloadArtifact) GetPlugin() OptPluginContents {
+	return s.Plugin
+}
+
 // GetSkillID returns the value of SkillID.
-func (s *DownloadArtifact) GetSkillID() uuid.UUID {
+func (s *DownloadArtifact) GetSkillID() OptUUID {
 	return s.SkillID
 }
 
 // GetSkillVersionID returns the value of SkillVersionID.
-func (s *DownloadArtifact) GetSkillVersionID() uuid.UUID {
+func (s *DownloadArtifact) GetSkillVersionID() OptUUID {
 	return s.SkillVersionID
 }
 
 // GetVersionNumber returns the value of VersionNumber.
-func (s *DownloadArtifact) GetVersionNumber() int {
+func (s *DownloadArtifact) GetVersionNumber() OptInt {
 	return s.VersionNumber
 }
 
 // GetLatestVersionNumber returns the value of LatestVersionNumber.
-func (s *DownloadArtifact) GetLatestVersionNumber() int {
+func (s *DownloadArtifact) GetLatestVersionNumber() OptInt {
 	return s.LatestVersionNumber
 }
 
@@ -6469,23 +6797,28 @@ func (s *DownloadArtifact) SetArtifactID(val uuid.UUID) {
 	s.ArtifactID = val
 }
 
+// SetPlugin sets the value of Plugin.
+func (s *DownloadArtifact) SetPlugin(val OptPluginContents) {
+	s.Plugin = val
+}
+
 // SetSkillID sets the value of SkillID.
-func (s *DownloadArtifact) SetSkillID(val uuid.UUID) {
+func (s *DownloadArtifact) SetSkillID(val OptUUID) {
 	s.SkillID = val
 }
 
 // SetSkillVersionID sets the value of SkillVersionID.
-func (s *DownloadArtifact) SetSkillVersionID(val uuid.UUID) {
+func (s *DownloadArtifact) SetSkillVersionID(val OptUUID) {
 	s.SkillVersionID = val
 }
 
 // SetVersionNumber sets the value of VersionNumber.
-func (s *DownloadArtifact) SetVersionNumber(val int) {
+func (s *DownloadArtifact) SetVersionNumber(val OptInt) {
 	s.VersionNumber = val
 }
 
 // SetLatestVersionNumber sets the value of LatestVersionNumber.
-func (s *DownloadArtifact) SetLatestVersionNumber(val int) {
+func (s *DownloadArtifact) SetLatestVersionNumber(val OptInt) {
 	s.LatestVersionNumber = val
 }
 
@@ -6709,6 +7042,7 @@ func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listModelCallBudgetsRes()            {}
+func (*Error) listOwnBundlesRes()                  {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) listSkillsRes()                      {}
 func (*Error) publicSearchSkillsRes()              {}
@@ -7734,6 +8068,18 @@ func (s *EvidenceRefReattributedFrom) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+type ExportBundleForbidden Error
+
+func (*ExportBundleForbidden) exportBundleRes() {}
+
+type ExportBundleNotFound Error
+
+func (*ExportBundleNotFound) exportBundleRes() {}
+
+type ExportBundleUnauthorized Error
+
+func (*ExportBundleUnauthorized) exportBundleRes() {}
 
 // Ref: #/components/schemas/FileDiff
 type FileDiff struct {
@@ -9423,6 +9769,14 @@ func (s *GetOperatorRostersOK) SetBetaAllowlist(val []string) {
 
 func (*GetOperatorRostersOK) getOperatorRostersRes() {}
 
+type GetOwnBundlePublicationNotFound Error
+
+func (*GetOwnBundlePublicationNotFound) getOwnBundlePublicationRes() {}
+
+type GetOwnBundlePublicationUnauthorized Error
+
+func (*GetOwnBundlePublicationUnauthorized) getOwnBundlePublicationRes() {}
+
 type GetOwnPublicationNotFound Error
 
 func (*GetOwnPublicationNotFound) getOwnPublicationRes() {}
@@ -10820,6 +11174,22 @@ func (s *ListOperatorAuditLogOK) SetEvents(val []OperatorAuditEvent) {
 }
 
 func (*ListOperatorAuditLogOK) listOperatorAuditLogRes() {}
+
+type ListOwnBundlesOK struct {
+	Bundles []BundleVersion `json:"bundles"`
+}
+
+// GetBundles returns the value of Bundles.
+func (s *ListOwnBundlesOK) GetBundles() []BundleVersion {
+	return s.Bundles
+}
+
+// SetBundles sets the value of Bundles.
+func (s *ListOwnBundlesOK) SetBundles(val []BundleVersion) {
+	s.Bundles = val
+}
+
+func (*ListOwnBundlesOK) listOwnBundlesRes() {}
 
 type ListPackagingTargetsOK struct {
 	Targets []PackagingTarget `json:"targets"`
@@ -13810,6 +14180,144 @@ func (o OptPackagingBlockedReason) Or(d PackagingBlockedReason) PackagingBlocked
 	return d
 }
 
+// NewOptPluginContents returns new OptPluginContents with value set to v.
+func NewOptPluginContents(v PluginContents) OptPluginContents {
+	return OptPluginContents{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPluginContents is optional PluginContents.
+type OptPluginContents struct {
+	Value PluginContents
+	Set   bool
+}
+
+// IsSet returns true if OptPluginContents was set.
+func (o OptPluginContents) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPluginContents) Reset() {
+	var v PluginContents
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPluginContents) SetTo(v PluginContents) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPluginContents) Get() (v PluginContents, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPluginContents) Or(d PluginContents) PluginContents {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPublicPublicationBundle returns new OptPublicPublicationBundle with value set to v.
+func NewOptPublicPublicationBundle(v PublicPublicationBundle) OptPublicPublicationBundle {
+	return OptPublicPublicationBundle{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicPublicationBundle is optional PublicPublicationBundle.
+type OptPublicPublicationBundle struct {
+	Value PublicPublicationBundle
+	Set   bool
+}
+
+// IsSet returns true if OptPublicPublicationBundle was set.
+func (o OptPublicPublicationBundle) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicPublicationBundle) Reset() {
+	var v PublicPublicationBundle
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicPublicationBundle) SetTo(v PublicPublicationBundle) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicPublicationBundle) Get() (v PublicPublicationBundle, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicPublicationBundle) Or(d PublicPublicationBundle) PublicPublicationBundle {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPublicPublicationBundleRelease returns new OptPublicPublicationBundleRelease with value set to v.
+func NewOptPublicPublicationBundleRelease(v PublicPublicationBundleRelease) OptPublicPublicationBundleRelease {
+	return OptPublicPublicationBundleRelease{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicPublicationBundleRelease is optional PublicPublicationBundleRelease.
+type OptPublicPublicationBundleRelease struct {
+	Value PublicPublicationBundleRelease
+	Set   bool
+}
+
+// IsSet returns true if OptPublicPublicationBundleRelease was set.
+func (o OptPublicPublicationBundleRelease) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicPublicationBundleRelease) Reset() {
+	var v PublicPublicationBundleRelease
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicPublicationBundleRelease) SetTo(v PublicPublicationBundleRelease) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicPublicationBundleRelease) Get() (v PublicPublicationBundleRelease, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicPublicationBundleRelease) Or(d PublicPublicationBundleRelease) PublicPublicationBundleRelease {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptPublicPublicationRelease returns new OptPublicPublicationRelease with value set to v.
 func NewOptPublicPublicationRelease(v PublicPublicationRelease) OptPublicPublicationRelease {
 	return OptPublicPublicationRelease{
@@ -16594,6 +17102,90 @@ func (s *PackagingTargetSupportStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/PluginContents
+type PluginContents struct {
+	Name    string                      `json:"name"`
+	Version string                      `json:"version"`
+	Members []PluginContentsMembersItem `json:"members"`
+}
+
+// GetName returns the value of Name.
+func (s *PluginContents) GetName() string {
+	return s.Name
+}
+
+// GetVersion returns the value of Version.
+func (s *PluginContents) GetVersion() string {
+	return s.Version
+}
+
+// GetMembers returns the value of Members.
+func (s *PluginContents) GetMembers() []PluginContentsMembersItem {
+	return s.Members
+}
+
+// SetName sets the value of Name.
+func (s *PluginContents) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PluginContents) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetMembers sets the value of Members.
+func (s *PluginContents) SetMembers(val []PluginContentsMembersItem) {
+	s.Members = val
+}
+
+type PluginContentsMembersItem struct {
+	SkillID        uuid.UUID `json:"skill_id"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	Name           string    `json:"name"`
+	VersionNumber  int       `json:"version_number"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *PluginContentsMembersItem) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *PluginContentsMembersItem) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetName returns the value of Name.
+func (s *PluginContentsMembersItem) GetName() string {
+	return s.Name
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PluginContentsMembersItem) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *PluginContentsMembersItem) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *PluginContentsMembersItem) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetName sets the value of Name.
+func (s *PluginContentsMembersItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PluginContentsMembersItem) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
 type PreviewPackagingBadRequest Error
 
 func (*PreviewPackagingBadRequest) previewPackagingRes() {}
@@ -16612,21 +17204,30 @@ func (*PreviewPackagingUnauthorized) previewPackagingRes() {}
 
 // Ref: #/components/schemas/PublicPublication
 type PublicPublication struct {
-	Publisher string `json:"publisher"`
-	Name      string `json:"name"`
-	Address   string `json:"address"`
+	Kind      PublicationKind `json:"kind"`
+	Publisher string          `json:"publisher"`
+	Name      string          `json:"name"`
+	Address   string          `json:"address"`
 	// One of available, delisted, withdrawn, taken_down, held or not_redistributable; only available
-	// carries skill and release.
+	// carries skill and release, or bundle and bundle_release. For a Bundle the note names the member that
+	// makes it unavailable.
 	Availability Labelled `json:"availability"`
 	// When the author withdrew it; present only while availability is delisted.
-	DelistedAt OptDateTime                 `json:"delisted_at"`
-	Skill      OptPublicPublicationSkill   `json:"skill"`
-	Release    OptPublicPublicationRelease `json:"release"`
-	Releases   []PublicRelease             `json:"releases"`
+	DelistedAt    OptDateTime                       `json:"delisted_at"`
+	Skill         OptPublicPublicationSkill         `json:"skill"`
+	Release       OptPublicPublicationRelease       `json:"release"`
+	Bundle        OptPublicPublicationBundle        `json:"bundle"`
+	BundleRelease OptPublicPublicationBundleRelease `json:"bundle_release"`
+	Releases      []PublicRelease                   `json:"releases"`
 	// Whether it is in search and the catalog, and the sentence saying so.
 	Exposure PublicationNote `json:"exposure"`
 	// Whether this page can hand out a package, said before any action.
 	Acquisition PublicationNote `json:"acquisition"`
+}
+
+// GetKind returns the value of Kind.
+func (s *PublicPublication) GetKind() PublicationKind {
+	return s.Kind
 }
 
 // GetPublisher returns the value of Publisher.
@@ -16664,6 +17265,16 @@ func (s *PublicPublication) GetRelease() OptPublicPublicationRelease {
 	return s.Release
 }
 
+// GetBundle returns the value of Bundle.
+func (s *PublicPublication) GetBundle() OptPublicPublicationBundle {
+	return s.Bundle
+}
+
+// GetBundleRelease returns the value of BundleRelease.
+func (s *PublicPublication) GetBundleRelease() OptPublicPublicationBundleRelease {
+	return s.BundleRelease
+}
+
 // GetReleases returns the value of Releases.
 func (s *PublicPublication) GetReleases() []PublicRelease {
 	return s.Releases
@@ -16677,6 +17288,11 @@ func (s *PublicPublication) GetExposure() PublicationNote {
 // GetAcquisition returns the value of Acquisition.
 func (s *PublicPublication) GetAcquisition() PublicationNote {
 	return s.Acquisition
+}
+
+// SetKind sets the value of Kind.
+func (s *PublicPublication) SetKind(val PublicationKind) {
+	s.Kind = val
 }
 
 // SetPublisher sets the value of Publisher.
@@ -16714,6 +17330,16 @@ func (s *PublicPublication) SetRelease(val OptPublicPublicationRelease) {
 	s.Release = val
 }
 
+// SetBundle sets the value of Bundle.
+func (s *PublicPublication) SetBundle(val OptPublicPublicationBundle) {
+	s.Bundle = val
+}
+
+// SetBundleRelease sets the value of BundleRelease.
+func (s *PublicPublication) SetBundleRelease(val OptPublicPublicationBundleRelease) {
+	s.BundleRelease = val
+}
+
 // SetReleases sets the value of Releases.
 func (s *PublicPublication) SetReleases(val []PublicRelease) {
 	s.Releases = val
@@ -16731,19 +17357,170 @@ func (s *PublicPublication) SetAcquisition(val PublicationNote) {
 
 func (*PublicPublication) getPublicPublicationRes() {}
 
+type PublicPublicationBundle struct {
+	Version     string                               `json:"version"`
+	Description string                               `json:"description"`
+	Members     []PublicPublicationBundleMembersItem `json:"members"`
+}
+
+// GetVersion returns the value of Version.
+func (s *PublicPublicationBundle) GetVersion() string {
+	return s.Version
+}
+
+// GetDescription returns the value of Description.
+func (s *PublicPublicationBundle) GetDescription() string {
+	return s.Description
+}
+
+// GetMembers returns the value of Members.
+func (s *PublicPublicationBundle) GetMembers() []PublicPublicationBundleMembersItem {
+	return s.Members
+}
+
+// SetVersion sets the value of Version.
+func (s *PublicPublicationBundle) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetDescription sets the value of Description.
+func (s *PublicPublicationBundle) SetDescription(val string) {
+	s.Description = val
+}
+
+// SetMembers sets the value of Members.
+func (s *PublicPublicationBundle) SetMembers(val []PublicPublicationBundleMembersItem) {
+	s.Members = val
+}
+
+type PublicPublicationBundleMembersItem struct {
+	Name          string `json:"name"`
+	VersionNumber int    `json:"version_number"`
+	ContentHash   string `json:"content_hash"`
+}
+
+// GetName returns the value of Name.
+func (s *PublicPublicationBundleMembersItem) GetName() string {
+	return s.Name
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PublicPublicationBundleMembersItem) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *PublicPublicationBundleMembersItem) GetContentHash() string {
+	return s.ContentHash
+}
+
+// SetName sets the value of Name.
+func (s *PublicPublicationBundleMembersItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PublicPublicationBundleMembersItem) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *PublicPublicationBundleMembersItem) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// Merged schema.
+type PublicPublicationBundleRelease struct {
+	VersionNumber OptInt    `json:"version_number"`
+	Version       OptString `json:"version"`
+	ContentHash   string    `json:"content_hash"`
+	ReleasedAt    time.Time `json:"released_at"`
+	// What differs among the members from the release before this one.
+	Changes  []BundleMemberChange `json:"changes"`
+	Findings CategorizedFindings  `json:"findings"`
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PublicPublicationBundleRelease) GetVersionNumber() OptInt {
+	return s.VersionNumber
+}
+
+// GetVersion returns the value of Version.
+func (s *PublicPublicationBundleRelease) GetVersion() OptString {
+	return s.Version
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *PublicPublicationBundleRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *PublicPublicationBundleRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// GetChanges returns the value of Changes.
+func (s *PublicPublicationBundleRelease) GetChanges() []BundleMemberChange {
+	return s.Changes
+}
+
+// GetFindings returns the value of Findings.
+func (s *PublicPublicationBundleRelease) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PublicPublicationBundleRelease) SetVersionNumber(val OptInt) {
+	s.VersionNumber = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PublicPublicationBundleRelease) SetVersion(val OptString) {
+	s.Version = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *PublicPublicationBundleRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *PublicPublicationBundleRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
+// SetChanges sets the value of Changes.
+func (s *PublicPublicationBundleRelease) SetChanges(val []BundleMemberChange) {
+	s.Changes = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *PublicPublicationBundleRelease) SetFindings(val CategorizedFindings) {
+	s.Findings = val
+}
+
 // Merged schema.
 type PublicPublicationRelease struct {
-	VersionNumber  int                             `json:"version_number"`
-	ContentHash    string                          `json:"content_hash"`
-	ReleasedAt     time.Time                       `json:"released_at"`
+	VersionNumber OptInt    `json:"version_number"`
+	Version       OptString `json:"version"`
+	ContentHash   string    `json:"content_hash"`
+	ReleasedAt    time.Time `json:"released_at"`
+	// What differs among the members from the release before this one.
+	Changes        []BundleMemberChange            `json:"changes"`
 	Findings       CategorizedFindings             `json:"findings"`
 	License        PublicPublicationReleaseLicense `json:"license"`
 	Redistribution Labelled                        `json:"redistribution"`
 }
 
 // GetVersionNumber returns the value of VersionNumber.
-func (s *PublicPublicationRelease) GetVersionNumber() int {
+func (s *PublicPublicationRelease) GetVersionNumber() OptInt {
 	return s.VersionNumber
+}
+
+// GetVersion returns the value of Version.
+func (s *PublicPublicationRelease) GetVersion() OptString {
+	return s.Version
 }
 
 // GetContentHash returns the value of ContentHash.
@@ -16754,6 +17531,11 @@ func (s *PublicPublicationRelease) GetContentHash() string {
 // GetReleasedAt returns the value of ReleasedAt.
 func (s *PublicPublicationRelease) GetReleasedAt() time.Time {
 	return s.ReleasedAt
+}
+
+// GetChanges returns the value of Changes.
+func (s *PublicPublicationRelease) GetChanges() []BundleMemberChange {
+	return s.Changes
 }
 
 // GetFindings returns the value of Findings.
@@ -16772,8 +17554,13 @@ func (s *PublicPublicationRelease) GetRedistribution() Labelled {
 }
 
 // SetVersionNumber sets the value of VersionNumber.
-func (s *PublicPublicationRelease) SetVersionNumber(val int) {
+func (s *PublicPublicationRelease) SetVersionNumber(val OptInt) {
 	s.VersionNumber = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PublicPublicationRelease) SetVersion(val OptString) {
+	s.Version = val
 }
 
 // SetContentHash sets the value of ContentHash.
@@ -16784,6 +17571,11 @@ func (s *PublicPublicationRelease) SetContentHash(val string) {
 // SetReleasedAt sets the value of ReleasedAt.
 func (s *PublicPublicationRelease) SetReleasedAt(val time.Time) {
 	s.ReleasedAt = val
+}
+
+// SetChanges sets the value of Changes.
+func (s *PublicPublicationRelease) SetChanges(val []BundleMemberChange) {
+	s.Changes = val
 }
 
 // SetFindings sets the value of Findings.
@@ -16851,16 +17643,26 @@ func (s *PublicPublicationSkill) SetSummary(val string) {
 	s.Summary = val
 }
 
+// A Skill release carries version_number; a Bundle release carries version and, except for the first,
+// changes.
 // Ref: #/components/schemas/PublicRelease
 type PublicRelease struct {
-	VersionNumber int       `json:"version_number"`
+	VersionNumber OptInt    `json:"version_number"`
+	Version       OptString `json:"version"`
 	ContentHash   string    `json:"content_hash"`
 	ReleasedAt    time.Time `json:"released_at"`
+	// What differs among the members from the release before this one.
+	Changes []BundleMemberChange `json:"changes"`
 }
 
 // GetVersionNumber returns the value of VersionNumber.
-func (s *PublicRelease) GetVersionNumber() int {
+func (s *PublicRelease) GetVersionNumber() OptInt {
 	return s.VersionNumber
+}
+
+// GetVersion returns the value of Version.
+func (s *PublicRelease) GetVersion() OptString {
+	return s.Version
 }
 
 // GetContentHash returns the value of ContentHash.
@@ -16873,9 +17675,19 @@ func (s *PublicRelease) GetReleasedAt() time.Time {
 	return s.ReleasedAt
 }
 
+// GetChanges returns the value of Changes.
+func (s *PublicRelease) GetChanges() []BundleMemberChange {
+	return s.Changes
+}
+
 // SetVersionNumber sets the value of VersionNumber.
-func (s *PublicRelease) SetVersionNumber(val int) {
+func (s *PublicRelease) SetVersionNumber(val OptInt) {
 	s.VersionNumber = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PublicRelease) SetVersion(val OptString) {
+	s.Version = val
 }
 
 // SetContentHash sets the value of ContentHash.
@@ -16886,6 +17698,11 @@ func (s *PublicRelease) SetContentHash(val string) {
 // SetReleasedAt sets the value of ReleasedAt.
 func (s *PublicRelease) SetReleasedAt(val time.Time) {
 	s.ReleasedAt = val
+}
+
+// SetChanges sets the value of Changes.
+func (s *PublicRelease) SetChanges(val []BundleMemberChange) {
+	s.Changes = val
 }
 
 // Ref: #/components/schemas/PublicSearchResponse
@@ -17647,13 +18464,19 @@ func (s *PublicSearchSkillsValidation) UnmarshalText(data []byte) error {
 
 // Ref: #/components/schemas/Publication
 type Publication struct {
-	Publisher string `json:"publisher"`
-	Name      string `json:"name"`
+	Kind      PublicationKind `json:"kind"`
+	Publisher string          `json:"publisher"`
+	Name      string          `json:"name"`
 	// The public page path, /p/{publisher}/{name}.
 	Address         string               `json:"address"`
 	Status          PublicationStatus    `json:"status"`
 	StatusChangedAt time.Time            `json:"status_changed_at"`
 	Releases        []PublicationRelease `json:"releases"`
+}
+
+// GetKind returns the value of Kind.
+func (s *Publication) GetKind() PublicationKind {
+	return s.Kind
 }
 
 // GetPublisher returns the value of Publisher.
@@ -17686,6 +18509,11 @@ func (s *Publication) GetReleases() []PublicationRelease {
 	return s.Releases
 }
 
+// SetKind sets the value of Kind.
+func (s *Publication) SetKind(val PublicationKind) {
+	s.Kind = val
+}
+
 // SetPublisher sets the value of Publisher.
 func (s *Publication) SetPublisher(val string) {
 	s.Publisher = val
@@ -17716,9 +18544,54 @@ func (s *Publication) SetReleases(val []PublicationRelease) {
 	s.Releases = val
 }
 
-func (*Publication) delistSkillRes()       {}
-func (*Publication) getOwnPublicationRes() {}
-func (*Publication) publishSkillRes()      {}
+func (*Publication) delistBundleRes()            {}
+func (*Publication) delistSkillRes()             {}
+func (*Publication) getOwnBundlePublicationRes() {}
+func (*Publication) getOwnPublicationRes()       {}
+func (*Publication) publishBundleRes()           {}
+func (*Publication) publishSkillRes()            {}
+
+// Ref: #/components/schemas/PublicationKind
+type PublicationKind string
+
+const (
+	PublicationKindSkill  PublicationKind = "skill"
+	PublicationKindBundle PublicationKind = "bundle"
+)
+
+// AllValues returns all PublicationKind values.
+func (PublicationKind) AllValues() []PublicationKind {
+	return []PublicationKind{
+		PublicationKindSkill,
+		PublicationKindBundle,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicationKind) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicationKindSkill:
+		return []byte(s), nil
+	case PublicationKindBundle:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicationKind) UnmarshalText(data []byte) error {
+	switch PublicationKind(data) {
+	case PublicationKindSkill:
+		*s = PublicationKindSkill
+		return nil
+	case PublicationKindBundle:
+		*s = PublicationKindBundle
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Ref: #/components/schemas/PublicationNote
 type PublicationNote struct {
@@ -17746,10 +18619,12 @@ func (s *PublicationNote) SetNote(val string) {
 	s.Note = val
 }
 
+// A Skill release carries version_id and version_number; a Bundle release carries bundle_version.
 // Ref: #/components/schemas/PublicationRelease
 type PublicationRelease struct {
-	VersionID      uuid.UUID           `json:"version_id"`
-	VersionNumber  int                 `json:"version_number"`
+	VersionID      OptUUID             `json:"version_id"`
+	VersionNumber  OptInt              `json:"version_number"`
+	BundleVersion  OptString           `json:"bundle_version"`
 	ContentHash    string              `json:"content_hash"`
 	ReleasedAt     time.Time           `json:"released_at"`
 	RightsAttested bool                `json:"rights_attested"`
@@ -17757,13 +18632,18 @@ type PublicationRelease struct {
 }
 
 // GetVersionID returns the value of VersionID.
-func (s *PublicationRelease) GetVersionID() uuid.UUID {
+func (s *PublicationRelease) GetVersionID() OptUUID {
 	return s.VersionID
 }
 
 // GetVersionNumber returns the value of VersionNumber.
-func (s *PublicationRelease) GetVersionNumber() int {
+func (s *PublicationRelease) GetVersionNumber() OptInt {
 	return s.VersionNumber
+}
+
+// GetBundleVersion returns the value of BundleVersion.
+func (s *PublicationRelease) GetBundleVersion() OptString {
+	return s.BundleVersion
 }
 
 // GetContentHash returns the value of ContentHash.
@@ -17787,13 +18667,18 @@ func (s *PublicationRelease) GetFindings() CategorizedFindings {
 }
 
 // SetVersionID sets the value of VersionID.
-func (s *PublicationRelease) SetVersionID(val uuid.UUID) {
+func (s *PublicationRelease) SetVersionID(val OptUUID) {
 	s.VersionID = val
 }
 
 // SetVersionNumber sets the value of VersionNumber.
-func (s *PublicationRelease) SetVersionNumber(val int) {
+func (s *PublicationRelease) SetVersionNumber(val OptInt) {
 	s.VersionNumber = val
+}
+
+// SetBundleVersion sets the value of BundleVersion.
+func (s *PublicationRelease) SetBundleVersion(val OptString) {
+	s.BundleVersion = val
 }
 
 // SetContentHash sets the value of ContentHash.
@@ -17856,6 +18741,63 @@ func (s *PublicationStatus) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+type PublishBundleBadRequest Error
+
+func (*PublishBundleBadRequest) publishBundleRes() {}
+
+type PublishBundleConflict PublishingRefusal
+
+func (*PublishBundleConflict) publishBundleRes() {}
+
+type PublishBundleNotFound Error
+
+func (*PublishBundleNotFound) publishBundleRes() {}
+
+type PublishBundleReq struct {
+	Name OptString `json:"name"`
+	// The Bundle Version to release; the newest when absent.
+	Version        OptString `json:"version"`
+	RightsAttested OptBool   `json:"rights_attested"`
+}
+
+// GetName returns the value of Name.
+func (s *PublishBundleReq) GetName() OptString {
+	return s.Name
+}
+
+// GetVersion returns the value of Version.
+func (s *PublishBundleReq) GetVersion() OptString {
+	return s.Version
+}
+
+// GetRightsAttested returns the value of RightsAttested.
+func (s *PublishBundleReq) GetRightsAttested() OptBool {
+	return s.RightsAttested
+}
+
+// SetName sets the value of Name.
+func (s *PublishBundleReq) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetVersion sets the value of Version.
+func (s *PublishBundleReq) SetVersion(val OptString) {
+	s.Version = val
+}
+
+// SetRightsAttested sets the value of RightsAttested.
+func (s *PublishBundleReq) SetRightsAttested(val OptBool) {
+	s.RightsAttested = val
+}
+
+type PublishBundleUnauthorized Error
+
+func (*PublishBundleUnauthorized) publishBundleRes() {}
+
+type PublishBundleUnprocessableEntity PublishingRefusal
+
+func (*PublishBundleUnprocessableEntity) publishBundleRes() {}
 
 type PublishSkillBadRequest Error
 
@@ -17968,6 +18910,8 @@ func (s *PublishingRefusal) SetReason(val PublishingRefusalReason) {
 	s.Reason = val
 }
 
+func (*PublishingRefusal) exportBundleRes() {}
+
 type PublishingRefusalReason string
 
 const (
@@ -17983,6 +18927,13 @@ const (
 	PublishingRefusalReasonValidationBlocked     PublishingRefusalReason = "validation_blocked"
 	PublishingRefusalReasonRightsNotAttested     PublishingRefusalReason = "rights_not_attested"
 	PublishingRefusalReasonFileRemovedByPackager PublishingRefusalReason = "file_removed_by_packager"
+	PublishingRefusalReasonMemberWithdrawn       PublishingRefusalReason = "member_withdrawn"
+	PublishingRefusalReasonVersionShape          PublishingRefusalReason = "version_shape"
+	PublishingRefusalReasonDescriptionMissing    PublishingRefusalReason = "description_missing"
+	PublishingRefusalReasonNoMembers             PublishingRefusalReason = "no_members"
+	PublishingRefusalReasonDuplicateSkill        PublishingRefusalReason = "duplicate_skill"
+	PublishingRefusalReasonDuplicateManifestName PublishingRefusalReason = "duplicate_manifest_name"
+	PublishingRefusalReasonVersionExists         PublishingRefusalReason = "version_exists"
 	PublishingRefusalReasonDelisted              PublishingRefusalReason = "delisted"
 	PublishingRefusalReasonWithdrawn             PublishingRefusalReason = "withdrawn"
 	PublishingRefusalReasonTakenDown             PublishingRefusalReason = "taken_down"
@@ -18004,6 +18955,13 @@ func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
 		PublishingRefusalReasonValidationBlocked,
 		PublishingRefusalReasonRightsNotAttested,
 		PublishingRefusalReasonFileRemovedByPackager,
+		PublishingRefusalReasonMemberWithdrawn,
+		PublishingRefusalReasonVersionShape,
+		PublishingRefusalReasonDescriptionMissing,
+		PublishingRefusalReasonNoMembers,
+		PublishingRefusalReasonDuplicateSkill,
+		PublishingRefusalReasonDuplicateManifestName,
+		PublishingRefusalReasonVersionExists,
 		PublishingRefusalReasonDelisted,
 		PublishingRefusalReasonWithdrawn,
 		PublishingRefusalReasonTakenDown,
@@ -18037,6 +18995,20 @@ func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
 	case PublishingRefusalReasonRightsNotAttested:
 		return []byte(s), nil
 	case PublishingRefusalReasonFileRemovedByPackager:
+		return []byte(s), nil
+	case PublishingRefusalReasonMemberWithdrawn:
+		return []byte(s), nil
+	case PublishingRefusalReasonVersionShape:
+		return []byte(s), nil
+	case PublishingRefusalReasonDescriptionMissing:
+		return []byte(s), nil
+	case PublishingRefusalReasonNoMembers:
+		return []byte(s), nil
+	case PublishingRefusalReasonDuplicateSkill:
+		return []byte(s), nil
+	case PublishingRefusalReasonDuplicateManifestName:
+		return []byte(s), nil
+	case PublishingRefusalReasonVersionExists:
 		return []byte(s), nil
 	case PublishingRefusalReasonDelisted:
 		return []byte(s), nil
@@ -18089,6 +19061,27 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 		return nil
 	case PublishingRefusalReasonFileRemovedByPackager:
 		*s = PublishingRefusalReasonFileRemovedByPackager
+		return nil
+	case PublishingRefusalReasonMemberWithdrawn:
+		*s = PublishingRefusalReasonMemberWithdrawn
+		return nil
+	case PublishingRefusalReasonVersionShape:
+		*s = PublishingRefusalReasonVersionShape
+		return nil
+	case PublishingRefusalReasonDescriptionMissing:
+		*s = PublishingRefusalReasonDescriptionMissing
+		return nil
+	case PublishingRefusalReasonNoMembers:
+		*s = PublishingRefusalReasonNoMembers
+		return nil
+	case PublishingRefusalReasonDuplicateSkill:
+		*s = PublishingRefusalReasonDuplicateSkill
+		return nil
+	case PublishingRefusalReasonDuplicateManifestName:
+		*s = PublishingRefusalReasonDuplicateManifestName
+		return nil
+	case PublishingRefusalReasonVersionExists:
+		*s = PublishingRefusalReasonVersionExists
 		return nil
 	case PublishingRefusalReasonDelisted:
 		*s = PublishingRefusalReasonDelisted

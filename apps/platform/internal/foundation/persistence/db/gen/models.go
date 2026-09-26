@@ -188,6 +188,33 @@ type AuditEvent struct {
 	CreatedAt    pgtype.Timestamptz
 }
 
+type Bundle struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+}
+
+type BundleMember struct {
+	BundleVersionID pgtype.UUID
+	SkillID         pgtype.UUID
+	SkillVersionID  pgtype.UUID
+	VersionNumber   int32
+	ManifestName    string
+	ContentHash     string
+	Position        int32
+}
+
+type BundleVersion struct {
+	ID          pgtype.UUID
+	BundleID    pgtype.UUID
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
 type CostEvent struct {
 	ID               pgtype.UUID
 	Kind             string
@@ -334,6 +361,15 @@ type DownloadArtifact struct {
 	PackagerVersion   string
 	ManifestHash      string
 	IncludesTestCases bool
+	PluginName        *string
+	PluginVersion     *string
+}
+
+type DownloadArtifactMember struct {
+	ArtifactID     pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	SkillVersionID pgtype.UUID
+	Position       int32
 }
 
 type DownloadObjectCleanupIntent struct {
@@ -474,18 +510,20 @@ type Publication struct {
 	Status          string
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
+	BundleID        pgtype.UUID
 }
 
 type PublicationRelease struct {
-	ID             pgtype.UUID
-	PublicationID  pgtype.UUID
-	SkillVersionID pgtype.UUID
-	VersionNumber  int32
-	ContentHash    string
-	Findings       []byte
-	RightsAttested bool
-	ReleasedBy     pgtype.UUID
-	ReleasedAt     pgtype.Timestamptz
+	ID              pgtype.UUID
+	PublicationID   pgtype.UUID
+	SkillVersionID  pgtype.UUID
+	VersionNumber   *int32
+	ContentHash     string
+	Findings        []byte
+	RightsAttested  bool
+	ReleasedBy      pgtype.UUID
+	ReleasedAt      pgtype.Timestamptz
+	BundleVersionID pgtype.UUID
 }
 
 type Publisher struct {

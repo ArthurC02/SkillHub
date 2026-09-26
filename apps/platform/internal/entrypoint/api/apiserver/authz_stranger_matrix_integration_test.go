@@ -61,6 +61,10 @@ var strangerRoutes = []strangerCase{
 		unprobed: "acquiring is open to every signed-in account by design; the publishing tests cover who gets what"},
 	{pattern: "GET /publications/{publisher}/{name}",
 		unprobed: "a public address is open to anyone by design; the publishing tests cover what it discloses and when it stops"},
+	{pattern: "POST /me/bundles/{name}/export", body: "{}", want: http.StatusNotFound},
+	{pattern: "GET /me/bundles/{name}/publication", want: http.StatusNotFound},
+	{pattern: "POST /me/bundles/{name}/publication", body: `{"rights_attested":true}`, want: http.StatusNotFound},
+	{pattern: "DELETE /me/bundles/{name}/publication", want: http.StatusNotFound},
 	{pattern: "DELETE /skills/{id}", want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/takedown", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /skills/{id}/category", body: `{"category":"data"}`, want: http.StatusNotFound},
@@ -131,6 +135,7 @@ type aliceWorld struct {
 	artifactID    string
 	runArtifactID string
 	workspaceID   string
+	bundleName    string
 
 	secrets map[string]string
 }
@@ -155,6 +160,7 @@ func (w aliceWorld) resolve(path string) string {
 		{"{artifactId}", w.artifactID},
 		{"{workspace_id}", w.workspaceID},
 		{"{runId}", w.runID},
+		{"{name}", w.bundleName},
 	}
 	for _, r := range replacements {
 		path = strings.ReplaceAll(path, r.placeholder, r.value)
@@ -237,6 +243,7 @@ const (
 
 const (
 	aliceSkillName  = "matrix-private-widget"
+	aliceBundleName = "matrix-private-bundle"
 	alicePromptText = "the ledger Alice never showed anyone"
 )
 
@@ -302,11 +309,14 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 	}
 	artifactID, _ := built["artifact_id"].(string)
 	runArtifactID := seedRunArtifact(t, a, pool, alice.workspaceID, created.RunID, "alice-private.txt")
+	if code, body := createBundle(t, alice, aliceBundleName, "1.0.0", versionID); code != http.StatusCreated {
+		t.Fatalf("POST bundle: got %d, body %v", code, body)
+	}
 
 	world := aliceWorld{
 		skillID: skillID, versionID: versionID, testCaseID: testCaseID, criterionID: criterionID,
 		datasetID: datasetID, runID: created.RunID, artifactID: artifactID, runArtifactID: runArtifactID,
-		workspaceID: alice.workspaceID,
+		workspaceID: alice.workspaceID, bundleName: aliceBundleName,
 		secrets: map[string]string{
 			"the version id":      versionID,
 			"the test case id":    testCaseID,

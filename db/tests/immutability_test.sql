@@ -441,5 +441,40 @@ SELECT must_fail($$UPDATE publication_releases SET rights_attested = false
 SELECT must_fail($$DELETE FROM publication_releases WHERE id = 'f0000000-0000-4000-8000-000000000003'$$);
 UPDATE publications SET status = 'delisted' WHERE id = 'f0000000-0000-4000-8000-000000000002';
 
+INSERT INTO bundles (id, workspace_id, name)
+VALUES ('f0000000-0000-4000-8000-000000000010', '22222222-2222-2222-2222-222222222222', 'desk-tools');
+INSERT INTO bundle_versions (id, bundle_id, version, description, content_hash, created_by)
+VALUES ('f0000000-0000-4000-8000-000000000011', 'f0000000-0000-4000-8000-000000000010',
+        '1.0.0', 'Desk tools.', 'bundle-hash-1', '11111111-1111-1111-1111-111111111111');
+INSERT INTO bundle_members (bundle_version_id, skill_id, skill_version_id, version_number,
+                            manifest_name, content_hash, position)
+VALUES ('f0000000-0000-4000-8000-000000000011', '33333333-3333-3333-3333-333333333333',
+        '44444444-4444-4444-4444-444444444444', 1, 'demo', 'hash-1', 0);
+SELECT must_fail($$UPDATE bundle_versions SET description = 'rewritten'
+                   WHERE id = 'f0000000-0000-4000-8000-000000000011'$$);
+SELECT must_fail($$DELETE FROM bundle_versions WHERE id = 'f0000000-0000-4000-8000-000000000011'$$);
+SELECT must_fail($$UPDATE bundle_members SET version_number = 2
+                   WHERE bundle_version_id = 'f0000000-0000-4000-8000-000000000011'$$);
+SELECT must_fail($$DELETE FROM bundle_members
+                   WHERE bundle_version_id = 'f0000000-0000-4000-8000-000000000011'$$);
+
+INSERT INTO artifacts (id, workspace_id, run_id, kind, file_name, content_type,
+                       size_bytes, content_hash, object_key, expires_at)
+VALUES ('f3333333-3333-4333-8333-333333333333', '22222222-2222-2222-2222-222222222222',
+        NULL, 'download_package', 'desk-tools-1.0.0.zip', 'application/zip',
+        2048, 'sha256-plugin-1', 'ws/22/downloads/f3.zip', now() + interval '90 days');
+INSERT INTO download_artifacts (artifact_id, workspace_id, plugin_name, plugin_version, target,
+                                profile_version, packager_version, manifest_hash,
+                                includes_test_cases)
+VALUES ('f3333333-3333-4333-8333-333333333333', '22222222-2222-2222-2222-222222222222',
+        'desk-tools', '1.0.0', 'standard', '1', 'pkg-1', 'sha256-m-plugin', false);
+INSERT INTO download_artifact_members (artifact_id, workspace_id, skill_version_id, position)
+VALUES ('f3333333-3333-4333-8333-333333333333', '22222222-2222-2222-2222-222222222222',
+        '44444444-4444-4444-4444-444444444444', 0);
+SELECT must_fail($$UPDATE download_artifact_members SET position = 1
+                   WHERE artifact_id = 'f3333333-3333-4333-8333-333333333333'$$);
+SELECT must_fail($$DELETE FROM download_artifact_members
+                   WHERE artifact_id = 'f3333333-3333-4333-8333-333333333333'$$);
+
 \echo 'immutability_test: OK'
 ROLLBACK;

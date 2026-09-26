@@ -109,6 +109,7 @@ func NewApp(cfg Config) (*App, error) {
 		Pool:                cfg.Pool,
 		VersionsInRuns:      run.SkillVersionsInRuns,
 		VersionsInDownloads: packaging.SkillVersionsInDownloads,
+		VersionsInBundles:   publishing.SkillVersionsInBundles,
 		SkillsWithTestCases: testlab.SkillsWithTestCases,
 	}
 	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool, SourcesInVersions: registry.SourcesInVersions}
@@ -467,7 +468,7 @@ func packagingSkillFacts(skill registry.Skill) packaging.SkillFacts {
 
 func packagingVersionSummary(summary registry.VersionSummary) packaging.VersionSummary {
 	return packaging.VersionSummary{
-		SkillID: summary.SkillID, VersionNumber: summary.VersionNumber,
+		SkillID: summary.SkillID, SkillName: summary.SkillName, VersionNumber: summary.VersionNumber,
 		LatestVersionNumber: summary.LatestVersionNumber,
 		AccessRestricted:    summary.Restriction().InEffect(), Redistribution: summary.Redistribution,
 	}

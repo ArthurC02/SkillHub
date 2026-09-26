@@ -41,7 +41,7 @@ linters:
         text: 'func `\(\*Service\)\.GenerateSkill`'
       - path: internal/skill/delivery/packaging\.go
         linters: [gocognit]
-        text: 'func `\(\*Service\)\.persist`'
+        text: 'func `\(\*Service\)\.store`'
       - path: internal/skill/discovery/creation\.go
         linters: [gocognit]
         text: 'func `\(\*Service\)\.CreationKnowledgeIDs`'

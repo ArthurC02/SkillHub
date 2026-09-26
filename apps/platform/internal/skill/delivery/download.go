@@ -28,6 +28,7 @@ var errDownloadReadNotConfigured = errors.New("packaging: version summary or dis
 type downloadArtifact struct {
 	gen.GetDownloadArtifactRow
 	VersionSummary
+	Plugin *PluginView
 }
 
 func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]Artifact, error) {
@@ -38,9 +39,9 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 	if err != nil {
 		return nil, err
 	}
-	versionIDs := make([]pgtype.UUID, len(rows))
-	for i, r := range rows {
-		versionIDs[i] = r.SkillVersionID
+	versionIDs := make([]pgtype.UUID, 0, len(rows))
+	for _, r := range rows {
+		versionIDs = append(versionIDs, artifactVersionIDs(r.SkillVersionID, r.MemberVersionIds)...)
 	}
 	summaries, err := s.ReadVersionSummaries(ctx, versionIDs)
 	if err != nil {
@@ -48,6 +49,20 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 	}
 	out := make([]Artifact, 0, len(rows))
 	for _, r := range rows {
+		if r.PluginName != nil {
+			_, view, found := pluginSummary(*r.PluginName, *r.PluginVersion, r.MemberVersionIds, summaries)
+			if !found {
+				return nil, fmt.Errorf("%w: artifact %s", errVersionSummaryMissing, pgconv.UUIDString(r.ArtifactID))
+			}
+			out = append(out, pluginArtifact(Artifact{
+				ArtifactID: pgconv.UUIDString(r.ArtifactID), Target: r.Target,
+				FileName: r.FileName, SizeBytes: r.SizeBytes,
+				ContentHash: r.ContentHash, ManifestHash: r.ManifestHash,
+				Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
+				DownloadCount: r.DownloadCount, PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
+			}, view).withServeState(r.ExpiresAt.Time, r.PurgedAt.Time))
+			continue
+		}
 		summary, found := summaries[r.SkillVersionID]
 		if !found {
 			return nil, fmt.Errorf("%w: artifact %s", errVersionSummaryMissing, pgconv.UUIDString(r.ArtifactID))
@@ -117,6 +132,15 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 	if err != nil {
 		return Artifact{}, err
 	}
+	if row.Plugin != nil {
+		return pluginArtifact(Artifact{
+			ArtifactID: pgconv.UUIDString(row.ArtifactID), Target: row.Target,
+			FileName: row.FileName, SizeBytes: row.SizeBytes,
+			ContentHash: row.ContentHash, ManifestHash: row.ManifestHash,
+			Status: row.ScanStatus, ExpiresAt: rfc3339(row.ExpiresAt), CreatedAt: rfc3339(row.CreatedAt),
+			DownloadCount: row.DownloadCount, PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
+		}, row.Plugin).withServeState(row.ExpiresAt.Time, row.PurgedAt.Time), nil
+	}
 	return Artifact{
 		ArtifactID: pgconv.UUIDString(row.ArtifactID), SkillID: pgconv.UUIDString(row.SkillID),
 		SkillVersionID: pgconv.UUIDString(row.SkillVersionID), Target: row.Target,
@@ -144,9 +168,16 @@ func (s *Service) downloadRow(
 	if err != nil {
 		return downloadArtifact{}, err
 	}
-	summaries, err := s.ReadVersionSummaries(ctx, []pgtype.UUID{row.SkillVersionID})
+	summaries, err := s.ReadVersionSummaries(ctx, artifactVersionIDs(row.SkillVersionID, row.MemberVersionIds))
 	if err != nil {
 		return downloadArtifact{}, err
+	}
+	if row.PluginName != nil {
+		combined, view, found := pluginSummary(*row.PluginName, *row.PluginVersion, row.MemberVersionIds, summaries)
+		if !found {
+			return downloadArtifact{}, ErrNotFound
+		}
+		return downloadArtifact{GetDownloadArtifactRow: row, VersionSummary: combined, Plugin: view}, nil
 	}
 	summary, found := summaries[row.SkillVersionID]
 	if !found {
@@ -431,4 +462,34 @@ func sanitizeHeaderValue(s string) string {
 		return "download.zip"
 	}
 	return string(out)
+}
+
+func artifactVersionIDs(single pgtype.UUID, members []pgtype.UUID) []pgtype.UUID {
+	if single.Valid {
+		return []pgtype.UUID{single}
+	}
+	return members
+}
+
+func pluginSummary(
+	name, version string, members []pgtype.UUID, summaries map[pgtype.UUID]VersionSummary,
+) (VersionSummary, *PluginView, bool) {
+	combined := VersionSummary{Redistribution: string(RedistributionAllowed)}
+	view := &PluginView{Name: name, Version: version, Members: make([]PluginMemberView, 0, len(members))}
+	for _, id := range members {
+		summary, found := summaries[id]
+		if !found {
+			return VersionSummary{}, nil, false
+		}
+		combined.AccessRestricted = combined.AccessRestricted || summary.AccessRestricted
+		if reason, _ := gateFlags(false, Redistribution(summary.Redistribution)); reason != "" &&
+			combined.Redistribution == string(RedistributionAllowed) {
+			combined.Redistribution = summary.Redistribution
+		}
+		view.Members = append(view.Members, PluginMemberView{
+			SkillID: pgconv.UUIDString(summary.SkillID), SkillVersionID: pgconv.UUIDString(id),
+			Name: summary.SkillName, VersionNumber: summary.VersionNumber,
+		})
+	}
+	return combined, view, len(members) > 0
 }

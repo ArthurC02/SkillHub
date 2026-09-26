@@ -18,6 +18,9 @@ func (s *Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	if _, err := q.DeleteWorkspaceDownloadRecords(ctx, workspaceID); err != nil {
 		return err
 	}
+	if _, err := q.DeleteWorkspaceDownloadArtifactMembers(ctx, workspaceID); err != nil {
+		return err
+	}
 	if _, err := q.DeleteWorkspaceDownloadArtifactDetails(ctx, workspaceID); err != nil {
 		return err
 	}

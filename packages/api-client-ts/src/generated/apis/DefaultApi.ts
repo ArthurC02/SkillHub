@@ -44,6 +44,11 @@ import {
     AmountTrendToJSON,
 } from '../models/AmountTrend';
 import {
+    type BundleVersion,
+    BundleVersionFromJSON,
+    BundleVersionToJSON,
+} from '../models/BundleVersion';
+import {
     type CancelAccountDeletion200Response,
     CancelAccountDeletion200ResponseFromJSON,
     CancelAccountDeletion200ResponseToJSON,
@@ -93,6 +98,11 @@ import {
     CountTrendFromJSON,
     CountTrendToJSON,
 } from '../models/CountTrend';
+import {
+    type CreateBundleVersionRequest,
+    CreateBundleVersionRequestFromJSON,
+    CreateBundleVersionRequestToJSON,
+} from '../models/CreateBundleVersionRequest';
 import {
     type CreateCreationSession,
     CreateCreationSessionFromJSON,
@@ -354,6 +364,11 @@ import {
     ListOperatorAuditLog200ResponseToJSON,
 } from '../models/ListOperatorAuditLog200Response';
 import {
+    type ListOwnBundles200Response,
+    ListOwnBundles200ResponseFromJSON,
+    ListOwnBundles200ResponseToJSON,
+} from '../models/ListOwnBundles200Response';
+import {
     type ListPackagingTargets200Response,
     ListPackagingTargets200ResponseFromJSON,
     ListPackagingTargets200ResponseToJSON,
@@ -428,6 +443,11 @@ import {
     PublicationFromJSON,
     PublicationToJSON,
 } from '../models/Publication';
+import {
+    type PublishBundleRequest,
+    PublishBundleRequestFromJSON,
+    PublishBundleRequestToJSON,
+} from '../models/PublishBundleRequest';
 import {
     type PublishSkillRequest,
     PublishSkillRequestFromJSON,
@@ -717,6 +737,13 @@ export interface ConfirmRunPreflightOperationRequest {
     confirmRunPreflightRequest: ConfirmRunPreflightRequest;
 }
 
+export interface CreateBundleVersionOperationRequest {
+    /**
+     * 
+     */
+    createBundleVersionRequest: CreateBundleVersionRequest;
+}
+
 export interface CreateCreationSessionRequest {
     /**
      * 
@@ -829,6 +856,13 @@ export interface DeleteTestCaseRequest {
     id: string;
 }
 
+export interface DelistBundleRequest {
+    /**
+     * 
+     */
+    name: string;
+}
+
 export interface DelistSkillRequest {
     /**
      * 
@@ -863,6 +897,17 @@ export interface DownloadArtifactContentRequest {
      * 
      */
     artifactId: string;
+}
+
+export interface ExportBundleRequest {
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * The Bundle Version to export; the newest when absent.
+     */
+    version?: string;
 }
 
 export interface FindSkillsForGovernanceRequest {
@@ -951,6 +996,13 @@ export interface GetOperatorActionTrendRequest {
      * 
      */
     days?: GetOperatorActionTrendDaysEnum;
+}
+
+export interface GetOwnBundlePublicationRequest {
+    /**
+     * 
+     */
+    name: string;
 }
 
 export interface GetOwnPublicationRequest {
@@ -1317,6 +1369,17 @@ export interface PublicSearchSkillsRequest {
      * 
      */
     category?: PublicSearchSkillsCategoryEnum;
+}
+
+export interface PublishBundleOperationRequest {
+    /**
+     * 
+     */
+    name: string;
+    /**
+     * 
+     */
+    publishBundleRequest: PublishBundleRequest;
 }
 
 export interface PublishSkillOperationRequest {
@@ -1805,6 +1868,30 @@ export interface DefaultApiInterface {
     confirmRunPreflight(requestParameters: ConfirmRunPreflightOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ConfirmRunPreflight201Response>;
 
     /**
+     * Creates request options for createBundleVersion without sending the request
+     * @param {CreateBundleVersionRequest} createBundleVersionRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createBundleVersionRequestOpts(requestParameters: CreateBundleVersionOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * The first version of a name creates the Bundle. Every member is a version of a different Skill in the caller\'s own workspace, and each member\'s manifest name is unique within the Bundle, because it becomes the member\'s directory in the exported Agent Plugin. 
+     * @summary Pin a set of the caller\'s Skill versions as one immutable Bundle Version (PACK-018)
+     * @param {CreateBundleVersionRequest} createBundleVersionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    createBundleVersionRaw(requestParameters: CreateBundleVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BundleVersion>>;
+
+    /**
+     * The first version of a name creates the Bundle. Every member is a version of a different Skill in the caller\'s own workspace, and each member\'s manifest name is unique within the Bundle, because it becomes the member\'s directory in the exported Agent Plugin. 
+     * Pin a set of the caller\'s Skill versions as one immutable Bundle Version (PACK-018)
+     */
+    createBundleVersion(requestParameters: CreateBundleVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BundleVersion>;
+
+    /**
      * Creates request options for createCreationSession without sending the request
      * @param {CreateCreationSession} createCreationSession 
      * @throws {RequiredError}
@@ -2105,6 +2192,29 @@ export interface DefaultApiInterface {
     deleteTestCase(requestParameters: DeleteTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteTestCase200Response>;
 
     /**
+     * Creates request options for delistBundle without sending the request
+     * @param {string} name 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    delistBundleRequestOpts(requestParameters: DelistBundleRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary Withdraw this Bundle\'s publication; its name stays the author\'s (PACK-018)
+     * @param {string} name 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    delistBundleRaw(requestParameters: DelistBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * Withdraw this Bundle\'s publication; its name stays the author\'s (PACK-018)
+     */
+    delistBundle(requestParameters: DelistBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
+
+    /**
      * Creates request options for delistSkill without sending the request
      * @param {string} id 
      * @throws {RequiredError}
@@ -2201,6 +2311,32 @@ export interface DefaultApiInterface {
      * The package bytes themselves (PACK-001)
      */
     downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob>;
+
+    /**
+     * Creates request options for exportBundle without sending the request
+     * @param {string} name 
+     * @param {string} [version] The Bundle Version to export; the newest when absent.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    exportBundleRequestOpts(requestParameters: ExportBundleRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Each member goes under skills/<its manifest name>/ beside a plugin.json; the zip is read back to confirm it is a Plugin with every member. Trust is the worst member\'s: the first member the download gate refuses is named in the refusal, and nothing is built. 
+     * @summary Build a Bundle Version into one Agent Plugin zip in the caller\'s downloads (PACK-018)
+     * @param {string} name 
+     * @param {string} [version] The Bundle Version to export; the newest when absent.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    exportBundleRaw(requestParameters: ExportBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Acquisition>>;
+
+    /**
+     * Each member goes under skills/<its manifest name>/ beside a plugin.json; the zip is read back to confirm it is a Plugin with every member. Trust is the worst member\'s: the first member the download gate refuses is named in the refusal, and nothing is built. 
+     * Build a Bundle Version into one Agent Plugin zip in the caller\'s downloads (PACK-018)
+     */
+    exportBundle(requestParameters: ExportBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Acquisition>;
 
     /**
      * Creates request options for findSkillsForGovernance without sending the request
@@ -2684,6 +2820,29 @@ export interface DefaultApiInterface {
      * The two rosters in force, read-only (02:OPS-005)
      */
     getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
+
+    /**
+     * Creates request options for getOwnBundlePublication without sending the request
+     * @param {string} name 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnBundlePublicationRequestOpts(requestParameters: GetOwnBundlePublicationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary The owner\'s view of this Bundle\'s publication and every release (PACK-018)
+     * @param {string} name 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnBundlePublicationRaw(requestParameters: GetOwnBundlePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * The owner\'s view of this Bundle\'s publication and every release (PACK-018)
+     */
+    getOwnBundlePublication(requestParameters: GetOwnBundlePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
 
     /**
      * Creates request options for getOwnPublication without sending the request
@@ -3309,6 +3468,27 @@ export interface DefaultApiInterface {
     listOperatorAuditLog(requestParameters: ListOperatorAuditLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOperatorAuditLog200Response>;
 
     /**
+     * Creates request options for listOwnBundles without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnBundlesRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnBundlesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundles200Response>>;
+
+    /**
+     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     */
+    listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response>;
+
+    /**
      * Creates request options for listPackagingTargets without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3616,6 +3796,32 @@ export interface DefaultApiInterface {
      * Public intent search for skills (DISC-001, DISC-002)
      */
     publicSearchSkills(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
+
+    /**
+     * Creates request options for publishBundle without sending the request
+     * @param {string} name 
+     * @param {PublishBundleRequest} publishBundleRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    publishBundleRequestOpts(requestParameters: PublishBundleOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Every member passes the Skill release gate first; the first member it refuses is named. The public address lists what changed among the members since the previous release. 
+     * @summary Publish a Bundle Version, or publish the Bundle again (PACK-018)
+     * @param {string} name 
+     * @param {PublishBundleRequest} publishBundleRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    publishBundleRaw(requestParameters: PublishBundleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * Every member passes the Skill release gate first; the first member it refuses is named. The public address lists what changed among the members since the previous release. 
+     * Publish a Bundle Version, or publish the Bundle again (PACK-018)
+     */
+    publishBundle(requestParameters: PublishBundleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
 
     /**
      * Creates request options for publishSkill without sending the request
@@ -4749,6 +4955,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for createBundleVersion without sending the request
+     */
+    async createBundleVersionRequestOpts(requestParameters: CreateBundleVersionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['createBundleVersionRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createBundleVersionRequest',
+                'Required parameter "createBundleVersionRequest" was null or undefined when calling createBundleVersion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/me/bundles`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateBundleVersionRequestToJSON(requestParameters['createBundleVersionRequest']),
+        };
+    }
+
+    /**
+     * The first version of a name creates the Bundle. Every member is a version of a different Skill in the caller\'s own workspace, and each member\'s manifest name is unique within the Bundle, because it becomes the member\'s directory in the exported Agent Plugin. 
+     * Pin a set of the caller\'s Skill versions as one immutable Bundle Version (PACK-018)
+     */
+    async createBundleVersionRaw(requestParameters: CreateBundleVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BundleVersion>> {
+        const requestOptions = await this.createBundleVersionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BundleVersionFromJSON(jsonValue));
+    }
+
+    /**
+     * The first version of a name creates the Bundle. Every member is a version of a different Skill in the caller\'s own workspace, and each member\'s manifest name is unique within the Bundle, because it becomes the member\'s directory in the exported Agent Plugin. 
+     * Pin a set of the caller\'s Skill versions as one immutable Bundle Version (PACK-018)
+     */
+    async createBundleVersion(requestParameters: CreateBundleVersionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BundleVersion> {
+        const response = await this.createBundleVersionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createCreationSession without sending the request
      */
     async createCreationSessionRequestOpts(requestParameters: CreateCreationSessionRequest): Promise<runtime.RequestOpts> {
@@ -5375,6 +5630,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for delistBundle without sending the request
+     */
+    async delistBundleRequestOpts(requestParameters: DelistBundleRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling delistBundle().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/bundles/{name}/publication`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Withdraw this Bundle\'s publication; its name stays the author\'s (PACK-018)
+     */
+    async delistBundleRaw(requestParameters: DelistBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.delistBundleRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * Withdraw this Bundle\'s publication; its name stays the author\'s (PACK-018)
+     */
+    async delistBundle(requestParameters: DelistBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.delistBundleRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for delistSkill without sending the request
      */
     async delistSkillRequestOpts(requestParameters: DelistSkillRequest): Promise<runtime.RequestOpts> {
@@ -5571,6 +5871,57 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.downloadArtifactContentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for exportBundle without sending the request
+     */
+    async exportBundleRequestOpts(requestParameters: ExportBundleRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling exportBundle().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['version'] != null) {
+            queryParameters['version'] = requestParameters['version'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/bundles/{name}/export`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Each member goes under skills/<its manifest name>/ beside a plugin.json; the zip is read back to confirm it is a Plugin with every member. Trust is the worst member\'s: the first member the download gate refuses is named in the refusal, and nothing is built. 
+     * Build a Bundle Version into one Agent Plugin zip in the caller\'s downloads (PACK-018)
+     */
+    async exportBundleRaw(requestParameters: ExportBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Acquisition>> {
+        const requestOptions = await this.exportBundleRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AcquisitionFromJSON(jsonValue));
+    }
+
+    /**
+     * Each member goes under skills/<its manifest name>/ beside a plugin.json; the zip is read back to confirm it is a Plugin with every member. Trust is the worst member\'s: the first member the download gate refuses is named in the refusal, and nothing is built. 
+     * Build a Bundle Version into one Agent Plugin zip in the caller\'s downloads (PACK-018)
+     */
+    async exportBundle(requestParameters: ExportBundleRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Acquisition> {
+        const response = await this.exportBundleRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6474,6 +6825,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response> {
         const response = await this.getOperatorRostersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getOwnBundlePublication without sending the request
+     */
+    async getOwnBundlePublicationRequestOpts(requestParameters: GetOwnBundlePublicationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling getOwnBundlePublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/bundles/{name}/publication`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The owner\'s view of this Bundle\'s publication and every release (PACK-018)
+     */
+    async getOwnBundlePublicationRaw(requestParameters: GetOwnBundlePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.getOwnBundlePublicationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * The owner\'s view of this Bundle\'s publication and every release (PACK-018)
+     */
+    async getOwnBundlePublication(requestParameters: GetOwnBundlePublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.getOwnBundlePublicationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7691,6 +8087,43 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listOwnBundles without sending the request
+     */
+    async listOwnBundlesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/bundles`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     */
+    async listOwnBundlesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnBundles200Response>> {
+        const requestOptions = await this.listOwnBundlesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListOwnBundles200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
+     */
+    async listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response> {
+        const response = await this.listOwnBundlesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPackagingTargets without sending the request
      */
     async listPackagingTargetsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -8289,6 +8722,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async publicSearchSkills(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse> {
         const response = await this.publicSearchSkillsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for publishBundle without sending the request
+     */
+    async publishBundleRequestOpts(requestParameters: PublishBundleOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling publishBundle().'
+            );
+        }
+
+        if (requestParameters['publishBundleRequest'] == null) {
+            throw new runtime.RequiredError(
+                'publishBundleRequest',
+                'Required parameter "publishBundleRequest" was null or undefined when calling publishBundle().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/me/bundles/{name}/publication`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PublishBundleRequestToJSON(requestParameters['publishBundleRequest']),
+        };
+    }
+
+    /**
+     * Every member passes the Skill release gate first; the first member it refuses is named. The public address lists what changed among the members since the previous release. 
+     * Publish a Bundle Version, or publish the Bundle again (PACK-018)
+     */
+    async publishBundleRaw(requestParameters: PublishBundleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.publishBundleRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * Every member passes the Skill release gate first; the first member it refuses is named. The public address lists what changed among the members since the previous release. 
+     * Publish a Bundle Version, or publish the Bundle again (PACK-018)
+     */
+    async publishBundle(requestParameters: PublishBundleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.publishBundleRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

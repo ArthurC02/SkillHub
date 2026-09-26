@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -97,6 +98,7 @@ type Service struct {
 
 type VersionSummary struct {
 	SkillID             pgtype.UUID
+	SkillName           string
 	VersionNumber       int32
 	LatestVersionNumber int32
 	AccessRestricted    bool
@@ -321,59 +323,17 @@ func gateFlags(accessRestricted bool, redistribution Redistribution) (reason, me
 }
 
 func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspace, p *Plan) error {
-	data, err := s.Store.Get(ctx, p.Version.PackageObjectKey)
-	if err != nil {
-		return fmt.Errorf("stored package unreadable: %w", err)
-	}
-	fsys, err := skillpkg.SkillFS(data, p.Version.SourcePath)
-	if err != nil {
-		return fmt.Errorf("stored package unreadable: %w", err)
-	}
-
-	source := skillpkg.Validate(fsys)
-	sourceBlocked := false
-	for _, finding := range source.Findings {
-		if finding.Severity == skillpkg.SeverityError && !pathUsesExcludedDir(finding.Path) {
-			sourceBlocked = true
-			break
-		}
-	}
-	if sourceBlocked {
-		cat := source.Categorize()
-		p.Validation = ManifestValidation{
-			Blocked: true, Errors: toManifestFindings(cat.Errors),
-			Warnings: toManifestFindings(cat.Warnings), Infos: toManifestFindings(cat.Infos),
-		}
-		p.BlockedReason = BlockedValidation
-		p.BlockedMessage = "儲存的來源套件已經不符合匯入驗證"
-		return nil
-	}
-	files, dropped, err := collect(fsys)
+	source, err := s.readSource(ctx, p.Version)
 	if err != nil {
 		return err
 	}
-
-	referenced := map[string]bool{}
-	for _, ref := range skillpkg.SkillMDReferences(fsys) {
-		referenced[ref] = true
-	}
-	p.ExcludedFiles = make([]ExcludedFile, 0, len(dropped))
-	var broke []string
-	for _, e := range dropped {
-		e.ReferencedBySkillMD = referenced[e.Path] ||
-			(strings.HasSuffix(e.Path, "/") && referencedUnder(referenced, e.Path))
-		if e.ReferencedBySkillMD {
-			broke = append(broke, e.Path)
-		}
-		p.ExcludedFiles = append(p.ExcludedFiles, e.withWords())
-	}
-	if len(broke) > 0 {
-		p.BlockedReason = BlockedFileRemoved
-		p.BlockedMessage = "SKILL.md 指向 " + strings.Join(broke, "、") +
-			"，而打包器不會把它帶進套件——這一份下載回去會缺少它自己說明要用的東西。" +
-			"把檔案移出被排除的目錄、或改用實體檔案取代連結之後再打包一次。"
+	p.ExcludedFiles = source.excluded
+	if source.blockedReason != "" {
+		p.Validation = source.validation
+		p.BlockedReason, p.BlockedMessage = source.blockedReason, source.blockedMessage
 		return nil
 	}
+	files := source.files
 
 	skillName := p.Skill.Name
 	for i, f := range files {
@@ -552,8 +512,8 @@ type Result struct {
 
 type Artifact struct {
 	ArtifactID        string `json:"artifact_id"`
-	SkillID           string `json:"skill_id"`
-	SkillVersionID    string `json:"skill_version_id"`
+	SkillID           string `json:"skill_id,omitempty"`
+	SkillVersionID    string `json:"skill_version_id,omitempty"`
 	Target            string `json:"target"`
 	FileName          string `json:"file_name"`
 	SizeBytes         int64  `json:"size_bytes"`
@@ -570,9 +530,11 @@ type Artifact struct {
 	Servable   bool     `json:"servable"`
 	ServeState labelled `json:"serve_state"`
 
-	VersionNumber       int32    `json:"version_number"`
-	LatestVersionNumber int32    `json:"latest_version_number"`
+	VersionNumber       int32    `json:"version_number,omitempty"`
+	LatestVersionNumber int32    `json:"latest_version_number,omitempty"`
 	VersionState        labelled `json:"version_state"`
+
+	Plugin *PluginView `json:"plugin,omitempty"`
 }
 
 type labelled struct {
@@ -680,13 +642,82 @@ func (s *Service) create(
 	return s.persist(ctx, recipient, p, retention)
 }
 
+type storedPackage struct {
+	zip         []byte
+	fileName    string
+	contentHash string
+
+	reuse  func(q *gen.Queries) (Artifact, bool, error)
+	record func(q *gen.Queries, artifactID pgtype.UUID) error
+	fresh  func(row gen.Artifact) Artifact
+}
+
 func (s *Service) persist(
 	ctx context.Context, ws identity.Workspace, p *Plan, retention time.Duration,
 ) (Result, error) {
-	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + p.ContentHash + ".zip"
-	conn, err := s.Pool.Acquire(ctx)
+	artifact, duplicate, err := s.store(ctx, ws, retention, storedPackage{
+		zip: p.Zip, fileName: p.FileName, contentHash: p.ContentHash,
+		reuse: func(q *gen.Queries) (Artifact, bool, error) {
+			sameIdentity, err := q.ListDownloadArtifactsWithIdentity(ctx, gen.ListDownloadArtifactsWithIdentityParams{
+				WorkspaceID: ws.ID, SkillVersionID: p.Version.ID, Target: p.Profile.ID,
+				PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
+				ContentHash: p.ContentHash,
+			})
+			if err != nil {
+				return Artifact{}, false, err
+			}
+			existing, ok := reusableArtifact(sameIdentity, time.Now())
+			if !ok {
+				return Artifact{}, false, nil
+			}
+			return reusedArtifact(p, existing), true, nil
+		},
+		record: func(q *gen.Queries, artifactID pgtype.UUID) error {
+			return q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
+				ArtifactID: artifactID, WorkspaceID: ws.ID, SkillVersionID: p.Version.ID,
+				Target: p.Profile.ID, ProfileVersion: p.Profile.Version,
+				PackagerVersion: PackagerVersion, ManifestHash: p.ManifestHash,
+				IncludesTestCases: p.IncludeTestCases,
+			})
+		},
+		fresh: func(row gen.Artifact) Artifact {
+			return Artifact{
+				ArtifactID:          pgconv.UUIDString(row.ID),
+				SkillID:             pgconv.UUIDString(p.Skill.ID),
+				SkillVersionID:      pgconv.UUIDString(p.Version.ID),
+				Target:              p.Profile.ID,
+				FileName:            p.FileName,
+				SizeBytes:           int64(len(p.Zip)),
+				ContentHash:         p.ContentHash,
+				ManifestHash:        p.ManifestHash,
+				Status:              string(ScanAvailable),
+				ExpiresAt:           rfc3339(row.ExpiresAt),
+				CreatedAt:           rfc3339(row.CreatedAt),
+				DownloadCount:       0,
+				IncludesTestCases:   p.IncludeTestCases,
+				PackagerVersion:     PackagerVersion,
+				ProfileVersion:      p.Profile.Version,
+				VersionNumber:       p.Version.VersionNumber,
+				LatestVersionNumber: p.LatestVersionNumber,
+			}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})
+		},
+	})
 	if err != nil {
 		return Result{}, err
+	}
+	if duplicate {
+		return Result{Artifact: artifact, Duplicate: true}, nil
+	}
+	return Result{Plan: p, Artifact: artifact}, nil
+}
+
+func (s *Service) store(
+	ctx context.Context, ws identity.Workspace, retention time.Duration, pkg storedPackage,
+) (Artifact, bool, error) {
+	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + pkg.contentHash + ".zip"
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return Artifact{}, false, err
 	}
 	workspaceLocked, objectLocked := false, false
 	defer func() {
@@ -714,38 +745,30 @@ func (s *Service) persist(
 	}()
 	q := gen.New(conn)
 	if err := q.LockPackagingWorkspaceObjectsSession(ctx, ws.ID); err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	workspaceLocked = true
 	if s.MayStoreObjects == nil {
-		return Result{}, errors.New("packaging: identity lifecycle read is not configured")
+		return Artifact{}, false, errors.New("packaging: identity lifecycle read is not configured")
 	}
 	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
 	if err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	if !allowed {
-		return Result{}, ErrNotFound
+		return Artifact{}, false, ErrNotFound
 	}
 	lockKey := downloadObjectLockKey(objectKey)
 	if err := q.LockDownloadObjectKeySession(ctx, lockKey); err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	objectLocked = true
-	sameIdentity, err := q.ListDownloadArtifactsWithIdentity(ctx, gen.ListDownloadArtifactsWithIdentityParams{
-		WorkspaceID: ws.ID, SkillVersionID: p.Version.ID, Target: p.Profile.ID,
-		PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
-		ContentHash: p.ContentHash,
-	})
-	if err != nil {
-		return Result{}, err
-	}
-	if existing, ok := reusableArtifact(sameIdentity, time.Now()); ok {
-		return Result{Artifact: reusedArtifact(p, existing), Duplicate: true}, nil
+	if existing, ok, err := pkg.reuse(q); err != nil || ok {
+		return existing, ok, err
 	}
 	exists, err := s.Store.Exists(ctx, objectKey)
 	if err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	ownsObject, commitAttempted := false, false
 	intentCreated := false
@@ -772,79 +795,56 @@ func (s *Service) persist(
 	if _, err := q.CreateDownloadCleanupIntent(ctx, gen.CreateDownloadCleanupIntentParams{
 		WorkspaceID: ws.ID, ObjectKey: objectKey, Hold: pgconv.Interval(downloadCleanupHold),
 	}); err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	intentCreated = true
 	ownsObject = !exists
 
-	if err := s.Store.Put(ctx, objectKey, p.Zip); err != nil {
-		return Result{}, err
+	if err := s.Store.Put(ctx, objectKey, pkg.zip); err != nil {
+		return Artifact{}, false, err
 	}
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q = gen.New(tx)
 
 	row, err := q.CreateDownloadArtifactRow(ctx, gen.CreateDownloadArtifactRowParams{
 		WorkspaceID: ws.ID,
-		FileName:    p.FileName,
+		FileName:    pkg.fileName,
 		ContentType: "application/zip",
-		SizeBytes:   int64(len(p.Zip)),
-		ContentHash: p.ContentHash,
+		SizeBytes:   int64(len(pkg.zip)),
+		ContentHash: pkg.contentHash,
 		ObjectKey:   objectKey,
 		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(retention), Valid: true},
 	})
 	if err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
-	if err := q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
-		ArtifactID: row.ID, WorkspaceID: ws.ID, SkillVersionID: p.Version.ID,
-		Target: p.Profile.ID, ProfileVersion: p.Profile.Version,
-		PackagerVersion: PackagerVersion, ManifestHash: p.ManifestHash,
-		IncludesTestCases: p.IncludeTestCases,
-	}); err != nil {
-		return Result{}, err
+	if err := pkg.record(q, row.ID); err != nil {
+		return Artifact{}, false, err
 	}
 
 	if err := q.MarkDownloadArtifactAvailable(ctx, gen.MarkDownloadArtifactAvailableParams{
 		ID: row.ID, WorkspaceID: ws.ID,
 	}); err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 	if intentCreated {
 		if err := q.DeleteDownloadCleanupIntent(ctx, gen.DeleteDownloadCleanupIntentParams{
 			ObjectKey: objectKey, WorkspaceID: ws.ID,
 		}); err != nil {
-			return Result{}, err
+			return Artifact{}, false, err
 		}
 	}
 	commitAttempted = true
 	if err := tx.Commit(ctx); err != nil {
-		return Result{}, err
+		return Artifact{}, false, err
 	}
 
-	return Result{Plan: p, Artifact: Artifact{
-		ArtifactID:          pgconv.UUIDString(row.ID),
-		SkillID:             pgconv.UUIDString(p.Skill.ID),
-		SkillVersionID:      pgconv.UUIDString(p.Version.ID),
-		Target:              p.Profile.ID,
-		FileName:            p.FileName,
-		SizeBytes:           int64(len(p.Zip)),
-		ContentHash:         p.ContentHash,
-		ManifestHash:        p.ManifestHash,
-		Status:              string(ScanAvailable),
-		ExpiresAt:           rfc3339(row.ExpiresAt),
-		CreatedAt:           rfc3339(row.CreatedAt),
-		DownloadCount:       0,
-		IncludesTestCases:   p.IncludeTestCases,
-		PackagerVersion:     PackagerVersion,
-		ProfileVersion:      p.Profile.Version,
-		VersionNumber:       p.Version.VersionNumber,
-		LatestVersionNumber: p.LatestVersionNumber,
-	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})}, nil
+	return pkg.fresh(row), false, nil
 }
 
 func reusableArtifact(newestFirst []gen.ListDownloadArtifactsWithIdentityRow, now time.Time) (gen.ListDownloadArtifactsWithIdentityRow, bool) {
@@ -876,4 +876,68 @@ func reusedArtifact(p *Plan, row gen.ListDownloadArtifactsWithIdentityRow) Artif
 		VersionNumber:       p.Version.VersionNumber,
 		LatestVersionNumber: p.LatestVersionNumber,
 	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})
+}
+
+type sourceFiles struct {
+	fsys     fs.FS
+	report   skillpkg.Report
+	files    []exportFile
+	excluded []ExcludedFile
+
+	blockedReason  string
+	blockedMessage string
+	validation     ManifestValidation
+}
+
+func (s *Service) readSource(ctx context.Context, version VersionFacts) (sourceFiles, error) {
+	data, err := s.Store.Get(ctx, version.PackageObjectKey)
+	if err != nil {
+		return sourceFiles{}, fmt.Errorf("stored package unreadable: %w", err)
+	}
+	fsys, err := skillpkg.SkillFS(data, version.SourcePath)
+	if err != nil {
+		return sourceFiles{}, fmt.Errorf("stored package unreadable: %w", err)
+	}
+	out := sourceFiles{
+		fsys: fsys, report: skillpkg.Validate(fsys),
+		validation: ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
+	}
+	for _, finding := range out.report.Findings {
+		if finding.Severity == skillpkg.SeverityError && !pathUsesExcludedDir(finding.Path) {
+			cat := out.report.Categorize()
+			out.validation = ManifestValidation{
+				Blocked: true, Errors: toManifestFindings(cat.Errors),
+				Warnings: toManifestFindings(cat.Warnings), Infos: toManifestFindings(cat.Infos),
+			}
+			out.blockedReason, out.blockedMessage = BlockedValidation, "儲存的來源套件已經不符合匯入驗證"
+			return out, nil
+		}
+	}
+	files, dropped, err := collect(fsys)
+	if err != nil {
+		return sourceFiles{}, err
+	}
+	out.files = files
+
+	referenced := map[string]bool{}
+	for _, ref := range skillpkg.SkillMDReferences(fsys) {
+		referenced[ref] = true
+	}
+	out.excluded = make([]ExcludedFile, 0, len(dropped))
+	var broke []string
+	for _, e := range dropped {
+		e.ReferencedBySkillMD = referenced[e.Path] ||
+			(strings.HasSuffix(e.Path, "/") && referencedUnder(referenced, e.Path))
+		if e.ReferencedBySkillMD {
+			broke = append(broke, e.Path)
+		}
+		out.excluded = append(out.excluded, e.withWords())
+	}
+	if len(broke) > 0 {
+		out.blockedReason = BlockedFileRemoved
+		out.blockedMessage = "SKILL.md 指向 " + strings.Join(broke, "、") +
+			"，而打包器不會把它帶進套件——這一份下載回去會缺少它自己說明要用的東西。" +
+			"把檔案移出被排除的目錄、或改用實體檔案取代連結之後再打包一次。"
+	}
+	return out, nil
 }

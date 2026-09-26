@@ -27,6 +27,13 @@ import {
     LabelledToJSON,
     LabelledToJSONTyped,
 } from './Labelled';
+import type { PluginContents } from './PluginContents';
+import {
+    PluginContentsFromJSON,
+    PluginContentsFromJSONTyped,
+    PluginContentsToJSON,
+    PluginContentsToJSONTyped,
+} from './PluginContents';
 
 /**
  * One built package (PACK-001). Immutable: re-packaging produces another
@@ -40,6 +47,10 @@ import {
  * profile" need, and what a byte hash cannot answer across packager
  * versions (packaging-design §2.4).
  * 
+ * **A Plugin carries `plugin` instead of one Skill.** `skill_id`,
+ * `skill_version_id`, `version_number` and `latest_version_number` are
+ * absent, and `version_state` is `plugin`.
+ * 
  * @export
  * @interface DownloadArtifact
  */
@@ -51,11 +62,15 @@ export interface DownloadArtifact {
     /**
      * 
      */
-    skillId: string;
+    plugin?: PluginContents;
     /**
      * 
      */
-    skillVersionId: string;
+    skillId?: string;
+    /**
+     * 
+     */
+    skillVersionId?: string;
     /**
      * Which version these bytes are, in the monotonic per-skill numbering
      * the immutability trigger protects. The uuid beside it identifies the
@@ -63,7 +78,7 @@ export interface DownloadArtifact {
      * answer to "which one is this" (`02:WS-002` 1「版本」).
      * 
      */
-    versionNumber: number;
+    versionNumber?: number;
     /**
      * The highest version number this skill currently has. Present so the
      * client never has to fetch a second resource to find out whether it
@@ -71,7 +86,7 @@ export interface DownloadArtifact {
      * is the newest.
      * 
      */
-    latestVersionNumber: number;
+    latestVersionNumber?: number;
     /**
      * `current` or `superseded`, with the wording — including the numbers —
      * from the server (設計系統 §4.4).
@@ -220,10 +235,6 @@ export type DownloadArtifactStatusEnum = typeof DownloadArtifactStatusEnum[keyof
  */
 export function instanceOfDownloadArtifact(value: object): value is DownloadArtifact {
     if ((!('artifactId' in (value as Record<string, any>)) && !('artifact_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['artifactId'] === undefined && (value as Record<string, any>)['artifact_id'] === undefined)) return false;
-    if ((!('skillId' in (value as Record<string, any>)) && !('skill_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillId'] === undefined && (value as Record<string, any>)['skill_id'] === undefined)) return false;
-    if ((!('skillVersionId' in (value as Record<string, any>)) && !('skill_version_id' in (value as Record<string, any>))) || ((value as Record<string, any>)['skillVersionId'] === undefined && (value as Record<string, any>)['skill_version_id'] === undefined)) return false;
-    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
-    if ((!('latestVersionNumber' in (value as Record<string, any>)) && !('latest_version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['latestVersionNumber'] === undefined && (value as Record<string, any>)['latest_version_number'] === undefined)) return false;
     if ((!('versionState' in (value as Record<string, any>)) && !('version_state' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionState'] === undefined && (value as Record<string, any>)['version_state'] === undefined)) return false;
     if (!('target' in value) || value['target'] === undefined) return false;
     if ((!('fileName' in (value as Record<string, any>)) && !('file_name' in (value as Record<string, any>))) || ((value as Record<string, any>)['fileName'] === undefined && (value as Record<string, any>)['file_name'] === undefined)) return false;
@@ -251,10 +262,11 @@ export function DownloadArtifactFromJSONTyped(json: any, ignoreDiscriminator: bo
     return {
         
         'artifactId': json['artifact_id'],
-        'skillId': json['skill_id'],
-        'skillVersionId': json['skill_version_id'],
-        'versionNumber': json['version_number'],
-        'latestVersionNumber': json['latest_version_number'],
+        'plugin': json['plugin'] == null ? undefined : PluginContentsFromJSON(json['plugin']),
+        'skillId': json['skill_id'] == null ? undefined : json['skill_id'],
+        'skillVersionId': json['skill_version_id'] == null ? undefined : json['skill_version_id'],
+        'versionNumber': json['version_number'] == null ? undefined : json['version_number'],
+        'latestVersionNumber': json['latest_version_number'] == null ? undefined : json['latest_version_number'],
         'versionState': LabelledFromJSON(json['version_state']),
         'target': PackagingTargetIdFromJSON(json['target']),
         'fileName': json['file_name'],
@@ -285,6 +297,7 @@ export function DownloadArtifactToJSONTyped(value?: DownloadArtifact | null, ign
     return {
         
         'artifact_id': value['artifactId'],
+        'plugin': PluginContentsToJSON(value['plugin']),
         'skill_id': value['skillId'],
         'skill_version_id': value['skillVersionId'],
         'version_number': value['versionNumber'],

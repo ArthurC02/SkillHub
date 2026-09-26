@@ -20,6 +20,13 @@ import {
     PublicationNoteToJSON,
     PublicationNoteToJSONTyped,
 } from './PublicationNote';
+import type { PublicPublicationBundleRelease } from './PublicPublicationBundleRelease';
+import {
+    PublicPublicationBundleReleaseFromJSON,
+    PublicPublicationBundleReleaseFromJSONTyped,
+    PublicPublicationBundleReleaseToJSON,
+    PublicPublicationBundleReleaseToJSONTyped,
+} from './PublicPublicationBundleRelease';
 import type { PublicPublicationRelease } from './PublicPublicationRelease';
 import {
     PublicPublicationReleaseFromJSON,
@@ -41,6 +48,13 @@ import {
     LabelledToJSON,
     LabelledToJSONTyped,
 } from './Labelled';
+import type { PublicPublicationBundle } from './PublicPublicationBundle';
+import {
+    PublicPublicationBundleFromJSON,
+    PublicPublicationBundleFromJSONTyped,
+    PublicPublicationBundleToJSON,
+    PublicPublicationBundleToJSONTyped,
+} from './PublicPublicationBundle';
 import type { PublicPublicationSkill } from './PublicPublicationSkill';
 import {
     PublicPublicationSkillFromJSON,
@@ -48,6 +62,13 @@ import {
     PublicPublicationSkillToJSON,
     PublicPublicationSkillToJSONTyped,
 } from './PublicPublicationSkill';
+import type { PublicationKind } from './PublicationKind';
+import {
+    PublicationKindFromJSON,
+    PublicationKindFromJSONTyped,
+    PublicationKindToJSON,
+    PublicationKindToJSONTyped,
+} from './PublicationKind';
 
 /**
  * 
@@ -55,6 +76,10 @@ import {
  * @interface PublicPublication
  */
 export interface PublicPublication {
+    /**
+     * 
+     */
+    kind: PublicationKind;
     /**
      * 
      */
@@ -68,7 +93,7 @@ export interface PublicPublication {
      */
     address: string;
     /**
-     * One of available, delisted, withdrawn, taken_down, held or not_redistributable; only available carries skill and release.
+     * One of available, delisted, withdrawn, taken_down, held or not_redistributable; only available carries skill and release, or bundle and bundle_release. For a Bundle the note names the member that makes it unavailable.
      */
     availability: Labelled;
     /**
@@ -86,6 +111,14 @@ export interface PublicPublication {
     /**
      * 
      */
+    bundle?: PublicPublicationBundle;
+    /**
+     * 
+     */
+    bundleRelease?: PublicPublicationBundleRelease;
+    /**
+     * 
+     */
     releases: Array<PublicRelease>;
     /**
      * Whether it is in search and the catalog, and the sentence saying so.
@@ -97,10 +130,13 @@ export interface PublicPublication {
     acquisition: PublicationNote;
 }
 
+
+
 /**
  * Check if a given object implements the PublicPublication interface.
  */
 export function instanceOfPublicPublication(value: object): value is PublicPublication {
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('publisher' in value) || value['publisher'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('address' in value) || value['address'] === undefined) return false;
@@ -121,6 +157,7 @@ export function PublicPublicationFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
+        'kind': PublicationKindFromJSON(json['kind']),
         'publisher': json['publisher'],
         'name': json['name'],
         'address': json['address'],
@@ -128,6 +165,8 @@ export function PublicPublicationFromJSONTyped(json: any, ignoreDiscriminator: b
         'delistedAt': json['delisted_at'] == null ? undefined : (parseDateTime(json['delisted_at'])),
         'skill': json['skill'] == null ? undefined : PublicPublicationSkillFromJSON(json['skill']),
         'release': json['release'] == null ? undefined : PublicPublicationReleaseFromJSON(json['release']),
+        'bundle': json['bundle'] == null ? undefined : PublicPublicationBundleFromJSON(json['bundle']),
+        'bundleRelease': json['bundle_release'] == null ? undefined : PublicPublicationBundleReleaseFromJSON(json['bundle_release']),
         'releases': ((json['releases'] as Array<any>).map(PublicReleaseFromJSON)),
         'exposure': PublicationNoteFromJSON(json['exposure']),
         'acquisition': PublicationNoteFromJSON(json['acquisition']),
@@ -145,6 +184,7 @@ export function PublicPublicationToJSONTyped(value?: PublicPublication | null, i
 
     return {
         
+        'kind': PublicationKindToJSON(value['kind']),
         'publisher': value['publisher'],
         'name': value['name'],
         'address': value['address'],
@@ -152,6 +192,8 @@ export function PublicPublicationToJSONTyped(value?: PublicPublication | null, i
         'delisted_at': value['delistedAt'] == null ? value['delistedAt'] : serializeDateTime(value['delistedAt']),
         'skill': PublicPublicationSkillToJSON(value['skill']),
         'release': PublicPublicationReleaseToJSON(value['release']),
+        'bundle': PublicPublicationBundleToJSON(value['bundle']),
+        'bundle_release': PublicPublicationBundleReleaseToJSON(value['bundleRelease']),
         'releases': ((value['releases'] as Array<any>).map(PublicReleaseToJSON)),
         'exposure': PublicationNoteToJSON(value['exposure']),
         'acquisition': PublicationNoteToJSON(value['acquisition']),

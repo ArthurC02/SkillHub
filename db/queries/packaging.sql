@@ -28,6 +28,33 @@ INSERT INTO download_artifacts (
     profile_version, packager_version, manifest_hash, includes_test_cases
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
+-- name: CreatePluginArtifactDetail :exec
+INSERT INTO download_artifacts (
+    artifact_id, workspace_id, plugin_name, plugin_version, target,
+    profile_version, packager_version, manifest_hash, includes_test_cases
+) VALUES (@artifact_id, @workspace_id, @plugin_name, @plugin_version, @target,
+          @profile_version, @packager_version, @manifest_hash, false);
+
+-- name: InsertDownloadArtifactMember :exec
+INSERT INTO download_artifact_members (artifact_id, workspace_id, skill_version_id, position)
+VALUES (@artifact_id, @workspace_id, @skill_version_id, @position);
+
+-- name: ListPluginArtifactsWithIdentity :many
+SELECT da.artifact_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
+       a.expires_at, a.created_at, a.deleted_at, a.purged_at,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+WHERE da.workspace_id = @workspace_id
+  AND da.plugin_name = @plugin_name
+  AND da.plugin_version = @plugin_version
+  AND da.packager_version = @packager_version
+  AND a.content_hash = @content_hash
+ORDER BY a.created_at DESC;
+
 -- name: MarkDownloadArtifactAvailable :exec
 UPDATE artifacts SET scan_status = 'available'
 WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package';
@@ -38,7 +65,11 @@ SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
-           AS download_count
+           AS download_count,
+       da.plugin_name, da.plugin_version,
+       (SELECT coalesce(array_agg(m.skill_version_id ORDER BY m.position), '{}')
+          FROM download_artifact_members m WHERE m.artifact_id = da.artifact_id)::uuid[]
+           AS member_version_ids
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
 WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
@@ -50,7 +81,11 @@ SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
-           AS download_count
+           AS download_count,
+       da.plugin_name, da.plugin_version,
+       (SELECT coalesce(array_agg(m.skill_version_id ORDER BY m.position), '{}')
+          FROM download_artifact_members m WHERE m.artifact_id = da.artifact_id)::uuid[]
+           AS member_version_ids
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
 WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL;
@@ -78,6 +113,9 @@ WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at
 
 -- name: DeleteWorkspaceDownloadRecords :execrows
 DELETE FROM download_records WHERE workspace_id = $1;
+
+-- name: DeleteWorkspaceDownloadArtifactMembers :execrows
+DELETE FROM download_artifact_members WHERE workspace_id = $1;
 
 -- name: DeleteWorkspaceDownloadArtifactDetails :execrows
 DELETE FROM download_artifacts WHERE workspace_id = $1;
@@ -145,4 +183,6 @@ SELECT pg_advisory_lock(hashtextextended(@lock_key::text, 0));
 SELECT pg_advisory_unlock(hashtextextended(@lock_key::text, 0));
 
 -- name: ListSkillVersionsInDownloads :many
-SELECT DISTINCT skill_version_id FROM download_artifacts WHERE skill_version_id = ANY(@version_ids::uuid[]);
+SELECT skill_version_id::uuid FROM download_artifacts WHERE skill_version_id = ANY(@version_ids::uuid[])
+UNION
+SELECT skill_version_id FROM download_artifact_members WHERE skill_version_id = ANY(@version_ids::uuid[]);

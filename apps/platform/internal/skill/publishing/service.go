@@ -52,7 +52,8 @@ type Service struct {
 	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
 
-	PackageForRecipient func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID) (Acquisition, error)
+	PackageForRecipient       func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID) (Acquisition, error)
+	PackagePluginForRecipient func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID pgtype.UUID, plugin PluginRequest) (Acquisition, error)
 }
 
 type Acquisition struct {
@@ -72,6 +73,7 @@ type Publisher struct {
 type Release struct {
 	VersionID      pgtype.UUID
 	VersionNumber  int32
+	Bundle         *BundleVersion
 	ContentHash    string
 	Findings       skillpkg.CategorizedFindings
 	RightsAttested bool
@@ -82,6 +84,7 @@ type Publication struct {
 	Publisher       string
 	Name            string
 	SkillID         pgtype.UUID
+	BundleID        pgtype.UUID
 	Status          Status
 	StatusChangedAt time.Time
 	Releases        []Release
@@ -89,10 +92,11 @@ type Publication struct {
 
 type PublicPublication struct {
 	Publication
-	OwnerWorkspaceID pgtype.UUID
-	Availability     Availability
-	Skill            SkillFacts
-	Version          VersionFacts
+	OwnerWorkspaceID  pgtype.UUID
+	Availability      Availability
+	UnavailableMember string
+	Skill             SkillFacts
+	Version           VersionFacts
 }
 
 type PublishInput struct {
@@ -190,7 +194,7 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	}
 	release, err := q.InsertPublicationRelease(ctx, gen.InsertPublicationReleaseParams{
 		PublicationID: publication.ID, WorkspaceID: ws.ID,
-		SkillVersionID: version.ID, VersionNumber: version.VersionNumber, ContentHash: version.ContentHash,
+		SkillVersionID: version.ID, VersionNumber: &version.VersionNumber, ContentHash: version.ContentHash,
 		Findings: encodedFindings, RightsAttested: in.RightsAttested, ReleasedBy: ws.OwnerUserID,
 	})
 	if err != nil {
@@ -239,18 +243,26 @@ func (s *Service) versionToRelease(ctx context.Context, ws identity.Workspace, s
 }
 
 func (s *Service) scan(ctx context.Context, version VersionFacts) (skillpkg.CategorizedFindings, error) {
+	report, err := s.readPackage(ctx, version)
+	if err != nil {
+		return skillpkg.CategorizedFindings{}, err
+	}
+	return report.Categorize(), nil
+}
+
+func (s *Service) readPackage(ctx context.Context, version VersionFacts) (skillpkg.Report, error) {
 	if s.Store == nil {
-		return skillpkg.CategorizedFindings{}, errors.New("publishing: no object store is configured, so the release cannot be scanned")
+		return skillpkg.Report{}, errors.New("publishing: no object store is configured, so the package cannot be read")
 	}
 	data, err := s.Store.Get(ctx, version.PackageObjectKey)
 	if err != nil {
-		return skillpkg.CategorizedFindings{}, fmt.Errorf("stored package unreadable: %w", err)
+		return skillpkg.Report{}, fmt.Errorf("stored package unreadable: %w", err)
 	}
 	fsys, err := skillpkg.SkillFS(data, version.SourcePath)
 	if err != nil {
-		return skillpkg.CategorizedFindings{}, fmt.Errorf("stored package unreadable: %w", err)
+		return skillpkg.Report{}, fmt.Errorf("stored package unreadable: %w", err)
 	}
-	return skillpkg.Validate(fsys).Categorize(), nil
+	return skillpkg.Validate(fsys), nil
 }
 
 func publicationToRelease(
@@ -258,15 +270,7 @@ func publicationToRelease(
 ) (gen.Publication, error) {
 	existing, err := q.LockPublicationForSkill(ctx, gen.LockPublicationForSkillParams{WorkspaceID: ws.ID, SkillID: skill.ID})
 	if err == nil {
-		if requestedName != "" && requestedName != existing.Name {
-			return gen.Publication{}, ErrNameIsPermanent
-		}
-		if _, err := q.SetPublicationStatus(ctx, gen.SetPublicationStatusParams{
-			ID: existing.ID, Status: string(StatusPublished), WorkspaceID: ws.ID,
-		}); err != nil {
-			return gen.Publication{}, err
-		}
-		return existing, nil
+		return republished(ctx, q, ws, existing, requestedName)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return gen.Publication{}, err
@@ -287,40 +291,62 @@ func publicationToRelease(
 	return created, err
 }
 
+func republished(ctx context.Context, q *gen.Queries, ws identity.Workspace, existing gen.Publication, requestedName string) (gen.Publication, error) {
+	if requestedName != "" && requestedName != existing.Name {
+		return gen.Publication{}, ErrNameIsPermanent
+	}
+	if _, err := q.SetPublicationStatus(ctx, gen.SetPublicationStatusParams{
+		ID: existing.ID, Status: string(StatusPublished), WorkspaceID: ws.ID,
+	}); err != nil {
+		return gen.Publication{}, err
+	}
+	return existing, nil
+}
+
 func (s *Service) Delist(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (Publication, error) {
-	tx, err := s.Pool.Begin(ctx)
+	err := s.delist(ctx, ws, func(q *gen.Queries) (gen.Publication, error) {
+		return q.LockPublicationForSkill(ctx, gen.LockPublicationForSkillParams{WorkspaceID: ws.ID, SkillID: skillID})
+	}, map[string]any{"skill_id": pgconv.UUIDString(skillID)})
 	if err != nil {
 		return Publication{}, err
+	}
+	own, _, err := s.OwnPublication(ctx, ws, skillID)
+	return own, err
+}
+
+func (s *Service) delist(
+	ctx context.Context, ws identity.Workspace, lock func(*gen.Queries) (gen.Publication, error), subject map[string]any,
+) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
-	publication, err := q.LockPublicationForSkill(ctx, gen.LockPublicationForSkillParams{WorkspaceID: ws.ID, SkillID: skillID})
+	publication, err := lock(q)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNotFound
+		return ErrNotFound
 	}
 	if err != nil {
-		return Publication{}, err
+		return err
 	}
 	changed, err := q.SetPublicationStatus(ctx, gen.SetPublicationStatusParams{
 		ID: publication.ID, Status: string(StatusDelisted), WorkspaceID: ws.ID,
 	})
 	if err != nil {
-		return Publication{}, err
+		return err
 	}
 	if changed > 0 {
+		subject["name"] = publication.Name
 		if err := audit.Log(ctx, tx, audit.Event{
 			Actor: ws.OwnerUserID, Workspace: ws.ID,
 			Action: audit.ActionPublicationDelist, ResourceType: audit.ResourcePublication, ResourceID: publication.ID,
-			Metadata: map[string]any{"name": publication.Name, "skill_id": pgconv.UUIDString(skillID)},
+			Metadata: subject,
 		}); err != nil {
-			return Publication{}, err
+			return err
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return Publication{}, err
-	}
-	own, _, err := s.OwnPublication(ctx, ws, skillID)
-	return own, err
+	return tx.Commit(ctx)
 }
 
 func (s *Service) OwnPublication(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (Publication, bool, error) {
@@ -356,9 +382,17 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 		return PublicPublication{}, false, err
 	}
 	out := PublicPublication{OwnerWorkspaceID: row.PublisherWorkspaceID, Publication: Publication{
-		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID,
+		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID, BundleID: row.BundleID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
 	}}
+	if row.BundleID.Valid {
+		var current *BundleVersion
+		if len(releases) > 0 {
+			current = releases[0].Bundle
+		}
+		out.Availability, out.UnavailableMember, err = s.bundleAvailability(ctx, row.PublisherWorkspaceID, out.Status, current)
+		return out, err == nil, err
+	}
 	skill, skillFound, err := s.ReadSkill(ctx, row.PublisherWorkspaceID, row.SkillID)
 	if err != nil {
 		return PublicPublication{}, false, err
@@ -388,16 +422,23 @@ func (s *Service) Acquire(ctx context.Context, recipient identity.Workspace, pub
 		return Acquisition{}, ErrNotFound
 	}
 	if publication.Availability != AvailabilityAvailable {
-		return Acquisition{}, &UnavailableError{Availability: publication.Availability}
+		return Acquisition{}, &UnavailableError{Availability: publication.Availability, Member: publication.UnavailableMember}
 	}
 	if len(publication.Releases) == 0 {
 		return Acquisition{}, ErrNotFound
+	}
+	if current := publication.Releases[0].Bundle; current != nil {
+		return s.PackagePluginForRecipient(ctx, recipient, publication.OwnerWorkspaceID, pluginRequestOf(*current))
 	}
 	return s.PackageForRecipient(ctx, recipient, publication.OwnerWorkspaceID, publication.SkillID, publication.Releases[0].VersionID)
 }
 
 func PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
-	_, err := gen.New(tx).PurgeWorkspacePublications(ctx, workspaceID)
+	q := gen.New(tx)
+	if _, err := q.PurgeWorkspacePublications(ctx, workspaceID); err != nil {
+		return err
+	}
+	_, err := q.PurgeWorkspaceBundles(ctx, workspaceID)
 	return err
 }
 
@@ -407,15 +448,37 @@ func releasesOf(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) 
 		return nil, err
 	}
 	releases := make([]Release, 0, len(rows))
+	var bundleVersionIDs []pgtype.UUID
 	for _, row := range rows {
 		var findings skillpkg.CategorizedFindings
 		if err := json.Unmarshal(row.Findings, &findings); err != nil {
 			return nil, fmt.Errorf("release %s findings: %w", pgconv.UUIDString(row.ID), err)
 		}
-		releases = append(releases, Release{
-			VersionID: row.SkillVersionID, VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
+		release := Release{
+			VersionID: row.SkillVersionID, ContentHash: row.ContentHash,
 			Findings: findings, RightsAttested: row.RightsAttested, ReleasedAt: row.ReleasedAt.Time,
-		})
+		}
+		if row.VersionNumber != nil {
+			release.VersionNumber = *row.VersionNumber
+		}
+		if row.BundleVersionID.Valid {
+			release.Bundle = &BundleVersion{ID: row.BundleVersionID}
+			bundleVersionIDs = append(bundleVersionIDs, row.BundleVersionID)
+		}
+		releases = append(releases, release)
+	}
+	if len(bundleVersionIDs) == 0 {
+		return releases, nil
+	}
+	versions, err := bundleVersionsByID(ctx, q, bundleVersionIDs)
+	if err != nil {
+		return nil, err
+	}
+	for i := range releases {
+		if releases[i].Bundle != nil {
+			version := versions[releases[i].Bundle.ID]
+			releases[i].Bundle = &version
+		}
 	}
 	return releases, nil
 }

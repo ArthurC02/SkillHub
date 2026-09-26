@@ -1842,6 +1842,548 @@ func (s *AmountTrend) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *BundleMember) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *BundleMember) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("skill_id")
+		json.EncodeUUID(e, s.SkillID)
+	}
+	{
+		e.FieldStart("version_id")
+		json.EncodeUUID(e, s.VersionID)
+	}
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("version_number")
+		e.Int(s.VersionNumber)
+	}
+	{
+		e.FieldStart("content_hash")
+		e.Str(s.ContentHash)
+	}
+}
+
+var jsonFieldsNameOfBundleMember = [5]string{
+	0: "skill_id",
+	1: "version_id",
+	2: "name",
+	3: "version_number",
+	4: "content_hash",
+}
+
+// Decode decodes BundleMember from json.
+func (s *BundleMember) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode BundleMember to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "skill_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_id\"")
+			}
+		case "version_id":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.VersionID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_id\"")
+			}
+		case "name":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version_number":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.VersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		case "content_hash":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Str()
+				s.ContentHash = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"content_hash\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode BundleMember")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00011111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfBundleMember) {
+					name = jsonFieldsNameOfBundleMember[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *BundleMember) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *BundleMember) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *BundleMemberChange) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *BundleMemberChange) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("change")
+		s.Change.Encode(e)
+	}
+	{
+		if s.From.Set {
+			e.FieldStart("from")
+			s.From.Encode(e)
+		}
+	}
+	{
+		if s.To.Set {
+			e.FieldStart("to")
+			s.To.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfBundleMemberChange = [4]string{
+	0: "name",
+	1: "change",
+	2: "from",
+	3: "to",
+}
+
+// Decode decodes BundleMemberChange from json.
+func (s *BundleMemberChange) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode BundleMemberChange to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "change":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Change.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"change\"")
+			}
+		case "from":
+			if err := func() error {
+				s.From.Reset()
+				if err := s.From.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"from\"")
+			}
+		case "to":
+			if err := func() error {
+				s.To.Reset()
+				if err := s.To.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"to\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode BundleMemberChange")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfBundleMemberChange) {
+					name = jsonFieldsNameOfBundleMemberChange[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *BundleMemberChange) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *BundleMemberChange) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes BundleMemberChangeChange as json.
+func (s BundleMemberChangeChange) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes BundleMemberChangeChange from json.
+func (s *BundleMemberChangeChange) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode BundleMemberChangeChange to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch BundleMemberChangeChange(v) {
+	case BundleMemberChangeChangeAdded:
+		*s = BundleMemberChangeChangeAdded
+	case BundleMemberChangeChangeRemoved:
+		*s = BundleMemberChangeChangeRemoved
+	case BundleMemberChangeChangeChanged:
+		*s = BundleMemberChangeChangeChanged
+	default:
+		*s = BundleMemberChangeChange(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s BundleMemberChangeChange) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *BundleMemberChangeChange) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *BundleVersion) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *BundleVersion) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("bundle")
+		e.Str(s.Bundle)
+	}
+	{
+		e.FieldStart("version")
+		e.Str(s.Version)
+	}
+	{
+		e.FieldStart("description")
+		e.Str(s.Description)
+	}
+	{
+		e.FieldStart("content_hash")
+		e.Str(s.ContentHash)
+	}
+	{
+		e.FieldStart("created_at")
+		json.EncodeDateTime(e, s.CreatedAt)
+	}
+	{
+		e.FieldStart("members")
+		e.ArrStart()
+		for _, elem := range s.Members {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfBundleVersion = [6]string{
+	0: "bundle",
+	1: "version",
+	2: "description",
+	3: "content_hash",
+	4: "created_at",
+	5: "members",
+}
+
+// Decode decodes BundleVersion from json.
+func (s *BundleVersion) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode BundleVersion to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "bundle":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Bundle = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bundle\"")
+			}
+		case "version":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Version = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "description":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Description = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"description\"")
+			}
+		case "content_hash":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.ContentHash = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"content_hash\"")
+			}
+		case "created_at":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.CreatedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"created_at\"")
+			}
+		case "members":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				s.Members = make([]BundleMember, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem BundleMember
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Members = append(s.Members, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"members\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode BundleVersion")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00111111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfBundleVersion) {
+					name = jsonFieldsNameOfBundleVersion[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *BundleVersion) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *BundleVersion) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes CancelAccountDeletionConflict as json.
 func (s *CancelAccountDeletionConflict) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -4623,6 +5165,355 @@ func (s *CountTrend) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes CreateBundleVersionBadRequest as json.
+func (s *CreateBundleVersionBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateBundleVersionBadRequest from json.
+func (s *CreateBundleVersionBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateBundleVersionBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreateBundleVersionConflict as json.
+func (s *CreateBundleVersionConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*PublishingRefusal)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateBundleVersionConflict from json.
+func (s *CreateBundleVersionConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionConflict to nil")
+	}
+	var unwrapped PublishingRefusal
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateBundleVersionConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreateBundleVersionNotFound as json.
+func (s *CreateBundleVersionNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateBundleVersionNotFound from json.
+func (s *CreateBundleVersionNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateBundleVersionNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *CreateBundleVersionReq) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *CreateBundleVersionReq) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("version")
+		e.Str(s.Version)
+	}
+	{
+		e.FieldStart("description")
+		e.Str(s.Description)
+	}
+	{
+		e.FieldStart("member_version_ids")
+		e.ArrStart()
+		for _, elem := range s.MemberVersionIds {
+			json.EncodeUUID(e, elem)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfCreateBundleVersionReq = [4]string{
+	0: "name",
+	1: "version",
+	2: "description",
+	3: "member_version_ids",
+}
+
+// Decode decodes CreateBundleVersionReq from json.
+func (s *CreateBundleVersionReq) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionReq to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Version = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "description":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Description = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"description\"")
+			}
+		case "member_version_ids":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				s.MemberVersionIds = make([]uuid.UUID, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem uuid.UUID
+					v, err := json.DecodeUUID(d)
+					elem = v
+					if err != nil {
+						return err
+					}
+					s.MemberVersionIds = append(s.MemberVersionIds, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"member_version_ids\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode CreateBundleVersionReq")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfCreateBundleVersionReq) {
+					name = jsonFieldsNameOfCreateBundleVersionReq[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionReq) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreateBundleVersionUnauthorized as json.
+func (s *CreateBundleVersionUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateBundleVersionUnauthorized from json.
+func (s *CreateBundleVersionUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateBundleVersionUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreateBundleVersionUnprocessableEntity as json.
+func (s *CreateBundleVersionUnprocessableEntity) Encode(e *jx.Encoder) {
+	unwrapped := (*PublishingRefusal)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateBundleVersionUnprocessableEntity from json.
+func (s *CreateBundleVersionUnprocessableEntity) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateBundleVersionUnprocessableEntity to nil")
+	}
+	var unwrapped PublishingRefusal
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateBundleVersionUnprocessableEntity(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateBundleVersionUnprocessableEntity) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateBundleVersionUnprocessableEntity) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *CreateCreationSession) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -5071,20 +5962,34 @@ func (s *CreateDownloadArtifactCreated) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.ArtifactID)
 	}
 	{
-		e.FieldStart("skill_id")
-		json.EncodeUUID(e, s.SkillID)
+		if s.Plugin.Set {
+			e.FieldStart("plugin")
+			s.Plugin.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("skill_version_id")
-		json.EncodeUUID(e, s.SkillVersionID)
+		if s.SkillID.Set {
+			e.FieldStart("skill_id")
+			s.SkillID.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("version_number")
-		e.Int(s.VersionNumber)
+		if s.SkillVersionID.Set {
+			e.FieldStart("skill_version_id")
+			s.SkillVersionID.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("latest_version_number")
-		e.Int(s.LatestVersionNumber)
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.LatestVersionNumber.Set {
+			e.FieldStart("latest_version_number")
+			s.LatestVersionNumber.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("version_state")
@@ -5156,28 +6061,29 @@ func (s *CreateDownloadArtifactCreated) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreateDownloadArtifactCreated = [21]string{
+var jsonFieldsNameOfCreateDownloadArtifactCreated = [22]string{
 	0:  "artifact_id",
-	1:  "skill_id",
-	2:  "skill_version_id",
-	3:  "version_number",
-	4:  "latest_version_number",
-	5:  "version_state",
-	6:  "target",
-	7:  "file_name",
-	8:  "size_bytes",
-	9:  "content_hash",
-	10: "manifest_hash",
-	11: "status",
-	12: "servable",
-	13: "serve_state",
-	14: "expires_at",
-	15: "created_at",
-	16: "download_count",
-	17: "includes_test_cases",
-	18: "packager_version",
-	19: "profile_version",
-	20: "duplicate",
+	1:  "plugin",
+	2:  "skill_id",
+	3:  "skill_version_id",
+	4:  "version_number",
+	5:  "latest_version_number",
+	6:  "version_state",
+	7:  "target",
+	8:  "file_name",
+	9:  "size_bytes",
+	10: "content_hash",
+	11: "manifest_hash",
+	12: "status",
+	13: "servable",
+	14: "serve_state",
+	15: "expires_at",
+	16: "created_at",
+	17: "download_count",
+	18: "includes_test_cases",
+	19: "packager_version",
+	20: "profile_version",
+	21: "duplicate",
 }
 
 // Decode decodes CreateDownloadArtifactCreated from json.
@@ -5201,12 +6107,20 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"artifact_id\"")
 			}
-		case "skill_id":
-			requiredBitSet[0] |= 1 << 1
+		case "plugin":
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.SkillID = v
-				if err != nil {
+				s.Plugin.Reset()
+				if err := s.Plugin.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"plugin\"")
+			}
+		case "skill_id":
+			if err := func() error {
+				s.SkillID.Reset()
+				if err := s.SkillID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -5214,11 +6128,9 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_id\"")
 			}
 		case "skill_version_id":
-			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.SkillVersionID = v
-				if err != nil {
+				s.SkillVersionID.Reset()
+				if err := s.SkillVersionID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -5226,11 +6138,9 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_version_id\"")
 			}
 		case "version_number":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Int()
-				s.VersionNumber = int(v)
-				if err != nil {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -5238,11 +6148,9 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_number\"")
 			}
 		case "latest_version_number":
-			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := d.Int()
-				s.LatestVersionNumber = int(v)
-				if err != nil {
+				s.LatestVersionNumber.Reset()
+				if err := s.LatestVersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -5250,7 +6158,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"latest_version_number\"")
 			}
 		case "version_state":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.VersionState.Decode(d); err != nil {
 					return err
@@ -5260,7 +6168,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_state\"")
 			}
 		case "target":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Target.Decode(d); err != nil {
 					return err
@@ -5270,7 +6178,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"target\"")
 			}
 		case "file_name":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.FileName = string(v)
@@ -5282,7 +6190,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"file_name\"")
 			}
 		case "size_bytes":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int64()
 				s.SizeBytes = int64(v)
@@ -5294,7 +6202,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"size_bytes\"")
 			}
 		case "content_hash":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -5306,7 +6214,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "manifest_hash":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.ManifestHash = string(v)
@@ -5318,7 +6226,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"manifest_hash\"")
 			}
 		case "status":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -5328,7 +6236,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "servable":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.Servable = bool(v)
@@ -5340,7 +6248,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"servable\"")
 			}
 		case "serve_state":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				if err := s.ServeState.Decode(d); err != nil {
 					return err
@@ -5350,7 +6258,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serve_state\"")
 			}
 		case "expires_at":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ExpiresAt = v
@@ -5362,7 +6270,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"expires_at\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -5374,7 +6282,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "download_count":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.DownloadCount = int(v)
@@ -5386,7 +6294,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"download_count\"")
 			}
 		case "includes_test_cases":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Bool()
 				s.IncludesTestCases = bool(v)
@@ -5418,7 +6326,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"profile_version\"")
 			}
 		case "duplicate":
-			requiredBitSet[2] |= 1 << 4
+			requiredBitSet[2] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.Duplicate = bool(v)
@@ -5439,9 +6347,9 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
+		0b11000001,
 		0b11111111,
-		0b11111111,
-		0b00010011,
+		0b00100111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -14455,6 +15363,82 @@ func (s *DeleteTestCaseUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes DelistBundleNotFound as json.
+func (s *DelistBundleNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DelistBundleNotFound from json.
+func (s *DelistBundleNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DelistBundleNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DelistBundleNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DelistBundleNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DelistBundleNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DelistBundleUnauthorized as json.
+func (s *DelistBundleUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DelistBundleUnauthorized from json.
+func (s *DelistBundleUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DelistBundleUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DelistBundleUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DelistBundleUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DelistBundleUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DelistSkillNotFound as json.
 func (s *DelistSkillNotFound) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -15201,20 +16185,34 @@ func (s *DownloadArtifact) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.ArtifactID)
 	}
 	{
-		e.FieldStart("skill_id")
-		json.EncodeUUID(e, s.SkillID)
+		if s.Plugin.Set {
+			e.FieldStart("plugin")
+			s.Plugin.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("skill_version_id")
-		json.EncodeUUID(e, s.SkillVersionID)
+		if s.SkillID.Set {
+			e.FieldStart("skill_id")
+			s.SkillID.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("version_number")
-		e.Int(s.VersionNumber)
+		if s.SkillVersionID.Set {
+			e.FieldStart("skill_version_id")
+			s.SkillVersionID.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("latest_version_number")
-		e.Int(s.LatestVersionNumber)
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.LatestVersionNumber.Set {
+			e.FieldStart("latest_version_number")
+			s.LatestVersionNumber.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("version_state")
@@ -15282,27 +16280,28 @@ func (s *DownloadArtifact) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfDownloadArtifact = [20]string{
+var jsonFieldsNameOfDownloadArtifact = [21]string{
 	0:  "artifact_id",
-	1:  "skill_id",
-	2:  "skill_version_id",
-	3:  "version_number",
-	4:  "latest_version_number",
-	5:  "version_state",
-	6:  "target",
-	7:  "file_name",
-	8:  "size_bytes",
-	9:  "content_hash",
-	10: "manifest_hash",
-	11: "status",
-	12: "servable",
-	13: "serve_state",
-	14: "expires_at",
-	15: "created_at",
-	16: "download_count",
-	17: "includes_test_cases",
-	18: "packager_version",
-	19: "profile_version",
+	1:  "plugin",
+	2:  "skill_id",
+	3:  "skill_version_id",
+	4:  "version_number",
+	5:  "latest_version_number",
+	6:  "version_state",
+	7:  "target",
+	8:  "file_name",
+	9:  "size_bytes",
+	10: "content_hash",
+	11: "manifest_hash",
+	12: "status",
+	13: "servable",
+	14: "serve_state",
+	15: "expires_at",
+	16: "created_at",
+	17: "download_count",
+	18: "includes_test_cases",
+	19: "packager_version",
+	20: "profile_version",
 }
 
 // Decode decodes DownloadArtifact from json.
@@ -15326,12 +16325,20 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"artifact_id\"")
 			}
-		case "skill_id":
-			requiredBitSet[0] |= 1 << 1
+		case "plugin":
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.SkillID = v
-				if err != nil {
+				s.Plugin.Reset()
+				if err := s.Plugin.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"plugin\"")
+			}
+		case "skill_id":
+			if err := func() error {
+				s.SkillID.Reset()
+				if err := s.SkillID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -15339,11 +16346,9 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_id\"")
 			}
 		case "skill_version_id":
-			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.SkillVersionID = v
-				if err != nil {
+				s.SkillVersionID.Reset()
+				if err := s.SkillVersionID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -15351,11 +16356,9 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_version_id\"")
 			}
 		case "version_number":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Int()
-				s.VersionNumber = int(v)
-				if err != nil {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -15363,11 +16366,9 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_number\"")
 			}
 		case "latest_version_number":
-			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := d.Int()
-				s.LatestVersionNumber = int(v)
-				if err != nil {
+				s.LatestVersionNumber.Reset()
+				if err := s.LatestVersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -15375,7 +16376,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"latest_version_number\"")
 			}
 		case "version_state":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.VersionState.Decode(d); err != nil {
 					return err
@@ -15385,7 +16386,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_state\"")
 			}
 		case "target":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Target.Decode(d); err != nil {
 					return err
@@ -15395,7 +16396,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"target\"")
 			}
 		case "file_name":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.FileName = string(v)
@@ -15407,7 +16408,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"file_name\"")
 			}
 		case "size_bytes":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int64()
 				s.SizeBytes = int64(v)
@@ -15419,7 +16420,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"size_bytes\"")
 			}
 		case "content_hash":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -15431,7 +16432,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "manifest_hash":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.ManifestHash = string(v)
@@ -15443,7 +16444,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"manifest_hash\"")
 			}
 		case "status":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -15453,7 +16454,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "servable":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.Servable = bool(v)
@@ -15465,7 +16466,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"servable\"")
 			}
 		case "serve_state":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				if err := s.ServeState.Decode(d); err != nil {
 					return err
@@ -15475,7 +16476,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serve_state\"")
 			}
 		case "expires_at":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ExpiresAt = v
@@ -15487,7 +16488,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"expires_at\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -15499,7 +16500,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "download_count":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.DownloadCount = int(v)
@@ -15511,7 +16512,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"download_count\"")
 			}
 		case "includes_test_cases":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 2
 			if err := func() error {
 				v, err := d.Bool()
 				s.IncludesTestCases = bool(v)
@@ -15552,9 +16553,9 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
+		0b11000001,
 		0b11111111,
-		0b11111111,
-		0b00000011,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -17457,6 +18458,120 @@ func (s EvidenceRefReattributedFrom) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *EvidenceRefReattributedFrom) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ExportBundleForbidden as json.
+func (s *ExportBundleForbidden) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ExportBundleForbidden from json.
+func (s *ExportBundleForbidden) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ExportBundleForbidden to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ExportBundleForbidden(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ExportBundleForbidden) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ExportBundleForbidden) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ExportBundleNotFound as json.
+func (s *ExportBundleNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ExportBundleNotFound from json.
+func (s *ExportBundleNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ExportBundleNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ExportBundleNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ExportBundleNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ExportBundleNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ExportBundleUnauthorized as json.
+func (s *ExportBundleUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ExportBundleUnauthorized from json.
+func (s *ExportBundleUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ExportBundleUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ExportBundleUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ExportBundleUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ExportBundleUnauthorized) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -22124,6 +23239,82 @@ func (s *GetOperatorRostersOK) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *GetOperatorRostersOK) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetOwnBundlePublicationNotFound as json.
+func (s *GetOwnBundlePublicationNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetOwnBundlePublicationNotFound from json.
+func (s *GetOwnBundlePublicationNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetOwnBundlePublicationNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetOwnBundlePublicationNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetOwnBundlePublicationNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetOwnBundlePublicationNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetOwnBundlePublicationUnauthorized as json.
+func (s *GetOwnBundlePublicationUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetOwnBundlePublicationUnauthorized from json.
+func (s *GetOwnBundlePublicationUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetOwnBundlePublicationUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetOwnBundlePublicationUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetOwnBundlePublicationUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetOwnBundlePublicationUnauthorized) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -27264,6 +28455,112 @@ func (s *ListOperatorAuditLogOK) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *ListOwnBundlesOK) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ListOwnBundlesOK) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("bundles")
+		e.ArrStart()
+		for _, elem := range s.Bundles {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfListOwnBundlesOK = [1]string{
+	0: "bundles",
+}
+
+// Decode decodes ListOwnBundlesOK from json.
+func (s *ListOwnBundlesOK) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListOwnBundlesOK to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "bundles":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				s.Bundles = make([]BundleVersion, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem BundleVersion
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Bundles = append(s.Bundles, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bundles\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ListOwnBundlesOK")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfListOwnBundlesOK) {
+					name = jsonFieldsNameOfListOwnBundlesOK[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListOwnBundlesOK) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListOwnBundlesOK) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *ListPackagingTargetsOK) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -30970,6 +32267,105 @@ func (s *OptPackagingBlockedReason) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes PluginContents as json.
+func (o OptPluginContents) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes PluginContents from json.
+func (o *OptPluginContents) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptPluginContents to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptPluginContents) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptPluginContents) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublicPublicationBundle as json.
+func (o OptPublicPublicationBundle) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes PublicPublicationBundle from json.
+func (o *OptPublicPublicationBundle) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptPublicPublicationBundle to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptPublicPublicationBundle) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptPublicPublicationBundle) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublicPublicationBundleRelease as json.
+func (o OptPublicPublicationBundleRelease) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes PublicPublicationBundleRelease from json.
+func (o *OptPublicPublicationBundleRelease) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptPublicPublicationBundleRelease to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptPublicPublicationBundleRelease) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptPublicPublicationBundleRelease) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes PublicPublicationRelease as json.
 func (o OptPublicPublicationRelease) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -33838,6 +35234,293 @@ func (s *PackagingTargetSupportStatus) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *PluginContents) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PluginContents) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("version")
+		e.Str(s.Version)
+	}
+	{
+		e.FieldStart("members")
+		e.ArrStart()
+		for _, elem := range s.Members {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfPluginContents = [3]string{
+	0: "name",
+	1: "version",
+	2: "members",
+}
+
+// Decode decodes PluginContents from json.
+func (s *PluginContents) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PluginContents to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Version = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "members":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Members = make([]PluginContentsMembersItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem PluginContentsMembersItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Members = append(s.Members, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"members\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PluginContents")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPluginContents) {
+					name = jsonFieldsNameOfPluginContents[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PluginContents) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PluginContents) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PluginContentsMembersItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PluginContentsMembersItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("skill_id")
+		json.EncodeUUID(e, s.SkillID)
+	}
+	{
+		e.FieldStart("skill_version_id")
+		json.EncodeUUID(e, s.SkillVersionID)
+	}
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("version_number")
+		e.Int(s.VersionNumber)
+	}
+}
+
+var jsonFieldsNameOfPluginContentsMembersItem = [4]string{
+	0: "skill_id",
+	1: "skill_version_id",
+	2: "name",
+	3: "version_number",
+}
+
+// Decode decodes PluginContentsMembersItem from json.
+func (s *PluginContentsMembersItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PluginContentsMembersItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "skill_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_id\"")
+			}
+		case "skill_version_id":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillVersionID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_version_id\"")
+			}
+		case "name":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version_number":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.VersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PluginContentsMembersItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPluginContentsMembersItem) {
+					name = jsonFieldsNameOfPluginContentsMembersItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PluginContentsMembersItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PluginContentsMembersItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes PreviewPackagingBadRequest as json.
 func (s *PreviewPackagingBadRequest) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -34000,6 +35683,10 @@ func (s *PublicPublication) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *PublicPublication) encodeFields(e *jx.Encoder) {
 	{
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
 		e.FieldStart("publisher")
 		e.Str(s.Publisher)
 	}
@@ -34034,6 +35721,18 @@ func (s *PublicPublication) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.Bundle.Set {
+			e.FieldStart("bundle")
+			s.Bundle.Encode(e)
+		}
+	}
+	{
+		if s.BundleRelease.Set {
+			e.FieldStart("bundle_release")
+			s.BundleRelease.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("releases")
 		e.ArrStart()
 		for _, elem := range s.Releases {
@@ -34051,17 +35750,20 @@ func (s *PublicPublication) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicPublication = [10]string{
-	0: "publisher",
-	1: "name",
-	2: "address",
-	3: "availability",
-	4: "delisted_at",
-	5: "skill",
-	6: "release",
-	7: "releases",
-	8: "exposure",
-	9: "acquisition",
+var jsonFieldsNameOfPublicPublication = [13]string{
+	0:  "kind",
+	1:  "publisher",
+	2:  "name",
+	3:  "address",
+	4:  "availability",
+	5:  "delisted_at",
+	6:  "skill",
+	7:  "release",
+	8:  "bundle",
+	9:  "bundle_release",
+	10: "releases",
+	11: "exposure",
+	12: "acquisition",
 }
 
 // Decode decodes PublicPublication from json.
@@ -34073,8 +35775,18 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "publisher":
+		case "kind":
 			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "publisher":
+			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.Publisher = string(v)
@@ -34086,7 +35798,7 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"publisher\"")
 			}
 		case "name":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.Name = string(v)
@@ -34098,7 +35810,7 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
 		case "address":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.Address = string(v)
@@ -34110,7 +35822,7 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"address\"")
 			}
 		case "availability":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				if err := s.Availability.Decode(d); err != nil {
 					return err
@@ -34149,8 +35861,28 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"release\"")
 			}
+		case "bundle":
+			if err := func() error {
+				s.Bundle.Reset()
+				if err := s.Bundle.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bundle\"")
+			}
+		case "bundle_release":
+			if err := func() error {
+				s.BundleRelease.Reset()
+				if err := s.BundleRelease.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bundle_release\"")
+			}
 		case "releases":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				s.Releases = make([]PublicRelease, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -34168,7 +35900,7 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"releases\"")
 			}
 		case "exposure":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Exposure.Decode(d); err != nil {
 					return err
@@ -34178,7 +35910,7 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"exposure\"")
 			}
 		case "acquisition":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Acquisition.Decode(d); err != nil {
 					return err
@@ -34197,8 +35929,8 @@ func (s *PublicPublication) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b10001111,
-		0b00000011,
+		0b00011111,
+		0b00011100,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -34245,6 +35977,466 @@ func (s *PublicPublication) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *PublicPublicationBundle) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PublicPublicationBundle) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("version")
+		e.Str(s.Version)
+	}
+	{
+		e.FieldStart("description")
+		e.Str(s.Description)
+	}
+	{
+		e.FieldStart("members")
+		e.ArrStart()
+		for _, elem := range s.Members {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfPublicPublicationBundle = [3]string{
+	0: "version",
+	1: "description",
+	2: "members",
+}
+
+// Decode decodes PublicPublicationBundle from json.
+func (s *PublicPublicationBundle) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublicPublicationBundle to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "version":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Version = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "description":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Description = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"description\"")
+			}
+		case "members":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Members = make([]PublicPublicationBundleMembersItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem PublicPublicationBundleMembersItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Members = append(s.Members, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"members\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PublicPublicationBundle")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPublicPublicationBundle) {
+					name = jsonFieldsNameOfPublicPublicationBundle[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublicPublicationBundle) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublicPublicationBundle) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PublicPublicationBundleMembersItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PublicPublicationBundleMembersItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("version_number")
+		e.Int(s.VersionNumber)
+	}
+	{
+		e.FieldStart("content_hash")
+		e.Str(s.ContentHash)
+	}
+}
+
+var jsonFieldsNameOfPublicPublicationBundleMembersItem = [3]string{
+	0: "name",
+	1: "version_number",
+	2: "content_hash",
+}
+
+// Decode decodes PublicPublicationBundleMembersItem from json.
+func (s *PublicPublicationBundleMembersItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublicPublicationBundleMembersItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version_number":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.VersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		case "content_hash":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.ContentHash = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"content_hash\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PublicPublicationBundleMembersItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPublicPublicationBundleMembersItem) {
+					name = jsonFieldsNameOfPublicPublicationBundleMembersItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublicPublicationBundleMembersItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublicPublicationBundleMembersItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PublicPublicationBundleRelease) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PublicPublicationBundleRelease) encodeFields(e *jx.Encoder) {
+	{
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.Version.Set {
+			e.FieldStart("version")
+			s.Version.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("content_hash")
+		e.Str(s.ContentHash)
+	}
+	{
+		e.FieldStart("released_at")
+		json.EncodeDateTime(e, s.ReleasedAt)
+	}
+	{
+		if s.Changes != nil {
+			e.FieldStart("changes")
+			e.ArrStart()
+			for _, elem := range s.Changes {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		e.FieldStart("findings")
+		s.Findings.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfPublicPublicationBundleRelease = [6]string{
+	0: "version_number",
+	1: "version",
+	2: "content_hash",
+	3: "released_at",
+	4: "changes",
+	5: "findings",
+}
+
+// Decode decodes PublicPublicationBundleRelease from json.
+func (s *PublicPublicationBundleRelease) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublicPublicationBundleRelease to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "version_number":
+			if err := func() error {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		case "version":
+			if err := func() error {
+				s.Version.Reset()
+				if err := s.Version.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "content_hash":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.ContentHash = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"content_hash\"")
+			}
+		case "released_at":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.ReleasedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"released_at\"")
+			}
+		case "changes":
+			if err := func() error {
+				s.Changes = make([]BundleMemberChange, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem BundleMemberChange
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Changes = append(s.Changes, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"changes\"")
+			}
+		case "findings":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				if err := s.Findings.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"findings\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PublicPublicationBundleRelease")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00101100,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPublicPublicationBundleRelease) {
+					name = jsonFieldsNameOfPublicPublicationBundleRelease[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublicPublicationBundleRelease) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublicPublicationBundleRelease) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *PublicPublicationRelease) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -34254,8 +36446,16 @@ func (s *PublicPublicationRelease) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *PublicPublicationRelease) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("version_number")
-		e.Int(s.VersionNumber)
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.Version.Set {
+			e.FieldStart("version")
+			s.Version.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("content_hash")
@@ -34264,6 +36464,16 @@ func (s *PublicPublicationRelease) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("released_at")
 		json.EncodeDateTime(e, s.ReleasedAt)
+	}
+	{
+		if s.Changes != nil {
+			e.FieldStart("changes")
+			e.ArrStart()
+			for _, elem := range s.Changes {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
 	}
 	{
 		e.FieldStart("findings")
@@ -34279,13 +36489,15 @@ func (s *PublicPublicationRelease) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicPublicationRelease = [6]string{
+var jsonFieldsNameOfPublicPublicationRelease = [8]string{
 	0: "version_number",
-	1: "content_hash",
-	2: "released_at",
-	3: "findings",
-	4: "license",
-	5: "redistribution",
+	1: "version",
+	2: "content_hash",
+	3: "released_at",
+	4: "changes",
+	5: "findings",
+	6: "license",
+	7: "redistribution",
 }
 
 // Decode decodes PublicPublicationRelease from json.
@@ -34298,19 +36510,27 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
 		case "version_number":
-			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Int()
-				s.VersionNumber = int(v)
-				if err != nil {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"version_number\"")
 			}
+		case "version":
+			if err := func() error {
+				s.Version.Reset()
+				if err := s.Version.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
 		case "content_hash":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -34322,7 +36542,7 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "released_at":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ReleasedAt = v
@@ -34333,8 +36553,25 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"released_at\"")
 			}
+		case "changes":
+			if err := func() error {
+				s.Changes = make([]BundleMemberChange, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem BundleMemberChange
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Changes = append(s.Changes, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"changes\"")
+			}
 		case "findings":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.Findings.Decode(d); err != nil {
 					return err
@@ -34344,7 +36581,7 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"findings\"")
 			}
 		case "license":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.License.Decode(d); err != nil {
 					return err
@@ -34354,7 +36591,7 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"license\"")
 			}
 		case "redistribution":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Redistribution.Decode(d); err != nil {
 					return err
@@ -34373,7 +36610,7 @@ func (s *PublicPublicationRelease) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00111111,
+		0b11101100,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -34655,8 +36892,16 @@ func (s *PublicRelease) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *PublicRelease) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("version_number")
-		e.Int(s.VersionNumber)
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.Version.Set {
+			e.FieldStart("version")
+			s.Version.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("content_hash")
@@ -34666,12 +36911,24 @@ func (s *PublicRelease) encodeFields(e *jx.Encoder) {
 		e.FieldStart("released_at")
 		json.EncodeDateTime(e, s.ReleasedAt)
 	}
+	{
+		if s.Changes != nil {
+			e.FieldStart("changes")
+			e.ArrStart()
+			for _, elem := range s.Changes {
+				elem.Encode(e)
+			}
+			e.ArrEnd()
+		}
+	}
 }
 
-var jsonFieldsNameOfPublicRelease = [3]string{
+var jsonFieldsNameOfPublicRelease = [5]string{
 	0: "version_number",
-	1: "content_hash",
-	2: "released_at",
+	1: "version",
+	2: "content_hash",
+	3: "released_at",
+	4: "changes",
 }
 
 // Decode decodes PublicRelease from json.
@@ -34684,19 +36941,27 @@ func (s *PublicRelease) Decode(d *jx.Decoder) error {
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
 		case "version_number":
-			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Int()
-				s.VersionNumber = int(v)
-				if err != nil {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"version_number\"")
 			}
+		case "version":
+			if err := func() error {
+				s.Version.Reset()
+				if err := s.Version.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
 		case "content_hash":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -34708,7 +36973,7 @@ func (s *PublicRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "released_at":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ReleasedAt = v
@@ -34718,6 +36983,23 @@ func (s *PublicRelease) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"released_at\"")
+			}
+		case "changes":
+			if err := func() error {
+				s.Changes = make([]BundleMemberChange, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem BundleMemberChange
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Changes = append(s.Changes, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"changes\"")
 			}
 		default:
 			return d.Skip()
@@ -34729,7 +37011,7 @@ func (s *PublicRelease) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00001100,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -35477,6 +37759,10 @@ func (s *Publication) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *Publication) encodeFields(e *jx.Encoder) {
 	{
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
 		e.FieldStart("publisher")
 		e.Str(s.Publisher)
 	}
@@ -35506,13 +37792,14 @@ func (s *Publication) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublication = [6]string{
-	0: "publisher",
-	1: "name",
-	2: "address",
-	3: "status",
-	4: "status_changed_at",
-	5: "releases",
+var jsonFieldsNameOfPublication = [7]string{
+	0: "kind",
+	1: "publisher",
+	2: "name",
+	3: "address",
+	4: "status",
+	5: "status_changed_at",
+	6: "releases",
 }
 
 // Decode decodes Publication from json.
@@ -35524,8 +37811,18 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "publisher":
+		case "kind":
 			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "publisher":
+			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.Publisher = string(v)
@@ -35537,7 +37834,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"publisher\"")
 			}
 		case "name":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.Name = string(v)
@@ -35549,7 +37846,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
 		case "address":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.Address = string(v)
@@ -35561,7 +37858,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"address\"")
 			}
 		case "status":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -35571,7 +37868,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "status_changed_at":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.StatusChangedAt = v
@@ -35583,7 +37880,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status_changed_at\"")
 			}
 		case "releases":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				s.Releases = make([]PublicationRelease, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -35610,7 +37907,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00111111,
+		0b01111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -35652,6 +37949,46 @@ func (s *Publication) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *Publication) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublicationKind as json.
+func (s PublicationKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes PublicationKind from json.
+func (s *PublicationKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublicationKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch PublicationKind(v) {
+	case PublicationKindSkill:
+		*s = PublicationKindSkill
+	case PublicationKindBundle:
+		*s = PublicationKindBundle
+	default:
+		*s = PublicationKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PublicationKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublicationKind) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -35779,12 +38116,22 @@ func (s *PublicationRelease) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *PublicationRelease) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("version_id")
-		json.EncodeUUID(e, s.VersionID)
+		if s.VersionID.Set {
+			e.FieldStart("version_id")
+			s.VersionID.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("version_number")
-		e.Int(s.VersionNumber)
+		if s.VersionNumber.Set {
+			e.FieldStart("version_number")
+			s.VersionNumber.Encode(e)
+		}
+	}
+	{
+		if s.BundleVersion.Set {
+			e.FieldStart("bundle_version")
+			s.BundleVersion.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("content_hash")
@@ -35804,13 +38151,14 @@ func (s *PublicationRelease) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicationRelease = [6]string{
+var jsonFieldsNameOfPublicationRelease = [7]string{
 	0: "version_id",
 	1: "version_number",
-	2: "content_hash",
-	3: "released_at",
-	4: "rights_attested",
-	5: "findings",
+	2: "bundle_version",
+	3: "content_hash",
+	4: "released_at",
+	5: "rights_attested",
+	6: "findings",
 }
 
 // Decode decodes PublicationRelease from json.
@@ -35823,11 +38171,9 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
 		case "version_id":
-			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.VersionID = v
-				if err != nil {
+				s.VersionID.Reset()
+				if err := s.VersionID.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -35835,19 +38181,27 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_id\"")
 			}
 		case "version_number":
-			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Int()
-				s.VersionNumber = int(v)
-				if err != nil {
+				s.VersionNumber.Reset()
+				if err := s.VersionNumber.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"version_number\"")
 			}
+		case "bundle_version":
+			if err := func() error {
+				s.BundleVersion.Reset()
+				if err := s.BundleVersion.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"bundle_version\"")
+			}
 		case "content_hash":
-			requiredBitSet[0] |= 1 << 2
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -35859,7 +38213,7 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "released_at":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ReleasedAt = v
@@ -35871,7 +38225,7 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"released_at\"")
 			}
 		case "rights_attested":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Bool()
 				s.RightsAttested = bool(v)
@@ -35883,7 +38237,7 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"rights_attested\"")
 			}
 		case "findings":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Findings.Decode(d); err != nil {
 					return err
@@ -35902,7 +38256,7 @@ func (s *PublicationRelease) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00111111,
+		0b01111000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -35984,6 +38338,293 @@ func (s PublicationStatus) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PublicationStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublishBundleBadRequest as json.
+func (s *PublishBundleBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PublishBundleBadRequest from json.
+func (s *PublishBundleBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PublishBundleBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublishBundleConflict as json.
+func (s *PublishBundleConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*PublishingRefusal)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PublishBundleConflict from json.
+func (s *PublishBundleConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleConflict to nil")
+	}
+	var unwrapped PublishingRefusal
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PublishBundleConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublishBundleNotFound as json.
+func (s *PublishBundleNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PublishBundleNotFound from json.
+func (s *PublishBundleNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PublishBundleNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PublishBundleReq) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PublishBundleReq) encodeFields(e *jx.Encoder) {
+	{
+		if s.Name.Set {
+			e.FieldStart("name")
+			s.Name.Encode(e)
+		}
+	}
+	{
+		if s.Version.Set {
+			e.FieldStart("version")
+			s.Version.Encode(e)
+		}
+	}
+	{
+		if s.RightsAttested.Set {
+			e.FieldStart("rights_attested")
+			s.RightsAttested.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfPublishBundleReq = [3]string{
+	0: "name",
+	1: "version",
+	2: "rights_attested",
+}
+
+// Decode decodes PublishBundleReq from json.
+func (s *PublishBundleReq) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleReq to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "name":
+			if err := func() error {
+				s.Name.Reset()
+				if err := s.Name.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "version":
+			if err := func() error {
+				s.Version.Reset()
+				if err := s.Version.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version\"")
+			}
+		case "rights_attested":
+			if err := func() error {
+				s.RightsAttested.Reset()
+				if err := s.RightsAttested.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rights_attested\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PublishBundleReq")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleReq) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublishBundleUnauthorized as json.
+func (s *PublishBundleUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PublishBundleUnauthorized from json.
+func (s *PublishBundleUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PublishBundleUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublishBundleUnprocessableEntity as json.
+func (s *PublishBundleUnprocessableEntity) Encode(e *jx.Encoder) {
+	unwrapped := (*PublishingRefusal)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PublishBundleUnprocessableEntity from json.
+func (s *PublishBundleUnprocessableEntity) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublishBundleUnprocessableEntity to nil")
+	}
+	var unwrapped PublishingRefusal
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PublishBundleUnprocessableEntity(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PublishBundleUnprocessableEntity) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublishBundleUnprocessableEntity) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -36539,6 +39180,20 @@ func (s *PublishingRefusalReason) Decode(d *jx.Decoder) error {
 		*s = PublishingRefusalReasonRightsNotAttested
 	case PublishingRefusalReasonFileRemovedByPackager:
 		*s = PublishingRefusalReasonFileRemovedByPackager
+	case PublishingRefusalReasonMemberWithdrawn:
+		*s = PublishingRefusalReasonMemberWithdrawn
+	case PublishingRefusalReasonVersionShape:
+		*s = PublishingRefusalReasonVersionShape
+	case PublishingRefusalReasonDescriptionMissing:
+		*s = PublishingRefusalReasonDescriptionMissing
+	case PublishingRefusalReasonNoMembers:
+		*s = PublishingRefusalReasonNoMembers
+	case PublishingRefusalReasonDuplicateSkill:
+		*s = PublishingRefusalReasonDuplicateSkill
+	case PublishingRefusalReasonDuplicateManifestName:
+		*s = PublishingRefusalReasonDuplicateManifestName
+	case PublishingRefusalReasonVersionExists:
+		*s = PublishingRefusalReasonVersionExists
 	case PublishingRefusalReasonDelisted:
 		*s = PublishingRefusalReasonDelisted
 	case PublishingRefusalReasonWithdrawn:

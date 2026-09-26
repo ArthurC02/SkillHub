@@ -135,6 +135,39 @@ func (q *Queries) CreateDownloadCleanupIntent(ctx context.Context, arg CreateDow
 	return i, err
 }
 
+const createPluginArtifactDetail = `-- name: CreatePluginArtifactDetail :exec
+INSERT INTO download_artifacts (
+    artifact_id, workspace_id, plugin_name, plugin_version, target,
+    profile_version, packager_version, manifest_hash, includes_test_cases
+) VALUES ($1, $2, $3, $4, $5,
+          $6, $7, $8, false)
+`
+
+type CreatePluginArtifactDetailParams struct {
+	ArtifactID      pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	PluginName      *string
+	PluginVersion   *string
+	Target          string
+	ProfileVersion  string
+	PackagerVersion string
+	ManifestHash    string
+}
+
+func (q *Queries) CreatePluginArtifactDetail(ctx context.Context, arg CreatePluginArtifactDetailParams) error {
+	_, err := q.db.Exec(ctx, createPluginArtifactDetail,
+		arg.ArtifactID,
+		arg.WorkspaceID,
+		arg.PluginName,
+		arg.PluginVersion,
+		arg.Target,
+		arg.ProfileVersion,
+		arg.PackagerVersion,
+		arg.ManifestHash,
+	)
+	return err
+}
+
 const deleteDownloadCleanupIntent = `-- name: DeleteDownloadCleanupIntent :exec
 DELETE FROM download_object_cleanup_intents
 WHERE object_key = $1 AND workspace_id = $2
@@ -162,6 +195,18 @@ func (q *Queries) DeleteWorkspaceDownloadArtifactDetails(ctx context.Context, wo
 	return result.RowsAffected(), nil
 }
 
+const deleteWorkspaceDownloadArtifactMembers = `-- name: DeleteWorkspaceDownloadArtifactMembers :execrows
+DELETE FROM download_artifact_members WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteWorkspaceDownloadArtifactMembers(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspaceDownloadArtifactMembers, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteWorkspaceDownloadRecords = `-- name: DeleteWorkspaceDownloadRecords :execrows
 DELETE FROM download_records WHERE workspace_id = $1
 `
@@ -180,7 +225,11 @@ SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
-           AS download_count
+           AS download_count,
+       da.plugin_name, da.plugin_version,
+       (SELECT coalesce(array_agg(m.skill_version_id ORDER BY m.position), '{}')
+          FROM download_artifact_members m WHERE m.artifact_id = da.artifact_id)::uuid[]
+           AS member_version_ids
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
 WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL
@@ -208,6 +257,9 @@ type GetDownloadArtifactRow struct {
 	CreatedAt         pgtype.Timestamptz
 	PurgedAt          pgtype.Timestamptz
 	DownloadCount     int64
+	PluginName        *string
+	PluginVersion     *string
+	MemberVersionIds  []pgtype.UUID
 }
 
 func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifactParams) (GetDownloadArtifactRow, error) {
@@ -230,6 +282,9 @@ func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifa
 		&i.CreatedAt,
 		&i.PurgedAt,
 		&i.DownloadCount,
+		&i.PluginName,
+		&i.PluginVersion,
+		&i.MemberVersionIds,
 	)
 	return i, err
 }
@@ -368,6 +423,28 @@ func (q *Queries) GetVersionLineage(ctx context.Context, id pgtype.UUID) (GetVer
 	return i, err
 }
 
+const insertDownloadArtifactMember = `-- name: InsertDownloadArtifactMember :exec
+INSERT INTO download_artifact_members (artifact_id, workspace_id, skill_version_id, position)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertDownloadArtifactMemberParams struct {
+	ArtifactID     pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	SkillVersionID pgtype.UUID
+	Position       int32
+}
+
+func (q *Queries) InsertDownloadArtifactMember(ctx context.Context, arg InsertDownloadArtifactMemberParams) error {
+	_, err := q.db.Exec(ctx, insertDownloadArtifactMember,
+		arg.ArtifactID,
+		arg.WorkspaceID,
+		arg.SkillVersionID,
+		arg.Position,
+	)
+	return err
+}
+
 const insertDownloadRecord = `-- name: InsertDownloadRecord :exec
 INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
 VALUES ($1, $2, $3)
@@ -390,7 +467,11 @@ SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
-           AS download_count
+           AS download_count,
+       da.plugin_name, da.plugin_version,
+       (SELECT coalesce(array_agg(m.skill_version_id ORDER BY m.position), '{}')
+          FROM download_artifact_members m WHERE m.artifact_id = da.artifact_id)::uuid[]
+           AS member_version_ids
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
 WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
@@ -413,6 +494,9 @@ type ListDownloadArtifactsRow struct {
 	CreatedAt         pgtype.Timestamptz
 	PurgedAt          pgtype.Timestamptz
 	DownloadCount     int64
+	PluginName        *string
+	PluginVersion     *string
+	MemberVersionIds  []pgtype.UUID
 }
 
 func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListDownloadArtifactsRow, error) {
@@ -440,6 +524,9 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 			&i.CreatedAt,
 			&i.PurgedAt,
 			&i.DownloadCount,
+			&i.PluginName,
+			&i.PluginVersion,
+			&i.MemberVersionIds,
 		); err != nil {
 			return nil, err
 		}
@@ -580,8 +667,93 @@ func (q *Queries) ListDownloadRecordsForArtifact(ctx context.Context, arg ListDo
 	return items, nil
 }
 
+const listPluginArtifactsWithIdentity = `-- name: ListPluginArtifactsWithIdentity :many
+SELECT da.artifact_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
+       a.expires_at, a.created_at, a.deleted_at, a.purged_at,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+WHERE da.workspace_id = $1
+  AND da.plugin_name = $2
+  AND da.plugin_version = $3
+  AND da.packager_version = $4
+  AND a.content_hash = $5
+ORDER BY a.created_at DESC
+`
+
+type ListPluginArtifactsWithIdentityParams struct {
+	WorkspaceID     pgtype.UUID
+	PluginName      *string
+	PluginVersion   *string
+	PackagerVersion string
+	ContentHash     string
+}
+
+type ListPluginArtifactsWithIdentityRow struct {
+	ArtifactID      pgtype.UUID
+	Target          string
+	ProfileVersion  string
+	PackagerVersion string
+	ManifestHash    string
+	FileName        string
+	SizeBytes       int64
+	ContentHash     string
+	ScanStatus      string
+	ExpiresAt       pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	DeletedAt       pgtype.Timestamptz
+	PurgedAt        pgtype.Timestamptz
+	DownloadCount   int64
+}
+
+func (q *Queries) ListPluginArtifactsWithIdentity(ctx context.Context, arg ListPluginArtifactsWithIdentityParams) ([]ListPluginArtifactsWithIdentityRow, error) {
+	rows, err := q.db.Query(ctx, listPluginArtifactsWithIdentity,
+		arg.WorkspaceID,
+		arg.PluginName,
+		arg.PluginVersion,
+		arg.PackagerVersion,
+		arg.ContentHash,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPluginArtifactsWithIdentityRow
+	for rows.Next() {
+		var i ListPluginArtifactsWithIdentityRow
+		if err := rows.Scan(
+			&i.ArtifactID,
+			&i.Target,
+			&i.ProfileVersion,
+			&i.PackagerVersion,
+			&i.ManifestHash,
+			&i.FileName,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.PurgedAt,
+			&i.DownloadCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSkillVersionsInDownloads = `-- name: ListSkillVersionsInDownloads :many
-SELECT DISTINCT skill_version_id FROM download_artifacts WHERE skill_version_id = ANY($1::uuid[])
+SELECT skill_version_id::uuid FROM download_artifacts WHERE skill_version_id = ANY($1::uuid[])
+UNION
+SELECT skill_version_id FROM download_artifact_members WHERE skill_version_id = ANY($1::uuid[])
 `
 
 func (q *Queries) ListSkillVersionsInDownloads(ctx context.Context, versionIds []pgtype.UUID) ([]pgtype.UUID, error) {

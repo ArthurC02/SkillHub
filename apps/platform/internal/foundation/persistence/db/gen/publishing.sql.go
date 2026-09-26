@@ -11,12 +11,87 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createBundlePublication = `-- name: CreateBundlePublication :one
+INSERT INTO publications (publisher_id, name, bundle_id, status)
+SELECT pb.id, $1, $2, $3
+FROM publishers pb
+WHERE pb.workspace_id = $4
+RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id
+`
+
+type CreateBundlePublicationParams struct {
+	Name        string
+	BundleID    pgtype.UUID
+	Status      string
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) CreateBundlePublication(ctx context.Context, arg CreateBundlePublicationParams) (Publication, error) {
+	row := q.db.QueryRow(ctx, createBundlePublication,
+		arg.Name,
+		arg.BundleID,
+		arg.Status,
+		arg.WorkspaceID,
+	)
+	var i Publication
+	err := row.Scan(
+		&i.ID,
+		&i.PublisherID,
+		&i.Name,
+		&i.SkillID,
+		&i.Status,
+		&i.StatusChangedAt,
+		&i.CreatedAt,
+		&i.BundleID,
+	)
+	return i, err
+}
+
+const createBundleVersion = `-- name: CreateBundleVersion :one
+INSERT INTO bundle_versions (bundle_id, version, description, content_hash, created_by)
+SELECT b.id, $1, $2, $3, $4
+FROM bundles b
+WHERE b.id = $5 AND b.workspace_id = $6
+RETURNING id, bundle_id, version, description, content_hash, created_by, created_at
+`
+
+type CreateBundleVersionParams struct {
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	BundleID    pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) CreateBundleVersion(ctx context.Context, arg CreateBundleVersionParams) (BundleVersion, error) {
+	row := q.db.QueryRow(ctx, createBundleVersion,
+		arg.Version,
+		arg.Description,
+		arg.ContentHash,
+		arg.CreatedBy,
+		arg.BundleID,
+		arg.WorkspaceID,
+	)
+	var i BundleVersion
+	err := row.Scan(
+		&i.ID,
+		&i.BundleID,
+		&i.Version,
+		&i.Description,
+		&i.ContentHash,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPublication = `-- name: CreatePublication :one
 INSERT INTO publications (publisher_id, name, skill_id, status)
 SELECT pb.id, $1, $2, $3
 FROM publishers pb
 WHERE pb.workspace_id = $4
-RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at
+RETURNING id, publisher_id, name, skill_id, status, status_changed_at, created_at, bundle_id
 `
 
 type CreatePublicationParams struct {
@@ -42,6 +117,7 @@ func (q *Queries) CreatePublication(ctx context.Context, arg CreatePublicationPa
 		&i.Status,
 		&i.StatusChangedAt,
 		&i.CreatedAt,
+		&i.BundleID,
 	)
 	return i, err
 }
@@ -69,8 +145,105 @@ func (q *Queries) CreatePublisher(ctx context.Context, arg CreatePublisherParams
 	return i, err
 }
 
+const ensureBundle = `-- name: EnsureBundle :exec
+INSERT INTO bundles (workspace_id, name)
+VALUES ($1, $2)
+ON CONFLICT (workspace_id, name) DO NOTHING
+`
+
+type EnsureBundleParams struct {
+	WorkspaceID pgtype.UUID
+	Name        string
+}
+
+func (q *Queries) EnsureBundle(ctx context.Context, arg EnsureBundleParams) error {
+	_, err := q.db.Exec(ctx, ensureBundle, arg.WorkspaceID, arg.Name)
+	return err
+}
+
+const getBundleVersion = `-- name: GetBundleVersion :one
+SELECT b.name AS bundle_name, bv.id, bv.bundle_id, bv.version, bv.description, bv.content_hash, bv.created_by, bv.created_at
+FROM bundles b
+JOIN bundle_versions bv ON bv.bundle_id = b.id
+WHERE b.workspace_id = $1 AND b.name = $2 AND bv.version = $3
+`
+
+type GetBundleVersionParams struct {
+	WorkspaceID pgtype.UUID
+	BundleName  string
+	Version     string
+}
+
+type GetBundleVersionRow struct {
+	BundleName  string
+	ID          pgtype.UUID
+	BundleID    pgtype.UUID
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetBundleVersion(ctx context.Context, arg GetBundleVersionParams) (GetBundleVersionRow, error) {
+	row := q.db.QueryRow(ctx, getBundleVersion, arg.WorkspaceID, arg.BundleName, arg.Version)
+	var i GetBundleVersionRow
+	err := row.Scan(
+		&i.BundleName,
+		&i.ID,
+		&i.BundleID,
+		&i.Version,
+		&i.Description,
+		&i.ContentHash,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getNewestBundleVersion = `-- name: GetNewestBundleVersion :one
+SELECT b.name AS bundle_name, bv.id, bv.bundle_id, bv.version, bv.description, bv.content_hash, bv.created_by, bv.created_at
+FROM bundles b
+JOIN bundle_versions bv ON bv.bundle_id = b.id
+WHERE b.workspace_id = $1 AND b.name = $2
+ORDER BY bv.created_at DESC, bv.id DESC
+LIMIT 1
+`
+
+type GetNewestBundleVersionParams struct {
+	WorkspaceID pgtype.UUID
+	BundleName  string
+}
+
+type GetNewestBundleVersionRow struct {
+	BundleName  string
+	ID          pgtype.UUID
+	BundleID    pgtype.UUID
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetNewestBundleVersion(ctx context.Context, arg GetNewestBundleVersionParams) (GetNewestBundleVersionRow, error) {
+	row := q.db.QueryRow(ctx, getNewestBundleVersion, arg.WorkspaceID, arg.BundleName)
+	var i GetNewestBundleVersionRow
+	err := row.Scan(
+		&i.BundleName,
+		&i.ID,
+		&i.BundleID,
+		&i.Version,
+		&i.Description,
+		&i.ContentHash,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getPublicPublication = `-- name: GetPublicPublication :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.name = $1 AND p.name = $2
@@ -89,6 +262,7 @@ type GetPublicPublicationRow struct {
 	Status               string
 	StatusChangedAt      pgtype.Timestamptz
 	CreatedAt            pgtype.Timestamptz
+	BundleID             pgtype.UUID
 	PublisherName        string
 	PublisherWorkspaceID pgtype.UUID
 }
@@ -104,14 +278,56 @@ func (q *Queries) GetPublicPublication(ctx context.Context, arg GetPublicPublica
 		&i.Status,
 		&i.StatusChangedAt,
 		&i.CreatedAt,
+		&i.BundleID,
 		&i.PublisherName,
 		&i.PublisherWorkspaceID,
 	)
 	return i, err
 }
 
+const getPublicationForBundle = `-- name: GetPublicationForBundle :one
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+WHERE pb.workspace_id = $1 AND p.bundle_id = $2
+`
+
+type GetPublicationForBundleParams struct {
+	WorkspaceID pgtype.UUID
+	BundleID    pgtype.UUID
+}
+
+type GetPublicationForBundleRow struct {
+	ID              pgtype.UUID
+	PublisherID     pgtype.UUID
+	Name            string
+	SkillID         pgtype.UUID
+	Status          string
+	StatusChangedAt pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	BundleID        pgtype.UUID
+	PublisherName   string
+}
+
+func (q *Queries) GetPublicationForBundle(ctx context.Context, arg GetPublicationForBundleParams) (GetPublicationForBundleRow, error) {
+	row := q.db.QueryRow(ctx, getPublicationForBundle, arg.WorkspaceID, arg.BundleID)
+	var i GetPublicationForBundleRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublisherID,
+		&i.Name,
+		&i.SkillID,
+		&i.Status,
+		&i.StatusChangedAt,
+		&i.CreatedAt,
+		&i.BundleID,
+		&i.PublisherName,
+	)
+	return i, err
+}
+
 const getPublicationForSkill = `-- name: GetPublicationForSkill :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, pb.name AS publisher_name
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id, pb.name AS publisher_name
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.skill_id = $2
@@ -130,6 +346,7 @@ type GetPublicationForSkillRow struct {
 	Status          string
 	StatusChangedAt pgtype.Timestamptz
 	CreatedAt       pgtype.Timestamptz
+	BundleID        pgtype.UUID
 	PublisherName   string
 }
 
@@ -144,6 +361,7 @@ func (q *Queries) GetPublicationForSkill(ctx context.Context, arg GetPublication
 		&i.Status,
 		&i.StatusChangedAt,
 		&i.CreatedAt,
+		&i.BundleID,
 		&i.PublisherName,
 	)
 	return i, err
@@ -165,6 +383,86 @@ func (q *Queries) GetPublisherByWorkspace(ctx context.Context, workspaceID pgtyp
 	return i, err
 }
 
+const insertBundleMember = `-- name: InsertBundleMember :exec
+INSERT INTO bundle_members (bundle_version_id, skill_id, skill_version_id, version_number,
+                            manifest_name, content_hash, position)
+SELECT bv.id, $1, $2, $3, $4, $5, $6
+FROM bundle_versions bv
+JOIN bundles b ON b.id = bv.bundle_id
+WHERE bv.id = $7 AND b.workspace_id = $8
+`
+
+type InsertBundleMemberParams struct {
+	SkillID         pgtype.UUID
+	SkillVersionID  pgtype.UUID
+	VersionNumber   int32
+	ManifestName    string
+	ContentHash     string
+	Position        int32
+	BundleVersionID pgtype.UUID
+	WorkspaceID     pgtype.UUID
+}
+
+func (q *Queries) InsertBundleMember(ctx context.Context, arg InsertBundleMemberParams) error {
+	_, err := q.db.Exec(ctx, insertBundleMember,
+		arg.SkillID,
+		arg.SkillVersionID,
+		arg.VersionNumber,
+		arg.ManifestName,
+		arg.ContentHash,
+		arg.Position,
+		arg.BundleVersionID,
+		arg.WorkspaceID,
+	)
+	return err
+}
+
+const insertBundleRelease = `-- name: InsertBundleRelease :one
+INSERT INTO publication_releases (publication_id, bundle_version_id, content_hash,
+                                  findings, rights_attested, released_by)
+SELECT p.id, $1, $2, $3, $4, $5
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+WHERE p.id = $6 AND pb.workspace_id = $7
+RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id
+`
+
+type InsertBundleReleaseParams struct {
+	BundleVersionID pgtype.UUID
+	ContentHash     string
+	Findings        []byte
+	RightsAttested  bool
+	ReleasedBy      pgtype.UUID
+	PublicationID   pgtype.UUID
+	WorkspaceID     pgtype.UUID
+}
+
+func (q *Queries) InsertBundleRelease(ctx context.Context, arg InsertBundleReleaseParams) (PublicationRelease, error) {
+	row := q.db.QueryRow(ctx, insertBundleRelease,
+		arg.BundleVersionID,
+		arg.ContentHash,
+		arg.Findings,
+		arg.RightsAttested,
+		arg.ReleasedBy,
+		arg.PublicationID,
+		arg.WorkspaceID,
+	)
+	var i PublicationRelease
+	err := row.Scan(
+		&i.ID,
+		&i.PublicationID,
+		&i.SkillVersionID,
+		&i.VersionNumber,
+		&i.ContentHash,
+		&i.Findings,
+		&i.RightsAttested,
+		&i.ReleasedBy,
+		&i.ReleasedAt,
+		&i.BundleVersionID,
+	)
+	return i, err
+}
+
 const insertPublicationRelease = `-- name: InsertPublicationRelease :one
 INSERT INTO publication_releases (publication_id, skill_version_id, version_number, content_hash,
                                   findings, rights_attested, released_by)
@@ -172,12 +470,12 @@ SELECT p.id, $1, $2, $3, $4, $5, $6
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE p.id = $7 AND pb.workspace_id = $8
-RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at
+RETURNING id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id
 `
 
 type InsertPublicationReleaseParams struct {
 	SkillVersionID pgtype.UUID
-	VersionNumber  int32
+	VersionNumber  *int32
 	ContentHash    string
 	Findings       []byte
 	RightsAttested bool
@@ -208,12 +506,47 @@ func (q *Queries) InsertPublicationRelease(ctx context.Context, arg InsertPublic
 		&i.RightsAttested,
 		&i.ReleasedBy,
 		&i.ReleasedAt,
+		&i.BundleVersionID,
 	)
 	return i, err
 }
 
+const listBundleMembers = `-- name: ListBundleMembers :many
+SELECT bundle_version_id, skill_id, skill_version_id, version_number, manifest_name, content_hash, position FROM bundle_members
+WHERE bundle_version_id = ANY($1::uuid[])
+ORDER BY bundle_version_id, position
+`
+
+func (q *Queries) ListBundleMembers(ctx context.Context, bundleVersionIds []pgtype.UUID) ([]BundleMember, error) {
+	rows, err := q.db.Query(ctx, listBundleMembers, bundleVersionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BundleMember
+	for rows.Next() {
+		var i BundleMember
+		if err := rows.Scan(
+			&i.BundleVersionID,
+			&i.SkillID,
+			&i.SkillVersionID,
+			&i.VersionNumber,
+			&i.ManifestName,
+			&i.ContentHash,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublicationReleases = `-- name: ListPublicationReleases :many
-SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at FROM publication_releases
+SELECT id, publication_id, skill_version_id, version_number, content_hash, findings, rights_attested, released_by, released_at, bundle_version_id FROM publication_releases
 WHERE publication_id = $1
 ORDER BY released_at DESC, id DESC
 `
@@ -237,6 +570,7 @@ func (q *Queries) ListPublicationReleases(ctx context.Context, publicationID pgt
 			&i.RightsAttested,
 			&i.ReleasedBy,
 			&i.ReleasedAt,
+			&i.BundleVersionID,
 		); err != nil {
 			return nil, err
 		}
@@ -248,8 +582,179 @@ func (q *Queries) ListPublicationReleases(ctx context.Context, publicationID pgt
 	return items, nil
 }
 
+const listReleasedBundleVersions = `-- name: ListReleasedBundleVersions :many
+SELECT b.name AS bundle_name, bv.id, bv.bundle_id, bv.version, bv.description, bv.content_hash, bv.created_by, bv.created_at
+FROM bundle_versions bv
+JOIN bundles b ON b.id = bv.bundle_id
+WHERE bv.id = ANY($1::uuid[])
+`
+
+type ListReleasedBundleVersionsRow struct {
+	BundleName  string
+	ID          pgtype.UUID
+	BundleID    pgtype.UUID
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) ListReleasedBundleVersions(ctx context.Context, bundleVersionIds []pgtype.UUID) ([]ListReleasedBundleVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listReleasedBundleVersions, bundleVersionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReleasedBundleVersionsRow
+	for rows.Next() {
+		var i ListReleasedBundleVersionsRow
+		if err := rows.Scan(
+			&i.BundleName,
+			&i.ID,
+			&i.BundleID,
+			&i.Version,
+			&i.Description,
+			&i.ContentHash,
+			&i.CreatedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSkillVersionsInBundles = `-- name: ListSkillVersionsInBundles :many
+SELECT DISTINCT skill_version_id FROM bundle_members WHERE skill_version_id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListSkillVersionsInBundles(ctx context.Context, versionIds []pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listSkillVersionsInBundles, versionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var skill_version_id pgtype.UUID
+		if err := rows.Scan(&skill_version_id); err != nil {
+			return nil, err
+		}
+		items = append(items, skill_version_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWorkspaceBundleVersions = `-- name: ListWorkspaceBundleVersions :many
+SELECT b.id AS bundle_id, b.name AS bundle_name, bv.id, bv.bundle_id, bv.version, bv.description, bv.content_hash, bv.created_by, bv.created_at
+FROM bundles b
+JOIN bundle_versions bv ON bv.bundle_id = b.id
+WHERE b.workspace_id = $1
+ORDER BY b.name, bv.created_at DESC, bv.id DESC
+`
+
+type ListWorkspaceBundleVersionsRow struct {
+	BundleID    pgtype.UUID
+	BundleName  string
+	ID          pgtype.UUID
+	BundleID_2  pgtype.UUID
+	Version     string
+	Description string
+	ContentHash string
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) ListWorkspaceBundleVersions(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspaceBundleVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceBundleVersions, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceBundleVersionsRow
+	for rows.Next() {
+		var i ListWorkspaceBundleVersionsRow
+		if err := rows.Scan(
+			&i.BundleID,
+			&i.BundleName,
+			&i.ID,
+			&i.BundleID_2,
+			&i.Version,
+			&i.Description,
+			&i.ContentHash,
+			&i.CreatedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockBundle = `-- name: LockBundle :one
+SELECT id, workspace_id, name, created_at FROM bundles WHERE workspace_id = $1 AND name = $2 FOR UPDATE
+`
+
+type LockBundleParams struct {
+	WorkspaceID pgtype.UUID
+	Name        string
+}
+
+func (q *Queries) LockBundle(ctx context.Context, arg LockBundleParams) (Bundle, error) {
+	row := q.db.QueryRow(ctx, lockBundle, arg.WorkspaceID, arg.Name)
+	var i Bundle
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const lockPublicationForBundle = `-- name: LockPublicationForBundle :one
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+WHERE pb.workspace_id = $1 AND p.bundle_id = $2
+FOR UPDATE OF p
+`
+
+type LockPublicationForBundleParams struct {
+	WorkspaceID pgtype.UUID
+	BundleID    pgtype.UUID
+}
+
+func (q *Queries) LockPublicationForBundle(ctx context.Context, arg LockPublicationForBundleParams) (Publication, error) {
+	row := q.db.QueryRow(ctx, lockPublicationForBundle, arg.WorkspaceID, arg.BundleID)
+	var i Publication
+	err := row.Scan(
+		&i.ID,
+		&i.PublisherID,
+		&i.Name,
+		&i.SkillID,
+		&i.Status,
+		&i.StatusChangedAt,
+		&i.CreatedAt,
+		&i.BundleID,
+	)
+	return i, err
+}
+
 const lockPublicationForSkill = `-- name: LockPublicationForSkill :one
-SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at
+SELECT p.id, p.publisher_id, p.name, p.skill_id, p.status, p.status_changed_at, p.created_at, p.bundle_id
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = $1 AND p.skill_id = $2
@@ -272,6 +777,7 @@ func (q *Queries) LockPublicationForSkill(ctx context.Context, arg LockPublicati
 		&i.Status,
 		&i.StatusChangedAt,
 		&i.CreatedAt,
+		&i.BundleID,
 	)
 	return i, err
 }
@@ -290,6 +796,18 @@ func (q *Queries) LockPublisherByWorkspace(ctx context.Context, workspaceID pgty
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const purgeWorkspaceBundles = `-- name: PurgeWorkspaceBundles :execrows
+DELETE FROM bundles WHERE workspace_id = $1
+`
+
+func (q *Queries) PurgeWorkspaceBundles(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeWorkspaceBundles, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const purgeWorkspacePublications = `-- name: PurgeWorkspacePublications :execrows

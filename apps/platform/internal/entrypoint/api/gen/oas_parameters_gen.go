@@ -117,6 +117,11 @@ type DeleteTestCaseParams struct {
 	ID uuid.UUID
 }
 
+// DelistBundleParams is parameters of delistBundle operation.
+type DelistBundleParams struct {
+	Name string
+}
+
 // DelistSkillParams is parameters of delistSkill operation.
 type DelistSkillParams struct {
 	ID uuid.UUID
@@ -132,6 +137,13 @@ type DiffSkillVersionsParams struct {
 // DownloadArtifactContentParams is parameters of downloadArtifactContent operation.
 type DownloadArtifactContentParams struct {
 	ArtifactId uuid.UUID
+}
+
+// ExportBundleParams is parameters of exportBundle operation.
+type ExportBundleParams struct {
+	// The Bundle Version to export; the newest when absent.
+	Version OptString `json:",omitempty,omitzero"`
+	Name    string
 }
 
 // FindSkillsForGovernanceParams is parameters of findSkillsForGovernance operation.
@@ -189,6 +201,11 @@ type GetFunnelTrendParams struct {
 // GetOperatorActionTrendParams is parameters of getOperatorActionTrend operation.
 type GetOperatorActionTrendParams struct {
 	Days OptGetOperatorActionTrendDays `json:",omitempty,omitzero"`
+}
+
+// GetOwnBundlePublicationParams is parameters of getOwnBundlePublication operation.
+type GetOwnBundlePublicationParams struct {
+	Name string
 }
 
 // GetOwnPublicationParams is parameters of getOwnPublication operation.
@@ -404,6 +421,11 @@ type PublicSearchSkillsParams struct {
 	// the three values; it is not silently filed under any of them, and its row says 尚未定值 rather
 	// than a guess (02:DISC-004).
 	Category OptPublicSearchSkillsCategory `json:",omitempty,omitzero"`
+}
+
+// PublishBundleParams is parameters of publishBundle operation.
+type PublishBundleParams struct {
+	Name string
 }
 
 // PublishSkillParams is parameters of publishSkill operation.

@@ -41,6 +41,10 @@ type ConfirmRunPreflightRes interface {
 	confirmRunPreflightRes()
 }
 
+type CreateBundleVersionRes interface {
+	createBundleVersionRes()
+}
+
 type CreateCreationSessionRes interface {
 	createCreationSessionRes()
 }
@@ -89,6 +93,10 @@ type DeleteTestCaseRes interface {
 	deleteTestCaseRes()
 }
 
+type DelistBundleRes interface {
+	delistBundleRes()
+}
+
 type DelistSkillRes interface {
 	delistSkillRes()
 }
@@ -103,6 +111,10 @@ type DiffSkillVersionsRes interface {
 
 type DownloadArtifactContentRes interface {
 	downloadArtifactContentRes()
+}
+
+type ExportBundleRes interface {
+	exportBundleRes()
 }
 
 type FindSkillsForGovernanceRes interface {
@@ -179,6 +191,10 @@ type GetOperatorActionTrendRes interface {
 
 type GetOperatorRostersRes interface {
 	getOperatorRostersRes()
+}
+
+type GetOwnBundlePublicationRes interface {
+	getOwnBundlePublicationRes()
 }
 
 type GetOwnPublicationRes interface {
@@ -281,6 +297,10 @@ type ListOperatorAuditLogRes interface {
 	listOperatorAuditLogRes()
 }
 
+type ListOwnBundlesRes interface {
+	listOwnBundlesRes()
+}
+
 type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }
@@ -323,6 +343,10 @@ type PreviewPackagingRes interface {
 
 type PublicSearchSkillsRes interface {
 	publicSearchSkillsRes()
+}
+
+type PublishBundleRes interface {
+	publishBundleRes()
 }
 
 type PublishSkillRes interface {

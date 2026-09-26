@@ -27,27 +27,13 @@ import {
     BundleMemberChangeToJSON,
     BundleMemberChangeToJSONTyped,
 } from './BundleMemberChange';
-import type { Labelled } from './Labelled';
-import {
-    LabelledFromJSON,
-    LabelledFromJSONTyped,
-    LabelledToJSON,
-    LabelledToJSONTyped,
-} from './Labelled';
-import type { PublicPublicationReleaseAllOfLicense } from './PublicPublicationReleaseAllOfLicense';
-import {
-    PublicPublicationReleaseAllOfLicenseFromJSON,
-    PublicPublicationReleaseAllOfLicenseFromJSONTyped,
-    PublicPublicationReleaseAllOfLicenseToJSON,
-    PublicPublicationReleaseAllOfLicenseToJSONTyped,
-} from './PublicPublicationReleaseAllOfLicense';
 
 /**
  * 
  * @export
- * @interface PublicPublicationRelease
+ * @interface PublicPublicationBundleRelease
  */
-export interface PublicPublicationRelease {
+export interface PublicPublicationBundleRelease {
     /**
      * 
      */
@@ -72,33 +58,23 @@ export interface PublicPublicationRelease {
      * 
      */
     findings: CategorizedFindings;
-    /**
-     * 
-     */
-    license: PublicPublicationReleaseAllOfLicense;
-    /**
-     * 
-     */
-    redistribution: Labelled;
 }
 
 /**
- * Check if a given object implements the PublicPublicationRelease interface.
+ * Check if a given object implements the PublicPublicationBundleRelease interface.
  */
-export function instanceOfPublicPublicationRelease(value: object): value is PublicPublicationRelease {
+export function instanceOfPublicPublicationBundleRelease(value: object): value is PublicPublicationBundleRelease {
     if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if ((!('releasedAt' in (value as Record<string, any>)) && !('released_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['releasedAt'] === undefined && (value as Record<string, any>)['released_at'] === undefined)) return false;
     if (!('findings' in value) || value['findings'] === undefined) return false;
-    if (!('license' in value) || value['license'] === undefined) return false;
-    if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
     return true;
 }
 
-export function PublicPublicationReleaseFromJSON(json: any): PublicPublicationRelease {
-    return PublicPublicationReleaseFromJSONTyped(json, false);
+export function PublicPublicationBundleReleaseFromJSON(json: any): PublicPublicationBundleRelease {
+    return PublicPublicationBundleReleaseFromJSONTyped(json, false);
 }
 
-export function PublicPublicationReleaseFromJSONTyped(json: any, ignoreDiscriminator: boolean): PublicPublicationRelease {
+export function PublicPublicationBundleReleaseFromJSONTyped(json: any, ignoreDiscriminator: boolean): PublicPublicationBundleRelease {
     if (json == null) {
         return json;
     }
@@ -110,16 +86,14 @@ export function PublicPublicationReleaseFromJSONTyped(json: any, ignoreDiscrimin
         'releasedAt': (json['released_at'] == null ? json['released_at'] : parseDateTime(json['released_at'])),
         'changes': json['changes'] == null ? undefined : ((json['changes'] as Array<any>).map(BundleMemberChangeFromJSON)),
         'findings': CategorizedFindingsFromJSON(json['findings']),
-        'license': PublicPublicationReleaseAllOfLicenseFromJSON(json['license']),
-        'redistribution': LabelledFromJSON(json['redistribution']),
     };
 }
 
-export function PublicPublicationReleaseToJSON(json: any): PublicPublicationRelease {
-    return PublicPublicationReleaseToJSONTyped(json, false);
+export function PublicPublicationBundleReleaseToJSON(json: any): PublicPublicationBundleRelease {
+    return PublicPublicationBundleReleaseToJSONTyped(json, false);
 }
 
-export function PublicPublicationReleaseToJSONTyped(value?: PublicPublicationRelease | null, ignoreDiscriminator: boolean = false): any {
+export function PublicPublicationBundleReleaseToJSONTyped(value?: PublicPublicationBundleRelease | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
@@ -132,8 +106,6 @@ export function PublicPublicationReleaseToJSONTyped(value?: PublicPublicationRel
         'released_at': value['releasedAt'] == null ? value['releasedAt'] : serializeDateTime(value['releasedAt']),
         'changes': value['changes'] == null ? undefined : ((value['changes'] as Array<any>).map(BundleMemberChangeToJSON)),
         'findings': CategorizedFindingsToJSON(value['findings']),
-        'license': PublicPublicationReleaseAllOfLicenseToJSON(value['license']),
-        'redistribution': LabelledToJSON(value['redistribution']),
     };
 }
 

@@ -81,9 +81,10 @@ const (
 	ActionAccountLookup = "account.lookup"
 	ActionCreditLookup  = "credit.lookup"
 
-	ActionPublisherRegister  = "publisher.register"
-	ActionPublicationRelease = "publication.release"
-	ActionPublicationDelist  = "publication.delist"
+	ActionPublisherRegister   = "publisher.register"
+	ActionPublicationRelease  = "publication.release"
+	ActionPublicationDelist   = "publication.delist"
+	ActionBundleVersionCreate = "bundle.version.create"
 )
 
 const ScopeOperator = "operator"
@@ -115,6 +116,7 @@ const (
 
 	ResourcePublisher   = "publisher"
 	ResourcePublication = "publication"
+	ResourceBundle      = "bundle"
 
 	ResourceDomainEvent = "domain_event"
 )

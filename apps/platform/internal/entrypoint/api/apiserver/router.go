@@ -111,6 +111,12 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("DELETE /skills/{id}/publication", auth.RequireSession(d.Publishing.Delist))
 	mux.HandleFunc("GET /me/publisher", auth.RequireSession(d.Publishing.OwnPublisher))
 	mux.HandleFunc("POST /me/publisher", auth.RequireSession(d.Publishing.RegisterPublisher))
+	mux.HandleFunc("GET /me/bundles", auth.RequireSession(d.Publishing.OwnBundles))
+	mux.HandleFunc("POST /me/bundles", auth.RequireSession(d.Publishing.CreateBundleVersion))
+	mux.HandleFunc("POST /me/bundles/{name}/export", auth.RequireSession(auth.RequireInvited(d.Publishing.ExportBundle)))
+	mux.HandleFunc("GET /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.OwnBundlePublication))
+	mux.HandleFunc("POST /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.PublishBundle))
+	mux.HandleFunc("DELETE /me/bundles/{name}/publication", auth.RequireSession(d.Publishing.DelistBundle))
 	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(d.Publishing.PublicPublication))
 	mux.HandleFunc("POST /publications/{publisher}/{name}/acquisitions",
 		auth.RequireSession(publicationDownloadGate(d, d.Publishing.Acquire)))

@@ -36,8 +36,9 @@ type publisherView struct {
 }
 
 type releaseView struct {
-	VersionID      string                       `json:"version_id"`
-	VersionNumber  int32                        `json:"version_number"`
+	VersionID      string                       `json:"version_id,omitempty"`
+	VersionNumber  int32                        `json:"version_number,omitempty"`
+	BundleVersion  string                       `json:"bundle_version,omitempty"`
 	ContentHash    string                       `json:"content_hash"`
 	ReleasedAt     string                       `json:"released_at"`
 	RightsAttested bool                         `json:"rights_attested"`
@@ -45,6 +46,7 @@ type releaseView struct {
 }
 
 type publicationView struct {
+	Kind            string        `json:"kind"`
 	Publisher       string        `json:"publisher"`
 	Name            string        `json:"name"`
 	Address         string        `json:"address"`
@@ -54,9 +56,11 @@ type publicationView struct {
 }
 
 type publicReleaseView struct {
-	VersionNumber int32  `json:"version_number"`
-	ContentHash   string `json:"content_hash"`
-	ReleasedAt    string `json:"released_at"`
+	VersionNumber int32              `json:"version_number,omitempty"`
+	Version       string             `json:"version,omitempty"`
+	ContentHash   string             `json:"content_hash"`
+	ReleasedAt    string             `json:"released_at"`
+	Changes       []memberChangeView `json:"changes,omitempty"`
 }
 
 type licenseView struct {
@@ -81,25 +85,48 @@ type noteView struct {
 	Note      string `json:"note"`
 }
 
+type publicBundleMemberView struct {
+	Name          string `json:"name"`
+	VersionNumber int32  `json:"version_number"`
+	ContentHash   string `json:"content_hash"`
+}
+
+type publicBundleView struct {
+	Version     string                   `json:"version"`
+	Description string                   `json:"description"`
+	Members     []publicBundleMemberView `json:"members"`
+}
+
+type bundleReleaseView struct {
+	publicReleaseView
+	Findings skillpkg.CategorizedFindings `json:"findings"`
+}
+
 type publicPublicationView struct {
-	Publisher    string              `json:"publisher"`
-	Name         string              `json:"name"`
-	Address      string              `json:"address"`
-	Availability labelled            `json:"availability"`
-	DelistedAt   string              `json:"delisted_at,omitempty"`
-	Skill        *publicSkillView    `json:"skill,omitempty"`
-	Release      *currentReleaseView `json:"release,omitempty"`
-	Releases     []publicReleaseView `json:"releases"`
-	Exposure     noteView            `json:"exposure"`
-	Acquisition  noteView            `json:"acquisition"`
+	Kind          string              `json:"kind"`
+	Publisher     string              `json:"publisher"`
+	Name          string              `json:"name"`
+	Address       string              `json:"address"`
+	Availability  labelled            `json:"availability"`
+	DelistedAt    string              `json:"delisted_at,omitempty"`
+	Skill         *publicSkillView    `json:"skill,omitempty"`
+	Release       *currentReleaseView `json:"release,omitempty"`
+	Bundle        *publicBundleView   `json:"bundle,omitempty"`
+	BundleRelease *bundleReleaseView  `json:"bundle_release,omitempty"`
+	Releases      []publicReleaseView `json:"releases"`
+	Exposure      noteView            `json:"exposure"`
+	Acquisition   noteView            `json:"acquisition"`
 }
 
 const (
 	notListedNote         = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
 	notOfferedNote        = "這個發佈物目前不提供下載，原因見上方。"
 	downloadNote          = "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
+	bundleDownloadNote    = "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
 	invitedOnlyNote       = "這個部署目前只開放受邀者下載：沒有封測邀請的帳號按下下載會被拒絕。"
 	downloadContentPrefix = "/downloads/"
+	kindSkill             = "skill"
+	kindBundle            = "bundle"
 )
 
 type acquisitionView struct {
@@ -151,9 +178,14 @@ func writePublishingError(w http.ResponseWriter, err error) {
 	var nameErr *NameError
 	var refused *RefusedError
 	var unavailable *UnavailableError
+	var bundleErr *BundleError
 	switch {
 	case errors.As(err, &unavailable):
-		writeReason(w, http.StatusConflict, string(unavailable.Availability), availabilityWords[unavailable.Availability][1])
+		writeReason(w, http.StatusConflict, string(unavailable.Availability), unavailableNote(unavailable.Availability, unavailable.Member))
+	case errors.As(err, &bundleErr) && bundleErr.Problem == BundleVersionExists:
+		writeReason(w, http.StatusConflict, string(bundleErr.Problem), bundleErr.Error())
+	case errors.As(err, &bundleErr):
+		writeReason(w, http.StatusUnprocessableEntity, string(bundleErr.Problem), bundleErr.Error())
 	case errors.Is(err, ErrNotFound):
 		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
 	case errors.Is(err, ErrNoPublisher):
@@ -313,34 +345,62 @@ func (h *Handler) Acquire(w http.ResponseWriter, r *http.Request) {
 		writePublishingError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, acquisitionView{
+	httpx.WriteJSON(w, http.StatusCreated, acquisitionViewOf(acquisition))
+}
+
+func acquisitionViewOf(acquisition Acquisition) acquisitionView {
+	return acquisitionView{
 		ArtifactID: acquisition.ArtifactID, FileName: acquisition.FileName, SizeBytes: acquisition.SizeBytes,
 		ContentHash: acquisition.ContentHash, ExpiresAt: acquisition.ExpiresAt, Duplicate: acquisition.Duplicate,
 		ContentURL: downloadContentPrefix + acquisition.ArtifactID + "/content",
-	})
+	}
 }
 
-func (h *Handler) acquisitionNote(availability Availability) noteView {
+func unavailableNote(availability Availability, member string) string {
+	note := availabilityWords[availability][1]
+	if member == "" {
+		return note
+	}
+	return "成員 " + member + "：" + note
+}
+
+func kindOf(p Publication) string {
+	if p.BundleID.Valid {
+		return kindBundle
+	}
+	return kindSkill
+}
+
+func (h *Handler) acquisitionNote(availability Availability, kind string) noteView {
 	if availability != AvailabilityAvailable {
 		return noteView{Available: false, Note: notOfferedNote}
 	}
-	if !h.DownloadsOpenToUninvited && h.InviteRosterConfigured() {
-		return noteView{Available: true, Note: downloadNote + invitedOnlyNote}
+	note := downloadNote
+	if kind == kindBundle {
+		note = bundleDownloadNote
 	}
-	return noteView{Available: true, Note: downloadNote}
+	if !h.DownloadsOpenToUninvited && h.InviteRosterConfigured() {
+		return noteView{Available: true, Note: note + invitedOnlyNote}
+	}
+	return noteView{Available: true, Note: note}
 }
 
 func ownView(p Publication) publicationView {
 	releases := make([]releaseView, 0, len(p.Releases))
 	for _, release := range p.Releases {
-		releases = append(releases, releaseView{
-			VersionID: pgconv.UUIDString(release.VersionID), VersionNumber: release.VersionNumber,
+		view := releaseView{
 			ContentHash: release.ContentHash, ReleasedAt: timestamp(release.ReleasedAt),
 			RightsAttested: release.RightsAttested, Findings: release.Findings,
-		})
+		}
+		if release.Bundle != nil {
+			view.BundleVersion = release.Bundle.Version
+		} else {
+			view.VersionID, view.VersionNumber = pgconv.UUIDString(release.VersionID), release.VersionNumber
+		}
+		releases = append(releases, view)
 	}
 	return publicationView{
-		Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
+		Kind: kindOf(p), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
 		Status: string(p.Status), StatusChangedAt: timestamp(p.StatusChangedAt), Releases: releases,
 	}
 }
@@ -348,17 +408,20 @@ func ownView(p Publication) publicationView {
 func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 	words := availabilityWords[p.Availability]
 	view := publicPublicationView{
-		Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
-		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: words[1]},
+		Kind: kindOf(p.Publication), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
+		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: unavailableNote(p.Availability, p.UnavailableMember)},
 		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
 		Exposure:     noteView{Available: false, Note: notListedNote},
-		Acquisition:  h.acquisitionNote(p.Availability),
+		Acquisition:  h.acquisitionNote(p.Availability, kindOf(p.Publication)),
 	}
 	if p.Status == StatusDelisted {
 		view.DelistedAt = timestamp(p.StatusChangedAt)
 	}
 	if p.Availability != AvailabilityAvailable || len(p.Releases) == 0 {
 		return view
+	}
+	if p.BundleID.Valid {
+		return publicBundle(view, p.Releases)
 	}
 	for _, release := range p.Releases {
 		view.Releases = append(view.Releases, publicReleaseView{
@@ -374,5 +437,25 @@ func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 		License:           licenseView{Expression: p.Version.LicenseExpression, Source: p.Version.LicenseSource},
 		Redistribution:    labelled{Value: p.Skill.Redistribution, Label: label, Note: note},
 	}
+	return view
+}
+
+func publicBundle(view publicPublicationView, releases []Release) publicPublicationView {
+	for i, release := range releases {
+		entry := publicReleaseView{
+			Version: release.Bundle.Version, ContentHash: release.ContentHash, ReleasedAt: timestamp(release.ReleasedAt),
+		}
+		if i+1 < len(releases) {
+			entry.Changes = memberChanges(*release.Bundle, *releases[i+1].Bundle)
+		}
+		view.Releases = append(view.Releases, entry)
+	}
+	current := releases[0]
+	members := make([]publicBundleMemberView, 0, len(current.Bundle.Members))
+	for _, m := range current.Bundle.Members {
+		members = append(members, publicBundleMemberView{Name: m.Name, VersionNumber: m.VersionNumber, ContentHash: m.ContentHash})
+	}
+	view.Bundle = &publicBundleView{Version: current.Bundle.Version, Description: current.Bundle.Description, Members: members}
+	view.BundleRelease = &bundleReleaseView{publicReleaseView: view.Releases[0], Findings: current.Findings}
 	return view
 }

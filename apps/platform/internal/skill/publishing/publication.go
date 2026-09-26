@@ -33,6 +33,7 @@ const (
 	RefusedValidation         Refusal = "validation_blocked"
 	RefusedRightsNotAttested  Refusal = "rights_not_attested"
 	RefusedFileRemoved        Refusal = "file_removed_by_packager"
+	RefusedMemberWithdrawn    Refusal = "member_withdrawn"
 )
 
 var (
@@ -63,6 +64,7 @@ func (e *RefusedError) Error() string { return e.Message }
 
 type UnavailableError struct {
 	Availability Availability
+	Member       string
 }
 
 func (e *UnavailableError) Error() string {

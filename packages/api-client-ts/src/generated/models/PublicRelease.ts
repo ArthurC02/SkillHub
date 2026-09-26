@@ -13,8 +13,16 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { BundleMemberChange } from './BundleMemberChange';
+import {
+    BundleMemberChangeFromJSON,
+    BundleMemberChangeFromJSONTyped,
+    BundleMemberChangeToJSON,
+    BundleMemberChangeToJSONTyped,
+} from './BundleMemberChange';
+
 /**
- * 
+ * A Skill release carries version_number; a Bundle release carries version and, except for the first, changes.
  * @export
  * @interface PublicRelease
  */
@@ -22,7 +30,11 @@ export interface PublicRelease {
     /**
      * 
      */
-    versionNumber: number;
+    versionNumber?: number;
+    /**
+     * 
+     */
+    version?: string;
     /**
      * 
      */
@@ -31,13 +43,16 @@ export interface PublicRelease {
      * 
      */
     releasedAt: Date;
+    /**
+     * What differs among the members from the release before this one.
+     */
+    changes?: Array<BundleMemberChange>;
 }
 
 /**
  * Check if a given object implements the PublicRelease interface.
  */
 export function instanceOfPublicRelease(value: object): value is PublicRelease {
-    if ((!('versionNumber' in (value as Record<string, any>)) && !('version_number' in (value as Record<string, any>))) || ((value as Record<string, any>)['versionNumber'] === undefined && (value as Record<string, any>)['version_number'] === undefined)) return false;
     if ((!('contentHash' in (value as Record<string, any>)) && !('content_hash' in (value as Record<string, any>))) || ((value as Record<string, any>)['contentHash'] === undefined && (value as Record<string, any>)['content_hash'] === undefined)) return false;
     if ((!('releasedAt' in (value as Record<string, any>)) && !('released_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['releasedAt'] === undefined && (value as Record<string, any>)['released_at'] === undefined)) return false;
     return true;
@@ -53,9 +68,11 @@ export function PublicReleaseFromJSONTyped(json: any, ignoreDiscriminator: boole
     }
     return {
         
-        'versionNumber': json['version_number'],
+        'versionNumber': json['version_number'] == null ? undefined : json['version_number'],
+        'version': json['version'] == null ? undefined : json['version'],
         'contentHash': json['content_hash'],
         'releasedAt': (json['released_at'] == null ? json['released_at'] : parseDateTime(json['released_at'])),
+        'changes': json['changes'] == null ? undefined : ((json['changes'] as Array<any>).map(BundleMemberChangeFromJSON)),
     };
 }
 
@@ -71,8 +88,10 @@ export function PublicReleaseToJSONTyped(value?: PublicRelease | null, ignoreDis
     return {
         
         'version_number': value['versionNumber'],
+        'version': value['version'],
         'content_hash': value['contentHash'],
         'released_at': value['releasedAt'] == null ? value['releasedAt'] : serializeDateTime(value['releasedAt']),
+        'changes': value['changes'] == null ? undefined : ((value['changes'] as Array<any>).map(BundleMemberChangeToJSON)),
     };
 }
 

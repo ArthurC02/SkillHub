@@ -1524,6 +1524,222 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /me/bundles:
+    get:
+      operationId: listOwnBundles
+      summary: Every Bundle Version in the caller's workspace, newest first (PACK-018)
+      responses:
+        "200":
+          description: The Bundle Versions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bundles]
+                properties:
+                  bundles:
+                    type: array
+                    items: { $ref: "#/components/schemas/BundleVersion" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: createBundleVersion
+      summary: Pin a set of the caller's Skill versions as one immutable Bundle Version (PACK-018)
+      description: |
+        The first version of a name creates the Bundle. Every member is a
+        version of a different Skill in the caller's own workspace, and each
+        member's manifest name is unique within the Bundle, because it becomes
+        the member's directory in the exported Agent Plugin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, version, description, member_version_ids]
+              properties:
+                name: { type: string }
+                version:
+                  type: string
+                  description: Semantic version, MAJOR.MINOR.PATCH with an optional pre-release label.
+                description: { type: string }
+                member_version_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleVersion" }
+        "400":
+          description: The body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: A member version is not the caller's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: This Bundle already has that version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+        "422":
+          description: The name, the version, the description or the members break a Bundle rule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /me/bundles/{name}/export:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: exportBundle
+      summary: Build a Bundle Version into one Agent Plugin zip in the caller's downloads (PACK-018)
+      description: |
+        Each member goes under skills/<its manifest name>/ beside a plugin.json;
+        the zip is read back to confirm it is a Plugin with every member.
+        Trust is the worst member's: the first member the download gate
+        refuses is named in the refusal, and nothing is built.
+      parameters:
+        - name: version
+          in: query
+          required: false
+          description: The Bundle Version to export; the newest when absent.
+          schema: { type: string }
+      responses:
+        "201":
+          description: The download artifact, new or an identical one still being kept.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Acquisition" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The caller is not on the invite list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller has no Bundle Version by that name and version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: The download gate refused a member; the message names it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /me/bundles/{name}/publication:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getOwnBundlePublication
+      summary: The owner's view of this Bundle's publication and every release (PACK-018)
+      responses:
+        "200":
+          description: The publication.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller has no Bundle by that name, or it has never been published.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: publishBundle
+      summary: Publish a Bundle Version, or publish the Bundle again (PACK-018)
+      description: |
+        Every member passes the Skill release gate first; the first member it
+        refuses is named. The public address lists what changed among the
+        members since the previous release.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                version:
+                  type: string
+                  description: The Bundle Version to release; the newest when absent.
+                rights_attested: { type: boolean }
+      responses:
+        "200":
+          description: Published; the publication with every release, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "400":
+          description: The body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller has no Bundle Version by that name and version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: No publisher yet, the name is taken, or a different name was asked for an existing publication.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+        "422":
+          description: The release gate refused a member, or the name breaks the name rule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+    delete:
+      operationId: delistBundle
+      summary: Withdraw this Bundle's publication; its name stays the author's (PACK-018)
+      responses:
+        "200":
+          description: Delisted, or already delisted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller has no Bundle by that name, or it has never been published.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /publications/{publisher}/{name}/acquisitions:
     post:
       operationId: acquirePublication
@@ -6866,24 +7082,34 @@ components:
             - validation_blocked
             - rights_not_attested
             - file_removed_by_packager
+            - member_withdrawn
+            - version_shape
+            - description_missing
+            - no_members
+            - duplicate_skill
+            - duplicate_manifest_name
+            - version_exists
             - delisted
             - withdrawn
             - taken_down
             - held
     PublicationRelease:
       type: object
-      required: [version_id, version_number, content_hash, released_at, rights_attested, findings]
+      description: A Skill release carries version_id and version_number; a Bundle release carries bundle_version.
+      required: [content_hash, released_at, rights_attested, findings]
       properties:
         version_id: { type: string, format: uuid }
         version_number: { type: integer }
+        bundle_version: { type: string }
         content_hash: { type: string }
         released_at: { type: string, format: date-time }
         rights_attested: { type: boolean }
         findings: { $ref: "#/components/schemas/CategorizedFindings" }
     Publication:
       type: object
-      required: [publisher, name, address, status, status_changed_at, releases]
+      required: [kind, publisher, name, address, status, status_changed_at, releases]
       properties:
+        kind: { $ref: "#/components/schemas/PublicationKind" }
         publisher: { type: string }
         name: { type: string }
         address:
@@ -6894,13 +7120,59 @@ components:
         releases:
           type: array
           items: { $ref: "#/components/schemas/PublicationRelease" }
+    PublicationKind:
+      type: string
+      enum: [skill, bundle]
     PublicRelease:
       type: object
-      required: [version_number, content_hash, released_at]
+      description: A Skill release carries version_number; a Bundle release carries version and, except for the first, changes.
+      required: [content_hash, released_at]
       properties:
         version_number: { type: integer }
+        version: { type: string }
         content_hash: { type: string }
         released_at: { type: string, format: date-time }
+        changes:
+          type: array
+          description: What differs among the members from the release before this one.
+          items: { $ref: "#/components/schemas/BundleMemberChange" }
+    BundleMemberChange:
+      type: object
+      required: [name, change]
+      properties:
+        name: { type: string }
+        change: { type: string, enum: [added, removed, changed] }
+        from:
+          type: integer
+          description: The member's version number in the earlier release; absent when added.
+        to:
+          type: integer
+          description: The member's version number in this release; absent when removed.
+    BundleMember:
+      type: object
+      required: [skill_id, version_id, name, version_number, content_hash]
+      properties:
+        skill_id: { type: string, format: uuid }
+        version_id: { type: string, format: uuid }
+        name:
+          type: string
+          description: The member's manifest name, its directory in the exported Plugin.
+        version_number: { type: integer }
+        content_hash: { type: string }
+    BundleVersion:
+      type: object
+      required: [bundle, version, description, content_hash, created_at, members]
+      properties:
+        bundle: { type: string }
+        version: { type: string }
+        description: { type: string }
+        content_hash:
+          type: string
+          description: Over the ordered member manifest names and version content hashes.
+        created_at: { type: string, format: date-time }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/BundleMember" }
     Acquisition:
       type: object
       required: [artifact_id, file_name, size_bytes, content_hash, expires_at, duplicate, content_url]
@@ -6922,15 +7194,18 @@ components:
         note: { type: string }
     PublicPublication:
       type: object
-      required: [publisher, name, address, availability, releases, exposure, acquisition]
+      required: [kind, publisher, name, address, availability, releases, exposure, acquisition]
       properties:
+        kind: { $ref: "#/components/schemas/PublicationKind" }
         publisher: { type: string }
         name: { type: string }
         address: { type: string }
         availability:
           description: >-
             One of available, delisted, withdrawn, taken_down, held or
-            not_redistributable; only available carries skill and release.
+            not_redistributable; only available carries skill and release, or
+            bundle and bundle_release. For a Bundle the note names the member
+            that makes it unavailable.
           allOf:
             - $ref: "#/components/schemas/Labelled"
         delisted_at:
@@ -6957,6 +7232,28 @@ components:
                     expression: { type: string }
                     source: { type: string }
                 redistribution: { $ref: "#/components/schemas/Labelled" }
+        bundle:
+          type: object
+          required: [version, description, members]
+          properties:
+            version: { type: string }
+            description: { type: string }
+            members:
+              type: array
+              items:
+                type: object
+                required: [name, version_number, content_hash]
+                properties:
+                  name: { type: string }
+                  version_number: { type: integer }
+                  content_hash: { type: string }
+        bundle_release:
+          allOf:
+            - $ref: "#/components/schemas/PublicRelease"
+            - type: object
+              required: [findings]
+              properties:
+                findings: { $ref: "#/components/schemas/CategorizedFindings" }
         releases:
           type: array
           items: { $ref: "#/components/schemas/PublicRelease" }
@@ -9695,6 +9992,22 @@ components:
             how long the bytes survive, so the error falls on the side of
             promising less. A deployment configured shorter than a day answers 0,
             which 02:NFR-002a 第 1 條 already forbids.
+    PluginContents:
+      type: object
+      required: [name, version, members]
+      properties:
+        name: { type: string }
+        version: { type: string }
+        members:
+          type: array
+          items:
+            type: object
+            required: [skill_id, skill_version_id, name, version_number]
+            properties:
+              skill_id: { type: string, format: uuid }
+              skill_version_id: { type: string, format: uuid }
+              name: { type: string }
+              version_number: { type: integer }
     DownloadArtifact:
       description: |
         One built package (PACK-001). Immutable: re-packaging produces another
@@ -9707,14 +10020,18 @@ components:
         which is what deduplication and "did the skill change or only the
         profile" need, and what a byte hash cannot answer across packager
         versions (packaging-design §2.4).
+
+        **A Plugin carries `plugin` instead of one Skill.** `skill_id`,
+        `skill_version_id`, `version_number` and `latest_version_number` are
+        absent, and `version_state` is `plugin`.
       type: object
       required:
-        [artifact_id, skill_id, skill_version_id, version_number,
-         latest_version_number, version_state, target, file_name, size_bytes,
+        [artifact_id, version_state, target, file_name, size_bytes,
          content_hash, manifest_hash, status, servable, serve_state, expires_at,
          created_at, download_count, includes_test_cases]
       properties:
         artifact_id: { type: string, format: uuid }
+        plugin: { $ref: "#/components/schemas/PluginContents" }
         skill_id: { type: string, format: uuid }
         skill_version_id: { type: string, format: uuid }
         version_number:

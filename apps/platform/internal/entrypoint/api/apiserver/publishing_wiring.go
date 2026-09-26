@@ -50,13 +50,38 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 				Reason: publishing.Refusal(result.Plan.BlockedReason), Message: result.Plan.BlockedMessage,
 			}
 		}
-		return publishing.Acquisition{
-			ArtifactID: result.Artifact.ArtifactID, FileName: result.Artifact.FileName,
-			SizeBytes: result.Artifact.SizeBytes, ContentHash: result.Artifact.ContentHash,
-			ExpiresAt: result.Artifact.ExpiresAt, Duplicate: result.Duplicate,
-		}, nil
+		return acquisitionOf(result.Artifact, result.Duplicate), nil
+	}
+	svc.PackagePluginForRecipient = func(
+		ctx context.Context, recipient identity.Workspace, ownerWorkspaceID pgtype.UUID, plugin publishing.PluginRequest,
+	) (publishing.Acquisition, error) {
+		spec := packaging.PluginSpec{Name: plugin.Name, Version: plugin.Version, Description: plugin.Description}
+		for _, m := range plugin.Members {
+			spec.Members = append(spec.Members, packaging.PluginMember{SkillID: m.SkillID, VersionID: m.VersionID})
+		}
+		result, err := packagingSvc.CreatePluginForRecipient(ctx, recipient, ownerWorkspaceID, spec)
+		if errors.Is(err, packaging.ErrNotFound) {
+			return publishing.Acquisition{}, publishing.ErrNotFound
+		}
+		if err != nil {
+			return publishing.Acquisition{}, err
+		}
+		if result.Plan != nil && !result.Plan.Allowed {
+			return publishing.Acquisition{}, &publishing.RefusedError{
+				Reason: publishing.Refusal(result.Plan.BlockedReason), Message: result.Plan.BlockedMessage,
+			}
+		}
+		return acquisitionOf(result.Artifact, result.Duplicate), nil
 	}
 	return svc
+}
+
+func acquisitionOf(artifact packaging.Artifact, duplicate bool) publishing.Acquisition {
+	return publishing.Acquisition{
+		ArtifactID: artifact.ArtifactID, FileName: artifact.FileName,
+		SizeBytes: artifact.SizeBytes, ContentHash: artifact.ContentHash,
+		ExpiresAt: artifact.ExpiresAt, Duplicate: duplicate,
+	}
 }
 
 func publishingSkillFacts(skill registry.Skill) publishing.SkillFacts {
