@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -54,6 +55,28 @@ func e2eSkillPackage(t *testing.T) []byte {
 }
 
 func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
+	archive := realGatewayRun(t, realGatewayRunSpec{
+		user:   "e2e-gateway",
+		pkg:    e2eSkillPackage(t),
+		prompt: "Use the run-marker skill to produce the run marker.",
+	})
+	if !strings.Contains(archive, "SKILLHUB-E2E-OK") {
+		t.Error("the uploaded archive does not carry the marker the skill was asked to write")
+	}
+	if !strings.Contains(archive, "SKILLHUB-SCRIPT-RAN py3.") {
+		t.Error("the archive carries no output from the package's own script: the skill's files were not executed")
+	}
+}
+
+type realGatewayRunSpec struct {
+	user       string
+	pkg        []byte
+	sourcePath string
+	prompt     string
+}
+
+func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
+	t.Helper()
 	sandboxURL := os.Getenv("SKILLHUB_E2E_SANDBOX_URL")
 	if sandboxURL == "" {
 		t.Skip("SKILLHUB_E2E_SANDBOX_URL not set; skipping the paid end to end run")
@@ -122,16 +145,32 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
 
-	f := newFixture(t, a, pool, "e2e-gateway")
+	f := newFixture(t, a, pool, spec.user)
 
-	if err := store.Put(ctx, "packages/hash-e2e-gateway.zip", e2eSkillPackage(t)); err != nil {
+	if err := store.Put(ctx, "packages/hash-"+spec.user+".zip", spec.pkg); err != nil {
 		t.Fatal(err)
+	}
+
+	if spec.sourcePath != "" {
+		version, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+			WorkspaceID:      mustUUID(t, f.workspaceID),
+			SkillID:          mustUUID(t, f.skillID),
+			VersionNumber:    nextVersionNumber(t, pool, f.skillID),
+			ContentHash:      "hash-" + spec.user + "-at-" + spec.sourcePath,
+			PackageObjectKey: "packages/hash-" + spec.user + ".zip",
+			SourcePath:       spec.sourcePath,
+			Manifest:         []byte(`{}`),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		refreshListing(t, pool, f.skillID)
+		f.versionID = uuidText(version.ID)
 	}
 
 	if _, err := pool.Exec(ctx,
 		`UPDATE test_cases SET user_prompt = $2 WHERE id = $1`,
-		mustUUID(t, f.testCaseID),
-		"Use the run-marker skill to produce the run marker.",
+		mustUUID(t, f.testCaseID), spec.prompt,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -165,18 +204,11 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the artifact archive is not in object storage at %s: %v", key, err)
 	}
-	if !strings.Contains(string(archive), "SKILLHUB-E2E-OK") {
-		t.Error("the uploaded archive does not carry the marker the skill was asked to write")
-	}
-
-	if !strings.Contains(string(archive), "SKILLHUB-SCRIPT-RAN py3.") {
-		t.Error("the archive carries no output from the package's own script: the skill's files were not executed")
-	}
-
 	cleaned := waitForCleanupOutcome(t, f.client, view.RunID)
 	if cleaned != "cleaned" {
 		t.Errorf("cleanup_status = %q, want cleaned (which includes revoking the Virtual Key)", cleaned)
 	}
+	return string(archive)
 }
 
 func objstoreBucket() string {
@@ -244,4 +276,59 @@ func traceUsageEvent(t *testing.T, c *client, runID string) map[string]any {
 	}
 	t.Fatal("the run produced no usage event; TRACE-004 has nothing to report")
 	return nil
+}
+
+func e2ePluginPackage(t *testing.T) []byte {
+	t.Helper()
+	root := "skills/run-marker/"
+	return zipOf(t, map[string]string{
+		"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",` +
+			`"name":"e2e-desk-tools","version":"1.0.0"}`,
+		"mcp.json": `{"mcpServers":{}}`,
+		root + "SKILL.md": "---\n" +
+			"name: run-marker\n" +
+			"description: Writes a verification marker file for a Skill Hub end to end run.\n" +
+			"license: MIT\n" +
+			"---\n\n" +
+			"When asked for the run marker, do both of these and nothing else:\n\n" +
+			"1. Run `python3 scripts/check.py` from this skill's own directory with the\n" +
+			"   Bash tool, and write its entire standard output to\n" +
+			"   `/out/artifacts/check.txt` using the Write tool.\n" +
+			"2. Write the exact text `SKILLHUB-E2E-OK` to `/out/artifacts/marker.txt`\n" +
+			"   using the Write tool.\n\n" +
+			"Then reply with the single word DONE and nothing else.\n",
+		root + "scripts/check.py": "import os, sys\n" +
+			"print('SKILLHUB-SCRIPT-RAN py%d.%d' % sys.version_info[:2])\n" +
+			"here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))\n" +
+			"print('SKILL-FILES=' + ','.join(sorted(os.listdir(here))))\n" +
+			"print('SKILLS-INSTALLED=' + ','.join(sorted(os.listdir(os.path.dirname(here)))))\n",
+		"skills/split-csv/SKILL.md": "---\nname: split-csv\ndescription: A sibling skill of the same plugin.\n---\n\nProse.\n",
+	})
+}
+
+func TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone(t *testing.T) {
+	archive := realGatewayRun(t, realGatewayRunSpec{
+		user:       "e2e-plugin",
+		pkg:        e2ePluginPackage(t),
+		sourcePath: "skills/run-marker",
+		prompt:     "Use the run-marker skill to produce the run marker.",
+	})
+	if !strings.Contains(archive, "SKILLHUB-E2E-OK") {
+		t.Error("the plugin's skill produced no marker: the Agent found no skill to activate")
+	}
+	if got := lineStartingWith(archive, "SKILL-FILES="); got != "SKILL-FILES=SKILL.md,scripts" {
+		t.Errorf("the installed skill carries more than the plugin's own subdirectory: %q", got)
+	}
+	if got := lineStartingWith(archive, "SKILLS-INSTALLED="); got != "SKILLS-INSTALLED=run-marker" {
+		t.Errorf("the sandbox holds a skill the run did not ask for: %q", got)
+	}
+}
+
+func lineStartingWith(archive, prefix string) string {
+	for _, line := range strings.Split(archive, "\n") {
+		if i := strings.Index(line, prefix); i >= 0 {
+			return strings.TrimRight(line[i:], "\x00\r")
+		}
+	}
+	return "(absent)"
 }

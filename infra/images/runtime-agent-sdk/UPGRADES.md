@@ -639,7 +639,7 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
 
 **預設映像同批從 `-10` 移到 `-12`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-11` 從此只是被取代的 tag——它與 `-12` 的映像內容差異只有 `IMAGE_VERSION` 這個 label。
 
-## `2026.08-12` → `2026.08-13`（2026-09-26）— **只有 `run.mjs` 變動；四項實測尚未跑，預設映像仍留在 `-12`**
+## `2026.08-12` → `2026.08-13`（2026-09-26）— **只有 `run.mjs` 變動；四項實測同日跑完，預設映像同批移到 `-13`**
 
 > 這一節修的是 Skill **安裝**那一段：一個 Agent Plugin 以整包存成一份套件，
 > 執行期原本在壓縮檔裡自己猜哪裡是 Skill 根目錄，而 Plugin 的根目錄放的是
@@ -655,7 +655,7 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
 | 新增的輸入 | `SKILLHUB_SKILL_SOURCE_PATH`——該 Skill Version 在套件內的根目錄，本身即整包時為空字串。兩個 driver 都一定會設這個變數（空值也設），所以執行期讀的是一條規則不是兩條 |
 | 新增的拒絕 | 指定的目錄不是套件內的相對路徑（絕對路徑、`..`、反斜線）→ `provision/invalid_package`，**在解壓之前就拒絕**；指定的目錄沒有 `SKILL.md` → 同一個代碼。另外，**沒有指定而執行期自己解出的根目錄也沒有 `SKILL.md` 時，現在會失敗**，以前是安靜地裝出一個空 Skill |
 | 清理 | 安裝完一律移除 staging 目錄。以前只有「壓縮檔有單一頂層目錄」時才移除，所以從 Plugin 取出一個 Skill 之後，Plugin 其餘部分（含 `mcp.json`）會留在沙箱的輸入目錄裡 |
-| 預設映像 | **仍是 `-12`**。四項實測要動到模型閘道（第 1 項就是 Skill 載入），沒有跑；跑完並通過才移 |
+| 預設映像 | 本節第一批推送時仍是 `-12`；四項在 CI 發佈的 digest 上跑過並通過之後，同批移到 `-13`（見末節） |
 
 ### 本機驗證（2026-09-26，沒有任何模型呼叫）
 
@@ -676,6 +676,27 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 
 同一份語料在 `2026.08-12` 的映像裡，`packageRoot` 解出 `""`——也就是整包 Plugin 會被當成一個叫 `skill` 的 Skill 安裝，而它的根目錄沒有 `SKILL.md`。這是這一版要修掉的行為。
 
-### 四項測項：尚未重跑
+### 2026-09-26：四項測項，全部跑在 CI 發佈的 digest 上
 
-第 1 項（Skill 載入條件）正是這次動到的那一段，必須重跑；它要一次真實的 Agent 執行，因此要起模型閘道並產生費用。第 2～4 項與本次變更無關但依規則一併重跑。**在跑完之前，預設映像與 CI 的 probe tag 都留在 `-12`。**
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:f8dd3305241c9b7fd9df19f49d8cdd54072a8c29cdccd7b0540f3930da59de10`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-13`，[Runtime Image #36227804814](https://github.com/ArthurC02/SkillHub/actions/runs/36227804814) 於 commit `6bbd6f76` 發佈；以 digest `docker pull`，`RepoDigests` 對得上） |
+| 環境 | 本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；DB 是 `skillhub_test`；允許清單沿用 dev 那份（`pinned_ip` 指 litellm 在 `skillhub_egress` 的位址），committed 的那份一字未動 |
+| 費用 | 合計 **$0.09266355**（`gpt-5.4-mini`，20 次呼叫，以閘道自己的 `LiteLLM_SpendLogs` 加總）：harness 兩支 $0.0278835、單一 Skill 的端到端一次 $0.02316885、**Plugin 內 Skill 的端到端一次 $0.02251035**、以及下面那次刻意跑在舊映像上的反證 $0.0191。第 2 項的撤銷驗證另開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key，跑完 `/key/delete` |
+| 見證 | GHCR 上該 digest 有兩份 attestation：`https://spdx.dev/Document/v2.3`（SBOM）與 `https://in-toto.io/attestation/vulns/v0.1`（掃描結果），以 `/repos/.../attestations/<digest>` 匿名取回確認 |
+| 映像層 | 同一個 digest、無網路、非 root：`node --version` → `v22.23.2`、17 個 Python 套件 `OK 17/17 3.11.2`、`id -u` → `65532`、`command -v nc` → 無、`command -v npm` → 無、`dpkg -s libpcre2-8-0` → `10.42-1+deb12u1`、`/etc/debian_version` → `12.15`、`.Size` → 1,323,582,614 bytes、version label → `2026.08-13` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，兩種形狀各跑一次** | **單一 Skill 的套件**（根目錄就有 `SKILL.md`，`source_path` 空）：`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（23.30s），artifact 帶 `SKILLHUB-E2E-OK` 與 `SKILLHUB-SCRIPT-RAN py3.11`。**Plugin 內的 Skill**（`source_path=skills/run-marker`）：`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（19.31s），trace `skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → `script_log`：`SKILL-FILES=SKILL.md,scripts`、`SKILLS-INSTALLED=run-marker`。**沙箱裡沒有 `plugin.json`、沒有 `mcp.json`、沒有那個 Plugin 的另一個 Skill**——這一版要修的就是這件事，而它現在有一次真實 Run 的證據 |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 兩次 Run 的模型呼叫在閘道的 `LiteLLM_SpendLogs` 各留 6 列，`api_key` 是那次 Run 自己的 Virtual Key；沙箱的 egress 是 `default_deny`，唯一允許的目的地是 `model_gateway`。撤銷：新開的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401**（`Authentication Error, Invalid proxy server token passed`）。兩次 Run 的 `cleanup_status` 都是 `cleaned`，那一步包含撤銷 |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **欄位通過；對帳對得上帳、但 trace 的數字是下界** | `cache_read_input_tokens` 有值（`71168`，與 `-12` 同量級），`cache_write_input_tokens` 仍為 `null`。**被收的那個數字對得上**：平台在清理時從 `/spend/logs/v2` 讀到並記進 `cost_events` 的是 `22511` µUSD，閘道自己那 6 列合計 `$0.02251035`——同一個數。**trace 的 `usage.cost_usd` 卻是 `$0.02078535`**，正好少了最後一次呼叫的 `$0.001725`：`run.mjs` 的 `gatewaySpend` 輪詢 `/key/info`，在最後一次呼叫的 spend flush 之前就看到兩次相同讀數而收斂。收費不受影響（收費讀的是 `/spend/logs/v2`），**但 schema 對 `cost_usd` 的描述是「閘道回報的成本」，沒有說它是下界**——記進 `04` |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（17.61s，`in=17901 out=37 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.57s，撞上限仍回報 `in=17901 out=28`，provider 錯誤指向 `token_budget_exceeded`）。兩次 Run 的 `usage` 也都發出，`token_source=result`。**與 `-12` 的差異**：harness 那兩支的 `cost_usd` 這次是 `null`（`-12` 是 `0.013908/gateway`）。原因是 harness 把 **master key** 當成 Run 的 gateway grant，而閘道的 `/key/info` 不對 master key 回 per-key spend；生產路徑一律是每 Run 的 Virtual Key，那條路徑今天量到有值 |
+
+**是否推翻既有文件敘述**：`cost_usd` 那一項要修——見上面第 3 項與 `04`。其餘（`run.mjs` 檔頭的 Skill 載入條件、caching 欄位 nullable 的規約、`usage` 的發出條件）都與實測一致。
+
+**新的端到端測試會紅的反證**：把 `sandboxd` 指回 `-12` 的 digest（`sha256:56c63f30…`）、其他一切不動，同一支 `TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` FAIL——而且失敗的方式正是這一版要修的病：Run 仍然 `succeeded`、模型照樣被呼叫（$0.0191），但物件儲存裡**連 artifact 壓縮檔都不存在**，因為 Agent 一個 Skill 都沒發現、什麼都沒寫。改回 `-13` 的 digest 之後同一支 PASS。
+
+**供應鏈掃描（不在四項清單上）**：`anchore/syft:v1.51.0@sha256:678bfa56…` 產 SPDX SBOM（249 個套件）、`anchore/grype:v0.117.0@sha256:ddf9e9f2…` 以 `--only-fixed --fail-on high` 掃 → `No vulnerabilities found`（exit 0）。**這一跑的對象是本機建置的 `skillhub/runtime-agent-sdk:2026.08-13`（經 `docker save` 轉 tar），不是發佈的 digest**——Windows 主機上 syft 無法透過 docker.sock 讀那個 digest；發佈 digest 的掃描由 CI 跑完並見証（上表的見証欄）。
+
+**預設映像同批從 `-12` 移到 `-13`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。
