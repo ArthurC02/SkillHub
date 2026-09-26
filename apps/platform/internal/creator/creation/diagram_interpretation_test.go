@@ -24,6 +24,9 @@ func TestValidDiagramTextRuneBoundaries(t *testing.T) {
 			if got := validDiagramAnswer(tc.value); got != tc.valid {
 				t.Fatalf("validDiagramAnswer(%q) = %v, want %v", name, got, tc.valid)
 			}
+			if got := validDiagramInterpretation(&DiagramInterpretation{Nodes: []string{tc.value}}); got != tc.valid {
+				t.Fatalf("validDiagramInterpretation(%q) = %v, want %v", name, got, tc.valid)
+			}
 		})
 	}
 }
