@@ -118,7 +118,7 @@ func TestDevContainerEditorDefaultsCoverTheRepoToolchain(t *testing.T) {
 	if settings["go.toolsManagement.checkForUpdates"] != "off" {
 		t.Fatalf("go.toolsManagement.checkForUpdates = %#v", settings["go.toolsManagement.checkForUpdates"])
 	}
-	if settings["python.defaultInterpreterPath"] != "/workspace/apps/llm/.venv/bin/python" {
+	if settings["python.defaultInterpreterPath"] != "${workspaceFolder}/apps/llm/.venv/bin/python" {
 		t.Fatalf("python.defaultInterpreterPath = %#v", settings["python.defaultInterpreterPath"])
 	}
 	if settings["python.terminal.activateEnvironment"] != true {

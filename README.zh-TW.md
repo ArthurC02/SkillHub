@@ -117,7 +117,7 @@ task dev:llm
 ## 遠端開發：Codespaces 與 Dev Containers
 
 Skill Hub 內建 repo 自帶的 Dev Container，設定放在
-[`/.devcontainer`](.devcontainer/)。它會建置釘選的
+[`.devcontainer`](.devcontainer/)。它會建置釘選的
 [`infra/images/devtools/Dockerfile`](infra/images/devtools/Dockerfile)，啟動
 供本機 Compose 與 codegen 使用的巢狀 Docker daemon，以 `.env.example`
 安全初始化 `.env`（若已存在則不覆寫），並 bootstrap Go、Node 與 Python

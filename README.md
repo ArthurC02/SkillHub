@@ -117,7 +117,7 @@ The first command starts LiteLLM after checking required secrets. The second min
 ## Remote development: Codespaces and Dev Containers
 
 Skill Hub ships a repository-owned Dev Container in
-[`/devcontainer`](.devcontainer/). It builds the pinned
+[`.devcontainer`](.devcontainer/). It builds the pinned
 [`infra/images/devtools/Dockerfile`](infra/images/devtools/Dockerfile), starts a
 nested Docker daemon for local Compose and code generation, creates `.env` from
 `.env.example` without overwriting an existing file, and bootstraps Go, Node
