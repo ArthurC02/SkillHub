@@ -4,25 +4,99 @@
     "context": "..",
     "dockerfile": "../infra/images/devtools/Dockerfile"
   },
+  "waitFor": "postCreateCommand",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "mounts": [
-    "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume"
+    "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume",
+    "source=skillhub-devcontainer-go-mod,target=/go/pkg/mod,type=volume",
+    "source=skillhub-devcontainer-npm-cache,target=/home/vscode/.npm,type=volume",
+    "source=skillhub-devcontainer-uv-cache,target=/home/vscode/.cache/uv,type=volume"
   ],
   "runArgs": ["--privileged"],
+  "shutdownAction": "stopContainer",
   "remoteUser": "vscode",
   "containerEnv": {
-    "UV_LINK_MODE": "copy"
+    "UV_LINK_MODE": "copy",
+    "SKILLHUB_REMOTE_DEV": "1"
   },
   "postStartCommand": "sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &' && sh -c 'i=0; until docker info >/dev/null 2>&1; do i=$((i+1)); test $i -lt 60 || { sudo tail -80 /tmp/dockerd.log; exit 1; }; sleep 1; done'",
-  "postCreateCommand": "go -C tools/devctl run . env-init && go -C tools/devctl run . bootstrap",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [5173, 8080, 4000, 5432, 8333, 2345, 5678, 9229],
+  "portsAttributes": {
+    "5173": {
+      "label": "web-dev-server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "platform-api",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "litellm-gateway",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "postgres",
+      "onAutoForward": "silent"
+    },
+    "8333": {
+      "label": "seaweedfs-s3",
+      "onAutoForward": "silent"
+    },
+    "2345": {
+      "label": "go-debug-delve",
+      "onAutoForward": "silent"
+    },
+    "5678": {
+      "label": "python-debugpy",
+      "onAutoForward": "silent"
+    },
+    "9229": {
+      "label": "node-debug",
+      "onAutoForward": "silent"
+    }
+  },
   "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md",
+        "docs/development/REMOTE_DEVELOPMENT.md"
+      ]
+    },
     "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+        "python.testing.pytestEnabled": true
+      },
       "extensions": [
         "golang.go",
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "dbaeumer.vscode-eslint"
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "charliermarsh.ruff",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
       ]
     }
   }

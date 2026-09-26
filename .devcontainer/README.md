@@ -4,6 +4,24 @@ This is the recommended clean-machine path documented in [開發自動化與依�
 `infra/images/devtools` image, initializes `.env` without overwriting it, and
 downloads language dependencies.
 
+## Startup and initialization flow
+
+- `postStartCommand` starts a nested Docker daemon (`dockerd`) and waits until
+  `docker info` succeeds.
+- `postCreateCommand` runs `.devcontainer/post-create.sh`, which checks required
+  tool binaries, verifies required `.env` keys, and runs dependency bootstrap.
+- Bootstrap is cached by lockfile hash and skipped when the dependency graph is
+  unchanged.
+
+If you need a clean baseline, delete `.devcontainer/.bootstrap.stamp` and run:
+
+```bash
+bash .devcontainer/post-create.sh
+```
+
+Use `.devcontainer/.env.remote.example` as an optional starter template when
+preparing a remote-only `.env`.
+
 ## Docker-in-Docker trust boundary
 
 The Dev Container runs privileged so it can start its own Docker daemon, backed
