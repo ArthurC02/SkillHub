@@ -86,6 +86,7 @@ task clean-mode
 - `postCreateCommand` 會執行 `.devcontainer/post-create.sh`，腳本會做工具檢查，並呼叫 `go -C tools/devctl run . env-init`。
 - `env-init` 會在 `.env` 不存在時由 `.env.example` 建立；若 `.env` 已存在則保持原值不覆寫。
 - 若你希望先準備遠端最小模板，可先將 `.devcontainer/.env.remote.example` 複製成 `.env`，再依需求補齊值。
+- `post-create.sh` 在完整初始化時要求以下 key 為非空：`DATABASE_URL`、`OBJSTORE_ENDPOINT`、`OBJSTORE_ACCESS_KEY`、`OBJSTORE_SECRET_KEY`、`LITELLM_BASE_URL`。
 
 常見模式：
 

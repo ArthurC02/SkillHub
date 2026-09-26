@@ -40,44 +40,30 @@ required_env_keys=(
   OBJSTORE_SECRET_KEY
   LITELLM_BASE_URL
 )
+
+set -a
+. ./.env
+set +a
+
 for key in "${required_env_keys[@]}"; do
-  value="$(
-    awk -F= -v want="${key}" '
-      {
-        line=$0
-        sub(/^[[:space:]]+/, "", line)
-        if (line == "" || substr(line, 1, 1) == "#") {
-          next
-        }
-        split(line, pair, "=")
-        parsed_key=pair[1]
-        sub(/[[:space:]]+$/, "", parsed_key)
-        if (parsed_key == want) {
-          sub(/^[^=]*=/, "", line)
-          print line
-          exit
-        }
-      }
-    ' .env
-  )"
+  value="${!key:-}"
   if [ -z "${value}" ]; then
-    printf "missing required .env key: %s\n" "${key}" >&2
-    exit 1
-  fi
-  value="$(printf "%s" "${value}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-  value="${value#\"}"
-  value="${value%\"}"
-  value="${value#\'}"
-  value="${value%\'}"
-  if [ -z "${value}" ]; then
-    printf "empty required .env value: %s\n" "${key}" >&2
+    printf "missing or empty required .env key: %s\n" "${key}" >&2
     exit 1
   fi
 done
 
-bootstrap_lock=/tmp/skillhub-devcontainer-bootstrap.lock
+bootstrap_lock_key="$(pwd | cksum | awk '{print $1}')"
+bootstrap_lock="/tmp/skillhub-devcontainer-bootstrap-${bootstrap_lock_key}.lock"
 lock_wait=0
 until mkdir "${bootstrap_lock}" 2>/dev/null; do
+  if [ -f "${bootstrap_lock}/pid" ]; then
+    holder_pid="$(cat "${bootstrap_lock}/pid" 2>/dev/null || true)"
+    if [ -n "${holder_pid}" ] && ! kill -0 "${holder_pid}" 2>/dev/null; then
+      rm -rf "${bootstrap_lock}"
+      continue
+    fi
+  fi
   lock_wait=$((lock_wait + 1))
   if [ "${lock_wait}" -ge 120 ]; then
     echo "timed out waiting for bootstrap lock" >&2
@@ -90,6 +76,7 @@ cleanup_lock() {
   rm -rf "${bootstrap_lock}"
 }
 trap cleanup_lock EXIT INT TERM
+echo "$$" >"${bootstrap_lock}/pid"
 
 go -C tools/devctl run . bootstrap
 trap - INT TERM
