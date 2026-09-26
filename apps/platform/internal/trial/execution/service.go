@@ -754,6 +754,23 @@ type RunsOnDay struct {
 	Runs   int64
 }
 
+type RunWorkspacesOnDay struct {
+	Day        time.Time
+	Workspaces int64
+}
+
+func (s *Service) DailyRunWorkspaces(ctx context.Context, since time.Time) ([]RunWorkspacesOnDay, error) {
+	rows, err := s.queries().CountRunWorkspacesByDay(ctx, pgtype.Timestamptz{Time: since, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RunWorkspacesOnDay, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, RunWorkspacesOnDay{Day: r.Day.Time, Workspaces: r.Workspaces})
+	}
+	return out, nil
+}
+
 func (s *Service) DailyRuns(ctx context.Context, since time.Time) ([]RunsOnDay, error) {
 	rows, err := s.queries().CountRunsByDay(ctx, pgtype.Timestamptz{Time: since, Valid: true})
 	if err != nil {

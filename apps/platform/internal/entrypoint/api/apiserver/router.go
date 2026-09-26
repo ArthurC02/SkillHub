@@ -137,6 +137,7 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("PUT /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Set))
 	mux.HandleFunc("DELETE /admin/model-budgets/{kind}", auth.RequireOperator(d.ModelBudgets.Clear))
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
+	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
 
 	lab := d.TestLab

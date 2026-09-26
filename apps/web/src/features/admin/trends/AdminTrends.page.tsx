@@ -8,6 +8,7 @@ import {
   type CreditTrend,
   type DailyAmount,
   type DailyCount,
+  type FunnelTrend,
   type Trend,
 } from "../admin.service";
 import { AdminPage } from "../components/AdminPage";
@@ -28,7 +29,9 @@ export function AdminTrends() {
   const credits = useTrend<CreditTrend>("credits", days);
   const runs = useTrend<Trend>("runs", days);
   const actions = useTrend<Trend>("operator-actions", days);
-  const range = [cost, credits, runs, actions].find((query) => query.data)?.data;
+  const funnel = useTrend<FunnelTrend>("funnel", days);
+  const stages = funnel.data?.stages ?? [];
+  const range = [cost, credits, runs, actions, funnel].find((query) => query.data)?.data;
 
   return (
     <AdminPage
@@ -79,6 +82,24 @@ export function AdminTrends() {
         format={String}
         labels={ACTION_LABEL}
       />
+      <TrendSection
+        heading="漏斗各段每天到達的數量"
+        query={funnel}
+        value={countOf}
+        format={String}
+        labels={Object.fromEntries(stages.map((stage) => [stage.key, stage.label]))}
+      >
+        {stages.length > 0 && (
+          <dl>
+            {stages.map((stage) => (
+              <div key={stage.key}>
+                <dt>{stage.label}</dt>
+                <dd>{stage.grain}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </TrendSection>
     </AdminPage>
   );
 }

@@ -157,6 +157,10 @@ type GetDownloadArtifactRes interface {
 	getDownloadArtifactRes()
 }
 
+type GetFunnelTrendRes interface {
+	getFunnelTrendRes()
+}
+
 type GetMeRes interface {
 	getMeRes()
 }

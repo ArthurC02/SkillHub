@@ -300,10 +300,12 @@ func NewApp(cfg Config) (*App, error) {
 			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 			ModelBudgets:  &modelbudget.Handler{Svc: budgets, Actor: sessionActorID},
 			Trends: &trendsHandler{
-				Credits:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
-				DailyRuns: runSvc.DailyRuns,
-				Audit:     cfg.Pool,
-				Now:       time.Now,
+				Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+				DailyRuns:          runSvc.DailyRuns,
+				DailyRunWorkspaces: runSvc.DailyRunWorkspaces,
+				DailyFunnelReach:   funnel.DailyFunnelReach,
+				Audit:              cfg.Pool,
+				Now:                time.Now,
 			},
 			Analytics: &analytics.Handler{
 				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,

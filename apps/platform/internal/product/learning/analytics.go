@@ -197,3 +197,33 @@ func queryScript(q string) string {
 		return "other"
 	}
 }
+
+type FunnelReach struct {
+	Day     time.Time
+	Event   string
+	Reached int64
+}
+
+var funnelEvents = []string{EventSearchPerformed, EventSkillDetailViewed, EventDownloadStarted}
+
+func countedPerWorkspace(event string) bool {
+	return event == EventDownloadStarted
+}
+
+func (s *Service) DailyFunnelReach(ctx context.Context, since time.Time) ([]FunnelReach, error) {
+	rows, err := gen.New(s.Pool).CountFunnelReachByDay(ctx, gen.CountFunnelReachByDayParams{
+		Since: pgtype.Timestamptz{Time: since, Valid: true}, EventNames: funnelEvents,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]FunnelReach, 0, len(rows))
+	for _, r := range rows {
+		reached := r.Sessions
+		if countedPerWorkspace(r.EventName) {
+			reached = r.Workspaces
+		}
+		out = append(out, FunnelReach{Day: r.Day.Time, Event: r.EventName, Reached: reached})
+	}
+	return out, nil
+}

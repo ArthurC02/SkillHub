@@ -116,6 +116,39 @@ func (q *Queries) CountPersistentOrphans(ctx context.Context, arg CountPersisten
 	return count, err
 }
 
+const countRunWorkspacesByDay = `-- name: CountRunWorkspacesByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(DISTINCT workspace_id)::bigint AS workspaces
+FROM runs
+WHERE created_at >= $1::timestamptz
+GROUP BY 1
+ORDER BY 1
+`
+
+type CountRunWorkspacesByDayRow struct {
+	Day        pgtype.Date
+	Workspaces int64
+}
+
+func (q *Queries) CountRunWorkspacesByDay(ctx context.Context, since pgtype.Timestamptz) ([]CountRunWorkspacesByDayRow, error) {
+	rows, err := q.db.Query(ctx, countRunWorkspacesByDay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountRunWorkspacesByDayRow
+	for rows.Next() {
+		var i CountRunWorkspacesByDayRow
+		if err := rows.Scan(&i.Day, &i.Workspaces); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countRunsByDay = `-- name: CountRunsByDay :many
 SELECT (created_at AT TIME ZONE 'UTC')::date AS day, status::text AS status, count(*)::bigint AS runs
 FROM runs

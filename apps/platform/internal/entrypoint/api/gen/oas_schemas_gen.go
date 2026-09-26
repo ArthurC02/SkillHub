@@ -8059,6 +8059,149 @@ type ForkSkillUnauthorized Error
 
 func (*ForkSkillUnauthorized) forkSkillRes() {}
 
+// Ref: #/components/schemas/FunnelStage
+type FunnelStage struct {
+	Key   FunnelStageKey `json:"key"`
+	Label string         `json:"label"`
+	// What one count in this stage means.
+	Grain string `json:"grain"`
+}
+
+// GetKey returns the value of Key.
+func (s *FunnelStage) GetKey() FunnelStageKey {
+	return s.Key
+}
+
+// GetLabel returns the value of Label.
+func (s *FunnelStage) GetLabel() string {
+	return s.Label
+}
+
+// GetGrain returns the value of Grain.
+func (s *FunnelStage) GetGrain() string {
+	return s.Grain
+}
+
+// SetKey sets the value of Key.
+func (s *FunnelStage) SetKey(val FunnelStageKey) {
+	s.Key = val
+}
+
+// SetLabel sets the value of Label.
+func (s *FunnelStage) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetGrain sets the value of Grain.
+func (s *FunnelStage) SetGrain(val string) {
+	s.Grain = val
+}
+
+type FunnelStageKey string
+
+const (
+	FunnelStageKeySearchPerformed   FunnelStageKey = "search_performed"
+	FunnelStageKeySkillDetailViewed FunnelStageKey = "skill_detail_viewed"
+	FunnelStageKeyRunStarted        FunnelStageKey = "run_started"
+	FunnelStageKeyDownloadStarted   FunnelStageKey = "download_started"
+)
+
+// AllValues returns all FunnelStageKey values.
+func (FunnelStageKey) AllValues() []FunnelStageKey {
+	return []FunnelStageKey{
+		FunnelStageKeySearchPerformed,
+		FunnelStageKeySkillDetailViewed,
+		FunnelStageKeyRunStarted,
+		FunnelStageKeyDownloadStarted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s FunnelStageKey) MarshalText() ([]byte, error) {
+	switch s {
+	case FunnelStageKeySearchPerformed:
+		return []byte(s), nil
+	case FunnelStageKeySkillDetailViewed:
+		return []byte(s), nil
+	case FunnelStageKeyRunStarted:
+		return []byte(s), nil
+	case FunnelStageKeyDownloadStarted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *FunnelStageKey) UnmarshalText(data []byte) error {
+	switch FunnelStageKey(data) {
+	case FunnelStageKeySearchPerformed:
+		*s = FunnelStageKeySearchPerformed
+		return nil
+	case FunnelStageKeySkillDetailViewed:
+		*s = FunnelStageKeySkillDetailViewed
+		return nil
+	case FunnelStageKeyRunStarted:
+		*s = FunnelStageKeyRunStarted
+		return nil
+	case FunnelStageKeyDownloadStarted:
+		*s = FunnelStageKeyDownloadStarted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/FunnelTrend
+type FunnelTrend struct {
+	From    time.Time     `json:"from"`
+	To      time.Time     `json:"to"`
+	Buckets []DailyCount  `json:"buckets"`
+	Stages  []FunnelStage `json:"stages"`
+}
+
+// GetFrom returns the value of From.
+func (s *FunnelTrend) GetFrom() time.Time {
+	return s.From
+}
+
+// GetTo returns the value of To.
+func (s *FunnelTrend) GetTo() time.Time {
+	return s.To
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *FunnelTrend) GetBuckets() []DailyCount {
+	return s.Buckets
+}
+
+// GetStages returns the value of Stages.
+func (s *FunnelTrend) GetStages() []FunnelStage {
+	return s.Stages
+}
+
+// SetFrom sets the value of From.
+func (s *FunnelTrend) SetFrom(val time.Time) {
+	s.From = val
+}
+
+// SetTo sets the value of To.
+func (s *FunnelTrend) SetTo(val time.Time) {
+	s.To = val
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *FunnelTrend) SetBuckets(val []DailyCount) {
+	s.Buckets = val
+}
+
+// SetStages sets the value of Stages.
+func (s *FunnelTrend) SetStages(val []FunnelStage) {
+	s.Stages = val
+}
+
+func (*FunnelTrend) getFunnelTrendRes() {}
+
 // A flowchart or diagram the model reads as the task (02:GEN-005). Sent inline as base64 rather than
 // through a separate upload endpoint: the image is an INPUT to one synchronous call, not an object the
 // platform keeps — only its digest, media type and byte count land in the provenance row, so nothing
@@ -9087,6 +9230,31 @@ func (*GetDownloadArtifactNotFound) getDownloadArtifactRes() {}
 type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
+
+type GetFunnelTrendBadRequest Error
+
+func (*GetFunnelTrendBadRequest) getFunnelTrendRes() {}
+
+type GetFunnelTrendDays int
+
+const (
+	GetFunnelTrendDays7  GetFunnelTrendDays = 7
+	GetFunnelTrendDays30 GetFunnelTrendDays = 30
+	GetFunnelTrendDays90 GetFunnelTrendDays = 90
+)
+
+// AllValues returns all GetFunnelTrendDays values.
+func (GetFunnelTrendDays) AllValues() []GetFunnelTrendDays {
+	return []GetFunnelTrendDays{
+		GetFunnelTrendDays7,
+		GetFunnelTrendDays30,
+		GetFunnelTrendDays90,
+	}
+}
+
+type GetFunnelTrendNotFound Error
+
+func (*GetFunnelTrendNotFound) getFunnelTrendRes() {}
 
 type GetOperatorActionTrendBadRequest Error
 
@@ -12615,6 +12783,52 @@ func (o OptGetCreditTrendDays) Get() (v GetCreditTrendDays, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetCreditTrendDays) Or(d GetCreditTrendDays) GetCreditTrendDays {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetFunnelTrendDays returns new OptGetFunnelTrendDays with value set to v.
+func NewOptGetFunnelTrendDays(v GetFunnelTrendDays) OptGetFunnelTrendDays {
+	return OptGetFunnelTrendDays{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetFunnelTrendDays is optional GetFunnelTrendDays.
+type OptGetFunnelTrendDays struct {
+	Value GetFunnelTrendDays
+	Set   bool
+}
+
+// IsSet returns true if OptGetFunnelTrendDays was set.
+func (o OptGetFunnelTrendDays) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetFunnelTrendDays) Reset() {
+	var v GetFunnelTrendDays
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetFunnelTrendDays) SetTo(v GetFunnelTrendDays) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetFunnelTrendDays) Get() (v GetFunnelTrendDays, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetFunnelTrendDays) Or(d GetFunnelTrendDays) GetFunnelTrendDays {
 	if v, ok := o.Get(); ok {
 		return v
 	}

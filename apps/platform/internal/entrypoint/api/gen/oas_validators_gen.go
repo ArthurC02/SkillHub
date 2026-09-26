@@ -3256,6 +3256,95 @@ func (s ForkSkillCreatedRedistribution) Validate() error {
 	}
 }
 
+func (s *FunnelStage) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Key.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "key",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s FunnelStageKey) Validate() error {
+	switch s {
+	case "search_performed":
+		return nil
+	case "skill_detail_viewed":
+		return nil
+	case "run_started":
+		return nil
+	case "download_started":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s *FunnelTrend) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if s.Buckets == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "buckets",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if s.Stages == nil {
+			return errors.New("nil is invalid value")
+		}
+		var failures []validate.FieldError
+		for i, elem := range s.Stages {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "stages",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *GenerateDiagram) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -3836,6 +3925,19 @@ func (s GetDispatchStatusOKHaltsItemSource) Validate() error {
 	case "p1_incident":
 		return nil
 	case "orphan_threshold":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s GetFunnelTrendDays) Validate() error {
+	switch s {
+	case 7:
+		return nil
+	case 30:
+		return nil
+	case 90:
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

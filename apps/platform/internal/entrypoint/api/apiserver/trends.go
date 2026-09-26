@@ -9,16 +9,19 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	analytics "github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 const isoDate = "2006-01-02"
 
 type trendsHandler struct {
-	Credits   CreditLedger
-	DailyRuns func(ctx context.Context, since time.Time) ([]run.RunsOnDay, error)
-	Audit     audit.DBTX
-	Now       func() time.Time
+	Credits            CreditLedger
+	DailyRuns          func(ctx context.Context, since time.Time) ([]run.RunsOnDay, error)
+	DailyRunWorkspaces func(ctx context.Context, since time.Time) ([]run.RunWorkspacesOnDay, error)
+	DailyFunnelReach   func(ctx context.Context, since time.Time) ([]analytics.FunnelReach, error)
+	Audit              audit.DBTX
+	Now                func() time.Time
 }
 
 type dailyCountView struct {
@@ -140,4 +143,53 @@ func (h *trendsHandler) OperatorActions(w http.ResponseWriter, r *http.Request) 
 		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: d.Action, Count: d.Count})
 	}
 	httpx.WriteJSON(w, http.StatusOK, newTrendView(from, to, views))
+}
+
+const funnelRunStarted = "run_started"
+
+type funnelStage struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Grain string `json:"grain"`
+}
+
+var funnelStages = []funnelStage{
+	{Key: analytics.EventSearchPerformed, Label: "搜尋",
+		Grain: "每個瀏覽工作階段一天算一次。同一個人換裝置或清掉 cookie 會算成兩個，所以這一段系統性偏高，只能讀量級。"},
+	{Key: analytics.EventSkillDetailViewed, Label: "看 Skill 詳情",
+		Grain: "粒度同搜尋，每個瀏覽工作階段一天算一次；不要求先搜尋過，從連結直接進來的也算。"},
+	{Key: funnelRunStarted, Label: "開始試跑",
+		Grain: "每個工作區一天算一次，來自執行紀錄而不是分析事件；和前兩段的工作階段不是同一種單位，不能相除成轉換率。"},
+	{Key: analytics.EventDownloadStarted, Label: "按下下載",
+		Grain: "每個工作區一天算一次；記的是按下按鈕，打包仍可能被拒，實際下載以下載紀錄為準。"},
+}
+
+type funnelTrendView struct {
+	trendView[dailyCountView]
+	Stages []funnelStage `json:"stages"`
+}
+
+func (h *trendsHandler) Funnel(w http.ResponseWriter, r *http.Request) {
+	from, to, ok := h.window(w, r)
+	if !ok {
+		return
+	}
+	reach, err := h.DailyFunnelReach(r.Context(), from)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "funnel trend lookup failed")
+		return
+	}
+	runs, err := h.DailyRunWorkspaces(r.Context(), from)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "funnel trend lookup failed")
+		return
+	}
+	views := make([]dailyCountView, 0, len(reach)+len(runs))
+	for _, d := range reach {
+		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: d.Event, Count: d.Reached})
+	}
+	for _, d := range runs {
+		views = append(views, dailyCountView{Day: d.Day.Format(isoDate), Key: funnelRunStarted, Count: d.Workspaces})
+	}
+	httpx.WriteJSON(w, http.StatusOK, funnelTrendView{trendView: newTrendView(from, to, views), Stages: funnelStages})
 }

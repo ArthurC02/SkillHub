@@ -218,11 +218,13 @@ export type DailyCount = { day: string; key: string; count: number };
 export type DailyAmount = DailyCount & { total: number };
 export type Trend<B extends DailyCount = DailyCount> = { from: string; to: string; buckets: B[] };
 export type CreditTrend = Trend<DailyAmount> & { balance_total: number };
+export type FunnelStage = { key: string; label: string; grain: string };
+export type FunnelTrend = Trend & { stages: FunnelStage[] };
 export type TrendDays = 7 | 30 | 90;
 export const TREND_DAYS: TrendDays[] = [7, 30, 90];
 
 export function useTrend<T extends Trend<DailyCount>>(
-  path: "cost" | "credits" | "runs" | "operator-actions",
+  path: "cost" | "credits" | "runs" | "operator-actions" | "funnel",
   days: TrendDays,
 ) {
   return useQuery({

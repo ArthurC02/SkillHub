@@ -560,7 +560,7 @@ test("OPS-008: a series fills a day with no bucket with zero and drops a bucket 
   ]);
 });
 
-const TREND_PATHS = ["cost", "credits", "operator-actions", "runs"];
+const TREND_PATHS = ["cost", "credits", "funnel", "operator-actions", "runs"];
 const trendCalls = () => calls.filter((c) => c.url.startsWith("/admin/trends/")).map((c) => c.url);
 const trendsFor = (days: number) =>
   new Set(TREND_PATHS.map((path) => `/admin/trends/${path}?days=${days}`));
@@ -576,9 +576,19 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
       c.getAttribute("aria-label"),
     ),
   ).toEqual(
-    ["單次生成", "評審", "扣點", "授予", "執行失敗", "執行完成", "查詢帳號", "授予點數"].map(
-      (name) => `${name}：每日長條圖，逐日數字在下方的表`,
-    ),
+    [
+      "單次生成",
+      "評審",
+      "扣點",
+      "授予",
+      "執行失敗",
+      "執行完成",
+      "查詢帳號",
+      "授予點數",
+      "開始試跑",
+      "搜尋",
+      "看 Skill 詳情",
+    ].map((name) => `${name}：每日長條圖，逐日數字在下方的表`),
   );
 });
 
@@ -601,6 +611,24 @@ test("OPS-008: a kind's figure totals its range and its table shows zero on the 
   ]);
 });
 
+test("OPS-008: the funnel says what one count means at every stage, from the server's own sentences", async () => {
+  stub(true);
+  await mountAt("/admin/trends");
+  await waitFor(has("每個瀏覽工作階段一天算一次，這一段系統性偏高。"));
+  const grains = Array.from(container.querySelectorAll("dl > div")).map((row) => [
+    row.querySelector("dt")?.textContent,
+    row.querySelector("dd")?.textContent,
+  ]);
+  expect(grains).toEqual([
+    ["搜尋", "每個瀏覽工作階段一天算一次，這一段系統性偏高。"],
+    ["看 Skill 詳情", "粒度同搜尋。"],
+    ["開始試跑", "每個工作區一天算一次，不能相除成轉換率。"],
+    ["按下下載", "每個工作區一天算一次；打包仍可能被拒。"],
+  ]);
+  expect(has("這段期間沒有事件：按下下載。")()).toBe(true);
+  expect(has("搜尋：12 筆")()).toBe(true);
+});
+
 test("OPS-008: a kind with no events in the range is named instead of drawn", async () => {
   stub(true);
   await mountAt("/admin/trends");
@@ -621,7 +649,7 @@ test("OPS-008: a range in the address is asked for, and a range the page does no
 
   calls = [];
   await go("/admin/trends", { days: "8" });
-  await waitFor(() => trendCalls().length >= 4);
+  await waitFor(() => trendCalls().length >= 5);
   expect(new Set(trendCalls())).toEqual(trendsFor(30));
 });
 

@@ -2,7 +2,10 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,6 +91,7 @@ func TestTrendRangeIsTheLastNUTCDaysEndingToday(t *testing.T) {
 	for _, bad := range []string{"?days=6", "?days=8", "?days=31", "?days=91", "?days=0", "?days=abc", "?days="} {
 		for _, path := range []string{
 			"/admin/trends/cost", "/admin/trends/credits", "/admin/trends/runs", "/admin/trends/operator-actions",
+			"/admin/trends/funnel",
 		} {
 			if code, _ := getAdmin(t, operator, path+bad); code != http.StatusBadRequest {
 				t.Errorf("GET %s%s: got %d, want 400", path, bad, code)
@@ -231,5 +235,61 @@ func purgeAuditEvent(t *testing.T, pool *pgxpool.Pool, resourceID string) {
 	}
 	if err := tx.Commit(ctx); err != nil {
 		t.Errorf("cleanup: %v", err)
+	}
+}
+
+func TestFunnelTrendCountsEachStageAtItsOwnGrain(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	operator := trendOperator(t, a, "trend-funnel-operator")
+	owner := a.login(t, "trend-funnel-owner")
+
+	body, before := getTrend(t, operator, "/admin/trends/funnel?days=7")
+	from, to := trendDay(t, body["from"]), trendDay(t, body["to"])
+	ctx := context.Background()
+	session := func(n int) string { return fmt.Sprintf("funnel-%s-%d", owner.workspaceID, n) }
+	event := func(name, sessionID string, workspace any, at time.Time) {
+		if _, err := pool.Exec(ctx, `INSERT INTO analytics_events (event_name, session_id, workspace_id, occurred_at)
+			VALUES ($1, $2, $3, $4)`, name, sessionID, workspace, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	today := to.Add(time.Minute)
+	event("search_performed", session(1), nil, today)
+	event("search_performed", session(1), nil, today.Add(time.Minute))
+	event("search_performed", session(2), nil, today)
+	event("search_performed", session(3), nil, from.Add(-time.Second))
+	event("skill_detail_viewed", session(1), nil, today)
+	event("download_started", session(1), mustUUID(t, owner.workspaceID), today)
+	event("download_started", session(2), mustUUID(t, owner.workspaceID), today)
+	event("download_started", session(3), nil, today)
+	event("session_started", session(1), nil, today)
+	skillID := seedSkill(t, pool, owner.workspaceID, "trend-funnel-skill")
+	seedRunWithCriteria(t, pool, owner.workspaceID, skillID, cmpVersion(t, pool, owner.workspaceID, skillID, "funnel-a"), `[]`)
+	seedRunWithCriteria(t, pool, owner.workspaceID, skillID, cmpVersion(t, pool, owner.workspaceID, skillID, "funnel-b"), `[]`)
+
+	next, after := getTrend(t, operator, "/admin/trends/funnel?days=7")
+	assertTrendDelta(t, before, after, to, "search_performed", "count", 2)
+	assertTrendDelta(t, before, after, from, "search_performed", "count", 0)
+	assertTrendDelta(t, before, after, to, "skill_detail_viewed", "count", 1)
+	assertTrendDelta(t, before, after, to, "download_started", "count", 1)
+	assertTrendDelta(t, before, after, to, "run_started", "count", 1)
+	if _, ok := after[trendKey{to.Format(time.DateOnly), "session_started"}]; ok {
+		t.Error("an event that is not a funnel stage came back as a bucket")
+	}
+
+	var keys []string
+	for _, stage := range objects(t, next["stages"]) {
+		keys = append(keys, fmt.Sprint(stage["key"]))
+		if grain, _ := stage["grain"].(string); grain == "" {
+			t.Errorf("stage %v arrived without saying what one count means", stage["key"])
+		}
+	}
+	if want := []string{"search_performed", "skill_detail_viewed", "run_started", "download_started"}; fmt.Sprint(keys) != fmt.Sprint(want) {
+		t.Errorf("stages = %v, want %v in funnel order", keys, want)
+	}
+	encoded, _ := json.Marshal(next)
+	if strings.Contains(string(encoded), session(1)) || strings.Contains(string(encoded), owner.workspaceID) {
+		t.Errorf("the funnel trend leaks a session or workspace id: %s", encoded)
 	}
 }

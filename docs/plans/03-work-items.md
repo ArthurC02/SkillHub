@@ -489,6 +489,7 @@ hello in-process s3
 - [x] OPS-008 每一條新 `/admin/...` 端點列入 `authz_matrix_integration_test.go`；新 query 登記在 `db/query-owners.yaml`，不加 `allow:` 例外。（依[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)、[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)；鐵律 7、8）
 - [x] OPS-009 營運趨勢圖：`apps/web` 新增 `chart.js` 依賴（[營運後台](../adr/README.md#營運後台)，§4.8 的具名例外）與 `/admin/trends`；四條每日彙總端點（`credit` 兩條、`run`、`audit`），逐條 `RequireOperator` 並列入 authz 矩陣。（對應 `02:OPS-008`；第三批）
 - [x] OPS-010 模型呼叫逾時：契約六個 request schema 加 `timeout_seconds` 並由 `apps/llm` 取 `min()`；migration `0082` 的 `model_call_budgets` 與新的 Generic 套件 `foundation/integration/modelbudget`；三條 `RequireOperator` 端點（理由必填、與 audit 同交易）；`apps/web` 的 `/admin/model-budgets`。（對應 `02:OPS-009`；[`05` R-84](05-pending-rulings.md)；第四批）
+- [x] OPS-011 漏斗趨勢圖（[`05` R-78](05-pending-rulings.md)）：`GET /admin/trends/funnel`（`RequireOperator`、列入 authz 矩陣），搜尋／看詳情／下載取 `analytics` 的查詢、開始試跑取 `run` 的查詢，計數粒度在 Go 決定；`/admin/trends` 多一組圖與四段的粒度說明。依帳號排行不做。（對應 `02:OPS-008`）
 
 ## 23. 測試的容器依賴
 

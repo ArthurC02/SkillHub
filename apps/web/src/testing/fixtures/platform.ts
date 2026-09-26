@@ -8,6 +8,7 @@ import type {
   SkillGovernance,
   CreditTrend,
   DailyAmount,
+  FunnelTrend,
   Trend,
 } from "../../features/admin/admin.service";
 import type {
@@ -851,6 +852,26 @@ export const ADMIN_TREND_RUNS = {
   ],
 } satisfies Trend;
 
+export const ADMIN_TREND_FUNNEL = {
+  from: "2026-09-06",
+  to: "2026-09-12",
+  buckets: [
+    { day: "2026-09-11", key: "search_performed", count: 12 },
+    { day: "2026-09-11", key: "skill_detail_viewed", count: 7 },
+    { day: "2026-09-11", key: "run_started", count: 2 },
+  ],
+  stages: [
+    {
+      key: "search_performed",
+      label: "搜尋",
+      grain: "每個瀏覽工作階段一天算一次，這一段系統性偏高。",
+    },
+    { key: "skill_detail_viewed", label: "看 Skill 詳情", grain: "粒度同搜尋。" },
+    { key: "run_started", label: "開始試跑", grain: "每個工作區一天算一次，不能相除成轉換率。" },
+    { key: "download_started", label: "按下下載", grain: "每個工作區一天算一次；打包仍可能被拒。" },
+  ],
+} satisfies FunnelTrend;
+
 export const ADMIN_TREND_ACTIONS = {
   from: "2026-09-06",
   to: "2026-09-12",
@@ -928,6 +949,7 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path === "/admin/trends/credits") return ok(ADMIN_TREND_CREDITS);
   if (path === "/admin/trends/runs") return ok(ADMIN_TREND_RUNS);
   if (path === "/admin/trends/operator-actions") return ok(ADMIN_TREND_ACTIONS);
+  if (path === "/admin/trends/funnel") return ok(ADMIN_TREND_FUNNEL);
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
   if (path.startsWith("/api/skills/catalog")) {
     const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");

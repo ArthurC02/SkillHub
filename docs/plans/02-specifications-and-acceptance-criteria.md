@@ -1006,7 +1006,7 @@ Run 至少支援：
 
 **本節不新增 operator 的權力**：每一顆寫入按鈕都對應 `SEC-011` 已有的端點。後台也不是新的 Bounded Context，是組裝層——新讀取各歸原本的事實 owner（帳號與名冊歸 `identity`、點數與成本統計歸 `credit`、Skill 治理狀態歸 `catalog`、operator 動作紀錄歸 `audit`），畫面在 `apps/web` 的 `/admin/*` 把它們拼起來，後端不新增跨 context 的聚合端點。
 
-第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。第三批（新增，[營運後台](../adr/README.md#營運後台)決策）：`OPS-008`。第四批（新增，[`05` R-84](05-pending-rulings.md) 裁定）：`OPS-009`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；漏斗儀表板（[產品分析與稽核邊界](../adr/README.md#產品分析與稽核邊界)決策 6；要不要做交 `05` R-78）；依帳號或工作區的排行與下鑽（`05` R-78）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復；精選層的寫入（只有 `PUT /admin/skills/{id}/tier` 端點，由內容工具呼叫，畫面不提供）。
+第一批：`OPS-001`～`OPS-005`。第二批：`OPS-006`、`OPS-007`。第三批（新增，[營運後台](../adr/README.md#營運後台)決策）：`OPS-008`。第四批（新增，[`05` R-84](05-pending-rulings.md) 裁定）：`OPS-009`。**不在範圍**：編輯 `OPERATOR_USER_IDS`／`BETA_ALLOWLIST`；讀取 `SEC-011` 列為私有的資料；依帳號或工作區的排行與下鑽（[`05` R-78](05-pending-rulings.md) 裁定不做）；濫用檢舉案件（`SEC-011` 要求另立需求）；下架後的恢復；精選層的寫入（只有 `PUT /admin/skills/{id}/tier` 端點，由內容工具呼叫，畫面不提供）。
 
 #### OPS-001：後台外殼與 operator 旗標
 
@@ -1069,12 +1069,13 @@ Run 至少支援：
 
 允收準則：
 
-- 新頁 `/admin/trends`，四組每日圖：成本（`cost_events`，依種類，美元，含估計值）、點數異動（`credit_entries`，依分錄種類的淨額，另列全平台目前餘額總和）、建立的 Run（`runs`，依目前狀態）、operator 動作（`audit_events`，與 `OPS-006` 同一份 action 清單）。一個種類一張小圖，同一個色相。
+- 新頁 `/admin/trends`，五組每日圖：成本（`cost_events`，依種類，美元，含估計值）、點數異動（`credit_entries`，依分錄種類的淨額，另列全平台目前餘額總和）、建立的 Run（`runs`，依目前狀態）、operator 動作（`audit_events`，與 `OPS-006` 同一份 action 清單）、漏斗各段每天到達的數量（見下一條）。一個種類一張小圖，同一個色相。
+- **漏斗**（[`05` R-78](05-pending-rulings.md)）：搜尋、看 Skill 詳情、開始試跑、按下下載四段，各段每天到達的數量。搜尋與看詳情數不重複的瀏覽工作階段，開始試跑與按下下載數不重複的工作區；沒有工作區的下載事件不算，漏斗以外的分析事件不回。回應依漏斗順序附上四段各自的一句話，說明一個計數代表什麼；畫面把這四句話列在圖旁，不把兩段相除成轉換率。有一條測試證明：同一工作階段搜尋兩次算一次、兩個工作區的下載事件各算一次而沒有工作區的不算、同一工作區兩個 Run 算一次、範圍前一秒的事件不進第一天、`session_started` 不成為一段，且回應不含工作階段或工作區識別。
 - 時間範圍 7／30／90 天，預設 30，寫進網址（`?days=`）；伺服器只收這三個值，其他值回 400。以 UTC 日期分桶，畫面寫明；範圍內沒有事件的日子畫成 0，整段都沒有事件的種類不畫圖、列出名字。
 - **只查彙總**：每條查詢只依日期與種類／狀態／動作分組，不回 user id、workspace id 或 email。它不指向任何人，不寫 audit。
 - 按需查詢：打開頁面或換範圍才查，不輪詢、不在視窗回到前景時重查（[產品分析與稽核邊界](../adr/README.md#產品分析與稽核邊界)決策 6）。
 - 每張圖旁邊有同一組數字的逐日表；canvas 帶 `role="img"` 與一句說明；顏色只從 token 讀，不動畫。
-- 四條端點各歸事實 owner（`credit` 兩條、`run`、`audit`），在 `router.go` 逐條套 `RequireOperator`、列入 authz 矩陣；新 query 登記在 `db/query-owners.yaml`，不加例外。
+- 五條端點各歸事實 owner（`credit` 兩條、`run`、`audit`，漏斗那條向 `analytics` 與 `run` 各取一段），在 `router.go` 逐條套 `RequireOperator`、列入 authz 矩陣；新 query 登記在 `db/query-owners.yaml`，不加例外。
 
 ## 5. 非功能需求
 

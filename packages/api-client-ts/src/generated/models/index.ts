@@ -78,6 +78,8 @@ export * from './FileDiff';
 export * from './FindSkillsForGovernance200Response';
 export * from './Finding';
 export * from './ForkSkill201Response';
+export * from './FunnelStage';
+export * from './FunnelTrend';
 export * from './GenerateDiagram';
 export * from './GenerateSkillRefusal';
 export * from './GenerateSkillRefusalMessage';

@@ -98,6 +98,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /admin/trends/cost", want: http.StatusNotFound},
 	{pattern: "GET /admin/trends/credits", want: http.StatusNotFound},
 	{pattern: "GET /admin/trends/runs", want: http.StatusNotFound},
+	{pattern: "GET /admin/trends/funnel", want: http.StatusNotFound},
 	{pattern: "GET /admin/trends/operator-actions", want: http.StatusNotFound},
 
 	{pattern: "GET /test-cases/limits", want: http.StatusUnauthorized},

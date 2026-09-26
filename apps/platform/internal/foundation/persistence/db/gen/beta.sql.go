@@ -11,6 +11,55 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countFunnelReachByDay = `-- name: CountFunnelReachByDay :many
+SELECT (occurred_at AT TIME ZONE 'UTC')::date AS day,
+       event_name,
+       count(DISTINCT session_id)::bigint AS sessions,
+       count(DISTINCT workspace_id)::bigint AS workspaces
+FROM analytics_events
+WHERE occurred_at >= $1::timestamptz
+  AND event_name = ANY($2::text[])
+GROUP BY 1, 2
+ORDER BY 1, 2
+`
+
+type CountFunnelReachByDayParams struct {
+	Since      pgtype.Timestamptz
+	EventNames []string
+}
+
+type CountFunnelReachByDayRow struct {
+	Day        pgtype.Date
+	EventName  string
+	Sessions   int64
+	Workspaces int64
+}
+
+func (q *Queries) CountFunnelReachByDay(ctx context.Context, arg CountFunnelReachByDayParams) ([]CountFunnelReachByDayRow, error) {
+	rows, err := q.db.Query(ctx, countFunnelReachByDay, arg.Since, arg.EventNames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFunnelReachByDayRow
+	for rows.Next() {
+		var i CountFunnelReachByDayRow
+		if err := rows.Scan(
+			&i.Day,
+			&i.EventName,
+			&i.Sessions,
+			&i.Workspaces,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countQuotaRuns = `-- name: CountQuotaRuns :one
 SELECT
     count(DISTINCT r.id)::bigint AS used,

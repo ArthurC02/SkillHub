@@ -315,3 +315,10 @@ FROM runs
 WHERE created_at >= @since::timestamptz
 GROUP BY 1, 2
 ORDER BY 1, 2;
+
+-- name: CountRunWorkspacesByDay :many
+SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(DISTINCT workspace_id)::bigint AS workspaces
+FROM runs
+WHERE created_at >= @since::timestamptz
+GROUP BY 1
+ORDER BY 1;

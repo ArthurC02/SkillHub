@@ -3042,6 +3042,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/trends/funnel:
+    get:
+      operationId: getFunnelTrend
+      summary: How many reached each funnel stage per day (02:OPS-008)
+      description: |
+        Operator only, asked for when the page opens and never polled.
+        search_performed and skill_detail_viewed count distinct browser
+        sessions per UTC day; run_started and download_started count distinct
+        workspaces per UTC day. The units differ, so stages are not divided
+        into conversion rates; each stage carries a sentence saying what one
+        count means. Grouped by UTC day only; no session, user, workspace or
+        email in the response.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Daily buckets keyed by stage, and the stages in funnel order.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FunnelTrend" }
+        "400":
+          description: days is not 7, 30 or 90.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/trends/operator-actions:
     get:
       operationId: getOperatorActionTrend
@@ -5922,6 +5955,25 @@ components:
         buckets:
           type: array
           items: { $ref: "#/components/schemas/DailyCount" }
+    FunnelStage:
+      type: object
+      required: [key, label, grain]
+      properties:
+        key: { type: string, enum: [search_performed, skill_detail_viewed, run_started, download_started] }
+        label: { type: string }
+        grain: { type: string, description: What one count in this stage means, and why it must not be divided by another stage. }
+    FunnelTrend:
+      type: object
+      required: [from, to, buckets, stages]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/DailyCount" }
+        stages:
+          type: array
+          items: { $ref: "#/components/schemas/FunnelStage" }
     AmountTrend:
       type: object
       required: [from, to, buckets]

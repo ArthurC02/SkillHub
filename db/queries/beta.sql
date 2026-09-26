@@ -45,3 +45,14 @@ DELETE FROM feedback_reports WHERE created_at < $1;
 
 -- name: RunIDsInWorkspace :many
 SELECT id FROM runs WHERE id = ANY(@run_ids::uuid[]) AND workspace_id = @workspace_id;
+
+-- name: CountFunnelReachByDay :many
+SELECT (occurred_at AT TIME ZONE 'UTC')::date AS day,
+       event_name,
+       count(DISTINCT session_id)::bigint AS sessions,
+       count(DISTINCT workspace_id)::bigint AS workspaces
+FROM analytics_events
+WHERE occurred_at >= @since::timestamptz
+  AND event_name = ANY(@event_names::text[])
+GROUP BY 1, 2
+ORDER BY 1, 2;

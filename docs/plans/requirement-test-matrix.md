@@ -138,7 +138,7 @@
 | OPS-005 | 有測試 | `TestRostersShowWhatIsInForce`、`TestP1HaltStopsBothEntryPointsAndPreservesTheScene` | |
 | OPS-006 | 有測試 | `TestOperatorAuditLogListsOnlyOperatorActions` | |
 | OPS-007 | 有測試 | `TestCostStatisticsShowTheNewestWindowOfEachKind` | |
-| OPS-008 | 有測試 | `TestTrendRangeIsTheLastNUTCDaysEndingToday`、`TestCostTrendSumsEachKindPerUTCDayFromTheFirstInstantOfTheRange`、`TestOperatorActionTrendCountsOnlyOperatorActions` | |
+| OPS-008 | 有測試 | `TestTrendRangeIsTheLastNUTCDaysEndingToday`、`TestCostTrendSumsEachKindPerUTCDayFromTheFirstInstantOfTheRange`、`TestOperatorActionTrendCountsOnlyOperatorActions`、`TestFunnelTrendCountsEachStageAtItsOwnGrain` | |
 | OPS-009 | 有測試 | `TestTheOperatorsCeilingIsWhatTheNextCallIsGiven`、`TestEveryChangeLeavesOneAuditEventNamingTheReasonAndBothValues`、`TestARefusedChangeLeavesNeitherASettingNorAnEvent` | |
 
 ## 非功能需求

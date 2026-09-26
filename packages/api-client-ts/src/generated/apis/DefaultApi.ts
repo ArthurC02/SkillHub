@@ -239,6 +239,11 @@ import {
     ForkSkill201ResponseToJSON,
 } from '../models/ForkSkill201Response';
 import {
+    type FunnelTrend,
+    FunnelTrendFromJSON,
+    FunnelTrendToJSON,
+} from '../models/FunnelTrend';
+import {
     type GenerateSkillRefusal,
     GenerateSkillRefusalFromJSON,
     GenerateSkillRefusalToJSON,
@@ -879,6 +884,13 @@ export interface GetDownloadArtifactRequest {
      * 
      */
     artifactId: string;
+}
+
+export interface GetFunnelTrendRequest {
+    /**
+     * 
+     */
+    days?: GetFunnelTrendDaysEnum;
 }
 
 export interface GetOperatorActionTrendRequest {
@@ -2422,6 +2434,30 @@ export interface DefaultApiInterface {
      * One download artifact, with its expiry and download count (WS-002)
      */
     getDownloadArtifact(requestParameters: GetDownloadArtifactRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DownloadArtifact>;
+
+    /**
+     * Creates request options for getFunnelTrend without sending the request
+     * @param {7 | 30 | 90} [days] 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getFunnelTrendRequestOpts(requestParameters: GetFunnelTrendRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only, asked for when the page opens and never polled. search_performed and skill_detail_viewed count distinct browser sessions per UTC day; run_started and download_started count distinct workspaces per UTC day. The units differ, so stages are not divided into conversion rates; each stage carries a sentence saying what one count means. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * @summary How many reached each funnel stage per day (02:OPS-008)
+     * @param {7 | 30 | 90} [days] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getFunnelTrendRaw(requestParameters: GetFunnelTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FunnelTrend>>;
+
+    /**
+     * Operator only, asked for when the page opens and never polled. search_performed and skill_detail_viewed count distinct browser sessions per UTC day; run_started and download_started count distinct workspaces per UTC day. The units differ, so stages are not divided into conversion rates; each stage carries a sentence saying what one count means. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many reached each funnel stage per day (02:OPS-008)
+     */
+    getFunnelTrend(requestParameters: GetFunnelTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FunnelTrend>;
 
     /**
      * Creates request options for getHealth without sending the request
@@ -5885,6 +5921,49 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for getFunnelTrend without sending the request
+     */
+    async getFunnelTrendRequestOpts(requestParameters: GetFunnelTrendRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/trends/funnel`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only, asked for when the page opens and never polled. search_performed and skill_detail_viewed count distinct browser sessions per UTC day; run_started and download_started count distinct workspaces per UTC day. The units differ, so stages are not divided into conversion rates; each stage carries a sentence saying what one count means. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many reached each funnel stage per day (02:OPS-008)
+     */
+    async getFunnelTrendRaw(requestParameters: GetFunnelTrendRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FunnelTrend>> {
+        const requestOptions = await this.getFunnelTrendRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => FunnelTrendFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only, asked for when the page opens and never polled. search_performed and skill_detail_viewed count distinct browser sessions per UTC day; run_started and download_started count distinct workspaces per UTC day. The units differ, so stages are not divided into conversion rates; each stage carries a sentence saying what one count means. Grouped by UTC day only; no session, user, workspace or email in the response. 
+     * How many reached each funnel stage per day (02:OPS-008)
+     */
+    async getFunnelTrend(requestParameters: GetFunnelTrendRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FunnelTrend> {
+        const response = await this.getFunnelTrendRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getHealth without sending the request
      */
     async getHealthRequestOpts(): Promise<runtime.RequestOpts> {
@@ -8920,6 +8999,15 @@ export const GetCreditTrendDaysEnum = {
     NUMBER_90: 90,
 } as const;
 export type GetCreditTrendDaysEnum = typeof GetCreditTrendDaysEnum[keyof typeof GetCreditTrendDaysEnum];
+/**
+ * @export
+ */
+export const GetFunnelTrendDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90,
+} as const;
+export type GetFunnelTrendDaysEnum = typeof GetFunnelTrendDaysEnum[keyof typeof GetFunnelTrendDaysEnum];
 /**
  * @export
  */
