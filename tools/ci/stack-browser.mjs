@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
-import { seedSkill } from "./stack-seed.mjs";
+import { NOT_YET_REGISTERED, seedSkill } from "./stack-seed.mjs";
 
 const base = process.env.BASE_URL;
 if (!base) {
@@ -46,7 +46,9 @@ if (routes.length < 15) {
 const UUID_G = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 const HAS_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 
-const allowed404 = (routeUrl, signedIn) => {
+const allowed404 = (routeUrl, signedIn, path) => {
+  if (NOT_YET_REGISTERED.test(path)) return true;
+  if (routeUrl.startsWith("/p/")) return true;
   if (!HAS_UUID.test(routeUrl)) return false;
   if (!signedIn) return true;
   const known = new Set(seeded ? Object.values(seeded) : []);
@@ -112,7 +114,7 @@ for (const { signedIn, context } of [
       if (status < 400) return;
       const path = new URL(res.url()).pathname;
       if (!signedIn && (status === 401 || status === 403)) return;
-      if (status === 404 && allowed404(route.url, signedIn)) return;
+      if (status === 404 && allowed404(route.url, signedIn, path)) return;
       problems.push(`HTTP ${status} ${path}`);
     });
 

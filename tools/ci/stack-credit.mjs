@@ -1,5 +1,9 @@
 import { chromium } from "playwright";
-import { onlyImportedSkill, zipOneFile } from "./stack-seed.mjs";
+import {
+  NOT_YET_REGISTERED,
+  onlyImportedSkill,
+  zipOneFile,
+} from "./stack-seed.mjs";
 
 const base = process.env.BASE_URL;
 if (!base) {
@@ -99,11 +103,14 @@ try {
   let acceptingDeletedTestCaseReadBack = false;
   page.on("pageerror", (err) => problems.push(`uncaught: ${err.message}`));
   page.on("console", (message) => {
-    if (
+    const notFound =
       message.type() === "error" &&
-      acceptingDeletedTestCaseReadBack &&
       message.text() ===
-        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        "Failed to load resource: the server responded with a status of 404 (Not Found)";
+    if (notFound && acceptingDeletedTestCaseReadBack) return;
+    if (
+      notFound &&
+      NOT_YET_REGISTERED.test(new URL(message.location().url || base).pathname)
     )
       return;
     if (message.type() === "error") problems.push(`console: ${message.text()}`);

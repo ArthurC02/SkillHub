@@ -4,6 +4,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
+import { Tip } from "../../../shared/ui/Tip";
 import { API_BASE_URL, ApiError } from "../../../core/api/client";
 import { useEmbeddedSkillDetails, useOwnSkills } from "../../skill";
 import {
@@ -64,10 +65,10 @@ export function BundleSection() {
   return (
     <section>
       <h2>Bundle</h2>
-      <p className="note" data-role="teaching">
+      <Tip anchor="Bundle 是什麼">
         Bundle 把幾個你自己的 Skill 版本釘成一組，可以匯出成一個 Agent
         Plugin，或以一個公開位址發佈。
-      </p>
+      </Tip>
 
       {bundles.isPending && <Loading what="Bundle 清單" />}
       <ReadFailure error={bundles.error} what="Bundle 清單" />

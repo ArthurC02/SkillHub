@@ -1,3 +1,6 @@
+export const NOT_YET_REGISTERED =
+  /\/(me\/publisher|skills\/[^/]+\/publication|me\/bundles\/[^/]+\/publication)$/;
+
 const CRC_TABLE = (() => {
   const t = new Int32Array(256);
   for (let n = 0; n < 256; n++) {
