@@ -232,9 +232,25 @@ func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 	}
 }
 
+// An import reply names every skill the source held; a seed package holds one.
+func firstImportedSkillID(body string) string {
+	var reply struct {
+		Skills []struct {
+			SkillID string `json:"skill_id"`
+		} `json:"skills"`
+	}
+	if err := json.Unmarshal([]byte(body), &reply); err != nil || len(reply.Skills) != 1 {
+		return ""
+	}
+	return reply.Skills[0].SkillID
+}
+
 func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out io.Writer) error {
 	if skillID == "" {
-		return nil
+		return fmt.Errorf(
+			"seed-clean: the import of %q answered without a skill id, so the index check could not run.\n"+
+				"  Skipping it silently would let an unindexed catalog look seeded; stop here and read the reply shape",
+			name)
 	}
 	resp, err := client.Get(api + "/api/skills/" + url.PathEscape(skillID))
 	if err != nil {
@@ -357,11 +373,7 @@ func seedClean(root string, args []string, out io.Writer) error {
 			continue
 		}
 		if imported == 1 {
-			var created struct {
-				SkillID string `json:"skill_id"`
-			}
-			_ = json.Unmarshal([]byte(body), &created)
-			if err := verifyEnrichmentReached(client, api, e.name, created.SkillID, out); err != nil {
+			if err := verifyEnrichmentReached(client, api, e.name, firstImportedSkillID(body), out); err != nil {
 				return err
 			}
 		}

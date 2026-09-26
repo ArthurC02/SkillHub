@@ -211,7 +211,7 @@ func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http
 		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
 			atomic.AddInt32(uploads, 1)
 			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
+			_, _ = w.Write([]byte(`{"shape":"skill","skills":[{"path":"","skill_id":"stub"}],"refused":[]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/stub":
 
 			_, _ = fmt.Fprint(w, `{"skill_id":"stub","enrichment":{"status":"enriched"}}`)
@@ -343,7 +343,7 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case "/skills/import/upload":
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_, _ = w.Write([]byte(`{"errors":[{"code":"bad"}]}`))
+			_, _ = w.Write([]byte(`{"shape":"skill","skills":[],"refused":[{"path":"","findings":{"errors":[{"code":"bad"}]}}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -505,7 +505,7 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
 			atomic.AddInt32(&uploads, 1)
 			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
+			_, _ = w.Write([]byte(`{"shape":"skill","skills":[{"path":"","skill_id":"stub"}],"refused":[]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
 			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":1}`, r.URL.Query().Get("q"))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/skills/"):
@@ -545,5 +545,53 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&uploads); got != 0 {
 		t.Errorf("uploads = %d; want 0 — a refused argument must be refused before anything is sent", got)
+	}
+}
+
+func TestFirstImportedSkillIDReadsTheOnlySkillAndNothingElse(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"the one skill a seed package holds", `{"shape":"skill","skills":[{"path":"","skill_id":"s-1"}],"refused":[]}`, "s-1"},
+		{"a refusal carries no skill", `{"shape":"skill","skills":[],"refused":[{"path":""}]}`, ""},
+		{"two skills is not a seed package", `{"skills":[{"skill_id":"a"},{"skill_id":"b"}]}`, ""},
+		{"the pre-plural shape is not read as a skill", `{"skill_id":"s-1","version_id":"v-1"}`, ""},
+		{"an unparseable body", `not json`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := firstImportedSkillID(tc.body); got != tc.want {
+				t.Errorf("firstImportedSkillID(%s) = %q, want %q", tc.body, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSeedCleanStopsWhenTheImportReplyCarriesNoSkillID(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/auth/dev/login":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"shape":"skill","skills":[{"path":""}],"refused":[]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("SKILLHUB_API", server.URL)
+
+	var out strings.Builder
+	if err := seedClean(root, nil, &out); err == nil {
+		t.Fatal("seed-clean accepted a reply it could not read a skill id out of; the index check would have been skipped in silence")
+	} else if !strings.Contains(err.Error(), "without a skill id") {
+		t.Errorf("the refusal does not say what was missing: %v", err)
 	}
 }

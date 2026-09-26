@@ -77,6 +77,18 @@ Summarise the text the user provides, in the format they ask for.
 3. Answer in that format.
 `;
 
+// An import reply names every skill the source held, because one source can
+// hold several; these fixtures hold exactly one.
+export function onlyImportedSkill(body) {
+  const skills = Array.isArray(body?.skills) ? body.skills : [];
+  if (skills.length !== 1) {
+    throw new Error(
+      `import reply carried ${skills.length} skills, want 1: ${JSON.stringify(body).slice(0, 300)}`,
+    );
+  }
+  return skills[0];
+}
+
 export async function seedSkill(request, base) {
   const res = await request.post(base + "/skills/import/upload", {
     headers: { "content-type": "application/zip" },
@@ -87,7 +99,7 @@ export async function seedSkill(request, base) {
       `seed upload answered ${res.status()}: ${(await res.text()).slice(0, 300)}`,
     );
   }
-  const body = await res.json();
+  const body = onlyImportedSkill(await res.json());
   if (!body.skill_id || !body.version_id) {
     throw new Error(
       `seed upload returned no ids: ${JSON.stringify(body).slice(0, 200)}`,

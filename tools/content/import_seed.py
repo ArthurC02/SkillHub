@@ -150,10 +150,16 @@ def repack_skill(repo_zip: pathlib.Path, skill_md_path: str, source: dict | None
 
 
 
+def only_skill(payload) -> dict:
+    """An import reply names every skill the source held; a repacked seed holds one."""
+    skills = payload.get("skills") if isinstance(payload, dict) else None
+    return skills[0] if isinstance(skills, list) and len(skills) == 1 else {}
+
+
 def classify(status: int, payload) -> str:
     """Map an import response to a report bucket."""
     if status == 201:
-        return "duplicate" if payload.get("duplicate") else "imported"
+        return "duplicate" if only_skill(payload).get("duplicate") else "imported"
     if status == 422:
         return "rejected_validation"
     return f"error_http_{status}"
@@ -171,9 +177,14 @@ def import_one(opener, api: str, zip_bytes: bytes) -> tuple[str, dict]:
 
 
 def findings_of(payload: dict) -> dict:
-    """Findings live at the top level on 422 and under "findings" on 201."""
-    f = payload.get("findings", payload)
-    return {k: f.get(k) or [] for k in ("errors", "warnings", "infos")}
+    """On 201 the findings sit under the imported skill; on 422 under each refused one."""
+    imported = only_skill(payload)
+    if imported:
+        f = imported.get("findings") or {}
+    else:
+        refused = payload.get("refused") if isinstance(payload, dict) else None
+        f = (refused[0].get("findings") or {}) if isinstance(refused, list) and refused else payload
+    return {k: (f.get(k) if isinstance(f, dict) else None) or [] for k in ("errors", "warnings", "infos")}
 
 
 def run(args) -> int:
@@ -195,7 +206,7 @@ def run(args) -> int:
             row["package_bytes"] = len(zip_bytes)
             row["status"], payload = import_one(opener, args.api, zip_bytes)
             row["findings"] = findings_of(payload)
-            row["skill_id"] = payload.get("skill_id")
+            row["skill_id"] = only_skill(payload).get("skill_id")
         except Exception as e:
             row["status"] = "error_fetch"
             row["findings"] = {"errors": [{"code": "fetch", "message": str(e)[:300]}]}
@@ -308,8 +319,14 @@ def selftest() -> int:
         z.writestr("repo-abc123/LICENSE", "MIT License")
     assert repack_skill(tmp, "skills/demo/SKILL.md") == repack_skill(tmp, "skills/demo/SKILL.md")
 
-    assert classify(201, {"duplicate": True}) == "duplicate"
-    assert classify(422, {}) == "rejected_validation"
+    one = {"skill_id": "s", "duplicate": True, "findings": {"warnings": [{"code": "w"}]}}
+    assert classify(201, {"skills": [one], "refused": []}) == "duplicate"
+    assert classify(201, {"skills": [dict(one, duplicate=False)], "refused": []}) == "imported"
+    assert classify(422, {"skills": [], "refused": []}) == "rejected_validation"
+    assert findings_of({"skills": [one], "refused": []})["warnings"] == [{"code": "w"}]
+    refusal = {"path": "skills/bad", "findings": {"errors": [{"code": "e"}]}}
+    assert findings_of({"skills": [], "refused": [refusal]})["errors"] == [{"code": "e"}]
+    assert only_skill({"skills": [one, one]}) == {}, "two skills is not a seed package"
     print("selftest ok")
     return 0
 

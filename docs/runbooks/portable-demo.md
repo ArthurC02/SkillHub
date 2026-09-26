@@ -32,7 +32,7 @@ Return exactly BETA. Do not use tools or read files.
 
 ## 操作與預期結果
 
-1. 以 catalog workspace 的 operator 呼叫 `POST /skills/import/upload` 匯入 zip。保存回傳的 Skill ID、Version ID、content hash；讀回 `/api/skills/{id}`，確認 `scope=catalog`、License 為 `MIT/manifest`，而 `redistribution=unknown`。frontmatter 的授權宣告不等於已完成放行。
+1. 以 catalog workspace 的 operator 呼叫 `POST /skills/import/upload` 匯入 zip。回應列出這個來源帶進來的每一個 Skill，這份 fixture 只有一個；保存那一筆的 Skill ID、Version ID、content hash；讀回 `/api/skills/{id}`，確認 `scope=catalog`、License 為 `MIT/manifest`，而 `redistribution=unknown`。frontmatter 的授權宣告不等於已完成放行。
 2. 未放行前，對該版本呼叫 `POST /skills/{id}/versions/{versionId}/packaging`，body 為 `{"target":"standard"}`，應回 `422 license_unknown`。若回 503，先修 Provision，再重驗授權分支，不把兩種拒絕混為一談。
 3. 一般使用者呼叫下列 operator 端點應回 404；operator 提交不符快照的授權運算式，例如 `Apache-2.0`，應回 400。讀回狀態仍為 `unknown`，稽核紀錄沒有成功放行。
 4. operator 檢視這份實際套件後，以 `PUT /admin/skills/{id}/redistribution` 提交以下內容。理由需描述本次實際查證，不能照抄到別人的套件上。

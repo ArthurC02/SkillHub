@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { zipOneFile } from "./stack-seed.mjs";
+import { onlyImportedSkill, zipOneFile } from "./stack-seed.mjs";
 
 const base = process.env.BASE_URL;
 if (!base) {
@@ -88,7 +88,10 @@ try {
       ),
     },
   );
-  const forkSourceSkill = await forkSourceResponse.json().catch(() => ({}));
+  const forkSourceSkill = await forkSourceResponse
+    .json()
+    .then(onlyImportedSkill)
+    .catch(() => ({}));
   await forkSource.close();
 
   const page = await member.newPage();
@@ -169,7 +172,10 @@ try {
       .locator('button[type="submit"]')
       .click(),
   ]).then(([response]) => response);
-  const imported = await importResponse.json().catch(() => ({}));
+  const imported = await importResponse
+    .json()
+    .then(onlyImportedSkill)
+    .catch(() => ({}));
   const importLink = page.locator('a[href^="/skills/"]').last();
   const versions =
     typeof imported.skill_id === "string"
