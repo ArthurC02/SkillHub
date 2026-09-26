@@ -414,11 +414,11 @@ func readDotEnv(path string) (map[string]string, error) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		key, value, ok := strings.Cut(line, "=")
+		key, value, ok := parseKeyValue(line, "=")
 		if !ok {
 			continue
 		}
-		values[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
+		values[key] = value
 	}
 	return values, scanner.Err()
 }
@@ -450,11 +450,11 @@ func parseManifestSection(path, section string) (map[string]string, error) {
 			inSection = false
 			continue
 		}
-		parts := strings.SplitN(trimmed, ":", 2)
-		if len(parts) != 2 {
+		key, value, ok := parseKeyValue(trimmed, ":")
+		if !ok {
 			return nil, fmt.Errorf("invalid toolchain entry %q", line)
 		}
-		values[parts[0]] = strings.Trim(strings.TrimSpace(parts[1]), `"'`)
+		values[key] = value
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err

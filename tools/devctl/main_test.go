@@ -25,6 +25,20 @@ func TestCompatibleVersionMatchesMajorMinor(t *testing.T) {
 	}
 }
 
+func TestParseKeyValue(t *testing.T) {
+	t.Parallel()
+	key, value, ok := parseKeyValue(` key : " value " `, ":")
+	if !ok {
+		t.Fatal("parseKeyValue reported no match")
+	}
+	if key != "key" || value != " value " {
+		t.Fatalf("parseKeyValue returned (%q, %q), want (%q, %q)", key, value, "key", " value ")
+	}
+	if _, _, ok = parseKeyValue("missing delimiter", ":"); ok {
+		t.Fatal("parseKeyValue accepted a line without the delimiter")
+	}
+}
+
 func TestParseToolchain(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

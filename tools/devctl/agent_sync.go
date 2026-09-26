@@ -131,9 +131,9 @@ func parseClaudeAgent(source string) (name, description, body string, err error)
 	frontmatterEnd := len("---\n") + end
 	fields := map[string]string{}
 	for _, line := range strings.Split(source[len("---\n"):frontmatterEnd], "\n") {
-		key, value, ok := strings.Cut(line, ":")
+		key, value, ok := parseKeyValue(line, ":")
 		if ok {
-			fields[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
+			fields[key] = value
 		}
 	}
 	if fields["name"] == "" || fields["description"] == "" {
