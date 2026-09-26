@@ -466,6 +466,35 @@ type OutboxEvent struct {
 	DeadLetteredAt   pgtype.Timestamptz
 }
 
+type Publication struct {
+	ID              pgtype.UUID
+	PublisherID     pgtype.UUID
+	Name            string
+	SkillID         pgtype.UUID
+	Status          string
+	StatusChangedAt pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+}
+
+type PublicationRelease struct {
+	ID             pgtype.UUID
+	PublicationID  pgtype.UUID
+	SkillVersionID pgtype.UUID
+	VersionNumber  int32
+	ContentHash    string
+	Findings       []byte
+	RightsAttested bool
+	ReleasedBy     pgtype.UUID
+	ReleasedAt     pgtype.Timestamptz
+}
+
+type Publisher struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	CreatedAt   pgtype.Timestamptz
+}
+
 type ReconcilerOrphanSighting struct {
 	Provider      string
 	ProviderRunID string

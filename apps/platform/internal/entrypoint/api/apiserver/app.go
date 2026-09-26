@@ -26,6 +26,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -115,6 +116,7 @@ func NewApp(cfg Config) (*App, error) {
 	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeCreation = creation.PurgeWorkspace
+	identitySvc.PurgePublications = publishing.PurgeWorkspace
 	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
 	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
 	identitySvc.DatasetObjectKeys = testlab.WorkspaceObjectKeys
@@ -267,6 +269,8 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
+	publishingSvc := newPublishingService(cfg, registrySvc)
+
 	return &App{
 		Deps: Deps{
 			Auth:            auth,
@@ -292,6 +296,9 @@ func NewApp(cfg Config) (*App, error) {
 			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
 			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
+			Publishing: &publishing.Handler{
+				Svc: publishingSvc, Identity: auth.Service, DescribeRedistribution: describeRedistribution,
+			},
 			Credits: &creditsHandler{
 				Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
 				Identity:        identitySvc,

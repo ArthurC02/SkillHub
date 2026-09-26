@@ -54,6 +54,11 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /admin/credits/{workspace_id}", want: http.StatusNotFound},
 
 	{pattern: "POST /skills/{id}/fork", body: "{}", want: http.StatusNotFound},
+	{pattern: "GET /skills/{id}/publication", want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/publication", body: `{"rights_attested":true}`, want: http.StatusNotFound},
+	{pattern: "DELETE /skills/{id}/publication", want: http.StatusNotFound},
+	{pattern: "GET /publications/{publisher}/{name}",
+		unprobed: "a public address is open to anyone by design; the publishing tests cover what it discloses and when it stops"},
 	{pattern: "DELETE /skills/{id}", want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/takedown", body: `{"reason":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /skills/{id}/category", body: `{"category":"data"}`, want: http.StatusNotFound},

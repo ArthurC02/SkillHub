@@ -5874,6 +5874,14 @@ type DeleteTestCaseUnauthorized Error
 
 func (*DeleteTestCaseUnauthorized) deleteTestCaseRes() {}
 
+type DelistSkillNotFound Error
+
+func (*DelistSkillNotFound) delistSkillRes() {}
+
+type DelistSkillUnauthorized Error
+
+func (*DelistSkillUnauthorized) delistSkillRes() {}
+
 // One problem found about the run itself — EVAL-001 第 1 條's six categories — reported apart
 // from the criterion verdicts. Everything here except `effect` is decided by rules over the platform's
 // own records, so five of the six categories cannot be argued with by anything inside the sandbox.
@@ -6593,6 +6601,7 @@ func (*Error) getDatasetLimitsRes()                {}
 func (*Error) getDispatchStatusRes()               {}
 func (*Error) getMeRes()                           {}
 func (*Error) getOperatorRostersRes()              {}
+func (*Error) getPublicPublicationRes()            {}
 func (*Error) getSkillImportLimitsRes()            {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listModelCallBudgetsRes()            {}
@@ -9309,6 +9318,22 @@ func (s *GetOperatorRostersOK) SetBetaAllowlist(val []string) {
 }
 
 func (*GetOperatorRostersOK) getOperatorRostersRes() {}
+
+type GetOwnPublicationNotFound Error
+
+func (*GetOwnPublicationNotFound) getOwnPublicationRes() {}
+
+type GetOwnPublicationUnauthorized Error
+
+func (*GetOwnPublicationUnauthorized) getOwnPublicationRes() {}
+
+type GetOwnPublisherNotFound Error
+
+func (*GetOwnPublisherNotFound) getOwnPublisherRes() {}
+
+type GetOwnPublisherUnauthorized Error
+
+func (*GetOwnPublisherUnauthorized) getOwnPublisherRes() {}
 
 type GetReadinessOK struct {
 	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
@@ -13681,6 +13706,98 @@ func (o OptPackagingBlockedReason) Or(d PackagingBlockedReason) PackagingBlocked
 	return d
 }
 
+// NewOptPublicPublicationRelease returns new OptPublicPublicationRelease with value set to v.
+func NewOptPublicPublicationRelease(v PublicPublicationRelease) OptPublicPublicationRelease {
+	return OptPublicPublicationRelease{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicPublicationRelease is optional PublicPublicationRelease.
+type OptPublicPublicationRelease struct {
+	Value PublicPublicationRelease
+	Set   bool
+}
+
+// IsSet returns true if OptPublicPublicationRelease was set.
+func (o OptPublicPublicationRelease) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicPublicationRelease) Reset() {
+	var v PublicPublicationRelease
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicPublicationRelease) SetTo(v PublicPublicationRelease) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicPublicationRelease) Get() (v PublicPublicationRelease, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicPublicationRelease) Or(d PublicPublicationRelease) PublicPublicationRelease {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPublicPublicationSkill returns new OptPublicPublicationSkill with value set to v.
+func NewOptPublicPublicationSkill(v PublicPublicationSkill) OptPublicPublicationSkill {
+	return OptPublicPublicationSkill{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicPublicationSkill is optional PublicPublicationSkill.
+type OptPublicPublicationSkill struct {
+	Value PublicPublicationSkill
+	Set   bool
+}
+
+// IsSet returns true if OptPublicPublicationSkill was set.
+func (o OptPublicPublicationSkill) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicPublicationSkill) Reset() {
+	var v PublicPublicationSkill
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicPublicationSkill) SetTo(v PublicPublicationSkill) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicPublicationSkill) Get() (v PublicPublicationSkill, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicPublicationSkill) Or(d PublicPublicationSkill) PublicPublicationSkill {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptPublicSearchResultMatchReasonSource returns new OptPublicSearchResultMatchReasonSource with value set to v.
 func NewOptPublicSearchResultMatchReasonSource(v PublicSearchResultMatchReasonSource) OptPublicSearchResultMatchReasonSource {
 	return OptPublicSearchResultMatchReasonSource{
@@ -16389,6 +16506,284 @@ type PreviewPackagingUnauthorized Error
 
 func (*PreviewPackagingUnauthorized) previewPackagingRes() {}
 
+// Ref: #/components/schemas/PublicPublication
+type PublicPublication struct {
+	Publisher string `json:"publisher"`
+	Name      string `json:"name"`
+	Address   string `json:"address"`
+	// One of available, delisted, withdrawn, taken_down, held or not_redistributable; only available
+	// carries skill and release.
+	Availability Labelled `json:"availability"`
+	// When the author withdrew it; present only while availability is delisted.
+	DelistedAt OptDateTime                 `json:"delisted_at"`
+	Skill      OptPublicPublicationSkill   `json:"skill"`
+	Release    OptPublicPublicationRelease `json:"release"`
+	Releases   []PublicRelease             `json:"releases"`
+	// Whether it is in search and the catalog, and the sentence saying so.
+	Exposure PublicationNote `json:"exposure"`
+	// Whether this page can hand out a package, said before any action.
+	Acquisition PublicationNote `json:"acquisition"`
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *PublicPublication) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *PublicPublication) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *PublicPublication) GetAddress() string {
+	return s.Address
+}
+
+// GetAvailability returns the value of Availability.
+func (s *PublicPublication) GetAvailability() Labelled {
+	return s.Availability
+}
+
+// GetDelistedAt returns the value of DelistedAt.
+func (s *PublicPublication) GetDelistedAt() OptDateTime {
+	return s.DelistedAt
+}
+
+// GetSkill returns the value of Skill.
+func (s *PublicPublication) GetSkill() OptPublicPublicationSkill {
+	return s.Skill
+}
+
+// GetRelease returns the value of Release.
+func (s *PublicPublication) GetRelease() OptPublicPublicationRelease {
+	return s.Release
+}
+
+// GetReleases returns the value of Releases.
+func (s *PublicPublication) GetReleases() []PublicRelease {
+	return s.Releases
+}
+
+// GetExposure returns the value of Exposure.
+func (s *PublicPublication) GetExposure() PublicationNote {
+	return s.Exposure
+}
+
+// GetAcquisition returns the value of Acquisition.
+func (s *PublicPublication) GetAcquisition() PublicationNote {
+	return s.Acquisition
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *PublicPublication) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *PublicPublication) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *PublicPublication) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetAvailability sets the value of Availability.
+func (s *PublicPublication) SetAvailability(val Labelled) {
+	s.Availability = val
+}
+
+// SetDelistedAt sets the value of DelistedAt.
+func (s *PublicPublication) SetDelistedAt(val OptDateTime) {
+	s.DelistedAt = val
+}
+
+// SetSkill sets the value of Skill.
+func (s *PublicPublication) SetSkill(val OptPublicPublicationSkill) {
+	s.Skill = val
+}
+
+// SetRelease sets the value of Release.
+func (s *PublicPublication) SetRelease(val OptPublicPublicationRelease) {
+	s.Release = val
+}
+
+// SetReleases sets the value of Releases.
+func (s *PublicPublication) SetReleases(val []PublicRelease) {
+	s.Releases = val
+}
+
+// SetExposure sets the value of Exposure.
+func (s *PublicPublication) SetExposure(val PublicationNote) {
+	s.Exposure = val
+}
+
+// SetAcquisition sets the value of Acquisition.
+func (s *PublicPublication) SetAcquisition(val PublicationNote) {
+	s.Acquisition = val
+}
+
+func (*PublicPublication) getPublicPublicationRes() {}
+
+// Merged schema.
+type PublicPublicationRelease struct {
+	VersionNumber  int                             `json:"version_number"`
+	ContentHash    string                          `json:"content_hash"`
+	ReleasedAt     time.Time                       `json:"released_at"`
+	Findings       CategorizedFindings             `json:"findings"`
+	License        PublicPublicationReleaseLicense `json:"license"`
+	Redistribution Labelled                        `json:"redistribution"`
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PublicPublicationRelease) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *PublicPublicationRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *PublicPublicationRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// GetFindings returns the value of Findings.
+func (s *PublicPublicationRelease) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// GetLicense returns the value of License.
+func (s *PublicPublicationRelease) GetLicense() PublicPublicationReleaseLicense {
+	return s.License
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *PublicPublicationRelease) GetRedistribution() Labelled {
+	return s.Redistribution
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PublicPublicationRelease) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *PublicPublicationRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *PublicPublicationRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *PublicPublicationRelease) SetFindings(val CategorizedFindings) {
+	s.Findings = val
+}
+
+// SetLicense sets the value of License.
+func (s *PublicPublicationRelease) SetLicense(val PublicPublicationReleaseLicense) {
+	s.License = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *PublicPublicationRelease) SetRedistribution(val Labelled) {
+	s.Redistribution = val
+}
+
+type PublicPublicationReleaseLicense struct {
+	Expression string `json:"expression"`
+	Source     string `json:"source"`
+}
+
+// GetExpression returns the value of Expression.
+func (s *PublicPublicationReleaseLicense) GetExpression() string {
+	return s.Expression
+}
+
+// GetSource returns the value of Source.
+func (s *PublicPublicationReleaseLicense) GetSource() string {
+	return s.Source
+}
+
+// SetExpression sets the value of Expression.
+func (s *PublicPublicationReleaseLicense) SetExpression(val string) {
+	s.Expression = val
+}
+
+// SetSource sets the value of Source.
+func (s *PublicPublicationReleaseLicense) SetSource(val string) {
+	s.Source = val
+}
+
+type PublicPublicationSkill struct {
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+}
+
+// GetName returns the value of Name.
+func (s *PublicPublicationSkill) GetName() string {
+	return s.Name
+}
+
+// GetSummary returns the value of Summary.
+func (s *PublicPublicationSkill) GetSummary() string {
+	return s.Summary
+}
+
+// SetName sets the value of Name.
+func (s *PublicPublicationSkill) SetName(val string) {
+	s.Name = val
+}
+
+// SetSummary sets the value of Summary.
+func (s *PublicPublicationSkill) SetSummary(val string) {
+	s.Summary = val
+}
+
+// Ref: #/components/schemas/PublicRelease
+type PublicRelease struct {
+	VersionNumber int       `json:"version_number"`
+	ContentHash   string    `json:"content_hash"`
+	ReleasedAt    time.Time `json:"released_at"`
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PublicRelease) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *PublicRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *PublicRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PublicRelease) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *PublicRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *PublicRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
 // Ref: #/components/schemas/PublicSearchResponse
 type PublicSearchResponse struct {
 	// The original query, echoed back (DISC-001).
@@ -17146,6 +17541,433 @@ func (s *PublicSearchSkillsValidation) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/Publication
+type Publication struct {
+	Publisher string `json:"publisher"`
+	Name      string `json:"name"`
+	// The public page path, /p/{publisher}/{name}.
+	Address         string               `json:"address"`
+	Status          PublicationStatus    `json:"status"`
+	StatusChangedAt time.Time            `json:"status_changed_at"`
+	Releases        []PublicationRelease `json:"releases"`
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *Publication) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *Publication) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *Publication) GetAddress() string {
+	return s.Address
+}
+
+// GetStatus returns the value of Status.
+func (s *Publication) GetStatus() PublicationStatus {
+	return s.Status
+}
+
+// GetStatusChangedAt returns the value of StatusChangedAt.
+func (s *Publication) GetStatusChangedAt() time.Time {
+	return s.StatusChangedAt
+}
+
+// GetReleases returns the value of Releases.
+func (s *Publication) GetReleases() []PublicationRelease {
+	return s.Releases
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *Publication) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *Publication) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *Publication) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetStatus sets the value of Status.
+func (s *Publication) SetStatus(val PublicationStatus) {
+	s.Status = val
+}
+
+// SetStatusChangedAt sets the value of StatusChangedAt.
+func (s *Publication) SetStatusChangedAt(val time.Time) {
+	s.StatusChangedAt = val
+}
+
+// SetReleases sets the value of Releases.
+func (s *Publication) SetReleases(val []PublicationRelease) {
+	s.Releases = val
+}
+
+func (*Publication) delistSkillRes()       {}
+func (*Publication) getOwnPublicationRes() {}
+func (*Publication) publishSkillRes()      {}
+
+// Ref: #/components/schemas/PublicationNote
+type PublicationNote struct {
+	Available bool   `json:"available"`
+	Note      string `json:"note"`
+}
+
+// GetAvailable returns the value of Available.
+func (s *PublicationNote) GetAvailable() bool {
+	return s.Available
+}
+
+// GetNote returns the value of Note.
+func (s *PublicationNote) GetNote() string {
+	return s.Note
+}
+
+// SetAvailable sets the value of Available.
+func (s *PublicationNote) SetAvailable(val bool) {
+	s.Available = val
+}
+
+// SetNote sets the value of Note.
+func (s *PublicationNote) SetNote(val string) {
+	s.Note = val
+}
+
+// Ref: #/components/schemas/PublicationRelease
+type PublicationRelease struct {
+	VersionID      uuid.UUID           `json:"version_id"`
+	VersionNumber  int                 `json:"version_number"`
+	ContentHash    string              `json:"content_hash"`
+	ReleasedAt     time.Time           `json:"released_at"`
+	RightsAttested bool                `json:"rights_attested"`
+	Findings       CategorizedFindings `json:"findings"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *PublicationRelease) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *PublicationRelease) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *PublicationRelease) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *PublicationRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// GetRightsAttested returns the value of RightsAttested.
+func (s *PublicationRelease) GetRightsAttested() bool {
+	return s.RightsAttested
+}
+
+// GetFindings returns the value of Findings.
+func (s *PublicationRelease) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *PublicationRelease) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *PublicationRelease) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *PublicationRelease) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *PublicationRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
+// SetRightsAttested sets the value of RightsAttested.
+func (s *PublicationRelease) SetRightsAttested(val bool) {
+	s.RightsAttested = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *PublicationRelease) SetFindings(val CategorizedFindings) {
+	s.Findings = val
+}
+
+type PublicationStatus string
+
+const (
+	PublicationStatusPublished PublicationStatus = "published"
+	PublicationStatusDelisted  PublicationStatus = "delisted"
+)
+
+// AllValues returns all PublicationStatus values.
+func (PublicationStatus) AllValues() []PublicationStatus {
+	return []PublicationStatus{
+		PublicationStatusPublished,
+		PublicationStatusDelisted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicationStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicationStatusPublished:
+		return []byte(s), nil
+	case PublicationStatusDelisted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicationStatus) UnmarshalText(data []byte) error {
+	switch PublicationStatus(data) {
+	case PublicationStatusPublished:
+		*s = PublicationStatusPublished
+		return nil
+	case PublicationStatusDelisted:
+		*s = PublicationStatusDelisted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PublishSkillBadRequest Error
+
+func (*PublishSkillBadRequest) publishSkillRes() {}
+
+type PublishSkillConflict PublishingRefusal
+
+func (*PublishSkillConflict) publishSkillRes() {}
+
+type PublishSkillNotFound Error
+
+func (*PublishSkillNotFound) publishSkillRes() {}
+
+type PublishSkillReq struct {
+	Name           OptString `json:"name"`
+	VersionID      OptUUID   `json:"version_id"`
+	RightsAttested OptBool   `json:"rights_attested"`
+}
+
+// GetName returns the value of Name.
+func (s *PublishSkillReq) GetName() OptString {
+	return s.Name
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *PublishSkillReq) GetVersionID() OptUUID {
+	return s.VersionID
+}
+
+// GetRightsAttested returns the value of RightsAttested.
+func (s *PublishSkillReq) GetRightsAttested() OptBool {
+	return s.RightsAttested
+}
+
+// SetName sets the value of Name.
+func (s *PublishSkillReq) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *PublishSkillReq) SetVersionID(val OptUUID) {
+	s.VersionID = val
+}
+
+// SetRightsAttested sets the value of RightsAttested.
+func (s *PublishSkillReq) SetRightsAttested(val OptBool) {
+	s.RightsAttested = val
+}
+
+type PublishSkillUnauthorized Error
+
+func (*PublishSkillUnauthorized) publishSkillRes() {}
+
+type PublishSkillUnprocessableEntity PublishingRefusal
+
+func (*PublishSkillUnprocessableEntity) publishSkillRes() {}
+
+// Ref: #/components/schemas/Publisher
+type Publisher struct {
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetName returns the value of Name.
+func (s *Publisher) GetName() string {
+	return s.Name
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Publisher) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetName sets the value of Name.
+func (s *Publisher) SetName(val string) {
+	s.Name = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Publisher) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*Publisher) getOwnPublisherRes()   {}
+func (*Publisher) registerPublisherRes() {}
+
+// Ref: #/components/schemas/PublishingRefusal
+type PublishingRefusal struct {
+	Error  string                  `json:"error"`
+	Reason PublishingRefusalReason `json:"reason"`
+}
+
+// GetError returns the value of Error.
+func (s *PublishingRefusal) GetError() string {
+	return s.Error
+}
+
+// GetReason returns the value of Reason.
+func (s *PublishingRefusal) GetReason() PublishingRefusalReason {
+	return s.Reason
+}
+
+// SetError sets the value of Error.
+func (s *PublishingRefusal) SetError(val string) {
+	s.Error = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PublishingRefusal) SetReason(val PublishingRefusalReason) {
+	s.Reason = val
+}
+
+type PublishingRefusalReason string
+
+const (
+	PublishingRefusalReasonNoPublisher        PublishingRefusalReason = "no_publisher"
+	PublishingRefusalReasonAlreadyRegistered  PublishingRefusalReason = "already_registered"
+	PublishingRefusalReasonNameTaken          PublishingRefusalReason = "name_taken"
+	PublishingRefusalReasonNameIsPermanent    PublishingRefusalReason = "name_is_permanent"
+	PublishingRefusalReasonNameShape          PublishingRefusalReason = "name_shape"
+	PublishingRefusalReasonNameReserved       PublishingRefusalReason = "name_reserved"
+	PublishingRefusalReasonLicenseHold        PublishingRefusalReason = "license_hold"
+	PublishingRefusalReasonNotRedistributable PublishingRefusalReason = "not_redistributable"
+	PublishingRefusalReasonLicenseUnknown     PublishingRefusalReason = "license_unknown"
+	PublishingRefusalReasonValidationBlocked  PublishingRefusalReason = "validation_blocked"
+	PublishingRefusalReasonRightsNotAttested  PublishingRefusalReason = "rights_not_attested"
+)
+
+// AllValues returns all PublishingRefusalReason values.
+func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
+	return []PublishingRefusalReason{
+		PublishingRefusalReasonNoPublisher,
+		PublishingRefusalReasonAlreadyRegistered,
+		PublishingRefusalReasonNameTaken,
+		PublishingRefusalReasonNameIsPermanent,
+		PublishingRefusalReasonNameShape,
+		PublishingRefusalReasonNameReserved,
+		PublishingRefusalReasonLicenseHold,
+		PublishingRefusalReasonNotRedistributable,
+		PublishingRefusalReasonLicenseUnknown,
+		PublishingRefusalReasonValidationBlocked,
+		PublishingRefusalReasonRightsNotAttested,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
+	switch s {
+	case PublishingRefusalReasonNoPublisher:
+		return []byte(s), nil
+	case PublishingRefusalReasonAlreadyRegistered:
+		return []byte(s), nil
+	case PublishingRefusalReasonNameTaken:
+		return []byte(s), nil
+	case PublishingRefusalReasonNameIsPermanent:
+		return []byte(s), nil
+	case PublishingRefusalReasonNameShape:
+		return []byte(s), nil
+	case PublishingRefusalReasonNameReserved:
+		return []byte(s), nil
+	case PublishingRefusalReasonLicenseHold:
+		return []byte(s), nil
+	case PublishingRefusalReasonNotRedistributable:
+		return []byte(s), nil
+	case PublishingRefusalReasonLicenseUnknown:
+		return []byte(s), nil
+	case PublishingRefusalReasonValidationBlocked:
+		return []byte(s), nil
+	case PublishingRefusalReasonRightsNotAttested:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
+	switch PublishingRefusalReason(data) {
+	case PublishingRefusalReasonNoPublisher:
+		*s = PublishingRefusalReasonNoPublisher
+		return nil
+	case PublishingRefusalReasonAlreadyRegistered:
+		*s = PublishingRefusalReasonAlreadyRegistered
+		return nil
+	case PublishingRefusalReasonNameTaken:
+		*s = PublishingRefusalReasonNameTaken
+		return nil
+	case PublishingRefusalReasonNameIsPermanent:
+		*s = PublishingRefusalReasonNameIsPermanent
+		return nil
+	case PublishingRefusalReasonNameShape:
+		*s = PublishingRefusalReasonNameShape
+		return nil
+	case PublishingRefusalReasonNameReserved:
+		*s = PublishingRefusalReasonNameReserved
+		return nil
+	case PublishingRefusalReasonLicenseHold:
+		*s = PublishingRefusalReasonLicenseHold
+		return nil
+	case PublishingRefusalReasonNotRedistributable:
+		*s = PublishingRefusalReasonNotRedistributable
+		return nil
+	case PublishingRefusalReasonLicenseUnknown:
+		*s = PublishingRefusalReasonLicenseUnknown
+		return nil
+	case PublishingRefusalReasonValidationBlocked:
+		*s = PublishingRefusalReasonValidationBlocked
+		return nil
+	case PublishingRefusalReasonRightsNotAttested:
+		*s = PublishingRefusalReasonRightsNotAttested
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // A candidate skill the platform found and did not create. One bad skill does not refuse the rest of a
 // source, so this list can sit beside a non-empty `skills`.
 // Ref: #/components/schemas/RefusedSkill
@@ -17173,6 +17995,36 @@ func (s *RefusedSkill) SetPath(val string) {
 func (s *RefusedSkill) SetFindings(val CategorizedFindings) {
 	s.Findings = val
 }
+
+type RegisterPublisherBadRequest Error
+
+func (*RegisterPublisherBadRequest) registerPublisherRes() {}
+
+type RegisterPublisherConflict PublishingRefusal
+
+func (*RegisterPublisherConflict) registerPublisherRes() {}
+
+type RegisterPublisherReq struct {
+	Name string `json:"name"`
+}
+
+// GetName returns the value of Name.
+func (s *RegisterPublisherReq) GetName() string {
+	return s.Name
+}
+
+// SetName sets the value of Name.
+func (s *RegisterPublisherReq) SetName(val string) {
+	s.Name = val
+}
+
+type RegisterPublisherUnauthorized Error
+
+func (*RegisterPublisherUnauthorized) registerPublisherRes() {}
+
+type RegisterPublisherUnprocessableEntity PublishingRefusal
+
+func (*RegisterPublisherUnprocessableEntity) registerPublisherRes() {}
 
 // One suggestion the apply call refused, and why.
 // Ref: #/components/schemas/RejectedSuggestion

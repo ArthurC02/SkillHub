@@ -111,6 +111,11 @@ type DeleteTestCaseParams struct {
 	ID uuid.UUID
 }
 
+// DelistSkillParams is parameters of delistSkill operation.
+type DelistSkillParams struct {
+	ID uuid.UUID
+}
+
 // DiffSkillVersionsParams is parameters of diffSkillVersions operation.
 type DiffSkillVersionsParams struct {
 	ID   uuid.UUID
@@ -178,6 +183,17 @@ type GetFunnelTrendParams struct {
 // GetOperatorActionTrendParams is parameters of getOperatorActionTrend operation.
 type GetOperatorActionTrendParams struct {
 	Days OptGetOperatorActionTrendDays `json:",omitempty,omitzero"`
+}
+
+// GetOwnPublicationParams is parameters of getOwnPublication operation.
+type GetOwnPublicationParams struct {
+	ID uuid.UUID
+}
+
+// GetPublicPublicationParams is parameters of getPublicPublication operation.
+type GetPublicPublicationParams struct {
+	Publisher string
+	Name      string
 }
 
 // GetRunParams is parameters of getRun operation.
@@ -382,6 +398,11 @@ type PublicSearchSkillsParams struct {
 	// the three values; it is not silently filed under any of them, and its row says 尚未定值 rather
 	// than a guess (02:DISC-004).
 	Category OptPublicSearchSkillsCategory `json:",omitempty,omitzero"`
+}
+
+// PublishSkillParams is parameters of publishSkill operation.
+type PublishSkillParams struct {
+	ID uuid.UUID
 }
 
 // SaveSkillVersionParams is parameters of saveSkillVersion operation.

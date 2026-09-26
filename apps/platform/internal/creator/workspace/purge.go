@@ -50,6 +50,7 @@ func (s *Service) purgeSteps() []purgeStep {
 		{"run", s.PurgeRunArtifacts},
 		{"packaging", s.PurgeDownloads},
 		{"creation", s.PurgeCreation},
+		{"publishing", s.PurgePublications},
 
 		// registry before ingest: registry deletes the skill_versions rows,
 		// and ingest only removes import sources no remaining version points

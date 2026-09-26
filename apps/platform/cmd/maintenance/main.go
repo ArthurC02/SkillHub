@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -260,6 +261,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		PurgeSkills:                registrySvc.PurgeWorkspace,
 		PurgeImportSources:         ingestSvc.PurgeWorkspace,
 		PurgeCreation:              creation.PurgeWorkspace,
+		PurgePublications:          publishing.PurgeWorkspace,
 		DatasetObjectKeys:          testlab.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      run.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packaging.WorkspaceObjectKeys,

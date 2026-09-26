@@ -1,0 +1,70 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "publishing-owns-publisher-namespaces",
+  "proposal_id": "registry-publishing-context",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-publisher-per-account",
+      "expected_outcome": "The validator accepts the new context and its dependency policy.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "one-publisher-per-account",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    },
+    {
+      "id": "guard-matches-policy",
+      "source_type": "invariant",
+      "source_id": "one-publisher-per-account",
+      "expected_outcome": "The import guard carries a publishing rule denying every context except identity, every other context rule denies publishing, and the platform lints clean under it.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "golangci-lint run ./..."
+    },
+    {
+      "id": "publisher-name-rule",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-publisher-per-account",
+      "expected_outcome": "A publisher name outside the name rule or a reserved word in any hyphenated spelling is refused.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/skill/publishing/ -run TestAPublisherNameFollowsTheSkillNameRuleAndRefusesReservedWords"
+    },
+    {
+      "id": "release-gate",
+      "source_type": "acceptance-criterion",
+      "source_id": "release-gate-is-download-gate",
+      "expected_outcome": "Each redistribution value and the hold give the refusal the download gate gives, and self-supplied or generated content needs the statement.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/skill/publishing/ -run TestTheReleaseGateAnswersEveryRedistributionValueAndTheHold"
+    },
+    {
+      "id": "release-immutable",
+      "source_type": "acceptance-criterion",
+      "source_id": "release-is-immutable",
+      "expected_outcome": "Updating or deleting a release fails in the database outside an account purge.",
+      "level": "integration",
+      "status": "executed",
+      "check": "psql -f db/tests/immutability_test.sql"
+    },
+    {
+      "id": "public-address",
+      "source_type": "acceptance-criterion",
+      "source_id": "public-address-follows-governance",
+      "expected_outcome": "An anonymous reader sees the content, and loses it at once after a takedown.",
+      "level": "integration",
+      "status": "executed",
+      "check": "go test ./internal/entrypoint/api/apiserver/ -run TestThePublicAddressIsReadableWithoutSigningInAndFollowsATakedownAtOnce"
+    }
+  ]
+}

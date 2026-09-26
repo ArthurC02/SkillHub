@@ -409,10 +409,40 @@ import {
     PackagingTargetIdToJSON,
 } from '../models/PackagingTargetId';
 import {
+    type PublicPublication,
+    PublicPublicationFromJSON,
+    PublicPublicationToJSON,
+} from '../models/PublicPublication';
+import {
     type PublicSearchResponse,
     PublicSearchResponseFromJSON,
     PublicSearchResponseToJSON,
 } from '../models/PublicSearchResponse';
+import {
+    type Publication,
+    PublicationFromJSON,
+    PublicationToJSON,
+} from '../models/Publication';
+import {
+    type PublishSkillRequest,
+    PublishSkillRequestFromJSON,
+    PublishSkillRequestToJSON,
+} from '../models/PublishSkillRequest';
+import {
+    type Publisher,
+    PublisherFromJSON,
+    PublisherToJSON,
+} from '../models/Publisher';
+import {
+    type PublishingRefusal,
+    PublishingRefusalFromJSON,
+    PublishingRefusalToJSON,
+} from '../models/PublishingRefusal';
+import {
+    type RegisterPublisherRequest,
+    RegisterPublisherRequestFromJSON,
+    RegisterPublisherRequestToJSON,
+} from '../models/RegisterPublisherRequest';
 import {
     type Run,
     RunFromJSON,
@@ -783,6 +813,13 @@ export interface DeleteTestCaseRequest {
     id: string;
 }
 
+export interface DelistSkillRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
 export interface DevLoginOperationRequest {
     /**
      * 
@@ -898,6 +935,24 @@ export interface GetOperatorActionTrendRequest {
      * 
      */
     days?: GetOperatorActionTrendDaysEnum;
+}
+
+export interface GetOwnPublicationRequest {
+    /**
+     * 
+     */
+    id: string;
+}
+
+export interface GetPublicPublicationRequest {
+    /**
+     * 
+     */
+    publisher: string;
+    /**
+     * 
+     */
+    name: string;
 }
 
 export interface GetRunRequest {
@@ -1246,6 +1301,24 @@ export interface PublicSearchSkillsRequest {
      * 
      */
     category?: PublicSearchSkillsCategoryEnum;
+}
+
+export interface PublishSkillOperationRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    publishSkillRequest: PublishSkillRequest;
+}
+
+export interface RegisterPublisherOperationRequest {
+    /**
+     * 
+     */
+    registerPublisherRequest: RegisterPublisherRequest;
 }
 
 export interface SaveSkillVersionRequest {
@@ -1990,6 +2063,29 @@ export interface DefaultApiInterface {
     deleteTestCase(requestParameters: DeleteTestCaseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeleteTestCase200Response>;
 
     /**
+     * Creates request options for delistSkill without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    delistSkillRequestOpts(requestParameters: DelistSkillRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary Withdraw this Skill\'s publication; its name stays the author\'s (PACK-004)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    delistSkillRaw(requestParameters: DelistSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * Withdraw this Skill\'s publication; its name stays the author\'s (PACK-004)
+     */
+    delistSkill(requestParameters: DelistSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
+
+    /**
      * Creates request options for devLogin without sending the request
      * @param {DevLoginRequest} [devLoginRequest] 
      * @throws {RequiredError}
@@ -2546,6 +2642,76 @@ export interface DefaultApiInterface {
      * The two rosters in force, read-only (02:OPS-005)
      */
     getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response>;
+
+    /**
+     * Creates request options for getOwnPublication without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnPublicationRequestOpts(requestParameters: GetOwnPublicationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary The owner\'s view of this Skill\'s publication and every release (PACK-004)
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnPublicationRaw(requestParameters: GetOwnPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * The owner\'s view of this Skill\'s publication and every release (PACK-004)
+     */
+    getOwnPublication(requestParameters: GetOwnPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
+
+    /**
+     * Creates request options for getOwnPublisher without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnPublisherRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary The account\'s publisher name, if one is registered (PACK-003)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getOwnPublisherRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publisher>>;
+
+    /**
+     * The account\'s publisher name, if one is registered (PACK-003)
+     */
+    getOwnPublisher(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher>;
+
+    /**
+     * Creates request options for getPublicPublication without sending the request
+     * @param {string} publisher 
+     * @param {string} name 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Every read checks the pinned version\'s current governance: a takedown, a licence hold or a redistribution verdict that no longer releases leaves only the reason, with no content. 
+     * @summary A publication\'s public address, readable without signing in (PACK-004)
+     * @param {string} publisher 
+     * @param {string} name 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getPublicPublicationRaw(requestParameters: GetPublicPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicPublication>>;
+
+    /**
+     * Every read checks the pinned version\'s current governance: a takedown, a licence hold or a redistribution verdict that no longer releases leaves only the reason, with no content. 
+     * A publication\'s public address, readable without signing in (PACK-004)
+     */
+    getPublicPublication(requestParameters: GetPublicPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicPublication>;
 
     /**
      * Creates request options for getReadiness without sending the request
@@ -3408,6 +3574,56 @@ export interface DefaultApiInterface {
      * Public intent search for skills (DISC-001, DISC-002)
      */
     publicSearchSkills(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse>;
+
+    /**
+     * Creates request options for publishSkill without sending the request
+     * @param {string} id 
+     * @param {PublishSkillRequest} publishSkillRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    publishSkillRequestOpts(requestParameters: PublishSkillOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * @summary Publish a version of this Skill, or publish it again (PACK-004)
+     * @param {string} id 
+     * @param {PublishSkillRequest} publishSkillRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    publishSkillRaw(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>>;
+
+    /**
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Publish a version of this Skill, or publish it again (PACK-004)
+     */
+    publishSkill(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication>;
+
+    /**
+     * Creates request options for registerPublisher without sending the request
+     * @param {RegisterPublisherRequest} registerPublisherRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    registerPublisherRequestOpts(requestParameters: RegisterPublisherOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * A name follows the Agent Skill name rule, is unique across the whole site, refuses reserved words and their hyphenated spellings, and never changes once registered. 
+     * @summary Register the account\'s one publisher name (PACK-003)
+     * @param {RegisterPublisherRequest} registerPublisherRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    registerPublisherRaw(requestParameters: RegisterPublisherOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publisher>>;
+
+    /**
+     * A name follows the Agent Skill name rule, is unique across the whole site, refuses reserved words and their hyphenated spellings, and never changes once registered. 
+     * Register the account\'s one publisher name (PACK-003)
+     */
+    registerPublisher(requestParameters: RegisterPublisherOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher>;
 
     /**
      * Creates request options for requestAccountDeletion without sending the request
@@ -5062,6 +5278,51 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for delistSkill without sending the request
+     */
+    async delistSkillRequestOpts(requestParameters: DelistSkillRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling delistSkill().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/publication`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Withdraw this Skill\'s publication; its name stays the author\'s (PACK-004)
+     */
+    async delistSkillRaw(requestParameters: DelistSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.delistSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * Withdraw this Skill\'s publication; its name stays the author\'s (PACK-004)
+     */
+    async delistSkill(requestParameters: DelistSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.delistSkillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for devLogin without sending the request
      */
     async devLoginRequestOpts(requestParameters: DevLoginOperationRequest): Promise<runtime.RequestOpts> {
@@ -6116,6 +6377,143 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getOperatorRosters(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetOperatorRosters200Response> {
         const response = await this.getOperatorRostersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getOwnPublication without sending the request
+     */
+    async getOwnPublicationRequestOpts(requestParameters: GetOwnPublicationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getOwnPublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/{id}/publication`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The owner\'s view of this Skill\'s publication and every release (PACK-004)
+     */
+    async getOwnPublicationRaw(requestParameters: GetOwnPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.getOwnPublicationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * The owner\'s view of this Skill\'s publication and every release (PACK-004)
+     */
+    async getOwnPublication(requestParameters: GetOwnPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.getOwnPublicationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getOwnPublisher without sending the request
+     */
+    async getOwnPublisherRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/publisher`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The account\'s publisher name, if one is registered (PACK-003)
+     */
+    async getOwnPublisherRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publisher>> {
+        const requestOptions = await this.getOwnPublisherRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublisherFromJSON(jsonValue));
+    }
+
+    /**
+     * The account\'s publisher name, if one is registered (PACK-003)
+     */
+    async getOwnPublisher(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher> {
+        const response = await this.getOwnPublisherRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPublicPublication without sending the request
+     */
+    async getPublicPublicationRequestOpts(requestParameters: GetPublicPublicationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['publisher'] == null) {
+            throw new runtime.RequiredError(
+                'publisher',
+                'Required parameter "publisher" was null or undefined when calling getPublicPublication().'
+            );
+        }
+
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling getPublicPublication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/publications/{publisher}/{name}`;
+        urlPath = urlPath.replace('{publisher}', encodeURIComponent(String(requestParameters['publisher'])));
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every read checks the pinned version\'s current governance: a takedown, a licence hold or a redistribution verdict that no longer releases leaves only the reason, with no content. 
+     * A publication\'s public address, readable without signing in (PACK-004)
+     */
+    async getPublicPublicationRaw(requestParameters: GetPublicPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicPublication>> {
+        const requestOptions = await this.getPublicPublicationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicPublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * Every read checks the pinned version\'s current governance: a takedown, a licence hold or a redistribution verdict that no longer releases leaves only the reason, with no content. 
+     * A publication\'s public address, readable without signing in (PACK-004)
+     */
+    async getPublicPublication(requestParameters: GetPublicPublicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicPublication> {
+        const response = await this.getPublicPublicationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7794,6 +8192,112 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async publicSearchSkills(requestParameters: PublicSearchSkillsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicSearchResponse> {
         const response = await this.publicSearchSkillsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for publishSkill without sending the request
+     */
+    async publishSkillRequestOpts(requestParameters: PublishSkillOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling publishSkill().'
+            );
+        }
+
+        if (requestParameters['publishSkillRequest'] == null) {
+            throw new runtime.RequiredError(
+                'publishSkillRequest',
+                'Required parameter "publishSkillRequest" was null or undefined when calling publishSkill().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/skills/{id}/publication`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PublishSkillRequestToJSON(requestParameters['publishSkillRequest']),
+        };
+    }
+
+    /**
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Publish a version of this Skill, or publish it again (PACK-004)
+     */
+    async publishSkillRaw(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publication>> {
+        const requestOptions = await this.publishSkillRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublicationFromJSON(jsonValue));
+    }
+
+    /**
+     * Adds one immutable release pinning the version (the newest one when version_id is absent) and its content hash. The first publish creates the publication under the given name, or the Skill\'s name; later ones keep that name. The release gate is the download gate: a licence hold, a blocked or an unknown redistribution verdict refuses. Content the author supplied or the platform generated for them needs the author\'s statement that they may distribute it. 
+     * Publish a version of this Skill, or publish it again (PACK-004)
+     */
+    async publishSkill(requestParameters: PublishSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publication> {
+        const response = await this.publishSkillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for registerPublisher without sending the request
+     */
+    async registerPublisherRequestOpts(requestParameters: RegisterPublisherOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['registerPublisherRequest'] == null) {
+            throw new runtime.RequiredError(
+                'registerPublisherRequest',
+                'Required parameter "registerPublisherRequest" was null or undefined when calling registerPublisher().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/me/publisher`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RegisterPublisherRequestToJSON(requestParameters['registerPublisherRequest']),
+        };
+    }
+
+    /**
+     * A name follows the Agent Skill name rule, is unique across the whole site, refuses reserved words and their hyphenated spellings, and never changes once registered. 
+     * Register the account\'s one publisher name (PACK-003)
+     */
+    async registerPublisherRaw(requestParameters: RegisterPublisherOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Publisher>> {
+        const requestOptions = await this.registerPublisherRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PublisherFromJSON(jsonValue));
+    }
+
+    /**
+     * A name follows the Agent Skill name rule, is unique across the whole site, refuses reserved words and their hyphenated spellings, and never changes once registered. 
+     * Register the account\'s one publisher name (PACK-003)
+     */
+    async registerPublisher(requestParameters: RegisterPublisherOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Publisher> {
+        const response = await this.registerPublisherRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

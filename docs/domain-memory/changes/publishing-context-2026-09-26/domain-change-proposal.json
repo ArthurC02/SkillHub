@@ -1,0 +1,138 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "registry-publishing-context",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "publishing-owns-publisher-namespaces",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-26T12:38:17.206913Z",
+  "verified_at": "2026-09-26T12:38:17.796196Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "71dc0ec9f5dfe3459d66750d9a911b4774a73f8f",
+    "registry_digest": "sha256:fefd28384341d4f22e90ddf4148320c634ad923fa44199e551c8fa8094ee625c"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "publishing",
+    "invariant": "Publishing owns publisher names, publications and their releases; a release is immutable and pins one version and its content hash.",
+    "evidence": [
+      "apps/platform/internal/skill/publishing/doc.go:1-3",
+      "db/migrations/0087_publishing.sql"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Publishing resolves the caller's workspace through Identity, and reads Registry's Skill and Version facts and takes Registry's Skill lock only through functions the composition root injects.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "publishing -> registry package",
+      "publishing -> delivery package",
+      "any context -> publishing package"
+    ],
+    "evidence": [
+      "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Disclosing a Skill publicly is a different promise from the catalog vouching for it, so publishing cannot be a flag on the Skill.",
+      "A publication must keep showing what was released even as the author adds versions, and must stop showing it the moment governance says so."
+    ],
+    "decision": "A new context owns publisher, publication and release records; the release is an append-only row pinning version and hash, and the public read re-checks the pinned Skill's governance facts every time instead of copying them.",
+    "invariants_preserved": [
+      "Registry owns Skill and Version facts, takedowns and holds.",
+      "Identity owns accounts and workspaces.",
+      "Skill Versions are immutable."
+    ],
+    "rejected_alternatives": [
+      "A published flag on the Skill: it cannot hold a namespace, a permanent name or the history of what was released.",
+      "Copy the governance verdict into the release: a takedown would not reach an address that is already public."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "audit-chain-intact",
+      "guard-matches-policy",
+      "publisher-name-rule",
+      "release-gate",
+      "release-immutable",
+      "public-address"
+    ],
+    "counterfactual_check": "publisher-name-rule"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contexts",
+      "record": {
+        "id": "publishing",
+        "name": "Publishing",
+        "responsibility": "Owns who discloses what under which name: a creator's publisher namespace, the publications in it, and the immutable releases that pin the version each one shows.",
+        "subdomain": "core",
+        "implementation_path": "skill/publishing",
+        "requirement_prefixes": [],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/publishing/doc.go",
+            "lines": {
+              "start": 1,
+              "end": 3
+            },
+            "content_sha256": "sha256:0cc7beae8d67924ef82c92e4f63ef942915e6049e8b88d147415aef8c2f6f2fb",
+            "excerpt_sha256": "sha256:0a0c96388dea264cf4483e3bdc6722a7c9c9788d40ea23aebbd74ee655f78e11",
+            "source_kind": "bounded_contexts"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "dependency-policies",
+      "record": {
+        "id": "publishing-may-use-identity",
+        "from_context": "publishing",
+        "to_context": "identity",
+        "mode": "synchronous-query",
+        "policy": "allowed",
+        "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+        "evidence": [
+          {
+            "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+            "lines": {
+              "start": 42,
+              "end": 42
+            },
+            "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+            "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+            "source_kind": "decisions"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-26T12:38:17.462626Z",
+      "scope": "Publishing as a new core context owning publisher names, publications and immutable releases, allowed to query Identity for workspace scope",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "71dc0ec9f5dfe3459d66750d9a911b4774a73f8f",
+        "registry_digest": "sha256:fefd28384341d4f22e90ddf4148320c634ad923fa44199e551c8fa8094ee625c"
+      }
+    }
+  ]
+}

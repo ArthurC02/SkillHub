@@ -9,6 +9,7 @@ files:
   evaluation.sql: eval
   governance.sql:
   packaging.sql: packaging
+  publishing.sql: publishing
   reconcile.sql:
   run_permissions.sql: run
   runs.sql:
@@ -207,6 +208,7 @@ scope:
   GetWorkspaceCreatedAt: user
   InsertCreditEntry: user
   ListOwnCreditEntries: user
+  ListPublicationReleases: scoped-upstream
   ListWorkspacesByOwner: user
   SaveAccountDeletionRequest: user
   RequeueSearchDocumentEnrichment: user
@@ -326,6 +328,7 @@ immutable:
   evaluation_model_usage: 評估判定與 Judge 信任邊界判定當下的模型用量；重評是 append 新列
   cost_events: 平台真實支出的一次付費呼叫紀錄；重算統計是新視窗，不改舊事件
   credit_entries: 使用者餘額異動的分錄；調整用新分錄，不原地改舊分錄（鏡射鐵律 4）
+  publication_releases: 某一版以某個名字被揭露過的事實；再發佈是新列，改寫它等於改寫別人看過什麼
 
 immutable_allow:
   PurgeSkillsByID: skill_versions
@@ -371,6 +374,9 @@ tables:
   artifacts: run, packaging
   download_artifacts: packaging
   download_records: packaging
+  publishers: publishing
+  publications: publishing
+  publication_releases: publishing
   download_object_cleanup_intents: packaging
   evaluations: eval
   evaluation_suggestions: eval

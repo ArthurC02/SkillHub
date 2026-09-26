@@ -85,6 +85,10 @@ type DeleteTestCaseRes interface {
 	deleteTestCaseRes()
 }
 
+type DelistSkillRes interface {
+	delistSkillRes()
+}
+
 type DevLoginRes interface {
 	devLoginRes()
 }
@@ -171,6 +175,18 @@ type GetOperatorActionTrendRes interface {
 
 type GetOperatorRostersRes interface {
 	getOperatorRostersRes()
+}
+
+type GetOwnPublicationRes interface {
+	getOwnPublicationRes()
+}
+
+type GetOwnPublisherRes interface {
+	getOwnPublisherRes()
+}
+
+type GetPublicPublicationRes interface {
+	getPublicPublicationRes()
 }
 
 type GetRunEvaluationRes interface {
@@ -303,6 +319,14 @@ type PreviewPackagingRes interface {
 
 type PublicSearchSkillsRes interface {
 	publicSearchSkillsRes()
+}
+
+type PublishSkillRes interface {
+	publishSkillRes()
+}
+
+type RegisterPublisherRes interface {
+	registerPublisherRes()
 }
 
 type RequestAccountDeletionRes interface {

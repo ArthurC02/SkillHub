@@ -1,0 +1,42 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "publishing-owns-publisher-namespaces",
+  "status": "draft",
+  "intent": "A creator discloses a Skill under a name of their own, at an address anyone can open, without the platform's catalog vouching for it.",
+  "actor": "Creator publishing a Skill",
+  "observable_outcome": "An account registers one permanent publisher name, publishes a Skill as an immutable release pinned to one version, and the public address follows the version's current governance on every read.",
+  "acceptance_criteria": [
+    {
+      "id": "one-publisher-per-account",
+      "statement": "An account registers at most one publisher name, the name follows the Skill name rule, refuses reserved words in any hyphenated spelling, and is unique across the site."
+    },
+    {
+      "id": "release-gate-is-download-gate",
+      "statement": "Publishing refuses a licence hold, a blocked or unknown redistribution verdict, and content the author supplied or the platform generated unless the author states they may distribute it."
+    },
+    {
+      "id": "release-is-immutable",
+      "statement": "Each publish adds a release pinning a version and its content hash; a release can never be changed or removed except by purging the account."
+    },
+    {
+      "id": "public-address-follows-governance",
+      "statement": "The public address shows content only while the publication is listed and the pinned Skill is neither taken down, held, nor judged not redistributable."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/skill/publishing/doc.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/skill/publishing/publication.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+    "db/migrations/0087_publishing.sql",
+    "docs/adr/ADR-026-skill-packaging-and-signing.md"
+  ]
+}

@@ -317,6 +317,17 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "publication status",
+		sources: []vocabularySource{
+			sqlColumnCheck("publications", "status"),
+			goConstEnum("apps/platform/internal/skill/publishing/publication.go", "Status"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/publishing/publication.go", "AllStatuses",
+				"apps/platform/internal/skill/publishing/publication.go", "Status"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicationStatus"),
+		},
+	},
+	{
 		name: "dispatch halt source",
 		sources: []vocabularySource{
 			sqlColumnCheck("dispatch_halts", "source"),

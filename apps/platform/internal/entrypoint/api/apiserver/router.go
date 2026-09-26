@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/publishing"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -32,6 +33,7 @@ type Deps struct {
 	Trace           *trace.Handler
 	Eval            *eval.Handler
 	Packaging       *packaging.Handler
+	Publishing      *publishing.Handler
 
 	Credits *creditsHandler
 
@@ -104,6 +106,12 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /skills/{id}/versions", auth.RequireSession(d.Registry.Versions))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(d.Registry.Diff))
 	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(d.Registry.Delete))
+	mux.HandleFunc("GET /skills/{id}/publication", auth.RequireSession(d.Publishing.OwnPublication))
+	mux.HandleFunc("POST /skills/{id}/publication", auth.RequireSession(d.Publishing.Publish))
+	mux.HandleFunc("DELETE /skills/{id}/publication", auth.RequireSession(d.Publishing.Delist))
+	mux.HandleFunc("GET /me/publisher", auth.RequireSession(d.Publishing.OwnPublisher))
+	mux.HandleFunc("POST /me/publisher", auth.RequireSession(d.Publishing.RegisterPublisher))
+	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(d.Publishing.PublicPublication))
 
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
 

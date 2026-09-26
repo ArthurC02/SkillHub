@@ -424,5 +424,22 @@ SELECT must_fail_saying($$UPDATE creation_session_events SET event_type = 'rewri
                           WHERE session_id = 'e0000000-0000-4000-8000-000000000001'$$,
                         'immutable');
 
+INSERT INTO publishers (id, workspace_id, name)
+VALUES ('f0000000-0000-4000-8000-000000000001', '22222222-2222-2222-2222-222222222222', 'demo-publisher');
+INSERT INTO publications (id, publisher_id, name, skill_id, status)
+VALUES ('f0000000-0000-4000-8000-000000000002', 'f0000000-0000-4000-8000-000000000001',
+        'demo', '33333333-3333-3333-3333-333333333333', 'published');
+INSERT INTO publication_releases (id, publication_id, skill_version_id, version_number, content_hash,
+                                  findings, rights_attested, released_by)
+VALUES ('f0000000-0000-4000-8000-000000000003', 'f0000000-0000-4000-8000-000000000002',
+        '44444444-4444-4444-4444-444444444444', 1, 'hash-1', '{}'::jsonb, true,
+        '11111111-1111-1111-1111-111111111111');
+SELECT must_fail($$UPDATE publication_releases SET content_hash = 'hash-rewritten'
+                   WHERE id = 'f0000000-0000-4000-8000-000000000003'$$);
+SELECT must_fail($$UPDATE publication_releases SET rights_attested = false
+                   WHERE id = 'f0000000-0000-4000-8000-000000000003'$$);
+SELECT must_fail($$DELETE FROM publication_releases WHERE id = 'f0000000-0000-4000-8000-000000000003'$$);
+UPDATE publications SET status = 'delisted' WHERE id = 'f0000000-0000-4000-8000-000000000002';
+
 \echo 'immutability_test: OK'
 ROLLBACK;

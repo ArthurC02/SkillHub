@@ -1462,6 +1462,192 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /me/publisher:
+    get:
+      operationId: getOwnPublisher
+      summary: The account's publisher name, if one is registered (PACK-003)
+      responses:
+        "200":
+          description: The account's publisher.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publisher" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The account has not registered a publisher name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: registerPublisher
+      summary: Register the account's one publisher name (PACK-003)
+      description: |
+        A name follows the Agent Skill name rule, is unique across the whole
+        site, refuses reserved words and their hyphenated spellings, and never
+        changes once registered.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publisher" }
+        "400":
+          description: The body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The account already has a publisher, or the name is taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+        "422":
+          description: The name breaks the name rule or is reserved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /skills/{id}/publication:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getOwnPublication
+      summary: The owner's view of this Skill's publication and every release (PACK-004)
+      responses:
+        "200":
+          description: The publication.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The Skill is not the caller's, or it has never been published.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: publishSkill
+      summary: Publish a version of this Skill, or publish it again (PACK-004)
+      description: |
+        Adds one immutable release pinning the version (the newest one when
+        version_id is absent) and its content hash. The first publish creates
+        the publication under the given name, or the Skill's name; later ones
+        keep that name. The release gate is the download gate: a licence hold,
+        a blocked or an unknown redistribution verdict refuses. Content the
+        author supplied or the platform generated for them needs the author's
+        statement that they may distribute it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                version_id: { type: string, format: uuid }
+                rights_attested: { type: boolean }
+      responses:
+        "200":
+          description: Published; the publication with every release, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "400":
+          description: The body is not JSON.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The Skill or the version is not the caller's, or the Skill was taken down.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: No publisher yet, the name is taken, or a different name was asked for an existing publication.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+        "422":
+          description: The release gate refused, or the name breaks the name rule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishingRefusal" }
+    delete:
+      operationId: delistSkill
+      summary: Withdraw this Skill's publication; its name stays the author's (PACK-004)
+      responses:
+        "200":
+          description: Delisted, or already delisted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Publication" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The Skill is not the caller's, or it has never been published.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /publications/{publisher}/{name}:
+    get:
+      operationId: getPublicPublication
+      summary: A publication's public address, readable without signing in (PACK-004)
+      description: |
+        Every read checks the pinned version's current governance: a takedown,
+        a licence hold or a redistribution verdict that no longer releases
+        leaves only the reason, with no content.
+      parameters:
+        - name: publisher
+          in: path
+          required: true
+          schema: { type: string }
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The publication as anyone sees it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicPublication" }
+        "404":
+          description: No publication has this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/fork:
     post:
       operationId: forkSkill
@@ -6596,6 +6782,116 @@ components:
             to be labelled, so the UI can mark it as such. `template` reasons are
             assembled from the query/document lexical overlap, or state plainly
             that the hit came from semantic similarity with no shared keywords.
+    Publisher:
+      type: object
+      required: [name, created_at]
+      properties:
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+    PublishingRefusal:
+      type: object
+      required: [error, reason]
+      properties:
+        error: { type: string }
+        reason:
+          type: string
+          enum:
+            - no_publisher
+            - already_registered
+            - name_taken
+            - name_is_permanent
+            - name_shape
+            - name_reserved
+            - license_hold
+            - not_redistributable
+            - license_unknown
+            - validation_blocked
+            - rights_not_attested
+    PublicationRelease:
+      type: object
+      required: [version_id, version_number, content_hash, released_at, rights_attested, findings]
+      properties:
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        content_hash: { type: string }
+        released_at: { type: string, format: date-time }
+        rights_attested: { type: boolean }
+        findings: { $ref: "#/components/schemas/CategorizedFindings" }
+    Publication:
+      type: object
+      required: [publisher, name, address, status, status_changed_at, releases]
+      properties:
+        publisher: { type: string }
+        name: { type: string }
+        address:
+          type: string
+          description: The public page path, /p/{publisher}/{name}.
+        status: { type: string, enum: [published, delisted] }
+        status_changed_at: { type: string, format: date-time }
+        releases:
+          type: array
+          items: { $ref: "#/components/schemas/PublicationRelease" }
+    PublicRelease:
+      type: object
+      required: [version_number, content_hash, released_at]
+      properties:
+        version_number: { type: integer }
+        content_hash: { type: string }
+        released_at: { type: string, format: date-time }
+    PublicationNote:
+      type: object
+      required: [available, note]
+      properties:
+        available: { type: boolean }
+        note: { type: string }
+    PublicPublication:
+      type: object
+      required: [publisher, name, address, availability, releases, exposure, acquisition]
+      properties:
+        publisher: { type: string }
+        name: { type: string }
+        address: { type: string }
+        availability:
+          description: >-
+            One of available, delisted, withdrawn, taken_down, held or
+            not_redistributable; only available carries skill and release.
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+        delisted_at:
+          type: string
+          format: date-time
+          description: When the author withdrew it; present only while availability is delisted.
+        skill:
+          type: object
+          required: [name, summary]
+          properties:
+            name: { type: string }
+            summary: { type: string }
+        release:
+          allOf:
+            - $ref: "#/components/schemas/PublicRelease"
+            - type: object
+              required: [findings, license, redistribution]
+              properties:
+                findings: { $ref: "#/components/schemas/CategorizedFindings" }
+                license:
+                  type: object
+                  required: [expression, source]
+                  properties:
+                    expression: { type: string }
+                    source: { type: string }
+                redistribution: { $ref: "#/components/schemas/Labelled" }
+        releases:
+          type: array
+          items: { $ref: "#/components/schemas/PublicRelease" }
+        exposure:
+          description: Whether it is in search and the catalog, and the sentence saying so.
+          allOf:
+            - $ref: "#/components/schemas/PublicationNote"
+        acquisition:
+          description: Whether this page can hand out a package, said before any action.
+          allOf:
+            - $ref: "#/components/schemas/PublicationNote"
     Labelled:
       description: |
         An enum value together with the copy shown for it. The label and note

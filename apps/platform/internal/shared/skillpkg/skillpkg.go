@@ -101,6 +101,10 @@ func (r Report) Categorize() CategorizedFindings {
 
 var nameRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
+func ValidName(name string) bool {
+	return len(name) <= maxNameLen && nameRule.MatchString(name)
+}
+
 const (
 	maxNameLen        = 64
 	maxDescriptionLen = 1024

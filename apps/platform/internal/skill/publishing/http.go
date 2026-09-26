@@ -1,0 +1,332 @@
+package publishing
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+)
+
+type Handler struct {
+	Svc      *Service
+	Identity *identity.Service
+
+	DescribeRedistribution func(value string) (label, note string)
+}
+
+type labelled struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+}
+
+type publisherView struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
+type releaseView struct {
+	VersionID      string                       `json:"version_id"`
+	VersionNumber  int32                        `json:"version_number"`
+	ContentHash    string                       `json:"content_hash"`
+	ReleasedAt     string                       `json:"released_at"`
+	RightsAttested bool                         `json:"rights_attested"`
+	Findings       skillpkg.CategorizedFindings `json:"findings"`
+}
+
+type publicationView struct {
+	Publisher       string        `json:"publisher"`
+	Name            string        `json:"name"`
+	Address         string        `json:"address"`
+	Status          string        `json:"status"`
+	StatusChangedAt string        `json:"status_changed_at"`
+	Releases        []releaseView `json:"releases"`
+}
+
+type publicReleaseView struct {
+	VersionNumber int32  `json:"version_number"`
+	ContentHash   string `json:"content_hash"`
+	ReleasedAt    string `json:"released_at"`
+}
+
+type licenseView struct {
+	Expression string `json:"expression"`
+	Source     string `json:"source"`
+}
+
+type currentReleaseView struct {
+	publicReleaseView
+	Findings       skillpkg.CategorizedFindings `json:"findings"`
+	License        licenseView                  `json:"license"`
+	Redistribution labelled                     `json:"redistribution"`
+}
+
+type publicSkillView struct {
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+}
+
+type noteView struct {
+	Available bool   `json:"available"`
+	Note      string `json:"note"`
+}
+
+type publicPublicationView struct {
+	Publisher    string              `json:"publisher"`
+	Name         string              `json:"name"`
+	Address      string              `json:"address"`
+	Availability labelled            `json:"availability"`
+	DelistedAt   string              `json:"delisted_at,omitempty"`
+	Skill        *publicSkillView    `json:"skill,omitempty"`
+	Release      *currentReleaseView `json:"release,omitempty"`
+	Releases     []publicReleaseView `json:"releases"`
+	Exposure     noteView            `json:"exposure"`
+	Acquisition  noteView            `json:"acquisition"`
+}
+
+const (
+	notListedNote   = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
+	noDownloadsNote = "這一頁目前還不提供下載。"
+)
+
+var availabilityWords = map[Availability][2]string{
+	AvailabilityAvailable:        {"提供中", ""},
+	AvailabilityDelisted:         {"作者已撤回", "作者撤回了這個發佈物，這一頁不再提供它的內容。"},
+	AvailabilityWithdrawn:        {"已不提供", "這個發佈物指向的 Skill 已經被作者刪除。"},
+	AvailabilityTakenDown:        {"已不提供", "這個 Skill 已被平台下架。"},
+	AvailabilityHeld:             {"已不提供", "這個 Skill 的內容因授權問題被保留，釐清之前不提供。"},
+	AvailabilityNotRedistributed: {"已不提供", "這個 Skill 目前的授權判定不允許再散布。"},
+}
+
+func address(publisher, name string) string {
+	return "/p/" + publisher + "/" + name
+}
+
+func timestamp(at time.Time) string {
+	return at.UTC().Format(time.RFC3339)
+}
+
+func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return identity.Workspace{}, false
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return identity.Workspace{}, false
+	}
+	return ws, true
+}
+
+func writeReason(w http.ResponseWriter, code int, reason, message string) {
+	httpx.WriteJSON(w, code, map[string]string{"error": message, "reason": reason})
+}
+
+func writePublishingError(w http.ResponseWriter, err error) {
+	var nameErr *NameError
+	var refused *RefusedError
+	switch {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	case errors.Is(err, ErrNoPublisher):
+		writeReason(w, http.StatusConflict, "no_publisher", err.Error())
+	case errors.Is(err, ErrPublisherExists):
+		writeReason(w, http.StatusConflict, "already_registered", err.Error())
+	case errors.Is(err, ErrNameTaken):
+		writeReason(w, http.StatusConflict, "name_taken", err.Error())
+	case errors.Is(err, ErrNameIsPermanent):
+		writeReason(w, http.StatusConflict, "name_is_permanent", err.Error())
+	case errors.As(err, &nameErr):
+		writeReason(w, http.StatusUnprocessableEntity, "name_"+string(nameErr.Problem), nameErr.Error())
+	case errors.As(err, &refused):
+		writeReason(w, http.StatusUnprocessableEntity, string(refused.Reason), refused.Message)
+	default:
+		httpx.WriteError(w, http.StatusInternalServerError, "publishing failed")
+	}
+}
+
+func skillIDFrom(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return pgtype.UUID{}, false
+	}
+	return skillID, true
+}
+
+func (h *Handler) OwnPublisher(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	publisher, found, err := h.Svc.Publisher(r.Context(), ws)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "publisher lookup failed")
+		return
+	}
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "this account has no publisher name yet")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, publisherView{Name: publisher.Name, CreatedAt: timestamp(publisher.CreatedAt)})
+}
+
+func (h *Handler) RegisterPublisher(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "the body must be JSON with a name")
+		return
+	}
+	publisher, err := h.Svc.RegisterPublisher(r.Context(), ws, req.Name)
+	if err != nil {
+		writePublishingError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, publisherView{Name: publisher.Name, CreatedAt: timestamp(publisher.CreatedAt)})
+}
+
+func (h *Handler) OwnPublication(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	skillID, ok := skillIDFrom(w, r)
+	if !ok {
+		return
+	}
+	publication, found, err := h.Svc.OwnPublication(r.Context(), ws, skillID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "publication lookup failed")
+		return
+	}
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "this Skill has not been published")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+}
+
+func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	skillID, ok := skillIDFrom(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Name           string `json:"name"`
+		VersionID      string `json:"version_id"`
+		RightsAttested bool   `json:"rights_attested"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "the body must be a JSON object")
+		return
+	}
+	in := PublishInput{Name: req.Name, RightsAttested: req.RightsAttested}
+	if req.VersionID != "" {
+		if err := in.VersionID.Scan(req.VersionID); err != nil {
+			httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+			return
+		}
+	}
+	publication, err := h.Svc.Publish(r.Context(), ws, skillID, in)
+	if err != nil {
+		writePublishingError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+}
+
+func (h *Handler) Delist(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	skillID, ok := skillIDFrom(w, r)
+	if !ok {
+		return
+	}
+	publication, err := h.Svc.Delist(r.Context(), ws, skillID)
+	if err != nil {
+		writePublishingError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+}
+
+func (h *Handler) PublicPublication(w http.ResponseWriter, r *http.Request) {
+	publication, found, err := h.Svc.PublicPublication(r.Context(), r.PathValue("publisher"), r.PathValue("name"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "publication lookup failed")
+		return
+	}
+	if !found {
+		httpx.WriteError(w, http.StatusNotFound, "no publication has this address")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, h.publicView(publication))
+}
+
+func ownView(p Publication) publicationView {
+	releases := make([]releaseView, 0, len(p.Releases))
+	for _, release := range p.Releases {
+		releases = append(releases, releaseView{
+			VersionID: pgconv.UUIDString(release.VersionID), VersionNumber: release.VersionNumber,
+			ContentHash: release.ContentHash, ReleasedAt: timestamp(release.ReleasedAt),
+			RightsAttested: release.RightsAttested, Findings: release.Findings,
+		})
+	}
+	return publicationView{
+		Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
+		Status: string(p.Status), StatusChangedAt: timestamp(p.StatusChangedAt), Releases: releases,
+	}
+}
+
+func (h *Handler) publicView(p PublicPublication) publicPublicationView {
+	words := availabilityWords[p.Availability]
+	view := publicPublicationView{
+		Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
+		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: words[1]},
+		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
+		Exposure:     noteView{Available: false, Note: notListedNote},
+		Acquisition:  noteView{Available: false, Note: noDownloadsNote},
+	}
+	if p.Status == StatusDelisted {
+		view.DelistedAt = timestamp(p.StatusChangedAt)
+	}
+	if p.Availability != AvailabilityAvailable || len(p.Releases) == 0 {
+		return view
+	}
+	for _, release := range p.Releases {
+		view.Releases = append(view.Releases, publicReleaseView{
+			VersionNumber: release.VersionNumber, ContentHash: release.ContentHash, ReleasedAt: timestamp(release.ReleasedAt),
+		})
+	}
+	current := p.Releases[0]
+	label, note := h.DescribeRedistribution(p.Skill.Redistribution)
+	view.Skill = &publicSkillView{Name: p.Skill.Name, Summary: p.Skill.Summary}
+	view.Release = &currentReleaseView{
+		publicReleaseView: view.Releases[0],
+		Findings:          current.Findings,
+		License:           licenseView{Expression: p.Version.LicenseExpression, Source: p.Version.LicenseSource},
+		Redistribution:    labelled{Value: p.Skill.Redistribution, Label: label, Note: note},
+	}
+	return view
+}

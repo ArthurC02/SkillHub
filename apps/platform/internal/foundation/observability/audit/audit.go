@@ -80,6 +80,10 @@ const (
 	ActionCreditGrant   = "credit.grant"
 	ActionAccountLookup = "account.lookup"
 	ActionCreditLookup  = "credit.lookup"
+
+	ActionPublisherRegister  = "publisher.register"
+	ActionPublicationRelease = "publication.release"
+	ActionPublicationDelist  = "publication.delist"
 )
 
 const ScopeOperator = "operator"
@@ -108,6 +112,9 @@ const (
 	ResourceModelBudget = "model_budget"
 
 	ResourceCreditAccount = "credit_account"
+
+	ResourcePublisher   = "publisher"
+	ResourcePublication = "publication"
 
 	ResourceDomainEvent = "domain_event"
 )
