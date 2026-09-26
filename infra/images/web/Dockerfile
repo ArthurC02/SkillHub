@@ -2,7 +2,7 @@
 
 # syntax=docker/dockerfile:1.7
 
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS build
+FROM node:26.8-bookworm-slim@sha256:cd9f682fa2885cd1056e830424764158570061c59736a1da836bc3d73df095ae AS build
 
 WORKDIR /src
 COPY packages/api-client-ts/package.json packages/api-client-ts/package-lock.json ./packages/api-client-ts/
@@ -15,7 +15,7 @@ RUN cd apps/web && npm ci --ignore-scripts
 COPY apps/web ./apps/web
 RUN cd apps/web && npm run build
 
-FROM nginx:1.31-alpine-slim@sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade AS runtime
+FROM nginx:1.31-alpine-slim@sha256:032d437f2945ec236b0d093d0a4865a4b8e39eea52f60a25103645c95ccb4de0 AS runtime
 
 COPY --from=build /src/apps/web/dist /usr/share/nginx/html
 COPY infra/images/web/nginx.conf /etc/nginx/conf.d/default.conf
