@@ -28,7 +28,7 @@ export interface FunnelStage {
      */
     label: string;
     /**
-     * What one count in this stage means
+     * What one count in this stage means, and why it must not be divided by another stage.
      */
     grain: string;
 }

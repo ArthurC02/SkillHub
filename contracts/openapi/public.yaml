@@ -5961,7 +5961,7 @@ components:
       properties:
         key: { type: string, enum: [search_performed, skill_detail_viewed, run_started, download_started] }
         label: { type: string }
-        grain: { type: string, description: What one count in this stage means, and why it must not be divided by another stage. }
+        grain: { type: string, description: "What one count in this stage means, and why it must not be divided by another stage." }
     FunnelTrend:
       type: object
       required: [from, to, buckets, stages]

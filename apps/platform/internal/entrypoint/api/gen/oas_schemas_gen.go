@@ -8063,7 +8063,7 @@ func (*ForkSkillUnauthorized) forkSkillRes() {}
 type FunnelStage struct {
 	Key   FunnelStageKey `json:"key"`
 	Label string         `json:"label"`
-	// What one count in this stage means.
+	// What one count in this stage means, and why it must not be divided by another stage.
 	Grain string `json:"grain"`
 }
 
