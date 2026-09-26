@@ -3,12 +3,12 @@
   "proposal_id": "publishing-exposure-review",
   "proposer": "domain-memory-agent",
   "requirement_id": "publishing-exposes-reviewed-releases",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-26T14:16:50.070652Z",
   "verified_at": "2026-09-26T14:17:43.021595Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-26T14:23:25.231530Z",
+  "applied_at": "2026-09-26T14:24:17.531173Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "85c8ca97ab838d622c1149bbf02eebc237b15df9",
@@ -111,5 +111,10 @@
         "registry_digest": "sha256:b2122e2c724c92e1e99f572b06c621cb3457c5d06d567814e8a4df6aea136b8f"
       }
     }
-  ]
+  ],
+  "supersedes": "registry-publishing-context",
+  "applied_registry_revision": {
+    "observed_commit": "7bcad875fd25fc857c73ce7a626acc0dcb7eb1c3",
+    "registry_digest": "sha256:a3679ed4c6154b442fab8c0dc8e886074a97a5e3d24f423ad60c8c32a5df0854"
+  }
 }
