@@ -375,6 +375,7 @@ docker run --rm --network container:skillhub-postgres-1 \
   -e OBJSTORE_ENDPOINT=seaweedfs:8333 -e OBJSTORE_ACCESS_KEY=skillhubdev \
   -e OBJSTORE_SECRET_KEY=skillhubdevsecret -e OBJSTORE_BUCKET=skillhub -e OBJSTORE_SSL=0 \
   -e SKILLHUB_E2E_SANDBOX_URL=http://sandboxd:9000 -e SKILLHUB_E2E_SANDBOX_TOKEN=devsandboxtoken \
+  -e SKILLHUB_E2E_GATEWAY_URL=http://litellm:4000 \
   -e SKILLHUB_MODEL_GATEWAY_URL=http://litellm:4000 -e SKILLHUB_MODEL_GATEWAY_KEY="$LITELLM_MASTER_KEY" \
   -e SKILLHUB_RUN_MODEL=gpt-5.4-mini -e SKILLHUB_E2E_PUBLIC_HOST=postgres \
   -e DEV_LOGIN=1 \
@@ -383,6 +384,10 @@ docker run --rm --network container:skillhub-postgres-1 \
 ```
 
 **`-w` 那一行是必要的**：測試以相對路徑 `../../../../../../db/migrations` 找 migration。
+
+**`SKILLHUB_E2E_GATEWAY_URL` 與 `SKILLHUB_MODEL_GATEWAY_URL` 兩個都要設**，即使值相同：前者是交給沙箱的位址，後者是測試自己用來簽 Virtual Key 的管理位址；少了前者測試在派送之前就 `Fatal`。同一支測試以 `source_path` 參數化，帶值時跑的是「Plugin 內的一個 Skill」那條路徑。
+
+**映像的四項行為實測要用同一段命令，但 `sandboxd` 的 `SKILLHUB_SANDBOX_IMAGE` 要指 CI 發佈的 digest**（不是本機建置——那等於白跑）；`usage` 事件那兩支在 `apps/sandbox/internal/dockerdrv`，交叉編譯後在容器裡跑，要 `SKILLHUB_E2E_GATEWAY_URL`／`_KEY`、`SKILLHUB_E2E_EGRESS_NETWORK` 與 `SKILLHUB_E2E_RUNTIME_IMAGE`。對帳讀閘道自己的 `LiteLLM_SpendLogs`：`/spend/logs` 的日期參數在現行閘道上會回空集合。
 
 **`DEV_LOGIN=1` 也是必要的**：`execution.Match` 比對的是隔離強度，這台 sandboxd 跑 runc、自報 `weak`，只有標成開發部署的程序才接受低於強隔離的節點，否則每個 Run 都是 422「which this deployment does not accept」。這不是繞過——它就是那條規則為開發機留的門，生產部署不設它。
 
