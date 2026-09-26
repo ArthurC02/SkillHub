@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/go/pkg/mod     CGO_ENABLED=0 go build -trimpath -
 FROM pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 \
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=wal-g /out/wal-g /out/gosu /usr/local/bin/
