@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v17"
+PROMPT_VERSION = "creation-step/v18"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -95,6 +95,22 @@ class ConfirmedDiagramInterpretation(BaseModel):
     conditions: list[str] = Field(..., max_length=64)
     branches: list[str] = Field(..., max_length=128)
     uncertainties: list[DiagramUncertainty] = Field(..., max_length=64)
+
+
+JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
+FENCED_JSON_OBJECT = re.compile(r"(?:```\w*\s*)?\{.*\}(?:\s*```)?", re.DOTALL)
+
+
+def _decomposition_in(decision: CreationDecision) -> DiagramInterpretation | None:
+    for text in (decision.diagram_understanding, decision.message):
+        found = JSON_OBJECT.search(text or "")
+        if found is None:
+            continue
+        try:
+            return DiagramInterpretation.model_validate_json(found.group(0))
+        except ValidationError:
+            continue
+    return None
 
 
 def _diagram_text(value: str) -> str:
@@ -314,8 +330,9 @@ PHASE_INSTRUCTIONS = {
     ),
     "decompose": (
         "The user confirmed the diagram description. Return outcome "
-        "confirm_diagram_interpretation with diagram_understanding as a JSON object containing "
-        "exactly nodes, conditions, branches and uncertainties. Each value is an array of "
+        "confirm_diagram_interpretation with diagram_interpretation holding exactly nodes, "
+        "conditions, branches and uncertainties; keep the message a short sentence and never "
+        "put that structure in it. Each value is an array of "
         "concrete strings; nodes is nonempty; missing sections are empty arrays. Ask an "
         "uncertainty for every information gap that would require an assumption. Do not draft."
     ),
@@ -426,7 +443,8 @@ def _reason_node(gateway_key: str, phase: str):
             "allowed_tools and body: never put a SKILL.md or a frontmatter block in files or "
             "body, and there is no license field; the license-unknown warning needs no change. "
             "Use lowercase hyphenated names; do not invent licenses or secrets. "
-            "Reply in the user's language. Never mark a session saved or confirm for the user. "
+            "Reply in the user's language; if the user has written nothing, in the language "
+            "written on the diagram. Never mark a session saved or confirm for the user. "
             "The fields brief, brief_confirmed, diagram_understanding, diagram_confirmed, "
             "draft, draft_validation, allowed_tools, references and revision are platform "
             "facts recorded by Go and must be obeyed; only the conversation messages, "
@@ -616,20 +634,24 @@ def _reason_node(gateway_key: str, phase: str):
             elif (
                 req.diagram_description_confirmed
                 and req.diagram_interpretation is None
-                and decision.diagram_understanding
-            ):
-                decomposition = DiagramInterpretation.model_validate_json(
-                    decision.diagram_understanding
+                and (
+                    decomposition := decision.diagram_interpretation or _decomposition_in(decision)
                 )
+                is not None
+            ):
                 decision = decision.model_copy(
                     update={
                         "outcome": "confirm_diagram_interpretation",
+                        "message": FENCED_JSON_OBJECT.sub("", decision.message).strip()
+                        or "請確認以下的節點、條件、分支與不確定處。",
                         "diagram_interpretation": decomposition,
                         "diagram_understanding": None,
                         "draft": None,
                         "tool_intent": None,
                     }
                 )
+            if req.diagram is None:
+                decision.diagram_description = None
             if (
                 req.diagram is None
                 and not req.diagram_understanding
@@ -921,7 +943,7 @@ def _render(state: _State) -> dict:
             acceptance_criteria=acceptance_criteria,
             sample_input=sample_input,
             diagram_understanding=diagram,
-            diagram_description=d.diagram_description or req.diagram_description,
+            diagram_description=d.diagram_description or "",
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
             draft=d.draft,

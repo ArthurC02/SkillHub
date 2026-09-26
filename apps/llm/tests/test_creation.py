@@ -418,6 +418,67 @@ def test_confirmed_description_requires_a_structured_interpretation_before_a_dra
     }
 
 
+DECOMPOSE_REQUEST = request(
+    messages=[],
+    diagram_description="客戶 Excel 訂單轉成 CSV，檢查缺漏欄位後匯入。",
+    diagram_description_confirmed=True,
+)
+DECOMPOSITION = {
+    "nodes": ["轉成 CSV", "檢查缺漏欄位", "匯入後台"],
+    "conditions": ["是否有缺漏欄位"],
+    "branches": ["有缺漏時先補件"],
+    "uncertainties": ["缺漏時由誰補件？"],
+}
+
+
+def test_a_decomposition_in_its_own_field_is_taken_as_is():
+    response, _ = invoke(
+        DECOMPOSE_REQUEST,
+        decision(
+            outcome="confirm_diagram_interpretation",
+            message="請確認。",
+            diagram_interpretation=DECOMPOSITION,
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_diagram_interpretation"
+    assert response.json()["diagram_interpretation"] == DECOMPOSITION
+    assert response.json()["message"] == "請確認。"
+    assert response.json()["diagram_description"] == ""
+
+
+def test_a_confirmed_description_echoed_by_the_model_is_not_returned_as_a_new_one():
+    response, _ = invoke(
+        DECOMPOSE_REQUEST,
+        decision(
+            outcome="clarification",
+            message="請確認。",
+            diagram_description=DECOMPOSE_REQUEST["diagram_description"],
+            diagram_interpretation=DECOMPOSITION,
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_diagram_interpretation"
+    assert response.json()["diagram_description"] == ""
+    assert response.json()["diagram_interpretation"] == DECOMPOSITION
+
+
+def test_a_decomposition_written_into_the_message_is_lifted_out_of_it():
+    fenced = (
+        "我目前的理解如下，請確認：\n\n```json\n"
+        + json.dumps(DECOMPOSITION, ensure_ascii=False)
+        + "\n```"
+    )
+    response, _ = invoke(
+        DECOMPOSE_REQUEST,
+        decision(outcome="confirm_diagram_interpretation", message=fenced),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_diagram_interpretation"
+    assert response.json()["diagram_interpretation"] == DECOMPOSITION
+    assert response.json()["message"] == "我目前的理解如下，請確認："
+
+
 def test_unauthorized_tool_never_escapes():
     response, _ = invoke(
         request(),
