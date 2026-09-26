@@ -165,6 +165,7 @@ func NewRouter(d Deps) http.Handler {
 
 	if d.Credits != nil {
 		mux.HandleFunc("GET /me/credits", auth.RequireSession(d.Credits.Get))
+		mux.HandleFunc("GET /me/credits/entries", auth.RequireSession(d.Credits.Statement))
 	}
 
 	mux.HandleFunc("GET /runs", auth.RequireSession(d.Runs.List))

@@ -154,6 +154,11 @@ import {
     CreditLedgerToJSON,
 } from '../models/CreditLedger';
 import {
+    type CreditStatement,
+    CreditStatementFromJSON,
+    CreditStatementToJSON,
+} from '../models/CreditStatement';
+import {
     type CreditTrend,
     CreditTrendFromJSON,
     CreditTrendToJSON,
@@ -853,6 +858,13 @@ export interface GetCreditLedgerRequest {
      * 
      */
     workspaceId: string;
+}
+
+export interface GetCreditStatementRequest {
+    /**
+     * The `next_before` of the previous page. Any other value is refused.
+     */
+    before?: string;
 }
 
 export interface GetCreditTrendRequest {
@@ -2273,6 +2285,30 @@ export interface DefaultApiInterface {
      * Balance and recent entries of one account (02:OPS-003)
      */
     getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger>;
+
+    /**
+     * Creates request options for getCreditStatement without sending the request
+     * @param {string} [before] The &#x60;next_before&#x60; of the previous page. Any other value is refused.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditStatementRequestOpts(requestParameters: GetCreditStatementRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * The real ledger, newest first, fifty entries a page: every debit that was taken and every grant that came in, denominated in Credit only. Dollars and markup never appear here - Credit is the only unit a user is shown, and the ledger already holds the charged amount.  This is the authoritative spend. The usage a Run\'s trace shows is a floor summed from events and will not match it exactly, so this route does not repeat that number; `note` says which figure to trust.  A debit carries `run_id` only when that Run still exists in the caller\'s own Workspace, so every link here opens. A debit whose Run was deleted, or that points outside the Workspace, keeps its amount and label and loses the link. 
+     * @summary What the account\'s Credit was actually spent on and granted from (CRED-009)
+     * @param {string} [before] The &#x60;next_before&#x60; of the previous page. Any other value is refused.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getCreditStatementRaw(requestParameters: GetCreditStatementRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditStatement>>;
+
+    /**
+     * The real ledger, newest first, fifty entries a page: every debit that was taken and every grant that came in, denominated in Credit only. Dollars and markup never appear here - Credit is the only unit a user is shown, and the ledger already holds the charged amount.  This is the authoritative spend. The usage a Run\'s trace shows is a floor summed from events and will not match it exactly, so this route does not repeat that number; `note` says which figure to trust.  A debit carries `run_id` only when that Run still exists in the caller\'s own Workspace, so every link here opens. A debit whose Run was deleted, or that points outside the Workspace, keeps its amount and label and loses the link. 
+     * What the account\'s Credit was actually spent on and granted from (CRED-009)
+     */
+    getCreditStatement(requestParameters: GetCreditStatementRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditStatement>;
 
     /**
      * Creates request options for getCreditTrend without sending the request
@@ -5597,6 +5633,49 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getCreditLedger(requestParameters: GetCreditLedgerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditLedger> {
         const response = await this.getCreditLedgerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getCreditStatement without sending the request
+     */
+    async getCreditStatementRequestOpts(requestParameters: GetCreditStatementRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['before'] != null) {
+            queryParameters['before'] = requestParameters['before'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/credits/entries`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The real ledger, newest first, fifty entries a page: every debit that was taken and every grant that came in, denominated in Credit only. Dollars and markup never appear here - Credit is the only unit a user is shown, and the ledger already holds the charged amount.  This is the authoritative spend. The usage a Run\'s trace shows is a floor summed from events and will not match it exactly, so this route does not repeat that number; `note` says which figure to trust.  A debit carries `run_id` only when that Run still exists in the caller\'s own Workspace, so every link here opens. A debit whose Run was deleted, or that points outside the Workspace, keeps its amount and label and loses the link. 
+     * What the account\'s Credit was actually spent on and granted from (CRED-009)
+     */
+    async getCreditStatementRaw(requestParameters: GetCreditStatementRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreditStatement>> {
+        const requestOptions = await this.getCreditStatementRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreditStatementFromJSON(jsonValue));
+    }
+
+    /**
+     * The real ledger, newest first, fifty entries a page: every debit that was taken and every grant that came in, denominated in Credit only. Dollars and markup never appear here - Credit is the only unit a user is shown, and the ledger already holds the charged amount.  This is the authoritative spend. The usage a Run\'s trace shows is a floor summed from events and will not match it exactly, so this route does not repeat that number; `note` says which figure to trust.  A debit carries `run_id` only when that Run still exists in the caller\'s own Workspace, so every link here opens. A debit whose Run was deleted, or that points outside the Workspace, keeps its amount and label and loses the link. 
+     * What the account\'s Credit was actually spent on and granted from (CRED-009)
+     */
+    async getCreditStatement(requestParameters: GetCreditStatementRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreditStatement> {
+        const response = await this.getCreditStatementRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

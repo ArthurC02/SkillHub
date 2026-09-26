@@ -15,6 +15,7 @@ function filterKey(filters: SearchFilters) {
 export const queryKeys = {
   me: ["me"],
   credits: ["credits"],
+  creditStatement: ["credits", "statement"],
   dataRetentionPolicy: ["policy", "data-retention"],
   skills: {
     correctedSearch: (query: string, filters: SearchFilters, correction: string) => [

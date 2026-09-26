@@ -154,6 +154,12 @@ type GetCreditLedgerParams struct {
 	WorkspaceID uuid.UUID
 }
 
+// GetCreditStatementParams is parameters of getCreditStatement operation.
+type GetCreditStatementParams struct {
+	// The `next_before` of the previous page. Any other value is refused.
+	Before OptString `json:",omitempty,omitzero"`
+}
+
 // GetCreditTrendParams is parameters of getCreditTrend operation.
 type GetCreditTrendParams struct {
 	Days OptGetCreditTrendDays `json:",omitempty,omitzero"`

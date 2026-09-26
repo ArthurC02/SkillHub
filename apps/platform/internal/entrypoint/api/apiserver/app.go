@@ -293,8 +293,9 @@ func NewApp(cfg Config) (*App, error) {
 			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
 			Credits: &creditsHandler{
-				Ledger:   &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
-				Identity: identitySvc,
+				Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+				Identity:        identitySvc,
+				RunsInWorkspace: runSvc.RunsInWorkspace,
 			},
 			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
 			ModelBudgets:  &modelbudget.Handler{Svc: budgets, Actor: sessionActorID},

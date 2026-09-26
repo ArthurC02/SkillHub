@@ -142,6 +142,8 @@ type Store interface {
 
 	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
 
+	OwnEntries(ctx context.Context, userID pgtype.UUID, page EntryPage) ([]StatementEntry, error)
+
 	LatestStatistics(ctx context.Context) ([]KindStatistics, error)
 
 	DailyCost(ctx context.Context, since time.Time) ([]DailyAmount, error)
@@ -149,6 +151,23 @@ type Store interface {
 	DailyCredits(ctx context.Context, since time.Time) ([]DailyAmount, error)
 
 	BalanceTotal(ctx context.Context) (int64, error)
+}
+
+type EntryPage struct {
+	BeforeAt time.Time
+	BeforeID pgtype.UUID
+	Limit    int32
+}
+
+type StatementEntry struct {
+	ID           pgtype.UUID
+	Kind         EntryKind
+	DeltaCredits int64
+	Estimated    bool
+	CreatedAt    time.Time
+	RefType      *string
+	RefID        pgtype.UUID
+	SpentOn      *CostKind
 }
 
 type LedgerEntry struct {

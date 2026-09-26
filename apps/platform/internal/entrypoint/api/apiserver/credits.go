@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -36,6 +37,8 @@ type CreditLedger interface {
 
 	Ledger(ctx context.Context, workspaceID, operatorID pgtype.UUID) (credit.Ledger, error)
 
+	Statement(ctx context.Context, workspaceID pgtype.UUID, beforeAt time.Time, beforeID pgtype.UUID) ([]credit.StatementEntry, bool, error)
+
 	CostStatistics(ctx context.Context) ([]credit.KindStatistics, error)
 
 	DailyCost(ctx context.Context, since time.Time) ([]credit.DailyAmount, error)
@@ -46,6 +49,8 @@ type CreditLedger interface {
 type creditsHandler struct {
 	Ledger   CreditLedger
 	Identity *identity.Service
+
+	RunsInWorkspace func(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) ([]pgtype.UUID, error)
 }
 
 type creditBalanceView struct {
@@ -107,6 +112,145 @@ func (h *creditsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, creditBalanceResponse(balance, canStart, est))
+}
+
+type statementEntryView struct {
+	ID           string `json:"id"`
+	Kind         string `json:"kind"`
+	Label        string `json:"label"`
+	DeltaCredits int64  `json:"delta_credits"`
+	Estimated    bool   `json:"estimated"`
+	CreatedAt    string `json:"created_at"`
+	RunID        string `json:"run_id,omitempty"`
+}
+
+type statementResponse struct {
+	Entries    []statementEntryView `json:"entries"`
+	NextBefore string               `json:"next_before,omitempty"`
+	Note       string               `json:"note"`
+}
+
+const statementNote = "這裡列的是真正扣掉與入帳的點數，一律以點數計。" +
+	"試跑頁上的「用量」是事件逐筆疊出來的下界估計，兩者不會剛好相等；花了多少，以這裡為準。" +
+	"標示「估計」的那一筆，是閘道沒有回報實際花費時，平台依統計上界扣的點數。"
+
+var spentOnLabels = map[credit.CostKind]string{
+	credit.KindRun:             "試跑",
+	credit.KindCreationStep:    "互動創作",
+	credit.KindGenerate:        "從描述生成 Skill",
+	credit.KindReview:          "評估判定",
+	credit.KindSuggestion:      "改善建議",
+	credit.KindSuggestCriteria: "建議驗收條件",
+	credit.KindIndexEnrich:     "匯入時的索引增強",
+	credit.KindMatchReasons:    "搜尋結果的符合原因",
+	credit.KindSearchIntent:    "搜尋意圖分析",
+	credit.KindSearchEmbedding: "搜尋",
+}
+
+var entryKindLabels = map[credit.EntryKind]string{
+	credit.EntryGrant:      "營運者授予",
+	credit.EntryTopup:      "儲值",
+	credit.EntryAdjustment: "調整",
+}
+
+func statementLabel(e credit.StatementEntry) string {
+	if e.SpentOn != nil {
+		if label, ok := spentOnLabels[*e.SpentOn]; ok {
+			return label
+		}
+		return string(*e.SpentOn)
+	}
+	if label, ok := entryKindLabels[e.Kind]; ok {
+		return label
+	}
+	return string(e.Kind)
+}
+
+func parseStatementCursor(raw string) (time.Time, pgtype.UUID, error) {
+	var id pgtype.UUID
+	if raw == "" {
+		return time.Time{}, id, nil
+	}
+	at, rawID, _ := strings.Cut(raw, "_")
+	t, err := time.Parse(time.RFC3339Nano, at)
+	if err != nil || id.Scan(rawID) != nil {
+		return time.Time{}, id, errors.New("before must be a cursor this endpoint returned")
+	}
+	return t, id, nil
+}
+
+func statementCursor(e credit.StatementEntry) string {
+	return e.CreatedAt.UTC().Format(time.RFC3339Nano) + "_" + pgconv.UUIDString(e.ID)
+}
+
+func (h *creditsHandler) Statement(w http.ResponseWriter, r *http.Request) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	beforeAt, beforeID, err := parseStatementCursor(r.URL.Query().Get("before"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return
+	}
+	entries, more, err := h.Ledger.Statement(r.Context(), ws.ID, beforeAt, beforeID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "statement lookup failed")
+		return
+	}
+	readable, err := h.readableRuns(r.Context(), ws.ID, entries)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "statement lookup failed")
+		return
+	}
+	body := statementResponse{Entries: make([]statementEntryView, 0, len(entries)), Note: statementNote}
+	for _, e := range entries {
+		view := statementEntryView{
+			ID: pgconv.UUIDString(e.ID), Kind: string(e.Kind), Label: statementLabel(e),
+			DeltaCredits: e.DeltaCredits, Estimated: e.Estimated,
+			CreatedAt: e.CreatedAt.UTC().Format(time.RFC3339),
+		}
+		if readable[e.RefID] {
+			view.RunID = pgconv.UUIDString(e.RefID)
+		}
+		body.Entries = append(body.Entries, view)
+	}
+	if more && len(entries) > 0 {
+		body.NextBefore = statementCursor(entries[len(entries)-1])
+	}
+	httpx.WriteJSON(w, http.StatusOK, body)
+}
+
+func (h *creditsHandler) readableRuns(
+	ctx context.Context, workspaceID pgtype.UUID, entries []credit.StatementEntry,
+) (map[pgtype.UUID]bool, error) {
+	var runIDs []pgtype.UUID
+	for _, e := range entries {
+		if e.RefType != nil && *e.RefType == "run" && e.RefID.Valid {
+			runIDs = append(runIDs, e.RefID)
+		}
+	}
+	readable := map[pgtype.UUID]bool{}
+	if len(runIDs) == 0 {
+		return readable, nil
+	}
+	if h.RunsInWorkspace == nil {
+		return nil, errors.New("credits: run reader is not configured")
+	}
+	found, err := h.RunsInWorkspace(ctx, workspaceID, runIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range found {
+		readable[id] = true
+	}
+	return readable, nil
 }
 
 const maxCreditGrantRequestBytes = 4096

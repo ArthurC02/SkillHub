@@ -121,6 +121,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "GET /me/quota", want: http.StatusNotFound, conditional: "policy.QuotaLimits.Enforced()"},
 
 	{pattern: "GET /me/credits", want: http.StatusUnauthorized},
+	{pattern: "GET /me/credits/entries", want: http.StatusUnauthorized},
 	{pattern: "GET /runs", want: http.StatusUnauthorized},
 	{pattern: "GET /runs/{id}", want: http.StatusUnauthorized},
 	{pattern: "POST /runs/{id}/cancel", want: http.StatusUnauthorized},

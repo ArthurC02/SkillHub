@@ -42,3 +42,6 @@ SELECT EXISTS (SELECT 1 FROM runs WHERE id = $1 AND workspace_id = $2);
 SELECT provider, provider_user_id FROM user_identities WHERE user_id = $1;
 -- name: DeleteExpiredFeedbackReports :execrows
 DELETE FROM feedback_reports WHERE created_at < $1;
+
+-- name: RunIDsInWorkspace :many
+SELECT id FROM runs WHERE id = ANY(@run_ids::uuid[]) AND workspace_id = @workspace_id;

@@ -10,6 +10,7 @@ import {
   useRequestAccountDeletion,
 } from "../../../core/session/me.service";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
+import { CreditStatement } from "./CreditStatement";
 
 function deletionFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
@@ -49,6 +50,9 @@ export function WorkspaceAccount() {
             <summary>工作區識別碼</summary>
             <code>{me.data.workspace_id}</code>
           </details>
+
+          <h2>點數與花費</h2>
+          <CreditStatement />
 
           <h2>刪除帳號</h2>
           {me.data.deletion_requested_at ? (

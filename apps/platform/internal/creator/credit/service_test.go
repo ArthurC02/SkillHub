@@ -576,6 +576,10 @@ func TestStatisticsPastTheirShelfLifeFallBackToTheConservativeThreshold(t *testi
 	}
 }
 
+func (f *fakeStore) OwnEntries(context.Context, pgtype.UUID, EntryPage) ([]StatementEntry, error) {
+	return nil, nil
+}
+
 func (f *fakeStore) RecentEntries(context.Context, DBTX, pgtype.UUID, int32) ([]LedgerEntry, error) {
 	return nil, nil
 }

@@ -125,6 +125,7 @@
 | CRED-006 | 有測試 | `TestAnEndedCreationSessionLeavesExactlyOneCostSummary`、`TestEveryScheduledJobHasAWorker`、`TestTheDailyStatisticsSurviveAWindowWithNoEvents` | |
 | CRED-007 | 有測試 | `TestGrantCreditsIsInvisibleWithoutTheOperatorRole`、`TestGrantRefusesAZeroAmountOrABlankReasonAndWritesNoEntry`、`TestASuccessfulGrantIsAuditedWithItsTargetWorkspace` | |
 | CRED-008 | 有測試 | `TestAccountDeletionLeavesTheCreditLedgerAlone` | |
+| CRED-009 | 有測試 | `TestTheStatementLinksOnlyRunsTheReaderCanOpen`、`TestTheStatementPagesWithoutLosingEntriesThatShareATimestamp`、`TestAStatementWithExactlyOnePageOffersNoNextPage`、`TestAStatementCursorThisEndpointDidNotIssueIsRefused`、`workspace.test.tsx`（CRED-009 兩條） | |
 
 ## 後台與維運
 

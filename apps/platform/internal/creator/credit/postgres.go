@@ -311,6 +311,30 @@ func (s *PostgresStore) RecentEntries(ctx context.Context, tx DBTX, userID pgtyp
 	return out, nil
 }
 
+func (s *PostgresStore) OwnEntries(ctx context.Context, userID pgtype.UUID, page EntryPage) ([]StatementEntry, error) {
+	params := gen.ListOwnCreditEntriesParams{UserID: userID, BeforeID: page.BeforeID, RowLimit: page.Limit}
+	if !page.BeforeAt.IsZero() {
+		params.BeforeAt = pgtype.Timestamptz{Time: page.BeforeAt, Valid: true}
+	}
+	rows, err := s.q(nil).ListOwnCreditEntries(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("credit: read own entries: %w", err)
+	}
+	out := make([]StatementEntry, 0, len(rows))
+	for _, r := range rows {
+		e := StatementEntry{
+			ID: r.ID, Kind: EntryKind(r.Kind), DeltaCredits: r.DeltaCredits, Estimated: r.Estimated,
+			CreatedAt: r.CreatedAt.Time, RefType: r.RefType, RefID: r.RefID,
+		}
+		if r.SpentOn != nil {
+			kind := CostKind(*r.SpentOn)
+			e.SpentOn = &kind
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
 func (s *PostgresStore) LatestStatistics(ctx context.Context) ([]KindStatistics, error) {
 	rows, err := s.q(nil).ListLatestCostStatistics(ctx)
 	if err != nil {

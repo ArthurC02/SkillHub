@@ -137,6 +137,10 @@ type GetCreditLedgerRes interface {
 	getCreditLedgerRes()
 }
 
+type GetCreditStatementRes interface {
+	getCreditStatementRes()
+}
+
 type GetCreditTrendRes interface {
 	getCreditTrendRes()
 }

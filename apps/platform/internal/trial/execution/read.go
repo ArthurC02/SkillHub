@@ -17,6 +17,13 @@ func (s *Service) BelongsToWorkspace(ctx context.Context, workspaceID, runID pgt
 	})
 }
 
+func (s *Service) RunsInWorkspace(ctx context.Context, workspaceID pgtype.UUID, runIDs []pgtype.UUID) ([]pgtype.UUID, error) {
+	if len(runIDs) == 0 {
+		return nil, nil
+	}
+	return s.queries().RunIDsInWorkspace(ctx, gen.RunIDsInWorkspaceParams{RunIds: runIDs, WorkspaceID: workspaceID})
+}
+
 type TraceRun struct {
 	Status       string
 	StatusReason *string

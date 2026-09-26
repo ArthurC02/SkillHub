@@ -39,3 +39,14 @@ ORDER BY 1, 2;
 
 -- name: SumCreditBalances :one
 SELECT coalesce(sum(balance_credits), 0)::bigint AS balance_total FROM credit_accounts;
+
+-- name: ListOwnCreditEntries :many
+SELECT e.id, e.kind, e.delta_credits, e.estimated, e.created_at, e.ref_type, e.ref_id,
+       c.kind AS spent_on
+FROM credit_entries e
+LEFT JOIN cost_events c ON c.id = e.cost_event_id
+WHERE e.user_id = @user_id
+  AND (sqlc.narg('before_at')::timestamptz IS NULL
+       OR (e.created_at, e.id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::uuid))
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT @row_limit;

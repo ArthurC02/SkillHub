@@ -132,6 +132,16 @@ func (l *creditLedger) Ledger(ctx context.Context, workspaceID, operatorID pgtyp
 	return ledger, err
 }
 
+func (l *creditLedger) Statement(
+	ctx context.Context, workspaceID pgtype.UUID, beforeAt time.Time, beforeID pgtype.UUID,
+) ([]credit.StatementEntry, bool, error) {
+	userID, err := l.owner(ctx, workspaceID)
+	if err != nil {
+		return nil, false, err
+	}
+	return l.svc.Statement(ctx, userID, beforeAt, beforeID)
+}
+
 func (l *creditLedger) CostStatistics(ctx context.Context) ([]credit.KindStatistics, error) {
 	return l.svc.LatestStatistics(ctx)
 }

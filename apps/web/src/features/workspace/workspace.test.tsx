@@ -652,9 +652,126 @@ const ME = {
 const DELETION_SCOPE =
   "寬限期結束前，你的帳號照常可用。到期後，你上傳的資料集、Run 產出，以及沒有任何人 Fork 或執行過的 Skill 會連同檔案永久刪除。被其他使用者 Fork 過、或歷史 Run 使用過的 Skill 版本會保留（它們的內容是別人的來源鏈），但你的身分會從上面移除，顯示為已刪除的使用者所有。";
 
+const BALANCE = {
+  balance_credits: 120,
+  debt_floor_credits: -50,
+  estimated_session: { low_credits: 1, high_credits: 3, sample_size: 0, estimated: true },
+  can_start: true,
+};
+
+const STATEMENT_NOTE = "花了多少，以這裡為準。";
+
+function stubAccountFetch(
+  handler: (input: string, init?: RequestInit) => Promise<Response>,
+  statement: (before: string | null) => unknown = () => ({ entries: [], note: STATEMENT_NOTE }),
+) {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = new URL(String(input), "http://localhost");
+    if (url.pathname.endsWith("/me/credits/entries")) {
+      return json(statement(url.searchParams.get("before")));
+    }
+    if (url.pathname.endsWith("/me/credits")) return json(BALANCE);
+    return handler(input, init);
+  });
+}
+
+test("CRED-009 the account page lists what each credit went to and links only the runs it names", async () => {
+  stubAccountFetch(
+    () => json(ME),
+    () => ({
+      entries: [
+        {
+          id: "e3",
+          kind: "debit",
+          label: "試跑",
+          delta_credits: -7,
+          estimated: true,
+          created_at: "2026-09-03T00:00:00Z",
+          run_id: RUN,
+        },
+        {
+          id: "e2",
+          kind: "debit",
+          label: "互動創作",
+          delta_credits: -4,
+          estimated: false,
+          created_at: "2026-09-02T00:00:00Z",
+        },
+        {
+          id: "e1",
+          kind: "grant",
+          label: "營運者授予",
+          delta_credits: 100,
+          estimated: false,
+          created_at: "2026-09-01T00:00:00Z",
+        },
+      ],
+      note: STATEMENT_NOTE,
+    }),
+  );
+  await render(<WorkspaceAccount />, () => text().includes("營運者授予"));
+
+  expect(text()).toContain("目前餘額 120 點");
+  const rows = Array.from(container.querySelectorAll("li")).map((li) => li.textContent ?? "");
+  expect(rows[0]).toContain("-7 點");
+  expect(rows[0]).toContain("估計");
+  expect(rows[1]).not.toContain("估計");
+  expect(rows[2]).toContain("+100 點");
+  const links = Array.from(container.querySelectorAll("li a")).map((a) => a.getAttribute("href"));
+  expect(links, "only the entry that names a run may link to one").toEqual([`/runs/${RUN}`]);
+  expect(text()).toContain(STATEMENT_NOTE);
+  expect(button("載入更早的紀錄")).toBeUndefined();
+});
+
+test("CRED-009 older entries load with the cursor the server returned, and the last page offers no more", async () => {
+  const befores: (string | null)[] = [];
+  stubAccountFetch(
+    () => json(ME),
+    (before) => {
+      befores.push(before);
+      return before === "cursor-1"
+        ? {
+            entries: [
+              {
+                id: "old",
+                kind: "topup",
+                label: "儲值",
+                delta_credits: 50,
+                estimated: false,
+                created_at: "2026-08-01T00:00:00Z",
+              },
+            ],
+            note: STATEMENT_NOTE,
+          }
+        : {
+            entries: [
+              {
+                id: "new",
+                kind: "grant",
+                label: "營運者授予",
+                delta_credits: 10,
+                estimated: false,
+                created_at: "2026-09-01T00:00:00Z",
+              },
+            ],
+            next_before: "cursor-1",
+            note: STATEMENT_NOTE,
+          };
+    },
+  );
+  await render(<WorkspaceAccount />, () => text().includes("營運者授予"));
+  expect(text()).not.toContain("儲值");
+
+  await act(async () => button("載入更早的紀錄")?.click());
+  await waitFor(() => text().includes("儲值"));
+  expect(befores).toContain("cursor-1");
+  expect(text()).toContain("營運者授予");
+  expect(button("載入更早的紀錄")).toBeUndefined();
+});
+
 test("CORE-007 requesting account deletion starts a grace period and shows the server's scope", async () => {
   const calls: [string, string | undefined][] = [];
-  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+  stubAccountFetch((input: string, init?: RequestInit) => {
     calls.push([String(input), init?.method]);
     if (init?.method === "DELETE") {
       return json({
@@ -678,7 +795,7 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
 });
 
 test("丙-150 a failed deletion request says the fixed sentence, not the server's raw body, in role=alert", async () => {
-  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+  stubAccountFetch((_input: string, init?: RequestInit) => {
     if (init?.method === "DELETE") {
       return json({ error: "internal error exploding pants" }, 500);
     }
@@ -700,7 +817,7 @@ test("丙-150 a failed deletion request says the fixed sentence, not the server'
 });
 
 test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the server's raw body", async () => {
-  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+  stubAccountFetch((_input: string, init?: RequestInit) => {
     if (init?.method === "POST") {
       return json({ error: "刪除已經不可逆，無法再變更" }, 409);
     }
@@ -719,7 +836,7 @@ test("丙-150 a 409 on cancel (deletion already irreversible) says so, not the s
 });
 
 test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside the account name", async () => {
-  vi.stubGlobal("fetch", () => json(ME));
+  stubAccountFetch(() => json(ME));
   await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
 
   const fold = Array.from(container.querySelectorAll("details")).find((d) =>
@@ -736,7 +853,7 @@ test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside th
 
 test("CORE-007 a pending deletion is a state with a date and a way out, not a receipt", async () => {
   const posts: string[] = [];
-  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+  stubAccountFetch((input: string, init?: RequestInit) => {
     if (init?.method === "POST") {
       posts.push(String(input));
       return json({ deletion_requested_at: null });
@@ -1049,7 +1166,7 @@ test("a run in a terminal status shows no cancel button and no confirm dialog", 
 
 test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {
   const invalidated = vi.spyOn(queryClient, "invalidateQueries");
-  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+  stubAccountFetch((_input: string, init?: RequestInit) => {
     if (init?.method === "DELETE") return json({ cancelled: true });
     return json({
       user_id: "u-1",

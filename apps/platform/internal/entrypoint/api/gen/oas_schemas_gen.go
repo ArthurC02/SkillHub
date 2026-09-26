@@ -4517,6 +4517,188 @@ func (s *CreditLedgerEntryKind) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/components/schemas/CreditStatement
+type CreditStatement struct {
+	Entries []CreditStatementEntry `json:"entries"`
+	// Pass as `before` for the next page. Absent on the last page.
+	NextBefore OptString `json:"next_before"`
+	// Which number is authoritative and what an estimated entry means.
+	Note string `json:"note"`
+}
+
+// GetEntries returns the value of Entries.
+func (s *CreditStatement) GetEntries() []CreditStatementEntry {
+	return s.Entries
+}
+
+// GetNextBefore returns the value of NextBefore.
+func (s *CreditStatement) GetNextBefore() OptString {
+	return s.NextBefore
+}
+
+// GetNote returns the value of Note.
+func (s *CreditStatement) GetNote() string {
+	return s.Note
+}
+
+// SetEntries sets the value of Entries.
+func (s *CreditStatement) SetEntries(val []CreditStatementEntry) {
+	s.Entries = val
+}
+
+// SetNextBefore sets the value of NextBefore.
+func (s *CreditStatement) SetNextBefore(val OptString) {
+	s.NextBefore = val
+}
+
+// SetNote sets the value of Note.
+func (s *CreditStatement) SetNote(val string) {
+	s.Note = val
+}
+
+func (*CreditStatement) getCreditStatementRes() {}
+
+// Ref: #/components/schemas/CreditStatementEntry
+type CreditStatementEntry struct {
+	ID   uuid.UUID                `json:"id"`
+	Kind CreditStatementEntryKind `json:"kind"`
+	// What the Credit was spent on or where it came from, in words.
+	Label string `json:"label"`
+	// Negative for a debit.
+	DeltaCredits int64 `json:"delta_credits"`
+	// True when the gateway reported no settled cost and the platform charged its statistical upper bound
+	// instead.
+	Estimated bool      `json:"estimated"`
+	CreatedAt time.Time `json:"created_at"`
+	// Present only when the Run still exists in the caller's Workspace.
+	RunID OptUUID `json:"run_id"`
+}
+
+// GetID returns the value of ID.
+func (s *CreditStatementEntry) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetKind returns the value of Kind.
+func (s *CreditStatementEntry) GetKind() CreditStatementEntryKind {
+	return s.Kind
+}
+
+// GetLabel returns the value of Label.
+func (s *CreditStatementEntry) GetLabel() string {
+	return s.Label
+}
+
+// GetDeltaCredits returns the value of DeltaCredits.
+func (s *CreditStatementEntry) GetDeltaCredits() int64 {
+	return s.DeltaCredits
+}
+
+// GetEstimated returns the value of Estimated.
+func (s *CreditStatementEntry) GetEstimated() bool {
+	return s.Estimated
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *CreditStatementEntry) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetRunID returns the value of RunID.
+func (s *CreditStatementEntry) GetRunID() OptUUID {
+	return s.RunID
+}
+
+// SetID sets the value of ID.
+func (s *CreditStatementEntry) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetKind sets the value of Kind.
+func (s *CreditStatementEntry) SetKind(val CreditStatementEntryKind) {
+	s.Kind = val
+}
+
+// SetLabel sets the value of Label.
+func (s *CreditStatementEntry) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetDeltaCredits sets the value of DeltaCredits.
+func (s *CreditStatementEntry) SetDeltaCredits(val int64) {
+	s.DeltaCredits = val
+}
+
+// SetEstimated sets the value of Estimated.
+func (s *CreditStatementEntry) SetEstimated(val bool) {
+	s.Estimated = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *CreditStatementEntry) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *CreditStatementEntry) SetRunID(val OptUUID) {
+	s.RunID = val
+}
+
+type CreditStatementEntryKind string
+
+const (
+	CreditStatementEntryKindDebit      CreditStatementEntryKind = "debit"
+	CreditStatementEntryKindGrant      CreditStatementEntryKind = "grant"
+	CreditStatementEntryKindTopup      CreditStatementEntryKind = "topup"
+	CreditStatementEntryKindAdjustment CreditStatementEntryKind = "adjustment"
+)
+
+// AllValues returns all CreditStatementEntryKind values.
+func (CreditStatementEntryKind) AllValues() []CreditStatementEntryKind {
+	return []CreditStatementEntryKind{
+		CreditStatementEntryKindDebit,
+		CreditStatementEntryKindGrant,
+		CreditStatementEntryKindTopup,
+		CreditStatementEntryKindAdjustment,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreditStatementEntryKind) MarshalText() ([]byte, error) {
+	switch s {
+	case CreditStatementEntryKindDebit:
+		return []byte(s), nil
+	case CreditStatementEntryKindGrant:
+		return []byte(s), nil
+	case CreditStatementEntryKindTopup:
+		return []byte(s), nil
+	case CreditStatementEntryKindAdjustment:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreditStatementEntryKind) UnmarshalText(data []byte) error {
+	switch CreditStatementEntryKind(data) {
+	case CreditStatementEntryKindDebit:
+		*s = CreditStatementEntryKindDebit
+		return nil
+	case CreditStatementEntryKindGrant:
+		*s = CreditStatementEntryKindGrant
+		return nil
+	case CreditStatementEntryKindTopup:
+		*s = CreditStatementEntryKindTopup
+		return nil
+	case CreditStatementEntryKindAdjustment:
+		*s = CreditStatementEntryKindAdjustment
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/CreditTrend
 type CreditTrend struct {
 	From         time.Time     `json:"from"`
@@ -8720,6 +8902,14 @@ func (*GetCreationSessionUnauthorized) getCreationSessionRes() {}
 type GetCreationSessionUnprocessableEntity Error
 
 func (*GetCreationSessionUnprocessableEntity) getCreationSessionRes() {}
+
+type GetCreditStatementBadRequest Error
+
+func (*GetCreditStatementBadRequest) getCreditStatementRes() {}
+
+type GetCreditStatementUnauthorized Error
+
+func (*GetCreditStatementUnauthorized) getCreditStatementRes() {}
 
 type GetCreditTrendBadRequest Error
 

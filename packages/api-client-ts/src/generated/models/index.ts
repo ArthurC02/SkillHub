@@ -45,6 +45,8 @@ export * from './CreditBalance';
 export * from './CreditEstimate';
 export * from './CreditLedger';
 export * from './CreditLedgerEntry';
+export * from './CreditStatement';
+export * from './CreditStatementEntry';
 export * from './CreditTrend';
 export * from './CriterionResult';
 export * from './DailyAmount';

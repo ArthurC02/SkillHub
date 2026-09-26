@@ -196,6 +196,35 @@ func (q *Queries) InsertFeedbackReport(ctx context.Context, arg InsertFeedbackRe
 	return err
 }
 
+const runIDsInWorkspace = `-- name: RunIDsInWorkspace :many
+SELECT id FROM runs WHERE id = ANY($1::uuid[]) AND workspace_id = $2
+`
+
+type RunIDsInWorkspaceParams struct {
+	RunIds      []pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) RunIDsInWorkspace(ctx context.Context, arg RunIDsInWorkspaceParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, runIDsInWorkspace, arg.RunIds, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const runInWorkspace = `-- name: RunInWorkspace :one
 SELECT EXISTS (SELECT 1 FROM runs WHERE id = $1 AND workspace_id = $2)
 `

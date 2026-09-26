@@ -430,6 +430,24 @@ func (s *Service) Ledger(ctx context.Context, tx DBTX, query LedgerQuery) (Ledge
 	return Ledger{Balance: balance, Entries: entries}, nil
 }
 
+const StatementPageSize = 50
+
+func (s *Service) Statement(ctx context.Context, userID pgtype.UUID, beforeAt time.Time, beforeID pgtype.UUID) ([]StatementEntry, bool, error) {
+	if s.Store == nil {
+		return nil, false, ErrUnavailable
+	}
+	entries, err := s.Store.OwnEntries(ctx, userID, EntryPage{
+		BeforeAt: beforeAt, BeforeID: beforeID, Limit: StatementPageSize + 1,
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	if len(entries) > StatementPageSize {
+		return entries[:StatementPageSize], true, nil
+	}
+	return entries, false, nil
+}
+
 func (s *Service) LatestStatistics(ctx context.Context) ([]KindStatistics, error) {
 	if s.Store == nil {
 		return nil, ErrUnavailable

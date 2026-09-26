@@ -25,6 +25,7 @@ files:
 queries:
   CountQuotaRuns: run
   RunInWorkspace: run
+  RunIDsInWorkspace: run
   GetWorkspaceCreatedAt: identity
   GetIdentityProviderIDs: identity
 
@@ -203,6 +204,7 @@ scope:
   GetWorkspace: user
   GetWorkspaceCreatedAt: user
   InsertCreditEntry: user
+  ListOwnCreditEntries: user
   ListWorkspacesByOwner: user
   SaveAccountDeletionRequest: user
   RequeueSearchDocumentEnrichment: user

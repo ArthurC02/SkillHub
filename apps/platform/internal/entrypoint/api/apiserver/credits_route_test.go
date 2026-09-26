@@ -520,6 +520,10 @@ func TestGetCreditsFailsClosedWhenTheSessionEstimateErrors(t *testing.T) {
 	}
 }
 
+func (f *fakeCreditLedger) Statement(context.Context, pgtype.UUID, time.Time, pgtype.UUID) ([]credit.StatementEntry, bool, error) {
+	return nil, false, nil
+}
+
 func (f *fakeCreditLedger) Ledger(context.Context, pgtype.UUID, pgtype.UUID) (credit.Ledger, error) {
 	return credit.Ledger{}, nil
 }

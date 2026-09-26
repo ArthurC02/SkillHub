@@ -114,6 +114,70 @@ func (q *Queries) InsertCreditEntry(ctx context.Context, arg InsertCreditEntryPa
 	return i, err
 }
 
+const listOwnCreditEntries = `-- name: ListOwnCreditEntries :many
+SELECT e.id, e.kind, e.delta_credits, e.estimated, e.created_at, e.ref_type, e.ref_id,
+       c.kind AS spent_on
+FROM credit_entries e
+LEFT JOIN cost_events c ON c.id = e.cost_event_id
+WHERE e.user_id = $1
+  AND ($2::timestamptz IS NULL
+       OR (e.created_at, e.id) < ($2::timestamptz, $3::uuid))
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT $4
+`
+
+type ListOwnCreditEntriesParams struct {
+	UserID   pgtype.UUID
+	BeforeAt pgtype.Timestamptz
+	BeforeID pgtype.UUID
+	RowLimit int32
+}
+
+type ListOwnCreditEntriesRow struct {
+	ID           pgtype.UUID
+	Kind         string
+	DeltaCredits int64
+	Estimated    bool
+	CreatedAt    pgtype.Timestamptz
+	RefType      *string
+	RefID        pgtype.UUID
+	SpentOn      *string
+}
+
+func (q *Queries) ListOwnCreditEntries(ctx context.Context, arg ListOwnCreditEntriesParams) ([]ListOwnCreditEntriesRow, error) {
+	rows, err := q.db.Query(ctx, listOwnCreditEntries,
+		arg.UserID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOwnCreditEntriesRow
+	for rows.Next() {
+		var i ListOwnCreditEntriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.DeltaCredits,
+			&i.Estimated,
+			&i.CreatedAt,
+			&i.RefType,
+			&i.RefID,
+			&i.SpentOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRecentCreditEntries = `-- name: ListRecentCreditEntries :many
 SELECT id, user_id, kind, delta_credits, usd_micros, markup_bps, model, prompt_version, ref_type, ref_id, cost_event_id, estimated, idempotency_key, created_at FROM credit_entries
 WHERE user_id = $1

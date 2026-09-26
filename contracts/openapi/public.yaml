@@ -338,6 +338,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /me/credits/entries:
+    get:
+      operationId: getCreditStatement
+      summary: What the account's Credit was actually spent on and granted from (CRED-009)
+      description: |
+        The real ledger, newest first, fifty entries a page: every debit that
+        was taken and every grant that came in, denominated in Credit only.
+        Dollars and markup never appear here - Credit is the only unit a user
+        is shown, and the ledger already holds the charged amount.
+
+        This is the authoritative spend. The usage a Run's trace shows is a
+        floor summed from events and will not match it exactly, so this route
+        does not repeat that number; `note` says which figure to trust.
+
+        A debit carries `run_id` only when that Run still exists in the
+        caller's own Workspace, so every link here opens. A debit whose Run
+        was deleted, or that points outside the Workspace, keeps its amount
+        and label and loses the link.
+      parameters:
+        - name: before
+          in: query
+          required: false
+          description: The `next_before` of the previous page. Any other value is refused.
+          schema: { type: string }
+      responses:
+        "200":
+          description: One page of the ledger.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreditStatement" }
+        "400":
+          description: A `before` this endpoint did not issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /policy/data-retention:
     get:
       operationId: getDataRetentionPolicy
@@ -9373,6 +9413,44 @@ components:
         profile_version:
           type: string
           description: The target profile's version. Absent for `standard`, which has no profile.
+    CreditStatement:
+      type: object
+      required: [entries, note]
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/CreditStatementEntry" }
+        next_before:
+          type: string
+          description: Pass as `before` for the next page. Absent on the last page.
+        note:
+          type: string
+          description: Which number is authoritative and what an estimated entry means.
+    CreditStatementEntry:
+      type: object
+      required: [id, kind, label, delta_credits, estimated, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [debit, grant, topup, adjustment]
+        label:
+          type: string
+          description: What the Credit was spent on or where it came from, in words.
+        delta_credits:
+          type: integer
+          format: int64
+          description: Negative for a debit.
+        estimated:
+          type: boolean
+          description: |
+            True when the gateway reported no settled cost and the platform
+            charged its statistical upper bound instead.
+        created_at: { type: string, format: date-time }
+        run_id:
+          type: string
+          format: uuid
+          description: Present only when the Run still exists in the caller's Workspace.
     CreditBalance:
       description: |
         One account's Credit standing (CRED-001). No field here is
