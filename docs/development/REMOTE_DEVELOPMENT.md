@@ -85,7 +85,7 @@ task clean-mode
 
 - `postCreateCommand` 會執行 `.devcontainer/post-create.sh`，腳本會做工具檢查，並呼叫 `go -C tools/devctl run . env-init`。
 - `env-init` 會在 `.env` 不存在時由 `.env.example` 建立；若 `.env` 已存在則保持原值不覆寫。
-- 首次建立容器可直接使用 `env-init` 產生的 `.env`。若你要改用遠端最小模板，請在容器建立後將 `.devcontainer/.env.remote.example` 覆蓋到 `.env`，補齊值後手動重跑 `bash .devcontainer/post-create.sh`。
+- 首次建立容器可直接使用 `env-init` 產生的 `.env`。若你要改用遠端最小模板，建議只在第一次設定時複製；若 `.env` 已有本機值，請改為手動合併需要的 key，再重跑 `bash .devcontainer/post-create.sh`。
 - `.env.remote.example` 採 `localhost` 端點，對應 `task dev` 在 DinD 內綁定的本機埠。
 - `post-create.sh` 在完整初始化時要求以下 key 為非空：`DATABASE_URL`、`OBJSTORE_ENDPOINT`、`OBJSTORE_ACCESS_KEY`、`OBJSTORE_SECRET_KEY`、`LITELLM_BASE_URL`。
 - 因為 devcontainer 設定 `waitFor=postCreateCommand`，若上述 key 缺值（或仍是未展開的 `$VAR` 佔位），容器會在初始化階段失敗；請先確保 `.env` 內這些值可用再重跑初始化。

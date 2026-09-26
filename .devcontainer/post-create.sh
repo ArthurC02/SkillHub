@@ -35,13 +35,21 @@ until docker info >/dev/null 2>&1; do
   sleep 1
 done
 
+bootstrap_lock_key="$(pwd | cksum | awk '{print $1}')"
+bootstrap_lock="/tmp/skillhub-devcontainer-bootstrap-${bootstrap_lock_key}.lock"
+exec 9>"${bootstrap_lock}"
+if ! flock -w 120 9; then
+  echo "timed out waiting for bootstrap lock" >&2
+  exit 1
+fi
+
 if [ -d /go ] && [ -d /home/vscode ]; then
   mkdir -p /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv
   if command -v sudo >/dev/null 2>&1; then
     for cache_dir in /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv; do
       owner="$(stat -c '%U:%G' "${cache_dir}" 2>/dev/null || true)"
       if [ "${owner}" != "vscode:vscode" ]; then
-        sudo chown vscode:vscode "${cache_dir}"
+        sudo chown -R vscode:vscode "${cache_dir}"
       fi
     done
   fi
@@ -104,13 +112,5 @@ for key in "${required_env_keys[@]}"; do
     exit 1
   fi
 done
-
-bootstrap_lock_key="$(pwd | cksum | awk '{print $1}')"
-bootstrap_lock="/tmp/skillhub-devcontainer-bootstrap-${bootstrap_lock_key}.lock"
-exec 9>"${bootstrap_lock}"
-if ! flock -w 120 9; then
-  echo "timed out waiting for bootstrap lock" >&2
-  exit 1
-fi
 
 go -C tools/devctl run . bootstrap
