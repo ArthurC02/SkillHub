@@ -56,8 +56,12 @@ import {
  * error.
  * 
  * One stored package object backs every entry, because a plugin is stored
- * as it arrived. Downloading one skill of a plugin therefore returns the
- * whole plugin, and any screen offering that download has to say so.
+ * as it arrived. That object is never handed to a reader: a trial installs
+ * only the directory the entry's `path` names, and the one download the
+ * platform offers is a portable package built for a single skill. A screen
+ * must not offer "the whole plugin" as something this platform can give
+ * back - the set exists upstream, and each entry's `path` is how a reader
+ * finds it there.
  * 
  * @export
  * @interface ImportResult

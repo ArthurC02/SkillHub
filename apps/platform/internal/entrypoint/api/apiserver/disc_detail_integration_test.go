@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
 type packageStore map[string][]byte
@@ -114,6 +115,18 @@ type detail struct {
 		Type          string `json:"type"`
 		URL           string `json:"url"`
 		SourceVersion string `json:"source_version"`
+		Path          string `json:"path"`
+		Plugin        *struct {
+			Name       string `json:"name"`
+			Version    string `json:"version"`
+			Repository string `json:"repository"`
+			Note       string `json:"note"`
+		} `json:"plugin"`
+		Siblings []struct {
+			SkillID string `json:"skill_id"`
+			Name    string `json:"name"`
+			Path    string `json:"path"`
+		} `json:"siblings"`
 	} `json:"source"`
 	Redistribution struct {
 		Value string `json:"value"`
@@ -361,5 +374,107 @@ func TestUnreadablePackageIsReportedAsUnknownNotClean(t *testing.T) {
 	}
 	if got.Compatibility.SpecValidation.Value != "unverified" {
 		t.Errorf("spec_validation = %q, want unverified when the package cannot be read", got.Compatibility.SpecValidation.Value)
+	}
+}
+
+func importedAt(t *testing.T, res ingest.SourceResult, path string) ingest.SkillImport {
+	t.Helper()
+	for _, imported := range res.Imported {
+		if imported.Path == path {
+			return imported
+		}
+	}
+	t.Fatalf("no skill was imported from %q", path)
+	return ingest.SkillImport{}
+}
+
+func TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "plugin-provenance-detail")
+
+	res := importSource(t, a, pool, owner, map[string]string{
+		"plugin.json":           conformingPlugin("desk-tools"),
+		"skills/tidy/SKILL.md":  skillNamed("tidy-notes"),
+		"skills/split/SKILL.md": skillNamed("split-csv"),
+		"skills/tag/SKILL.md":   skillNamed("tag-inbox"),
+	}, nil)
+	if len(res.Imported) != 3 {
+		t.Fatalf("imported %d skills, want 3", len(res.Imported))
+	}
+	tidy := importedAt(t, res, "skills/tidy")
+
+	var got detail
+	if code := getJSON(t, owner.Client, a.URL+"/api/skills/"+uuidText(tidy.Skill.ID), &got); code != http.StatusOK {
+		t.Fatalf("owner GET of a skill imported from a plugin: want 200, got %d", code)
+	}
+	if got.Source == nil {
+		t.Fatal("the detail carries no source at all")
+	}
+	if got.Source.Plugin == nil {
+		t.Fatal("the source records a plugin and the detail does not report it; the reader cannot tell this Skill arrived as part of a set")
+	}
+	if got.Source.Plugin.Name != "desk-tools" || got.Source.Plugin.Version != "1.4.0" {
+		t.Errorf("plugin = %+v, want desk-tools 1.4.0 as the manifest declared", got.Source.Plugin)
+	}
+	if got.Source.Plugin.Repository != "https://example.invalid/desk-tools" {
+		t.Errorf("plugin repository = %q, want the manifest's own url", got.Source.Plugin.Repository)
+	}
+	if got.Source.Plugin.Note == "" {
+		t.Error("the plugin fact arrived without saying what it means for installation or download")
+	}
+	if got.Source.Path != "skills/tidy" {
+		t.Errorf("path = %q, want skills/tidy; without it the reader cannot find this skill upstream", got.Source.Path)
+	}
+
+	names := map[string]string{}
+	for _, sibling := range got.Source.Siblings {
+		if sibling.SkillID == uuidText(tidy.Skill.ID) {
+			t.Error("the skill is listed as its own sibling")
+		}
+		names[sibling.Name] = sibling.Path
+	}
+	if len(names) != 2 || names["split-csv"] != "skills/split" || names["tag-inbox"] != "skills/tag" {
+		t.Errorf("siblings = %+v, want split-csv at skills/split and tag-inbox at skills/tag", got.Source.Siblings)
+	}
+
+	taken := importedAt(t, res, "skills/tag")
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET takedown_at = now(), takedown_reason = 'test' WHERE id = $1", taken.Skill.ID); err != nil {
+		t.Fatal(err)
+	}
+	var after detail
+	if code := getJSON(t, owner.Client, a.URL+"/api/skills/"+uuidText(tidy.Skill.ID), &after); code != http.StatusOK {
+		t.Fatalf("re-reading the detail after a takedown: want 200, got %d", code)
+	}
+	if len(after.Source.Siblings) != 1 || after.Source.Siblings[0].Name != "split-csv" {
+		t.Errorf("siblings after a takedown = %+v, want split-csv alone; a link to a taken-down skill leads nowhere",
+			after.Source.Siblings)
+	}
+}
+
+func TestSkillDetailOfASkillThatIsItsWholeSourceReportsNoPluginAndNoSiblings(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "lonely-provenance-detail")
+
+	res := importSource(t, a, pool, owner, map[string]string{"SKILL.md": skillNamed("lonely-one")}, nil)
+	imported := onlyImported(t, res)
+
+	var got detail
+	if code := getJSON(t, owner.Client, a.URL+"/api/skills/"+uuidText(imported.Skill.ID), &got); code != http.StatusOK {
+		t.Fatalf("owner GET of a single-skill import: want 200, got %d", code)
+	}
+	if got.Source == nil {
+		t.Fatal("the detail carries no source at all")
+	}
+	if got.Source.Plugin != nil {
+		t.Errorf("plugin = %+v, want none; there was no plugin", got.Source.Plugin)
+	}
+	if got.Source.Path != "" {
+		t.Errorf("path = %q, want empty; the source itself is the skill", got.Source.Path)
+	}
+	if len(got.Source.Siblings) != 0 {
+		t.Errorf("siblings = %+v, want none; this source brought in one skill", got.Source.Siblings)
 	}
 }

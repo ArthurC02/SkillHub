@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { SkillSource } from "../../../../core/api/types";
 import { ExternalLink } from "../../../../shared/ui/ExternalLink";
@@ -15,11 +17,60 @@ export function SourceBlock({ source }: { source: SkillSource }) {
           來源網址： <ExternalLink href={source.url}>{source.url}</ExternalLink>
         </p>
       )}
+      {source.plugin && (
+        <>
+          <p>
+            來自 Agent Plugin：<code>{source.plugin.name}</code>
+            {source.plugin.version ? ` ${source.plugin.version}` : ""}
+          </p>
+          {source.plugin.repository && (
+            <p>
+              Plugin 的 repository：{" "}
+              <ExternalLink href={source.plugin.repository}>
+                {source.plugin.repository}
+              </ExternalLink>
+            </p>
+          )}
+          <p className="note">{source.plugin.note}</p>
+        </>
+      )}
+
+      {source.path && (
+        <p>
+          它在來源內的路徑：<code>{source.path}</code>
+        </p>
+      )}
+
       {source.fetched_at && (
         <p>
           擷取時間：
           <Timestamp at={source.fetched_at} />
         </p>
+      )}
+
+      {source.siblings && source.siblings.length > 0 && (
+        <>
+          <h3>同一個來源帶進來的其他 Skill（{source.siblings.length}）</h3>
+          <p className="note">
+            它們和這一個是同一次匯入進來的，各自是獨立的 Skill：各自有版本、各自試跑、各自下載。
+            平台沒有「一次取得整套」這個動作。
+          </p>
+          <ul>
+            {source.siblings.map((sibling) => (
+              <li key={sibling.skill_id}>
+                <Link to="/skills/$skillId" params={{ skillId: sibling.skill_id }}>
+                  {sibling.name}
+                </Link>
+                {sibling.path && (
+                  <>
+                    {" "}
+                    <code>{sibling.path}</code>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {source.unavailable_since ? (

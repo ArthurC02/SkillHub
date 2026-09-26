@@ -123,3 +123,17 @@ UNION
 SELECT v.skill_id FROM skills f
 JOIN skill_versions v ON v.id = f.forked_from_version_id
 WHERE v.skill_id = ANY(@skill_ids::uuid[]);
+
+-- name: SkillsFromSameStoredPackage :many
+SELECT id, name, source_path FROM (
+    SELECT DISTINCT ON (sk.id) sk.id, sk.name, v.source_path
+    FROM skills sk
+    JOIN skill_versions v ON v.skill_id = sk.id
+    WHERE v.package_object_key = @package_object_key
+      AND sk.workspace_id = @workspace_id
+      AND sk.id <> @excluded_skill_id
+      AND sk.deleted_at IS NULL
+      AND sk.takedown_at IS NULL
+    ORDER BY sk.id, v.version_number DESC
+) sibling
+ORDER BY name;

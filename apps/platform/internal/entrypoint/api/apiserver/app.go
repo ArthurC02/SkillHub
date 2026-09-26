@@ -223,6 +223,9 @@ func NewApp(cfg Config) (*App, error) {
 			TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
 			GeneratorPromptVersion: source.GeneratorPromptVersion,
 			GenerationInputs:       source.GenerationInputs,
+			PluginName:             source.PluginName,
+			PluginVersion:          source.PluginVersion,
+			PluginRepository:       source.PluginRepository,
 		}, found, err
 	}
 	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
@@ -330,6 +333,21 @@ func wireCatalogRegistryReaders(service *catalog.Service, registryService *regis
 	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (catalog.VersionFacts, bool, error) {
 		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
 		return catalogVersionFacts(version), found, err
+	}
+	service.ReadSourceSiblings = func(
+		ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, excludedSkillID pgtype.UUID,
+	) ([]catalog.SourceSiblingFacts, error) {
+		siblings, err := registryService.SkillsFromSameStoredPackage(ctx, workspaceID, packageObjectKey, excludedSkillID)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]catalog.SourceSiblingFacts, 0, len(siblings))
+		for _, s := range siblings {
+			out = append(out, catalog.SourceSiblingFacts{
+				SkillID: s.SkillID, Name: s.Name, SourcePath: s.SourcePath,
+			})
+		}
+		return out, nil
 	}
 	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (catalog.RuntimeCompatibilityFacts, bool, error) {
 		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)

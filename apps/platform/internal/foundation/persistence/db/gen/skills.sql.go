@@ -639,6 +639,53 @@ func (q *Queries) SetSkillCategory(ctx context.Context, arg SetSkillCategoryPara
 	return i, err
 }
 
+const skillsFromSameStoredPackage = `-- name: SkillsFromSameStoredPackage :many
+SELECT id, name, source_path FROM (
+    SELECT DISTINCT ON (sk.id) sk.id, sk.name, v.source_path
+    FROM skills sk
+    JOIN skill_versions v ON v.skill_id = sk.id
+    WHERE v.package_object_key = $1
+      AND sk.workspace_id = $2
+      AND sk.id <> $3
+      AND sk.deleted_at IS NULL
+      AND sk.takedown_at IS NULL
+    ORDER BY sk.id, v.version_number DESC
+) sibling
+ORDER BY name
+`
+
+type SkillsFromSameStoredPackageParams struct {
+	PackageObjectKey string
+	WorkspaceID      pgtype.UUID
+	ExcludedSkillID  pgtype.UUID
+}
+
+type SkillsFromSameStoredPackageRow struct {
+	ID         pgtype.UUID
+	Name       string
+	SourcePath string
+}
+
+func (q *Queries) SkillsFromSameStoredPackage(ctx context.Context, arg SkillsFromSameStoredPackageParams) ([]SkillsFromSameStoredPackageRow, error) {
+	rows, err := q.db.Query(ctx, skillsFromSameStoredPackage, arg.PackageObjectKey, arg.WorkspaceID, arg.ExcludedSkillID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SkillsFromSameStoredPackageRow
+	for rows.Next() {
+		var i SkillsFromSameStoredPackageRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.SourcePath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL

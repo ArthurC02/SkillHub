@@ -39,6 +39,8 @@ type Service struct {
 
 	SourceByID func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (SourceFacts, bool, error)
 
+	ReadSourceSiblings func(ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, excludedSkillID pgtype.UUID) ([]SourceSiblingFacts, error)
+
 	CatalogWorkspaces func(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error)
 
 	LLM            Model
@@ -128,6 +130,16 @@ type SourceFacts struct {
 	GeneratorPromptVersion *string
 
 	GenerationInputs []byte
+
+	PluginName       *string
+	PluginVersion    *string
+	PluginRepository *string
+}
+
+type SourceSiblingFacts struct {
+	SkillID    pgtype.UUID
+	Name       string
+	SourcePath string
 }
 
 type searchOutcome struct {

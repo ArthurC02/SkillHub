@@ -13,6 +13,13 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { SourceSibling } from './SourceSibling';
+import {
+    SourceSiblingFromJSON,
+    SourceSiblingFromJSONTyped,
+    SourceSiblingToJSON,
+    SourceSiblingToJSONTyped,
+} from './SourceSibling';
 import type { GenerationInputs } from './GenerationInputs';
 import {
     GenerationInputsFromJSON,
@@ -27,6 +34,13 @@ import {
     LabelledToJSON,
     LabelledToJSONTyped,
 } from './Labelled';
+import type { SourcePlugin } from './SourcePlugin';
+import {
+    SourcePluginFromJSON,
+    SourcePluginFromJSONTyped,
+    SourcePluginToJSON,
+    SourcePluginToJSONTyped,
+} from './SourcePlugin';
 
 /**
  * Import provenance (DISC-003). Fields the import never recorded are absent
@@ -110,6 +124,29 @@ export interface SkillSource {
      * 
      */
     trust: Labelled;
+    /**
+     * The directory inside the source that held this skill. Absent when
+     * the source itself is the skill. It is what a reader needs to find
+     * this skill again in the upstream repository or plugin.
+     * 
+     */
+    path?: string;
+    /**
+     * Present only when the source was an Agent Plugin. Absent means the
+     * source was not a plugin, never "the plugin is unknown".
+     * 
+     */
+    plugin?: SourcePlugin;
+    /**
+     * The other skills backed by the same stored package - that is, the
+     * rest of what one import brought in - so a reader can see that this
+     * skill arrived as part of a set even though the platform keeps no
+     * entity for that set. Absent when the import produced this skill
+     * alone. Skills deleted or taken down are left out, so this list never
+     * links somewhere unreadable.
+     * 
+     */
+    siblings?: Array<SourceSibling>;
 }
 
 
@@ -155,6 +192,9 @@ export function SkillSourceFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'lastCheckedAt': json['last_checked_at'] == null ? undefined : (parseDateTime(json['last_checked_at'])),
         'unavailableSince': json['unavailable_since'] == null ? undefined : (parseDateTime(json['unavailable_since'])),
         'trust': LabelledFromJSON(json['trust']),
+        'path': json['path'] == null ? undefined : json['path'],
+        'plugin': json['plugin'] == null ? undefined : SourcePluginFromJSON(json['plugin']),
+        'siblings': json['siblings'] == null ? undefined : ((json['siblings'] as Array<any>).map(SourceSiblingFromJSON)),
     };
 }
 
@@ -181,6 +221,9 @@ export function SkillSourceToJSONTyped(value?: SkillSource | null, ignoreDiscrim
         'last_checked_at': value['lastCheckedAt'] == null ? value['lastCheckedAt'] : serializeDateTime(value['lastCheckedAt']),
         'unavailable_since': value['unavailableSince'] == null ? value['unavailableSince'] : serializeDateTime(value['unavailableSince']),
         'trust': LabelledToJSON(value['trust']),
+        'path': value['path'],
+        'plugin': SourcePluginToJSON(value['plugin']),
+        'siblings': value['siblings'] == null ? undefined : ((value['siblings'] as Array<any>).map(SourceSiblingToJSON)),
     };
 }
 

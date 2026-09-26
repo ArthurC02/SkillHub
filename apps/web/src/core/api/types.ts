@@ -213,6 +213,22 @@ export interface SkillSource {
   generator_prompt_version?: string;
   generation_inputs?: GenerationInputs;
   trust: Labelled;
+  path?: string;
+  plugin?: SourcePlugin;
+  siblings?: SourceSibling[];
+}
+
+export interface SourcePlugin {
+  name: string;
+  version?: string;
+  repository?: string;
+  note: string;
+}
+
+export interface SourceSibling {
+  skill_id: string;
+  name: string;
+  path?: string;
 }
 
 export interface GenerationInputs {

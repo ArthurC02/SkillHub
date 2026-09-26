@@ -44,6 +44,10 @@ type Source struct {
 	GeneratorPromptVersion *string
 
 	GenerationInputs []byte
+
+	PluginName       *string
+	PluginVersion    *string
+	PluginRepository *string
 }
 
 func (s *Service) ReadSource(ctx context.Context, workspaceID, sourceID pgtype.UUID) (Source, bool, error) {
@@ -63,6 +67,9 @@ func (s *Service) ReadSource(ctx context.Context, workspaceID, sourceID pgtype.U
 		TaskDescription: row.TaskDescription, GeneratorModel: row.GeneratorModel,
 		GeneratorPromptVersion: row.GeneratorPromptVersion,
 		GenerationInputs:       row.GenerationInputs,
+		PluginName:             row.PluginName,
+		PluginVersion:          row.PluginVersion,
+		PluginRepository:       row.PluginRepository,
 	}, true, nil
 }
 

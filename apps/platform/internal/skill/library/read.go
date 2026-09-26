@@ -290,6 +290,28 @@ func (s *Service) VersionSummaries(
 	return summaries, nil
 }
 
+type SourceSibling struct {
+	SkillID    pgtype.UUID
+	Name       string
+	SourcePath string
+}
+
+func (s *Service) SkillsFromSameStoredPackage(
+	ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, excludedSkillID pgtype.UUID,
+) ([]SourceSibling, error) {
+	rows, err := gen.New(s.Pool).SkillsFromSameStoredPackage(ctx, gen.SkillsFromSameStoredPackageParams{
+		PackageObjectKey: packageObjectKey, WorkspaceID: workspaceID, ExcludedSkillID: excludedSkillID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SourceSibling, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, SourceSibling{SkillID: row.ID, Name: row.Name, SourcePath: row.SourcePath})
+	}
+	return out, nil
+}
+
 func (s *Service) RuntimeCompatibility(ctx context.Context, versionID pgtype.UUID) (RuntimeCompatibility, bool, error) {
 	row, err := gen.New(s.Pool).GetSkillRuntimeCompatibility(ctx, versionID)
 	if errors.Is(err, pgx.ErrNoRows) {

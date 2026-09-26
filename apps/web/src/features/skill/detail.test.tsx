@@ -57,7 +57,7 @@ function detailBody() {
   return skillDetail(SKILL, "PDF Summariser");
 }
 
-function stubOwner() {
+function stubOwner(detail: Record<string, unknown> = {}) {
   const calls: Array<{ url: string; method: string }> = [];
   let category = CATEGORIES.documents;
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -88,7 +88,7 @@ function stubOwner() {
         201,
       );
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
-    if (path.startsWith("/api/skills/")) return json({ ...detailBody(), category });
+    if (path.startsWith("/api/skills/")) return json({ ...detailBody(), ...detail, category });
     return json({ error: "not found" }, 404);
   });
   return calls;
@@ -249,6 +249,58 @@ test("§2.6: 通過的來源可用性探測折進識別碼，降級自述不跟�
   const probe = elementSaying("最近一次來源可用性檢查");
   expect(probe.closest("details"), "這一句以前平鋪在「它從哪裡來」的第一層").not.toBeNull();
   expect(container.querySelector("details")?.textContent).not.toContain("來源已失效");
+});
+
+const PLUGIN_SOURCE = {
+  type: "git",
+  url: "https://github.com/example/desk-tools",
+  fetched_at: "2026-08-01T10:00:00Z",
+  trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+  path: "skills/tidy-notes",
+  plugin: {
+    name: "desk-tools",
+    version: "1.4.0",
+    repository: "https://github.com/example/desk-tools",
+    note: "只有這個 Skill 自己的目錄會被安裝。",
+  },
+  siblings: [
+    { skill_id: "s-2", name: "Split CSV", path: "skills/split-csv" },
+    { skill_id: "s-3", name: "Tag Inbox", path: "skills/tag-inbox" },
+  ],
+};
+
+test("一個來自 Plugin 的 Skill 說出 Plugin 是哪一個、自己在裡面的哪個目錄", async () => {
+  stubOwner({ source: PLUGIN_SOURCE });
+  await render(<SkillDetail />, settledAsOwner);
+
+  expect(text()).toContain("desk-tools");
+  expect(text()).toContain("1.4.0");
+  expect(text(), "沒有路徑，讀者回不到上游的那個目錄").toContain("skills/tidy-notes");
+  expect(text(), "只說「來自一個 Plugin」而不說那代表什麼，等於沒說").toContain(
+    "只有這個 Skill 自己的目錄會被安裝。",
+  );
+});
+
+test("同一份來源帶進來的其他 Skill 各自有連結，而且不含自己", async () => {
+  stubOwner({ source: PLUGIN_SOURCE });
+  await render(<SkillDetail />, settledAsOwner);
+
+  expect(text()).toContain("同一個來源帶進來的其他 Skill（2）");
+  const links = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+  expect(links, "一套進來的 Skill 之間走不過去，使用者就看不出它們是一套").toEqual(
+    expect.arrayContaining(["/skills/s-2", "/skills/s-3"]),
+  );
+  expect(links, "自己不是自己的同伴").not.toContain(`/skills/${SKILL}`);
+});
+
+test("來源不是 Plugin 時，不編造一個 Plugin 也不編造同伴", async () => {
+  stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+
+  expect(text(), "來源沒有 Plugin 事實").not.toContain("來自 Agent Plugin");
+  expect(text(), "一個來源只帶進一個 Skill 時，空的同伴清單是噪音").not.toContain(
+    "同一個來源帶進來的其他 Skill",
+  );
 });
 
 test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", async () => {

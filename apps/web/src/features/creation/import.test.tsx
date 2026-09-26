@@ -254,13 +254,18 @@ test("a Plugin import lists every Skill it brought in, each with its own link", 
   );
 });
 
-test("a Plugin import says a raw download of one Skill hands over the whole Plugin", async () => {
+test("a Plugin import says what a download of one Skill actually hands over", async () => {
   stubImport(PLUGIN_IMPORT);
 
   await submitURL();
   await waitFor(() => text().includes("匯入完成"));
 
-  expect(text().replace(/\s+/g, "")).toContain("拿到的是整個Plugin");
+  const compact = text().replace(/\s+/g, "");
+  expect(compact).toContain("只安裝該Skill自己的目錄");
+  expect(
+    compact,
+    "平台從不交出儲存的那一份套件：試跑只安裝該 Skill 的目錄，下載只有單一 Skill 的可攜套件",
+  ).not.toContain("拿到的是整個Plugin");
 });
 
 test("a Plugin import discloses the components it did not import", async () => {

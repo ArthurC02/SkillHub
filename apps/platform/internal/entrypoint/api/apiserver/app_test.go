@@ -175,6 +175,7 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	}
 	if search := app.Deps.Search.Svc; search.ReadCatalogSkill == nil || search.ReadWorkspaceSkill == nil ||
 		search.ReadLatestVersion == nil || search.ReadRuntimeCompatibility == nil || search.SourceByID == nil ||
+		search.ReadSourceSiblings == nil ||
 		search.ReadLiveListingFacts == nil || search.ReadLiveSkills == nil || search.ReadLiveSkillIDs == nil {
 		t.Error("the catalog service is missing owner-scoped Registry or source reads")
 	}

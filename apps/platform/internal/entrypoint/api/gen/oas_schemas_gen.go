@@ -9538,9 +9538,11 @@ func (s *HealthStatus) UnmarshalText(data []byte) error {
 // an empty `skills` is the refusal, and `refused` then says which candidates failed and why, rather
 // than collapsing a plugin whose every skill failed into one undifferentiated error.
 //
-// One stored package object backs every entry, because a plugin is stored as it arrived. Downloading
-// one skill of a plugin therefore returns the whole plugin, and any screen offering that download has
-// to say so.
+// One stored package object backs every entry, because a plugin is stored as it arrived. That object
+// is never handed to a reader: a trial installs only the directory the entry's `path` names, and the
+// one download the platform offers is a portable package built for a single skill. A screen must not
+// offer "the whole plugin" as something this platform can give back - the set exists upstream, and
+// each entry's `path` is how a reader finds it there.
 // Ref: #/components/schemas/ImportResult
 type ImportResult struct {
 	// How the skills were located: `skill` for a source that is one skill, `plugin` when a conforming root
@@ -14465,6 +14467,52 @@ func (o OptSkillSource) Get() (v SkillSource, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptSkillSource) Or(d SkillSource) SkillSource {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSourcePlugin returns new OptSourcePlugin with value set to v.
+func NewOptSourcePlugin(v SourcePlugin) OptSourcePlugin {
+	return OptSourcePlugin{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSourcePlugin is optional SourcePlugin.
+type OptSourcePlugin struct {
+	Value SourcePlugin
+	Set   bool
+}
+
+// IsSet returns true if OptSourcePlugin was set.
+func (o OptSourcePlugin) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSourcePlugin) Reset() {
+	var v SourcePlugin
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSourcePlugin) SetTo(v SourcePlugin) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSourcePlugin) Get() (v SourcePlugin, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSourcePlugin) Or(d SourcePlugin) SourcePlugin {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -23065,6 +23113,17 @@ type SkillSource struct {
 	// ladder — it says the origin is recorded and is not a URL, and it makes no claim at all about
 	// quality or safety.
 	Trust Labelled `json:"trust"`
+	// The directory inside the source that held this skill. Absent when the source itself is the skill. It
+	// is what a reader needs to find this skill again in the upstream repository or plugin.
+	Path OptString `json:"path"`
+	// Present only when the source was an Agent Plugin. Absent means the source was not a plugin, never
+	// "the plugin is unknown".
+	Plugin OptSourcePlugin `json:"plugin"`
+	// The other skills backed by the same stored package - that is, the rest of what one import brought in
+	// - so a reader can see that this skill arrived as part of a set even though the platform keeps no
+	// entity for that set. Absent when the import produced this skill alone. Skills deleted or taken down
+	// are left out, so this list never links somewhere unreadable.
+	Siblings []SourceSibling `json:"siblings"`
 }
 
 // GetType returns the value of Type.
@@ -23127,6 +23186,21 @@ func (s *SkillSource) GetTrust() Labelled {
 	return s.Trust
 }
 
+// GetPath returns the value of Path.
+func (s *SkillSource) GetPath() OptString {
+	return s.Path
+}
+
+// GetPlugin returns the value of Plugin.
+func (s *SkillSource) GetPlugin() OptSourcePlugin {
+	return s.Plugin
+}
+
+// GetSiblings returns the value of Siblings.
+func (s *SkillSource) GetSiblings() []SourceSibling {
+	return s.Siblings
+}
+
 // SetType sets the value of Type.
 func (s *SkillSource) SetType(val SkillSourceType) {
 	s.Type = val
@@ -23185,6 +23259,21 @@ func (s *SkillSource) SetUnavailableSince(val OptDateTime) {
 // SetTrust sets the value of Trust.
 func (s *SkillSource) SetTrust(val Labelled) {
 	s.Trust = val
+}
+
+// SetPath sets the value of Path.
+func (s *SkillSource) SetPath(val OptString) {
+	s.Path = val
+}
+
+// SetPlugin sets the value of Plugin.
+func (s *SkillSource) SetPlugin(val OptSourcePlugin) {
+	s.Plugin = val
+}
+
+// SetSiblings sets the value of Siblings.
+func (s *SkillSource) SetSiblings(val []SourceSibling) {
+	s.Siblings = val
 }
 
 type SkillSourceType string
@@ -23283,6 +23372,97 @@ func (s *SkillVerification) SetNote(val string) {
 // SetScannedAt sets the value of ScannedAt.
 func (s *SkillVerification) SetScannedAt(val OptNilDateTime) {
 	s.ScannedAt = val
+}
+
+// What the plugin's own manifest said about itself, as the import recorded it. The platform holds no
+// plugin entity, so this is provenance on each skill, not a link to a plugin the platform owns.
+// Ref: #/components/schemas/SourcePlugin
+type SourcePlugin struct {
+	Name       string    `json:"name"`
+	Version    OptString `json:"version"`
+	Repository OptString `json:"repository"`
+	// What being part of a plugin does and does not mean here: the plugin is stored as it arrived, only
+	// this skill's own directory is installed, other components are never imported or executed, and a
+	// download yields this skill alone.
+	Note string `json:"note"`
+}
+
+// GetName returns the value of Name.
+func (s *SourcePlugin) GetName() string {
+	return s.Name
+}
+
+// GetVersion returns the value of Version.
+func (s *SourcePlugin) GetVersion() OptString {
+	return s.Version
+}
+
+// GetRepository returns the value of Repository.
+func (s *SourcePlugin) GetRepository() OptString {
+	return s.Repository
+}
+
+// GetNote returns the value of Note.
+func (s *SourcePlugin) GetNote() string {
+	return s.Note
+}
+
+// SetName sets the value of Name.
+func (s *SourcePlugin) SetName(val string) {
+	s.Name = val
+}
+
+// SetVersion sets the value of Version.
+func (s *SourcePlugin) SetVersion(val OptString) {
+	s.Version = val
+}
+
+// SetRepository sets the value of Repository.
+func (s *SourcePlugin) SetRepository(val OptString) {
+	s.Repository = val
+}
+
+// SetNote sets the value of Note.
+func (s *SourcePlugin) SetNote(val string) {
+	s.Note = val
+}
+
+// Ref: #/components/schemas/SourceSibling
+type SourceSibling struct {
+	SkillID uuid.UUID `json:"skill_id"`
+	Name    string    `json:"name"`
+	// That sibling's directory inside the same source.
+	Path OptString `json:"path"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SourceSibling) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetName returns the value of Name.
+func (s *SourceSibling) GetName() string {
+	return s.Name
+}
+
+// GetPath returns the value of Path.
+func (s *SourceSibling) GetPath() OptString {
+	return s.Path
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SourceSibling) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetName sets the value of Name.
+func (s *SourceSibling) SetName(val string) {
+	s.Name = val
+}
+
+// SetPath sets the value of Path.
+func (s *SourceSibling) SetPath(val OptString) {
+	s.Path = val
 }
 
 // StartGithubLoginFound is response for StartGithubLogin operation.

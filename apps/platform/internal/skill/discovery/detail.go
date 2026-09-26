@@ -52,6 +52,23 @@ type sourceInfo struct {
 
 	GenerationInputs json.RawMessage `json:"generation_inputs,omitempty"`
 	Trust            labelled        `json:"trust"`
+
+	Path     string          `json:"path,omitempty"`
+	Plugin   *pluginInfo     `json:"plugin,omitempty"`
+	Siblings []sourceSibling `json:"siblings,omitempty"`
+}
+
+type pluginInfo struct {
+	Name       string `json:"name"`
+	Version    string `json:"version,omitempty"`
+	Repository string `json:"repository,omitempty"`
+	Note       string `json:"note"`
+}
+
+type sourceSibling struct {
+	SkillID string `json:"skill_id"`
+	Name    string `json:"name"`
+	Path    string `json:"path,omitempty"`
 }
 
 type licenseInfo struct {
@@ -336,6 +353,12 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		src, found, err := s.SourceByID(ctx, ver.WorkspaceID, ver.SourceID)
 		if err == nil && found {
 			out.Source = sourceFrom(src)
+			out.Source.Path = ver.SourcePath
+			siblings, err := s.sourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
+			if err != nil {
+				return skillDetail{}, err
+			}
+			out.Source.Siblings = siblings
 		} else if err != nil {
 			return skillDetail{}, err
 		}
@@ -480,6 +503,11 @@ const (
 	filesNote = "tree 為套件內檔案清單與大小;目前僅回傳 SKILL.md 全文。" +
 		"其他單檔內容的讀取端點屬 DISC-007 後續工作項,尚未實作。"
 	enrichPendingNote = "尚未產生模型摘要;顯示的是套件自身的 frontmatter description。"
+
+	pluginNote = "這個 Skill 來自一個 Agent Plugin。平台不建立 Plugin 這個實體:" +
+		"Plugin 原樣存成一份套件,但只有這個 Skill 自己的目錄會被安裝," +
+		"其他元件(例如 MCP server 宣告)不匯入、不執行。" +
+		"下載得到的可攜套件只含這一個 Skill;要整套,請回到原本的 Plugin 來源。"
 
 	enrichedNote = "本區塊由模型產生(非套件作者撰寫),僅供理解用途。" +
 		"**你的 Agent 讀的不是這一段**——它讀的是套件自己的 `description`(上方「摘要」)," +
@@ -669,6 +697,39 @@ func licenseFrom(v VersionFacts) licenseInfo {
 	return out
 }
 
+func pluginFrom(s SourceFacts) *pluginInfo {
+	if s.PluginName == nil || *s.PluginName == "" {
+		return nil
+	}
+	out := &pluginInfo{Name: *s.PluginName, Note: pluginNote}
+	if s.PluginVersion != nil {
+		out.Version = *s.PluginVersion
+	}
+	if s.PluginRepository != nil {
+		out.Repository = *s.PluginRepository
+	}
+	return out
+}
+
+func (s *Service) sourceSiblings(
+	ctx context.Context, workspaceID pgtype.UUID, packageObjectKey string, skillID pgtype.UUID,
+) ([]sourceSibling, error) {
+	if s.ReadSourceSiblings == nil {
+		return nil, errOwnerReadNotConfigured
+	}
+	facts, err := s.ReadSourceSiblings(ctx, workspaceID, packageObjectKey, skillID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]sourceSibling, 0, len(facts))
+	for _, f := range facts {
+		out = append(out, sourceSibling{
+			SkillID: pgconv.UUIDString(f.SkillID), Name: f.Name, Path: f.SourcePath,
+		})
+	}
+	return out, nil
+}
+
 func sourceFrom(s SourceFacts) *sourceInfo {
 	out := &sourceInfo{
 		Type:             s.SourceType,
@@ -695,6 +756,7 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	if len(s.GenerationInputs) > 0 && string(s.GenerationInputs) != "null" {
 		out.GenerationInputs = json.RawMessage(s.GenerationInputs)
 	}
+	out.Plugin = pluginFrom(s)
 	trust := SourceTrustUnknown
 	switch {
 	case sourceType(s.SourceType) == sourceGit && out.URL != "":

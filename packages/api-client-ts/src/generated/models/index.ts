@@ -196,6 +196,8 @@ export * from './SkillRisk';
 export * from './SkillRiskCounts';
 export * from './SkillSource';
 export * from './SkillVerification';
+export * from './SourcePlugin';
+export * from './SourceSibling';
 export * from './StartRunRequest';
 export * from './SubmitFeedbackRequest';
 export * from './SuggestionBlockedReason';

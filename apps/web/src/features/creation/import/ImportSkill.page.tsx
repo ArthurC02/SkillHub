@@ -162,9 +162,10 @@ function ImportOutcome({ result }: { result: ImportResult }) {
         </p>
         {result.plugin && (
           <p className="note">
-            整個 Plugin 以原樣存成一份套件，Plugin 裡的每個 Skill 都指向它。
-            <strong>從其中任何一個 Skill 下載原始套件，拿到的是整個 Plugin</strong>
-            ；要只拿單一個 Skill，用那個 Skill 自己的可攜套件。
+            整個 Plugin 以原樣存成一份套件，Plugin 裡的每個 Skill 都指向它，但
+            <strong>試跑時只安裝該 Skill 自己的目錄</strong>
+            ，下載得到的也只有那一個 Skill 的可攜套件。 平台不把整套還給你——要整套，回到原本的
+            Plugin 來源。
           </p>
         )}
       </div>
