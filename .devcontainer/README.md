@@ -11,38 +11,28 @@ downloads language dependencies.
 - **VS Code Dev Containers**: install the Dev Containers extension, clone the
   repository locally, then run **Dev Containers: Reopen in Container**.
 
-The container opens `README.md` and this file by default. `postCreateCommand`
-runs `.devcontainer/post-create.sh`, which calls `go -C tools/devctl run . env-init`
-and `go -C tools/devctl run . bootstrap`. This gives the container a local
-`.env`, Go modules, Node packages, Python virtual environment, and repo hooks
-without overwriting an existing `.env`.
+`customizations.codespaces.openFiles` currently applies only to GitHub
+Codespaces.
 
-`postStartCommand` runs `.devcontainer/post-start.sh`, which starts the nested
-Docker daemon on demand and waits until `docker info` succeeds. That keeps the
-first window usable even before you start local infrastructure with `task dev`.
+## Startup and initialization flow
 
-### Common ports
+- `postStartCommand` runs `.devcontainer/post-start.sh`, starts a nested Docker
+  daemon (`dockerd`) when needed, and waits until `docker info` succeeds.
+- `postCreateCommand` runs `.devcontainer/post-create.sh`, which checks required
+  tool binaries, verifies required `.env` keys, and runs dependency bootstrap.
+- `updateContentCommand` runs the same script in
+  `SKILLHUB_SKIP_BOOTSTRAP=1` mode for lightweight content refresh.
+- Bootstrap execution is serialized with a filesystem lock so concurrent startup
+  hooks do not race in one workspace.
 
-- `5173`: Web dev server (auto-opens as a preview)
-- `8080`: Platform API
-- `4000`: LiteLLM gateway
-- `8333`: SeaweedFS S3 API
-- `5432`: PostgreSQL
+If you need a clean baseline, run:
 
-## Daily development flow
+```bash
+bash .devcontainer/post-create.sh
+```
 
-1. Wait for the Dev Container to finish `postCreateCommand`.
-2. Run `task doctor` to verify the pinned tools inside the container.
-3. Run `task dev` to start PostgreSQL and SeaweedFS.
-4. Start the product processes you need:
-   - `go -C apps/platform run ./cmd/api`
-   - `go -C apps/platform run ./cmd/worker`
-   - `cd apps/llm && uv run uvicorn skillhub_llm.app:app`
-   - `go -C apps/sandbox run ./cmd/sandboxd`
-   - `npm --prefix apps/web run dev`
-
-For model-backed work, opt in separately with `task dev:model` and
-`task dev:llm` after populating the ignored `.env` file with real secrets.
+Use `.devcontainer/.env.remote.example` as an optional starter template when
+preparing a remote-only `.env`.
 
 ## Docker-in-Docker trust boundary
 

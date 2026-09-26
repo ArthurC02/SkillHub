@@ -14,8 +14,6 @@ export function RankingExplainer() {
           靠關鍵字被找出來的 Skill，一樣用它自己的語意相似度排序，不會因為字面命中而往前擠。
         </li>
         <li>
-          {/* 0.25 must stay in sync with catalog.MaxCosineDistance by hand; the
-              search response does not carry the value. */}
           <strong>相似度低於 0.25 的一律不顯示。</strong>
           這個 0.25 是平台目前的設定值，不是介面契約的一部分，調整了這一頁不會自己跟著改。全部都低於
           門檻時會直接說「沒有夠接近的 Skill」，而不是硬給一頁不相關的結果。這個門檻是實測

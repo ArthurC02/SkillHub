@@ -4,53 +4,96 @@
     "context": "..",
     "dockerfile": "../infra/images/devtools/Dockerfile"
   },
+  "waitFor": "postCreateCommand",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "waitFor": "postCreateCommand",
   "mounts": [
-    "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume"
+    "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume",
+    "source=skillhub-devcontainer-go-mod,target=/go/pkg/mod,type=volume",
+    "source=skillhub-devcontainer-npm-cache,target=/home/vscode/.npm,type=volume",
+    "source=skillhub-devcontainer-uv-cache,target=/home/vscode/.cache/uv,type=volume"
   ],
   "runArgs": ["--privileged"],
+  "shutdownAction": "stopContainer",
   "remoteUser": "vscode",
-  "forwardPorts": [5173, 8080, 4000, 8333, 5432],
-  "portsAttributes": {
-    "5173": {
-      "label": "SkillHub Web",
-      "onAutoForward": "openPreview"
-    },
-    "8080": {
-      "label": "SkillHub Platform API",
-      "onAutoForward": "notify"
-    },
-    "4000": {
-      "label": "LiteLLM gateway",
-      "onAutoForward": "silent"
-    },
-    "8333": {
-      "label": "SeaweedFS S3 API",
-      "onAutoForward": "silent"
-    },
-    "5432": {
-      "label": "PostgreSQL",
-      "onAutoForward": "silent"
-    }
-  },
   "containerEnv": {
-    "UV_LINK_MODE": "copy"
+    "UV_LINK_MODE": "copy",
+    "SKILLHUB_REMOTE_DEV": "1"
   },
   "postStartCommand": "bash .devcontainer/post-start.sh",
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "updateContentCommand": "SKILLHUB_SKIP_BOOTSTRAP=1 bash .devcontainer/post-create.sh",
+  "forwardPorts": [5173, 8080, 4000, 5432, 8333, 2345, 5678, 9229],
+  "portsAttributes": {
+    "5173": {
+      "label": "web-dev-server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "platform-api",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "litellm-gateway",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "postgres",
+      "onAutoForward": "silent"
+    },
+    "8333": {
+      "label": "seaweedfs-s3",
+      "onAutoForward": "silent"
+    },
+    "2345": {
+      "label": "go-debug-delve",
+      "onAutoForward": "silent"
+    },
+    "5678": {
+      "label": "python-debugpy",
+      "onAutoForward": "silent"
+    },
+    "9229": {
+      "label": "node-debug",
+      "onAutoForward": "silent"
+    }
+  },
   "customizations": {
     "codespaces": {
-      "openFiles": ["README.md", ".devcontainer/README.md"]
+      "openFiles": [
+        "README.md",
+        ".devcontainer/README.md",
+        "docs/development/REMOTE_DEVELOPMENT.md"
+      ]
     },
     "vscode": {
       "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
         "files.eol": "\n",
         "go.toolsManagement.checkForUpdates": "off",
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
         "python.defaultInterpreterPath": "${workspaceFolder}/apps/llm/.venv/bin/python",
         "python.testing.pytestArgs": ["apps/llm"],
         "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
         "python.terminal.activateEnvironment": true
       },
       "extensions": [
@@ -59,6 +102,7 @@
         "ms-python.vscode-pylance",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
+        "charliermarsh.ruff",
         "ms-azuretools.vscode-docker",
         "redhat.vscode-yaml"
       ]
