@@ -46,6 +46,11 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 			out.DiagramDescription = "先整理輸入，再輸出摘要。"
 			out.Brief = ""
 		}
+		if in.DiagramDescriptionConfirmed && in.DiagramInterpretation == nil {
+			out.Outcome = "confirm_diagram_interpretation"
+			out.DiagramInterpretation = &llmclient.DiagramDecomposition{Nodes: []string{"整理輸入", "輸出摘要"}, Uncertainties: []string{"摘要要幾句？", "輸入缺欄位時怎麼辦？"}}
+			out.Brief = ""
+		}
 		if in.BriefConfirmed {
 			out.Outcome = "draft"
 			out.Message = "草稿已準備好。"
@@ -256,6 +261,33 @@ func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	}
 	if found {
 		t.Fatal("original diagram persisted")
+	}
+}
+func TestTheMeasureHarnessAnswersEveryDiagramUncertaintyThroughTheAPI(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-diagram-answers")
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
+	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram", "diagram": map[string]string{"media_type": "image/png", "data": "ZmxvdzE="}}, 200)
+	v = creationAct(t, c, v, string(creation.PendingDiagramDescription))
+	v = creationStep(t, s, v)
+	if v.Snapshot.PendingAction != creation.PendingDiagramAnswers {
+		t.Fatalf("pending %q after the decomposition, want %q", v.Snapshot.PendingAction, creation.PendingDiagramAnswers)
+	}
+
+	nodes := []string{"整理輸入", "輸出摘要"}
+	var row sessionRow
+	v, refused := answerDiagramUncertainties(t, c, v, nodes, &row)
+	if refused != "" {
+		t.Fatal(refused)
+	}
+
+	if v.Snapshot.PendingAction != creation.PendingDiagramInterpretation || row.Clarifications != 2 {
+		t.Fatalf("pending %q after %d answers, want %q after 2", v.Snapshot.PendingAction, row.Clarifications, creation.PendingDiagramInterpretation)
+	}
+	for _, u := range v.Snapshot.DiagramInterpretation.Uncertainties {
+		if u.Answer != diagramAnswer(nodes) {
+			t.Fatalf("uncertainty %q answered %q", u.Question, u.Answer)
+		}
 	}
 }
 func TestCreationCommandReplayCASAndQueuedCancellation(t *testing.T) {

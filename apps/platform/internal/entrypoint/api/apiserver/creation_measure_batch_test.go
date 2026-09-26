@@ -151,7 +151,8 @@ type measureTask struct {
 	Description string
 	Diagram     *ingest.GenerateDiagram
 
-	ReferenceMD string
+	DiagramNodes []string
+	ReferenceMD  string
 }
 
 func creationMessage(t *testing.T, c *client, v creation.View, message string) creation.View {
@@ -443,7 +444,11 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tasks = append(tasks, measureTask{ID: d.ID, Kind: "diagram", Diagram: &ingest.GenerateDiagram{MediaType: mediaType, Data: img}})
+		var nodes []string
+		for _, n := range d.Nodes {
+			nodes = append(nodes, n.Label)
+		}
+		tasks = append(tasks, measureTask{ID: d.ID, Kind: "diagram", Diagram: &ingest.GenerateDiagram{MediaType: mediaType, Data: img}, DiagramNodes: nodes})
 	}
 	for i := 5; i < 10 && !textOnly; i++ {
 		r := corpus.Reference[i]
@@ -635,6 +640,16 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 				row.CatalogOffers = len(v.Snapshot.References)
 				kind = "decline_references"
 			}
+			if kind == creation.PendingDiagramAnswers {
+				var refused string
+				v, refused = answerDiagramUncertainties(t, c, v, task.DiagramNodes, &row)
+				if refused != "" {
+					row.FinalState = v.State
+					row.Error = refused
+					return finishSession(t, v, row, outDir)
+				}
+				continue
+			}
 
 			code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": func() string {
 				if v.Snapshot.Draft == nil {
@@ -678,6 +693,34 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 	row.FinalState = v.State
 	row.Error = "loop budget exhausted"
 	return finishSession(t, v, row, outDir)
+}
+
+func diagramAnswer(nodes []string) string {
+	return "圖上的步驟依序是：" + strings.Join(nodes, " → ") + "。照圖上畫的走，圖上沒畫到的不要加。"
+}
+
+func answerDiagramUncertainties(t *testing.T, c *client, v creation.View, nodes []string, row *sessionRow) (creation.View, string) {
+	t.Helper()
+	if v.Snapshot.DiagramInterpretation == nil {
+		return v, "answer_diagram_uncertainties pending without an interpretation"
+	}
+	for _, u := range v.Snapshot.DiagramInterpretation.Uncertainties {
+		if u.Answer != "" {
+			continue
+		}
+		code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
+			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "answer_diagram_uncertainty",
+			"diagram_uncertainty_id": u.ID, "diagram_answer": diagramAnswer(nodes),
+		})
+		if code != 200 {
+			return v, fmt.Sprintf("answer_diagram_uncertainty refused: %d %s", code, body)
+		}
+		if err := json.Unmarshal([]byte(body), &v); err != nil {
+			t.Fatal(err)
+		}
+		row.Clarifications++
+	}
+	return v, ""
 }
 
 func materializeThrough(t *testing.T, c *client, v creation.View, row *sessionRow) creation.View {
