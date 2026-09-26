@@ -42,10 +42,11 @@ const createSkillSource = `-- name: CreateSkillSource :one
 INSERT INTO skill_sources (
     workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
     task_description, generator_model, generator_prompt_version, generation_inputs,
-    counts_toward_generate_quota
+    counts_toward_generate_quota,
+    plugin_name, plugin_version, plugin_repository
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs, counts_toward_generate_quota
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at, generation_inputs, counts_toward_generate_quota, plugin_name, plugin_version, plugin_repository
 `
 
 type CreateSkillSourceParams struct {
@@ -60,6 +61,9 @@ type CreateSkillSourceParams struct {
 	GeneratorPromptVersion    *string
 	GenerationInputs          []byte
 	CountsTowardGenerateQuota bool
+	PluginName                *string
+	PluginVersion             *string
+	PluginRepository          *string
 }
 
 func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourceParams) (SkillSource, error) {
@@ -75,6 +79,9 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		arg.GeneratorPromptVersion,
 		arg.GenerationInputs,
 		arg.CountsTowardGenerateQuota,
+		arg.PluginName,
+		arg.PluginVersion,
+		arg.PluginRepository,
 	)
 	var i SkillSource
 	err := row.Scan(
@@ -94,6 +101,9 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.ContentChangedAt,
 		&i.GenerationInputs,
 		&i.CountsTowardGenerateQuota,
+		&i.PluginName,
+		&i.PluginVersion,
+		&i.PluginRepository,
 	)
 	return i, err
 }

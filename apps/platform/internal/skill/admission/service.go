@@ -148,7 +148,19 @@ type sourceMeta struct {
 	GenerationInputs []byte
 	Interactive      bool
 
+	Plugin *skillpkg.PluginFacts
+
 	ImprovedBy *registry.Improvement
+}
+
+func pluginFact(facts *skillpkg.PluginFacts, read func(skillpkg.PluginFacts) string) *string {
+	if facts == nil {
+		return nil
+	}
+	if value := read(*facts); value != "" {
+		return &value
+	}
+	return nil
 }
 
 func (m sourceMeta) countsTowardGenerateQuota() bool {
@@ -445,6 +457,10 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		GenerationInputs:       src.GenerationInputs,
 
 		CountsTowardGenerateQuota: src.countsTowardGenerateQuota(),
+
+		PluginName:       pluginFact(src.Plugin, func(p skillpkg.PluginFacts) string { return p.Name }),
+		PluginVersion:    pluginFact(src.Plugin, func(p skillpkg.PluginFacts) string { return p.Version }),
+		PluginRepository: pluginFact(src.Plugin, func(p skillpkg.PluginFacts) string { return p.Repository }),
 	})
 	if err != nil {
 		return registry.Version{}, false, err

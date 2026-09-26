@@ -36,7 +36,7 @@
 | SKILL-003 | 有測試 | `TestEmbeddedCodeIsDisclosed`、`TestEmbeddedCodeBoundaryLines` | |
 | SKILL-004 | 有測試 | `TestLicenseProvenancePrecedence` | |
 | SKILL-005 | 有測試 | `TestURLDisclosuresAggregateByHost` | |
-| SKILL-006 | 未實作 | | Agent Plugin 匯入在 `apps/platform` 與 `apps/web` 都沒有程式碼；`skillpkg.PackageRoot` 仍只認「根有 `SKILL.md`」或「單一頂層目錄」兩種形狀 |
+| SKILL-006 | 部分 | `TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken`、`TestEachSkillOfAPluginRecordsTheDirectoryItWasValidatedFrom`、`TestASkillThatIsTheWholePackageRecordsNoSubdirectory`、`TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage`、`TestASourceWhoseEverySkillFailedIsRefusedWithEachOneNamed`、`TestOneUnusableSkillDoesNotRefuseThePluginsGoodOnes`、`TestASourceOverTheSkillCeilingIsRefusedAndSaysTheCeiling`、`TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn`、`TestEverySkillOfAPluginKeepsThePluginsOwnFacts`、`TestASkillThatIsNotFromAPluginRecordsNoPluginFacts`、`a Plugin import lists every Skill it brought in, each with its own link`、`a Plugin import says a raw download of one Skill hands over the whole Plugin`、`a Plugin import discloses the components it did not import`、`one refused folder does not hide the Skills that did come in` | 試跑那一段還沒有：Provider 請求只帶物件鍵，執行期在整包的根目錄找不到 `SKILL.md`，Agent 一個 Skill 都發現不到（`04` 丙-286） |
 
 ## 工作區與試跑
 

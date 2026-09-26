@@ -257,3 +257,58 @@ func sortedKeys(entries map[string][]byte) []string {
 	sort.Strings(out)
 	return out
 }
+
+func TestEverySkillOfAPluginKeepsThePluginsOwnFacts(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "plugin-facts")
+
+	res := importSource(t, a, pool, owner, map[string]string{
+		"plugin.json":         conformingPlugin("desk-tools"),
+		"skills/one/SKILL.md": skillNamed("facts-one"),
+		"skills/two/SKILL.md": skillNamed("facts-two"),
+	}, nil)
+	if len(res.Imported) != 2 {
+		t.Fatalf("imported %d skills, want 2", len(res.Imported))
+	}
+
+	for _, imported := range res.Imported {
+		var name, version, repository *string
+		if err := pool.QueryRow(context.Background(),
+			`SELECT s.plugin_name, s.plugin_version, s.plugin_repository
+			   FROM skill_sources s JOIN skill_versions v ON v.source_id = s.id
+			  WHERE v.id = $1`, uuidText(imported.Version.ID)).Scan(&name, &version, &repository); err != nil {
+			t.Fatalf("reading the source row of %s: %v", imported.Path, err)
+		}
+		if name == nil || *name != "desk-tools" {
+			t.Errorf("%s: plugin_name = %v, want desk-tools; without it nothing can say which Plugin this Skill came from",
+				imported.Path, name)
+		}
+		if version == nil || *version != "1.4.0" {
+			t.Errorf("%s: plugin_version = %v, want 1.4.0", imported.Path, version)
+		}
+		if repository == nil || *repository != "https://example.invalid/desk-tools" {
+			t.Errorf("%s: plugin_repository = %v, want the manifest's own url", imported.Path, repository)
+		}
+	}
+}
+
+func TestASkillThatIsNotFromAPluginRecordsNoPluginFacts(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "no-plugin-facts")
+
+	res := importSource(t, a, pool, owner, map[string]string{"SKILL.md": skillNamed("lonely")}, nil)
+	imported := onlyImported(t, res)
+
+	var name, version, repository *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT s.plugin_name, s.plugin_version, s.plugin_repository
+		   FROM skill_sources s JOIN skill_versions v ON v.source_id = s.id
+		  WHERE v.id = $1`, uuidText(imported.Version.ID)).Scan(&name, &version, &repository); err != nil {
+		t.Fatal(err)
+	}
+	if name != nil || version != nil || repository != nil {
+		t.Errorf("plugin facts = %v/%v/%v, want all unset; there was no Plugin", name, version, repository)
+	}
+}

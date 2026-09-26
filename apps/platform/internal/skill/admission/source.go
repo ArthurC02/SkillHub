@@ -194,6 +194,7 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 		return SourceResult{}, err
 	}
 	out := SourceResult{Shape: plan.shape, Plugin: plan.plugin, Excluded: plan.excluded}
+	src.Plugin = plan.plugin
 	for _, refused := range plan.refused {
 		out.Refused = append(out.Refused, Refusal{Path: refused.pkg.sourcePath, Report: refused.pkg.report})
 	}

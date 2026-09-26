@@ -16,27 +16,28 @@
         {
           "path": "apps/platform/internal/entrypoint/wiring/trial.go",
           "lines": {
-            "start": 14,
+            "start": 15,
             "end": 30
           },
-          "content_sha256": "sha256:035010fcec22c02af97300d6cb3418894b1b01ed44136845398b966c2e073bc6",
-          "excerpt_sha256": "sha256:1926ff2a48b702eab8c53e2ea80437d71a076ae43a4189c683658ff903f06395"
+          "content_sha256": "sha256:420c2c0cda05872ea6908d5fc6604927d5b79a19e25f6ffb9e299b3fd25ebf27",
+          "excerpt_sha256": "sha256:bcd1b51a81a93063be5b17e9caeed784478b0c1fc6e55c7886a419371c6aa457",
+          "source_kind": "implementation"
         }
       ],
       "review": {
-        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_id": "registry-run-facts-with-source-path",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T07:46:22.726462Z",
-            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "approved_at": "2026-09-26T06:14:08.128459Z",
+            "scope": "Registry-to-Run version facts: the recorded root of a Skill Version inside its stored package",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
-              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+              "observed_commit": "a6a691175c04fc2b6cb458811f12d8b82a2d9359",
+              "registry_digest": "sha256:a6ee144bc2a069628c9fb821835cd5a5493852cce846618496487724bf89f6bc"
             }
           }
         ]
