@@ -37,6 +37,7 @@ Skill 生命週期
 | Skill 生命週期 | Skill 資產與版本歷史 | `registry`／`skill/library` | Skill identity、不可變 Skill Version aggregate | `Service`、版本寫入 API |
 | Skill 生命週期 | Skill 接納與信任 | `ingest`／`skill/admission` | package provenance、靜態驗證與唯一匯入路徑 | `Service.SaveVersion`、匯入 Handler |
 | Skill 生命週期 | Skill 交付與安裝 | `packaging`／`skill/delivery` | downloadable artifact、release gate、manifest | `Service`、`Handler` |
+| Skill 生命週期 | Skill 發布與曝光 | `publishing`／`skill/publishing` | publisher namespace、publication、Bundle release 與曝光審查 | `Service`、`Handler` |
 | 試跑與改善 | 試跑情境設計 | `testlab`／`trial/design` | Test Case、dataset、不可變 execution snapshot | `Service`、`Handler` |
 | 試跑與改善 | Skill 試跑執行 | `run`／`trial/execution` | Run 狀態機、attempt、sandbox scheduling | `Service`、`Handler`、River workers |
 | 試跑與改善 | 執行證據 | `trace`／`trial/evidence` | masked trace event、trace ingest credential、trace read model | `Service`、`Handler` |
@@ -53,7 +54,7 @@ Skill 生命週期
 ```text
 internal/
 ├── creator/{workspace,creation,credit}                             Bounded Context packages
-├── skill/{discovery,library,admission,delivery}                    Bounded Context packages
+├── skill/{discovery,library,admission,delivery,publishing}         Bounded Context packages
 ├── trial/{design,execution,evidence,improvement}                   Bounded Context packages
 ├── product/{entitlements,learning}                                 Bounded Context packages
 ├── shared/skillpkg                                                 Shared Kernel
