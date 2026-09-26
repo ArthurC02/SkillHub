@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d /workspace ]; then
-  cd /workspace
-else
-  cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 skip_bootstrap="${SKILLHUB_SKIP_BOOTSTRAP:-0}"
 required_commands=(go npm docker sha256sum)

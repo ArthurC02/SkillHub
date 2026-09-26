@@ -6,7 +6,7 @@
 
 ### GitHub Codespaces
 
-1. 進入 `ArthurC02/SkillHub` repo。
+1. 進入你的 SkillHub repository 頁面。
 2. 點 **Code → Codespaces → Create codespace on `<branch>`**。
 3. 等待容器建立，`postCreateCommand` 會自動完成 `.env` 初始化與依賴安裝。
 4. 開新終端執行：
