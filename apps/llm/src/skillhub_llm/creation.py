@@ -657,6 +657,8 @@ def _reason_node(gateway_key: str, phase: str):
                 decision.diagram_description = None
                 if req.diagram_description:
                     decision.diagram_understanding = None
+                if req.diagram_interpretation is not None:
+                    decision.diagram_interpretation = None
                 if req.diagram_confirmed and decision.outcome in (
                     "confirm_diagram_description",
                     "confirm_diagram_interpretation",

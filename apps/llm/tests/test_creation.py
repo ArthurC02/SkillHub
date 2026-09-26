@@ -506,6 +506,17 @@ def test_a_legacy_understanding_echoed_with_the_draft_does_not_reopen_the_diagra
     assert response.json()["diagram_understanding"] == ""
 
 
+def test_a_recorded_interpretation_echoed_with_the_draft_is_not_returned():
+    response, _ = invoke(
+        CONFIRMED_DIAGRAM_REQUEST
+        | {"brief": "agreed", "brief_confirmed": True, "allowed_tools": ["validate_draft"]},
+        decision(outcome="draft", draft=SKILL, diagram_interpretation=DECOMPOSITION),
+    )
+    assert response.status_code == 200
+    assert response.json()["diagram_interpretation"] is None
+    assert response.json()["tool_intent"]["kind"] == "validate_draft"
+
+
 def test_asking_to_confirm_the_diagram_again_becomes_a_brief_proposal():
     response, _ = invoke(
         CONFIRMED_DIAGRAM_REQUEST,

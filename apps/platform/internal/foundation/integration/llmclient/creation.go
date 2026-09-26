@@ -101,6 +101,14 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 	if in.AcceptanceCriteria == nil {
 		in.AcceptanceCriteria = []string{}
 	}
+	if in.DiagramInterpretation != nil {
+		interpretation := *in.DiagramInterpretation
+		interpretation.Nodes = nonNil(interpretation.Nodes)
+		interpretation.Conditions = nonNil(interpretation.Conditions)
+		interpretation.Branches = nonNil(interpretation.Branches)
+		interpretation.Uncertainties = nonNil(interpretation.Uncertainties)
+		in.DiagramInterpretation = &interpretation
+	}
 	if in.Draft != nil {
 		draft := *in.Draft
 		if draft.Files == nil {
@@ -144,4 +152,11 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 		return nil, fmt.Errorf("llmclient: decode creation step response: %w", err)
 	}
 	return &out, nil
+}
+
+func nonNil[T any](values []T) []T {
+	if values == nil {
+		return []T{}
+	}
+	return values
 }
