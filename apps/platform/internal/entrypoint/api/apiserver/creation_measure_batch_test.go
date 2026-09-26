@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -453,6 +454,9 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	for i := 5; i < 10 && !textOnly; i++ {
 		r := corpus.Reference[i]
 		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD})
+	}
+	if only := os.Getenv("CREATION_MEASURE_ONLY"); only != "" {
+		tasks = slices.DeleteFunc(tasks, func(task measureTask) bool { return task.Kind != only })
 	}
 
 	var results creationMeasureResults
