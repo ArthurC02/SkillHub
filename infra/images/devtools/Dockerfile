@@ -4,7 +4,8 @@ FROM golang:1.27.1-bookworm@sha256:648f440f42a0958804efb24df176f806f9d353b41f1c0
 ARG NODE_VERSION=24.21.0
 ARG TASK_VERSION=3.53.1
 ARG UV_VERSION=0.12.13
-ARG UV_INSTALLER_SHA256=e7265962d703f3ca66b3e90fae8fcdc6d4e4b587027e9479ccc29b25c3f68d4e
+ARG UV_X86_64_UNKNOWN_LINUX_GNU_SHA256=745765a3b6e360ad76743599ae5c42e9278c7edf8bbff9fc76d05bf2623a04dd
+ARG UV_AARCH64_UNKNOWN_LINUX_GNU_SHA256=2eaa5d94f5db7b3a1a092156b9420459e42ab0217d917fe74a876309cef9b5e9
 ARG GOLANGCI_LINT_VERSION=2.13.2
 ARG DOCKER_VERSION=29.8.0
 ARG COMPOSE_VERSION=5.5.1
@@ -22,7 +23,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git iptables sudo xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && arch="$(dpkg --print-architecture)" \
-    && case "$arch" in amd64) node_arch=x64; docker_arch=x86_64 ;; arm64) node_arch=arm64; docker_arch=aarch64 ;; *) echo "unsupported architecture: $arch" >&2; exit 1 ;; esac \
+    && case "$arch" in \
+        amd64) \
+            node_arch=x64; docker_arch=x86_64; uv_arch=x86_64; uv_sha256="${UV_X86_64_UNKNOWN_LINUX_GNU_SHA256}" ;; \
+        arm64) \
+            node_arch=arm64; docker_arch=aarch64; uv_arch=aarch64; uv_sha256="${UV_AARCH64_UNKNOWN_LINUX_GNU_SHA256}" ;; \
+        *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
+    esac \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
     && grep " node-v${NODE_VERSION}-linux-${node_arch}.tar.xz$" SHASUMS256.txt | sha256sum -c - \
@@ -36,10 +43,12 @@ RUN apt-get update \
     && chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose \
     && go install "github.com/go-task/task/v3/cmd/task@v${TASK_VERSION}" \
     && go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}" \
-    && curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
-    && echo "${UV_INSTALLER_SHA256}  /tmp/uv-install.sh" | sha256sum -c - \
-    && sh /tmp/uv-install.sh \
-    && rm /tmp/uv-install.sh \
+    && curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${uv_arch}-unknown-linux-gnu.tar.gz" -o /tmp/uv.tar.gz \
+    && echo "${uv_sha256}  /tmp/uv.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/uv.tar.gz -C /tmp \
+    && install -m 0755 "/tmp/uv-${uv_arch}-unknown-linux-gnu/uv" /usr/local/bin/uv \
+    && install -m 0755 "/tmp/uv-${uv_arch}-unknown-linux-gnu/uvx" /usr/local/bin/uvx \
+    && rm -rf /tmp/uv.tar.gz "/tmp/uv-${uv_arch}-unknown-linux-gnu" \
     && uv python install 3.14 \
     && groupadd --gid "${USER_GID}" "${USERNAME}" \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" -m -s /bin/bash "${USERNAME}" \

@@ -6,23 +6,62 @@
   },
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "waitFor": "postCreateCommand",
   "mounts": [
     "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume"
   ],
   "runArgs": ["--privileged"],
   "remoteUser": "vscode",
+  "forwardPorts": [5173, 8080, 4000, 8333, 5432],
+  "portsAttributes": {
+    "5173": {
+      "label": "SkillHub Web",
+      "onAutoForward": "openPreview"
+    },
+    "8080": {
+      "label": "SkillHub Platform API",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "LiteLLM gateway",
+      "onAutoForward": "silent"
+    },
+    "8333": {
+      "label": "SeaweedFS S3 API",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
-  "postStartCommand": "sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &' && sh -c 'i=0; until docker info >/dev/null 2>&1; do i=$((i+1)); test $i -lt 60 || { sudo tail -80 /tmp/dockerd.log; exit 1; }; sleep 1; done'",
-  "postCreateCommand": "go -C tools/devctl run . env-init && go -C tools/devctl run . bootstrap",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md", ".devcontainer/README.md"]
+    },
     "vscode": {
+      "settings": {
+        "files.eol": "\n",
+        "eslint.workingDirectories": ["apps/web", "packages/api-client-ts"],
+        "go.toolsManagement.checkForUpdates": "off",
+        "python.defaultInterpreterPath": "/workspace/apps/llm/.venv/bin/python",
+        "python.testing.pytestArgs": ["apps/llm"],
+        "python.testing.pytestEnabled": true,
+        "python.terminal.activateEnvironment": true
+      },
       "extensions": [
         "golang.go",
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "dbaeumer.vscode-eslint"
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
       ]
     }
   }
