@@ -506,8 +506,8 @@ hello in-process s3
 
 - [x] PACK-014 登記新的 Bounded Context `publishing` 與它唯一的跨 context import（向 Identity 取 Workspace Scope）的 dependency policy，同一批改 depguard；Skill 擁有者的版本與治理事實、Skill 的列鎖都由組合根注入，不 import。打包的協作在 PACK-017 落地時再立。（依鐵律 7）
 - [x] PACK-015 發佈者：資料表、註冊與讀取端點、名稱規則與保留字（名稱規則由 Agent Skill 的 `name` 規則匯出同一份實作，不另寫一份）。（對應 `02:PACK-003`）
-- [ ] PACK-016 發佈與 Release：發佈、再發佈、撤回端點，散布閘與作者聲明，公開位址的匿名讀取與治理事實的即時核對；帳號頁的發佈者註冊、Skill 頁的發佈入口與 `/p/{發佈者}/{名稱}` 公開頁。（對應 `02:PACK-004`）
-- [ ] PACK-017 取得：登入後下載發佈物、下載記在取得者工作區、未受邀者的部署設定（預設關）。（對應 `02:PACK-006`）
-- [ ] PACK-018 Bundle：Bundle 與 Bundle Version 的資料表與不可變守衛、建立端點與驗證、Plugin zip 匯出（打包那一側）、信任取最壞；發佈 Bundle 與公開頁上的成員變更。（對應 `02:PACK-005`）
+- [x] PACK-016 發佈與 Release：發佈、再發佈、撤回端點，散布閘與作者聲明，公開位址的匿名讀取與治理事實的即時核對；帳號頁的發佈者註冊、Skill 頁的發佈入口與 `/p/{發佈者}/{名稱}` 公開頁。（對應 `02:PACK-004`）
+- [x] PACK-017 取得：登入後下載發佈物、下載記在取得者工作區、未受邀者的部署設定（預設關）。（對應 `02:PACK-006`）
+- [x] PACK-018 Bundle：Bundle 與 Bundle Version 的資料表與不可變守衛、建立端點與驗證、Plugin zip 匯出（打包那一側）、信任取最壞；發佈 Bundle 與公開頁上的成員變更。（對應 `02:PACK-005`）
 - [ ] DISC-013 曝光審核：審核紀錄、營運者的清單／快照／核准／撤銷端點與後台頁，搜尋、目錄瀏覽、分類數量納入曝光中的發佈物，公開讀取同一次核對資格。（對應 `02:DISC-007`）
 
