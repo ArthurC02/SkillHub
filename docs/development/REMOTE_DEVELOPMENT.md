@@ -58,6 +58,12 @@ task clean-mode
 - `ms-azuretools.vscode-docker`
 - `redhat.vscode-yaml`
 
+預設編輯器行為：
+
+- `formatOnSave` 預設開啟。
+- 預設 formatter：JavaScript/TypeScript 使用 Prettier，Go 使用 Go extension，Python 使用 Ruff。
+- 預設啟用 `python.testing.pytestEnabled=true`，在遠端容器裡以 pytest 作為 Python 測試 runner。
+
 ## 偵錯與埠轉發
 
 預設會轉發常用埠：
