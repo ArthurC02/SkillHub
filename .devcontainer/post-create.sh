@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 skip_bootstrap="${SKILLHUB_SKIP_BOOTSTRAP:-0}"
-required_commands=(go npm docker sha256sum)
+required_commands=(go npm docker)
 if [ "${skip_bootstrap}" != "1" ]; then
   required_commands+=(uv)
 fi
@@ -36,19 +36,11 @@ required_env_keys=(
   LITELLM_BASE_URL
 )
 for key in "${required_env_keys[@]}"; do
-  if ! grep -q "^${key}=" .env; then
+  if ! grep -Eq "^[[:space:]]*${key}[[:space:]]*=" .env; then
     printf "missing required .env key: %s\n" "${key}" >&2
     exit 1
   fi
 done
-
-bootstrap_inputs=(
-  apps/platform/go.sum
-  apps/sandbox/go.sum
-  apps/web/package-lock.json
-  packages/api-client-ts/package-lock.json
-  apps/llm/uv.lock
-)
 
 if [ "${skip_bootstrap}" = "1" ]; then
   echo "SKILLHUB_SKIP_BOOTSTRAP=1 set; skipping bootstrap"
@@ -67,21 +59,9 @@ until mkdir "${bootstrap_lock}" 2>/dev/null; do
 done
 
 cleanup_lock() {
-  rm -f "${stamp_tmp:-}"
   rm -rf "${bootstrap_lock}"
 }
 trap cleanup_lock EXIT INT TERM
 
-bootstrap_hash="$(sha256sum "${bootstrap_inputs[@]}" | sha256sum | awk '{print $1}')"
-bootstrap_stamp=.devcontainer/.bootstrap.stamp
-
-if [ -f "${bootstrap_stamp}" ] && [ "$(cat "${bootstrap_stamp}")" = "${bootstrap_hash}" ]; then
-  echo "bootstrap already up to date; skipping"
-  exit 0
-fi
-
 go -C tools/devctl run . bootstrap
-stamp_tmp="${bootstrap_stamp}.tmp"
-printf "%s" "${bootstrap_hash}" >"${stamp_tmp}"
-mv "${stamp_tmp}" "${bootstrap_stamp}"
 trap - INT TERM

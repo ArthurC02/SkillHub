@@ -9,7 +9,7 @@
 1. 進入你的 SkillHub repository 頁面。
 2. 點 **Code → Codespaces → Create codespace on `<branch>`**。
 3. 等待容器建立，`postCreateCommand` 會自動完成 `.env` 初始化與依賴安裝。
-4. 開新終端執行：
+4. 開新終端執行（`task doctor` 是建議檢查，`task clean-mode` 才是啟動模式）：
 
 ```bash
 task doctor
@@ -20,7 +20,7 @@ task clean-mode
 
 1. 安裝 VS Code 的 Dev Containers 擴充。
 2. 開啟 repo 後執行 **Reopen in Container**。
-3. 等待容器完成初始化後執行：
+3. 等待容器完成初始化後執行（`task doctor` 是建議檢查，`task clean-mode` 才是啟動模式）：
 
 ```bash
 task doctor
@@ -104,7 +104,7 @@ task clean-mode
 
 - 設定 `hostRequirements`（4 CPU / 8 GB RAM / 32 GB 儲存）作為建議最小規格。
 - 使用 named volumes 持久化 Go module、npm、uv 與 Docker layer 快取。
-- `post-create.sh` 用 lockfile 雜湊判斷是否需要重跑 bootstrap，減少重建時間。
+- `post-create.sh` 在容器建立與內容更新時統一執行依賴初始化流程。
 - `updateContentCommand` 也會執行同一支腳本，讓 Codespaces prebuild/更新內容時沿用同一初始化流程。
 
 ## 疑難排解
