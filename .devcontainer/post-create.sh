@@ -54,16 +54,16 @@ bootstrap_inputs=(
   apps/llm/uv.lock
 )
 
+if [ "${skip_bootstrap}" = "1" ]; then
+  echo "SKILLHUB_SKIP_BOOTSTRAP=1 set; skipping bootstrap"
+  exit 0
+fi
+
 bootstrap_hash="$(sha256sum "${bootstrap_inputs[@]}" | sha256sum | awk '{print $1}')"
 bootstrap_stamp=.devcontainer/.bootstrap.stamp
 
 if [ -f "${bootstrap_stamp}" ] && [ "$(cat "${bootstrap_stamp}")" = "${bootstrap_hash}" ]; then
   echo "bootstrap already up to date; skipping"
-  exit 0
-fi
-
-if [ "${skip_bootstrap}" = "1" ]; then
-  echo "SKILLHUB_SKIP_BOOTSTRAP=1 set; skipping bootstrap"
   exit 0
 fi
 

@@ -76,7 +76,7 @@ task clean-mode
 
 ## 環境變數與模式
 
-- `postCreateCommand` 會執行 `go -C tools/devctl run . env-init`，在 `.env` 不存在時由 `.env.example` 建立。
+- `postCreateCommand` 會執行 `.devcontainer/post-create.sh`，腳本會做工具檢查、`.env` 初始化（僅在不存在時建立）與必要 key 驗證。
 - 若你希望先準備遠端最小模板，可參考 `.devcontainer/.env.remote.example`。
 
 常見模式：
