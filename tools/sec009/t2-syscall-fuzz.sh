@@ -118,7 +118,7 @@ fi
 calls=\$(python3 -c "
 import json
 n=e=bad=seen=sl=cr=kl=0
-final={}; last={}
+final={}; last={}; ids=[]
 for line in open('/tmp/fuzz.out', errors='replace'):
     line=line.strip()
     if not line.startswith('{'): continue
@@ -130,7 +130,9 @@ for d in final.values():
     seen+=1
     n+=d['calls']; e=max(e,d['distinct_errnos'])
     sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
-    if d['uid_after']!=d['uid_before'] or d['gid_after']!=d['gid_before']: bad+=1
+    if d['uid_after']!=d['uid_before'] or d['gid_after']!=d['gid_before']:
+        bad+=1
+        ids.append('%s:%s/%s-to-%s/%s' % (d['worker'], d['uid_before'], d['gid_before'], d['uid_after'], d['gid_after']))
 # A dead supervisor leaves no final line; its last progress line is what
 # distinguishes a finding from an unknown.
 lost=[]
@@ -141,11 +143,11 @@ for w in sorted(set(last) - set(final)):
     sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
 for w in range(1, $WORKERS + 1):
     if w not in final and w not in last: lost.append('%d:never-reported' % w)
-print(n,e,bad,seen,sl,cr,kl,','.join(sorted(lost)) or '-')
+print(n,e,bad,seen,sl,cr,kl,','.join(sorted(lost)) or '-',','.join(sorted(ids)) or '-')
 " 2>/dev/null)
 set -- \$calls
 total=\${1:-0}; distinct=\${2:-0}; privchange=\${3:-x}; seen=\${4:-0}
-slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}; lost=\${8:--}
+slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}; lost=\${8:--}; identities=\${9:--}
 [ "\$seen" -eq 0 ] && privchange=x
 
 # Floor catches "issued nothing", not throughput: a slow machine must not turn
@@ -183,6 +185,7 @@ elif [ "\$privchange" = x ]; then
   [ \$fail -eq 0 ] && fail=2
 else
   printf '  %-38s FAIL    %s worker(s) changed identity\n' 'no privileges gained (uid/gid)' "\$privchange"
+  echo "      observed uid/gid: \$identities"
   fail=2
 fi
 
