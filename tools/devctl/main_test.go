@@ -25,6 +25,37 @@ func TestCompatibleVersionMatchesMajorMinor(t *testing.T) {
 	}
 }
 
+func TestParseKeyValue(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		line      string
+		delimiter string
+		key       string
+		value     string
+		ok        bool
+	}{
+		"quoted":             {line: ` key : " value " `, delimiter: ":", key: "key", value: " value ", ok: true},
+		"unquoted":           {line: "name=value", delimiter: "=", key: "name", value: "value", ok: true},
+		"embedded delimiter": {line: "k=a=b=c", delimiter: "=", key: "k", value: "a=b=c", ok: true},
+		"unmatched quote":    {line: `k="abc`, delimiter: "=", key: "k", value: "abc", ok: true},
+		"missing delimiter":  {line: "missing delimiter", delimiter: ":", ok: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			key, value, ok := parseKeyValue(tc.line, tc.delimiter)
+			if ok != tc.ok {
+				t.Fatalf("parseKeyValue(%q, %q) ok = %v, want %v", tc.line, tc.delimiter, ok, tc.ok)
+			}
+			if !ok {
+				return
+			}
+			if key != tc.key || value != tc.value {
+				t.Fatalf("parseKeyValue(%q, %q) = (%q, %q), want (%q, %q)",
+					tc.line, tc.delimiter, key, value, tc.key, tc.value)
+			}
+		})
+	}
+}
+
 func TestParseToolchain(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

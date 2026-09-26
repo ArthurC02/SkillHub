@@ -28,7 +28,7 @@ type DiagramDecomposition struct {
 }
 
 func validDiagramDescription(value string) bool {
-	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= 2000
+	return validDiagramText(value)
 }
 
 func validDiagramItems(items []string, limit int, required bool) bool {
@@ -36,7 +36,7 @@ func validDiagramItems(items []string, limit int, required bool) bool {
 		return false
 	}
 	for _, item := range items {
-		if strings.TrimSpace(item) == "" || utf8.RuneCountInString(item) > 2000 {
+		if !validDiagramText(item) {
 			return false
 		}
 	}
@@ -86,6 +86,10 @@ func validDiagramInterpretation(value *DiagramInterpretation) bool {
 }
 
 func validDiagramAnswer(value string) bool {
+	return validDiagramText(value)
+}
+
+func validDiagramText(value string) bool {
 	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= 2000
 }
 
