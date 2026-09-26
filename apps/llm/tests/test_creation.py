@@ -479,6 +479,58 @@ def test_a_decomposition_written_into_the_message_is_lifted_out_of_it():
     assert response.json()["message"] == "我目前的理解如下，請確認："
 
 
+CONFIRMED_DIAGRAM_REQUEST = request(
+    messages=[],
+    diagram_description=DECOMPOSE_REQUEST["diagram_description"],
+    diagram_description_confirmed=True,
+    diagram_confirmed=True,
+    diagram_interpretation={
+        "nodes": DECOMPOSITION["nodes"],
+        "conditions": [],
+        "branches": [],
+        "uncertainties": [{"id": "u1", "question": "缺漏時由誰補件？", "answer": "業務"}],
+    },
+)
+
+
+def test_a_legacy_understanding_echoed_with_the_draft_does_not_reopen_the_diagram():
+    response, calls = invoke(
+        CONFIRMED_DIAGRAM_REQUEST
+        | {"brief": "agreed", "brief_confirmed": True, "allowed_tools": ["validate_draft"]},
+        decision(outcome="draft", draft=SKILL, diagram_understanding=diagram_text("轉成 CSV")),
+    )
+    assert response.status_code == 200
+    assert "Current phase: compose" in calls[0]["messages"][0]["content"]
+    assert response.json()["reason"] is None
+    assert response.json()["tool_intent"]["kind"] == "validate_draft"
+    assert response.json()["diagram_understanding"] == ""
+
+
+def test_asking_to_confirm_the_diagram_again_becomes_a_brief_proposal():
+    response, _ = invoke(
+        CONFIRMED_DIAGRAM_REQUEST,
+        decision(
+            outcome="confirm_diagram_description",
+            message="請確認這份圖意理解是否正確。",
+            brief="把訂單轉成 CSV 並檢查缺漏欄位。",
+            acceptance_criteria=["缺漏欄位會被列出"],
+            sample_input="請處理這份訂單：A1001,,3",
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "confirm_brief"
+    assert response.json()["reason"] is None
+
+
+def test_asking_to_confirm_the_diagram_again_without_a_brief_becomes_a_question():
+    response, _ = invoke(
+        CONFIRMED_DIAGRAM_REQUEST,
+        decision(outcome="confirm_diagram_interpretation", message="請確認圖意。"),
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "clarification"
+
+
 def test_unauthorized_tool_never_escapes():
     response, _ = invoke(
         request(),

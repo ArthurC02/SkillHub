@@ -72,6 +72,17 @@ func TestLimitsFailClosed(t *testing.T) {
 	}
 }
 
+func TestALinearDiagramSendsEmptyListsNotNull(t *testing.T) {
+	interpretation := newDiagramInterpretation(&DiagramDecomposition{Nodes: []string{"receive", "send"}})
+	raw, err := json.Marshal(interpretation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"nodes":["receive","send"],"conditions":[],"branches":[],"uncertainties":[]}`; string(raw) != want {
+		t.Fatalf("got %s, want %s", raw, want)
+	}
+}
+
 func TestDiagramInterpretationRequiresConfirmedDescriptionAndEveryAnswer(t *testing.T) {
 	interpretation := &DiagramInterpretation{Nodes: []string{"start"}, Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "who", Answer: "owner"}}}
 	p := Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramDescription: "start", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: interpretation}

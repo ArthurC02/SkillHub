@@ -56,9 +56,10 @@ func newDiagramInterpretation(value *DiagramDecomposition) *DiagramInterpretatio
 		return nil
 	}
 	result := &DiagramInterpretation{
-		Nodes:      append([]string(nil), value.Nodes...),
-		Conditions: append([]string(nil), value.Conditions...),
-		Branches:   append([]string(nil), value.Branches...),
+		Nodes:         append([]string{}, value.Nodes...),
+		Conditions:    append([]string{}, value.Conditions...),
+		Branches:      append([]string{}, value.Branches...),
+		Uncertainties: []DiagramUncertainty{},
 	}
 	for _, question := range value.Uncertainties {
 		result.Uncertainties = append(result.Uncertainties, DiagramUncertainty{ID: UUID(newID()), Question: question})

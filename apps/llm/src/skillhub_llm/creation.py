@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v18"
+PROMPT_VERSION = "creation-step/v19"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -324,9 +324,12 @@ def _add_usage(a: GatewayUsage | None, b: GatewayUsage | None) -> GatewayUsage |
 PHASE_INSTRUCTIONS = {
     "understand": (
         "Resolve missing requirements and propose concrete confirmations. Do not draft "
-        "before confirmation. For an uploaded diagram, return only a concise natural-language "
-        "diagram_description and outcome confirm_diagram_description. Do not return nodes, "
-        "conditions, branches or uncertainties in this phase."
+        "before confirmation. Only when this request carries a newly uploaded diagram image, "
+        "return only a concise natural-language diagram_description and outcome "
+        "confirm_diagram_description, without nodes, conditions, branches or uncertainties. "
+        "Once diagram_confirmed is true, the confirmed description, interpretation and answers "
+        "are settled facts: propose the brief from them and never ask to confirm the diagram "
+        "again."
     ),
     "decompose": (
         "The user confirmed the diagram description. Return outcome "
@@ -652,6 +655,13 @@ def _reason_node(gateway_key: str, phase: str):
                 )
             if req.diagram is None:
                 decision.diagram_description = None
+                if req.diagram_description:
+                    decision.diagram_understanding = None
+                if req.diagram_confirmed and decision.outcome in (
+                    "confirm_diagram_description",
+                    "confirm_diagram_interpretation",
+                ):
+                    decision.outcome = "confirm_brief" if decision.brief else "clarification"
             if (
                 req.diagram is None
                 and not req.diagram_understanding
