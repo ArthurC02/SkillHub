@@ -41,12 +41,29 @@ required_env_keys=(
   LITELLM_BASE_URL
 )
 for key in "${required_env_keys[@]}"; do
-  line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" .env | head -n 1 || true)"
-  if [ -z "${line}" ]; then
+  value="$(
+    awk -F= -v want="${key}" '
+      {
+        line=$0
+        sub(/^[[:space:]]+/, "", line)
+        if (line == "" || substr(line, 1, 1) == "#") {
+          next
+        }
+        split(line, pair, "=")
+        parsed_key=pair[1]
+        sub(/[[:space:]]+$/, "", parsed_key)
+        if (parsed_key == want) {
+          sub(/^[^=]*=/, "", line)
+          print line
+          exit
+        }
+      }
+    ' .env
+  )"
+  if [ -z "${value}" ]; then
     printf "missing required .env key: %s\n" "${key}" >&2
     exit 1
   fi
-  value="${line#*=}"
   value="$(printf "%s" "${value}" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
   value="${value#\"}"
   value="${value%\"}"

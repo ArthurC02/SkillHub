@@ -72,9 +72,6 @@ task clean-mode
 - `5173`：Web dev server
 - `8080`：Platform API
 - `4000`：LiteLLM gateway
-
-下列埠已在 `portsAttributes` 預先命名，需要時可手動轉發：
-
 - `5432`：PostgreSQL
 - `8333`：SeaweedFS S3 API
 
@@ -94,9 +91,9 @@ task clean-mode
 
 1. **乾淨測試模式（無外部依賴）**
    - `task clean-mode`
-2. **完整堆疊模式（PostgreSQL + SeaweedFS + 各服務）**
+2. **完整開發流程（基礎依賴 + 服務程序）**
    - （容器初始化已自動執行 `env-init` 與 `bootstrap`）
-   - `task dev`
+   - `task dev`（只會啟動 PostgreSQL 與 SeaweedFS）
    - 另開終端啟動 API / Worker / Sandbox / LLM / Web
    - 若要手動重建依賴，再執行 `task env:init`、`task bootstrap`
 
