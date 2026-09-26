@@ -24,7 +24,7 @@
 | DISC-002 | 有測試 | `DISC-002: a result row carries all seven columns, and infers none of them`、`TestFilterDimensionsWithoutDataAreRejectedNotIgnored` | |
 | DISC-003 | 有測試 | `TestAnonymousReadsCatalogSkillDetail` | |
 | DISC-004 | 有測試 | `DISC-009 comparison gives absent fields their actual state`、`DISC-009 相容性不同的兩個 Skill,那一列要說有差異` | |
-| DISC-005 | 未實作 | | 結構化意圖抽取與查詢改寫在 `discovery` 套件完全沒有程式碼，`Embed` 直接吃原句 |
+| DISC-005 | 有測試 | `TestIntentValidationRejectsIncompleteInventedAndOversizedProposals`、`analysis displays all five fields without inferring missing facts`、`TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter`、`TestAlwaysFailingRewriterStillRetrievesNonemptyVectorResults`、`TestAnonymousSearchTraversesGoPythonAndGateway`、`TestHistoricalLexicalFloorUsesTopOneAndExactFractions`、`排序說明：只能用關鍵字比對時，畫面說出中文幾乎找不到東西，不把它說成備援腿`、`TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput` | |
 | DISC-006 | 有測試 | `TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall`、`TestCategoryFiltersTheCatalogAndNamesTheAbsence`、`TestTheCatalogResponseDropsEveryFieldABrowseCouldOnlyFillWithAConstant`、`DISC-006: an empty catalog is distinct from a failed catalog read` | |
 
 ## 匯入與驗證
