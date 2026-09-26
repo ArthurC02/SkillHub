@@ -132,7 +132,7 @@
 
 - [x] INGEST-017 匯入認得三種來源形狀並展開成多個 Skill Version：根目錄 `plugin.json` 的 `skills/` 直接子目錄（不遞迴）、單一 Skill、以及走訪整棵樹找 `SKILL.md`；找不到任何 `SKILL.md` 時訊息列出找過的位置（`02:SKILL-006`）。今天的 `PackageRoot` 只認「根有 `SKILL.md`」或「單一頂層目錄」兩種，而 GitHub repo 的壓縮檔永遠是後者——指著一個真實 repo 的人一律收到「缺少 `SKILL.md`」。
 - [ ] INGEST-018 Skill 以外的元件只揭露不匯入：`mcp.json` 與反向網域命名空間的頂層目錄進排除揭露並可辨識為 Plugin 元件，不進任何會被複製進沙箱的位元組（`02:SKILL-006`、實作鐵律 1）。**MCP server 與 hook 的定義本身就是執行指令**，這一項守的是「匯入不得替使用者決定要執行什麼」。命名空間目錄不逐一列舉宿主名稱——規格把那一層劃給宿主，列舉等於替每一家維護一份清單。
-- [ ] INGEST-019 plugin manifest 的驗證與來源事實：宣告別份規格者為 info 並改走整棵樹、宣告公規卻 `name` 不合才是阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；一個 Plugin 只存一份套件物件（整包），各 Skill Version 共用它、內容雜湊取各自子目錄；單次匯入超過 50 個 Skill 即整批拒絕並說出兩個數字（`02:SKILL-006`）。
+- [x] INGEST-019 plugin manifest 的驗證與來源事實：宣告別份規格者為 info 並改走整棵樹、宣告公規卻 `name` 不合才是阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；一個 Plugin 只存一份套件物件（整包），各 Skill Version 共用它、內容雜湊取各自子目錄；單次匯入超過 50 個 Skill 即整批拒絕並說出兩個數字（`02:SKILL-006`）。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 

@@ -466,6 +466,17 @@ type runtimeSnapshot struct {
 	SelectedAt        string            `json:"selected_at"`
 }
 
+// The provider is told where in the stored package this Version's own root is,
+// because a Plugin is stored whole and its archive root holds no SKILL.md.
+func packageRefFor(version VersionFacts) PackageRef {
+	return PackageRef{
+		SkillVersionID: pgconv.UUIDString(version.ID),
+		ContentHash:    version.ContentHash,
+		ObjectKey:      version.PackageObjectKey,
+		SourcePath:     version.SourcePath,
+	}
+}
+
 func (s *Service) buildRunRequest(
 	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile,
 	policy policySnapshot, budgetUSD float64,
@@ -520,11 +531,7 @@ func (s *Service) buildRunRequest(
 		WorkspaceID:  pgconv.UUIDString(run.WorkspaceID),
 
 		IdempotencyKey: pgconv.UUIDString(attempt.ID),
-		SkillVersion: PackageRef{
-			SkillVersionID: pgconv.UUIDString(version.ID),
-			ContentHash:    version.ContentHash,
-			ObjectKey:      version.PackageObjectKey,
-		},
+		SkillVersion:   packageRefFor(version),
 		TestCaseSnapshot: TestCaseSnapshotRef{
 			TestCaseSnapshotID: pgconv.UUIDString(snapshot.ID),
 			ContentHash:        snapshot.ContentHash,

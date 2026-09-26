@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readdirSync,
@@ -15,7 +16,9 @@ import { test } from "node:test";
 import { crc32, deflateRawSync } from "node:zlib";
 import {
   agentOptions,
+  declaredSkillRoot,
   extractPackage,
+  installSkillFromArchive,
   gatewaySpend,
   outputContract,
   packageRoot,
@@ -845,4 +848,128 @@ test("the agent turn still carries every option that fails silently", () => {
     "Grep",
     "Bash",
   ]);
+});
+
+const NL = String.fromCharCode(10);
+
+const PLUGIN_SKILL_MD =
+  "---" + NL + "name: tidy-notes" + NL + "description: Tidy notes." + NL + "---" + NL + NL + "Body." + NL;
+const SIBLING_SKILL_MD =
+  "---" + NL + "name: split-csv" + NL + "description: Split a csv." + NL + "---" + NL + NL + "Body." + NL;
+
+function pluginEntries() {
+  return [
+    { name: "plugin.json", data: Buffer.from('{"name":"desk-tools"}'), method: 0 },
+    { name: "mcp.json", data: Buffer.from('{"mcpServers":{}}'), method: 0 },
+    { name: "skills/tidy-notes/SKILL.md", data: Buffer.from(PLUGIN_SKILL_MD, "utf8"), method: 0 },
+    { name: "skills/tidy-notes/notes.md", data: Buffer.from("reference", "utf8"), method: 0 },
+    { name: "skills/split-csv/SKILL.md", data: Buffer.from(SIBLING_SKILL_MD, "utf8"), method: 0 },
+  ];
+}
+
+function stageInstall(entries) {
+  const { archivePath, root } = stageZip(entries);
+  const inputDir = join(root, "input");
+  const skillDir = join(root, "skills");
+  mkdirSync(inputDir, { recursive: true });
+  const failures = [];
+  const install = (declaredPath) =>
+    installSkillFromArchive(
+      { archivePath, staging: join(inputDir, "package"), skillDir, declaredPath },
+      (phase, code, message) => failures.push({ phase, code, message }),
+    );
+  return { install, inputDir, skillDir, failures, root };
+}
+
+test("a declared directory installs that skill of a plugin and nothing else", () => {
+  const { install, inputDir, skillDir, failures, root } = stageInstall(pluginEntries());
+  try {
+    assert.equal(install("skills/tidy-notes"), "tidy-notes");
+    assert.deepEqual(failures, []);
+    assert.deepEqual(readdirSync(skillDir), ["tidy-notes"]);
+    assert.deepEqual(readdirSync(join(skillDir, "tidy-notes")).sort(), [
+      "SKILL.md",
+      "notes.md",
+    ]);
+    assert.equal(
+      readFileSync(join(skillDir, "tidy-notes", "SKILL.md"), "utf8"),
+      PLUGIN_SKILL_MD,
+    );
+    assert.deepEqual(
+      readdirSync(inputDir),
+      [],
+      "the rest of the plugin stayed behind in the input directory, so the sandbox holds bytes the run never asked for",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a declared directory that holds no SKILL.md fails the run instead of installing nothing", () => {
+  const { install, skillDir, failures, root } = stageInstall(pluginEntries());
+  try {
+    assert.equal(install("skills/nope"), undefined);
+    assert.equal(failures.length, 1, JSON.stringify(failures));
+    assert.equal(failures[0].code, "invalid_package");
+    assert.match(failures[0].message, /holds no SKILL.md/);
+    assert.equal(existsSync(skillDir), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a plugin with no declared directory fails rather than installing the whole plugin as one skill", () => {
+  const { install, skillDir, failures, root } = stageInstall(pluginEntries());
+  try {
+    assert.equal(install(""), undefined);
+    assert.equal(failures.length, 1, JSON.stringify(failures));
+    assert.equal(failures[0].code, "invalid_package");
+    assert.equal(existsSync(skillDir), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a single-skill package still installs from the root the runtime resolves itself", () => {
+  const { install, skillDir, failures, root } = stageInstall([
+    { name: "pkg/SKILL.md", data: Buffer.from(PLUGIN_SKILL_MD, "utf8"), method: 0 },
+  ]);
+  try {
+    assert.equal(install(""), "tidy-notes");
+    assert.deepEqual(failures, []);
+    assert.deepEqual(readdirSync(join(skillDir, "tidy-notes")), ["SKILL.md"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a declared directory that escapes the package is refused before anything is extracted", () => {
+  for (const escape of ["../../etc", "/etc", "skills/../../etc", ".."]) {
+    const { install, inputDir, skillDir, failures, root } = stageInstall(pluginEntries());
+    try {
+      assert.equal(install(escape), undefined, escape);
+      assert.equal(failures.length, 1, `${escape}: ${JSON.stringify(failures)}`);
+      assert.equal(failures[0].code, "invalid_package");
+      assert.equal(existsSync(skillDir), false, escape);
+      assert.deepEqual(
+        readdirSync(join(inputDir, "package")),
+        [],
+        `${escape}: the archive was unpacked before the path was judged`,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("the declared directory is read as a relative path inside the package and nothing else", () => {
+  assert.equal(declaredSkillRoot(""), "");
+  assert.equal(declaredSkillRoot(undefined), "");
+  assert.equal(declaredSkillRoot("skills/a"), "skills/a/");
+  assert.equal(declaredSkillRoot("skills/a/"), "skills/a/");
+  assert.equal(declaredSkillRoot("./skills/a"), "skills/a/");
+  assert.equal(declaredSkillRoot("a/b/c"), "a/b/c/");
+  for (const rejected of ["/etc", "..", "../x", "a/../../b", ".", "./", "a" + String.fromCharCode(92) + "b"]) {
+    assert.equal(declaredSkillRoot(rejected), null, rejected);
+  }
 });

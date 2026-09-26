@@ -368,6 +368,7 @@ func env(req sandbox.RunRequest) []string {
 		"SKILLHUB_SKILL_CONTENT_HASH=" + req.SkillVersion.ContentHash,
 
 		"SKILLHUB_SKILL_VERSION_ID=" + req.SkillVersion.SkillVersionID,
+		"SKILLHUB_SKILL_SOURCE_PATH=" + req.SkillVersion.SourcePath,
 		"SKILLHUB_TRACE_LEVEL=" + req.Trace.Level,
 		"SKILLHUB_ARTIFACT_MAX_BYTES=" + strconv.FormatInt(req.ResourceLimits.ArtifactFileBytes, 10),
 		"HOME=" + WorkDir,

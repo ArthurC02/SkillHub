@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 func compatible() ProviderCapability {
@@ -751,5 +752,41 @@ func TestTheContentSourceGateAsksAboutThisRunsOwnVersion(t *testing.T) {
 func stubContentSource(source ContentSource, found bool, err error) func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
 	return func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
 		return source, found, err
+	}
+}
+
+func TestTheProviderIsToldWhichDirectoryOfTheStoredPackageTheSkillIs(t *testing.T) {
+	versionID := pgtype.UUID{Bytes: [16]byte{15: 9}, Valid: true}
+	facts := VersionFacts{
+		ID:               versionID,
+		SkillID:          pgtype.UUID{Bytes: [16]byte{15: 8}, Valid: true},
+		ContentHash:      "subtree-hash",
+		PackageObjectKey: "packages/whole-plugin.zip",
+		SourcePath:       "skills/tidy-notes",
+	}
+
+	got := packageRefFor(facts)
+
+	want := PackageRef{
+		SkillVersionID: pgconv.UUIDString(versionID),
+		ContentHash:    "subtree-hash",
+		ObjectKey:      "packages/whole-plugin.zip",
+		SourcePath:     "skills/tidy-notes",
+	}
+	if got != want {
+		t.Fatalf("packageRefFor = %+v, want %+v; dropping the directory sends the provider a plugin "+
+			"whose root holds no SKILL.md, and the run activates nothing", got, want)
+	}
+}
+
+func TestASkillThatIsItsWholePackageIsDispatchedWithNoDirectory(t *testing.T) {
+	got := packageRefFor(VersionFacts{
+		ID:               pgtype.UUID{Bytes: [16]byte{15: 9}, Valid: true},
+		ContentHash:      "package-digest",
+		PackageObjectKey: "packages/one-skill.zip",
+	})
+
+	if got.SourcePath != "" {
+		t.Fatalf("source path = %q, want empty; the package root already is this skill's root", got.SourcePath)
 	}
 }

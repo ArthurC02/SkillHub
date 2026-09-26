@@ -549,6 +549,18 @@ components:
         object_key:
           type: string
           description: Object storage key, readable only through the matching ObjectGrant.
+        source_path:
+          type: string
+          description: |
+            The directory inside the archive that is this Skill Version's own
+            root, absent or empty when the archive root already is it. An Agent
+            Plugin is stored as it arrived and holds several Skills under
+            `skills/`, so its archive root carries `plugin.json` and no
+            `SKILL.md`. The runtime unpacks and takes that directory as the
+            Skill, instead of searching the archive for a `SKILL.md` it cannot
+            tell apart from a sibling Skill's. Everything outside it is
+            discarded before the Skill is installed, so a Plugin's other
+            components never reach the agent.
 
     TestCaseSnapshotRef:
       type: object

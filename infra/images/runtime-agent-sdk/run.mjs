@@ -476,6 +476,17 @@ export function extractPackage(archivePath, destDir) {
   return packageRoot(entries);
 }
 
+// An Agent Plugin is stored whole and holds several Skills, so the archive root
+// is not always the Skill root; the platform says which directory it is rather
+// than leaving the runtime to pick one of several SKILL.md files.
+export function declaredSkillRoot(value) {
+  if (typeof value !== "string" || value === "") return "";
+  if (value.startsWith("/") || value.includes(String.fromCharCode(92))) return null;
+  const parts = value.split("/").filter((part) => part !== "" && part !== ".");
+  if (parts.length === 0 || parts.includes("..")) return null;
+  return parts.join("/") + "/";
+}
+
 export function provisionPackage(archivePath, destDir, onFailure = fail) {
   try {
     return extractPackage(archivePath, destDir);
@@ -483,6 +494,51 @@ export function provisionPackage(archivePath, destDir, onFailure = fail) {
     onFailure("provision", "invalid_package", `skill package extraction failed: ${error}`);
     return undefined;
   }
+}
+
+export function installSkillFromArchive(
+  { archivePath, staging, skillDir, declaredPath },
+  onFailure = fail,
+) {
+  mkdirSync(staging, { recursive: true });
+  const declaredRoot = declaredSkillRoot(declaredPath);
+  if (declaredRoot === null) {
+    onFailure(
+      "provision",
+      "invalid_package",
+      `the run named ${JSON.stringify(declaredPath)} as this skill's directory inside its package, and that is not a relative path inside it`,
+    );
+    return undefined;
+  }
+  const root = provisionPackage(archivePath, staging, onFailure);
+  const chosen = declaredRoot || root;
+  const packageDir = chosen ? join(staging, chosen.slice(0, -1)) : staging;
+  if (!existsSync(join(packageDir, "SKILL.md"))) {
+    onFailure(
+      "provision",
+      "invalid_package",
+      declaredRoot
+        ? `the run named ${declaredRoot} as this skill's directory inside its package, and that directory holds no SKILL.md`
+        : "this skill's package holds no SKILL.md at the root the runtime resolved, so there is no skill to install",
+    );
+    return undefined;
+  }
+  let name = "skill";
+  try {
+    const frontmatter =
+      readFileSync(join(packageDir, "SKILL.md"), "utf8").split(
+        /^---\s*$/m,
+      )[1] ?? "";
+    const declared = /^name:\s*(.+)$/m.exec(frontmatter)?.[1]?.trim();
+    if (declared && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(declared))
+      name = declared;
+  } catch {
+  }
+  const target = join(skillDir, name);
+  mkdirSync(skillDir, { recursive: true });
+  renameSync(packageDir, target);
+  rmSync(staging, { recursive: true, force: true });
+  return name;
 }
 
 export function outputContract(dir) {
@@ -536,26 +592,12 @@ if (isMain) {
 
   const skillArchive = join(inputDir, "skill.zip");
   if (existsSync(skillArchive)) {
-    const staging = join(inputDir, "package");
-    mkdirSync(staging, { recursive: true });
-    const root = provisionPackage(skillArchive, staging);
-    const packageDir = root ? join(staging, root.slice(0, -1)) : staging;
-
-    let name = "skill";
-    try {
-      const frontmatter =
-        readFileSync(join(packageDir, "SKILL.md"), "utf8").split(
-          /^---\s*$/m,
-        )[1] ?? "";
-      const declared = /^name:\s*(.+)$/m.exec(frontmatter)?.[1]?.trim();
-      if (declared && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(declared))
-        name = declared;
-    } catch {
-    }
-    const target = join(skillDir, name);
-    mkdirSync(skillDir, { recursive: true });
-    renameSync(packageDir, target);
-    if (root) rmSync(staging, { recursive: true, force: true });
+    installSkillFromArchive({
+      archivePath: skillArchive,
+      staging: join(inputDir, "package"),
+      skillDir,
+      declaredPath: process.env.SKILLHUB_SKILL_SOURCE_PATH ?? "",
+    });
   }
   mkdirSync(artifactDir, { recursive: true });
 

@@ -21,7 +21,7 @@ var matrixStatuses = map[string]bool{
 var (
 	matrixRow      = regexp.MustCompile(`^\|\s*([A-Z][A-Z0-9]{1,7}-\d{3})\s*\|([^|]*)\|([^|]*)\|([^|]*)\|\s*$`)
 	matrixQuoted   = regexp.MustCompile("`([^`]+)`")
-	matrixTestFile = regexp.MustCompile(`(_test\.go|\.test\.tsx?|_test\.py|_test\.sql)$`)
+	matrixTestFile = regexp.MustCompile(`(_test\.go|\.test\.tsx?|\.test\.mjs|_test\.py|_test\.sql)$`)
 )
 
 func specRequirementIDs(root string) (required map[string]bool, postMVP map[string]bool, err error) {

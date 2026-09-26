@@ -117,3 +117,23 @@ func TestRequirementTestMatrixReadsTheLiveTable(t *testing.T) {
 		t.Fatalf("the live matrix has drifted: %v", problems)
 	}
 }
+
+func TestRequirementTestMatrixReadsRuntimeScriptTests(t *testing.T) {
+	t.Parallel()
+	root := writeMatrixFixture(t, matrixBothRows)
+	script := filepath.Join(root, "infra", "images", "runtime", "run.test.mjs")
+	if err := os.MkdirAll(filepath.Dir(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(script, []byte("test(\"a declared directory installs one skill\", () => {});\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	matrix := "| DISC-001 | 有測試 | `a declared directory installs one skill` |  |\n" +
+		"| DISC-002 | 部分 | `TestSomethingReal` | 第二條沒有 |\n"
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(requirementMatrixPath)), []byte(matrix), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if problems := requirementTestMatrixProblems(root); len(problems) != 0 {
+		t.Fatalf("a test named in a .test.mjs suite was not found: %v", problems)
+	}
+}

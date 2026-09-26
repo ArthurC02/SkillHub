@@ -638,3 +638,44 @@ docker run … anchore/grype:v0.117.0@sha256:ddf9e9f2… sbom:/scan/sbom.spdx.js
 **是否推翻既有文件敘述**：是，但推翻的不是映像的敘述——**第 3 項的 caching 欄位**。`contracts/events/README.md` §5 引的是 LiteLLM 1.96.2 當時的實測（兩個欄位都缺欄），而今天在現行閘道上 `cache_read_input_tokens` 有值。schema 的 nullable 不變、消費端「`null` 呈現為未回報」的規約也不變；該節同批補上今天的量測。
 
 **預設映像同批從 `-10` 移到 `-12`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。`-11` 從此只是被取代的 tag——它與 `-12` 的映像內容差異只有 `IMAGE_VERSION` 這個 label。
+
+## `2026.08-12` → `2026.08-13`（2026-09-26）— **只有 `run.mjs` 變動；四項實測尚未跑，預設映像仍留在 `-12`**
+
+> 這一節修的是 Skill **安裝**那一段：一個 Agent Plugin 以整包存成一份套件，
+> 執行期原本在壓縮檔裡自己猜哪裡是 Skill 根目錄，而 Plugin 的根目錄放的是
+> `plugin.json`、沒有 `SKILL.md`。猜不到的結果不是報錯，是把整包當成一個叫
+> `skill` 的目錄安裝，Agent 一個 Skill 都發現不到。現在由平台在任務請求裡指名
+> 那個目錄，執行期不再猜。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有 `run.mjs` 與 `ARG IMAGE_VERSION`（`run.test.mjs` 同批改但不進映像）。`Dockerfile` 的其餘內容、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 新增的輸入 | `SKILLHUB_SKILL_SOURCE_PATH`——該 Skill Version 在套件內的根目錄，本身即整包時為空字串。兩個 driver 都一定會設這個變數（空值也設），所以執行期讀的是一條規則不是兩條 |
+| 新增的拒絕 | 指定的目錄不是套件內的相對路徑（絕對路徑、`..`、反斜線）→ `provision/invalid_package`，**在解壓之前就拒絕**；指定的目錄沒有 `SKILL.md` → 同一個代碼。另外，**沒有指定而執行期自己解出的根目錄也沒有 `SKILL.md` 時，現在會失敗**，以前是安靜地裝出一個空 Skill |
+| 清理 | 安裝完一律移除 staging 目錄。以前只有「壓縮檔有單一頂層目錄」時才移除，所以從 Plugin 取出一個 Skill 之後，Plugin 其餘部分（含 `mcp.json`）會留在沙箱的輸入目錄裡 |
+| 預設映像 | **仍是 `-12`**。四項實測要動到模型閘道（第 1 項就是 Skill 載入），沒有跑；跑完並通過才移 |
+
+### 本機驗證（2026-09-26，沒有任何模型呼叫）
+
+`task test:runtime-script` → 71 pass / 0 fail / 1 skipped，其中六條是這次新增的，每一條都做過突變稽核（把修正還原、確認變紅、改回、`diff` 為空）。
+
+映像層驗證直接在 `skillhub/runtime-agent-sdk:2026.08-13` 容器裡跑，語料是一個含 `plugin.json`、`mcp.json` 與兩個 Skill（`skills/tidy-notes`、`skills/split-csv`）的壓縮檔：
+
+```
+PROBE_PATH=skills/tidy-notes → installed=tidy-notes  skillDir=[tidy-notes]
+                                installedFiles=[SKILL.md, notes.md]  SKILL.md 的 name=tidy-notes
+                                （另一個 Skill、plugin.json、mcp.json 都不在裡面）
+PROBE_PATH=skills/split-csv  → installed=split-csv   skillDir=[split-csv]
+PROBE_PATH=（空）            → 拒絕 provision/invalid_package
+                                "…holds no SKILL.md at the root the runtime resolved…"
+PROBE_PATH=../../etc         → 拒絕 provision/invalid_package（解壓前）
+PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that directory holds no SKILL.md"
+```
+
+同一份語料在 `2026.08-12` 的映像裡，`packageRoot` 解出 `""`——也就是整包 Plugin 會被當成一個叫 `skill` 的 Skill 安裝，而它的根目錄沒有 `SKILL.md`。這是這一版要修掉的行為。
+
+### 四項測項：尚未重跑
+
+第 1 項（Skill 載入條件）正是這次動到的那一段，必須重跑；它要一次真實的 Agent 執行，因此要起模型閘道並產生費用。第 2～4 項與本次變更無關但依規則一併重跑。**在跑完之前，預設映像與 CI 的 probe tag 都留在 `-12`。**

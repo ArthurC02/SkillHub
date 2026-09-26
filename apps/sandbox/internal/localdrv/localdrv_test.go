@@ -602,3 +602,21 @@ func TestTheNamesDeclaredAreTheNamesTheGrantActuallySets(t *testing.T) {
 		t.Fatal("the grant added no variable at all; this test would pass on any declaration")
 	}
 }
+
+func TestTheSkillsOwnDirectoryInsideItsPackageReachesTheWorkload(t *testing.T) {
+	const declared = "skills/tidy-notes"
+	req := sandbox.RunRequest{SkillVersion: sandbox.PackageRef{SourcePath: declared}}
+
+	lines := env(req, "work", "out")
+	want := "SKILLHUB_SKILL_SOURCE_PATH=" + declared
+	if !slices.Contains(lines, want) {
+		t.Fatalf("the workload is never told which directory of the package is the skill;\n"+
+			"a plugin's archive root holds no SKILL.md, so the run would install the whole plugin and activate nothing.\ngot %v", lines)
+	}
+
+	bare := env(sandbox.RunRequest{}, "work", "out")
+	if !slices.Contains(bare, "SKILLHUB_SKILL_SOURCE_PATH=") {
+		t.Errorf("a skill that is its whole package must still get the variable, empty, "+
+			"so the workload reads one rule rather than two: got %v", bare)
+	}
+}

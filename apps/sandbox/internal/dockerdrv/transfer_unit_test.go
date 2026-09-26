@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -79,5 +80,21 @@ func TestDatasetNamesSkipsEmptyKeysAndUnsafeNames(t *testing.T) {
 	want := map[string]string{"k1": "input.csv"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("datasetNames = %v, want %v", got, want)
+	}
+}
+
+func TestTheSkillsOwnDirectoryInsideItsPackageReachesTheWorkload(t *testing.T) {
+	const declared = "skills/tidy-notes"
+
+	lines := env(sandbox.RunRequest{SkillVersion: sandbox.PackageRef{SourcePath: declared}})
+	want := "SKILLHUB_SKILL_SOURCE_PATH=" + declared
+	if !slices.Contains(lines, want) {
+		t.Fatalf("the workload is never told which directory of the package is the skill;\n"+
+			"a plugin's archive root holds no SKILL.md, so the run would install the whole plugin and activate nothing.\ngot %v", lines)
+	}
+
+	if bare := env(sandbox.RunRequest{}); !slices.Contains(bare, "SKILLHUB_SKILL_SOURCE_PATH=") {
+		t.Errorf("a skill that is its whole package must still get the variable, empty, "+
+			"so the workload reads one rule rather than two: got %v", bare)
 	}
 }
