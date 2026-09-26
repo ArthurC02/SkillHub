@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 skip_bootstrap="${SKILLHUB_SKIP_BOOTSTRAP:-0}"
-required_commands=(go npm docker)
+required_commands=(go npm docker flock)
 if [ "${skip_bootstrap}" != "1" ]; then
   required_commands+=(uv)
 fi
@@ -87,28 +87,10 @@ done
 
 bootstrap_lock_key="$(pwd | cksum | awk '{print $1}')"
 bootstrap_lock="/tmp/skillhub-devcontainer-bootstrap-${bootstrap_lock_key}.lock"
-lock_wait=0
-until mkdir "${bootstrap_lock}" 2>/dev/null; do
-  if [ -f "${bootstrap_lock}/pid" ]; then
-    holder_pid="$(cat "${bootstrap_lock}/pid" 2>/dev/null || true)"
-    if [ -n "${holder_pid}" ] && ! kill -0 "${holder_pid}" 2>/dev/null; then
-      rm -rf "${bootstrap_lock}"
-      continue
-    fi
-  fi
-  lock_wait=$((lock_wait + 1))
-  if [ "${lock_wait}" -ge 120 ]; then
-    echo "timed out waiting for bootstrap lock" >&2
-    exit 1
-  fi
-  sleep 1
-done
-
-cleanup_lock() {
-  rm -rf "${bootstrap_lock}"
-}
-trap cleanup_lock EXIT INT TERM
-echo "$$" >"${bootstrap_lock}/pid"
+exec 9>"${bootstrap_lock}"
+if ! flock -w 120 9; then
+  echo "timed out waiting for bootstrap lock" >&2
+  exit 1
+fi
 
 go -C tools/devctl run . bootstrap
-trap - INT TERM

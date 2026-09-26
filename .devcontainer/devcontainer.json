@@ -88,9 +88,7 @@
         },
         "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
         "python.testing.pytestEnabled": true,
-        "python.testing.unittestEnabled": false,
-        "python.testing.cwd": "${workspaceFolder}/apps/llm",
-        "python.testing.pytestArgs": ["."]
+        "python.testing.unittestEnabled": false
       },
       "extensions": [
         "golang.go",
