@@ -28,7 +28,7 @@
   "postStartCommand": "sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &' && sh -c 'i=0; until docker info >/dev/null 2>&1; do i=$((i+1)); test $i -lt 60 || { sudo tail -80 /tmp/dockerd.log; exit 1; }; sleep 1; done'",
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "updateContentCommand": "bash .devcontainer/post-create.sh",
-  "forwardPorts": [5173, 8080, 4000, 5432, 8333, 2345, 5678, 9229],
+  "forwardPorts": [5173, 8080, 4000, 2345, 5678, 9229],
   "portsAttributes": {
     "5173": {
       "label": "web-dev-server",

@@ -59,11 +59,8 @@ bootstrap_hash="$(sha256sum "${bootstrap_inputs[@]}" | sha256sum | awk '{print $
 bootstrap_stamp=.devcontainer/.bootstrap.stamp
 
 if [ -f "${bootstrap_stamp}" ] && [ "$(cat "${bootstrap_stamp}")" = "${bootstrap_hash}" ]; then
-  if [ -d apps/web/node_modules ] && [ -d packages/api-client-ts/node_modules ] && [ -f apps/llm/.venv/pyvenv.cfg ]; then
-    echo "bootstrap already up to date; skipping"
-    exit 0
-  fi
-  echo "bootstrap stamp exists but required outputs are missing; running bootstrap"
+  echo "bootstrap already up to date; skipping"
+  exit 0
 fi
 
 go -C tools/devctl run . bootstrap
