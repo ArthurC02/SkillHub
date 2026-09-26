@@ -47,10 +47,10 @@ type Service struct {
 	Pool  *pgxpool.Pool
 	Store PackageStore
 
-	LockSkill     func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
-	ReadSkill     func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
-	ReadVersion   func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
-	LatestVersion func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
+	LockSkillForRelease func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadSkill           func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
+	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
+	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
 }
 
 type Publisher struct {
@@ -161,7 +161,7 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	} else if err != nil {
 		return Publication{}, err
 	}
-	skill, found, err := s.LockSkill(ctx, tx, ws.ID, skillID)
+	skill, found, err := s.LockSkillForRelease(ctx, tx, ws.ID, skillID)
 	if err != nil {
 		return Publication{}, err
 	}

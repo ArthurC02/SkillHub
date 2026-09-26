@@ -16,7 +16,7 @@ func newPublishingService(cfg Config, registrySvc *registry.Service) *publishing
 	if cfg.Store != nil {
 		svc.Store = cfg.Store
 	}
-	svc.LockSkill = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (publishing.SkillFacts, bool, error) {
+	svc.LockSkillForRelease = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (publishing.SkillFacts, bool, error) {
 		skill, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
 		return publishingSkillFacts(skill), found, err
 	}

@@ -539,6 +539,45 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "publishing",
+      "name": "Publishing",
+      "responsibility": "Owns who discloses what under which name: a creator's publisher namespace, the publications in it, and the immutable releases that pin the version each one shows.",
+      "subdomain": "core",
+      "implementation_path": "skill/publishing",
+      "requirement_prefixes": [],
+      "evidence": [
+        {
+          "path": "apps/platform/internal/skill/publishing/doc.go",
+          "lines": {
+            "start": 1,
+            "end": 3
+          },
+          "content_sha256": "sha256:0cc7beae8d67924ef82c92e4f63ef942915e6049e8b88d147415aef8c2f6f2fb",
+          "excerpt_sha256": "sha256:0a0c96388dea264cf4483e3bdc6722a7c9c9788d40ea23aebbd74ee655f78e11",
+          "source_kind": "implementation"
+        }
+      ],
+      "review": {
+        "proposal_id": "registry-publishing-context",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-26T12:38:17.462626Z",
+            "scope": "Publishing as a new core context owning publisher names, publications and immutable releases, allowed to query Identity for workspace scope",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "71dc0ec9f5dfe3459d66750d9a911b4774a73f8f",
+              "registry_digest": "sha256:fefd28384341d4f22e90ddf4148320c634ad923fa44199e551c8fa8094ee625c"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }

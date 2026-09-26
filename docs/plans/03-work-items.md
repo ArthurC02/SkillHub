@@ -504,8 +504,8 @@ hello in-process s3
 
 > 依[發佈、發佈者與組合散布](../adr/README.md#發佈發佈者與組合散布)（[`05` R-92～94](05-pending-rulings.md)），允收準則見 [`02` §4.13](02-specifications-and-acceptance-criteria.md)。發佈者、發佈物、Bundle 與曝光審核屬於一個新的 Bounded Context（那份 ADR 決策 16），**先在 Domain Memory 登記再建目錄**；它向 Skill 的擁有者讀版本與治理事實、向打包要求建出套件。
 
-- [ ] PACK-014 登記新的 Bounded Context 與它對 Skill 擁有者、打包的 dependency policy，同一個 commit 改 depguard。（依鐵律 7）
-- [ ] PACK-015 發佈者：資料表、註冊與讀取端點、名稱規則與保留字（名稱規則由 Agent Skill 的 `name` 規則匯出同一份實作，不另寫一份）。（對應 `02:PACK-003`）
+- [x] PACK-014 登記新的 Bounded Context `publishing` 與它唯一的跨 context import（向 Identity 取 Workspace Scope）的 dependency policy，同一批改 depguard；Skill 擁有者的版本與治理事實、Skill 的列鎖都由組合根注入，不 import。打包的協作在 PACK-017 落地時再立。（依鐵律 7）
+- [x] PACK-015 發佈者：資料表、註冊與讀取端點、名稱規則與保留字（名稱規則由 Agent Skill 的 `name` 規則匯出同一份實作，不另寫一份）。（對應 `02:PACK-003`）
 - [ ] PACK-016 發佈與 Release：發佈、再發佈、撤回端點，散布閘與作者聲明，公開位址的匿名讀取與治理事實的即時核對；帳號頁的發佈者註冊、Skill 頁的發佈入口與 `/p/{發佈者}/{名稱}` 公開頁。（對應 `02:PACK-004`）
 - [ ] PACK-017 取得：登入後下載發佈物、下載記在取得者工作區、未受邀者的部署設定（預設關）。（對應 `02:PACK-006`）
 - [ ] PACK-018 Bundle：Bundle 與 Bundle Version 的資料表與不可變守衛、建立端點與驗證、Plugin zip 匯出（打包那一側）、信任取最壞；發佈 Bundle 與公開頁上的成員變更。（對應 `02:PACK-005`）

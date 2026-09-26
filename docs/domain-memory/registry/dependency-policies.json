@@ -1093,6 +1093,45 @@
         ]
       },
       "status": "reviewed"
+    },
+    {
+      "id": "publishing-may-use-identity",
+      "from_context": "publishing",
+      "to_context": "identity",
+      "mode": "synchronous-query",
+      "policy": "allowed",
+      "rationale": "Every user-data query resolves its Workspace scope here; this is the single entry point that makes workspace scoping enforceable.",
+      "evidence": [
+        {
+          "path": "docs/adr/ADR-016-platform-bounded-contexts-and-context-map.md",
+          "lines": {
+            "start": 42,
+            "end": 42
+          },
+          "content_sha256": "sha256:5483bc0d626fda0894943442347c424933ec9289d655dc5ad1985271be525471",
+          "excerpt_sha256": "sha256:06f9cce7957b49b6423ae078092651cbf450d73418736b008dd5cabb50f939b4",
+          "source_kind": "decisions"
+        }
+      ],
+      "review": {
+        "proposal_id": "registry-publishing-context",
+        "proposal_revision": 1,
+        "approvals": [
+          {
+            "role": "developer",
+            "reviewer": "ArthurC",
+            "decision": "approved",
+            "approved_at": "2026-09-26T12:38:17.462626Z",
+            "scope": "Publishing as a new core context owning publisher names, publications and immutable releases, allowed to query Identity for workspace scope",
+            "proposal_revision": 1,
+            "base_registry_revision": {
+              "observed_commit": "71dc0ec9f5dfe3459d66750d9a911b4774a73f8f",
+              "registry_digest": "sha256:fefd28384341d4f22e90ddf4148320c634ad923fa44199e551c8fa8094ee625c"
+            }
+          }
+        ]
+      },
+      "status": "reviewed"
     }
   ]
 }
