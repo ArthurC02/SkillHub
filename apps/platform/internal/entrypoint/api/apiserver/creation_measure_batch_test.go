@@ -461,7 +461,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 
 	var results creationMeasureResults
 	results.Thresholds = creationMeasureThresholds{
-		FormatPassMin: 14, MetMin: 6, KeptMin: 12,
+		FormatPassMin: 14, MetMin: 9, KeptMin: 12,
 		CostMedianMax: 0.5, P50SecondsMax: 60, P95SecondsMax: 90,
 	}
 	flush := func() {
