@@ -19,6 +19,22 @@ if [ "${#missing_commands[@]}" -gt 0 ]; then
   exit 1
 fi
 
+if command -v sudo >/dev/null 2>&1 && ! pgrep dockerd >/dev/null 2>&1; then
+  sudo nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &
+fi
+i=0
+until docker info >/dev/null 2>&1; do
+  i=$((i + 1))
+  if [ "${i}" -ge 60 ]; then
+    if command -v sudo >/dev/null 2>&1 && [ -f /tmp/dockerd.log ]; then
+      sudo tail -80 /tmp/dockerd.log >&2 || true
+    fi
+    echo "docker daemon not ready" >&2
+    exit 1
+  fi
+  sleep 1
+done
+
 if [ -d /go ] && [ -d /home/vscode ]; then
   mkdir -p /go/pkg/mod /home/vscode/.npm /home/vscode/.cache/uv
   if command -v sudo >/dev/null 2>&1; then
@@ -79,7 +95,7 @@ for key in "${required_env_keys[@]}"; do
   value="${value%\"}"
   value="${value#\'}"
   value="${value%\'}"
-  if printf "%s" "${value}" | grep -Eq '^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$'; then
+  if printf "%s" "${value}" | grep -Eq '(\$[A-Za-z_][A-Za-z0-9_]*|\$\{[^}]+\})'; then
     printf "unresolved placeholder in .env key: %s\n" "${key}" >&2
     exit 1
   fi
