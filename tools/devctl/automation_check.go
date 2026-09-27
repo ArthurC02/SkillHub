@@ -146,6 +146,7 @@ func documentCheckers() []namedChecker {
 		{"harness", harnessProblems},
 		{"comment-budget", commentBudgetProblems},
 		{"domain-memory", domainMemoryProblems},
+		{"complexity-exemptions", complexityExemptionProblems},
 	}
 }
 

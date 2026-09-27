@@ -35,6 +35,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"harness",
 		"comment-budget",
 		"domain-memory",
+		"complexity-exemptions",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
