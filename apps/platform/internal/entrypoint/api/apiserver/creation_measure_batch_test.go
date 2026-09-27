@@ -209,6 +209,50 @@ func TestAHoldoutCountsAsMetOnlyWhenEveryCaseRanAndMet(t *testing.T) {
 	}
 }
 
+type cannedJudge struct {
+	judgement *eval.Judgement
+	err       error
+}
+
+func (c cannedJudge) JudgeRun(context.Context, eval.JudgeRequest) (*eval.Judgement, error) {
+	return c.judgement, c.err
+}
+
+func TestTheMeasureHarnessKeepsEveryJudgeRequestItSends(t *testing.T) {
+	cases := []struct {
+		name      string
+		judge     cannedJudge
+		wantError string
+	}{
+		{"the judge answers", cannedJudge{judgement: &eval.Judgement{Overall: "met"}}, ""},
+		{"the judge fails", cannedJudge{err: fmt.Errorf("judge unavailable")}, "judge unavailable"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			req := eval.JudgeRequest{RunID: "run-1", UserPrompt: "summarise this", FinalOutput: "a summary"}
+			got, err := recordingJudge{next: tc.judge, outDir: dir}.JudgeRun(context.Background(), req)
+			if got != tc.judge.judgement || err != tc.judge.err {
+				t.Fatalf("the recorder changed what the judge returned: %v, %v", got, err)
+			}
+			raw, rerr := os.ReadFile(filepath.Join(dir, "judge-run-1.json"))
+			if rerr != nil {
+				t.Fatal(rerr)
+			}
+			var record judgeRecord
+			if err := json.Unmarshal(raw, &record); err != nil {
+				t.Fatal(err)
+			}
+			if record.Request.UserPrompt != "summarise this" || record.Request.FinalOutput != "a summary" || record.Error != tc.wantError {
+				t.Fatalf("record = %+v", record)
+			}
+			if (record.Judgement == nil) != (tc.judge.judgement == nil) {
+				t.Fatalf("judgement recorded = %v, want %v", record.Judgement, tc.judge.judgement)
+			}
+		})
+	}
+}
+
 func createHoldoutCase(t *testing.T, c *client, skillID string, hc holdoutCase) (string, error) {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"skill_id": skillID, "name": hc.Name, "user_prompt": hc.Prompt})
@@ -276,7 +320,31 @@ type trialRun struct {
 	pool  *pgxpool.Pool
 }
 
-func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, traceSigner *trace.Signer) *trialRun {
+type recordingJudge struct {
+	next   eval.Judge
+	outDir string
+}
+
+type judgeRecord struct {
+	Request   eval.JudgeRequest `json:"request"`
+	Judgement *eval.Judgement   `json:"judgement"`
+	Error     string            `json:"error,omitempty"`
+}
+
+func (j recordingJudge) JudgeRun(ctx context.Context, req eval.JudgeRequest) (*eval.Judgement, error) {
+	got, err := j.next.JudgeRun(ctx, req)
+	record := judgeRecord{Request: req, Judgement: got}
+	if err != nil {
+		record.Error = err.Error()
+	}
+	raw, _ := json.MarshalIndent(record, "", "  ")
+	if werr := os.WriteFile(filepath.Join(j.outDir, "judge-"+req.RunID+".json"), raw, 0o644); werr != nil {
+		fmt.Fprintf(os.Stderr, "judge record for run %s not written: %v\n", req.RunID, werr)
+	}
+	return got, err
+}
+
+func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, traceSigner *trace.Signer, outDir string) *trialRun {
 	t.Helper()
 	sandboxURL := os.Getenv("SKILLHUB_E2E_SANDBOX_URL")
 	if sandboxURL == "" {
@@ -323,7 +391,10 @@ func withTrialRunning(t *testing.T, a *api, pool *pgxpool.Pool, llmURL string, t
 		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
 
 	judging := *a.evaluations
-	judging.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")})
+	judging.Judge = recordingJudge{
+		next:   eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}),
+		outDir: outDir,
+	}
 	startWorkerWith(t, a.runs, &judging)
 
 	return &trialRun{store: store, pool: pool}
@@ -636,7 +707,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		versions: app.Versions, runs: app.RunSvc, evaluations: app.EvalSvc, traceSigner: traceSigner,
 	}
 	ctx := context.Background()
-	trial := withTrialRunning(t, a, pool, base, traceSigner)
+	trial := withTrialRunning(t, a, pool, base, traceSigner, outDir)
 
 	var tasks []measureTask
 	if textOnly {
