@@ -31,15 +31,47 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v29"
+PROMPT_VERSION = "creation-step/v30"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
+SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
 SCRIPTS_SECTION = (
     "## Scripts\n\n"
-    "Run each script below from this Skill's directory (the directory holding this "
-    "SKILL.md) with the inputs taken from the message, and present what it prints; never "
-    "work its result out yourself. `python <script> --help` lists its arguments.\n"
+    "Paths below are relative to the directory holding this SKILL.md: run each script from "
+    "there (or by its full path) with the inputs taken from the message, and present what "
+    "it prints; never work its result out yourself. `python <script> --help` lists its "
+    "arguments.\n"
 )
+REFERENCES_SECTION = (
+    "## References\n\n"
+    "Read the file below, relative to the directory holding this SKILL.md, when its topic "
+    "comes up.\n"
+)
+OUTPUT_CHECK_SECTION = (
+    "## Output check\n\n"
+    "Before answering, write the answer to `answer.txt`, run\n"
+    "`python scripts/{flags} answer.txt`\n"
+    "from the directory holding this SKILL.md, and revise the file until it prints OK; then "
+    "answer with the file's content and nothing else. When everything cannot fit, keep the "
+    "limit and add one line after the answer saying what was left out.\n"
+)
+OUTPUT_CAPS = {
+    "--max-sentences": re.compile(
+        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*句"
+        r"|(\d+)\s*句(?:話)?(?:以內|內)"
+        r"|(?:no more than|at most|within)\s*(\d+)\s*sentences?"
+    ),
+    "--max-chars": re.compile(
+        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*(?:個字|字)"
+        r"|(\d+)\s*(?:個字|字)(?:以內|內)"
+        r"|(?:no more than|at most|within)\s*(\d+)\s*(?:characters|chars)"
+    ),
+    "--max-items": re.compile(
+        r"(?:不超過|不得超過|最多|至多|no more than|at most|within)\s*(\d+)\s*(?:項|條|點)"
+        r"|(\d+)\s*(?:項|條|點)(?:以內|內)"
+        r"|(?:no more than|at most|within)\s*(\d+)\s*(?:items|bullets|points)"
+    ),
+}
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
     "its complete content; a body that runs a script the files do not ship is incomplete."
@@ -389,54 +421,38 @@ PHASE_INSTRUCTIONS = {
         "unless the newest message is a user message that changes the requirements. "
         "Either way the draft object must be present and complete (name, description, "
         "compatibility, allowed_tools, the full SKILL.md body, files); outcome draft with "
-        "draft null is a wasted turn. The body must make the agent act on the input it is "
-        "handed in one pass: perform every acceptance criterion directly, choose sensible "
-        "defaults and state them in the output instead of asking the user; when the input "
-        "itself is missing, deliver a usable template with clearly marked blanks and say what "
-        "to fill in, never only a list of questions. A Skill whose run ends in a question has "
-        "failed every criterion. When a confirmed diagram_understanding exists, the body "
-        "walks its nodes as steps, in order, each named as the diagram names it, and adds "
-        "no step, condition, role or tool the diagram does not show; where the diagram is "
-        "silent, say so instead of inventing. Go refuses a draft whose body skips a node. "
-        "These rules go into the body verbatim as instructions to the agent: when the input "
-        "makes two requirements impossible to meet together (a length limit and 'keep "
-        "everything'), keep the hard limit and say in one line what you left out — never "
-        "drop it silently; never invent a "
-        "fact the input does not give — no name, date, figure or event — and mark only such "
-        "a missing fact as not given, written in the language of the output; when a setting "
-        "the work needs is missing (a working-day length, a tone, a format, what a survey "
-        "covers), use the common default, name what you chose — the actual values or items, "
-        "never just a label like 'general' — and finish the work rather than stopping; when "
-        "the output lists amounts or quantities that belong together, give their total; "
-        "when the request defines rules that turn inputs into a result — thresholds, tiers, "
-        "rates, caps, rounding, decision tables, sums, date arithmetic — the draft ships "
-        "`scripts/<a descriptive name>.py` that implements exactly those rules: standard "
-        "library only (the sandbox has Python 3.11 and no package installation), argparse, "
-        "the inputs as arguments, the result printed, a one-line message and exit code 2 on "
-        "an input it cannot use; the body tells the agent to take the inputs out of the "
-        "message, run `python scripts/<name>.py` from this Skill's directory with them, and "
-        "present what it printed — the agent never computes, rounds or decides a rule by "
-        "itself; the body's steps contain that command literally, and the body never lists "
-        "worked answers for particular inputs — the script produces them; a figure the "
-        "script does not cover is computed by running python, never in the head; when the "
-        "request "
-        "sets a countable limit (a number of sentences, characters or items) or names facts "
-        "that must appear in the output, the workflow is: write the draft answer to a file, "
-        "run `python scripts/check_output.py` from this Skill's directory (the directory "
-        "holding this SKILL.md) with the matching flags (--max-sentences, --max-chars, "
-        "--max-items, --require), read what it prints, revise until it prints OK, and only "
-        "then answer; the platform supplies that script — never write, edit or replace it, "
-        "and never count by eye; when it cannot pass with everything kept, keep the limit "
-        "and say in one line what you left out; when two records in the input disagree "
-        "about the same thing, or a value is impossible (a date that does not exist, a "
-        "negative count), say so and ask the person to confirm; never pick one, merge them "
-        "or drop the record silently; "
-        "write the output, labels included, in the language of the input; "
-        "you cannot send, post, schedule, "
-        "monitor or fetch anything, so when the request asks for that, deliver the content "
-        "ready to use and say plainly that sending or scheduling is left to the person; and "
-        "deliver the finished artifact itself in the output — never a description of the "
-        "rules, a plan, or a request for access."
+        "draft null is a wasted turn. The agent that runs the Skill has files and a shell "
+        "and nothing else: no login, no sending, no posting, no scheduling, no network, no "
+        "system it can change. A body never contains such a step and never has the agent "
+        "report one as done; it has the agent prepare the content ready to use and name who "
+        "does the rest. The body is a map, not a manual: what the Skill does, "
+        "when, the steps in order and the exact commands, in the language of the input, under "
+        "about 120 lines. Anything longer — rule tables, templates, examples, background — "
+        "goes into references/<topic>.md shipped in files and linked from the body, one level "
+        "deep, with a line saying when to read it. Rules that turn inputs into a result "
+        "(thresholds, tiers, rates, caps, rounding, decision tables, sums, date arithmetic) "
+        "live in scripts/<name>.py: standard library only (the sandbox has Python 3.11 and no "
+        "package installation), argparse, the inputs as arguments, the result printed, exit "
+        "code 2 with a one-line message on an input it cannot use; the body's step runs it "
+        "with `python scripts/<name>.py ...` from the directory holding this SKILL.md and "
+        "presents what it printed, and the body carries no worked answers — the script "
+        "produces them. When the request caps sentences, characters or items, or names facts "
+        "that must appear, the body's last step writes the answer to a file, runs `python "
+        "scripts/check_output.py` with the matching flags (--max-sentences, --max-chars, "
+        "--max-items, --require) until it prints OK, and answers with that file's content "
+        "only; the platform supplies that script. The agent must act in one pass on the "
+        "input it is handed: it takes the common default for a missing setting and says "
+        "which; it gives a usable template with marked blanks when the input itself is "
+        "missing; it never invents a fact and marks a missing one as not given in the "
+        "output's language; it totals what belongs together; it reports contradictory or "
+        "impossible input and asks the person to confirm instead of resolving it; when two "
+        "requirements cannot both hold it keeps the hard limit and says in one line what was "
+        "left out; and it delivers the artifact itself, never a plan or a question. A "
+        "Skill whose run ends in a question has failed every criterion. When a confirmed "
+        "diagram_understanding exists, the body walks its nodes as steps, in order, each "
+        "named as the diagram names it, and adds no step, condition, role or tool the "
+        "diagram does not show; where the diagram is silent, say so instead of inventing. "
+        "Go refuses a draft whose body skips a node."
     ),
     "revise": (
         "Inspect draft_validation.report and tool observations. Repair the specific "
@@ -1053,18 +1069,44 @@ def _supply_check_script(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     return draft.model_copy(update={"files": files})
 
 
-def _bind_shipped_scripts(draft: GeneratedSkill | None) -> GeneratedSkill | None:
+def _append_section(draft: GeneratedSkill, section: str) -> GeneratedSkill:
+    return draft.model_copy(update={"body": draft.body.rstrip() + "\n\n" + section})
+
+
+def _bind_shipped_files(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     if draft is None:
         return draft
-    unbound = [
-        f.path
-        for f in draft.files
-        if SHIPPED_SCRIPT_PATH.match(f.path) and f.path not in draft.body
-    ]
-    if not unbound:
+    unbound = [f.path for f in draft.files if f.path not in draft.body]
+    scripts = [p for p in unbound if SHIPPED_SCRIPT_PATH.match(p)]
+    references = [p for p in unbound if SHIPPED_REFERENCE_PATH.match(p)]
+    if scripts:
+        section = SCRIPTS_SECTION + "".join(f"\n- `python {p}`" for p in scripts) + "\n"
+        draft = _append_section(draft, section)
+    if references:
+        section = REFERENCES_SECTION + "".join(f"\n- [{p}]({p})" for p in references) + "\n"
+        draft = _append_section(draft, section)
+    return draft
+
+
+def _output_caps(text: str) -> list[str]:
+    flags = []
+    for flag, pattern in OUTPUT_CAPS.items():
+        values = [int(g) for m in pattern.finditer(text) for g in m.groups() if g]
+        if values:
+            flags.append(f"{flag} {min(values)}")
+    return flags
+
+
+def _bind_output_check(
+    draft: GeneratedSkill | None, req: CreationStepRequest
+) -> GeneratedSkill | None:
+    if draft is None or CHECK_SCRIPT_PATH in draft.body:
         return draft
-    section = SCRIPTS_SECTION + "".join(f"\n- `python {path}`" for path in unbound) + "\n"
-    return draft.model_copy(update={"body": draft.body.rstrip() + "\n\n" + section})
+    flags = _output_caps("\n".join([req.brief, *req.acceptance_criteria]))
+    if not flags:
+        return draft
+    command = CHECK_SCRIPT_PATH.removeprefix("scripts/") + " " + " ".join(flags)
+    return _append_section(draft, OUTPUT_CHECK_SECTION.format(flags=command))
 
 
 def _render(state: _State) -> dict:
@@ -1106,7 +1148,7 @@ def _render(state: _State) -> dict:
             diagram_description=d.diagram_description or "",
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
-            draft=_bind_shipped_scripts(_supply_check_script(d.draft)),
+            draft=_bind_shipped_files(_supply_check_script(_bind_output_check(d.draft, req))),
             model=MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),

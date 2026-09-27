@@ -632,9 +632,10 @@ CHECK_SCRIPT_SOURCE = (
 )
 
 
-def _validated_draft_response(draft):
+def _validated_draft_response(draft, request_changes=None):
+    confirmed = {"brief": "agreed", "brief_confirmed": True, "allowed_tools": ["validate_draft"]}
     return invoke(
-        request(brief="agreed", brief_confirmed=True, allowed_tools=["validate_draft"]),
+        request(**(confirmed | (request_changes or {}))),
         decision(
             outcome="tool_intent",
             tool_intent={"kind": "validate_draft", "query": "", "queries": None},
@@ -1278,6 +1279,52 @@ def test_a_shipped_script_the_body_already_runs_leaves_the_body_alone():
     response, _ = _validated_draft_response(draft)
     assert response.status_code == 200
     assert response.json()["draft"]["body"] == draft["body"]
+
+
+def test_a_shipped_reference_the_body_never_links_gets_a_references_section():
+    draft = SKILL | {"files": [{"path": "references/rates.md", "content": "1%"}]}
+    response, _ = _validated_draft_response(draft)
+    body = response.json()["draft"]["body"]
+    assert creation.REFERENCES_SECTION in body
+    assert "- [references/rates.md](references/rates.md)" in body
+
+
+@pytest.mark.parametrize(
+    ("text", "flags"),
+    [
+        ("整封信不超過 3 句話", ["--max-sentences 3"]),
+        ("輸出總字數不超過 35 個字", ["--max-chars 35"]),
+        ("列出最多 5 項", ["--max-items 5"]),
+        ("30 字以內回覆", ["--max-chars 30"]),
+        ("最多 3 句，且不超過 2 句", ["--max-sentences 2"]),
+        ("at most 4 sentences", ["--max-sentences 4"]),
+        ("寫一封信給客戶", []),
+    ],
+)
+def test_output_caps_are_read_from_the_brief_and_criteria(text, flags):
+    assert creation._output_caps(text) == flags
+
+
+def test_a_capped_request_gets_the_output_check_and_the_platform_script():
+    response, _ = _validated_draft_response(
+        SKILL, request_changes={"acceptance_criteria": ["整封信不超過 3 句話。"]}
+    )
+    draft = response.json()["draft"]
+    assert "python scripts/check_output.py --max-sentences 3 answer.txt" in draft["body"]
+    assert [f["path"] for f in draft["files"]] == ["scripts/check_output.py"]
+
+
+def test_a_capped_request_whose_body_already_checks_is_left_alone():
+    body = SKILL["body"] + " Run `python scripts/check_output.py --max-chars 35 answer.txt`."
+    response, _ = _validated_draft_response(
+        SKILL | {"body": body}, request_changes={"brief": "簡訊不超過 35 個字"}
+    )
+    assert response.json()["draft"]["body"] == body
+
+
+def test_an_uncapped_request_gets_no_output_check():
+    response, _ = _validated_draft_response(SKILL)
+    assert response.json()["draft"]["body"] == SKILL["body"]
 
 
 def test_a_non_script_file_gets_no_scripts_section():
