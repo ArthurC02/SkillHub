@@ -337,6 +337,7 @@ test("EVAL-003 目前 Run 讀取失敗不會冒充沒有其他 Run", async () =>
     return json(body, status);
   });
   await render(<RunCompare />);
+  await waitFor(() => text().includes("無法讀取目前這次 Run"));
 
   expect(text()).toContain("無法讀取目前這次 Run");
   expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
@@ -350,6 +351,7 @@ test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
     return json(body, status);
   });
   await render(<RunCompare />);
+  await waitFor(() => text().includes("無法讀取可比較的 Run"));
 
   expect(text()).toContain("無法讀取可比較的 Run");
   expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");

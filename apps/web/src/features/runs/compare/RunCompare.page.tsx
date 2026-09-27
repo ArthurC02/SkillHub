@@ -3,7 +3,7 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison } from "../evaluation.service";
 import { useRun, useRuns } from "../runs.service";
@@ -16,7 +16,11 @@ export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
   const { against = "" } = useSearch({ strict: false }) as { against?: string };
   const [draft, setDraft] = useState(against);
-  useEffect(() => setDraft(against), [against]);
+  const [trackedAgainst, setTrackedAgainst] = useState(against);
+  if (against !== trackedAgainst) {
+    setTrackedAgainst(against);
+    setDraft(against);
+  }
   const navigate = useNavigate();
   const comparison = useRunComparison(runId, against);
   const me = useMe();
