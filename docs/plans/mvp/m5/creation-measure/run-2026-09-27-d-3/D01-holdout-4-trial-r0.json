@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "本班揀貨員小王今天揀貨301件，請計算他這一班的獎金金額。",
+  "acceptance_criteria": [
+    {
+      "text": "獎金金額應為453元"
+    }
+  ],
+  "final_output": "小王這一班的獎金是 **453 元**。\n\n分段算式：\n- 1～150 件：150 元\n- 151～300 件：150 × 2 = 300 元\n- 301 件：1 × 3 = 3 元\n\n合計：150 + 300 + 3 = **453 元**\n  \n未超過 480 元封頂，所以最終獎金為 **453 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9c5988e9-8e87-480c-81fb-8482288e942c",
+    "run_id": "e15d1164-3aa6-4859-94be-96c6a3e2d5d0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆的獎金金額為453元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "93f86b78-6a51-48c3-a016-108f9db50f7a",
+        "text": "獎金金額應為453元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確計算並表示獎金為453元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "小王這一班的獎金是 **453 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2900 input and 331 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 6,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

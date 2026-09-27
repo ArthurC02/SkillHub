@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "喔對了，之前忘記講，我們公司的尾牙大概會抓120人上下，其實上次跟另一個窗口講的100人不準，以這次為主。日期目前抓12月20日晚上，如果那天場地滿了就抓12月27日備案。預算的話老闆說上限抓一桌8000元那種(不是每人)，總共大概15桌，所以抓一個上限就好。我是這次的窗口，敝姓周，阿德，電話有兩支，公司電話是02-2345-6789轉201比較常有人接，我自己手機0933-222-111 call比較快。麻煩整理一下資料給我。",
+  "acceptance_criteria": [
+    {
+      "text": "活動日期應標示12月20日為主、12月27日為備用"
+    },
+    {
+      "text": "預估人數應為120人，不得誤用先前提到但已作廢的100人"
+    },
+    {
+      "text": "預算上限應反映每桌8000元、15桌、合計120,000元（或等值換算金額）"
+    },
+    {
+      "text": "場地偏好欄位應註明未提及/資料不足，不得自行杜撰場地"
+    }
+  ],
+  "final_output": "- 聯絡人姓名：周阿德\n- 聯絡電話：公司電話 02-2345-6789 轉 201；手機 0933-222-111\n- 活動日期：12月20日晚上；備案為12月27日\n- 預估人數：120人上下\n- 預算上限：每桌 8000 元\n- 場地偏好：未提供",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6af9edd5-1b19-45ac-bcc9-0f3754cb340e",
+    "run_id": "9b2ce887-81a3-4a6e-8d51-34a66caca532",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "日期、預估人數與未提供的場地偏好皆整理正確。預算欄位漏列15桌及合計120,000元，因此未完全符合預算上限的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "138ecdbd-c9fb-43dd-b983-6b09f0fbbe24",
+        "text": "活動日期應標示12月20日為主、12月27日為備用",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動日期明確列出12月20日晚上為主要日期，並將12月27日列為備案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 活動日期：12月20日晚上；備案為12月27日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c953ce97-a049-49bd-acc0-e0ba984f973d",
+        "text": "預估人數應為120人，不得誤用先前提到但已作廢的100人",
+        "result": "passed",
+        "source": "model",
+        "reason": "預估人數採用120人上下，未誤用已作廢的100人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預估人數：120人上下",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1bde56c3-6e0b-453b-9b98-071ff72a8741",
+        "text": "預算上限應反映每桌8000元、15桌、合計120,000元（或等值換算金額）",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆僅列出每桌8,000元，未反映15桌及合計120,000元的預算上限換算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預算上限：每桌 8000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c6f17483-58f9-4783-b1ca-64f9eed71b7a",
+        "text": "場地偏好欄位應註明未提及/資料不足，不得自行杜撰場地",
+        "result": "passed",
+        "source": "model",
+        "reason": "場地偏好欄位標示為未提供，未自行杜撰場地資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 場地偏好：未提供",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3264 input and 923 output tokens on gpt-5.4-mini; reported cost $0.0096 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

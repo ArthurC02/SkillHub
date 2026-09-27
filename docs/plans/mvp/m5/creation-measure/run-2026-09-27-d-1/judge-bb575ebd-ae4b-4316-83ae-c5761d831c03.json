@@ -1,0 +1,143 @@
+{
+  "request": {
+    "RunID": "bb575ebd-ae4b-4316-83ae-c5761d831c03",
+    "EvaluationID": "ccddd78a-0e0b-44c2-9176-ffcd5951f6c3",
+    "Skill": {
+      "Name": "activity-inquiry-field-extractor",
+      "Summary": "從活動洽詢訊息中擷取指定欄位並整理成結構化輸出；當你需要把客戶來訊快速轉成可用的表單資料時使用。"
+    },
+    "UserPrompt": "請幫我整理這段活動洽詢內容：您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。",
+    "Criteria": [
+      {
+        "ID": "362d2502-1b6f-46e2-b0ab-9991e875ec87",
+        "Text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bf9cde24-1056-4154-afa0-78dd11085a92",
+        "Text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5f0702ef-695f-4ea2-b76e-e2ede61681eb",
+        "Text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fab549e2-ee99-4b5d-9c89-9349fb834858",
+        "Text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "57c84bf4-802d-4d91-bf73-1c59f6957979",
+        "Text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "de249647-5d4e-42ef-a26b-5178ccdf5213",
+          "OccurredAt": "2026-09-27T10:21:48.206Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"activity-inquiry-field-extractor\", \"skill_version_id\": \"af6345c8-372c-4d49-a6f2-5040fcad7be4\"}"
+        },
+        {
+          "TraceEventID": "f008216b-ae5e-4b46-ab68-74c0efa78c0f",
+          "OccurredAt": "2026-09-27T10:21:48.216Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請將以下活動洽詢內容整理成結構化欄位：您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。\", \"skill\": \"activity-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_c5nl8zqWaxU7Gbe8eqsgdWhi\", \"result_summary\": \"Launching skill: activity-inquiry-field-extractor\"}"
+        },
+        {
+          "TraceEventID": "1c076f4b-7c34-469d-b143-622276c87942",
+          "OccurredAt": "2026-09-27T10:21:49.853Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "bdaae6cc-b9db-4c2f-99bc-5faffc9146a9",
+          "OccurredAt": "2026-09-27T10:21:50.057Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a89db80f-b690-47b6-a5d8-be6d8b5a064d",
+          "OccurredAt": "2026-09-27T10:21:54.128Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00423315, \"cost_source\": \"gateway\", \"duration_ms\": 8318, \"input_tokens\": 3091, \"token_source\": \"result\", \"output_tokens\": 342, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "362d2502-1b6f-46e2-b0ab-9991e875ec87",
+        "Result": "passed",
+        "Reason": "最終輸出包含指定的六個欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bf9cde24-1056-4154-afa0-78dd11085a92",
+        "Result": "passed",
+        "Reason": "各項原文資訊均正確填入對應欄位，姓名、電話、日期、人數、預算與場地偏好未混淆。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5f0702ef-695f-4ea2-b76e-e2ede61681eb",
+        "Result": "undetermined",
+        "Reason": "本次原文中的六個指定欄位皆有明確資訊，沒有缺漏欄位可用以驗證缺值時是否會輸出空值或未提供。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "fab549e2-ee99-4b5d-9c89-9349fb834858",
+        "Result": "passed",
+        "Reason": "輸出以具名欄位和值的清單呈現，可直接作為結構化表單資料使用。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便"
+          }
+        ]
+      },
+      {
+        "CriterionID": "57c84bf4-802d-4d91-bf73-1c59f6957979",
+        "Result": "undetermined",
+        "Reason": "本次僅提供一種電話、日期、金額及人數格式，沒有格式不一致的多種表達可驗證其辨識能力。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次輸出完整且正確地將提供的六項活動資訊整理為結構化欄位。缺值處理與同欄位多種不一致格式的辨識能力，因測試輸入未涵蓋相關情境，無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2471,
+      "CompletionTokens": 706,
+      "CostUSD": 0.0121134,
+      "CostReported": true
+    }
+  }
+}

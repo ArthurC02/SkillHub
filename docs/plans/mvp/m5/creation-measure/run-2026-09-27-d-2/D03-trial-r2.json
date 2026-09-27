@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請從以下兩段活動洽詢訊息中整理出聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好：\n\n第一段：\n「您好，我是林怡君，電話 0912-345-678。我們想在 2026/11/14 舉辦公司尾牙，預計 120 人，預算上限 NT$300,000，場地希望是台北市區、交通方便、可容納百人以上的宴會廳。」\n\n第二段：\n「您好，我是陳柏廷，想詢問明年 3 月的春酒場地，預計 80 人，場地偏好是靠近捷運站、可提供投影設備的中型宴會空間。」\n\n第三段：\n「您好，我是張雅雯，聯絡電話暫時不方便提供。活動日期想安排在下週六，預計 50 人，預算上限先抓五萬元，場地希望是台中市區、停車方便。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一段包含姓名、電話、日期、人數、預算與場地偏好的洽詢文字，輸出會分別擷取成 6 個對應欄位。"
+    },
+    {
+      "text": "給定的原文中若某一欄位未出現，輸出中該欄位會留空而不臆測。"
+    },
+    {
+      "text": "若電話以多種格式出現（例如手機號碼含空格或符號），輸出仍能辨識並填入聯絡電話欄位。"
+    },
+    {
+      "text": "若活動日期以自然語言出現（例如「下週六」），輸出保留原文表達或等價擷取結果，不自行推算成其他日期格式。"
+    },
+    {
+      "text": "若預算上限以數字加幣別出現（例如「NT$30,000」），輸出會正確擷取為預算上限欄位。"
+    },
+    {
+      "text": "若場地偏好以多個選項或描述出現，輸出會擷取其原文內容到場地偏好欄位。"
+    }
+  ],
+  "final_output": "[\n  {\n    \"聯絡人姓名\": \"林怡君\",\n    \"聯絡電話\": \"0912-345-678\",\n    \"活動日期\": \"2026/11/14\",\n    \"預估人數\": \"120 人\",\n    \"預算上限\": \"NT$300,000\",\n    \"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\"\n  },\n  {\n    \"聯絡人姓名\": \"陳柏廷\",\n    \"聯絡電話\": \"\",\n    \"活動日期\": \"明年 3 月\",\n    \"預估人數\": \"80 人\",\n    \"預算上限\": \"\",\n    \"場地偏好\": \"靠近捷運站、可提供投影設備的中型宴會空間\"\n  },\n  {\n    \"聯絡人姓名\": \"張雅雯\",\n    \"聯絡電話\": \"\",\n    \"活動日期\": \"下週六\",\n    \"預估人數\": \"50 人\",\n    \"預算上限\": \"五萬元\",\n    \"場地偏好\": \"台中市區、停車方便\"\n  }\n]",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "49ef51d5-2dee-42af-b577-0035a39f45f6",
+    "run_id": "ce630efa-1bcb-41cc-b3b1-b39c6b31b463",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出針對各段洽詢均建立六個對應欄位。已正確擷取不同格式電話、數字加幣別預算與多項場地偏好；缺失欄位留空，且「下週六」保留原文表達。",
+    "criterion_results": [
+      {
+        "criterion_id": "5f0ba9e4-f467-4cca-bffe-e393dbc88715",
+        "text": "給定一段包含姓名、電話、日期、人數、預算與場地偏好的洽詢文字，輸出會分別擷取成 6 個對應欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一段的輸出分別包含姓名、電話、日期、人數、預算上限與場地偏好六個欄位，且各值與原文相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"聯絡人姓名\": \"林怡君\",\n    \"聯絡電話\": \"0912-345-678\",\n    \"活動日期\": \"2026/11/14\",\n    \"預估人數\": \"120 人\",\n    \"預算上限\": \"NT$300,000\",\n    \"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\"",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0a00f57-f367-4ee0-b66f-c84b8c4d2561",
+        "text": "給定的原文中若某一欄位未出現，輸出中該欄位會留空而不臆測。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二段未提供電話與預算，輸出對應欄位皆為空字串，未補造資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"聯絡人姓名\": \"陳柏廷\",\n    \"聯絡電話\": \"\",\n    \"活動日期\": \"明年 3 月\",\n    \"預估人數\": \"80 人\",\n    \"預算上限\": \"\",\n    \"場地偏好\": \"靠近捷運站、可提供投影設備的中型宴會空間\"",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "90e23ee8-a6c0-45d5-8207-b9d04730f3ac",
+        "text": "若電話以多種格式出現（例如手機號碼含空格或符號），輸出仍能辨識並填入聯絡電話欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出成功辨識含連字號的手機號碼並填入聯絡電話欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"聯絡電話\": \"0912-345-678\",",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5bf211a3-7043-4a41-91b4-d58902cbec1c",
+        "text": "若活動日期以自然語言出現（例如「下週六」），輸出保留原文表達或等價擷取結果，不自行推算成其他日期格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "自然語言日期「下週六」被原樣保留，沒有自行換算為其他日期格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"活動日期\": \"下週六\",",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "db565dc1-ad41-4c82-96a6-700fe2380304",
+        "text": "若預算上限以數字加幣別出現（例如「NT$30,000」），輸出會正確擷取為預算上限欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "含幣別與數字的預算上限已正確擷取至預算上限欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"預算上限\": \"NT$300,000\",",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32e0b6bf-9b7b-4708-878c-cb986511dab6",
+        "text": "若場地偏好以多個選項或描述出現，輸出會擷取其原文內容到場地偏好欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "多項場地描述被完整保留在場地偏好欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "    \"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\"",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 20015 input and 962 output tokens on gpt-5.4-mini; reported cost $0.0212 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

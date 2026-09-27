@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "d2aa02c6-b0e6-475c-aa81-a839d5002269",
+    "EvaluationID": "c0513d0c-bcef-49e2-a2c4-1ec4f7d2b920",
+    "Skill": {
+      "Name": "event-inquiry-field-extractor",
+      "Summary": "從活動洽詢訊息中擷取聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限與場地偏好；在需要把客戶文字整理成結構化欄位摘要時使用。"
+    },
+    "UserPrompt": "請幫我整理以下三段活動洽詢內容：\n\n【案例一：完整資訊】\n您好，我是林怡君，電話 0912-345-678。想詢問 2026/03/18 的場地，預計 80 人左右，預算上限 12 萬，偏好台北市交通方便、可容納餐會的場地。若有合適方案請再與我聯絡，謝謝。\n\n【案例二：缺漏預算上限】\n您好，我是陳冠廷，電話 0988-765-432。想詢問 2026/05/12 的場地，預計 120 人左右，偏好新北市捷運站附近、適合簡報發表的場地。若合適請回覆。\n\n【案例三：重複欄位資訊】\n您好，我是王雅婷，電話 02-2500-1234，後來改成 02-2500-5678。想詢問 2026/07/21 的場地，預計 60 人左右，預算上限 8 萬，後來預算提高到 10 萬，偏好台中市市區、可容納茶會的場地。",
+    "Criteria": [
+      {
+        "ID": "ed2d2cd4-2026-4c37-b531-00abc17e19e3",
+        "Text": "當輸入同時包含姓名、電話、日期、人數、預算與場地偏好時，輸出能對應到這 6 個欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8afc16c2-ab5a-438b-9ee8-b032af81ec9b",
+        "Text": "當某欄位未出現在原文時，輸出中該欄位保持空值或「未提供」，不自行補值。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b40e8afc-9c46-4db5-a697-a790699cb75c",
+        "Text": "當同一欄位在原文出現兩次以上時，輸出採用最明確或最後出現的資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1dd95880-691d-4ebc-a456-e2ab3805f8fb",
+        "Text": "輸出不包含與這 6 個欄位無關的額外內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1966c172-a2af-42c4-8073-15c10ae84c31",
+        "Text": "輸入為一段活動洽詢自然語言文字時，Skill 能直接完成欄位擷取，不需要外部工具。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "**案例一**\n- 聯絡人姓名：林怡君\n- 聯絡電話：0912-345-678\n- 活動日期：2026/03/18\n- 預估人數：80 人左右\n- 預算上限：12 萬\n- 場地偏好：台北市交通方便、可容納餐會的場地\n\n**案例二**\n- 聯絡人姓名：陳冠廷\n- 聯絡電話：0988-765-432\n- 活動日期：2026/05/12\n- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地\n\n**案例三**\n- 聯絡人姓名：王雅婷\n- 聯絡電話：02-2500-5678\n- 活動日期：2026/07/21\n- 預估人數：60 人左右\n- 預算上限：10 萬\n- 場地偏好：台中市市區、可容納茶會的場地",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "f78b9d9a-7881-4733-9d44-3b3d74c2b2d1",
+          "OccurredAt": "2026-09-27T11:17:18.581Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"event-inquiry-field-extractor\", \"skill_version_id\": \"fdaf7f1e-c72d-4e89-ac3c-e2004ba15866\"}"
+        },
+        {
+          "TraceEventID": "e2fb2e37-0956-43d8-acb1-bf0793f56c09",
+          "OccurredAt": "2026-09-27T11:17:18.59Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"event-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_QyW8tE61B6wJOBIT9zV2v1gm\", \"result_summary\": \"Launching skill: event-inquiry-field-extractor\"}"
+        },
+        {
+          "TraceEventID": "b77507a6-27d2-4113-b52c-df75838ba7bc",
+          "OccurredAt": "2026-09-27T11:17:21.089Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"**案例一**\\n- 聯絡人姓名：林怡君\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/03/18\\n- 預估人數：80 人左右\\n- 預算上限：12 萬\\n- 場地偏好：台北市交通方便、可容納餐會的場地\\n\\n**案例二**\\n- 聯絡人姓名：陳冠廷\\n- 聯絡電話：0988-765-432\\n- 活動日期：2026/05/12\\n- 預估人數：120 人左右\\n- 預算上限：未提供\\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地\\n\\n**案例三**\\n- 聯絡人姓名：王雅婷\\n- 聯絡電話：02-2500-5678\\n- 活動日期：2026/07/21\\n- 預估人數：60 人左右\\n- 預算上限：10 萬\\n- 場地偏好：台中市市區、可容納茶會的場地\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1edf2d28-58c1-4b46-a126-1a91c13b03ee",
+          "OccurredAt": "2026-09-27T11:17:21.228Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"**案例一**\\n- 聯絡人姓名：林怡君\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/03/18\\n- 預估人數：80 人左右\\n- 預算上限：12 萬\\n- 場地偏好：台北市交通方便、可容納餐會的場地\\n\\n**案例二**\\n- 聯絡人姓名：陳冠廷\\n- 聯絡電話：0988-765-432\\n- 活動日期：2026/05/12\\n- 預估人數：120 人左右\\n- 預算上限：未提供\\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地\\n\\n**案例三**\\n- 聯絡人姓名：王雅婷\\n- 聯絡電話：02-2500-5678\\n- 活動日期：2026/07/21\\n- 預估人數：60 人左右\\n- 預算上限：10 萬\\n- 場地偏好：台中市市區、可容納茶會的場地\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fbfc0c47-a20c-4e19-89da-874c79c179f3",
+          "OccurredAt": "2026-09-27T11:17:26.78Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0081414, \"cost_source\": \"gateway\", \"duration_ms\": 10087, \"input_tokens\": 3131, \"token_source\": \"result\", \"output_tokens\": 593, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ed2d2cd4-2026-4c37-b531-00abc17e19e3",
+        "Result": "passed",
+        "Reason": "案例一輸出包含姓名、電話、日期、人數、預算上限與場地偏好六個欄位，且均有對應內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：林怡君\n- 聯絡電話：0912-345-678\n- 活動日期：2026/03/18\n- 預估人數：80 人左右\n- 預算上限：12 萬\n- 場地偏好：台北市交通方便、可容納餐會的場地"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8afc16c2-ab5a-438b-9ee8-b032af81ec9b",
+        "Result": "passed",
+        "Reason": "案例二原文未提供預算上限，輸出將該欄位標示為「未提供」，未自行補值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b40e8afc-9c46-4db5-a697-a790699cb75c",
+        "Result": "passed",
+        "Reason": "案例三對重複出現的電話與預算上限，採用了後來出現的電話與提高後的預算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：王雅婷\n- 聯絡電話：02-2500-5678\n- 活動日期：2026/07/21\n- 預估人數：60 人左右\n- 預算上限：10 萬\n- 場地偏好：台中市市區、可容納茶會的場地"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1dd95880-691d-4ebc-a456-e2ab3805f8fb",
+        "Result": "passed",
+        "Reason": "最終輸出僅以案例標題區分，並在每個案例下列出六個指定欄位，沒有其他與欄位無關的敘述內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**案例二**\n- 聯絡人姓名：陳冠廷\n- 聯絡電話：0988-765-432\n- 活動日期：2026/05/12\n- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1966c172-a2af-42c4-8073-15c10ae84c31",
+        "Result": "passed",
+        "Reason": "追蹤紀錄顯示已啟用欄位擷取 Skill，並成功完成輸出；紀錄中未顯示任何外部工具需求。",
+        "Citations": [
+          {
+            "Kind": "trace_event",
+            "TraceEventID": "f78b9d9a-7881-4733-9d44-3b3d74c2b2d1",
+            "ArtifactPath": null,
+            "Quote": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"event-inquiry-field-extractor\", \"skill_version_id\": \"fdaf7f1e-c72d-4e89-ac3c-e2004ba15866\"}"
+          },
+          {
+            "Kind": "trace_event",
+            "TraceEventID": "e2fb2e37-0956-43d8-acb1-bf0793f56c09",
+            "ArtifactPath": null,
+            "Quote": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"event-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_QyW8tE61B6wJOBIT9zV2v1gm\", \"result_summary\": \"Launching skill: event-inquiry-field-extractor\"}"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有案例均依六個指定欄位完成結構化擷取。缺漏預算被標示為未提供，重複電話與預算採用最後出現的資訊，且輸出未加入無關內容。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3127,
+      "CompletionTokens": 1047,
+      "CostUSD": 0.0178454,
+      "CostReported": true
+    }
+  }
+}

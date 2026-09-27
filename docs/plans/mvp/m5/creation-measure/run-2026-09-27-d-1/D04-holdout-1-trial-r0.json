@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這週三位櫃台人員的特休申請如下：小雅 週二、週三特休；阿ken 週三特休；Ivy 週五特休。請幫我排出下週一到週六(週日公休)的值班表，把三個人都排進去。",
+  "acceptance_criteria": [
+    {
+      "text": "週三的值班表不得排到小雅或阿ken值班（兩人皆已請假），應改由Ivy或其他仍在崗的人顧櫃台"
+    },
+    {
+      "text": "週二不得排小雅值班"
+    },
+    {
+      "text": "週五不得排Ivy值班"
+    },
+    {
+      "text": "週一到週六每天都要有至少一位人員值班，不得出現當天沒有任何人顧櫃台的情況"
+    }
+  ],
+  "final_output": "以下為下週一到週六值班表；已採用常見預設：依可排班人員平均分配，並避開特休日期。\n\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 小雅 |  |\n| 週二 | 阿ken | 小雅特休 |\n| 週三 | Ivy | 小雅、阿ken特休 |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken | Ivy特休 |\n| 週六 | Ivy |  |\n\n三位人員都已排入，週日公休未列入。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8326559c-348c-4c82-a46e-29f4d3931789",
+    "run_id": "3ea581b2-979a-4fd2-afc9-0136502c50d7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "排班避開了小雅週二、週三及阿ken週三、Ivy週五的特休，並確保週一至週六每天皆有人值班。",
+    "criterion_results": [
+      {
+        "criterion_id": "cb2b914c-c678-4d6f-8e28-ac811992217f",
+        "text": "週三的值班表不得排到小雅或阿ken值班（兩人皆已請假），應改由Ivy或其他仍在崗的人顧櫃台",
+        "result": "passed",
+        "source": "model",
+        "reason": "週三安排 Ivy 值班，未安排小雅或阿ken。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週三 | Ivy | 小雅、阿ken特休 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91f504f3-46b7-4f44-8e11-a14bfa61e33e",
+        "text": "週二不得排小雅值班",
+        "result": "passed",
+        "source": "model",
+        "reason": "週二安排阿ken值班，未安排小雅。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週二 | 阿ken | 小雅特休 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9a3efd59-78a4-4604-991b-1dd3f95462a9",
+        "text": "週五不得排Ivy值班",
+        "result": "passed",
+        "source": "model",
+        "reason": "週五安排阿ken值班，未安排 Ivy。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週五 | 阿ken | Ivy特休 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7d1417d-a44c-46ce-833c-a75d74b3b9c0",
+        "text": "週一到週六每天都要有至少一位人員值班，不得出現當天沒有任何人顧櫃台的情況",
+        "result": "passed",
+        "source": "model",
+        "reason": "值班表列出週一至週六，且每天均有一位值班人員。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | 小雅 |  |\n| 週二 | 阿ken | 小雅特休 |\n| 週三 | Ivy | 小雅、阿ken特休 |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken | Ivy特休 |\n| 週六 | Ivy |  |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2869 input and 1032 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

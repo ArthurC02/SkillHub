@@ -1,0 +1,151 @@
+{
+  "round": 2,
+  "sample_input": "請幫我整理這段活動洽詢內容：您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。\n\n另有一筆洽詢：我是林志遠，想詢問 2026/12/05 的小型聚會，預估 40 人，其餘資訊未提供。\n\n補充一筆：聯絡人陳品妤，電話寫成 0912 345 678，日期寫 2026年11月18日，人數約一百二十位，預算大約十八萬元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。"
+    },
+    {
+      "text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。"
+    },
+    {
+      "text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。"
+    },
+    {
+      "text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。"
+    },
+    {
+      "text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。"
+    }
+  ],
+  "final_output": "以下是整理後的結構化資料：\n\n### 1. 洽詢一\n- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便\n- 活動名稱/類型：品牌發表會\n- 其他資訊：未提供\n\n### 2. 洽詢二\n- 聯絡人姓名：林志遠\n- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供\n- 活動名稱/類型：小型聚會\n- 其他資訊：未提供\n\n### 3. 洽詢三\n- 聯絡人姓名：陳品妤\n- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元\n- 場地偏好：未提供\n- 活動名稱/類型：未提供\n- 其他資訊：未提供\n\n### 重複註記\n- 第 3 筆資料與第 1 筆在日期、人數、預算上相當接近，疑似同一筆洽詢的重複或補充資訊。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b1ad5c7e-ec8b-4d3a-bf3f-339b3bae8f4f",
+    "run_id": "23e0a79e-b7b2-4d19-97c3-90fc7372b27f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行將三筆活動洽詢逐筆結構化，包含全部六個必要欄位；缺漏值正確標示，且能辨識不同電話、日期、人數及金額格式。",
+    "criterion_results": [
+      {
+        "criterion_id": "e4420cf9-2f2f-4bb9-a366-2be49d0f30cd",
+        "text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆洽詢皆包含聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限及場地偏好六個指定欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "962086d0-b304-49c0-a1cf-dafaf7f726df",
+        "text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將三筆洽詢分開整理，且姓名、電話、日期、人數、預算與場地資訊均對應至各自正確欄位，未見跨筆混淆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 2. 洽詢二\n- 聯絡人姓名：林志遠\n- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 3. 洽詢三\n- 聯絡人姓名：陳品妤\n- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元\n- 場地偏好：未提供",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98b9d86a-3114-469a-85df-12fbcc55f544",
+        "text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文未提供的欄位均標示為「未提供」，沒有自行補寫資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d36fe6be-7260-43f1-871d-ab61654a6b15",
+        "text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果以逐筆、逐欄位的清單方式呈現，為可直接使用的結構化整理，而非僅摘要或改寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 1. 洽詢一\n- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43a00641-ad4c-47e1-83c1-f528dd22d64d",
+        "text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "針對不一致格式，輸出辨識出含空格的電話、中文年月日日期，以及中文數字人數與金額，並放入相應欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3627 input and 2327 output tokens on gpt-5.4-mini; reported cost $0.0162 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

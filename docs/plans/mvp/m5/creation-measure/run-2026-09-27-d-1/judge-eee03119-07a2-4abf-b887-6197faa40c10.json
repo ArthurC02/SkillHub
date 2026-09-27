@@ -1,0 +1,175 @@
+{
+  "request": {
+    "RunID": "eee03119-07a2-4abf-b887-6197faa40c10",
+    "EvaluationID": "6ee484a5-3fc6-41b0-ae51-42f32e10eb2b",
+    "Skill": {
+      "Name": "clinic-drug-expiry-check",
+      "Summary": "將診所或藥局回報的藥品資料整理成表格，篩出從今天起算 30 天內（含第 30 天）會過期的品項，並在需要時提醒優先使用或退回。適合在盤點藥品效期、整理近效期清單或輸出庫存提醒表時使用。"
+    },
+    "UserPrompt": "請整理以下藥品資料，篩出從今天起算 30 天內（含第 30 天）會過期的項目並列成表格：\n\n今天：2026-09-27\n\n1. 品名：Amoxicillin 500mg\n   批號：A240901\n   效期：2026-10-05\n   庫存數量：120\n2. 品名：Metformin 850mg\n   批號：M240801\n   效期：2026-10-27\n   庫存數量：80\n3. 品名：Atorvastatin 20mg\n   批號：A240701\n   效期：2026-10-28\n   庫存數量：50\n4. 品名：Omeprazole 20mg\n   批號：O240601\n   效期：2026-09-26\n   庫存數量：30\n5. 品名：Cetirizine 10mg\n   批號：C240901\n   效期：2026-11-15\n   庫存數量：60",
+    "Criteria": [
+      {
+        "ID": "f1c4ccf4-befc-4746-9e4f-65ebe0b5f45c",
+        "Text": "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "211b7f5d-1a65-4b8d-845c-7c1d28f87564",
+        "Text": "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ebc0e16a-c12d-4b19-a39d-5879ae8f0d7f",
+        "Text": "效期剛好是今天起算第 30 天的藥品，必須被列入結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "aa9d200d-1cae-47f6-8756-ac0f83814fbd",
+        "Text": "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "010399fd-dda4-451c-aa89-c93c706b97d7",
+        "Text": "效期晚於今天起算第 30 天的藥品，不得出現在結果中。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e655860a-bbfa-468a-b645-dbd237b7e7d7",
+        "Text": "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以 **2026-09-27** 為今天計算：\n\n| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |\n|---|---|---:|---:|---:|---|\n| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |\n\n以上 3 筆屬於 30 天內到期或已過期，請優先使用或退回；其中 Omeprazole 20mg 已過期，需立即處理。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "9f93fec4-ae11-4ec9-9f56-fc932b785aed",
+          "OccurredAt": "2026-09-27T10:36:00.752Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"clinic-drug-expiry-check\", \"skill_version_id\": \"4520007a-8cdc-4ebe-8132-5690a73e665a\"}"
+        },
+        {
+          "TraceEventID": "f9897e78-80f4-4302-86bc-22590c9b42f9",
+          "OccurredAt": "2026-09-27T10:36:00.765Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"clinic-drug-expiry-check\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 13, \"invocation_id\": \"call_mIENjBK68jItN971Erw3bbmp\", \"result_summary\": \"Launching skill: clinic-drug-expiry-check\"}"
+        },
+        {
+          "TraceEventID": "33832a0d-771e-46ec-b668-060b6b21a85f",
+          "OccurredAt": "2026-09-27T10:36:06.115Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以 **2026-09-27** 為今天計算：\\n\\n| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |\\n|---|---|---:|---:|---:|---|\\n| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |\\n\\n以上 3 筆屬於 30 天內到期或已過期，請優先使用或退回；其中 Omeprazole 20mg 已過期，需立即處理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3fb62b08-ec2e-4829-9234-e77babbc3dcc",
+          "OccurredAt": "2026-09-27T10:36:06.265Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以 **2026-09-27** 為今天計算：\\n\\n| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |\\n|---|---|---:|---:|---:|---|\\n| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |\\n\\n以上 3 筆屬於 30 天內到期或已過期，請優先使用或退回；其中 Omeprazole 20mg 已過期，需立即處理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "afa7b5a5-ad1b-42d6-a20c-4e7ecdb58bed",
+          "OccurredAt": "2026-09-27T10:36:10.317Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.009739649999999999, \"cost_source\": \"gateway\", \"duration_ms\": 11935, \"input_tokens\": 3827, \"token_source\": \"result\", \"output_tokens\": 828, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "f1c4ccf4-befc-4746-9e4f-65ebe0b5f45c",
+        "Result": "passed",
+        "Reason": "輸出表格僅列出 30 天內到期的 Amoxicillin、Metformin，以及已過期的 Omeprazole，未列出效期超過 30 天的品項。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "211b7f5d-1a65-4b8d-845c-7c1d28f87564",
+        "Result": "passed",
+        "Reason": "表格欄位包含品名、批號、效期、庫存數量、距今天剩餘天數及提醒。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ebc0e16a-c12d-4b19-a39d-5879ae8f0d7f",
+        "Result": "passed",
+        "Reason": "效期為今天起算第 30 天的 Metformin 850mg 已列入表格，並標示剩餘 30 天。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "aa9d200d-1cae-47f6-8756-ac0f83814fbd",
+        "Result": "passed",
+        "Reason": "早於今天的 Omeprazole 20mg 被列入，且標示為已過期／立即處理。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "010399fd-dda4-451c-aa89-c93c706b97d7",
+        "Result": "passed",
+        "Reason": "結果表格未出現效期為 2026-10-28 與 2026-11-15、均晚於第 30 天的品項；表中最晚的未過期效期為第 30 天的 2026-10-27。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e655860a-bbfa-468a-b645-dbd237b7e7d7",
+        "Result": "passed",
+        "Reason": "符合條件的未過期近效期品項標示「優先使用或退回」，已過期品項標示「已過期／立即處理」，均為明確提醒。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有驗收條件皆符合：輸出提供完整欄位，納入第 30 天與已過期品項，排除逾 30 天效期品項，並提供明確處理提醒。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3058,
+      "CompletionTokens": 1235,
+      "CostUSD": 0.0199289,
+      "CostReported": true
+    }
+  }
+}

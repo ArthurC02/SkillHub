@@ -1,0 +1,139 @@
+{
+  "round": 0,
+  "sample_input": "您好，我們是耕心診所，想辦一場員工教育訓練活動。合約編號是TR-2026-088，訓練那天希望在3月5日早上進行，參加醫護人員大約35人，另外還有5位行政人員會旁聽，所以現場抓40人準備茶水就好。預算的話單一場地租金抓不超過25000元，餐費另外算不算在這裡面。負責窗口是護理長郭小姐，分機3399。場地目前傾向找靠近捷運站的教室型場地。麻煩幫我整理需求。",
+  "acceptance_criteria": [
+    {
+      "text": "預估人數應為40人，不得誤用合約編號TR-2026-088裡的數字當人數"
+    },
+    {
+      "text": "預算上限應為25,000元且僅指場地租金、不含餐費"
+    },
+    {
+      "text": "場地偏好應為靠近捷運站的教室型場地"
+    },
+    {
+      "text": "日期應為3月5日早上"
+    }
+  ],
+  "final_output": "以下先依「固定欄位」整理，再補充其他需求資訊：\n\n- 聯絡人姓名：郭小姐\n- 聯絡電話：未提供\n- 活動日期：3月5日早上\n- 預估人數：40人\n- 預算上限：25,000元\n- 場地偏好：靠近捷運站的教室型場地\n\n補充需求：\n- 合約編號：TR-2026-088\n- 活動類型/用途：員工教育訓練活動\n- 參與人數明細：醫護人員約35人、行政人員旁聽5人，合計40人\n- 茶水準備：以40人份準備茶水\n- 餐費：是否包含在場地預算內，待確認；目前看起來是另行計算\n- 負責窗口：護理長郭小姐\n- 分機：3399",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "260df570-6946-4bfd-92c4-b9d94fd7214d",
+    "run_id": "740fabfa-45cc-4065-83ec-294a89cc4b24",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項需求欄位皆已正確整理：總人數為40人、場地租金預算上限為25,000元且餐費另計、場地偏好為靠近捷運站的教室型場地，以及日期時段為3月5日早上。",
+    "criterion_results": [
+      {
+        "criterion_id": "468369f1-a9a1-45ed-b359-c77598d17f3e",
+        "text": "預估人數應為40人，不得誤用合約編號TR-2026-088裡的數字當人數",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將預估人數列為40人，並明確以35位醫護與5位行政旁聽合計40人，沒有將合約編號中的數字作為人數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預估人數：40人",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 參與人數明細：醫護人員約35人、行政人員旁聽5人，合計40人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7481bb28-127b-445f-bbf2-fa302e5924c4",
+        "text": "預算上限應為25,000元且僅指場地租金、不含餐費",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆正確列出預算上限25,000元，且說明餐費為另行計算，表示場地預算不含餐費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預算上限：25,000元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 餐費：是否包含在場地預算內，待確認；目前看起來是另行計算",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "130b05ce-e3c4-4d0a-b0d5-d40bdb88bb97",
+        "text": "場地偏好應為靠近捷運站的教室型場地",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆的場地偏好與需求一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 場地偏好：靠近捷運站的教室型場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b92694d1-8816-4a2e-a752-84607e1af8bf",
+        "text": "日期應為3月5日早上",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆正確擷取活動日期與時段為3月5日早上。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 活動日期：3月5日早上",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3605 input and 1639 output tokens on gpt-5.4-mini; reported cost $0.0051 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

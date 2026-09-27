@@ -1,0 +1,193 @@
+{
+  "request": {
+    "RunID": "9c560d5a-ffa9-4679-bbc1-b84188d2ea47",
+    "EvaluationID": "5549ee37-e1b5-46d8-b6be-d5f3cfa62f35",
+    "Skill": {
+      "Name": "self-paid-medical-device-letter-rewriter",
+      "Summary": "將診所已完成的《自費醫材同意書》改寫成給病人看的口語說明信；適合在需要保留醫材品名、費用、給付上限與簽署期限等關鍵資訊不變，同時降低公文語氣時使用。"
+    },
+    "UserPrompt": "請把下面這份同意書改寫成給病人看的口語說明信，並且原文中的醫材品名、自費金額、健保給付上限、病人簽署期限都要一字不改。\n\n自費醫材同意書\n\n醫材品名：人工關節墊片A型\n自費金額：新台幣 18,500 元\n健保給付上限：新台幣 12,000 元\n病人簽署期限：113年10月15日前\n\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。",
+    "Criteria": [
+      {
+        "ID": "825de09e-d385-4770-a53f-74382d9e32dc",
+        "Text": "輸出是一封繁體中文的說明信，而不是條列摘要、逐句翻譯或公文格式。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "24f0472e-66ce-4696-9915-a264d30d71fb",
+        "Text": "輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2c991ec3-35ea-4e59-9e1f-ea290b8dbf99",
+        "Text": "原文中的醫材品名必須逐字保留，不得改寫、替換或簡化。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8f0cc322-48b6-4a86-88b1-555023acdc19",
+        "Text": "原文中的自費金額必須逐字保留，不得改動數字、幣別或小數格式。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "44e453d1-eff2-4a71-b585-3d0e4a7fdb60",
+        "Text": "原文中的健保給付上限必須逐字保留，不得改動數字、單位或說法。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9e4ec517-1d3c-4cc6-82dc-c457b0d993a7",
+        "Text": "原文中的病人簽署期限必須逐字保留，不得改動日期、天數或期限表述。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6b9df534-9105-488f-86df-c25151c23fd1",
+        "Text": "輸出不得加入原文未提及的費用、風險、療效保證或法律效果。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "親愛的病人您好：\n\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\n\n醫材品名：人工關節墊片A型  \n自費金額：新台幣 18,500 元  \n健保給付上限：新台幣 12,000 元  \n病人簽署期限：113年10月15日前\n\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a7367f4b-ed6b-4bc3-b9c4-660c7a007449",
+          "OccurredAt": "2026-09-27T11:02:59.61Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"self-paid-medical-device-letter-rewriter\", \"skill_version_id\": \"e3a89418-1e1d-4a74-8f93-81a97a1d54b0\"}"
+        },
+        {
+          "TraceEventID": "9a76cd64-6a35-42fe-a0fe-16a97691dd8b",
+          "OccurredAt": "2026-09-27T11:02:59.622Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"self-paid-medical-device-letter-rewriter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_IWF8GzslVdRPJAoRmoqg0mcT\", \"result_summary\": \"Launching skill: self-paid-medical-device-letter-rewriter\"}"
+        },
+        {
+          "TraceEventID": "1b03e3f7-d160-4974-ae40-f0c364a07386",
+          "OccurredAt": "2026-09-27T11:03:03.352Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"親愛的病人您好：\\n\\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\\n\\n醫材品名：人工關節墊片A型  \\n自費金額：新台幣 18,500 元  \\n健保給付上限：新台幣 12,000 元  \\n病人簽署期限：113年10月15日前\\n\\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d6d0bd88-70c9-4525-bad4-0aa6e0b648f0",
+          "OccurredAt": "2026-09-27T11:03:03.656Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"親愛的病人您好：\\n\\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\\n\\n醫材品名：人工關節墊片A型  \\n自費金額：新台幣 18,500 元  \\n健保給付上限：新台幣 12,000 元  \\n病人簽署期限：113年10月15日前\\n\\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "9130117b-2e5d-499a-8faf-01769456364a",
+          "OccurredAt": "2026-09-27T11:03:09.23Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00961065, \"cost_source\": \"gateway\", \"duration_ms\": 11537, \"input_tokens\": 3224, \"token_source\": \"result\", \"output_tokens\": 920, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "825de09e-d385-4770-a53f-74382d9e32dc",
+        "Result": "passed",
+        "Reason": "輸出以稱呼、說明段落與信件語氣呈現，屬於繁體中文的說明信。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "親愛的病人您好：\n\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "24f0472e-66ce-4696-9915-a264d30d71fb",
+        "Result": "failed",
+        "Reason": "雖有信件開頭，但內文未以口語說明該醫材的用途或重點，主要仍沿用原本較正式的同意書語句，對病人不夠容易理解。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2c991ec3-35ea-4e59-9e1f-ea290b8dbf99",
+        "Result": "passed",
+        "Reason": "醫材品名與原文逐字一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "醫材品名：人工關節墊片A型  "
+          }
+        ]
+      },
+      {
+        "CriterionID": "8f0cc322-48b6-4a86-88b1-555023acdc19",
+        "Result": "passed",
+        "Reason": "自費金額與原文逐字一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "自費金額：新台幣 18,500 元  "
+          }
+        ]
+      },
+      {
+        "CriterionID": "44e453d1-eff2-4a71-b585-3d0e4a7fdb60",
+        "Result": "passed",
+        "Reason": "健保給付上限與原文逐字一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健保給付上限：新台幣 12,000 元  "
+          }
+        ]
+      },
+      {
+        "CriterionID": "9e4ec517-1d3c-4cc6-82dc-c457b0d993a7",
+        "Result": "passed",
+        "Reason": "病人簽署期限與原文逐字一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "病人簽署期限：113年10月15日前"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6b9df534-9105-488f-86df-c25151c23fd1",
+        "Result": "passed",
+        "Reason": "輸出僅加入信件式的引言，未加入原文未提及的費用、風險、療效保證或法律效果。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "輸出成功以說明信形式保留了所有指定的關鍵資訊，且未新增禁止類型的內容。不過，核心說明仍大致沿用原同意書的正式措辭，未充分以口語方式解釋醫材用途或重點。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2821,
+      "CompletionTokens": 1018,
+      "CostUSD": 0.0167324,
+      "CostReported": true
+    }
+  }
+}

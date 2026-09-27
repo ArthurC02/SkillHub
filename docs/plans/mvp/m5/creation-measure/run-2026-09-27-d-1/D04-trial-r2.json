@@ -1,0 +1,166 @@
+{
+  "round": 2,
+  "sample_input": "請幫我排下週一到週六的診所櫃台值班表，避開特休日期。以下有兩個案例，請在同一次輸入中分別處理：\n\n案例一：可完整排班\n小雅：週二、週五特休\n阿ken：週三特休\nIvy：週一、週四特休\n已知原則：診所週日公休；若某日只有一人可排，就排那個人；若某日沒有人可排，就標示待人工確認。\n\n案例二：缺少既有班表或完整規則\n請幫我排下週一到週六的診所櫃台值班表，只有這三人的特休日期，沒有任何既有班表或排班規則。\n小雅：週一、週四特休\n阿ken：週二特休\nIvy：週三、週六特休",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含小雅、阿ken、Ivy 三人的特休日期與下週一到週六需求時，輸出會產生一份對應日期的值班表。"
+    },
+    {
+      "text": "輸出中的任何排班日期都不會落在任一人已申請的特休日期上。"
+    },
+    {
+      "text": "當某一天因特休衝突或資料不足而無法安排，輸出會明確標示該日期無法排班或待確認。"
+    },
+    {
+      "text": "當下週排班需求覆蓋週一到週六時，輸出會涵蓋這六天，不會包含週日。"
+    },
+    {
+      "text": "若輸入沒有提供足夠的既有班表或排班規則，Skill 會提示缺少哪些資料，而不是自行捏造完整規則。"
+    }
+  ],
+  "final_output": "以下為可直接使用的值班表；實際公告/發送請由你自行處理。  \n（同日多人皆可排時，以下先依名單順序作為預設。）\n\n## 案例一\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 小雅 |  |\n| 週二 | 阿ken |  |\n| 週三 | 小雅 |  |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken |  |\n| 週六 | 小雅 |  |\n\n## 案例二\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2961bc54-c299-4482-afa1-8c64b52bcd13",
+    "run_id": "5b6836f8-fb96-4e49-b7f7-fe379f744d7b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出完成兩個案例的週一至週六表格，且各項指派未與列出的特休日衝突。然而，案例二缺少既有班表或完整排班規則時，回覆自行設定名單順序並排出完整班表，沒有標示待確認或說明所缺資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "448cf8d4-894d-46d3-96b6-bd6298f668a7",
+        "text": "輸入包含小雅、阿ken、Ivy 三人的特休日期與下週一到週六需求時，輸出會產生一份對應日期的值班表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出分別提供案例一與案例二的週一至週六值班表。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例一\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 小雅 |  |\n| 週二 | 阿ken |  |\n| 週三 | 小雅 |  |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例二\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "34883d48-f9eb-42f1-b975-44530061018b",
+        "text": "輸出中的任何排班日期都不會落在任一人已申請的特休日期上。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個案例中列出的每位值班人員均未被排在其輸入所列的特休日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例一\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 小雅 |  |\n| 週二 | 阿ken |  |\n| 週三 | 小雅 |  |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例二\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c73c5f98-16b2-4872-b9a3-ffa4b9192009",
+        "text": "當某一天因特休衝突或資料不足而無法安排，輸出會明確標示該日期無法排班或待確認。",
+        "result": "failed",
+        "source": "model",
+        "reason": "案例二明示缺少既有班表或完整規則，屬資料不足情況；輸出仍為每一天指定人員，且沒有標示無法排班或待確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例二\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "971496b8-60ef-4578-b34b-cfe148a03d88",
+        "text": "當下週排班需求覆蓋週一到週六時，輸出會涵蓋這六天，不會包含週日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩份表格都涵蓋週一、週二、週三、週四、週五與週六，未列入週日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | 小雅 |  |\n| 週二 | 阿ken |  |\n| 週三 | 小雅 |  |\n| 週四 | 小雅 |  |\n| 週五 | 阿ken |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b8badae1-3439-4ae7-bdae-d248003e182f",
+        "text": "若輸入沒有提供足夠的既有班表或排班規則，Skill 會提示缺少哪些資料，而不是自行捏造完整規則。",
+        "result": "failed",
+        "source": "model",
+        "reason": "在缺少完整規則的案例二，輸出自行採用「依名單順序」的預設並產生完整班表，未提示缺少既有班表或哪些排班規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "（同日多人皆可排時，以下先依名單順序作為預設。）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例二\n| 星期 | 值班人員 | 備註 |\n|---|---|---|\n| 週一 | 阿ken |  |\n| 週二 | 小雅 |  |\n| 週三 | 小雅 |  |\n| 週四 | 阿ken |  |\n| 週五 | 小雅 |  |\n| 週六 | 小雅 |  |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19011 input and 4621 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

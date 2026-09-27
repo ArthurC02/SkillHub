@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我判定以下四筆到貨食材的驗收結果：\n1. 鮮乳：到貨溫度6°C，效期還有5天。\n2. 生菜：到貨溫度7°C，效期還有2天。\n3. 生蠔：到貨溫度8°C，效期還有10天。\n4. 豬肉：到貨溫度7°C，效期還有3天。",
+  "acceptance_criteria": [
+    {
+      "text": "鮮乳應判定為合格"
+    },
+    {
+      "text": "生菜到貨溫度7°C且效期只剩2天，應判定為警示、需優先當天用完，不得判定為合格"
+    },
+    {
+      "text": "生蠔到貨溫度8°C超過7°C，即使效期還有10天也應一律拒收退回，不得因為效期還久而判定合格或警示"
+    },
+    {
+      "text": "豬肉到貨溫度7°C且效期還有3天(超過2天)，應判定為合格，不得誤判為警示"
+    }
+  ],
+  "final_output": "- 鮮乳：合格\n- 生菜：警示，需要優先當天用完\n- 生蠔：拒收退回\n- 豬肉：合格",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "94b36559-945c-4370-a42d-49d17d7946ca",
+    "run_id": "1f08c1e0-4f66-4460-928c-757a9d38faf8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收判定均符合指定標準：鮮乳與豬肉合格、生菜警示且當天優先用完、生蠔拒收退回。",
+    "criterion_results": [
+      {
+        "criterion_id": "33ca2625-60f0-4311-989c-b7d9ac20e114",
+        "text": "鮮乳應判定為合格",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將鮮乳判定為合格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 鮮乳：合格",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "418ef5c3-ba05-43f3-9b91-0f94fe723e08",
+        "text": "生菜到貨溫度7°C且效期只剩2天，應判定為警示、需優先當天用完，不得判定為合格",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將生菜判定為警示，並指出需要優先當天用完。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 生菜：警示，需要優先當天用完",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "728ecd81-8999-465d-80df-34534c4ffa30",
+        "text": "生蠔到貨溫度8°C超過7°C，即使效期還有10天也應一律拒收退回，不得因為效期還久而判定合格或警示",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將生蠔判定為拒收退回，未判為合格或警示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 生蠔：拒收退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ec930f37-b7c7-451a-9ca1-05d724ec8d0c",
+        "text": "豬肉到貨溫度7°C且效期還有3天(超過2天)，應判定為合格，不得誤判為警示",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將豬肉判定為合格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 豬肉：合格",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2916 input and 267 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

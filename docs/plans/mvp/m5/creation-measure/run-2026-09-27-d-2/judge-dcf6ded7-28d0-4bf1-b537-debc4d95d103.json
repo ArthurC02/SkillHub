@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "dcf6ded7-28d0-4bf1-b537-debc4d95d103",
+    "EvaluationID": "a3bc7174-1ae6-4d2a-a501-8e9431597c2c",
+    "Skill": {
+      "Name": "clinic-drug-expiry-inventory",
+      "Summary": "Use this skill when you need to turn pharmacy-reported clinic drug records into a table and identify items expiring within 30 days from today, including a reminder to prioritize use or return."
+    },
+    "UserPrompt": "請整理以下藥品盤點資料，找出今天起算 30 天內（含第 30 天）會過期的品項，並列成表格：\n阿莫西林膠囊｜批號 A2401｜效期 2026-10-05｜庫存 120\n普拿疼錠｜批號 P8831｜效期 2026-09-27｜庫存 80\n維他命C錠｜批號 V1120｜效期 2026-11-15｜庫存 50\n抗生素眼藥水｜批號 E7788｜效期 2026-10-27｜庫存 12",
+    "Criteria": [
+      {
+        "ID": "f81e77ea-db94-4db4-ba94-541797ac5a0e",
+        "Text": "當輸入多筆藥品資料時，輸出會以表格形式列出符合條件的藥品。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c212fee2-e72e-471b-b789-051a5cb1e269",
+        "Text": "當某筆藥品的效期在今天起算 30 天內（含第 30 天）時，該筆會被列入結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2d0007c6-2a73-407b-9147-deac8d1d15ae",
+        "Text": "當某筆藥品的效期晚於第 30 天時，該筆不會出現在結果中。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a51c3086-c483-46f9-9e01-e56d0da7760f",
+        "Text": "輸出會保留品名、批號、效期、庫存數量四個欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "61d5094f-09b0-4ca6-964b-ccb5280fb85a",
+        "Text": "輸出會包含提醒文字，指出需優先使用或退回。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為今天起算 30 天內（含第 30 天）會過期的品項：\n\n| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\n|---|---|---:|---:|---|\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |\n\n**合計庫存：212**\n\n未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "1203323a-0164-4467-bc40-fabe02ac7541",
+          "OccurredAt": "2026-09-27T11:01:40.439Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"clinic-drug-expiry-inventory\", \"skill_version_id\": \"de6b7abf-7fe0-4a8e-b5b2-fc7be13733f4\"}"
+        },
+        {
+          "TraceEventID": "a557987e-be03-4254-955c-941a263b8b5b",
+          "OccurredAt": "2026-09-27T11:01:40.45Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"clinic-drug-expiry-inventory\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_N7HJ4HPTEVZ8GA2O2Tyv1GEK\", \"result_summary\": \"Launching skill: clinic-drug-expiry-inventory\"}"
+        },
+        {
+          "TraceEventID": "43b0b060-db97-4268-babf-c30fd6493b64",
+          "OccurredAt": "2026-09-27T11:01:44.14Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為今天起算 30 天內（含第 30 天）會過期的品項：\\n\\n| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\\n|---|---|---:|---:|---|\\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |\\n\\n**合計庫存：212**\\n\\n未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2b2ac12c-d940-46ae-b95b-d1e7c0ef46f7",
+          "OccurredAt": "2026-09-27T11:01:44.331Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為今天起算 30 天內（含第 30 天）會過期的品項：\\n\\n| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\\n|---|---|---:|---:|---|\\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |\\n\\n**合計庫存：212**\\n\\n未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "44ab4e05-3282-4f7e-996b-83a9b28cd754",
+          "OccurredAt": "2026-09-27T11:01:48.377Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00390165, \"cost_source\": \"gateway\", \"duration_ms\": 10050, \"input_tokens\": 3052, \"token_source\": \"result\", \"output_tokens\": 762, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "f81e77ea-db94-4db4-ba94-541797ac5a0e",
+        "Result": "passed",
+        "Reason": "輸出以 Markdown 表格列出符合期限的多筆藥品。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\n|---|---|---:|---:|---|\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c212fee2-e72e-471b-b789-051a5cb1e269",
+        "Result": "passed",
+        "Reason": "在今天 2026-09-27 起算的 30 天範圍內，包含第 30 天 2026-10-27 的品項均已列入。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2d0007c6-2a73-407b-9147-deac8d1d15ae",
+        "Result": "passed",
+        "Reason": "效期晚於第 30 天的維他命C錠未出現在結果表格中，且明確標示為超過 30 天範圍。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a51c3086-c483-46f9-9e01-e56d0da7760f",
+        "Result": "passed",
+        "Reason": "表格保留了藥品名稱、批號、效期及庫存四個所需欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "61d5094f-09b0-4ca6-964b-ccb5280fb85a",
+        "Result": "passed",
+        "Reason": "每筆列入的品項都包含「優先使用或退回」提醒。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "結果正確篩出今天至第 30 天（含）內到期的三項藥品，並以表格提供品名、批號、效期、庫存與優先使用或退回提醒；效期超過範圍的維他命C錠已排除。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2789,
+      "CompletionTokens": 914,
+      "CostUSD": 0.0154044,
+      "CostReported": true
+    }
+  }
+}

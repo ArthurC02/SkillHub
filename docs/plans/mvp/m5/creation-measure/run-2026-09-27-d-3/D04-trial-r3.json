@@ -1,0 +1,185 @@
+{
+  "round": 3,
+  "sample_input": "請根據下面資訊排出下週一到週六的診所櫃台值班表：\n小雅本週特休日期：週二、週四\n阿ken本週特休日期：週一、週五\nIvy 本週特休日期：週三\n現有班表輪替順序：小雅 → 阿ken → Ivy\n\n再根據第二段資訊排出下一週一到週六的診所櫃台值班表：\n小雅本週特休日期：週一、週二、週三、週四、週五\n阿ken本週特休日期：週一、週二、週三、週四、週六\nIvy 本週特休日期：週一、週二、週三、週五、週六\n現有班表輪替順序：小雅 → 阿ken → Ivy\n\n再根據第三段資訊排出下一週一到週六的診所櫃台值班表：\n小雅本週特休日期：週一、週二、週三、週四、週五、週六\n阿ken本週特休日期：週一、週二、週三、週四、週五、週六\nIvy 本週特休日期：週一、週二、週三、週四、週五、週六\n現有班表輪替順序：小雅 → 阿ken → Ivy",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含三人的本週特休日期與一週班表資訊時，Skill 會輸出一份涵蓋下週一到週六的值班表。"
+    },
+    {
+      "text": "當某人某日請特休時，該人不會被排在該日值班表中。"
+    },
+    {
+      "text": "當某日有多於 1 位可排班人員時，輸出會依固定輪替順序決定該日值班者。"
+    },
+    {
+      "text": "當現有班表能看出輪替順序時，輸出會沿用該輪替順序；若無法看出，則使用小雅 → 阿ken → Ivy。"
+    },
+    {
+      "text": "當某日僅剩 1 位可排班人員時，該日會直接排入那位人員。"
+    },
+    {
+      "text": "當某日沒有任何可排班人員時，輸出會明確標示「無法排班」並說明原因。"
+    },
+    {
+      "text": "輸出不包含週日。"
+    }
+  ],
+  "final_output": "第一段：\n週一：小雅  \n週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅  \n\n第二段：\n週一：無法排班（小雅、阿ken、Ivy 皆特休）  \n週二：無法排班（小雅、阿ken、Ivy 皆特休）  \n週三：無法排班（小雅、阿ken、Ivy 皆特休）  \n週四：Ivy  \n週五：阿ken  \n週六：小雅  \n\n第三段：\n週一：無法排班（小雅、阿ken、Ivy 皆特休）  \n週二：無法排班（小雅、阿ken、Ivy 皆特休）  \n週三：無法排班（小雅、阿ken、Ivy 皆特休）  \n週四：無法排班（小雅、阿ken、Ivy 皆特休）  \n週五：無法排班（小雅、阿ken、Ivy 皆特休）  \n週六：無法排班（小雅、阿ken、Ivy 皆特休）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "60ff4f48-56fb-47db-8605-3b46fe27d56d",
+    "run_id": "3c70b537-f305-487a-83ea-501b8877600e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出為三段週一至週六的班表，正確避開特休人員、依輪替處理可選人員，並在全員特休時標示無法排班及原因。未出現週日。",
+    "criterion_results": [
+      {
+        "criterion_id": "89a9c93e-983d-4fcb-84bb-8b918bcea3e0",
+        "text": "輸入包含三人的本週特休日期與一週班表資訊時，Skill 會輸出一份涵蓋下週一到週六的值班表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出中的第一段提供了週一至週六六天的完整值班表。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第一段：\n週一：小雅  \n週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b4e6f077-3f88-41c1-ad76-d8469de726c2",
+        "text": "當某人某日請特休時，該人不會被排在該日值班表中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各段排班均未將特休者排在其特休日；例如第一段週二安排阿ken、週四安排阿ken，第二段可排班日也均安排未特休者。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "週四：Ivy  \n週五：阿ken  \n週六：小雅",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64aaae2d-97a5-4149-820d-cc1746abf3db",
+        "text": "當某日有多於 1 位可排班人員時，輸出會依固定輪替順序決定該日值班者。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一段在有多位可排班人員的日期，依小雅、阿ken、Ivy的循環選擇：週一小雅後，週二阿ken；遇特休則跳過不可排者並繼續輪替。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週一：小雅  \n週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a6d5166-eb0d-460f-8bb4-1cdcb4e5ffdb",
+        "text": "當現有班表能看出輪替順序時，輸出會沿用該輪替順序；若無法看出，則使用小雅 → 阿ken → Ivy。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出第一段的安排遵循提供的輪替順序小雅 → 阿ken → Ivy，並在輪到的人特休時跳過該人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第一段：\n週一：小雅  \n週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6406aa1-3168-4412-b88e-e29f1dcde340",
+        "text": "當某日僅剩 1 位可排班人員時，該日會直接排入那位人員。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二段週四至週六各日僅有一位未特休人員，輸出直接安排Ivy、阿ken、小雅。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週四：Ivy  \n週五：阿ken  \n週六：小雅",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f7a518d9-0b30-455b-bcf2-7c03b5cd1b75",
+        "text": "當某日沒有任何可排班人員時，輸出會明確標示「無法排班」並說明原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "沒有任何可排班人員的日期均明確標示「無法排班」，並說明三人皆特休。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "週一：無法排班（小雅、阿ken、Ivy 皆特休）  \n週二：無法排班（小雅、阿ken、Ivy 皆特休）  \n週三：無法排班（小雅、阿ken、Ivy 皆特休）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9c773e3c-250e-4d04-a6b3-637823393536",
+        "text": "輸出不包含週日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三段輸出均只列出週一至週六，未包含週日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第一段：\n週一：小雅  \n週二：阿ken  \n週三：小雅  \n週四：阿ken  \n週五：Ivy  \n週六：小雅",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19377 input and 1846 output tokens on gpt-5.4-mini; reported cost $0.0248 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

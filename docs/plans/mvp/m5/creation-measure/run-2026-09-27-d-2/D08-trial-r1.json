@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這份同意書改寫成給病人看的口語說明信，並且原文中的醫材品名、自費金額、健保給付上限、病人簽署期限都要一字不改。\n\n自費醫材同意書\n\n醫材品名：人工關節墊片A型\n自費金額：新台幣 18,500 元\n健保給付上限：新台幣 12,000 元\n病人簽署期限：113年10月15日前\n\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一封繁體中文的說明信，而不是條列摘要、逐句翻譯或公文格式。"
+    },
+    {
+      "text": "輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。"
+    },
+    {
+      "text": "原文中的醫材品名必須逐字保留，不得改寫、替換或簡化。"
+    },
+    {
+      "text": "原文中的自費金額必須逐字保留，不得改動數字、幣別或小數格式。"
+    },
+    {
+      "text": "原文中的健保給付上限必須逐字保留，不得改動數字、單位或說法。"
+    },
+    {
+      "text": "原文中的病人簽署期限必須逐字保留，不得改動日期、天數或期限表述。"
+    },
+    {
+      "text": "輸出不得加入原文未提及的費用、風險、療效保證或法律效果。"
+    }
+  ],
+  "final_output": "親愛的病人您好：\n\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\n\n醫材品名：人工關節墊片A型  \n自費金額：新台幣 18,500 元  \n健保給付上限：新台幣 12,000 元  \n病人簽署期限：113年10月15日前\n\n本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5549ee37-e1b5-46d8-b6be-d5f3cfa62f35",
+    "run_id": "9c560d5a-ffa9-4679-bbc1-b84188d2ea47",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出成功以說明信形式保留了所有指定的關鍵資訊，且未新增禁止類型的內容。不過，核心說明仍大致沿用原同意書的正式措辭，未充分以口語方式解釋醫材用途或重點。",
+    "criterion_results": [
+      {
+        "criterion_id": "825de09e-d385-4770-a53f-74382d9e32dc",
+        "text": "輸出是一封繁體中文的說明信，而不是條列摘要、逐句翻譯或公文格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以稱呼、說明段落與信件語氣呈現，屬於繁體中文的說明信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的病人您好：\n\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "24f0472e-66ce-4696-9915-a264d30d71fb",
+        "text": "輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖有信件開頭，但內文未以口語說明該醫材的用途或重點，主要仍沿用原本較正式的同意書語句，對病人不夠容易理解。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2c991ec3-35ea-4e59-9e1f-ea290b8dbf99",
+        "text": "原文中的醫材品名必須逐字保留，不得改寫、替換或簡化。",
+        "result": "passed",
+        "source": "model",
+        "reason": "醫材品名與原文逐字一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "醫材品名：人工關節墊片A型  ",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8f0cc322-48b6-4a86-88b1-555023acdc19",
+        "text": "原文中的自費金額必須逐字保留，不得改動數字、幣別或小數格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "自費金額與原文逐字一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "自費金額：新台幣 18,500 元  ",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "44e453d1-eff2-4a71-b585-3d0e4a7fdb60",
+        "text": "原文中的健保給付上限必須逐字保留，不得改動數字、單位或說法。",
+        "result": "passed",
+        "source": "model",
+        "reason": "健保給付上限與原文逐字一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健保給付上限：新台幣 12,000 元  ",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e4ec517-1d3c-4cc6-82dc-c457b0d993a7",
+        "text": "原文中的病人簽署期限必須逐字保留，不得改動日期、天數或期限表述。",
+        "result": "passed",
+        "source": "model",
+        "reason": "病人簽署期限與原文逐字一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "病人簽署期限：113年10月15日前",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b9df534-9105-488f-86df-c25151c23fd1",
+        "text": "輸出不得加入原文未提及的費用、風險、療效保證或法律效果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅加入信件式的引言，未加入原文未提及的費用、風險、療效保證或法律效果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3224 input and 920 output tokens on gpt-5.4-mini; reported cost $0.0096 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

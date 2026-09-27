@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這段自費醫材同意書改寫成給病人看的說明信，並且醫材品名、自費金額、健保給付上限、病人簽署期限都要一字不改：\n\n本院告知您，將使用醫材「心臟封堵器 ABC-200」，其自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。此項醫材之適應症、風險與替代方案業已說明，敬請審慎評估後簽認。\n\n如果你同意，我就用這個 brief 繼續整理成正式的 Skill。",
+  "acceptance_criteria": [
+    {
+      "text": "轉寫後的信件保留輸入中的醫材品名，字形與順序完全相同。"
+    },
+    {
+      "text": "轉寫後的信件保留輸入中的自費金額，數字、幣別符號與格式完全相同。"
+    },
+    {
+      "text": "轉寫後的信件保留輸入中的健保給付上限，數字與相關標示完全相同。"
+    },
+    {
+      "text": "轉寫後的信件保留輸入中的病人簽署期限，日期或期限文字完全相同。"
+    },
+    {
+      "text": "轉寫後的語氣比原文更口語、較容易理解，不保留明顯公文腔。"
+    },
+    {
+      "text": "除上述必須逐字保留的項目外，可重新組織句子，但不得改變原意。"
+    }
+  ],
+  "final_output": "親愛的病人您好：\n\n我們想向您說明，醫師評估後，將使用醫材「心臟封堵器 ABC-200」。這項醫材的自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。\n\n關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。\n\n若您還有任何疑問，歡迎再向我們提出。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5b6d8451-c289-40ec-85ac-e81b354c4db7",
+    "run_id": "e5f47d90-ec27-4c11-912a-b77a63336b92",
+    "status": "completed",
+    "overall": "met",
+    "summary": "信件完成病人導向的改寫，並逐字保留醫材品名、自費金額、健保給付上限與簽署期限。內容以較口語、易理解的方式維持原告知與審慎簽認的意思。",
+    "criterion_results": [
+      {
+        "criterion_id": "30224501-54a1-4840-b002-293372b21c6c",
+        "text": "轉寫後的信件保留輸入中的醫材品名，字形與順序完全相同。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件完整保留醫材品名，字形與順序一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "將使用醫材「心臟封堵器 ABC-200」",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "959f8c96-b039-4ec4-9958-fc975b97d683",
+        "text": "轉寫後的信件保留輸入中的自費金額，數字、幣別符號與格式完全相同。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件保留自費金額「新臺幣 48,000 元」，數字、幣別與格式一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這項醫材的自費金額為新臺幣 48,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9dd60844-439e-419d-8175-87c1aea6398e",
+        "text": "轉寫後的信件保留輸入中的健保給付上限，數字與相關標示完全相同。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件保留健保給付上限及其金額標示，內容一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "健保給付上限為新臺幣 12,500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "30fb72bd-2d52-47e3-bd2d-02b04a9bc367",
+        "text": "轉寫後的信件保留輸入中的病人簽署期限，日期或期限文字完全相同。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件保留簽署期限文字與日期，完全一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請於 2026/10/05 前完成簽署。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c98decb-4ca4-4d43-a161-15312d1ae328",
+        "text": "轉寫後的語氣比原文更口語、較容易理解，不保留明顯公文腔。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件採用直接稱呼、白話說明與提問邀請，較原本正式告知文字口語易懂。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的病人您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "若您還有任何疑問，歡迎再向我們提出。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2dea9f34-3ee2-4d14-ab6d-096e4a1c8de4",
+        "text": "除上述必須逐字保留的項目外，可重新組織句子，但不得改變原意。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件保留將使用醫材、費用與給付上限、簽署期限，以及已說明適應症、風險與替代方案並請病人審慎決定簽認的原意。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3165 input and 968 output tokens on gpt-5.4-mini; reported cost $0.0098 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

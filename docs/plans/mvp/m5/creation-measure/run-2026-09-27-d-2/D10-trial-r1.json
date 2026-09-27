@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下三堂社團課簽到並計算學期累計出席率。\n\n第 1 堂（2026-03-03）\n學生：小明、子涵、阿德、雅婷\n簽到：小明出席、子涵出席、阿德缺席、雅婷出席\n\n第 2 堂（2026-03-10）\n學生：小明、子涵、阿德、雅婷\n簽到：小明出席、子涵缺席、阿德出席、雅婷出席\n\n第 3 堂（2026-03-17）\n學生：小明、子涵、阿德、雅婷\n簽到：小明缺席、子涵出席、阿德出席、雅婷出席",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段包含 3 堂課、4 位學生的簽到紀錄時，Skill 能整理出每堂課的出席名單。"
+    },
+    {
+      "text": "在相同輸入下，Skill 能正確統計每位學生的出席次數、缺席次數與出席率。"
+    },
+    {
+      "text": "出席率的計算方式明確使用「出席次數 ÷ 應出席課次」，且結果可用百分比表示。"
+    },
+    {
+      "text": "若某學生三堂課中出席 2 次，輸出中的出席率應為 66.7%（或等值小數格式）。"
+    },
+    {
+      "text": "若某學生三堂課中全勤，輸出中的出席率應為 100%。"
+    },
+    {
+      "text": "輸出格式應可直接閱讀，且包含每位學生的統計結果，不遺漏任何名單中的學生。"
+    }
+  ],
+  "final_output": "以下為三堂社團課簽到整理與學期累計出席率：\n\n## 一、每堂課出席名單\n\n### 第 1 堂（2026-03-03）\n- **出席學生**：小明、子涵、雅婷\n- **缺席學生**：阿德\n\n### 第 2 堂（2026-03-10）\n- **出席學生**：小明、阿德、雅婷\n- **缺席學生**：子涵\n\n### 第 3 堂（2026-03-17）\n- **出席學生**：子涵、阿德、雅婷\n- **缺席學生**：小明\n\n---\n\n## 二、學期總表\n\n| 學生姓名 | 出席次數 | 缺席次數 | 應出席課次 | 出席率 |\n|---|---:|---:|---:|---:|\n| 小明 | 2 | 1 | 3 | 66.7% |\n| 子涵 | 2 | 1 | 3 | 66.7% |\n| 阿德 | 2 | 1 | 3 | 66.7% |\n| 雅婷 | 3 | 0 | 3 | 100.0% |\n\n---\n\n## 三、提醒\n- 本次資料完整，未發現缺漏或未提供的簽到狀態。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "55823468-3b9c-486c-bf3f-c847a6e548cd",
+    "run_id": "d6e2cdff-f843-404a-9e87-91d7f271cc1e",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "簽到名單與各學生統計均正確、完整且易讀，66.7% 與 100% 的結果也符合資料。唯一未符合之處是沒有明確文字說明出席率的計算公式為「出席次數 ÷ 應出席課次」。",
+    "criterion_results": [
+      {
+        "criterion_id": "f2b15762-a9e8-4d43-aa1d-6f683d4e5efb",
+        "text": "在輸入一段包含 3 堂課、4 位學生的簽到紀錄時，Skill 能整理出每堂課的出席名單。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐堂列出三堂課的出席學生與缺席學生，且名單與原始簽到紀錄一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 第 1 堂（2026-03-03）\n- **出席學生**：小明、子涵、雅婷\n- **缺席學生**：阿德\n\n### 第 2 堂（2026-03-10）\n- **出席學生**：小明、阿德、雅婷\n- **缺席學生**：子涵\n\n### 第 3 堂（2026-03-17）\n- **出席學生**：子涵、阿德、雅婷\n- **缺席學生**：小明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "50ab6674-b0db-4bbc-8d0c-9c9eef943367",
+        "text": "在相同輸入下，Skill 能正確統計每位學生的出席次數、缺席次數與出席率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "總表正確列出四位學生各自的出席次數、缺席次數與出席率：前三位均為 2 次出席、1 次缺席、66.7%，雅婷為 3 次出席、0 次缺席、100.0%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小明 | 2 | 1 | 3 | 66.7% |\n| 子涵 | 2 | 1 | 3 | 66.7% |\n| 阿德 | 2 | 1 | 3 | 66.7% |\n| 雅婷 | 3 | 0 | 3 | 100.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96922e81-04ba-4170-ba8c-5c1375ec6db5",
+        "text": "出席率的計算方式明確使用「出席次數 ÷ 應出席課次」，且結果可用百分比表示。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然表格同時提供出席次數、應出席課次與百分比結果，但輸出未明確寫出出席率以「出席次數 ÷ 應出席課次」計算的方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學生姓名 | 出席次數 | 缺席次數 | 應出席課次 | 出席率 |\n|---|---:|---:|---:|---:|\n| 小明 | 2 | 1 | 3 | 66.7% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2da85291-34f4-417e-8d1e-b350daaa40eb",
+        "text": "若某學生三堂課中出席 2 次，輸出中的出席率應為 66.7%（或等值小數格式）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三堂中出席 2 次的學生皆顯示為 66.7%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小明 | 2 | 1 | 3 | 66.7% |\n| 子涵 | 2 | 1 | 3 | 66.7% |\n| 阿德 | 2 | 1 | 3 | 66.7% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da02dc55-6ee5-4a36-8949-c05556d19715",
+        "text": "若某學生三堂課中全勤，輸出中的出席率應為 100%。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全勤的雅婷顯示為 3 次出席、0 次缺席，出席率為 100.0%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雅婷 | 3 | 0 | 3 | 100.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bfd9d6ee-a48c-4418-ac40-eb35dc431bbb",
+        "text": "輸出格式應可直接閱讀，且包含每位學生的統計結果，不遺漏任何名單中的學生。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以逐堂名單及結構化總表呈現，並納入小明、子涵、阿德、雅婷全部四位學生的統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學生姓名 | 出席次數 | 缺席次數 | 應出席課次 | 出席率 |\n|---|---:|---:|---:|---:|\n| 小明 | 2 | 1 | 3 | 66.7% |\n| 子涵 | 2 | 1 | 3 | 66.7% |\n| 阿德 | 2 | 1 | 3 | 66.7% |\n| 雅婷 | 3 | 0 | 3 | 100.0% |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19265 input and 631 output tokens on gpt-5.4-mini; reported cost $0.0192 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

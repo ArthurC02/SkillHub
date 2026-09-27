@@ -1,0 +1,68 @@
+{
+  "acceptance_criteria": [
+    "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+    "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。",
+    "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。",
+    "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。",
+    "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。"
+  ],
+  "brief": "建立一個 Skill，用來從活動洽詢訊息的單段文字中擷取並整理結構化資料，輸出固定欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我想要一個從活動洽詢訊息裡擷取重要資料的 Skill：從客戶傳來的一段文字裡，整理出聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好這幾個欄位。",
+      "created_at": "2026-09-27T10:21:19.80331465Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先幫你整理成一份可確認的 brief。若你要，我可以直接用這個方向往下做。",
+      "created_at": "2026-09-27T10:21:22.859722804Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是可直接交付的 Skill 草稿。已依確認的需求，將活動洽詢文字中的指定欄位擷取為結構化結果，並在 body 中寫入執行規則與缺值處理。",
+      "created_at": "2026-09-27T10:21:26.999781603Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T10:21:27.002075092Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已通過靜態驗證，且目前沒有新的試跑評估需要修正。以下維持原 draft；你可以直接接受這版，或告訴我想改成更偏表格輸出、JSON 輸出，或調整缺值規則。",
+      "created_at": "2026-09-27T10:21:30.905200854Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"ccddd78a-0e0b-44c2-9176-ffcd5951f6c3\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"本次輸出完整且正確地將提供的六項活動資訊整理為結構化欄位。缺值處理與同欄位多種不一致格式的辨識能力，因測試輸入未涵蓋相關情境，無法判定。\",\"criterion_results\":[{\"criterion_id\":\"5f0702ef-695f-4ea2-b76e-e2ede61681eb\",\"text\":\"當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"本次原文中的六個指定欄位皆有明確資訊，沒有缺漏欄位可用以驗證缺值時是否會輸出空值或未提供。\"},{\"criterion_id\":\"57c84bf4-802d-4d91-bf73-1c59f6957979\",\"text\":\"同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"本次僅提供一種電話、日期、金額及人數格式，沒有格式不一致的多種表達可驗證其辨識能力。\"},{\"criterion_id\":\"362d2502-1b6f-46e2-b0ab-9991e875ec87\",\"text\":\"輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":92},\"excerpt\":\"- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"最終輸出包含指定的六個欄位。\"},{\"criterion_id\":\"bf9cde24-1056-4154-afa0-78dd11085a92\",\"text\":\"當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":92},\"excerpt\":\"- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"各項原文資訊均正確填入對應欄位，姓名、電話、日期、人數、預算與場地偏好未混淆。\"},{\"criterion_id\":\"fab549e2-ee99-4b5d-9c89-9349fb834858\",\"text\":\"輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":92},\"excerpt\":\"- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以具名欄位和值的清單呈現，可直接作為結構化表單資料使用。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"de249647-5d4e-42ef-a26b-5178ccdf5213\",\"occurred_at\":\"2026-09-27T10:21:48.206Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"activity-inquiry-field-extractor\\\", \\\"skill_version_id\\\": \\\"af6345c8-372c-4d49-a6f2-5040fcad7be4\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3091 input and 342 output tokens on gpt-5.4-mini; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"bb575ebd-ae4b-4316-83ae-c5761d831c03\",\"skill_version_id\":\"af6345c8-372c-4d49-a6f2-5040fcad7be4\"}",
+      "created_at": "2026-09-27T10:22:05.298095663Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。」：尚無法判定——本次原文中的六個指定欄位皆有明確資訊，沒有缺漏欄位可用以驗證缺值時是否會輸出空值或未提供。\n- 「同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。」：尚無法判定——本次僅提供一種電話、日期、金額及人數格式，沒有格式不一致的多種表達可驗證其辨識能力。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T10:22:05.298163066Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T10:22:05.306492246Z"
+    },
+    {
+      "role": "assistant",
+      "content": "本次兩個未驗證條件已補進範例輸入，草稿本體不改需求，只修正 sample_input 讓同一次試跑同時覆蓋「缺值」與「格式不一致」兩種情境。你可以先確認這版，之後再跑一次試驗；如果你要，我也可以再調整樣本的實際措辭，但目前我先依你的要求保留條件本身不變。\n\n這次我改了什麼：\n- 在原本完整活動洽詢後，新增一筆資訊不完整的洽詢，讓試跑可驗證缺值時是否輸出「未提供」。\n- 再新增一筆含不同格式的電話、日期、人數與金額表達，讓試跑可驗證格式不一致時是否仍能辨識到對應欄位。\n- acceptance_criteria 保持不變，因為你要求條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T10:22:10.638286676Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已依這次驗證結果修草稿，重點是把同一版 sample_input 擴充到可同時測到兩個未驗證條件：缺值與格式不一致；brief、acceptance_criteria 與輸出欄位維持不變。因為你要求「條件本身不要改寫或刪掉」，我沒有動 acceptance_criteria，只調整了範例輸入與 body 內對缺值與格式辨識的說明，讓下一次試跑能直接覆蓋這兩類情境。",
+      "created_at": "2026-09-27T10:22:14.996369014Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T10:22:14.998081871Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

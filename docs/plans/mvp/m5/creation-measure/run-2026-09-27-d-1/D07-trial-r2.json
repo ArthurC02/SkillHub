@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請整理以下藥品資料，篩出從今天起算 30 天內（含第 30 天）會過期的項目並列成表格：\n\n今天：2026-09-27\n\n1. 品名：Amoxicillin 500mg\n   批號：A240901\n   效期：2026-10-05\n   庫存數量：120\n2. 品名：Metformin 850mg\n   批號：M240801\n   效期：2026-10-27\n   庫存數量：80\n3. 品名：Atorvastatin 20mg\n   批號：A240701\n   效期：2026-10-28\n   庫存數量：50\n4. 品名：Omeprazole 20mg\n   批號：O240601\n   效期：2026-09-26\n   庫存數量：30\n5. 品名：Cetirizine 10mg\n   批號：C240901\n   效期：2026-11-15\n   庫存數量：60",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。"
+    },
+    {
+      "text": "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。"
+    },
+    {
+      "text": "效期剛好是今天起算第 30 天的藥品，必須被列入結果。"
+    },
+    {
+      "text": "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。"
+    },
+    {
+      "text": "效期晚於今天起算第 30 天的藥品，不得出現在結果中。"
+    },
+    {
+      "text": "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。"
+    }
+  ],
+  "final_output": "以 **2026-09-27** 為今天計算：\n\n| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |\n|---|---|---:|---:|---:|---|\n| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |\n\n以上 3 筆屬於 30 天內到期或已過期，請優先使用或退回；其中 Omeprazole 20mg 已過期，需立即處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6ee484a5-3fc6-41b0-ae51-42f32e10eb2b",
+    "run_id": "eee03119-07a2-4abf-b887-6197faa40c10",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件皆符合：輸出提供完整欄位，納入第 30 天與已過期品項，排除逾 30 天效期品項，並提供明確處理提醒。",
+    "criterion_results": [
+      {
+        "criterion_id": "f1c4ccf4-befc-4746-9e4f-65ebe0b5f45c",
+        "text": "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出表格僅列出 30 天內到期的 Amoxicillin、Metformin，以及已過期的 Omeprazole，未列出效期超過 30 天的品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "211b7f5d-1a65-4b8d-845c-7c1d28f87564",
+        "text": "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格欄位包含品名、批號、效期、庫存數量、距今天剩餘天數及提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品名 | 批號 | 效期 | 庫存數量 | 距今天剩餘天數 | 提醒 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebc0e16a-c12d-4b19-a39d-5879ae8f0d7f",
+        "text": "效期剛好是今天起算第 30 天的藥品，必須被列入結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "效期為今天起算第 30 天的 Metformin 850mg 已列入表格，並標示剩餘 30 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aa9d200d-1cae-47f6-8756-ac0f83814fbd",
+        "text": "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。",
+        "result": "passed",
+        "source": "model",
+        "reason": "早於今天的 Omeprazole 20mg 被列入，且標示為已過期／立即處理。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "010399fd-dda4-451c-aa89-c93c706b97d7",
+        "text": "效期晚於今天起算第 30 天的藥品，不得出現在結果中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果表格未出現效期為 2026-10-28 與 2026-11-15、均晚於第 30 天的品項；表中最晚的未過期效期為第 30 天的 2026-10-27。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e655860a-bbfa-468a-b645-dbd237b7e7d7",
+        "text": "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。",
+        "result": "passed",
+        "source": "model",
+        "reason": "符合條件的未過期近效期品項標示「優先使用或退回」，已過期品項標示「已過期／立即處理」，均為明確提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 | 優先使用或退回 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 | 優先使用或退回 |\n| Omeprazole 20mg | O240601 | 2026-09-26 | 30 | -1 天 | 已過期／立即處理 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3827 input and 828 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

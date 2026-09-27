@@ -1,0 +1,161 @@
+{
+  "request": {
+    "RunID": "ff6f877a-de23-427f-8156-39d2dbf7fad5",
+    "EvaluationID": "6f541ae1-619e-4210-86e2-6dadd11853b0",
+    "Skill": {
+      "Name": "daily-restaurant-settlement",
+      "Summary": "每日餐廳營業額結算 Skill：用於每天打烊後登入 POS 後台、核對當日營業額與現金/信用卡明細，並在晚上 10 點準備可發送到老闆 LINE 群組的結算訊息。"
+    },
+    "UserPrompt": "請幫我結算今天的餐廳營業額並整理成要發到 LINE 群組的訊息：\n\n日期：2026-09-27\nPOS 營業額：128,500\n現金明細：52,300\n信用卡明細：76,200\n\n請按「POS 營業額 = 現金 + 信用卡」檢查是否兜起來，並輸出結算結果。",
+    "Criteria": [
+      {
+        "ID": "7cf2c02c-5fa2-4f2a-a7ad-6047439c6fef",
+        "Text": "在一個包含單日 POS 營業額、現金明細與信用卡明細的試跑資料中，Skill 會輸出當日結算結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a6f69e4a-d9e6-4424-971d-eb1e8fb9a3f2",
+        "Text": "輸出會明確指出營業額數字、現金金額、信用卡金額，以及三者是否兜得起來。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4aa04446-54cc-4c8a-8610-e7d83bd383dc",
+        "Text": "當現金加信用卡總和等於營業額時，輸出會標示為一致或對帳成功。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c7e319fb-293a-429f-ba7c-f895ad001e62",
+        "Text": "當現金加信用卡總和不等於營業額時，輸出會標示差額，且清楚指出不一致。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3e0f6d4d-86d8-4954-bd39-a2516c160e56",
+        "Text": "輸出會包含可直接傳送到 LINE 群組的結算訊息內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d6300b36-8450-4580-aca4-4dc5f3634626",
+        "Text": "若以排程方式實作，Skill 會描述或產生每天晚上 10 點送出的行為。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下是今天的結算結果：\n\n**結算結果**\n- 日期：2026-09-27\n- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0\n\n**可直接貼到 LINE 群組的訊息**\n\u003e 【2026-09-27 餐廳營業額結算】  \n\u003e POS 營業額：128,500  \n\u003e 現金：52,300  \n\u003e 信用卡：76,200  \n\u003e 合計：128,500  \n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \n\u003e 差額：0\n\n如果你要，我也可以幫你再整理成「更像老闆群組口吻」或「更正式的版本」。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0b5d9f6a-1592-4ffd-b14b-7ef1bd1aefef",
+          "OccurredAt": "2026-09-27T10:31:22.186Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"daily-restaurant-settlement\", \"skill_version_id\": \"4ca9eb94-a171-4946-b8ac-79632cbb14fe\"}"
+        },
+        {
+          "TraceEventID": "1609fc68-e1f1-4bd0-8432-cacf153654c7",
+          "OccurredAt": "2026-09-27T10:31:22.196Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"daily-restaurant-settlement\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_wL8H7YUeHCM2yhD5zCzhC0hi\", \"result_summary\": \"Launching skill: daily-restaurant-settlement\"}"
+        },
+        {
+          "TraceEventID": "0b8b2c54-4831-4fc4-9eda-1e17e20dc105",
+          "OccurredAt": "2026-09-27T10:31:26.589Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下是今天的結算結果：\\n\\n**結算結果**\\n- 日期：2026-09-27\\n- POS 營業額：128,500\\n- 現金明細：52,300\\n- 信用卡明細：76,200\\n- 現金 + 信用卡合計：128,500\\n- 對帳結果：**成功，兜得起來**\\n- 差額：0\\n\\n**可直接貼到 LINE 群組的訊息**\\n\u003e 【2026-09-27 餐廳營業額結算】  \\n\u003e POS 營業額：128,500  \\n\u003e 現金：52,300  \\n\u003e 信用卡：76,200  \\n\u003e 合計：128,500  \\n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \\n\u003e 差額：0\\n\\n如果你要，我也可以幫你再整理成「更像老闆群組口吻」或「更正式的版本」。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2dea4f18-927a-4e39-8300-7d4b6906d3b1",
+          "OccurredAt": "2026-09-27T10:31:26.716Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下是今天的結算結果：\\n\\n**結算結果**\\n- 日期：2026-09-27\\n- POS 營業額：128,500\\n- 現金明細：52,300\\n- 信用卡明細：76,200\\n- 現金 + 信用卡合計：128,500\\n- 對帳結果：**成功，兜得起來**\\n- 差額：0\\n\\n**可直接貼到 LINE 群組的訊息**\\n\u003e 【2026-09-27 餐廳營業額結算】  \\n\u003e POS 營業額：128,500  \\n\u003e 現金：52,300  \\n\u003e 信用卡：76,200  \\n\u003e 合計：128,500  \\n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \\n\u003e 差額：0\\n\\n如果你要，我也可以幫你再整理成「更像老闆群組口吻」或「更正式的版本」。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1bcfbb7d-a811-4c79-89fe-242d3296d2e6",
+          "OccurredAt": "2026-09-27T10:31:30.797Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00363015, \"cost_source\": \"gateway\", \"duration_ms\": 10483, \"input_tokens\": 3103, \"token_source\": \"result\", \"output_tokens\": 460, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "7cf2c02c-5fa2-4f2a-a7ad-6047439c6fef",
+        "Result": "passed",
+        "Reason": "試跑輸出提供了指定日期的完整當日結算結果。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "以下是今天的結算結果：\n\n**結算結果**\n- 日期：2026-09-27\n- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a6f69e4a-d9e6-4424-971d-eb1e8fb9a3f2",
+        "Result": "passed",
+        "Reason": "輸出明確列出營業額、現金、信用卡、合計、對帳結果與差額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4aa04446-54cc-4c8a-8610-e7d83bd383dc",
+        "Result": "passed",
+        "Reason": "現金與信用卡合計為 128,500，等於 POS 營業額，且輸出標示對帳成功與兜得起來。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c7e319fb-293a-429f-ba7c-f895ad001e62",
+        "Result": "undetermined",
+        "Reason": "本次試跑資料為對帳一致，未提供現金加信用卡不等於營業額時的輸出，無法判斷是否會標示差額並明確指出不一致。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "3e0f6d4d-86d8-4954-bd39-a2516c160e56",
+        "Result": "passed",
+        "Reason": "輸出包含標示為可直接貼到 LINE 群組的完整結算訊息。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**可直接貼到 LINE 群組的訊息**\n\u003e 【2026-09-27 餐廳營業額結算】  \n\u003e POS 營業額：128,500  \n\u003e 現金：52,300  \n\u003e 信用卡：76,200  \n\u003e 合計：128,500  \n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \n\u003e 差額：0"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d6300b36-8450-4580-aca4-4dc5f3634626",
+        "Result": "undetermined",
+        "Reason": "本次證據未顯示有以排程方式實作，也未呈現每天晚上 10 點送出的行為；無法判斷條件式排程需求是否已實作。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次試跑正確完成一致情況下的營業額結算，明列金額、對帳成功與可直接傳送的 LINE 訊息。未測得不一致時的差額與不一致標示，且沒有排程晚上 10 點送出的實作證據。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2969,
+      "CompletionTokens": 1206,
+      "CostUSD": 0.0193584,
+      "CostReported": true
+    }
+  }
+}

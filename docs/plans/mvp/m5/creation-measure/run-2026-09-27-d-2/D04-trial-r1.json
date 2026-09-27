@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料排出下週一到週六的診所櫃台值班表：\n小雅特休：週二、週四\n阿ken特休：週一、週三\nIvy特休：週五\n目前班表格式：星期｜值班人員\n原則：每一天至少 1 人值班，週日公休。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含三人的特休日期與可排班資訊時，Skill 會輸出下週一到週六共 6 天的值班表。"
+    },
+    {
+      "text": "輸出中的每一天只會安排在沒有被特休排除的人員之中。"
+    },
+    {
+      "text": "若某一天可排班人員不足，Skill 會明確指出該日無法完成完整排班，而不是編造人選。"
+    },
+    {
+      "text": "若輸入提供既有班表格式，Skill 會沿用同樣的欄位順序或表格結構輸出。"
+    },
+    {
+      "text": "輸出會明確區分下週一到週六，不會包含週日。"
+    }
+  ],
+  "final_output": "以下為下週一到週六的診所櫃台值班表（週日公休）：\n\n| 星期 | 值班人員 |\n| --- | --- |\n| 週一 | Ivy |\n| 週二 | 阿ken |\n| 週三 | 小雅 |\n| 週四 | Ivy |\n| 週五 | 阿ken |\n| 週六 | 小雅 |\n\n共 6 天，每天 1 人值班。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f72d4567-98af-47e7-8ee1-9bfcb32ff730",
+    "run_id": "8d73b83f-abcb-4098-964e-4ea5750cd26d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "值班表完整涵蓋下週一至週六，每日均安排一名未在該日特休的人員，並維持「星期｜值班人員」的欄位順序。週日未被排入表中且明確註明公休。",
+    "criterion_results": [
+      {
+        "criterion_id": "bac58036-0a26-43c4-833a-4209a56a6dcf",
+        "text": "當輸入包含三人的特休日期與可排班資訊時，Skill 會輸出下週一到週六共 6 天的值班表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出週一至週六共 6 天的值班安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | Ivy |\n| 週二 | 阿ken |\n| 週三 | 小雅 |\n| 週四 | Ivy |\n| 週五 | 阿ken |\n| 週六 | 小雅 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "共 6 天，每天 1 人值班。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ae0e41e2-28c5-4101-be05-0bac8cc65c58",
+        "text": "輸出中的每一天只會安排在沒有被特休排除的人員之中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各日安排的人員均非該人員所列的特休日：小雅未排週二、週四；阿ken未排週一、週三；Ivy未排週五。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | Ivy |\n| 週二 | 阿ken |\n| 週三 | 小雅 |\n| 週四 | Ivy |\n| 週五 | 阿ken |\n| 週六 | 小雅 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5edc488-e9e6-4655-96c4-f3b1c131d297",
+        "text": "若某一天可排班人員不足，Skill 會明確指出該日無法完成完整排班，而不是編造人選。",
+        "result": "passed",
+        "source": "model",
+        "reason": "所有日期皆已安排至少一位未特休的人員，沒有出現可排班人員不足的日期，因此不需要標示無法完成排班。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "共 6 天，每天 1 人值班。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "19e87bf1-7bde-49ad-bdac-990fc76df91b",
+        "text": "若輸入提供既有班表格式，Skill 會沿用同樣的欄位順序或表格結構輸出。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出採用表格，欄位順序為「星期」後接「值班人員」，與提供格式一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 星期 | 值班人員 |\n| --- | --- |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6785525a-a36a-46b4-ac22-0137f97cd4f7",
+        "text": "輸出會明確區分下週一到週六，不會包含週日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確標示下週一到週六，表格僅包含週一至週六，並註明週日公休。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為下週一到週六的診所櫃台值班表（週日公休）：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 週一 | Ivy |\n| 週二 | 阿ken |\n| 週三 | 小雅 |\n| 週四 | Ivy |\n| 週五 | 阿ken |\n| 週六 | 小雅 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19370 input and 700 output tokens on gpt-5.4-mini; reported cost $0.0195 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

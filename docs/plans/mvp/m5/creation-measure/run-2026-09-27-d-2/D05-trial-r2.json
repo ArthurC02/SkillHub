@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請依照規則寫出保險理賠結果通知信。\n理賠案號：CLM-2026-0148；核定金額：新台幣120,000元；核定日期：2026年9月18日；不服核定的申訴管道：可於客服專線0800-123-456申訴；申訴期限：自收受通知日起30日內。",
+  "acceptance_criteria": [
+    {
+      "text": "在提供完整五項資訊時，輸出是一封中文通知信，且一定包含理賠案號、核定金額、核定日期、申訴管道、申訴期限五項內容。"
+    },
+    {
+      "text": "每一項資訊都以獨立一句呈現，不會把兩項資訊合併在同一句。"
+    },
+    {
+      "text": "輸出中不會使用逗號或頓號把兩項資訊擠在同一句。"
+    },
+    {
+      "text": "整封信的句子數不超過 3 句。"
+    },
+    {
+      "text": "在一筆輸入同時給出五項資訊時，輸出能完整保留所有數值與日期內容，不遺漏任何一項。"
+    }
+  ],
+  "final_output": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f3e6d8de-4d19-4d22-a5ad-f7d894b79350",
+    "run_id": "9c2409c1-4246-417e-b2a1-6d069c49eddd",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知信以中文完整呈現五項必要資訊，且各項資訊獨立成句；但共使用五句，未符合整封信不超過三句的限制。",
+    "criterion_results": [
+      {
+        "criterion_id": "88181427-ef7e-4d4b-a7dd-4cd70cf825b5",
+        "text": "在提供完整五項資訊時，輸出是一封中文通知信，且一定包含理賠案號、核定金額、核定日期、申訴管道、申訴期限五項內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為中文通知內容，且包含理賠案號、核定金額、核定日期、申訴管道及申訴期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e235b0d6-a485-4291-97b0-45d2082d1d8e",
+        "text": "每一項資訊都以獨立一句呈現，不會把兩項資訊合併在同一句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五項必要資訊各自位於不同句子，未將兩項必要資訊合併為同一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99d832bd-47b9-4913-befd-c859088c56c4",
+        "text": "輸出中不會使用逗號或頓號把兩項資訊擠在同一句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "雖首句有逗號作為語句停頓，但沒有使用逗號或頓號將兩項必要資訊擠在同一句；各項資訊均以句號分開。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "41fdead8-124d-4f23-af18-012ca2cb35a0",
+        "text": "整封信的句子數不超過 3 句。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出以句號分為五句，超過不超過三句的限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ea1ee2b1-9f28-433f-ac49-dca458314fbe",
+        "text": "在一筆輸入同時給出五項資訊時，輸出能完整保留所有數值與日期內容，不遺漏任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出完整保留案號CLM-2026-0148、金額新台幣120,000元、日期2026年9月18日、專線0800-123-456及30日申訴期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "茲通知您，本次理賠案號為CLM-2026-0148。  \n核定金額為新台幣120,000元。  \n核定日期為2026年9月18日。  \n若不服核定，得於客服專線0800-123-456申訴。  \n申訴期限為自收受通知日起30日內。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3007 input and 514 output tokens on gpt-5.4-mini; reported cost $0.0076 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

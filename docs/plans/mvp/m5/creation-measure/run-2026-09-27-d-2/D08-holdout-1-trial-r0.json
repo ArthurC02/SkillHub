@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "以下是要給病人的自費醫材同意書公文草稿，請幫我改寫成比較口語、親切、病人容易看懂的說明信，但裡面的數字和名稱都要保留正確：\n\n『本院茲告知病患，本次門診手術擬使用之自費醫材品項為「人工水晶體(多焦點)」，其自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。病患應於門診手術當日起3個工作天內完成本同意書之簽署，逾期視同放棄使用該自費醫材之權利。』",
+  "acceptance_criteria": [
+    {
+      "text": "改寫後的信中必須完整保留醫材品名『人工水晶體(多焦點)』，不能省略或改名"
+    },
+    {
+      "text": "自費金額45,000元、健保給付上限12,000元這兩個數字必須完全正確且沒有被改動或算錯"
+    },
+    {
+      "text": "病人簽署期限『門診手術當日起3個工作天內』這個期限必須保留、不得改成別的天數"
+    },
+    {
+      "text": "整封信的語氣應該改寫得更口語化、親切，不能只是照抄原文公文語氣"
+    }
+  ],
+  "final_output": "親愛的病人您好：\n\n這次門診手術，醫師預計會使用的自費醫材是「人工水晶體(多焦點)」。簡單來說，這是這次手術中會用到的醫材，您需要知道的是，這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。\n\n如果您同意使用這項自費醫材，請務必於門診手術當日起3個工作天內完成本同意書之簽署；若超過期限，將視同放棄使用該自費醫材之權利。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fb8467e2-2b5c-4fff-bb06-16d749d519a3",
+    "run_id": "6052dab1-8d65-4671-9169-d1f2b488cee1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項關鍵資訊均正確保留：醫材名稱、自付差額、健保給付上限及簽署期限。信件也已改為較口語且親切、方便病人閱讀的說明方式。",
+    "criterion_results": [
+      {
+        "criterion_id": "48d89c03-f92b-4078-aa6b-9c7d89051145",
+        "text": "改寫後的信中必須完整保留醫材品名『人工水晶體(多焦點)』，不能省略或改名",
+        "result": "passed",
+        "source": "model",
+        "reason": "改寫信中完整保留醫材品名「人工水晶體(多焦點)」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這次門診手術，醫師預計會使用的自費醫材是「人工水晶體(多焦點)」。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8bae4a2b-3ba9-4573-88ab-5bf3161115b1",
+        "text": "自費金額45,000元、健保給付上限12,000元這兩個數字必須完全正確且沒有被改動或算錯",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中自付差額與健保給付上限分別正確保留為新臺幣45,000元整與新臺幣12,000元，未見變動或計算錯誤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b1768fc4-9a05-44c7-857f-2fa04150a890",
+        "text": "病人簽署期限『門診手術當日起3個工作天內』這個期限必須保留、不得改成別的天數",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中保留簽署期限為門診手術當日起3個工作天內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請務必於門診手術當日起3個工作天內完成本同意書之簽署",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "878a523d-fd80-4618-9838-d75734308b7a",
+        "text": "整封信的語氣應該改寫得更口語化、親切，不能只是照抄原文公文語氣",
+        "result": "passed",
+        "source": "model",
+        "reason": "信件使用「親愛的病人您好」、「簡單來說」等較親切、易懂的表達，並非照抄原公文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的病人您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "簡單來說，這是這次手術中會用到的醫材，您需要知道的是",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3281 input and 767 output tokens on gpt-5.4-mini; reported cost $0.0090 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

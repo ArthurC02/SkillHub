@@ -1,0 +1,89 @@
+{
+  "round": 0,
+  "sample_input": "本班揀貨員小陳今天揀貨150件，請計算他這一班的獎金金額。",
+  "acceptance_criteria": [
+    {
+      "text": "獎金金額應為150元"
+    },
+    {
+      "text": "不得因為接近下一階而套用每件2元或3元的費率"
+    }
+  ],
+  "final_output": "150元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fceea6c4-a315-4d1d-b650-d35aac786801",
+    "run_id": "fea5cac7-35ef-46f0-a73d-d57a0910ff4f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "獎金結果150元已正確回覆。由現有輸出無法確認計算過程是否未使用接近下一階的2元或3元費率。",
+    "criterion_results": [
+      {
+        "criterion_id": "388624ac-5921-4a8b-ae83-caebac6f1210",
+        "text": "獎金金額應為150元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確給出獎金為150元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e9101f3f-e379-4ecf-9e34-4a688f5927af",
+        "text": "不得因為接近下一階而套用每件2元或3元的費率",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆只提供最終金額，未說明計算方式或費率，因此無法判定是否曾因接近下一階而套用每件2元或3元費率。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19124 input and 201 output tokens on gpt-5.4-mini; reported cost $0.0170 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "request": {
+    "RunID": "682d67c7-f749-4156-854b-e191fc79fc39",
+    "EvaluationID": "c64cf745-d370-4735-8dee-f8aa580298eb",
+    "Skill": {
+      "Name": "refrigerated-food-receiving-acceptance",
+      "Summary": "判定冷藏食材到貨驗收結果，當需要依到貨溫度與效期距到貨日天數快速分成合格、警示或拒收退回時使用。"
+    },
+    "UserPrompt": "請判定以下冷藏食材到貨驗收結果：\n1. 牛奶，7°C，到貨後效期剩 3 天\n2. 豆腐，7°C，到貨後效期剩 2 天\n3. 優格，7.1°C，到貨後效期剩 10 天",
+    "Criteria": [
+      {
+        "ID": "02f5650e-2bee-46b6-91f9-c121cd1fb8f1",
+        "Text": "在輸入溫度 7°C、效期距到貨日 3 天時，輸出包含「合格」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a3e13387-1da2-4c5c-9ce8-47da0628b790",
+        "Text": "在輸入溫度 7°C、效期距到貨日 2 天時，輸出包含「警示」且包含「優先當天用完」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "92f7c3d4-8360-4d4d-ac10-a254dc3be606",
+        "Text": "在輸入溫度 7.1°C、效期距到貨日 10 天時，輸出包含「拒收退回」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6160e374-a6e7-4842-9882-0db2cb4b981a",
+        "Text": "在同一個輸入中同時包含以上三種案例時，系統能分別依規則給出三種不同結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c558e8b1-7cd8-497f-a326-0ddb6916603e",
+        "Text": "判定以溫度 7°C 為含等號邊界：7°C 屬於合格/警示分支，不屬於拒收退回分支。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "33665d71-91c7-447d-ac12-fe1312860b23",
+        "Text": "判定以效期 2 天為含等號邊界：2 天屬於警示分支，不屬於合格分支。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 牛奶：合格\n- 豆腐：警示，優先當天用完\n- 優格：拒收退回",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "25ec1062-ed24-4715-bbcd-c5b7ed88f041",
+          "OccurredAt": "2026-09-27T11:04:57.117Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"refrigerated-food-receiving-acceptance\", \"skill_version_id\": \"53378205-0680-426e-b962-603d849ce7cf\"}"
+        },
+        {
+          "TraceEventID": "017a416c-0f2b-4acf-8eb8-d3e17b6dea4a",
+          "OccurredAt": "2026-09-27T11:04:57.126Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"refrigerated-food-receiving-acceptance\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_b4GNsZhJ3o4Gy3XYeE3tyjmn\", \"result_summary\": \"Launching skill: refrigerated-food-receiving-acceptance\"}"
+        },
+        {
+          "TraceEventID": "d4672381-8b56-474c-ae01-e41a735bc733",
+          "OccurredAt": "2026-09-27T11:04:58.765Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 牛奶：合格\\n- 豆腐：警示，優先當天用完\\n- 優格：拒收退回\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "571919a0-2753-4572-bb3a-0c2fc7352b66",
+          "OccurredAt": "2026-09-27T11:04:59.048Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 牛奶：合格\\n- 豆腐：警示，優先當天用完\\n- 優格：拒收退回\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1b70d7de-b57f-442d-bf2b-bdc891e2b249",
+          "OccurredAt": "2026-09-27T11:05:03.113Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.006213149999999999, \"cost_source\": \"gateway\", \"duration_ms\": 7885, \"input_tokens\": 2895, \"token_source\": \"result\", \"output_tokens\": 238, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "02f5650e-2bee-46b6-91f9-c121cd1fb8f1",
+        "Result": "passed",
+        "Reason": "牛奶（7°C、效期剩3天）的結果包含「合格」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 牛奶：合格"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a3e13387-1da2-4c5c-9ce8-47da0628b790",
+        "Result": "passed",
+        "Reason": "豆腐（7°C、效期剩2天）的結果同時包含「警示」與「優先當天用完」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 豆腐：警示，優先當天用完"
+          }
+        ]
+      },
+      {
+        "CriterionID": "92f7c3d4-8360-4d4d-ac10-a254dc3be606",
+        "Result": "passed",
+        "Reason": "優格（7.1°C、效期剩10天）的結果包含「拒收退回」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 優格：拒收退回"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6160e374-a6e7-4842-9882-0db2cb4b981a",
+        "Result": "passed",
+        "Reason": "同一輸入的三項食材分別得到合格、警示與拒收退回三種不同結果。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 牛奶：合格\n- 豆腐：警示，優先當天用完\n- 優格：拒收退回"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c558e8b1-7cd8-497f-a326-0ddb6916603e",
+        "Result": "passed",
+        "Reason": "兩個溫度為7°C的案例分別被判為合格與警示，且未被判為拒收退回，顯示7°C採非拒收分支。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 牛奶：合格\n- 豆腐：警示，優先當天用完"
+          }
+        ]
+      },
+      {
+        "CriterionID": "33665d71-91c7-447d-ac12-fe1312860b23",
+        "Result": "passed",
+        "Reason": "效期恰為2天的豆腐被判為警示，而非合格。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 豆腐：警示，優先當天用完"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "最終輸出正確分別判定三項食材，並符合7°C與效期2天的含等號邊界要求。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2298,
+      "CompletionTokens": 665,
+      "CostUSD": 0.011188900000000002,
+      "CostReported": true
+    }
+  }
+}

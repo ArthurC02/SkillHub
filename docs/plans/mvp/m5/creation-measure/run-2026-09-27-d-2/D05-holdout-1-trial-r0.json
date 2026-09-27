@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我寫一封理賠結果通知信給客戶陳先生，理賠案號 CL-2026-04471，核定金額 82,000元，核定日期 2026年9月30日，申訴請洽客服專線 0800-123-456，申訴期限為收到通知後30天內。",
+  "acceptance_criteria": [
+    {
+      "text": "整封信不得超過3句話"
+    },
+    {
+      "text": "五項資訊(理賠案號、核定金額、核定日期、申訴管道、申訴期限)都必須出現在信中，不得為了壓句數而漏掉任何一項"
+    },
+    {
+      "text": "必須有一句話說明或註記為了符合3句話上限，已將多項資訊合併在同一句，交代這個取捨"
+    },
+    {
+      "text": "不得捏造案號、金額、日期、電話以外的新資訊"
+    }
+  ],
+  "final_output": "陳先生您好：\n您的理賠案號為 CL-2026-04471。\n本案核定金額為 82,000元。\n核定日期為 2026年9月30日。\n如對核定結果有申訴，請洽客服專線 0800-123-456。\n申訴期限為收到通知後30天內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4f3ecbca-6925-4f3d-9d5e-8a3722f7b2f1",
+    "run_id": "393b07b5-df1a-4424-b9e8-6508c7b11376",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知信完整列出五項必要資訊，且未捏造案號、金額、日期或電話。但正文有五句，超過3句話限制，也沒有交代為遵守3句上限而合併資訊的取捨。",
+    "criterion_results": [
+      {
+        "criterion_id": "94b79259-1210-4d3d-b5d3-e1a39e906e0c",
+        "text": "整封信不得超過3句話",
+        "result": "failed",
+        "source": "model",
+        "reason": "信中以句號結束的句子共有五句，超過3句話上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的理賠案號為 CL-2026-04471。\n本案核定金額為 82,000元。\n核定日期為 2026年9月30日。\n如對核定結果有申訴，請洽客服專線 0800-123-456。\n申訴期限為收到通知後30天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ab56fc1-be36-46bd-a4ff-bfbd3052b0d2",
+        "text": "五項資訊(理賠案號、核定金額、核定日期、申訴管道、申訴期限)都必須出現在信中，不得為了壓句數而漏掉任何一項",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中包含理賠案號、核定金額、核定日期、申訴客服專線及收到通知後30天的申訴期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的理賠案號為 CL-2026-04471。\n本案核定金額為 82,000元。\n核定日期為 2026年9月30日。\n如對核定結果有申訴，請洽客服專線 0800-123-456。\n申訴期限為收到通知後30天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7d8f1115-ac67-4672-9430-9ac6061a8509",
+        "text": "必須有一句話說明或註記為了符合3句話上限，已將多項資訊合併在同一句，交代這個取捨",
+        "result": "failed",
+        "source": "model",
+        "reason": "信中未出現說明為符合3句話上限而合併多項資訊的註記；反而將各項資訊分列為多句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本案核定金額為 82,000元。\n核定日期為 2026年9月30日。\n如對核定結果有申訴，請洽客服專線 0800-123-456。\n申訴期限為收到通知後30天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b97c012-b390-4a50-8e4f-4ee2441e4ba6",
+        "text": "不得捏造案號、金額、日期、電話以外的新資訊",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中使用的案號、金額、日期與電話均與提供資料一致，未見額外捏造的案件、金額、日期或電話資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的理賠案號為 CL-2026-04471。\n本案核定金額為 82,000元。\n核定日期為 2026年9月30日。\n如對核定結果有申訴，請洽客服專線 0800-123-456。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3049 input and 1879 output tokens on gpt-5.4-mini; reported cost $0.0137 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

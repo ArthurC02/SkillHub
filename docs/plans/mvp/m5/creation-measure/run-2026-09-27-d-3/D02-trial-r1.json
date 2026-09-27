@@ -1,0 +1,140 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下五位申請人的入倉資格並輸出級別與處置：\n1) 信用分數700，近一年逾期繳費0次，無毀損倉儲設施紀錄。\n2) 信用分數700，近一年逾期繳費1次，無毀損倉儲設施紀錄。\n3) 信用分數699，近一年逾期繳費0次，無毀損倉儲設施紀錄。\n4) 信用分數720，近一年逾期繳費0次，曾有毀損倉儲設施紀錄。\n5) 信用分數650，近一年逾期繳費3次，曾有毀損倉儲設施紀錄。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入信用分數 700、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級與「免押金」。"
+    },
+    {
+      "text": "當輸入信用分數 700、近一年逾期繳費 1 次、且無毀損紀錄時，輸出 B 級與「押金為 1 個月租金」。"
+    },
+    {
+      "text": "當輸入信用分數 699、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 C 級與「押金為 2 個月租金」及「需要連帶保證人」。"
+    },
+    {
+      "text": "當輸入信用分數 720、近一年逾期繳費 0 次、但曾有毀損倉儲設施紀錄時，輸出 D 級與「拒絕承租」。"
+    },
+    {
+      "text": "當輸入信用分數 650、近一年逾期繳費 3 次、且曾有毀損倉儲設施紀錄時，輸出 D 級與「拒絕承租」，且毀損紀錄優先於其他條件。"
+    }
+  ],
+  "final_output": "1) 級別：A；處置：免押金  \n2) 級別：B；處置：押金為 1 個月租金  \n3) 級別：C；處置：押金為 2 個月租金且需要連帶保證人  \n4) 級別：D；處置：拒絕承租  \n5) 級別：D；處置：拒絕承租",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6b165c79-42d5-4739-a0b1-95e267bc8f45",
+    "run_id": "c3f43d42-1ade-4772-9f87-7ae8e5eac187",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "前四項所要求的級別與處置皆在最終輸出中明確呈現。第五項的 D 級與拒絕承租有呈現，但缺乏可驗證毀損紀錄優先於其他條件的明示證據。",
+    "criterion_results": [
+      {
+        "criterion_id": "1b00a678-f60f-47bb-a2f4-be216492a527",
+        "text": "當輸入信用分數 700、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級與「免押金」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 位申請人的輸出為 A 級，處置為免押金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1) 級別：A；處置：免押金",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4b868f3-c159-4cc6-ae32-13754b705844",
+        "text": "當輸入信用分數 700、近一年逾期繳費 1 次、且無毀損紀錄時，輸出 B 級與「押金為 1 個月租金」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 位申請人的輸出為 B 級，處置為押金 1 個月租金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2) 級別：B；處置：押金為 1 個月租金",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "938a0114-06bd-4d20-a5a9-fa7ba4fd43af",
+        "text": "當輸入信用分數 699、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 C 級與「押金為 2 個月租金」及「需要連帶保證人」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 位申請人的輸出為 C 級，並同時要求押金 2 個月租金及連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3) 級別：C；處置：押金為 2 個月租金且需要連帶保證人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "efad9a66-5e9d-40a9-b455-af3263cb602f",
+        "text": "當輸入信用分數 720、近一年逾期繳費 0 次、但曾有毀損倉儲設施紀錄時，輸出 D 級與「拒絕承租」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 位申請人的輸出為 D 級，處置為拒絕承租。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4) 級別：D；處置：拒絕承租",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "82ec4df3-0705-4b09-97b3-bcf23b7c1845",
+        "text": "當輸入信用分數 650、近一年逾期繳費 3 次、且曾有毀損倉儲設施紀錄時，輸出 D 級與「拒絕承租」，且毀損紀錄優先於其他條件。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "第 5 位申請人的輸出為 D 級與拒絕承租，但輸出未明示毀損紀錄優先於其他條件，無法僅依結果確認此優先規則是否被採用。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19085 input and 318 output tokens on gpt-5.4-mini; reported cost $0.0176 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

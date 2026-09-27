@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下冷藏食材到貨驗收結果：\n1. 牛奶，7°C，到貨後效期剩 3 天\n2. 豆腐，7°C，到貨後效期剩 2 天\n3. 優格，7.1°C，到貨後效期剩 10 天",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入溫度 7°C、效期距到貨日 3 天時，輸出包含「合格」。"
+    },
+    {
+      "text": "在輸入溫度 7°C、效期距到貨日 2 天時，輸出包含「警示」且包含「優先當天用完」。"
+    },
+    {
+      "text": "在輸入溫度 7.1°C、效期距到貨日 10 天時，輸出包含「拒收退回」。"
+    },
+    {
+      "text": "在同一個輸入中同時包含以上三種案例時，系統能分別依規則給出三種不同結果。"
+    },
+    {
+      "text": "判定以溫度 7°C 為含等號邊界：7°C 屬於合格/警示分支，不屬於拒收退回分支。"
+    },
+    {
+      "text": "判定以效期 2 天為含等號邊界：2 天屬於警示分支，不屬於合格分支。"
+    }
+  ],
+  "final_output": "- 牛奶：合格\n- 豆腐：警示，優先當天用完\n- 優格：拒收退回",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c64cf745-d370-4735-8dee-f8aa580298eb",
+    "run_id": "682d67c7-f749-4156-854b-e191fc79fc39",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終輸出正確分別判定三項食材，並符合7°C與效期2天的含等號邊界要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "02f5650e-2bee-46b6-91f9-c121cd1fb8f1",
+        "text": "在輸入溫度 7°C、效期距到貨日 3 天時，輸出包含「合格」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "牛奶（7°C、效期剩3天）的結果包含「合格」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 牛奶：合格",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3e13387-1da2-4c5c-9ce8-47da0628b790",
+        "text": "在輸入溫度 7°C、效期距到貨日 2 天時，輸出包含「警示」且包含「優先當天用完」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "豆腐（7°C、效期剩2天）的結果同時包含「警示」與「優先當天用完」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 豆腐：警示，優先當天用完",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "92f7c3d4-8360-4d4d-ac10-a254dc3be606",
+        "text": "在輸入溫度 7.1°C、效期距到貨日 10 天時，輸出包含「拒收退回」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "優格（7.1°C、效期剩10天）的結果包含「拒收退回」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 優格：拒收退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6160e374-a6e7-4842-9882-0db2cb4b981a",
+        "text": "在同一個輸入中同時包含以上三種案例時，系統能分別依規則給出三種不同結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一輸入的三項食材分別得到合格、警示與拒收退回三種不同結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 牛奶：合格\n- 豆腐：警示，優先當天用完\n- 優格：拒收退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c558e8b1-7cd8-497f-a326-0ddb6916603e",
+        "text": "判定以溫度 7°C 為含等號邊界：7°C 屬於合格/警示分支，不屬於拒收退回分支。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個溫度為7°C的案例分別被判為合格與警示，且未被判為拒收退回，顯示7°C採非拒收分支。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 牛奶：合格\n- 豆腐：警示，優先當天用完",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "33665d71-91c7-447d-ac12-fe1312860b23",
+        "text": "判定以效期 2 天為含等號邊界：2 天屬於警示分支，不屬於合格分支。",
+        "result": "passed",
+        "source": "model",
+        "reason": "效期恰為2天的豆腐被判為警示，而非合格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 豆腐：警示，優先當天用完",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2895 input and 238 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

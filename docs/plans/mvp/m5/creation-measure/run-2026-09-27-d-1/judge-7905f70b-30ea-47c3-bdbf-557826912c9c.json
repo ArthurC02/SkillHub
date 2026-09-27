@@ -1,0 +1,139 @@
+{
+  "request": {
+    "RunID": "7905f70b-30ea-47c3-bdbf-557826912c9c",
+    "EvaluationID": "b7391bec-6bbe-477d-b443-a1e7c6d37a80",
+    "Skill": {
+      "Name": "activity-inquiry-field-extractor",
+      "Summary": "從活動洽詢訊息中擷取指定欄位並整理成結構化輸出；當你需要把客戶來訊快速轉成可用的表單資料時使用。"
+    },
+    "UserPrompt": "喔對了，之前忘記講，我們公司的尾牙大概會抓120人上下，其實上次跟另一個窗口講的100人不準，以這次為主。日期目前抓12月20日晚上，如果那天場地滿了就抓12月27日備案。預算的話老闆說上限抓一桌8000元那種(不是每人)，總共大概15桌，所以抓一個上限就好。我是這次的窗口，敝姓周，阿德，電話有兩支，公司電話是02-2345-6789轉201比較常有人接，我自己手機0933-222-111 call比較快。麻煩整理一下資料給我。",
+    "Criteria": [
+      {
+        "ID": "0f0790b4-4be9-438d-a60c-d9489646d906",
+        "Text": "活動日期應標示12月20日為主、12月27日為備用",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9ffe6e4d-0ad5-4eae-a503-d60b981413cb",
+        "Text": "預估人數應為120人，不得誤用先前提到但已作廢的100人",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e4faeea3-b482-4fd9-8fac-4e904c25ef0c",
+        "Text": "預算上限應反映每桌8000元、15桌、合計120,000元（或等值換算金額）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c7733941-65f0-47fe-a751-13b76e9dfc35",
+        "Text": "場地偏好欄位應註明未提及/資料不足，不得自行杜撰場地",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 聯絡人姓名：周阿德\n- 聯絡電話：公司電話 02-2345-6789 轉 201（較常有人接）；手機 0933-222-111（call 比較快）\n- 活動日期：12 月 20 日晚上（備案：12 月 27 日晚上）\n- 預估人數：約 120 人上下（上次提到的 100 人不準，以這次為主）\n- 預算上限：每桌上限 8,000 元；總共約 15 桌\n- 場地偏好：未提供",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "3ede708c-d942-4e1d-8a01-3a32163ca9dd",
+          "OccurredAt": "2026-09-27T10:22:59.668Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"activity-inquiry-field-extractor\", \"skill_version_id\": \"af6345c8-372c-4d49-a6f2-5040fcad7be4\"}"
+        },
+        {
+          "TraceEventID": "c44ad429-2795-448f-b5e3-ff21a296939a",
+          "OccurredAt": "2026-09-27T10:22:59.678Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請從這則活動洽詢訊息整理成結構化資料，保留所有明確資訊，並標示未確認/備案資訊：\\n- 人數：約120人上下；上次提到的100人不準，以這次為主\\n- 日期：12月20日晚上；若場地滿了，備案日期為12月27日晚上\\n- 預算：每桌上限8000元（不是每人），總共約15桌，抓一個上限即可\\n- 聯絡人：周阿德（敝姓周）\\n- 電話：公司電話02-2345-6789轉201（較常有人接）；手機0933-222-111（call比較快）\\n請輸出為適合轉貼給同事/廠商的整理稿，繁中。\", \"skill\": \"activity-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_zKul3dJFZGWQ6aOUdmlZr48P\", \"result_summary\": \"Launching skill: activity-inquiry-field-extractor\"}"
+        },
+        {
+          "TraceEventID": "10909033-0cce-4aa7-a9b8-6619fcac5f82",
+          "OccurredAt": "2026-09-27T10:23:03.011Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 聯絡人姓名：周阿德\\n- 聯絡電話：公司電話 02-2345-6789 轉 201（較常有人接）；手機 0933-222-111（call 比較快）\\n- 活動日期：12 月 20 日晚上（備案：12 月 27 日晚上）\\n- 預估人數：約 120 人上下（上次提到的 100 人不準，以這次為主）\\n- 預算上限：每桌上限 8,000 元；總共約 15 桌\\n- 場地偏好：未提供\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5a35bf97-bc6e-4dcf-911e-976f25cb1c84",
+          "OccurredAt": "2026-09-27T10:23:03.313Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 聯絡人姓名：周阿德\\n- 聯絡電話：公司電話 02-2345-6789 轉 201（較常有人接）；手機 0933-222-111（call 比較快）\\n- 活動日期：12 月 20 日晚上（備案：12 月 27 日晚上）\\n- 預估人數：約 120 人上下（上次提到的 100 人不準，以這次為主）\\n- 預算上限：每桌上限 8,000 元；總共約 15 桌\\n- 場地偏好：未提供\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "72fcd8e8-69f5-4133-ba0b-7689763ce43e",
+          "OccurredAt": "2026-09-27T10:23:08.884Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0098199, \"cost_source\": \"gateway\", \"duration_ms\": 12921, \"input_tokens\": 3439, \"token_source\": \"result\", \"output_tokens\": 937, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "0f0790b4-4be9-438d-a60c-d9489646d906",
+        "Result": "passed",
+        "Reason": "活動日期明確標示 12 月 20 日晚上為主，並將 12 月 27 日晚上列為備案。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 活動日期：12 月 20 日晚上（備案：12 月 27 日晚上）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9ffe6e4d-0ad5-4eae-a503-d60b981413cb",
+        "Result": "passed",
+        "Reason": "預估人數採用約 120 人，且明確註記先前的 100 人不準。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 預估人數：約 120 人上下（上次提到的 100 人不準，以這次為主）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e4faeea3-b482-4fd9-8fac-4e904c25ef0c",
+        "Result": "failed",
+        "Reason": "回覆列出每桌 8,000 元及約 15 桌，但未列出合計預算上限 120,000 元或等值換算金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 預算上限：每桌上限 8,000 元；總共約 15 桌"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c7733941-65f0-47fe-a751-13b76e9dfc35",
+        "Result": "passed",
+        "Reason": "場地偏好欄位標示為未提供，未自行杜撰場地資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 場地偏好：未提供"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "日期、人數與場地偏好皆依需求正確整理。但預算欄位未明確計算或列出每桌 8,000 元乘以 15 桌的合計上限 120,000 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2747,
+      "CompletionTokens": 584,
+      "CostUSD": 0.0113394,
+      "CostReported": true
+    }
+  }
+}

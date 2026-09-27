@@ -1,0 +1,150 @@
+{
+  "request": {
+    "RunID": "2e914527-70bc-47bd-a6fe-bccf081835ba",
+    "EvaluationID": "b8d8367a-9441-4c24-b513-f4b444c42405",
+    "Skill": {
+      "Name": "self-storage-intake-qualification-review",
+      "Summary": "根據申請人的信用分數、近一年逾期繳費次數與是否曾有毀損倉儲設施紀錄，判定自助倉儲入倉資格等級與押金/保證人要求；當需要標準化審核結果或判斷是否可承租時使用。"
+    },
+    "UserPrompt": "請審核以下四位申請人：\n1. 信用分數700，近一年逾期繳費0次，無毀損倉儲設施紀錄，租金12000元。\n2. 信用分數700，近一年逾期繳費2次，無毀損倉儲設施紀錄，租金15000元。\n3. 信用分數699，近一年逾期繳費0次，無毀損倉儲設施紀錄，租金18000元。\n4. 信用分數800，近一年逾期繳費0次，曾有毀損倉儲設施紀錄，租金20000元。",
+    "Criteria": [
+      {
+        "ID": "94062bab-664f-47be-99a7-a031cc10c58b",
+        "Text": "輸入信用分數 700、近一年逾期 0 次、無毀損紀錄時，輸出 A 級、免押金。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "95e4eb9a-3c92-46ec-b9c9-ca2cd0d1c446",
+        "Text": "輸入信用分數 700、近一年逾期 2 次、無毀損紀錄時，輸出 B 級、押金為 1 個月租金。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "81db4d7d-c7f7-48ca-853d-5c8e83882e73",
+        "Text": "輸入信用分數 699、近一年逾期 0 次、無毀損紀錄時，輸出 C 級、押金為 2 個月租金且需要連帶保證人。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ae2317ce-4086-4b30-a4b2-a9eb87b92676",
+        "Text": "輸入信用分數 800、近一年逾期 0 次、曾有毀損紀錄時，輸出 D 級、拒絕承租。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8078a86f-3ec8-495e-9d89-524a78c3e783",
+        "Text": "輸入信用分數 650、近一年逾期 5 次、曾有毀損紀錄時，仍輸出 D 級、拒絕承租。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為四位申請人的審核結果：\n\n### 1. 申請人 1\n- **審核等級：A 級**\n- **是否可承租：可承租**\n- **押金要求：免押金**\n- **是否需要連帶保證人：不需要**\n- **說明：** 信用分數 700 分，近一年逾期繳費 0 次，且無毀損倉儲設施紀錄，符合 A 級。\n\n### 2. 申請人 2\n- **審核等級：B 級**\n- **是否可承租：可承租**\n- **押金要求：1 個月租金**\n- **押金金額：15,000 元 × 1 = 15,000 元**\n- **是否需要連帶保證人：不需要**\n- **說明：** 信用分數 700 分以上，但近一年逾期繳費 2 次，因此為 B 級。\n\n### 3. 申請人 3\n- **審核等級：C 級**\n- **是否可承租：可承租**\n- **押金要求：2 個月租金**\n- **押金金額：18,000 元 × 2 = 36,000 元**\n- **是否需要連帶保證人：需要**\n- **說明：** 信用分數 699 分，未滿 700 分，因此為 C 級。\n\n### 4. 申請人 4\n- **審核等級：D 級**\n- **是否可承租：不可承租**\n- **押金要求：不適用**\n- **是否需要連帶保證人：不適用**\n- **說明：** 曾有毀損倉儲設施紀錄，依規則直接判定為 D 級，拒絕承租。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "30250f69-d8cc-4adb-8da2-3fa48a86395c",
+          "OccurredAt": "2026-09-27T10:48:44.668Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"self-storage-intake-qualification-review\", \"skill_version_id\": \"fcc2f1bf-5d78-4ca6-b0d8-d026c2ba2efc\"}"
+        },
+        {
+          "TraceEventID": "539867d2-47cd-43f7-8e51-fe5b1e88702e",
+          "OccurredAt": "2026-09-27T10:48:44.677Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"self-storage-intake-qualification-review\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_ll5eie70ndhootFpO8OWhDTZ\", \"result_summary\": \"Launching skill: self-storage-intake-qualification-review\"}"
+        },
+        {
+          "TraceEventID": "fb9d5079-203a-4124-9016-773d5c5db2da",
+          "OccurredAt": "2026-09-27T10:48:48.52Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為四位申請人的審核結果：\\n\\n### 1. 申請人 1\\n- **審核等級：A 級**\\n- **是否可承租：可承租**\\n- **押金要求：免押金**\\n- **是否需要連帶保證人：不需要**\\n- **說明：** 信用分數 700 分，近一年逾期繳費 0 次，且無毀損倉儲設施紀錄，符合 A 級。\\n\\n### 2. 申請人 2\\n- **審核等級：B 級**\\n- **是否可承租：可承租**\\n- **押金要求：1 個月租金**\\n- **押金金額：15,000 元 × 1 = 15,000 元**\\n- **是否需要連帶保證人：不需要**\\n- **說明：** 信用分數 700 分以上，但近一年逾期繳費 2 次，因此為 B 級。\\n\\n### 3. 申請人 3\\n- **審核等級：C 級**\\n- **是否可承租：可承租**\\n- **押金要求：2 個月租金**\\n- **押金金額：18,000 元 × 2 = 36,000 元**\\n- **是否需要連帶保證人：需要**\\n- **說明：** 信用分數 699 分，未滿 700 分，因此為 C 級。\\n\\n### 4. 申請人 4\\n- **審核等級：D 級**\\n- **是否可承租：不可承租**\\n- **押金要求：不適用**\\n- **是否需要連帶保證人：不適用**\\n- **說明：** 曾有毀損倉儲設施紀錄，依規則直接判定為 D 級，拒絕承租。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3b643fc8-6739-4194-9899-6c3436ace0ad",
+          "OccurredAt": "2026-09-27T10:48:48.825Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為四位申請人的審核結果：\\n\\n### 1. 申請人 1\\n- **審核等級：A 級**\\n- **是否可承租：可承租**\\n- **押金要求：免押金**\\n- **是否需要連帶保證人：不需要**\\n- **說明：** 信用分數 700 分，近一年逾期繳費 0 次，且無毀損倉儲設施紀錄，符合 A 級。\\n\\n### 2. 申請人 2\\n- **審核等級：B 級**\\n- **是否可承租：可承租**\\n- **押金要求：1 個月租金**\\n- **押金金額：15,000 元 × 1 = 15,000 元**\\n- **是否需要連帶保證人：不需要**\\n- **說明：** 信用分數 700 分以上，但近一年逾期繳費 2 次，因此為 B 級。\\n\\n### 3. 申請人 3\\n- **審核等級：C 級**\\n- **是否可承租：可承租**\\n- **押金要求：2 個月租金**\\n- **押金金額：18,000 元 × 2 = 36,000 元**\\n- **是否需要連帶保證人：需要**\\n- **說明：** 信用分數 699 分，未滿 700 分，因此為 C 級。\\n\\n### 4. 申請人 4\\n- **審核等級：D 級**\\n- **是否可承租：不可承租**\\n- **押金要求：不適用**\\n- **是否需要連帶保證人：不適用**\\n- **說明：** 曾有毀損倉儲設施紀錄，依規則直接判定為 D 級，拒絕承租。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "9caf9a32-928b-4966-b6b0-b0634ee34cf6",
+          "OccurredAt": "2026-09-27T10:48:52.868Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01933875, \"cost_source\": \"gateway\", \"duration_ms\": 10357, \"input_tokens\": 19228, \"token_source\": \"result\", \"output_tokens\": 681, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "94062bab-664f-47be-99a7-a031cc10c58b",
+        "Result": "passed",
+        "Reason": "申請人 1 的結果明確為 A 級且免押金。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **審核等級：A 級**\n- **是否可承租：可承租**\n- **押金要求：免押金**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "95e4eb9a-3c92-46ec-b9c9-ca2cd0d1c446",
+        "Result": "passed",
+        "Reason": "申請人 2 的結果明確為 B 級且要求 1 個月租金作為押金。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **審核等級：B 級**\n- **是否可承租：可承租**\n- **押金要求：1 個月租金**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "81db4d7d-c7f7-48ca-853d-5c8e83882e73",
+        "Result": "passed",
+        "Reason": "申請人 3 的結果明確為 C 級、押金為 2 個月租金，且需要連帶保證人。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **審核等級：C 級**\n- **是否可承租：可承租**\n- **押金要求：2 個月租金**\n- **押金金額：18,000 元 × 2 = 36,000 元**\n- **是否需要連帶保證人：需要**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ae2317ce-4086-4b30-a4b2-a9eb87b92676",
+        "Result": "passed",
+        "Reason": "申請人 4 的結果明確為 D 級且不可承租，並說明因曾有毀損紀錄而拒絕承租。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **審核等級：D 級**\n- **是否可承租：不可承租**\n- **押金要求：不適用**\n- **是否需要連帶保證人：不適用**\n- **說明：** 曾有毀損倉儲設施紀錄，依規則直接判定為 D 級，拒絕承租。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8078a86f-3ec8-495e-9d89-524a78c3e783",
+        "Result": "undetermined",
+        "Reason": "本次任務僅提供四位申請人，沒有信用分數 650、逾期 5 次且曾有毀損紀錄的輸入或對應輸出，無法判定此情境是否會輸出 D 級並拒絕承租。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "四項已實際輸入並審核的情境均符合要求。第五項指定的 650 分、5 次逾期及有毀損紀錄情境未出現在本次輸入或輸出中，因此無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3692,
+      "CompletionTokens": 785,
+      "CostUSD": 0.0161139,
+      "CostReported": true
+    }
+  }
+}

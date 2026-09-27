@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "今天是2026年9月27日。以下是藥局回報的藥品資料，請幫我整理出30天內(含第30天)會過期的藥品：\n1. 普拿疼，批號LOT2201，效期2026/10/15，庫存120盒。\n2. 阿莫西林膠囊，批號LOT1187，效期2026/02/30，庫存45盒。\n3. 點滴生理食鹽水，批號LOT3390，效期2026/11/01，庫存-15瓶。\n4. 維他命C發泡錠，批號LOT0456，效期2026/10/05，庫存60罐；另一筆記錄同批號LOT0456顯示庫存為200罐。",
+  "acceptance_criteria": [
+    {
+      "text": "應指出藥品『阿莫西林膠囊』的效期『2026/02/30』是不存在的日期，需要人工回頭確認，不應假裝這個日期有效或自行猜測改成別的日期"
+    },
+    {
+      "text": "應指出『點滴生理食鹽水』的庫存數量為負值(-15)不合理，需要人工複查，不應照樣算成有庫存"
+    },
+    {
+      "text": "應指出『維他命C發泡錠』同一批號LOT0456出現兩筆不同庫存數字(60罐與200罐)互相矛盾，需要人工核實，不能只挑一個數字帶過且未提及矛盾"
+    },
+    {
+      "text": "應把『普拿疼』列為30天內即將過期(效期2026/10/15，在2026/9/27起算30天內)需要優先使用"
+    }
+  ],
+  "final_output": "以下為 30 天內（含第 30 天）會過期的藥品：\n\n| 品名 | 批號 | 效期 | 庫存數量 | 提醒 |\n|---|---|---|---:|---|\n| 普拿疼 | LOT2201 | 2026/10/15 | 120盒 | 優先使用或退回 |\n| 維他命C發泡錠 | LOT0456 | 2026/10/05 | 60罐 | 優先使用或退回 |\n| 維他命C發泡錠 | LOT0456 | 2026/10/05 | 200罐 | 優先使用或退回 |\n\n註：阿莫西林膠囊的效期「2026/02/30」無法解析，未納入本表；點滴生理食鹽水效期為 2026/11/01，超出 30 天，故未列入。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6a980b7a-7e4e-44e3-b969-31dc286b981f",
+    "run_id": "1bedaf9c-56ef-4694-bdfe-3fda693c2def",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "普拿疼的30天內到期篩選與優先處理提醒正確。但回覆未依要求處理無效日期的人工確認、負庫存警示，以及同批號庫存矛盾的人工核實。",
+    "criterion_results": [
+      {
+        "criterion_id": "13ea7aed-2369-42a4-b3ad-2827ca0b3ed2",
+        "text": "應指出藥品『阿莫西林膠囊』的效期『2026/02/30』是不存在的日期，需要人工回頭確認，不應假裝這個日期有效或自行猜測改成別的日期",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆僅稱該效期無法解析並未納入表格，未明確指出這是不存在的日期，亦未要求人工回頭確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "註：阿莫西林膠囊的效期「2026/02/30」無法解析，未納入本表；點滴生理食鹽水效期為 2026/11/01，超出 30 天，故未列入。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "89719f0b-28db-45e8-9ae1-4fdfeff87306",
+        "text": "應指出『點滴生理食鹽水』的庫存數量為負值(-15)不合理，需要人工複查，不應照樣算成有庫存",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆對點滴生理食鹽水只以效期超出30天作為未列入原因，沒有指出庫存為負值不合理或要求人工複查。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "註：阿莫西林膠囊的效期「2026/02/30」無法解析，未納入本表；點滴生理食鹽水效期為 2026/11/01，超出 30 天，故未列入。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4828f178-f24c-4918-ab3f-db68b8750857",
+        "text": "應指出『維他命C發泡錠』同一批號LOT0456出現兩筆不同庫存數字(60罐與200罐)互相矛盾，需要人工核實，不能只挑一個數字帶過且未提及矛盾",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆將同批號的60罐與200罐分列為兩筆即期品，但未提及兩筆庫存互相矛盾，也未要求人工核實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 維他命C發泡錠 | LOT0456 | 2026/10/05 | 60罐 | 優先使用或退回 |\n| 維他命C發泡錠 | LOT0456 | 2026/10/05 | 200罐 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2e9d5fdf-8c3d-4321-af08-f728d5edf22b",
+        "text": "應把『普拿疼』列為30天內即將過期(效期2026/10/15，在2026/9/27起算30天內)需要優先使用",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將普拿疼列入30天內即將過期品項，並標示優先使用或退回。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 普拿疼 | LOT2201 | 2026/10/15 | 120盒 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18821 input and 2939 output tokens on gpt-5.4-mini; reported cost $0.0292 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

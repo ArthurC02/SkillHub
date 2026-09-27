@@ -1,0 +1,150 @@
+{
+  "round": 1,
+  "sample_input": "請整理下面這學期的社團簽到並算出每位學生的出席率：\n\n第 1 次課：\n- 王小明\n- 李佳穎\n- 陳柏宇\n\n第 2 次課：\n- 王小明\n- 陳柏宇\n- 張雅婷\n\n第 3 次課：\n- 李佳穎\n- 王小明\n- 張雅婷\n\n第 4 次課：\n- 王小明\n- 李佳穎\n- 陳柏宇\n\n請輸出每位學生的總出席次數、課程總次數與出席率。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多次課程簽到名單時，Skill 能整理成每位學生跨課程的統計結果。"
+    },
+    {
+      "text": "當輸入包含 3 次課程、某學生出席 2 次時，輸出中的出席率為 66.7%（或等價的 2/3 表示）。"
+    },
+    {
+      "text": "當輸入中同一學生在不同課次重複出現時，Skill 只把同一人合併計算，不重複算成不同學生。"
+    },
+    {
+      "text": "當輸入中某學生只出席 1 次、課程總次數為 4 次時，輸出中的出席率為 25%（或等價的 1/4 表示）。"
+    },
+    {
+      "text": "當輸入是完整學期的多次簽到紀錄時，輸出同時包含每位學生的出席次數與出席率。"
+    },
+    {
+      "text": "當輸入只提供某幾次課程的簽到名單時，Skill 仍只根據已提供的課程次數計算出席率。"
+    }
+  ],
+  "final_output": "以下是這學期社團簽到整理與出席統計（共 4 次課）：\n\n### 1. 課次整理\n- **第 1 次課**：王小明、李佳穎、陳柏宇\n- **第 2 次課**：王小明、陳柏宇、張雅婷\n- **第 3 次課**：李佳穎、王小明、張雅婷\n- **第 4 次課**：王小明、李佳穎、陳柏宇\n\n### 2. 學期統計表\n\n| 學生 | 出席次數 | 課程總次數 | 缺席次數 | 出席率 |\n|------|----------|------------|----------|--------|\n| 王小明 | 4 | 4 | 0 | 100.0% |\n| 李佳穎 | 3 | 4 | 1 | 75.0% |\n| 陳柏宇 | 3 | 4 | 1 | 75.0% |\n| 張雅婷 | 2 | 4 | 2 | 50.0% |\n\n### 3. 簡短摘要\n- **出席次數最高的學生**：王小明（4 次）\n- **全班平均出席率**：75.0%\n\n如果你要，我也可以把這份整理成 **Excel 可貼上的 CSV 格式** 或 **更適合老師直接列印的版本**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f8d56dc4-77dc-4056-bf3e-1406b3cd8451",
+    "run_id": "cdf16f66-aa36-44cf-aa3b-6cf64f5db01d",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次四次課程簽到資料已正確按學生合併統計，並包含出席次數、課程總次數與出席率。兩項特定比例情境（2/3 與 1/4）及僅提供部分課次的情境未出現在本次執行中，無法據此判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "77d72ee6-4174-40e7-bca2-0029593fef0f",
+        "text": "當輸入包含多次課程簽到名單時，Skill 能整理成每位學生跨課程的統計結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將四次課程的簽到資料彙整為每位學生的跨課程統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 4 | 4 | 0 | 100.0% |\n| 李佳穎 | 3 | 4 | 1 | 75.0% |\n| 陳柏宇 | 3 | 4 | 1 | 75.0% |\n| 張雅婷 | 2 | 4 | 2 | 50.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d1a99720-484d-45d7-baf7-04e072a01676",
+        "text": "當輸入包含 3 次課程、某學生出席 2 次時，輸出中的出席率為 66.7%（或等價的 2/3 表示）。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入共有四次課程，沒有「3 次課程且某學生出席 2 次」的案例，因此無法判定該情況是否會輸出 66.7% 或 2/3。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "5549fc27-f351-4699-ab15-438dd9ec4b5e",
+        "text": "當輸入中同一學生在不同課次重複出現時，Skill 只把同一人合併計算，不重複算成不同學生。",
+        "result": "passed",
+        "source": "model",
+        "reason": "重複出現在不同課次的學生被合併為單一學生列，例如王小明跨四次課只列一列並計為 4 次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 4 | 4 | 0 | 100.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2474658f-1e98-4044-aa07-5b36af5733a3",
+        "text": "當輸入中某學生只出席 1 次、課程總次數為 4 次時，輸出中的出席率為 25%（或等價的 1/4 表示）。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次資料中沒有只出席 1 次且課程總數為 4 次的學生，因此無法判定該情況是否會輸出 25% 或 1/4。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "3cbcdb88-e5e7-44e4-8266-d05085e4d9a4",
+        "text": "當輸入是完整學期的多次簽到紀錄時，輸出同時包含每位學生的出席次數與出席率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供每位學生的出席次數與出席率，且課程總數為四次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學生 | 出席次數 | 課程總次數 | 缺席次數 | 出席率 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 張雅婷 | 2 | 4 | 2 | 50.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "121e0c60-4571-413c-9c76-1793b83c7d91",
+        "text": "當輸入只提供某幾次課程的簽到名單時，Skill 仍只根據已提供的課程次數計算出席率。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次回覆將資料描述為「這學期」的四次課程，未提供僅為部分課次、且尚有未提供課次的案例，無法判定此情況下是否只依已提供課次計算。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3857 input and 776 output tokens on gpt-5.4-mini; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

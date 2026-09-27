@@ -1,0 +1,151 @@
+{
+  "round": 2,
+  "sample_input": "請幫我整理以下三段活動洽詢內容：\n\n【案例一：完整資訊】\n您好，我是林怡君，電話 0912-345-678。想詢問 2026/03/18 的場地，預計 80 人左右，預算上限 12 萬，偏好台北市交通方便、可容納餐會的場地。若有合適方案請再與我聯絡，謝謝。\n\n【案例二：缺漏預算上限】\n您好，我是陳冠廷，電話 0988-765-432。想詢問 2026/05/12 的場地，預計 120 人左右，偏好新北市捷運站附近、適合簡報發表的場地。若合適請回覆。\n\n【案例三：重複欄位資訊】\n您好，我是王雅婷，電話 02-2500-1234，後來改成 02-2500-5678。想詢問 2026/07/21 的場地，預計 60 人左右，預算上限 8 萬，後來預算提高到 10 萬，偏好台中市市區、可容納茶會的場地。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入同時包含姓名、電話、日期、人數、預算與場地偏好時，輸出能對應到這 6 個欄位。"
+    },
+    {
+      "text": "當某欄位未出現在原文時，輸出中該欄位保持空值或「未提供」，不自行補值。"
+    },
+    {
+      "text": "當同一欄位在原文出現兩次以上時，輸出採用最明確或最後出現的資訊。"
+    },
+    {
+      "text": "輸出不包含與這 6 個欄位無關的額外內容。"
+    },
+    {
+      "text": "輸入為一段活動洽詢自然語言文字時，Skill 能直接完成欄位擷取，不需要外部工具。"
+    }
+  ],
+  "final_output": "**案例一**\n- 聯絡人姓名：林怡君\n- 聯絡電話：0912-345-678\n- 活動日期：2026/03/18\n- 預估人數：80 人左右\n- 預算上限：12 萬\n- 場地偏好：台北市交通方便、可容納餐會的場地\n\n**案例二**\n- 聯絡人姓名：陳冠廷\n- 聯絡電話：0988-765-432\n- 活動日期：2026/05/12\n- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地\n\n**案例三**\n- 聯絡人姓名：王雅婷\n- 聯絡電話：02-2500-5678\n- 活動日期：2026/07/21\n- 預估人數：60 人左右\n- 預算上限：10 萬\n- 場地偏好：台中市市區、可容納茶會的場地",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c0513d0c-bcef-49e2-a2c4-1ec4f7d2b920",
+    "run_id": "d2aa02c6-b0e6-475c-aa81-a839d5002269",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有案例均依六個指定欄位完成結構化擷取。缺漏預算被標示為未提供，重複電話與預算採用最後出現的資訊，且輸出未加入無關內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "ed2d2cd4-2026-4c37-b531-00abc17e19e3",
+        "text": "當輸入同時包含姓名、電話、日期、人數、預算與場地偏好時，輸出能對應到這 6 個欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例一輸出包含姓名、電話、日期、人數、預算上限與場地偏好六個欄位，且均有對應內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：林怡君\n- 聯絡電話：0912-345-678\n- 活動日期：2026/03/18\n- 預估人數：80 人左右\n- 預算上限：12 萬\n- 場地偏好：台北市交通方便、可容納餐會的場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8afc16c2-ab5a-438b-9ee8-b032af81ec9b",
+        "text": "當某欄位未出現在原文時，輸出中該欄位保持空值或「未提供」，不自行補值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例二原文未提供預算上限，輸出將該欄位標示為「未提供」，未自行補值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b40e8afc-9c46-4db5-a697-a790699cb75c",
+        "text": "當同一欄位在原文出現兩次以上時，輸出採用最明確或最後出現的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例三對重複出現的電話與預算上限，採用了後來出現的電話與提高後的預算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：王雅婷\n- 聯絡電話：02-2500-5678\n- 活動日期：2026/07/21\n- 預估人數：60 人左右\n- 預算上限：10 萬\n- 場地偏好：台中市市區、可容納茶會的場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1dd95880-691d-4ebc-a456-e2ab3805f8fb",
+        "text": "輸出不包含與這 6 個欄位無關的額外內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅以案例標題區分，並在每個案例下列出六個指定欄位，沒有其他與欄位無關的敘述內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**案例二**\n- 聯絡人姓名：陳冠廷\n- 聯絡電話：0988-765-432\n- 活動日期：2026/05/12\n- 預估人數：120 人左右\n- 預算上限：未提供\n- 場地偏好：新北市捷運站附近、適合簡報發表的場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1966c172-a2af-42c4-8073-15c10ae84c31",
+        "text": "輸入為一段活動洽詢自然語言文字時，Skill 能直接完成欄位擷取，不需要外部工具。",
+        "result": "passed",
+        "source": "model",
+        "reason": "追蹤紀錄顯示已啟用欄位擷取 Skill，並成功完成輸出；紀錄中未顯示任何外部工具需求。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"event-inquiry-field-extractor\", \"skill_version_id\": \"fdaf7f1e-c72d-4e89-ac3c-e2004ba15866\"}",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"event-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_QyW8tE61B6wJOBIT9zV2v1gm\", \"result_summary\": \"Launching skill: event-inquiry-field-extractor\"}",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3131 input and 593 output tokens on gpt-5.4-mini; reported cost $0.0081 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

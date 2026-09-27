@@ -1,0 +1,132 @@
+{
+  "request": {
+    "RunID": "045c6398-a852-4ce2-b17d-40a8933fcdc8",
+    "EvaluationID": "83ce4c69-8995-4dfd-9bc1-770940205b9f",
+    "Skill": {
+      "Name": "activity-inquiry-extractor",
+      "Summary": "Extracts key fields from activity inquiry messages. Use when you need to turn a customer’s free-form event inquiry into structured contact, date, attendee, budget, and venue-preference data."
+    },
+    "UserPrompt": "您好，我們是耕心診所，想辦一場員工教育訓練活動。合約編號是TR-2026-088，訓練那天希望在3月5日早上進行，參加醫護人員大約35人，另外還有5位行政人員會旁聽，所以現場抓40人準備茶水就好。預算的話單一場地租金抓不超過25000元，餐費另外算不算在這裡面。負責窗口是護理長郭小姐，分機3399。場地目前傾向找靠近捷運站的教室型場地。麻煩幫我整理需求。",
+    "Criteria": [
+      {
+        "ID": "b847dfe0-6a1d-49bf-a703-4486ce6e53e8",
+        "Text": "預估人數應為40人，不得誤用合約編號TR-2026-088裡的數字當人數",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fb9257a2-0bd1-43b2-b413-6a95167ae0f0",
+        "Text": "預算上限應為25,000元且僅指場地租金、不含餐費",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4c0b5713-d83c-45c0-941e-6afc2c04f101",
+        "Text": "場地偏好應為靠近捷運站的教室型場地",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6d1bbb68-add9-4da1-b467-6304ea49c184",
+        "Text": "日期應為3月5日早上",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "{\n  \"聯絡人姓名\": \"郭小姐\",\n  \"聯絡電話\": \"分機3399\",\n  \"活動日期\": \"3月5日早上\",\n  \"預估人數\": \"40人\",\n  \"預算上限\": \"單一場地租金抓不超過25000元\",\n  \"場地偏好\": \"靠近捷運站的教室型場地\"\n}",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "39581d00-e83f-4707-be9f-295de92dc973",
+          "OccurredAt": "2026-09-27T10:53:11.246Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"activity-inquiry-extractor\", \"skill_version_id\": \"d2439ac9-4944-4539-98e4-da84b40045be\"}"
+        },
+        {
+          "TraceEventID": "fd6a8ece-8486-4a38-a932-08150633aa63",
+          "OccurredAt": "2026-09-27T10:53:11.254Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"activity-inquiry-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_GiZlG8hm4xgdqkfNpXzx6ImN\", \"result_summary\": \"Launching skill: activity-inquiry-extractor\"}"
+        },
+        {
+          "TraceEventID": "4aae94b0-bd09-465f-b3d6-2de2d0b37808",
+          "OccurredAt": "2026-09-27T10:53:14.976Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"{\\n  \\\"聯絡人姓名\\\": \\\"郭小姐\\\",\\n  \\\"聯絡電話\\\": \\\"分機3399\\\",\\n  \\\"活動日期\\\": \\\"3月5日早上\\\",\\n  \\\"預估人數\\\": \\\"40人\\\",\\n  \\\"預算上限\\\": \\\"單一場地租金抓不超過25000元\\\",\\n  \\\"場地偏好\\\": \\\"靠近捷運站的教室型場地\\\"\\n}\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5faa12e5-7f6c-49b9-98d5-12c41bf486ff",
+          "OccurredAt": "2026-09-27T10:53:15.261Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"{\\n  \\\"聯絡人姓名\\\": \\\"郭小姐\\\",\\n  \\\"聯絡電話\\\": \\\"分機3399\\\",\\n  \\\"活動日期\\\": \\\"3月5日早上\\\",\\n  \\\"預估人數\\\": \\\"40人\\\",\\n  \\\"預算上限\\\": \\\"單一場地租金抓不超過25000元\\\",\\n  \\\"場地偏好\\\": \\\"靠近捷運站的教室型場地\\\"\\n}\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b60ca085-5e73-4232-a532-45a0415eb965",
+          "OccurredAt": "2026-09-27T10:53:20.841Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.008659650000000001, \"cost_source\": \"gateway\", \"duration_ms\": 11881, \"input_tokens\": 3509, \"token_source\": \"result\", \"output_tokens\": 661, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b847dfe0-6a1d-49bf-a703-4486ce6e53e8",
+        "Result": "passed",
+        "Reason": "最終輸出將預估人數列為40人，未將合約編號中的數字誤作人數。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  \"預估人數\": \"40人\","
+          }
+        ]
+      },
+      {
+        "CriterionID": "fb9257a2-0bd1-43b2-b413-6a95167ae0f0",
+        "Result": "undetermined",
+        "Reason": "最終輸出明確列出場地租金上限為25,000元，但未說明餐費不包含在該上限內。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "4c0b5713-d83c-45c0-941e-6afc2c04f101",
+        "Result": "passed",
+        "Reason": "最終輸出正確列出靠近捷運站的教室型場地偏好。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  \"場地偏好\": \"靠近捷運站的教室型場地\""
+          }
+        ]
+      },
+      {
+        "CriterionID": "6d1bbb68-add9-4da1-b467-6304ea49c184",
+        "Result": "passed",
+        "Reason": "最終輸出正確列出活動日期為3月5日早上。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  \"活動日期\": \"3月5日早上\","
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "人數、場地偏好與日期均已正確擷取。預算上限已表明為場地租金25,000元，但輸出沒有保留餐費另計／不含餐費的資訊，因此此項無法完整確認。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2393,
+      "CompletionTokens": 448,
+      "CostUSD": 0.008822400000000001,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理這段活動洽詢內容：您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。"
+    },
+    {
+      "text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。"
+    },
+    {
+      "text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。"
+    },
+    {
+      "text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。"
+    },
+    {
+      "text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。"
+    }
+  ],
+  "final_output": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ccddd78a-0e0b-44c2-9176-ffcd5951f6c3",
+    "run_id": "bb575ebd-ae4b-4316-83ae-c5761d831c03",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次輸出完整且正確地將提供的六項活動資訊整理為結構化欄位。缺值處理與同欄位多種不一致格式的辨識能力，因測試輸入未涵蓋相關情境，無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "362d2502-1b6f-46e2-b0ab-9991e875ec87",
+        "text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出包含指定的六個欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf9cde24-1056-4154-afa0-78dd11085a92",
+        "text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各項原文資訊均正確填入對應欄位，姓名、電話、日期、人數、預算與場地偏好未混淆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5f0702ef-695f-4ea2-b76e-e2ede61681eb",
+        "text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次原文中的六個指定欄位皆有明確資訊，沒有缺漏欄位可用以驗證缺值時是否會輸出空值或未提供。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "fab549e2-ee99-4b5d-9c89-9349fb834858",
+        "text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以具名欄位和值的清單呈現，可直接作為結構化表單資料使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "57c84bf4-802d-4d91-bf73-1c59f6957979",
+        "text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次僅提供一種電話、日期、金額及人數格式，沒有格式不一致的多種表達可驗證其辨識能力。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3091 input and 342 output tokens on gpt-5.4-mini; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

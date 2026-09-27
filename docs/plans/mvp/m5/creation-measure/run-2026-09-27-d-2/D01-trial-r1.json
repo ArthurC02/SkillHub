@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下揀貨件數的班別獎金：\n150\n151\n300\n301\n400\n1000",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入 150 件時，輸出 150 元。"
+    },
+    {
+      "text": "當輸入 151 件時，輸出 152 元，因為前 150 件按 1 元、超出的 1 件按 2 元。"
+    },
+    {
+      "text": "當輸入 300 件時，輸出 450 元，因為 150×1 + 150×2 = 450。"
+    },
+    {
+      "text": "當輸入 301 件時，累進計算結果為 453 元，且未達上限，所以輸出 453 元。"
+    },
+    {
+      "text": "當輸入 400 件時，累進計算結果為 753 元，但因封頂規則，輸出 480 元。"
+    },
+    {
+      "text": "當輸入 1000 件時，計算結果仍不得超過 480 元，輸出 480 元。"
+    }
+  ],
+  "final_output": "150\n152\n450\n453\n480\n480",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ed1d6a86-76cf-43c7-b8ad-fbcbaea54ca8",
+    "run_id": "3e5fdce8-024e-44de-92a5-08e0000b4466",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆依輸入順序提供六筆結果：150、152、450、453、480、480，均與各項驗收標準指定的輸出一致。",
+    "criterion_results": [
+      {
+        "criterion_id": "f41cca9d-d26b-4f53-b4c9-6cfbc88d1f44",
+        "text": "當輸入 150 件時，輸出 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第一行為 150，對應第一筆輸入 150 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6382670d-1ad6-4c40-a497-80300339edbd",
+        "text": "當輸入 151 件時，輸出 152 元，因為前 150 件按 1 元、超出的 1 件按 2 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第二行為 152，對應第二筆輸入 151 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b60b65a-56f8-432b-9014-e261ec688e45",
+        "text": "當輸入 300 件時，輸出 450 元，因為 150×1 + 150×2 = 450。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第三行為 450，對應第三筆輸入 300 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0d6981e2-f375-47e5-8913-d24da5f5a2e5",
+        "text": "當輸入 301 件時，累進計算結果為 453 元，且未達上限，所以輸出 453 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第四行為 453，對應第四筆輸入 301 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "de6c7b79-7b7d-49b7-8779-d200a208a2a5",
+        "text": "當輸入 400 件時，累進計算結果為 753 元，但因封頂規則，輸出 480 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第五行為 480，對應第五筆輸入 400 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9701a0b5-260e-45ec-ad01-6f0ef0ce0133",
+        "text": "當輸入 1000 件時，計算結果仍不得超過 480 元，輸出 480 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第六行為 480，對應第六筆輸入 1000 件，未超過封頂金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "150\n152\n450\n453\n480\n480",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19224 input and 379 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

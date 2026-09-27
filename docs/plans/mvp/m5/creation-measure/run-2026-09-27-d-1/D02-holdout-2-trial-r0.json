@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "請審核申請人張淑芬應該列為哪一級：信用分數850，近一年逾期繳費0次，但兩年前曾有毀損倉儲設施紀錄。",
+  "acceptance_criteria": [
+    {
+      "text": "張淑芬應列為D級（拒絕承租）"
+    },
+    {
+      "text": "不得因信用分數850很高、或逾期0次，就列為A級或B級"
+    }
+  ],
+  "final_output": "以下為申請人 **張淑芬** 的審核結果：\n\n| 項目 | 結果 |\n|---|---|\n| 申請人 | 張淑芬 |\n| 等級 | **D 級** |\n| 是否拒絕承租 | **是** |\n| 押金 | **不適用**（因為已拒絕承租） |\n| 是否需要連帶保證人 | **不適用**（因為已拒絕承租） |\n| 判定理由 | 雖然信用分數 **850**、近一年逾期繳費 **0 次**，但 **兩年前曾有毀損倉儲設施紀錄**；依規則此項為最高優先條件，因此直接列為 **D 級**，拒絕承租。 |\n\n**結論：**  \n張淑芬應列為 **D 級**，**拒絕承租**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "23509d91-1db5-4a48-a5a9-3c1f2f5255b0",
+    "run_id": "807fc432-7239-42da-9ef5-cef9a52e195a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆正確將申請人列為D級並拒絕承租，且未因高信用分數或零逾期紀錄而列為A級或B級。",
+    "criterion_results": [
+      {
+        "criterion_id": "887c9644-7695-4f08-965a-f8f0543df70a",
+        "text": "張淑芬應列為D級（拒絕承租）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將張淑芬判定為D級，並明確表示拒絕承租。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "張淑芬應列為 **D 級**，**拒絕承租**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "145a2cc0-e667-4e4e-851e-f0db103a0278",
+        "text": "不得因信用分數850很高、或逾期0次，就列為A級或B級",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆雖確認信用分數850且近一年逾期0次，但基於毀損紀錄判為D級，而非A級或B級。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "雖然信用分數 **850**、近一年逾期繳費 **0 次**，但 **兩年前曾有毀損倉儲設施紀錄**；依規則此項為最高優先條件，因此直接列為 **D 級**，拒絕承租。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3373 input and 631 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

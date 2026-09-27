@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我寫一封理賠結果通知信給客戶陳先生，理賠案號 CL-2026-04471，核定金額 82,000元，核定日期 2026年9月30日，申訴請洽客服專線 0800-123-456，申訴期限為收到通知後30天內。",
+  "acceptance_criteria": [
+    {
+      "text": "整封信不得超過3句話"
+    },
+    {
+      "text": "五項資訊(理賠案號、核定金額、核定日期、申訴管道、申訴期限)都必須出現在信中，不得為了壓句數而漏掉任何一項"
+    },
+    {
+      "text": "必須有一句話說明或註記為了符合3句話上限，已將多項資訊合併在同一句，交代這個取捨"
+    },
+    {
+      "text": "不得捏造案號、金額、日期、電話以外的新資訊"
+    }
+  ],
+  "final_output": "陳先生您好，理賠案號為 CL-2026-04471。  \n核定金額為 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果不服，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bb9a9a08-338a-4fa6-b8df-eae69a25536c",
+    "run_id": "a947bca8-763e-4910-b0aa-8fa2d3f33133",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "信件完整列出五項指定資訊，但使用五句而非三句內，且未交代合併資訊以符合句數限制的取捨；另加入了未提供的核定結果不服描述。",
+    "criterion_results": [
+      {
+        "criterion_id": "1fd2aadc-7003-4a9a-88d6-743d05c6ed1a",
+        "text": "整封信不得超過3句話",
+        "result": "failed",
+        "source": "model",
+        "reason": "信件共有五句，超過三句上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生您好，理賠案號為 CL-2026-04471。  \n核定金額為 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果不服，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b48e4f25-1e1e-4fd6-91ce-05ffccce7cd9",
+        "text": "五項資訊(理賠案號、核定金額、核定日期、申訴管道、申訴期限)都必須出現在信中，不得為了壓句數而漏掉任何一項",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中包含理賠案號、核定金額、核定日期、申訴客服專線及申訴期限五項資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生您好，理賠案號為 CL-2026-04471。  \n核定金額為 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果不服，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a89686a-adfc-4abc-a3e2-86bcf67be765",
+        "text": "必須有一句話說明或註記為了符合3句話上限，已將多項資訊合併在同一句，交代這個取捨",
+        "result": "failed",
+        "source": "model",
+        "reason": "信中未說明為符合三句話上限而將多項資訊合併於同一句的取捨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生您好，理賠案號為 CL-2026-04471。  \n核定金額為 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果不服，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "959cd77c-9b09-488c-8731-37dd5b0ebc65",
+        "text": "不得捏造案號、金額、日期、電話以外的新資訊",
+        "result": "failed",
+        "source": "model",
+        "reason": "信中加入了題目未提供的「如對核定結果不服」資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "如對核定結果不服，請洽客服專線 0800-123-456。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3143 input and 1541 output tokens on gpt-5.4-mini; reported cost $0.0123 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

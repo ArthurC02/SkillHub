@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "您好，我們是耕心診所，想辦一場員工教育訓練活動。合約編號是TR-2026-088，訓練那天希望在3月5日早上進行，參加醫護人員大約35人，另外還有5位行政人員會旁聽，所以現場抓40人準備茶水就好。預算的話單一場地租金抓不超過25000元，餐費另外算不算在這裡面。負責窗口是護理長郭小姐，分機3399。場地目前傾向找靠近捷運站的教室型場地。麻煩幫我整理需求。",
+  "acceptance_criteria": [
+    {
+      "text": "預估人數應為40人，不得誤用合約編號TR-2026-088裡的數字當人數"
+    },
+    {
+      "text": "預算上限應為25,000元且僅指場地租金、不含餐費"
+    },
+    {
+      "text": "場地偏好應為靠近捷運站的教室型場地"
+    },
+    {
+      "text": "日期應為3月5日早上"
+    }
+  ],
+  "final_output": "- 聯絡人姓名：郭小姐\n- 聯絡電話：分機3399\n- 活動日期：3月5日早上\n- 預估人數：40人\n- 預算上限：單一場地租金不超過25000元；餐費是否包含在內未確認\n- 場地偏好：靠近捷運站的教室型場地",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "97d980eb-b70f-48e5-832f-14547cd3ca6b",
+    "run_id": "0b751168-1235-4ab6-b567-6f68056a75d4",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆正確擷取了日期、人數與場地偏好，也正確指出租金上限為25,000元；但未將餐費明確整理為不包含在場地租金預算內。",
+    "criterion_results": [
+      {
+        "criterion_id": "b71172bc-4645-49ff-9a01-6da42f53c51e",
+        "text": "預估人數應為40人，不得誤用合約編號TR-2026-088裡的數字當人數",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將預估人數整理為40人，未將合約編號中的數字誤作人數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預估人數：40人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62807b50-e74f-4732-ade7-a0b50967e33a",
+        "text": "預算上限應為25,000元且僅指場地租金、不含餐費",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆正確列出場地租金上限為25,000元，但將餐費是否包含表述為未確認，未明確整理為不含餐費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 預算上限：單一場地租金不超過25000元；餐費是否包含在內未確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b1893f48-96e0-4d29-a28f-8157dba55f53",
+        "text": "場地偏好應為靠近捷運站的教室型場地",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆正確列出場地偏好為靠近捷運站的教室型場地。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 場地偏好：靠近捷運站的教室型場地",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "59c48870-2f67-48fc-b130-236bc0dbd0a3",
+        "text": "日期應為3月5日早上",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆正確列出活動日期為3月5日早上。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 活動日期：3月5日早上",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3267 input and 700 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

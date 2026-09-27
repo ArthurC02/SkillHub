@@ -1,0 +1,187 @@
+{
+  "request": {
+    "RunID": "571b1cec-b580-45ca-9912-008af1ae3e81",
+    "EvaluationID": "0dc128ba-d215-49d0-8a8e-573a5748396f",
+    "Skill": {
+      "Name": "insurance-claim-result-notice-letter",
+      "Summary": "撰寫保險理賠結果通知信，適合在收到理賠案號、核定金額、核定日期、申訴管道與申訴期限時使用，並要求每項資訊各自成句且整封信不超過三句。"
+    },
+    "UserPrompt": "請依規則寫一封保險理賠結果通知信。\n理賠案號：CLM-2026-0148；核定金額：新台幣128,500元；核定日期：2026年9月18日；不服核定的申訴管道：可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴；申訴期限：自收受通知日起30日內。",
+    "Criteria": [
+      {
+        "ID": "1a0334fe-ac9d-417d-95ea-fd763f07cd4d",
+        "Text": "在給定完整五項資訊時，輸出是一封中文通知信。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f284c79a-b8c2-4673-bc67-140dd9291753",
+        "Text": "信中可辨識出理賠案號、核定金額、核定日期、申訴管道、申訴期限這五項資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6785e4dc-1324-43e4-a30c-86bebd70676c",
+        "Text": "每一項資訊都以獨立的一句呈現。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d05ea5ff-3696-4af8-99e6-f0fbe4da6ee3",
+        "Text": "任兩項資訊不會被逗號或頓號合併在同一句中。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c5cd9c57-5be6-4c98-be51-10e653c01ac2",
+        "Text": "整封信的句子數不超過 3 句。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cf4df084-875c-47b7-b47e-61f1a13bff5a",
+        "Text": "輸出不會缺少上述五項中的任何一項。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \n申訴期限為自收受通知日起30日內。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a3c8c0e6-28c0-4079-a255-3da878582653",
+          "OccurredAt": "2026-09-27T10:27:36.982Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"insurance-claim-result-notice-letter\", \"skill_version_id\": \"c6ab0173-c389-41aa-a554-a15e4c1ab51a\"}"
+        },
+        {
+          "TraceEventID": "43d629ca-0164-4f24-9229-b05e09627fb8",
+          "OccurredAt": "2026-09-27T10:27:36.991Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請依規則撰寫一封保險理賠結果通知信。需包含：理賠案號 CLM-2026-0148、核定金額 新台幣128,500元、核定日期 2026年9月18日、申訴管道可於客服專線0800-123-456或電子郵件appeal@example.com提出、申訴期限自收受通知日起30日內。每項資訊各自成句，整封信不超過三句。\", \"skill\": \"insurance-claim-result-notice-letter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_VSMwoXFUJtgST8NoI494ucM8\", \"result_summary\": \"Launching skill: insurance-claim-result-notice-letter\"}"
+        },
+        {
+          "TraceEventID": "7b798725-97fc-4833-8807-dbeae8fbd6d9",
+          "OccurredAt": "2026-09-27T10:27:46.368Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \\n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \\n申訴期限為自收受通知日起30日內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f392db08-69d0-49cd-a83a-e3cec3da3c5f",
+          "OccurredAt": "2026-09-27T10:27:46.669Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \\n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \\n申訴期限為自收受通知日起30日內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c45acbd9-9e49-479a-ad84-ef77ed87b4b3",
+          "OccurredAt": "2026-09-27T10:27:50.705Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01360515, \"cost_source\": \"gateway\", \"duration_ms\": 16437, \"input_tokens\": 3217, \"token_source\": \"result\", \"output_tokens\": 1818, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "1a0334fe-ac9d-417d-95ea-fd763f07cd4d",
+        "Result": "passed",
+        "Reason": "輸出為中文的理賠結果通知內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \n申訴期限為自收受通知日起30日內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f284c79a-b8c2-4673-bc67-140dd9291753",
+        "Result": "passed",
+        "Reason": "信中可辨識理賠案號、核定金額、核定日期、申訴管道及申訴期限。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \n申訴期限為自收受通知日起30日內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6785e4dc-1324-43e4-a30c-86bebd70676c",
+        "Result": "failed",
+        "Reason": "理賠案號與核定金額同在第一句，核定日期與申訴管道同在第二句，未做到每項資訊各自成一句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d05ea5ff-3696-4af8-99e6-f0fbe4da6ee3",
+        "Result": "passed",
+        "Reason": "各項資訊雖以分號同置於句中，但沒有任兩項以逗號或頓號合併在同一句中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c5cd9c57-5be6-4c98-be51-10e653c01ac2",
+        "Result": "passed",
+        "Reason": "全文以句號區分為三句，未超過三句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \n申訴期限為自收受通知日起30日內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cf4df084-875c-47b7-b47e-61f1a13bff5a",
+        "Result": "passed",
+        "Reason": "五項指定資訊均已包含，沒有缺項。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為CLM-2026-0148；核定金額為新台幣128,500元。  \n核定日期為2026年9月18日；如對核定結果不服，可於客服專線0800-123-456或電子郵件appeal@example.com提出申訴。  \n申訴期限為自收受通知日起30日內。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "通知信包含所有指定資訊，且全文為三句。不過有兩組資訊以分號放在同一句內，因此未符合每項資訊各自成一句的要求。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2562,
+      "CompletionTokens": 1270,
+      "CostUSD": 0.0191089,
+      "CostReported": true
+    }
+  }
+}

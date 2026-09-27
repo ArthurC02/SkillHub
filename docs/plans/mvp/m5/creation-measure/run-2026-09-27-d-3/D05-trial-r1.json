@@ -1,0 +1,173 @@
+{
+  "round": 1,
+  "sample_input": "請依規則寫一封保險理賠結果通知信，內容如下：理賠案號 CLM-2026-0187，核定金額新台幣 128,500 元，核定日期 2026 年 9 月 27 日，申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一組包含五項資訊的輸入時，輸出是一封繁體中文通知信。"
+    },
+    {
+      "text": "信中必定包含「理賠案號、核定金額、核定日期、不服核定的申訴管道、申訴期限」這五項資訊。"
+    },
+    {
+      "text": "每一項資訊都各自獨立成一句，不能與另一項資訊合併在同一句。"
+    },
+    {
+      "text": "任兩項資訊不可用逗號或頓號連成同一句。"
+    },
+    {
+      "text": "整封信的句子數不超過 3 句。"
+    },
+    {
+      "text": "輸出內容是完整可直接寄出的信件正文，而不是條列式摘要。"
+    }
+  ],
+  "final_output": "敬啟者，本案理賠案號為 CLM-2026-0187。核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b70375d9-b1eb-4835-a129-5617b89111c8",
+    "run_id": "d528ff30-1075-4b0b-8788-7c20a12e6251",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "信件以繁體中文呈現，包含指定五項資訊，並且總句數為三句且非條列式。然而，其中兩組指定資訊以逗號合併在同一句，未符合每項資訊必須獨立成句的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "b8d53e2f-90c8-491f-ba9f-10078b50b482",
+        "text": "給定一組包含五項資訊的輸入時，輸出是一封繁體中文通知信。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為繁體中文的理賠結果通知文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬啟者，本案理賠案號為 CLM-2026-0187。核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0fc535dc-e45d-4ce9-961f-e2e475e201e5",
+        "text": "信中必定包含「理賠案號、核定金額、核定日期、不服核定的申訴管道、申訴期限」這五項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "信中包含理賠案號、核定金額、核定日期、申訴管道及申訴期限五項資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬啟者，本案理賠案號為 CLM-2026-0187。核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "865b9d5c-d525-42a8-81ec-a9555220cfb5",
+        "text": "每一項資訊都各自獨立成一句，不能與另一項資訊合併在同一句。",
+        "result": "failed",
+        "source": "model",
+        "reason": "核定金額與核定日期合併在同一句，申訴管道與申訴期限也合併在同一句，並非每項資訊各自獨立成句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c83df707-8d79-451f-ae47-2f4303332619",
+        "text": "任兩項資訊不可用逗號或頓號連成同一句。",
+        "result": "failed",
+        "source": "model",
+        "reason": "核定金額與核定日期、申訴管道與申訴期限均以逗號連成同一句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9fe8a3bb-5c7c-4074-b2d4-befea05ee5d1",
+        "text": "整封信的句子數不超過 3 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文以句號分為三句，未超過三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬啟者，本案理賠案號為 CLM-2026-0187。核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1c78a8ca-1afd-49f4-882f-720d33ebcd35",
+        "text": "輸出內容是完整可直接寄出的信件正文，而不是條列式摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容採通知信正文形式並有「敬啟者」稱呼，非條列式摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬啟者，本案理賠案號為 CLM-2026-0187。核定金額為新台幣 128,500 元，核定日期為 2026 年 9 月 27 日。申訴管道為客服專線 0800-123-456 或電子郵件 appeal@example.com，申訴期限為收到通知後 30 日內。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18820 input and 1826 output tokens on gpt-5.4-mini; reported cost $0.0241 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

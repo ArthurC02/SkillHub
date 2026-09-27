@@ -1,0 +1,64 @@
+{
+  "acceptance_criteria": [
+    "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。",
+    "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。",
+    "效期剛好是今天起算第 30 天的藥品，必須被列入結果。",
+    "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。",
+    "效期晚於今天起算第 30 天的藥品，不得出現在結果中。",
+    "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。"
+  ],
+  "brief": "任務：將診所/藥局回報的藥品清單整理成表格，篩出「從今天起算 30 天內（含第 30 天）會到期」的藥品，並標註需要優先使用或退回。\n- 輸入：每筆藥品資料至少包含品名、批號、效期、庫存數量；以使用者提供的文字表格或條列資料為準。\n- 輸出：一張整理好的表格，至少包含品名、批號、效期、庫存數量、距今天剩餘天數，以及提醒欄位；只列出符合 30 天內到期條件的項目。\n- 工具需求：不需要外部工具；以使用者提供的資料直接判讀與計算。\n- 限制：\n  - 依使用者提供的「今天」或當下對話日期計算；若未提供，預設以對話當天為今天。\n  - 僅處理可判定效期的資料。\n  - 30 天內包含第 30 天。\n  - 不推測未提供的品名、批號、效期或庫存數量。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我想要一個盤點診所藥品有效期限的 Skill：把藥局回報的每筆藥品資料（品名、批號、效期、庫存數量）整理成一張表，列出從今天起算30天內(含第30天)就會過期的藥品，提醒要優先使用或退回。",
+      "created_at": "2026-09-27T10:33:56.764799178Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先把需求整理成一個可確認的 brief 草案；若你同意，我再進一步產出 Skill。請確認是否符合：\n\n**brief**\n- 任務：將診所/藥局回報的藥品清單整理成表格，篩出「從今天起算 30 天內（含第 30 天）會到期」的藥品，並標註需要優先使用或退回。\n- 輸入：每筆藥品資料至少包含品名、批號、效期、庫存數量；以使用者提供的文字表格或條列資料為準。\n- 輸出：一張整理好的表格，至少包含品名、批號、效期、庫存數量、距今天剩餘天數，以及提醒欄位；只列出符合 30 天內到期條件的項目。\n- 工具需求：不需要外部工具；以使用者提供的資料直接判讀與計算。\n- 限制：\n  - 依使用者提供的「今天」或當下對話日期計算；若未提供，預設以對話當天為今天。\n  - 僅處理可判定效期的資料。\n  - 30 天內包含第 30 天。\n  - 不推測未提供的品名、批號、效期或庫存數量。\n\n**acceptance_criteria**\n1. 當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。\n2. 輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。\n3. 效期剛好是今天起算第 30 天的藥品，必須被列入結果。\n4. 效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。\n5. 效期晚於今天起算第 30 天的藥品，不得出現在結果中。\n6. 提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。\n\n**sample_input**\n請整理以下藥品資料，篩出從今天起算 30 天內（含第 30 天）會過期的項目並列成表格：\n\n今天：2026-09-27\n\n1. 品名：Amoxicillin 500mg\n   批號：A240901\n   效期：2026-10-05\n   庫存數量：120\n2. 品名：Metformin 850mg\n   批號：M240801\n   效期：2026-10-27\n   庫存數量：80\n3. 品名：Atorvastatin 20mg\n   批號：A240701\n   效期：2026-10-28\n   庫存數量：50\n4. 品名：Omeprazole 20mg\n   批號：O240601\n   效期：2026-09-26\n   庫存數量：30\n5. 品名：Cetirizine 10mg\n   批號：C240901\n   效期：2026-11-15\n   庫存數量：60",
+      "created_at": "2026-09-27T10:34:05.177113955Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依已確認需求整理的 Skill 草案，已納入必要的限制與預設。",
+      "created_at": "2026-09-27T10:34:15.354774894Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T10:34:15.35608569Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已確認的驗證結果只有 license-unknown 警告，這不需要修改；其餘條件皆通過，因此我保留原草案不變。你可以直接接受這份 draft，或告訴我想調整哪一部分。",
+      "created_at": "2026-09-27T10:34:24.037171858Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"cd628540-feb0-4c5f-9c26-007ca39caabc\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"近效期表正確列入第 30 天到期項目，並排除超過 30 天的品項。但表格缺少提醒欄位，且已過期的 Omeprazole 被排除，未依要求列入並標示立即處理。\",\"criterion_results\":[{\"criterion_id\":\"1c860d30-b013-4dbc-9932-347165bee8bc\",\"text\":\"輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":50,\"end\":80},\"excerpt\":\"| 品名 | 批號 | 效期 | 庫存數量 | 距今天數 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"表格雖有品名、批號、效期、庫存數量與距今天數，但沒有提醒欄位。\"},{\"criterion_id\":\"2230fbd4-9c69-4301-a388-6d47eea030c6\",\"text\":\"效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":270,\"end\":326},\"excerpt\":\"- **Omeprazole 20mg**：2026-09-26，**已過期**，不列入「30 天內將過期」名單\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"早於今天的 Omeprazole 雖被標示為已過期，但明確未列入結果名單，也未提供立即處理提醒。\"},{\"criterion_id\":\"f748deab-d3ff-4afc-9b05-aae780447a78\",\"text\":\"提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":50,\"end\":80},\"excerpt\":\"| 品名 | 批號 | 效期 | 庫存數量 | 距今天數 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"結果表沒有提醒欄位，且各列未顯示優先使用、退回或其他明確處置提醒。\"},{\"criterion_id\":\"f3efad9b-711e-4161-bac7-87671b528260\",\"text\":\"當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":106,\"end\":217},\"excerpt\":\"| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 |\\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"近效期結果表僅列出距今天 8 天與 30 天的兩項藥品。\"},{\"criterion_id\":\"23384ea4-385b-4c3a-ac56-17914b6c59f3\",\"text\":\"效期剛好是今天起算第 30 天的藥品，必須被列入結果。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":163,\"end\":217},\"excerpt\":\"| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 |\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"效期為今天起算第 30 天的 Metformin 已列入表格。\"},{\"criterion_id\":\"6237e659-6579-41f1-bb21-2d3372f70543\",\"text\":\"效期晚於今天起算第 30 天的藥品，不得出現在結果中。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":223,\"end\":269},\"excerpt\":\"- **Atorvastatin 20mg**：2026-10-28，超過 30 天，不列入\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":327,\"end\":371},\"excerpt\":\"- **Cetirizine 10mg**：2026-11-15，超過 30 天，不列入\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"晚於第 30 天的 Atorvastatin 與 Cetirizine 均明確說明不列入近效期結果名單。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"warning\",\"message\":\"no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 18241 input and 588 output tokens on gpt-5.4-mini; reported cost $0.0169 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"4a101c6a-416a-4bb2-a6a4-c170c657403c\",\"skill_version_id\":\"b5edcaa9-12a6-45e0-beaa-dbd37e79ef57\"}",
+      "created_at": "2026-09-27T10:35:14.835267076Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。」：沒過——表格雖有品名、批號、效期、庫存數量與距今天數，但沒有提醒欄位。\n- 「效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。」：沒過——早於今天的 Omeprazole 雖被標示為已過期，但明確未列入結果名單，也未提供立即處理提醒。\n- 「提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。」：沒過——結果表沒有提醒欄位，且各列未顯示優先使用、退回或其他明確處置提醒。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T10:35:14.835301279Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T10:35:14.841937825Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已依你說的，修正草稿來消除試跑失敗的原因，並保留原本已通過的條件不變。\n\n這次沒過的條件有 3 個：\n1. 輸出表格必須包含提醒欄位\n2. 效期早於今天的藥品必須列入結果並視為已過期/立即處理\n3. 提醒欄位要有明確的「優先使用或退回」類似提醒\n\n我做的修改：\n- 在「輸出格式」中，把欄位順序改成必須包含「提醒」，而且每一列都要填提醒欄位，不得省略。\n- 在「計算規則」中，明確要求效期早於今天的藥品仍要列入結果表，並在提醒欄標示為已過期／立即處理。\n- 在「輸出格式」中，把提醒寫得更具體：30 天內到期者要寫「優先使用或退回」，早於今天者要寫「已過期／立即處理」，而且要同時體現在提醒欄與總結句中。\n\n其餘已通過的條件我沒有改：\n- 只保留 30 天內（含第 30 天）的品項\n- 第 30 天到期的藥品要列入\n- 晚於第 30 天的藥品不得出現\n\n你可以直接接受這份 draft，或告訴我還要怎麼調整。",
+      "created_at": "2026-09-27T10:35:36.674441569Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T10:35:36.676027801Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

@@ -1,0 +1,80 @@
+{
+  "acceptance_criteria": [
+    "輸出是一封繁體中文的說明信，而不是條列摘要、逐句翻譯或公文格式。",
+    "輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。",
+    "原文中的醫材品名必須逐字保留，不得改寫、替換或簡化。",
+    "原文中的自費金額必須逐字保留，不得改動數字、幣別或小數格式。",
+    "原文中的健保給付上限必須逐字保留，不得改動數字、單位或說法。",
+    "原文中的病人簽署期限必須逐字保留，不得改動日期、天數或期限表述。",
+    "輸出不得加入原文未提及的費用、風險、療效保證或法律效果。"
+  ],
+  "brief": "任務：把診所已完成的《自費醫材同意書》改寫成一封給病人看的口語、容易理解的說明信。必須保留原文中的醫材品名、自費金額、健保給付上限、病人簽署期限等所有關鍵數字與專有名稱，且不得改字、改數字、改單位或改順序造成含義變動。\n\n輸入：一份已完成的《自費醫材同意書》全文，可能包含標題、條款、費用、期限與注意事項。\n\n輸出：一封繁體中文說明信；語氣親切、清楚、非公文式；內容要能讓病人快速理解同意書重點；保留所有指定關鍵資訊原樣不動。\n\n工具需求：不需要外部工具；以使用者提供的文本直接改寫。\n\n限制：\n- 不新增原文沒有的醫療承諾或法律承諾。\n- 不刪除原文中影響病人決策的關鍵資訊。\n- 若原文存在多個數字、品名或期限，必須完整保留。\n- 僅做語氣與表達方式改寫，不重寫成法律文件。\n- 以繁體中文輸出。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我想要一個把診所已完成的『自費醫材同意書』從死板的公文語氣，改寫成比較口語、容易理解的一封說明信給病人看的 Skill，但裡面的醫材品名、自費金額、健保給付上限、病人簽署期限這幾個數字或名稱一個字都不能改。",
+      "created_at": "2026-09-27T11:02:21.998951704Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。",
+      "created_at": "2026-09-27T11:02:25.706322394Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有整理出需求；已自動再試一次。",
+      "created_at": "2026-09-27T11:02:29.541582361Z"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。",
+      "created_at": "2026-09-27T11:02:29.547286405Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先依你的要求補成一個可確認的 brief；我做的合理假設是：輸入會是已完成的《自費醫材同意書》全文，輸出是可直接給病人看的口語說明信，且必須保留醫材品名、自費金額、健保給付上限、病人簽署期限等所有關鍵數字與名稱逐字不變。請確認下面版本。",
+      "created_at": "2026-09-27T11:02:33.752811688Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依已確認需求完成草稿。",
+      "created_at": "2026-09-27T11:02:39.705875409Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T11:02:39.707774558Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的評估結果要修正；我保留已驗證草稿不變。",
+      "created_at": "2026-09-27T11:02:44.400357914Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"5549ee37-e1b5-46d8-b6be-d5f3cfa62f35\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"輸出成功以說明信形式保留了所有指定的關鍵資訊，且未新增禁止類型的內容。不過，核心說明仍大致沿用原同意書的正式措辭，未充分以口語方式解釋醫材用途或重點。\",\"criterion_results\":[{\"criterion_id\":\"24f0472e-66ce-4696-9915-a264d30d71fb\",\"text\":\"輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":123,\"end\":183},\"excerpt\":\"本院已向您說明本項醫材之必要性、使用方式與相關注意事項，您已充分理解並同意自費使用。若逾期未完成簽署，將依院方流程辦理。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"雖有信件開頭，但內文未以口語說明該醫材的用途或重點，主要仍沿用原本較正式的同意書語句，對病人不夠容易理解。\"},{\"criterion_id\":\"825de09e-d385-4770-a53f-74382d9e32dc\",\"text\":\"輸出是一封繁體中文的說明信，而不是條列摘要、逐句翻譯或公文格式。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":43},\"excerpt\":\"親愛的病人您好：\\n\\n這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以稱呼、說明段落與信件語氣呈現，屬於繁體中文的說明信。\"},{\"criterion_id\":\"2c991ec3-35ea-4e59-9e1f-ea290b8dbf99\",\"text\":\"原文中的醫材品名必須逐字保留，不得改寫、替換或簡化。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":45,\"end\":60},\"excerpt\":\"醫材品名：人工關節墊片A型  \",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"醫材品名與原文逐字一致。\"},{\"criterion_id\":\"8f0cc322-48b6-4a86-88b1-555023acdc19\",\"text\":\"原文中的自費金額必須逐字保留，不得改動數字、幣別或小數格式。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":61,\"end\":80},\"excerpt\":\"自費金額：新台幣 18,500 元  \",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"自費金額與原文逐字一致。\"},{\"criterion_id\":\"44e453d1-eff2-4a71-b585-3d0e4a7fdb60\",\"text\":\"原文中的健保給付上限必須逐字保留，不得改動數字、單位或說法。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":81,\"end\":102},\"excerpt\":\"健保給付上限：新台幣 12,000 元  \",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"健保給付上限與原文逐字一致。\"},{\"criterion_id\":\"9e4ec517-1d3c-4cc6-82dc-c457b0d993a7\",\"text\":\"原文中的病人簽署期限必須逐字保留，不得改動日期、天數或期限表述。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":103,\"end\":121},\"excerpt\":\"病人簽署期限：113年10月15日前\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"病人簽署期限與原文逐字一致。\"},{\"criterion_id\":\"6b9df534-9105-488f-86df-c25151c23fd1\",\"text\":\"輸出不得加入原文未提及的費用、風險、療效保證或法律效果。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":10,\"end\":43},\"excerpt\":\"這封信是要向您說明本院提供的自費醫材內容，讓您更容易了解相關資訊。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出僅加入信件式的引言，未加入原文未提及的費用、風險、療效保證或法律效果。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"a7367f4b-ed6b-4bc3-b9c4-660c7a007449\",\"occurred_at\":\"2026-09-27T11:02:59.61Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"self-paid-medical-device-letter-rewriter\\\", \\\"skill_version_id\\\": \\\"e3a89418-1e1d-4a74-8f93-81a97a1d54b0\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3224 input and 920 output tokens on gpt-5.4-mini; reported cost $0.0096 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"9c560d5a-ffa9-4679-bbc1-b84188d2ea47\",\"skill_version_id\":\"e3a89418-1e1d-4a74-8f93-81a97a1d54b0\"}",
+      "created_at": "2026-09-27T11:03:22.199311866Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。」：沒過——雖有信件開頭，但內文未以口語說明該醫材的用途或重點，主要仍沿用原本較正式的同意書語句，對病人不夠容易理解。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T11:03:22.199344068Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T11:03:22.2060625Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有 1 個條件未過：\n- 「輸出內容能清楚說明自費醫材的用途或重點，語氣口語、容易理解，適合直接給病人閱讀。」：原草稿雖保留了所有關鍵資訊，但對醫材用途與重點的說明仍偏正式，沒有把意思用病人看得懂的白話講清楚。\n\n我已依你的要求只改草稿、不改條件：在「## 你要直接完成的事」後新增一句，要求先用一句白話說明這項醫材是做什麼、病人最需要知道的重點是什麼，再把原文資訊整理成說明信，並明確要求使用一般人看得懂的詞、不要照搬同意書的正式措辭。\n\n你可以直接接受這個修正版草稿；如果你要我再調整語氣強度、白話程度或信件開頭，也可以告訴我想改哪一段。",
+      "created_at": "2026-09-27T11:03:31.296328289Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T11:03:31.298588767Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

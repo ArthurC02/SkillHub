@@ -1,0 +1,211 @@
+{
+  "request": {
+    "RunID": "28d8dc4a-baeb-4d74-946b-d88cd63badc7",
+    "EvaluationID": "437b9e9b-2f8b-47b3-91c9-30e232f82103",
+    "Skill": {
+      "Name": "self-pay-medical-device-letter-rewriter",
+      "Summary": "Rewrite a completed clinic self-pay medical device consent form into a more conversational, easy-to-understand letter for patients while preserving the device name, self-pay amount, NHI reimbursement cap, and signing deadline exactly. Use this when the user provides consent-form text to be rewritten for patient reading."
+    },
+    "UserPrompt": "請將以下文字改寫成給病人看的口語說明信，並且醫材品名、自費金額、健保給付上限、病人簽署期限都要原字保留：\n\n本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元，請於 2026 年 10 月 5 日前完成簽署。",
+    "Criteria": [
+      {
+        "ID": "88b1c0d8-8bc6-40b0-84f9-323966d53155",
+        "Text": "輸入一段自費醫材同意書文字時，輸出會改寫成口語、易懂的說明信語氣，而不是公文語氣。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7fd073a9-0e60-4a2e-ae8f-6db19f906a70",
+        "Text": "輸出會保留原文中的醫材品名，且品名文字完全一致，不得改字。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7e7ec066-02e5-4e13-b1e1-c6ba812387b5",
+        "Text": "輸出會保留原文中的自費金額，且金額數字與幣別格式完全一致，不得改字。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "89a04662-5c18-4abd-ac3c-32560181a47d",
+        "Text": "輸出會保留原文中的健保給付上限，且相關數字與單位格式完全一致，不得改字。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a06d2752-784b-4206-9db1-bb0a498d9cf9",
+        "Text": "輸出會保留原文中的病人簽署期限，且期限文字完全一致，不得改字。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e269ecb0-cb11-45ff-9760-fd05a8b6efa7",
+        "Text": "輸出不會新增與原文數字或名稱衝突的內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e5348f75-932f-4887-a84e-31ed7e3f9e5a",
+        "Text": "輸出可直接作為給病人閱讀的說明信內容。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "您好：\n\n為了讓您了解本次治療內容，說明如下。本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元。\n\n請您在了解後，於 2026 年 10 月 5 日前完成簽署。若您有任何疑問，也可以隨時向醫療人員詢問。\n\n謝謝您。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "73626c8b-ba54-4243-b1a0-2c03c0d53779",
+          "OccurredAt": "2026-09-27T11:30:10.326Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"self-pay-medical-device-letter-rewriter\", \"skill_version_id\": \"b864f10d-f730-4c66-81b0-2bbee59f3c3e\"}"
+        },
+        {
+          "TraceEventID": "52fe7b16-2bce-4d11-8335-84f2a148e7a7",
+          "OccurredAt": "2026-09-27T11:30:10.336Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請將以下文字改寫成給病人看的口語說明信，並且醫材品名、自費金額、健保給付上限、病人簽署期限都要原字保留：\\n\\n本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元，請於 2026 年 10 月 5 日前完成簽署。\", \"skill\": \"self-pay-medical-device-letter-rewriter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_yLE2IyDVfWe735V3vD3z5WT2\", \"result_summary\": \"Launching skill: self-pay-medical-device-letter-rewriter\"}"
+        },
+        {
+          "TraceEventID": "027e21de-29ba-43ab-bd1c-34585baeed3e",
+          "OccurredAt": "2026-09-27T11:30:13.314Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"您好：\\n\\n為了讓您了解本次治療內容，說明如下。本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元。\\n\\n請您在了解後，於 2026 年 10 月 5 日前完成簽署。若您有任何疑問，也可以隨時向醫療人員詢問。\\n\\n謝謝您。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fed3bdee-1168-47e8-b93e-c0db9b19318d",
+          "OccurredAt": "2026-09-27T11:30:13.565Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"您好：\\n\\n為了讓您了解本次治療內容，說明如下。本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元。\\n\\n請您在了解後，於 2026 年 10 月 5 日前完成簽署。若您有任何疑問，也可以隨時向醫療人員詢問。\\n\\n謝謝您。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d427d0db-a9d5-4709-82ad-db460192567b",
+          "OccurredAt": "2026-09-27T11:30:17.623Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0043764, \"cost_source\": \"gateway\", \"duration_ms\": 10351, \"input_tokens\": 3498, \"token_source\": \"result\", \"output_tokens\": 519, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "88b1c0d8-8bc6-40b0-84f9-323966d53155",
+        "Result": "passed",
+        "Reason": "輸出採用問候、說明與提醒的病人信件語氣，並以易懂措辭說明後續可詢問醫療人員。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您好：\n\n為了讓您了解本次治療內容，說明如下。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "若您有任何疑問，也可以隨時向醫療人員詢問。\n\n謝謝您。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7fd073a9-0e60-4a2e-ae8f-6db19f906a70",
+        "Result": "passed",
+        "Reason": "醫材品名以與原文完全一致的文字保留。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本院將為您使用「AcuFlex 3D 鈦合金支架」"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7e7ec066-02e5-4e13-b1e1-c6ba812387b5",
+        "Result": "passed",
+        "Reason": "自費金額與幣別格式均與原文一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "自費金額為新台幣 38,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "89a04662-5c18-4abd-ac3c-32560181a47d",
+        "Result": "passed",
+        "Reason": "健保給付上限的數字及單位格式均與原文一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健保給付上限為新台幣 12,000 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a06d2752-784b-4206-9db1-bb0a498d9cf9",
+        "Result": "passed",
+        "Reason": "簽署期限以與原文完全一致的日期文字保留。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請您在了解後，於 2026 年 10 月 5 日前完成簽署。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e269ecb0-cb11-45ff-9760-fd05a8b6efa7",
+        "Result": "passed",
+        "Reason": "輸出中的醫材名稱、金額、給付上限與期限均與原文一致，未見新增相衝突的數字或名稱。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本院將為您使用「AcuFlex 3D 鈦合金支架」，自費金額為新台幣 38,000 元，健保給付上限為新台幣 12,000 元。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請您在了解後，於 2026 年 10 月 5 日前完成簽署。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e5348f75-932f-4887-a84e-31ed7e3f9e5a",
+        "Result": "passed",
+        "Reason": "內容包含稱呼、治療與費用說明、簽署提醒、提問管道及結語，可直接供病人閱讀。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您好：\n\n為了讓您了解本次治療內容，說明如下。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "若您有任何疑問，也可以隨時向醫療人員詢問。\n\n謝謝您。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出已改寫為病人可閱讀的說明信，並逐字保留醫材品名、自費金額、健保給付上限及簽署期限。未見新增與原文衝突的數字或名稱。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2776,
+      "CompletionTokens": 1087,
+      "CostUSD": 0.017447900000000002,
+      "CostReported": true
+    }
+  }
+}

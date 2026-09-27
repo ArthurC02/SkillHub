@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下食材到貨驗收結果：\n1. 牛奶，到貨溫度 7°C，效期距到貨日 3 天\n2. 優格，到貨溫度 7°C，效期距到貨日 2 天\n3. 沙拉，到貨溫度 6°C，效期距到貨日 1 天\n4. 起司，到貨溫度 8°C，效期距到貨日 10 天\n5. 布丁，到貨溫度 7.1°C，效期距到貨日 100 天",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入到貨溫度 7°C、效期距到貨日 3 天時，輸出為「合格」。"
+    },
+    {
+      "text": "當輸入到貨溫度 7°C、效期距到貨日 2 天時，輸出為「警示」，且說明需優先當天用完。"
+    },
+    {
+      "text": "當輸入到貨溫度 6°C、效期距到貨日 1 天時，輸出為「警示」，且說明需優先當天用完。"
+    },
+    {
+      "text": "當輸入到貨溫度 8°C、效期距到貨日 10 天時，輸出為「拒收退回」，且不受效期影響。"
+    },
+    {
+      "text": "當輸入到貨溫度 7.1°C、效期距到貨日 100 天時，輸出為「拒收退回」，且不受效期影響。"
+    }
+  ],
+  "final_output": "牛奶：合格  \n優格：警示，需優先當天用完  \n沙拉：警示，需優先當天用完  \n起司：拒收退回，因到貨溫度超過 7°C  \n布丁：拒收退回，因到貨溫度超過 7°C",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fdd2ba60-bf95-45d1-afbd-be83558d0ee4",
+    "run_id": "3499f038-0b1c-4bc8-a496-7801b96288e1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項到貨驗收判定皆符合要求；兩項警示均包含優先當天用完的說明，兩項超過7°C者均以溫度為由拒收退回。",
+    "criterion_results": [
+      {
+        "criterion_id": "fc790532-c379-45e4-a031-b0aa2655aa5d",
+        "text": "當輸入到貨溫度 7°C、效期距到貨日 3 天時，輸出為「合格」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "牛奶的判定為合格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "牛奶：合格",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "84bf3ced-c4c9-453d-95f1-caa084507fb0",
+        "text": "當輸入到貨溫度 7°C、效期距到貨日 2 天時，輸出為「警示」，且說明需優先當天用完。",
+        "result": "passed",
+        "source": "model",
+        "reason": "優格判定為警示，並說明需優先當天用完。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "優格：警示，需優先當天用完",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b15f23a9-01c3-4a22-956e-11e2073d6972",
+        "text": "當輸入到貨溫度 6°C、效期距到貨日 1 天時，輸出為「警示」，且說明需優先當天用完。",
+        "result": "passed",
+        "source": "model",
+        "reason": "沙拉判定為警示，並說明需優先當天用完。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "沙拉：警示，需優先當天用完",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4c6408a-b8a8-4942-b0af-4190219db244",
+        "text": "當輸入到貨溫度 8°C、效期距到貨日 10 天時，輸出為「拒收退回」，且不受效期影響。",
+        "result": "passed",
+        "source": "model",
+        "reason": "起司判定為拒收退回，理由明確為到貨溫度超過7°C，而非效期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "起司：拒收退回，因到貨溫度超過 7°C",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "00108d21-5037-4bea-a416-a569e4f178be",
+        "text": "當輸入到貨溫度 7.1°C、效期距到貨日 100 天時，輸出為「拒收退回」，且不受效期影響。",
+        "result": "passed",
+        "source": "model",
+        "reason": "布丁判定為拒收退回，理由明確為到貨溫度超過7°C，而非效期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "布丁：拒收退回，因到貨溫度超過 7°C",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3070 input and 369 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

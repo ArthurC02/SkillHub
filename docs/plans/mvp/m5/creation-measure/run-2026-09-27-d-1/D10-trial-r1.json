@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "「請整理下面三次社團簽到，並在最後算出每位學生的出席率：\n第1次：王小明、李小華、陳怡君\n第2次：王小明、陳怡君\n第3次：李小華、陳怡君、王小明」",
+  "acceptance_criteria": [
+    {
+      "text": "在提供多次上課簽到資料時，Skill 會把每位學生跨課次的出席紀錄整理成可讀的彙總結果。"
+    },
+    {
+      "text": "在提供完整學期課次資料時，Skill 會輸出每位學生的出席次數、總課次與出席率。"
+    },
+    {
+      "text": "出席率會依照「出席次數 ÷ 總課次」計算，並以小數點後兩位呈現。"
+    },
+    {
+      "text": "若同一學生在多次課程中重複出現，Skill 會把紀錄累計到同一位學生名下。"
+    },
+    {
+      "text": "輸出會清楚區分每次上課的整理結果與學期末總表。"
+    }
+  ],
+  "final_output": "以下是整理結果：\n\n## 1. 每次上課整理\n\n### 第1次\n出席名單：王小明、李小華、陳怡君  \n本次共 3 人出席。\n\n### 第2次\n出席名單：王小明、陳怡君  \n本次共 2 人出席。\n\n### 第3次\n出席名單：李小華、陳怡君、王小明  \n本次共 3 人出席。\n\n### 重複或合併情況\n- 三次簽到中，學生姓名皆可直接對應為同一人。\n- 每次名單內沒有重複姓名。\n\n---\n\n## 2. 學期末統計表\n\n| 學生姓名 | 出席次數 | 總課次 | 出席率 |\n|---|---:|---:|---:|\n| 王小明 | 3 | 3 | 100.00% |\n| 李小華 | 2 | 3 | 66.67% |\n| 陳怡君 | 3 | 3 | 100.00% |\n\n---\n\n## 3. 簡短結論\n\n- **出席最多**：王小明、陳怡君，兩人都出席 3 次，並列第一。\n- **出席率最高**：王小明、陳怡君，兩人都是 **100.00%**，並列第一。\n- **出席最少**：李小華，出席 2 次，出席率 **66.67%**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "288b2772-462b-4da5-bedd-f80737b8ee16",
+    "run_id": "f199b5b8-318a-41a6-959d-3c2827fc4ba7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整整理三次簽到，將同名學生跨課次累計，並以分區清楚呈現逐次結果及包含出席次數、總課次與兩位小數出席率的學期末統計表。",
+    "criterion_results": [
+      {
+        "criterion_id": "2e8e9941-feb3-47e5-980f-9735e35c9b39",
+        "text": "在提供多次上課簽到資料時，Skill 會把每位學生跨課次的出席紀錄整理成可讀的彙總結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆依第1至第3次分列出席名單，並在學期末統計表中彙整每位學生的跨課次結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 1. 每次上課整理",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 2. 學期末統計表",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cbd87a56-f890-46b3-9bbd-6059d1eb7186",
+        "text": "在提供完整學期課次資料時，Skill 會輸出每位學生的出席次數、總課次與出席率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "學期末統計表列出每位學生的出席次數、總課次與出席率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 學生姓名 | 出席次數 | 總課次 | 出席率 |\n|---|---:|---:|---:|\n| 王小明 | 3 | 3 | 100.00% |\n| 李小華 | 2 | 3 | 66.67% |\n| 陳怡君 | 3 | 3 | 100.00% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "df4507f9-e7e9-4c77-ae4b-98836f1996d8",
+        "text": "出席率會依照「出席次數 ÷ 總課次」計算，並以小數點後兩位呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表中的比率與出席次數除以3次總課次一致，且均以小數點後兩位呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 3 | 3 | 100.00% |\n| 李小華 | 2 | 3 | 66.67% |\n| 陳怡君 | 3 | 3 | 100.00% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b561e97-ed97-4d55-bb63-fb4974ab76eb",
+        "text": "若同一學生在多次課程中重複出現，Skill 會把紀錄累計到同一位學生名下。",
+        "result": "passed",
+        "source": "model",
+        "reason": "重複出現的王小明與陳怡君均被合併為同一列並累計為3次；李小華累計為2次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 3 | 3 | 100.00% |\n| 李小華 | 2 | 3 | 66.67% |\n| 陳怡君 | 3 | 3 | 100.00% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "86072974-923c-4f54-9dba-82a781f485f8",
+        "text": "輸出會清楚區分每次上課的整理結果與學期末總表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「每次上課整理」和「學期末統計表」兩個獨立章節清楚區分。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 1. 每次上課整理",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 2. 學期末統計表",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19067 input and 605 output tokens on gpt-5.4-mini; reported cost $0.0188 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

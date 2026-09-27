@@ -1,0 +1,161 @@
+{
+  "request": {
+    "RunID": "22837569-b8c2-4ac5-9ae5-2996d129b5c9",
+    "EvaluationID": "9b00f808-dd67-41f4-ac20-8f939d615ad9",
+    "Skill": {
+      "Name": "activity-inquiry-extractor",
+      "Summary": "Extracts key fields from activity inquiry messages. Use when you need to turn a customer’s free-form event inquiry into structured contact, date, attendee, budget, and venue-preference data."
+    },
+    "UserPrompt": "請從以下活動洽詢訊息中整理出聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好：\n「您好，我是林怡君，電話 0912-345-678。我們想在 2026/11/14 舉辦公司尾牙，預計 120 人，預算上限 NT$300,000，場地希望是台北市區、交通方便、可容納百人以上的宴會廳。」",
+    "Criteria": [
+      {
+        "ID": "ca6c67bb-291f-4805-804f-e43e87d1f4f9",
+        "Text": "給定一段包含姓名、電話、日期、人數、預算與場地偏好的洽詢文字，輸出會分別擷取成 6 個對應欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "17aa44cc-0aa6-4a8b-a3be-cd392ba84d26",
+        "Text": "給定的原文中若某一欄位未出現，輸出中該欄位會留空而不臆測。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "604a236e-63f2-4728-9334-e137032035f9",
+        "Text": "若電話以多種格式出現（例如手機號碼含空格或符號），輸出仍能辨識並填入聯絡電話欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b1eb1200-3c5f-44e1-8c3c-7f92cb9699eb",
+        "Text": "若活動日期以自然語言出現（例如「下週六」），輸出保留原文表達或等價擷取結果，不自行推算成其他日期格式。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "185c5201-3c6f-4c13-b43c-7596ab25af92",
+        "Text": "若預算上限以數字加幣別出現（例如「NT$30,000」），輸出會正確擷取為預算上限欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e0723653-ebb6-4758-bef9-427279956bbc",
+        "Text": "若場地偏好以多個選項或描述出現，輸出會擷取其原文內容到場地偏好欄位。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "{\n  \"聯絡人姓名\": \"林怡君\",\n  \"聯絡電話\": \"0912-345-678\",\n  \"活動日期\": \"2026/11/14\",\n  \"預估人數\": \"120 人\",\n  \"預算上限\": \"NT$300,000\",\n  \"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\"\n}",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0f8373ee-2519-4a94-b0fa-d586383cd68e",
+          "OccurredAt": "2026-09-27T10:51:34.175Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"activity-inquiry-extractor\", \"skill_version_id\": \"d2439ac9-4944-4539-98e4-da84b40045be\"}"
+        },
+        {
+          "TraceEventID": "246680ed-cfd8-4257-9970-b35042ac0660",
+          "OccurredAt": "2026-09-27T10:51:34.184Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請從以下活動洽詢訊息中整理出聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好：\\n「您好，我是林怡君，電話 0912-345-678。我們想在 2026/11/14 舉辦公司尾牙，預計 120 人，預算上限 NT$300,000，場地希望是台北市區、交通方便、可容納百人以上的宴會廳。」\", \"skill\": \"activity-inquiry-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_MZE518l4MbbpeJIxVyLEpozM\", \"result_summary\": \"Launching skill: activity-inquiry-extractor\"}"
+        },
+        {
+          "TraceEventID": "fbd1c963-2a8d-4955-bf96-0e529bddf97b",
+          "OccurredAt": "2026-09-27T10:51:36.095Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"{\\n  \\\"聯絡人姓名\\\": \\\"林怡君\\\",\\n  \\\"聯絡電話\\\": \\\"0912-345-678\\\",\\n  \\\"活動日期\\\": \\\"2026/11/14\\\",\\n  \\\"預估人數\\\": \\\"120 人\\\",\\n  \\\"預算上限\\\": \\\"NT$300,000\\\",\\n  \\\"場地偏好\\\": \\\"台北市區、交通方便、可容納百人以上的宴會廳\\\"\\n}\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "eaee7776-d8be-43ac-9d1e-2bacddf67b77",
+          "OccurredAt": "2026-09-27T10:51:36.135Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"{\\n  \\\"聯絡人姓名\\\": \\\"林怡君\\\",\\n  \\\"聯絡電話\\\": \\\"0912-345-678\\\",\\n  \\\"活動日期\\\": \\\"2026/11/14\\\",\\n  \\\"預估人數\\\": \\\"120 人\\\",\\n  \\\"預算上限\\\": \\\"NT$300,000\\\",\\n  \\\"場地偏好\\\": \\\"台北市區、交通方便、可容納百人以上的宴會廳\\\"\\n}\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7a9675b2-22b6-4e0b-a8d1-78464bb39b20",
+          "OccurredAt": "2026-09-27T10:51:40.178Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.018045, \"cost_source\": \"gateway\", \"duration_ms\": 8668, \"input_tokens\": 19526, \"token_source\": \"result\", \"output_tokens\": 355, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ca6c67bb-291f-4805-804f-e43e87d1f4f9",
+        "Result": "passed",
+        "Reason": "輸出包含聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限與場地偏好共 6 個對應欄位，且均有擷取值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "{\n  \"聯絡人姓名\": \"林怡君\",\n  \"聯絡電話\": \"0912-345-678\",\n  \"活動日期\": \"2026/11/14\",\n  \"預估人數\": \"120 人\",\n  \"預算上限\": \"NT$300,000\",\n  \"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\"\n}"
+          }
+        ]
+      },
+      {
+        "CriterionID": "17aa44cc-0aa6-4a8b-a3be-cd392ba84d26",
+        "Result": "undetermined",
+        "Reason": "本次提供的原文六個欄位皆有出現，沒有缺少欄位的測試案例，無法判定缺值時是否會留空且不臆測。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "604a236e-63f2-4728-9334-e137032035f9",
+        "Result": "passed",
+        "Reason": "輸出成功辨識並填入含連字號格式的手機電話號碼。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "\"聯絡電話\": \"0912-345-678\""
+          }
+        ]
+      },
+      {
+        "CriterionID": "b1eb1200-3c5f-44e1-8c3c-7f92cb9699eb",
+        "Result": "undetermined",
+        "Reason": "本次日期為固定日期格式，未提供如「下週六」的自然語言日期案例，無法判定是否會保留原文而不自行推算。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "185c5201-3c6f-4c13-b43c-7596ab25af92",
+        "Result": "passed",
+        "Reason": "輸出將含 NT$ 幣別與數字格式的金額正確擷取至預算上限欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "\"預算上限\": \"NT$300,000\""
+          }
+        ]
+      },
+      {
+        "CriterionID": "e0723653-ebb6-4758-bef9-427279956bbc",
+        "Result": "passed",
+        "Reason": "輸出在場地偏好欄位保留了多項場地描述內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "\"場地偏好\": \"台北市區、交通方便、可容納百人以上的宴會廳\""
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次輸出正確擷取了六個指定欄位，並能處理含連字號的電話、NT$ 預算及多項場地偏好。缺少欄位與自然語言日期的情境未在本次執行中測試，因此兩項行為無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2655,
+      "CompletionTokens": 884,
+      "CostUSD": 0.014709400000000001,
+      "CostReported": true
+    }
+  }
+}

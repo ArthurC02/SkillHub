@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下藥品盤點資料，找出今天起算 30 天內（含第 30 天）會過期的品項，並列成表格：\n阿莫西林膠囊｜批號 A2401｜效期 2026-10-05｜庫存 120\n普拿疼錠｜批號 P8831｜效期 2026-09-27｜庫存 80\n維他命C錠｜批號 V1120｜效期 2026-11-15｜庫存 50\n抗生素眼藥水｜批號 E7788｜效期 2026-10-27｜庫存 12",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入多筆藥品資料時，輸出會以表格形式列出符合條件的藥品。"
+    },
+    {
+      "text": "當某筆藥品的效期在今天起算 30 天內（含第 30 天）時，該筆會被列入結果。"
+    },
+    {
+      "text": "當某筆藥品的效期晚於第 30 天時，該筆不會出現在結果中。"
+    },
+    {
+      "text": "輸出會保留品名、批號、效期、庫存數量四個欄位。"
+    },
+    {
+      "text": "輸出會包含提醒文字，指出需優先使用或退回。"
+    }
+  ],
+  "final_output": "以下為今天起算 30 天內（含第 30 天）會過期的品項：\n\n| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\n|---|---|---:|---:|---|\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |\n\n**合計庫存：212**\n\n未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a3bc7174-1ae6-4d2a-a501-8e9431597c2c",
+    "run_id": "dcf6ded7-28d0-4bf1-b537-debc4d95d103",
+    "status": "completed",
+    "overall": "met",
+    "summary": "結果正確篩出今天至第 30 天（含）內到期的三項藥品，並以表格提供品名、批號、效期、庫存與優先使用或退回提醒；效期超過範圍的維他命C錠已排除。",
+    "criterion_results": [
+      {
+        "criterion_id": "f81e77ea-db94-4db4-ba94-541797ac5a0e",
+        "text": "當輸入多筆藥品資料時，輸出會以表格形式列出符合條件的藥品。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以 Markdown 表格列出符合期限的多筆藥品。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |\n|---|---|---:|---:|---|\n| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |\n| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |\n| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c212fee2-e72e-471b-b789-051a5cb1e269",
+        "text": "當某筆藥品的效期在今天起算 30 天內（含第 30 天）時，該筆會被列入結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在今天 2026-09-27 起算的 30 天範圍內，包含第 30 天 2026-10-27 的品項均已列入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 抗生素眼藥水 | E7788 | 2026-10-27 | 12 | 優先使用或退回 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 普拿疼錠 | P8831 | 2026-09-27 | 80 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2d0007c6-2a73-407b-9147-deac8d1d15ae",
+        "text": "當某筆藥品的效期晚於第 30 天時，該筆不會出現在結果中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "效期晚於第 30 天的維他命C錠未出現在結果表格中，且明確標示為超過 30 天範圍。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "未列入：維他命C錠（效期 2026-11-15，超過 30 天範圍）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a51c3086-c483-46f9-9e01-e56d0da7760f",
+        "text": "輸出會保留品名、批號、效期、庫存數量四個欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格保留了藥品名稱、批號、效期及庫存四個所需欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 藥品名稱 | 批號 | 效期 | 庫存 | 備註 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "61d5094f-09b0-4ca6-964b-ccb5280fb85a",
+        "text": "輸出會包含提醒文字，指出需優先使用或退回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每筆列入的品項都包含「優先使用或退回」提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 阿莫西林膠囊 | A2401 | 2026-10-05 | 120 | 優先使用或退回 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3052 input and 762 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

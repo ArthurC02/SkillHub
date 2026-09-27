@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下冷藏食材到貨驗收結果：\n1) 牛奶，溫度 7°C，效期距到貨日 3 天\n2) 優格，溫度 7°C，效期距到貨日 2 天\n3) 沙拉醬，溫度 6.5°C，效期距到貨日 10 天\n4) 雞胸肉，溫度 6°C，效期距到貨日 1 天\n5) 起司，溫度 7.1°C，效期距到貨日 100 天\n\n請確認以上 brief、acceptance criteria 與 sample input 是否正確。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一筆溫度 7°C、效期距到貨日 3 天的資料，輸出判定為「合格」。"
+    },
+    {
+      "text": "給定一筆溫度 7°C、效期距到貨日 2 天的資料，輸出判定為「警示」，且附帶「需要優先當天用完」。"
+    },
+    {
+      "text": "給定一筆溫度 6.5°C、效期距到貨日 10 天的資料，輸出判定為「合格」。"
+    },
+    {
+      "text": "給定一筆溫度 6°C、效期距到貨日 1 天的資料，輸出判定為「警示」，且附帶「需要優先當天用完」。"
+    },
+    {
+      "text": "給定一筆溫度 7.1°C、效期距到貨日 100 天的資料，輸出判定為「拒收退回」。"
+    },
+    {
+      "text": "給定一個包含多筆資料的輸入時，Skill 對每一筆都能各自輸出正確判定，不把不同資料混在一起。"
+    }
+  ],
+  "final_output": "整體來說，**brief、acceptance criteria、sample input 都是正確且可執行的**。  \n只有一個小地方可以微調：\n\n### 可微調處\n- 「**2 天以内或等於 2 天**」這句有點重複，建議直接寫成：\n  - **效期距到貨日 2 天以內（含 2 天）→ 警示，需要優先當天用完**\n- 其餘規則邏輯一致，沒有衝突。\n\n---\n\n## 依你提供的 sample input，正確判定如下：\n1. **牛奶**：**合格**\n2. **優格**：**警示，需要優先當天用完**\n3. **沙拉醬**：**合格**\n4. **雞胸肉**：**警示，需要優先當天用完**\n5. **起司**：**拒收退回**\n\n---\n\n如果你要，我也可以幫你把這份需求**整理成更標準的規格書版本**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7a71799b-0fd5-4352-ae3e-5b834a5cc7b9",
+    "run_id": "62e1f492-8b19-4a28-960b-0195904cda11",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆對五筆輸入均逐筆給出預期的驗收結果；兩筆警示項目也都明確附上「需要優先當天用完」。",
+    "criterion_results": [
+      {
+        "criterion_id": "579baead-ef76-4e46-a9cc-a657f28093e1",
+        "text": "給定一筆溫度 7°C、效期距到貨日 3 天的資料，輸出判定為「合格」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將牛奶（7°C、效期 3 天）判定為「合格」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **牛奶**：**合格**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0aecb72-a71f-4e13-ad37-8f8aef9a24d8",
+        "text": "給定一筆溫度 7°C、效期距到貨日 2 天的資料，輸出判定為「警示」，且附帶「需要優先當天用完」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將優格（7°C、效期 2 天）判定為警示，並附帶需要優先當天用完。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **優格**：**警示，需要優先當天用完**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62ca5f6b-bcdc-4c86-9cf6-77f68f73d6b5",
+        "text": "給定一筆溫度 6.5°C、效期距到貨日 10 天的資料，輸出判定為「合格」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將沙拉醬（6.5°C、效期 10 天）判定為「合格」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **沙拉醬**：**合格**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3d1af2a7-0cd0-4da6-927a-bb64f0be14ac",
+        "text": "給定一筆溫度 6°C、效期距到貨日 1 天的資料，輸出判定為「警示」，且附帶「需要優先當天用完」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將雞胸肉（6°C、效期 1 天）判定為警示，並附帶需要優先當天用完。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **雞胸肉**：**警示，需要優先當天用完**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "85f36da1-41ea-4c94-b20e-69fd2679a8c2",
+        "text": "給定一筆溫度 7.1°C、效期距到貨日 100 天的資料，輸出判定為「拒收退回」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將起司（7.1°C、效期 100 天）判定為「拒收退回」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. **起司**：**拒收退回**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ae68c93b-4f2c-4e0c-a4c2-406fc4e25090",
+        "text": "給定一個包含多筆資料的輸入時，Skill 對每一筆都能各自輸出正確判定，不把不同資料混在一起。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以編號逐筆列出五項食材及各自判定，未混合不同資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **牛奶**：**合格**\n2. **優格**：**警示，需要優先當天用完**\n3. **沙拉醬**：**合格**\n4. **雞胸肉**：**警示，需要優先當天用完**\n5. **起司**：**拒收退回**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3071 input and 1228 output tokens on gpt-5.4-mini; reported cost $0.0109 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

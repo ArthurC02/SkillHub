@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下 6 筆申請並輸出各自級別、押金、是否需要連帶保證人、是否拒絕承租：\n1. 信用分數 720，近一年逾期繳費 0 次，無毀損倉儲設施紀錄，月租金 12,000 元。\n2. 信用分數 700，近一年逾期繳費 2 次，無毀損倉儲設施紀錄，月租金 15,000 元。\n3. 信用分數 650，近一年逾期繳費 0 次，無毀損倉儲設施紀錄，月租金 10,000 元。\n4. 信用分數 800，近一年逾期繳費 0 次，有毀損倉儲設施紀錄，月租金 20,000 元。\n5. 信用分數 699，近一年逾期繳費 5 次，無毀損倉儲設施紀錄，月租金 8,000 元。\n6. 信用分數 700，近一年逾期繳費 0 次，無毀損倉儲設施紀錄，月租金 18,000 元。\n\n以上 6 筆可一次驗證所有規則：A 級、B 級、C 級、D 級，以及 700 分邊界與毀損優先規則。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入為信用分數 720、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級、免押金、且不需要連帶保證人。"
+    },
+    {
+      "text": "當輸入為信用分數 700、近一年逾期繳費 2 次、且無毀損紀錄時，輸出 B 級、押金為 1 個月租金、且不需要連帶保證人。"
+    },
+    {
+      "text": "當輸入為信用分數 650、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 C 級、押金為 2 個月租金、且需要連帶保證人。"
+    },
+    {
+      "text": "當輸入為信用分數 800、近一年逾期繳費 0 次、且有毀損紀錄時，輸出 D 級、拒絕承租，且此結果優先於其他條件。"
+    },
+    {
+      "text": "當輸入為信用分數 699、近一年逾期繳費 5 次、且無毀損紀錄時，輸出 C 級、押金為 2 個月租金、且需要連帶保證人。"
+    },
+    {
+      "text": "當輸入為信用分數 700、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級、免押金、且不需要連帶保證人。"
+    }
+  ],
+  "final_output": "以下依規則直接審核；**700 分視為達標**，且**毀損倉儲設施紀錄優先於其他條件**。\n\n| 申請編號 | 等級 | 押金 | 是否需要連帶保證人 | 是否拒絕承租 | 判定理由 |\n|---|---|---:|---|---|---|\n| 1 | A 級 | **0 元** | 否 | 否 | 信用分數 720（≥700），近一年逾期 0 次，無毀損紀錄，符合 A 級。 |\n| 2 | B 級 | **15,000 元** | 否 | 否 | 信用分數 700（達標），近一年逾期 2 次（≥1 次），無毀損紀錄，符合 B 級。\u003cbr\u003e計算：月租金 15,000 × 1 個月 = **15,000 元**。 |\n| 3 | C 級 | **20,000 元** | 是 | 否 | 信用分數 650（未滿 700），無毀損紀錄，符合 C 級。\u003cbr\u003e計算：月租金 10,000 × 2 個月 = **20,000 元**。 |\n| 4 | D 級 | **不適用（拒絕承租）** | 否 | **是** | **曾有毀損倉儲設施紀錄**，依優先規則直接列為 D 級並拒絕承租；不再看信用分數與逾期次數。 |\n| 5 | C 級 | **16,000 元** | 是 | 否 | 信用分數 699（未滿 700），無毀損紀錄，符合 C 級。\u003cbr\u003e計算：月租金 8,000 × 2 個月 = **16,000 元**。 |\n| 6 | A 級 | **0 元** | 否 | 否 | 信用分數 700（達標），近一年逾期 0 次，無毀損紀錄，符合 A 級。 |\n\n### 押金總額加總\n先逐筆計算：\n- 1 號：0 元\n- 2 號：15,000 元\n- 3 號：20,000 元\n- 4 號：不適用（拒絕承租）\n- 5 號：16,000 元\n- 6 號：0 元\n\n再重新加總一次：\n- **0 + 15,000 + 20,000 + 16,000 + 0 = 51,000 元**\n\n### 其他總計\n- **需要連帶保證人**：共 **2 筆**（3 號、5 號）\n- **拒絕承租**：共 **1 筆**（4 號）\n\n如果你要，我也可以把這份結果改成「審核單格式」或「可直接貼給客戶的正式通知版」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4863dd5a-c7fe-40f8-9dac-e963fcff7d6c",
+    "run_id": "0d7dce5c-dc4e-4fd6-8a06-d0265be607be",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終輸出逐筆涵蓋六項指定情境，等級、押金、連帶保證人與拒絕承租結果均符合各項驗收標準，並正確處理 700 分邊界及毀損紀錄優先規則。",
+    "criterion_results": [
+      {
+        "criterion_id": "bdd8c9da-6f68-4dae-8382-4cd055b82de0",
+        "text": "當輸入為信用分數 720、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級、免押金、且不需要連帶保證人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆輸出為 A 級、押金 0 元，且不需要連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | A 級 | **0 元** | 否 | 否 | 信用分數 720（≥700），近一年逾期 0 次，無毀損紀錄，符合 A 級。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f88daa5-0bda-4b4d-9c64-1e1d8ceca45c",
+        "text": "當輸入為信用分數 700、近一年逾期繳費 2 次、且無毀損紀錄時，輸出 B 級、押金為 1 個月租金、且不需要連帶保證人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆輸出為 B 級、押金為一個月租金 15,000 元，且不需要連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | B 級 | **15,000 元** | 否 | 否 | 信用分數 700（達標），近一年逾期 2 次（≥1 次），無毀損紀錄，符合 B 級。\u003cbr\u003e計算：月租金 15,000 × 1 個月 = **15,000 元**。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c9d26b66-de36-4596-a18e-4d83781a3f6d",
+        "text": "當輸入為信用分數 650、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 C 級、押金為 2 個月租金、且需要連帶保證人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆輸出為 C 級、押金為兩個月租金 20,000 元，且需要連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | C 級 | **20,000 元** | 是 | 否 | 信用分數 650（未滿 700），無毀損紀錄，符合 C 級。\u003cbr\u003e計算：月租金 10,000 × 2 個月 = **20,000 元**。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "57f0bc36-98aa-49d5-a1d1-00fb07367a14",
+        "text": "當輸入為信用分數 800、近一年逾期繳費 0 次、且有毀損紀錄時，輸出 D 級、拒絕承租，且此結果優先於其他條件。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆輸出為 D 級並拒絕承租，且明確說明毀損紀錄優先、不再檢視其他條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | D 級 | **不適用（拒絕承租）** | 否 | **是** | **曾有毀損倉儲設施紀錄**，依優先規則直接列為 D 級並拒絕承租；不再看信用分數與逾期次數。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f23647df-2d25-4426-a009-806d81372fa1",
+        "text": "當輸入為信用分數 699、近一年逾期繳費 5 次、且無毀損紀錄時，輸出 C 級、押金為 2 個月租金、且需要連帶保證人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆輸出為 C 級、押金為兩個月租金 16,000 元，且需要連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | C 級 | **16,000 元** | 是 | 否 | 信用分數 699（未滿 700），無毀損紀錄，符合 C 級。\u003cbr\u003e計算：月租金 8,000 × 2 個月 = **16,000 元**。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54b448fc-6dfe-4ba2-802d-eedda91e71d9",
+        "text": "當輸入為信用分數 700、近一年逾期繳費 0 次、且無毀損紀錄時，輸出 A 級、免押金、且不需要連帶保證人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆輸出為 A 級、押金 0 元，且不需要連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | A 級 | **0 元** | 否 | 否 | 信用分數 700（達標），近一年逾期 0 次，無毀損紀錄，符合 A 級。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3957 input and 1735 output tokens on gpt-5.4-mini; reported cost $0.0140 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

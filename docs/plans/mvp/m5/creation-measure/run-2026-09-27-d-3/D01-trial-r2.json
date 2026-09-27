@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請計算以下揀貨數的獎金：150、151、300、301、400",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入 150 件時，輸出獎金為 150 元。"
+    },
+    {
+      "text": "當輸入 151 件時，輸出獎金為 152 元（150×1 + 1×2）。"
+    },
+    {
+      "text": "當輸入 300 件時，輸出獎金為 450 元（150×1 + 150×2）。"
+    },
+    {
+      "text": "當輸入 301 件時，先依累進分段算出 453 元（150×1 + 150×2 + 1×3），再套用封頂後輸出 453 元。"
+    },
+    {
+      "text": "當輸入 400 件時，先依累進分段算出 753 元（150×1 + 150×2 + 100×3），再套用封頂後輸出 480 元。"
+    }
+  ],
+  "final_output": "以下為各揀貨數的獎金：\n\n- 150 件：150 元\n- 151 件：152 元\n- 300 件：450 元\n- 301 件：453 元\n- 400 件：480 元（未封頂 750 元）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e4f5eb67-8ca4-4be4-9403-163b5b8fd1fc",
+    "run_id": "67ad4e14-d32e-4d13-881b-f0708ce2137f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "前四個指定揀貨數的輸出金額皆符合。400 件的封頂結果為 480 元，但未封頂金額未符合條件所列的 753 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "bf4ccab9-0d35-43b5-bd0c-c83a50f016a4",
+        "text": "當輸入 150 件時，輸出獎金為 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出顯示 150 件的獎金為 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 150 件：150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5c9ed155-6a82-474b-96b6-74475b86bc6e",
+        "text": "當輸入 151 件時，輸出獎金為 152 元（150×1 + 1×2）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出顯示 151 件的獎金為 152 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 151 件：152 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0aaed6cb-92c3-486e-8095-3474b0d83dd3",
+        "text": "當輸入 300 件時，輸出獎金為 450 元（150×1 + 150×2）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出顯示 300 件的獎金為 450 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 300 件：450 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0fcef40c-44b3-4208-b838-540b5f0db7e5",
+        "text": "當輸入 301 件時，先依累進分段算出 453 元（150×1 + 150×2 + 1×3），再套用封頂後輸出 453 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出顯示 301 件的獎金為 453 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 301 件：453 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "05a22ccc-36e7-4176-a7ee-04a24b9cbc81",
+        "text": "當輸入 400 件時，先依累進分段算出 753 元（150×1 + 150×2 + 100×3），再套用封頂後輸出 480 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然輸出封頂後為 480 元，但其標示未封頂金額為 750 元，未符合此條件要求先算出 753 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 400 件：480 元（未封頂 750 元）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3422 input and 557 output tokens on gpt-5.4-mini; reported cost $0.0080 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

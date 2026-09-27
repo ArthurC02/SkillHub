@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "1e512bf8-b664-473c-991e-d6f3bd3a40e0",
+    "EvaluationID": "491c34cc-4829-446e-9688-cf550cec42eb",
+    "Skill": {
+      "Name": "insurance-claim-result-notice-letter",
+      "Summary": "撰寫保險理賠結果通知信；當需要把理賠結果資訊整理成可直接寄出的中文通知信，且必須逐項獨立成句、總句數不超過 3 句時使用。"
+    },
+    "UserPrompt": "請幫我寫一封理賠結果通知信給客戶陳先生，理賠案號 CL-2026-04471，核定金額 82,000元，核定日期 2026年9月30日，申訴請洽客服專線 0800-123-456，申訴期限為收到通知後30天內。",
+    "Criteria": [
+      {
+        "ID": "a2bcf3d4-b11f-4c87-8b38-25198544f189",
+        "Text": "整封信不得超過3句話",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6fef9cda-93d8-4a28-aa50-72fd1c4c363c",
+        "Text": "五項資訊(理賠案號、核定金額、核定日期、申訴管道、申訴期限)都必須出現在信中，不得為了壓句數而漏掉任何一項",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "59f2d863-4cd8-4476-a3d6-f6a49a858f7f",
+        "Text": "必須有一句話說明或註記為了符合3句話上限，已將多項資訊合併在同一句，交代這個取捨",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "16da3816-f309-4a33-ba29-ebaa414cef53",
+        "Text": "不得捏造案號、金額、日期、電話以外的新資訊",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "陳先生您好：\n\n理賠案號為 CL-2026-04471。  \n核定金額為新臺幣 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果有異議，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "095cd534-2977-471f-a432-4f38987b64d7",
+          "OccurredAt": "2026-09-27T11:26:02.949Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"insurance-claim-result-notice-letter\", \"skill_version_id\": \"daff8eb3-ac30-4962-8da5-73c40e83d184\"}"
+        },
+        {
+          "TraceEventID": "3b03bbb3-a543-4c84-99ef-fce7ed4ce9a3",
+          "OccurredAt": "2026-09-27T11:26:02.966Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請根據以下資訊撰寫可直接寄出的保險理賠結果通知信：收件人陳先生；理賠案號 CL-2026-04471；核定金額 82,000元；核定日期 2026年9月30日；申訴請洽客服專線 0800-123-456；申訴期限為收到通知後30天內。要求逐項獨立成句，總句數不超過3句，語氣正式禮貌。\", \"skill\": \"insurance-claim-result-notice-letter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 17, \"invocation_id\": \"call_DgHwO6KuZ3dZHIFb8UskcLGr\", \"result_summary\": \"Launching skill: insurance-claim-result-notice-letter\"}"
+        },
+        {
+          "TraceEventID": "70430f8b-7258-4510-997e-529e89e325ee",
+          "OccurredAt": "2026-09-27T11:26:07.865Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"陳先生您好：\\n\\n理賠案號為 CL-2026-04471。  \\n核定金額為新臺幣 82,000 元。  \\n核定日期為 2026 年 9 月 30 日。  \\n如對核定結果有異議，請洽客服專線 0800-123-456。  \\n申訴期限為收到通知後 30 天內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cce44127-55f4-4d17-90f7-3ff85f20f958",
+          "OccurredAt": "2026-09-27T11:26:08.217Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"陳先生您好：\\n\\n理賠案號為 CL-2026-04471。  \\n核定金額為新臺幣 82,000 元。  \\n核定日期為 2026 年 9 月 30 日。  \\n如對核定結果有異議，請洽客服專線 0800-123-456。  \\n申訴期限為收到通知後 30 天內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "df1ea49d-ba1b-4e95-9a98-c07797f7d21b",
+          "OccurredAt": "2026-09-27T11:26:12.284Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0151185, \"cost_source\": \"gateway\", \"duration_ms\": 13944, \"input_tokens\": 19047, \"token_source\": \"result\", \"output_tokens\": 864, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a2bcf3d4-b11f-4c87-8b38-25198544f189",
+        "Result": "failed",
+        "Reason": "信中有五個以句號結束的資訊句，超過3句上限。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為 CL-2026-04471。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "核定金額為新臺幣 82,000 元。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "核定日期為 2026 年 9 月 30 日。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "如對核定結果有異議，請洽客服專線 0800-123-456。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "申訴期限為收到通知後 30 天內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6fef9cda-93d8-4a28-aa50-72fd1c4c363c",
+        "Result": "passed",
+        "Reason": "信中包含理賠案號、核定金額、核定日期、申訴客服專線及收到通知後30天內的申訴期限。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為 CL-2026-04471。  \n核定金額為新臺幣 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果有異議，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "59f2d863-4cd8-4476-a3d6-f6a49a858f7f",
+        "Result": "failed",
+        "Reason": "信中未說明為符合3句話上限而合併多項資訊；反而將各項資訊分為五句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為 CL-2026-04471。  \n核定金額為新臺幣 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果有異議，請洽客服專線 0800-123-456。  \n申訴期限為收到通知後 30 天內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "16da3816-f309-4a33-ba29-ebaa414cef53",
+        "Result": "passed",
+        "Reason": "信中使用的案號、金額、日期與客服電話均與題目提供資訊一致，未見捏造的此類資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "理賠案號為 CL-2026-04471。  \n核定金額為新臺幣 82,000 元。  \n核定日期為 2026 年 9 月 30 日。  \n如對核定結果有異議，請洽客服專線 0800-123-456。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "五項必要理賠與申訴資訊均已列出，且未見捏造指定類型資訊。但通知信共有五句，違反最多三句的要求，也沒有交代為遵守句數上限而合併資訊的取捨。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2504,
+      "CompletionTokens": 1185,
+      "CostUSD": 0.0179439,
+      "CostReported": true
+    }
+  }
+}

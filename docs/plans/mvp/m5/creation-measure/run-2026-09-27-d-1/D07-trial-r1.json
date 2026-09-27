@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下藥品資料，篩出從今天起算 30 天內（含第 30 天）會過期的項目並列成表格：\n\n今天：2026-09-27\n\n1. 品名：Amoxicillin 500mg\n   批號：A240901\n   效期：2026-10-05\n   庫存數量：120\n2. 品名：Metformin 850mg\n   批號：M240801\n   效期：2026-10-27\n   庫存數量：80\n3. 品名：Atorvastatin 20mg\n   批號：A240701\n   效期：2026-10-28\n   庫存數量：50\n4. 品名：Omeprazole 20mg\n   批號：O240601\n   效期：2026-09-26\n   庫存數量：30\n5. 品名：Cetirizine 10mg\n   批號：C240901\n   效期：2026-11-15\n   庫存數量：60",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。"
+    },
+    {
+      "text": "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。"
+    },
+    {
+      "text": "效期剛好是今天起算第 30 天的藥品，必須被列入結果。"
+    },
+    {
+      "text": "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。"
+    },
+    {
+      "text": "效期晚於今天起算第 30 天的藥品，不得出現在結果中。"
+    },
+    {
+      "text": "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。"
+    }
+  ],
+  "final_output": "以下為**從今天（2026-09-27）起算 30 天內（含第 30 天）**會過期的藥品清單：\n\n| 品名 | 批號 | 效期 | 庫存數量 | 距今天數 |\n|---|---|---:|---:|---:|\n| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 |\n\n補充：\n- **Atorvastatin 20mg**：2026-10-28，超過 30 天，不列入\n- **Omeprazole 20mg**：2026-09-26，**已過期**，不列入「30 天內將過期」名單\n- **Cetirizine 10mg**：2026-11-15，超過 30 天，不列入\n\n如果你要，我也可以順便幫你整理成「**近效期 / 已過期 / 正常**」三分類表。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cd628540-feb0-4c5f-9c26-007ca39caabc",
+    "run_id": "4a101c6a-416a-4bb2-a6a4-c170c657403c",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "近效期表正確列入第 30 天到期項目，並排除超過 30 天的品項。但表格缺少提醒欄位，且已過期的 Omeprazole 被排除，未依要求列入並標示立即處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "f3efad9b-711e-4161-bac7-87671b528260",
+        "text": "當輸入包含多筆藥品資料時，輸出只保留效期落在從今天起算 30 天內（含第 30 天）的藥品。",
+        "result": "passed",
+        "source": "model",
+        "reason": "近效期結果表僅列出距今天 8 天與 30 天的兩項藥品。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Amoxicillin 500mg | A240901 | 2026-10-05 | 120 | 8 天 |\n| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1c860d30-b013-4dbc-9932-347165bee8bc",
+        "text": "輸出表格必須包含品名、批號、效期、庫存數量、距今天剩餘天數與提醒欄位。",
+        "result": "failed",
+        "source": "model",
+        "reason": "表格雖有品名、批號、效期、庫存數量與距今天數，但沒有提醒欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品名 | 批號 | 效期 | 庫存數量 | 距今天數 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "23384ea4-385b-4c3a-ac56-17914b6c59f3",
+        "text": "效期剛好是今天起算第 30 天的藥品，必須被列入結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "效期為今天起算第 30 天的 Metformin 已列入表格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Metformin 850mg | M240801 | 2026-10-27 | 80 | 30 天 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2230fbd4-9c69-4301-a388-6d47eea030c6",
+        "text": "效期早於今天的藥品，必須被列入結果並視為已過期/立即處理。",
+        "result": "failed",
+        "source": "model",
+        "reason": "早於今天的 Omeprazole 雖被標示為已過期，但明確未列入結果名單，也未提供立即處理提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Omeprazole 20mg**：2026-09-26，**已過期**，不列入「30 天內將過期」名單",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6237e659-6579-41f1-bb21-2d3372f70543",
+        "text": "效期晚於今天起算第 30 天的藥品，不得出現在結果中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "晚於第 30 天的 Atorvastatin 與 Cetirizine 均明確說明不列入近效期結果名單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Atorvastatin 20mg**：2026-10-28，超過 30 天，不列入",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Cetirizine 10mg**：2026-11-15，超過 30 天，不列入",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f748deab-d3ff-4afc-9b05-aae780447a78",
+        "text": "提醒欄位對符合條件的藥品應顯示「優先使用或退回」類似明確提醒。",
+        "result": "failed",
+        "source": "model",
+        "reason": "結果表沒有提醒欄位，且各列未顯示優先使用、退回或其他明確處置提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品名 | 批號 | 效期 | 庫存數量 | 距今天數 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18241 input and 588 output tokens on gpt-5.4-mini; reported cost $0.0169 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

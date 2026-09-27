@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "23e0a79e-b7b2-4d19-97c3-90fc7372b27f",
+    "EvaluationID": "b1ad5c7e-ec8b-4d3a-bf3f-339b3bae8f4f",
+    "Skill": {
+      "Name": "activity-inquiry-field-extractor",
+      "Summary": "從活動洽詢訊息中擷取指定欄位並整理成結構化輸出；當你需要把客戶來訊快速轉成可用的表單資料時使用。"
+    },
+    "UserPrompt": "請幫我整理這段活動洽詢內容：您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。\n\n另有一筆洽詢：我是林志遠，想詢問 2026/12/05 的小型聚會，預估 40 人，其餘資訊未提供。\n\n補充一筆：聯絡人陳品妤，電話寫成 0912 345 678，日期寫 2026年11月18日，人數約一百二十位，預算大約十八萬元。",
+    "Criteria": [
+      {
+        "ID": "e4420cf9-2f2f-4bb9-a366-2be49d0f30cd",
+        "Text": "輸出必須包含 6 個欄位：聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限、場地偏好。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "962086d0-b304-49c0-a1cf-dafaf7f726df",
+        "Text": "當輸入文字同時包含多個欄位資訊時，Skill 需將各欄位正確對應到輸出欄位，不可混淆。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "98b9d86a-3114-469a-85df-12fbcc55f544",
+        "Text": "當某個欄位在原文中沒有明確出現時，Skill 需在該欄位呈現空值或未提供，而不是自行補寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d36fe6be-7260-43f1-871d-ab61654a6b15",
+        "Text": "輸出必須是可直接使用的結構化整理結果，而不是只做摘要或改寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "43a00641-ad4c-47e1-83c1-f528dd22d64d",
+        "Text": "同一段文字若包含格式不一致的電話、日期、金額或人數表達，Skill 仍需嘗試辨識並整理到對應欄位。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下是整理後的結構化資料：\n\n### 1. 洽詢一\n- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便\n- 活動名稱/類型：品牌發表會\n- 其他資訊：未提供\n\n### 2. 洽詢二\n- 聯絡人姓名：林志遠\n- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供\n- 活動名稱/類型：小型聚會\n- 其他資訊：未提供\n\n### 3. 洽詢三\n- 聯絡人姓名：陳品妤\n- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元\n- 場地偏好：未提供\n- 活動名稱/類型：未提供\n- 其他資訊：未提供\n\n### 重複註記\n- 第 3 筆資料與第 1 筆在日期、人數、預算上相當接近，疑似同一筆洽詢的重複或補充資訊。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "52692cc7-e5c6-48df-abd5-ad17f8ddf747",
+          "OccurredAt": "2026-09-27T10:22:32.343Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"activity-inquiry-field-extractor\", \"skill_version_id\": \"af6345c8-372c-4d49-a6f2-5040fcad7be4\"}"
+        },
+        {
+          "TraceEventID": "d6bd80c6-0108-41a5-b9c6-f88251ecf275",
+          "OccurredAt": "2026-09-27T10:22:32.353Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請將以下活動洽詢內容整理成結構化資料，包含：聯絡人、電話、活動日期、活動名稱/類型、預估人數、預算上限、場地偏好、其他資訊；若資訊缺漏請標示「未提供」；若有可能是同一筆洽詢的重複資料，請另外註記。\\n\\n原文：\\n1. 您好，我是王怡安，聯絡電話 0912-345-678。我們想在 2026/11/18 舉辦一場品牌發表會，預估 120 人，預算上限 18 萬元，場地偏好是台北市區、交通方便，謝謝。\\n\\n2. 另有一筆洽詢：我是林志遠，想詢問 2026/12/05 的小型聚會，預估 40 人，其餘資訊未提供。\\n\\n3. 補充一筆：聯絡人陳品妤，電話寫成 0912 345 678，日期寫 2026年11月18日，人數約一百二十位，預算大約十八萬元。\", \"skill\": \"activity-inquiry-field-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_otZ8IYYC1Ilqzgj9DrAbrm4O\", \"result_summary\": \"Launching skill: activity-inquiry-field-extractor\"}"
+        },
+        {
+          "TraceEventID": "6cbc7ffe-e383-4ef3-88d9-c4c9734cc65b",
+          "OccurredAt": "2026-09-27T10:22:40.595Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下是整理後的結構化資料：\\n\\n### 1. 洽詢一\\n- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\\n- 活動名稱/類型：品牌發表會\\n- 其他資訊：未提供\\n\\n### 2. 洽詢二\\n- 聯絡人姓名：林志遠\\n- 聯絡電話：未提供\\n- 活動日期：2026/12/05\\n- 預估人數：40 人\\n- 預算上限：未提供\\n- 場地偏好：未提供\\n- 活動名稱/類型：小型聚會\\n- 其他資訊：未提供\\n\\n### 3. 洽詢三\\n- 聯絡人姓名：陳品妤\\n- 聯絡電話：0912 345 678\\n- 活動日期：2026年11月18日\\n- 預估人數：約 120 位\\n- 預算上限：約 18 萬元\\n- 場地偏好：未提供\\n- 活動名稱/類型：未提供\\n- 其他資訊：未提供\\n\\n### 重複註記\\n- 第 3 筆資料與第 1 筆在日期、人數、預算上相當接近，疑似同一筆洽詢的重複或補充資訊。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "40200f82-5d55-46d0-a2ec-448f8b1ab9bf",
+          "OccurredAt": "2026-09-27T10:22:40.727Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下是整理後的結構化資料：\\n\\n### 1. 洽詢一\\n- 聯絡人姓名：王怡安\\n- 聯絡電話：0912-345-678\\n- 活動日期：2026/11/18\\n- 預估人數：120 人\\n- 預算上限：18 萬元\\n- 場地偏好：台北市區、交通方便\\n- 活動名稱/類型：品牌發表會\\n- 其他資訊：未提供\\n\\n### 2. 洽詢二\\n- 聯絡人姓名：林志遠\\n- 聯絡電話：未提供\\n- 活動日期：2026/12/05\\n- 預估人數：40 人\\n- 預算上限：未提供\\n- 場地偏好：未提供\\n- 活動名稱/類型：小型聚會\\n- 其他資訊：未提供\\n\\n### 3. 洽詢三\\n- 聯絡人姓名：陳品妤\\n- 聯絡電話：0912 345 678\\n- 活動日期：2026年11月18日\\n- 預估人數：約 120 位\\n- 預算上限：約 18 萬元\\n- 場地偏好：未提供\\n- 活動名稱/類型：未提供\\n- 其他資訊：未提供\\n\\n### 重複註記\\n- 第 3 筆資料與第 1 筆在日期、人數、預算上相當接近，疑似同一筆洽詢的重複或補充資訊。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c95567c1-7e9f-485e-ba50-7eb7ed18e877",
+          "OccurredAt": "2026-09-27T10:22:44.77Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01623165, \"cost_source\": \"gateway\", \"duration_ms\": 15908, \"input_tokens\": 3627, \"token_source\": \"result\", \"output_tokens\": 2327, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "e4420cf9-2f2f-4bb9-a366-2be49d0f30cd",
+        "Result": "passed",
+        "Reason": "三筆洽詢皆包含聯絡人姓名、聯絡電話、活動日期、預估人數、預算上限及場地偏好六個指定欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便"
+          }
+        ]
+      },
+      {
+        "CriterionID": "962086d0-b304-49c0-a1cf-dafaf7f726df",
+        "Result": "passed",
+        "Reason": "輸出將三筆洽詢分開整理，且姓名、電話、日期、人數、預算與場地資訊均對應至各自正確欄位，未見跨筆混淆。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 2. 洽詢二\n- 聯絡人姓名：林志遠\n- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 3. 洽詢三\n- 聯絡人姓名：陳品妤\n- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元\n- 場地偏好：未提供"
+          }
+        ]
+      },
+      {
+        "CriterionID": "98b9d86a-3114-469a-85df-12fbcc55f544",
+        "Result": "passed",
+        "Reason": "原文未提供的欄位均標示為「未提供」，沒有自行補寫資料。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡電話：未提供\n- 活動日期：2026/12/05\n- 預估人數：40 人\n- 預算上限：未提供\n- 場地偏好：未提供"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d36fe6be-7260-43f1-871d-ab61654a6b15",
+        "Result": "passed",
+        "Reason": "結果以逐筆、逐欄位的清單方式呈現，為可直接使用的結構化整理，而非僅摘要或改寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 1. 洽詢一\n- 聯絡人姓名：王怡安\n- 聯絡電話：0912-345-678\n- 活動日期：2026/11/18\n- 預估人數：120 人\n- 預算上限：18 萬元\n- 場地偏好：台北市區、交通方便"
+          }
+        ]
+      },
+      {
+        "CriterionID": "43a00641-ad4c-47e1-83c1-f528dd22d64d",
+        "Result": "passed",
+        "Reason": "針對不一致格式，輸出辨識出含空格的電話、中文年月日日期，以及中文數字人數與金額，並放入相應欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 聯絡電話：0912 345 678\n- 活動日期：2026年11月18日\n- 預估人數：約 120 位\n- 預算上限：約 18 萬元"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "此執行將三筆活動洽詢逐筆結構化，包含全部六個必要欄位；缺漏值正確標示，且能辨識不同電話、日期、人數及金額格式。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3611,
+      "CompletionTokens": 971,
+      "CostUSD": 0.0181434,
+      "CostReported": true
+    }
+  }
+}

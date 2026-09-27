@@ -1,0 +1,187 @@
+{
+  "request": {
+    "RunID": "4974aaa6-b059-4bd8-9ee8-5fbf1be5e6bc",
+    "EvaluationID": "33c639f3-f420-40e3-be8d-9ffd9dd6814f",
+    "Skill": {
+      "Name": "daily-restaurant-revenue-settlement",
+      "Summary": "For daily restaurant closing reports that need POS sales reconciliation, compute whether cash and credit card totals match the day's revenue and prepare a result message for 22:00 LINE group delivery."
+    },
+    "UserPrompt": "請產生每日餐廳營業額結算結果並判斷對帳是否成功，以下是一日資料：\n2026-09-26 POS 營業額：12850\n現金明細：7350\n信用卡明細：5500\n\n請再判斷另一日是否對帳失敗，以下是一日資料：\n2026-09-27 POS 營業額：13240\n現金明細：6800\n信用卡明細：6200",
+    "Criteria": [
+      {
+        "ID": "d9ddd090-f652-46dd-9c4a-bb12d77b07df",
+        "Text": "當輸入一日的 POS 營業額、現金金額與信用卡金額時，輸出必須判定是否對帳成功。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2ef611f2-939d-4df3-91e0-f599d208a186",
+        "Text": "當現金 + 信用卡金額等於營業額時，輸出必須標示「對帳成功」或同等明確結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d867e22f-55d7-4782-a4c4-97446f7ece5c",
+        "Text": "當現金 + 信用卡金額不等於營業額時，輸出必須標示「對帳失敗」並指出差額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ed3e72e4-5eee-4b17-b8a0-6cb437fa892d",
+        "Text": "輸出必須包含當日營業額、現金、信用卡、對帳結果四個欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b33e22af-a694-48c0-93b8-474d009bcc00",
+        "Text": "若設定為晚上 10 點通知，輸出必須描述會在 22:00 發送到 LINE 群組。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ab5977a5-bc73-4ee6-85f2-3de5f1a5451b",
+        "Text": "試跑輸入必須能同時驗證成功與失敗兩種對帳情境。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為兩日的餐廳營業額結算結果：\n\n---\n\n## 2026-09-26\n- 日期：2026-09-26\n- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功\n\n**LINE 群組通知文案（預設 22:00 發送）**\n\u003e 今日餐廳結算完成：  \n\u003e 日期：2026-09-26  \n\u003e 營業額：12850  \n\u003e 現金：7350  \n\u003e 信用卡：5500  \n\u003e 合計：12850  \n\u003e 結果：對帳成功\n\n---\n\n## 2026-09-27\n- 日期：2026-09-27\n- 當日營業額：13240\n- 現金金額：6800\n- 信用卡金額：6200\n- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240\n\n**LINE 群組通知文案（預設 22:00 發送）**\n\u003e 今日餐廳結算完成：  \n\u003e 日期：2026-09-27  \n\u003e 營業額：13240  \n\u003e 現金：6800  \n\u003e 信用卡：6200  \n\u003e 合計：13000  \n\u003e 結果：對帳失敗  \n\u003e 差額：240\n\n---\n\n補充說明：  \n以上內容僅為結算與對帳結果整理，實際送出或排程到 LINE 群組需由人員手動執行。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "3826e6e3-7ee0-4095-b395-ca37233dcd84",
+          "OccurredAt": "2026-09-27T11:27:11.728Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"daily-restaurant-revenue-settlement\", \"skill_version_id\": \"a874ad88-784b-4b61-9d24-ba68ed9120e5\"}"
+        },
+        {
+          "TraceEventID": "000cf969-0685-4584-8ec8-6cb2ef899353",
+          "OccurredAt": "2026-09-27T11:27:11.739Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"daily-restaurant-revenue-settlement\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_oIyTEUPiI1s5sBIGKUO6VKsv\", \"result_summary\": \"Launching skill: daily-restaurant-revenue-settlement\"}"
+        },
+        {
+          "TraceEventID": "ea0ab0d2-e8b5-431a-9a60-4c24b423820c",
+          "OccurredAt": "2026-09-27T11:27:16.924Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為兩日的餐廳營業額結算結果：\\n\\n---\\n\\n## 2026-09-26\\n- 日期：2026-09-26\\n- 當日營業額：12850\\n- 現金金額：7350\\n- 信用卡金額：5500\\n- 合計金額：7350 + 5500 = 12850\\n- 對帳結果：對帳成功\\n\\n**LINE 群組通知文案（預設 22:00 發送）**\\n\u003e 今日餐廳結算完成：  \\n\u003e 日期：2026-09-26  \\n\u003e 營業額：12850  \\n\u003e 現金：7350  \\n\u003e 信用卡：5500  \\n\u003e 合計：12850  \\n\u003e 結果：對帳成功\\n\\n---\\n\\n## 2026-09-27\\n- 日期：2026-09-27\\n- 當日營業額：13240\\n- 現金金額：6800\\n- 信用卡金額：6200\\n- 合計金額：6800 + 6200 = 13000\\n- 對帳結果：對帳失敗\\n- 差額：13240 - 13000 = 240\\n\\n**LINE 群組通知文案（預設 22:00 發送）**\\n\u003e 今日餐廳結算完成：  \\n\u003e 日期：2026-09-27  \\n\u003e 營業額：13240  \\n\u003e 現金：6800  \\n\u003e 信用卡：6200  \\n\u003e 合計：13000  \\n\u003e 結果：對帳失敗  \\n\u003e 差額：240\\n\\n---\\n\\n補充說明：  \\n以上內容僅為結算與對帳結果整理，實際送出或排程到 LINE 群組需由人員手動執行。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5db6dc17-d1a9-4a3e-b76b-1e1759abfe53",
+          "OccurredAt": "2026-09-27T11:27:17.18Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為兩日的餐廳營業額結算結果：\\n\\n---\\n\\n## 2026-09-26\\n- 日期：2026-09-26\\n- 當日營業額：12850\\n- 現金金額：7350\\n- 信用卡金額：5500\\n- 合計金額：7350 + 5500 = 12850\\n- 對帳結果：對帳成功\\n\\n**LINE 群組通知文案（預設 22:00 發送）**\\n\u003e 今日餐廳結算完成：  \\n\u003e 日期：2026-09-26  \\n\u003e 營業額：12850  \\n\u003e 現金：7350  \\n\u003e 信用卡：5500  \\n\u003e 合計：12850  \\n\u003e 結果：對帳成功\\n\\n---\\n\\n## 2026-09-27\\n- 日期：2026-09-27\\n- 當日營業額：13240\\n- 現金金額：6800\\n- 信用卡金額：6200\\n- 合計金額：6800 + 6200 = 13000\\n- 對帳結果：對帳失敗\\n- 差額：13240 - 13000 = 240\\n\\n**LINE 群組通知文案（預設 22:00 發送）**\\n\u003e 今日餐廳結算完成：  \\n\u003e 日期：2026-09-27  \\n\u003e 營業額：13240  \\n\u003e 現金：6800  \\n\u003e 信用卡：6200  \\n\u003e 合計：13000  \\n\u003e 結果：對帳失敗  \\n\u003e 差額：240\\n\\n---\\n\\n補充說明：  \\n以上內容僅為結算與對帳結果整理，實際送出或排程到 LINE 群組需由人員手動執行。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "6f1dde75-8ad5-4925-b496-74425f16e16c",
+          "OccurredAt": "2026-09-27T11:27:21.272Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01009365, \"cost_source\": \"gateway\", \"duration_ms\": 11522, \"input_tokens\": 3345, \"token_source\": \"result\", \"output_tokens\": 1020, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d9ddd090-f652-46dd-9c4a-bb12d77b07df",
+        "Result": "passed",
+        "Reason": "輸出對兩日資料均明確給出對帳判定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 對帳結果：對帳成功"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 對帳結果：對帳失敗"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2ef611f2-939d-4df3-91e0-f599d208a186",
+        "Result": "passed",
+        "Reason": "現金與信用卡合計 12850，等於營業額，並標示為對帳成功。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d867e22f-55d7-4782-a4c4-97446f7ece5c",
+        "Result": "passed",
+        "Reason": "第二日合計與營業額不相等時，明確標示對帳失敗並列出差額 240。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ed3e72e4-5eee-4b17-b8a0-6cb437fa892d",
+        "Result": "passed",
+        "Reason": "每日結果包含當日營業額、現金、信用卡及對帳結果欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b33e22af-a694-48c0-93b8-474d009bcc00",
+        "Result": "passed",
+        "Reason": "輸出明確提供 LINE 群組通知文案，且標示預設於 22:00 發送。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**LINE 群組通知文案（預設 22:00 發送）**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ab5977a5-bc73-4ee6-85f2-3de5f1a5451b",
+        "Result": "passed",
+        "Reason": "試跑同時呈現一日對帳成功與另一日對帳失敗的情境。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 2026-09-26\n- 日期：2026-09-26\n- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 2026-09-27\n- 日期：2026-09-27\n- 當日營業額：13240\n- 現金金額：6800\n- 信用卡金額：6200\n- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出正確計算兩日的現金與信用卡合計，分別判定成功與失敗，並在失敗日列出差額。每日均含營業額、現金、信用卡與對帳結果，且提供標示 22:00 發送的 LINE 群組通知文案。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3504,
+      "CompletionTokens": 1120,
+      "CostUSD": 0.0196639,
+      "CostReported": true
+    }
+  }
+}

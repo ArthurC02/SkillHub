@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我審核以下四位自助倉儲申請人應該列為哪一級：\n1. 王小明：信用分數700，近一年逾期繳費0次，無毀損紀錄。\n2. 李美華：信用分數700，近一年逾期繳費2次，無毀損紀錄。\n3. 陳大文：信用分數699，近一年逾期繳費0次，無毀損紀錄。\n4. 林志強：信用分數900，近一年逾期繳費0次，無毀損紀錄。",
+  "acceptance_criteria": [
+    {
+      "text": "王小明應列為A級（免押金）"
+    },
+    {
+      "text": "李美華應列為B級（押金1個月租金）"
+    },
+    {
+      "text": "陳大文應列為C級（押金2個月租金，且需要連帶保證人）"
+    },
+    {
+      "text": "林志強應列為A級（免押金），不得因分數很高而誤判為其他級別"
+    }
+  ],
+  "final_output": "依規則審核結果如下：\n\n1. **王小明**：**A 級**；**免押金**\n2. **李美華**：**B 級**；**押金為 1 個月租金**\n3. **陳大文**：**C 級**；**押金為 2 個月租金且需要連帶保證人**\n4. **林志強**：**A 級**；**免押金**\n\n補充：以上四位皆未提供毀損倉儲設施紀錄，因此不涉及 **D 級／拒絕承租**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1fdd971f-e1c1-4750-9947-ea28c697c73e",
+    "run_id": "b934040b-2105-465b-8cec-882dfd1b6761",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項申請人的級別與所需條件均依驗收標準正確列出。",
+    "criterion_results": [
+      {
+        "criterion_id": "e98a39ce-d1e7-4af7-8773-921c3e801ef1",
+        "text": "王小明應列為A級（免押金）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將王小明列為 A 級且免押金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **王小明**：**A 級**；**免押金**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b2ead3ab-e5c2-414b-aa2f-69ac24bdf35f",
+        "text": "李美華應列為B級（押金1個月租金）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將李美華列為 B 級，押金為 1 個月租金。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **李美華**：**B 級**；**押金為 1 個月租金**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e847ade4-6316-43ad-8241-bc97708640b6",
+        "text": "陳大文應列為C級（押金2個月租金，且需要連帶保證人）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將陳大文列為 C 級，要求 2 個月租金押金及連帶保證人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **陳大文**：**C 級**；**押金為 2 個月租金且需要連帶保證人**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d8cacc5e-0ca0-4b54-80df-7a5fc7479dad",
+        "text": "林志強應列為A級（免押金），不得因分數很高而誤判為其他級別",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將林志強列為 A 級且免押金，未因其高信用分數改列其他級別。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **林志強**：**A 級**；**免押金**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19054 input and 437 output tokens on gpt-5.4-mini; reported cost $0.0181 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

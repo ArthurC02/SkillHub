@@ -1,0 +1,173 @@
+{
+  "round": 1,
+  "sample_input": "請產生每日餐廳營業額結算結果並判斷對帳是否成功，以下是一日資料：\n2026-09-26 POS 營業額：12850\n現金明細：7350\n信用卡明細：5500\n\n請再判斷另一日是否對帳失敗，以下是一日資料：\n2026-09-27 POS 營業額：13240\n現金明細：6800\n信用卡明細：6200",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一日的 POS 營業額、現金金額與信用卡金額時，輸出必須判定是否對帳成功。"
+    },
+    {
+      "text": "當現金 + 信用卡金額等於營業額時，輸出必須標示「對帳成功」或同等明確結果。"
+    },
+    {
+      "text": "當現金 + 信用卡金額不等於營業額時，輸出必須標示「對帳失敗」並指出差額。"
+    },
+    {
+      "text": "輸出必須包含當日營業額、現金、信用卡、對帳結果四個欄位。"
+    },
+    {
+      "text": "若設定為晚上 10 點通知，輸出必須描述會在 22:00 發送到 LINE 群組。"
+    },
+    {
+      "text": "試跑輸入必須能同時驗證成功與失敗兩種對帳情境。"
+    }
+  ],
+  "final_output": "以下為兩日的餐廳營業額結算結果：\n\n---\n\n## 2026-09-26\n- 日期：2026-09-26\n- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功\n\n**LINE 群組通知文案（預設 22:00 發送）**\n\u003e 今日餐廳結算完成：  \n\u003e 日期：2026-09-26  \n\u003e 營業額：12850  \n\u003e 現金：7350  \n\u003e 信用卡：5500  \n\u003e 合計：12850  \n\u003e 結果：對帳成功\n\n---\n\n## 2026-09-27\n- 日期：2026-09-27\n- 當日營業額：13240\n- 現金金額：6800\n- 信用卡金額：6200\n- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240\n\n**LINE 群組通知文案（預設 22:00 發送）**\n\u003e 今日餐廳結算完成：  \n\u003e 日期：2026-09-27  \n\u003e 營業額：13240  \n\u003e 現金：6800  \n\u003e 信用卡：6200  \n\u003e 合計：13000  \n\u003e 結果：對帳失敗  \n\u003e 差額：240\n\n---\n\n補充說明：  \n以上內容僅為結算與對帳結果整理，實際送出或排程到 LINE 群組需由人員手動執行。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "33c639f3-f420-40e3-be8d-9ffd9dd6814f",
+    "run_id": "4974aaa6-b059-4bd8-9ee8-5fbf1be5e6bc",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出正確計算兩日的現金與信用卡合計，分別判定成功與失敗，並在失敗日列出差額。每日均含營業額、現金、信用卡與對帳結果，且提供標示 22:00 發送的 LINE 群組通知文案。",
+    "criterion_results": [
+      {
+        "criterion_id": "d9ddd090-f652-46dd-9c4a-bb12d77b07df",
+        "text": "當輸入一日的 POS 營業額、現金金額與信用卡金額時，輸出必須判定是否對帳成功。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出對兩日資料均明確給出對帳判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 對帳結果：對帳成功",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 對帳結果：對帳失敗",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ef611f2-939d-4df3-91e0-f599d208a186",
+        "text": "當現金 + 信用卡金額等於營業額時，輸出必須標示「對帳成功」或同等明確結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "現金與信用卡合計 12850，等於營業額，並標示為對帳成功。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d867e22f-55d7-4782-a4c4-97446f7ece5c",
+        "text": "當現金 + 信用卡金額不等於營業額時，輸出必須標示「對帳失敗」並指出差額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二日合計與營業額不相等時，明確標示對帳失敗並列出差額 240。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ed3e72e4-5eee-4b17-b8a0-6cb437fa892d",
+        "text": "輸出必須包含當日營業額、現金、信用卡、對帳結果四個欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每日結果包含當日營業額、現金、信用卡及對帳結果欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b33e22af-a694-48c0-93b8-474d009bcc00",
+        "text": "若設定為晚上 10 點通知，輸出必須描述會在 22:00 發送到 LINE 群組。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確提供 LINE 群組通知文案，且標示預設於 22:00 發送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**LINE 群組通知文案（預設 22:00 發送）**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ab5977a5-bc73-4ee6-85f2-3de5f1a5451b",
+        "text": "試跑輸入必須能同時驗證成功與失敗兩種對帳情境。",
+        "result": "passed",
+        "source": "model",
+        "reason": "試跑同時呈現一日對帳成功與另一日對帳失敗的情境。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 2026-09-26\n- 日期：2026-09-26\n- 當日營業額：12850\n- 現金金額：7350\n- 信用卡金額：5500\n- 合計金額：7350 + 5500 = 12850\n- 對帳結果：對帳成功",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 2026-09-27\n- 日期：2026-09-27\n- 當日營業額：13240\n- 現金金額：6800\n- 信用卡金額：6200\n- 合計金額：6800 + 6200 = 13000\n- 對帳結果：對帳失敗\n- 差額：13240 - 13000 = 240",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3345 input and 1020 output tokens on gpt-5.4-mini; reported cost $0.0101 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

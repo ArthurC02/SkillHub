@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請幫我結算今天的餐廳營業額並整理成要發到 LINE 群組的訊息：\n\n日期：2026-09-27\nPOS 營業額：128,500\n現金明細：52,300\n信用卡明細：76,200\n\n請按「POS 營業額 = 現金 + 信用卡」檢查是否兜起來，並輸出結算結果。",
+  "acceptance_criteria": [
+    {
+      "text": "在一個包含單日 POS 營業額、現金明細與信用卡明細的試跑資料中，Skill 會輸出當日結算結果。"
+    },
+    {
+      "text": "輸出會明確指出營業額數字、現金金額、信用卡金額，以及三者是否兜得起來。"
+    },
+    {
+      "text": "當現金加信用卡總和等於營業額時，輸出會標示為一致或對帳成功。"
+    },
+    {
+      "text": "當現金加信用卡總和不等於營業額時，輸出會標示差額，且清楚指出不一致。"
+    },
+    {
+      "text": "輸出會包含可直接傳送到 LINE 群組的結算訊息內容。"
+    },
+    {
+      "text": "若以排程方式實作，Skill 會描述或產生每天晚上 10 點送出的行為。"
+    }
+  ],
+  "final_output": "以下是今天的結算結果：\n\n**結算結果**\n- 日期：2026-09-27\n- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0\n\n**可直接貼到 LINE 群組的訊息**\n\u003e 【2026-09-27 餐廳營業額結算】  \n\u003e POS 營業額：128,500  \n\u003e 現金：52,300  \n\u003e 信用卡：76,200  \n\u003e 合計：128,500  \n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \n\u003e 差額：0\n\n如果你要，我也可以幫你再整理成「更像老闆群組口吻」或「更正式的版本」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6f541ae1-619e-4210-86e2-6dadd11853b0",
+    "run_id": "ff6f877a-de23-427f-8156-39d2dbf7fad5",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次試跑正確完成一致情況下的營業額結算，明列金額、對帳成功與可直接傳送的 LINE 訊息。未測得不一致時的差額與不一致標示，且沒有排程晚上 10 點送出的實作證據。",
+    "criterion_results": [
+      {
+        "criterion_id": "7cf2c02c-5fa2-4f2a-a7ad-6047439c6fef",
+        "text": "在一個包含單日 POS 營業額、現金明細與信用卡明細的試跑資料中，Skill 會輸出當日結算結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "試跑輸出提供了指定日期的完整當日結算結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是今天的結算結果：\n\n**結算結果**\n- 日期：2026-09-27\n- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6f69e4a-d9e6-4424-971d-eb1e8fb9a3f2",
+        "text": "輸出會明確指出營業額數字、現金金額、信用卡金額，以及三者是否兜得起來。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確列出營業額、現金、信用卡、合計、對帳結果與差額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- POS 營業額：128,500\n- 現金明細：52,300\n- 信用卡明細：76,200\n- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4aa04446-54cc-4c8a-8610-e7d83bd383dc",
+        "text": "當現金加信用卡總和等於營業額時，輸出會標示為一致或對帳成功。",
+        "result": "passed",
+        "source": "model",
+        "reason": "現金與信用卡合計為 128,500，等於 POS 營業額，且輸出標示對帳成功與兜得起來。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 現金 + 信用卡合計：128,500\n- 對帳結果：**成功，兜得起來**\n- 差額：0",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7e319fb-293a-429f-ba7c-f895ad001e62",
+        "text": "當現金加信用卡總和不等於營業額時，輸出會標示差額，且清楚指出不一致。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次試跑資料為對帳一致，未提供現金加信用卡不等於營業額時的輸出，無法判斷是否會標示差額並明確指出不一致。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "3e0f6d4d-86d8-4954-bd39-a2516c160e56",
+        "text": "輸出會包含可直接傳送到 LINE 群組的結算訊息內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含標示為可直接貼到 LINE 群組的完整結算訊息。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**可直接貼到 LINE 群組的訊息**\n\u003e 【2026-09-27 餐廳營業額結算】  \n\u003e POS 營業額：128,500  \n\u003e 現金：52,300  \n\u003e 信用卡：76,200  \n\u003e 合計：128,500  \n\u003e ✅ 對帳成功，POS 營業額 = 現金 + 信用卡，兜得起來。  \n\u003e 差額：0",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6300b36-8450-4580-aca4-4dc5f3634626",
+        "text": "若以排程方式實作，Skill 會描述或產生每天晚上 10 點送出的行為。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次證據未顯示有以排程方式實作，也未呈現每天晚上 10 點送出的行為；無法判斷條件式排程需求是否已實作。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3103 input and 460 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

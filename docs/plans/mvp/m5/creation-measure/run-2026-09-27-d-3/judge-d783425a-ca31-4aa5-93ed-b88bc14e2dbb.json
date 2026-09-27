@@ -1,0 +1,145 @@
+{
+  "request": {
+    "RunID": "d783425a-ca31-4aa5-93ed-b88bc14e2dbb",
+    "EvaluationID": "13e41b6c-de35-4e26-af2a-f45606b044f2",
+    "Skill": {
+      "Name": "self-pay-medical-device-letter-rewriter",
+      "Summary": "Rewrite a completed clinic self-pay medical device consent form into a more conversational, easy-to-understand letter for patients while preserving the device name, self-pay amount, NHI reimbursement cap, and signing deadline exactly. Use this when the user provides consent-form text to be rewritten for patient reading."
+    },
+    "UserPrompt": "以下是要給病人的自費醫材同意書公文草稿，請幫我改寫成比較口語、親切、病人容易看懂的說明信，但裡面的數字和名稱都要保留正確：\n\n『本院茲告知病患，本次門診手術擬使用之自費醫材品項為「人工水晶體(多焦點)」，其自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。病患應於門診手術當日起3個工作天內完成本同意書之簽署，逾期視同放棄使用該自費醫材之權利。』",
+    "Criteria": [
+      {
+        "ID": "f0ed7d30-4fcd-448f-992e-7b4ae498a192",
+        "Text": "改寫後的信中必須完整保留醫材品名『人工水晶體(多焦點)』，不能省略或改名",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7803de95-b1c0-49a0-bd4c-c8de857e5e9e",
+        "Text": "自費金額45,000元、健保給付上限12,000元這兩個數字必須完全正確且沒有被改動或算錯",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3b363f21-53a7-499a-8707-78d91462a645",
+        "Text": "病人簽署期限『門診手術當日起3個工作天內』這個期限必須保留、不得改成別的天數",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e26c7010-d352-40ff-9617-04e014ff22cc",
+        "Text": "整封信的語氣應該改寫得更口語化、親切，不能只是照抄原文公文語氣",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "您好，這次門診手術，我們會向您說明一項可供選擇的自費醫材：「人工水晶體(多焦點)」。這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。\n\n如果您有考慮使用這項自費醫材，病患應於門診手術當日起3個工作天內完成本同意書之簽署。逾期視同放棄使用該自費醫材之權利。\n\n如果您有任何疑問，歡迎隨時向醫護人員詢問，我們會再幫您說明。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "aa6fcc29-2f7d-4888-b337-fed501538a92",
+          "OccurredAt": "2026-09-27T11:30:32.709Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"self-pay-medical-device-letter-rewriter\", \"skill_version_id\": \"b864f10d-f730-4c66-81b0-2bbee59f3c3e\"}"
+        },
+        {
+          "TraceEventID": "94410e66-b360-431b-bb38-b04be018c6ff",
+          "OccurredAt": "2026-09-27T11:30:32.726Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"self-pay-medical-device-letter-rewriter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 17, \"invocation_id\": \"call_1RSArLsSXAAaufXIdfw4m6Od\", \"result_summary\": \"Launching skill: self-pay-medical-device-letter-rewriter\"}"
+        },
+        {
+          "TraceEventID": "4551edbf-c21a-4f5d-9617-397c6cdc9213",
+          "OccurredAt": "2026-09-27T11:30:37.138Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"您好，這次門診手術，我們會向您說明一項可供選擇的自費醫材：「人工水晶體(多焦點)」。這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。\\n\\n如果您有考慮使用這項自費醫材，病患應於門診手術當日起3個工作天內完成本同意書之簽署。逾期視同放棄使用該自費醫材之權利。\\n\\n如果您有任何疑問，歡迎隨時向醫護人員詢問，我們會再幫您說明。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b109ce02-87cb-4027-8f97-ffbc41549802",
+          "OccurredAt": "2026-09-27T11:30:37.427Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"您好，這次門診手術，我們會向您說明一項可供選擇的自費醫材：「人工水晶體(多焦點)」。這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。\\n\\n如果您有考慮使用這項自費醫材，病患應於門診手術當日起3個工作天內完成本同意書之簽署。逾期視同放棄使用該自費醫材之權利。\\n\\n如果您有任何疑問，歡迎隨時向醫護人員詢問，我們會再幫您說明。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "070480ef-90c0-45dc-9b53-3c09ccf30cad",
+          "OccurredAt": "2026-09-27T11:30:41.478Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.014652, \"cost_source\": \"gateway\", \"duration_ms\": 11034, \"input_tokens\": 19222, \"token_source\": \"result\", \"output_tokens\": 803, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "f0ed7d30-4fcd-448f-992e-7b4ae498a192",
+        "Result": "passed",
+        "Reason": "改寫信中完整保留了指定醫材品名。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您好，這次門診手術，我們會向您說明一項可供選擇的自費醫材：「人工水晶體(多焦點)」。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7803de95-b1c0-49a0-bd4c-c8de857e5e9e",
+        "Result": "passed",
+        "Reason": "自付差額45,000元及健保給付上限12,000元均與原文一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這項醫材的自付差額為新臺幣45,000元整，健保給付上限為新臺幣12,000元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "3b363f21-53a7-499a-8707-78d91462a645",
+        "Result": "passed",
+        "Reason": "信中保留了門診手術當日起3個工作天內完成簽署的期限，未改動天數。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "如果您有考慮使用這項自費醫材，病患應於門診手術當日起3個工作天內完成本同意書之簽署。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e26c7010-d352-40ff-9617-04e014ff22cc",
+        "Result": "passed",
+        "Reason": "信件加入問候、選擇性說明及主動詢問管道，整體較原公文親切易讀，且非照抄原文。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您好，這次門診手術，我們會向您說明一項可供選擇的自費醫材：「人工水晶體(多焦點)」。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "如果您有任何疑問，歡迎隨時向醫護人員詢問，我們會再幫您說明。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有必要的醫材名稱、金額、健保上限與簽署期限皆正確保留；信件也改為較親切、面向病人的說明方式。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2684,
+      "CompletionTokens": 738,
+      "CostUSD": 0.0130299,
+      "CostReported": true
+    }
+  }
+}

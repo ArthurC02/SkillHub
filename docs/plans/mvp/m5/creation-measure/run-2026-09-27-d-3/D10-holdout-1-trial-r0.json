@@ -1,0 +1,149 @@
+{
+  "round": 0,
+  "sample_input": "這是童軍社這學期到目前為止的簽到紀錄，請幫我算出每個學生的出席率：\n第1週(9/7)上課，出席名單：小安、小柏、小晴、小東(小恩請假)\n第2週(9/14)上課，出席名單：小安、小柏、小東、小恩(小晴請假)\n第3週(9/21)因颱風停課，沒有上課\n第4週(9/28)上課，出席名單：小安、小晴、小東、小恩(小柏請假)\n第5週(10/5)上課，全員到齊：小安、小柏、小晴、小東、小恩",
+  "acceptance_criteria": [
+    {
+      "text": "計算出席率時，分母應該用實際有上課的4次(排除第3週颱風停課)，不能把停課的那一週也算進總次數變成5次"
+    },
+    {
+      "text": "小安與小東的出席率應為100%(4次都到)"
+    },
+    {
+      "text": "小柏、小晴、小恩三人的出席率應各為75%(4次中缺席1次)"
+    },
+    {
+      "text": "不得把颱風停課那週誤記成有人缺席"
+    }
+  ],
+  "final_output": "以下以**實際有上課的 4 次課**來計算；**第 3 週（9/21）颱風停課，不列入課程總次數**。\n\n## 1. 課次整理\n- 第 1 次課（9/7）：小安、小柏、小晴、小東\n- 第 2 次課（9/14）：小安、小柏、小東、小恩\n- 第 3 次課（9/21）：停課，未上課\n- 第 4 次課（9/28）：小安、小晴、小東、小恩\n- 第 5 次課（10/5）：小安、小柏、小晴、小東、小恩\n\n## 2. 學期統計表\n| 學生 | 出席次數 | 課程總次數 | 出席率 |\n|------|----------|------------|--------|\n| 小安 | 4 | 4 | 100.0% |\n| 小柏 | 3 | 4 | 75.0% |\n| 小晴 | 3 | 4 | 75.0% |\n| 小東 | 4 | 4 | 100.0% |\n| 小恩 | 3 | 4 | 75.0% |\n\n## 3. 簡短摘要\n- **出席次數最高的學生**：小安、小東（各 4 次，100.0%）\n- **全班平均出席率**：85.0%（17 / 20）\n\n如果你要，我也可以幫你把這份結果整理成**可直接貼給老師的簡短版**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "30c8f55e-c1ad-46af-88c3-308798ccbde6",
+    "run_id": "657d72e0-31dc-4714-aca2-891463272380",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件皆已達成：停課週已排除，且五位學生的出席率均計算正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "65d534f2-ce98-406d-ac21-66d20ae8f5df",
+        "text": "計算出席率時，分母應該用實際有上課的4次(排除第3週颱風停課)，不能把停課的那一週也算進總次數變成5次",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確以實際上課的4次作為分母，並排除第3週停課。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下以**實際有上課的 4 次課**來計算；**第 3 週（9/21）颱風停課，不列入課程總次數**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e992fc5-f80a-4891-a579-f43530ce5528",
+        "text": "小安與小東的出席率應為100%(4次都到)",
+        "result": "passed",
+        "source": "model",
+        "reason": "統計表列出小安與小東均出席4次、總課程4次、出席率100.0%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小安 | 4 | 4 | 100.0% |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小東 | 4 | 4 | 100.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "86ca8341-e755-4a7c-b9e3-5013dd8a42a2",
+        "text": "小柏、小晴、小恩三人的出席率應各為75%(4次中缺席1次)",
+        "result": "passed",
+        "source": "model",
+        "reason": "統計表列出小柏、小晴、小恩均出席3次／總課程4次，出席率75.0%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小柏 | 3 | 4 | 75.0% |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小晴 | 3 | 4 | 75.0% |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小恩 | 3 | 4 | 75.0% |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4cab835-1759-4de2-991c-3e8ed6d813df",
+        "text": "不得把颱風停課那週誤記成有人缺席",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將第3週標示為停課、未上課，且明確不納入課程總次數，沒有將該週記作任何人的缺席。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 3 次課（9/21）：停課，未上課",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "以下以**實際有上課的 4 次課**來計算；**第 3 週（9/21）颱風停課，不列入課程總次數**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3628 input and 1240 output tokens on gpt-5.4-mini; reported cost $0.0113 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "request": {
+    "RunID": "e5f47d90-ec27-4c11-912a-b77a63336b92",
+    "EvaluationID": "5b6d8451-c289-40ec-85ac-e81b354c4db7",
+    "Skill": {
+      "Name": "rewrite-consent-form-to-patient-letter",
+      "Summary": "Rewrite a completed self-pay medical-device consent form into a patient-friendly explanatory letter. Use this when the input is a formal clinic consent text and you need a clearer, more conversational version while preserving required names, numbers, and deadlines exactly."
+    },
+    "UserPrompt": "請把下面這段自費醫材同意書改寫成給病人看的說明信，並且醫材品名、自費金額、健保給付上限、病人簽署期限都要一字不改：\n\n本院告知您，將使用醫材「心臟封堵器 ABC-200」，其自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。此項醫材之適應症、風險與替代方案業已說明，敬請審慎評估後簽認。\n\n如果你同意，我就用這個 brief 繼續整理成正式的 Skill。",
+    "Criteria": [
+      {
+        "ID": "30224501-54a1-4840-b002-293372b21c6c",
+        "Text": "轉寫後的信件保留輸入中的醫材品名，字形與順序完全相同。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "959f8c96-b039-4ec4-9958-fc975b97d683",
+        "Text": "轉寫後的信件保留輸入中的自費金額，數字、幣別符號與格式完全相同。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9dd60844-439e-419d-8175-87c1aea6398e",
+        "Text": "轉寫後的信件保留輸入中的健保給付上限，數字與相關標示完全相同。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "30fb72bd-2d52-47e3-bd2d-02b04a9bc367",
+        "Text": "轉寫後的信件保留輸入中的病人簽署期限，日期或期限文字完全相同。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8c98decb-4ca4-4d43-a161-15312d1ae328",
+        "Text": "轉寫後的語氣比原文更口語、較容易理解，不保留明顯公文腔。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2dea9f34-3ee2-4d14-ab6d-096e4a1c8de4",
+        "Text": "除上述必須逐字保留的項目外，可重新組織句子，但不得改變原意。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "親愛的病人您好：\n\n我們想向您說明，醫師評估後，將使用醫材「心臟封堵器 ABC-200」。這項醫材的自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。\n\n關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。\n\n若您還有任何疑問，歡迎再向我們提出。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a48c3449-1926-4a4a-b8a8-13b6cc9de285",
+          "OccurredAt": "2026-09-27T10:38:05.57Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"rewrite-consent-form-to-patient-letter\", \"skill_version_id\": \"90a88b11-47b6-429e-93b4-9e42970bb3c2\"}"
+        },
+        {
+          "TraceEventID": "4d6ed359-866f-40d5-b685-e3064ccd1efa",
+          "OccurredAt": "2026-09-27T10:38:05.578Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"rewrite-consent-form-to-patient-letter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_hKm4ffUCiF2vkDVPdtJm3lpO\", \"result_summary\": \"Launching skill: rewrite-consent-form-to-patient-letter\"}"
+        },
+        {
+          "TraceEventID": "d6d4e489-0ab0-40a0-96ae-c472e1b15ba4",
+          "OccurredAt": "2026-09-27T10:38:11.16Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"親愛的病人您好：\\n\\n我們想向您說明，醫師評估後，將使用醫材「心臟封堵器 ABC-200」。這項醫材的自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。\\n\\n關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。\\n\\n若您還有任何疑問，歡迎再向我們提出。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "379510d6-3935-4814-a840-f71bff9b6bac",
+          "OccurredAt": "2026-09-27T10:38:11.368Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"親愛的病人您好：\\n\\n我們想向您說明，醫師評估後，將使用醫材「心臟封堵器 ABC-200」。這項醫材的自費金額為新臺幣 48,000 元，健保給付上限為新臺幣 12,500 元，請於 2026/10/05 前完成簽署。\\n\\n關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。\\n\\n若您還有任何疑問，歡迎再向我們提出。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fa527141-6097-438c-81fb-ca8229bd210c",
+          "OccurredAt": "2026-09-27T10:38:15.433Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00978465, \"cost_source\": \"gateway\", \"duration_ms\": 13024, \"input_tokens\": 3165, \"token_source\": \"result\", \"output_tokens\": 968, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "30224501-54a1-4840-b002-293372b21c6c",
+        "Result": "passed",
+        "Reason": "信件完整保留醫材品名，字形與順序一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "將使用醫材「心臟封堵器 ABC-200」"
+          }
+        ]
+      },
+      {
+        "CriterionID": "959f8c96-b039-4ec4-9958-fc975b97d683",
+        "Result": "passed",
+        "Reason": "信件保留自費金額「新臺幣 48,000 元」，數字、幣別與格式一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這項醫材的自費金額為新臺幣 48,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9dd60844-439e-419d-8175-87c1aea6398e",
+        "Result": "passed",
+        "Reason": "信件保留健保給付上限及其金額標示，內容一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "健保給付上限為新臺幣 12,500 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "30fb72bd-2d52-47e3-bd2d-02b04a9bc367",
+        "Result": "passed",
+        "Reason": "信件保留簽署期限文字與日期，完全一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請於 2026/10/05 前完成簽署。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8c98decb-4ca4-4d43-a161-15312d1ae328",
+        "Result": "passed",
+        "Reason": "信件採用直接稱呼、白話說明與提問邀請，較原本正式告知文字口語易懂。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "親愛的病人您好："
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "若您還有任何疑問，歡迎再向我們提出。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2dea9f34-3ee2-4d14-ab6d-096e4a1c8de4",
+        "Result": "passed",
+        "Reason": "信件保留將使用醫材、費用與給付上限、簽署期限，以及已說明適應症、風險與替代方案並請病人審慎決定簽認的原意。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "關於這項醫材的適應症、可能風險與替代方案，前面都已經和您說明過了。請您在充分了解並審慎評估後，再決定是否簽認。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "信件完成病人導向的改寫，並逐字保留醫材品名、自費金額、健保給付上限與簽署期限。內容以較口語、易理解的方式維持原告知與審慎簽認的意思。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2748,
+      "CompletionTokens": 872,
+      "CostUSD": 0.014797900000000001,
+      "CostReported": true
+    }
+  }
+}
