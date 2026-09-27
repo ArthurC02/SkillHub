@@ -181,7 +181,7 @@ func aVerdict(summary string, overall Overall) verdict {
 		}},
 		findings:         []Finding{},
 		evidenceComplete: true,
-		model:            "gpt-5.6-terra",
+		model:            "gpt-6-sol",
 		promptVersion:    "judge-v1",
 		rubricVersion:    "rubric-v1",
 	}
@@ -798,13 +798,13 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 	t.Run("the declared conditions survive the failure", func(t *testing.T) {
 		s := &Service{
 			Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
-			JudgeModel: "gpt-5.6-terra", JudgePromptVersion: "judge-run@v1",
+			JudgeModel: "gpt-6-sol", JudgePromptVersion: "judge-run@v1",
 		}
 		m := seedRun(t, s.Pool)
 		m.rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
 
 		got := failed(t, s, m)
-		if derefString(got.JudgeModel) != "gpt-5.6-terra" ||
+		if derefString(got.JudgeModel) != "gpt-6-sol" ||
 			derefString(got.JudgePromptVersion) != "judge-run@v1" {
 			t.Errorf("a failed revision must still say which judge could not answer, got %q / %q",
 				derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
@@ -834,7 +834,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 		m := seedRun(t, s.Pool)
 
 		got := failed(t, s, m)
-		if derefString(got.JudgeModel) != "gpt-5.6-terra" {
+		if derefString(got.JudgeModel) != "gpt-6-sol" {
 			t.Errorf("the judge tier is a real declaration even when unconfigured, got %q",
 				derefString(got.JudgeModel))
 		}
@@ -854,7 +854,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 
 		ev := beginAndComplete(t, s, m, aVerdict("what actually ran", OverallMet))
 		got := reload(t, s, m, ev.ID)
-		if derefString(got.JudgeModel) != "gpt-5.6-terra" ||
+		if derefString(got.JudgeModel) != "gpt-6-sol" ||
 			derefString(got.JudgePromptVersion) != "judge-v1" ||
 			derefString(got.RubricVersion) != "rubric-v1" {
 			t.Errorf("the declaration outranked the response: got %q / %q / %q",

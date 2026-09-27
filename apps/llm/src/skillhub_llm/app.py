@@ -23,6 +23,7 @@ from skillhub_llm.gateway import (
     _metadata,
     _usage,
     close_client,
+    served_model,
     within,
 )
 from skillhub_llm.gateway import client as _client
@@ -80,8 +81,8 @@ async def request_validation_error(
 
 
 EMBED_MODEL = "text-embedding-3-small"
-MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL") or "gpt-5.6-luna"
-SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL") or "gpt-5.4-mini"
+MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL") or "skillhub-match-reason"
+SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL") or "skillhub-suggest-criteria"
 
 # budget-ceiling: app.EMBED_TIMEOUT_SECONDS
 EMBED_TIMEOUT_SECONDS = 20.0
@@ -281,13 +282,15 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     except ValidationError:
         logger.warning("match-reasons: model output did not match the schema")
         return MatchReasonsResponse(
-            reasons=[], model=MATCH_REASON_MODEL, usage=_usage(response, raw.headers)
+            reasons=[],
+            model=served_model(response, MATCH_REASON_MODEL),
+            usage=_usage(response, raw.headers),
         )
 
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
-        model=MATCH_REASON_MODEL,
+        model=served_model(response, MATCH_REASON_MODEL),
         usage=_usage(response, raw.headers),
     )
 

@@ -117,7 +117,7 @@ func matchReasonsServer(t *testing.T, usage *llmclient.GatewayUsage) Model {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.MatchReasonsResponse{
 			Reasons: []llmclient.MatchReason{{SkillID: "s1", Reason: "it parses invoices"}},
-			Model:   "gpt-5.6-luna",
+			Model:   "gpt-6-luna",
 			Usage:   usage,
 		})
 	}))
@@ -145,7 +145,7 @@ func TestMatchReasonsRecordOneCostEventOfTheirOwnKind(t *testing.T) {
 	if e.UsdMicros != 420 || e.Estimated {
 		t.Errorf("usd_micros = %d estimated = %v, want 420 / false", e.UsdMicros, e.Estimated)
 	}
-	if e.Model != "gpt-5.6-luna" || e.PromptTokens != 300 || e.CompletionTokens != 40 {
+	if e.Model != "gpt-6-luna" || e.PromptTokens != 300 || e.CompletionTokens != 40 {
 		t.Errorf("model = %q tokens = %d/%d", e.Model, e.PromptTokens, e.CompletionTokens)
 	}
 }

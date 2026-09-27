@@ -676,7 +676,7 @@
       "masked_fields": [],
       "payload": {
         "evaluation_id": "ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11",
-        "judge_model": "gpt-5.6-terra",
+        "judge_model": "gpt-6-sol",
         "judge_prompt_version": "judge-run@2026-08-16",
         "rubric_version": null
       }

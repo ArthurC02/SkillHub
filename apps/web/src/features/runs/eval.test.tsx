@@ -221,7 +221,7 @@ const evaluation: Evaluation = {
       ],
     },
   ],
-  judge_model: "gpt-5.6-terra",
+  judge_model: "gpt-6-sol",
   judge_prompt_version: "judge-2026-08-17",
   evidence_complete: false,
   cost: {

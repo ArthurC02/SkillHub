@@ -36,7 +36,7 @@ Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需
 | `CREATION_WORKER_INTERNAL_URL` | API 可到達的 Worker 內部 URL，無結尾斜線 |
 | `CREATION_WORKER_INTERNAL_TOKEN` | API／Worker 的相同服務憑證，不放前端 |
 | `LLM_SERVICE_URL`、`LLM_SERVICE_TOKEN` | Worker 呼叫 Python 的既有設定 |
-| `CREATION_MODEL`（Python，預設 `gpt-5.4-mini`） | 互動創作每一步用的模型別名；只給 `05` R-45 的量測換一級用。Go 簽給每一步的 Virtual Key 仍只限 `gpt-5.4-mini`，所以在產品裡改這個值不會生效——要換產品的模型，Go 的簽發那一行要一起改 |
+| `CREATION_MODEL`（Python 與 Go 簽發共用，預設 `skillhub-creation`） | 互動創作每一步向閘道要的模型名；預設是閘道 config 裡的角色別名，換產品的模型只改閘道 config 那一行。設了這個值時，Python 的請求與 Go 簽給每一步的 Virtual Key 都用它，只給 `05` R-45 的量測換一級用 |
 | `SKILLHUB_MODEL_GATEWAY_URL`、`SKILLHUB_MODEL_GATEWAY_KEY` | Worker 既有 LiteLLM 管理接線；管理金鑰不傳 Python |
 
 `CREATION_LIMITS_JSON` 的必要鍵為 `max_cost_usd`、`max_call_cost_usd`、`max_steps`、`max_tool_calls`、`call_timeout_seconds`、`session_timeout_seconds`、`retention_seconds`、`max_output_tokens`。值須為有效正數；單次預算不得超過總上限、單次時間不得超過 Python 的 120 秒、保存期限不得短於會話時間。**現行值**（[`05` R-45](../plans/05-pending-rulings.md)）：`max_cost_usd` 1.0、`max_call_cost_usd` 0.1、`max_steps` 24、`max_tool_calls` 8、`call_timeout_seconds` 90、`session_timeout_seconds` 259200、`retention_seconds` 2592000、`max_output_tokens` 16000；`.env.example` 帶著同一行 JSON。測試 fixture 的數字仍不是部署值。

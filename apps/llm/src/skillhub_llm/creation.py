@@ -16,7 +16,7 @@ from langsmith import tracing_context
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client
+from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, served_model
 from skillhub_llm.generate import (
     FIELD_RULES,
     GeneratedFile,
@@ -30,7 +30,7 @@ from skillhub_llm.untrusted import data_block_rules, fence, scrub
 logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
-MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
+MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
 PROMPT_VERSION = "creation-step/v30"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
@@ -240,6 +240,7 @@ class _State(TypedDict, total=False):
     request: CreationStepRequest
     decision: CreationDecision
     usage: GatewayUsage | None
+    served_model: str
     prompt: str
     phase: str
     reason: str | None
@@ -855,7 +856,11 @@ def _reason_node(gateway_key: str, phase: str):
             usage = _usage(completion, raw.headers)
             if diagnosis_usage is not None:
                 usage = _add_usage(usage, diagnosis_usage)
-            return {"decision": decision, "usage": usage}
+            return {
+                "decision": decision,
+                "usage": usage,
+                "served_model": served_model(completion, MODEL),
+            }
         except (
             OpenAIError,
             ValidationError,
@@ -1149,7 +1154,7 @@ def _render(state: _State) -> dict:
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
             draft=_bind_shipped_files(_supply_check_script(_bind_output_check(d.draft, req))),
-            model=MODEL,
+            model=state.get("served_model") or MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),
         )

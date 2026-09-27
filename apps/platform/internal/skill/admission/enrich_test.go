@@ -44,7 +44,7 @@ func (s *stubEnricher) start(t *testing.T) Model {
 				Dependencies: []string{"poppler"},
 			},
 			Limitations:   []string{testLimitation},
-			Model:         "gpt-5.6-sol",
+			Model:         "gpt-6-luna",
 			PromptVersion: "enrich-skill/v2",
 		})
 	})
@@ -106,8 +106,8 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 		t.Fatalf("summary = %q, want the frontmatter description %q", e.summary, testDescription)
 	}
 
-	if e.model == nil || *e.model != "gpt-5.6-sol" {
-		t.Fatalf("model provenance = %v, want gpt-5.6-sol", e.model)
+	if e.model == nil || *e.model != "gpt-6-luna" {
+		t.Fatalf("model provenance = %v, want gpt-6-luna", e.model)
 	}
 	if e.promptVersion == nil || *e.promptVersion != "enrich-skill/v2" {
 		t.Fatalf("prompt_version provenance = %v", e.promptVersion)

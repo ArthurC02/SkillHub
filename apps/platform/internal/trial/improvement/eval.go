@@ -266,7 +266,7 @@ func (s *Service) judgeModel() string {
 		return s.JudgeModel
 	}
 
-	return "gpt-5.6-terra"
+	return "skillhub-judge"
 }
 
 func (s *Service) judgePromptVersion() string {

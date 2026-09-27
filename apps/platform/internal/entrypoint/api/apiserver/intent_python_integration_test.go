@@ -16,7 +16,7 @@ import (
 func TestAnonymousSearchTraversesGoPythonAndGateway(t *testing.T) {
 	python := creationPythonExecutable(t)
 	t.Setenv("LLM_SERVICE_TOKEN", "test-service")
-	t.Setenv("INTENT_MODEL", "gpt-5.6-luna")
+	t.Setenv("INTENT_MODEL", "gpt-6-luna")
 	pool := requireDB(t)
 	const query = "請將收支資料轉成報告"
 	for _, tc := range []struct {

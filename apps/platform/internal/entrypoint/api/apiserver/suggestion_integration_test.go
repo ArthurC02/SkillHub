@@ -35,7 +35,7 @@ func llmServer(
 	mux.HandleFunc("POST /judge-run", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
-			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: "judge-run@test",
+			Verdict: verdict, Model: "gpt-6-sol", PromptVersion: "judge-run@test",
 			Usage: &llmclient.GatewayUsage{PromptTokens: 11, CompletionTokens: 7},
 		})
 	})
@@ -48,7 +48,7 @@ func llmServer(
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.SuggestImprovementsResponse{
-			Suggestions: proposals, Model: "gpt-5.6-terra",
+			Suggestions: proposals, Model: "gpt-6-sol",
 			PromptVersion: "suggest-improvements/test",
 			Usage:         &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9},
 		})

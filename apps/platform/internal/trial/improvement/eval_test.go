@@ -670,7 +670,7 @@ func TestJudgeRunSendsTheContractShapeAndReturnsTheVerdict(t *testing.T) {
 			},
 			Overall: string(OverallMet), Summary: "the task was completed",
 		},
-		Model: "gpt-5.6-terra", PromptVersion: "judge-run@2026-08-17",
+		Model: "gpt-6-sol", PromptVersion: "judge-run@2026-08-17",
 	}, &got)
 
 	resp, err := client.JudgeRun(context.Background(), llmclient.JudgeRunRequest{
@@ -684,7 +684,7 @@ func TestJudgeRunSendsTheContractShapeAndReturnsTheVerdict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("judge call: %v", err)
 	}
-	if resp.Model != "gpt-5.6-terra" || resp.PromptVersion == "" {
+	if resp.Model != "gpt-6-sol" || resp.PromptVersion == "" {
 		t.Errorf("the caller stores what actually judged, got %+v", resp)
 	}
 

@@ -32,7 +32,7 @@ GOOD_SKILL = {
 }
 
 
-def _fake_client(content: str, capture: list | None = None, finish_reason=None):
+def _fake_client(content: str, capture: list | None = None, finish_reason=None, served=None):
     """Stand-in for AsyncOpenAI, shaped like the one in test_evaluate.
 
     `finish_reason` defaults to None, meaning "not truncated".
@@ -48,6 +48,8 @@ def _fake_client(content: str, capture: list | None = None, finish_reason=None):
             choices=[choice],
             usage=SimpleNamespace(prompt_tokens=300, completion_tokens=1100),
         )
+        if served is not None:
+            completion.model = served
         return SimpleNamespace(
             parse=lambda: completion, headers={"x-litellm-response-cost": "0.0055"}
         )
@@ -81,6 +83,13 @@ def test_generates_a_skill_and_reports_its_own_provenance(capture):
     assert body["prompt_version"] == generate.GENERATE_SKILL_PROMPT_VERSION
     assert body["usage"]["cost_usd"] == pytest.approx(0.0055)
     assert calls[0]["max_tokens"] == generate.MAX_OUTPUT_TOKENS
+
+
+def test_the_response_names_the_model_the_gateway_served_not_the_role_it_asked_for(capture):
+    capture(json.dumps(GOOD_SKILL), served="gpt-6-luna-2026-09-22")
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 200
+    assert r.json()["model"] == "gpt-6-luna-2026-09-22"
 
 
 def test_the_task_description_is_fenced_like_the_other_five_calls(capture):

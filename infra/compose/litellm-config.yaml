@@ -1,30 +1,48 @@
 model_list:
-  - model_name: gpt-5.4-mini #試跑預設 (PDM-003 v5)
-    litellm_params:
+  - model_name: gpt-5.4-mini
+    litellm_params: &mini
       model: openai/gpt-5.4-mini
       api_key: os.environ/OPENAI_API_KEY
       # This route does not honor drop_params/additional_drop_params globally,
       # so unsupported params must be dropped per model here.
       additional_drop_params: ["reasoning_effort", "thinking"]
-  - model_name: gpt-5.6-sol # flagship
-    litellm_params:
-      model: openai/gpt-5.6-sol
+  - model_name: gpt-6-sol
+    litellm_params: &sol
+      model: openai/gpt-6-sol
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
-  - model_name: gpt-5.6-terra # judge tier, separated from the generating model
-    litellm_params:
-      model: openai/gpt-5.6-terra
+      additional_drop_params: ["thinking", "temperature"]
+  - model_name: gpt-6-luna
+    litellm_params: &luna
+      model: openai/gpt-6-luna
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
-  - model_name: gpt-5.6-luna # match-reason tier
-    litellm_params:
-      model: openai/gpt-5.6-luna
-      api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
+      additional_drop_params: ["thinking", "temperature"]
   - model_name: text-embedding-3-small
     litellm_params:
       model: openai/text-embedding-3-small
       api_key: os.environ/OPENAI_API_KEY
+
+  # Roles: the services ask for these names; changing a role's model is one line here.
+  # The judge must never share a model with what it judges.
+  - model_name: skillhub-judge
+    litellm_params: *sol
+  - model_name: skillhub-enrich
+    litellm_params: *luna
+  - model_name: skillhub-intent
+    litellm_params: *luna
+  - model_name: skillhub-match-reason
+    litellm_params: *luna
+  - model_name: skillhub-suggest-criteria
+    litellm_params: *luna
+  - model_name: skillhub-generate
+    litellm_params: *luna
+  - model_name: skillhub-creation
+    litellm_params: *luna
+  - model_name: skillhub-run
+    litellm_params:
+      <<: *luna
+      # Function calling on this route is only served with reasoning off.
+      reasoning_effort: none
+      additional_drop_params: ["thinking"]
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

@@ -84,7 +84,7 @@ func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion str
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
-			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: promptVersion,
+			Verdict: verdict, Model: "gpt-6-sol", PromptVersion: promptVersion,
 			Usage: &llmclient.GatewayUsage{PromptTokens: 11, CompletionTokens: 7},
 		})
 	}))
@@ -159,7 +159,7 @@ func TestEvaluationRetryDoesNotRepeatACompletedJudgeCall(t *testing.T) {
 			Verdict: llmclient.JudgeVerdict{Overall: "undetermined", CriterionResults: []llmclient.CriterionVerdict{
 				{CriterionID: "c1", Result: "undetermined", Reason: "not enough evidence"},
 				{CriterionID: "c2", Result: "undetermined", Reason: "not enough evidence"},
-			}}, Model: "gpt-5.6-terra", PromptVersion: "recovery-test",
+			}}, Model: "gpt-6-sol", PromptVersion: "recovery-test",
 		})
 	}))
 	defer srv.Close()
@@ -281,7 +281,7 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 			t.Errorf("criterion %s passed with no evidence stored", r.CriterionID)
 		}
 	}
-	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run@2026-08-17" {
+	if body.JudgeModel != "gpt-6-sol" || body.JudgePromptVersion != "judge-run@2026-08-17" {
 		t.Errorf("the row records what actually judged, got %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	if body.Cost.EvaluationCredits != nil {
@@ -369,7 +369,7 @@ func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
 	if body.Status != "completed" || body.Overall != "met" {
 		t.Fatalf("evaluation = status %q, overall %q, want completed met", body.Status, body.Overall)
 	}
-	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run/v3" {
+	if body.JudgeModel != "gpt-6-sol" || body.JudgePromptVersion != "judge-run/v3" {
 		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	if len(body.CriterionResults) != 2 || len(body.CriterionResults[0].Evidence) == 0 || len(body.CriterionResults[1].Evidence) == 0 {
@@ -455,7 +455,7 @@ func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture 
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
-			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: "judge-run@2026-08-17",
+			Verdict: verdict, Model: "gpt-6-sol", PromptVersion: "judge-run@2026-08-17",
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -721,7 +721,7 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 		t.Error("the rule findings came from the platform's own records and survive a judge failure")
 	}
 
-	if body.JudgeModel != "gpt-5.6-terra" {
+	if body.JudgeModel != "gpt-6-sol" {
 		t.Errorf("a failed evaluation must record the judge it was attempted with, got %q", body.JudgeModel)
 	}
 	assertEvaluationTraceEvents(t, pool, runID, "error")

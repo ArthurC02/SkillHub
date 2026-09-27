@@ -634,7 +634,7 @@ export const EVALUATION = {
       evidence: [],
     },
   ],
-  judge_model: "gpt-5.6-terra",
+  judge_model: "gpt-6-sol",
   judge_prompt_version: "judge-2026-08-17",
   rubric_version: "content-007/writing/v1",
   evidence_complete: false,

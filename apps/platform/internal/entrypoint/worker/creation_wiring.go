@@ -8,6 +8,7 @@ import (
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/jackc/pgx/v5/pgtype"
+	"os"
 
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"time"
@@ -94,7 +95,7 @@ func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 		return
 	}
 	s.IssueKey = func(ctx context.Context, sessionID, receiptID string, budget float64, ttl time.Duration) (string, error) {
-		grant, err := gateway.IssueCreationForModel(ctx, sessionID, receiptID, ttl, budget, "gpt-5.4-mini")
+		grant, err := gateway.IssueCreationForModel(ctx, sessionID, receiptID, ttl, budget, creationModel())
 		if err != nil {
 			return "", err
 		}
@@ -112,4 +113,11 @@ func generatedSkillForIngest(g creation.GeneratedSkill) ingest.GeneratedSkill {
 		out.Files = append(out.Files, ingest.GeneratedFile{Path: f.Path, Content: f.Content})
 	}
 	return out
+}
+
+func creationModel() string {
+	if m := os.Getenv("CREATION_MODEL"); m != "" {
+		return m
+	}
+	return "skillhub-creation"
 }

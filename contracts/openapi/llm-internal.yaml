@@ -267,11 +267,12 @@ paths:
         answers "what happened", `evaluations.overall` answers "was the task
         done", and they are separate columns on purpose (evaluation-design §4).
 
-        Model tier is `gpt-5.6-terra` (PDM-003 §3 Judge tier), reached through the
-        LiteLLM gateway like every other model call (Iron Rule 8). Deliberately
-        not the mini tier the sandbox workload runs on: a judge sharing a model
-        with what it judges has a thumb on the scale. The tier is fixed here
-        rather than chosen per call - which model judges is a platform decision,
+        The judge asks the gateway for the `skillhub-judge` role (PDM-003 §3
+        Judge tier); the gateway config maps that role to a model, and `model`
+        below carries the model it actually served. Deliberately never the
+        model the sandbox workload runs on: a judge sharing a model with what
+        it judges has a thumb on the scale. The role is fixed here rather than
+        chosen per call - which model judges is a platform decision,
         not a caller's parameter. The caller learns which one ran from `model` in
         the response, and stores it as `evaluations.judge_model`.
 

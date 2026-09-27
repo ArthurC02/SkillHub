@@ -20,12 +20,22 @@ def _model_when(variable: str, value: str, module: str, attribute: str) -> str:
 @pytest.mark.parametrize(
     ("variable", "module", "attribute", "default"),
     [
-        ("MATCH_REASON_MODEL", "skillhub_llm.app", "MATCH_REASON_MODEL", "gpt-5.6-luna"),
-        ("SUGGEST_CRITERIA_MODEL", "skillhub_llm.app", "SUGGEST_CRITERIA_MODEL", "gpt-5.4-mini"),
-        ("CREATION_MODEL", "skillhub_llm.creation", "MODEL", "gpt-5.4-mini"),
-        ("ENRICH_MODEL", "skillhub_llm.enrich", "ENRICH_MODEL", "gpt-5.6-sol"),
-        ("JUDGE_MODEL", "skillhub_llm.evaluate", "JUDGE_MODEL", "gpt-5.6-terra"),
-        ("GENERATE_SKILL_MODEL", "skillhub_llm.generate", "GENERATE_SKILL_MODEL", "gpt-5.4-mini"),
+        ("MATCH_REASON_MODEL", "skillhub_llm.app", "MATCH_REASON_MODEL", "skillhub-match-reason"),
+        (
+            "SUGGEST_CRITERIA_MODEL",
+            "skillhub_llm.app",
+            "SUGGEST_CRITERIA_MODEL",
+            "skillhub-suggest-criteria",
+        ),
+        ("CREATION_MODEL", "skillhub_llm.creation", "MODEL", "skillhub-creation"),
+        ("ENRICH_MODEL", "skillhub_llm.enrich", "ENRICH_MODEL", "skillhub-enrich"),
+        ("JUDGE_MODEL", "skillhub_llm.evaluate", "JUDGE_MODEL", "skillhub-judge"),
+        (
+            "GENERATE_SKILL_MODEL",
+            "skillhub_llm.generate",
+            "GENERATE_SKILL_MODEL",
+            "skillhub-generate",
+        ),
     ],
 )
 def test_a_blank_model_setting_from_the_template_means_the_default_and_a_value_overrides_it(

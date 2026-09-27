@@ -22,14 +22,23 @@ from pydantic import (
     model_validator,
 )
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
+from skillhub_llm.gateway import (
+    SEED,
+    TEMPERATURE,
+    GatewayUsage,
+    _metadata,
+    _usage,
+    client,
+    served_model,
+    within,
+)
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 logger = logging.getLogger("skillhub_llm.generate")
 
 router = APIRouter()
 
-GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL") or "gpt-5.4-mini"
+GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL") or "skillhub-generate"
 GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v4"
 
 # budget-ceiling: generate.LLM_TIMEOUT_SECONDS
@@ -311,7 +320,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
 
     return GenerateSkillResponse(
         skill=skill,
-        model=GENERATE_SKILL_MODEL,
+        model=served_model(completion, GENERATE_SKILL_MODEL),
         prompt_version=GENERATE_SKILL_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

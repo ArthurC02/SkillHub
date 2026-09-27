@@ -13,7 +13,16 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
+from skillhub_llm.gateway import (
+    SEED,
+    TEMPERATURE,
+    GatewayUsage,
+    _metadata,
+    _usage,
+    client,
+    served_model,
+    within,
+)
 from skillhub_llm.untrusted import scrub
 
 from .enrich_checks import Finding, check_enrichment
@@ -21,7 +30,7 @@ from .enrich_checks import Finding, check_enrichment
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
 
-ENRICH_MODEL = os.getenv("ENRICH_MODEL") or "gpt-5.6-sol"
+ENRICH_MODEL = os.getenv("ENRICH_MODEL") or "skillhub-enrich"
 PROMPT_VERSION = "enrich-skill/v7"
 
 # budget-ceiling: enrich.LLM_TIMEOUT_SECONDS
@@ -218,7 +227,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
                 + enrichment.tags.dependencies
             ),
         ),
-        model=ENRICH_MODEL,
+        model=served_model(completion, ENRICH_MODEL),
         prompt_version=PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

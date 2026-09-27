@@ -43,7 +43,7 @@ func TestEnrichmentRecordsOneCostEventPerPaidCall(t *testing.T) {
 	if got := ledger.kinds(); len(got) != 2 || got[0] != credit.KindIndexEnrich || got[1] != credit.KindIndexEnrich {
 		t.Fatalf("cost event kinds = %v, want two %q", got, credit.KindIndexEnrich)
 	}
-	if m := ledger.events[0].Model; m != "gpt-5.6-sol" {
+	if m := ledger.events[0].Model; m != "gpt-6-luna" {
 		t.Errorf("enrichment call model = %q", m)
 	}
 	if m := ledger.events[1].Model; m != "text-embedding-3-small" {

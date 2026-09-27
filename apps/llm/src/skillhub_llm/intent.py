@@ -7,11 +7,11 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
-from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, within
+from skillhub_llm.gateway import GatewayUsage, _metadata, _usage, client, served_model, within
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 router = APIRouter()
-INTENT_MODEL = os.getenv("INTENT_MODEL") or "gpt-5.6-luna"
+INTENT_MODEL = os.getenv("INTENT_MODEL") or "skillhub-intent"
 PROMPT_VERSION = "search-intent/v2"
 # budget-ceiling: intent.TIMEOUT_SECONDS
 TIMEOUT_SECONDS = 8.0
@@ -147,7 +147,9 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
         raise HTTPException(status_code=502, detail="gateway error") from error
 
     response = AnalyzeSearchIntentResponse(
-        valid=False, model=INTENT_MODEL, prompt_version=PROMPT_VERSION
+        valid=False,
+        model=served_model(completion, INTENT_MODEL),
+        prompt_version=PROMPT_VERSION,
     )
     usage = _usage(completion, raw.headers)
     if usage is not None:

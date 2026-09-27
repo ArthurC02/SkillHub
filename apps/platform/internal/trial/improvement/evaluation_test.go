@@ -28,7 +28,7 @@ func assertEvents(t *testing.T, e *Evaluation, want ...Event) {
 }
 
 func TestAStartedEvaluationAwaitsTheJudgeAndDeclaresWhatItWillBeJudgedWith(t *testing.T) {
-	model, rubric := "gpt-5.6-terra", "rubric-v1"
+	model, rubric := "gpt-6-sol", "rubric-v1"
 	declared := EvaluationStarted{JudgeModel: &model, RubricVersion: &rubric}
 
 	e := startEvaluation(pgtype.UUID{}, pgtype.UUID{}, declared)

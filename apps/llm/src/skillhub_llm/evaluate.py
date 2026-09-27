@@ -16,13 +16,22 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client, within
+from skillhub_llm.gateway import (
+    SEED,
+    TEMPERATURE,
+    GatewayUsage,
+    _metadata,
+    _usage,
+    client,
+    served_model,
+    within,
+)
 from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
 
-JUDGE_MODEL = os.getenv("JUDGE_MODEL") or "gpt-5.6-terra"
+JUDGE_MODEL = os.getenv("JUDGE_MODEL") or "skillhub-judge"
 
 JUDGE_PROMPT_VERSION = "judge-run/v3"
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
@@ -430,7 +439,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
 
     return JudgeRunResponse(
         verdict=verdict,
-        model=JUDGE_MODEL,
+        model=served_model(completion, JUDGE_MODEL),
         prompt_version=JUDGE_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
@@ -584,7 +593,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
 
     return SuggestImprovementsResponse(
         suggestions=kept,
-        model=JUDGE_MODEL,
+        model=served_model(completion, JUDGE_MODEL),
         prompt_version=SUGGEST_IMPROVEMENTS_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

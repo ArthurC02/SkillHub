@@ -123,6 +123,11 @@ def _usage(completion, headers) -> GatewayUsage | None:
     )
 
 
+def served_model(completion, requested: str) -> str:
+    """The model the gateway served, so records name a model and not a role."""
+    return getattr(completion, "model", None) or requested
+
+
 def _embedding_usage(response, headers) -> GatewayUsage | None:
     """`_usage` for an embeddings response, which has no completion half.
 

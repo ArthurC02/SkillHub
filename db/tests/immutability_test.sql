@@ -198,7 +198,7 @@ VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-2222222
         '77777777-7777-7777-7777-777777777777', 'pending', 'undetermined', false);
 
 UPDATE evaluations SET status = 'completed', overall = 'met', evidence_complete = true,
-       evaluated_at = now(), judge_model = 'gpt-5.6-terra', judge_prompt_version = 'judge-1'
+       evaluated_at = now(), judge_model = 'gpt-6-sol', judge_prompt_version = 'judge-1'
 WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 SELECT must_fail($$UPDATE evaluations SET overall = 'not_met' WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$);
@@ -358,7 +358,7 @@ INSERT INTO evaluation_model_usage (evaluation_id, workspace_id, operation, mode
                                     prompt_version, prompt_tokens, completion_tokens,
                                     cost_usd, cost_source)
 VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222',
-        'judge', 'gpt-5.6-terra', 'judge-1', 1200, 300, 0.004500, 'gateway');
+        'judge', 'gpt-6-sol', 'judge-1', 1200, 300, 0.004500, 'gateway');
 SELECT must_fail($$UPDATE evaluation_model_usage SET prompt_tokens = 1
                    WHERE operation = 'judge'$$);
 SELECT must_fail($$DELETE FROM evaluation_model_usage WHERE operation = 'judge'$$);
@@ -378,14 +378,14 @@ VALUES ('11111111-1111-1111-1111-111111111111', 100);
 INSERT INTO cost_events (id, kind, model, prompt_version, prompt_tokens, completion_tokens,
                          usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id,
                          idempotency_key)
-VALUES ('c0000000-0000-4000-8000-000000000001', 'run', 'gpt-5.6-terra', 'run-1', 900, 120,
+VALUES ('c0000000-0000-4000-8000-000000000001', 'run', 'gpt-6-sol', 'run-1', 900, 120,
         3400, 'gateway', '22222222-2222-2222-2222-222222222222',
         '11111111-1111-1111-1111-111111111111', 'run',
         '77777777-7777-7777-7777-777777777777', 'cost-run-77-1');
 INSERT INTO credit_entries (id, user_id, kind, delta_credits, usd_micros, markup_bps, model,
                             prompt_version, ref_type, ref_id, cost_event_id, idempotency_key)
 VALUES ('c0000000-0000-4000-8000-000000000002', '11111111-1111-1111-1111-111111111111',
-        'debit', -4, 3400, 2000, 'gpt-5.6-terra', 'run-1', 'run',
+        'debit', -4, 3400, 2000, 'gpt-6-sol', 'run-1', 'run',
         '77777777-7777-7777-7777-777777777777', 'c0000000-0000-4000-8000-000000000001',
         'entry-run-77-1');
 
