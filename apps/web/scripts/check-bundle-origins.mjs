@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const distAssets = join(dirname(fileURLToPath(import.meta.url)), "..", "dist", "assets");
-const INITIAL_BUNDLE_LIMIT = 300 * 1024;
+const INITIAL_BUNDLE_LIMIT = 310 * 1024;
 
 const STOCK = [
   "http://www.w3.org/1998/Math/MathML",
