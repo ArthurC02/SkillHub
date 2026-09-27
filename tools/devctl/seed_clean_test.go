@@ -429,9 +429,10 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		}
 	}
 
-	preflight := body("async function preflight() {")
-	if !strings.Contains(preflight, "SKILLHUB_RUN_MODEL") ||
-		!strings.Contains(preflight, "SKILLHUB_MODEL_GATEWAY_URL") {
+	gatewayCheck := body("function checkModelGatewayConfig() {")
+	if !strings.Contains(body("async function preflight() {"), "checkModelGatewayConfig()") ||
+		!strings.Contains(gatewayCheck, "SKILLHUB_RUN_MODEL") ||
+		!strings.Contains(gatewayCheck, "SKILLHUB_MODEL_GATEWAY_URL") {
 		t.Error("preflight() no longer refuses a gateway with no SKILLHUB_RUN_MODEL: the Agent SDK then asks for its " +
 			"own default model, which the gateway does not serve, and every run dies on `400 Invalid model name`")
 	}
@@ -453,15 +454,21 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	launcher := read("tools", "cleanmode", "start.mjs")
 	harness := read("infra", "images", "runtime-agent-sdk", "run.mjs")
 
-	start := strings.Index(launcher, "async function preflight() {")
-	if start < 0 {
-		t.Fatal("tools/cleanmode/start.mjs no longer defines preflight(); this test cannot tell what it checks")
+	body := func(header string) string {
+		start := strings.Index(launcher, header)
+		if start < 0 {
+			t.Fatalf("tools/cleanmode/start.mjs no longer defines %q; this test cannot tell what it checks", header)
+		}
+		end := strings.Index(launcher[start:], "\n}\n")
+		if end < 0 {
+			t.Fatalf("could not find the end of %q in tools/cleanmode/start.mjs", header)
+		}
+		return launcher[start : start+end]
 	}
-	end := strings.Index(launcher[start:], "\n}\n")
-	if end < 0 {
-		t.Fatal("could not find the end of preflight() in tools/cleanmode/start.mjs")
+	if !strings.Contains(body("async function preflight() {"), "checkAgentSdkInstalled()") {
+		t.Fatal("preflight() no longer runs checkAgentSdkInstalled(): clean mode would accept a Run and fail it after dispatch")
 	}
-	preflight := launcher[start : start+end]
+	preflight := body("function checkAgentSdkInstalled() {")
 
 	pkg := regexp.MustCompile(`import\("(@[^"]+/[^"]+)"\)`).FindStringSubmatch(harness)
 	if pkg == nil {
