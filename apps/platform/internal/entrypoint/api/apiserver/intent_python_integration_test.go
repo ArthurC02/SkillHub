@@ -39,6 +39,7 @@ func TestAnonymousSearchTraversesGoPythonAndGateway(t *testing.T) {
 					return
 				}
 				var request struct {
+					Model    string            `json:"model"`
 					Input    []string          `json:"input"`
 					Metadata map[string]string `json:"metadata"`
 					Messages []struct {
@@ -72,7 +73,7 @@ func TestAnonymousSearchTraversesGoPythonAndGateway(t *testing.T) {
 						return
 					}
 					content := `{"intent":{"input":"收支資料","output":"報告","tools":null,"data":null,"environment":null},"keywords":["ledger"],"filters":{"script":null,"validation":null,"agent":null,"tier":null,"category":null}}`
-					writeJSON(w, map[string]any{"id": "chatcmpl-intent", "object": "chat.completion", "created": 1, "model": "fixture-model", "choices": []map[string]any{{"index": 0, "message": map[string]any{"role": "assistant", "content": content}, "finish_reason": tc.finish}}, "usage": map[string]int{"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}})
+					writeJSON(w, map[string]any{"id": "chatcmpl-intent", "object": "chat.completion", "created": 1, "model": request.Model, "choices": []map[string]any{{"index": 0, "message": map[string]any{"role": "assistant", "content": content}, "finish_reason": tc.finish}}, "usage": map[string]int{"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}})
 				default:
 					http.Error(w, `{"error":{"message":"optional capability unavailable","type":"server_error"}}`, http.StatusServiceUnavailable)
 				}
