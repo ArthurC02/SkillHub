@@ -24,7 +24,7 @@ logger = logging.getLogger("skillhub_llm.evaluate")
 
 JUDGE_MODEL = os.getenv("JUDGE_MODEL") or "gpt-5.6-terra"
 
-JUDGE_PROMPT_VERSION = "judge-run/v2"
+JUDGE_PROMPT_VERSION = "judge-run/v3"
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
 
 # budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS
@@ -79,7 +79,9 @@ matches nothing and throws your verdict away.
 - kind `artifact`: `artifact_path` MUST be a path listed in the artifact manifest, and \
 `trace_event_id` is null.
 - kind `agent_output`: both are null; the quote comes from the final agent output.
-`quote` is text copied verbatim from that source, and only from that source. Never \
+`quote` is text copied verbatim from that source, and only from that source: one \
+unbroken span of it. Never join lines or phrases that are apart in the source, even \
+with a newline between them; to show several parts, give each its own reference. Never \
 invent an id, a path or a quote: every reference is re-checked against the platform's \
 own records, and one that does not resolve turns your verdict into `undetermined`. An \
 empty list is more useful than a fabricated reference. When the manifest is empty there \
