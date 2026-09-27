@@ -118,9 +118,16 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 }
 
 func (s *Service) InterruptedTransient(ctx context.Context, a JobArgs) error {
-	return s.recoverAttempt(ctx, a, true)
+	return s.recoverAttempt(ctx, a, nothingSpared)
 }
-func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) error {
+
+func nothingSpared(State, envelope) bool { return false }
+
+func stillWithinCallDeadline(state State, e envelope) bool {
+	return state == StateWorking && e.ActiveDeadline.After(time.Now())
+}
+
+func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, spared func(State, envelope) bool) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -141,7 +148,7 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	if e.ActiveReceipt != a.ReceiptID || !State(row.State).AwaitsTheModel() {
 		return nil
 	}
-	if !force && State(row.State) == StateWorking && e.ActiveDeadline.After(time.Now()) {
+	if spared(State(row.State), e) {
 		return nil
 	}
 	receipt, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID})
@@ -157,7 +164,7 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, force bool) err
 	e.ActiveReceipt = pgtype.UUID{}
 	e.Snapshot.PendingAction = NothingPending
 	e.Snapshot.appendMessage("assistant", "工作已中斷，已保留進度。費用無法確認的那一步不會向你收費，但仍占用這次的預算額度；流程圖請重新上傳。")
-	if _, err = s.advance(ctx, tx, row, state, "attempt_interrupted", e); err != nil {
+	if _, err = s.advance(ctx, tx, row, transition{state, "attempt_interrupted"}, e); err != nil {
 		return err
 	}
 	_, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: status, Result: []byte("{}"), Usage: []byte("null")})
@@ -188,7 +195,7 @@ func (s *Service) Recover(ctx context.Context) error {
 		if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
 			continue
 		}
-		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, false); err != nil {
+		if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
 			return err
 		}
 		if s.RevokeKey != nil && e.ActiveReceipt.Valid {

@@ -31,8 +31,12 @@ func validDiagramDescription(value string) bool {
 	return validDiagramText(value)
 }
 
-func validDiagramItems(items []string, limit int, required bool) bool {
-	if (required && len(items) == 0) || len(items) > limit {
+func validRequiredDiagramItems(items []string, limit int) bool {
+	return len(items) > 0 && validDiagramItems(items, limit)
+}
+
+func validDiagramItems(items []string, limit int) bool {
+	if len(items) > limit {
 		return false
 	}
 	for _, item := range items {
@@ -45,10 +49,10 @@ func validDiagramItems(items []string, limit int, required bool) bool {
 
 func validDiagramDecomposition(value *DiagramDecomposition) bool {
 	return value != nil &&
-		validDiagramItems(value.Nodes, maxDiagramItems, true) &&
-		validDiagramItems(value.Conditions, maxDiagramItems, false) &&
-		validDiagramItems(value.Branches, maxDiagramItems*2, false) &&
-		validDiagramItems(value.Uncertainties, maxDiagramItems, false)
+		validRequiredDiagramItems(value.Nodes, maxDiagramItems) &&
+		validDiagramItems(value.Conditions, maxDiagramItems) &&
+		validDiagramItems(value.Branches, maxDiagramItems*2) &&
+		validDiagramItems(value.Uncertainties, maxDiagramItems)
 }
 
 func newDiagramInterpretation(value *DiagramDecomposition) *DiagramInterpretation {
@@ -68,9 +72,9 @@ func newDiagramInterpretation(value *DiagramDecomposition) *DiagramInterpretatio
 }
 
 func validDiagramInterpretation(value *DiagramInterpretation) bool {
-	if value == nil || !validDiagramItems(value.Nodes, maxDiagramItems, true) ||
-		!validDiagramItems(value.Conditions, maxDiagramItems, false) ||
-		!validDiagramItems(value.Branches, maxDiagramItems*2, false) || len(value.Uncertainties) > maxDiagramItems {
+	if value == nil || !validRequiredDiagramItems(value.Nodes, maxDiagramItems) ||
+		!validDiagramItems(value.Conditions, maxDiagramItems) ||
+		!validDiagramItems(value.Branches, maxDiagramItems*2) || len(value.Uncertainties) > maxDiagramItems {
 		return false
 	}
 	seen := map[string]bool{}

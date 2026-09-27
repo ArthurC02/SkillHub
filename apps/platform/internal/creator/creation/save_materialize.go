@@ -13,37 +13,39 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
-	outcome, err := s.save(ctx, ws, &e.Snapshot, c)
+func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand) (View, *JobArgs, error) {
+	outcome, err := s.save(ctx, ws, &admitted.envelope.Snapshot, admitted.command)
 	if err != nil {
 		return View{}, nil, err
 	}
 	if outcome.materialize != "" {
-		return s.materialize(ctx, ws, old, c, outcome.materialize, e)
+		return s.materialize(ctx, ws, old, admitted, outcome.materialize)
 	}
-	return s.commitPreparedCommand(ctx, ws, old, c, e, outcome)
+	return s.commitPreparedCommand(ctx, ws, old, admitted, outcome)
 }
 
-func (s *Service) readCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope) (View, *JobArgs, error) {
+func (s *Service) readCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand) (View, *JobArgs, error) {
+	c, p := admitted.command, &admitted.envelope.Snapshot
 	var outcome commandOutcome
 	var err error
 	switch c.Kind {
 	case "select_references":
-		outcome, err = s.selectReferences(ctx, ws, &e.Snapshot, c)
+		outcome, err = s.selectReferences(ctx, ws, p, c)
 	case "confirm_references":
-		outcome, err = s.confirmReferences(ctx, ws, &e.Snapshot)
+		outcome, err = s.confirmReferences(ctx, ws, p)
 	case "attach_run":
-		outcome, err = s.attachRun(ctx, ws, &e.Snapshot, c.RunID)
+		outcome, err = s.attachRun(ctx, ws, p, c.RunID)
 	default:
 		return View{}, nil, ErrInvalidCommand
 	}
 	if err != nil {
 		return View{}, nil, err
 	}
-	return s.commitPreparedCommand(ctx, ws, old, c, e, outcome)
+	return s.commitPreparedCommand(ctx, ws, old, admitted, outcome)
 }
 
-func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, e envelope, outcome commandOutcome) (View, *JobArgs, error) {
+func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand, outcome commandOutcome) (View, *JobArgs, error) {
+	c := admitted.command
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return View{}, nil, err
@@ -62,7 +64,7 @@ func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspa
 	if _, err := admitCommand(row, c); err != nil {
 		return View{}, nil, err
 	}
-	return s.commitCommand(ctx, tx, row, c, e, outcome)
+	return s.commitCommand(ctx, tx, row, admitted, outcome)
 }
 
 func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
@@ -150,8 +152,34 @@ type materializedReference struct {
 	Name      string `json:"name"`
 }
 
-func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, c Command, kind string, e envelope) (View, *JobArgs, error) {
+func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand, kind string) (View, *JobArgs, error) {
+	c, e := admitted.command, admitted.envelope
 	p := e.Snapshot
+	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, materializedInputs(p)}
+	var result View
+	err := s.Materialize(ctx, ws, p.Draft.Skill, provenance, func(ctx context.Context, tx pgx.Tx, candidate Candidate) error {
+		row, current, err := lockMaterializable(ctx, tx, ws, old, c)
+		if err != nil {
+			return err
+		}
+		if err := s.attachAcceptanceTestCase(ctx, tx, ws, current.Snapshot, &candidate); err != nil {
+			return err
+		}
+		adoptCandidate(&current, p, candidate)
+		row, err = s.advance(ctx, tx, row, transition{savedState(kind), c.Kind}, current)
+		if err != nil {
+			return err
+		}
+		result, err = view(row)
+		if err != nil {
+			return err
+		}
+		return record(ctx, tx, row, c, result)
+	})
+	return result, nil, err
+}
+
+func materializedInputs(p Snapshot) []byte {
 	refs := make([]materializedReference, len(p.References))
 	for i, r := range p.References {
 		refs[i] = materializedReference{r.SkillID, r.VersionID, r.Name}
@@ -160,58 +188,53 @@ func (s *Service) materialize(ctx context.Context, ws identity.Workspace, old ge
 	if p.DiagramFingerprint != "" {
 		m["diagram"] = map[string]any{"sha256": p.DiagramFingerprint, "media_type": p.DiagramMediaType, "bytes": p.DiagramBytes}
 	}
-
 	inputs, _ := json.Marshal(m)
-	provenance := Provenance{p.Brief, p.Model, p.PromptVersion, e.ExistingSkillID, inputs}
-	var result View
-	err := s.Materialize(ctx, ws, p.Draft.Skill, provenance, func(ctx context.Context, tx pgx.Tx, candidate Candidate) error {
-		row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: old.ID, WorkspaceID: ws.ID})
-		if err != nil {
-			return err
-		}
-		if row.Revision != c.ExpectedRevision || !live(row) || State(row.State).HasEnded() {
-			return ErrConflict
-		}
-		current, err := decode(row)
-		if err != nil {
-			return err
-		}
-		if current.Snapshot.Draft == nil || current.Snapshot.Draft.ContentHash != c.ContentHash || !confirmed(current.Snapshot) {
-			return ErrConflict
-		}
-		if _, found, err := replay(ctx, tx, ws.ID, row.ID, c); found || err != nil {
-			return ErrConflict
-		}
-		if s.CreateAcceptanceTestCase != nil && len(current.Snapshot.AcceptanceCriteria) > 0 {
+	return inputs
+}
 
-			prompt := current.Snapshot.SampleInput
-			if strings.TrimSpace(prompt) == "" {
-				prompt = current.Snapshot.Brief
-			}
-			id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, current.Snapshot.AcceptanceCriteria)
-			if err != nil {
-				return err
-			}
-			candidate.TestCaseID = id
-		}
-		current.Snapshot.Candidate = &candidate
+func lockMaterializable(ctx context.Context, tx pgx.Tx, ws identity.Workspace, old gen.CreationSession, c Command) (gen.CreationSession, envelope, error) {
+	row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: old.ID, WorkspaceID: ws.ID})
+	if err != nil {
+		return row, envelope{}, err
+	}
+	if row.Revision != c.ExpectedRevision || !live(row) || State(row.State).HasEnded() {
+		return row, envelope{}, ErrConflict
+	}
+	current, err := decode(row)
+	if err != nil {
+		return row, envelope{}, err
+	}
+	if current.Snapshot.Draft == nil || current.Snapshot.Draft.ContentHash != c.ContentHash || !confirmed(current.Snapshot) {
+		return row, envelope{}, ErrConflict
+	}
+	if _, found, err := replay(ctx, tx, ws.ID, row.ID, c); found || err != nil {
+		return row, envelope{}, ErrConflict
+	}
+	return row, current, nil
+}
 
-		current.Snapshot.SpentUSD = p.SpentUSD
-		current.Snapshot.Duplicates = p.Duplicates
-		current.Snapshot.DuplicateAcknowledged = p.DuplicateAcknowledged
-		current.Snapshot.PendingAction = NothingPending
-		current.Snapshot.PendingMaterialize = ""
-		current.ExistingSkillID = candidate.SkillID
-		state := savedState(kind)
-		row, err = s.advance(ctx, tx, row, state, c.Kind, current)
-		if err != nil {
-			return err
-		}
-		result, err = view(row)
-		if err != nil {
-			return err
-		}
-		return record(ctx, tx, ws.ID, row.ID, c, result)
-	})
-	return result, nil, err
+func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws identity.Workspace, p Snapshot, candidate *Candidate) error {
+	if s.CreateAcceptanceTestCase == nil || len(p.AcceptanceCriteria) == 0 {
+		return nil
+	}
+	prompt := p.SampleInput
+	if strings.TrimSpace(prompt) == "" {
+		prompt = p.Brief
+	}
+	id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, p.AcceptanceCriteria)
+	if err != nil {
+		return err
+	}
+	candidate.TestCaseID = id
+	return nil
+}
+
+func adoptCandidate(current *envelope, p Snapshot, candidate Candidate) {
+	current.Snapshot.Candidate = &candidate
+	current.Snapshot.SpentUSD = p.SpentUSD
+	current.Snapshot.Duplicates = p.Duplicates
+	current.Snapshot.DuplicateAcknowledged = p.DuplicateAcknowledged
+	current.Snapshot.PendingAction = NothingPending
+	current.Snapshot.PendingMaterialize = ""
+	current.ExistingSkillID = candidate.SkillID
 }

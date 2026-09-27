@@ -48,21 +48,32 @@ type Handler struct {
 
 func (h *Handler) DownloadStartedOn(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if h.Svc.Enabled() {
-			var artifactID pgtype.UUID
-			if artifactID.Scan(r.PathValue("artifactId")) == nil {
-				var workspace pgtype.UUID
-				if user, ok := identity.SessionUser(r.Context()); ok {
-					if ws, err := h.Identity.PersonalWorkspace(r.Context(), user); err == nil {
-						workspace = ws.ID
-					}
-				}
-
-				h.Svc.DownloadStarted(r.Context(), workspace, artifactID, "")
-			}
-		}
+		h.recordDownloadStarted(r)
 		next(w, r)
 	}
+}
+
+func (h *Handler) recordDownloadStarted(r *http.Request) {
+	if !h.Svc.Enabled() {
+		return
+	}
+	var artifactID pgtype.UUID
+	if artifactID.Scan(r.PathValue("artifactId")) != nil {
+		return
+	}
+	h.Svc.DownloadStarted(r.Context(), h.sessionWorkspace(r), artifactID, "")
+}
+
+func (h *Handler) sessionWorkspace(r *http.Request) pgtype.UUID {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		return pgtype.UUID{}
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		return pgtype.UUID{}
+	}
+	return ws.ID
 }
 
 func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {

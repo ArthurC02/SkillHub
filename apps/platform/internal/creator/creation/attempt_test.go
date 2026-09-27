@@ -68,10 +68,10 @@ func TestAnAbandonedAttemptAsksForTheDiagramOnlyWhenItWasNeverRead(t *testing.T)
 }
 
 func TestOnlyATransientAttemptLearnsItWasStale(t *testing.T) {
-	if err := staleAttempt(true); !errors.Is(err, ErrConflict) {
+	if err := staleAttempt(&Diagram{}); !errors.Is(err, ErrConflict) {
 		t.Errorf("transient: err = %v, want ErrConflict", err)
 	}
-	if err := staleAttempt(false); err != nil {
+	if err := staleAttempt(nil); err != nil {
 		t.Errorf("queued job: err = %v, want nil", err)
 	}
 }
@@ -94,7 +94,7 @@ func TestAFailedAttemptLandsWhereThePersonCanActOnIt(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			p := &Snapshot{DiagramUnderstanding: c.understanding, PendingAction: "confirm_brief", References: []Reference{{SkillID: "a", Confirmed: true, Available: true}}}
-			got := failedAttempt(p, c.err, c.callErr, c.hadDiagram)
+			got := failedAttempt(p, c.err, stepCall{carriedDiagram: c.hadDiagram, callErr: c.callErr})
 			if got != c.want || p.PendingAction != c.pending || !strings.Contains(p.Messages[len(p.Messages)-1].Content, c.last) {
 				t.Fatalf("state = %s, pending = %q, messages = %+v", got, p.PendingAction, p.Messages)
 			}
@@ -309,7 +309,7 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			e := &envelope{Deadline: c.deadline, Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}}}
-			if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, c.row, e, c.response, c.callErr, false); !errors.Is(err, ErrUnavailable) {
+			if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, c.row, e, stepCall{reply: c.response, callErr: c.callErr}); !errors.Is(err, ErrUnavailable) {
 				t.Fatalf("err = %v, want ErrUnavailable", err)
 			}
 		})
@@ -319,7 +319,7 @@ func TestAnAttemptWithoutAUsableResponseIsUnavailable(t *testing.T) {
 func TestADiagramAttemptMustComeBackWithAnUnderstanding(t *testing.T) {
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits()}
 	response := &StepResult{Outcome: "clarification", Message: "?"}
-	if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, liveRow(2), e, response, nil, true); !errors.Is(err, ErrInvalidCommand) {
+	if _, _, err := (&Service{}).attemptOutcome(context.Background(), JobArgs{}, liveRow(2), e, stepCall{carriedDiagram: true, reply: response}); !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }
@@ -330,7 +330,7 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 	}}
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
 	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
-	state, next, err := s.attemptOutcome(context.Background(), JobArgs{}, liveRow(6), e, response, nil, false)
+	state, next, err := s.attemptOutcome(context.Background(), JobArgs{}, liveRow(6), e, stepCall{reply: response})
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {
 		t.Fatalf("state = %s, next = %v, draft = %+v, err = %v", state, next, e.Snapshot.Draft, err)
 	}
@@ -338,7 +338,7 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 
 func TestAnAttemptThatCannotBeJudgedFailsAndHandsTheTurnBack(t *testing.T) {
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{PendingAction: "confirm_brief"}}
-	state, next := (&Service{}).concludeAttempt(context.Background(), JobArgs{}, liveRow(2), e, nil, ErrCreditFloor, false)
+	state, next := (&Service{}).concludeAttempt(context.Background(), JobArgs{}, liveRow(2), e, stepCall{callErr: ErrCreditFloor})
 	if state != StateWaitingInput || next || e.Snapshot.PendingAction != "" {
 		t.Fatalf("state = %s, next = %v, snapshot = %+v", state, next, e.Snapshot)
 	}

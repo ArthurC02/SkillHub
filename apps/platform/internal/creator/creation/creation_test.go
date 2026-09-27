@@ -157,10 +157,10 @@ func TestAppendMessageRecordsTheCreationTimeInUTC(t *testing.T) {
 }
 
 func TestAllowedToolsEmptyAtToolCallCeiling(t *testing.T) {
-	if got := allowedTools(3, 3, false, false, true); len(got) != 0 {
+	if got := allowedTools(3, 3, toolAvailability{searchLeft: true}); len(got) != 0 {
 		t.Fatalf("expected no tools once the budget is spent, got %v", got)
 	}
-	if got := allowedTools(2, 3, false, false, true); len(got) != 2 {
+	if got := allowedTools(2, 3, toolAvailability{searchLeft: true}); len(got) != 2 {
 		t.Fatalf("expected both tools while budget remains, got %v", got)
 	}
 }
@@ -535,13 +535,13 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	if e.Snapshot.SpentUSD == nil || *e.Snapshot.SpentUSD != 0.00002 {
 		t.Fatalf("the embedding is the session's spend: %v", e.Snapshot.SpentUSD)
 	}
-	if got := allowedTools(0, 8, false, true, true); len(got) != 3 || got[2] != "search_knowledge" {
+	if got := allowedTools(0, 8, toolAvailability{knowledge: true, searchLeft: true}); len(got) != 3 || got[2] != "search_knowledge" {
 		t.Fatalf("search_knowledge is offered only when wired: %v", got)
 	}
-	if got := allowedTools(0, 8, false, false, true); len(got) != 2 {
+	if got := allowedTools(0, 8, toolAvailability{searchLeft: true}); len(got) != 2 {
 		t.Fatalf("not wired, not offered: %v", got)
 	}
-	if got := allowedTools(0, 8, false, true, false); len(got) != 1 || got[0] != "validate_draft" {
+	if got := allowedTools(0, 8, toolAvailability{knowledge: true}); len(got) != 1 || got[0] != "validate_draft" {
 		t.Fatalf("after two empty rounds the search tools are withdrawn: %v", got)
 	}
 }

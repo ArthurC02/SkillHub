@@ -335,7 +335,14 @@ func (s *Service) List(ctx context.Context, ws identity.Workspace) ([]View, erro
 	}
 	return out, nil
 }
-func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, state State, event string, e envelope) (gen.CreationSession, error) {
+
+type transition struct {
+	to    State
+	event string
+}
+
+func (s *Service) advance(ctx context.Context, tx pgx.Tx, row gen.CreationSession, t transition, e envelope) (gen.CreationSession, error) {
+	state, event := t.to, t.event
 	from := State(row.State)
 	if !CanTransition(from, state) {
 		return row, fmt.Errorf("%w: %s to %s", ErrIllegalTransition, from, state)

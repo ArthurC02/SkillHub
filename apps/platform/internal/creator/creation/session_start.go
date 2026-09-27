@@ -25,7 +25,7 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, id pgtype.U
 		return resumeStart(r, key)
 	}
 	e, state := s.openingEnvelope(ctx, ws, message, budget, key)
-	return s.insertSession(ctx, ws, id, key, e, state)
+	return s.insertSession(ctx, ws, id, e, state)
 }
 
 func (s *Service) admitStart(ctx context.Context, ws identity.Workspace, id pgtype.UUID, message string, budget float64) error {
@@ -88,7 +88,7 @@ func (s *Service) openingEnvelope(ctx context.Context, ws identity.Workspace, me
 	return e, StateWaitingConfirmation
 }
 
-func (s *Service) insertSession(ctx context.Context, ws identity.Workspace, id pgtype.UUID, key string, e envelope, state State) (View, error) {
+func (s *Service) insertSession(ctx context.Context, ws identity.Workspace, id pgtype.UUID, e envelope, state State) (View, error) {
 	b, _ := json.Marshal(e)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -99,16 +99,16 @@ func (s *Service) insertSession(ctx context.Context, ws identity.Workspace, id p
 	row, err := q.CreateCreationSession(ctx, gen.CreateCreationSessionParams{ID: id, WorkspaceID: ws.ID, State: string(state), Snapshot: b, ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(s.Limits.Retention), Valid: true}})
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return s.startedConcurrently(ctx, ws, id, key)
+		return s.startedConcurrently(ctx, ws, id, e.StartHash)
 	}
 	if err = q.AppendCreationEvent(ctx, gen.AppendCreationEventParams{SessionID: id, WorkspaceID: ws.ID, Revision: 1, EventType: "created", Snapshot: b}); err != nil {
 		return View{}, err
 	}
 	if state == StateQueued {
-		if _, err = s.enqueue(ctx, tx, row, &e, false); err != nil {
+		if err = s.enqueue(ctx, tx, row, &e); err != nil {
 			return View{}, err
 		}
-		if row, err = s.advance(ctx, tx, row, state, "started", e); err != nil {
+		if row, err = s.advance(ctx, tx, row, transition{state, "started"}, e); err != nil {
 			return View{}, err
 		}
 	}

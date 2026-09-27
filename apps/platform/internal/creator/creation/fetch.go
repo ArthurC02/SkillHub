@@ -114,60 +114,72 @@ var errFetchBlocked = errors.New("fetch blocked")
 func (f *Fetcher) Fetch(ctx context.Context, rawURL string) (Fetch, string) {
 	rec := Fetch{URL: rawURL}
 	for attempt := 0; attempt < 2; attempt++ {
-		status, text, sha, n, retry := f.once(ctx, rawURL)
-		rec.Status, rec.SHA256, rec.Bytes = status, sha, n
-		if !retry || ctx.Err() != nil {
-			return rec, text
+		got := f.once(ctx, rawURL)
+		rec.Status, rec.SHA256, rec.Bytes = got.status, got.sha256, got.bytes
+		if !got.retry || ctx.Err() != nil {
+			return rec, got.text
 		}
 	}
 	return rec, ""
 }
 
-func (f *Fetcher) once(ctx context.Context, rawURL string) (status, text, sha string, n int, retry bool) {
+type fetchAttempt struct {
+	status string
+	text   string
+	sha256 string
+	bytes  int
+	retry  bool
+}
+
+func fetchEndedWith(status string) fetchAttempt { return fetchAttempt{status: status} }
+
+func fetchWorthRetrying() fetchAttempt { return fetchAttempt{status: "network_error", retry: true} }
+
+func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return "blocked", "", "", 0, false
+		return fetchEndedWith("blocked")
 	}
 	req.Header.Set("Accept", "text/html, text/plain;q=0.9")
 	req.Header.Set("User-Agent", "SkillHub-creation-fetch/1 (+consented)")
 	resp, err := f.client.Do(req)
 	if err != nil {
 		if errors.Is(err, errFetchBlocked) {
-			return "blocked", "", "", 0, false
+			return fetchEndedWith("blocked")
 		}
 		var netErr net.Error
 		if errors.As(err, &netErr) || errors.Is(err, context.DeadlineExceeded) {
-			return "network_error", "", "", 0, true
+			return fetchWorthRetrying()
 		}
-		return "blocked", "", "", 0, false
+		return fetchEndedWith("blocked")
 	}
 	defer resp.Body.Close()
 	switch {
 	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone:
-		return "not_found", "", "", 0, false
+		return fetchEndedWith("not_found")
 	case resp.StatusCode >= 500:
-		return "network_error", "", "", 0, true
+		return fetchWorthRetrying()
 	case resp.StatusCode >= 400:
-		return "blocked", "", "", 0, false
+		return fetchEndedWith("blocked")
 	}
 	ct := strings.ToLower(resp.Header.Get("Content-Type"))
 	if !strings.HasPrefix(ct, "text/html") && !strings.HasPrefix(ct, "text/plain") {
-		return "unsupported", "", "", 0, false
+		return fetchEndedWith("unsupported")
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxFetchBytes))
 	if err != nil {
-		return "network_error", "", "", 0, true
+		return fetchWorthRetrying()
 	}
 	if !utf8.Valid(body) {
-		return "unsupported", "", "", 0, false
+		return fetchEndedWith("unsupported")
 	}
 	sum := sha256.Sum256(body)
-	text = string(body)
+	text := string(body)
 	if strings.HasPrefix(ct, "text/html") {
 		text = htmlToText(text)
 	}
 	text = truncateRunes(strings.TrimSpace(text), MaxFetchTextRunes)
-	return "ok", text, hex.EncodeToString(sum[:]), len(body), false
+	return fetchAttempt{status: "ok", text: text, sha256: hex.EncodeToString(sum[:]), bytes: len(body)}
 }
 
 func htmlToText(s string) string {

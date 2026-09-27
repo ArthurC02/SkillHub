@@ -68,7 +68,7 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 			return StateQueued, true, nil
 		}
 	}
-	normalizeReply(r, p.DiagramFingerprint != "")
+	normalizeReply(r, *p)
 	if err := admitReply(r, *p); err != nil {
 		return "", false, err
 	}
@@ -118,8 +118,8 @@ func retriesMissingOutput(retries *int, p Snapshot, l Limits) bool {
 	return retries != nil && *retries < 1 && canSpend(p, l)
 }
 
-func normalizeReply(r *StepResult, diagramUploaded bool) {
-	if !diagramUploaded {
+func normalizeReply(r *StepResult, p Snapshot) {
+	if p.DiagramFingerprint == "" {
 		r.DiagramUnderstanding = ""
 		r.DiagramDescription = ""
 		r.DiagramInterpretation = nil

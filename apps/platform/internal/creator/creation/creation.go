@@ -38,10 +38,18 @@ func newID() pgtype.UUID {
 	b[8] = (b[8] & 63) | 128
 	return pgtype.UUID{Bytes: b, Valid: true}
 }
-func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope, transient bool) (JobArgs, error) {
-	if s.Insert == nil && !transient {
-		return JobArgs{}, ErrUnavailable
+func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) error {
+	if s.Insert == nil {
+		return ErrUnavailable
 	}
+	a, err := openAttemptReceipt(ctx, tx, row, e)
+	if err != nil {
+		return err
+	}
+	return s.Insert(ctx, tx, a)
+}
+
+func openAttemptReceipt(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (JobArgs, error) {
 	id := newID()
 	a := JobArgs{SessionID: row.ID, WorkspaceID: row.WorkspaceID, Revision: row.Revision, ReceiptID: id}
 	_, err := gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: id, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Kind: "attempt", Status: "queued", ExpectedRevision: row.Revision, RequestHash: digest(a), Result: []byte("{}")})
@@ -49,10 +57,18 @@ func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 		return a, err
 	}
 	e.ActiveReceipt = id
-	if !transient {
-		err = s.Insert(ctx, tx, a)
+	return a, nil
+}
+
+func (s *Service) queueStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope, outcome commandOutcome) (*JobArgs, error) {
+	if !outcome.transient {
+		return nil, s.enqueue(ctx, tx, row, e)
 	}
-	return a, err
+	a, err := openAttemptReceipt(ctx, tx, row, e)
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
 }
 func addSpend(p *Snapshot, cost float64) {
 	if cost > 0 && p.SpentUSD != nil {
@@ -85,12 +101,12 @@ func replay(ctx context.Context, tx pgx.Tx, ws, id pgtype.UUID, c Command) (View
 	err = json.Unmarshal(r.Result, &v)
 	return v, true, err
 }
-func record(ctx context.Context, tx pgx.Tx, ws, id pgtype.UUID, c Command, v View) error {
+func record(ctx context.Context, tx pgx.Tx, session gen.CreationSession, c Command, v View) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	_, err = gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: c.ID, SessionID: id, WorkspaceID: ws, Kind: "command", Status: "finished", ExpectedRevision: c.ExpectedRevision, RequestHash: digest(c), Result: b})
+	_, err = gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: c.ID, SessionID: session.ID, WorkspaceID: session.WorkspaceID, Kind: "command", Status: "finished", ExpectedRevision: c.ExpectedRevision, RequestHash: digest(c), Result: b})
 	return err
 }
 func confirmed(p Snapshot) bool {
@@ -163,6 +179,11 @@ func settledIn(state State) commandOutcome { return commandOutcome{state: state}
 
 func stepQueued() commandOutcome { return commandOutcome{queueStep: true} }
 
+type admittedCommand struct {
+	command  Command
+	envelope envelope
+}
+
 func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID, c Command) (View, *JobArgs, error) {
 	if !c.ID.Valid || c.ExpectedRevision < 1 {
 		return View{}, nil, ErrInvalidCommand
@@ -186,27 +207,28 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	if err != nil {
 		return View{}, nil, err
 	}
+	admitted := admittedCommand{command: c, envelope: e}
 	if c.Kind == "materialize" || c.Kind == "finalize" || c.Kind == "confirm_duplicate" {
 		if err := tx.Rollback(ctx); err != nil {
 			return View{}, nil, err
 		}
-		return s.saveCommand(ctx, ws, row, c, e)
+		return s.saveCommand(ctx, ws, row, admitted)
 	}
 	if c.Kind == "select_references" || c.Kind == "confirm_references" || c.Kind == "attach_run" {
 		if err := tx.Rollback(ctx); err != nil {
 			return View{}, nil, err
 		}
-		return s.readCommand(ctx, ws, row, c, e)
+		return s.readCommand(ctx, ws, row, admitted)
 	}
-	outcome, err := s.apply(ctx, tx, ws, row, c, &e)
+	outcome, err := s.apply(ctx, tx, ws, row, &admitted)
 	if err != nil {
 		return View{}, nil, err
 	}
 	if outcome.materialize != "" {
 		_ = tx.Rollback(ctx)
-		return s.materialize(ctx, ws, row, c, outcome.materialize, e)
+		return s.materialize(ctx, ws, row, admitted, outcome.materialize)
 	}
-	return s.commitCommand(ctx, tx, row, c, e, outcome)
+	return s.commitCommand(ctx, tx, row, admitted, outcome)
 }
 
 func admitCommand(row gen.CreationSession, c Command) (envelope, error) {
@@ -234,7 +256,8 @@ func admitCommand(row gen.CreationSession, c Command) (envelope, error) {
 	return e, nil
 }
 
-func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, row gen.CreationSession, c Command, e *envelope) (commandOutcome, error) {
+func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, row gen.CreationSession, admitted *admittedCommand) (commandOutcome, error) {
+	c, e := admitted.command, &admitted.envelope
 	p := &e.Snapshot
 	switch c.Kind {
 	case "cancel":
@@ -291,31 +314,38 @@ func stopStep(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelo
 	if !e.ActiveReceipt.Valid || !p.hasRoomFor(1) {
 		return commandOutcome{}, ErrInvalidCommand
 	}
-	beforeSending, err := withdrawAttempt(ctx, tx, row, e.ActiveReceipt)
+	withdrawn, err := withdrawAttempt(ctx, tx, row, e.ActiveReceipt)
 	if err != nil {
 		return commandOutcome{}, err
 	}
 	e.ActiveReceipt = pgtype.UUID{}
 	p.PendingAction = NothingPending
-	p.appendMessage("assistant", stopStepNote(beforeSending))
+	p.appendMessage("assistant", withdrawn.stopStepNote())
 	return settledIn(StateWaitingInput), nil
 }
 
-func withdrawAttempt(ctx context.Context, tx pgx.Tx, row gen.CreationSession, receipt pgtype.UUID) (bool, error) {
+type attemptWithdrawal int
+
+const (
+	withdrawnAfterSending attemptWithdrawal = iota
+	withdrawnBeforeSending
+)
+
+func withdrawAttempt(ctx context.Context, tx pgx.Tx, row gen.CreationSession, receipt pgtype.UUID) (attemptWithdrawal, error) {
 	q := gen.New(tx)
 	a, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: receipt, SessionID: row.ID, WorkspaceID: row.WorkspaceID})
 	if err != nil {
-		return false, err
+		return withdrawnAfterSending, err
 	}
 	if a.Status != "queued" {
-		return false, nil
+		return withdrawnAfterSending, nil
 	}
 	_, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ID, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Status: "cancelled", Result: []byte("{}"), Usage: []byte("{}")})
-	return true, err
+	return withdrawnBeforeSending, err
 }
 
-func stopStepNote(beforeSending bool) string {
-	if beforeSending {
+func (w attemptWithdrawal) stopStepNote() string {
+	if w == withdrawnBeforeSending {
 		return "你在模型呼叫發出前喊停，這一步沒有花到錢。"
 	}
 	return "你在這一步完成前喊停。模型呼叫已經發出，費用照計；它交回來的內容沒有採用。"
@@ -374,7 +404,8 @@ func confirmDiagramInterpretation(p *Snapshot) (commandOutcome, error) {
 	return stepQueued(), nil
 }
 
-func (s *Service) commitCommand(ctx context.Context, tx pgx.Tx, row gen.CreationSession, c Command, e envelope, outcome commandOutcome) (View, *JobArgs, error) {
+func (s *Service) commitCommand(ctx context.Context, tx pgx.Tx, row gen.CreationSession, admitted admittedCommand, outcome commandOutcome) (View, *JobArgs, error) {
+	c, e := admitted.command, admitted.envelope
 	state := outcome.state
 	var job *JobArgs
 	if outcome.queueStep {
@@ -382,15 +413,13 @@ func (s *Service) commitCommand(ctx context.Context, tx pgx.Tx, row gen.Creation
 			return View{}, nil, ErrLimit
 		}
 		state = StateQueued
-		a, err := s.enqueue(ctx, tx, row, &e, outcome.transient)
+		queued, err := s.queueStep(ctx, tx, row, &e, outcome)
 		if err != nil {
 			return View{}, nil, err
 		}
-		if outcome.transient {
-			job = &a
-		}
+		job = queued
 	}
-	row, err := s.advance(ctx, tx, row, state, c.Kind, e)
+	row, err := s.advance(ctx, tx, row, transition{state, c.Kind}, e)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -398,7 +427,7 @@ func (s *Service) commitCommand(ctx context.Context, tx pgx.Tx, row gen.Creation
 	if err != nil {
 		return View{}, nil, err
 	}
-	if err = record(ctx, tx, row.WorkspaceID, row.ID, c, v); err != nil {
+	if err = record(ctx, tx, row, c, v); err != nil {
 		return View{}, nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {

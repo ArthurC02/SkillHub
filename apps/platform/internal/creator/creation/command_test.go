@@ -517,10 +517,10 @@ func TestRaisingTheBudgetRevivesAFailedSession(t *testing.T) {
 }
 
 func TestTheStopStepSentenceSaysWhetherTheCallWentOut(t *testing.T) {
-	if got := stopStepNote(true); got != "你在模型呼叫發出前喊停，這一步沒有花到錢。" {
+	if got := withdrawnBeforeSending.stopStepNote(); got != "你在模型呼叫發出前喊停，這一步沒有花到錢。" {
 		t.Errorf("before sending: %q", got)
 	}
-	if got := stopStepNote(false); got != "你在這一步完成前喊停。模型呼叫已經發出，費用照計；它交回來的內容沒有採用。" {
+	if got := withdrawnAfterSending.stopStepNote(); got != "你在這一步完成前喊停。模型呼叫已經發出，費用照計；它交回來的內容沒有採用。" {
 		t.Errorf("after sending: %q", got)
 	}
 }

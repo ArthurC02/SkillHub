@@ -40,18 +40,24 @@ func canSpend(p Snapshot, l Limits) bool {
 	return l.Valid() && p.Steps < l.MaxSteps && p.hasRoomFor(2) && spent+p.ReservedUSD+l.MaxCallCostUSD <= math.Min(p.BudgetUSD, l.MaxCostUSD)+1e-10
 }
 
-func allowedTools(toolCalls, maxToolCalls int, fetch, knowledge, searchLeft bool) []string {
+type toolAvailability struct {
+	fetch      bool
+	knowledge  bool
+	searchLeft bool
+}
+
+func allowedTools(toolCalls, maxToolCalls int, available toolAvailability) []string {
 	if toolCalls >= maxToolCalls {
 		return []string{}
 	}
 	tools := []string{"validate_draft"}
-	if searchLeft {
+	if available.searchLeft {
 		tools = append(tools, "search_catalog")
-		if knowledge {
+		if available.knowledge {
 			tools = append(tools, "search_knowledge")
 		}
 	}
-	if fetch {
+	if available.fetch {
 		tools = append(tools, "fetch_url")
 	}
 	return tools
@@ -118,7 +124,14 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cleanupCancel()
 	_ = s.RevokeKey(cleanupCtx, UUID(a.ReceiptID))
-	return s.finish(cleanupCtx, a, response, usage, callErr, diagram != nil)
+	return s.finish(cleanupCtx, a, stepCall{carriedDiagram: diagram != nil, reply: response, usage: usage, callErr: callErr})
+}
+
+type stepCall struct {
+	carriedDiagram bool
+	reply          *StepResult
+	usage          *ModelUsage
+	callErr        error
 }
 
 func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram) (*attempt, error) {
@@ -140,20 +153,20 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 		return nil, err
 	}
 	if State(row.State) != StateQueued || e.ActiveReceipt != a.ReceiptID || !live(row) {
-		return nil, staleAttempt(diagram != nil)
+		return nil, staleAttempt(diagram)
 	}
 	r, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID})
 	if err != nil {
 		return nil, err
 	}
 	if r.Status != "queued" || r.ExpectedRevision != a.Revision {
-		return nil, staleAttempt(diagram != nil)
+		return nil, staleAttempt(diagram)
 	}
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
 		return nil, ErrInvalidCommand
 	}
 	if refusal := refuseAttempt(e, diagram != nil); refusal != "" {
-		return nil, s.failQueued(ctx, tx, row, e, a, refusal)
+		return nil, s.failQueued(ctx, tx, row, refusal.withdrawn(e), a)
 	}
 	if _, err = q.ClaimCreationReceipt(ctx, gen.ClaimCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID}); err != nil {
 		return nil, err
@@ -162,7 +175,7 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 	e.Snapshot.Steps++
 	e.Snapshot.ReservedUSD += e.Limits.MaxCallCostUSD
 	e.ActiveDeadline = time.Now().Add(e.Limits.CallTimeout + 10*time.Second)
-	if row, err = s.advance(ctx, tx, row, StateWorking, "attempt_started", e); err != nil {
+	if row, err = s.advance(ctx, tx, row, transition{StateWorking, "attempt_started"}, e); err != nil {
 		return nil, err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -171,8 +184,8 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 	return &attempt{e: e, revision: row.Revision}, nil
 }
 
-func staleAttempt(transient bool) error {
-	if transient {
+func staleAttempt(transientDiagram *Diagram) error {
+	if transientDiagram != nil {
 		return ErrConflict
 	}
 	return nil
@@ -208,6 +221,12 @@ func (r attemptRefusal) sentence(p Snapshot, l Limits) string {
 		return "流程圖需要重新上傳。"
 	}
 	return ""
+}
+
+func (r attemptRefusal) withdrawn(e envelope) envelope {
+	e.ActiveReceipt = pgtype.UUID{}
+	e.Snapshot.appendMessage("assistant", r.sentence(e.Snapshot, e.Limits))
+	return e
 }
 
 func diagramUnread(p Snapshot) bool {
@@ -263,7 +282,7 @@ func sessionMoved(current gen.CreationSession, err error) bool {
 
 func (s *Service) stepRequest(a JobArgs, revision int64, e envelope, diagram *Diagram) StepRequest {
 	p := e.Snapshot
-	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramDescription: p.DiagramDescription, DiagramDescriptionConfirmed: p.DiagramDescriptionConfirmed, DiagramInterpretation: p.DiagramInterpretation, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, s.Fetch != nil, s.SearchKnowledge != nil, p.SearchRounds < MaxSearchRounds), MaxOutputTokens: e.Limits.MaxOutputTokens}
+	req := StepRequest{SessionID: UUID(a.SessionID), Revision: revision, Messages: p.Messages, Brief: p.Brief, AcceptanceCriteria: p.AcceptanceCriteria, SampleInput: p.SampleInput, BriefConfirmed: p.BriefConfirmed, DiagramUnderstanding: p.DiagramUnderstanding, DiagramDescription: p.DiagramDescription, DiagramDescriptionConfirmed: p.DiagramDescriptionConfirmed, DiagramInterpretation: p.DiagramInterpretation, DiagramConfirmed: p.DiagramConfirmed, Diagram: diagram, References: []ReferenceSkill{}, AllowedTools: allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, toolAvailability{fetch: s.Fetch != nil, knowledge: s.SearchKnowledge != nil, searchLeft: p.SearchRounds < MaxSearchRounds}), MaxOutputTokens: e.Limits.MaxOutputTokens}
 	req.Draft, req.DraftValidation = draftForModel(p.Draft, e.PreviousDraft)
 	return req
 }
@@ -352,10 +371,8 @@ func stepFailureMessage(err, callErr error) string {
 	return "這一步未完成；已保留進度與實際可取得的費用。請檢查後再繼續。"
 }
 
-func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs, refusal attemptRefusal) error {
-	e.ActiveReceipt = pgtype.UUID{}
-	e.Snapshot.appendMessage("assistant", refusal.sentence(e.Snapshot, e.Limits))
-	if _, err := s.advance(ctx, tx, row, abandonedState(e.Snapshot), "attempt_refused", e); err != nil {
+func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e envelope, a JobArgs) error {
+	if _, err := s.advance(ctx, tx, row, transition{abandonedState(e.Snapshot), "attempt_refused"}, e); err != nil {
 		return err
 	}
 	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "failed", Result: []byte("{}"), Usage: []byte("{}")})
@@ -364,7 +381,8 @@ func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSes
 	}
 	return tx.Commit(ctx)
 }
-func (s *Service) finish(ctx context.Context, a JobArgs, response *StepResult, usage *ModelUsage, callErr error, hadDiagram bool) error {
+func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
+	usage := call.usage
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -399,14 +417,14 @@ func (s *Service) finish(ctx context.Context, a JobArgs, response *StepResult, u
 	state, next := State(row.State), false
 	if state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == "running" {
 		e.ActiveReceipt = pgtype.UUID{}
-		state, next = s.concludeAttempt(ctx, a, row, &e, response, callErr, hadDiagram)
+		state, next = s.concludeAttempt(ctx, a, row, &e, call)
 	}
 	if next {
 		if state, err = s.queueNextStep(ctx, tx, row, &e); err != nil {
 			return err
 		}
 	}
-	if _, err = s.advance(ctx, tx, row, state, "attempt_settled", e); err != nil {
+	if _, err = s.advance(ctx, tx, row, transition{state, "attempt_settled"}, e); err != nil {
 		return err
 	}
 	if err = finishAttemptReceipt(ctx, tx, a, usage); err != nil {
@@ -438,28 +456,29 @@ func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limi
 	return s.Billing.Settle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, knownCostUSD(usage), l.MaxCallCostUSD)
 }
 
-func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *StepResult, callErr error, hadDiagram bool) (State, bool) {
-	state, next, err := s.attemptOutcome(ctx, a, row, e, response, callErr, hadDiagram)
+func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, call stepCall) (State, bool) {
+	state, next, err := s.attemptOutcome(ctx, a, row, e, call)
 	if err == nil {
 		return state, next
 	}
-	s.logStepFailure(a, callErr)
-	return failedAttempt(&e.Snapshot, err, callErr, hadDiagram), false
+	s.logStepFailure(a, call.callErr)
+	return failedAttempt(&e.Snapshot, err, call), false
 }
 
-func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, response *StepResult, callErr error, hadDiagram bool) (State, bool, error) {
-	if callErr != nil || response == nil || !live(row) || !e.Deadline.After(time.Now()) {
+func (s *Service) attemptOutcome(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, call stepCall) (State, bool, error) {
+	if call.callErr != nil || call.reply == nil || !live(row) || !e.Deadline.After(time.Now()) {
 		return "", false, ErrUnavailable
 	}
-	if hadDiagram && !validDiagramDescription(response.DiagramDescription) {
+	if call.carriedDiagram && !validDiagramDescription(call.reply.DiagramDescription) {
 		return "", false, ErrInvalidCommand
 	}
-	return s.proposal(ctx, identity.Workspace{ID: a.WorkspaceID}, row.Revision+1, e, response)
+	return s.proposal(ctx, identity.Workspace{ID: a.WorkspaceID}, row.Revision+1, e, call.reply)
 }
 
-func failedAttempt(p *Snapshot, err, callErr error, hadDiagram bool) State {
+func failedAttempt(p *Snapshot, err error, call stepCall) State {
+	callErr := call.callErr
 	state := StateFailed
-	if hadDiagram && p.DiagramUnderstanding == "" {
+	if call.carriedDiagram && p.DiagramUnderstanding == "" {
 		state = StateNeedsReupload
 	}
 	p.PendingAction = NothingPending
@@ -493,7 +512,7 @@ func (s *Service) queueNextStep(ctx context.Context, tx pgx.Tx, row gen.Creation
 		e.Snapshot.appendMessage("assistant", limitSentence(e.Snapshot, e.Limits))
 		return StateWaitingInput, nil
 	}
-	if _, err := s.enqueue(ctx, tx, row, e, false); err != nil {
+	if err := s.enqueue(ctx, tx, row, e); err != nil {
 		return "", err
 	}
 	return StateQueued, nil
