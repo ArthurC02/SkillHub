@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -626,6 +627,50 @@ def test_missing_usage_is_unknown():
     assert response.json()["usage"] is None
 
 
+CHECK_SCRIPT_SOURCE = (
+    Path(creation.__file__).with_name("check_output.py").read_text(encoding="utf-8")
+)
+
+
+def _validated_draft_response(draft):
+    return invoke(
+        request(brief="agreed", brief_confirmed=True, allowed_tools=["validate_draft"]),
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "validate_draft", "query": "", "queries": None},
+            draft=draft,
+        ),
+    )
+
+
+def test_a_body_naming_check_output_gets_the_platforms_script_in_files():
+    draft = SKILL | {
+        "body": SKILL["body"] + " Run scripts/check_output.py to check the limit.",
+        "files": [],
+    }
+    response, _ = _validated_draft_response(draft)
+    assert response.json()["draft"]["files"] == [
+        {"path": "scripts/check_output.py", "content": CHECK_SCRIPT_SOURCE}
+    ]
+
+
+def test_a_body_not_naming_check_output_leaves_files_unchanged():
+    draft = SKILL | {"files": [{"path": "notes.md", "content": "keep me"}]}
+    response, _ = _validated_draft_response(draft)
+    assert response.json()["draft"]["files"] == [{"path": "notes.md", "content": "keep me"}]
+
+
+def test_the_models_own_content_at_the_check_output_path_is_replaced():
+    draft = SKILL | {
+        "body": SKILL["body"] + " See scripts/check_output.py for the check.",
+        "files": [{"path": "scripts/check_output.py", "content": "print('fake')"}],
+    }
+    response, _ = _validated_draft_response(draft)
+    assert response.json()["draft"]["files"] == [
+        {"path": "scripts/check_output.py", "content": CHECK_SCRIPT_SOURCE}
+    ]
+
+
 def test_tracing_disabled_even_when_environment_enables_it(monkeypatch):
     monkeypatch.setenv("LANGSMITH_TRACING", "true")
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
@@ -859,7 +904,7 @@ def test_review_after_an_unmet_trial_names_the_edits_before_rewriting(
                     }
                 ]
             },
-            revised["body"],
+            {"body": revised["body"], "files": SKILL["files"]},
             decision(
                 outcome="tool_intent" if validate_before_accepting else "draft",
                 message="改了",
@@ -876,11 +921,107 @@ def test_review_after_an_unmet_trial_names_the_edits_before_rewriting(
     assert response.status_code == 200
     assert len(calls) == 3
     assert calls[0]["response_format"]["json_schema"]["name"] == "review_diagnosis"
-    assert "response_format" not in calls[1]
+    assert calls[1]["response_format"]["json_schema"]["name"] == "review_rewrite"
     assert "say checkbox" in calls[1]["messages"][1]["content"]
     assert "already been rewritten" in calls[2]["messages"][0]["content"]
     assert response.json()["draft"]["body"] == revised["body"]
     assert response.json()["usage"]["cost_usd"] == 0.003
+
+
+def test_review_edit_targeting_files_rewrites_the_named_script():
+    draft = SKILL | {
+        "body": SKILL["body"] + " Run scripts/tier.py with the amount.",
+        "files": [{"path": "scripts/tier.py", "content": "print('wrong')"}],
+    }
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        draft=draft,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=request()["messages"] + [{"role": "tool", "content": UNMET_EVALUATION}],
+        allowed_tools=["validate_draft"],
+    )
+    fixed_files = [{"path": "scripts/tier.py", "content": "print('fixed')"}]
+    calls = []
+    seq = stub_seq(
+        [
+            {
+                "edits": [
+                    {
+                        "criterion": "checkbox list",
+                        "cause": "wrong tier boundary",
+                        "target": "files",
+                        "edit": "scripts/tier.py: fix the tier boundary",
+                    }
+                ]
+            },
+            {"body": draft["body"], "files": fixed_files},
+            decision(outcome="draft", message="改了", draft=draft),
+        ],
+        calls,
+    )
+    with patch.object(creation, "client", lambda _: seq):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=req)
+    assert response.status_code == 200
+    assert calls[1]["response_format"]["json_schema"]["name"] == "review_rewrite"
+    assert "scripts/tier.py" in calls[1]["messages"][1]["content"]
+    assert "print('wrong')" in calls[1]["messages"][1]["content"]
+    assert response.json()["draft"]["files"] == fixed_files
+
+
+def test_review_edits_targeting_files_and_criteria_together_still_reproposes_the_brief():
+    draft = SKILL | {
+        "body": SKILL["body"] + " Run scripts/tier.py with the amount.",
+        "files": [{"path": "scripts/tier.py", "content": "print('wrong')"}],
+    }
+    req = request(
+        brief="b",
+        brief_confirmed=True,
+        acceptance_criteria=["old criterion"],
+        sample_input="real material",
+        draft=draft,
+        draft_validation={"content_hash": "c" * 64, "report": "{}", "blocked": False},
+        messages=request()["messages"] + [{"role": "tool", "content": UNMET_EVALUATION}],
+        allowed_tools=["validate_draft"],
+    )
+    calls = []
+    seq = stub_seq(
+        [
+            {
+                "edits": [
+                    {
+                        "criterion": "old criterion",
+                        "cause": "wrong tier boundary",
+                        "target": "files",
+                        "edit": "scripts/tier.py: fix the tier boundary",
+                    },
+                    {
+                        "criterion": "checkbox list",
+                        "cause": "branch not in sample",
+                        "target": "criteria",
+                        "edit": "decidable criterion",
+                    },
+                ]
+            },
+            decision(
+                outcome="confirm_brief",
+                message="這條條件這份樣本驗不到，改成…",
+                brief="b",
+                acceptance_criteria=["decidable criterion"],
+                sample_input="real material",
+            ),
+        ],
+        calls,
+    )
+    with patch.object(creation, "client", lambda _: seq):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=req)
+    assert response.status_code == 200
+    assert len(calls) == 2
+    assert "outcome confirm_brief" in calls[1]["messages"][0]["content"]
+    body = response.json()
+    assert body["outcome"] == "confirm_brief"
+    assert body["acceptance_criteria"] == ["decidable criterion"]
+    assert body["draft"] is None
 
 
 def test_review_whose_fix_is_in_the_criteria_reproposes_the_brief():
