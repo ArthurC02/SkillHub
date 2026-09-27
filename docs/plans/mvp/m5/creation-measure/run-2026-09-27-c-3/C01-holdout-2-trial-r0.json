@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "時薪 200 元，本月只有一天加班：9/15 加班 2.5 小時。請算出這個月的加班費總額。",
+  "acceptance_criteria": [
+    {
+      "text": "加班費總額為 703 元"
+    }
+  ],
+  "final_output": "這個月的平日加班費總額是 **703 元**。\n\n計算：\n- 前 2 小時：200 × 1.34 × 2 = **536 元**\n- 第 2 到第 4 小時內的 0.5 小時：200 × 1.67 × 0.5 = **167 元**\n\n合計：**536 + 167 = 703 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "67d58dec-f4fb-4037-9c9c-bd6a17956b47",
+    "run_id": "0d97b55f-492c-4cf0-81c1-70c5f22bedce",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆的加班費總額為 703 元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "cdda19c8-afe5-4be4-808f-eaaa6682996c",
+        "text": "加班費總額為 703 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確給出本月平日加班費總額為 703 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個月的平日加班費總額是 **703 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18786 input and 395 output tokens on gpt-5.4-mini; reported cost $0.0176 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 6,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

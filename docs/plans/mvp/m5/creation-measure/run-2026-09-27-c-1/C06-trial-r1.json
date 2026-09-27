@@ -1,0 +1,140 @@
+{
+  "round": 1,
+  "sample_input": "請幫我把以下週報整理成可以寄給主管的郵件，並設定每週五自動執行：\n本週完成：\n- 完成登入頁重構\n- 修正 3 個付款流程 bug\n- 新增報表匯出功能\n下週計畫：\n- 上線 A/B 測試\n- 優化手機版版面\n收件人：manager@example.com\n主旨請用：每週工作週報",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含一份週報內容與主管收件資訊時，輸出會整理成一封可直接寄出的週報郵件草稿。"
+    },
+    {
+      "text": "當輸入明確要求每週五排程時，輸出會包含每週五執行的排程指示。"
+    },
+    {
+      "text": "當輸入要求之後不用手動操作時，輸出會明確描述已設定為自動化重複執行。"
+    },
+    {
+      "text": "當輸入提供週報重點條列時，輸出會保留這些重點並整理成正式郵件語氣。"
+    },
+    {
+      "text": "當輸入同時包含週報內容、收件者與週五排程需求時，輸出會同時涵蓋內容整理與排程安排兩部分。"
+    }
+  ],
+  "final_output": "Subject: 每週工作週報  \nTo: manager@example.com\n\nBody:\n主管您好，\n\n以下是本週工作週報：\n\n本週完成：\n- 完成登入頁重構\n- 修正 3 個付款流程 bug\n- 新增報表匯出功能\n\n下週計畫：\n- 上線 A/B 測試\n- 優化手機版版面\n\n以上，謝謝。\n\nSchedule note:\n已設定每週五自動執行一次，時間為每週五上午 9:07。這是會話期間的暫存設定，Claude 結束後不會保留；若要長期保留，需另外設定持久化排程。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "43f39e21-0302-4332-80e9-4f0218bb632e",
+    "run_id": "3d02e41a-b48e-4bc4-b20d-8e856a1ba80b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已產出包含正確收件人、主旨與完整週報重點的正式郵件草稿，並建立每週五的重複執行排程。輸入未明確提出後續完全不用手動操作的要求，故該條件無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "bfdef417-fe49-4c31-a032-6f124b538c45",
+        "text": "當輸入包含一份週報內容與主管收件資訊時，輸出會整理成一封可直接寄出的週報郵件草稿。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含收件人、主旨及完整正式郵件內文，可直接寄送給主管。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Subject: 每週工作週報  \nTo: manager@example.com\n\nBody:\n主管您好，\n\n以下是本週工作週報：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ced3caf-ef90-4f64-b4c1-94df646648b6",
+        "text": "當輸入明確要求每週五排程時，輸出會包含每週五執行的排程指示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明已設定為每週五上午 9:07 自動執行，且執行紀錄顯示建立了每週五的重複排程。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"cron\": \"7 9 * * 5\", \"prompt\": \"請將以下週報整理成可寄給主管的郵件草稿（收件人：manager@example.com；主旨：每週工作週報）：\\n\\n本週完成：\\n- 完成登入頁重構\\n- 修正 3 個付款流程 bug\\n- 新增報表匯出功能\\n\\n下週計畫：\\n- 上線 A/B 測試\\n- 優化手機版版面\", \"durable\": false, \"recurring\": true}, \"tool_name\": \"CronCreate\", \"truncated\": false, \"duration_ms\": 4, \"invocation_id\": \"call_EqpgJf9sPBH8Ub8BTPdnwfeG\", \"result_summary\": \"Scheduled recurring job 9ebe4bbe (Every Friday at 9:07 AM). Session-only (not written to disk, dies when Claude exits). Auto-expires after 7 days. Use CronDelete to cancel sooner.\"}",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "925eb233-092a-44f6-a139-5e9b82e8037d",
+        "text": "當輸入要求之後不用手動操作時，輸出會明確描述已設定為自動化重複執行。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "輸入雖要求每週五自動執行，但未明確要求「之後不用手動操作」；因此無法依此條件判定。輸出也說明排程僅為會話期間暫存，並非可長期保留的自動化。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "f19a6128-9d23-4bd1-91a7-c9047d2ac5be",
+        "text": "當輸入提供週報重點條列時，輸出會保留這些重點並整理成正式郵件語氣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留所有本週完成與下週計畫重點，並以稱謂、說明與結語整理為正式郵件語氣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "主管您好，\n\n以下是本週工作週報：\n\n本週完成：\n- 完成登入頁重構\n- 修正 3 個付款流程 bug\n- 新增報表匯出功能\n\n下週計畫：\n- 上線 A/B 測試\n- 優化手機版版面\n\n以上，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6f29e25-170f-433e-97f6-492b7ee1cd69",
+        "text": "當輸入同時包含週報內容、收件者與週五排程需求時，輸出會同時涵蓋內容整理與排程安排兩部分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時提供週報郵件內容與每週五重複排程安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Schedule note:\n已設定每週五自動執行一次，時間為每週五上午 9:07。這是會話期間的暫存設定，Claude 結束後不會保留；若要長期保留，需另外設定持久化排程。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3830 input and 2907 output tokens on gpt-5.4-mini; reported cost $0.0203 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "請幫我寫一封公告信。事實：因應強颱來襲，公司自 2026/09/29（星期二）停止上班，2026/09/30（星期三）恢復正常上班；資訊部與總務部須派人留守，其餘同仁停班停課。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出明確寫出停班生效日期為 2026/09/29"
+    },
+    {
+      "text": "輸出明確寫出恢復上班日期為 2026/09/30"
+    },
+    {
+      "text": "輸出明確寫出資訊部與總務部需要留守，其餘同仁停班停課"
+    },
+    {
+      "text": "語氣正式得體，不是口語或聊天式的用詞"
+    }
+  ],
+  "final_output": "**主旨：**【公告】因應強颱來襲，本公司停班停課通知\n\n各位同仁您好：\n\n因應強颱來襲，為確保同仁安全，自 **2026/09/29（星期二）** 起，本公司 **停止上班停課**，並於 **2026/09/30（星期三）** **恢復正常上班**。\n\n本次停班期間，**資訊部** 與 **總務部** 請依需要 **派員留守**，以維持必要業務及公司運作；其餘同仁請配合停班安排，暫停到班。\n\n請各位同仁留意自身安全，並隨時關注公司後續公告。如有緊急事項，請依部門安排與相關負責人聯繫。\n\n謝謝大家的配合。\n\n敬祝  \n平安順心\n\n**公司公告**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ac37bf90-df3f-4cb6-adca-87e74a0a4d84",
+    "run_id": "21f8466d-0074-4f11-87ce-5ce5ff32f462",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件均已符合：公告清楚載明停班與復班日期、留守部門及其餘同仁的停班安排，且整體使用正式得體的內部公告語氣。",
+    "criterion_results": [
+      {
+        "criterion_id": "1d4266b7-17a8-4698-bbf8-5ab075f376d2",
+        "text": "輸出明確寫出停班生效日期為 2026/09/29",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明自 2026/09/29 起停止上班停課。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "自 **2026/09/29（星期二）** 起，本公司 **停止上班停課**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0106b35a-a926-4bdf-8bdf-5b149353d717",
+        "text": "輸出明確寫出恢復上班日期為 2026/09/30",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明於 2026/09/30 恢復正常上班。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "並於 **2026/09/30（星期三）** **恢復正常上班**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "65f09aea-4bd7-4ab3-87ad-a6b28fec9c83",
+        "text": "輸出明確寫出資訊部與總務部需要留守，其餘同仁停班停課",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確指出資訊部與總務部派員留守，其他同仁配合停班安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本次停班期間，**資訊部** 與 **總務部** 請依需要 **派員留守**，以維持必要業務及公司運作；其餘同仁請配合停班安排，暫停到班。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb84d0a9-1ee2-40ec-aa68-64d7826ac719",
+        "text": "語氣正式得體，不是口語或聊天式的用詞",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容採正式公告格式，包含主旨、稱謂、公告事項與敬語，語氣得體。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位同仁您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "謝謝大家的配合。\n\n敬祝  \n平安順心",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19076 input and 593 output tokens on gpt-5.4-mini; reported cost $0.0188 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

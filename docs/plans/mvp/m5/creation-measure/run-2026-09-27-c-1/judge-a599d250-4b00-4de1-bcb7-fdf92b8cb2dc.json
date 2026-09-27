@@ -1,0 +1,85 @@
+{
+  "request": {
+    "RunID": "a599d250-4b00-4de1-bcb7-fdf92b8cb2dc",
+    "EvaluationID": "372431a5-0723-4a6d-a620-e0f6d604edac",
+    "Skill": {
+      "Name": "calculate-overtime-pay",
+      "Summary": "計算平日加班費總額；當輸入時薪與每日加班時數清單，且需要依每日前 2 小時、2 到 4 小時與月上限 46 小時規則試算時使用。"
+    },
+    "UserPrompt": "時薪 200 元，本月加班紀錄如下（每天皆不超過 4 小時）：9/1~9/23 每天加班 2 小時（共 23 天，合計 46 小時）。請算出這個月的加班費總額。",
+    "Criteria": [
+      {
+        "ID": "0350d583-6c66-4af6-a358-2a9058e040f6",
+        "Text": "加班費總額為 12328 元",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "本月加班費總額為 **12,328 元**。\n\n計算方式：\n- 每天 2 小時，全部都屬於前 2 小時，按 **1.34 倍時薪** 計算\n- 每日加班費：200 × 1.34 × 2 = **536 元**\n- 9/1～9/23 共 23 天：536 × 23 = **12,328 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "08ae8402-b50c-4c5f-9268-445bf1443304",
+          "OccurredAt": "2026-09-27T08:50:36.643Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"calculate-overtime-pay\", \"skill_version_id\": \"4dbdbb55-9bb2-4d3a-ab17-1409d09f326f\"}"
+        },
+        {
+          "TraceEventID": "3df624c2-0070-460d-9456-81544fbbd9ac",
+          "OccurredAt": "2026-09-27T08:50:36.651Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"calculate-overtime-pay\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_q4pBHooYpamZnYITiT1Kcykk\", \"result_summary\": \"Launching skill: calculate-overtime-pay\"}"
+        },
+        {
+          "TraceEventID": "f77612a7-f5f8-4ab9-8679-41a1282f9443",
+          "OccurredAt": "2026-09-27T08:50:38.889Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"本月加班費總額為 **12,328 元**。\\n\\n計算方式：\\n- 每天 2 小時，全部都屬於前 2 小時，按 **1.34 倍時薪** 計算\\n- 每日加班費：200 × 1.34 × 2 = **536 元**\\n- 9/1～9/23 共 23 天：536 × 23 = **12,328 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ea7af1a6-ae45-4059-b2e3-18acdd7249bc",
+          "OccurredAt": "2026-09-27T08:50:39.056Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"本月加班費總額為 **12,328 元**。\\n\\n計算方式：\\n- 每天 2 小時，全部都屬於前 2 小時，按 **1.34 倍時薪** 計算\\n- 每日加班費：200 × 1.34 × 2 = **536 元**\\n- 9/1～9/23 共 23 天：536 × 23 = **12,328 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7a8cf692-1626-4b37-abd6-f73a43427c28",
+          "OccurredAt": "2026-09-27T08:50:43.126Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00354315, \"cost_source\": \"gateway\", \"duration_ms\": 8321, \"input_tokens\": 2943, \"token_source\": \"result\", \"output_tokens\": 358, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "0350d583-6c66-4af6-a358-2a9058e040f6",
+        "Result": "passed",
+        "Reason": "最終回覆明確給出本月加班費總額為 12,328 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本月加班費總額為 **12,328 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "唯一驗收條件已滿足：回覆計算的加班費總額為 12,328 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2183,
+      "CompletionTokens": 143,
+      "CostUSD": 0.0046374,
+      "CostReported": true
+    }
+  }
+}

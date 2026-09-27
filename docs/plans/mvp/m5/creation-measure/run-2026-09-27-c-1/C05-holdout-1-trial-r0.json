@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶問退款進度。事實：訂單編號 TW20260938，退款金額 3,480 元，退款日期是 9/30，退款會分兩筆匯入。請用不超過 30 個字回覆客戶，退款金額、退款日期、訂單編號三項都要保留。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 30 字"
+    },
+    {
+      "text": "輸出包含退款金額 3,480 元（或3480元）"
+    },
+    {
+      "text": "輸出包含退款日期 9/30"
+    },
+    {
+      "text": "輸出包含訂單編號 TW20260938"
+    }
+  ],
+  "final_output": "TW20260938退款3480元，9/30分兩筆入帳",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "440d7baf-1e7e-48bb-8f13-9fc991829e01",
+    "run_id": "0e5ece47-5fb4-48b5-9229-8548bfa4b2a4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆在 30 字內，且保留退款金額、退款日期與訂單編號。",
+    "criterion_results": [
+      {
+        "criterion_id": "3f7f85b0-c7ec-4954-8fc8-f27ccc43d23b",
+        "text": "輸出總字數（含標點與英數字）不超過 30 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆共 27 字元（含標點與英數字），未超過 30 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "TW20260938退款3480元，9/30分兩筆入帳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef136d11-9bd1-4e0c-a2b2-220d1328f54a",
+        "text": "輸出包含退款金額 3,480 元（或3480元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含退款金額「3480元」，符合允許格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "TW20260938退款3480元，9/30分兩筆入帳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a063545b-9886-476c-9d43-87c9563a7bda",
+        "text": "輸出包含退款日期 9/30",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含退款日期「9/30」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "TW20260938退款3480元，9/30分兩筆入帳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9d5beac0-c662-45a8-8aa4-152edf51d10c",
+        "text": "輸出包含訂單編號 TW20260938",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含訂單編號「TW20260938」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "TW20260938退款3480元，9/30分兩筆入帳",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18959 input and 1443 output tokens on gpt-5.4-mini; reported cost $0.0225 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "request": {
+    "RunID": "7ba66eac-6f82-416b-91c4-ca0056a52530",
+    "EvaluationID": "1d886b3f-d49e-4b8f-97c7-4f1b645ade6c",
+    "Skill": {
+      "Name": "shopping-discount-net-total",
+      "Summary": "計算購物實付金額，依 1000/3000/5000 元門檻套用單一最高優惠；當你需要把滿額折扣、免運與原本運費一起算成實付金額時使用。"
+    },
+    "UserPrompt": "請幫我算實付金額，以下是三筆訂單：\n1) 999 元\n2) 3000 元\n3) 5000 元",
+    "Criteria": [
+      {
+        "ID": "fdd487d0-65bd-411e-9504-f0499c6f5855",
+        "Text": "輸入 999 元時，輸出實付金額為原金額，且不套用折扣或免運。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7f2f76ba-3280-49f6-9221-4dbaf86ed911",
+        "Text": "輸入 1000 元時，輸出實付金額為 950 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c27b2dcf-a5c0-4a3a-88ae-a532518c3ece",
+        "Text": "輸入 2999 元時，仍只套用 1000 元門檻折 50 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0806080a-42fb-423a-8c37-8354ffcc8185",
+        "Text": "輸入 3000 元時，輸出實付金額為 2800 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "20770218-8a2b-4b93-8629-3dfaaceaeaca",
+        "Text": "輸入 4999 元時，仍只套用 3000 元門檻折 200 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2ddc9dff-bcbe-4559-9e79-03f5494acdb3",
+        "Text": "輸入 5000 元時，輸出實付金額為 4800 元，且包含免運效果（原運費 150 元被免除）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "81dd13e2-3d03-4acb-93ee-dbeebcde8552",
+        "Text": "輸入 6000 元時，仍只套用 5000 元門檻的最高一階優惠，不再疊加其他門檻。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為各筆實付金額：\n\n1. **999 元**  \n   - 適用優惠：**無折扣**  \n   - 實付金額：**999 元**\n\n2. **3000 元**  \n   - 適用優惠：**折 200 元**  \n   - 實付金額：**2800 元**\n\n3. **5000 元**  \n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \n   - 實付金額：**4650 元**\n\n**總實付金額：8449 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "296cab0e-027c-4ba7-ad99-454fc3cc1bff",
+          "OccurredAt": "2026-09-27T09:54:52.258Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"shopping-discount-net-total\", \"skill_version_id\": \"987a9816-6138-4e5f-a9e6-9e6a56b39539\"}"
+        },
+        {
+          "TraceEventID": "a1302e7c-f921-4eae-83a2-2e3dd0ffa5e0",
+          "OccurredAt": "2026-09-27T09:54:52.27Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"三筆訂單金額：999、3000、5000。請計算各自實付金額與總實付金額。\", \"skill\": \"shopping-discount-net-total\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 13, \"invocation_id\": \"call_JFquVnHiVuLqOxweQpjPyWXX\", \"result_summary\": \"Launching skill: shopping-discount-net-total\"}"
+        },
+        {
+          "TraceEventID": "2c4f5c09-cfdd-4b4e-b7a9-52708a205459",
+          "OccurredAt": "2026-09-27T09:54:54.503Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為各筆實付金額：\\n\\n1. **999 元**  \\n   - 適用優惠：**無折扣**  \\n   - 實付金額：**999 元**\\n\\n2. **3000 元**  \\n   - 適用優惠：**折 200 元**  \\n   - 實付金額：**2800 元**\\n\\n3. **5000 元**  \\n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \\n   - 實付金額：**4650 元**\\n\\n**總實付金額：8449 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f66e5d4b-00ef-478c-93b1-504b546f5daa",
+          "OccurredAt": "2026-09-27T09:54:54.698Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為各筆實付金額：\\n\\n1. **999 元**  \\n   - 適用優惠：**無折扣**  \\n   - 實付金額：**999 元**\\n\\n2. **3000 元**  \\n   - 適用優惠：**折 200 元**  \\n   - 實付金額：**2800 元**\\n\\n3. **5000 元**  \\n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \\n   - 實付金額：**4650 元**\\n\\n**總實付金額：8449 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "22f212f5-29b9-430b-a414-ca041c5a184e",
+          "OccurredAt": "2026-09-27T09:54:58.743Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01784925, \"cost_source\": \"gateway\", \"duration_ms\": 8803, \"input_tokens\": 18656, \"token_source\": \"result\", \"output_tokens\": 469, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "fdd487d0-65bd-411e-9504-f0499c6f5855",
+        "Result": "passed",
+        "Reason": "999 元訂單列為無折扣，實付金額為 999 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. **999 元**  \n   - 適用優惠：**無折扣**  \n   - 實付金額：**999 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7f2f76ba-3280-49f6-9221-4dbaf86ed911",
+        "Result": "undetermined",
+        "Reason": "回覆未提供 1000 元輸入的計算結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "c27b2dcf-a5c0-4a3a-88ae-a532518c3ece",
+        "Result": "undetermined",
+        "Reason": "回覆未提供 2999 元輸入的計算結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "0806080a-42fb-423a-8c37-8354ffcc8185",
+        "Result": "passed",
+        "Reason": "3000 元訂單套用折 200 元，實付 2800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. **3000 元**  \n   - 適用優惠：**折 200 元**  \n   - 實付金額：**2800 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "20770218-8a2b-4b93-8629-3dfaaceaeaca",
+        "Result": "undetermined",
+        "Reason": "回覆未提供 4999 元輸入的計算結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "2ddc9dff-bcbe-4559-9e79-03f5494acdb3",
+        "Result": "failed",
+        "Reason": "5000 元訂單雖提及折 200 元與免運，但輸出的實付金額是 4650 元，不符合要求的 4800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. **5000 元**  \n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \n   - 實付金額：**4650 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "81dd13e2-3d03-4acb-93ee-dbeebcde8552",
+        "Result": "undetermined",
+        "Reason": "回覆未提供 6000 元輸入的計算結果。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "已正確處理 999 元與 3000 元案例。5000 元案例的實付金額錯誤；其餘門檻測試案例未在本次回覆中呈現，無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2685,
+      "CompletionTokens": 816,
+      "CostUSD": 0.0139684,
+      "CostReported": true
+    }
+  }
+}

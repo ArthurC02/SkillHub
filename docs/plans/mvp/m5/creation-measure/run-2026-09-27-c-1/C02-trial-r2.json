@@ -1,0 +1,180 @@
+{
+  "round": 2,
+  "sample_input": "請逐筆審核以下 5 筆報帳並輸出判定結果：\n1. 申請人：王小明；報帳日期：2026-09-10；金額：2800；附件：發票\n2. 申請人：李小美；報帳日期：2026-09-10；金額：6500；附件：收據\n3. 申請人：張志強；報帳日期：2026-09-10；金額：18000；附件：發票\n4. 申請人：陳怡君；報帳日期：2026-09-10；金額：1200；附件：無\n5. 申請人：黃品瑄；報帳日期：2026-05-01；金額：9000；附件：發票",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含多筆報帳時，輸出會逐筆對應每一筆資料各自的判定結果。"
+    },
+    {
+      "text": "任一筆資料若未附發票且未附收據，該筆結果一定是「退回」，不會再依金額分級。"
+    },
+    {
+      "text": "任一筆資料若報帳日期距今天超過 90 天，該筆結果一定是「退回」，不會再依金額分級。"
+    },
+    {
+      "text": "任一筆資料若有附件且日期在 90 天內，且金額為 3000 元以下，結果是「直接核准」。"
+    },
+    {
+      "text": "任一筆資料若有附件且日期在 90 天內，且金額大於 3000 元到 10000 元，結果是「需要主管簽核」。"
+    },
+    {
+      "text": "任一筆資料若有附件且日期在 90 天內，且金額大於 10000 元，結果是「需要總經理簽核」。"
+    },
+    {
+      "text": "當同一個輸入同時包含退回、直接核准、主管簽核、總經理簽核四種案例時，輸出能一次涵蓋全部四種判定。"
+    }
+  ],
+  "final_output": "直接核准\n需要主管簽核\n需要總經理簽核\n退回\n退回",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "87a782b2-b77e-407d-8efb-d7b9a831b632",
+    "run_id": "f5b03866-eb99-409f-be5a-57a473da71ff",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出依五筆輸入順序提供五項正確判定，並涵蓋附件缺失、逾期、直接核准、主管簽核及總經理簽核所需的所有案例。",
+    "criterion_results": [
+      {
+        "criterion_id": "741604a3-31ee-42f3-ac34-67f9f27213d5",
+        "text": "輸入包含多筆報帳時，輸出會逐筆對應每一筆資料各自的判定結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供五行判定，依輸入的五筆順序逐筆給出各自結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要總經理簽核\n退回\n退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba891492-d1a3-45eb-8166-4c6dd705d6dd",
+        "text": "任一筆資料若未附發票且未附收據，該筆結果一定是「退回」，不會再依金額分級。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未附任何附件的第4筆被判定為「退回」，未依其金額給予分級簽核。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d3e0d5e-954c-487a-ae4b-328d4376215e",
+        "text": "任一筆資料若報帳日期距今天超過 90 天，該筆結果一定是「退回」，不會再依金額分級。",
+        "result": "passed",
+        "source": "model",
+        "reason": "報帳日期為2026-05-01、距當日超過90天的第5筆被判定為「退回」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要總經理簽核\n退回\n退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4920a724-0e06-4d1a-9d8b-986591b775f6",
+        "text": "任一筆資料若有附件且日期在 90 天內，且金額為 3000 元以下，結果是「直接核准」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有發票、日期在90天內且金額2800元的第1筆被判定為「直接核准」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6bee013b-aff4-406e-b04c-679f2d4ab94a",
+        "text": "任一筆資料若有附件且日期在 90 天內，且金額大於 3000 元到 10000 元，結果是「需要主管簽核」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有收據、日期在90天內且金額6500元的第2筆被判定為「需要主管簽核」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需要主管簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ab09dd7-7c8d-4309-a6af-7e0a8edf886c",
+        "text": "任一筆資料若有附件且日期在 90 天內，且金額大於 10000 元，結果是「需要總經理簽核」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有發票、日期在90天內且金額18000元的第3筆被判定為「需要總經理簽核」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "需要總經理簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fd42e62b-f9fb-4ac3-b4b7-513568685a77",
+        "text": "當同一個輸入同時包含退回、直接核准、主管簽核、總經理簽核四種案例時，輸出能一次涵蓋全部四種判定。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一份輸出包含直接核准、需要主管簽核、需要總經理簽核及退回四種判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要總經理簽核\n退回\n退回",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18916 input and 335 output tokens on gpt-5.4-mini; reported cost $0.0176 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

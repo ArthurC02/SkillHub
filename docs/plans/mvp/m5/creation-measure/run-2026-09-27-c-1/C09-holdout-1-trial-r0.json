@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "購物金額分別是 999 元與 1000 元兩張訂單，運費原本是 150 元。請分別算出這兩張訂單的實付金額。",
+  "acceptance_criteria": [
+    {
+      "text": "999 元訂單的實付金額為 1149 元（不符合任何折扣，仍需付150元運費）"
+    },
+    {
+      "text": "1000 元訂單的實付金額為 1100 元（滿1000折50，仍需付150元運費）"
+    }
+  ],
+  "final_output": "如果沒有其他折扣或滿額免運規則，實付金額就是「購物金額 + 運費 150 元」：\n\n- 999 元訂單：999 + 150 = **1149 元**\n- 1000 元訂單：1000 + 150 = **1150 元**\n\n如果你有滿額折扣或免運門檻，我也可以幫你再算一次。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "78e9e97e-4072-4c92-ab39-6ff04ad17a69",
+    "run_id": "2fef317a-c4fe-4bad-ac61-587e6a99de5a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "999 元訂單的結果正確；1000 元訂單未套用滿額折扣，因此結果錯誤。",
+    "criterion_results": [
+      {
+        "criterion_id": "09ea350f-eee2-499d-8a9a-4f8339f19cae",
+        "text": "999 元訂單的實付金額為 1149 元（不符合任何折扣，仍需付150元運費）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將 999 元訂單計算為 1149 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 999 元訂單：999 + 150 = **1149 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5f23784-ed05-47a8-a225-d4f98225660d",
+        "text": "1000 元訂單的實付金額為 1100 元（滿1000折50，仍需付150元運費）",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆將 1000 元訂單算為 1150 元，未套用滿 1000 折 50，與要求的 1100 元不符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 1000 元訂單：1000 + 150 = **1150 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2107 input and 502 output tokens on gpt-5.4-mini; reported cost $0.0055 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

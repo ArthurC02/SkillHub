@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "Hi 你好，上次展覽會有聊到，想跟你們訂一些東西當作公司尾牙的贈品。\n我要 A 款保溫杯 30 個，單價我記得是 450 元，另外還要 B 款藍牙耳機 10 個，單價 1200 元。\n啊對了，保溫杯顏色我上面沒講，麻煩改成深藍色的，不要出貨表訂的淺藍色（之前你們型錄上寫淺藍色是預設）。\n喔對了，還要加訂 C 款筆記本 50 本，單價 80 元，這個是追加的，不是原本兩項裡面的。\n物流那邊麻煩處理一下，這個月底前要到就好。\n收件地址：台北市中山區南京東路三段100號5樓，收件人：王小明，電話 0912345678。\n再麻煩了，謝謝！",
+  "acceptance_criteria": [
+    {
+      "text": "輸出包含三項品項：保溫杯 30 個（單價 450 元）、藍牙耳機 10 個（單價 1200 元）、筆記本 50 本（單價 80 元）"
+    },
+    {
+      "text": "保溫杯的顏色記錄為深藍色，不是淺藍色"
+    },
+    {
+      "text": "收件地址為台北市中山區南京東路三段100號5樓，收件人王小明，電話0912345678"
+    },
+    {
+      "text": "沒有把「這個月底前要到」這類物流時間需求誤植為訂購品項"
+    }
+  ],
+  "final_output": "- Customer name: not given\n- Shipping address: 台北市中山區南京東路三段100號5樓\n- Items:\n  - Item 1: A 款保溫杯（深藍色）, quantity 30, unit price 450 元\n  - Item 2: B 款藍牙耳機, quantity 10, unit price 1200 元\n  - Item 3: C 款筆記本, quantity 50, unit price 80 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4e23518f-2234-4747-8671-f1996a3ba91f",
+    "run_id": "a4852b38-f2b0-4aeb-8a2a-ad37a4aa739c",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "品項、數量、單價與保溫杯深藍色設定皆正確，也未把物流時間當成品項；但收件人與電話未被輸出，因此收件資訊未完整滿足要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "5a8de362-0825-41e9-8141-ac5dbf3d05b4",
+        "text": "輸出包含三項品項：保溫杯 30 個（單價 450 元）、藍牙耳機 10 個（單價 1200 元）、筆記本 50 本（單價 80 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出保溫杯、藍牙耳機與筆記本三項，且數量與單價均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Item 1: A 款保溫杯（深藍色）, quantity 30, unit price 450 元\n  - Item 2: B 款藍牙耳機, quantity 10, unit price 1200 元\n  - Item 3: C 款筆記本, quantity 50, unit price 80 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6036a482-ee31-499d-b806-b12f3beeeb16",
+        "text": "保溫杯的顏色記錄為深藍色，不是淺藍色",
+        "result": "passed",
+        "source": "model",
+        "reason": "保溫杯顏色被記錄為深藍色。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Item 1: A 款保溫杯（深藍色）, quantity 30, unit price 450 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8087383d-5d2c-475c-955e-605692c75bf7",
+        "text": "收件地址為台北市中山區南京東路三段100號5樓，收件人王小明，電話0912345678",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出包含正確的收件地址，但未記錄收件人王小明與電話0912345678。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Shipping address: 台北市中山區南京東路三段100號5樓",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da5afa4d-5b78-48d8-af50-d47368811865",
+        "text": "沒有把「這個月底前要到」這類物流時間需求誤植為訂購品項",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的品項清單僅包含三項商品，未將物流到貨時間列為訂購品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Items:\n  - Item 1: A 款保溫杯（深藍色）, quantity 30, unit price 450 元\n  - Item 2: B 款藍牙耳機, quantity 10, unit price 1200 元\n  - Item 3: C 款筆記本, quantity 50, unit price 80 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2978 input and 811 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

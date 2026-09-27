@@ -1,0 +1,85 @@
+{
+  "request": {
+    "RunID": "0d97b55f-492c-4cf0-81c1-70c5f22bedce",
+    "EvaluationID": "67d58dec-f4fb-4037-9c9c-bd6a17956b47",
+    "Skill": {
+      "Name": "pingri-jia-ban-fei-ji-suan",
+      "Summary": "計算平日加班費總額；在需要把時薪與每日加班時數清單套用日上限與月上限規則，算出當月應付加班費時使用。"
+    },
+    "UserPrompt": "時薪 200 元，本月只有一天加班：9/15 加班 2.5 小時。請算出這個月的加班費總額。",
+    "Criteria": [
+      {
+        "ID": "cdda19c8-afe5-4be4-808f-eaaa6682996c",
+        "Text": "加班費總額為 703 元",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "這個月的平日加班費總額是 **703 元**。\n\n計算：\n- 前 2 小時：200 × 1.34 × 2 = **536 元**\n- 第 2 到第 4 小時內的 0.5 小時：200 × 1.67 × 0.5 = **167 元**\n\n合計：**536 + 167 = 703 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "95806552-ca2b-4e8a-99be-e8d427c8ded0",
+          "OccurredAt": "2026-09-27T09:40:09.1Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"pingri-jia-ban-fei-ji-suan\", \"skill_version_id\": \"929be38f-44a3-46de-a00f-8424a294e699\"}"
+        },
+        {
+          "TraceEventID": "2e56f3f5-0d3f-49f7-ba5f-0ba19947f483",
+          "OccurredAt": "2026-09-27T09:40:09.114Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"pingri-jia-ban-fei-ji-suan\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_WH0ZDqWp9DV4fcmjIXXBmide\", \"result_summary\": \"Launching skill: pingri-jia-ban-fei-ji-suan\"}"
+        },
+        {
+          "TraceEventID": "dd6ab3a0-f375-42a8-bcca-ea72b341a088",
+          "OccurredAt": "2026-09-27T09:40:11.259Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"這個月的平日加班費總額是 **703 元**。\\n\\n計算：\\n- 前 2 小時：200 × 1.34 × 2 = **536 元**\\n- 第 2 到第 4 小時內的 0.5 小時：200 × 1.67 × 0.5 = **167 元**\\n\\n合計：**536 + 167 = 703 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "47ca5fde-903f-41a5-8e57-423ff1020dc5",
+          "OccurredAt": "2026-09-27T09:40:11.528Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"這個月的平日加班費總額是 **703 元**。\\n\\n計算：\\n- 前 2 小時：200 × 1.34 × 2 = **536 元**\\n- 第 2 到第 4 小時內的 0.5 小時：200 × 1.67 × 0.5 = **167 元**\\n\\n合計：**536 + 167 = 703 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cad4e8b3-b827-4866-8805-75384a2b9f50",
+          "OccurredAt": "2026-09-27T09:40:15.594Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.017619, \"cost_source\": \"gateway\", \"duration_ms\": 9185, \"input_tokens\": 18786, \"token_source\": \"result\", \"output_tokens\": 395, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "cdda19c8-afe5-4be4-808f-eaaa6682996c",
+        "Result": "passed",
+        "Reason": "最終回覆明確給出本月平日加班費總額為 703 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這個月的平日加班費總額是 **703 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "回覆的加班費總額為 703 元，符合驗收標準。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2148,
+      "CompletionTokens": 136,
+      "CostUSD": 0.0044659,
+      "CostReported": true
+    }
+  }
+}

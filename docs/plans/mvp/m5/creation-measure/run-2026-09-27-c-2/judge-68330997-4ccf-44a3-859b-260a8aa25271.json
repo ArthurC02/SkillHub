@@ -1,0 +1,169 @@
+{
+  "request": {
+    "RunID": "68330997-4ccf-44a3-859b-260a8aa25271",
+    "EvaluationID": "f012b655-0cb0-420a-92ae-102af85a064a",
+    "Skill": {
+      "Name": "order-email-extractor",
+      "Summary": "從客戶訂購 email 中擷取訂購品項、數量、單價與收件地址，並整理成清單；當你要把訂單信件內容轉成可複製的出貨或彙整格式時使用。"
+    },
+    "UserPrompt": "請整理這封訂購 email：\n\n您好，\n\n我們要訂購以下品項：\n- 黑咖啡豆 3 包，單價 NT$250\n- 濾掛咖啡 2 盒，單價 NT$180\n- 保溫杯 1 個，單價 NT$420\n\n收件地址：台北市大安區復興南路一段 123 號 8 樓\n\n請協助確認出貨。",
+    "Criteria": [
+      {
+        "ID": "9563be27-3d41-43e8-a785-8d10d2397f55",
+        "Text": "給定一封包含多個品項的訂購 email，Skill 會輸出所有品項、對應數量、單價與收件地址。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b37b6b43-adab-4224-b76f-af7699001b4d",
+        "Text": "輸出會把每個品項整理成獨立條目，不會把多個品項混在同一列。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "40888d58-4c34-4afb-a3e6-1645912af8c6",
+        "Text": "輸出會明確包含客戶指定的收件地址。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "09f5aa5a-7f5a-4eab-8b96-5246a91253dc",
+        "Text": "輸出會保留 email 中可直接辨識的數量與單價，不會自行推算或改寫成另一種金額格式。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "481850f6-281a-497b-a16c-a144b199d414",
+        "Text": "若 email 內同時有其他非訂購資訊，Skill 仍只聚焦在訂購品項、數量、單價與收件地址。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "9d2939f4-755e-4df3-9bbb-718bd3fe8c73",
+          "OccurredAt": "2026-09-27T09:16:46.735Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"order-email-extractor\", \"skill_version_id\": \"364e060e-6d3d-4a60-8a93-49d63ff1a6f4\"}"
+        },
+        {
+          "TraceEventID": "8a6603a5-ee65-4c4a-9910-d434f756111d",
+          "OccurredAt": "2026-09-27T09:16:46.747Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"order-email-extractor\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_bcWnA2ieLmChvt053bzN5LGW\", \"result_summary\": \"Launching skill: order-email-extractor\"}"
+        },
+        {
+          "TraceEventID": "b832b71a-99d5-43a7-88c4-ad06418d6816",
+          "OccurredAt": "2026-09-27T09:16:49.542Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 品項：黑咖啡豆\\n  - 數量：3 包\\n  - 單價：NT$250\\n- 品項：濾掛咖啡\\n  - 數量：2 盒\\n  - 單價：NT$180\\n- 品項：保溫杯\\n  - 數量：1 個\\n  - 單價：NT$420\\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a0b96d11-5971-4c15-875d-500e14fac3b0",
+          "OccurredAt": "2026-09-27T09:16:49.649Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 品項：黑咖啡豆\\n  - 數量：3 包\\n  - 單價：NT$250\\n- 品項：濾掛咖啡\\n  - 數量：2 盒\\n  - 單價：NT$180\\n- 品項：保溫杯\\n  - 數量：1 個\\n  - 單價：NT$420\\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c43c02b6-f86a-4fe1-b667-219d2aa1254f",
+          "OccurredAt": "2026-09-27T09:16:53.693Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00366915, \"cost_source\": \"gateway\", \"duration_ms\": 9116, \"input_tokens\": 2862, \"token_source\": \"result\", \"output_tokens\": 256, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "9563be27-3d41-43e8-a785-8d10d2397f55",
+        "Result": "passed",
+        "Reason": "輸出列出三個品項，且各自包含數量、單價及收件地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b37b6b43-adab-4224-b76f-af7699001b4d",
+        "Result": "passed",
+        "Reason": "每個品項均以獨立的「品項」條目呈現，並在其下列出對應數量與單價。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420"
+          }
+        ]
+      },
+      {
+        "CriterionID": "40888d58-4c34-4afb-a3e6-1645912af8c6",
+        "Result": "passed",
+        "Reason": "輸出明確列出客戶指定的完整收件地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 收件地址：台北市大安區復興南路一段 123 號 8 樓"
+          }
+        ]
+      },
+      {
+        "CriterionID": "09f5aa5a-7f5a-4eab-8b96-5246a91253dc",
+        "Result": "passed",
+        "Reason": "輸出保留原信中可辨識的數量單位與單價格式，未改為總額或其他金額格式。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - 數量：3 包\n  - 單價：NT$250"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - 數量：2 盒\n  - 單價：NT$180"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - 數量：1 個\n  - 單價：NT$420"
+          }
+        ]
+      },
+      {
+        "CriterionID": "481850f6-281a-497b-a16c-a144b199d414",
+        "Result": "passed",
+        "Reason": "輸出僅整理訂購品項、數量、單價與收件地址，未納入信件中的確認出貨請求等非訂購資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出完整擷取三項訂購品項的數量與單價，並清楚列出收件地址。各品項分列呈現，數量及單價格式均保留原始內容，且未加入非訂購資訊。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2494,
+      "CompletionTokens": 943,
+      "CostUSD": 0.0150149,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "1764bc37-3317-4f90-a9fb-49e376140750",
+    "EvaluationID": "0b7ca21d-1db5-423a-943d-eb4d644cfd2d",
+    "Skill": {
+      "Name": "order-email-to-list",
+      "Summary": "Extract ordered items, quantities, unit prices, and the customer-specified shipping address from order emails, and use it when you need a structured checklist from customer order email text."
+    },
+    "UserPrompt": "請把下面這封訂購 email 整理成清單：\n\n「您好，我想訂購以下品項：\n- 黑咖啡 2 杯，單價 80 元\n- 起司蛋糕 1 份，單價 120 元\n請寄到：台北市大安區信義路三段 100 號 8 樓，收件人王小姐」",
+    "Criteria": [
+      {
+        "ID": "6e773f55-af08-495e-9d0a-5a6c6afa32e3",
+        "Text": "當輸入一封包含 2 個品項的訂購 email 時，輸出會逐項列出 2 筆品項資料。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "110664a3-f1a7-42f0-a5b9-1b10bbddfa38",
+        "Text": "輸出中會包含每個品項的名稱、數量與單價。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7bf23454-cd67-4dc6-ad7c-9f4ddf297c6f",
+        "Text": "輸出中會包含客戶指定的收件地址。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b291a2a5-cf84-4f3a-86d7-92b9a8ac38d1",
+        "Text": "輸出不會加入 email 內沒有提供的品項或地址資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "54a8f088-fd23-41b5-aaf3-8e8bd722374b",
+        "Text": "若 email 內有多個品項，輸出會保留所有品項，不會只取第一個。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- Customer name: not given\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\n- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "c3e8e255-47fd-4a87-9414-c62f3b20bc46",
+          "OccurredAt": "2026-09-27T09:43:50.264Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"order-email-to-list\", \"skill_version_id\": \"c74e0f51-0960-402d-bbd4-9bc11b488571\"}"
+        },
+        {
+          "TraceEventID": "96a61eca-191e-4269-b8ff-de7e6988ee5d",
+          "OccurredAt": "2026-09-27T09:43:50.274Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"order-email-to-list\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_F0oTf54AdYPLuyNaRCFB5ckp\", \"result_summary\": \"Launching skill: order-email-to-list\"}"
+        },
+        {
+          "TraceEventID": "91bd2a52-8fc3-498d-8bce-ca54102fb7aa",
+          "OccurredAt": "2026-09-27T09:43:52.476Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- Customer name: not given\\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\\n- Items:\\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1c67afae-6ea8-41ec-b1f9-2d2ace0e3f93",
+          "OccurredAt": "2026-09-27T09:43:52.806Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- Customer name: not given\\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\\n- Items:\\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "564c1450-75e4-4b07-a855-f9e6fa0979b3",
+          "OccurredAt": "2026-09-27T09:43:56.869Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0064914, \"cost_source\": \"gateway\", \"duration_ms\": 8654, \"input_tokens\": 2684, \"token_source\": \"result\", \"output_tokens\": 336, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "6e773f55-af08-495e-9d0a-5a6c6afa32e3",
+        "Result": "passed",
+        "Reason": "輸出在 Items 下逐項列出 Item 1 與 Item 2，共 2 筆品項。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "110664a3-f1a7-42f0-a5b9-1b10bbddfa38",
+        "Result": "passed",
+        "Reason": "兩筆品項皆包含名稱、數量與單價。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - Item 1: 黑咖啡，數量 2 杯，單價 80 元"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - Item 2: 起司蛋糕，數量 1 份，單價 120 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7bf23454-cd67-4dc6-ad7c-9f4ddf297c6f",
+        "Result": "passed",
+        "Reason": "輸出包含客戶指定的收件地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b291a2a5-cf84-4f3a-86d7-92b9a8ac38d1",
+        "Result": "passed",
+        "Reason": "輸出僅列出 email 提供的兩項品項及地址，並將未提供的客戶姓名標為「not given」，未虛構品項或地址內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- Customer name: not given\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\n- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "54a8f088-fd23-41b5-aaf3-8e8bd722374b",
+        "Result": "passed",
+        "Reason": "輸出保留黑咖啡與起司蛋糕兩個品項，而非僅取第一項。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出完整擷取並逐項列出兩個訂購品項的名稱、數量與單價，且包含指定收件地址；未加入額外品項或地址資訊。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2351,
+      "CompletionTokens": 767,
+      "CostUSD": 0.0125454,
+      "CostReported": true
+    }
+  }
+}

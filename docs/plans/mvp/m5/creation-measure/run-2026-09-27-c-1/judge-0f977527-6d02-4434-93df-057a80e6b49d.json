@@ -1,0 +1,139 @@
+{
+  "request": {
+    "RunID": "0f977527-6d02-4434-93df-057a80e6b49d",
+    "EvaluationID": "75428727-fdbd-438d-8e47-679d2612268d",
+    "Skill": {
+      "Name": "extract-order-email-summary",
+      "Summary": "Extract ordered items, quantities, unit prices, and delivery address from customer order emails. Use this when you need a structured list from pasted email text."
+    },
+    "UserPrompt": "Hi 你好，上次展覽會有聊到，想跟你們訂一些東西當作公司尾牙的贈品。\n我要 A 款保溫杯 30 個，單價我記得是 450 元，另外還要 B 款藍牙耳機 10 個，單價 1200 元。\n啊對了，保溫杯顏色我上面沒講，麻煩改成深藍色的，不要出貨表訂的淺藍色（之前你們型錄上寫淺藍色是預設）。\n喔對了，還要加訂 C 款筆記本 50 本，單價 80 元，這個是追加的，不是原本兩項裡面的。\n物流那邊麻煩處理一下，這個月底前要到就好。\n收件地址：台北市中山區南京東路三段100號5樓，收件人：王小明，電話 0912345678。\n再麻煩了，謝謝！",
+    "Criteria": [
+      {
+        "ID": "a65896d5-c9fa-48c0-8060-27e644a9b9a7",
+        "Text": "輸出包含三項品項：保溫杯 30 個（單價 450 元）、藍牙耳機 10 個（單價 1200 元）、筆記本 50 本（單價 80 元）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "12839bab-6713-47a2-a8ab-3ab9287edd35",
+        "Text": "保溫杯的顏色記錄為深藍色，不是淺藍色",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c7d662c6-623c-4b4f-ab1e-f611578c51b6",
+        "Text": "收件地址為台北市中山區南京東路三段100號5樓，收件人王小明，電話0912345678",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "dbdac379-96d7-4329-85a0-ec665d4d3301",
+        "Text": "沒有把「這個月底前要到」這類物流時間需求誤植為訂購品項",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 訂購項目：\n  - A 款保溫杯：數量 30 個，單價 450 元，顏色改為深藍色\n  - B 款藍牙耳機：數量 10 個，單價 1200 元\n  - C 款筆記本：數量 50 本，單價 80 元（追加）\n- 收件資訊：\n  - 收件人：王小明\n  - 地址：台北市中山區南京東路三段100號5樓\n  - 電話：0912345678\n- 其他備註：\n  - 物流希望月底前送達",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "bf2ef8b6-910c-4ff1-8773-b96eef7846f8",
+          "OccurredAt": "2026-09-27T08:54:18.463Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"extract-order-email-summary\", \"skill_version_id\": \"7753fc50-74fb-49c7-b066-4c96713a6e19\"}"
+        },
+        {
+          "TraceEventID": "fda1c043-be80-415c-8c29-1d5d63fa50d8",
+          "OccurredAt": "2026-09-27T08:54:18.474Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"extract-order-email-summary\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_Kjqx19q4VFh94PX1DGkOWpjY\", \"result_summary\": \"Launching skill: extract-order-email-summary\"}"
+        },
+        {
+          "TraceEventID": "996c4b6c-b8bb-42cc-bc32-fd67f47ebc74",
+          "OccurredAt": "2026-09-27T08:54:20.731Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 訂購項目：\\n  - A 款保溫杯：數量 30 個，單價 450 元，顏色改為深藍色\\n  - B 款藍牙耳機：數量 10 個，單價 1200 元\\n  - C 款筆記本：數量 50 本，單價 80 元（追加）\\n- 收件資訊：\\n  - 收件人：王小明\\n  - 地址：台北市中山區南京東路三段100號5樓\\n  - 電話：0912345678\\n- 其他備註：\\n  - 物流希望月底前送達\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "abba68f6-af7b-417f-976a-9f3da4e79def",
+          "OccurredAt": "2026-09-27T08:54:20.957Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 訂購項目：\\n  - A 款保溫杯：數量 30 個，單價 450 元，顏色改為深藍色\\n  - B 款藍牙耳機：數量 10 個，單價 1200 元\\n  - C 款筆記本：數量 50 本，單價 80 元（追加）\\n- 收件資訊：\\n  - 收件人：王小明\\n  - 地址：台北市中山區南京東路三段100號5樓\\n  - 電話：0912345678\\n- 其他備註：\\n  - 物流希望月底前送達\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0c75e047-5a46-4c58-9226-cb35f4e3de0f",
+          "OccurredAt": "2026-09-27T08:54:25Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0145935, \"cost_source\": \"gateway\", \"duration_ms\": 8284, \"input_tokens\": 18817, \"token_source\": \"result\", \"output_tokens\": 502, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a65896d5-c9fa-48c0-8060-27e644a9b9a7",
+        "Result": "passed",
+        "Reason": "最終輸出列出三項品項，且各自的數量與單價皆符合要求。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 訂購項目：\n  - A 款保溫杯：數量 30 個，單價 450 元，顏色改為深藍色\n  - B 款藍牙耳機：數量 10 個，單價 1200 元\n  - C 款筆記本：數量 50 本，單價 80 元（追加）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "12839bab-6713-47a2-a8ab-3ab9287edd35",
+        "Result": "passed",
+        "Reason": "最終輸出將保溫杯顏色記錄為深藍色。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- A 款保溫杯：數量 30 個，單價 450 元，顏色改為深藍色"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c7d662c6-623c-4b4f-ab1e-f611578c51b6",
+        "Result": "passed",
+        "Reason": "最終輸出包含正確的收件人、地址與電話。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 收件資訊：\n  - 收件人：王小明\n  - 地址：台北市中山區南京東路三段100號5樓\n  - 電話：0912345678"
+          }
+        ]
+      },
+      {
+        "CriterionID": "dbdac379-96d7-4329-85a0-ec665d4d3301",
+        "Result": "passed",
+        "Reason": "物流時間需求被列在「其他備註」，未被列為訂購品項。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 其他備註：\n  - 物流希望月底前送達"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出正確擷取三項訂購品項、保溫杯顏色修改、完整收件資訊，並將月底前送達保留為物流備註而非品項。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2674,
+      "CompletionTokens": 567,
+      "CostUSD": 0.010952900000000002,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這封訂購 email 整理成清單：\n\n「您好，我想訂購以下品項：\n- 黑咖啡 2 杯，單價 80 元\n- 起司蛋糕 1 份，單價 120 元\n請寄到：台北市大安區信義路三段 100 號 8 樓，收件人王小姐」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一封包含 2 個品項的訂購 email 時，輸出會逐項列出 2 筆品項資料。"
+    },
+    {
+      "text": "輸出中會包含每個品項的名稱、數量與單價。"
+    },
+    {
+      "text": "輸出中會包含客戶指定的收件地址。"
+    },
+    {
+      "text": "輸出不會加入 email 內沒有提供的品項或地址資訊。"
+    },
+    {
+      "text": "若 email 內有多個品項，輸出會保留所有品項，不會只取第一個。"
+    }
+  ],
+  "final_output": "- Customer name: not given\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\n- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0b7ca21d-1db5-423a-943d-eb4d644cfd2d",
+    "run_id": "1764bc37-3317-4f90-a9fb-49e376140750",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整擷取並逐項列出兩個訂購品項的名稱、數量與單價，且包含指定收件地址；未加入額外品項或地址資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "6e773f55-af08-495e-9d0a-5a6c6afa32e3",
+        "text": "當輸入一封包含 2 個品項的訂購 email 時，輸出會逐項列出 2 筆品項資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出在 Items 下逐項列出 Item 1 與 Item 2，共 2 筆品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "110664a3-f1a7-42f0-a5b9-1b10bbddfa38",
+        "text": "輸出中會包含每個品項的名稱、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆品項皆包含名稱、數量與單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - Item 1: 黑咖啡，數量 2 杯，單價 80 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7bf23454-cd67-4dc6-ad7c-9f4ddf297c6f",
+        "text": "輸出中會包含客戶指定的收件地址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含客戶指定的收件地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b291a2a5-cf84-4f3a-86d7-92b9a8ac38d1",
+        "text": "輸出不會加入 email 內沒有提供的品項或地址資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅列出 email 提供的兩項品項及地址，並將未提供的客戶姓名標為「not given」，未虛構品項或地址內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Customer name: not given\n- Shipping address: 台北市大安區信義路三段 100 號 8 樓，收件人王小姐\n- Items:\n  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54a8f088-fd23-41b5-aaf3-8e8bd722374b",
+        "text": "若 email 內有多個品項，輸出會保留所有品項，不會只取第一個。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留黑咖啡與起司蛋糕兩個品項，而非僅取第一項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - Item 1: 黑咖啡，數量 2 杯，單價 80 元\n  - Item 2: 起司蛋糕，數量 1 份，單價 120 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2684 input and 336 output tokens on gpt-5.4-mini; reported cost $0.0065 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

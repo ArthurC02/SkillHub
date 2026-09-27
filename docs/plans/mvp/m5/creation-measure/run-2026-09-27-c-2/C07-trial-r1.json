@@ -1,0 +1,157 @@
+{
+  "round": 1,
+  "sample_input": "請幫我核對這份出差報帳明細，並告訴我每天加總與總計是否一致：\n\n2026-09-01\n- 早餐 120\n- 計程車 380\n- 午餐 260\n小計：760\n\n2026-09-02\n- 早餐 100\n- 交通 220\n- 晚餐 340\n- 停車 80\n小計：740\n\n2026-09-03\n- 午餐 250\n- 交通 150\n- 住宿 1800\n小計：2200\n\n員工填寫總計：3700",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多天明細時，Skill 會逐日加總每一天的花費。"
+    },
+    {
+      "text": "當輸入包含員工填寫的總計時，Skill 會比較加總結果與該總計是否一致。"
+    },
+    {
+      "text": "當兩者一致時，輸出會明確表示一致。"
+    },
+    {
+      "text": "當兩者不一致時，輸出會明確表示不一致並指出差額。"
+    },
+    {
+      "text": "當同一天有多筆花費時，Skill 會把該日所有金額加總後再比較。"
+    },
+    {
+      "text": "當輸入同時包含多天與總計時，Skill 會同時呈現每日加總與整體核對結果。"
+    }
+  ],
+  "final_output": "以下是核對結果：\n\n- **2026-09-01 小計**：120 + 380 + 260 = **760**\n- **2026-09-02 小計**：100 + 220 + 340 + 80 = **740**\n- **2026-09-03 小計**：250 + 150 + 1800 = **2200**\n\n- **整體總和**：760 + 740 + 2200 = **3700**\n- **員工填寫總計**：**3700**\n- **是否一致**：**一致**\n- **差額**：**0**\n\n補充：你填寫的每日小計也都正確。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "180c3d0b-a398-4d5c-888f-0bd805856c13",
+    "run_id": "0abd213b-1668-4138-9579-c71b145ef4b6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行正確逐日加總多筆費用，並將整體加總 3700 與員工填寫總計 3700 比較，明確表示一致且差額為 0。不一致情境未出現，因此無法判定該情境下的處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "79303ac3-25d6-4760-b0fa-f568244bd34a",
+        "text": "當輸入包含多天明細時，Skill 會逐日加總每一天的花費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐日列出三天的各項金額加總與每日小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026-09-01 小計**：120 + 380 + 260 = **760**\n- **2026-09-02 小計**：100 + 220 + 340 + 80 = **740**\n- **2026-09-03 小計**：250 + 150 + 1800 = **2200**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7675deac-3aa9-422f-b89c-e26738bf0d49",
+        "text": "當輸入包含員工填寫的總計時，Skill 會比較加總結果與該總計是否一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出呈現計算出的整體總和、員工填寫總計，並給出一致性比較結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **整體總和**：760 + 740 + 2200 = **3700**\n- **員工填寫總計**：**3700**\n- **是否一致**：**一致**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1c95e872-f999-4c32-a68e-4d9725c78e5d",
+        "text": "當兩者一致時，輸出會明確表示一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "加總結果與員工總計同為 3700，且輸出明確標示「一致」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **員工填寫總計**：**3700**\n- **是否一致**：**一致**\n- **差額**：**0**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6bd0c71-6941-4386-b1e2-795141c84b87",
+        "text": "當兩者不一致時，輸出會明確表示不一致並指出差額。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次資料的整體總和與員工填寫總計一致，沒有不一致情境可觀察 Skill 是否會明確指出不一致及差額。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "1b3985e1-281e-4211-a65b-fb571782b4e4",
+        "text": "當同一天有多筆花費時，Skill 會把該日所有金額加總後再比較。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每一天均將該日多筆花費的所有金額相加後得出小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026-09-02 小計**：100 + 220 + 340 + 80 = **740**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ac1a7649-ef56-4eda-a528-df29eceb3d9c",
+        "text": "當輸入同時包含多天與總計時，Skill 會同時呈現每日加總與整體核對結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時呈現三天的每日加總，以及整體總和、員工總計與一致性核對結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026-09-03 小計**：250 + 150 + 1800 = **2200**\n\n- **整體總和**：760 + 740 + 2200 = **3700**\n- **員工填寫總計**：**3700**\n- **是否一致**：**一致**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3014 input and 378 output tokens on gpt-5.4-mini; reported cost $0.0070 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

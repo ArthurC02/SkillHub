@@ -1,0 +1,63 @@
+{
+  "acceptance_criteria": [
+    "在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。",
+    "摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。",
+    "若原文中有明確決議，摘要會列出該決議而不是只寫概述。",
+    "若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。",
+    "摘要不會加入原文沒有提到的新事實。"
+  ],
+  "brief": "任務：把長篇會議記錄整理成重點摘要。\n\n輸入：使用者貼上的會議記錄文字。\n\n輸出：一份精簡摘要，保留會議重點、決議、待辦事項與必要背景。\n\n工具需求：不需要外部工具。\n\n限制：只根據使用者提供的會議記錄內容整理，不自行補充未出現的事實。\n\n假設：\n1. 會議記錄是以純文字提供。\n2. 使用者希望的是中文摘要。\n3. 摘要以條列方式呈現。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我要一個 Skill，幫我把落落長的會議記錄整理成重點摘要。",
+      "created_at": "2026-09-27T09:44:25.884827042Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先幫你整理成一個可確認的 Skill brief。\n\n**任務**：把長篇會議記錄整理成重點摘要。\n\n**輸入**：使用者貼上的會議記錄文字。\n\n**輸出**：一份精簡摘要，保留會議重點、決議、待辦事項與必要背景。\n\n**工具需求**：不需要外部工具。\n\n**限制**：只根據使用者提供的會議記錄內容整理，不自行補充未出現的事實。\n\n**假設**：\n1. 會議記錄是以純文字提供。\n2. 使用者希望的是中文摘要。\n3. 摘要以條列方式呈現。\n\n**可接受標準**：\n1. 在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。\n2. 摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。\n3. 若原文中有明確決議，摘要會列出該決議而不是只寫概述。\n4. 若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。\n5. 摘要不會加入原文沒有提到的新事實。\n\n**sample_input**：\n請把這份會議記錄整理成重點摘要：\n\n今天先確認 Q3 專案進度。A 組表示 API 端點已完成 80%，但文件還沒補齊；B 組指出測試環境偶爾會出現延遲，需要再觀察一週。討論後決定：1) 由 A 組在週五前補完成文件；2) 由 B 組持續收集延遲數據並在下次會議回報；3) 下週三再檢查整體進度。另提到預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。最後大家同意先維持原時程不變。",
+      "created_at": "2026-09-27T09:44:30.115064491Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據你確認過的 brief 直接產出 Skill 草稿，並保留既有假設與範例輸入不變。",
+      "created_at": "2026-09-27T09:44:35.280777351Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T09:44:35.284399963Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的 evaluation 需要修正；我保留原草稿不變，讓你可以直接接受這個 draft。若你想調整語氣、輸出格式或更嚴格的摘要規則，也可以告訴我。",
+      "created_at": "2026-09-27T09:44:39.659714962Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"396237e3-17c5-4701-b485-968a8a5a7244\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"摘要結構完整、內容精簡，並清楚列出決議及多數具責任人的待辦事項。不過，將下週三的進度檢查責任指定為「全體」屬於原文未明示的資訊。\",\"criterion_results\":[{\"criterion_id\":\"749d34d3-f453-4be6-879c-026740acccaf\",\"text\":\"摘要不會加入原文沒有提到的新事實。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":302,\"end\":319},\"excerpt\":\"  - 全體：下週三回顧整體進度。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出把下週三的整體進度回顧指派給「全體」，但原文僅決定下週三再檢查進度，未提供該待辦的責任人。\"},{\"criterion_id\":\"a5eb6c5a-8779-4e41-af1a-821a24d52fc5\",\"text\":\"在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":10},\"excerpt\":\"- **重點摘要**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":129,\"end\":137},\"excerpt\":\"- **決議**\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":233,\"end\":243},\"excerpt\":\"- **待辦事項**\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出明確設有「重點摘要」、「決議」與「待辦事項」三個部分。\"},{\"criterion_id\":\"48cee736-8846-4e54-af44-e7cfaa1be7f5\",\"text\":\"摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":30,\"end\":127},\"excerpt\":\"  - A 組回報 API 端點已完成約 80%，但文件尚未補齊。\\n  - B 組指出測試環境偶爾有延遲問題，需再觀察一週。\\n  - 目前預算沒有超支，但若下月新增兩名工程師，可能需要重新評估。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"內容以精簡條列呈現專案進度、風險、決議與後續事項，保留關鍵資訊而未重述原始會議內容。\"},{\"criterion_id\":\"f874621a-1a1e-48ee-9986-fe48c9d64e6d\",\"text\":\"若原文中有明確決議，摘要會列出該決議而不是只寫概述。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":129,\"end\":231},\"excerpt\":\"- **決議**\\n  - 由 A 組在**週五前**補完成文件。\\n  - 由 B 組持續收集延遲數據，並在**下次會議**回報。\\n  - **下週三**再檢查整體進度。\\n  - 先**維持原時程不變**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出將原文的具體決定逐項列於「決議」段落，而非僅概括描述。\"},{\"criterion_id\":\"7c67bbbd-9d77-4ff5-9ec1-04eab9ed8a33\",\"text\":\"若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":233,\"end\":301},\"excerpt\":\"- **待辦事項**\\n  - A 組：補齊 API 文件（期限：週五前）。\\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議報告。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"待辦事項列出文件補齊與延遲數據蒐集等任務，並標示原文提供的責任人及期限／回報時點。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"a50d8272-beb9-4320-99ec-4612658dc126\",\"occurred_at\":\"2026-09-27T09:44:57.543Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"meeting-notes-summary\\\", \\\"skill_version_id\\\": \\\"a3e7fa1c-24dd-425a-aa85-bee4d1a0f09b\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3268 input and 530 output tokens on gpt-5.4-mini; reported cost $0.0079 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"2f3d6bbe-1571-4bcd-88f2-c4a286403fd2\",\"skill_version_id\":\"a3e7fa1c-24dd-425a-aa85-bee4d1a0f09b\"}",
+      "created_at": "2026-09-27T09:45:18.075512903Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「摘要不會加入原文沒有提到的新事實。」：沒過——輸出把下週三的整體進度回顧指派給「全體」，但原文僅決定下週三再檢查進度，未提供該待辦的責任人。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T09:45:18.075544406Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T09:45:18.082455899Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依試跑回饋修正草稿，並保留你的條件與範例結構不變。\n\n這次未過的條件是：\n- 「摘要不會加入原文沒有提到的新事實。」：試跑把原文沒有明示責任人的下週三進度檢查，寫成由「全體」負責，屬於補入推測性主體。\n\n我改了什麼：\n- 在「內容規則」中補上一句明確限制：原文沒有明示負責人時，不要自行補指定人選，也不要用「全體」或其他推測性主體代替。\n\n你可以直接接受這個 draft；如果你想，我也可以再幫你把範例輸入補強到更容易驗到這類責任歸屬問題。",
+      "created_at": "2026-09-27T09:45:26.55050787Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T09:45:26.55265342Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

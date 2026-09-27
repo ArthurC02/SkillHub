@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請評估以下 3 筆信貸申請：\nApp4：信用分數 800 分，負債比 61%\nApp5：信用分數 599 分，負債比 10%\nApp6：信用分數 600 分，負債比 60%\n請針對每一筆輸出判定結果。",
+  "acceptance_criteria": [
+    {
+      "text": "App4（信用分數800、負債比61%）判定為拒絕"
+    },
+    {
+      "text": "App5（信用分數599、負債比10%）判定為拒絕"
+    },
+    {
+      "text": "App6（信用分數600、負債比60%）判定為複審，不是拒絕"
+    }
+  ],
+  "final_output": "App4：直接拒絕  \nApp5：直接拒絕  \nApp6：需要人工複審",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "03368b0c-8f34-4e3a-88a8-f9f44afa2aed",
+    "run_id": "0abee5a9-fc92-47cf-b947-2ed0d3a01ce9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆申請的輸出判定均符合驗收標準：App4 與 App5 為拒絕，App6 為人工複審。",
+    "criterion_results": [
+      {
+        "criterion_id": "9b540ffb-88f7-4863-a906-96cb7913f251",
+        "text": "App4（信用分數800、負債比61%）判定為拒絕",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 App4 判定為直接拒絕。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "App4：直接拒絕",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c5c9ce22-ab70-4e50-a53d-2d7888035c0f",
+        "text": "App5（信用分數599、負債比10%）判定為拒絕",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 App5 判定為直接拒絕。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "App5：直接拒絕",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "041c7633-c800-4a27-b698-1435a0ae07d1",
+        "text": "App6（信用分數600、負債比60%）判定為複審，不是拒絕",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 App6 判定為需要人工複審，並非拒絕。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "App6：需要人工複審",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2701 input and 354 output tokens on gpt-5.4-mini; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

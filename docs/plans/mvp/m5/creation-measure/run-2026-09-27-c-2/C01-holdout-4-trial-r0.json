@@ -1,0 +1,100 @@
+{
+  "round": 0,
+  "sample_input": "時薪 200 元，本月加班紀錄如下：9/1~9/23 每天加班 2 小時（共 46 小時），另外 9/24 再加班 1 小時，本月合計 47 小時。請算出這個月的加班費總額。",
+  "acceptance_criteria": [
+    {
+      "text": "加班費總額為 12328 元"
+    },
+    {
+      "text": "輸出沒有把第 47 小時也計入薪水（總額不是 12596 元）"
+    }
+  ],
+  "final_output": "這個月的加班費總額是 **12,328 元**。\n\n計算：\n- 時薪 200 元\n- 本月可計薪加班時數上限：46 小時\n- 9/1～9/23 共 46 小時都以 **1.34 倍**計算\n- 9/24 的 1 小時超過月上限，**不計薪**\n\n公式：\n- 46 × 200 × 1.34 = **12,328**\n\n因此，加班費總額為 **12,328 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "55565021-164f-42f1-9982-0d0cc3b30bed",
+    "run_id": "84148ce9-64bc-49fe-bd38-7046b4f33c7d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩項驗收標準均已滿足：輸出總額為 12,328 元，並明確未將第 47 小時計入薪資。",
+    "criterion_results": [
+      {
+        "criterion_id": "9364b1c9-9bb4-4ab1-a516-0b7b99506df6",
+        "text": "加班費總額為 12328 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出明確給出加班費總額為 12,328 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個月的加班費總額是 **12,328 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "737b7d55-7011-4e98-b1e5-3437f01a8cf1",
+        "text": "輸出沒有把第 47 小時也計入薪水（總額不是 12596 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出說明第 47 小時超過月上限而不計薪，且總額為 12,328 元而非 12,596 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 9/24 的 1 小時超過月上限，**不計薪**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "因此，加班費總額為 **12,328 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18603 input and 654 output tokens on gpt-5.4-mini; reported cost $0.0187 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

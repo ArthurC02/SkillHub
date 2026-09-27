@@ -1,0 +1,186 @@
+{
+  "request": {
+    "RunID": "47fb6fd5-97f2-43bb-b917-9094b2b5777e",
+    "EvaluationID": "69efb499-3c56-420b-925a-70c255111e66",
+    "Skill": {
+      "Name": "expense-claim-review",
+      "Summary": "逐筆審核員工報帳申請並輸出每筆判定結果；當你要依附件、日期與金額規則批次判定報帳時使用。"
+    },
+    "UserPrompt": "請逐筆審核以下 4 筆報帳並輸出判定結果：\n1. 申請人：王小明；報帳日期：2026-09-10；金額：2800；附件：發票\n2. 申請人：李小美；報帳日期：2026-09-10；金額：6500；附件：收據\n3. 申請人：張志強；報帳日期：2026-09-10；金額：18000；附件：發票\n4. 申請人：陳怡君；報帳日期：2026-09-10；金額：1200；附件：無",
+    "Criteria": [
+      {
+        "ID": "36f92795-d4fc-44f2-83f4-df7954af8be5",
+        "Text": "輸入包含多筆報帳時，輸出會逐筆對應每一筆資料各自的判定結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9da73eda-9e51-458f-b53e-f1262521b3d4",
+        "Text": "任一筆資料若未附發票且未附收據，該筆結果一定是「退回」，不會再依金額分級。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1eac771c-be57-40a0-bc40-14c1aee70f68",
+        "Text": "任一筆資料若報帳日期距今天超過 90 天，該筆結果一定是「退回」，不會再依金額分級。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "77134747-d273-45c1-8fa8-f09b047e0fb5",
+        "Text": "任一筆資料若有附件且日期在 90 天內，且金額為 3000 元以下，結果是「直接核准」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1fd16826-c544-4331-bf00-fd7b9d9a84e7",
+        "Text": "任一筆資料若有附件且日期在 90 天內，且金額大於 3000 元到 10000 元，結果是「需要主管簽核」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bff58f38-520f-4190-9fbc-8ef025321750",
+        "Text": "任一筆資料若有附件且日期在 90 天內，且金額大於 10000 元，結果是「需要總經理簽核」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2e517a1a-1e0b-4821-8926-2976844958a6",
+        "Text": "當同一個輸入同時包含退回、直接核准、主管簽核、總經理簽核四種案例時，輸出能一次涵蓋全部四種判定。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "直接核准\n需要主管簽核\n需要總經理簽核\n退回",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "2aa769e1-b417-43b3-a182-b44e9174f8a9",
+          "OccurredAt": "2026-09-27T08:51:51.9Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"expense-claim-review\", \"skill_version_id\": \"689b1a07-ee5d-43ef-b63f-e576b233a326\"}"
+        },
+        {
+          "TraceEventID": "9a8f4dfa-e616-4d84-b65a-e4b8ab512f64",
+          "OccurredAt": "2026-09-27T08:51:51.909Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"expense-claim-review\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_yKdiDVoe4QXHUB6T2wSbGTPf\", \"result_summary\": \"Launching skill: expense-claim-review\"}"
+        },
+        {
+          "TraceEventID": "268bc94c-1e6c-4676-a3cf-4643488f424a",
+          "OccurredAt": "2026-09-27T08:51:53.763Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"直接核准\\n需要主管簽核\\n需要總經理簽核\\n退回\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d4a28bad-f100-4327-9f52-691b8bcddd6b",
+          "OccurredAt": "2026-09-27T08:51:54.058Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"直接核准\\n需要主管簽核\\n需要總經理簽核\\n退回\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ae1fce75-1e23-4f6b-90c7-768f30f51b51",
+          "OccurredAt": "2026-09-27T08:51:58.101Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.006568650000000001, \"cost_source\": \"gateway\", \"duration_ms\": 7905, \"input_tokens\": 2976, \"token_source\": \"result\", \"output_tokens\": 291, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "36f92795-d4fc-44f2-83f4-df7954af8be5",
+        "Result": "passed",
+        "Reason": "輸出共有四行判定，依輸入順序分別對應四筆報帳。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "直接核准\n需要主管簽核\n需要總經理簽核\n退回"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9da73eda-9e51-458f-b53e-f1262521b3d4",
+        "Result": "passed",
+        "Reason": "未附任何附件的第四筆資料，輸出為「退回」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "退回"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1eac771c-be57-40a0-bc40-14c1aee70f68",
+        "Result": "undetermined",
+        "Reason": "本次四筆資料的報帳日期均未超過 90 天，沒有逾期案例可驗證此規則。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "77134747-d273-45c1-8fa8-f09b047e0fb5",
+        "Result": "passed",
+        "Reason": "第一筆有發票、日期在 90 天內且金額為 2800 元，輸出為「直接核准」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "直接核准"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1fd16826-c544-4331-bf00-fd7b9d9a84e7",
+        "Result": "passed",
+        "Reason": "第二筆有收據、日期在 90 天內且金額為 6500 元，輸出為「需要主管簽核」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需要主管簽核"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bff58f38-520f-4190-9fbc-8ef025321750",
+        "Result": "passed",
+        "Reason": "第三筆有發票、日期在 90 天內且金額為 18000 元，輸出為「需要總經理簽核」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需要總經理簽核"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2e517a1a-1e0b-4821-8926-2976844958a6",
+        "Result": "passed",
+        "Reason": "同一次輸出涵蓋直接核准、需要主管簽核、需要總經理簽核及退回四種判定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "直接核准\n需要主管簽核\n需要總經理簽核\n退回"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次四筆輸出依序正確涵蓋附件缺失退回及三個金額分級結果。由於沒有日期超過 90 天的測試資料，無法判定逾期退回規則是否得到滿足。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2404,
+      "CompletionTokens": 973,
+      "CostUSD": 0.0151499,
+      "CostReported": true
+    }
+  }
+}

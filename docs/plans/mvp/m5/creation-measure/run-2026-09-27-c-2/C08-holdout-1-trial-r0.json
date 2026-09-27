@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請幫我寫一封公告信。事實：因應強颱來襲，公司自 2026/09/29（星期二）停止上班，2026/09/30（星期三）恢復正常上班；資訊部與總務部須派人留守，其餘同仁停班停課。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出明確寫出停班生效日期為 2026/09/29"
+    },
+    {
+      "text": "輸出明確寫出恢復上班日期為 2026/09/30"
+    },
+    {
+      "text": "輸出明確寫出資訊部與總務部需要留守，其餘同仁停班停課"
+    },
+    {
+      "text": "語氣正式得體，不是口語或聊天式的用詞"
+    }
+  ],
+  "final_output": "**主旨：因應強颱來襲，2026/09/29 停止上班、2026/09/30 恢復正常上班公告**\n\n各位同仁您好：\n\n因應強颱來襲，本公司自 **2026/09/29（星期二）起停止上班**，並於 **2026/09/30（星期三）恢復正常上班**。\n\n另請 **資訊部** 與 **總務部** 依規定派員留守，其餘同仁**停班停課**。\n\n敬請各位同仁配合，並注意自身安全。\n\n敬祝  \n平安順心\n\n行政部 敬上",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "64091449-c982-4038-8e92-e5738842fb4c",
+    "run_id": "e1957481-6a6c-43b6-85b6-c6dcd9efdb52",
+    "status": "completed",
+    "overall": "met",
+    "summary": "公告完整載明停班與恢復上班日期、留守部門及其餘同仁停班停課安排，且以正式得體的繁體中文內部公告格式撰寫。",
+    "criterion_results": [
+      {
+        "criterion_id": "931fabc9-682d-4b24-8752-a6733519fd43",
+        "text": "輸出明確寫出停班生效日期為 2026/09/29",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明自 2026/09/29（星期二）起停止上班。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因應強颱來襲，本公司自 **2026/09/29（星期二）起停止上班**，並於 **2026/09/30（星期三）恢復正常上班**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c1313d58-999c-4ad1-9523-1317faf78022",
+        "text": "輸出明確寫出恢復上班日期為 2026/09/30",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明於 2026/09/30 恢復正常上班。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因應強颱來襲，本公司自 **2026/09/29（星期二）起停止上班**，並於 **2026/09/30（星期三）恢復正常上班**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "18fe94a2-c285-4a9f-aed0-d835651c261e",
+        "text": "輸出明確寫出資訊部與總務部需要留守，其餘同仁停班停課",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確說明資訊部與總務部須派員留守，其餘同仁停班停課。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "另請 **資訊部** 與 **總務部** 依規定派員留守，其餘同仁**停班停課**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e143b20a-b3b2-40fa-b61a-f98e7a07ed82",
+        "text": "語氣正式得體，不是口語或聊天式的用詞",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容採用正式內部公告格式與敬語，包括主旨、稱呼、配合通知及署名，語氣得體。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬請各位同仁配合，並注意自身安全。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2894 input and 759 output tokens on gpt-5.4-mini; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

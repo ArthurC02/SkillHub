@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請幫我建立一個每週五自動寄送週報給主管的 Skill，以下是要寄出的週報內容：本週完成了客戶訪談 6 場，整理需求文件 2 份，修正產品登入流程的 3 個問題；下週計畫是完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議，主管信箱是 manager@example.com。",
+  "acceptance_criteria": [
+    {
+      "text": "產出的 Skill 明確描述每週五自動寄送週報給主管的任務。"
+    },
+    {
+      "text": "產出的 Skill 會包含排程設定或自動化執行的要求。"
+    },
+    {
+      "text": "產出的 Skill 會說明需要使用者提供主管信箱與週報內容。"
+    },
+    {
+      "text": "產出的 Skill 不會假設已連接任何特定第三方服務名稱，除非明確列為假設。"
+    },
+    {
+      "text": "產出的 Skill 會清楚區分「撰寫週報內容」與「排程寄送」兩個步驟。"
+    }
+  ],
+  "final_output": "**Assumptions**  \n- 以一般郵件服務搭配「每週五固定自動寄送」的標準排程方式處理。  \n- 信件主旨預設為 **Weekly Report**。  \n- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。\n\n**Recipient**  \n- manager@example.com\n\n**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\n\n**Schedule**  \n- 每週五自動寄送一次。  \n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。  \n\n**Ready-to-use message**  \n**Subject:** Weekly Report\n\nHi Manager,\n\nThis week I completed:\n- 6 customer interviews\n- 2 requirement documents整理\n- 3 fixes to the product login flow\n\nIn total, I completed 11 items this week.\n\nNext week, I plan to:\n- Finish the dashboard draft\n- Confirm the API specification\n- Arrange 1 team retrospective meeting\n\nBest,  \n[Your Name]",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "75dc88c7-0f29-46ac-9157-6bb426f118fe",
+    "run_id": "31735a9a-c394-483d-b4c5-2b53bac459e1",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出明確涵蓋每週五自動寄送、排程要求，以及週報內容與寄送排程的分離，也未指定特定第三方服務。但它未將主管信箱和週報內容表述為可重複使用 Skill 中需由使用者提供的輸入。",
+    "criterion_results": [
+      {
+        "criterion_id": "b7369f71-74af-45a2-a5c7-c75677e9775c",
+        "text": "產出的 Skill 明確描述每週五自動寄送週報給主管的任務。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明週報會在每週五自動寄送給主管。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Schedule**  \n- 每週五自動寄送一次。  \n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d50dae39-7109-444d-b6ee-bbe6d53d3e6f",
+        "text": "產出的 Skill 會包含排程設定或自動化執行的要求。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含每週五固定發送的排程設定要求，並要求接到郵件或排程系統執行。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "962ee291-9fd8-48ca-b5bf-24ce1bbb18dc",
+        "text": "產出的 Skill 會說明需要使用者提供主管信箱與週報內容。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出列出了此次既有的主管信箱與週報內容，但沒有說明可重複使用的 Skill 需要由使用者提供這兩項資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Recipient**  \n- manager@example.com\n\n**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb2867ce-d325-437c-a4f9-615d1eb6ede4",
+        "text": "產出的 Skill 不會假設已連接任何特定第三方服務名稱，除非明確列為假設。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅使用泛稱的郵件／自動化服務與排程系統，未假設或指定任何特定第三方服務名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9315201c-a31c-4083-9b2f-0f91ef541413",
+        "text": "產出的 Skill 會清楚區分「撰寫週報內容」與「排程寄送」兩個步驟。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以獨立的「Weekly report content」及「Schedule」段落，清楚區分週報內容撰寫與排程寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\n\n**Schedule**  \n- 每週五自動寄送一次。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 956 input and 1040 output tokens on gpt-5.4-mini; reported cost $0.0086 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

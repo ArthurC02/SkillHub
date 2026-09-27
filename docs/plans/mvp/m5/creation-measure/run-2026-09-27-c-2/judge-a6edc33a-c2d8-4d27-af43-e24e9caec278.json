@@ -1,0 +1,103 @@
+{
+  "request": {
+    "RunID": "a6edc33a-c2d8-4d27-af43-e24e9caec278",
+    "EvaluationID": "5b9bfc13-6a0d-4d52-b431-870d45459318",
+    "Skill": {
+      "Name": "shopping-discount-payable-calculator",
+      "Summary": "Calculate a customer's payable order amount from a cart subtotal using tiered discounts and a shipping threshold. Use this skill when you need the final amount after applying only the highest eligible tier among 1000/3000/5000 thresholds."
+    },
+    "UserPrompt": "購物金額分別是 2999 元與 3000 元兩張訂單，運費原本是 150 元。請分別算出這兩張訂單的實付金額。",
+    "Criteria": [
+      {
+        "ID": "ae415684-dc7b-46ef-bb71-34f1492188a5",
+        "Text": "2999 元訂單的實付金額為 3099 元（仍在滿1000折50這階）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c290c6b4-f490-4761-b01a-338381ab57e2",
+        "Text": "3000 元訂單的實付金額為 2950 元（滿3000折200，不是疊加兩階的250元折扣）",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 2999 元：**3149 元**（1000-tier）\n- 3000 元：**2950 元**（3000-tier）",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "2ae2d0f3-a422-44bb-b727-f263956af8d9",
+          "OccurredAt": "2026-09-27T09:30:22.628Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"shopping-discount-payable-calculator\", \"skill_version_id\": \"512fc6cd-b520-4c45-a2ca-db3b4e4b8757\"}"
+        },
+        {
+          "TraceEventID": "2cf15c9c-100d-408a-b6b3-3db22e2d4212",
+          "OccurredAt": "2026-09-27T09:30:22.636Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"shopping-discount-payable-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_UCN2hurynJl1WGuzOOo5nRbs\", \"result_summary\": \"Launching skill: shopping-discount-payable-calculator\"}"
+        },
+        {
+          "TraceEventID": "fc288934-0567-424d-a557-5721b3cec1d5",
+          "OccurredAt": "2026-09-27T09:30:25.954Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 2999 元：**3149 元**（1000-tier）\\n- 3000 元：**2950 元**（3000-tier）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cd0206bd-9c20-4f2e-8dc0-e57cd5a76c90",
+          "OccurredAt": "2026-09-27T09:30:26.252Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 2999 元：**3149 元**（1000-tier）\\n- 3000 元：**2950 元**（3000-tier）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "e3ad31ed-bfe9-4ee5-8a33-0c44ef7db1ad",
+          "OccurredAt": "2026-09-27T09:30:30.317Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0039159, \"cost_source\": \"gateway\", \"duration_ms\": 10062, \"input_tokens\": 2613, \"token_source\": \"result\", \"output_tokens\": 616, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ae415684-dc7b-46ef-bb71-34f1492188a5",
+        "Result": "failed",
+        "Reason": "回覆將 2999 元訂單計為 3149 元，與要求的 3099 元不符。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2999 元：**3149 元**（1000-tier）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c290c6b4-f490-4761-b01a-338381ab57e2",
+        "Result": "passed",
+        "Reason": "回覆將 3000 元訂單計為 2950 元，符合滿 3000 折 200 元且不疊加折扣的要求。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 3000 元：**2950 元**（3000-tier）"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "3000 元訂單的實付金額正確；2999 元訂單的實付金額計算錯誤。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2032,
+      "CompletionTokens": 346,
+      "CostUSD": 0.0066959,
+      "CostReported": true
+    }
+  }
+}

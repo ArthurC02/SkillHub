@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把以下客服回覆壓縮成不超過 30 個字，且一定要包含退款金額、退款日期與訂單編號：\n「您好，您的訂單編號為 4839201，退款金額 1280 元，已於 2026/09/18 退回，請留意帳戶入帳。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一段包含退款金額、退款日期、訂單編號的客服回覆時，輸出會壓縮成不超過 30 個字。"
+    },
+    {
+      "text": "輸出中會同時出現退款金額、退款日期、訂單編號三項資訊。"
+    },
+    {
+      "text": "三項資訊若原文皆有，輸出不得省略其中任何一項。"
+    },
+    {
+      "text": "輸出保持中文客服摘要風格，而不是逐字改寫整段原文。"
+    },
+    {
+      "text": "字數超過 30 個字的輸出視為不合格。"
+    }
+  ],
+  "final_output": "訂單4839201，退款1280元，2026/09/18已退",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "69b8cc56-2114-445c-a104-6919e8055830",
+    "run_id": "cc0aa3e9-6f29-4e92-bfc4-083bd1abbd16",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出恰好30個字，並完整保留訂單編號、退款金額與退款日期，且為簡潔的中文客服摘要。",
+    "criterion_results": [
+      {
+        "criterion_id": "c75078f7-41cd-42ae-9e1e-44f68573bebc",
+        "text": "給定一段包含退款金額、退款日期、訂單編號的客服回覆時，輸出會壓縮成不超過 30 個字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為30個字，未超過限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單4839201，退款1280元，2026/09/18已退",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7894dc5e-392f-4051-902f-e1d1256dadb5",
+        "text": "輸出中會同時出現退款金額、退款日期、訂單編號三項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時包含訂單編號4839201、退款金額1280元及退款日期2026/09/18。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單4839201，退款1280元，2026/09/18已退",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "16d7dc71-6574-439d-ab4d-1d8e2fb6090b",
+        "text": "三項資訊若原文皆有，輸出不得省略其中任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文具備的訂單編號、退款金額與退款日期均未省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單4839201，退款1280元，2026/09/18已退",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9b0bb457-ca00-44fc-8fb9-f5b760ba0878",
+        "text": "輸出保持中文客服摘要風格，而不是逐字改寫整段原文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以簡潔中文客服摘要呈現退款資訊，並非逐字改寫原文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單4839201，退款1280元，2026/09/18已退",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "39f9d870-0139-4cee-af11-0311303b9b3a",
+        "text": "字數超過 30 個字的輸出視為不合格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出恰為30個字，並未超過30字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單4839201，退款1280元，2026/09/18已退",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2907 input and 425 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

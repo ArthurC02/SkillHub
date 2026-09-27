@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請把這份會議記錄整理成重點摘要：\n\n今天先確認 Q3 專案進度。A 組表示 API 端點已完成 80%，但文件還沒補齊；B 組指出測試環境偶爾會出現延遲，需要再觀察一週。討論後決定：1) 由 A 組在週五前補完成文件；2) 由 B 組持續收集延遲數據並在下次會議回報；3) 下週三再檢查整體進度。另提到預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。最後大家同意先維持原時程不變。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。"
+    },
+    {
+      "text": "摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。"
+    },
+    {
+      "text": "若原文中有明確決議，摘要會列出該決議而不是只寫概述。"
+    },
+    {
+      "text": "若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。"
+    },
+    {
+      "text": "摘要不會加入原文沒有提到的新事實。"
+    }
+  ],
+  "final_output": "- **重點摘要**\n  - 會議先確認 Q3 專案進度。\n  - A 組回報 API 端點已完成約 80%，但文件尚未補齊。\n  - B 組指出測試環境偶爾有延遲問題，需再觀察一週。\n  - 目前預算沒有超支，但若下月新增兩名工程師，可能需要重新評估。\n\n- **決議**\n  - 由 A 組在**週五前**補完成文件。\n  - 由 B 組持續收集延遲數據，並在**下次會議**回報。\n  - **下週三**再檢查整體進度。\n  - 先**維持原時程不變**。\n\n- **待辦事項**\n  - A 組：補齊 API 文件（期限：週五前）。\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議報告。\n  - 全體：下週三回顧整體進度。\n\n- **風險 / 後續觀察**\n  - 測試環境延遲問題需持續觀察一週，確認是否影響進度。\n  - 若下月增聘兩名工程師，預算可能需要重新評估。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "396237e3-17c5-4701-b485-968a8a5a7244",
+    "run_id": "2f3d6bbe-1571-4bcd-88f2-c4a286403fd2",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "摘要結構完整、內容精簡，並清楚列出決議及多數具責任人的待辦事項。不過，將下週三的進度檢查責任指定為「全體」屬於原文未明示的資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "a5eb6c5a-8779-4e41-af1a-821a24d52fc5",
+        "text": "在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確設有「重點摘要」、「決議」與「待辦事項」三個部分。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **重點摘要**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **決議**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **待辦事項**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "48cee736-8846-4e54-af44-e7cfaa1be7f5",
+        "text": "摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容以精簡條列呈現專案進度、風險、決議與後續事項，保留關鍵資訊而未重述原始會議內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - A 組回報 API 端點已完成約 80%，但文件尚未補齊。\n  - B 組指出測試環境偶爾有延遲問題，需再觀察一週。\n  - 目前預算沒有超支，但若下月新增兩名工程師，可能需要重新評估。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f874621a-1a1e-48ee-9986-fe48c9d64e6d",
+        "text": "若原文中有明確決議，摘要會列出該決議而不是只寫概述。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將原文的具體決定逐項列於「決議」段落，而非僅概括描述。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **決議**\n  - 由 A 組在**週五前**補完成文件。\n  - 由 B 組持續收集延遲數據，並在**下次會議**回報。\n  - **下週三**再檢查整體進度。\n  - 先**維持原時程不變**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7c67bbbd-9d77-4ff5-9ec1-04eab9ed8a33",
+        "text": "若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦事項列出文件補齊與延遲數據蒐集等任務，並標示原文提供的責任人及期限／回報時點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **待辦事項**\n  - A 組：補齊 API 文件（期限：週五前）。\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議報告。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "749d34d3-f453-4be6-879c-026740acccaf",
+        "text": "摘要不會加入原文沒有提到的新事實。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出把下週三的整體進度回顧指派給「全體」，但原文僅決定下週三再檢查進度，未提供該待辦的責任人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - 全體：下週三回顧整體進度。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3268 input and 530 output tokens on gpt-5.4-mini; reported cost $0.0079 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

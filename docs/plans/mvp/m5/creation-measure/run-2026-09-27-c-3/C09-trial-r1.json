@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我算實付金額，以下是三筆訂單：\n1) 999 元\n2) 3000 元\n3) 5000 元",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 999 元時，輸出實付金額為原金額，且不套用折扣或免運。"
+    },
+    {
+      "text": "輸入 1000 元時，輸出實付金額為 950 元。"
+    },
+    {
+      "text": "輸入 2999 元時，仍只套用 1000 元門檻折 50 元。"
+    },
+    {
+      "text": "輸入 3000 元時，輸出實付金額為 2800 元。"
+    },
+    {
+      "text": "輸入 4999 元時，仍只套用 3000 元門檻折 200 元。"
+    },
+    {
+      "text": "輸入 5000 元時，輸出實付金額為 4800 元，且包含免運效果（原運費 150 元被免除）。"
+    },
+    {
+      "text": "輸入 6000 元時，仍只套用 5000 元門檻的最高一階優惠，不再疊加其他門檻。"
+    }
+  ],
+  "final_output": "以下為各筆實付金額：\n\n1. **999 元**  \n   - 適用優惠：**無折扣**  \n   - 實付金額：**999 元**\n\n2. **3000 元**  \n   - 適用優惠：**折 200 元**  \n   - 實付金額：**2800 元**\n\n3. **5000 元**  \n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \n   - 實付金額：**4650 元**\n\n**總實付金額：8449 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1d886b3f-d49e-4b8f-97c7-4f1b645ade6c",
+    "run_id": "7ba66eac-6f82-416b-91c4-ca0056a52530",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已正確處理 999 元與 3000 元案例。5000 元案例的實付金額錯誤；其餘門檻測試案例未在本次回覆中呈現，無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "fdd487d0-65bd-411e-9504-f0499c6f5855",
+        "text": "輸入 999 元時，輸出實付金額為原金額，且不套用折扣或免運。",
+        "result": "passed",
+        "source": "model",
+        "reason": "999 元訂單列為無折扣，實付金額為 999 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **999 元**  \n   - 適用優惠：**無折扣**  \n   - 實付金額：**999 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f2f76ba-3280-49f6-9221-4dbaf86ed911",
+        "text": "輸入 1000 元時，輸出實付金額為 950 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆未提供 1000 元輸入的計算結果。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "c27b2dcf-a5c0-4a3a-88ae-a532518c3ece",
+        "text": "輸入 2999 元時，仍只套用 1000 元門檻折 50 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆未提供 2999 元輸入的計算結果。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "0806080a-42fb-423a-8c37-8354ffcc8185",
+        "text": "輸入 3000 元時，輸出實付金額為 2800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "3000 元訂單套用折 200 元，實付 2800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **3000 元**  \n   - 適用優惠：**折 200 元**  \n   - 實付金額：**2800 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "20770218-8a2b-4b93-8629-3dfaaceaeaca",
+        "text": "輸入 4999 元時，仍只套用 3000 元門檻折 200 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆未提供 4999 元輸入的計算結果。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "2ddc9dff-bcbe-4559-9e79-03f5494acdb3",
+        "text": "輸入 5000 元時，輸出實付金額為 4800 元，且包含免運效果（原運費 150 元被免除）。",
+        "result": "failed",
+        "source": "model",
+        "reason": "5000 元訂單雖提及折 200 元與免運，但輸出的實付金額是 4650 元，不符合要求的 4800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **5000 元**  \n   - 適用優惠：**折 200 元 + 免運（扣除原運費 150 元）**  \n   - 實付金額：**4650 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "81dd13e2-3d03-4acb-93ee-dbeebcde8552",
+        "text": "輸入 6000 元時，仍只套用 5000 元門檻的最高一階優惠，不再疊加其他門檻。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "回覆未提供 6000 元輸入的計算結果。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18656 input and 469 output tokens on gpt-5.4-mini; reported cost $0.0178 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

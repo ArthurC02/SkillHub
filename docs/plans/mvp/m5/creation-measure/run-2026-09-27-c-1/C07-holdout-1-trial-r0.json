@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "請幫我核對以下出差報帳：\n2026/09/31 早餐 150 元、午餐 300 元、晚餐 350 元\n2026/09/26 計程車 420 元\n2026/09/27 住宿 1800 元\n員工填寫的總計是 3800 元，請幫我核對加總是否正確，並確認日期是否都正確。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出指出 2026/09/31 這個日期不存在（9月沒有31日），而不是照樣核算"
+    },
+    {
+      "text": "輸出指出實際加總金額為 3020 元，跟員工填寫的 3800 元不一致，不是直接認可 3800 元"
+    },
+    {
+      "text": "沒有為了配合 3800 元而捏造多出來的項目或金額"
+    }
+  ],
+  "final_output": "以下為核對結果：\n\n### 一覽\n- **2026/09/31**：早餐 150 + 午餐 300 + 晚餐 350 = **800 元**\n  - 但這個日期 **不正確**，因為 **2026 年 9 月只有 30 天，沒有 9/31**\n- **2026/09/26**：計程車 **420 元**\n- **2026/09/27**：住宿 **1800 元**\n\n### 比對結果\n- 逐項加總：800 + 420 + 1800 = **3020 元**\n- 員工填寫總計：**3800 元**\n- **不一致**，差額為 **780 元**（填寫總計比實際加總多 780 元）\n\n### 日期檢查\n- **2026/09/26**：正確\n- **2026/09/27**：正確\n- **2026/09/31**：**錯誤**，此日期不存在\n\n### 整體結論\n- 共核對 **3 筆日期**\n- **一致：0 筆**\n- **不一致：3 筆**  \n  - 其中 **1 筆是日期錯誤**\n  - **總計金額也不正確**\n\n如果你要，我也可以幫你整理成一段可直接回覆員工的核對說明。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e543dcaa-29fd-4736-88ff-ee76ec13490a",
+    "run_id": "4994885f-74b3-4cc1-a6fe-d4d939bbb391",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出正確辨識 2026/09/31 為不存在的日期，正確加總為 3020 元並指出與 3800 元不符，且沒有捏造額外報帳項目或金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "eeb0fbcf-d372-4ba1-97e9-8b0efac6ea9e",
+        "text": "輸出指出 2026/09/31 這個日期不存在（9月沒有31日），而不是照樣核算",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確指出 2026/09/31 不存在，並說明 9 月只有 30 天。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "但這個日期 **不正確**，因為 **2026 年 9 月只有 30 天，沒有 9/31**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "152b1796-757f-4c6e-92a5-e8708254b436",
+        "text": "輸出指出實際加總金額為 3020 元，跟員工填寫的 3800 元不一致，不是直接認可 3800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出計算逐項合計為 3020 元，並明確表示與 3800 元不一致及差額為 780 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 逐項加總：800 + 420 + 1800 = **3020 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **不一致**，差額為 **780 元**（填寫總計比實際加總多 780 元）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "21581fdf-a98d-4b40-a10c-88dc6c126edc",
+        "text": "沒有為了配合 3800 元而捏造多出來的項目或金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅列出原始的早餐、午餐、晚餐、計程車及住宿項目，並將 3800 元判定為不一致，未新增任何項目或金額以配合該總計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **2026/09/26**：計程車 **420 元**\n- **2026/09/27**：住宿 **1800 元**\n\n### 比對結果\n- 逐項加總：800 + 420 + 1800 = **3020 元**\n- 員工填寫總計：**3800 元**\n- **不一致**，差額為 **780 元**（填寫總計比實際加總多 780 元）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2981 input and 921 output tokens on gpt-5.4-mini; reported cost $0.0094 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

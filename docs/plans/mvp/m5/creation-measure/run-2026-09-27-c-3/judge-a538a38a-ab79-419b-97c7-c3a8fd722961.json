@@ -1,0 +1,127 @@
+{
+  "request": {
+    "RunID": "a538a38a-ab79-419b-97c7-c3a8fd722961",
+    "EvaluationID": "af453b7f-70ad-4c6b-9c8e-b7d1f5641078",
+    "Skill": {
+      "Name": "customer-reply-30-char-summarizer",
+      "Summary": "將客服回覆壓縮成不超過 30 個字的中文摘要；當需要保留退款金額、退款日期與訂單編號三項關鍵資訊時使用。"
+    },
+    "UserPrompt": "客戶問退款進度。事實：訂單編號 TW20260938，退款金額 3,480 元，退款日期是 9/30，退款會分兩筆匯入。請用不超過 30 個字回覆客戶，退款金額、退款日期、訂單編號三項都要保留。",
+    "Criteria": [
+      {
+        "ID": "3a775b77-cd75-4a58-a664-6027805fb8d7",
+        "Text": "輸出總字數（含標點與英數字）不超過 30 字",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d07c63e8-6e78-48c6-aaae-981eb97e957c",
+        "Text": "輸出包含退款金額 3,480 元（或3480元）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9ec9eeea-2d26-414a-835d-9636a76de9c7",
+        "Text": "輸出包含退款日期 9/30",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "391ed63e-9342-4199-a3a1-ea03152ddb87",
+        "Text": "輸出包含訂單編號 TW20260938",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "48fcbce1-8a7c-4ecd-8634-1338dec96a69",
+          "OccurredAt": "2026-09-27T09:47:19.225Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"退款3480元，9/30分兩筆入帳，單號TW20260938\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "83abd481-b68f-4d1b-b17a-ce02fedd5654",
+          "OccurredAt": "2026-09-27T09:47:19.476Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"退款3480元，9/30分兩筆入帳，單號TW20260938\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d2cd334b-39bc-4f8c-b09c-997618872c5a",
+          "OccurredAt": "2026-09-27T09:47:23.518Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0004275, \"cost_source\": \"gateway\", \"duration_ms\": 7951, \"input_tokens\": 18024, \"token_source\": \"result\", \"output_tokens\": 542, \"cache_read_input_tokens\": null, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3a775b77-cd75-4a58-a664-6027805fb8d7",
+        "Result": "passed",
+        "Reason": "回覆共30字（含標點及英數字），未超過30字。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "退款3480元，9/30分兩筆入帳，單號TW20260938"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d07c63e8-6e78-48c6-aaae-981eb97e957c",
+        "Result": "passed",
+        "Reason": "回覆包含退款金額3480元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "退款3480元，9/30分兩筆入帳，單號TW20260938"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9ec9eeea-2d26-414a-835d-9636a76de9c7",
+        "Result": "passed",
+        "Reason": "回覆包含退款日期9/30。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "退款3480元，9/30分兩筆入帳，單號TW20260938"
+          }
+        ]
+      },
+      {
+        "CriterionID": "391ed63e-9342-4199-a3a1-ea03152ddb87",
+        "Result": "passed",
+        "Reason": "回覆包含訂單編號TW20260938。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "退款3480元，9/30分兩筆入帳，單號TW20260938"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "回覆保留退款金額、退款日期與訂單編號，且總字數剛好30字。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 1838,
+      "CompletionTokens": 537,
+      "CostUSD": 0.0085029,
+      "CostReported": true
+    }
+  }
+}

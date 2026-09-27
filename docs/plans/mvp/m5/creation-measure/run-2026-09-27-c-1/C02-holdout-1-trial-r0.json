@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請審核以下 4 筆報帳，各筆都已附上發票，申請日期都在 10 天內：\nA001：金額 3000 元\nA002：金額 3001 元\nA003：金額 10000 元\nA004：金額 10001 元\n請針對每一筆輸出判定結果。",
+  "acceptance_criteria": [
+    {
+      "text": "A001（3000 元）判定為核准"
+    },
+    {
+      "text": "A002（3001 元）判定為需要主管簽核"
+    },
+    {
+      "text": "A003（10000 元）判定為需要主管簽核"
+    },
+    {
+      "text": "A004（10001 元）判定為需要總經理簽核"
+    }
+  ],
+  "final_output": "直接核准\n需要主管簽核\n需要主管簽核\n需要總經理簽核",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "32575054-83d1-4e58-8706-491ad22cd318",
+    "run_id": "2d0f3a26-c54f-4d27-baf6-f3180c8f5b09",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆輸出依原始申請順序分別對應核准、主管簽核、主管簽核及總經理簽核，均符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "c8601d96-dc38-4a41-b342-f5d864f5cbd3",
+        "text": "A001（3000 元）判定為核准",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第一筆為「直接核准」，符合 A001（3000 元）核准的判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要主管簽核\n需要總經理簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3e2a8e3a-cbda-4152-b890-a7744ecd5c25",
+        "text": "A002（3001 元）判定為需要主管簽核",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第二筆為「需要主管簽核」，符合 A002（3001 元）的判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要主管簽核\n需要總經理簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6cf32ed0-829c-41be-9d75-5385f81d6742",
+        "text": "A003（10000 元）判定為需要主管簽核",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第三筆為「需要主管簽核」，符合 A003（10000 元）的判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要主管簽核\n需要總經理簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e10c99c-f52e-483f-9a5b-1f2ded15d026",
+        "text": "A004（10001 元）判定為需要總經理簽核",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出第四筆為「需要總經理簽核」，符合 A004（10001 元）的判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "直接核准\n需要主管簽核\n需要主管簽核\n需要總經理簽核",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3007 input and 309 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

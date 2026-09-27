@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "31735a9a-c394-483d-b4c5-2b53bac459e1",
+    "EvaluationID": "75dc88c7-0f29-46ac-9157-6bb426f118fe",
+    "Skill": {
+      "Name": "weekly-report-auto-send",
+      "Summary": "Create a reusable Skill for preparing and scheduling a weekly Friday report email to a manager. Use this when the user wants a repeatable workflow that separates report drafting from scheduled sending and may need a common default for the mail or scheduling service."
+    },
+    "UserPrompt": "請幫我建立一個每週五自動寄送週報給主管的 Skill，以下是要寄出的週報內容：本週完成了客戶訪談 6 場，整理需求文件 2 份，修正產品登入流程的 3 個問題；下週計畫是完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議，主管信箱是 manager@example.com。",
+    "Criteria": [
+      {
+        "ID": "b7369f71-74af-45a2-a5c7-c75677e9775c",
+        "Text": "產出的 Skill 明確描述每週五自動寄送週報給主管的任務。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d50dae39-7109-444d-b6ee-bbe6d53d3e6f",
+        "Text": "產出的 Skill 會包含排程設定或自動化執行的要求。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "962ee291-9fd8-48ca-b5bf-24ce1bbb18dc",
+        "Text": "產出的 Skill 會說明需要使用者提供主管信箱與週報內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fb2867ce-d325-437c-a4f9-615d1eb6ede4",
+        "Text": "產出的 Skill 不會假設已連接任何特定第三方服務名稱，除非明確列為假設。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9315201c-a31c-4083-9b2f-0f91ef541413",
+        "Text": "產出的 Skill 會清楚區分「撰寫週報內容」與「排程寄送」兩個步驟。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "**Assumptions**  \n- 以一般郵件服務搭配「每週五固定自動寄送」的標準排程方式處理。  \n- 信件主旨預設為 **Weekly Report**。  \n- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。\n\n**Recipient**  \n- manager@example.com\n\n**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\n\n**Schedule**  \n- 每週五自動寄送一次。  \n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。  \n\n**Ready-to-use message**  \n**Subject:** Weekly Report\n\nHi Manager,\n\nThis week I completed:\n- 6 customer interviews\n- 2 requirement documents整理\n- 3 fixes to the product login flow\n\nIn total, I completed 11 items this week.\n\nNext week, I plan to:\n- Finish the dashboard draft\n- Confirm the API specification\n- Arrange 1 team retrospective meeting\n\nBest,  \n[Your Name]",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "59e8ac83-6901-4465-a854-62c31c443fee",
+          "OccurredAt": "2026-09-27T09:48:53.223Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"weekly-report-auto-send\", \"skill_version_id\": \"912527e7-dd74-4d58-94d8-a5fd3bd256c6\"}"
+        },
+        {
+          "TraceEventID": "ae94a6ea-afc2-4fd3-a49e-7d743e2bdaad",
+          "OccurredAt": "2026-09-27T09:48:53.231Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"weekly-report-auto-send\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_7Rle0furag2Q07Oqi0O4zM0T\", \"result_summary\": \"Launching skill: weekly-report-auto-send\"}"
+        },
+        {
+          "TraceEventID": "16c31121-e337-4ce3-b35d-d9d09dfb95bf",
+          "OccurredAt": "2026-09-27T09:48:57.07Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"**Assumptions**  \\n- 以一般郵件服務搭配「每週五固定自動寄送」的標準排程方式處理。  \\n- 信件主旨預設為 **Weekly Report**。  \\n- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。\\n\\n**Recipient**  \\n- manager@example.com\\n\\n**Weekly report content**  \\n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \\n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\\n\\n**Schedule**  \\n- 每週五自動寄送一次。  \\n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。  \\n\\n**Ready-to-use message**  \\n**Subject:** Weekly Report\\n\\nHi Manager,\\n\\nThis week I completed:\\n- 6 customer interviews\\n- 2 requirement documents整理\\n- 3 fixes to the product login flow\\n\\nIn total, I completed 11 items this week.\\n\\nNext week, I plan to:\\n- Finish the dashboard draft\\n- Confirm the API specification\\n- Arrange 1 team retrospective meeting\\n\\nBest,  \\n[Your Name]\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3584a63f-8817-47c3-8bd0-86d9368c44ae",
+          "OccurredAt": "2026-09-27T09:48:57.264Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"**Assumptions**  \\n- 以一般郵件服務搭配「每週五固定自動寄送」的標準排程方式處理。  \\n- 信件主旨預設為 **Weekly Report**。  \\n- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。\\n\\n**Recipient**  \\n- manager@example.com\\n\\n**Weekly report content**  \\n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \\n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\\n\\n**Schedule**  \\n- 每週五自動寄送一次。  \\n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。  \\n\\n**Ready-to-use message**  \\n**Subject:** Weekly Report\\n\\nHi Manager,\\n\\nThis week I completed:\\n- 6 customer interviews\\n- 2 requirement documents整理\\n- 3 fixes to the product login flow\\n\\nIn total, I completed 11 items this week.\\n\\nNext week, I plan to:\\n- Finish the dashboard draft\\n- Confirm the API specification\\n- Arrange 1 team retrospective meeting\\n\\nBest,  \\n[Your Name]\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "135cab0f-8d36-433b-8018-954b1ddd29ab",
+          "OccurredAt": "2026-09-27T09:49:02.824Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.008559, \"cost_source\": \"gateway\", \"duration_ms\": 12078, \"input_tokens\": 956, \"token_source\": \"result\", \"output_tokens\": 1040, \"cache_read_input_tokens\": 35840, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b7369f71-74af-45a2-a5c7-c75677e9775c",
+        "Result": "passed",
+        "Reason": "輸出明確說明週報會在每週五自動寄送給主管。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**Schedule**  \n- 每週五自動寄送一次。  \n- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d50dae39-7109-444d-b6ee-bbe6d53d3e6f",
+        "Result": "passed",
+        "Reason": "輸出包含每週五固定發送的排程設定要求，並要求接到郵件或排程系統執行。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 建議將上述週報內容接到你的郵件或排程系統，設定為每週五固定發送給 **manager@example.com**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "962ee291-9fd8-48ca-b5bf-24ce1bbb18dc",
+        "Result": "failed",
+        "Reason": "輸出列出了此次既有的主管信箱與週報內容，但沒有說明可重複使用的 Skill 需要由使用者提供這兩項資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**Recipient**  \n- manager@example.com\n\n**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fb2867ce-d325-437c-a4f9-615d1eb6ede4",
+        "Result": "passed",
+        "Reason": "輸出僅使用泛稱的郵件／自動化服務與排程系統，未假設或指定任何特定第三方服務名稱。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 寄送與排程需由你實際連接的郵件／自動化服務執行，我這裡先準備好可直接使用的內容。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9315201c-a31c-4083-9b2f-0f91ef541413",
+        "Result": "passed",
+        "Reason": "輸出以獨立的「Weekly report content」及「Schedule」段落，清楚區分週報內容撰寫與排程寄送。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**Weekly report content**  \n- 本週完成：客戶訪談 6 場、整理需求文件 2 份、修正產品登入流程 3 個問題，合計 11 項工作。  \n- 下週計畫：完成儀表板草稿、確認 API 規格，並安排 1 次團隊回顧會議。\n\n**Schedule**  \n- 每週五自動寄送一次。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "輸出明確涵蓋每週五自動寄送、排程要求，以及週報內容與寄送排程的分離，也未指定特定第三方服務。但它未將主管信箱和週報內容表述為可重複使用 Skill 中需由使用者提供的輸入。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3123,
+      "CompletionTokens": 1238,
+      "CostUSD": 0.0201274,
+      "CostReported": true
+    }
+  }
+}

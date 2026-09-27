@@ -1,0 +1,103 @@
+{
+  "request": {
+    "RunID": "a45b827f-63ef-425c-be9a-ca4f6698f36f",
+    "EvaluationID": "20475efb-9585-42f0-a1b8-c424a0260569",
+    "Skill": {
+      "Name": "shopping-discount-payable-calculator",
+      "Summary": "Calculate a customer's payable order amount from a cart subtotal using tiered discounts and a shipping threshold. Use this skill when you need the final amount after applying only the highest eligible tier among 1000/3000/5000 thresholds."
+    },
+    "UserPrompt": "購物金額分別是 4999 元與 5000 元兩張訂單，運費原本是 150 元。請分別算出這兩張訂單的實付金額。",
+    "Criteria": [
+      {
+        "ID": "78fa6db7-0970-4f56-88e2-f539c0ee4358",
+        "Text": "4999 元訂單的實付金額為 4949 元（折200元，尚未達到免運門檻，仍要付150元運費）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a7221925-df9c-4cbb-a594-7266756e9d4c",
+        "Text": "5000 元訂單的實付金額為 4800 元（折200元且免運費）",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 4999 元：**4949 元**（3000 檔）\n- 5000 元：**4800 元**（5000 檔，免運）",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b9938571-3b31-4a66-811c-83b5368d86b7",
+          "OccurredAt": "2026-09-27T09:30:40.432Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"shopping-discount-payable-calculator\", \"skill_version_id\": \"512fc6cd-b520-4c45-a2ca-db3b4e4b8757\"}"
+        },
+        {
+          "TraceEventID": "c5664145-7fe1-4763-951d-a36f58b28010",
+          "OccurredAt": "2026-09-27T09:30:40.451Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"Calculate payable amounts for order subtotals 4999 and 5000 with shipping 150.\", \"skill\": \"shopping-discount-payable-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_zambqLqkzR11gSVgJzz6gcfB\", \"result_summary\": \"Launching skill: shopping-discount-payable-calculator\"}"
+        },
+        {
+          "TraceEventID": "8f5ece89-9129-45d1-8319-3580d730dbe9",
+          "OccurredAt": "2026-09-27T09:30:43.022Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 4999 元：**4949 元**（3000 檔）\\n- 5000 元：**4800 元**（5000 檔，免運）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d3b0fb17-d14d-4b89-a2d4-89548e1e2e06",
+          "OccurredAt": "2026-09-27T09:30:43.362Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 4999 元：**4949 元**（3000 檔）\\n- 5000 元：**4800 元**（5000 檔，免運）\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "50a7cab4-dfd8-42a0-b28c-bae2840ce609",
+          "OccurredAt": "2026-09-27T09:30:47.417Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0037404, \"cost_source\": \"gateway\", \"duration_ms\": 9125, \"input_tokens\": 2660, \"token_source\": \"result\", \"output_tokens\": 321, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "78fa6db7-0970-4f56-88e2-f539c0ee4358",
+        "Result": "passed",
+        "Reason": "最終回覆明確列出 4999 元訂單的實付金額為 4949 元，且標示為 3000 檔，符合折抵後仍含運費的結果。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 4999 元：**4949 元**（3000 檔）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a7221925-df9c-4cbb-a594-7266756e9d4c",
+        "Result": "passed",
+        "Reason": "最終回覆明確列出 5000 元訂單的實付金額為 4800 元，並註明免運。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 5000 元：**4800 元**（5000 檔，免運）"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩項訂單的實付金額皆與驗收標準一致；5000 元訂單亦明確標示免運。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2085,
+      "CompletionTokens": 288,
+      "CostUSD": 0.0061324,
+      "CostReported": true
+    }
+  }
+}

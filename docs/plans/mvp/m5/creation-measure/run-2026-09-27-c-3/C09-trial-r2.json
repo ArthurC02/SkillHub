@@ -1,0 +1,180 @@
+{
+  "round": 2,
+  "sample_input": "請幫我算實付金額，以下是七筆訂單：\n1) 999 元\n2) 1000 元\n3) 2999 元\n4) 3000 元\n5) 4999 元\n6) 5000 元\n7) 6000 元",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 999 元時，輸出實付金額為原金額，且不套用折扣或免運。"
+    },
+    {
+      "text": "輸入 1000 元時，輸出實付金額為 950 元。"
+    },
+    {
+      "text": "輸入 2999 元時，仍只套用 1000 元門檻折 50 元。"
+    },
+    {
+      "text": "輸入 3000 元時，輸出實付金額為 2800 元。"
+    },
+    {
+      "text": "輸入 4999 元時，仍只套用 3000 元門檻折 200 元。"
+    },
+    {
+      "text": "輸入 5000 元時，輸出實付金額為 4800 元，且包含免運效果（原運費 150 元被免除）。"
+    },
+    {
+      "text": "輸入 6000 元時，仍只套用 5000 元門檻的最高一階優惠，不再疊加其他門檻。"
+    }
+  ],
+  "final_output": "以下是七筆訂單的實付金額：\n\n1. **999 元** → **未達門檻 / 無折扣** → **999 元**\n2. **1000 元** → **1000–2999 元，折 50** → **950 元**\n3. **2999 元** → **1000–2999 元，折 50** → **2949 元**\n4. **3000 元** → **3000–4999 元，折 200** → **2800 元**\n5. **4999 元** → **3000–4999 元，折 200** → **4799 元**\n6. **5000 元** → **5000 元以上，折 200 + 免運 150** → **4650 元**\n7. **6000 元** → **5000 元以上，折 200 + 免運 150** → **5650 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "899c4365-7eeb-4b0d-8224-0079a9673a45",
+    "run_id": "9c419b19-adac-42c0-83f7-8a5c340c153b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "七項中六項符合門檻與單一最高優惠的要求。5000 元訂單的實付金額輸出為 4650 元，與要求的 4800 元不符。",
+    "criterion_results": [
+      {
+        "criterion_id": "3c04220f-8a29-49a5-8f15-5d6ef5052d5b",
+        "text": "輸入 999 元時，輸出實付金額為原金額，且不套用折扣或免運。",
+        "result": "passed",
+        "source": "model",
+        "reason": "999 元訂單列為未達門檻、無折扣，實付金額為 999 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **999 元** → **未達門檻 / 無折扣** → **999 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b1dd584-427e-4b49-8292-baff6119a18e",
+        "text": "輸入 1000 元時，輸出實付金額為 950 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1000 元訂單的實付金額列為 950 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **1000 元** → **1000–2999 元，折 50** → **950 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ffe175f0-1388-4ed2-8e7e-738c46652f1c",
+        "text": "輸入 2999 元時，仍只套用 1000 元門檻折 50 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "2999 元訂單明示僅適用 1000–2999 元門檻的折 50，結果為 2949 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **2999 元** → **1000–2999 元，折 50** → **2949 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ac7d0f4-8f2a-4b9b-b6ce-7df1d8ea679d",
+        "text": "輸入 3000 元時，輸出實付金額為 2800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "3000 元訂單的實付金額列為 2800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **3000 元** → **3000–4999 元，折 200** → **2800 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "791ed91b-4561-48e1-a0c3-6fe9c60799c2",
+        "text": "輸入 4999 元時，仍只套用 3000 元門檻折 200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "4999 元訂單明示適用 3000–4999 元門檻折 200，結果為 4799 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. **4999 元** → **3000–4999 元，折 200** → **4799 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b0ad89d-df19-46b6-8eef-2cd3bcbe6f11",
+        "text": "輸入 5000 元時，輸出實付金額為 4800 元，且包含免運效果（原運費 150 元被免除）。",
+        "result": "failed",
+        "source": "model",
+        "reason": "5000 元訂單雖提及免運，但輸出的實付金額是 4650 元，不是要求的 4800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. **5000 元** → **5000 元以上，折 200 + 免運 150** → **4650 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a22719b2-ebd4-4c08-8ccb-d8b3040cf4d4",
+        "text": "輸入 6000 元時，仍只套用 5000 元門檻的最高一階優惠，不再疊加其他門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "6000 元訂單列為 5000 元以上優惠，僅列折 200 與免運，未將較低門檻折扣疊加。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7. **6000 元** → **5000 元以上，折 200 + 免運 150** → **5650 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2771 input and 493 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

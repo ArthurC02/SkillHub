@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "67820864-67e5-4fe3-a9a8-117aa62ca9a2",
+    "EvaluationID": "b2719779-4dde-4a76-ba70-01e85af73faa",
+    "Skill": {
+      "Name": "typhoon-office-notice-writer",
+      "Summary": "Write a formal internal typhoon office-closure notice when the user provides the effective date, resume-work date, and departments that must remain on duty."
+    },
+    "UserPrompt": "請幫我寫一封正式的防颱停班停課內部公告信。停班停課生效日期是 2026/09/28，恢復上班日期是 2026/09/29，需要留守的部門名稱是總務部、人資部、資訊部。",
+    "Criteria": [
+      {
+        "ID": "a9f4e98f-e44a-4867-a378-c79c5d61df08",
+        "Text": "在輸入提供生效日期、恢復上班日期與留守部門名稱時，輸出會以正式內部公告信格式寫出完整內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7b1c1ab8-f3a0-42af-9a61-f5989332b78d",
+        "Text": "輸出會明確包含「生效日期」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "332d2e1e-07f4-4b23-9255-d0f9364281a9",
+        "Text": "輸出會明確包含「恢復上班日期」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d5514643-36d2-4b10-8e6b-bd5d88440bb2",
+        "Text": "輸出會明確包含「需要留守的部門名稱」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f1e31d34-06ec-4ad1-94d4-52811f8a7052",
+        "Text": "輸出語氣正式，不使用口語或聊天式措辭。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "**主旨：防颱停班停課內部公告**\n\n各位同仁您好：\n\n因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。\n\n停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\n- **總務部**\n- **人資部**\n- **資訊部**\n\n請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\n\n敬請知悉並配合。\n\n此致  \n全體同仁\n\n公司行政管理部 敬上",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "64c1fa38-9d4a-4f1f-b524-d7dbde467653",
+          "OccurredAt": "2026-09-27T09:27:43.403Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"typhoon-office-notice-writer\", \"skill_version_id\": \"a41121e0-b3b1-4b93-b014-110bb45ed9dd\"}"
+        },
+        {
+          "TraceEventID": "e3f83f5b-c790-4a31-b2e8-1ba932d61ef9",
+          "OccurredAt": "2026-09-27T09:27:43.424Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"effective date: 2026/09/28; resume work date: 2026/09/29; on-duty departments: 總務部、人資部、資訊部\", \"skill\": \"typhoon-office-notice-writer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 23, \"invocation_id\": \"call_XXBBIOtTxgLKxPdwnPeSX9dK\", \"result_summary\": \"Launching skill: typhoon-office-notice-writer\"}"
+        },
+        {
+          "TraceEventID": "9b3c874c-2ad4-45a4-83ca-2d79432113a2",
+          "OccurredAt": "2026-09-27T09:27:46.155Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"**主旨：防颱停班停課內部公告**\\n\\n各位同仁您好：\\n\\n因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。\\n\\n停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\\n- **總務部**\\n- **人資部**\\n- **資訊部**\\n\\n請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\\n\\n敬請知悉並配合。\\n\\n此致  \\n全體同仁\\n\\n公司行政管理部 敬上\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "732872b3-001a-4ad7-a54e-ee45899ac95c",
+          "OccurredAt": "2026-09-27T09:27:46.375Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"**主旨：防颱停班停課內部公告**\\n\\n各位同仁您好：\\n\\n因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。\\n\\n停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\\n- **總務部**\\n- **人資部**\\n- **資訊部**\\n\\n請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\\n\\n敬請知悉並配合。\\n\\n此致  \\n全體同仁\\n\\n公司行政管理部 敬上\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c3f1cf54-8c89-4aaf-beb0-896045643ce9",
+          "OccurredAt": "2026-09-27T09:27:51.944Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01760325, \"cost_source\": \"gateway\", \"duration_ms\": 11519, \"input_tokens\": 18657, \"token_source\": \"result\", \"output_tokens\": 404, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a9f4e98f-e44a-4867-a378-c79c5d61df08",
+        "Result": "passed",
+        "Reason": "輸出具備主旨、稱謂、公告內容、配合事項與署名，構成完整的正式內部公告信。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**主旨：防颱停班停課內部公告**\n\n各位同仁您好："
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "此致  \n全體同仁\n\n公司行政管理部 敬上"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7b1c1ab8-f3a0-42af-9a61-f5989332b78d",
+        "Result": "passed",
+        "Reason": "公告明確載明停班停課自 2026/09/28 起生效。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "332d2e1e-07f4-4b23-9255-d0f9364281a9",
+        "Result": "passed",
+        "Reason": "公告明確載明 2026/09/29 恢復正常上班上課。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d5514643-36d2-4b10-8e6b-bd5d88440bb2",
+        "Result": "passed",
+        "Reason": "公告列出停班停課期間須留守的總務部、人資部與資訊部。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\n- **總務部**\n- **人資部**\n- **資訊部**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f1e31d34-06ec-4ad1-94d4-52811f8a7052",
+        "Result": "passed",
+        "Reason": "全文使用公告式正式措辭，包含「敬請知悉並配合」及正式署名，未見口語或聊天式表述。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\n\n敬請知悉並配合。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出完整呈現正式防颱停班停課內部公告，並正確說明生效日期、恢復上班日期及三個留守部門；整體語氣正式。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2659,
+      "CompletionTokens": 750,
+      "CostUSD": 0.013111400000000002,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "request": {
+    "RunID": "84148ce9-64bc-49fe-bd38-7046b4f33c7d",
+    "EvaluationID": "55565021-164f-42f1-9982-0d0cc3b30bed",
+    "Skill": {
+      "Name": "overtime-pay-calculator",
+      "Summary": "Calculate monthly weekday overtime pay from an hourly wage and a list of daily overtime hours, especially when the input includes daily and monthly overtime caps."
+    },
+    "UserPrompt": "時薪 200 元，本月加班紀錄如下：9/1~9/23 每天加班 2 小時（共 46 小時），另外 9/24 再加班 1 小時，本月合計 47 小時。請算出這個月的加班費總額。",
+    "Criteria": [
+      {
+        "ID": "9364b1c9-9bb4-4ab1-a516-0b7b99506df6",
+        "Text": "加班費總額為 12328 元",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "737b7d55-7011-4e98-b1e5-3437f01a8cf1",
+        "Text": "輸出沒有把第 47 小時也計入薪水（總額不是 12596 元）",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "這個月的加班費總額是 **12,328 元**。\n\n計算：\n- 時薪 200 元\n- 本月可計薪加班時數上限：46 小時\n- 9/1～9/23 共 46 小時都以 **1.34 倍**計算\n- 9/24 的 1 小時超過月上限，**不計薪**\n\n公式：\n- 46 × 200 × 1.34 = **12,328**\n\n因此，加班費總額為 **12,328 元**。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "96837fe7-03de-4ff2-98bf-e2e1f8c42fd5",
+          "OccurredAt": "2026-09-27T09:13:26.905Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"overtime-pay-calculator\", \"skill_version_id\": \"e5fa5764-e54f-4215-9b80-1e2f8bd2ba7b\"}"
+        },
+        {
+          "TraceEventID": "2a53b605-6a3b-4e22-be3b-023a36c705b2",
+          "OccurredAt": "2026-09-27T09:13:26.922Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"overtime-pay-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 18, \"invocation_id\": \"call_owHQyf0ls16rPaSwjKxtGfLd\", \"result_summary\": \"Launching skill: overtime-pay-calculator\"}"
+        },
+        {
+          "TraceEventID": "c064df69-6716-41f4-968d-46baca4d2cf5",
+          "OccurredAt": "2026-09-27T09:13:29.877Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"這個月的加班費總額是 **12,328 元**。\\n\\n計算：\\n- 時薪 200 元\\n- 本月可計薪加班時數上限：46 小時\\n- 9/1～9/23 共 46 小時都以 **1.34 倍**計算\\n- 9/24 的 1 小時超過月上限，**不計薪**\\n\\n公式：\\n- 46 × 200 × 1.34 = **12,328**\\n\\n因此，加班費總額為 **12,328 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3a7a9ce6-f276-4ed0-8704-7e164052e138",
+          "OccurredAt": "2026-09-27T09:13:29.992Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"這個月的加班費總額是 **12,328 元**。\\n\\n計算：\\n- 時薪 200 元\\n- 本月可計薪加班時數上限：46 小時\\n- 9/1～9/23 共 46 小時都以 **1.34 倍**計算\\n- 9/24 的 1 小時超過月上限，**不計薪**\\n\\n公式：\\n- 46 × 200 × 1.34 = **12,328**\\n\\n因此，加班費總額為 **12,328 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cbffed88-e796-4b89-a162-fe8e018324b1",
+          "OccurredAt": "2026-09-27T09:13:34.031Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.018672, \"cost_source\": \"gateway\", \"duration_ms\": 10473, \"input_tokens\": 18603, \"token_source\": \"result\", \"output_tokens\": 654, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "9364b1c9-9bb4-4ab1-a516-0b7b99506df6",
+        "Result": "passed",
+        "Reason": "最終輸出明確給出加班費總額為 12,328 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這個月的加班費總額是 **12,328 元**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "737b7d55-7011-4e98-b1e5-3437f01a8cf1",
+        "Result": "passed",
+        "Reason": "最終輸出說明第 47 小時超過月上限而不計薪，且總額為 12,328 元而非 12,596 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 9/24 的 1 小時超過月上限，**不計薪**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "因此，加班費總額為 **12,328 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩項驗收標準均已滿足：輸出總額為 12,328 元，並明確未將第 47 小時計入薪資。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2310,
+      "CompletionTokens": 309,
+      "CostUSD": 0.006946900000000001,
+      "CostReported": true
+    }
+  }
+}

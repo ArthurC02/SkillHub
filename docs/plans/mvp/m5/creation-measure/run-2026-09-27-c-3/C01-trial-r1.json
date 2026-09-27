@@ -1,0 +1,173 @@
+{
+  "round": 1,
+  "sample_input": "「請幫我算這個月的平日加班費總額。時薪 200 元；每天加班時數清單如下：第 1 天 1 小時，第 2 天 3 小時，第 3 天 5 小時，第 4 天 40 小時。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一筆含多天加班時數的輸入時，輸出會回傳單一月總加班費。"
+    },
+    {
+      "text": "每天前 2 小時都按 1.34 倍時薪計算。"
+    },
+    {
+      "text": "每天第 2 到第 4 小時的部分都按 1.67 倍時薪計算。"
+    },
+    {
+      "text": "每天超過 4 小時的加班時數不計薪。"
+    },
+    {
+      "text": "當整月累計加班時數超過 46 小時時，超過部分不計薪。"
+    },
+    {
+      "text": "計算結果會正確合併各天、並反映日上限與月上限的截斷。"
+    }
+  ],
+  "final_output": "這個月的平日加班費總額是 **3,546 元**。\n\n截斷情況如下：\n- **日上限有截斷**：  \n  - 第 3 天原本 5 小時，計薪只算 4 小時  \n  - 第 4 天原本 40 小時，計薪只算 4 小時\n- **月上限未達**：  \n  - 計薪總時數是 **12 小時**，未超過 **46 小時**，所以沒有月上限截斷\n\n計算結果：**3,546 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "447699ce-8638-4c7a-9c2e-9c2a8b6d4953",
+    "run_id": "1064c5be-d247-4063-b3e1-7ed6f43d1c9c",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆正確給出單一總額 3,546 元，並正確執行每日 4 小時的日上限。惟原始每日加班時數合計為 49 小時，超過月上限 46 小時，回覆卻以日截斷後的 12 小時宣稱月上限未達，因此未正確反映月上限規則。",
+    "criterion_results": [
+      {
+        "criterion_id": "5e435329-742e-4055-89e3-03c433ee59f5",
+        "text": "給定一筆含多天加班時數的輸入時，輸出會回傳單一月總加班費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆針對多天清單給出單一的本月加班費總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個月的平日加班費總額是 **3,546 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e1e75fd3-bff3-4d75-aa4a-4a4bb3f43026",
+        "text": "每天前 2 小時都按 1.34 倍時薪計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在各日先以 2 小時、其後至第 4 小時分段並套用指定倍率時，依此輸入算出的總額為 3,546 元；輸出與該結果一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "計算結果：**3,546 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e9f8685d-dd88-4c23-a20f-7cb7e4d1904d",
+        "text": "每天第 2 到第 4 小時的部分都按 1.67 倍時薪計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在各日先以 2 小時、其後至第 4 小時分段並套用指定倍率時，依此輸入算出的總額為 3,546 元；輸出與該結果一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "計算結果：**3,546 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c79edca-ce0e-4705-bf31-fe239ec4c559",
+        "text": "每天超過 4 小時的加班時數不計薪。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確將第 3 天的第 5 小時及第 4 天超過第 4 小時的部分截斷，僅各計 4 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 3 天原本 5 小時，計薪只算 4 小時  \n  - 第 4 天原本 40 小時，計薪只算 4 小時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eed3cfc0-2762-47b8-9357-127ad98e6c50",
+        "text": "當整月累計加班時數超過 46 小時時，超過部分不計薪。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸入的每日加班時數累計為 49 小時，超過 46 小時；但回覆以日上限截斷後的 12 小時計算，並稱月上限未達，未將整月累計超過 46 小時的部分辨識為月上限截斷。",
+        "evidence": [
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"時薪 200 元；每天加班時數清單：第 1 天 1 小時，第 2 天 3 小時，第 3 天 5 小時，第 4 天 40 小時。請計算本月平日加班費總額，並說明是否有日上限或月上限需要截斷。\", \"skill\": \"pingri-jia-ban-fei-ji-suan\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_Ncp8plID5EstCWMDnmHfRSjr\", \"result_summary\": \"Launching skill: pingri-jia-ban-fei-ji-suan\"}",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **月上限未達**：  \n  - 計薪總時數是 **12 小時**，未超過 **46 小時**，所以沒有月上限截斷",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dedd0da2-5d5b-4f69-8938-70dcd34ecc85",
+        "text": "計算結果會正確合併各天、並反映日上限與月上限的截斷。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然結果正確反映日上限截斷，但未正確反映輸入合計 49 小時所觸發的月上限截斷，且明確表示沒有月上限截斷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **日上限有截斷**：  \n  - 第 3 天原本 5 小時，計薪只算 4 小時  \n  - 第 4 天原本 40 小時，計薪只算 4 小時",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **月上限未達**：  \n  - 計薪總時數是 **12 小時**，未超過 **46 小時**，所以沒有月上限截斷",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18875 input and 893 output tokens on gpt-5.4-mini; reported cost $0.0200 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 44,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

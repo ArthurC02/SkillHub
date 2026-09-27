@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請整理這封訂購 email：\n\n您好，\n\n我們要訂購以下品項：\n- 黑咖啡豆 3 包，單價 NT$250\n- 濾掛咖啡 2 盒，單價 NT$180\n- 保溫杯 1 個，單價 NT$420\n\n收件地址：台北市大安區復興南路一段 123 號 8 樓\n\n請協助確認出貨。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一封包含多個品項的訂購 email，Skill 會輸出所有品項、對應數量、單價與收件地址。"
+    },
+    {
+      "text": "輸出會把每個品項整理成獨立條目，不會把多個品項混在同一列。"
+    },
+    {
+      "text": "輸出會明確包含客戶指定的收件地址。"
+    },
+    {
+      "text": "輸出會保留 email 中可直接辨識的數量與單價，不會自行推算或改寫成另一種金額格式。"
+    },
+    {
+      "text": "若 email 內同時有其他非訂購資訊，Skill 仍只聚焦在訂購品項、數量、單價與收件地址。"
+    }
+  ],
+  "final_output": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f012b655-0cb0-420a-92ae-102af85a064a",
+    "run_id": "68330997-4ccf-44a3-859b-260a8aa25271",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整擷取三項訂購品項的數量與單價，並清楚列出收件地址。各品項分列呈現，數量及單價格式均保留原始內容，且未加入非訂購資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "9563be27-3d41-43e8-a785-8d10d2397f55",
+        "text": "給定一封包含多個品項的訂購 email，Skill 會輸出所有品項、對應數量、單價與收件地址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出三個品項，且各自包含數量、單價及收件地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b37b6b43-adab-4224-b76f-af7699001b4d",
+        "text": "輸出會把每個品項整理成獨立條目，不會把多個品項混在同一列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每個品項均以獨立的「品項」條目呈現，並在其下列出對應數量與單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "40888d58-4c34-4afb-a3e6-1645912af8c6",
+        "text": "輸出會明確包含客戶指定的收件地址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確列出客戶指定的完整收件地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 收件地址：台北市大安區復興南路一段 123 號 8 樓",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09f5aa5a-7f5a-4eab-8b96-5246a91253dc",
+        "text": "輸出會保留 email 中可直接辨識的數量與單價，不會自行推算或改寫成另一種金額格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留原信中可辨識的數量單位與單價格式，未改為總額或其他金額格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - 數量：3 包\n  - 單價：NT$250",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "  - 數量：2 盒\n  - 單價：NT$180",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "  - 數量：1 個\n  - 單價：NT$420",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "481850f6-281a-497b-a16c-a144b199d414",
+        "text": "若 email 內同時有其他非訂購資訊，Skill 仍只聚焦在訂購品項、數量、單價與收件地址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅整理訂購品項、數量、單價與收件地址，未納入信件中的確認出貨請求等非訂購資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：黑咖啡豆\n  - 數量：3 包\n  - 單價：NT$250\n- 品項：濾掛咖啡\n  - 數量：2 盒\n  - 單價：NT$180\n- 品項：保溫杯\n  - 數量：1 個\n  - 單價：NT$420\n- 收件地址：台北市大安區復興南路一段 123 號 8 樓",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2862 input and 256 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

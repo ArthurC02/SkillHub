@@ -1,0 +1,173 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理這段會議記錄成重點摘要：今天會議先討論了新產品上線時程，行銷說原訂 10 月 15 日上線太趕，建議延到 10 月 22 日；產品團隊同意調整，但要求在 10 月 18 日前完成文案與首頁素材。接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。最後決議：1) 上線日改為 10 月 22 日；2) 產品團隊負責確認功能清單；3) 行銷在 10 月 18 日前交付素材；4) 客服與行銷共同完成 FAQ 模板。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。"
+    },
+    {
+      "text": "輸出會另外列出條列重點，且每點都來自原始會議記錄。"
+    },
+    {
+      "text": "如果原文有決策內容，輸出會明確保留決策。"
+    },
+    {
+      "text": "如果原文有待辦事項，輸出會明確列出待辦事項。"
+    },
+    {
+      "text": "如果原文有重要結論，輸出會明確列出重要結論。"
+    },
+    {
+      "text": "輸出不會加入原文沒有提到的新資訊。"
+    }
+  ],
+  "final_output": "- **摘要**：本次會議主要討論新產品上線時程與上線前的準備事項。行銷認為原訂 10 月 15 日上線太趕，建議延後至 10 月 22 日，產品團隊同意調整。會中也確認了文案與首頁素材的交付期限，以及上線後 FAQ 回覆模板的準備需求。最後正式決議將上線日調整，並分配各單位後續工作。\n\n- **重點條列**：\n  - 新產品上線時程為主要討論議題。\n  - 行銷認為 10 月 15 日上線太趕，建議延至 10 月 22 日。\n  - 產品團隊同意調整上線日期，但要求 10 月 18 日前完成文案與首頁素材。\n  - 客服提出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\n  - 行銷與客服需共同整理 FAQ 回覆模板。\n\n- **決策**：\n  - 上線日改為 **10 月 22 日**。\n  - 產品團隊負責 **確認功能清單**。\n  - 行銷需在 **10 月 18 日前交付素材**。\n  - 客服與行銷共同完成 **FAQ 模板**。\n\n- **待辦事項**：\n  - **產品團隊**：確認功能清單。\n  - **行銷**：於 10 月 18 日前完成並交付文案與首頁素材。\n  - **客服、行銷**：共同整理 FAQ 回覆模板。\n\n- **重要結論**：\n  - 新產品上線日期確定延後至 **10 月 22 日**。\n  - 上線前需完成素材準備與 FAQ 應對規劃，以降低上線後支援壓力。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9860b602-7d04-4b13-8500-1ced6e709f19",
+    "run_id": "8da7ad34-17e2-4068-96b2-e1e557b6d73a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出符合摘要、重點條列、決策、待辦與重要結論的格式及內容要求。不過，重要結論中加入了原文未明示的「降低上線後支援壓力」效果，因此未完全符合不得新增資訊的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "a3ab7f97-2bdc-47b5-a809-380dc4e6ce8a",
+        "text": "當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出開頭的摘要段落共有 4 句，符合先提供 3–5 句摘要的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **摘要**：本次會議主要討論新產品上線時程與上線前的準備事項。行銷認為原訂 10 月 15 日上線太趕，建議延後至 10 月 22 日，產品團隊同意調整。會中也確認了文案與首頁素材的交付期限，以及上線後 FAQ 回覆模板的準備需求。最後正式決議將上線日調整，並分配各單位後續工作。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba6ace9c-99a3-4caa-9fc6-804c6f5fc679",
+        "text": "輸出會另外列出條列重點，且每點都來自原始會議記錄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出另設「重點條列」段落，所列時程、素材期限及 FAQ 準備事項皆可對應原始會議記錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **重點條列**：\n  - 新產品上線時程為主要討論議題。\n  - 行銷認為 10 月 15 日上線太趕，建議延至 10 月 22 日。\n  - 產品團隊同意調整上線日期，但要求 10 月 18 日前完成文案與首頁素材。\n  - 客服提出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\n  - 行銷與客服需共同整理 FAQ 回覆模板。",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "今天會議先討論了新產品上線時程，行銷說原訂 10 月 15 日上線太趕，建議延到 10 月 22 日；產品團隊同意調整，但要求在 10 月 18 日前完成文案與首頁素材。接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4b53a2c-9d19-4d21-869a-b7a40b9c81e5",
+        "text": "如果原文有決策內容，輸出會明確保留決策。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文有正式決議，輸出以獨立「決策」段落明確保留四項決議。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **決策**：\n  - 上線日改為 **10 月 22 日**。\n  - 產品團隊負責 **確認功能清單**。\n  - 行銷需在 **10 月 18 日前交付素材**。\n  - 客服與行銷共同完成 **FAQ 模板**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a776df38-a84c-4533-a011-4d154cea360a",
+        "text": "如果原文有待辦事項，輸出會明確列出待辦事項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以獨立「待辦事項」段落列出產品、行銷、客服與行銷的後續工作及期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **待辦事項**：\n  - **產品團隊**：確認功能清單。\n  - **行銷**：於 10 月 18 日前完成並交付文案與首頁素材。\n  - **客服、行銷**：共同整理 FAQ 回覆模板。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dd681c40-0a20-493c-a6ce-f70d7894d7ab",
+        "text": "如果原文有重要結論，輸出會明確列出重要結論。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以獨立「重要結論」段落明確列出上線日延後，以及上線前完成素材與 FAQ 規劃的結論。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **重要結論**：\n  - 新產品上線日期確定延後至 **10 月 22 日**。\n  - 上線前需完成素材準備與 FAQ 應對規劃，以降低上線後支援壓力。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "61e46315-4aa2-450d-a37d-dbd00da9728e",
+        "text": "輸出不會加入原文沒有提到的新資訊。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出加入「以降低上線後支援壓力」的目的與效果，但原始記錄僅提到上線後前兩週可能有大量 FAQ，未提及降低支援壓力。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 上線前需完成素材準備與 FAQ 應對規劃，以降低上線後支援壓力。",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19238 input and 776 output tokens on gpt-5.4-mini; reported cost $0.0198 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

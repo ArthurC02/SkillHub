@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請逐筆審核以下報帳申請並輸出判定結果：\n1. 員工：王小明；日期：2026-01-10；金額：2500 元；附件：有發票\n2. 員工：李小美；日期：2025-10-01；金額：8000 元；附件：有收據\n3. 員工：陳志豪；日期：2026-02-01；金額：12000 元；附件：有發票\n4. 員工：林雅婷；日期：2026-03-15；金額：500 元；附件：無\n5. 員工：黃建國；日期：2025-01-01；金額：600 元；附件：有收據\n6. 員工：吳欣怡；日期：2026-09-15；金額：3000 元；附件：有收據\n7. 員工：張庭瑋；日期：2026-09-20；金額：8000 元；附件：有發票\n8. 員工：許博文；日期：2026-09-18；金額：15000 元；附件：有收據",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入缺少發票或收據時，輸出必須是「退回」。"
+    },
+    {
+      "text": "當輸入日期距離今天超過 90 天且有附件時，輸出必須是「退回」。"
+    },
+    {
+      "text": "當有附件、日期在 90 天內、金額為 3000 元或以下時，輸出必須是「直接核准」。"
+    },
+    {
+      "text": "當有附件、日期在 90 天內、金額大於 3000 元且不超過 10000 元時，輸出必須是「主管簽核」。"
+    },
+    {
+      "text": "當有附件、日期在 90 天內、金額大於 10000 元時，輸出必須是「總經理簽核」。"
+    },
+    {
+      "text": "輸入多筆報帳時，輸出必須逐筆對應每一筆的判定結果。"
+    }
+  ],
+  "final_output": "1. 王小明：退回  \n2. 李小美：退回  \n3. 陳志豪：退回  \n4. 林雅婷：退回  \n5. 黃建國：退回  \n6. 吳欣怡：直接核准  \n7. 張庭瑋：主管簽核  \n8. 許博文：總經理簽核",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "631ae114-ab40-4052-956a-27b336d51b28",
+    "run_id": "b59a8ff2-a6e9-4545-bc39-cafffa3efb66",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有八筆報帳皆逐筆輸出，且判定與附件、日期及金額門檻相符。",
+    "criterion_results": [
+      {
+        "criterion_id": "b14d49e4-a338-4e46-820f-1ecaa5f0b313",
+        "text": "當輸入缺少發票或收據時，輸出必須是「退回」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "無附件的林雅婷申請被判定為退回。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 林雅婷：退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "52bb7a0e-2b4a-4994-a815-1028e6203931",
+        "text": "當輸入日期距離今天超過 90 天且有附件時，輸出必須是「退回」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "具附件但日期距今天超過 90 天的王小明、李小美、陳志豪與黃建國申請，均被判定為退回。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 王小明：退回  \n2. 李小美：退回  \n3. 陳志豪：退回  \n4. 林雅婷：退回  \n5. 黃建國：退回",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a5ad584f-eb69-4e41-9e58-7465579ba297",
+        "text": "當有附件、日期在 90 天內、金額為 3000 元或以下時，輸出必須是「直接核准」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有附件、日期在 90 天內且金額為 3000 元的吳欣怡申請被判定為直接核准。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 吳欣怡：直接核准",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "af477d3e-375f-45b0-9479-d0578887729b",
+        "text": "當有附件、日期在 90 天內、金額大於 3000 元且不超過 10000 元時，輸出必須是「主管簽核」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有附件、日期在 90 天內且金額為 8000 元的張庭瑋申請被判定為主管簽核。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7. 張庭瑋：主管簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9b037456-0484-4220-b622-45974238c957",
+        "text": "當有附件、日期在 90 天內、金額大於 10000 元時，輸出必須是「總經理簽核」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "有附件、日期在 90 天內且金額為 15000 元的許博文申請被判定為總經理簽核。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "8. 許博文：總經理簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c7097bb-64b9-465f-8e79-462c8bb08cbb",
+        "text": "輸入多筆報帳時，輸出必須逐筆對應每一筆的判定結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出依序列出 1 至 8 的八筆申請，且每筆皆有對應判定結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 王小明：退回  \n2. 李小美：退回  \n3. 陳志豪：退回  \n4. 林雅婷：退回  \n5. 黃建國：退回  \n6. 吳欣怡：直接核准  \n7. 張庭瑋：主管簽核  \n8. 許博文：總經理簽核",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3191 input and 461 output tokens on gpt-5.4-mini; reported cost $0.0076 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我核對這份出差報帳明細：\n2026/03/01 交通 120、午餐 180、停車 60；\n2026/03/02 早餐 90、計程車 240、晚餐 210；\n2026/03/03 客戶餐敘 680、捷運 45、影印 30；\n員工填寫總計：1670 元。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入包含多天明細時，Skill 會輸出每一天的加總金額。"
+    },
+    {
+      "text": "Skill 會輸出全部日期合計後的總金額。"
+    },
+    {
+      "text": "Skill 會明確判定總金額是否等於員工填寫的總計。"
+    },
+    {
+      "text": "當總金額不一致時，Skill 會輸出差額數字。"
+    },
+    {
+      "text": "Skill 不會憑空補出缺少的費用項目或總計。"
+    }
+  ],
+  "final_output": "核對結果如下：\n\n- 2026/03/01：120 + 180 + 60 = **360 元**\n- 2026/03/02：90 + 240 + 210 = **540 元**\n- 2026/03/03：680 + 45 + 30 = **755 元**\n\n**加總總計：1655 元**  \n**員工填寫總計：1670 元**\n\n**結果：不一致**  \n- 差額（計算總計 − 員工總計）：**-15 元**\n- 絕對差額：**15 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "143a5fab-0658-42b0-ab39-4caf1db8b0f7",
+    "run_id": "45bdb425-1fd3-4afa-9103-30325d43244b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆逐日加總、提供總計、與員工填寫總計進行明確比對，並在不一致時列出差額。回覆內容未顯示憑空新增任何費用項目或總計。",
+    "criterion_results": [
+      {
+        "criterion_id": "4863ddee-47ff-40e1-bd0f-f8a00a16d8bf",
+        "text": "在輸入包含多天明細時，Skill 會輸出每一天的加總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出三個日期各自的加總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026/03/01：120 + 180 + 60 = **360 元**\n- 2026/03/02：90 + 240 + 210 = **540 元**\n- 2026/03/03：680 + 45 + 30 = **755 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a4987242-d7ca-4405-ac80-05fa9fd3c5bf",
+        "text": "Skill 會輸出全部日期合計後的總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確提供全部日期加總後的總金額 1655 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**加總總計：1655 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd7630ab-f4e3-4a72-a20e-83f72daac608",
+        "text": "Skill 會明確判定總金額是否等於員工填寫的總計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將計算總計與員工填寫總計並列，並明確判定為不一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**員工填寫總計：1670 元**\n\n**結果：不一致**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "042942f3-486a-4c1f-b556-08d3a29f89cf",
+        "text": "當總金額不一致時，Skill 會輸出差額數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在判定不一致後，輸出差額 -15 元及絕對差額 15 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 差額（計算總計 − 員工總計）：**-15 元**\n- 絕對差額：**15 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1767d1b8-87f6-4766-882d-6b32eba64e21",
+        "text": "Skill 不會憑空補出缺少的費用項目或總計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅使用輸入中列出的費用數字、計算結果與已提供的員工總計，未補出額外費用項目或總計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026/03/01：120 + 180 + 60 = **360 元**\n- 2026/03/02：90 + 240 + 210 = **540 元**\n- 2026/03/03：680 + 45 + 30 = **755 元**\n\n**加總總計：1655 元**  \n**員工填寫總計：1670 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18662 input and 323 output tokens on gpt-5.4-mini; reported cost $0.0172 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

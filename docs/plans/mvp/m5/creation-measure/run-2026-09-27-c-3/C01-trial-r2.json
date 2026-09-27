@@ -1,0 +1,172 @@
+{
+  "round": 2,
+  "sample_input": "「請幫我算這個月的平日加班費總額。時薪 200 元；每天加班時數清單如下：第 1 天 1 小時，第 2 天 3 小時，第 3 天 5 小時，第 4 天 40 小時。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一筆含多天加班時數的輸入時，輸出會回傳單一月總加班費。"
+    },
+    {
+      "text": "每天前 2 小時都按 1.34 倍時薪計算。"
+    },
+    {
+      "text": "每天第 2 到第 4 小時的部分都按 1.67 倍時薪計算。"
+    },
+    {
+      "text": "每天超過 4 小時的加班時數不計薪。"
+    },
+    {
+      "text": "當整月累計加班時數超過 46 小時時，超過部分不計薪。"
+    },
+    {
+      "text": "計算結果會正確合併各天、並反映日上限與月上限的截斷。"
+    }
+  ],
+  "final_output": "這個月的平日加班費總額是 **3,546 元**。\n\n計算如下：\n- 第 1 天 1 小時：200 × 1.34 × 1 = **268**\n- 第 2 天 3 小時：前 2 小時 536，加上第 3 小時 334，共 **870**\n- 第 3 天 5 小時：只計前 4 小時，共 **1,204**\n- 第 4 天 40 小時：只計前 4 小時，共 **1,204**\n\n合計：**268 + 870 + 1,204 + 1,204 = 3,546 元**\n\n補充：你提供的總時數是 49 小時，超過每月 46 小時上限 3 小時，但這 3 小時都落在第 4 天超過日上限的部分，所以不影響最後可計薪金額。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ba3f00a9-4745-4d56-b96a-9f3ee565c516",
+    "run_id": "bf9e8a5d-6b86-4732-9bc6-cfed3e442e17",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆提供單一月總額，逐日套用前2小時1.34倍、其後至第4小時1.67倍及每日4小時上限，合計為3,546元。也辨識46小時月上限；本例的月超額時數均已落在每日不計薪的部分，因此不改變總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "b11a30ae-8853-45f7-892a-c53e7fa3d0f5",
+        "text": "給定一筆含多天加班時數的輸入時，輸出會回傳單一月總加班費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆針對多天時數輸入給出單一的月總加班費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個月的平日加班費總額是 **3,546 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b80e7505-428c-45cc-b4c8-5d72217d1e1c",
+        "text": "每天前 2 小時都按 1.34 倍時薪計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "計算中將前兩小時以每小時268元（200×1.34）計算；四小時上限日的1,204元亦與前兩小時1.34倍、後兩小時1.67倍一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 天 3 小時：前 2 小時 536，加上第 3 小時 334，共 **870**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 天 5 小時：只計前 4 小時，共 **1,204**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f312fd66-1f5c-406e-b67e-37dde495beac",
+        "text": "每天第 2 到第 4 小時的部分都按 1.67 倍時薪計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第3小時以334元計算，等於200×1.67；四小時上限日的1,204元也正確包含第3、4小時各1.67倍的金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 天 3 小時：前 2 小時 536，加上第 3 小時 334，共 **870**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 天 40 小時：只計前 4 小時，共 **1,204**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "632b6182-37bf-4ec1-a889-33994c6f19fc",
+        "text": "每天超過 4 小時的加班時數不計薪。",
+        "result": "passed",
+        "source": "model",
+        "reason": "5小時與40小時的兩天均明示只計前4小時，超過4小時部分未納入薪資。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 天 5 小時：只計前 4 小時，共 **1,204**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 天 40 小時：只計前 4 小時，共 **1,204**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5cb17e96-bfce-4b60-8ec1-cc94169e3b89",
+        "text": "當整月累計加班時數超過 46 小時時，超過部分不計薪。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆辨識總時數49小時超過46小時月上限3小時，並說明超額部分位於第4天已超過日上限而不影響可計薪金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "補充：你提供的總時數是 49 小時，超過每月 46 小時上限 3 小時，但這 3 小時都落在第 4 天超過日上限的部分，所以不影響最後可計薪金額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a4df2652-6675-479c-b30b-6b6322b397e8",
+        "text": "計算結果會正確合併各天、並反映日上限與月上限的截斷。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "the judge returned no verdict for this criterion",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18807 input and 1206 output tokens on gpt-5.4-mini; reported cost $0.0213 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

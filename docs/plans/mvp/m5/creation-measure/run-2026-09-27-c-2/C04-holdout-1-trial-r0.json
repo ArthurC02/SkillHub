@@ -1,0 +1,127 @@
+{
+  "round": 0,
+  "sample_input": "請幫我把以下會議記錄整理成重點摘要。\n\n會議記錄 9/20\n主持人：Lisa\n出席：Lisa, Tom, Amy, Kevin\n討論事項：\n1. Q4 行銷預算調整，Tom 說目前抓 200 萬，Amy 認為要加碼到 250 萬因為要投放新的社群廣告。\n2. 新產品上市時間，原訂 11 月 15 日，Kevin 說工廠端會延遲，改成 12 月 1 日。\n3. Amy 要在 9/25 前把新的廣告素材寄給 Tom 確認。\n4. 下次會議訂 10/3 下午 2 點。\n沒有其他結論。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出直接產出摘要內容，而不是只反問使用者要什麼格式或語氣而不動手整理"
+    },
+    {
+      "text": "摘要保留關鍵事實：預算討論的200萬與250萬兩個數字、新上市日期改為12月1日、下次會議時間10/3下午2點"
+    },
+    {
+      "text": "沒有捏造原文沒有的結論（例如沒有寫死預算最終定案為哪個數字，因為原文只到討論階段沒有結論）"
+    }
+  ],
+  "final_output": "**摘要：**  \n本次會議為 9/20 例會，由 Lisa 主持，與會者包含 Lisa、Tom、Amy、Kevin。會中主要討論兩件事：Q4 行銷預算調整，以及新產品上市時間延後。行銷預算方面，Tom 提出目前抓 200 萬，Amy 建議提高到 250 萬以投放新的社群廣告。新產品上市時間則因工廠延遲，原訂 11/15 改為 12/1。另有一項待辦是 Amy 需在 9/25 前將新廣告素材寄給 Tom 確認，下次會議訂於 10/3 下午 2 點。\n\n**重點條列：**  \n- 會議日期：9/20  \n- 主持人：Lisa  \n- 出席：Lisa、Tom、Amy、Kevin  \n- Q4 行銷預算調整：Tom 目前抓 200 萬，Amy 建議提高到 250 萬，用於新的社群廣告  \n- 新產品上市時間：原訂 11/15，因工廠端延遲，改為 12/1  \n- Amy 需在 9/25 前將新的廣告素材寄給 Tom 確認  \n- 下次會議時間：10/3 下午 2 點  \n\n**決策：**  \n- 新產品上市時間調整為 12/1  \n\n**待辦事項：**  \n- Amy 需在 9/25 前把新的廣告素材寄給 Tom 確認  \n\n**重要結論：**  \n- 會議未提及其他結論  \n- 下次會議訂於 10/3 下午 2 點",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "82ea6873-90ee-4aaa-9de1-1b3168714597",
+    "run_id": "5a6b90e9-eaba-4d0d-b0ef-2552e953c992",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆已直接完成中文重點摘要，保留所有指定關鍵日期與預算數字，且未將尚在討論的預算方案捏造成最終決議。",
+    "criterion_results": [
+      {
+        "criterion_id": "2688bb4d-8f63-48a5-a3e6-751ba52b3e20",
+        "text": "輸出直接產出摘要內容，而不是只反問使用者要什麼格式或語氣而不動手整理",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆直接提供會議摘要、重點條列、決策與待辦事項，並非僅追問格式或語氣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**摘要：**  \n本次會議為 9/20 例會，由 Lisa 主持，與會者包含 Lisa、Tom、Amy、Kevin。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "104e099f-044f-4fb0-a180-fc9ebed2e180",
+        "text": "摘要保留關鍵事實：預算討論的200萬與250萬兩個數字、新上市日期改為12月1日、下次會議時間10/3下午2點",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要明確保留預算討論的200萬與250萬、上市日改為12/1，以及下次會議為10/3下午2點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "行銷預算方面，Tom 提出目前抓 200 萬，Amy 建議提高到 250 萬以投放新的社群廣告。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "新產品上市時間則因工廠延遲，原訂 11/15 改為 12/1。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "下次會議訂於 10/3 下午 2 點。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "774954fc-2a27-4009-8853-8d35d95d9c76",
+        "text": "沒有捏造原文沒有的結論（例如沒有寫死預算最終定案為哪個數字，因為原文只到討論階段沒有結論）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆將預算表述為Tom的現行估算與Amy的建議，未宣稱200萬或250萬已是最終定案；唯一列出的決策為原文已有明示的上市日期調整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Q4 行銷預算調整：Tom 目前抓 200 萬，Amy 建議提高到 250 萬，用於新的社群廣告",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**決策：**  \n- 新產品上市時間調整為 12/1",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19430 input and 1128 output tokens on gpt-5.4-mini; reported cost $0.0156 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

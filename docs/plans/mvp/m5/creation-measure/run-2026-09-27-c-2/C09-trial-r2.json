@@ -1,0 +1,180 @@
+{
+  "round": 2,
+  "sample_input": "請幫我算下面訂單的實付金額：\n999\n1000\n2999\n3000\n4999\n5000\n8000",
+  "acceptance_criteria": [
+    {
+      "text": "給定 999 元，輸出實付金額為 1149 元，且未套用任何折扣。"
+    },
+    {
+      "text": "給定 1000 元，輸出實付金額為 1100 元，且只套用滿 1000 折 50。"
+    },
+    {
+      "text": "給定 2999 元，輸出實付金額為 3149 元，且只套用滿 1000 折 50。"
+    },
+    {
+      "text": "給定 3000 元，輸出實付金額為 2950 元，且只套用滿 3000 折 200。"
+    },
+    {
+      "text": "給定 4999 元，輸出實付金額為 4949 元，且只套用滿 3000 折 200。"
+    },
+    {
+      "text": "給定 5000 元，輸出實付金額為 4800 元，且只套用滿 5000、免運與折 200，不再疊加較低門檻。"
+    },
+    {
+      "text": "給定 8000 元，輸出實付金額為 7800 元，且仍只套用滿 5000 的那一階，不疊加 3000 或 1000 的折扣。"
+    }
+  ],
+  "final_output": "999：1149 元（未達門檻）\n1000：1100 元（1000-tier）\n2999：3149 元（1000-tier）\n3000：2950 元（3000-tier）\n4999：4949 元（3000-tier）\n5000：4800 元（5000-tier）\n8000：7800 元（5000-tier）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2be389be-3bf6-4a4e-8f57-f6511950ce1f",
+    "run_id": "2bc35eca-62df-42d0-a778-8c8b28c16362",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整列出七個訂單金額，所有實付金額均與各門檻的最高適用折扣及運費規則一致，且標示的 tier 與不疊加規則相符。",
+    "criterion_results": [
+      {
+        "criterion_id": "996ff8cf-f00d-4ec1-bbaa-80936782784a",
+        "text": "給定 999 元，輸出實付金額為 1149 元，且未套用任何折扣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 999 元的實付金額為 1149 元，並標示未達門檻，表示未套用折扣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "999：1149 元（未達門檻）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "faac2560-75d8-49c6-8bd9-3f446f8fcc71",
+        "text": "給定 1000 元，輸出實付金額為 1100 元，且只套用滿 1000 折 50。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 1000 元的實付金額為 1100 元，並標示為 1000-tier，符合只適用滿 1000 折 50 的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1000：1100 元（1000-tier）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "484f9c0b-ab4a-42d1-a3de-8d0f0087399b",
+        "text": "給定 2999 元，輸出實付金額為 3149 元，且只套用滿 1000 折 50。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 2999 元的實付金額為 3149 元，並標示為 1000-tier，符合只適用滿 1000 折 50 的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2999：3149 元（1000-tier）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "133a77e7-c5fd-4c11-8720-bcb8fe05a6f9",
+        "text": "給定 3000 元，輸出實付金額為 2950 元，且只套用滿 3000 折 200。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 3000 元的實付金額為 2950 元，並標示為 3000-tier，符合滿 3000 折 200 的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3000：2950 元（3000-tier）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a4b68af2-58a3-4189-9d00-0eed52ffb78f",
+        "text": "給定 4999 元，輸出實付金額為 4949 元，且只套用滿 3000 折 200。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 4999 元的實付金額為 4949 元，並標示為 3000-tier，符合只適用滿 3000 折 200 的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4999：4949 元（3000-tier）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "77343a0c-b953-4a53-8e8a-979fccd6d92e",
+        "text": "給定 5000 元，輸出實付金額為 4800 元，且只套用滿 5000、免運與折 200，不再疊加較低門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 5000 元的實付金額為 4800 元，並標示為 5000-tier，符合滿 5000 免運、折 200 且不疊加較低門檻的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5000：4800 元（5000-tier）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "784299d3-5155-4116-8ff4-f234a1e03a65",
+        "text": "給定 8000 元，輸出實付金額為 7800 元，且仍只套用滿 5000 的那一階，不疊加 3000 或 1000 的折扣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 8000 元的實付金額為 7800 元，並標示為 5000-tier，符合仍只適用滿 5000 那一階、未疊加較低折扣的結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "8000：7800 元（5000-tier）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18459 input and 700 output tokens on gpt-5.4-mini; reported cost $0.0187 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

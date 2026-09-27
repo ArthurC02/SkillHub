@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "fa87656e-70e5-4fe3-85a4-31540e4a40cf",
+    "EvaluationID": "5e30f5d8-c9d0-43c8-ae1d-27813576005f",
+    "Skill": {
+      "Name": "calculate-overtime-pay",
+      "Summary": "計算平日加班費總額；當輸入時薪與每日加班時數清單，且需要依每日前 2 小時、2 到 4 小時與月上限 46 小時規則試算時使用。"
+    },
+    "UserPrompt": "請幫我算這個月的平日加班費總額：時薪 200 元；每天加班時數清單如下：\n第 1 天 1.5 小時\n第 2 天 3 小時\n第 3 天 5 小時\n第 4 天 40 小時\n第 5 天 2 小時\n第 6 天 0 小時\n第 7 天 1 小時\n第 8 天 2.5 小時\n第 9 天 3 小時\n第 10 天 1 小時",
+    "Criteria": [
+      {
+        "ID": "a595a192-47f2-4574-b3a6-0dbf5f6f2205",
+        "Text": "當輸入一組時薪與多天加班時數時，Skill 會輸出一個數字型的月加班費總額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d87e1117-9086-40ff-9c94-444972752f9b",
+        "Text": "同一天的前 2 小時以 1.34 倍時薪計算，超過 2 小時到 4 小時的部分以 1.67 倍時薪計算。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1021e9c4-cb3f-4d33-b2f2-35cad209e16b",
+        "Text": "單日加班時數超過 4 小時時，只有前 4 小時計薪，超過部分不計薪。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "adeef5ee-f5db-41bc-93b5-3816d87b10d9",
+        "Text": "當整月加班總時數超過 46 小時時，只有前 46 小時計薪，超過部分不計薪。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "91c2746d-c957-42ef-99de-a6db46cca5ce",
+        "Text": "輸出結果會正確累加所有可計薪的每日加班費，得到月總額。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "這個月的平日加班費總額是 **6,325 元**。\n\n補充：\n- 依每日 4 小時上限計算後，這 10 天合計 **22 小時**\n- 未超過每月 **46 小時** 上限，因此月上限未觸發",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b7365bdc-8b84-4c5a-943a-2b607406534a",
+          "OccurredAt": "2026-09-27T08:49:38.668Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"calculate-overtime-pay\", \"skill_version_id\": \"4dbdbb55-9bb2-4d3a-ab17-1409d09f326f\"}"
+        },
+        {
+          "TraceEventID": "7e5d4ae5-82f3-4f89-a3dc-93758bd0dbf6",
+          "OccurredAt": "2026-09-27T08:49:38.678Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"calculate-overtime-pay\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_GdlDIYORygyYh4iAwKEuw2ES\", \"result_summary\": \"Launching skill: calculate-overtime-pay\"}"
+        },
+        {
+          "TraceEventID": "b6423b48-1a27-47a9-addf-1ec4d1ec23ea",
+          "OccurredAt": "2026-09-27T08:49:42.965Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"這個月的平日加班費總額是 **6,325 元**。\\n\\n補充：\\n- 依每日 4 小時上限計算後，這 10 天合計 **22 小時**\\n- 未超過每月 **46 小時** 上限，因此月上限未觸發\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "31128ffb-76e0-4640-a964-48c3e7e52f5b",
+          "OccurredAt": "2026-09-27T08:49:43.369Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"這個月的平日加班費總額是 **6,325 元**。\\n\\n補充：\\n- 依每日 4 小時上限計算後，這 10 天合計 **22 小時**\\n- 未超過每月 **46 小時** 上限，因此月上限未觸發\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0f8829df-39c1-4557-8fba-d729f803a05c",
+          "OccurredAt": "2026-09-27T08:49:47.448Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01446975, \"cost_source\": \"gateway\", \"duration_ms\": 10824, \"input_tokens\": 18935, \"token_source\": \"result\", \"output_tokens\": 1043, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a595a192-47f2-4574-b3a6-0dbf5f6f2205",
+        "Result": "passed",
+        "Reason": "最終輸出提供了明確的數字型月加班費總額 6,325 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這個月的平日加班費總額是 **6,325 元**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d87e1117-9086-40ff-9c94-444972752f9b",
+        "Result": "passed",
+        "Reason": "以每日前 2 小時 1.34 倍、其後至第 4 小時 1.67 倍計算，各日可計薪時數後的正確月總額為 6,325 元，與輸出一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這個月的平日加班費總額是 **6,325 元**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1021e9c4-cb3f-4d33-b2f2-35cad209e16b",
+        "Result": "passed",
+        "Reason": "輸出明示採用每日 4 小時上限，且將含有 40 小時加班的一日納入後的可計薪合計列為正確的 22 小時。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 依每日 4 小時上限計算後，這 10 天合計 **22 小時**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "adeef5ee-f5db-41bc-93b5-3816d87b10d9",
+        "Result": "passed",
+        "Reason": "每日上限處理後合計為 22 小時，未達 46 小時；輸出也正確說明月上限未觸發。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 未超過每月 **46 小時** 上限，因此月上限未觸發"
+          }
+        ]
+      },
+      {
+        "CriterionID": "91c2746d-c957-42ef-99de-a6db46cca5ce",
+        "Result": "passed",
+        "Reason": "依各日可計薪時數與規定倍率加總，正確月總額為 6,325 元，與最終輸出一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "這個月的平日加班費總額是 **6,325 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出正確套用每日 4 小時上限，得到 22 小時可計薪加班；未觸發 46 小時月上限。依規定倍率累加後的月加班費 6,325 元正確。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2418,
+      "CompletionTokens": 1080,
+      "CostUSD": 0.0190035,
+      "CostReported": true
+    }
+  }
+}

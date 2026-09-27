@@ -1,0 +1,121 @@
+{
+  "request": {
+    "RunID": "7c935fa3-f1aa-4869-93da-3f78bb5905f4",
+    "EvaluationID": "0930647a-bd79-442d-b1c7-f64d40253cb0",
+    "Skill": {
+      "Name": "personal-loan-application-evaluator",
+      "Summary": "Evaluate a personal loan application from credit score and debt ratio, and use it when you need a one-pass decision of approve, manual review, or reject. Use this Skill for single-application underwriting checks that must apply strictest-rule precedence when multiple conditions match."
+    },
+    "UserPrompt": "請評估以下 3 筆信貸申請：\nApp1：信用分數 700 分，負債比 40%\nApp2：信用分數 699 分，負債比 20%\nApp3：信用分數 750 分，負債比 45%\n請針對每一筆輸出判定結果。",
+    "Criteria": [
+      {
+        "ID": "973c37db-83fc-430a-b074-899ce3b98e93",
+        "Text": "App1（信用分數700、負債比40%）判定為核准",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1b97e4dc-1c33-4ad0-8e1a-f532ffc0c074",
+        "Text": "App2（信用分數699、負債比20%）判定為複審",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "baacb600-2ed0-4870-95d2-3d94d9338534",
+        "Text": "App3（信用分數750、負債比45%）判定為複審",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- App1：**直接核准**\n- App2：**需要人工複審**\n- App3：**需要人工複審**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "00af2e71-c379-4a2d-b01d-8b81b5eaca38",
+          "OccurredAt": "2026-09-27T09:07:17.656Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"personal-loan-application-evaluator\", \"skill_version_id\": \"69e075a6-90ef-489e-b494-0713f1cd3753\"}"
+        },
+        {
+          "TraceEventID": "9c427b23-8c92-4909-a7f4-ccd55f3e9a77",
+          "OccurredAt": "2026-09-27T09:07:17.679Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"personal-loan-application-evaluator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 24, \"invocation_id\": \"call_RbYtTMbhRwtDkKRo6OiJUL3L\", \"result_summary\": \"Launching skill: personal-loan-application-evaluator\"}"
+        },
+        {
+          "TraceEventID": "58a25d9e-f7d3-4b93-b081-87c65c3c50f1",
+          "OccurredAt": "2026-09-27T09:07:19.334Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- App1：**直接核准**\\n- App2：**需要人工複審**\\n- App3：**需要人工複審**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "fc34fa6e-6521-4c59-aef7-48f57c6760b7",
+          "OccurredAt": "2026-09-27T09:07:19.525Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- App1：**直接核准**\\n- App2：**需要人工複審**\\n- App3：**需要人工複審**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "9d7334ad-228d-4b71-8f19-fe5dc16b7664",
+          "OccurredAt": "2026-09-27T09:07:23.59Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01452675, \"cost_source\": \"gateway\", \"duration_ms\": 8091, \"input_tokens\": 18573, \"token_source\": \"result\", \"output_tokens\": 316, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "973c37db-83fc-430a-b074-899ce3b98e93",
+        "Result": "passed",
+        "Reason": "最終輸出將 App1 判定為「直接核准」，符合核准判定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- App1：**直接核准**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1b97e4dc-1c33-4ad0-8e1a-f532ffc0c074",
+        "Result": "passed",
+        "Reason": "最終輸出將 App2 判定為「需要人工複審」，符合複審判定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- App2：**需要人工複審**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "baacb600-2ed0-4870-95d2-3d94d9338534",
+        "Result": "passed",
+        "Reason": "最終輸出將 App3 判定為「需要人工複審」，符合複審判定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- App3：**需要人工複審**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三筆申請的輸出判定均與各自驗收標準一致。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2117,
+      "CompletionTokens": 324,
+      "CostUSD": 0.0066444,
+      "CostReported": true
+    }
+  }
+}

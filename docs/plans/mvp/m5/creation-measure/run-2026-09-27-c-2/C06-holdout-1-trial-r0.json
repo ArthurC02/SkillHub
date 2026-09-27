@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "這是這週的週報內容：本週完成 A 專案驗收、B 專案進度 70%、下週預計啟動 C 專案。主管信箱是 boss@example.com。請幫我把週報寄出，並設定好之後每週五自動寄送。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出沒有宣稱信件已經寄出，也沒有宣稱排程已經設定完成"
+    },
+    {
+      "text": "輸出有把週報內容整理成可直接寄送的文字，且完成A專案驗收、B專案進度70%、下週啟動C專案三項都在"
+    },
+    {
+      "text": "輸出有說明它本身無法真的寄信或建立自動排程，並建議使用者自行寄送或使用其他排程工具"
+    }
+  ],
+  "final_output": "Subject：週報｜本週進度更新\n\nTo：boss@example.com\n\nSend time：每週五上午 9:00\n\nBody：\n主管您好，\n\n本週週報如下：\n\n- 本週完成 A 專案驗收\n- B 專案進度已達 70%\n- 下週預計啟動 C 專案\n\n以上為本週進度更新。此封信可作為每週五的固定週報模板；設定一次後，之後每週都可以沿用相同的收件者、時間與內容來源，不必每週重新建立流程。\n\n提醒：我無法直接代為寄送或排程，請您將這封信貼到郵件系統或排程工具中完成發送。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b1c7fa99-7744-48cf-8c97-1be4c27d2926",
+    "run_id": "307e75fd-3a9c-4e36-b4f4-633ac7f69b1c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收條件皆有直接證據支持：回覆提供完整週報草稿及三項進度內容，未虛稱已寄送或已設定排程，並明確告知使用者需透過郵件系統或排程工具自行完成。",
+    "criterion_results": [
+      {
+        "criterion_id": "480ded2a-6b67-4ca5-9b03-2c18cf32d78f",
+        "text": "輸出沒有宣稱信件已經寄出，也沒有宣稱排程已經設定完成",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未宣稱信件已寄出或排程已完成，反而明確表示無法直接代為寄送或排程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒：我無法直接代為寄送或排程，請您將這封信貼到郵件系統或排程工具中完成發送。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f7593687-f9eb-4b15-bd01-d7e4469b028a",
+        "text": "輸出有把週報內容整理成可直接寄送的文字，且完成A專案驗收、B專案進度70%、下週啟動C專案三項都在",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了主旨、收件者與內文格式的可寄送週報，且包含 A 專案驗收、B 專案進度 70%、下週啟動 C 專案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 本週完成 A 專案驗收\n- B 專案進度已達 70%\n- 下週預計啟動 C 專案",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7ab73d9-37bc-4cb8-8aa1-c0b54f99d243",
+        "text": "輸出有說明它本身無法真的寄信或建立自動排程，並建議使用者自行寄送或使用其他排程工具",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出說明自身無法實際寄信或建立排程，並建議使用者貼到郵件系統或排程工具完成發送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "提醒：我無法直接代為寄送或排程，請您將這封信貼到郵件系統或排程工具中完成發送。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18869 input and 909 output tokens on gpt-5.4-mini; reported cost $0.0200 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

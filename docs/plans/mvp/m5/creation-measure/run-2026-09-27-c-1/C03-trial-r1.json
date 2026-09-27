@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請整理這封訂購 email，列出品項、數量、單價與收件地址：\n\n您好，\n我們要訂購 3 組 A4 文件夾，每組 120 元；另外再訂購 10 支原子筆，每支 15 元。\n請寄到：台北市大安區復興南路一段 123 號 8 樓，收件人：林小姐。\n謝謝。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段包含多個訂購品項的 email 時，輸出會逐項列出每個品項的品名、數量與單價。"
+    },
+    {
+      "text": "輸入中若包含收件地址，輸出會明確整理出該收件地址。"
+    },
+    {
+      "text": "輸入中若有多個品項，輸出不會把品項混在一起，而是分開成多筆。"
+    },
+    {
+      "text": "輸入中的數量與單價會以原文中的數值正確呈現，不會自行換算或推測。"
+    },
+    {
+      "text": "若 email 內容同時包含訂購資訊與收件資訊，輸出會同時保留兩者。"
+    }
+  ],
+  "final_output": "- 訂購品項：\n  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支\n\n- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓\n  - 收件人：林小姐",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "05456812-679b-4bcb-9ad3-06ed263a13b7",
+    "run_id": "5c92775a-9b50-4b6d-96d1-5df090d73c57",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收標準皆已滿足：兩項訂購品項分別列出正確數量與單價，並清楚保留收件地址及收件人資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "8e8ba8e7-2ee1-4203-bf62-4ab8170e01c9",
+        "text": "輸入一段包含多個訂購品項的 email 時，輸出會逐項列出每個品項的品名、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐項列出兩個品項，且各自包含品名、數量與單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "24ee3510-d3a1-4f15-a623-b860647a9823",
+        "text": "輸入中若包含收件地址，輸出會明確整理出該收件地址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「收件地址」欄位明確整理出完整地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91140bf1-dcc9-4d84-a95c-4f1b212fe68d",
+        "text": "輸入中若有多個品項，輸出不會把品項混在一起，而是分開成多筆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個品項以獨立條列分開呈現，沒有混在同一筆中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4ae168c9-454f-4ceb-8a63-0db156291591",
+        "text": "輸入中的數量與單價會以原文中的數值正確呈現，不會自行換算或推測。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的數量與單價保留原文數值：3、120、10、15，且未自行換算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e5a298ed-f690-4796-9aa7-2119cf2622fd",
+        "text": "若 email 內容同時包含訂購資訊與收件資訊，輸出會同時保留兩者。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時保留訂購品項資訊與收件地址、收件人資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 訂購品項：\n  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支\n\n- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓\n  - 收件人：林小姐",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2826 input and 309 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

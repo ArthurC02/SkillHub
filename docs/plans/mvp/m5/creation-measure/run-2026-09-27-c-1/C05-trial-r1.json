@@ -1,0 +1,157 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理成客服短回覆：訂單編號 A12345，退款金額 1200 元，退款日期 2024/09/18，客戶已確認收到通知。",
+  "acceptance_criteria": [
+    {
+      "text": "在單次試跑中，輸出文字長度不超過 30 個字。"
+    },
+    {
+      "text": "輸出中一定包含退款金額。"
+    },
+    {
+      "text": "輸出中一定包含退款日期。"
+    },
+    {
+      "text": "輸出中一定包含訂單編號。"
+    },
+    {
+      "text": "若輸入同時提供三項資訊，輸出會保留三項且不新增無關內容。"
+    },
+    {
+      "text": "若輸入缺少任一必要資訊，輸出會指出缺少項目而不是自行補寫。"
+    }
+  ],
+  "final_output": "訂單A12345，退款1200元，2024/09/18",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4237b0cc-ab7a-45d2-bae9-b84a0016b641",
+    "run_id": "0f9cd808-f244-4638-ba10-0b4bed4bf8ce",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次短回覆符合長度限制，並保留訂單編號、退款金額與退款日期，未新增無關內容。由於測試輸入資訊完整，無法判定缺少必要資訊時是否會指出缺少項目。",
+    "criterion_results": [
+      {
+        "criterion_id": "90ae943a-55d4-4dc0-b470-bddf1265ed57",
+        "text": "在單次試跑中，輸出文字長度不超過 30 個字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為「訂單A12345，退款1200元，2024/09/18」，長度未超過 30 個字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單A12345，退款1200元，2024/09/18",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8c8b46e-7457-4ca0-b88e-b4dcc7755d78",
+        "text": "輸出中一定包含退款金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含退款金額 1200 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單A12345，退款1200元，2024/09/18",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9222d2b4-5080-4980-84e5-e58dc53cde31",
+        "text": "輸出中一定包含退款日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含退款日期 2024/09/18。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單A12345，退款1200元，2024/09/18",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "396ee0fe-e008-4256-a1ed-17418dbd743c",
+        "text": "輸出中一定包含訂單編號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含訂單編號 A12345。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單A12345，退款1200元，2024/09/18",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a64bb07-4cf0-4fb1-8584-b80947c85c40",
+        "text": "若輸入同時提供三項資訊，輸出會保留三項且不新增無關內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本次輸入提供訂單編號、退款金額與退款日期；輸出均保留，且未見新增無關資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單A12345，退款1200元，2024/09/18",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3913be95-d9b1-4c74-afe5-7d1613a6d313",
+        "text": "若輸入缺少任一必要資訊，輸出會指出缺少項目而不是自行補寫。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入未缺少必要資訊，沒有缺少資訊時的輸出行為可供判斷。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2860 input and 480 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

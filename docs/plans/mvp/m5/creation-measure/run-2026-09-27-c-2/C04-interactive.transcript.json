@@ -1,0 +1,99 @@
+{
+  "acceptance_criteria": [
+    "當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。",
+    "輸出會另外列出條列重點，且每點都來自原始會議記錄。",
+    "如果原文有決策內容，輸出會明確保留決策。",
+    "如果原文有待辦事項，輸出會明確列出待辦事項。",
+    "如果原文有重要結論，輸出會明確列出重要結論。",
+    "輸出不會加入原文沒有提到的新資訊。"
+  ],
+  "brief": "任務：建立一個 Skill，把冗長的會議記錄整理成重點摘要。\n\n輸入：使用者貼上的會議記錄文字。\n\n輸出：\n- 一份精簡摘要\n- 以條列方式呈現重點\n- 保留會議中的決策、待辦事項與重要結論\n\n工具需求：不需要外部工具。\n\n限制：只根據使用者提供的會議記錄整理，不補充外部資訊。\n\n假設：\n- 會議記錄是以文字直接貼上\n- 使用者要的是中文摘要\n- 預設輸出以條列重點為主",
+  "messages": [
+    {
+      "role": "user",
+      "content": "我要一個 Skill，幫我把落落長的會議記錄整理成重點摘要。",
+      "created_at": "2026-09-27T09:17:24.203775291Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先提議一版可確認的 brief：\n\n**任務**：建立一個 Skill，把冗長的會議記錄整理成重點摘要。\n\n**輸入**：使用者貼上的會議記錄文字。\n\n**輸出**：\n- 一份精簡摘要\n- 以條列方式呈現重點\n- 保留會議中的決策、待辦事項與重要結論\n\n**工具需求**：不需要外部工具。\n\n**限制**：只根據使用者提供的會議記錄整理，不補充外部資訊。\n\n**假設**：\n- 會議記錄是以文字直接貼上\n- 使用者要的是中文摘要\n- 預設輸出以條列重點為主\n\n**驗收條件**：\n1. 當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。\n2. 輸出會另外列出條列重點，且每點都來自原始會議記錄。\n3. 如果原文有決策內容，輸出會明確保留決策。\n4. 如果原文有待辦事項，輸出會明確列出待辦事項。\n5. 如果原文有重要結論，輸出會明確列出重要結論。\n6. 輸出不會加入原文沒有提到的新資訊。\n\n**sample_input**：\n請幫我整理這段會議記錄成重點摘要：今天會議先討論了新產品上線時程，行銷說原訂 10 月 15 日上線太趕，建議延到 10 月 22 日；產品團隊同意調整，但要求在 10 月 18 日前完成文案與首頁素材。接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。最後決議：1) 上線日改為 10 月 22 日；2) 產品團隊負責確認功能清單；3) 行銷在 10 月 18 日前交付素材；4) 客服與行銷共同完成 FAQ 模板。",
+      "created_at": "2026-09-27T09:17:30.304522719Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據確認的 brief 直接起草 Skill，保留原本的任務、輸入、輸出與限制，並把驗收條件寫成可用單次試跑驗證的形式。",
+      "created_at": "2026-09-27T09:17:36.820316222Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T09:17:36.821340561Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的評估結果需要修正；我保留已驗證的草稿不變，供你直接接受或告訴我要改哪裡。",
+      "created_at": "2026-09-27T09:17:42.653194581Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"9860b602-7d04-4b13-8500-1ced6e709f19\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"輸出符合摘要、重點條列、決策、待辦與重要結論的格式及內容要求。不過，重要結論中加入了原文未明示的「降低上線後支援壓力」效果，因此未完全符合不得新增資訊的要求。\",\"criterion_results\":[{\"criterion_id\":\"61e46315-4aa2-450d-a37d-dbd00da9728e\",\"text\":\"輸出不會加入原文沒有提到的新資訊。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":579,\"end\":613},\"excerpt\":\"- 上線前需完成素材準備與 FAQ 應對規劃，以降低上線後支援壓力。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"1c576b62-4319-4eaa-ad52-613e54556819\",\"occurred_at\":\"2026-09-27T09:18:09.297Z\",\"excerpt\":\"接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出加入「以降低上線後支援壓力」的目的與效果，但原始記錄僅提到上線後前兩週可能有大量 FAQ，未提及降低支援壓力。\"},{\"criterion_id\":\"a3ab7f97-2bdc-47b5-a809-380dc4e6ce8a\",\"text\":\"當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":143},\"excerpt\":\"- **摘要**：本次會議主要討論新產品上線時程與上線前的準備事項。行銷認為原訂 10 月 15 日上線太趕，建議延後至 10 月 22 日，產品團隊同意調整。會中也確認了文案與首頁素材的交付期限，以及上線後 FAQ 回覆模板的準備需求。最後正式決議將上線日調整，並分配各單位後續工作。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出開頭的摘要段落共有 4 句，符合先提供 3–5 句摘要的要求。\"},{\"criterion_id\":\"ba6ace9c-99a3-4caa-9fc6-804c6f5fc679\",\"text\":\"輸出會另外列出條列重點，且每點都來自原始會議記錄。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":145,\"end\":317},\"excerpt\":\"- **重點條列**：\\n  - 新產品上線時程為主要討論議題。\\n  - 行銷認為 10 月 15 日上線太趕，建議延至 10 月 22 日。\\n  - 產品團隊同意調整上線日期，但要求 10 月 18 日前完成文案與首頁素材。\\n  - 客服提出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\\n  - 行銷與客服需共同整理 FAQ 回覆模板。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"1c576b62-4319-4eaa-ad52-613e54556819\",\"occurred_at\":\"2026-09-27T09:18:09.297Z\",\"excerpt\":\"今天會議先討論了新產品上線時程，行銷說原訂 10 月 15 日上線太趕，建議延到 10 月 22 日；產品團隊同意調整，但要求在 10 月 18 日前完成文案與首頁素材。接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出另設「重點條列」段落，所列時程、素材期限及 FAQ 準備事項皆可對應原始會議記錄。\"},{\"criterion_id\":\"f4b53a2c-9d19-4d21-869a-b7a40b9c81e5\",\"text\":\"如果原文有決策內容，輸出會明確保留決策。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":319,\"end\":431},\"excerpt\":\"- **決策**：\\n  - 上線日改為 **10 月 22 日**。\\n  - 產品團隊負責 **確認功能清單**。\\n  - 行銷需在 **10 月 18 日前交付素材**。\\n  - 客服與行銷共同完成 **FAQ 模板**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"原文有正式決議，輸出以獨立「決策」段落明確保留四項決議。\"},{\"criterion_id\":\"a776df38-a84c-4533-a011-4d154cea360a\",\"text\":\"如果原文有待辦事項，輸出會明確列出待辦事項。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":433,\"end\":531},\"excerpt\":\"- **待辦事項**：\\n  - **產品團隊**：確認功能清單。\\n  - **行銷**：於 10 月 18 日前完成並交付文案與首頁素材。\\n  - **客服、行銷**：共同整理 FAQ 回覆模板。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以獨立「待辦事項」段落列出產品、行銷、客服與行銷的後續工作及期限。\"},{\"criterion_id\":\"dd681c40-0a20-493c-a6ce-f70d7894d7ab\",\"text\":\"如果原文有重要結論，輸出會明確列出重要結論。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":533,\"end\":613},\"excerpt\":\"- **重要結論**：\\n  - 新產品上線日期確定延後至 **10 月 22 日**。\\n  - 上線前需完成素材準備與 FAQ 應對規劃，以降低上線後支援壓力。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以獨立「重要結論」段落明確列出上線日延後，以及上線前完成素材與 FAQ 規劃的結論。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"a1dc9bfd-6f86-47eb-99b7-400408525ce6\",\"occurred_at\":\"2026-09-27T09:18:09.28Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"meeting-notes-highlighter\\\", \\\"skill_version_id\\\": \\\"813f48ac-4309-4120-b4e6-945aa4dedbcb\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 19238 input and 776 output tokens on gpt-5.4-mini; reported cost $0.0198 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"8da7ad34-17e2-4068-96b2-e1e557b6d73a\",\"skill_version_id\":\"813f48ac-4309-4120-b4e6-945aa4dedbcb\"}",
+      "created_at": "2026-09-27T09:18:31.080037081Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「輸出不會加入原文沒有提到的新資訊。」：沒過——輸出加入「以降低上線後支援壓力」的目的與效果，但原始記錄僅提到上線後前兩週可能有大量 FAQ，未提及降低支援壓力。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T09:18:31.080077584Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T09:18:31.09047491Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。",
+      "created_at": "2026-09-27T09:18:39.498020123Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依照未通過條件修正後的提議版本，並把範例輸入補強成可一次試跑驗證所有條件的樣本。\n\n這次保留了原本 brief 與 6 個驗收條件不變，只針對兩處做了調整：\n1. 草稿正文中，刪除可能導致新增推論的示例效果描述，改成只寫原文明示內容。\n2. 範例輸入新增第二段會議記錄，刻意放入「不能推論出支援壓力／效率／增加人力」的情境，讓單次試跑能直接檢查是否有亂補資訊。\n\n你可以直接確認這版再跑一次；如果你要我再改輸出格式、語氣或摘要長度，也可以直接說。",
+      "created_at": "2026-09-27T09:18:47.797629763Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已依照未通過的條件修正草稿，重點是移除會把原文「上線後前兩週可能會有大量 FAQ」推成「降低支援壓力」的句子，改成只保留原文明示內容，避免新增推論。另把範例輸入補成兩段會議記錄：第一段覆蓋決策、待辦、重要結論與摘要；第二段明確加入「沒有提到增加人力、減少壓力或提升效率」，讓單次試跑能驗到不亂補資訊的要求。",
+      "created_at": "2026-09-27T09:18:54.356733422Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T09:18:54.35946268Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"ac3b6be3-f87b-4116-8eb0-25c648df1ba1\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"此回覆正確以條列保留決策、待辦、重要重點與原文未討論事項，且未加入新資訊。但未符合先提供 3–5 句摘要段落的要求，而是直接進入條列。\",\"criterion_results\":[{\"criterion_id\":\"9562c6f2-3912-43e6-ab13-c3b6fac11f62\",\"text\":\"當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":65},\"excerpt\":\"**主要決議**\\n- 新產品上線日由 **10 月 15 日** 延後至 **10 月 22 日**。\\n- 產品團隊同意調整時程。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出一開始即為「主要決議」條列，未先提供 3–5 句的摘要段落。\"},{\"criterion_id\":\"3d4d7f3f-8de9-40f1-87ff-bc534e81f299\",\"text\":\"輸出會另外列出條列重點，且每點都來自原始會議記錄。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":183,\"end\":301},\"excerpt\":\"- 行銷認為原訂 10 月 15 日上線太趕，因此建議延後。\\n- 客服提到，上線後前兩週可能會有大量 FAQ。\\n- 第二段會議記錄僅提到 **11 月可能會有大量詢問**；**未討論是否增補人力**，也**未提到減少壓力或提升效率**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出另外以條列列出會議重點，內容涵蓋時程、FAQ 預期詢問與第二段記錄的未討論事項，均可對應原始記錄。\"},{\"criterion_id\":\"0526229c-7851-47e4-87a4-a40f2e90ab80\",\"text\":\"如果原文有決策內容，輸出會明確保留決策。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":51},\"excerpt\":\"**主要決議**\\n- 新產品上線日由 **10 月 15 日** 延後至 **10 月 22 日**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"原文的上線日期調整決策被明確保留於「主要決議」欄位。\"},{\"criterion_id\":\"2b52ff53-7271-4702-8c34-82d1748894c3\",\"text\":\"如果原文有待辦事項，輸出會明確列出待辦事項。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":67,\"end\":168},\"excerpt\":\"**待辦事項**\\n- **產品團隊**：確認功能清單。\\n- **行銷**：在 **10 月 18 日前** 完成文案與首頁素材。\\n- **行銷 + 客服**：共同整理上線後的 **FAQ 回覆模板**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出以獨立的「待辦事項」段落，明確列出產品、行銷及客服與行銷共同負責的工作。\"},{\"criterion_id\":\"08ca42e6-5a5a-4e35-9651-fd9e0a65e07a\",\"text\":\"如果原文有重要結論，輸出會明確列出重要結論。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":65},\"excerpt\":\"**主要決議**\\n- 新產品上線日由 **10 月 15 日** 延後至 **10 月 22 日**。\\n- 產品團隊同意調整時程。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出清楚標示「主要決議」，並保留上線日調整及團隊同意調整時程等重要結論。\"},{\"criterion_id\":\"006d126f-9a5f-4c94-a198-b70829cad713\",\"text\":\"輸出不會加入原文沒有提到的新資訊。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":76,\"end\":168},\"excerpt\":\"- **產品團隊**：確認功能清單。\\n- **行銷**：在 **10 月 18 日前** 完成文案與首頁素材。\\n- **行銷 + 客服**：共同整理上線後的 **FAQ 回覆模板**。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出內容均為原始記錄中的時程、分工、FAQ 預期及明確未討論事項，未見新增事實或推論。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"dc3eed36-5db7-4c25-b936-5959bb5e96ce\",\"occurred_at\":\"2026-09-27T09:19:11.119Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"meeting-notes-highlighter\\\", \\\"skill_version_id\\\": \\\"981b6d30-1190-4dcc-8f7c-c6409c828c43\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3279 input and 931 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"febf8c46-0737-4894-b42d-aa1c28c217c3\",\"skill_version_id\":\"981b6d30-1190-4dcc-8f7c-c6409c828c43\"}",
+      "created_at": "2026-09-27T09:19:37.869719964Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。」：沒過——輸出一開始即為「主要決議」條列，未先提供 3–5 句的摘要段落。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T09:19:37.869776167Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T09:19:37.881192215Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這版有 1 個評估條件沒過，所以我已依照你要求只改草稿，不改條件。\n\n未通過的條件：\n- 「當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。」\n  - 原因：試跑輸出一開始直接進入條列區塊，沒有先出現 3–5 句摘要段落。\n\n我已做的修改：\n- 把「## 輸出格式」改成明確要求先輸出 **摘要**（3–5 句），再輸出 **重點條列**，接著才是 **決策**、**待辦事項**、**重要結論**，並明確禁止把其他條列標題放在摘要之前。\n- 也保留了你要的限制：不得把原文延伸成原因、效果、目的、改善結果或未明示推論；例如原文只說可能有大量 FAQ，就只能寫大量 FAQ 或回覆模板，不能寫成降低壓力、提升效率、增加人力或其他後果。\n- 範例輸入已補強成可驗證不亂推論的內容。\n\n你可以直接接受這版草稿，或告訴我要再調整輸出語氣、版型或摘要長度。",
+      "created_at": "2026-09-27T09:19:51.320149272Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T09:19:51.321996591Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

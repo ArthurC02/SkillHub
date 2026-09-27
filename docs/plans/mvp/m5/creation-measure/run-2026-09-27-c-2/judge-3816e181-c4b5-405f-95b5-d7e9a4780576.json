@@ -1,0 +1,175 @@
+{
+  "request": {
+    "RunID": "3816e181-c4b5-405f-95b5-d7e9a4780576",
+    "EvaluationID": "a6125982-6279-49de-8bc0-4557ff75e8ad",
+    "Skill": {
+      "Name": "meeting-notes-highlighter",
+      "Summary": "Summarize long meeting notes into a concise Chinese bullet-point brief with decisions, action items, and key conclusions. Use when the user pastes meeting minutes or discussion transcripts and wants a readable summary."
+    },
+    "UserPrompt": "請幫我整理這段會議記錄成重點摘要：今天會議先討論了新產品上線時程，行銷說原訂 10 月 15 日上線太趕，建議延到 10 月 22 日；產品團隊同意調整，但要求在 10 月 18 日前完成文案與首頁素材。接著客服提出上線後前兩週可能會有大量 FAQ，請行銷與客服共同整理回覆模板。最後決議：1) 上線日改為 10 月 22 日；2) 產品團隊負責確認功能清單；3) 行銷在 10 月 18 日前交付素材；4) 客服與行銷共同完成 FAQ 模板。\n\n另外一段會議記錄：客服說 11 月可能會有大量詢問，但沒有討論是否要增加人力、也沒有提到減少壓力或提升效率。",
+    "Criteria": [
+      {
+        "ID": "35d77953-f181-4a31-b1b5-2d1e50068741",
+        "Text": "當輸入一段冗長會議記錄時，輸出會先給一段 3–5 句的摘要。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c62987d7-6d63-436d-a8a2-1ba285309d50",
+        "Text": "輸出會另外列出條列重點，且每點都來自原始會議記錄。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "511d1686-6dac-4174-95c1-ec29f2a4a8a6",
+        "Text": "如果原文有決策內容，輸出會明確保留決策。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9658d6ad-7888-4af2-a464-fd4bd481d168",
+        "Text": "如果原文有待辦事項，輸出會明確列出待辦事項。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f228ca0e-ee27-4d12-88b8-b3412bc894e0",
+        "Text": "如果原文有重要結論，輸出會明確列出重要結論。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d530728c-a027-48b4-aba5-ac2c5ed69d7a",
+        "Text": "輸出不會加入原文沒有提到的新資訊。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "**摘要：**  \n會議主要討論新產品上線時程調整，行銷認為原訂 10 月 15 日上線太趕，建議延到 10 月 22 日，產品團隊同意。為了配合新時程，產品團隊要求在 10 月 18 日前完成文案與首頁素材，並負責確認功能清單。客服另外提醒上線後前兩週可能會有大量 FAQ，需要與行銷共同整理回覆模板。  \n另一段會議記錄提到客服表示 11 月可能會有大量詢問，但原文未提及是否增加人力，也未提到減少壓力或提升效率的討論。\n\n**重點條列：**\n- 行銷認為原訂 10 月 15 日上線太趕，建議延至 10 月 22 日。\n- 產品團隊同意調整上線時程。\n- 產品團隊要求 10 月 18 日前完成文案與首頁素材。\n- 客服指出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\n- 另有記錄提到 11 月可能會有大量詢問，但未提及人力調整或其他配套討論。\n\n**決策：**\n- 上線日改為 10 月 22 日。\n- 產品團隊負責確認功能清單。\n- 客服與行銷共同完成 FAQ 回覆模板。\n\n**待辦事項：**\n- 產品團隊：確認功能清單。\n- 行銷：在 10 月 18 日前交付文案與首頁素材。\n- 客服與行銷：共同整理 FAQ 回覆模板。\n\n**重要結論：**\n- 新產品上線時程延後至 10 月 22 日。\n- 上線前需先完成文案、首頁素材與功能清單確認。\n- 上線後需準備 FAQ 回覆模板，以應對可能增加的詢問。\n- 11 月可能有大量詢問，但原文未提及進一步安排。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "009321f3-4c74-47c9-9711-3b210cf0b328",
+          "OccurredAt": "2026-09-27T09:20:09.32Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"meeting-notes-highlighter\", \"skill_version_id\": \"ae25e45f-2656-4dbb-b572-37cfba9114b8\"}"
+        },
+        {
+          "TraceEventID": "eb3eb46f-a782-4b50-b7dd-4fd13519eb44",
+          "OccurredAt": "2026-09-27T09:20:09.34Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"meeting-notes-highlighter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_667DBqAPNZHNw9PwpU6OYCLX\", \"result_summary\": \"Launching skill: meeting-notes-highlighter\"}"
+        },
+        {
+          "TraceEventID": "8372576f-0a85-40a9-a1c1-ba129767b7f9",
+          "OccurredAt": "2026-09-27T09:20:15.53Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"**摘要：**  \\n會議主要討論新產品上線時程調整，行銷認為原訂 10 月 15 日上線太趕，建議延到 10 月 22 日，產品團隊同意。為了配合新時程，產品團隊要求在 10 月 18 日前完成文案與首頁素材，並負責確認功能清單。客服另外提醒上線後前兩週可能會有大量 FAQ，需要與行銷共同整理回覆模板。  \\n另一段會議記錄提到客服表示 11 月可能會有大量詢問，但原文未提及是否增加人力，也未提到減少壓力或提升效率的討論。\\n\\n**重點條列：**\\n- 行銷認為原訂 10 月 15 日上線太趕，建議延至 10 月 22 日。\\n- 產品團隊同意調整上線時程。\\n- 產品團隊要求 10 月 18 日前完成文案與首頁素材。\\n- 客服指出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\\n- 另有記錄提到 11 月可能會有大量詢問，但未提及人力調整或其他配套討論。\\n\\n**決策：**\\n- 上線日改為 10 月 22 日。\\n- 產品團隊負責確認功能清單。\\n- 客服與行銷共同完成 FAQ 回覆模板。\\n\\n**待辦事項：**\\n- 產品團隊：確認功能清單。\\n- 行銷：在 10 月 18 日前交付文案與首頁素材。\\n- 客服與行銷：共同整理 FAQ 回覆模板。\\n\\n**重要結論：**\\n- 新產品上線時程延後至 10 月 22 日。\\n- 上線前需先完成文案、首頁素材與功能清單確認。\\n- 上線後需準備 FAQ 回覆模板，以應對可能增加的詢問。\\n- 11 月可能有大量詢問，但原文未提及進一步安排。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "24c0178b-377d-43b7-a12d-1b49e52c6b9c",
+          "OccurredAt": "2026-09-27T09:20:15.704Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"**摘要：**  \\n會議主要討論新產品上線時程調整，行銷認為原訂 10 月 15 日上線太趕，建議延到 10 月 22 日，產品團隊同意。為了配合新時程，產品團隊要求在 10 月 18 日前完成文案與首頁素材，並負責確認功能清單。客服另外提醒上線後前兩週可能會有大量 FAQ，需要與行銷共同整理回覆模板。  \\n另一段會議記錄提到客服表示 11 月可能會有大量詢問，但原文未提及是否增加人力，也未提到減少壓力或提升效率的討論。\\n\\n**重點條列：**\\n- 行銷認為原訂 10 月 15 日上線太趕，建議延至 10 月 22 日。\\n- 產品團隊同意調整上線時程。\\n- 產品團隊要求 10 月 18 日前完成文案與首頁素材。\\n- 客服指出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\\n- 另有記錄提到 11 月可能會有大量詢問，但未提及人力調整或其他配套討論。\\n\\n**決策：**\\n- 上線日改為 10 月 22 日。\\n- 產品團隊負責確認功能清單。\\n- 客服與行銷共同完成 FAQ 回覆模板。\\n\\n**待辦事項：**\\n- 產品團隊：確認功能清單。\\n- 行銷：在 10 月 18 日前交付文案與首頁素材。\\n- 客服與行銷：共同整理 FAQ 回覆模板。\\n\\n**重要結論：**\\n- 新產品上線時程延後至 10 月 22 日。\\n- 上線前需先完成文案、首頁素材與功能清單確認。\\n- 上線後需準備 FAQ 回覆模板，以應對可能增加的詢問。\\n- 11 月可能有大量詢問，但原文未提及進一步安排。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "abc7388a-03ba-4f5d-8f41-31d34e80e985",
+          "OccurredAt": "2026-09-27T09:20:21.3Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01036665, \"cost_source\": \"gateway\", \"duration_ms\": 13833, \"input_tokens\": 3219, \"token_source\": \"result\", \"output_tokens\": 1083, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "35d77953-f181-4a31-b1b5-2d1e50068741",
+        "Result": "passed",
+        "Reason": "輸出開頭設有「摘要」段落，包含四句摘要內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "會議主要討論新產品上線時程調整，行銷認為原訂 10 月 15 日上線太趕，建議延到 10 月 22 日，產品團隊同意。為了配合新時程，產品團隊要求在 10 月 18 日前完成文案與首頁素材，並負責確認功能清單。客服另外提醒上線後前兩週可能會有大量 FAQ，需要與行銷共同整理回覆模板。  \n另一段會議記錄提到客服表示 11 月可能會有大量詢問，但原文未提及是否增加人力，也未提到減少壓力或提升效率的討論。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c62987d7-6d63-436d-a8a2-1ba285309d50",
+        "Result": "passed",
+        "Reason": "輸出另設「重點條列」並以條列呈現上線日期、素材期限、FAQ 與 11 月詢問等原始記錄中的內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**重點條列：**\n- 行銷認為原訂 10 月 15 日上線太趕，建議延至 10 月 22 日。\n- 產品團隊同意調整上線時程。\n- 產品團隊要求 10 月 18 日前完成文案與首頁素材。\n- 客服指出上線後前兩週可能會有大量 FAQ，需先準備回覆模板。\n- 另有記錄提到 11 月可能會有大量詢問，但未提及人力調整或其他配套討論。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "511d1686-6dac-4174-95c1-ec29f2a4a8a6",
+        "Result": "passed",
+        "Reason": "輸出以「決策」段落明確保留上線日調整、功能清單責任與 FAQ 模板協作等決議。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**決策：**\n- 上線日改為 10 月 22 日。\n- 產品團隊負責確認功能清單。\n- 客服與行銷共同完成 FAQ 回覆模板。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9658d6ad-7888-4af2-a464-fd4bd481d168",
+        "Result": "passed",
+        "Reason": "輸出以「待辦事項」段落明確列出功能清單確認、10 月 18 日素材交付及 FAQ 模板整理。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**待辦事項：**\n- 產品團隊：確認功能清單。\n- 行銷：在 10 月 18 日前交付文案與首頁素材。\n- 客服與行銷：共同整理 FAQ 回覆模板。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f228ca0e-ee27-4d12-88b8-b3412bc894e0",
+        "Result": "passed",
+        "Reason": "輸出設有「重要結論」段落，明確整理延後上線、上線前準備、FAQ 模板與 11 月詢問狀況。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**重要結論：**\n- 新產品上線時程延後至 10 月 22 日。\n- 上線前需先完成文案、首頁素材與功能清單確認。\n- 上線後需準備 FAQ 回覆模板，以應對可能增加的詢問。\n- 11 月可能有大量詢問，但原文未提及進一步安排。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d530728c-a027-48b4-aba5-ac2c5ed69d7a",
+        "Result": "passed",
+        "Reason": "輸出內容均為對原始記錄所述時程、責任分工、FAQ 與未討論事項的摘要或重述，未見額外新增的事實資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "另一段會議記錄提到客服表示 11 月可能會有大量詢問，但原文未提及是否增加人力，也未提到減少壓力或提升效率的討論。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出以四句摘要開頭，並另列重點、決策、待辦事項與重要結論。內容忠實涵蓋原始記錄的日期、分工、FAQ 準備及 11 月詢問情況，未見新增事實。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3714,
+      "CompletionTokens": 1457,
+      "CostUSD": 0.0242329,
+      "CostReported": true
+    }
+  }
+}

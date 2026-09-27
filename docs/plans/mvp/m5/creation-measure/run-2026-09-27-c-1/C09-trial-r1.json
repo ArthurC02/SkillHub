@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請幫我計算下面各筆購物金額的實付金額：\n\n1. 商品金額 999 元，需要運費 150 元\n2. 商品金額 1000 元，需要運費 150 元\n3. 商品金額 2999 元，需要運費 150 元\n4. 商品金額 3000 元，需要運費 150 元\n5. 商品金額 4999 元，需要運費 150 元\n6. 商品金額 5000 元，需要運費 150 元\n7. 商品金額 6200 元，需要運費 150 元",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 999 元且需要運費時，輸出選不到任何門檻，折扣為 0，免運為否，實付金額為 1149 元。"
+    },
+    {
+      "text": "輸入 1000 元且需要運費時，輸出選到 1000 元門檻，折扣為 50，免運為否，實付金額為 1100 元。"
+    },
+    {
+      "text": "輸入 2999 元且需要運費時，輸出仍只套用 1000 元門檻，折扣為 50，實付金額為 3099 元。"
+    },
+    {
+      "text": "輸入 3000 元且需要運費時，輸出選到 3000 元門檻，折扣為 200，免運為否，實付金額為 2950 元。"
+    },
+    {
+      "text": "輸入 4999 元且需要運費時，輸出仍只套用 3000 元門檻，折扣為 200，實付金額為 4849 元。"
+    },
+    {
+      "text": "輸入 5000 元且需要運費時，輸出選到 5000 元門檻，折扣為 200，免運為是，實付金額為 4800 元。"
+    },
+    {
+      "text": "輸入 6200 元且需要運費時，輸出仍只套用 5000 元門檻，折扣為 200，免運為是，實付金額為 6000 元。"
+    }
+  ],
+  "final_output": "以下依「最高符合門檻」計算，運費一般為 150 元；達到 5000 元以上才免運：\n\n| 編號 | 商品金額 | 適用門檻 | 折扣 | 運費 | 實付金額 |\n|---|---:|---|---:|---:|---:|\n| 1 | 999 | 未達門檻 | 0 | 150 | **1149** |\n| 2 | 1000 | 1000+ | 50 | 150 | **1100** |\n| 3 | 2999 | 1000+ | 50 | 150 | **3099** |\n| 4 | 3000 | 3000+ | 200 | 150 | **2950** |\n| 5 | 4999 | 3000+ | 200 | 150 | **4949** |\n| 6 | 5000 | 5000+ | 200 | 0 | **4800** |\n| 7 | 6200 | 5000+ | 200 | 0 | **6000** |\n\n如果你要，我也可以幫你整理成「商品金額 / 運費 / 折扣 / 實付金額」的簡版清單。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "97d48fde-b451-44d0-8ab8-28a7dac75e1f",
+    "run_id": "4cee6d0e-4fb6-47e0-b976-e1717543aeef",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "七項中六項輸出符合指定門檻、折扣、運費與實付金額。4999 元案例的實付輸出為 4949 元，未符合該 criterion 指定的 4849 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "360ef1c6-123f-4e07-8fac-93649fea688a",
+        "text": "輸入 999 元且需要運費時，輸出選不到任何門檻，折扣為 0，免運為否，實付金額為 1149 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "999 元列示未達門檻、折扣 0、運費 150（非免運）及實付 1149 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 999 | 未達門檻 | 0 | 150 | **1149** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d12e733a-df39-4af9-880e-cdf35273a006",
+        "text": "輸入 1000 元且需要運費時，輸出選到 1000 元門檻，折扣為 50，免運為否，實付金額為 1100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1000 元列示適用 1000+ 門檻、折扣 50、運費 150（非免運）及實付 1100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 1000 | 1000+ | 50 | 150 | **1100** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6eb4f562-e998-47ce-a885-6fbf8d857ebe",
+        "text": "輸入 2999 元且需要運費時，輸出仍只套用 1000 元門檻，折扣為 50，實付金額為 3099 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "2999 元列示僅適用 1000+ 門檻、折扣 50，實付為 3099 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 3 | 2999 | 1000+ | 50 | 150 | **3099** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6e13cd9a-49e7-465a-8781-995a3df9333f",
+        "text": "輸入 3000 元且需要運費時，輸出選到 3000 元門檻，折扣為 200，免運為否，實付金額為 2950 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "3000 元列示適用 3000+ 門檻、折扣 200、運費 150（非免運）及實付 2950 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 3000 | 3000+ | 200 | 150 | **2950** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a054fa9e-156f-4efd-92a3-f121a752ea66",
+        "text": "輸入 4999 元且需要運費時，輸出仍只套用 3000 元門檻，折扣為 200，實付金額為 4849 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "4999 元雖列示僅適用 3000+ 門檻且折扣 200，但輸出的實付為 4949 元，不是 criterion 指定的 4849 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 5 | 4999 | 3000+ | 200 | 150 | **4949** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d40c2fd3-066f-43ee-a6ba-0f603f4e3437",
+        "text": "輸入 5000 元且需要運費時，輸出選到 5000 元門檻，折扣為 200，免運為是，實付金額為 4800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "5000 元列示適用 5000+ 門檻、折扣 200、運費 0（免運）及實付 4800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 6 | 5000 | 5000+ | 200 | 0 | **4800** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "261dfd54-bdc3-4ab6-87f0-58cd864345ef",
+        "text": "輸入 6200 元且需要運費時，輸出仍只套用 5000 元門檻，折扣為 200，免運為是，實付金額為 6000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "6200 元列示僅適用 5000+ 門檻、折扣 200、運費 0（免運）及實付 6000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 7 | 6200 | 5000+ | 200 | 0 | **6000** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18966 input and 755 output tokens on gpt-5.4-mini; reported cost $0.0194 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

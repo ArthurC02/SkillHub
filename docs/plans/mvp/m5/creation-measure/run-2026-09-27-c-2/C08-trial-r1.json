@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一封正式的防颱停班停課內部公告信。停班停課生效日期是 2026/09/28，恢復上班日期是 2026/09/29，需要留守的部門名稱是總務部、人資部、資訊部。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入提供生效日期、恢復上班日期與留守部門名稱時，輸出會以正式內部公告信格式寫出完整內容。"
+    },
+    {
+      "text": "輸出會明確包含「生效日期」。"
+    },
+    {
+      "text": "輸出會明確包含「恢復上班日期」。"
+    },
+    {
+      "text": "輸出會明確包含「需要留守的部門名稱」。"
+    },
+    {
+      "text": "輸出語氣正式，不使用口語或聊天式措辭。"
+    }
+  ],
+  "final_output": "**主旨：防颱停班停課內部公告**\n\n各位同仁您好：\n\n因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。\n\n停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\n- **總務部**\n- **人資部**\n- **資訊部**\n\n請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\n\n敬請知悉並配合。\n\n此致  \n全體同仁\n\n公司行政管理部 敬上",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b2719779-4dde-4a76-ba70-01e85af73faa",
+    "run_id": "67820864-67e5-4fe3-a9a8-117aa62ca9a2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整呈現正式防颱停班停課內部公告，並正確說明生效日期、恢復上班日期及三個留守部門；整體語氣正式。",
+    "criterion_results": [
+      {
+        "criterion_id": "a9f4e98f-e44a-4867-a378-c79c5d61df08",
+        "text": "在輸入提供生效日期、恢復上班日期與留守部門名稱時，輸出會以正式內部公告信格式寫出完整內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出具備主旨、稱謂、公告內容、配合事項與署名，構成完整的正式內部公告信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：防颱停班停課內部公告**\n\n各位同仁您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此致  \n全體同仁\n\n公司行政管理部 敬上",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b1c1ab8-f3a0-42af-9a61-f5989332b78d",
+        "text": "輸出會明確包含「生效日期」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明停班停課自 2026/09/28 起生效。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "332d2e1e-07f4-4b23-9255-d0f9364281a9",
+        "text": "輸出會明確包含「恢復上班日期」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告明確載明 2026/09/29 恢復正常上班上課。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因應防颱措施，本公司自 **2026/09/28** 起實施停班停課安排，並預計自 **2026/09/29** 恢復正常上班上課。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5514643-36d2-4b10-8e6b-bd5d88440bb2",
+        "text": "輸出會明確包含「需要留守的部門名稱」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "公告列出停班停課期間須留守的總務部、人資部與資訊部。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "停班停課期間，仍請以下部門依業務需要留守，持續維持必要運作：\n- **總務部**\n- **人資部**\n- **資訊部**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f1e31d34-06ec-4ad1-94d4-52811f8a7052",
+        "text": "輸出語氣正式，不使用口語或聊天式措辭。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文使用公告式正式措辭，包含「敬請知悉並配合」及正式署名，未見口語或聊天式表述。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請各單位主管轉知所屬同仁配合相關安排，並留意後續通知。如有最新調整，將另行公告。\n\n敬請知悉並配合。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18657 input and 404 output tokens on gpt-5.4-mini; reported cost $0.0176 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

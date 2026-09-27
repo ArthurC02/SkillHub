@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請評估以下三筆個人信貸申請並回傳每筆的最終判定：\n1) 信用分數 720，負債比 35%\n2) 信用分數 650，負債比 35%\n3) 信用分數 580，負債比 35%\n4) 信用分數 710，負債比 50%\n5) 信用分數 610，負債比 65%\n6) 信用分數 700，負債比 40%\n7) 信用分數 699，負債比 60%",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入信用分數 720、負債比 35% 時，輸出為「直接核准」。"
+    },
+    {
+      "text": "當輸入信用分數 650、負債比 35% 時，輸出為「需要人工複審」。"
+    },
+    {
+      "text": "當輸入信用分數 580、負債比 35% 時，輸出為「直接拒絕」。"
+    },
+    {
+      "text": "當輸入信用分數 710、負債比 50% 時，輸出為「需要人工複審」。"
+    },
+    {
+      "text": "當輸入信用分數 610、負債比 65% 時，輸出為「直接拒絕」。"
+    },
+    {
+      "text": "當輸入信用分數 700、負債比 40% 時，輸出為「直接核准」。"
+    },
+    {
+      "text": "當輸入信用分數 699、負債比 60% 時，輸出為「需要人工複審」。"
+    }
+  ],
+  "final_output": "1) 直接核准  \n2) 需要人工複審  \n3) 直接拒絕  \n4) 需要人工複審  \n5) 直接拒絕  \n6) 直接核准  \n7) 需要人工複審",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e422f0b0-50ea-44b6-8206-21ff7812ea4d",
+    "run_id": "d883debe-dec0-4bbb-b527-3b3dec6903c1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆依序提供七筆申請的判定，且均與七項驗收標準要求一致。",
+    "criterion_results": [
+      {
+        "criterion_id": "457715f7-5da3-4fbe-8ff1-e11305c7a09f",
+        "text": "當輸入信用分數 720、負債比 35% 時，輸出為「直接核准」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 1 筆為「直接核准」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1) 直接核准  \n2) 需要人工複審",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "619036bc-3617-4851-81aa-17bccd99b2cd",
+        "text": "當輸入信用分數 650、負債比 35% 時，輸出為「需要人工複審」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 2 筆為「需要人工複審」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2) 需要人工複審  \n3) 直接拒絕",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "872ba044-dc49-4c11-8e08-e59c6ed005b0",
+        "text": "當輸入信用分數 580、負債比 35% 時，輸出為「直接拒絕」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 3 筆為「直接拒絕」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3) 直接拒絕  \n4) 需要人工複審",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "61e257e3-8f8a-4de1-b77c-15f0d868ed85",
+        "text": "當輸入信用分數 710、負債比 50% 時，輸出為「需要人工複審」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 4 筆為「需要人工複審」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4) 需要人工複審  \n5) 直接拒絕",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "222f9a8d-9cfc-46dd-abb0-43c8d75b270d",
+        "text": "當輸入信用分數 610、負債比 65% 時，輸出為「直接拒絕」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 5 筆為「直接拒絕」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5) 直接拒絕  \n6) 直接核准",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71e855de-812b-4bc5-b117-50a00d410b6a",
+        "text": "當輸入信用分數 700、負債比 40% 時，輸出為「直接核准」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 6 筆為「直接核准」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6) 直接核准  \n7) 需要人工複審",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ae492132-e11a-4632-8014-b89fe2c6ee7e",
+        "text": "當輸入信用分數 699、負債比 60% 時，輸出為「需要人工複審」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆第 7 筆為「需要人工複審」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "7) 需要人工複審",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2935 input and 429 output tokens on gpt-5.4-mini; reported cost $0.0072 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

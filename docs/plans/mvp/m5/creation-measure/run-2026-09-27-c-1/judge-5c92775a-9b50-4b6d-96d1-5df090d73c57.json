@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "5c92775a-9b50-4b6d-96d1-5df090d73c57",
+    "EvaluationID": "05456812-679b-4bcb-9ad3-06ed263a13b7",
+    "Skill": {
+      "Name": "extract-order-email-summary",
+      "Summary": "Extract ordered items, quantities, unit prices, and delivery address from customer order emails. Use this when you need a structured list from pasted email text."
+    },
+    "UserPrompt": "請整理這封訂購 email，列出品項、數量、單價與收件地址：\n\n您好，\n我們要訂購 3 組 A4 文件夾，每組 120 元；另外再訂購 10 支原子筆，每支 15 元。\n請寄到：台北市大安區復興南路一段 123 號 8 樓，收件人：林小姐。\n謝謝。",
+    "Criteria": [
+      {
+        "ID": "8e8ba8e7-2ee1-4203-bf62-4ab8170e01c9",
+        "Text": "輸入一段包含多個訂購品項的 email 時，輸出會逐項列出每個品項的品名、數量與單價。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "24ee3510-d3a1-4f15-a623-b860647a9823",
+        "Text": "輸入中若包含收件地址，輸出會明確整理出該收件地址。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "91140bf1-dcc9-4d84-a95c-4f1b212fe68d",
+        "Text": "輸入中若有多個品項，輸出不會把品項混在一起，而是分開成多筆。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4ae168c9-454f-4ceb-8a63-0db156291591",
+        "Text": "輸入中的數量與單價會以原文中的數值正確呈現，不會自行換算或推測。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e5a298ed-f690-4796-9aa7-2119cf2622fd",
+        "Text": "若 email 內容同時包含訂購資訊與收件資訊，輸出會同時保留兩者。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- 訂購品項：\n  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支\n\n- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓\n  - 收件人：林小姐",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "47aebbf7-c180-4223-b046-b78414953b0a",
+          "OccurredAt": "2026-09-27T08:54:00.677Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"extract-order-email-summary\", \"skill_version_id\": \"7753fc50-74fb-49c7-b066-4c96713a6e19\"}"
+        },
+        {
+          "TraceEventID": "285bb17a-487b-4283-916f-8d85b1e5535f",
+          "OccurredAt": "2026-09-27T08:54:00.687Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"您好，\\n我們要訂購 3 組 A4 文件夾，每組 120 元；另外再訂購 10 支原子筆，每支 15 元。\\n請寄到：台北市大安區復興南路一段 123 號 8 樓，收件人：林小姐。\\n謝謝。\", \"skill\": \"extract-order-email-summary\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_yEfQ4UVqC6RZO44eZqDPLYhx\", \"result_summary\": \"Launching skill: extract-order-email-summary\"}"
+        },
+        {
+          "TraceEventID": "a72488ba-1fe8-4aee-b87b-8159660d8def",
+          "OccurredAt": "2026-09-27T08:54:02.551Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- 訂購品項：\\n  - A4 文件夾：數量 3 組，單價 120 元／組\\n  - 原子筆：數量 10 支，單價 15 元／支\\n\\n- 收件地址：\\n  - 台北市大安區復興南路一段 123 號 8 樓\\n  - 收件人：林小姐\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2748cc00-d6bd-4df1-947f-8611f0cdd85e",
+          "OccurredAt": "2026-09-27T08:54:02.843Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- 訂購品項：\\n  - A4 文件夾：數量 3 組，單價 120 元／組\\n  - 原子筆：數量 10 支，單價 15 元／支\\n\\n- 收件地址：\\n  - 台北市大安區復興南路一段 123 號 8 樓\\n  - 收件人：林小姐\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8c108115-0fb1-4ca0-9658-31720952c34b",
+          "OccurredAt": "2026-09-27T08:54:06.878Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00393915, \"cost_source\": \"gateway\", \"duration_ms\": 8337, \"input_tokens\": 2826, \"token_source\": \"result\", \"output_tokens\": 309, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "8e8ba8e7-2ee1-4203-bf62-4ab8170e01c9",
+        "Result": "passed",
+        "Reason": "輸出逐項列出兩個品項，且各自包含品名、數量與單價。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支"
+          }
+        ]
+      },
+      {
+        "CriterionID": "24ee3510-d3a1-4f15-a623-b860647a9823",
+        "Result": "passed",
+        "Reason": "輸出以「收件地址」欄位明確整理出完整地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓"
+          }
+        ]
+      },
+      {
+        "CriterionID": "91140bf1-dcc9-4d84-a95c-4f1b212fe68d",
+        "Result": "passed",
+        "Reason": "兩個品項以獨立條列分開呈現，沒有混在同一筆中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4ae168c9-454f-4ceb-8a63-0db156291591",
+        "Result": "passed",
+        "Reason": "輸出的數量與單價保留原文數值：3、120、10、15，且未自行換算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e5a298ed-f690-4796-9aa7-2119cf2622fd",
+        "Result": "passed",
+        "Reason": "輸出同時保留訂購品項資訊與收件地址、收件人資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 訂購品項：\n  - A4 文件夾：數量 3 組，單價 120 元／組\n  - 原子筆：數量 10 支，單價 15 元／支\n\n- 收件地址：\n  - 台北市大安區復興南路一段 123 號 8 樓\n  - 收件人：林小姐"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有驗收標準皆已滿足：兩項訂購品項分別列出正確數量與單價，並清楚保留收件地址及收件人資訊。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2457,
+      "CompletionTokens": 718,
+      "CostUSD": 0.012222400000000001,
+      "CostReported": true
+    }
+  }
+}

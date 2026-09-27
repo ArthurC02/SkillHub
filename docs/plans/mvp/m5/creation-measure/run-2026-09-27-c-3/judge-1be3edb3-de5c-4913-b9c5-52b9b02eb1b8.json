@@ -1,0 +1,103 @@
+{
+  "request": {
+    "RunID": "1be3edb3-de5c-4913-b9c5-52b9b02eb1b8",
+    "EvaluationID": "fee6bf5f-8ab5-489d-b974-c21587bb7c71",
+    "Skill": {
+      "Name": "shopping-discount-net-total",
+      "Summary": "計算購物實付金額，依 1000/3000/5000 元門檻套用單一最高優惠；當你需要把滿額折扣、免運與原本運費一起算成實付金額時使用。"
+    },
+    "UserPrompt": "購物金額分別是 999 元與 1000 元兩張訂單，運費原本是 150 元。請分別算出這兩張訂單的實付金額。",
+    "Criteria": [
+      {
+        "ID": "85f52f5d-ecbd-4c59-8ff2-b849efa9ddbd",
+        "Text": "999 元訂單的實付金額為 1149 元（不符合任何折扣，仍需付150元運費）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4e1dea30-4352-43e3-b94b-f31612babb88",
+        "Text": "1000 元訂單的實付金額為 1100 元（滿1000折50，仍需付150元運費）",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下以**商品金額 + 原運費 150 元**計算：\n\n- **999 元**：未達折扣門檻，**實付 999 + 150 = 1149 元**\n- **1000 元**：符合滿 1000 折 50，**實付 1000 + 150 - 50 = 1100 元**\n\n**答案：1149 元、1100 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "c9870cb2-1b1b-495d-b923-ec5a1b1e612b",
+          "OccurredAt": "2026-09-27T09:57:11.569Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"shopping-discount-net-total\", \"skill_version_id\": \"44d60770-defd-4587-bd28-d5b1ecddd4f9\"}"
+        },
+        {
+          "TraceEventID": "68d9c15f-ff80-4836-9bd8-9f7f5a0c505a",
+          "OccurredAt": "2026-09-27T09:57:11.59Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"shopping-discount-net-total\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 21, \"invocation_id\": \"call_MxcOQa6qw6YtdA3Oor4NcpeN\", \"result_summary\": \"Launching skill: shopping-discount-net-total\"}"
+        },
+        {
+          "TraceEventID": "271b1d06-ad2d-4649-a25f-1d00de6f3f92",
+          "OccurredAt": "2026-09-27T09:57:16.899Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下以**商品金額 + 原運費 150 元**計算：\\n\\n- **999 元**：未達折扣門檻，**實付 999 + 150 = 1149 元**\\n- **1000 元**：符合滿 1000 折 50，**實付 1000 + 150 - 50 = 1100 元**\\n\\n**答案：1149 元、1100 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ff0cc574-7331-40cc-9e24-6e87db23b578",
+          "OccurredAt": "2026-09-27T09:57:17.239Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下以**商品金額 + 原運費 150 元**計算：\\n\\n- **999 元**：未達折扣門檻，**實付 999 + 150 = 1149 元**\\n- **1000 元**：符合滿 1000 折 50，**實付 1000 + 150 - 50 = 1100 元**\\n\\n**答案：1149 元、1100 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "029e7ed5-f770-4935-a250-682558f537c5",
+          "OccurredAt": "2026-09-27T09:57:21.289Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01202865, \"cost_source\": \"gateway\", \"duration_ms\": 12134, \"input_tokens\": 2765, \"token_source\": \"result\", \"output_tokens\": 1554, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "85f52f5d-ecbd-4c59-8ff2-b849efa9ddbd",
+        "Result": "passed",
+        "Reason": "最終回覆明確計算 999 元訂單未達折扣門檻，連同 150 元運費後為 1149 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **999 元**：未達折扣門檻，**實付 999 + 150 = 1149 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4e1dea30-4352-43e3-b94b-f31612babb88",
+        "Result": "passed",
+        "Reason": "最終回覆明確計算 1000 元訂單適用滿 1000 折 50，且加上 150 元運費後實付為 1100 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **1000 元**：符合滿 1000 折 50，**實付 1000 + 150 - 50 = 1100 元**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩張訂單的實付金額皆依指定運費與折扣門檻正確計算：999 元訂單為 1149 元，1000 元訂單為 1100 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2229,
+      "CompletionTokens": 324,
+      "CostUSD": 0.006924400000000001,
+      "CostReported": true
+    }
+  }
+}

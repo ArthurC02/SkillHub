@@ -1,0 +1,151 @@
+{
+  "round": 2,
+  "sample_input": "請幫我整理這週週報並排程每週五自動寄給主管，內容如下：\n本週完成：完成登入頁重構、修正報表匯出 bug、和設計確認新首頁版型。\n下週計畫：開始會員中心 API 串接、補測試案例、整理部署文件。\n主管收件者：manager@example.com\n寄送時間：每週五上午 9:00\n格式要求：簡潔條列式，信件主旨要包含「週報」。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含週報內容與主管收件資訊時，Skill 會輸出一份可直接寄送的週報訊息草稿。"
+    },
+    {
+      "text": "Skill 會明確標示寄送時間為每週五。"
+    },
+    {
+      "text": "Skill 會包含「排程完成後之後可自動執行」的設定說明或操作步驟。"
+    },
+    {
+      "text": "Skill 不會要求使用者每週手動重做相同流程。"
+    },
+    {
+      "text": "當輸入包含多段週報重點時，Skill 會整合成單一週報寄送內容。"
+    }
+  ],
+  "final_output": "Subject: 週報｜本週工作進度與下週計畫  \nTo: manager@example.com  \nSend time: 每週五上午 9:00  \n\nBody:  \n主管您好：  \n\n本週完成：  \n- 完成登入頁重構  \n- 修正報表匯出 bug  \n- 和設計確認新首頁版型  \n\n下週計畫：  \n- 開始會員中心 API 串接  \n- 補測試案例  \n- 整理部署文件  \n\n以上，謝謝。  \n\n備註：我無法直接代寄或設定外部排程；這份內容可直接貼到郵件系統，設定每週五上午 9:00 重複寄送，之後即可沿用同一模板。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "16b4d7b9-38b1-4942-a10e-0ee55131d115",
+    "run_id": "37c2304a-a2e3-4a21-b623-6848ee1b1a4d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆已產出單一、簡潔條列的週報郵件草稿，含指定主管收件者、包含「週報」的主旨及每週五上午 9:00 的寄送時間。另提供設定重複寄送與後續沿用模板的說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "2787eaae-b0d5-4388-9d34-5f017fb45531",
+        "text": "當輸入包含週報內容與主管收件資訊時，Skill 會輸出一份可直接寄送的週報訊息草稿。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含收件者、含「週報」的主旨及完整信件內文，可直接作為寄送草稿。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Subject: 週報｜本週工作進度與下週計畫  \nTo: manager@example.com",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "Body:  \n主管您好：  \n\n本週完成：  \n- 完成登入頁重構  \n- 修正報表匯出 bug  \n- 和設計確認新首頁版型  \n\n下週計畫：  \n- 開始會員中心 API 串接  \n- 補測試案例  \n- 整理部署文件  \n\n以上，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "141cd025-1613-40ea-bcbc-fcc3199b9376",
+        "text": "Skill 會明確標示寄送時間為每週五。",
+        "result": "passed",
+        "source": "model",
+        "reason": "草稿明確標示每週五上午 9:00 寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Send time: 每週五上午 9:00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2b49010d-1466-4a4d-9df9-a13a4e3f9bd7",
+        "text": "Skill 會包含「排程完成後之後可自動執行」的設定說明或操作步驟。",
+        "result": "passed",
+        "source": "model",
+        "reason": "提供在郵件系統設定每週五上午 9:00 重複寄送的操作說明，並說明設定後可沿用模板。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：我無法直接代寄或設定外部排程；這份內容可直接貼到郵件系統，設定每週五上午 9:00 重複寄送，之後即可沿用同一模板。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "59caa49d-92ea-4109-98d5-58ff4a89308a",
+        "text": "Skill 不會要求使用者每週手動重做相同流程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指示設定重複寄送，且說明後續可沿用同一模板，未要求每週手動重做流程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "備註：我無法直接代寄或設定外部排程；這份內容可直接貼到郵件系統，設定每週五上午 9:00 重複寄送，之後即可沿用同一模板。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2aca8403-9a21-4bfe-8dfd-3212f07dbe2a",
+        "text": "當輸入包含多段週報重點時，Skill 會整合成單一週報寄送內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將本週完成事項與下週計畫的多段重點整合在同一封週報內容中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本週完成：  \n- 完成登入頁重構  \n- 修正報表匯出 bug  \n- 和設計確認新首頁版型  \n\n下週計畫：  \n- 開始會員中心 API 串接  \n- 補測試案例  \n- 整理部署文件",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3089 input and 3970 output tokens on gpt-5.4-mini; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

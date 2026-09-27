@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶問退款進度。事實：訂單編號 TW20260938，退款金額 3,480 元，退款日期是 9/30，退款會分兩筆匯入。請用不超過 30 個字回覆客戶，退款金額、退款日期、訂單編號三項都要保留。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 30 字"
+    },
+    {
+      "text": "輸出包含退款金額 3,480 元（或3480元）"
+    },
+    {
+      "text": "輸出包含退款日期 9/30"
+    },
+    {
+      "text": "輸出包含訂單編號 TW20260938"
+    }
+  ],
+  "final_output": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "af453b7f-70ad-4c6b-9c8e-b7d1f5641078",
+    "run_id": "a538a38a-ab79-419b-97c7-c3a8fd722961",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆保留退款金額、退款日期與訂單編號，且總字數剛好30字。",
+    "criterion_results": [
+      {
+        "criterion_id": "3a775b77-cd75-4a58-a664-6027805fb8d7",
+        "text": "輸出總字數（含標點與英數字）不超過 30 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆共30字（含標點及英數字），未超過30字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d07c63e8-6e78-48c6-aaae-981eb97e957c",
+        "text": "輸出包含退款金額 3,480 元（或3480元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含退款金額3480元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ec9eeea-2d26-414a-835d-9636a76de9c7",
+        "text": "輸出包含退款日期 9/30",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含退款日期9/30。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "391ed63e-9342-4199-a3a1-ea03152ddb87",
+        "text": "輸出包含訂單編號 TW20260938",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆包含訂單編號TW20260938。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退款3480元，9/30分兩筆入帳，單號TW20260938",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18024 input and 542 output tokens on gpt-5.4-mini; reported cost $0.0004 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "request": {
+    "RunID": "e12fddb5-dac5-4a1d-81da-86694865d9f1",
+    "EvaluationID": "f03bf629-560a-4ce8-889f-2e98c7ecb6e0",
+    "Skill": {
+      "Name": "meeting-notes-summarizer",
+      "Summary": "Summarize long meeting notes into concise bullet-point highlights, decisions, action items, and follow-ups. Use when a user pastes meeting minutes or discussion logs and wants a ready-to-share summary in Traditional Chinese."
+    },
+    "UserPrompt": "請整理以下會議記錄成重點摘要：\n\n今天討論了 Q4 行銷計畫。Alice 提議把預算從廣告投放調到內容行銷，因為上季廣告點擊率下降，但內容文章帶來較高的自然流量。Bob 認為應該保留部分廣告預算，因為新品上市需要短期曝光。最後大家同意先把 30% 預算移到內容行銷，另外 20% 保留給新品廣告測試。待辦事項是：Alice 週五前提供內容行銷排程；Bob 下週一前整理新品廣告素材；Carol 負責追蹤成效並在兩週後回報。會後提醒：如果自然流量沒有提升，下一次會議再檢討預算分配。",
+    "Criteria": [
+      {
+        "ID": "4946e799-3624-46d3-9af2-d0d26ee6b7b3",
+        "Text": "在輸入一段冗長會議記錄時，輸出會是條列式摘要，而不是逐字重寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0cb34ff9-e782-4066-9741-eab3db9b42a3",
+        "Text": "輸出會明確包含會議重點。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "189f28a9-464a-484c-85fb-1bf46677bc47",
+        "Text": "輸出會明確包含決議事項。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "edf12b52-9af2-49a1-9210-7ac17c7665e5",
+        "Text": "輸出會明確包含待辦事項或 follow-ups。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "414b2055-3240-4f88-afd7-43db49f422a8",
+        "Text": "輸出會保留原文未明說的內容，不會自行補充臆測。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "acd1e154-9513-490b-aae4-53638d7b1fab",
+        "Text": "輸出會使用繁體中文。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- **會議重點**\n  - 本次討論主題為 **Q4 行銷計畫**。\n  - Alice 提議將部分預算由廣告投放轉向內容行銷，原因是上季廣告點擊率下降，但內容文章帶來較高自然流量。\n  - Bob 認為仍應保留部分廣告預算，因為新品上市需要短期曝光。\n\n- **決議事項**\n  - 同意先將 **30% 預算移到內容行銷**。\n  - 另保留 **20% 預算** 作為新品廣告測試。\n\n- **待辦事項**\n  - **Alice**：週五前提供內容行銷排程。\n  - **Bob**：下週一前整理新品廣告素材。\n  - **Carol**：負責追蹤成效，並在 **兩週後** 回報。\n\n- **後續追蹤**\n  - 若自然流量沒有提升，下一次會議將再檢討預算分配。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "38feb5e2-af54-4d65-ad37-cf3abca3610b",
+          "OccurredAt": "2026-09-27T08:55:14.823Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"meeting-notes-summarizer\", \"skill_version_id\": \"b0b59e6a-5a05-43e4-aac1-c4fb96c63409\"}"
+        },
+        {
+          "TraceEventID": "2f3c9054-62f2-4f10-a284-f26c36d254f7",
+          "OccurredAt": "2026-09-27T08:55:14.838Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"meeting-notes-summarizer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 15, \"invocation_id\": \"call_pYG5UqRIa15JPkj34Mq3AZDN\", \"result_summary\": \"Launching skill: meeting-notes-summarizer\"}"
+        },
+        {
+          "TraceEventID": "5fdcda97-6d31-4214-8332-9ae22e20c7e0",
+          "OccurredAt": "2026-09-27T08:55:17.33Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- **會議重點**\\n  - 本次討論主題為 **Q4 行銷計畫**。\\n  - Alice 提議將部分預算由廣告投放轉向內容行銷，原因是上季廣告點擊率下降，但內容文章帶來較高自然流量。\\n  - Bob 認為仍應保留部分廣告預算，因為新品上市需要短期曝光。\\n\\n- **決議事項**\\n  - 同意先將 **30% 預算移到內容行銷**。\\n  - 另保留 **20% 預算** 作為新品廣告測試。\\n\\n- **待辦事項**\\n  - **Alice**：週五前提供內容行銷排程。\\n  - **Bob**：下週一前整理新品廣告素材。\\n  - **Carol**：負責追蹤成效，並在 **兩週後** 回報。\\n\\n- **後續追蹤**\\n  - 若自然流量沒有提升，下一次會議將再檢討預算分配。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f987515f-0add-49b9-839f-d73a669b23cc",
+          "OccurredAt": "2026-09-27T08:55:17.537Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- **會議重點**\\n  - 本次討論主題為 **Q4 行銷計畫**。\\n  - Alice 提議將部分預算由廣告投放轉向內容行銷，原因是上季廣告點擊率下降，但內容文章帶來較高自然流量。\\n  - Bob 認為仍應保留部分廣告預算，因為新品上市需要短期曝光。\\n\\n- **決議事項**\\n  - 同意先將 **30% 預算移到內容行銷**。\\n  - 另保留 **20% 預算** 作為新品廣告測試。\\n\\n- **待辦事項**\\n  - **Alice**：週五前提供內容行銷排程。\\n  - **Bob**：下週一前整理新品廣告素材。\\n  - **Carol**：負責追蹤成效，並在 **兩週後** 回報。\\n\\n- **後續追蹤**\\n  - 若自然流量沒有提升，下一次會議將再檢討預算分配。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5852e1d6-7623-418d-b378-2d1a62c26c36",
+          "OccurredAt": "2026-09-27T08:55:21.579Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.017814, \"cost_source\": \"gateway\", \"duration_ms\": 8968, \"input_tokens\": 18912, \"token_source\": \"result\", \"output_tokens\": 390, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "4946e799-3624-46d3-9af2-d0d26ee6b7b3",
+        "Result": "passed",
+        "Reason": "輸出以「會議重點、決議事項、待辦事項、後續追蹤」分段條列整理，屬摘要而非逐字重寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **會議重點**\n  - 本次討論主題為 **Q4 行銷計畫**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0cb34ff9-e782-4066-9741-eab3db9b42a3",
+        "Result": "passed",
+        "Reason": "輸出明確設有「會議重點」段落並列出討論主題與雙方觀點。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **會議重點**\n  - 本次討論主題為 **Q4 行銷計畫**。\n  - Alice 提議將部分預算由廣告投放轉向內容行銷，原因是上季廣告點擊率下降，但內容文章帶來較高自然流量。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "189f28a9-464a-484c-85fb-1bf46677bc47",
+        "Result": "passed",
+        "Reason": "輸出明確設有「決議事項」段落，列出預算調整與新品廣告測試的決定。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **決議事項**\n  - 同意先將 **30% 預算移到內容行銷**。\n  - 另保留 **20% 預算** 作為新品廣告測試。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "edf12b52-9af2-49a1-9210-7ac17c7665e5",
+        "Result": "passed",
+        "Reason": "輸出明確包含「待辦事項」及「後續追蹤」，並保留負責人與期限。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **待辦事項**\n  - **Alice**：週五前提供內容行銷排程。\n  - **Bob**：下週一前整理新品廣告素材。\n  - **Carol**：負責追蹤成效，並在 **兩週後** 回報。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **後續追蹤**\n  - 若自然流量沒有提升，下一次會議將再檢討預算分配。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "414b2055-3240-4f88-afd7-43db49f422a8",
+        "Result": "passed",
+        "Reason": "摘要內容均可對應至原始會議記錄，未見額外臆測、未提及的數據或新結論。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - Alice 提議將部分預算由廣告投放轉向內容行銷，原因是上季廣告點擊率下降，但內容文章帶來較高自然流量。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - 若自然流量沒有提升，下一次會議將再檢討預算分配。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "acd1e154-9513-490b-aae4-53638d7b1fab",
+        "Result": "passed",
+        "Reason": "輸出使用繁體中文撰寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **待辦事項**\n  - **Alice**：週五前提供內容行銷排程。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "本次輸出為繁體中文的結構化條列摘要，明確涵蓋會議重點、決議、待辦事項與後續追蹤，且內容忠實於原始記錄。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2951,
+      "CompletionTokens": 969,
+      "CostUSD": 0.0164694,
+      "CostReported": true
+    }
+  }
+}

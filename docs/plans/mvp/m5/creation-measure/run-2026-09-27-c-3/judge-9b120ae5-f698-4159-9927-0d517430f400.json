@@ -1,0 +1,158 @@
+{
+  "request": {
+    "RunID": "9b120ae5-f698-4159-9927-0d517430f400",
+    "EvaluationID": "e55cd301-149e-441c-9c7d-4fcc2a53f21a",
+    "Skill": {
+      "Name": "personal-loan-application-evaluator",
+      "Summary": "Evaluate a personal loan application from credit score and debt ratio, and use it when you need a direct approve, manual review, or reject decision based on those thresholds."
+    },
+    "UserPrompt": "請評估以下三筆個人信貸申請，並分別輸出結果：\n1. 信用分數 720，負債比 35%\n2. 信用分數 650，負債比 30%\n3. 信用分數 580，負債比 65%",
+    "Criteria": [
+      {
+        "ID": "ef87b748-aa21-4f89-a4b2-ede539f10c8e",
+        "Text": "輸入信用分數 720、負債比 35% 時，輸出必須是 `直接核准`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "78ded48f-4e7f-4473-a47f-808c455fdf04",
+        "Text": "輸入信用分數 700、負債比 40% 時，輸出必須是 `直接核准`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "96a04d40-63e7-40e6-80c2-3ba9663d3a96",
+        "Text": "輸入信用分數 650、負債比 30% 時，輸出必須是 `需要人工複審`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d74efb53-fd75-4570-a8a2-dee40cde530e",
+        "Text": "輸入信用分數 720、負債比 50% 時，輸出必須是 `需要人工複審`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "78c738a1-91d3-422f-b596-fbfe22b44a48",
+        "Text": "輸入信用分數 590、負債比 30% 時，輸出必須是 `直接拒絕`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d23c7260-ffe9-41a4-bc30-803ddf5f8266",
+        "Text": "輸入信用分數 720、負債比 65% 時，輸出必須是 `直接拒絕`。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "28e9b0ac-a3af-45ac-a8ea-bdf422b70c94",
+        "Text": "輸入信用分數 580、負債比 50% 時，因同時觸發複審與拒絕條件，最終輸出必須是 `直接拒絕`。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "直接核准\n需要人工複審\n直接拒絕",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "3694cea9-1599-4d33-92cd-44d3d82ec027",
+          "OccurredAt": "2026-09-27T09:58:31.893Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"personal-loan-application-evaluator\", \"skill_version_id\": \"115d62b8-bed0-4781-b331-fd7d0849b967\"}"
+        },
+        {
+          "TraceEventID": "280704e2-0e9a-429a-98a9-f8649672f5f4",
+          "OccurredAt": "2026-09-27T09:58:31.91Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"personal-loan-application-evaluator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_pHQZ25kA1YOCJIKjasl2yjJh\", \"result_summary\": \"Launching skill: personal-loan-application-evaluator\"}"
+        },
+        {
+          "TraceEventID": "ec50d188-fe2a-4649-86c6-f315d64d2f67",
+          "OccurredAt": "2026-09-27T09:58:33.531Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"直接核准\\n需要人工複審\\n直接拒絕\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "46105edd-5584-4722-8a90-0fd1c21050c9",
+          "OccurredAt": "2026-09-27T09:58:33.677Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"直接核准\\n需要人工複審\\n直接拒絕\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "88f7417e-85df-4c61-bf08-275678613a3b",
+          "OccurredAt": "2026-09-27T09:58:39.253Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0061839, \"cost_source\": \"gateway\", \"duration_ms\": 9552, \"input_tokens\": 2708, \"token_source\": \"result\", \"output_tokens\": 263, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "ef87b748-aa21-4f89-a4b2-ede539f10c8e",
+        "Result": "passed",
+        "Reason": "最終輸出的第一筆結果為「直接核准」，對應題目第一筆信用分數 720、負債比 35% 的申請。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "直接核准"
+          }
+        ]
+      },
+      {
+        "CriterionID": "78ded48f-4e7f-4473-a47f-808c455fdf04",
+        "Result": "undetermined",
+        "Reason": "本次請求與輸出未包含信用分數 700、負債比 40% 的案例，無法判定其結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "96a04d40-63e7-40e6-80c2-3ba9663d3a96",
+        "Result": "passed",
+        "Reason": "最終輸出的第二筆結果為「需要人工複審」，對應題目第二筆信用分數 650、負債比 30% 的申請。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "需要人工複審"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d74efb53-fd75-4570-a8a2-dee40cde530e",
+        "Result": "undetermined",
+        "Reason": "本次請求與輸出未包含信用分數 720、負債比 50% 的案例，無法判定其結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "78c738a1-91d3-422f-b596-fbfe22b44a48",
+        "Result": "undetermined",
+        "Reason": "本次請求與輸出未包含信用分數 590、負債比 30% 的案例，無法判定其結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "d23c7260-ffe9-41a4-bc30-803ddf5f8266",
+        "Result": "undetermined",
+        "Reason": "本次請求與輸出未包含信用分數 720、負債比 65% 的案例，無法判定其結果。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "28e9b0ac-a3af-45ac-a8ea-bdf422b70c94",
+        "Result": "undetermined",
+        "Reason": "最終輸出中的「直接拒絕」對應題目第三筆信用分數 580、負債比 65% 的申請，並非信用分數 580、負債比 50% 的指定案例，因此無法判定此條件。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次執行正確輸出了所請求三筆申請中的前兩筆結果：720／35% 為直接核准，650／30% 為需要人工複審。其餘驗收案例未在本次請求中測試，無法由現有證據判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2284,
+      "CompletionTokens": 814,
+      "CostUSD": 0.012941900000000001,
+      "CostReported": true
+    }
+  }
+}

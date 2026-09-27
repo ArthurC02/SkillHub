@@ -1,0 +1,175 @@
+{
+  "request": {
+    "RunID": "d255d593-d65c-4a6a-9862-5844c7835fac",
+    "EvaluationID": "b3a285b8-2d44-4bf0-b28f-35e869298bc8",
+    "Skill": {
+      "Name": "meeting-notes-summary",
+      "Summary": "將使用者貼上的長篇會議記錄整理成中文重點摘要，適合在需要快速提煉會議重點、決議與待辦事項時使用。"
+    },
+    "UserPrompt": "請把這份會議記錄整理成重點摘要：\n\n今天先確認 Q3 專案進度。A 組表示 API 端點已完成 80%，但文件還沒補齊；B 組指出測試環境偶爾會出現延遲，需要再觀察一週。討論後決定：1) 由 A 組在週五前補完成文件；2) 由 B 組持續收集延遲數據並在下次會議回報；3) 下週三再檢查整體進度。另提到預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。最後大家同意先維持原時程不變。",
+    "Criteria": [
+      {
+        "ID": "94388f18-ecf1-4ac1-8f68-66430681dd92",
+        "Text": "在輸入一段長篇會議記錄時，輸出內容會明確分成「重點摘要」、「決議」、「待辦事項」三部分。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a75b9412-3387-465e-9e00-7cb59d803986",
+        "Text": "摘要會刪去大多數冗詞與重複敘述，只保留關鍵資訊。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a3d298f2-a971-4c4d-a63d-78f5b1861b69",
+        "Text": "若原文中有明確決議，摘要會列出該決議而不是只寫概述。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b2a2464d-cdbd-40c9-8db2-b7435ba9eb3d",
+        "Text": "若原文中有待辦事項，摘要會列出對應任務與責任人（若原文有提供）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d95c7003-4fd6-453c-877f-f15808474f38",
+        "Text": "摘要不會加入原文沒有提到的新事實。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "- **重點摘要**\n  - 今天先確認 Q3 專案進度。\n  - A 組表示 API 端點已完成約 80%，但文件尚未補齊。\n  - B 組指出測試環境偶爾會出現延遲，需再觀察一週。\n  - 預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。\n  - 目前大家同意先維持原時程不變。\n\n- **決議**\n  - A 組需在**週五前**補完成文件。\n  - B 組持續收集延遲數據，並在**下次會議**回報。\n  - **下週三**再檢查整體進度。\n  - 先維持原時程不變。\n\n- **待辦事項**\n  - A 組：補完成 API 文件（期限：週五前）。\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議回報。\n  - 全體：下週三檢查整體進度。\n\n- **風險 / 後續觀察**\n  - 測試環境偶爾延遲，需持續觀察一週。\n  - 若下月新增兩名工程師，預算可能需要重新評估。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a89e24a0-a733-44c2-926b-63a90104e904",
+          "OccurredAt": "2026-09-27T09:45:47.329Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"meeting-notes-summary\", \"skill_version_id\": \"d31d5c67-77c5-43be-8ded-133b4c9d193e\"}"
+        },
+        {
+          "TraceEventID": "ab597b79-a134-472c-8146-30371f5934a1",
+          "OccurredAt": "2026-09-27T09:45:47.338Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"meeting-notes-summary\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_u0v2f0xddP6HNWeGey9kn3ag\", \"result_summary\": \"Launching skill: meeting-notes-summary\"}"
+        },
+        {
+          "TraceEventID": "80dd0a5b-5119-4d3d-8a27-b7151a8c224c",
+          "OccurredAt": "2026-09-27T09:45:49.633Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"- **重點摘要**\\n  - 今天先確認 Q3 專案進度。\\n  - A 組表示 API 端點已完成約 80%，但文件尚未補齊。\\n  - B 組指出測試環境偶爾會出現延遲，需再觀察一週。\\n  - 預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。\\n  - 目前大家同意先維持原時程不變。\\n\\n- **決議**\\n  - A 組需在**週五前**補完成文件。\\n  - B 組持續收集延遲數據，並在**下次會議**回報。\\n  - **下週三**再檢查整體進度。\\n  - 先維持原時程不變。\\n\\n- **待辦事項**\\n  - A 組：補完成 API 文件（期限：週五前）。\\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議回報。\\n  - 全體：下週三檢查整體進度。\\n\\n- **風險 / 後續觀察**\\n  - 測試環境偶爾延遲，需持續觀察一週。\\n  - 若下月新增兩名工程師，預算可能需要重新評估。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8408fca1-b857-445b-a194-20765f54d8d7",
+          "OccurredAt": "2026-09-27T09:45:49.836Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"- **重點摘要**\\n  - 今天先確認 Q3 專案進度。\\n  - A 組表示 API 端點已完成約 80%，但文件尚未補齊。\\n  - B 組指出測試環境偶爾會出現延遲，需再觀察一週。\\n  - 預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。\\n  - 目前大家同意先維持原時程不變。\\n\\n- **決議**\\n  - A 組需在**週五前**補完成文件。\\n  - B 組持續收集延遲數據，並在**下次會議**回報。\\n  - **下週三**再檢查整體進度。\\n  - 先維持原時程不變。\\n\\n- **待辦事項**\\n  - A 組：補完成 API 文件（期限：週五前）。\\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議回報。\\n  - 全體：下週三檢查整體進度。\\n\\n- **風險 / 後續觀察**\\n  - 測試環境偶爾延遲，需持續觀察一週。\\n  - 若下月新增兩名工程師，預算可能需要重新評估。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d6a1c050-3d61-448e-a9a7-895a40867b84",
+          "OccurredAt": "2026-09-27T09:45:53.877Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00377265, \"cost_source\": \"gateway\", \"duration_ms\": 8458, \"input_tokens\": 3223, \"token_source\": \"result\", \"output_tokens\": 453, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "94388f18-ecf1-4ac1-8f68-66430681dd92",
+        "Result": "passed",
+        "Reason": "輸出明確設有「重點摘要」、「決議」與「待辦事項」三個部分。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **重點摘要**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **決議**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **待辦事項**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a75b9412-3387-465e-9e00-7cb59d803986",
+        "Result": "passed",
+        "Reason": "輸出以條列式濃縮專案進度、風險、預算與時程資訊，保留關鍵內容而未重述原始會議記錄的冗長敘述。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - A 組表示 API 端點已完成約 80%，但文件尚未補齊。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "  - 預算目前沒有超支，但若下月增加兩名工程師，可能需要重新評估。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a3d298f2-a971-4c4d-a63d-78f5b1861b69",
+        "Result": "passed",
+        "Reason": "輸出將原文明確決定的文件完成、延遲數據回報、下週三檢查進度及維持時程列於「決議」中。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **決議**\n  - A 組需在**週五前**補完成文件。\n  - B 組持續收集延遲數據，並在**下次會議**回報。\n  - **下週三**再檢查整體進度。\n  - 先維持原時程不變。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b2a2464d-cdbd-40c9-8db2-b7435ba9eb3d",
+        "Result": "passed",
+        "Reason": "待辦事項逐項列出任務、責任人及原文提供的期限或回報時點。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **待辦事項**\n  - A 組：補完成 API 文件（期限：週五前）。\n  - B 組：持續蒐集測試環境延遲數據，並於下次會議回報。\n  - 全體：下週三檢查整體進度。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d95c7003-4fd6-453c-877f-f15808474f38",
+        "Result": "passed",
+        "Reason": "輸出內容均可對應至原文的進度、決議、待辦、風險與預算條件，未見額外新增的事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **風險 / 後續觀察**\n  - 測試環境偶爾延遲，需持續觀察一週。\n  - 若下月新增兩名工程師，預算可能需要重新評估。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出以指定三部分整理會議內容，明確列出決議與含責任人的待辦事項，並忠實保留原文關鍵資訊，未見新增事實。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3157,
+      "CompletionTokens": 872,
+      "CostUSD": 0.015820400000000002,
+      "CostReported": true
+    }
+  }
+}
