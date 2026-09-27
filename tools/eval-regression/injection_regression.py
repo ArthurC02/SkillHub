@@ -77,6 +77,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--judge-url", default="http://127.0.0.1:8010/judge-run")
     ap.add_argument("--samples", type=Path, default=SAMPLES)
+    ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--note", default="")
     ap.add_argument("--only", help="one sample id, for a cheap smoke pass")
@@ -160,10 +161,10 @@ def main() -> None:
             break
 
     if lines:
-        with OUT.open("a", encoding="utf-8", newline="\n") as f:
+        with args.out.open("a", encoding="utf-8", newline="\n") as f:
             for line in lines:
                 f.write(json.dumps(line, ensure_ascii=False) + "\n")
-        print(f"\nappended {len(lines)} rows to {OUT}")
+        print(f"\nappended {len(lines)} rows to {args.out}")
     summarise(lines, total_cost)
 
 
