@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/egress"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/localdrv"
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/mxcdrv"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
@@ -52,6 +53,12 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
+	mxcBin := os.Getenv("SKILLHUB_SANDBOX_MXC_BIN")
+	kind, err := selectDriver(os.Getenv("SKILLHUB_SANDBOX_DRIVER"), runtime, mxcBin, cleanMode)
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
 
 	var (
 		drv          sandbox.Driver
@@ -61,8 +68,13 @@ func main() {
 		unenforced    []string
 		reapsDetached = true
 	)
-	switch driverKind(cleanMode) {
-	case "local":
+	switch kind {
+	case driverMXC:
+		d := mxcDriver(mxcBin, log)
+		drv, closer = d, d.Close
+		unenforced = unenforcedCeilings(d.ResourceEnforcement())
+		reapsDetached = d.Reaping().Detached
+	case driverLocal:
 		script, err := cleanModeRunnerScript()
 		if err != nil {
 			log.Error(err.Error())
@@ -116,6 +128,9 @@ func main() {
 		}
 	}
 	modes := sandbox.EgressModesFor(network, egressAllow)
+	if kind == driverMXC {
+		modes = []string{"none"}
+	}
 	if len(egressAllow) == 0 && network != "" && network != "none" {
 
 		log.Warn("no egress destination is rendered, so this node declares no egress route",
@@ -229,9 +244,74 @@ func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 
 func driverKind(cleanMode bool) string {
 	if cleanMode {
-		return "local"
+		return driverLocal
 	}
-	return "docker"
+	return driverDocker
+}
+
+const (
+	driverDocker = "docker"
+	driverMXC    = "mxc"
+	driverLocal  = "local"
+)
+
+func selectDriver(requested, runtime, mxcBin string, cleanMode bool) (string, error) {
+	switch requested {
+	case "":
+		return driverKind(cleanMode), nil
+	case driverDocker:
+		if cleanMode {
+			return "", errors.New("SKILLHUB_SANDBOX_DRIVER=docker cannot run with SKILLHUB_CLEAN_MODE=1: " +
+				"clean mode runs workloads as plain host processes, not containers; " +
+				"unset SKILLHUB_CLEAN_MODE to run containers, or set SKILLHUB_SANDBOX_DRIVER=local")
+		}
+	case driverLocal:
+		if !cleanMode {
+			return "", errors.New("SKILLHUB_SANDBOX_DRIVER=local requires SKILLHUB_CLEAN_MODE=1: " +
+				"the local driver runs workloads as host processes with no isolation, so it only starts on a node that declares itself clean; " +
+				"set SKILLHUB_CLEAN_MODE=1, or choose docker or mxc")
+		}
+	case driverMXC:
+		if err := refuseMXCSettings(runtime, mxcBin, cleanMode); err != nil {
+			return "", err
+		}
+	default:
+		return "", fmt.Errorf("SKILLHUB_SANDBOX_DRIVER=%q is not a driver this node has: "+
+			"set docker, mxc or local, or leave it empty to pick docker (local under SKILLHUB_CLEAN_MODE=1)", requested)
+	}
+	return requested, nil
+}
+
+func refuseMXCSettings(runtime, mxcBin string, cleanMode bool) error {
+	switch {
+	case runtime == "runsc":
+		return errors.New("SKILLHUB_SANDBOX_DRIVER=mxc cannot run with SKILLHUB_SANDBOX_RUNTIME=runsc: " +
+			"runsc is the docker driver's container runtime, and an mxc node would run without gVisor while its settings still name it; " +
+			"unset SKILLHUB_SANDBOX_RUNTIME, or set SKILLHUB_SANDBOX_DRIVER=docker")
+	case cleanMode:
+		return errors.New("SKILLHUB_SANDBOX_DRIVER=mxc cannot run with SKILLHUB_CLEAN_MODE=1: " +
+			"clean mode selects the unisolated local driver and declares egress it does not enforce; " +
+			"unset SKILLHUB_CLEAN_MODE to run under mxc, or set SKILLHUB_SANDBOX_DRIVER=local")
+	case mxcBin == "":
+		return errors.New("SKILLHUB_SANDBOX_MXC_BIN is required with SKILLHUB_SANDBOX_DRIVER=mxc: " +
+			"set it to the path of the mxc executable (lxc-exec on Linux, wxc-exec.exe on Windows); " +
+			"it is never guessed or looked up on PATH")
+	}
+	return nil
+}
+
+func mxcDriver(mxcBin string, log *slog.Logger) *mxcdrv.Driver {
+	script, err := cleanModeRunnerScript()
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	d, err := mxcdrv.New(mxcdrv.Config{MXCBin: mxcBin, RunnerScript: script})
+	if err != nil {
+		log.Error("mxc driver unavailable", "err", err)
+		os.Exit(1)
+	}
+	return d
 }
 
 func cleanModeRunnerScript() (string, error) {

@@ -39,6 +39,30 @@
 | `SKILLHUB_SANDBOX_RUNTIME_VERSION` | `0.3.233` | 宣告在 Capability 的 Agent SDK 版本，須與 Image 內一致 |
 | `SKILLHUB_SANDBOX_STORAGE_QUOTA` | 關 | 開啟 `--storage-opt size=`；需要 xfs pquota 或 btrfs，否則 Docker 直接拒絕建立 |
 | `SKILLHUB_SANDBOX_DEV_CMD` | 關 | 允許 `provider_extensions.dev_cmd` 覆寫映像 command。**只給開發與隔離測試用**，生產不得開啟 |
+| `SKILLHUB_SANDBOX_DRIVER` | 空（＝`SKILLHUB_CLEAN_MODE=1` 時 `local`，否則 `docker`） | 執行後端：`docker`／`mxc`／`local`，見下方〈執行後端〉 |
+| `SKILLHUB_SANDBOX_MXC_BIN` | 無 | `mxc` 後端的執行檔路徑（Linux `lxc-exec`、Windows `wxc-exec.exe`）；`mxc` 時必填，不從 PATH 找 |
+
+## 執行後端
+
+`SKILLHUB_SANDBOX_DRIVER` 決定工作負載怎麼被啟動；Capability 宣告的隔離強度由後端自己決定，不能另外設定。
+
+| 後端 | 啟動方式 | 宣告的隔離強度 | 出口網路 |
+| --- | --- | --- | --- |
+| `docker` | 容器；`SKILLHUB_SANDBOX_RUNTIME=runsc` 時走 gVisor | `runsc` 為 `strong`，其餘 `weak` | 依 `SKILLHUB_SANDBOX_NETWORK`，見〈Egress〉 |
+| `mxc` | 主機行程，由 MXC 執行檔依每次執行的政策檔啟動 | `weak` | 只宣告 `none` |
+| `local` | 主機行程，無隔離（clean mode） | `none` | 宣告但不強制 |
+
+sandboxd 拒絕啟動的組合：不認得的值；`mxc` 搭配 `SKILLHUB_SANDBOX_RUNTIME=runsc`；`mxc` 搭配 `SKILLHUB_CLEAN_MODE=1`；`mxc` 而沒有 `SKILLHUB_SANDBOX_MXC_BIN`；`local` 而沒開 clean mode；`docker` 而開了 clean mode。
+
+`mxc` 後端沿用 `local` 的行程樹、輸入搬運、trace 與 artifact 讀取和殘留清理，只換掉啟動方式：
+
+- 每次執行在該次的根目錄寫一份權限 0600 的政策檔：可寫路徑只有該次的工作目錄與輸出目錄，runner script 所在目錄唯讀，網路 `block`，結束即銷毀。
+- 政策檔不寫環境變數。工作負載繼承 MXC 執行檔行程的環境，模型閘道金鑰因此不落磁碟。
+- MXC 自己啟動失敗（結束碼 127 且整段輸出是 `backend_error` 報告）回報為後端錯誤，不當成工作負載以 127 結束。
+- 健康檢查在 MXC 裡跑一次 `node --version`，結束碼不是 0 就回報不健康；結果快取 30 秒。
+- 資源上限與 `local` 相同：作業系統沒有強制的上限列進 `max_resources_unenforced`。MXC 的政策檔沒有記憶體、CPU、行程數的欄位。
+
+**`mxc` 這一版不支援**：目的地允許清單（帶 `egress.allow` 的請求一律 422，所以需要模型閘道的 Run 不會派到這裡）、MXC 層的資源上限。MXC 的隔離強度沒有經過本專案的逃逸測試驗證，宣告為 `weak` 不代表它擋得住不受信任的程式；上線硬性關卡照舊只認 `runsc`。
 
 ## dev 與 prod 的差異
 

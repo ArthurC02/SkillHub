@@ -34,6 +34,8 @@ type Config struct {
 	RunnerScript string
 
 	BaseDir string
+
+	Launch func(direct *exec.Cmd, workDir, outDir string) (*exec.Cmd, error)
 }
 
 type run struct {
@@ -127,6 +129,13 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 	cmd := exec.Command(d.cfg.NodeBin, d.cfg.RunnerScript)
 	cmd.Dir = workDir
 	cmd.Env = env(req, workDir, outDir)
+	if d.cfg.Launch != nil {
+		launched, err := d.cfg.Launch(cmd, workDir, outDir)
+		if err != nil {
+			return fmt.Errorf("prepare workload launch: %w", err)
+		}
+		cmd = launched
+	}
 
 	tail := &tailWriter{limit: logTailBytes}
 	cmd.Stdout = tail
