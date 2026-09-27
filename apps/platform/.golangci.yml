@@ -30,12 +30,6 @@ linters:
       - path: internal/foundation/storage/objreconcile/objreconcile\.go
         linters: [gocognit]
         text: 'func `PurgeExpired`'
-      - path: internal/shared/skillpkg/archive\.go
-        linters: [gocognit]
-        text: 'func `PackageFS`'
-      - path: internal/shared/skillpkg/skillpkg\.go
-        linters: [gocognit]
-        text: 'func `\(\*Report\)\.parseFrontmatter`'
       - path: internal/skill/admission/generate\.go
         linters: [gocognit]
         text: 'func `\(\*Service\)\.GenerateSkill`'

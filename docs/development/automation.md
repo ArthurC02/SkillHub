@@ -154,7 +154,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `one-number` | 帶 `one-number:` 標記的各站點數值相同，且標記要在 `sharedNumberRoster` 名冊上（雙向） | `tools/devctl/shared_number.go` |
 | `query-owner` | 每條 sqlc query 的呼叫方是 `db/query-owners.yaml` 宣告的 owner context（見[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)） | `tools/devctl/query_owners.go` |
 | `sql-logic` | sqlc query 不得在 SQL 裡做商業判斷：依資料分支的 `CASE`、字面值 `IN ('…')` 清單、`interval` 字面值一律擋下，判斷在 Go 做完再以參數傳進 SQL。機制不算判斷：補零與只寫一次的 `COALESCE`、只套用 Go 傳入參數的 `CASE WHEN @flag THEN`、`FILTER`、`NULLIF` 都放行 | `tools/devctl/sql_logic.go` |
-| `context-map` | [已審查 Context](../domain-memory/registry/contexts.json)、[architecture identity](../../apps/platform/architecture-identity.yaml) 與 `.golangci.yml` 的 `files:` 清單逐套件對帳 | `tools/devctl/query_owners.go`（`contextMapProblems`） |
+| `context-map` | [已審查 Context](../domain-memory/registry/contexts.json)、[architecture identity](../../apps/platform/architecture-identity.yaml) 與 `.golangci.yml` 的 `files:` 清單逐套件對帳 | `tools/devctl/context_map.go` |
 | `doc-identifier` | 活文件散文裡的識別字必須真的存在於程式樹 | `tools/devctl/doc_identifiers.go` |
 | `milestone-tally` | M5 的勾選數只有 `03` §19 的 checkbox 能說，其餘四份文件不得出現這個數 | `tools/devctl/milestone_tally.go` |
 | `backlog-tally` | `04` 每個帳目格的數字＝`<!-- open: … -->` 清單長度；清單上每個 id 都是真的列；沒有一列自稱已結案 | `tools/devctl/backlog_tally.go` |

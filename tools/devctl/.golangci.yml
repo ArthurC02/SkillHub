@@ -35,24 +35,9 @@ linters:
       - path: generate\.go
         linters: [gocognit]
         text: 'func `generate`'
-      - path: identifier_order\.go
-        linters: [gocognit]
-        text: 'func `identifierOrderFileProblems`'
       - path: main\.go
         linters: [gocognit]
         text: 'func `main`'
-      - path: query_owners\.go
-        linters: [gocognit]
-        text: 'func `queryOwnerProblems`'
-      - path: query_owners\.go
-        linters: [gocognit]
-        text: 'func `queryCallSites`'
-      - path: query_owners\.go
-        linters: [gocognit]
-        text: 'func `rawSQLProblems`'
-      - path: query_owners\.go
-        linters: [gocognit]
-        text: 'func `architectureIdentities`'
       - path: requirement_refs\.go
         linters: [gocognit]
         text: 'func `requirementRefProblems`'
@@ -65,9 +50,6 @@ linters:
       - path: run_status_sql\.go
         linters: [gocognit]
         text: 'func `goIdentListMap`'
-      - path: service_construction\.go
-        linters: [gocognit]
-        text: 'func `serviceConstructionProblems`'
       - path: shared_number\.go
         linters: [gocognit]
         text: 'func `sharedNumberScan`'
