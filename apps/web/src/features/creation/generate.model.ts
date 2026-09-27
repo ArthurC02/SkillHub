@@ -1,5 +1,28 @@
 import type { GenerationFailure } from "../../core/api/types";
 
+export const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+
+export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
+
+export function generateDiagramProblem(file: File): string | undefined {
+  if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number]))
+    return "圖片格式需為 PNG、JPEG 或 WebP。";
+  if (file.size > GENERATE_MAX_DIAGRAM_BYTES) return "圖片超過大小上限，請換一張較小的圖。";
+  return undefined;
+}
+
+export function readGenerateDiagram(file: File): Promise<{ media_type: string; data: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result);
+      resolve({ media_type: file.type, data: result.slice(result.indexOf(",") + 1) });
+    };
+    reader.onerror = () => reject(new Error("讀取圖片失敗，請重新選擇。"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export const FAILURE_SENTENCE: Record<
   GenerationFailure["failure"],
   (f: GenerationFailure) => string

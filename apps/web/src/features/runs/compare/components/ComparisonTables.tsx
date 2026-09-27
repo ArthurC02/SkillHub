@@ -2,7 +2,7 @@ import type { ComparisonSide, RunComparison } from "../../evaluation.service";
 import { VersionDiff } from "../../components/VersionDiff";
 import { CRITERION_LABEL } from "../../evaluation/evaluation.model";
 import { runStatusLabel } from "../../runs.model";
-import { verdictCell } from "./ComparisonLead";
+import { verdictCell } from "./ComparisonLead.model";
 import { RerunCell } from "./RerunCell";
 import "./ComparisonTables.css";
 

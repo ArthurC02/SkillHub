@@ -1,23 +1,18 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useCatalog, useSkillSearch } from "../../skill";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateEntryPoint } from "../../creation";
 import { useMe } from "../../../core/session/me.service";
-import { GenerateSkill } from "../../creation";
-import { SignInAction } from "../../../shared/ui/SignIn";
 import { MAX_COMPARE } from "../../skill";
 import type { HomeSearch } from "../../../app/router";
 import type { SearchCorrection, SearchFilters } from "../../../core/api/types";
 import { Catalog } from "./components/Catalog";
 import { CategoryNav } from "./components/CategoryNav";
 import { FilterBar } from "./components/FilterBar";
-import { RankingExplainer } from "./components/RankingExplainer";
-import { CompareBar } from "./components/CompareBar";
-import { liftedNotes, SearchFacetNotes } from "./components/SearchFacetNotes";
-import { MarkerLegend } from "./components/MarkerLegend";
-import { SearchResultRow } from "./components/SearchResultRow";
 import { IntentInterpretation } from "./components/IntentInterpretation";
+import { NoResultsPanel } from "./components/NoResultsPanel";
+import { SearchResultsList } from "./components/SearchResultsList";
 import "./Home.page.css";
 
 function parseSelection(value: string | undefined): string[] {
@@ -32,7 +27,11 @@ export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useState(search.q ?? "");
-  useEffect(() => setDraft(search.q ?? ""), [search.q]);
+  const [trackedQ, setTrackedQ] = useState(search.q);
+  if (search.q !== trackedQ) {
+    setTrackedQ(search.q);
+    setDraft(search.q ?? "");
+  }
   const [queryError, setQueryError] = useState("");
   const selected = parseSelection(search.compare);
   const generateExposed = useGenerateEntryPoint();
@@ -214,62 +213,23 @@ export function Home() {
           )}
 
           {data.no_results && (
-            <div>
-              <p>沒有夠接近的 Skill。</p>
-              {data.degraded ? (
-                <p>
-                  而且這次搜尋只用了關鍵字比對，語意相近與跨語言的結果找不出來——現在找不到不代表
-                  目錄裡沒有。換個說法幫不上忙；直接看目錄，或稍後再搜尋一次。
-                </p>
-              ) : (
-                data.query_suggestion && <p>{data.query_suggestion}</p>
-              )}
-              <p className="note">
-                <Link to="/" search={{}}>
-                  看看目錄裡有什麼
-                </Link>
-                ——不帶任何查詢，列出這個部署收錄的全部 Skill。
-              </p>
-              <div className="note">
-                {loggedIn ? (
-                  <>
-                    手上已經有一個 Skill 套件的話，也可以
-                    <Link to="/workspace/import">直接匯入它</Link>。
-                  </>
-                ) : (
-                  <>
-                    手上已經有一個 Skill 套件的話，登入後可以把它匯入你自己的工作區。{" "}
-                    <SignInAction />
-                  </>
-                )}
-              </div>
-              {generateExposed && <GenerateSkill initialTask={data.query} />}
-            </div>
+            <NoResultsPanel
+              query={data.query}
+              degraded={data.degraded}
+              querySuggestion={data.query_suggestion}
+              loggedIn={loggedIn}
+              generateExposed={generateExposed}
+            />
           )}
 
           {data.results.length > 0 && (
-            <>
-              <RankingExplainer />
-              <CompareBar selected={selected} />
-              <h2 id="results-heading">符合「{data.query}」的 Skill</h2>
-              <p role="status" className="note">
-                找到 {data.results.length} 個 Skill。
-              </p>
-              <MarkerLegend />
-              <SearchFacetNotes hits={data.results} />
-              <ul className="search-results" aria-labelledby="results-heading">
-                {data.results.map((hit) => (
-                  <SearchResultRow
-                    key={hit.skill_id}
-                    hit={hit}
-                    checked={selected.includes(hit.skill_id)}
-                    atLimit={selected.length >= MAX_COMPARE}
-                    onToggle={toggleSelected}
-                    lifted={liftedNotes(data.results)}
-                  />
-                ))}
-              </ul>
-            </>
+            <SearchResultsList
+              query={data.query}
+              results={data.results}
+              selected={selected}
+              atLimit={selected.length >= MAX_COMPARE}
+              onToggle={toggleSelected}
+            />
           )}
         </>
       )}

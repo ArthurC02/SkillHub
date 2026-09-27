@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { SearchFilters } from "../../../../core/api/types";
-import { UNAVAILABLE_FILTERS, FilterControls } from "./FilterControls";
+import { FilterControls } from "./FilterControls";
+import { UNAVAILABLE_FILTERS } from "./FilterControls.model";
 import "./FilterBar.css";
 
 export function FilterBar({
@@ -12,9 +13,7 @@ export function FilterBar({
 }) {
   const narrowing = Object.values(filters).some(Boolean);
   const [open, setOpen] = useState(narrowing);
-  useEffect(() => {
-    if (narrowing) setOpen(true);
-  }, [
+  const signature = JSON.stringify([
     narrowing,
     filters.script,
     filters.validation,
@@ -22,6 +21,11 @@ export function FilterBar({
     filters.tier,
     filters.category,
   ]);
+  const [trackedSignature, setTrackedSignature] = useState(signature);
+  if (signature !== trackedSignature) {
+    setTrackedSignature(signature);
+    if (narrowing) setOpen(true);
+  }
 
   return (
     <details

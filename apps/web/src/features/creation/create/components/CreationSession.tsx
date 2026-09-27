@@ -1,30 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
 import {
   useCreationLimits,
   useCreationSessions,
   useLiveCreationSession,
   type CreationAction,
-  type CreationState,
 } from "../../creation.service";
 import { useCredits } from "../../../../core/session/credits.service";
 import { useRuns } from "../../../runs";
 import { TERMINAL_RUN_STATUSES } from "../../../runs";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { Timestamp } from "../../../../shared/ui/Timestamp";
 import {
   diagramProblem,
   readImage,
   buildRoundTimeline,
   budgetChoices,
-  nextStepBudget,
   MAX_MESSAGE_RUNES,
-  points,
 } from "../create.model";
 import { useCreationCommands, type CommandExtra, type Perform } from "../create.commands";
 import { useMessageStream } from "../create.stream";
-import { AgentAvatar, ConversationLog } from "./ConversationLog";
+import { ConversationLog } from "./ConversationLog";
+import { SessionHeader } from "./SessionHeader";
+import { SessionEmptyState } from "./SessionEmptyState";
 import {
   BriefCard,
   DiagramDescriptionCard,
@@ -39,71 +36,6 @@ import {
 import { DraftCard } from "./DraftCard";
 import { Composer } from "./Composer";
 import "./CreationSession.css";
-
-const labels: Record<CreationState, string> = {
-  queued: "等待處理",
-  working: "正在創作",
-  waiting_input: "等待你的補充",
-  waiting_confirmation: "等待你確認",
-  draft_ready: "草稿可供檢查",
-  candidate_ready: "候選版本已建立",
-  saved: "已保存",
-  cancelled: "已取消",
-  failed: "這一步未完成",
-  needs_reupload: "請重新上傳流程圖",
-};
-
-function NextStep({
-  costCredits,
-  remainingCredits,
-  roomForAnother,
-}: {
-  costCredits: number;
-  remainingCredits: number;
-  roomForAnother: boolean;
-}) {
-  if (roomForAnother) {
-    return (
-      <>
-        {" "}
-        · 下一步最多 {points(costCredits)}，預算還有 {points(remainingCredits)}
-      </>
-    );
-  }
-  return (
-    <>
-      {" "}
-      ·{" "}
-      <strong>
-        預算只剩 {points(remainingCredits)}，不夠再走一步的 {points(costCredits)}
-      </strong>
-      ，展開可以提高預算
-    </>
-  );
-}
-
-const STARTERS = [
-  {
-    title: "會議記錄 → 待辦清單",
-    desc: "從逐字稿抓出待辦、負責人和期限",
-    prompt: "把會議逐字稿整理成待辦清單，每一項要有負責人和期限；沒講到期限就標「未定」。",
-  },
-  {
-    title: "客服來信分類",
-    desc: "依問題類型分類，並草擬第一版回覆",
-    prompt: "把客服來信依問題類型分類，並為每一封草擬第一版回覆。",
-  },
-  {
-    title: "發票資料擷取",
-    desc: "抓出金額、日期與統一編號",
-    prompt: "從發票內容擷取金額、開立日期與統一編號，輸出成一張表格。",
-  },
-  {
-    title: "PR → 版本說明",
-    desc: "把合併的 PR 整理成給使用者看的更新說明",
-    prompt: "把這週合併的 PR 描述整理成給使用者看的版本更新說明，依功能分組。",
-  },
-];
 
 export function CreationSession() {
   const [id, setID] = useState(""),
@@ -312,146 +244,33 @@ export function CreationSession() {
   const hasContent = message.trim() !== "" || !!file || refs.length > 0;
   return (
     <div className="creation-shell">
-      <header className="creation-bar">
-        <nav aria-label="離開這一頁">
-          <Link to="/workspace/skills" className="bar-back" aria-label="回到我的 Skill">
-            ←
-          </Link>
-        </nav>
-        <AgentAvatar />
-        <div className="bar-title">
-          <h3>和 Agent 一起創作 Skill</h3>
-          <span className="creation-state">
-            {session ? (
-              <>
-                <span role="status">{labels[session.state]}</span>
-                {p && limits.data && ` · ${p.steps}／${limits.data.max_steps} 步`}
-              </>
-            ) : (
-              "說出任務，一步步做成你的 Skill"
-            )}
-          </span>
-        </div>
-        {session && p && (
-          <details className="creation-details">
-            <summary>
-              費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
-              {points(p.budget_credits)}
-              {limits.data && !terminal && (
-                <NextStep {...nextStepBudget(p, limits.data.min_budget_credits)} />
-              )}
-            </summary>
-            <div>
-              <p className="note">
-                仍占用預算 {p.reserved_credits} 點
-                {limits.data && (
-                  <>
-                    {" "}
-                    · 工具 {p.tool_calls}／{limits.data.max_tool_calls} 次
-                  </>
-                )}
-              </p>
-              {!terminal && (
-                <p className="note">
-                  可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
-                  <Timestamp at={session.expires_at} />
-                </p>
-              )}
-              {limits.data && (
-                <>
-                  <label>
-                    提高這次預算上限（點）
-                    <input
-                      aria-label="提高這次預算上限（點）"
-                      inputMode="decimal"
-                      disabled={busy}
-                      value={raiseBudget}
-                      onChange={(e) => setRaiseBudget(e.target.value)}
-                    />
-                  </label>
-                  <button type="button" disabled={busy} onClick={() => void submitRaiseBudget()}>
-                    提高預算後繼續
-                  </button>
-                </>
-              )}
-              {!terminal && !working && session.state !== "failed" && (
-                <button
-                  type="button"
-                  className="destructive"
-                  disabled={busy}
-                  onClick={() => void perform("cancel")}
-                >
-                  取消這次創作
-                </button>
-              )}
-            </div>
-          </details>
-        )}
-        {sessions.data && sessions.data.length > 0 && (
-          <details className="creation-history" ref={historyMenu}>
-            <summary>對話紀錄</summary>
-            <ul>
-              <li>
-                <button
-                  type="button"
-                  disabled={busy}
-                  aria-current={!id || undefined}
-                  onClick={() => pickSession("")}
-                >
-                  ＋ 開始新的創作
-                </button>
-              </li>
-              {sessions.data.slice(0, 50).map((s) => (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    data-session={s.id}
-                    disabled={busy}
-                    aria-current={s.id === id || undefined}
-                    onClick={() => pickSession(s.id)}
-                  >
-                    <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
-                    <span className="note">{labels[s.state]}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </header>
+      <SessionHeader
+        session={session}
+        p={p}
+        limits={limits.data}
+        terminal={terminal}
+        working={working}
+        busy={busy}
+        perform={perform}
+        raiseBudget={raiseBudget}
+        onRaiseBudget={setRaiseBudget}
+        onSubmitRaiseBudget={submitRaiseBudget}
+        sessionList={sessions.data}
+        currentId={id}
+        onPickSession={pickSession}
+        historyMenu={historyMenu}
+      />
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
           {!p && (
-            <>
-              <p className="system-line">Agent 會先和你確認需求與驗收條件，才開始寫草稿</p>
-              <ol className="creation-log">
-                <li data-role="assistant">
-                  <AgentAvatar />
-                  <span className="creation-who">Agent</span>
-                  <span className="creation-text">
-                    想做一個什麼樣的 Skill？說說它要完成什麼，也可以附上流程圖。
-                  </span>
-                </li>
-              </ol>
-              <ul className="starter-cards" aria-label="可以這樣開始">
-                {STARTERS.map((s) => (
-                  <li key={s.title}>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setMessage(s.prompt);
-                        textarea.current?.focus();
-                      }}
-                    >
-                      <strong>{s.title}</strong>
-                      <span>{s.desc}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <SessionEmptyState
+              busy={busy}
+              onPick={(prompt) => {
+                setMessage(prompt);
+                textarea.current?.focus();
+              }}
+            />
           )}
 
           {session && p && (

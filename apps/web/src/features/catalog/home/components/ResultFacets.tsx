@@ -1,6 +1,6 @@
 import { LabelledBadge } from "../../../../shared/ui/LabelledBadge";
 import { RiskSummary } from "../../../../shared/ui/RiskIndicator";
-import type { LiftedNotes } from "./FacetNotes";
+import type { LiftedNotes } from "./FacetNotes.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { PublicSearchResult } from "../../../../core/api/types";
 import "./ResultFacets.css";

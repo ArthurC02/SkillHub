@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ApiError } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useGenerateSkill } from "../generate.service";
+import {
+  GENERATE_MAX_DIAGRAM_BYTES,
+  generateDiagramProblem,
+  readGenerateDiagram,
+} from "../generate.model";
 import { isCategorizedFindings } from "../import.service";
 import { useOwnSkills, useSkillSearch } from "../../skill";
 import type { GenerateDiagram, GenerateRejected } from "../../../core/api/types";
@@ -21,10 +26,6 @@ const GENERATE_COST_LOW_USD = 0.003;
 const GENERATE_COST_TYPICAL_USD = 0.006;
 
 const GENERATE_COST_HIGH_USD = 0.03;
-
-const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
-
-const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
 const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
 
@@ -46,32 +47,27 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     const file = event.target.files?.[0];
     setDiagramError("");
     if (!file) return;
-    if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number])) {
-      setDiagramError("圖片格式需為 PNG、JPEG 或 WebP。");
+    const problem = generateDiagramProblem(file);
+    if (problem) {
+      setDiagramError(problem);
       event.target.value = "";
       return;
     }
-    if (file.size > GENERATE_MAX_DIAGRAM_BYTES) {
-      setDiagramError("圖片超過大小上限，請換一張較小的圖。");
-      event.target.value = "";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result);
-      setDiagram({
-        media_type: file.type as GenerateDiagram["media_type"],
-        data: result.slice(result.indexOf(",") + 1),
-      });
-      setDiagramName(file.name);
-      setReading(false);
-    };
-    reader.onerror = () => {
-      setDiagramError("讀取圖片失敗，請重新選擇。");
-      setReading(false);
-    };
     setReading(true);
-    reader.readAsDataURL(file);
+    readGenerateDiagram(file).then(
+      (read) => {
+        setDiagram({
+          media_type: read.media_type as GenerateDiagram["media_type"],
+          data: read.data,
+        });
+        setDiagramName(file.name);
+        setReading(false);
+      },
+      () => {
+        setDiagramError("讀取圖片失敗，請重新選擇。");
+        setReading(false);
+      },
+    );
   }
 
   function removeDiagram() {
