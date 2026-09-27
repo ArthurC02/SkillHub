@@ -1,0 +1,196 @@
+{
+  "round": 1,
+  "sample_input": "請依本學期缺席次數處理以下學生資料，列出判定、符合門檻者的家長警告信草稿，以及留意名單標記建議。\n姓名,家長稱謂,本學期缺席次數\n王小明,王先生,2\n林安琪,林女士,3\n陳柏宇,陳先生,4",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的每位學生，輸出其姓名、缺席次數及判定；2 次標示為未達門檻，3 次與 4 次標示為達門檻。"
+    },
+    {
+      "text": "只為試跑輸入中缺席達 3 次或以上的學生產生警告信；因此須為林安琪與陳柏宇產生信件，不為王小明產生。"
+    },
+    {
+      "text": "林安琪的信件收件稱謂為林女士，指出學生林安琪本學期缺席 3 次；陳柏宇的信件收件稱謂為陳先生，指出學生陳柏宇本學期缺席 4 次。"
+    },
+    {
+      "text": "對林安琪與陳柏宇，各自列出建議標記為「留意名單」；對王小明不列出此建議。"
+    },
+    {
+      "text": "輸出明確說明沒有登入或修改教務系統，也沒有實際完成名單標記。"
+    }
+  ],
+  "final_output": "學生：王小明；本學期缺席：2 次  \n判定：未達門檻；不撰寫警告信，不建議標記留意名單。\n\n學生：林安琪；本學期缺席：3 次  \n判定：達到門檻。  \n建議：標記為「留意名單」。  \n家長警告信草稿：  \n收件稱謂：林女士  \n主旨：本學期缺席提醒  \n內容：  \n林女士您好：  \n我們注意到林安琪本學期缺席 3 次，特此提醒您留意學生的出席情況。  \n若有需要，請與學校聯繫，以便了解情況並共同支持學生。  \n敬祝 平安  \n學校\n\n學生：陳柏宇；本學期缺席：4 次  \n判定：達到門檻。  \n建議：標記為「留意名單」。  \n家長警告信草稿：  \n收件稱謂：陳先生  \n主旨：本學期缺席提醒  \n內容：  \n陳先生您好：  \n我們注意到陳柏宇本學期缺席 4 次，特此提醒您留意學生的出席情況。  \n若有需要，請與學校聯繫，以便了解情況並共同支持學生。  \n敬祝 平安  \n學校\n\n系統操作狀態：沒有登入或修改教務系統，也沒有實際完成名單標記。請自行複核信件草稿與標記建議後處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0796ddf2-54de-4830-b8ff-0c67fb304032",
+    "run_id": "6e9e037a-e4ca-4c07-975e-045f0f3fa6cd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成：判定、警告信草稿及留意名單建議符合缺席次數門檻，並清楚交代未執行系統操作。",
+    "criterion_results": [
+      {
+        "criterion_id": "09b18655-d488-4bfc-b50c-1c56790030b6",
+        "text": "對試跑輸入中的每位學生，輸出其姓名、缺席次數及判定；2 次標示為未達門檻，3 次與 4 次標示為達門檻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三位學生的姓名、缺席次數及門檻判定均正確列出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：王小明；本學期缺席：2 次",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：未達門檻；不撰寫警告信，不建議標記留意名單。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：林安琪；本學期缺席：3 次",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：陳柏宇；本學期缺席：4 次",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：達到門檻。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1884cb94-e12e-44ed-81de-48aa4be90c26",
+        "text": "只為試跑輸入中缺席達 3 次或以上的學生產生警告信；因此須為林安琪與陳柏宇產生信件，不為王小明產生。",
+        "result": "passed",
+        "source": "model",
+        "reason": "僅林安琪與陳柏宇有家長警告信草稿；王小明明確標示不撰寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "不撰寫警告信，不建議標記留意名單。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "收件稱謂：林女士",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "收件稱謂：陳先生",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7d2d9ce-91c4-4b74-b908-01884f48b1e6",
+        "text": "林安琪的信件收件稱謂為林女士，指出學生林安琪本學期缺席 3 次；陳柏宇的信件收件稱謂為陳先生，指出學生陳柏宇本學期缺席 4 次。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩封草稿各自使用指定家長稱謂，並寫明對應學生本學期缺席 3 次及 4 次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "收件稱謂：林女士",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我們注意到林安琪本學期缺席 3 次，特此提醒您留意學生的出席情況。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "收件稱謂：陳先生",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我們注意到陳柏宇本學期缺席 4 次，特此提醒您留意學生的出席情況。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aae7b45b-c8da-4cd9-a0bd-5bab5a16efb4",
+        "text": "對林安琪與陳柏宇，各自列出建議標記為「留意名單」；對王小明不列出此建議。",
+        "result": "passed",
+        "source": "model",
+        "reason": "林安琪與陳柏宇各有「留意名單」標記建議；王小明則明確不建議標記。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "不建議標記留意名單。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "建議：標記為「留意名單」。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54d4aebd-c24e-4482-b1ed-dd331d9ff9fa",
+        "text": "輸出明確說明沒有登入或修改教務系統，也沒有實際完成名單標記。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明未登入或修改教務系統，亦未實際完成名單標記。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "系統操作狀態：沒有登入或修改教務系統，也沒有實際完成名單標記。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1545 input and 652 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

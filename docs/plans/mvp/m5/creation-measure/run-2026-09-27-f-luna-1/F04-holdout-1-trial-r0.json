@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "入住 2026-10-02（五）入住，2026-10-04（日）退房，這次住宿總金額是多少？",
+  "acceptance_criteria": [
+    {
+      "text": "輸出算出一個具體的總金額數字，不是只反問使用者假日要加價多少"
+    },
+    {
+      "text": "10/2（平日）那晚以 2000 元計價"
+    },
+    {
+      "text": "10/3（六，假日）那晚房價高於 2000 元"
+    }
+  ],
+  "final_output": "2026-10-02（週五，平日）：新台幣 2,000 元  \n2026-10-03（週六，假日）：新台幣 2,500 元  \n住宿晚數：2 晚  \n住宿總額：新台幣 4,500 元\n\n以上依預設週一至週五每晚 2,000 元、週六與週日每晚 2,500 元計算；未納入國定假日、折扣、稅費或其他費用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "05a75f18-81be-4154-a8f8-a9739be9d558",
+    "run_id": "a86005d6-24b5-4e3e-8ec6-f47c157c4dfd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成：兩晚分別計價 2,000 元與 2,500 元，總額為 4,500 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "f8782d67-86d3-4915-a71e-72f3ee4ed1db",
+        "text": "輸出算出一個具體的總金額數字，不是只反問使用者假日要加價多少",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆給出具體住宿總額 4,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "住宿總額：新台幣 4,500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a5f4f8d-6d7a-4de0-8305-12a41bd12a05",
+        "text": "10/2（平日）那晚以 2000 元計價",
+        "result": "passed",
+        "source": "model",
+        "reason": "10 月 2 日列為平日，房價為 2,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-02（週五，平日）：新台幣 2,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9496d5ed-961c-456c-80a7-4b6d9cced6fd",
+        "text": "10/3（六，假日）那晚房價高於 2000 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "10 月 3 日列為週六假日，房價為 2,500 元，高於 2,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-03（週六，假日）：新台幣 2,500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1530 input and 358 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

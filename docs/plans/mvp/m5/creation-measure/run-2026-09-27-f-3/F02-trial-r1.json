@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下案件分類：\n1) 語言對：英語-中文；字數：6000；交期：24 小時\n2) 語言對：中文-英文；字數：5001；交期：48 小時\n3) 語言對：中文-日文；字數：5000；交期：12 小時\n4) 語言對：中文-英文；字數：4999；交期：24 小時\n5) 語言對：日文-中文；字數：10000；交期：1 小時",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入語言對為「英語-中文」，字數 6000、交期 24 小時時，輸出必須是「退件」。"
+    },
+    {
+      "text": "當輸入語言對為「中文-英文」，字數 5001、交期 48 小時時，輸出必須是「加急」。"
+    },
+    {
+      "text": "當輸入語言對為「中文-日文」，字數 5000、交期 12 小時時，輸出必須是「普通」。"
+    },
+    {
+      "text": "當輸入語言對為「中文-英文」，字數 4999、交期 24 小時時，輸出必須是「普通」。"
+    },
+    {
+      "text": "當輸入語言對為「日文-中文」，字數 10000、交期 1 小時時，輸出必須是「退件」。"
+    }
+  ],
+  "final_output": "退件\n加急\n普通\n普通\n退件",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9aefe625-c407-434d-8b5c-3d0d906ed484",
+    "run_id": "123c2f60-5a20-4bc7-9972-b6a46ea23519",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆依序提供五個案件的分類，分別為退件、加急、普通、普通、退件，均與各項驗收標準一致。",
+    "criterion_results": [
+      {
+        "criterion_id": "83670b26-b50b-4e5b-8319-8f314bad390b",
+        "text": "當輸入語言對為「英語-中文」，字數 6000、交期 24 小時時，輸出必須是「退件」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出的第一項為「退件」，對應案件 1。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退件\n加急\n普通\n普通\n退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4c4b441-2d1b-4a32-bd76-9c7fcdd785b3",
+        "text": "當輸入語言對為「中文-英文」，字數 5001、交期 48 小時時，輸出必須是「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出的第二項為「加急」，對應案件 2。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退件\n加急\n普通\n普通\n退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1ba6075c-7963-4911-8308-be92a7e8e199",
+        "text": "當輸入語言對為「中文-日文」，字數 5000、交期 12 小時時，輸出必須是「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出的第三項為「普通」，對應案件 3。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退件\n加急\n普通\n普通\n退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "826ef61c-2edd-48f5-b3dc-baf9f269533b",
+        "text": "當輸入語言對為「中文-英文」，字數 4999、交期 24 小時時，輸出必須是「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出的第四項為「普通」，對應案件 4。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退件\n加急\n普通\n普通\n退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ac0c2700-67ea-46dc-ab97-23d8bc119a25",
+        "text": "當輸入語言對為「日文-中文」，字數 10000、交期 1 小時時，輸出必須是「退件」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出的第五項為「退件」，對應案件 5。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "退件\n加急\n普通\n普通\n退件",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18651 input and 379 output tokens on gpt-5.4-mini; reported cost $0.0175 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

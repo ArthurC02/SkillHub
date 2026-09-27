@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理這段訂書留言並算總金額：\n《小王子》2本，單價320元；《海邊的卡夫卡》1本，單價450元；運費60元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段包含至少兩本書的客人訂書留言時，輸出會逐項整理出每本書的書名、數量、單價與小計。"
+    },
+    {
+      "text": "當留言中每本書的小計可由數量×單價計算時，輸出中的每筆小計都等於該筆數量乘以單價。"
+    },
+    {
+      "text": "輸出會另外提供書籍總金額，且該金額只加總書籍小計，不包含運費。"
+    },
+    {
+      "text": "當留言中有提到運費時，輸出會單獨列出運費，並清楚表示它不計入書籍總金額。"
+    },
+    {
+      "text": "當留言未提供某項資訊時，輸出不會自行編造該欄位內容。"
+    }
+  ],
+  "final_output": "以下是整理好的訂購內容：\n\n### 訂購清單\n| 書名 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 《小王子》 | 2本 | 320元 | 640元 |\n| 《海邊的卡夫卡》 | 1本 | 450元 | 450元 |\n\n### 書籍總金額\n**1090元**\n\n### 運費\n**60元**（不計入書籍總金額）\n\n### 若含運費合計\n**1150元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7a96862b-de2e-4ff4-837c-a8dd8000b43b",
+    "run_id": "300ae357-a3dc-4b6b-be1f-7bb41baff051",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整整理兩本書的訂購明細，所有小計與書籍總金額計算正確。運費獨立呈現並明示未納入書籍總金額，沒有可見的未依輸入資訊編造內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "323079f3-e281-4ba8-826a-84e77b09b8e9",
+        "text": "輸入一段包含至少兩本書的客人訂書留言時，輸出會逐項整理出每本書的書名、數量、單價與小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以清單表格逐項列出兩本書的書名、數量、單價與小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2本 | 320元 | 640元 |\n| 《海邊的卡夫卡》 | 1本 | 450元 | 450元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "55cc7861-5578-423c-a98b-bfc1c2741aec",
+        "text": "當留言中每本書的小計可由數量×單價計算時，輸出中的每筆小計都等於該筆數量乘以單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆小計分別為 2×320=640 元及 1×450=450 元，與輸出相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2本 | 320元 | 640元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《海邊的卡夫卡》 | 1本 | 450元 | 450元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "44185d63-bc75-4cf8-b9bb-2b734978d002",
+        "text": "輸出會另外提供書籍總金額，且該金額只加總書籍小計，不包含運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出另列書籍總金額為 1090 元，等於兩筆書籍小計 640 元與 450 元之和，且運費另列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 書籍總金額\n**1090元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2本 | 320元 | 640元 |\n| 《海邊的卡夫卡》 | 1本 | 450元 | 450元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83c1f364-c1aa-4b0b-ac48-f8978ae1ee3e",
+        "text": "當留言中有提到運費時，輸出會單獨列出運費，並清楚表示它不計入書籍總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "運費被單獨列出，並明確註明不計入書籍總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 運費\n**60元**（不計入書籍總金額）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5dae29d-7b6e-414d-9201-a32b0c93b615",
+        "text": "當留言未提供某項資訊時，輸出不會自行編造該欄位內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅呈現留言提供的書名、數量、單價與運費，以及可由這些資料計算出的金額，未出現未提供欄位的編造內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2本 | 320元 | 640元 |\n| 《海邊的卡夫卡》 | 1本 | 450元 | 450元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18719 input and 593 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

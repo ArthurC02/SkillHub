@@ -1,0 +1,185 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資訊撰寫一則正式優雅的畫廊開幕邀請文：\n展覽名稱：〈光的邊界〉\n展期：2026年4月12日至2026年5月30日\n開幕茶會時間：2026年4月12日（週日）下午3:00\n地點：拾光畫廊，台北市大安區敦化南路二段18號\n\n請確認這個 brief；如果要，我也可以下一步直接幫你產出 Skill 草稿。",
+  "acceptance_criteria": [
+    {
+      "text": "在給定完整展覽資訊時，輸出會是一則語氣正式優雅的畫廊開幕邀請文。"
+    },
+    {
+      "text": "輸出會明確保留展覽名稱，且名稱文字與輸入一致。"
+    },
+    {
+      "text": "輸出會明確保留展期的起訖日期，且日期文字與輸入一致，不會交換、補寫或改寫。"
+    },
+    {
+      "text": "輸出會明確保留開幕茶會時間，且時間文字與輸入一致。"
+    },
+    {
+      "text": "輸出會明確保留地點，且地點文字與輸入一致。"
+    },
+    {
+      "text": "輸出不會省略上述四項事實中的任何一項。"
+    },
+    {
+      "text": "輸出不會把上述四項事實改寫成與輸入不一致的內容。"
+    }
+  ],
+  "final_output": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\n\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。\n\n敬邀您於光影交會之際，共同見證〈光的邊界〉的啟幕時刻，細賞作品所蘊藏的深邃意境與優雅光色。\n\n敬候光臨。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "64a07ac5-30c7-46c9-a301-1b64d88d3f4f",
+    "run_id": "39f0aa88-7dd7-4b41-b37a-6056c28fd305",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終邀請文以正式優雅的中文撰寫，並完整且正確保留展覽名稱、展期、開幕茶會時間與地點。",
+    "criterion_results": [
+      {
+        "criterion_id": "3ff635e3-7b44-4330-b6ac-3f48dd7ae68b",
+        "text": "在給定完整展覽資訊時，輸出會是一則語氣正式優雅的畫廊開幕邀請文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為完整的畫廊開幕邀請文，採用「誠摯邀請」、「敬邀」與「敬候光臨」等正式優雅措辭。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "敬候光臨。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0246c6d6-828b-43f8-b7e5-f00d5828764b",
+        "text": "輸出會明確保留展覽名稱，且名稱文字與輸入一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確包含展覽名稱，文字與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0971e1d3-3c90-4979-905b-5bd2a78778d5",
+        "text": "輸出會明確保留展期的起訖日期，且日期文字與輸入一致，不會交換、補寫或改寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留展期起訖日期，順序與文字均與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "20c5f843-6fee-4fe6-879a-b00c23c5669e",
+        "text": "輸出會明確保留開幕茶會時間，且時間文字與輸入一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確保留開幕茶會日期、星期及時間，與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aff6b1c2-097c-4a3c-8f3a-7335f3e79ba2",
+        "text": "輸出會明確保留地點，且地點文字與輸入一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確保留畫廊名稱與完整地址，文字與輸入一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bd625072-49a4-491f-9211-e0d8722ba590",
+        "text": "輸出不會省略上述四項事實中的任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含展覽名稱、展期、開幕茶會時間與地點，未省略任一項事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "86d0fd3a-75ff-4bdd-b2d6-f018d423e53f",
+        "text": "輸出不會把上述四項事實改寫成與輸入不一致的內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出中的展覽名稱、展期、茶會時間與地點均逐項符合輸入資訊，沒有不一致的改寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\n\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2971 input and 849 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

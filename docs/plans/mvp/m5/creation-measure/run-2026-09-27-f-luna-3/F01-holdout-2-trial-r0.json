@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "包裹重量 5.1 公斤，請算運費。",
+  "acceptance_criteria": [
+    {
+      "text": "運費為 250 元"
+    }
+  ],
+  "final_output": "原始重量 5.1 公斤，進位後為 6 公斤；適用「超過 5 公斤且不超過 20 公斤」級距，運費 **250 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c5a770a0-5b4c-418d-bd44-f610e3e0b6d2",
+    "run_id": "596e3cc2-81f3-4f7b-8f25-764cc696469a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "包裹重量 5.1 公斤的運費計算結果為 250 元，符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "06244c7c-a366-4e66-be3a-bc496a13ca46",
+        "text": "運費為 250 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆計算的運費為 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 **250 元**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 219 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

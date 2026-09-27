@@ -1,0 +1,136 @@
+{
+  "round": 1,
+  "sample_input": "請依合理假設為每行資料各撰寫一則開庭通知簡訊：\n案號：115年度訴字第123號；下一次開庭：2026年10月12日上午9時30分；法院：臺灣臺北地方法院；法庭：第8法庭；方式：親自到庭；其他資訊：請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，開庭前30分鐘抵達並先至服務台報到，若無法到庭請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\n案號：115年度訴字第456號；法院：臺灣臺北地方法院；法庭：第3法庭；方式：線上開庭；其他資訊：請準備身分證。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。"
+    },
+    {
+      "text": "試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。"
+    },
+    {
+      "text": "試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。"
+    },
+    {
+      "text": "試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。"
+    }
+  ],
+  "final_output": "【通知一】\n臺灣臺北地方法院通知您，115年度訴字第123號案件將於2026年10月12日上午9時30分在第8法庭親自開庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。\n資訊合併說明：已合併呈現攜帶資料、抵達報到、無法到庭時聯絡及保持手機開機等事項。\n\n【通知二】\n資料不足：115年度訴字第456號缺少下一次開庭日期及時間，無法撰寫完整通知。",
+  "artifacts": [
+    "開庭通知簡訊.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "d12bbc15-cb6e-45f5-b768-46fe94bd188a",
+    "run_id": "b2b2dbe1-a8a8-4d38-974e-aa2e3c6a5566",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "第一則通知符合句數、資訊呈現及事實準確性的要求。第二則正確指出缺少開庭日期時間，但未向使用者詢問該資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "4b753ce8-9c3c-4a8f-9ba9-72fb4fa81675",
+        "text": "試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一則通知本文共兩句，案號與下一次開庭日期時間均準確列出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "臺灣臺北地方法院通知您，115年度訴字第123號案件將於2026年10月12日上午9時30分在第8法庭親自開庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7fa7b5c-184b-4312-9365-a6da05763008",
+        "text": "試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知以正式文字將其他資訊合併在本文第二句，並在本文之外另以一句話指出合併涉及的事項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "資訊合併說明：已合併呈現攜帶資料、抵達報到、無法到庭時聯絡及保持手機開機等事項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "361d7c63-2503-4aa4-ab1a-fae3afc90109",
+        "text": "試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一則通知保留了所提供的案號、日期時間、法院、法庭、到庭方式及其他事項，未見改動或補入未提供的具體事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "臺灣臺北地方法院通知您，115年度訴字第123號案件將於2026年10月12日上午9時30分在第8法庭親自開庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7db85a9-3467-4bfc-842c-dc8b5682a6e9",
+        "text": "試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第二行未捏造日期時間，也未輸出看似完整的通知；但僅指出資料不足，沒有詢問或請使用者提供下一次開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "資料不足：115年度訴字第456號缺少下一次開庭日期及時間，無法撰寫完整通知。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): 開庭通知簡訊.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1569 input and 2157 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

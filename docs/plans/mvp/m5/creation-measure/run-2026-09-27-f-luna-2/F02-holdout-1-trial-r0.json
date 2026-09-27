@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這批要分類的案件如下：\n1. 中文-英文，6000字，交期24小時\n2. 中文-韓文，3000字，交期10小時\n3. 中文-日文，5000字，交期48小時\n4. 中文-英文，5001字，交期48小時\n請幫我分類。",
+  "acceptance_criteria": [
+    {
+      "text": "案件1（中文-英文，6000字，24小時）判定為加急"
+    },
+    {
+      "text": "案件2（中文-韓文）判定為退件"
+    },
+    {
+      "text": "案件3（中文-日文，5000字，48小時）判定為普通"
+    },
+    {
+      "text": "案件4（中文-英文，5001字，48小時）判定為加急"
+    }
+  ],
+  "final_output": "1. 加急\n2. 退件\n3. 普通\n4. 加急",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8a9e52d1-0050-464e-80d0-54357003d8dc",
+    "run_id": "a069e035-8df3-49ac-8bda-3b85aa545aa9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆對四件案件的分類均符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "304df2fa-afc6-4527-89b7-dfa235169840",
+        "text": "案件1（中文-英文，6000字，24小時）判定為加急",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件1判定為加急。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 加急",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e8507d8-ec97-42f6-90dd-697fe4ffa119",
+        "text": "案件2（中文-韓文）判定為退件",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件2判定為退件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a1721093-4a39-4771-8281-fc75a62e9b1d",
+        "text": "案件3（中文-日文，5000字，48小時）判定為普通",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件3判定為普通。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 普通",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3462fa96-bdb6-4e79-ac9e-6ab14df078e8",
+        "text": "案件4（中文-英文，5001字，48小時）判定為加急",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件4判定為加急。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 加急",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1511 input and 283 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

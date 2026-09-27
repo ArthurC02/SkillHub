@@ -1,0 +1,131 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：麻煩幫我確認一下，我是林小姐，地址是台北市大安區忠孝東路四段100號3樓，冷氣不冷需要師傅來檢修，希望約2026年11月5日下午2點過去，訂金要收500元，我電話0912345678。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 30 字"
+    },
+    {
+      "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）"
+    },
+    {
+      "text": "本文包含訂金金額 500 元"
+    }
+  ],
+  "final_output": "確認預約2026年11月5日下午2點，訂金500元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "2941509c-4c04-466c-992b-3d701af56acd",
+    "run_id": "f76c1729-1658-4b0a-80c4-53b9169264e8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終簡訊為單行、25字，且包含指定的預約日期、時間與訂金金額。所有驗收條件均已符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "da1c6918-0a37-47d0-9006-70d22056ae3d",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一行簡訊本文，沒有字數統計或說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "確認預約2026年11月5日下午2點，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7c347a6c-f8c4-4c91-af3f-4d7a03a5a222",
+        "text": "本文總字數（含標點與英數字）不超過 30 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終簡訊含標點與英數字共25字，未超過30字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "確認預約2026年11月5日下午2點，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5f5145f-07c6-4a50-a85f-ab8bc39ea633",
+        "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含日期「2026年11月5日」及時間「下午2點」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月5日下午2點",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d3d5dc77-c703-4a13-9bc1-91ab8b5fae5a",
+        "text": "本文包含訂金金額 500 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含訂金金額「500元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂金500元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1543 input and 1108 output tokens on skillhub-run; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請按每筆資料各寫一則開庭通知簡訊，並依約定格式處理必要資訊缺漏。\n1. 案號：114年度民訴字第25號；下次開庭：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭；提醒：請攜帶身分證及相關證據，提前15分鐘到庭。\n2. 案號：115年度家調字第8號；下次開庭：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭；請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料；提前20分鐘報到；若無法到庭請於三日前聯絡承辦人；承辦人林小姐，分機235；請勿遲到。\n3. 案號：115年度勞訴字第42號；地點：臺灣臺中地方法院第5法庭；提醒：請攜帶出勤紀錄。",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入第 1 筆的通知本文不超過 3 句，並包含原資料中的案號「114年度民訴字第25號」及開庭時間「2026/10/15 09:30」。"
+    },
+    {
+      "text": "試跑輸入第 2 筆的通知本文不超過 3 句，並包含原資料中的案號「115年度家調字第8號」及開庭時間「2026/11/02 14:00」。"
+    },
+    {
+      "text": "試跑輸入第 2 筆若有合併或省略任何其他資訊，須另附一句指出哪些資訊被合併或省略；該說明不算入通知本文句數。"
+    },
+    {
+      "text": "試跑輸入第 3 筆缺少開庭日期時間時，通知本文仍不超過 3 句，保留案號「115年度勞訴字第42號」，並以明確的待補標記呈現缺少的開庭日期時間，不得自行編造日期或時間。"
+    }
+  ],
+  "final_output": "1.\n通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。\n\n2.\n通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。\n合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。\n\n3.\n通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。",
+  "artifacts": [
+    "hearing_notices.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "362ee7a5-ec72-4023-91d5-0be0cb29a04d",
+    "run_id": "e2866c71-8d63-48d3-bade-e8085f690c8f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆通知本文均符合各自的句數與必要資訊要求；第 2 筆另附合併說明，第 3 筆以「待補」標示缺漏的開庭日期時間。",
+    "criterion_results": [
+      {
+        "criterion_id": "4e2b2c23-0ed6-47c2-96f9-e4995ed7a357",
+        "text": "試跑輸入第 1 筆的通知本文不超過 3 句，並包含原資料中的案號「114年度民訴字第25號」及開庭時間「2026/10/15 09:30」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆通知本文共兩句，包含指定案號及開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1911d73f-5a84-4dba-af3b-ec67b9fe0f8e",
+        "text": "試跑輸入第 2 筆的通知本文不超過 3 句，並包含原資料中的案號「115年度家調字第8號」及開庭時間「2026/11/02 14:00」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆通知本文共三句，包含指定案號及開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "95a732a8-30c5-4502-ba8a-ab53464d5dde",
+        "text": "試跑輸入第 2 筆若有合併或省略任何其他資訊，須另附一句指出哪些資訊被合併或省略；該說明不算入通知本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆在通知本文之外另附一句，指出合併的資訊，並說明未省略其他資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "88f28763-6b51-4108-9d99-0d15929b4258",
+        "text": "試跑輸入第 3 筆缺少開庭日期時間時，通知本文仍不超過 3 句，保留案號「115年度勞訴字第42號」，並以明確的待補標記呈現缺少的開庭日期時間，不得自行編造日期或時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆通知本文共兩句，保留案號，以「待補」標示缺少的開庭日期時間，未編造日期或時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): hearing_notices.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1555 input and 3097 output tokens on skillhub-run; reported cost $0.0054 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

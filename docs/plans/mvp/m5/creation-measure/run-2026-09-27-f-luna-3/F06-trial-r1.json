@@ -1,0 +1,148 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料寫一則到府維修預約確認簡訊。\n預約日期：2026年10月5日\n預約時間：下午2:30\n應收訂金：NT$500",
+  "acceptance_criteria": [
+    {
+      "text": "使用下方試跑輸入時，輸出總長不超過 30 字，中文字、英數字、標點及空格均各計 1 字。"
+    },
+    {
+      "text": "輸出明確包含下方輸入的完整預約日期（可用保留年份的精簡格式表示）。"
+    },
+    {
+      "text": "輸出明確包含下方輸入的預約時間，且時間值沒有改變。"
+    },
+    {
+      "text": "輸出明確包含下方輸入的訂金金額 NT$500。"
+    },
+    {
+      "text": "輸出只有簡訊本文，沒有標題、引號、說明文字或字數統計。"
+    }
+  ],
+  "final_output": "預約確認：2026/10/5 下午2:30，訂金NT$500",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "5cf2f734-6759-4f1d-9e10-4ce25829b14c",
+    "run_id": "01b58f71-9409-49c5-82b5-01ee5f841049",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收條件均已符合：簡訊為 29 字，日期、時間與訂金金額正確，且只輸出簡訊本文。",
+    "criterion_results": [
+      {
+        "criterion_id": "c674d59a-418a-4ce2-a735-4179f0415ce4",
+        "text": "使用下方試跑輸入時，輸出總長不超過 30 字，中文字、英數字、標點及空格均各計 1 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊共 29 字，未超過 30 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "預約確認：2026/10/5 下午2:30，訂金NT$500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3efb809a-2e78-4f68-a306-e3a6ce40d970",
+        "text": "輸出明確包含下方輸入的完整預約日期（可用保留年份的精簡格式表示）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "包含完整日期 2026/10/5。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/10/5",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf88430d-1178-4fb3-84c4-9b9ff4b51642",
+        "text": "輸出明確包含下方輸入的預約時間，且時間值沒有改變。",
+        "result": "passed",
+        "source": "model",
+        "reason": "包含未更改的預約時間「下午2:30」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下午2:30",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eee41f37-bded-4c43-b989-7197a218e461",
+        "text": "輸出明確包含下方輸入的訂金金額 NT$500。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確包含訂金金額 NT$500。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂金NT$500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43773128-2792-4500-b928-c6096e6cf8e2",
+        "text": "輸出只有簡訊本文，沒有標題、引號、說明文字或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有簡訊本文；「預約確認：」是訊息內容的一部分，沒有另加標題、引號、說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "預約確認：2026/10/5 下午2:30，訂金NT$500",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 722 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

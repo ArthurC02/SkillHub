@@ -1,0 +1,140 @@
+{
+  "round": 2,
+  "sample_input": "請幫我寫開庭通知簡訊。\n\n案例一：案號：113年度訴字第456號；被告：王小明；原告：臺北地檢署；下一次開庭日期時間：2026年10月15日 上午9:30；地點：臺北地方法院第3法庭；承辦股別：刑事第5庭；提醒事項：請攜帶身分證與相關文件；聯絡人：陳秘書，02-1234-5678。\n\n案例二：請幫我寫開庭通知簡訊。案號：113年度訴字第456號；下一次開庭日期時間：2026年10月15日 上午9:30。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入同時包含案號、下一次開庭日期時間與其他多項資訊時，輸出會有 3 句以內的正文，且正文包含案號與下一次開庭日期時間。"
+    },
+    {
+      "text": "在輸入資訊很多、無法全部放入 3 句時，輸出會另外提供 1 句說明，指出省略或合併了哪些資訊。"
+    },
+    {
+      "text": "正文句數不會超過 3 句，即使有額外說明也不算入正文上限。"
+    },
+    {
+      "text": "若輸入只有必要資訊，仍會產出包含案號與下一次開庭日期時間的簡訊正文，且可不省略任何資訊。"
+    },
+    {
+      "text": "若輸入資訊過多，Skill 會以合併方式精簡內容，但不會遺漏案號或下一次開庭日期時間。"
+    }
+  ],
+  "final_output": "案例一：通知您，113年度訴字第456號（原告臺北地檢署、被告王小明）將於2026年10月15日上午9:30在臺北地方法院第3法庭，由刑事第5庭開庭，請攜帶身分證與相關文件，聯絡人陳秘書02-1234-5678。\n案例二：通知您，113年度訴字第456號將於2026年10月15日上午9:30開庭。\n案例二僅依您提供的資訊撰寫，未補充地點、股別、提醒與聯絡資訊。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "26c01bfd-5721-46fb-b2e4-ace1dd184044",
+    "run_id": "2e1a4974-debd-4e86-9ed1-5ee46cd879d2",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "案例一與案例二的正文均保留案號及開庭日期時間，且各自不超過三句；案例一也合併了多項資訊。惟本次輸入的多項資訊實際上已被容納於單句內，未呈現資訊確實無法於三句內放入時是否會提供省略或合併說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "7ad5c145-175f-4e2f-9669-fa301dccee59",
+        "text": "在輸入同時包含案號、下一次開庭日期時間與其他多項資訊時，輸出會有 3 句以內的正文，且正文包含案號與下一次開庭日期時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例一正文僅一個句子，且包含案號與下一次開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：通知您，113年度訴字第456號（原告臺北地檢署、被告王小明）將於2026年10月15日上午9:30在臺北地方法院第3法庭，由刑事第5庭開庭，請攜帶身分證與相關文件，聯絡人陳秘書02-1234-5678。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5fa72956-ff09-4532-ac93-60675d924d61",
+        "text": "在輸入資訊很多、無法全部放入 3 句時，輸出會另外提供 1 句說明，指出省略或合併了哪些資訊。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "案例一的多項資訊均被放入同一句正文，沒有證據顯示曾出現無法於三句內容納全部資訊的情況，因此無法判定該情況下是否會另以一句說明省略或合併項目。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "49cada8f-d89a-480f-91e4-14cf87f2ea97",
+        "text": "正文句數不會超過 3 句，即使有額外說明也不算入正文上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個案例的簡訊正文各為一句；案例二另有一行說明，未使任何正文超過三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：通知您，113年度訴字第456號（原告臺北地檢署、被告王小明）將於2026年10月15日上午9:30在臺北地方法院第3法庭，由刑事第5庭開庭，請攜帶身分證與相關文件，聯絡人陳秘書02-1234-5678。\n案例二：通知您，113年度訴字第456號將於2026年10月15日上午9:30開庭。\n案例二僅依您提供的資訊撰寫，未補充地點、股別、提醒與聯絡資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0a19497-0324-455f-ab70-f60eb6649be5",
+        "text": "若輸入只有必要資訊，仍會產出包含案號與下一次開庭日期時間的簡訊正文，且可不省略任何資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例二僅提供案號與開庭日期時間，所產生的正文包含這兩項必要資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例二：通知您，113年度訴字第456號將於2026年10月15日上午9:30開庭。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f092549-5eb2-4829-98c3-9b54b567f7ab",
+        "text": "若輸入資訊過多，Skill 會以合併方式精簡內容，但不會遺漏案號或下一次開庭日期時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例一將多項案件資訊合併為單句，並保留案號與下一次開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：通知您，113年度訴字第456號（原告臺北地檢署、被告王小明）將於2026年10月15日上午9:30在臺北地方法院第3法庭，由刑事第5庭開庭，請攜帶身分證與相關文件，聯絡人陳秘書02-1234-5678。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 4729 input and 3010 output tokens on gpt-5.4-mini; reported cost $0.0235 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 32,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

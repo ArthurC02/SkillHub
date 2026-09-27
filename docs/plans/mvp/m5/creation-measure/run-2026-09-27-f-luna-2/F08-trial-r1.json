@@ -1,0 +1,169 @@
+{
+  "round": 1,
+  "sample_input": "請把以下看診資料整理成收費清單並計算總金額：\n2026-09-01｜診察｜數量 1｜單價 500\n2026-09-01｜疫苗｜數量 2｜單價 350\n2026-09-02｜診察｜數量 1｜單價 500",
+  "acceptance_criteria": [
+    {
+      "text": "對範例中的三筆資料，輸出表格恰有三筆明細，並保留日期、項目、數量與單價。"
+    },
+    {
+      "text": "對範例中的「疫苗」資料，計算小計為 700（2 × 350）；另外兩筆小計各為 500（1 × 500）。"
+    },
+    {
+      "text": "表格欄位包含日期、項目、數量、單價與小計，且每筆小計與對應資料列一致。"
+    },
+    {
+      "text": "表格後列出的所有項目總金額為 1,700（500 + 700 + 500）。"
+    }
+  ],
+  "final_output": "| 日期 | 項目 | 數量 | 單價 | 小計 |\n|---|---|---:|---:|---:|\n| 2026-09-01 | 診察 | 1 | 500 | 500 |\n| 2026-09-01 | 疫苗 | 2 | 350 | 700 |\n| 2026-09-02 | 診察 | 1 | 500 | 500 |\n\n總金額：1700",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4897fb02-8ffb-48d9-b06c-def22e9cc6fb",
+    "run_id": "91a5d0e4-7750-4b9a-bd2f-628e263351fd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "收費清單完整列出三筆明細，各筆小計及總金額均正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "c4e2e201-927e-4279-8e04-2a4662b8f1e6",
+        "text": "對範例中的三筆資料，輸出表格恰有三筆明細，並保留日期、項目、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格恰有三筆明細，日期、項目、數量與單價均與原始資料一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗 | 2 | 350 | 700 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f35c2790-9e34-432e-be1c-d85477650cde",
+        "text": "對範例中的「疫苗」資料，計算小計為 700（2 × 350）；另外兩筆小計各為 500（1 × 500）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "疫苗小計為 700，另外兩筆診察小計各為 500，計算均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗 | 2 | 350 | 700 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a9ecb5a-a376-4d2e-ad3c-ba808dd3e568",
+        "text": "表格欄位包含日期、項目、數量、單價與小計，且每筆小計與對應資料列一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格包含指定的五個欄位，三筆小計均與各自的數量及單價相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 項目 | 數量 | 單價 | 小計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗 | 2 | 350 | 700 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99e87cfa-b931-4132-a8e0-d2e94dde4bd1",
+        "text": "表格後列出的所有項目總金額為 1,700（500 + 700 + 500）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格後列出的總金額為 1700，等於三筆小計 500、700、500 之和。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：1700",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗 | 2 | 350 | 700 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1530 input and 388 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

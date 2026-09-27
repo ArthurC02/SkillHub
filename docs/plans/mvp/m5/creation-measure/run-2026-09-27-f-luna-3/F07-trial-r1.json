@@ -1,0 +1,188 @@
+{
+  "round": 1,
+  "sample_input": "請依本學期缺席次數判斷是否達警告門檻，並為達標學生產生家長信及人工標記提醒。\n學期：2026 年秋季\n學生姓名｜家長稱謂｜本學期缺席次數\n林子晴｜林先生／林女士｜2\n陳冠宇｜陳先生／陳女士｜3\n王雅婷｜王先生／王女士｜5",
+  "acceptance_criteria": [
+    {
+      "text": "試跑中缺席 2 次的學生被標示為未達門檻，且不會收到警告信或「留意名單」標記提醒。"
+    },
+    {
+      "text": "試跑中缺席恰為 3 次的學生會收到一封繁體中文個別警告信，信中正確包含學生姓名、家長稱謂、學期與 3 次缺席。"
+    },
+    {
+      "text": "試跑中缺席 5 次的學生會收到一封繁體中文個別警告信，信中正確包含學生姓名、家長稱謂、學期與 5 次缺席。"
+    },
+    {
+      "text": "每位達標學生的信件後都有清楚的人工提醒，指出使用者需自行將該生標記為「留意名單」。"
+    },
+    {
+      "text": "回覆不會聲稱已登入教務系統或已替學生完成標記，也不會編造輸入未提供的缺席原因、校規或聯絡方式。"
+    },
+    {
+      "text": "結果按學生分開呈現，並以繁體中文撰寫。"
+    }
+  ],
+  "final_output": "學生：林子晴\n本學期缺席：2 次\n結果：未達警告門檻；不產生警告信或留意名單提醒。\n\n學生：陳冠宇\n本學期缺席：3 次\n結果：達警告門檻。\n家長警告信：\n陳先生／陳女士 您好：\n依據提供的資料，陳冠宇於2026 年秋季本學期缺席共 3 次，已達本次警告門檻。敬請留意孩子的出席情形，並協助孩子維持規律到校。\n謝謝您的關心與協助。\n人工提醒：請由使用者自行將該生標記為「留意名單」；本 Skill 未登入或修改教務系統。\n\n學生：王雅婷\n本學期缺席：5 次\n結果：達警告門檻。\n家長警告信：\n王先生／王女士 您好：\n依據提供的資料，王雅婷於2026 年秋季本學期缺席共 5 次，已達本次警告門檻。敬請留意孩子的出席情形，並協助孩子維持規律到校。\n謝謝您的關心與協助。\n人工提醒：請由使用者自行將該生標記為「留意名單」；本 Skill 未登入或修改教務系統。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3a1b8c7a-1908-4d64-a45f-e90ab9d6a9d7",
+    "run_id": "07c767ac-1818-4576-bfc8-ce9716ad35ed",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均已達成：缺席 2 次者未收到警告信，缺席 3 次及 5 次者各有個別家長信與人工標記提醒。",
+    "criterion_results": [
+      {
+        "criterion_id": "147fcc4b-1ac1-4f12-83f4-4a3974e8cd9a",
+        "text": "試跑中缺席 2 次的學生被標示為未達門檻，且不會收到警告信或「留意名單」標記提醒。",
+        "result": "passed",
+        "source": "model",
+        "reason": "林子晴缺席 2 次，標示為未達門檻，且未提供警告信或標記提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本學期缺席：2 次",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "結果：未達警告門檻；不產生警告信或留意名單提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d2383d4-a755-4c9a-ad10-6955c7f786e8",
+        "text": "試跑中缺席恰為 3 次的學生會收到一封繁體中文個別警告信，信中正確包含學生姓名、家長稱謂、學期與 3 次缺席。",
+        "result": "passed",
+        "source": "model",
+        "reason": "陳冠宇有一封繁體中文個別警告信，包含家長稱謂、2026 年秋季及缺席 3 次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生／陳女士 您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "依據提供的資料，陳冠宇於2026 年秋季本學期缺席共 3 次，已達本次警告門檻。敬請留意孩子的出席情形，並協助孩子維持規律到校。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c9008e9-f215-448c-aa4c-622bea2ff244",
+        "text": "試跑中缺席 5 次的學生會收到一封繁體中文個別警告信，信中正確包含學生姓名、家長稱謂、學期與 5 次缺席。",
+        "result": "passed",
+        "source": "model",
+        "reason": "王雅婷有一封繁體中文個別警告信，包含家長稱謂、2026 年秋季及缺席 5 次。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王先生／王女士 您好：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "依據提供的資料，王雅婷於2026 年秋季本學期缺席共 5 次，已達本次警告門檻。敬請留意孩子的出席情形，並協助孩子維持規律到校。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "adfffc3a-92f2-47e4-a118-d0d07e6bed12",
+        "text": "每位達標學生的信件後都有清楚的人工提醒，指出使用者需自行將該生標記為「留意名單」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩位達標學生的信件後各有人工提醒，要求使用者自行標記為「留意名單」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "人工提醒：請由使用者自行將該生標記為「留意名單」；本 Skill 未登入或修改教務系統。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d64fa3a0-8837-4943-ab38-7c8731db8400",
+        "text": "回覆不會聲稱已登入教務系統或已替學生完成標記，也不會編造輸入未提供的缺席原因、校規或聯絡方式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示未登入或修改教務系統；信件未聲稱標記已完成，也未加入缺席原因、校規或聯絡方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "人工提醒：請由使用者自行將該生標記為「留意名單」；本 Skill 未登入或修改教務系統。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eea0cdd2-7b21-425f-be62-ddf0b58521ec",
+        "text": "結果按學生分開呈現，並以繁體中文撰寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以繁體中文按林子晴、陳冠宇及王雅婷分段呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：林子晴",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：陳冠宇",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "學生：王雅婷",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1543 input and 704 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

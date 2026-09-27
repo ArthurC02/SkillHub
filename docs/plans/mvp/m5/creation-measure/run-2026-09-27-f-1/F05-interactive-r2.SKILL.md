@@ -1,0 +1,38 @@
+---
+name: kaiting-notification-sms
+description: 撰寫開庭通知簡訊，當使用者提供案件資訊、需要在 3 句內保留案號與下一次開庭日期時間，並在資訊過多時額外說明省略或合併內容時使用。
+---
+
+# 開庭通知簡訊
+
+## 何時使用
+使用者要你把案件資訊整理成一則「開庭通知簡訊」，而且要求本文不超過 3 句、一定要含案號與下一次開庭日期時間，並在資訊過多時另外說明哪些內容被省略或合併。
+
+## 你要做的事
+1. 讀取使用者提供的案件資訊。
+2. 找出一定要保留的兩項：案號、下一次開庭日期時間。
+3. 先組成一段正式、精簡、適合簡訊的通知本文，且本文最多 3 句。
+4. 若還有其他資訊塞不下，保留重要的提醒或地點資訊，並把被省略或合併的內容另外用 1 句說明。
+5. 輸出時把「通知本文」和「補充說明」分開；補充說明不計入 3 句上限。
+
+## 寫作規則
+- 通知本文最多 3 句。
+- 通知本文一定要包含案號與下一次開庭日期時間。
+- 其他資訊可依重要性省略或合併。
+- 補充說明只在確實有資訊被省略或合併時加入，且只寫 1 句。
+- 若使用者沒有提供案號或下一次開庭日期時間，直接說明缺少哪些必要資訊，不要編造。
+- 不要加入與通知無關的內容。
+
+## 輸出格式
+- 先輸出通知本文。
+- 若需要，再輸出 1 句補充說明，交代省略或合併了哪些資訊。
+
+## 例外處理
+- 如果資訊不足，明確指出缺少的必要欄位。
+- 如果資訊彼此衝突，保留使用者最新、最明確的寫法，並在輸出中指出有衝突需要確認。
+
+## Output check
+
+Before answering, write the answer to `answer.txt`, run
+`python scripts/check_output.py --max-sentences 3 answer.txt`
+from the directory holding this SKILL.md, and revise the file until it prints OK; then answer with the file's content and nothing else. When everything cannot fit, keep the limit and add one line after the answer saying what was left out.

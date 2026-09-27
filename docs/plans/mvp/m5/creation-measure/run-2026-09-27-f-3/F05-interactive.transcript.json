@@ -1,0 +1,124 @@
+{
+  "acceptance_criteria": [
+    "在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。",
+    "通知正文中明確出現案號。",
+    "通知正文中明確出現下一次開庭日期時間。",
+    "當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。",
+    "該額外說明不計入通知正文的 3 句話上限。",
+    "當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。"
+  ],
+  "brief": "建立一個撰寫「開庭通知簡訊」的 Skill。輸入是使用者提供的案件資訊；輸出是一則可直接發送的簡訊。簡訊正文最多 3 句話，且一定要包含「案號」與「下一次開庭日期時間」。若其他資訊放不進 3 句話內，可以省略或合併；此外，還要另外附上一句說明，交代省略或合併了哪些資訊，且這句不計入 3 句話上限。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我做一個寫『開庭通知簡訊』的 Skill：通知本文不能超過 3 句話，但一定要包含案號和下一次開庭日期時間這兩項；如果我提供的其他資訊塞不進 3 句話，可以省略或合併，但請額外用一句話（不算在 3 句話的上限內）告訴我省略或合併了哪些資訊。",
+      "created_at": "2026-09-27T14:43:39.465558676Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的 brief：\n\n**brief**\n建立一個撰寫「開庭通知簡訊」的 Skill。輸入是使用者提供的案件資訊；輸出是一則可直接發送的簡訊。簡訊正文最多 3 句話，且一定要包含「案號」與「下一次開庭日期時間」。若其他資訊放不進 3 句話內，可以省略或合併；此外，還要另外附上一句說明，交代省略或合併了哪些資訊，且這句不計入 3 句話上限。\n\n**assumptions**\n- 預設只處理中文輸入與中文輸出。\n- 預設不強制固定簡訊口吻，除上述限制外可用自然、簡潔語氣。\n- 預設使用者會提供足以判斷哪些資訊可省略或合併的內容；若不足，Skill 需保留這個限制並依可用資訊產出。\n- 預設「一句話」以一般自然語句計算，不額外做字數限制。\n\n**acceptance_criteria**\n1. 在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。\n2. 通知正文中明確出現案號。\n3. 通知正文中明確出現下一次開庭日期時間。\n4. 當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。\n5. 該額外說明不計入通知正文的 3 句話上限。\n6. 當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。\n\n**sample_input**\n請幫我寫開庭通知簡訊：案號 113 年度訴字第 248 號，被告王小明，原告台北市立醫院，下一次開庭日期時間是 2026/10/15 上午 9:30，地點在台北地方法院第 5 法庭，請提醒準時出席並攜帶身分證件，另附上聯絡窗口是書記官陳小姐、電話 02-1234-5678、也請提到如需請假要提前通知。\n\n請確認這個 brief 是否要照這樣做。",
+      "created_at": "2026-09-27T14:43:46.740455191Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請先確認這份需求與驗收條件，再建立草稿。",
+      "created_at": "2026-09-27T14:43:52.872533649Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是可提交給 Go 驗證的草稿：",
+      "created_at": "2026-09-27T14:43:59.446093388Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=true；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T14:43:59.448528186Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已修正驗證指出的名稱問題：把 Skill 名稱改成符合規則的英文小寫連字號格式，並保留原本的用途與限制；授權未知的警告不需要處理。由於 draft_validation 只指出這一個可修正的錯誤，這次不再重複原草稿內容，而是直接提供更新後的草稿。",
+      "created_at": "2026-09-27T14:44:10.421391806Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T14:44:10.423528077Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的 evaluation 需要修正；我保留已驗證草稿不變。你可以直接接受這個 draft，或告訴我要改哪一部分。",
+      "created_at": "2026-09-27T14:44:19.694450686Z"
+    },
+    {
+      "role": "tool",
+      "content": "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。",
+      "created_at": "2026-09-27T14:44:19.697541461Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"0ffac68b-b894-4ebb-918e-fa98592bafb6\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"本次完整資訊案例的通知正文為 3 句，且包含案號與下一次開庭日期時間，並涵蓋其餘提供的通知資訊。較少資訊輸入時的處理方式未在本次執行中呈現。\",\"criterion_results\":[{\"criterion_id\":\"d5516a4f-372e-4e4b-908c-f4bf84fad6df\",\"text\":\"當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"本次輸入為完整案件資訊，沒有資訊較少的輸入案例可供判斷是否會在該情況下避免補造細節。\"},{\"criterion_id\":\"7df8360a-96c5-46ab-869f-b6c9790582a7\",\"text\":\"在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":118},\"excerpt\":\"案號113年度訴字第248號，被告王小明、原告台北市立醫院，下一次開庭日期時間為2026/10/15上午9:30。\\n請準時出席並攜帶身分證件，地點為台北地方法院第5法庭。\\n如需請假，請提前通知書記官陳小姐，電話02-1234-5678。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"輸出通知正文共有 3 句，未超過上限。\"},{\"criterion_id\":\"2b41d8fe-991b-42e7-8d37-fb17f3552fce\",\"text\":\"通知正文中明確出現案號。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":57},\"excerpt\":\"案號113年度訴字第248號，被告王小明、原告台北市立醫院，下一次開庭日期時間為2026/10/15上午9:30。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知正文明確列出案號。\"},{\"criterion_id\":\"c44802e8-2f9d-4cf5-9914-21663cd9738c\",\"text\":\"通知正文中明確出現下一次開庭日期時間。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":57},\"excerpt\":\"案號113年度訴字第248號，被告王小明、原告台北市立醫院，下一次開庭日期時間為2026/10/15上午9:30。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知正文明確列出下一次開庭日期與時間。\"},{\"criterion_id\":\"c1b3d050-222f-4577-922e-399254f9fe38\",\"text\":\"當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":118},\"excerpt\":\"案號113年度訴字第248號，被告王小明、原告台北市立醫院，下一次開庭日期時間為2026/10/15上午9:30。\\n請準時出席並攜帶身分證件，地點為台北地方法院第5法庭。\\n如需請假，請提前通知書記官陳小姐，電話02-1234-5678。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"本次提供的資訊均已在 3 句正文中容納，未出現需要省略或合併而另行說明的情況。\"},{\"criterion_id\":\"52fcf485-96ff-4971-ac11-0d8efe4826c0\",\"text\":\"該額外說明不計入通知正文的 3 句話上限。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":118},\"excerpt\":\"案號113年度訴字第248號，被告王小明、原告台北市立醫院，下一次開庭日期時間為2026/10/15上午9:30。\\n請準時出席並攜帶身分證件，地點為台北地方法院第5法庭。\\n如需請假，請提前通知書記官陳小姐，電話02-1234-5678。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"本次沒有額外說明句，通知正文維持為 3 句；因此不存在將額外說明計入正文上限的情況。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"d8f0f257-b660-40f1-af6f-2306b4d825e0\",\"occurred_at\":\"2026-09-27T14:44:44.52Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"court-hearing-notification-sms\\\", \\\"skill_version_id\\\": \\\"472cb436-d839-4fdc-86bb-6904e1d5e217\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 4918 input and 1628 output tokens on gpt-5.4-mini; reported cost $0.0211 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"61eb570c-da8f-4956-91cf-d9db84b09b79\",\"skill_version_id\":\"472cb436-d839-4fdc-86bb-6904e1d5e217\"}",
+      "created_at": "2026-09-27T14:45:21.28747147Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。」：尚無法判定——本次輸入為完整案件資訊，沒有資訊較少的輸入案例可供判斷是否會在該情況下避免補造細節。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T14:45:21.287505573Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T14:45:21.297115549Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依你剛剛的要求，已補強可驗收範例的草稿；我只改了原本驗不到的那個條件所需的 sample_input，其他條件不改寫不刪掉。\n\n這次未過的條件是：\n- 「當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。」\n\n我做了這個調整：\n- 把 sample_input 改成同一次包含兩個案例：\n  1) 完整案件資訊，驗證正常輸出仍符合 3 句上限且包含必備欄位。\n  2) 只提供案號與下一次開庭日期時間，其餘欄位明示未提供，讓同一次試跑能直接觀察是否會補造未提供的細節。\n- 為了對應你說的「條件本身不要改寫或刪掉」，我保留了原本的 acceptance_criteria 不變。\n\n你可以直接接受這版，或告訴我要再調整 sample 的案件內容與缺少資訊的程度。",
+      "created_at": "2026-09-27T14:45:27.236727665Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已依你的要求修正草稿，重點是補強 sample_input，讓原本驗不到的「較少資訊時不自行補造細節」也能在單次試跑中被觀察到；另外保留原本 acceptance_criteria 不變。",
+      "created_at": "2026-09-27T14:45:37.357268674Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T14:45:37.360556436Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"3b530683-c989-4132-8881-6e1dfe7ac540\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"通知正文均含案號與下一次開庭日期時間，且案例二未補造未提供的案件細節。不過，案例一已將多項資訊合併，額外說明未交代該合併內容，反而將案例二未提供的欄位稱為省略。\",\"criterion_results\":[{\"criterion_id\":\"762ea663-252e-48e4-8591-58727b715357\",\"text\":\"當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":111},\"excerpt\":\"案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":166,\"end\":190},\"excerpt\":\"已省略案例二的地點、當事人、聯絡窗口與提醒事項。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"案例一將地點、提醒、聯絡窗口與請假事項合併於同一句，但額外說明僅稱案例二省略了原本就未提供的資訊，沒有指出案例一哪些資訊被合併或省略。\"},{\"criterion_id\":\"55e39216-3291-4d9b-a225-2dc214e763f7\",\"text\":\"在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":111},\"excerpt\":\"案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"案例一的通知正文為一個以句號結束的句子，未超過 3 句。\"},{\"criterion_id\":\"691494fc-93a4-4aea-bd41-8d8da2a4b7fd\",\"text\":\"通知正文中明確出現案號。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":111},\"excerpt\":\"案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":112,\"end\":165},\"excerpt\":\"案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"兩則通知正文均明確列出案號。\"},{\"criterion_id\":\"1c49cde5-3766-456f-9f3d-51fd56c417af\",\"text\":\"通知正文中明確出現下一次開庭日期時間。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":111},\"excerpt\":\"案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":112,\"end\":165},\"excerpt\":\"案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"兩則通知正文均明確列出下一次開庭日期及時間。\"},{\"criterion_id\":\"a8511a95-aa62-4a07-8114-eac2a0e11277\",\"text\":\"該額外說明不計入通知正文的 3 句話上限。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":112,\"end\":190},\"excerpt\":\"案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\\n已省略案例二的地點、當事人、聯絡窗口與提醒事項。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"額外說明以獨立一行、獨立一句呈現，與兩則通知正文分開；通知正文各自均未超過 3 句。\"},{\"criterion_id\":\"0c471b83-1769-4305-82f2-5ce45672dd02\",\"text\":\"當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":112,\"end\":165},\"excerpt\":\"案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"案例二僅使用提供的案號與開庭日期時間，並標示其餘資訊未提供，未補造地點、當事人或聯絡資料等細節。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"243b361e-db11-4099-9fba-826e573ddebd\",\"occurred_at\":\"2026-09-27T14:46:04.23Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"court-hearing-notification-sms\\\", \\\"skill_version_id\\\": \\\"472cb436-d839-4fdc-86bb-6904e1d5e217\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 6511 input and 3132 output tokens on gpt-5.4-mini; reported cost $0.0292 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"a8773d11-b8da-41ae-9a54-d187c845031a\",\"skill_version_id\":\"472cb436-d839-4fdc-86bb-6904e1d5e217\"}",
+      "created_at": "2026-09-27T14:47:00.927496715Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。」：沒過——案例一將地點、提醒、聯絡窗口與請假事項合併於同一句，但額外說明僅稱案例二省略了原本就未提供的資訊，沒有指出案例一哪些資訊被合併或省略。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T14:47:00.927538318Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T14:47:00.937952925Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有交出草稿，已自動再試一次。",
+      "created_at": "2026-09-27T14:47:08.146947693Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有整理出需求；已自動再試一次。",
+      "created_at": "2026-09-27T14:47:15.857613339Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T14:47:15.866258129Z"
+    },
+    {
+      "role": "assistant",
+      "content": "模型這一步沒有整理出需求；已自動再試一次。",
+      "created_at": "2026-09-27T14:47:22.260470977Z"
+    }
+  ],
+  "state": "waiting_input"
+}

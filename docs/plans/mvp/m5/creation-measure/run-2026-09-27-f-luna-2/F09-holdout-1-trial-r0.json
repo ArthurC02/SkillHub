@@ -1,0 +1,136 @@
+{
+  "round": 0,
+  "sample_input": "展覽名稱：「靜謐邊境」林雨薇個展，展期2026年11月14日至2026年12月6日，開幕茶會2026年11月14日（六）下午3點，地點：晴光畫廊（台北市中山區晴光街8號）。請幫我寫一篇邀請文，大概150-200字。",
+  "acceptance_criteria": [
+    {
+      "text": "邀請文中包含展覽名稱「靜謐邊境」與藝術家林雨薇"
+    },
+    {
+      "text": "邀請文中包含展期起訖日期 2026年11月14日至2026年12月6日"
+    },
+    {
+      "text": "邀請文中包含開幕茶會時間 2026年11月14日下午3點與地點晴光畫廊（或含地址）"
+    },
+    {
+      "text": "沒有捏造未提供的事實，例如虛構其他藝術家、贊助商或其他日期"
+    }
+  ],
+  "final_output": "敬愛的貴賓，您好：\n\n誠摯邀請您蒞臨「靜謐邊境」林雨薇個展，與我們共度一段美好的藝術時光。展覽期間，敬請您撥冗前來參觀；開幕茶會亦期待與您相聚，分享相逢的喜悅。您的蒞臨將使展覽更添光彩，謹此奉邀，敬候光臨。\n\n展覽名稱：「靜謐邊境」林雨薇個展  \n展期：2026年11月14日至2026年12月6日  \n開幕茶會：2026年11月14日（六）下午3點  \n地點：晴光畫廊（台北市中山區晴光街8號）",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "9828c965-4799-4528-8401-fd130371b3f8",
+    "run_id": "612bc029-f4e2-4230-a595-9c5efc6f7dcd",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件均已達成：邀請文包含展名、藝術家、展期，以及開幕茶會的時間與地點；未見捏造未提供的具體事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "dd963326-b716-462d-bc8b-a0bd3054ef30",
+        "text": "邀請文中包含展覽名稱「靜謐邊境」與藝術家林雨薇",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文包含展覽名稱「靜謐邊境」及藝術家林雨薇。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "展覽名稱：「靜謐邊境」林雨薇個展",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1ad2d888-6be2-4821-b26c-61b7990b48b2",
+        "text": "邀請文中包含展期起訖日期 2026年11月14日至2026年12月6日",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文列明展期的起訖日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "展期：2026年11月14日至2026年12月6日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "04ce7023-1eb6-4748-9b1b-e91e83712cc8",
+        "text": "邀請文中包含開幕茶會時間 2026年11月14日下午3點與地點晴光畫廊（或含地址）",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文列明開幕茶會日期、下午3點的時間及晴光畫廊地點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "開幕茶會：2026年11月14日（六）下午3點",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "地點：晴光畫廊（台北市中山區晴光街8號）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "374d8975-b86c-4bc6-9149-bce2bad01028",
+        "text": "沒有捏造未提供的事實，例如虛構其他藝術家、贊助商或其他日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "檢視完整邀請文，未見虛構其他藝術家、贊助商、日期或其他未提供的具體事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬愛的貴賓，您好：\n\n誠摯邀請您蒞臨「靜謐邊境」林雨薇個展，與我們共度一段美好的藝術時光。展覽期間，敬請您撥冗前來參觀；開幕茶會亦期待與您相聚，分享相逢的喜悅。您的蒞臨將使展覽更添光彩，謹此奉邀，敬候光臨。\n\n展覽名稱：「靜謐邊境」林雨薇個展  \n展期：2026年11月14日至2026年12月6日  \n開幕茶會：2026年11月14日（六）下午3點  \n地點：晴光畫廊（台北市中山區晴光街8號）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1526 input and 1536 output tokens on skillhub-run; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

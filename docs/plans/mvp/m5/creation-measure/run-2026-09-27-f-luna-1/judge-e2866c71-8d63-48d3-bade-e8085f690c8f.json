@@ -1,0 +1,188 @@
+{
+  "request": {
+    "RunID": "e2866c71-8d63-48d3-bade-e8085f690c8f",
+    "EvaluationID": "362ee7a5-ec72-4023-91d5-0be0cb29a04d",
+    "Skill": {
+      "Name": "court-hearing-notice-sms",
+      "Summary": "根據使用者提供的資料撰寫開庭通知簡訊；當使用者需要通知本文最多 3 句、必須包含案號與下次開庭日期時間的簡訊時使用。"
+    },
+    "UserPrompt": "請按每筆資料各寫一則開庭通知簡訊，並依約定格式處理必要資訊缺漏。\n1. 案號：114年度民訴字第25號；下次開庭：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭；提醒：請攜帶身分證及相關證據，提前15分鐘到庭。\n2. 案號：115年度家調字第8號；下次開庭：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭；請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料；提前20分鐘報到；若無法到庭請於三日前聯絡承辦人；承辦人林小姐，分機235；請勿遲到。\n3. 案號：115年度勞訴字第42號；地點：臺灣臺中地方法院第5法庭；提醒：請攜帶出勤紀錄。",
+    "Criteria": [
+      {
+        "ID": "4e2b2c23-0ed6-47c2-96f9-e4995ed7a357",
+        "Text": "試跑輸入第 1 筆的通知本文不超過 3 句，並包含原資料中的案號「114年度民訴字第25號」及開庭時間「2026/10/15 09:30」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1911d73f-5a84-4dba-af3b-ec67b9fe0f8e",
+        "Text": "試跑輸入第 2 筆的通知本文不超過 3 句，並包含原資料中的案號「115年度家調字第8號」及開庭時間「2026/11/02 14:00」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "95a732a8-30c5-4502-ba8a-ab53464d5dde",
+        "Text": "試跑輸入第 2 筆若有合併或省略任何其他資訊，須另附一句指出哪些資訊被合併或省略；該說明不算入通知本文句數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "88f28763-6b51-4108-9d99-0d15929b4258",
+        "Text": "試跑輸入第 3 筆缺少開庭日期時間時，通知本文仍不超過 3 句，保留案號「115年度勞訴字第42號」，並以明確的待補標記呈現缺少的開庭日期時間，不得自行編造日期或時間。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "1.\n通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。\n\n2.\n通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。\n合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。\n\n3.\n通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。",
+    "Artifacts": [
+      {
+        "Path": "hearing_notices.txt",
+        "SizeBytes": 865,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "d1f89801-c4e0-41ab-a736-e0504b48d9e4",
+          "OccurredAt": "2026-09-27T15:19:17.873Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"court-hearing-notice-sms\", \"skill_version_id\": \"b2c08640-7650-4b8b-95a0-c4c6fc70ce43\"}"
+        },
+        {
+          "TraceEventID": "382ed190-a92c-4444-89b6-9f0cf607805e",
+          "OccurredAt": "2026-09-27T15:19:17.881Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"court-hearing-notice-sms\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_5tWLjcwijphjy0CUcGTEzfop\", \"result_summary\": \"Launching skill: court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "63456483-db9b-4412-96a5-2b30a0cc7d52",
+          "OccurredAt": "2026-09-27T15:19:21.102Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"court-hearing-notice-sms/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "1a5f9568-f3ab-41d5-8727-5d66147c8eba",
+          "OccurredAt": "2026-09-27T15:19:21.102Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_SKK6vfUtwbQA067ScwXFrHed\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "e0e457ba-e93a-4f2d-8c17-57dbdb78a5a4",
+          "OccurredAt": "2026-09-27T15:19:34.869Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"1.\\n通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。\\n\\n2.\\n通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。\\n合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。\\n\\n3.\\n通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。\\n\", \"file_path\": \"/out/artifacts/hearing_notices.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_CsHgv0vDFC60h2RvUg3vLVhc\", \"result_summary\": \"File created successfully at: /out/artifacts/hearing_notices.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "aa4fbec8-b54c-4227-a9b9-a3ca9c0f624d",
+          "OccurredAt": "2026-09-27T15:19:37.073Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 1\\nsentences 11 \u003e 3\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "0431706d-badd-427f-ad38-e3f4c58bcb65",
+          "OccurredAt": "2026-09-27T15:19:37.073Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py --max-sentences 3 --require '114年度民訴字第25號' --require '2026/10/15 09:30' /out/artifacts/hearing_notices.txt\", \"description\": \"Validate first hearing notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 99, \"invocation_id\": \"call_dwJ604WDQZEpXw8aPa6B9i2O\", \"result_summary\": \"Exit code 1\\nsentences 11 \u003e 3\"}"
+        },
+        {
+          "TraceEventID": "4371bc2b-3604-415c-9c2c-fb7c82cf91d1",
+          "OccurredAt": "2026-09-27T15:19:43.509Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\\nOK\\nOK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "2a2cfc6f-2f9f-42b1-ba4c-6b3f39527953",
+          "OccurredAt": "2026-09-27T15:19:43.509Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"printf '%s' '案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。' \u003e /tmp/notice1.txt \u0026\u0026 printf '%s' '案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。' \u003e /tmp/notice2.txt \u0026\u0026 printf '%s' '案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。' \u003e /tmp/notice3.txt \u0026\u0026 python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py --max-sentences 3 --require '114年度民訴字第25號' --require '2026/10/15 09:30' /tmp/notice1.txt \u0026\u0026 python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py --max-sentences 3 --require '115年度家調字第8號' --require '2026/11/02 14:00' /tmp/notice2.txt \u0026\u0026 python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py --max-sentences 3 --require '115年度勞訴字第42號' --require '待補' /tmp/notice3.txt\", \"description\": \"Validate each notice body separately\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 123, \"invocation_id\": \"call_tttUmOTlVVFB5Dn1OHvwA0Uk\", \"result_summary\": \"OK\\nOK\\nOK\"}"
+        },
+        {
+          "TraceEventID": "53d3cb65-1b78-4371-95fa-5057193022e2",
+          "OccurredAt": "2026-09-27T15:19:47.566Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"1.\\n通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。\\n\\n2.\\n通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。\\n合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。\\n\\n3.\\n通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "61df041f-6bd1-4501-9512-403ada51190b",
+          "OccurredAt": "2026-09-27T15:19:47.739Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"1.\\n通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。\\n\\n2.\\n通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。\\n合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。\\n\\n3.\\n通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "93dbc133-5cb7-492b-86d9-bf5899c74dc5",
+          "OccurredAt": "2026-09-27T15:19:51.8Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.005359, \"cost_source\": \"gateway\", \"duration_ms\": 36365, \"input_tokens\": 1555, \"token_source\": \"result\", \"output_tokens\": 3097, \"cache_read_input_tokens\": 96225, \"cache_write_input_tokens\": 20942}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "4e2b2c23-0ed6-47c2-96f9-e4995ed7a357",
+        "Result": "passed",
+        "Reason": "第 1 筆通知本文共兩句，包含指定案號及開庭日期時間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "通知本文：案號：114年度民訴字第25號；下次開庭日期時間：2026/10/15 09:30；地點：臺灣臺北地方法院第3法庭。請攜帶身分證及相關證據，提前15分鐘到庭。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1911d73f-5a84-4dba-af3b-ec67b9fe0f8e",
+        "Result": "passed",
+        "Reason": "第 2 筆通知本文共三句，包含指定案號及開庭日期時間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "通知本文：案號：115年度家調字第8號；下次開庭日期時間：2026/11/02 14:00；地點：臺灣新北地方法院第2法庭。請攜帶身分證、戶籍謄本、薪資單、銀行存摺、雙方訊息列印本及未成年子女就學資料，提前20分鐘報到並請勿遲到。若無法到庭，請於三日前聯絡承辦人林小姐（分機235）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "95a732a8-30c5-4502-ba8a-ab53464d5dde",
+        "Result": "passed",
+        "Reason": "第 2 筆在通知本文之外另附一句，指出合併的資訊，並說明未省略其他資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "合併／省略說明：將「提前20分鐘報到」與「請勿遲到」合併表述；未省略其他資訊。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "88f28763-6b51-4108-9d99-0d15929b4258",
+        "Result": "passed",
+        "Reason": "第 3 筆通知本文共兩句，保留案號，以「待補」標示缺少的開庭日期時間，未編造日期或時間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "通知本文：案號：115年度勞訴字第42號；下次開庭日期時間：待補；地點：臺灣臺中地方法院第5法庭。請攜帶出勤紀錄。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三筆通知本文均符合各自的句數與必要資訊要求；第 2 筆另附合併說明，第 3 筆以「待補」標示缺漏的開庭日期時間。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 6223,
+      "CompletionTokens": 749,
+      "CostUSD": 0.0205114,
+      "CostReported": true
+    }
+  }
+}

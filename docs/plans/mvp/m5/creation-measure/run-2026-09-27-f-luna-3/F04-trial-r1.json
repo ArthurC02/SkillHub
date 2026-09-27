@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請計算這段住宿的逐晚房價明細與總額：\n入住日：2026-10-02\n退房日：2026-10-05",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本入住日 2026-10-02，將星期五的住宿晚列為 2,000 元。"
+    },
+    {
+      "text": "對樣本入住日至退房日前一日，將星期六與星期日的住宿晚各列為 3,000 元。"
+    },
+    {
+      "text": "樣本明細只計 2026-10-02、2026-10-03、2026-10-04 三晚，不把退房日 2026-10-05 算作一晚。"
+    },
+    {
+      "text": "樣本輸出逐晚明細與新台幣總額，總額為 2,000 + 3,000 + 3,000 = 8,000 元。"
+    }
+  ],
+  "final_output": "逐晚房價明細（新台幣）\n2026-10-02（星期五）：2,000 元\n2026-10-03（星期六）：3,000 元\n2026-10-04（星期日）：3,000 元\n住宿晚數：3 晚\n新台幣總額：8,000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1897d81c-db03-45fa-99b2-a90453cce463",
+    "run_id": "65d5a912-3a7b-45db-bb57-d41b14630d38",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：週五 2,000 元，週六與週日各 3,000 元；僅計三晚，新台幣總額為 8,000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "f4559e82-fc98-4fd0-b281-19c89be010f2",
+        "text": "對樣本入住日 2026-10-02，將星期五的住宿晚列為 2,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明細將 2026-10-02（星期五）列為 2,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-02（星期五）：2,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "51f0169b-7118-42e8-9371-07826126b9a9",
+        "text": "對樣本入住日至退房日前一日，將星期六與星期日的住宿晚各列為 3,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "星期六與星期日的住宿晚各列為 3,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-03（星期六）：3,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-04（星期日）：3,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "97111003-6c08-4a31-9ad2-3573fb91764f",
+        "text": "樣本明細只計 2026-10-02、2026-10-03、2026-10-04 三晚，不把退房日 2026-10-05 算作一晚。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明細列出 10 月 2 日至 4 日，並標示住宿晚數為三晚，未將 10 月 5 日退房日計入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-02（星期五）：2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-03（星期六）：3,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2026-10-04（星期日）：3,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "住宿晚數：3 晚",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "281f50cd-9b47-4777-b4b5-54a668ee812b",
+        "text": "樣本輸出逐晚明細與新台幣總額，總額為 2,000 + 3,000 + 3,000 = 8,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐晚房價明細，三晚房價合計 8,000 元，並標示為新台幣總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "逐晚房價明細（新台幣）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "新台幣總額：8,000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 278 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

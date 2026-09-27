@@ -1,0 +1,150 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下兩筆社區庭園維護費用，並列出每筆的進位面積、草坪費、樹木費與總費用。\n\n1) 草坪面積 36 平方公尺，樹木 3 棵\n2) 草坪面積 350 平方公尺，樹木 10 棵",
+  "acceptance_criteria": [
+    {
+      "text": "1. 當輸入草坪面積 36、樹木 3 棵時，先把 36 進位為 40，草坪費用為 2000 元，樹木加價為 0 元，總費用為 2000 元。"
+    },
+    {
+      "text": "2. 當輸入草坪面積 100、樹木 5 棵時，進位後面積仍為 100，草坪費用為 2000 元，第 4、5 棵各加 300 元，共 600 元，總費用為 2600 元。"
+    },
+    {
+      "text": "3. 當輸入草坪面積 101、樹木 3 棵時，先進位為 110，草坪費用為 3500 元，樹木加價為 0 元，總費用為 3500 元。"
+    },
+    {
+      "text": "4. 當輸入草坪面積 301、樹木 3 棵時，先進位為 310，超過 300 的 10 平方公尺加收 100 元，所以草坪費用為 3600 元，樹木加價為 0 元，總費用為 3600 元。"
+    },
+    {
+      "text": "5. 當輸入草坪面積 350、樹木 10 棵時，先進位為 350，超過 300 的 50 平方公尺等於 5 個 10 平方公尺單位，加收 500 元，所以草坪費用為 4000 元；樹木第 4 到第 10 棵共 7 棵，加收 2100 元；總計 6100 元，但因上限，最後輸出 6000 元。"
+    },
+    {
+      "text": "6. 當任一計算結果超過 6000 元時，最終總費用必須截斷為 6000 元。"
+    },
+    {
+      "text": "7. 草坪面積加價的單位計算必須以進位後面積為準，而不是原始面積."
+    }
+  ],
+  "final_output": "以下是計算結果：\n\n1) 草坪面積 36 平方公尺，樹木 3 棵  \n- 進位面積：40 平方公尺  \n- 草坪費：2000 元  \n- 樹木費：0 元  \n- 總費用：2000 元  \n\n2) 草坪面積 350 平方公尺，樹木 10 棵  \n- 進位面積：350 平方公尺  \n- 草坪費：4000 元  \n- 樹木費：2100 元  \n- 總費用：6000 元  \n\n如果你要，我也可以把這兩筆整理成表格。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f54af5a4-7fcb-49ad-9555-94fe37e27313",
+    "run_id": "7683a60d-37c3-49f8-bf60-f62a5173229e",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次回覆正確完成了使用者要求的兩筆計算，包含 36/3 與 350/10 的結果，且後者顯示 6000 元上限的套用。其餘驗收案例未在本次執行中測試，無法由現有證據判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "85c73358-1d14-4e70-afd7-f1f2fd09514b",
+        "text": "1. 當輸入草坪面積 36、樹木 3 棵時，先把 36 進位為 40，草坪費用為 2000 元，樹木加價為 0 元，總費用為 2000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 36 平方公尺、3 棵樹的進位面積 40、草坪費 2000 元、樹木費 0 元與總費用 2000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1) 草坪面積 36 平方公尺，樹木 3 棵  \n- 進位面積：40 平方公尺  \n- 草坪費：2000 元  \n- 樹木費：0 元  \n- 總費用：2000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4ae5ebc-c649-4135-8482-8204e8601b56",
+        "text": "2. 當輸入草坪面積 100、樹木 5 棵時，進位後面積仍為 100，草坪費用為 2000 元，第 4、5 棵各加 300 元，共 600 元，總費用為 2600 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入與回覆均未包含草坪面積 100、樹木 5 棵的計算，無法判定此情況是否符合要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "04cdcbe8-1b4d-43c5-9506-55b84176864a",
+        "text": "3. 當輸入草坪面積 101、樹木 3 棵時，先進位為 110，草坪費用為 3500 元，樹木加價為 0 元，總費用為 3500 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入與回覆均未包含草坪面積 101、樹木 3 棵的計算，無法判定此情況是否符合要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "4f1c7352-7ce0-41bb-8cff-08e629f6847d",
+        "text": "4. 當輸入草坪面積 301、樹木 3 棵時，先進位為 310，超過 300 的 10 平方公尺加收 100 元，所以草坪費用為 3600 元，樹木加價為 0 元，總費用為 3600 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入與回覆均未包含草坪面積 301、樹木 3 棵的計算，無法判定此情況是否符合要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "c66de4b8-ffc8-4d07-809e-3dbbf68f1019",
+        "text": "5. 當輸入草坪面積 350、樹木 10 棵時，先進位為 350，超過 300 的 50 平方公尺等於 5 個 10 平方公尺單位，加收 500 元，所以草坪費用為 4000 元；樹木第 4 到第 10 棵共 7 棵，加收 2100 元；總計 6100 元，但因上限，最後輸出 6000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出 350 平方公尺、10 棵樹的進位面積 350、草坪費 4000 元、樹木費 2100 元與最終總費用 6000 元；兩項費用相加為 6100 元，與最終顯示 6000 元一致，顯示已套用上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2) 草坪面積 350 平方公尺，樹木 10 棵  \n- 進位面積：350 平方公尺  \n- 草坪費：4000 元  \n- 樹木費：2100 元  \n- 總費用：6000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "15550783-b33c-475d-836f-f03955b5a0e1",
+        "text": "6. 當任一計算結果超過 6000 元時，最終總費用必須截斷為 6000 元。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "雖然本次 350 平方公尺、10 棵樹的案例顯示最終費用為 6000 元，但僅憑單一案例無法判定所有超過 6000 元的任意計算結果是否都會截斷為 6000 元。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "78d94a94-916c-475f-8606-9e8eede1c6f8",
+        "text": "7. 草坪面積加價的單位計算必須以進位後面積為準，而不是原始面積.",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "已測試的 350 平方公尺剛好是 10 的倍數，進位前後相同，不能區分草坪加價是否依進位後面積而非原始面積計算。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2797 input and 394 output tokens on gpt-5.4-mini; reported cost $0.0069 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

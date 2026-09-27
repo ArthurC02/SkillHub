@@ -1,0 +1,180 @@
+{
+  "round": 2,
+  "sample_input": "請計算以下包裹的貨運運費：\n3.2 公斤\n5.0 公斤\n5.1 公斤\n20.0 公斤\n20.1 公斤\n44.0 公斤\n40.2 公斤",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 3.2 公斤時，輸出運費為 150 元，且先進位為 4 公斤後再計算。"
+    },
+    {
+      "text": "輸入 5.0 公斤時，輸出運費為 150 元。"
+    },
+    {
+      "text": "輸入 5.1 公斤時，先進位為 6 公斤，輸出運費為 250 元。"
+    },
+    {
+      "text": "輸入 20.0 公斤時，輸出運費為 250 元。"
+    },
+    {
+      "text": "輸入 20.1 公斤時，先進位為 21 公斤，基礎 250 元加超過 20 公斤的 1 公斤 × 15 元，輸出 265 元。"
+    },
+    {
+      "text": "輸入 44.0 公斤時，先進位為 44 公斤，計算結果超過 600 元時，輸出必須封頂為 600 元。"
+    },
+    {
+      "text": "輸入 40.2 公斤時，先進位為 41 公斤，依規則計算後若超過 600 元，輸出必須仍為 600 元。"
+    }
+  ],
+  "final_output": "以下是各包裹的貨運運費：\n\n- 3.2 公斤 → 進位後 4 公斤，運費 150 元\n- 5.0 公斤 → 進位後 5 公斤，運費 150 元\n- 5.1 公斤 → 進位後 6 公斤，運費 250 元\n- 20.0 公斤 → 進位後 20 公斤，運費 250 元\n- 20.1 公斤 → 進位後 21 公斤，運費 265 元\n- 44.0 公斤 → 進位後 44 公斤，運費 600 元\n- 40.2 公斤 → 進位後 41 公斤，運費 565 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "09ffbacd-975d-41b9-a69e-0aaf18a89cb5",
+    "run_id": "c9e4ddc1-4bf1-4bf7-a1ce-c18986973c2b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "前六項包裹的進位與運費均符合各自驗收條件。40.2 公斤項目輸出為 565 元，未符合要求的 600 元封頂結果。",
+    "criterion_results": [
+      {
+        "criterion_id": "5b26bffe-5475-431a-ad3d-eed3f286a027",
+        "text": "輸入 3.2 公斤時，輸出運費為 150 元，且先進位為 4 公斤後再計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 3.2 公斤先進位為 4 公斤，且運費為 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 3.2 公斤 → 進位後 4 公斤，運費 150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0855f6e9-498e-4bec-8d0b-33759d7a495b",
+        "text": "輸入 5.0 公斤時，輸出運費為 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 5.0 公斤的運費為 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 5.0 公斤 → 進位後 5 公斤，運費 150 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b6c54798-ef52-4a25-8937-e89da5d777a1",
+        "text": "輸入 5.1 公斤時，先進位為 6 公斤，輸出運費為 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 5.1 公斤先進位為 6 公斤，且運費為 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 5.1 公斤 → 進位後 6 公斤，運費 250 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e1dc2cf-f9e0-4d62-a4db-12cfb7420570",
+        "text": "輸入 20.0 公斤時，輸出運費為 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 20.0 公斤的運費為 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 20.0 公斤 → 進位後 20 公斤，運費 250 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7593a3c2-4585-4763-9bed-3bd6bf15ec9c",
+        "text": "輸入 20.1 公斤時，先進位為 21 公斤，基礎 250 元加超過 20 公斤的 1 公斤 × 15 元，輸出 265 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 20.1 公斤先進位為 21 公斤，運費為 265 元，符合所列計算結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 20.1 公斤 → 進位後 21 公斤，運費 265 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02ec4ca3-d2e1-4664-9227-aefa0afc9435",
+        "text": "輸入 44.0 公斤時，先進位為 44 公斤，計算結果超過 600 元時，輸出必須封頂為 600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 44.0 公斤進位後為 44 公斤，運費為封頂值 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 44.0 公斤 → 進位後 44 公斤，運費 600 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "198d0ced-4c26-4a21-80e1-8bf5dc4ce6c3",
+        "text": "輸入 40.2 公斤時，先進位為 41 公斤，依規則計算後若超過 600 元，輸出必須仍為 600 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然輸出將 40.2 公斤進位為 41 公斤，但運費列為 565 元，而非此項要求的 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 40.2 公斤 → 進位後 41 公斤，運費 565 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18958 input and 539 output tokens on gpt-5.4-mini; reported cost $0.0198 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

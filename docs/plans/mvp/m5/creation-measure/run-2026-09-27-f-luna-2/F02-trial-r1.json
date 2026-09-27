@@ -1,0 +1,161 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分類以下案件，逐筆列出案件編號與分類：\n| 案件編號 | 語言對 | 字數 | 交期（小時） |\n|---|---|---:|---:|\n| A | 法文-英文 | 6000 | 24 |\n| B | 中文-英文 | 5001 | 48 |\n| C | 中文-日文 | 5000 | 24 |\n| D | 中文-英文 | 5001 | 49 |",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入第 1 筆，語言對不受支援時，即使字數超過 5000 且交期不超過 48 小時，仍輸出「退件」。"
+    },
+    {
+      "text": "對第 2 筆，語言對受支援、字數為 5001、交期為 48 小時時，輸出「加急」。"
+    },
+    {
+      "text": "對第 3 筆，語言對受支援、字數恰為 5000 時，輸出「普通」。"
+    },
+    {
+      "text": "對第 4 筆，語言對受支援、字數為 5001 但交期為 49 小時時，輸出「普通」。"
+    },
+    {
+      "text": "輸出恰好包含四筆結果，並將每筆案件編號與一個分類標籤對應；分類標籤只使用「退件」、「加急」或「普通」。"
+    }
+  ],
+  "final_output": "| 案件編號 | 分類 |\n|---|---|\n| A | 退件 |\n| B | 加急 |\n| C | 普通 |\n| D | 普通 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e275034d-70d3-49c7-a0c5-0aaebf172eda",
+    "run_id": "e57981e4-c388-464d-b95c-f0cdc8b920ae",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆案件均輸出指定分類，且最終結果恰好包含四筆案件與其分類標籤；所有驗收條件皆通過。",
+    "criterion_results": [
+      {
+        "criterion_id": "9bff322c-633a-417e-9c56-b886085ab7d3",
+        "text": "對試跑輸入第 1 筆，語言對不受支援時，即使字數超過 5000 且交期不超過 48 小時，仍輸出「退件」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆案件 A 輸出為「退件」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 退件 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a1738b1a-4787-45d6-b0c3-e9428a9fbad5",
+        "text": "對第 2 筆，語言對受支援、字數為 5001、交期為 48 小時時，輸出「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆案件 B 輸出為「加急」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 加急 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "150f882f-9fce-430f-950b-4959870fbe13",
+        "text": "對第 3 筆，語言對受支援、字數恰為 5000 時，輸出「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆案件 C 輸出為「普通」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 普通 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa752681-9a99-4626-ab61-c164f2e80a6c",
+        "text": "對第 4 筆，語言對受支援、字數為 5001 但交期為 49 小時時，輸出「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆案件 D 輸出為「普通」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 普通 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71245a08-8766-48e9-b4b2-4613b673e387",
+        "text": "輸出恰好包含四筆結果，並將每筆案件編號與一個分類標籤對應；分類標籤只使用「退件」、「加急」或「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出恰有 A、B、C、D 四筆案件結果；每筆均對應一個指定的分類標籤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 退件 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 加急 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 普通 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 普通 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1491 input and 226 output tokens on skillhub-run; reported cost $0.0030 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

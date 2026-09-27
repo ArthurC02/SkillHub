@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請寫一則到府維修預約確認簡訊：預約日期 10/12、預約時間 14:30、應收訂金 300 元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含預約日期、預約時間、應收訂金金額時，輸出只包含一則簡訊本文，且沒有任何解釋文字。"
+    },
+    {
+      "text": "輸出內容必定包含日期、時間、訂金金額這三項資訊。"
+    },
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 30 字。"
+    },
+    {
+      "text": "輸出不包含字數統計、項目符號、標題或前後附言。"
+    },
+    {
+      "text": "當同時提供日期、時間、金額時，輸出會優先保留三項必含資訊，不會省略其中任何一項。"
+    }
+  ],
+  "final_output": "10/12 14:30，訂金300元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8822c56a-8d6f-4eda-9c9d-827dfd317946",
+    "run_id": "e81674a4-e11a-458b-b44c-9938e10c99ba",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終簡訊僅含必要內容，且完整保留日期、時間與訂金金額；長度符合30字以內要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "9a44e38c-be07-414b-b806-71d74595c60d",
+        "text": "輸入包含預約日期、預約時間、應收訂金金額時，輸出只包含一則簡訊本文，且沒有任何解釋文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅有一則簡訊本文，未附加解釋文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10/12 14:30，訂金300元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2b681cf9-f3d1-4de3-b46d-821de813340c",
+        "text": "輸出內容必定包含日期、時間、訂金金額這三項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含日期 10/12、時間 14:30 與訂金金額 300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10/12 14:30，訂金300元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a123f46-6e1b-4552-bc2e-81368d6b6b28",
+        "text": "輸出總字數（含標點與英數字）不超過 30 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出共18個字元（含空格、標點與數字），未超過30字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10/12 14:30，訂金300元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3bd90245-a572-4faf-a0c8-a325b6139a24",
+        "text": "輸出不包含字數統計、項目符號、標題或前後附言。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未包含字數統計、項目符號、標題或前後附言。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10/12 14:30，訂金300元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71b4bd04-3e2b-446a-8b81-b6aaa079b22f",
+        "text": "當同時提供日期、時間、金額時，輸出會優先保留三項必含資訊，不會省略其中任何一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在同時提供日期、時間與金額的情況下，輸出保留了三項資訊，沒有省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "10/12 14:30，訂金300元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3441 input and 1150 output tokens on gpt-5.4-mini; reported cost $0.0085 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

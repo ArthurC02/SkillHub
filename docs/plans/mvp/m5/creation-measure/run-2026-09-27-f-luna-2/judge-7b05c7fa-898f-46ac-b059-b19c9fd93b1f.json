@@ -1,0 +1,188 @@
+{
+  "request": {
+    "RunID": "7b05c7fa-898f-46ac-b059-b19c9fd93b1f",
+    "EvaluationID": "748f022f-81a5-4d7d-9bb9-90c5e20c29ed",
+    "Skill": {
+      "Name": "court-hearing-sms",
+      "Summary": "根據使用者提供的資料，撰寫繁體中文開庭通知簡訊；當需要通知案號及下一次開庭日期時間，並限制通知本文句數時使用。"
+    },
+    "UserPrompt": "請依合理假設為每行資料各撰寫一則開庭通知簡訊：\n案號：115年度訴字第123號；下一次開庭：2026年10月12日上午9時30分；法院：臺灣臺北地方法院；法庭：第8法庭；方式：親自到庭；其他資訊：請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，開庭前30分鐘抵達並先至服務台報到，若無法到庭請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\n案號：115年度訴字第456號；法院：臺灣臺北地方法院；法庭：第3法庭；方式：線上開庭；其他資訊：請準備身分證。",
+    "Criteria": [
+      {
+        "ID": "70486bf6-c6d2-4aad-953e-e2b6dd17b71e",
+        "Text": "試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f4c5b1ec-21a6-4eea-90cc-1e8df666382b",
+        "Text": "試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e6b30d5d-cef2-4948-bcfd-02e9b05234c3",
+        "Text": "試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1a958c73-f68c-4c0e-8624-faf125f9fed6",
+        "Text": "試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\n\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。",
+    "Artifacts": [
+      {
+        "Path": "final.txt",
+        "SizeBytes": 573,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "notice.txt",
+        "SizeBytes": 466,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b0c648a9-c431-4bbb-93e9-29a2da0a4e56",
+          "OccurredAt": "2026-09-27T15:52:28.092Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"court-hearing-sms\", \"skill_version_id\": \"27777cb2-a442-4f94-a3eb-638fb46f1dee\"}"
+        },
+        {
+          "TraceEventID": "223c2042-424a-4eb5-9918-e723f8dad8c5",
+          "OccurredAt": "2026-09-27T15:52:28.101Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"court-hearing-sms\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_jhkQjhKfw16lIh4uXJ7ZGxsA\", \"result_summary\": \"Launching skill: court-hearing-sms\"}"
+        },
+        {
+          "TraceEventID": "b050269d-b4ed-4a3b-96d2-f292e28d025d",
+          "OccurredAt": "2026-09-27T15:52:36.26Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\", \"file_path\": \"/out/artifacts/notice.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_w8CsUFsgxU6bzWdqdhDmwu2J\", \"result_summary\": \"File created successfully at: /out/artifacts/notice.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "0c702528-898a-4741-b4cd-be17a4ab68f3",
+          "OccurredAt": "2026-09-27T15:52:37.894Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/check_output.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "eb7d2ab0-9ad7-47a9-90e5-a05f6907f467",
+          "OccurredAt": "2026-09-27T15:52:37.894Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/check_output.py /out/artifacts/notice.txt --max-sentences 3 --require '115年度訴字第123號' --require '2026年10月12日上午9時30分'\", \"description\": \"Validate first hearing notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 66, \"invocation_id\": \"call_296xqhvOo8XRSiyMYsYduW0W\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/check_output.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "18e77288-17e7-4a60-82a2-eb8f73dbd2a8",
+          "OccurredAt": "2026-09-27T15:52:40.437Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "64d27690-2d88-40b1-8c54-cf3f33558cc0",
+          "OccurredAt": "2026-09-27T15:52:40.437Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-sms/scripts/check_output.py /out/artifacts/notice.txt --max-sentences 3 --require '115年度訴字第123號' --require '2026年10月12日上午9時30分'\", \"description\": \"Validate first hearing notice\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 63, \"invocation_id\": \"call_6barGcH3QFHMMElgjkNULrGc\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "54ed1fe4-cfe4-4d3d-bec0-9a2871025eaa",
+          "OccurredAt": "2026-09-27T15:52:46.266Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\\n\\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。\", \"file_path\": \"/out/artifacts/final.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 5, \"invocation_id\": \"call_nmejfvC0rvG9A6FvEtYVn90K\", \"result_summary\": \"File created successfully at: /out/artifacts/final.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "fac0c284-f317-43ff-aacc-77e532cc51a1",
+          "OccurredAt": "2026-09-27T15:52:49.721Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\\n\\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "416a9d33-306b-41ea-b97a-fbcd755de3e7",
+          "OccurredAt": "2026-09-27T15:52:49.957Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\\n\\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b319ceed-8069-44d6-8c16-2cb296227f16",
+          "OccurredAt": "2026-09-27T15:52:55.546Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.0045689, \"cost_source\": \"gateway\", \"duration_ms\": 29327, \"input_tokens\": 1549, \"token_source\": \"result\", \"output_tokens\": 1976, \"cache_read_input_tokens\": 92630, \"cache_write_input_tokens\": 19436}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "70486bf6-c6d2-4aad-953e-e2b6dd17b71e",
+        "Result": "passed",
+        "Reason": "第一筆通知本文共三句，案號及下一次開庭日期時間均與輸入一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f4c5b1ec-21a6-4eea-90cc-1e8df666382b",
+        "Result": "failed",
+        "Reason": "文字正式且易讀，但將多項其他資訊合併在通知句中，沒有在通知本文之外另用一句話明確指出合併涉及的資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\n\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e6b30d5d-cef2-4948-bcfd-02e9b05234c3",
+        "Result": "passed",
+        "Reason": "第一筆通知保留了所提供的案號、日期時間及其他事實，未見改動或補入未提供的事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1a958c73-f68c-4c0e-8624-faf125f9fed6",
+        "Result": "passed",
+        "Reason": "第二筆資料只要求補充缺少的下一次開庭日期及時間，沒有捏造時間或產出完整通知。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "第一筆通知符合句數及資料準確性要求；第二筆正確詢問缺少的開庭日期時間。但第一筆合併其他資訊後，未另行說明合併涉及哪些資訊。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3973,
+      "CompletionTokens": 1189,
+      "CostUSD": 0.0192864,
+      "CostReported": true
+    }
+  }
+}

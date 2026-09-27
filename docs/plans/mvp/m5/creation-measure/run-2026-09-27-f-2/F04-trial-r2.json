@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請幫我算住宿總金額。\n\n案例 A：混合平假日\n入住 2026-09-18，退房 2026-09-22。\n日期明細如下：\n- 2026-09-18（星期五）\n- 2026-09-19（星期六）\n- 2026-09-20（星期日）\n- 2026-09-21（星期一）\n這筆資料應計算 4 晚：星期五 2000 + 星期六 2500 + 星期日 2500 + 星期一 2000 = 總金額 8000 元。\n\n案例 B：純平日\n入住 2026-09-14，退房 2026-09-17。\n日期明細如下：\n- 2026-09-14（星期一）\n- 2026-09-15（星期二）\n- 2026-09-16（星期三）\n這筆資料應計算 3 晚：星期一 2000 + 星期二 2000 + 星期三 2000 = 總金額 6000 元。\n\n案例 C：純假日\n入住 2026-09-19，退房 2026-09-21。\n日期明細如下：\n- 2026-09-19（星期六）\n- 2026-09-20（星期日）\n這筆資料應計算 2 晚：星期六 2500 + 星期日 2500 = 總金額 5000 元。\n\n依規則：平日每晚 2000 元，假日（星期六、星期日）每晚 2500 元，退房日不算一晚。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一段只包含平日的連續入住期間，輸出總金額等於 2000 乘以住宿晚數。"
+    },
+    {
+      "text": "給定一段只包含假日的連續入住期間，輸出總金額等於 2500 乘以住宿晚數。"
+    },
+    {
+      "text": "給定一段同時包含平日與假日的連續入住期間，輸出會逐晚區分平日與假日並正確加總。"
+    },
+    {
+      "text": "輸入中明確標示退房日時，系統不把退房當天算進住宿晚數。"
+    },
+    {
+      "text": "輸出除了總金額外，還要包含每一晚的日期、平假日判定與當晚金額。"
+    }
+  ],
+  "final_output": "以下依規則計算：\n\n## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元\n\n## 案例 B\n- 住宿晚數：3 晚\n- 2026-09-14｜星期一｜平日｜2000 元\n- 2026-09-15｜星期二｜平日｜2000 元\n- 2026-09-16｜星期三｜平日｜2000 元\n- 總金額：6000 元\n\n## 案例 C\n- 住宿晚數：2 晚\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 總金額：5000 元\n\n如果你要，我也可以幫你整理成可直接貼到 Excel 的表格格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "94128661-f027-4ec3-ad91-70dec9fe8778",
+    "run_id": "08d60582-82cf-440b-ba7e-b6ec15cfafb9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三個測試案例的住宿晚數、平假日分類、逐晚價格與總金額均正確。輸出亦未將退房日計入，並提供每晚完整明細。",
+    "criterion_results": [
+      {
+        "criterion_id": "a3fa9028-004d-4422-87cb-fed6e2427ba5",
+        "text": "給定一段只包含平日的連續入住期間，輸出總金額等於 2000 乘以住宿晚數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例 B 為連續 3 晚平日，輸出總額為 6000 元，等於 2000 × 3。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例 B\n- 住宿晚數：3 晚\n- 2026-09-14｜星期一｜平日｜2000 元\n- 2026-09-15｜星期二｜平日｜2000 元\n- 2026-09-16｜星期三｜平日｜2000 元\n- 總金額：6000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4382cfd-a8ba-4944-b9f9-96bc8c884fec",
+        "text": "給定一段只包含假日的連續入住期間，輸出總金額等於 2500 乘以住宿晚數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例 C 為連續 2 晚假日，輸出總額為 5000 元，等於 2500 × 2。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例 C\n- 住宿晚數：2 晚\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 總金額：5000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d63715ee-1ca9-44fe-abd2-73a4c0b2f16d",
+        "text": "給定一段同時包含平日與假日的連續入住期間，輸出會逐晚區分平日與假日並正確加總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例 A 逐晚區分平日與假日，並正確加總為 8000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0b494cfb-c685-4b03-82c0-d05c6a63cad1",
+        "text": "輸入中明確標示退房日時，系統不把退房當天算進住宿晚數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個案例都列出入住日至退房日前一天的晚數；例如案例 A 僅列至 2026-09-21 且為 4 晚，未將 2026-09-22 退房日列入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ac722a90-3431-4a6b-9eff-33921d1226e6",
+        "text": "輸出除了總金額外，還要包含每一晚的日期、平假日判定與當晚金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出每個案例均包含總金額，且每晚都有日期、星期資訊、平日或假日判定及當晚金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19620 input and 800 output tokens on gpt-5.4-mini; reported cost $0.0203 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

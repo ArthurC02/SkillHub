@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請計算這些社區庭園維護費用：\n1. 草坪面積 36 平方公尺，樹木 3 棵\n2. 草坪面積 100 平方公尺，樹木 4 棵\n3. 草坪面積 101 平方公尺，樹木 3 棵\n4. 草坪面積 305 平方公尺，樹木 3 棵\n5. 草坪面積 305 平方公尺，樹木 10 棵\n6. 草坪面積 299 平方公尺，樹木 4 棵",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入草坪面積 36、樹木 3 棵時，Skill 先將面積進位為 40，並輸出總費用 2000 元。"
+    },
+    {
+      "text": "當輸入草坪面積 100、樹木 4 棵時，Skill 先將面積維持為 100，基礎費為 2000 元，樹木第 4 棵加收 300 元，總費用為 2300 元。"
+    },
+    {
+      "text": "當輸入草坪面積 101、樹木 3 棵時，Skill 先將面積進位為 110，依超過 100 但不超過 300 的級距收基本費 3500 元，總費用為 3500 元。"
+    },
+    {
+      "text": "當輸入草坪面積 305、樹木 3 棵時，Skill 先將面積進位為 310，基本費 3500 元，加上超過 300 的 10 平方公尺部分 1 單位 × 100 元，未加樹木費時總額應為 3600 元。"
+    },
+    {
+      "text": "當輸入草坪面積 305、樹木 10 棵時，草坪費與樹木費合計後會超過 6000 元，因此總費用必須封頂為 6000 元。"
+    },
+    {
+      "text": "當輸入草坪面積 299、樹木 4 棵時，面積先進位為 300，適用 3500 元基本費，再加 300 元樹木費，總費用為 3800 元。"
+    }
+  ],
+  "final_output": "以下依規則逐筆計算：\n\n1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。  \n2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。  \n3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。  \n4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。  \n5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。  \n6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d2f9a484-b27c-441d-8ccc-27883094eb3a",
+    "run_id": "7ba3f810-5a2a-499f-b0c7-21b3cc66c681",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "六項驗收條件中五項的進位、級距與費用輸出符合要求。第 5 項未輸出規定的 6000 元封頂結果，而是輸出 5700 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "12806026-b3a7-4703-a0b8-e947fa735867",
+        "text": "當輸入草坪面積 36、樹木 3 棵時，Skill 先將面積進位為 40，並輸出總費用 2000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 36 平方公尺進位為 40，且封頂後總費用為 2000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83426e68-03d4-48aa-9beb-a093efc6c096",
+        "text": "當輸入草坪面積 100、樹木 4 棵時，Skill 先將面積維持為 100，基礎費為 2000 元，樹木第 4 棵加收 300 元，總費用為 2300 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出維持面積 100，列出基本費 2000 元、第 4 棵樹加收 300 元，總費用為 2300 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "afa589fe-036f-421d-92d5-2e43c0548f88",
+        "text": "當輸入草坪面積 101、樹木 3 棵時，Skill 先將面積進位為 110，依超過 100 但不超過 300 的級距收基本費 3500 元，總費用為 3500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 101 平方公尺進位為 110，採用 3500 元基本費，總費用為 3500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cebd329a-9621-4b20-b482-0ca1694d6038",
+        "text": "當輸入草坪面積 305、樹木 3 棵時，Skill 先將面積進位為 310，基本費 3500 元，加上超過 300 的 10 平方公尺部分 1 單位 × 100 元，未加樹木費時總額應為 3600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 305 平方公尺進位為 310，並列出 3500 元基本費及超過 300 的 10 平方公尺加收 100 元，未含樹木費總額為 3600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "913f01d5-874a-4c43-b601-0cb8b24adac9",
+        "text": "當輸入草坪面積 305、樹木 10 棵時，草坪費與樹木費合計後會超過 6000 元，因此總費用必須封頂為 6000 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出對 305 平方公尺、10 棵樹計算的未封頂總額為 5700 元，並輸出封頂後仍為 5700 元，未符合此情況必須封頂為 6000 元的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fc7b8256-c255-4668-928b-86af491c737f",
+        "text": "當輸入草坪面積 299、樹木 4 棵時，面積先進位為 300，適用 3500 元基本費，再加 300 元樹木費，總費用為 3800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 299 平方公尺進位為 300，列出 3500 元基本費與 300 元樹木費，總費用為 3800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18988 input and 4466 output tokens on gpt-5.4-mini; reported cost $0.0362 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

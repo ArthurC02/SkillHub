@@ -1,0 +1,172 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一則開庭通知簡訊。\n案號：114年度訴字第128號。\n下一次開庭日期時間：2026年10月15日 上午9:30。\n開庭地點：臺北地方法院第12法庭。\n承辦法官：林志明。\n當事人提醒：請攜帶身分證件並提早10分鐘到場。\n聯絡窗口：書記官陳小姐，分機1234。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入同時含案號與下一次開庭日期時間時，輸出內容中一定能找到這兩項。"
+    },
+    {
+      "text": "通知本文最多只有 3 句話，且多出的資訊不會讓本文超過 3 句。"
+    },
+    {
+      "text": "當輸入包含多於 3 句無法全納入的資訊時，輸出會另外提供 1 句說明，指出哪些資訊被省略或合併。"
+    },
+    {
+      "text": "當輸入資訊可完整塞入 3 句話內時，仍會產生符合限制的通知本文，不需要額外工具。"
+    },
+    {
+      "text": "通知本文的內容會優先保留案號與下一次開庭日期時間，即使其他資訊被省略或合併。"
+    },
+    {
+      "text": "若輸入資訊不足以生成含案號與開庭時間的通知，技能會要求補足必要資訊，而不會編造缺漏內容。"
+    }
+  ],
+  "final_output": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。\n聯絡窗口為書記官陳小姐，分機1234。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "55dad391-8f28-4794-96bd-e7350d0b295b",
+    "run_id": "cad24b05-9790-4814-a35c-c79e4c74cd1c",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次通知以兩句完整呈現案號、開庭日期時間及其餘提供資訊，符合三句限制。輸入並未缺少必要資訊，也沒有資訊無法納入的情況。",
+    "criterion_results": [
+      {
+        "criterion_id": "673be45f-2910-48e8-b601-a47cf04b6a03",
+        "text": "輸入同時含案號與下一次開庭日期時間時，輸出內容中一定能找到這兩項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文包含案號與下一次開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "17a707da-d300-4cfd-a922-236ca3413856",
+        "text": "通知本文最多只有 3 句話，且多出的資訊不會讓本文超過 3 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共兩句，未超過三句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "聯絡窗口為書記官陳小姐，分機1234。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b3062860-692d-4bdd-b06e-3ab8e5446f3b",
+        "text": "當輸入包含多於 3 句無法全納入的資訊時，輸出會另外提供 1 句說明，指出哪些資訊被省略或合併。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本次所有提供資訊均已合併納入兩句通知本文，未出現無法納入而必須省略的資訊，因此不需另行說明省略或合併項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "聯絡窗口為書記官陳小姐，分機1234。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b67929f-c1eb-4b54-bf71-7c612bd3fe92",
+        "text": "當輸入資訊可完整塞入 3 句話內時，仍會產生符合限制的通知本文，不需要額外工具。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸入資訊已完整納入兩句、符合三句限制的通知本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "聯絡窗口為書記官陳小姐，分機1234。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "422335f6-e012-4e58-a054-cf118719935e",
+        "text": "通知本文的內容會優先保留案號與下一次開庭日期時間，即使其他資訊被省略或合併。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文優先且明確保留了案號及下一次開庭日期時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "114年度訴字第128號將於2026年10月15日上午9:30於臺北地方法院第12法庭開庭，由林志明法官承辦，請攜帶身分證件並提早10分鐘到場。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b859b446-dd35-4cee-9609-a7ba3c59e46a",
+        "text": "若輸入資訊不足以生成含案號與開庭時間的通知，技能會要求補足必要資訊，而不會編造缺漏內容。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入已提供案號及開庭時間，沒有資訊不足的情境可觀察技能是否會要求補足必要資訊。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 20269 input and 1508 output tokens on gpt-5.4-mini; reported cost $0.0279 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

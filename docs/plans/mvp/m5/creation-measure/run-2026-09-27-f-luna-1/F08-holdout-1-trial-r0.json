@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "這是本次看診紀錄：\n看診日期：2026年02月30日\n狂犬病疫苗 1劑 單價800元，後面又寫狂犬病疫苗其實是900元一劑\n驅蟲藥 2份，單價250元\n洗牙服務 數量-1，單價1500元\n掛號費 1次150元\n請幫我整理並算出總金額。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出指出2026年02月30日這個日期不存在，請人確認正確日期，而不是自己假設一個日期"
+    },
+    {
+      "text": "輸出指出狂犬病疫苗有兩個不同單價（800元與900元），需要人工確認，而不是自己選一個或相加"
+    },
+    {
+      "text": "輸出指出洗牙服務數量為 -1 這件事不合理，需要人工確認，而不是直接當成負數金額計入"
+    },
+    {
+      "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額"
+    }
+  ],
+  "final_output": "| 日期 | 項目 | 數量 | 單價 | 該筆金額 |\n|---|---|---:|---:|---:|\n| 2026年02月30日 | 狂犬病疫苗（原記800元／劑，後記900元／劑，單價待確認） | 1 | 未提供 | 未提供 |\n| 2026年02月30日 | 驅蟲藥 | 2 | 250 | 500 |\n| 2026年02月30日 | 洗牙服務 | -1 | 1500 | -1500 |\n| 2026年02月30日 | 掛號費 | 1 | 150 | 150 |\n\n**可計算明細小計：-850元；總額不完整。** 狂犬病疫苗單價有800元與900元兩種記錄，需確認後才能算入總額。另，2026年2月沒有30日，請確認看診日期；目前依原記錄保留。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "abe4dd41-6e63-4ab1-bd0d-9bc8c9993ebc",
+    "run_id": "ca75c142-a98a-4012-a519-397d6fab3118",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出正確標示日期及疫苗單價的疑義，也未給出確定總額。但它未要求確認洗牙服務的負數數量，且將-1500元計入小計。",
+    "criterion_results": [
+      {
+        "criterion_id": "5d4ab075-a246-46cb-b423-2e7ace466130",
+        "text": "輸出指出2026年02月30日這個日期不存在，請人確認正確日期，而不是自己假設一個日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指出2026年2月沒有30日，請人確認看診日期，並保留原記錄而未自行改定日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年2月沒有30日，請確認看診日期；目前依原記錄保留。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9414c8f8-f1fb-4a05-8d9a-bd33832c56e1",
+        "text": "輸出指出狂犬病疫苗有兩個不同單價（800元與900元），需要人工確認，而不是自己選一個或相加",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出疫苗的800元及900元兩種單價，要求確認，沒有擇一或相加。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "狂犬病疫苗單價有800元與900元兩種記錄，需確認後才能算入總額。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4f02582d-7526-45b3-b840-50203ef9ad56",
+        "text": "輸出指出洗牙服務數量為 -1 這件事不合理，需要人工確認，而不是直接當成負數金額計入",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出沒有指出洗牙數量為-1不合理，也沒有要求確認；反而將它算成-1500元並納入小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026年02月30日 | 洗牙服務 | -1 | 1500 | -1500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "可計算明細小計：-850元；總額不完整。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96c41f6f-e0b6-4460-93dd-4a15a9b4e1de",
+        "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只給出明細小計，明確表示總額不完整，沒有給出確定的總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "可計算明細小計：-850元；總額不完整。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1611 input and 1998 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

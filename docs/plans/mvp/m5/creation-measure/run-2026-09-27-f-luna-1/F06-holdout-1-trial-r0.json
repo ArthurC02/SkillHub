@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：麻煩幫我確認一下，我是林小姐，地址是台北市大安區忠孝東路四段100號3樓，冷氣不冷需要師傅來檢修，希望約2026年11月5日下午2點過去，訂金要收500元，我電話0912345678。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 30 字"
+    },
+    {
+      "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）"
+    },
+    {
+      "text": "本文包含訂金金額 500 元"
+    }
+  ],
+  "final_output": "約2026年11月5日 下午2點，訂金500元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "987da2ca-7d25-463e-a049-511c65079451",
+    "run_id": "45c37eb0-c18f-4579-b06b-d1f451e60cff",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準皆符合：簡訊為單行、未超過 30 字元，並包含指定日期、時間及訂金金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "1004c517-0a0a-4f9b-8bf5-ad7b30c33d32",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一行簡訊本文，沒有字數統計或說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "約2026年11月5日 下午2點，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b75e466-ac2c-4a0d-b739-954a1c80f196",
+        "text": "本文總字數（含標點與英數字）不超過 30 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文含空格、標點及數字共 23 字元，未超過 30 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "約2026年11月5日 下午2點，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7a0ad7c-4607-4d73-8790-886e1f808570",
+        "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含 2026 年 11 月 5 日及下午 2 點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "約2026年11月5日 下午2點，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "49039d98-2576-4b57-83d4-ab612adfa351",
+        "text": "本文包含訂金金額 500 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含訂金 500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂金500元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1517 input and 641 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

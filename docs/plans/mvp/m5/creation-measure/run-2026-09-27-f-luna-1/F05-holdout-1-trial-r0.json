@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "案號112年度訴字第456號，當事人王小明，下次開庭日期2026年11月10日（二）上午9點30分，需攜帶文件：身分證正本、上次開庭紀錄、委任狀，應繳訴訟費用3000元需在開庭前繳清，法官更換為李法官，開庭地點台北地方法院第5法庭。請幫我寫開庭通知簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 3 句話（不含說明省略內容的那一句）"
+    },
+    {
+      "text": "本文包含案號 112年度訴字第456號"
+    },
+    {
+      "text": "本文包含開庭時間 2026年11月10日上午9點30分（或等同表示）"
+    },
+    {
+      "text": "輸出另有一句話說明為了守住 3 句話上限而省略或合併了哪些資訊"
+    }
+  ],
+  "final_output": "通知本文：王小明您好，案號112年度訴字第456號，下次開庭日期時間為2026年11月10日（二）上午9點30分。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。法官更換為李法官，開庭地點為台北地方法院第5法庭。\n\n合併／省略說明：將當事人、案號及開庭日期時間置於第一句，攜帶文件與訴訟費用繳納期限置於第二句，法官更換及開庭地點置於第三句；未省略資訊。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "52b6bf2b-e03b-4d66-b8df-7390d27b6845",
+    "run_id": "535fd2fd-35c0-4928-8835-5ed5178a6603",
+    "status": "completed",
+    "overall": "met",
+    "summary": "通知本文為三句，包含案號與開庭日期時間；另有一句交代資訊的合併方式及未省略資訊。四項標準均已符合。",
+    "criterion_results": [
+      {
+        "criterion_id": "97ba8c57-f3d5-4685-b44f-8b781c766cdb",
+        "text": "通知本文不超過 3 句話（不含說明省略內容的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共三句，另列的合併／省略說明不計入本文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文：王小明您好，案號112年度訴字第456號，下次開庭日期時間為2026年11月10日（二）上午9點30分。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。法官更換為李法官，開庭地點為台北地方法院第5法庭。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09982e80-b5b9-4e83-9c57-1a0f92f53a2f",
+        "text": "本文包含案號 112年度訴字第456號",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文包含指定案號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案號112年度訴字第456號",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79bfa011-ac61-4f28-a645-1d90b51c3711",
+        "text": "本文包含開庭時間 2026年11月10日上午9點30分（或等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文包含指定的開庭日期與上午9點30分，並標示星期二。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月10日（二）上午9點30分",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5bd99ff5-2828-45a2-9ad3-18e2fe1c7723",
+        "text": "輸出另有一句話說明為了守住 3 句話上限而省略或合併了哪些資訊",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出另有一句說明各項資訊如何合併於三句通知中，並指出沒有省略資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "合併／省略說明：將當事人、案號及開庭日期時間置於第一句，攜帶文件與訴訟費用繳納期限置於第二句，法官更換及開庭地點置於第三句；未省略資訊。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1595 input and 3251 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

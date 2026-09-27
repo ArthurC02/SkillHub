@@ -1,0 +1,162 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料，產生家長缺席警告信，並說明如何把學生標記為留意名單：\n學生姓名：王小明\n班級：七年三班\n家長稱謂：王先生 / 王太太\n本學期缺席次數：3\n缺席紀錄：2026-02-03、2026-03-11、2026-04-08\n學校名稱：新光國中\n教務系統登入方式：帳號密碼登入，登入後在學生資料頁面將狀態改為「留意名單」\n\n請確認這份 brief。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入中缺席次數為 3 時，Skill 會輸出一封完整的家長警告信。"
+    },
+    {
+      "text": "同一份輸入中，Skill 會明確指出學生應被標記為「留意名單」。"
+    },
+    {
+      "text": "若缺席次數小於 3，Skill 不會產生警告信，也不會要求標記留意名單。"
+    },
+    {
+      "text": "信件內容會清楚提到「本學期缺席滿 3 次」這個原因。"
+    },
+    {
+      "text": "信件語氣為正式、可直接寄出給家長。"
+    },
+    {
+      "text": "對教務系統的動作會被描述為登入後標記學生，而不是只停留在通知文字。"
+    }
+  ],
+  "final_output": "已確認，這份 brief **可直接執行**，且已達發警告門檻。\n\n我收到的資料如下：\n- 學生姓名：王小明\n- 班級：七年三班\n- 家長稱謂：王先生 / 王太太\n- 本學期缺席次數：3\n- 缺席紀錄：2026-02-03、2026-03-11、2026-04-08\n- 學校名稱：新光國中\n- 教務系統登入方式：帳號密碼登入，登入後在學生資料頁面將狀態改為「留意名單」\n\n確認結果：\n- 缺席次數為 3 次，**符合產生家長缺席警告信與留意名單標記說明的條件**\n- 資料內容**沒有矛盾**\n- 若你要，我下一步可以直接幫你產出：\n  1. 家長缺席警告信  \n  2. 教務系統標記說明",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f316c70a-9207-4f01-9083-09ef3503bfb0",
+    "run_id": "5dc93ba3-7ebc-47c8-a549-04c75f99baab",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行確認了 3 次缺席已達門檻，並明確提及登入教務系統後將學生標記為「留意名單」。但未實際產出家長警告信，而是將其延後至下一步；低於 3 次時的行為也沒有可判定的證據。",
+    "criterion_results": [
+      {
+        "criterion_id": "f82cbe56-7e6d-4177-877f-654257589bcb",
+        "text": "輸入中缺席次數為 3 時，Skill 會輸出一封完整的家長警告信。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆僅確認資料與門檻，並未實際輸出完整家長缺席警告信，且表示要在下一步才產出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "若你要，我下一步可以直接幫你產出：\n  1. 家長缺席警告信  \n  2. 教務系統標記說明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98e0863a-1633-428a-b095-fe56d0780fb8",
+        "text": "同一份輸入中，Skill 會明確指出學生應被標記為「留意名單」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確確認缺席 3 次符合留意名單標記說明的條件，並載明登入後於學生資料頁將狀態改為「留意名單」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 教務系統登入方式：帳號密碼登入，登入後在學生資料頁面將狀態改為「留意名單」",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 缺席次數為 3 次，**符合產生家長缺席警告信與留意名單標記說明的條件**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3b1707c3-5b3b-48a6-a03e-0f76430a7d95",
+        "text": "若缺席次數小於 3，Skill 不會產生警告信，也不會要求標記留意名單。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入的缺席次數為 3 次，沒有缺席次數小於 3 的執行結果可供判定。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "7d921448-24f5-419e-a4b8-1081ff9356ab",
+        "text": "信件內容會清楚提到「本學期缺席滿 3 次」這個原因。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆沒有產生任何信件內容，因此不存在可確認有清楚提到「本學期缺席滿 3 次」原因的信件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "若你要，我下一步可以直接幫你產出：\n  1. 家長缺席警告信  \n  2. 教務系統標記說明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "899399c3-e0b3-40c0-abd1-8eaad113f46b",
+        "text": "信件語氣為正式、可直接寄出給家長。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆未提供可直接寄給家長的正式信件；僅表示可於下一步產出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "若你要，我下一步可以直接幫你產出：\n  1. 家長缺席警告信  \n  2. 教務系統標記說明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "139eb91e-cefd-4bda-9ed2-a00955d19942",
+        "text": "對教務系統的動作會被描述為登入後標記學生，而不是只停留在通知文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆描述了登入後進入學生資料頁並將狀態改為「留意名單」的系統操作，而非僅有通知文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 教務系統登入方式：帳號密碼登入，登入後在學生資料頁面將狀態改為「留意名單」",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3194 input and 670 output tokens on gpt-5.4-mini; reported cost $0.0084 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

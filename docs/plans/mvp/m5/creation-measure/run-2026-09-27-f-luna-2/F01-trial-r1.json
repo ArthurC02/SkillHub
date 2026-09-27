@@ -1,0 +1,170 @@
+{
+  "round": 1,
+  "sample_input": "請依照運費規則計算以下六筆包裹的運費，列出每筆原始重量、進位後重量、運費及運費總額：\n3.2 公斤\n5 公斤\n5.1 公斤\n20 公斤\n20.1 公斤\n44 公斤",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 3.2 公斤時，輸出進位後 4 公斤、運費 150 元。"
+    },
+    {
+      "text": "輸入 5 公斤時，輸出進位後 5 公斤、運費 150 元；輸入 5.1 公斤時，輸出進位後 6 公斤、運費 250 元。"
+    },
+    {
+      "text": "輸入 20 公斤時，輸出進位後 20 公斤、運費 250 元。"
+    },
+    {
+      "text": "輸入 20.1 公斤時，輸出進位後 21 公斤、運費 265 元（250 + 1 × 15）。"
+    },
+    {
+      "text": "輸入 44 公斤時，輸出進位後 44 公斤；未封頂金額為 250 + (44 − 20) × 15 = 610 元，因此運費為 600 元。"
+    },
+    {
+      "text": "試跑輸入含六筆包裹時，輸出逐筆計算結果與 1,665 元的運費總額。"
+    }
+  ],
+  "final_output": "原始重量（公斤） | 進位後重量（公斤） | 運費（元）\n3.2 | 4 | 150\n5 | 5 | 150\n5.1 | 6 | 250\n20 | 20 | 250\n20.1 | 21 | 265\n44 | 44 | 600\n運費總額：1665 元",
+  "artifacts": [
+    "freight-result.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "578445c1-b012-4203-be13-050db09d5dfe",
+    "run_id": "e7d65db9-3ae8-4e94-9911-ecda2b76c0ac",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆包裹均列出正確的進位後重量與運費，運費總額為 1665 元。所有驗收條件均已達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "1aaf5bea-0aca-46da-8ac1-63952a5fd253",
+        "text": "輸入 3.2 公斤時，輸出進位後 4 公斤、運費 150 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "3.2 公斤進位後為 4 公斤，運費為 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3.2 | 4 | 150",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f20a94a-9adb-4390-ab9f-d5f9e250013a",
+        "text": "輸入 5 公斤時，輸出進位後 5 公斤、運費 150 元；輸入 5.1 公斤時，輸出進位後 6 公斤、運費 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "5 公斤進位後仍為 5 公斤、運費 150 元；5.1 公斤進位後為 6 公斤、運費 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5 | 5 | 150",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5.1 | 6 | 250",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c715e63-61fd-4fe6-b6dd-54c575ac8cf8",
+        "text": "輸入 20 公斤時，輸出進位後 20 公斤、運費 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20 公斤進位後仍為 20 公斤，運費為 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "20 | 20 | 250",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "da94deaf-b40f-435a-9ccc-0dd08d485625",
+        "text": "輸入 20.1 公斤時，輸出進位後 21 公斤、運費 265 元（250 + 1 × 15）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20.1 公斤進位後為 21 公斤，運費為 265 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "20.1 | 21 | 265",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3c39304e-6358-4343-a30d-a67044b0beea",
+        "text": "輸入 44 公斤時，輸出進位後 44 公斤；未封頂金額為 250 + (44 − 20) × 15 = 610 元，因此運費為 600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "44 公斤進位後仍為 44 公斤，輸出的運費為封頂後的 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "44 | 44 | 600",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "879e3422-a282-4fa9-8d56-5b58311c42d5",
+        "text": "試跑輸入含六筆包裹時，輸出逐筆計算結果與 1,665 元的運費總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出六筆包裹的原始重量、進位後重量及運費，總額為 1665 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3.2 | 4 | 150\n5 | 5 | 150\n5.1 | 6 | 250\n20 | 20 | 250\n20.1 | 21 | 265\n44 | 44 | 600\n運費總額：1665 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): freight-result.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1580 input and 990 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "request": {
+    "RunID": "6d18af4a-2329-4cb9-b5bb-f88622dacc29",
+    "EvaluationID": "44bce507-cf96-4cf4-8c58-6afca663a55c",
+    "Skill": {
+      "Name": "court-hearing-notice-sms",
+      "Summary": "依使用者提供的案件資料撰寫繁體中文開庭通知簡訊；當你需要為一筆或多筆案件整理通知，並確保各則本文不超過三句且含案號與下次開庭日期時間時使用。"
+    },
+    "UserPrompt": "案號112年度訴字第456號，當事人王小明，下次開庭日期2026年11月10日（二）上午9點30分，需攜帶文件：身分證正本、上次開庭紀錄、委任狀，應繳訴訟費用3000元需在開庭前繳清，法官更換為李法官，開庭地點台北地方法院第5法庭。請幫我寫開庭通知簡訊。",
+    "Criteria": [
+      {
+        "ID": "40e41977-26aa-4f68-96a8-da5a10891131",
+        "Text": "通知本文不超過 3 句話（不含說明省略內容的那一句）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "74344860-5249-437a-8bbb-70a6fa493ca5",
+        "Text": "本文包含案號 112年度訴字第456號",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "00da28e9-93cd-4ed8-8cbf-26cd030b4c55",
+        "Text": "本文包含開庭時間 2026年11月10日上午9點30分（或等同表示）",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3b6a4617-c8cf-484d-9ef0-85fa4d462cc4",
+        "Text": "輸出另有一句話說明為了守住 3 句話上限而省略或合併了哪些資訊",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "通知本文：\n王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。\n\n說明：未指定日期時間格式，採台灣常用寫法。",
+    "Artifacts": [
+      {
+        "Path": "notice-112年度訴字第456號.txt",
+        "SizeBytes": 335,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "開庭通知.txt",
+        "SizeBytes": 416,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b4d6847f-eeeb-48af-9586-74865f79a6dd",
+          "OccurredAt": "2026-09-27T16:23:55.135Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"court-hearing-notice-sms\", \"skill_version_id\": \"6be5d7e4-f59b-4925-ad87-cc5f34c74059\"}"
+        },
+        {
+          "TraceEventID": "59027303-4486-4179-93da-6e75ed5cd061",
+          "OccurredAt": "2026-09-27T16:23:55.152Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"court-hearing-notice-sms\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 18, \"invocation_id\": \"call_21H5fbhhZF0aqPtg2HS5dPKA\", \"result_summary\": \"Launching skill: court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "e5a3f2e0-77a9-4ca2-a8a6-f33f6c4a4f41",
+          "OccurredAt": "2026-09-27T16:23:57.179Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 112, \"resource_path\": \"court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "7e86153e-b481-48b1-88b7-75febeedef09",
+          "OccurredAt": "2026-09-27T16:23:57.179Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/court-hearing-notice-sms\", \"pattern\": \"**/*\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_krbHGqsnU6HUnDTfm5R2YymK\", \"result_summary\": \".claude/skills/court-hearing-notice-sms/scripts/check_output.py\\n.claude/skills/court-hearing-notice-sms/SKILL.md\"}"
+        },
+        {
+          "TraceEventID": "7ca273c8-6850-453c-9b27-6949a42483e1",
+          "OccurredAt": "2026-09-27T16:24:02.053Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"court-hearing-notice-sms/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "68773d22-e948-4ff0-80e9-63c8f152b621",
+          "OccurredAt": "2026-09-27T16:24:02.053Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_NdfO2Og7E3dPJqMeZ1fMsps6\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "37980625-4221-47c1-86ac-472c88a06c94",
+          "OccurredAt": "2026-09-27T16:24:07.908Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。\", \"file_path\": \"/out/artifacts/notice-112年度訴字第456號.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 17, \"invocation_id\": \"call_JCPSnUgloILSavyMNsKSVHMj\", \"result_summary\": \"File created successfully at: /out/artifacts/notice-112年度訴字第456號.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "10bbb6d9-26f0-468e-9386-a16ddcf18d72",
+          "OccurredAt": "2026-09-27T16:24:09.891Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "2802627b-f12a-406f-b888-a0a2b823a8ed",
+          "OccurredAt": "2026-09-27T16:24:09.891Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py '/out/artifacts/notice-112年度訴字第456號.txt' --max-sentences 3 --require '112年度訴字第456號' --require '2026年11月10日（二）上午9時30分'\", \"description\": \"Validate hearing notice text\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 75, \"invocation_id\": \"call_P6uoSVuMJ2UsVfyeAeP5OSRv\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "8dde2028-545e-4d15-9ec1-a120bb6bd7b9",
+          "OccurredAt": "2026-09-27T16:24:13.584Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"通知本文：\\n王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。\\n\\n說明：未指定日期時間格式，採台灣常用寫法。\", \"file_path\": \"/out/artifacts/開庭通知.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_gXKIztIemtkiUKAokYxXyniP\", \"result_summary\": \"File created successfully at: /out/artifacts/開庭通知.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "7aed6d7a-a650-48ea-8979-0d82ad13eb44",
+          "OccurredAt": "2026-09-27T16:24:15.291Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"通知本文：\\n王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。\\n\\n說明：未指定日期時間格式，採台灣常用寫法。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c0e517ba-f6f4-423b-8599-1e4b99a006db",
+          "OccurredAt": "2026-09-27T16:24:15.517Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"通知本文：\\n王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。\\n\\n說明：未指定日期時間格式，採台灣常用寫法。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0fda5926-daba-458a-8546-296ecd57758e",
+          "OccurredAt": "2026-09-27T16:24:19.59Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.00488141, \"cost_source\": \"gateway\", \"duration_ms\": 26253, \"input_tokens\": 1587, \"token_source\": \"result\", \"output_tokens\": 1895, \"cache_read_input_tokens\": 114651, \"cache_write_input_tokens\": 20544}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "40e41977-26aa-4f68-96a8-da5a10891131",
+        "Result": "passed",
+        "Reason": "通知本文共三句，未超過上限。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "王小明您好，您所涉案號112年度訴字第456號，下一次開庭時間為2026年11月10日（二）上午9時30分，地點為台北地方法院第5法庭，承審法官更換為李法官。請攜帶身分證正本、上次開庭紀錄及委任狀，並於開庭前繳清訴訟費用新臺幣3,000元。敬請準時出庭。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "74344860-5249-437a-8bbb-70a6fa493ca5",
+        "Result": "passed",
+        "Reason": "通知本文包含指定案號。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "案號112年度訴字第456號"
+          }
+        ]
+      },
+      {
+        "CriterionID": "00da28e9-93cd-4ed8-8cbf-26cd030b4c55",
+        "Result": "passed",
+        "Reason": "通知本文以「上午9時30分」表示指定開庭時間，與上午9點30分等同。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2026年11月10日（二）上午9時30分"
+          }
+        ]
+      },
+      {
+        "CriterionID": "3b6a4617-c8cf-484d-9ef0-85fa4d462cc4",
+        "Result": "failed",
+        "Reason": "另附的說明只解釋日期時間的寫法，沒有說明為維持三句上限而省略或合併了哪些資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "說明：未指定日期時間格式，採台灣常用寫法。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "通知本文符合三句上限，並包含案號及開庭時間；但附加說明未交代為維持三句上限而省略或合併的資訊。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 5234,
+      "CompletionTokens": 610,
+      "CostUSD": 0.0166489,
+      "CostReported": true
+    }
+  }
+}

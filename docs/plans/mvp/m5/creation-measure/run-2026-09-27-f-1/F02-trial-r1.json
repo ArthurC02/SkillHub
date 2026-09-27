@@ -1,0 +1,173 @@
+{
+  "round": 1,
+  "sample_input": "請判定以下案件分類：\n1) 語言對：中文-英文，字數：5001，交期：48 小時\n2) 語言對：中文-日文，字數：8000，交期：72 小時\n3) 語言對：英文-中文，字數：12000，交期：12 小時\n4) 語言對：中文-英文，字數：5000，交期：48 小時\n\n這份 brief 已把兩種支援語言對、退件條件、加急邊界（5000 以上、48 小時含邊界）與普通情況都覆蓋到。請你確認是否要照這個版本建立 Skill。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入語言對不是「中文-英文」也不是「中文-日文」時，輸出必須是「退件」，即使字數超過 5000 且交期小於等於 48 小時。"
+    },
+    {
+      "text": "當輸入語言對是「中文-英文」且字數為 5001、交期為 48 小時時，輸出必須是「加急」。"
+    },
+    {
+      "text": "當輸入語言對是「中文-日文」且字數為 6000、交期為 12 小時時，輸出必須是「加急」。"
+    },
+    {
+      "text": "當輸入語言對是「中文-英文」且字數為 5000、交期為 48 小時時，輸出必須是「普通」。"
+    },
+    {
+      "text": "當輸入語言對是「中文-日文」且字數為 8000、交期為 72 小時時，輸出必須是「普通」。"
+    },
+    {
+      "text": "當輸入語言對是「中文-英文」且字數為 1000、交期為 24 小時時，輸出必須是「普通」。"
+    }
+  ],
+  "final_output": "分類結果如下：\n\n1. 中文-英文，5001 字，48 小時：**加急**\n2. 中文-日文，8000 字，72 小時：**普通**\n3. 英文-中文，12000 字，12 小時：**退件**\n4. 中文-英文，5000 字，48 小時：**普通**\n\n**確認：可以照這個版本建立 Skill。**  \n這份 brief 已完整涵蓋：\n- 兩種支援語言對\n- 非支援語言對直接退件\n- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**\n- 其餘支援案件為普通\n\n如果你要，我也可以直接幫你把這份規則整理成更正式的 Skill 版文案。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a4368cab-a29b-4566-83b3-b5d9e68a0d8a",
+    "run_id": "be22c7f5-e703-4e27-8e9c-a0547e04f0ea",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆正確處理四個提供的邊界與非支援語言對案例，並明示的規則亦涵蓋其餘兩項驗收情境。所有驗收條件均已滿足。",
+    "criterion_results": [
+      {
+        "criterion_id": "d8386485-a217-4834-9388-870b7160cd8f",
+        "text": "當輸入語言對不是「中文-英文」也不是「中文-日文」時，輸出必須是「退件」，即使字數超過 5000 且交期小於等於 48 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確將非支援語言對設定為直接退件，且實例中英文-中文即使字數與交期符合加急門檻仍被判為退件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 英文-中文，12000 字，12 小時：**退件**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 非支援語言對直接退件",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2fb241ab-f5d4-4069-9124-f461665a5bcd",
+        "text": "當輸入語言對是「中文-英文」且字數為 5001、交期為 48 小時時，輸出必須是「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接將中文-英文、5001 字、48 小時判定為加急。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 中文-英文，5001 字，48 小時：**加急**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6c5ab42d-db59-4a08-aa2c-c562f6774a5c",
+        "text": "當輸入語言對是「中文-日文」且字數為 6000、交期為 12 小時時，輸出必須是「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆所述規則為支援語言對且字數大於 5000、交期小於等於 48 小時即加急；中文-日文 6000 字、12 小時符合此規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bfb98f35-ab58-491d-b51c-09e591b2c88c",
+        "text": "當輸入語言對是「中文-英文」且字數為 5000、交期為 48 小時時，輸出必須是「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接將中文-英文、5000 字、48 小時判定為普通。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 中文-英文，5000 字，48 小時：**普通**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c8cde70f-1a8e-41b0-beca-1ba34d5dbc1a",
+        "text": "當輸入語言對是「中文-日文」且字數為 8000、交期為 72 小時時，輸出必須是「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接將中文-日文、8000 字、72 小時判定為普通。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 中文-日文，8000 字，72 小時：**普通**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e19c982a-1cc7-44a1-9bd1-6e4ee1fcc1d8",
+        "text": "當輸入語言對是「中文-英文」且字數為 1000、交期為 24 小時時，輸出必須是「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆規定其餘支援案件為普通；中文-英文 1000 字、24 小時未達字數大於 5000 的加急條件，因此為普通。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 其餘支援案件為普通",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19164 input and 1020 output tokens on gpt-5.4-mini; reported cost $0.0208 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

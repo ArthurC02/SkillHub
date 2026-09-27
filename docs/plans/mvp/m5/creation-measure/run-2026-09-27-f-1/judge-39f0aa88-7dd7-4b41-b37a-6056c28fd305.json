@@ -1,0 +1,199 @@
+{
+  "request": {
+    "RunID": "39f0aa88-7dd7-4b41-b37a-6056c28fd305",
+    "EvaluationID": "64a07ac5-30c7-46c9-a301-1b64d88d3f4f",
+    "Skill": {
+      "Name": "gallery-opening-invitation-writer",
+      "Summary": "Writes formal, elegant gallery opening invitation copy from provided exhibition details. Use it when you need an invitation that must preserve the exhibition title, date range, opening reception time, and venue exactly as given."
+    },
+    "UserPrompt": "請依下列資訊撰寫一則正式優雅的畫廊開幕邀請文：\n展覽名稱：〈光的邊界〉\n展期：2026年4月12日至2026年5月30日\n開幕茶會時間：2026年4月12日（週日）下午3:00\n地點：拾光畫廊，台北市大安區敦化南路二段18號\n\n請確認這個 brief；如果要，我也可以下一步直接幫你產出 Skill 草稿。",
+    "Criteria": [
+      {
+        "ID": "3ff635e3-7b44-4330-b6ac-3f48dd7ae68b",
+        "Text": "在給定完整展覽資訊時，輸出會是一則語氣正式優雅的畫廊開幕邀請文。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0246c6d6-828b-43f8-b7e5-f00d5828764b",
+        "Text": "輸出會明確保留展覽名稱，且名稱文字與輸入一致。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0971e1d3-3c90-4979-905b-5bd2a78778d5",
+        "Text": "輸出會明確保留展期的起訖日期，且日期文字與輸入一致，不會交換、補寫或改寫。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "20c5f843-6fee-4fe6-879a-b00c23c5669e",
+        "Text": "輸出會明確保留開幕茶會時間，且時間文字與輸入一致。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "aff6b1c2-097c-4a3c-8f3a-7335f3e79ba2",
+        "Text": "輸出會明確保留地點，且地點文字與輸入一致。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bd625072-49a4-491f-9211-e0d8722ba590",
+        "Text": "輸出不會省略上述四項事實中的任何一項。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "86d0fd3a-75ff-4bdd-b2d6-f018d423e53f",
+        "Text": "輸出不會把上述四項事實改寫成與輸入不一致的內容。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\n\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。\n\n敬邀您於光影交會之際，共同見證〈光的邊界〉的啟幕時刻，細賞作品所蘊藏的深邃意境與優雅光色。\n\n敬候光臨。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "1230001f-fdec-45fc-a00a-b801e3840927",
+          "OccurredAt": "2026-09-27T13:56:48.086Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"gallery-opening-invitation-writer\", \"skill_version_id\": \"c1134c9a-5f58-481e-b5ae-c1da8637769b\"}"
+        },
+        {
+          "TraceEventID": "86b7eb2f-de53-4056-86c1-6acd2ec0c279",
+          "OccurredAt": "2026-09-27T13:56:48.103Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"展覽名稱：〈光的邊界〉\\n展期：2026年4月12日至2026年5月30日\\n開幕茶會時間：2026年4月12日（週日）下午3:00\\n地點：拾光畫廊，台北市大安區敦化南路二段18號\\n\\n請以正式、優雅的語氣撰寫畫廊開幕邀請文，保留上述資訊完整且不更動。\", \"skill\": \"gallery-opening-invitation-writer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 17, \"invocation_id\": \"call_rCjl1pczr92wIfatdx4zjEPF\", \"result_summary\": \"Launching skill: gallery-opening-invitation-writer\"}"
+        },
+        {
+          "TraceEventID": "f825fac8-253d-434e-9133-998a8e44e676",
+          "OccurredAt": "2026-09-27T13:56:53.119Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\\n\\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。\\n\\n敬邀您於光影交會之際，共同見證〈光的邊界〉的啟幕時刻，細賞作品所蘊藏的深邃意境與優雅光色。\\n\\n敬候光臨。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5f23037e-0eb9-432c-96a7-1c6e6e5ad082",
+          "OccurredAt": "2026-09-27T13:56:53.421Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\\n\\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。\\n\\n敬邀您於光影交會之際，共同見證〈光的邊界〉的啟幕時刻，細賞作品所蘊藏的深邃意境與優雅光色。\\n\\n敬候光臨。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "86892e51-a3fe-46e1-8a69-777dc321aa24",
+          "OccurredAt": "2026-09-27T13:56:57.464Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.009072150000000001, \"cost_source\": \"gateway\", \"duration_ms\": 12924, \"input_tokens\": 2971, \"token_source\": \"result\", \"output_tokens\": 849, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3ff635e3-7b44-4330-b6ac-3f48dd7ae68b",
+        "Result": "passed",
+        "Reason": "最終輸出為完整的畫廊開幕邀請文，採用「誠摯邀請」、「敬邀」與「敬候光臨」等正式優雅措辭。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "敬候光臨。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0246c6d6-828b-43f8-b7e5-f00d5828764b",
+        "Result": "passed",
+        "Reason": "輸出明確包含展覽名稱，文字與輸入一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0971e1d3-3c90-4979-905b-5bd2a78778d5",
+        "Result": "passed",
+        "Reason": "輸出保留展期起訖日期，順序與文字均與輸入一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "20c5f843-6fee-4fe6-879a-b00c23c5669e",
+        "Result": "passed",
+        "Reason": "輸出明確保留開幕茶會日期、星期及時間，與輸入一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "aff6b1c2-097c-4a3c-8f3a-7335f3e79ba2",
+        "Result": "passed",
+        "Reason": "輸出明確保留畫廊名稱與完整地址，文字與輸入一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bd625072-49a4-491f-9211-e0d8722ba590",
+        "Result": "passed",
+        "Reason": "輸出包含展覽名稱、展期、開幕茶會時間與地點，未省略任一項事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "86d0fd3a-75ff-4bdd-b2d6-f018d423e53f",
+        "Result": "passed",
+        "Reason": "輸出中的展覽名稱、展期、茶會時間與地點均逐項符合輸入資訊，沒有不一致的改寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您蒞臨〈光的邊界〉開幕茶會。\n\n本展展期自2026年4月12日至2026年5月30日，開幕茶會將於2026年4月12日（週日）下午3:00，假拾光畫廊，台北市大安區敦化南路二段18號舉行。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "最終邀請文以正式優雅的中文撰寫，並完整且正確保留展覽名稱、展期、開幕茶會時間與地點。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2799,
+      "CompletionTokens": 1096,
+      "CostUSD": 0.0176134,
+      "CostReported": true
+    }
+  }
+}

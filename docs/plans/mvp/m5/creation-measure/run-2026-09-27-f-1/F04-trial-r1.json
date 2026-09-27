@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我算這段住宿總金額：2026-05-01 進房，2026-05-05 退房；其中 2026-05-01、2026-05-04 是平日，2026-05-02、2026-05-03 是假日；假日每晚加價 500 元。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一段連續入住日期時，Skill 會輸出該期間的總金額。"
+    },
+    {
+      "text": "當期間只包含平日時，總金額會以每晚 2000 元計算。"
+    },
+    {
+      "text": "當期間包含假日時，Skill 會依假日加價規則計算每一晚並加總。"
+    },
+    {
+      "text": "輸出會明確區分每一晚是平日或假日，或至少能看出每晚的費率來源。"
+    },
+    {
+      "text": "「退房當天不算一晚」會正確套用，不會多算退房日。"
+    }
+  ],
+  "final_output": "總金額：**9,000 元**\n\n計算如下：\n- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元\n\n合計：**9,000 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ca037e2d-02d4-4425-aa30-0f7afa6705d3",
+    "run_id": "dee094a5-56cb-469d-8f06-fc2ce181a9c4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行正確逐晚計算 5 月 1 日至 4 日的住宿費：兩晚平日各 2,000 元、兩晚假日各 2,500 元，總計 9,000 元；退房日未計入。",
+    "criterion_results": [
+      {
+        "criterion_id": "3d4f6f7e-2c4d-4e62-a8d6-86dee43dace4",
+        "text": "當輸入一段連續入住日期時，Skill 會輸出該期間的總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出已計算該連續入住區間的總金額為 9,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：**9,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3f0127dc-eb92-4fff-a4d9-c1c09c422834",
+        "text": "當期間只包含平日時，總金額會以每晚 2000 元計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "列出的兩個平日晚間皆以每晚 2,000 元計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-05-04（平日）：2,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3751e31-2145-4c83-a683-813215cc9d63",
+        "text": "當期間包含假日時，Skill 會依假日加價規則計算每一晚並加總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "假日的 2026-05-02 與 2026-05-03 均以 2,500 元計入，並納入 9,000 元合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "合計：**9,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a39a9826-7532-4733-bfda-f484eb15108d",
+        "text": "輸出會明確區分每一晚是平日或假日，或至少能看出每晚的費率來源。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐晚標示平日或假日，並列出各晚費率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "26f0da47-db24-4810-a75b-5ea6c6479a52",
+        "text": "「退房當天不算一晚」會正確套用，不會多算退房日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "只列入 5 月 1 日至 5 月 4 日四晚，未將 2026-05-05 退房日列為住宿晚數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2994 input and 518 output tokens on gpt-5.4-mini; reported cost $0.0075 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

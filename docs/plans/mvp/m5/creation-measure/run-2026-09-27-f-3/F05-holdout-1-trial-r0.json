@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "案號112年度訴字第456號，當事人王小明，下次開庭日期2026年11月10日（二）上午9點30分，需攜帶文件：身分證正本、上次開庭紀錄、委任狀，應繳訴訟費用3000元需在開庭前繳清，法官更換為李法官，開庭地點台北地方法院第5法庭。請幫我寫開庭通知簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 3 句話（不含說明省略內容的那一句）"
+    },
+    {
+      "text": "本文包含案號 112年度訴字第456號"
+    },
+    {
+      "text": "本文包含開庭時間 2026年11月10日上午9點30分（或等同表示）"
+    },
+    {
+      "text": "輸出另有一句話說明為了守住 3 句話上限而省略或合併了哪些資訊"
+    }
+  ],
+  "final_output": "王小明您好，案號112年度訴字第456號，下次開庭日期為2026年11月10日（二）上午9點30分。  \n開庭地點為台北地方法院第5法庭，承辦法官更換為李法官。  \n請攜帶身分證正本、上次開庭紀錄、委任狀，並於開庭前繳清訴訟費用3000元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "72b9c5b4-e6cd-43aa-89d6-5205401fa1eb",
+    "run_id": "d460bff4-a45b-4c83-a323-60177df9be80",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知本文符合 3 句上限，且包含案號與開庭日期時間；但未依要求另附省略或合併資訊的說明句。",
+    "criterion_results": [
+      {
+        "criterion_id": "a388bb1a-e4be-4a3c-84b0-ff77903a521e",
+        "text": "通知本文不超過 3 句話（不含說明省略內容的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共 3 句，未超過上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，案號112年度訴字第456號，下次開庭日期為2026年11月10日（二）上午9點30分。  \n開庭地點為台北地方法院第5法庭，承辦法官更換為李法官。  \n請攜帶身分證正本、上次開庭紀錄、委任狀，並於開庭前繳清訴訟費用3000元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b71886a-1e15-4eaf-9205-7afff35108c6",
+        "text": "本文包含案號 112年度訴字第456號",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含指定案號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，案號112年度訴字第456號，下次開庭日期為2026年11月10日（二）上午9點30分。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "65c983eb-4964-4ef3-a44b-d51f65f70629",
+        "text": "本文包含開庭時間 2026年11月10日上午9點30分（或等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含 2026年11月10日上午9點30分，並附有星期資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，案號112年度訴字第456號，下次開庭日期為2026年11月10日（二）上午9點30分。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cdf4a999-e8cb-4003-8d9b-36dbe708b5bd",
+        "text": "輸出另有一句話說明為了守住 3 句話上限而省略或合併了哪些資訊",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終輸出僅有 3 句通知內容，未另有一句說明為遵守 3 句上限而省略或合併的資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王小明您好，案號112年度訴字第456號，下次開庭日期為2026年11月10日（二）上午9點30分。  \n開庭地點為台北地方法院第5法庭，承辦法官更換為李法官。  \n請攜帶身分證正本、上次開庭紀錄、委任狀，並於開庭前繳清訴訟費用3000元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3619 input and 906 output tokens on gpt-5.4-mini; reported cost $0.0089 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

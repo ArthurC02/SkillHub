@@ -1,0 +1,140 @@
+{
+  "request": {
+    "RunID": "2c9c4e35-466f-4a43-9b97-9a52b1b1fd0b",
+    "EvaluationID": "c00cba2e-ca31-42f0-86b1-3f0d4394714e",
+    "Skill": {
+      "Name": "community-garden-maintenance-fee",
+      "Summary": "Calculate community garden maintenance fees from lawn area and tree count, including area rounding, tiered base fees, tree pruning surcharges, and a service cap. Use it when you need a ready-to-run fee calculator for this pricing rule set."
+    },
+    "UserPrompt": "請計算這些社區庭園維護費用：\n1. 草坪面積 36 平方公尺，樹木 3 棵\n2. 草坪面積 100 平方公尺，樹木 4 棵\n3. 草坪面積 101 平方公尺，樹木 3 棵\n4. 草坪面積 305 平方公尺，樹木 3 棵\n5. 草坪面積 305 平方公尺，樹木 10 棵\n6. 草坪面積 299 平方公尺，樹木 4 棵",
+    "Criteria": [
+      {
+        "ID": "87d6f567-2efc-4431-8418-4c669e0ec118",
+        "Text": "當輸入草坪面積 36、樹木 3 棵時，Skill 先將面積進位為 40，並輸出總費用 2000 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f02c7601-e453-4a99-adde-5bdb09161b1d",
+        "Text": "當輸入草坪面積 100、樹木 4 棵時，Skill 先將面積維持為 100，基礎費為 2000 元，樹木第 4 棵加收 300 元，總費用為 2300 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "16969d3b-0b1f-4ac7-a3dc-76d16688930e",
+        "Text": "當輸入草坪面積 101、樹木 3 棵時，Skill 先將面積進位為 110，依超過 100 但不超過 300 的級距收基本費 3500 元，總費用為 3500 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "18667b51-522f-4a00-95ce-62dcdb291ff8",
+        "Text": "當輸入草坪面積 305、樹木 3 棵時，Skill 先將面積進位為 310，基本費 3500 元，加上超過 300 的 10 平方公尺部分 1 單位 × 100 元，未加樹木費時總額應為 3600 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e05665fa-3c97-468f-939a-92629930229f",
+        "Text": "當輸入草坪面積 305、樹木 10 棵時，草坪費與樹木費合計後會超過 6000 元，因此總費用必須封頂為 6000 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "88d50971-0e2f-4a8f-a563-882d43c58d11",
+        "Text": "當輸入草坪面積 299、樹木 4 棵時，面積先進位為 300，適用 3500 元基本費，再加 300 元樹木費，總費用為 3800 元。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "依規則逐筆計算如下：\n\n1. 36 平方公尺，3 棵樹木：**2000 元**\n2. 100 平方公尺，4 棵樹木：**2300 元**\n3. 101 平方公尺，3 棵樹木：**3500 元**\n4. 305 平方公尺，3 棵樹木：**3600 元**\n5. 305 平方公尺，10 棵樹木：**5700 元**\n6. 299 平方公尺，4 棵樹木：**3800 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "444bf83d-b1fb-4d2b-9f11-5a10bebe8208",
+          "OccurredAt": "2026-09-27T14:26:41.989Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-garden-maintenance-fee\", \"skill_version_id\": \"bc022f49-b671-4831-8395-d509477c7fe9\"}"
+        },
+        {
+          "TraceEventID": "838d2e9b-bd78-4937-b425-95eed5ebdb9b",
+          "OccurredAt": "2026-09-27T14:26:42Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-garden-maintenance-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_UBLkt0ySsJ98zpvmboeuI66c\", \"result_summary\": \"Launching skill: community-garden-maintenance-fee\"}"
+        },
+        {
+          "TraceEventID": "b2533899-fa2a-4f26-865e-39e3f3a8db20",
+          "OccurredAt": "2026-09-27T14:26:46.359Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"依規則逐筆計算如下：\\n\\n1. 36 平方公尺，3 棵樹木：**2000 元**\\n2. 100 平方公尺，4 棵樹木：**2300 元**\\n3. 101 平方公尺，3 棵樹木：**3500 元**\\n4. 305 平方公尺，3 棵樹木：**3600 元**\\n5. 305 平方公尺，10 棵樹木：**5700 元**\\n6. 299 平方公尺，4 棵樹木：**3800 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "882bce61-2012-4cfd-8a67-409b10608f65",
+          "OccurredAt": "2026-09-27T14:26:46.523Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"依規則逐筆計算如下：\\n\\n1. 36 平方公尺，3 棵樹木：**2000 元**\\n2. 100 平方公尺，4 棵樹木：**2300 元**\\n3. 101 平方公尺，3 棵樹木：**3500 元**\\n4. 305 平方公尺，3 棵樹木：**3600 元**\\n5. 305 平方公尺，10 棵樹木：**5700 元**\\n6. 299 平方公尺，4 棵樹木：**3800 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d8d96f2f-0f63-41c2-abf4-23528c556018",
+          "OccurredAt": "2026-09-27T14:26:52.109Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0187305, \"cost_source\": \"gateway\", \"duration_ms\": 12276, \"input_tokens\": 18738, \"token_source\": \"result\", \"output_tokens\": 630, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "87d6f567-2efc-4431-8418-4c669e0ec118",
+        "Result": "undetermined",
+        "Reason": "最終回覆列出總費用 2000 元，但沒有呈現面積先進位為 40 的計算過程，因此無法確認完整條件。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "f02c7601-e453-4a99-adde-5bdb09161b1d",
+        "Result": "undetermined",
+        "Reason": "最終回覆列出總費用 2300 元，但未呈現面積維持 100、2000 元基礎費及第 4 棵樹加收 300 元的明細。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "16969d3b-0b1f-4ac7-a3dc-76d16688930e",
+        "Result": "undetermined",
+        "Reason": "最終回覆列出總費用 3500 元，但沒有顯示面積進位為 110 或所適用級距，無法確認完整條件。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "18667b51-522f-4a00-95ce-62dcdb291ff8",
+        "Result": "undetermined",
+        "Reason": "最終回覆列出總費用 3600 元，但沒有呈現進位至 310、3500 元基本費及超出 300 平方公尺部分的計算明細。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "e05665fa-3c97-468f-939a-92629930229f",
+        "Result": "failed",
+        "Reason": "針對草坪 305 平方公尺、10 棵樹木，回覆的總費用是 5700 元，而非要求的封頂 6000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "5. 305 平方公尺，10 棵樹木：**5700 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "88d50971-0e2f-4a8f-a563-882d43c58d11",
+        "Result": "undetermined",
+        "Reason": "最終回覆列出總費用 3800 元，但未呈現面積進位為 300、3500 元基本費及 300 元樹木費的計算明細。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "回覆列出的第 5 筆費用為 5700 元，未符合必須封頂為 6000 元的要求。其餘各筆雖列出與要求相符的總額，但缺少各項準則所要求的進位、級距與加費計算明細，無法由現有證據確認完整條件。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2849,
+      "CompletionTokens": 954,
+      "CostUSD": 0.0160344,
+      "CostReported": true
+    }
+  }
+}

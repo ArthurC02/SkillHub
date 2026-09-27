@@ -1,0 +1,149 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下連續入住的住宿總額，列出每晚日期、價格、平日與假日晚數及總額。入住日期：2026-10-01；退房日期：2026-10-05。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例中的 2026-10-01 至 2026-10-05，逐晚列出 10 月 1 日（週四）2000 元、10 月 2 日（週五）2500 元、10 月 3 日（週六）2500 元、10 月 4 日（週日）2000 元，並算出總額 9000 元。"
+    },
+    {
+      "text": "對試跑範例，將週五與週六夜晚列為假日價、週四與週日夜晚列為平日價，並正確呈現平日 2 晚、假日 2 晚。"
+    },
+    {
+      "text": "對試跑範例，不把 2026-10-05 退房日列為計費住宿晚或納入總額。"
+    },
+    {
+      "text": "輸出同時包含逐晚日期與價格、平日及假日晚數，以及新台幣住宿總額。"
+    }
+  ],
+  "final_output": "計價假設：台灣當地日曆；平日每晚新台幣 2,000 元；週五、週六及指定假日每晚新台幣 2,500 元。入住日當晚計費，退房日不計費；未指定的國定假日不另行推定。\n\n逐晚明細：\n- 2026-10-01（平日）：新台幣 2,000 元\n- 2026-10-02（假日）：新台幣 2,500 元\n- 2026-10-03（假日）：新台幣 2,500 元\n- 2026-10-04（平日）：新台幣 2,000 元\n\n平日：2 晚  \n假日：2 晚  \n**住宿總額：新台幣 9,000 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9e3bdd14-0fd1-4345-a73b-24676a55c06e",
+    "run_id": "0b7e2657-def2-428e-9e73-1a288bd9eaf7",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "四晚價格、分類、晚數及新台幣 9,000 元總額均正確，退房日也未計費。逐晚明細未標出各日是週四至週日，因此未完全符合第一項標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "acb3a1b7-1c69-4ca9-93ff-4c25acc7922c",
+        "text": "對試跑範例中的 2026-10-01 至 2026-10-05，逐晚列出 10 月 1 日（週四）2000 元、10 月 2 日（週五）2500 元、10 月 3 日（週六）2500 元、10 月 4 日（週日）2000 元，並算出總額 9000 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "四晚價格與 9,000 元總額正確，但逐晚明細只標示「平日」或「假日」，沒有列出要求的週四、週五、週六、週日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01（平日）：新台幣 2,000 元\n- 2026-10-02（假日）：新台幣 2,500 元\n- 2026-10-03（假日）：新台幣 2,500 元\n- 2026-10-04（平日）：新台幣 2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**住宿總額：新台幣 9,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dade7de6-d77f-4f46-94b4-f387f805d609",
+        "text": "對試跑範例，將週五與週六夜晚列為假日價、週四與週日夜晚列為平日價，並正確呈現平日 2 晚、假日 2 晚。",
+        "result": "passed",
+        "source": "model",
+        "reason": "10 月 2 日與 3 日列為假日價，10 月 1 日與 4 日列為平日價；平日及假日各為 2 晚。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01（平日）：新台幣 2,000 元\n- 2026-10-02（假日）：新台幣 2,500 元\n- 2026-10-03（假日）：新台幣 2,500 元\n- 2026-10-04（平日）：新台幣 2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "平日：2 晚  \n假日：2 晚",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c00a2dae-cca5-4123-a90b-fcdbe6f5d6a6",
+        "text": "對試跑範例，不把 2026-10-05 退房日列為計費住宿晚或納入總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐晚明細止於 10 月 4 日，總額為四晚價格之和；10 月 5 日未列為計費住宿晚。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01（平日）：新台幣 2,000 元\n- 2026-10-02（假日）：新台幣 2,500 元\n- 2026-10-03（假日）：新台幣 2,500 元\n- 2026-10-04（平日）：新台幣 2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**住宿總額：新台幣 9,000 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "41b93b2c-22ae-4b6d-a502-f24294822678",
+        "text": "輸出同時包含逐晚日期與價格、平日及假日晚數，以及新台幣住宿總額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含四晚的日期與價格、平日及假日晚數，以及新台幣住宿總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-10-01（平日）：新台幣 2,000 元\n- 2026-10-02（假日）：新台幣 2,500 元\n- 2026-10-03（假日）：新台幣 2,500 元\n- 2026-10-04（平日）：新台幣 2,000 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "平日：2 晚  \n假日：2 晚  \n**住宿總額：新台幣 9,000 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1520 input and 456 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

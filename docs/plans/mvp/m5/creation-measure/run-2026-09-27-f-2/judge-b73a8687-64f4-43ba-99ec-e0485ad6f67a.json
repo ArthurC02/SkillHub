@@ -1,0 +1,181 @@
+{
+  "request": {
+    "RunID": "b73a8687-64f4-43ba-99ec-e0485ad6f67a",
+    "EvaluationID": "3b9bb66a-e1cd-49a8-ae00-0d31a67aa939",
+    "Skill": {
+      "Name": "gallery-opening-invitation-writer",
+      "Summary": "撰寫畫廊開幕邀請文，適合在需要以正式優雅語氣介紹展覽，且必須準確保留展覽名稱、展期、開幕茶會時間與地點時使用。"
+    },
+    "UserPrompt": "請寫一段畫廊開幕邀請文。展覽名稱：〈夜航〉；展期：2026年10月3日至2026年11月15日；開幕茶會時間：2026年10月3日（六）下午3:00；開幕茶會地點：晨光畫廊（台北市大安區和平東路一段123號）。",
+    "Criteria": [
+      {
+        "ID": "b5ee4241-f408-4650-b025-0b7e5ef3d1d5",
+        "Text": "給定包含展覽名稱、展期、開幕茶會時間與地點的資料時，輸出一段正式優雅的中文邀請文。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "37510ccd-b1f9-4b8a-a9f9-267fabad9186",
+        "Text": "輸出中會原樣保留展覽名稱，不得改名或省略。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4c645c44-1c21-4f06-905e-016686f0dcce",
+        "Text": "輸出中會正確保留展期的起訖日期，不得改成單一日期或遺漏其中一端。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5ebc293e-80f1-480e-9450-03d5fce6387e",
+        "Text": "輸出中會正確保留開幕茶會時間，不得改寫成其他時間。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "09dace80-9a9a-49eb-a752-43ac59678675",
+        "Text": "輸出中會正確保留開幕茶會地點，不得改寫成其他地點或省略。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7741807c-e255-450d-b42b-182bdc01f570",
+        "Text": "輸出整體語氣符合正式優雅，不使用口語、俚語或隨意語氣。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "誠摯邀請您蒞臨晨光畫廊，參與展覽〈夜航〉之開幕茶會。展期自2026年10月3日至2026年11月15日，開幕茶會時間為2026年10月3日（六）下午3:00，地點於晨光畫廊（台北市大安區和平東路一段123號）。敬請撥冗蒞臨，共同見證本次展覽的啟幕時刻。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "ae22fbbb-12c8-4c99-ad01-f02cad8a8a56",
+          "OccurredAt": "2026-09-27T14:25:13.924Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"gallery-opening-invitation-writer\", \"skill_version_id\": \"041ffaa2-ac67-4939-9083-97018c503d08\"}"
+        },
+        {
+          "TraceEventID": "4712d798-0dca-46ba-b7eb-ee3ba919fee1",
+          "OccurredAt": "2026-09-27T14:25:13.94Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"gallery-opening-invitation-writer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_rFG0mBlQwN8xVnSDsQTKMjlH\", \"result_summary\": \"Launching skill: gallery-opening-invitation-writer\"}"
+        },
+        {
+          "TraceEventID": "bbf8ca99-83bd-4b16-8aef-4ec475d282c3",
+          "OccurredAt": "2026-09-27T14:25:17.702Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"誠摯邀請您蒞臨晨光畫廊，參與展覽〈夜航〉之開幕茶會。展期自2026年10月3日至2026年11月15日，開幕茶會時間為2026年10月3日（六）下午3:00，地點於晨光畫廊（台北市大安區和平東路一段123號）。敬請撥冗蒞臨，共同見證本次展覽的啟幕時刻。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8c1e1959-c16d-461a-acd7-6098892671d0",
+          "OccurredAt": "2026-09-27T14:25:17.87Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"誠摯邀請您蒞臨晨光畫廊，參與展覽〈夜航〉之開幕茶會。展期自2026年10月3日至2026年11月15日，開幕茶會時間為2026年10月3日（六）下午3:00，地點於晨光畫廊（台北市大安區和平東路一段123號）。敬請撥冗蒞臨，共同見證本次展覽的啟幕時刻。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ab144f1c-3b4a-4b89-8495-1960e438b303",
+          "OccurredAt": "2026-09-27T14:25:21.933Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0179745, \"cost_source\": \"gateway\", \"duration_ms\": 9975, \"input_tokens\": 18791, \"token_source\": \"result\", \"output_tokens\": 464, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b5ee4241-f408-4650-b025-0b7e5ef3d1d5",
+        "Result": "passed",
+        "Reason": "輸出為一段中文畫廊開幕邀請文，包含展覽、展期、開幕茶會時間與地點，措辭正式。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您蒞臨晨光畫廊，參與展覽〈夜航〉之開幕茶會。展期自2026年10月3日至2026年11月15日，開幕茶會時間為2026年10月3日（六）下午3:00，地點於晨光畫廊（台北市大安區和平東路一段123號）。敬請撥冗蒞臨，共同見證本次展覽的啟幕時刻。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "37510ccd-b1f9-4b8a-a9f9-267fabad9186",
+        "Result": "passed",
+        "Reason": "展覽名稱以〈夜航〉原樣呈現，未改名或省略。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "參與展覽〈夜航〉之開幕茶會。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4c645c44-1c21-4f06-905e-016686f0dcce",
+        "Result": "passed",
+        "Reason": "展期起訖日期均正確保留。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "展期自2026年10月3日至2026年11月15日，"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5ebc293e-80f1-480e-9450-03d5fce6387e",
+        "Result": "passed",
+        "Reason": "開幕茶會日期與時間正確保留為2026年10月3日（六）下午3:00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "開幕茶會時間為2026年10月3日（六）下午3:00，"
+          }
+        ]
+      },
+      {
+        "CriterionID": "09dace80-9a9a-49eb-a752-43ac59678675",
+        "Result": "passed",
+        "Reason": "開幕茶會地點及完整地址正確保留。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點於晨光畫廊（台北市大安區和平東路一段123號）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7741807c-e255-450d-b42b-182bdc01f570",
+        "Result": "passed",
+        "Reason": "使用「誠摯邀請」、「蒞臨」、「敬請撥冗」等正式敬語，未見口語或隨意措辭。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "誠摯邀請您蒞臨晨光畫廊，參與展覽〈夜航〉之開幕茶會。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "敬請撥冗蒞臨，共同見證本次展覽的啟幕時刻。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "此回覆完整提供正式優雅的中文開幕邀請文，並正確保留展覽名稱、展期、開幕茶會時間與地點。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2533,
+      "CompletionTokens": 827,
+      "CostUSD": 0.0137204,
+      "CostReported": true
+    }
+  }
+}

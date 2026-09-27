@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "展覽名稱：「靜謐邊境」林雨薇個展，展期2026年11月14日至2026年12月6日，開幕茶會2026年11月14日（六）下午3點，地點：晴光畫廊（台北市中山區晴光街8號）。請幫我寫一篇邀請文，大概150-200字。",
+  "acceptance_criteria": [
+    {
+      "text": "邀請文中包含展覽名稱「靜謐邊境」與藝術家林雨薇"
+    },
+    {
+      "text": "邀請文中包含展期起訖日期 2026年11月14日至2026年12月6日"
+    },
+    {
+      "text": "邀請文中包含開幕茶會時間 2026年11月14日下午3點與地點晴光畫廊（或含地址）"
+    },
+    {
+      "text": "沒有捏造未提供的事實，例如虛構其他藝術家、贊助商或其他日期"
+    }
+  ],
+  "final_output": "誠摯邀請您蒞臨「靜謐邊境」林雨薇個展。本展將於2026年11月14日至2026年12月6日展出，並於2026年11月14日（六）下午3點舉行開幕茶會，地點：晴光畫廊（台北市中山區晴光街8號）。敬邀您於光影與筆觸之間，感受作品所蘊藏的靜謐與邊界之美，撥冗前來，共襄盛會。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "75473b8d-38c6-4d90-8e88-dade5cf54506",
+    "run_id": "17a98f26-c046-488e-a470-cf779beaf904",
+    "status": "completed",
+    "overall": "met",
+    "summary": "邀請文正確保留展名、藝術家、展期、開幕茶會時間與場地地址，且未見捏造的具體事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "cd4d00d5-10c2-47d6-b397-b77853db277e",
+        "text": "邀請文中包含展覽名稱「靜謐邊境」與藝術家林雨薇",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文包含展覽名稱「靜謐邊境」及藝術家林雨薇。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請您蒞臨「靜謐邊境」林雨薇個展。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f547e124-cbb2-4415-80e2-62b56073b6e4",
+        "text": "邀請文中包含展期起訖日期 2026年11月14日至2026年12月6日",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文完整載明展期起訖日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本展將於2026年11月14日至2026年12月6日展出",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e6d00c49-5f1d-4d5d-b989-32fa291cef6d",
+        "text": "邀請文中包含開幕茶會時間 2026年11月14日下午3點與地點晴光畫廊（或含地址）",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文包含開幕茶會日期、下午3點時間，以及晴光畫廊與完整地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "並於2026年11月14日（六）下午3點舉行開幕茶會，地點：晴光畫廊（台北市中山區晴光街8號）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43c21b41-31e8-42ef-add4-b428a45b1900",
+        "text": "沒有捏造未提供的事實，例如虛構其他藝術家、贊助商或其他日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "文中未出現其他藝術家、贊助商或不同日期等未提供的具體事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬邀您於光影與筆觸之間，感受作品所蘊藏的靜謐與邊界之美，撥冗前來，共襄盛會。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18817 input and 775 output tokens on gpt-5.4-mini; reported cost $0.0151 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

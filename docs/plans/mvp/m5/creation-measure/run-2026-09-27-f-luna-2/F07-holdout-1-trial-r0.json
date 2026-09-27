@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "學生王小華本學期缺席記錄：9/5、9/12、9/26三次缺席，家長聯絡電話0933-222-111，家長email parent@example.com。請幫我處理。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出有寫好給家長的警告信內容，不是只回覆已經寄出"
+    },
+    {
+      "text": "輸出明確說明信件需要由人工寄送，系統本身無法直接寄信"
+    },
+    {
+      "text": "輸出明確說明無法直接登入教務系統把學生標記為留意名單，需要人工到系統操作，且沒有宣稱已經完成標記"
+    },
+    {
+      "text": "沒有捏造家長已收到信或系統已更新的說法"
+    }
+  ],
+  "final_output": "### 給家長的缺席警告通知\n\n家長您好：\n\n依提供的資料，王小華於本學期缺席 **3 次**。這是一封缺席警告通知，敬請留意孩子的出席情形。\n\n家長稱謂或姓名：未提供\n\n### 留意名單待辦\n\n請由獲授權人員在教務系統將王小華列入留意名單。此技能未登入或修改教務系統，標記尚未完成。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3f477876-740c-4b74-b2b9-354c7fd9b3df",
+    "run_id": "af523a00-ac80-453f-8013-2052caa08f05",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已撰寫給家長的缺席警告通知，也沒有捏造寄達或系統更新。不過，輸出未交代信件須由人工寄送、系統無法直接寄信，亦未明確說明無法直接登入教務系統。",
+    "criterion_results": [
+      {
+        "criterion_id": "b11c8f53-7a54-4c1e-a41b-c28fafd66c6c",
+        "text": "輸出有寫好給家長的警告信內容，不是只回覆已經寄出",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含寫給家長的缺席警告通知內容，而非僅聲稱已寄出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "家長您好：\n\n依提供的資料，王小華於本學期缺席 **3 次**。這是一封缺席警告通知，敬請留意孩子的出席情形。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e32320a0-e3f4-4a6e-bb4e-306a873a4975",
+        "text": "輸出明確說明信件需要由人工寄送，系統本身無法直接寄信",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出提供了通知內容，但沒有明確說明信件須由人工寄送，也沒有說明系統本身無法直接寄信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 給家長的缺席警告通知\n\n家長您好：\n\n依提供的資料，王小華於本學期缺席 **3 次**。這是一封缺席警告通知，敬請留意孩子的出席情形。\n\n家長稱謂或姓名：未提供\n\n### 留意名單待辦\n\n請由獲授權人員在教務系統將王小華列入留意名單。此技能未登入或修改教務系統，標記尚未完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d3c4b5e0-c50b-4919-ad7f-b05206b02fd1",
+        "text": "輸出明確說明無法直接登入教務系統把學生標記為留意名單，需要人工到系統操作，且沒有宣稱已經完成標記",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出要求獲授權人員到教務系統操作，並說明尚未完成標記；但只說「未登入或修改」，沒有明確說明無法直接登入教務系統。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請由獲授權人員在教務系統將王小華列入留意名單。此技能未登入或修改教務系統，標記尚未完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c156a8bf-f389-4f5e-b8b3-e376c898d6fc",
+        "text": "沒有捏造家長已收到信或系統已更新的說法",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出沒有聲稱家長已收到信，且明確指出教務系統標記尚未完成。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "此技能未登入或修改教務系統，標記尚未完成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 425 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

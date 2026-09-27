@@ -1,0 +1,201 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下每筆包裹的運費，並逐筆列出原重量、進位後重量及運費。\nA：3.2 公斤\nB：5 公斤\nC：5.01 公斤\nD：20 公斤\nE：20.1 公斤\nF：43 公斤\nG：43.1 公斤",
+  "acceptance_criteria": [
+    {
+      "text": "對重量 3.2 公斤，輸出須顯示進位後為 4 公斤、運費 150 元，並以表格列出原重量、進位後重量和運費。"
+    },
+    {
+      "text": "對重量 5 公斤，輸出須顯示進位後為 5 公斤、運費 150 元；對 5.01 公斤，須顯示進位後為 6 公斤、運費 250 元。"
+    },
+    {
+      "text": "對重量 20 公斤，輸出須顯示進位後為 20 公斤、運費 250 元；對 20.1 公斤，須顯示進位後為 21 公斤、運費 265 元（250 + 1 × 15）。"
+    },
+    {
+      "text": "對重量 43 公斤，輸出須顯示進位後為 43 公斤、運費 595 元（250 + 23 × 15）；對 43.1 公斤，須顯示進位後為 44 公斤，未封頂金額 610 元並依上限收 600 元。"
+    },
+    {
+      "text": "一次提供多筆重量時，輸出須在同一張表格中逐筆列出各筆原重量、各自進位後重量與各自運費，不得把不同包裹合併計費。"
+    }
+  ],
+  "final_output": "| 包裹 | 原重量（公斤） | 進位後重量（公斤） | 未封頂金額（元） | 實收運費（元） |\n|---|---:|---:|---:|---:|\n| A | 3.2 | 4 | 150 | 150 |\n| B | 5 | 5 | 150 | 150 |\n| C | 5.01 | 6 | 250 | 250 |\n| D | 20 | 20 | 250 | 250 |\n| E | 20.1 | 21 | 265 | 265 |\n| F | 43 | 43 | 595 | 595 |\n| G | 43.1 | 44 | 610 | 600 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1fa9f809-a9a3-4a75-a350-e28fd4291abd",
+    "run_id": "60083f38-52f8-41c5-a1f7-f9ce45a56dd3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已達成。輸出在同一張表格逐筆列出七個包裹的原重量、進位後重量與運費，並顯示 G 的未封頂金額及封頂後實收金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "b901a8bf-06a5-4b6a-b965-542ac1cf02f9",
+        "text": "對重量 3.2 公斤，輸出須顯示進位後為 4 公斤、運費 150 元，並以表格列出原重量、進位後重量和運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一表格列出 A 的原重量 3.2 公斤、進位後 4 公斤及實收運費 150 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 包裹 | 原重量（公斤） | 進位後重量（公斤） | 未封頂金額（元） | 實收運費（元） |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 3.2 | 4 | 150 | 150 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6e93893c-85e2-4263-9d1f-997e81f5ff08",
+        "text": "對重量 5 公斤，輸出須顯示進位後為 5 公斤、運費 150 元；對 5.01 公斤，須顯示進位後為 6 公斤、運費 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的 5 公斤維持 5 公斤、運費 150 元；C 的 5.01 公斤進位為 6 公斤、運費 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 5 | 5 | 150 | 150 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 5.01 | 6 | 250 | 250 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cc6a68b3-aff8-439e-8f9e-5668465153a5",
+        "text": "對重量 20 公斤，輸出須顯示進位後為 20 公斤、運費 250 元；對 20.1 公斤，須顯示進位後為 21 公斤、運費 265 元（250 + 1 × 15）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 的 20 公斤運費為 250 元；E 的 20.1 公斤進位為 21 公斤，運費為 265 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 20 | 20 | 250 | 250 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 20.1 | 21 | 265 | 265 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "52566212-87ab-4d9e-b705-49125f517d7b",
+        "text": "對重量 43 公斤，輸出須顯示進位後為 43 公斤、運費 595 元（250 + 23 × 15）；對 43.1 公斤，須顯示進位後為 44 公斤，未封頂金額 610 元並依上限收 600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "F 的 43 公斤運費為 595 元；G 的 43.1 公斤進位為 44 公斤，表格顯示未封頂金額 610 元、實收 600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 43 | 43 | 595 | 595 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| G | 43.1 | 44 | 610 | 600 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eac1bad4-8e23-4456-901f-b3884ec9f9a8",
+        "text": "一次提供多筆重量時，輸出須在同一張表格中逐筆列出各筆原重量、各自進位後重量與各自運費，不得把不同包裹合併計費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 G 均在同一張表格各占一列，分別列出原重量、進位後重量及實收運費，沒有合併計費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 包裹 | 原重量（公斤） | 進位後重量（公斤） | 未封頂金額（元） | 實收運費（元） |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A | 3.2 | 4 | 150 | 150 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| B | 5 | 5 | 150 | 150 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| C | 5.01 | 6 | 250 | 250 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| D | 20 | 20 | 250 | 250 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| E | 20.1 | 21 | 265 | 265 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| F | 43 | 43 | 595 | 595 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| G | 43.1 | 44 | 610 | 600 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1526 input and 488 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

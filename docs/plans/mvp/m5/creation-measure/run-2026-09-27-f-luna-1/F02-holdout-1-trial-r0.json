@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這批要分類的案件如下：\n1. 中文-英文，6000字，交期24小時\n2. 中文-韓文，3000字，交期10小時\n3. 中文-日文，5000字，交期48小時\n4. 中文-英文，5001字，交期48小時\n請幫我分類。",
+  "acceptance_criteria": [
+    {
+      "text": "案件1（中文-英文，6000字，24小時）判定為加急"
+    },
+    {
+      "text": "案件2（中文-韓文）判定為退件"
+    },
+    {
+      "text": "案件3（中文-日文，5000字，48小時）判定為普通"
+    },
+    {
+      "text": "案件4（中文-英文，5001字，48小時）判定為加急"
+    }
+  ],
+  "final_output": "案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\n案件2：退件；理由：語言對不支援（中文-韓文）。\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2d62a52b-2602-4e33-9696-3cb90f38b3df",
+    "run_id": "cc6fe62a-b478-4ccc-809a-284fad923c8f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四件案件的分類均符合各自的驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "8d076df6-f316-45a2-be43-b8dd14a2932e",
+        "text": "案件1（中文-英文，6000字，24小時）判定為加急",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件1判定為加急。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "840f1650-6c44-4833-b63f-6760d7d2ea7e",
+        "text": "案件2（中文-韓文）判定為退件",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件2判定為退件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件2：退件；理由：語言對不支援（中文-韓文）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eb7f2ddb-18b2-4d15-9e90-924c1b8055c6",
+        "text": "案件3（中文-日文，5000字，48小時）判定為普通",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件3判定為普通。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件3：普通；理由：受支援語言對，未同時符合加急條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "50a478ed-2fe2-4a1f-8aae-3bc4cccdaae5",
+        "text": "案件4（中文-英文，5001字，48小時）判定為加急",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件4判定為加急。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 704 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

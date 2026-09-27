@@ -1,0 +1,179 @@
+{
+  "round": 1,
+  "sample_input": "請把以下獸醫診所收費資料整理成依看診日期分組的清單，計算每項小計、每日總額與全部日期的總金額，使用新台幣。\n看診日期｜看診項目｜數量｜單價\n2026-09-24｜看診｜1｜650\n2026-09-24｜疫苗｜2｜480\n2026-09-25｜血液檢查｜1｜1250\n2026-09-25｜藥品｜3｜120",
+  "acceptance_criteria": [
+    {
+      "text": "輸出以看診日期分組，並保留試跑輸入中的四筆收費資料及其項目、數量、單價。"
+    },
+    {
+      "text": "每筆小計正確：看診 650 元、疫苗 960 元、血液檢查 1,250 元、藥品 360 元。"
+    },
+    {
+      "text": "2026-09-24 的每日總額為 NT$1,610，且 2026-09-25 的每日總額為 NT$1,610。"
+    },
+    {
+      "text": "全部日期的總金額為 NT$3,220，並清楚標示使用新台幣（NT$）。"
+    }
+  ],
+  "final_output": "獸醫診所收費清單（新台幣 NT$）\n\n### 看診日期：2026-09-24\n\n| 項目 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 看診 | 1 | NT$650.00 | NT$650.00 |\n| 疫苗 | 2 | NT$480.00 | NT$960.00 |\n| **每日總額** |  |  | **NT$1,610.00** |\n\n### 看診日期：2026-09-25\n\n| 項目 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 血液檢查 | 1 | NT$1,250.00 | NT$1,250.00 |\n| 藥品 | 3 | NT$120.00 | NT$360.00 |\n| **每日總額** |  |  | **NT$1,610.00** |\n\n**全部日期總金額：NT$3,220.00**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c3138fb9-5f56-48d6-b63f-5fc0e576dc3a",
+    "run_id": "75a463d2-3b16-48f1-b5c3-9364c952e0d7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆收費資料均按日期列出，小計、每日總額與全部日期總金額皆正確，並清楚標示新台幣。",
+    "criterion_results": [
+      {
+        "criterion_id": "3d34403e-ce7b-4625-8eb6-84a510a917ed",
+        "text": "輸出以看診日期分組，並保留試跑輸入中的四筆收費資料及其項目、數量、單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出依兩個看診日期分組，並保留四筆資料的項目、數量及單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 看診日期：2026-09-24",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 看診 | 1 | NT$650.00 | NT$650.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 疫苗 | 2 | NT$480.00 | NT$960.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 看診日期：2026-09-25",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 血液檢查 | 1 | NT$1,250.00 | NT$1,250.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 藥品 | 3 | NT$120.00 | NT$360.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be3228b0-d3c5-4650-8536-69a507613e84",
+        "text": "每筆小計正確：看診 650 元、疫苗 960 元、血液檢查 1,250 元、藥品 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四筆小計分別為 NT$650、NT$960、NT$1,250 及 NT$360，計算正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 看診 | 1 | NT$650.00 | NT$650.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 疫苗 | 2 | NT$480.00 | NT$960.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 血液檢查 | 1 | NT$1,250.00 | NT$1,250.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 藥品 | 3 | NT$120.00 | NT$360.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9daf8d9-bc98-4200-81f3-d4bf87b669b3",
+        "text": "2026-09-24 的每日總額為 NT$1,610，且 2026-09-25 的每日總額為 NT$1,610。",
+        "result": "passed",
+        "source": "model",
+        "reason": "2026-09-24 與 2026-09-25 各自的每日總額均標為 NT$1,610.00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 看診日期：2026-09-24\n\n| 項目 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 看診 | 1 | NT$650.00 | NT$650.00 |\n| 疫苗 | 2 | NT$480.00 | NT$960.00 |\n| **每日總額** |  |  | **NT$1,610.00** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 看診日期：2026-09-25\n\n| 項目 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 血液檢查 | 1 | NT$1,250.00 | NT$1,250.00 |\n| 藥品 | 3 | NT$120.00 | NT$360.00 |\n| **每日總額** |  |  | **NT$1,610.00** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "441b8e4b-f237-4bbb-866c-dba3d8957bea",
+        "text": "全部日期的總金額為 NT$3,220，並清楚標示使用新台幣（NT$）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全部日期總金額標為 NT$3,220.00，標題亦明確註明使用新台幣（NT$）。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "獸醫診所收費清單（新台幣 NT$）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**全部日期總金額：NT$3,220.00**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1530 input and 444 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

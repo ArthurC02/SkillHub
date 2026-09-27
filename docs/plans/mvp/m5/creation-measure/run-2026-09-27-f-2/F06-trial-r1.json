@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請把以下資訊寫成到府維修預約確認簡訊：\n預約日期：9/3\n預約時間：14:30\n應收訂金金額：500元",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入同時包含日期、時間、訂金金額時，輸出只有一段簡訊本文，沒有任何解釋文字。"
+    },
+    {
+      "text": "輸出內容必須包含預約日期、預約時間、應收訂金金額三項資訊。"
+    },
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 30 字。"
+    },
+    {
+      "text": "輸出不得包含字數統計、標題、前言或項目符號。"
+    },
+    {
+      "text": "若輸入提供具體數值，輸出需保留這些數值，不可自行改寫成不同日期、時間或金額。"
+    }
+  ],
+  "final_output": "您好，預約9/3 14:30，訂金500元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e7317fd7-3ccb-41f3-94ce-18f436283271",
+    "run_id": "f98be159-0b30-4235-8ed3-a8e42c34eead",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆為單段簡訊，包含並保留所有指定的日期、時間及訂金數值，且不含額外格式或說明文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "fbb0b789-2d78-4d97-9af9-5cb37174ac29",
+        "text": "在輸入同時包含日期、時間、訂金金額時，輸出只有一段簡訊本文，沒有任何解釋文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅有一段可作為簡訊本文的文字，未附解釋。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，預約9/3 14:30，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6036ffe-cc8c-4070-89b6-8d75743eb70b",
+        "text": "輸出內容必須包含預約日期、預約時間、應收訂金金額三項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含日期 9/3、時間 14:30 與訂金 500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，預約9/3 14:30，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7d3df8e8-cbb7-48ec-a6fc-2bc135d71152",
+        "text": "輸出總字數（含標點與英數字）不超過 30 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出字數未超過30字；驗證工具亦回傳 OK。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，預約9/3 14:30，訂金500元",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "771bbaca-a88d-48e8-abab-a29daec21701",
+        "text": "輸出不得包含字數統計、標題、前言或項目符號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出不含字數統計、標題、前言或項目符號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，預約9/3 14:30，訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3fcbc08f-0b17-4e4f-b222-0bb2f18ac8e4",
+        "text": "若輸入提供具體數值，輸出需保留這些數值，不可自行改寫成不同日期、時間或金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出原樣保留輸入的日期9/3、時間14:30與金額500元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，預約9/3 14:30，訂金500元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 20446 input and 1589 output tokens on gpt-5.4-mini; reported cost $0.0296 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "round": 1,
+  "sample_input": "請依以下資料撰寫一則正式優雅、可直接使用的畫廊開幕邀請文。\n展覽名稱：潮汐之間：林予安個展\n展期：2026年11月6日至2026年12月20日\n開幕茶會：2026年11月7日（星期六）下午3時至5時\n地點：澄光畫廊（臺北市中山區松江路100號）",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例，輸出是一則繁體中文、正式優雅且可直接使用的畫廊開幕邀請文。"
+    },
+    {
+      "text": "邀請文完整保留展覽名稱「潮汐之間：林予安個展」，且名稱字詞不變。"
+    },
+    {
+      "text": "邀請文明確保留展期起日「2026年11月6日」與迄日「2026年12月20日」，兩個日期均無誤且未省略。"
+    },
+    {
+      "text": "邀請文明確保留開幕茶會時間「2026年11月7日（星期六）下午3時至5時」，時間與日期均無誤且未省略。"
+    },
+    {
+      "text": "邀請文明確保留開幕茶會地點「澄光畫廊（臺北市中山區松江路100號）」，名稱與地址均無誤且未省略。"
+    },
+    {
+      "text": "邀請文不添加範例資料未提供的具體事實，例如報名方式、費用、主辦人或其他活動時間。"
+    }
+  ],
+  "final_output": "誠摯邀請\n\n潮汐之間：林予安個展\n\n展期｜2026年11月6日至2026年12月20日  \n開幕茶會｜2026年11月7日（星期六）下午3時至5時  \n地點｜澄光畫廊（臺北市中山區松江路100號）\n\n敬邀您蒞臨參觀，並出席開幕茶會，共度美好午後。\n\n敬候光臨",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "9a5d1596-c0fb-4c4c-a6ec-9b3ed65fcf29",
+    "run_id": "c2268b66-b44f-4710-b186-26adf57cfd29",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六項驗收標準均符合。邀請文保留了所有指定資訊，措辭得體，且未添加未提供的具體事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "2691d23b-3564-4eb1-a0ad-e51b3633909d",
+        "text": "對試跑範例，輸出是一則繁體中文、正式優雅且可直接使用的畫廊開幕邀請文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以繁體中文撰寫，語氣正式優雅，包含邀請措辭及完整活動資訊，可直接使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "敬邀您蒞臨參觀，並出席開幕茶會，共度美好午後。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "08df8ad6-24a6-478a-a07a-17c4f9808627",
+        "text": "邀請文完整保留展覽名稱「潮汐之間：林予安個展」，且名稱字詞不變。",
+        "result": "passed",
+        "source": "model",
+        "reason": "展覽名稱完整呈現，字詞未變。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "潮汐之間：林予安個展",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf999c6c-8641-4c1b-8ab7-2e3dec878b9f",
+        "text": "邀請文明確保留展期起日「2026年11月6日」與迄日「2026年12月20日」，兩個日期均無誤且未省略。",
+        "result": "passed",
+        "source": "model",
+        "reason": "展期起日與迄日均明確列出且正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "展期｜2026年11月6日至2026年12月20日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d433e610-7fdd-4699-afb5-77f1c64afddc",
+        "text": "邀請文明確保留開幕茶會時間「2026年11月7日（星期六）下午3時至5時」，時間與日期均無誤且未省略。",
+        "result": "passed",
+        "source": "model",
+        "reason": "開幕茶會的日期、星期及時段均完整且正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "開幕茶會｜2026年11月7日（星期六）下午3時至5時",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "74aa204a-f749-473b-a289-ecb273cf1351",
+        "text": "邀請文明確保留開幕茶會地點「澄光畫廊（臺北市中山區松江路100號）」，名稱與地址均無誤且未省略。",
+        "result": "passed",
+        "source": "model",
+        "reason": "畫廊名稱與地址均完整且正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "地點｜澄光畫廊（臺北市中山區松江路100號）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b5df01dc-64a3-45bc-918f-9bf6625b5929",
+        "text": "邀請文不添加範例資料未提供的具體事實，例如報名方式、費用、主辦人或其他活動時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文僅列出提供的活動資訊及一般邀請措辭，未增添報名方式、費用、主辦人或其他活動時間等具體事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "敬邀您蒞臨參觀，並出席開幕茶會，共度美好午後。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1563 input and 1126 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

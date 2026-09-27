@@ -1,0 +1,183 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分類以下案件，逐案列出分類與簡短理由。\n語言對 | 字數 | 剩餘交期（小時）\n中文-法文 | 9000 | 12\n中文-英文 | 5001 | 48\n中文-日文 | 5000 | 48\n中文-英文 | 5001 | 49\n中文-日文 | 5001 | 24",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入第 1 案，雖然字數為 9000 且交期為 12 小時，但語言對不支援，輸出「退件」，理由指出語言對不支援。"
+    },
+    {
+      "text": "對試跑輸入第 2 案，語言對受支援、字數 5001、交期恰為 48 小時，輸出「加急」。"
+    },
+    {
+      "text": "對試跑輸入第 3 案，語言對受支援、字數恰為 5000、交期為 48 小時，輸出「普通」。"
+    },
+    {
+      "text": "對試跑輸入第 4 案，語言對受支援、字數 5001、交期為 49 小時，輸出「普通」。"
+    },
+    {
+      "text": "對試跑輸入第 5 案，語言對受支援、字數為 5001、交期為 24 小時，輸出「加急」。"
+    },
+    {
+      "text": "輸出對五案各有一筆分類及簡短理由，順序與輸入相同，且分類只使用「退件」、「加急」或「普通」。"
+    }
+  ],
+  "final_output": "案件1：退件；理由：語言對不支援（中文-法文）。\n案件2：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\n案件4：普通；理由：受支援語言對，未同時符合加急條件。\n案件5：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "eba33be6-af7b-43f2-b3c2-31d0cdf31558",
+    "run_id": "f52280c8-1ad6-44ad-8cf7-c06895970c67",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五案均依輸入順序給出符合判準的分類與簡短理由；六項驗收條件全部通過。",
+    "criterion_results": [
+      {
+        "criterion_id": "3d1f424e-2c8f-4649-88f5-8fee06577c4c",
+        "text": "對試跑輸入第 1 案，雖然字數為 9000 且交期為 12 小時，但語言對不支援，輸出「退件」，理由指出語言對不支援。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 案分類為「退件」，理由指出中文－法文語言對不支援。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件1：退件；理由：語言對不支援（中文-法文）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fe646b62-ab7c-4aef-8778-2c60a4f8587a",
+        "text": "對試跑輸入第 2 案，語言對受支援、字數 5001、交期恰為 48 小時，輸出「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 案分類為「加急」，理由涵蓋字數超過 5000 及交期在 48 小時以內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件2：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3d616c3a-15d7-4cc8-93dc-fdf3cb8b8530",
+        "text": "對試跑輸入第 3 案，語言對受支援、字數恰為 5000、交期為 48 小時，輸出「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 案分類為「普通」，並簡述未同時符合加急條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件3：普通；理由：受支援語言對，未同時符合加急條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38ddca08-131c-4ed8-870d-e508159dbfaa",
+        "text": "對試跑輸入第 4 案，語言對受支援、字數 5001、交期為 49 小時，輸出「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 案分類為「普通」，並簡述未同時符合加急條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件4：普通；理由：受支援語言對，未同時符合加急條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b2c231fe-dd28-4efa-ad64-8141bf7b5774",
+        "text": "對試跑輸入第 5 案，語言對受支援、字數為 5001、交期為 24 小時，輸出「加急」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 案分類為「加急」，理由涵蓋字數超過 5000 及交期在 48 小時以內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件5：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "de5035e6-b944-4310-a33d-55d183e8c695",
+        "text": "輸出對五案各有一筆分類及簡短理由，順序與輸入相同，且分類只使用「退件」、「加急」或「普通」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出依案件 1 至 5 的順序，各列出一筆分類及簡短理由；分類僅使用「退件」、「加急」、「普通」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案件1：退件；理由：語言對不支援（中文-法文）。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件2：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件3：普通；理由：受支援語言對，未同時符合加急條件。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件4：普通；理由：受支援語言對，未同時符合加急條件。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案件5：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 542 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

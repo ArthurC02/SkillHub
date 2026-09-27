@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請依下列三筆案件資料各寫一則開庭通知簡訊，並遵守以上規則。\n案件甲｜案號：114年度訴字第321號｜下一次開庭：2026年10月8日上午9時30分｜法庭：第六法庭｜地址：臺北市中正區重慶南路一段○號｜提醒：請攜帶身分證及開庭通知書。\n案件乙｜案號：115年度簡字第48號｜下一次開庭：2026年11月12日下午2時｜法庭：第三法庭｜地址：新北市板橋區○○路○號｜提醒：請提早20分鐘到庭；請在開庭前20分鐘抵達；請攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間請提前聯繫書記官。\n案件丙｜案號：未提供｜下一次開庭日期時間：未提供｜提醒：請攜帶身分證。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的每筆案件，輸出各自一則通知；每則本文不超過三句，且案號與下一次開庭日期時間均有明確呈現，缺漏者以待補欄位標記。"
+    },
+    {
+      "text": "對案件甲，保留提供的案號、日期時間、法庭、地址及應攜物品；若沒有合併或省略其他資訊，不額外聲稱有合併或省略。"
+    },
+    {
+      "text": "對案件乙，將重複的「提早20分鐘到庭」資訊合併表達；如有合併或省略資訊，另列一句本文外說明，指出具體處理的資訊，且不把說明句計入本文句數。"
+    },
+    {
+      "text": "對案件丙，不捏造案號或開庭日期時間，以待補欄位標示兩項缺漏，並在本文外提醒使用者補充。"
+    }
+  ],
+  "final_output": "未指定日期時間格式，採台灣常用寫法。\n\n**案件甲**  \n通知本文：  \n【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\n\n**案件乙**  \n通知本文：  \n【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。  \n本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。\n\n**案件丙**  \n通知本文：  \n【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。  \n本文外說明：請補充案號及下一次開庭日期時間。",
+  "artifacts": [
+    "final-notices.txt",
+    "notice-a.txt",
+    "notice-b.txt",
+    "notice-c.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "da452c90-458c-4e09-80f5-b142eab7ebd2",
+    "run_id": "6b07acd7-1e97-46fe-878a-4a62b8da68fa",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆案件均有獨立且不超過三句的通知本文。案件甲資訊完整；案件乙合併重複提醒並另作說明；案件丙標示缺漏並請使用者補充。",
+    "criterion_results": [
+      {
+        "criterion_id": "0885a0d6-7650-4df2-959f-195ff8a5007b",
+        "text": "對試跑輸入中的每筆案件，輸出各自一則通知；每則本文不超過三句，且案號與下一次開庭日期時間均有明確呈現，缺漏者以待補欄位標記。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲、乙、丙各有一則通知本文，每則均為兩句；甲、乙明列案號及下次開庭時間，丙以待補欄位標示兩項缺漏。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3cbe5435-1dbf-41ea-b1e5-dd99ee8011e4",
+        "text": "對案件甲，保留提供的案號、日期時間、法庭、地址及應攜物品；若沒有合併或省略其他資訊，不額外聲稱有合併或省略。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件甲保留案號、日期時間、法庭、地址及應攜物品，且未額外聲稱合併或省略資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d53b093e-eb3d-4bd6-946c-deae8b37e3a7",
+        "text": "對案件乙，將重複的「提早20分鐘到庭」資訊合併表達；如有合併或省略資訊，另列一句本文外說明，指出具體處理的資訊，且不把說明句計入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件乙的本文只表達一次提前20分鐘抵達，並在本文外另列說明，具體指出合併的兩項原始提醒。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "973b96cf-a6f1-42f2-b5b1-e79168ac0138",
+        "text": "對案件丙，不捏造案號或開庭日期時間，以待補欄位標示兩項缺漏，並在本文外提醒使用者補充。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案件丙未捏造案號或開庭日期時間；本文以待補欄位標示兩項缺漏，本文外也提醒補充。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本文外說明：請補充案號及下一次開庭日期時間。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 4 readable output file(s): final-notices.txt, notice-a.txt, notice-b.txt, notice-c.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1727 input and 4609 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 37,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

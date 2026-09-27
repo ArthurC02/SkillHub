@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "入住 2026-10-05（一）入住，2026-10-06（二）退房，這次住宿總金額是多少？",
+  "acceptance_criteria": [
+    {
+      "text": "輸出總金額為 2000 元"
+    },
+    {
+      "text": "輸出沒有反問使用者，直接給出金額"
+    }
+  ],
+  "final_output": "住宿區間：2026-10-05（一）入住 → 2026-10-06（二）退房\n\n逐晚明細：\n- 2026-10-05（一）：平日，2000 元\n\n總金額：2000 元\n\n假日未給定，已按平日計算。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0b1cd485-eb51-46ac-9195-1f5efa12fdc5",
+    "run_id": "7f1e41f1-ee59-4f24-b874-02cc50eb2b6c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆直接計算並給出總金額 2000 元，沒有反問使用者。",
+    "criterion_results": [
+      {
+        "criterion_id": "51b490fe-ee29-4dba-b1a3-881bde6ef581",
+        "text": "輸出總金額為 2000 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確輸出總金額為 2000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：2000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6c105327-7cd5-4a39-a587-f2b4c6904c66",
+        "text": "輸出沒有反問使用者，直接給出金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆直接提供住宿明細與總金額，未對使用者提出問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：2000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18718 input and 395 output tokens on gpt-5.4-mini; reported cost $0.0176 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：麻煩幫我確認一下，我是林小姐，地址是台北市大安區忠孝東路四段100號3樓，冷氣不冷需要師傅來檢修，希望約2026年11月5日下午2點過去，訂金要收500元，我電話0912345678。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 30 字"
+    },
+    {
+      "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）"
+    },
+    {
+      "text": "本文包含訂金金額 500 元"
+    }
+  ],
+  "final_output": "2026/11/5 14:00 訂金500元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "924e19dd-cff5-47bb-8c12-783d343b3a60",
+    "run_id": "8a468092-8028-4db5-8de2-03c2abedf5ea",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終回覆為單行繁體中文簡訊，包含預約日期、時間及 500 元訂金，且長度不超過 30 字。",
+    "criterion_results": [
+      {
+        "criterion_id": "a53149f7-d92a-46a5-bf78-f4787d2792f2",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅有一行簡訊本文，未包含字數統計或說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/5 14:00 訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "641431c1-0ec8-4293-b3fc-d21cf3e93942",
+        "text": "本文總字數（含標點與英數字）不超過 30 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文為「2026/11/5 14:00 訂金500元」，總字數不超過 30 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/5 14:00 訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ceabf7aa-597b-4b21-a4ef-e58d85a7aa77",
+        "text": "本文包含日期 11/5（或 2026/11/05 等同表示）與時間 14:00（或下午2點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含日期「2026/11/5」與時間「14:00」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/5 14:00 訂金500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "39f52731-ca00-4a51-893b-49ddb9f2ba1a",
+        "text": "本文包含訂金金額 500 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含訂金金額「500元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026/11/5 14:00 訂金500元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19156 input and 969 output tokens on gpt-5.4-mini; reported cost $0.0219 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

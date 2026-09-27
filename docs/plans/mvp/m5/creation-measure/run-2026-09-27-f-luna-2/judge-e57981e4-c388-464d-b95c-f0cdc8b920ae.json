@@ -1,0 +1,187 @@
+{
+  "request": {
+    "RunID": "e57981e4-c388-464d-b95c-f0cdc8b920ae",
+    "EvaluationID": "e275034d-70d3-49c7-a0c5-0aaebf172eda",
+    "Skill": {
+      "Name": "translation-case-classifier",
+      "Summary": "依語言對、字數與交期分類翻譯社案件；當你需要將一筆或多筆案件判定為「退件」、「加急」或「普通」時使用。"
+    },
+    "UserPrompt": "請依規則分類以下案件，逐筆列出案件編號與分類：\n| 案件編號 | 語言對 | 字數 | 交期（小時） |\n|---|---|---:|---:|\n| A | 法文-英文 | 6000 | 24 |\n| B | 中文-英文 | 5001 | 48 |\n| C | 中文-日文 | 5000 | 24 |\n| D | 中文-英文 | 5001 | 49 |",
+    "Criteria": [
+      {
+        "ID": "9bff322c-633a-417e-9c56-b886085ab7d3",
+        "Text": "對試跑輸入第 1 筆，語言對不受支援時，即使字數超過 5000 且交期不超過 48 小時，仍輸出「退件」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a1738b1a-4787-45d6-b0c3-e9428a9fbad5",
+        "Text": "對第 2 筆，語言對受支援、字數為 5001、交期為 48 小時時，輸出「加急」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "150f882f-9fce-430f-950b-4959870fbe13",
+        "Text": "對第 3 筆，語言對受支援、字數恰為 5000 時，輸出「普通」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fa752681-9a99-4626-ab61-c164f2e80a6c",
+        "Text": "對第 4 筆，語言對受支援、字數為 5001 但交期為 49 小時時，輸出「普通」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "71245a08-8766-48e9-b4b2-4613b673e387",
+        "Text": "輸出恰好包含四筆結果，並將每筆案件編號與一個分類標籤對應；分類標籤只使用「退件」、「加急」或「普通」。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "| 案件編號 | 分類 |\n|---|---|\n| A | 退件 |\n| B | 加急 |\n| C | 普通 |\n| D | 普通 |",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "6de1504d-6ed7-4248-add7-e2f387c5f2c4",
+          "OccurredAt": "2026-09-27T15:41:59.589Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"translation-case-classifier\", \"skill_version_id\": \"817509a3-4b60-417a-8f43-f85700e16978\"}"
+        },
+        {
+          "TraceEventID": "07d02195-2b66-4cac-92ba-c32e07bf0529",
+          "OccurredAt": "2026-09-27T15:41:59.599Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"translation-case-classifier\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_RZopMUYy7oDlJxOuViOjJfwW\", \"result_summary\": \"Launching skill: translation-case-classifier\"}"
+        },
+        {
+          "TraceEventID": "b8d4c049-cf16-4606-b735-94c554e6d4b6",
+          "OccurredAt": "2026-09-27T15:42:02.121Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"A\\t退件\\nB\\t加急\\nC\\t普通\\nD\\t普通\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "a9459200-a259-4578-bcdd-ee636a3a9147",
+          "OccurredAt": "2026-09-27T15:42:02.121Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/translation-case-classifier \u0026\u0026 python scripts/classify_cases.py --record 'A|法文-英文|6000|24' --record 'B|中文-英文|5001|48' --record 'C|中文-日文|5000|24' --record 'D|中文-英文|5001|49'\", \"description\": \"Classify the four translation cases\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 74, \"invocation_id\": \"call_whRmUSuDTEQzSkHeTngCrTsX\", \"result_summary\": \"A\\t退件\\nB\\t加急\\nC\\t普通\\nD\\t普通\"}"
+        },
+        {
+          "TraceEventID": "da3a1b0e-fad1-4c73-9f58-7ec379179966",
+          "OccurredAt": "2026-09-27T15:42:03.345Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"| 案件編號 | 分類 |\\n|---|---|\\n| A | 退件 |\\n| B | 加急 |\\n| C | 普通 |\\n| D | 普通 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d18e9178-f8e1-4310-bd1d-593ed13e5981",
+          "OccurredAt": "2026-09-27T15:42:03.544Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"| 案件編號 | 分類 |\\n|---|---|\\n| A | 退件 |\\n| B | 加急 |\\n| C | 普通 |\\n| D | 普通 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "704ed751-6d6e-468b-9c30-a4478e44b067",
+          "OccurredAt": "2026-09-27T15:42:07.585Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003002615, \"cost_source\": \"gateway\", \"duration_ms\": 10493, \"input_tokens\": 1491, \"token_source\": \"result\", \"output_tokens\": 226, \"cache_read_input_tokens\": 35109, \"cache_write_input_tokens\": 18657}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "9bff322c-633a-417e-9c56-b886085ab7d3",
+        "Result": "passed",
+        "Reason": "第 1 筆案件 A 輸出為「退件」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| A | 退件 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a1738b1a-4787-45d6-b0c3-e9428a9fbad5",
+        "Result": "passed",
+        "Reason": "第 2 筆案件 B 輸出為「加急」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| B | 加急 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "150f882f-9fce-430f-950b-4959870fbe13",
+        "Result": "passed",
+        "Reason": "第 3 筆案件 C 輸出為「普通」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| C | 普通 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fa752681-9a99-4626-ab61-c164f2e80a6c",
+        "Result": "passed",
+        "Reason": "第 4 筆案件 D 輸出為「普通」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| D | 普通 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "71245a08-8766-48e9-b4b2-4613b673e387",
+        "Result": "passed",
+        "Reason": "最終輸出恰有 A、B、C、D 四筆案件結果；每筆均對應一個指定的分類標籤。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| A | 退件 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| B | 加急 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| C | 普通 |"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| D | 普通 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四筆案件均輸出指定分類，且最終結果恰好包含四筆案件與其分類標籤；所有驗收條件皆通過。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2641,
+      "CompletionTokens": 630,
+      "CostUSD": 0.010366400000000001,
+      "CostReported": true
+    }
+  }
+}

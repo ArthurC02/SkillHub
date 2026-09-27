@@ -1,0 +1,85 @@
+{
+  "request": {
+    "RunID": "5cd2c20d-8863-444d-a9f0-4ba050c603ec",
+    "EvaluationID": "c922b1f1-25c7-4f12-a533-9c77c36227fa",
+    "Skill": {
+      "Name": "cargo-shipping-fee-calculator",
+      "Summary": "計算單筆包裹運費並在輸入重量時套用進位、級距與上限規則。適合需要把公斤重量轉成運費金額的情境。"
+    },
+    "UserPrompt": "包裹重量 43 公斤，請算運費。",
+    "Criteria": [
+      {
+        "ID": "17065931-e3d6-44bc-aa65-6ec4f2aae3de",
+        "Text": "運費為 595 元",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "595",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "ccf64dff-ee77-4733-9996-0cd6d9a7e660",
+          "OccurredAt": "2026-09-27T14:07:25.305Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"cargo-shipping-fee-calculator\", \"skill_version_id\": \"5c392d31-880f-45ce-a941-832811a6365e\"}"
+        },
+        {
+          "TraceEventID": "eb0fd0b6-636c-4513-968e-f3601849c97f",
+          "OccurredAt": "2026-09-27T14:07:25.317Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"cargo-shipping-fee-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 12, \"invocation_id\": \"call_AorGLaQwzY1cHiorHKU0378V\", \"result_summary\": \"Launching skill: cargo-shipping-fee-calculator\"}"
+        },
+        {
+          "TraceEventID": "d4fdff6b-f319-40e4-992e-369d1ea5bff4",
+          "OccurredAt": "2026-09-27T14:07:26.8Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"595\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c5ce502b-ea97-45d6-9c5e-c5cf0d97ec6a",
+          "OccurredAt": "2026-09-27T14:07:27.152Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"595\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "240d1a88-9148-4b23-ac90-124335d2b6a7",
+          "OccurredAt": "2026-09-27T14:07:32.704Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01666335, \"cost_source\": \"gateway\", \"duration_ms\": 9862, \"input_tokens\": 18888, \"token_source\": \"result\", \"output_tokens\": 178, \"cache_read_input_tokens\": 17408, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "17065931-e3d6-44bc-aa65-6ec4f2aae3de",
+        "Result": "passed",
+        "Reason": "最終回覆為 595，符合運費為 595 元的要求。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "595"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "唯一的驗收條件已滿足：回覆的運費金額為 595 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 1830,
+      "CompletionTokens": 119,
+      "CostUSD": 0.0034669,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "round": 1,
+  "sample_input": "請把以下獸醫診所收費資料整理成逐筆清單，並計算總金額：\n日期｜項目｜數量｜單價\n2026-09-01｜診察｜1｜500\n2026-09-01｜疫苗注射｜2｜300\n2026-09-01｜藥品A｜3｜80\n2026-09-02｜診察｜1｜500\n2026-09-02｜檢驗｜2｜450",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中的五筆收費資料，輸出五筆獨立明細，且每筆都包含日期、項目、數量、單價及該筆金額。"
+    },
+    {
+      "text": "明細保留試跑輸入的順序，並逐筆正確算出金額：500、600、240、500、900。"
+    },
+    {
+      "text": "最後列出的全部項目總金額為 2740，且不添加輸入未提供的幣別符號。"
+    }
+  ],
+  "final_output": "| 日期 | 項目 | 數量 | 單價 | 該筆金額 |\n|---|---|---:|---:|---:|\n| 2026-09-01 | 診察 | 1 | 500 | 500 |\n| 2026-09-01 | 疫苗注射 | 2 | 300 | 600 |\n| 2026-09-01 | 藥品A | 3 | 80 | 240 |\n| 2026-09-02 | 診察 | 1 | 500 | 500 |\n| 2026-09-02 | 檢驗 | 2 | 450 | 900 |\n\n**總金額：2740**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cd06879f-73b4-4f42-8558-6d431e84e59c",
+    "run_id": "054e20e8-98d4-4ca4-b2c9-6ade8be10906",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆收費明細完整且順序、逐筆金額均正確；總金額為 2740，未添加幣別符號。",
+    "criterion_results": [
+      {
+        "criterion_id": "b4fcadf3-e48a-4fde-802d-2d73b06b3c86",
+        "text": "對試跑輸入中的五筆收費資料，輸出五筆獨立明細，且每筆都包含日期、項目、數量、單價及該筆金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆以五筆獨立明細列出資料，每筆均有日期、項目、數量、單價及該筆金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 項目 | 數量 | 單價 | 該筆金額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗注射 | 2 | 300 | 600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 藥品A | 3 | 80 | 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 檢驗 | 2 | 450 | 900 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f149726-052c-4182-850a-2e1b33194a6f",
+        "text": "明細保留試跑輸入的順序，並逐筆正確算出金額：500、600、240、500、900。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五筆明細維持輸入順序，逐筆金額依序為 500、600、240、500、900，計算均正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 疫苗注射 | 2 | 300 | 600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-01 | 藥品A | 3 | 80 | 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 診察 | 1 | 500 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-02 | 檢驗 | 2 | 450 | 900 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d5788094-11e2-4d6b-b270-32d094f30341",
+        "text": "最後列出的全部項目總金額為 2740，且不添加輸入未提供的幣別符號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最後列出的總金額為 2740，最終回覆未添加幣別符號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：2740**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1571 input and 924 output tokens on skillhub-run; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "request": {
+    "RunID": "cfa6ab36-e0f7-47ca-b8dc-e7c3d8ac0eec",
+    "EvaluationID": "ecbdf0f8-29b0-4434-9bd7-5f23e7faef88",
+    "Skill": {
+      "Name": "translation-case-classifier",
+      "Summary": "當你需要依語言對、字數及剩餘交期逐筆分類翻譯社案件時，使用此 Skill。它會依指定規則將案件分類為「退件」、「加急」或「普通」，並保留輸入順序。"
+    },
+    "UserPrompt": "這批要分類的案件如下：\n1. 中文-英文，6000字，交期24小時\n2. 中文-韓文，3000字，交期10小時\n3. 中文-日文，5000字，交期48小時\n4. 中文-英文，5001字，交期48小時\n請幫我分類。",
+    "Criteria": [
+      {
+        "ID": "3ac291b7-10cf-4cd5-8a4d-4b2438d28bc0",
+        "Text": "案件1（中文-英文，6000字，24小時）判定為加急",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "600cd0dc-5c16-4200-b7ff-0ccda5b78b44",
+        "Text": "案件2（中文-韓文）判定為退件",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "47764660-137d-4160-b5e2-64225b9315ef",
+        "Text": "案件3（中文-日文，5000字，48小時）判定為普通",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "042acc24-f642-4b2c-884b-31b80d1e82cf",
+        "Text": "案件4（中文-英文，5001字，48小時）判定為加急",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "1. 案件編號：未提供｜中文-英文｜6000字｜剩餘交期24小時｜分類：加急\n2. 案件編號：未提供｜中文-韓文｜3000字｜剩餘交期10小時｜分類：退件\n3. 案件編號：未提供｜中文-日文｜5000字｜剩餘交期48小時｜分類：普通\n4. 案件編號：未提供｜中文-英文｜5001字｜剩餘交期48小時｜分類：加急",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "1c52edae-959d-4427-b711-5ddba9f19616",
+          "OccurredAt": "2026-09-27T16:16:25.124Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"translation-case-classifier\", \"skill_version_id\": \"99159d40-6287-4e0e-82ee-10f68286d372\"}"
+        },
+        {
+          "TraceEventID": "d4af80d6-f1e5-4a3b-a707-56cef8e91d3d",
+          "OccurredAt": "2026-09-27T16:16:25.134Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"translation-case-classifier\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_fxS1QbkM2NKNHK7q2pi4OH97\", \"result_summary\": \"Launching skill: translation-case-classifier\"}"
+        },
+        {
+          "TraceEventID": "5abe5b67-36b3-44d8-ba14-1d0b03b9b8ac",
+          "OccurredAt": "2026-09-27T16:16:27.391Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"未提供｜加急\\n未提供｜退件\\n未提供｜普通\\n未提供｜加急\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "2c6ea921-a53d-4a8b-9791-07a8e0a30933",
+          "OccurredAt": "2026-09-27T16:16:27.391Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/translation-case-classifier/scripts/classify_cases.py --case \\\"|中文-英文|6000|24\\\" --case \\\"|中文-韓文|3000|10\\\" --case \\\"|中文-日文|5000|48\\\" --case \\\"|中文-英文|5001|48\\\"\", \"description\": \"依規則分類四筆翻譯案件\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 73, \"invocation_id\": \"call_B0WCJ2bgh9gr1gZ4f2YWJ8EH\", \"result_summary\": \"未提供｜加急\\n未提供｜退件\\n未提供｜普通\\n未提供｜加急\"}"
+        },
+        {
+          "TraceEventID": "f7eab036-90a0-4de6-b57e-ab8166a5927b",
+          "OccurredAt": "2026-09-27T16:16:29.913Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"1. 案件編號：未提供｜中文-英文｜6000字｜剩餘交期24小時｜分類：加急\\n2. 案件編號：未提供｜中文-韓文｜3000字｜剩餘交期10小時｜分類：退件\\n3. 案件編號：未提供｜中文-日文｜5000字｜剩餘交期48小時｜分類：普通\\n4. 案件編號：未提供｜中文-英文｜5001字｜剩餘交期48小時｜分類：加急\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "80551772-0034-4a30-8f4e-c5b62f7ab3ad",
+          "OccurredAt": "2026-09-27T16:16:30.049Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"1. 案件編號：未提供｜中文-英文｜6000字｜剩餘交期24小時｜分類：加急\\n2. 案件編號：未提供｜中文-韓文｜3000字｜剩餘交期10小時｜分類：退件\\n3. 案件編號：未提供｜中文-日文｜5000字｜剩餘交期48小時｜分類：普通\\n4. 案件編號：未提供｜中文-英文｜5001字｜剩餘交期48小時｜分類：加急\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7f24ef4e-d911-41a6-bb51-8c6fe2ae69c3",
+          "OccurredAt": "2026-09-27T16:16:35.61Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003105395, \"cost_source\": \"gateway\", \"duration_ms\": 12658, \"input_tokens\": 1506, \"token_source\": \"result\", \"output_tokens\": 411, \"cache_read_input_tokens\": 35157, \"cache_write_input_tokens\": 18737}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3ac291b7-10cf-4cd5-8a4d-4b2438d28bc0",
+        "Result": "passed",
+        "Reason": "案件1判定為加急。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 案件編號：未提供｜中文-英文｜6000字｜剩餘交期24小時｜分類：加急"
+          }
+        ]
+      },
+      {
+        "CriterionID": "600cd0dc-5c16-4200-b7ff-0ccda5b78b44",
+        "Result": "passed",
+        "Reason": "案件2判定為退件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. 案件編號：未提供｜中文-韓文｜3000字｜剩餘交期10小時｜分類：退件"
+          }
+        ]
+      },
+      {
+        "CriterionID": "47764660-137d-4160-b5e2-64225b9315ef",
+        "Result": "passed",
+        "Reason": "案件3判定為普通。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. 案件編號：未提供｜中文-日文｜5000字｜剩餘交期48小時｜分類：普通"
+          }
+        ]
+      },
+      {
+        "CriterionID": "042acc24-f642-4b2c-884b-31b80d1e82cf",
+        "Result": "passed",
+        "Reason": "案件4判定為加急。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 案件編號：未提供｜中文-英文｜5001字｜剩餘交期48小時｜分類：加急"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四筆案件均依輸入順序列出，分類分別為加急、退件、普通、加急；所有驗收條件均已達成。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2783,
+      "CompletionTokens": 456,
+      "CostUSD": 0.0089814,
+      "CostReported": true
+    }
+  }
+}

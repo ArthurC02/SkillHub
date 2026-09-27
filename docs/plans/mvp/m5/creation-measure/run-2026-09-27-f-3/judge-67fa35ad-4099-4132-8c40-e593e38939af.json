@@ -1,0 +1,199 @@
+{
+  "request": {
+    "RunID": "67fa35ad-4099-4132-8c40-e593e38939af",
+    "EvaluationID": "84519f10-16b5-4c14-9542-2220e92c7cea",
+    "Skill": {
+      "Name": "gallery-opening-invitation",
+      "Summary": "根據使用者提供的展覽資訊撰寫正式優雅的畫廊開幕邀請文；當你需要把展覽名稱、展期、開幕茶會時間與地點完整寫入可直接使用的邀請文時使用。"
+    },
+    "UserPrompt": "請將以下資訊寫成一篇正式優雅的畫廊開幕邀請文：展覽名稱《光之迴聲》；展期為 2026 年 3 月 5 日至 2026 年 4 月 18 日；開幕茶會時間為 2026 年 3 月 5 日（週四）下午 3:00；地點為臺北市大安區和平東路一段 123 號 2 樓。",
+    "Criteria": [
+      {
+        "ID": "12ad662f-2905-45f8-93ee-7414147cae23",
+        "Text": "產出的邀請文語氣為正式優雅，且可直接用於畫廊開幕邀請。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9ed19d13-826e-4843-905c-7fbe111e8f9c",
+        "Text": "邀請文明確包含展覽名稱。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e04858c2-3dff-4d55-acd0-9df32c917dc1",
+        "Text": "邀請文明確包含展期的起訖日期，且日期順序正確。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4f90f34c-ad01-4997-8299-4260c947f462",
+        "Text": "邀請文明確包含開幕茶會時間。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "930b3834-62f6-4213-b436-c9113702e733",
+        "Text": "邀請文明確包含地點。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "453a7daf-efef-4162-84c8-c276f3b7b226",
+        "Text": "文中不遺漏上述四項事實中的任何一項。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b5d68eea-0cd6-4bce-9b01-6329148ff3f7",
+        "Text": "文中不改寫成與輸入不一致的日期、時間或地點。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "敬啟者：\n\n誠摯邀請您蒞臨《光之迴聲》畫廊開幕茶會。\n\n展覽名稱：**《光之迴聲》**  \n展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**  \n開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**  \n地點：**臺北市大安區和平東路一段 123 號 2 樓**\n\n敬請撥冗蒞臨，共同見證展覽揭幕，並於光影流轉之間，領略藝術的靜謐與回響。\n\n敬頌  \n時祺",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "787c6808-beb4-4efb-a28a-f4455f54e6cb",
+          "OccurredAt": "2026-09-27T14:53:35.954Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"gallery-opening-invitation\", \"skill_version_id\": \"37d85d0f-e8a5-4c73-823d-ed1eb0951c26\"}"
+        },
+        {
+          "TraceEventID": "86b11bbf-ccdb-4d77-90d1-050085225007",
+          "OccurredAt": "2026-09-27T14:53:35.964Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"根據使用者提供的資訊，撰寫一篇可直接使用的正式優雅畫廊開幕邀請文：展覽名稱《光之迴聲》；展期為 2026 年 3 月 5 日至 2026 年 4 月 18 日；開幕茶會時間為 2026 年 3 月 5 日（週四）下午 3:00；地點為臺北市大安區和平東路一段 123 號 2 樓。\", \"skill\": \"gallery-opening-invitation\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_hAh8WXURlvyJmIQrsZrBCgF4\", \"result_summary\": \"Launching skill: gallery-opening-invitation\"}"
+        },
+        {
+          "TraceEventID": "42a3717b-57a9-4b9b-a3c9-5ad49146e5a1",
+          "OccurredAt": "2026-09-27T14:53:40.194Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"敬啟者：\\n\\n誠摯邀請您蒞臨《光之迴聲》畫廊開幕茶會。\\n\\n展覽名稱：**《光之迴聲》**  \\n展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**  \\n開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**  \\n地點：**臺北市大安區和平東路一段 123 號 2 樓**\\n\\n敬請撥冗蒞臨，共同見證展覽揭幕，並於光影流轉之間，領略藝術的靜謐與回響。\\n\\n敬頌  \\n時祺\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "6626afb4-5a9d-48d8-b013-e914d42d0b01",
+          "OccurredAt": "2026-09-27T14:53:40.585Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"敬啟者：\\n\\n誠摯邀請您蒞臨《光之迴聲》畫廊開幕茶會。\\n\\n展覽名稱：**《光之迴聲》**  \\n展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**  \\n開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**  \\n地點：**臺北市大安區和平東路一段 123 號 2 樓**\\n\\n敬請撥冗蒞臨，共同見證展覽揭幕，並於光影流轉之間，領略藝術的靜謐與回響。\\n\\n敬頌  \\n時祺\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ca4dbaf9-36dc-4cea-8e53-4a7de3eee758",
+          "OccurredAt": "2026-09-27T14:53:46.132Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01935525, \"cost_source\": \"gateway\", \"duration_ms\": 12978, \"input_tokens\": 18957, \"token_source\": \"result\", \"output_tokens\": 740, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "12ad662f-2905-45f8-93ee-7414147cae23",
+        "Result": "passed",
+        "Reason": "產出採用正式稱謂、誠摯邀請、敬請蒞臨與敬頌結語，具備可直接使用的畫廊開幕邀請格式與語氣。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "敬啟者：\n\n誠摯邀請您蒞臨《光之迴聲》畫廊開幕茶會。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "敬請撥冗蒞臨，共同見證展覽揭幕，並於光影流轉之間，領略藝術的靜謐與回響。\n\n敬頌  \n時祺"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9ed19d13-826e-4843-905c-7fbe111e8f9c",
+        "Result": "passed",
+        "Reason": "邀請文清楚列出展覽名稱《光之迴聲》。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "展覽名稱：**《光之迴聲》**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e04858c2-3dff-4d55-acd0-9df32c917dc1",
+        "Result": "passed",
+        "Reason": "邀請文列出展期自 2026 年 3 月 5 日至 2026 年 4 月 18 日，起訖順序正確。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4f90f34c-ad01-4997-8299-4260c947f462",
+        "Result": "passed",
+        "Reason": "邀請文清楚列出開幕茶會日期、星期與下午 3:00 的時間。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "930b3834-62f6-4213-b436-c9113702e733",
+        "Result": "passed",
+        "Reason": "邀請文清楚列出完整活動地點。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "地點：**臺北市大安區和平東路一段 123 號 2 樓**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "453a7daf-efef-4162-84c8-c276f3b7b226",
+        "Result": "passed",
+        "Reason": "文中已包含展覽名稱、展期、開幕茶會時間及地點四項事實。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "展覽名稱：**《光之迴聲》**  \n展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**  \n開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**  \n地點：**臺北市大安區和平東路一段 123 號 2 樓**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b5d68eea-0cd6-4bce-9b01-6329148ff3f7",
+        "Result": "passed",
+        "Reason": "文中展期、開幕茶會時間與地點均與提供資訊一致，未見改寫或變更。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "展期：**2026 年 3 月 5 日至 2026 年 4 月 18 日**  \n開幕茶會時間：**2026 年 3 月 5 日（週四）下午 3:00**  \n地點：**臺北市大安區和平東路一段 123 號 2 樓**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "產出的邀請文為正式優雅且可直接使用的開幕邀請內容，完整且正確地包含展覽名稱、展期、開幕茶會時間及地點。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2838,
+      "CompletionTokens": 1036,
+      "CostUSD": 0.0169909,
+      "CostReported": true
+    }
+  }
+}

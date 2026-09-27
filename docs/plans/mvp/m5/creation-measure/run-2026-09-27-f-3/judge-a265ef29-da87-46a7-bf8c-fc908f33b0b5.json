@@ -1,0 +1,193 @@
+{
+  "request": {
+    "RunID": "a265ef29-da87-46a7-bf8c-fc908f33b0b5",
+    "EvaluationID": "d54b6e60-7e51-449a-8315-16fe4a630c5b",
+    "Skill": {
+      "Name": "attendance-warning-letter-and-watchlist",
+      "Summary": "當學生本學期缺席次數達到 3 次以上時，產出寄給家長的缺席警告信草稿，並為後續在教務系統中標記為「留意名單」準備可直接使用的操作內容；適用於需要批次判斷學生缺席門檻並生成通知的情境。"
+    },
+    "UserPrompt": "請根據以下資料，為達到標準的學生寫缺席警告信，並標記為留意名單：\n- 王小明：本學期缺席 2 次\n- 李小華：本學期缺席 3 次\n- 陳大同：本學期缺席 5 次",
+    "Criteria": [
+      {
+        "ID": "3adcb100-57d0-4c4b-9e01-f87ef924dd18",
+        "Text": "當輸入中某學生本學期缺席次數是 3 或以上時，輸出一封給家長的缺席警告信草稿。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "4bf297ba-be12-4572-be51-119dfe221400",
+        "Text": "信件內容需明確提到該學生本學期缺席已達警戒標準，並提醒家長留意。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "afc81cbf-b99a-495e-a0e3-4d9d73202519",
+        "Text": "當輸入中某學生本學期缺席次數小於 3 時，不輸出警告信。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f9ba20dd-4a1b-4707-bf15-512f38fd7f5c",
+        "Text": "當學生缺席次數達 3 或以上時，輸出中需包含將該生標記為「留意名單」的系統操作步驟或結果描述。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e80780ca-15f5-48c6-87c6-86ced6724433",
+        "Text": "當輸入含多名學生時，Skill 能逐一判斷每位學生是否達標，並只對達標者產生信件與標記動作。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ada48510-c8ef-47f7-8920-7eb3968abf3b",
+        "Text": "若輸入只提供學生姓名與缺席次數，Skill 仍能根據這些資料產出對應結果。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下依「本學期缺席次數 ≥ 3 次」標準判定：\n\n## 達標學生清單\n- 李小華：本學期缺席 3 次\n- 陳大同：本學期缺席 5 次\n\n---\n\n## 家長缺席警告信草稿\n\n### 1) 李小華\n**主旨：缺席提醒通知**\n\n敬致家長您好：\n\n貴子弟李小華本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注李小華的出席狀況，感謝您的配合與協助。\n\n敬祝  \n平安順心\n\n---\n\n### 2) 陳大同\n**主旨：缺席提醒通知**\n\n敬致家長您好：\n\n貴子弟陳大同本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注陳大同的出席狀況，感謝您的配合與協助。\n\n敬祝  \n平安順心\n\n---\n\n## 「留意名單」標記說明\n\n### 1) 李小華\n請將該生標記為「留意名單」。\n\n### 2) 陳大同\n請將該生標記為「留意名單」。\n\n---\n\n未達標學生：\n- 王小明：本學期缺席 2 次，未達標，無需產出警告信與留意名單標記。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "632f7b46-7a0a-4f1e-b328-21f9a7908397",
+          "OccurredAt": "2026-09-27T14:50:08.996Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"attendance-warning-letter-and-watchlist\", \"skill_version_id\": \"44dc7b20-d76e-4a93-ab58-4e1e23e72d49\"}"
+        },
+        {
+          "TraceEventID": "ffcb1d6e-1ad1-48e5-96dc-160774d941fe",
+          "OccurredAt": "2026-09-27T14:50:09.019Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"attendance-warning-letter-and-watchlist\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 24, \"invocation_id\": \"call_UNd6Px9DE7i3jQncYuCu5voV\", \"result_summary\": \"Launching skill: attendance-warning-letter-and-watchlist\"}"
+        },
+        {
+          "TraceEventID": "77e2c314-dc01-47f6-a317-a9f2f01bd8ca",
+          "OccurredAt": "2026-09-27T14:50:12.647Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下依「本學期缺席次數 ≥ 3 次」標準判定：\\n\\n## 達標學生清單\\n- 李小華：本學期缺席 3 次\\n- 陳大同：本學期缺席 5 次\\n\\n---\\n\\n## 家長缺席警告信草稿\\n\\n### 1) 李小華\\n**主旨：缺席提醒通知**\\n\\n敬致家長您好：\\n\\n貴子弟李小華本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注李小華的出席狀況，感謝您的配合與協助。\\n\\n敬祝  \\n平安順心\\n\\n---\\n\\n### 2) 陳大同\\n**主旨：缺席提醒通知**\\n\\n敬致家長您好：\\n\\n貴子弟陳大同本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注陳大同的出席狀況，感謝您的配合與協助。\\n\\n敬祝  \\n平安順心\\n\\n---\\n\\n## 「留意名單」標記說明\\n\\n### 1) 李小華\\n請將該生標記為「留意名單」。\\n\\n### 2) 陳大同\\n請將該生標記為「留意名單」。\\n\\n---\\n\\n未達標學生：\\n- 王小明：本學期缺席 2 次，未達標，無需產出警告信與留意名單標記。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "809e0839-d17a-47ea-aff8-7bddf5b851f5",
+          "OccurredAt": "2026-09-27T14:50:12.94Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下依「本學期缺席次數 ≥ 3 次」標準判定：\\n\\n## 達標學生清單\\n- 李小華：本學期缺席 3 次\\n- 陳大同：本學期缺席 5 次\\n\\n---\\n\\n## 家長缺席警告信草稿\\n\\n### 1) 李小華\\n**主旨：缺席提醒通知**\\n\\n敬致家長您好：\\n\\n貴子弟李小華本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注李小華的出席狀況，感謝您的配合與協助。\\n\\n敬祝  \\n平安順心\\n\\n---\\n\\n### 2) 陳大同\\n**主旨：缺席提醒通知**\\n\\n敬致家長您好：\\n\\n貴子弟陳大同本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。校方後續也將持續關注陳大同的出席狀況，感謝您的配合與協助。\\n\\n敬祝  \\n平安順心\\n\\n---\\n\\n## 「留意名單」標記說明\\n\\n### 1) 李小華\\n請將該生標記為「留意名單」。\\n\\n### 2) 陳大同\\n請將該生標記為「留意名單」。\\n\\n---\\n\\n未達標學生：\\n- 王小明：本學期缺席 2 次，未達標，無需產出警告信與留意名單標記。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1b8fe13d-0fea-4462-869e-5f5d78be68ef",
+          "OccurredAt": "2026-09-27T14:50:16.999Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0190185, \"cost_source\": \"gateway\", \"duration_ms\": 10644, \"input_tokens\": 18825, \"token_source\": \"result\", \"output_tokens\": 695, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3adcb100-57d0-4c4b-9e01-f87ef924dd18",
+        "Result": "passed",
+        "Reason": "對缺席達 3 次與 5 次的李小華、陳大同皆產出了給家長的缺席提醒信草稿。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 家長缺席警告信草稿"
+          }
+        ]
+      },
+      {
+        "CriterionID": "4bf297ba-be12-4572-be51-119dfe221400",
+        "Result": "passed",
+        "Reason": "兩封信均明確說明學生本學期缺席已達警戒標準，並請家長留意出席情況。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "貴子弟李小華本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "貴子弟陳大同本學期缺席次數已達警戒標準。敬請家長留意孩子的出席狀況，並多加關心其到校情形與學習安排。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "afc81cbf-b99a-495e-a0e3-4d9d73202519",
+        "Result": "passed",
+        "Reason": "王小明缺席 2 次被判定未達標，且明示不產出警告信與留意名單標記。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 王小明：本學期缺席 2 次，未達標，無需產出警告信與留意名單標記。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f9ba20dd-4a1b-4707-bf15-512f38fd7f5c",
+        "Result": "passed",
+        "Reason": "對兩位達標學生均提供了標記為「留意名單」的結果描述。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 1) 李小華\n請將該生標記為「留意名單」。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 2) 陳大同\n請將該生標記為「留意名單」。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e80780ca-15f5-48c6-87c6-86ced6724433",
+        "Result": "passed",
+        "Reason": "輸出逐一區分三名學生：僅李小華與陳大同達標並有信件及標記，王小明未達標且無此動作。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 李小華：本學期缺席 3 次\n- 陳大同：本學期缺席 5 次"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 王小明：本學期缺席 2 次，未達標，無需產出警告信與留意名單標記。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ada48510-c8ef-47f7-8920-7eb3968abf3b",
+        "Result": "passed",
+        "Reason": "僅依姓名及本學期缺席次數，便完成達標判定、通知信草稿及留意名單標記內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "以下依「本學期缺席次數 ≥ 3 次」標準判定："
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "此執行正確以 3 次為門檻判斷三名學生。兩名達標學生各有家長警告信與留意名單標記內容；未達標學生未被產生警告信或標記。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3501,
+      "CompletionTokens": 953,
+      "CostUSD": 0.0176524,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理這則訂書留言並計算金額：\n「我要《小王子》2 本，每本 320 元；《解憂雜貨店》1 本，單價 280 元；還有《被討厭的勇氣》3 本，每本 250 元。運費 60 元，請另外列出。」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多本書時，輸出會逐本列出書名、數量、單價與小計。"
+    },
+    {
+      "text": "當輸入包含數量與單價時，每本書的小計正確等於數量乘以單價。"
+    },
+    {
+      "text": "當輸入包含多筆書籍時，輸出的書籍總金額正確等於所有書籍小計加總，且不包含運費。"
+    },
+    {
+      "text": "當輸入明確提到運費時，輸出會另外列出運費金額，且不算入書籍總金額。"
+    },
+    {
+      "text": "當輸入同時包含書籍與運費時，輸出會同時呈現訂購清單、書籍總金額與獨立運費欄位。"
+    }
+  ],
+  "final_output": "整理如下：\n\n### 訂購明細\n| 書名 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 《小王子》 | 2 本 | 320 元 | 640 元 |\n| 《解憂雜貨店》 | 1 本 | 280 元 | 280 元 |\n| 《被討厭的勇氣》 | 3 本 | 250 元 | 750 元 |\n\n### 金額\n- **書籍總金額：1670 元**\n- **運費：60 元**（另計）\n- **含運費合計：1730 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e02522a0-7ae0-4032-8357-c6963a1cadb4",
+    "run_id": "b47e9fdd-31f5-43b4-865c-da2cba9f9bb1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "訂購明細完整列出三本書及其數量、單價與正確小計。書籍總金額1670元正確且未含運費，運費60元亦獨立列示。",
+    "criterion_results": [
+      {
+        "criterion_id": "3149dfcc-e1f9-498a-af5b-8a8b924ffd9d",
+        "text": "當輸入包含多本書時，輸出會逐本列出書名、數量、單價與小計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格逐本列出三本書的書名、數量、單價與小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2 本 | 320 元 | 640 元 |\n| 《解憂雜貨店》 | 1 本 | 280 元 | 280 元 |\n| 《被討厭的勇氣》 | 3 本 | 250 元 | 750 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9326b837-965c-400e-91d8-1c9253444c28",
+        "text": "當輸入包含數量與單價時，每本書的小計正確等於數量乘以單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各書小計皆正確為數量乘以單價：2×320=640、1×280=280、3×250=750。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2 本 | 320 元 | 640 元 |\n| 《解憂雜貨店》 | 1 本 | 280 元 | 280 元 |\n| 《被討厭的勇氣》 | 3 本 | 250 元 | 750 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ae7e0ad-28ab-4c3b-9263-2dc2f59e91b4",
+        "text": "當輸入包含多筆書籍時，輸出的書籍總金額正確等於所有書籍小計加總，且不包含運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "書籍小計640、280、750加總為1670元，且書籍總金額與運費分開呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **書籍總金額：1670 元**\n- **運費：60 元**（另計）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《小王子》 | 2 本 | 320 元 | 640 元 |\n| 《解憂雜貨店》 | 1 本 | 280 元 | 280 元 |\n| 《被討厭的勇氣》 | 3 本 | 250 元 | 750 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62111028-8ae8-4222-a32a-46673671bada",
+        "text": "當輸入明確提到運費時，輸出會另外列出運費金額，且不算入書籍總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "運費60元以獨立欄目列出，並明確標示為另計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **運費：60 元**（另計）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "05a0fef4-ec42-42f3-b88e-76f4d7a1f416",
+        "text": "當輸入同時包含書籍與運費時，輸出會同時呈現訂購清單、書籍總金額與獨立運費欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時包含訂購明細、書籍總金額及獨立運費欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 訂購明細\n| 書名 | 數量 | 單價 | 小計 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **書籍總金額：1670 元**\n- **運費：60 元**（另計）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 20034 input and 1390 output tokens on gpt-5.4-mini; reported cost $0.0226 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

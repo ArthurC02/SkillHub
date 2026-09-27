@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理以下獸醫診所看診收費清單並計算總金額：\n2026/03/02｜門診掛號｜2｜150\n2026/03/02｜皮下點滴｜1｜600\n2026/03/03｜血液檢查｜1｜1200",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入包含 3 筆看診收費資料時，Skill 會輸出 3 筆對應的清單項目。"
+    },
+    {
+      "text": "每筆清單都會包含看診日期、看診項目、數量、單價與金額欄位。"
+    },
+    {
+      "text": "每筆金額都正確等於數量乘以單價。"
+    },
+    {
+      "text": "輸出會另外提供全部項目的總金額。"
+    },
+    {
+      "text": "當輸入包含多筆資料時，總金額等於所有項目金額加總。"
+    }
+  ],
+  "final_output": "以下是整理後的獸醫診所看診收費清單：\n\n1. 日期：2026/03/02  \n   項目：門診掛號  \n   數量：2  \n   單價：150  \n   金額：300  \n\n2. 日期：2026/03/02  \n   項目：皮下點滴  \n   數量：1  \n   單價：600  \n   金額：600  \n\n3. 日期：2026/03/03  \n   項目：血液檢查  \n   數量：1  \n   單價：1200  \n   金額：1200  \n\n總金額：2100",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "35727557-165f-4731-8228-8e8ba6e30c23",
+    "run_id": "635184c5-bfe0-4d00-81c8-073fa24ff50d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整整理了 3 筆收費資料，每筆具備所需欄位且金額計算正確，並提供正確的總金額 2100。",
+    "criterion_results": [
+      {
+        "criterion_id": "3d754e2f-ff5a-43fa-9964-a1b302d6e45b",
+        "text": "在輸入包含 3 筆看診收費資料時，Skill 會輸出 3 筆對應的清單項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出 3 筆編號清單項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 日期：2026/03/02  \n   項目：門診掛號  \n   數量：2  \n   單價：150  \n   金額：300  \n\n2. 日期：2026/03/02  \n   項目：皮下點滴  \n   數量：1  \n   單價：600  \n   金額：600  \n\n3. 日期：2026/03/03  \n   項目：血液檢查  \n   數量：1  \n   單價：1200  \n   金額：1200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c433d10d-30cd-423a-b2bb-3946092633db",
+        "text": "每筆清單都會包含看診日期、看診項目、數量、單價與金額欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每一筆項目均呈現日期、項目、數量、單價與金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 日期：2026/03/02  \n   項目：門診掛號  \n   數量：2  \n   單價：150  \n   金額：300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 日期：2026/03/02  \n   項目：皮下點滴  \n   數量：1  \n   單價：600  \n   金額：600",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 日期：2026/03/03  \n   項目：血液檢查  \n   數量：1  \n   單價：1200  \n   金額：1200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fa6a17da-6744-4efb-9b96-7465bdc184ab",
+        "text": "每筆金額都正確等於數量乘以單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "列示金額分別為 2×150=300、1×600=600、1×1200=1200，皆正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 日期：2026/03/02  \n   項目：門診掛號  \n   數量：2  \n   單價：150  \n   金額：300",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 日期：2026/03/02  \n   項目：皮下點滴  \n   數量：1  \n   單價：600  \n   金額：600",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 日期：2026/03/03  \n   項目：血液檢查  \n   數量：1  \n   單價：1200  \n   金額：1200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36e5c59d-9e42-45b2-aee6-d1add2aa86bd",
+        "text": "輸出會另外提供全部項目的總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆另外提供總金額欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：2100",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5195772-b418-4689-aef7-c27aed08ec72",
+        "text": "當輸入包含多筆資料時，總金額等於所有項目金額加總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "總金額 2100 等於三筆項目金額 300、600、1200 的加總。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "   金額：300  \n\n2. 日期：2026/03/02  \n   項目：皮下點滴  \n   數量：1  \n   單價：600  \n   金額：600  \n\n3. 日期：2026/03/03  \n   項目：血液檢查  \n   數量：1  \n   單價：1200  \n   金額：1200  \n\n總金額：2100",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2825 input and 401 output tokens on gpt-5.4-mini; reported cost $0.0069 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

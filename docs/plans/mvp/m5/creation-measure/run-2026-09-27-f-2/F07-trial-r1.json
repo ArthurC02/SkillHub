@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下學生資料產生缺席警告信，並告訴我是否要把學生標記為留意名單：\n\n學生A：張小明，班級：七年三班，本學期缺席 3 次，家長聯絡人：張媽媽，聯絡信箱：mom.zhang@example.com\n學生B：陳怡君，班級：七年一班，本學期缺席 4 次，家長聯絡人：陳爸爸，聯絡信箱：dad.chen@example.com\n學生C：林柏廷，班級：七年二班，本學期缺席 2 次，家長聯絡人：林媽媽，聯絡信箱：mom.lin@example.com",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入中學生本學期缺席次數是 3 時，Skill 會輸出一封給家長的缺席警告信。"
+    },
+    {
+      "text": "當輸入中學生本學期缺席次數是 4 或以上時，Skill 也會輸出一封給家長的缺席警告信。"
+    },
+    {
+      "text": "當輸入中學生本學期缺席次數是 3 或以上時，Skill 會在輸出中要求將該生標記為「留意名單」。"
+    },
+    {
+      "text": "當輸入中學生本學期缺席次數小於 3 時，Skill 不會產生缺席警告信，也不會要求標記為「留意名單」。"
+    },
+    {
+      "text": "警告信內容會明確提到學生本學期缺席已達門檻，並提醒家長關注出席狀況。"
+    }
+  ],
+  "final_output": "以下依缺席次數門檻 3 次判定：\n\n## 判定結果\n- **學生A：張小明（七年三班）**  \n  本學期缺席 **3 次**，**已達缺席警告門檻**。\n\n- **學生B：陳怡君（七年一班）**  \n  本學期缺席 **4 次**，**已達缺席警告門檻**。\n\n- **學生C：林柏廷（七年二班）**  \n  本學期缺席 **2 次**，**未達缺席警告門檻**。\n\n---\n\n## 學生A 缺席警告信\n**收件人：張媽媽（mom.zhang@example.com）**  \n**主旨：關於張小明同學本學期缺席情形提醒**\n\n親愛的張媽媽您好：\n\n您好！這裡是學校教務處。  \n張小明同學目前本學期缺席次數已達 **3 次**，已達學校缺席提醒門檻。\n\n為了維護孩子的學習進度與出席紀律，敬請您協助關心張小明同學近期的到校情形，並提醒孩子準時到校、維持穩定出席。學校也會持續留意其出席狀況，若後續仍有缺席情形，將再與您聯繫。\n\n感謝您的配合與支持。\n\n敬祝  \n平安順心\n\n學校教務處 敬上\n\n**請登入教務系統將該生標記為「留意名單」**\n\n---\n\n## 學生B 缺席警告信\n**收件人：陳爸爸（dad.chen@example.com）**  \n**主旨：關於陳怡君同學本學期缺席情形提醒**\n\n親愛的陳爸爸您好：\n\n您好！這裡是學校教務處。  \n陳怡君同學目前本學期缺席次數已達 **4 次**，已達學校缺席提醒門檻。\n\n為了維護孩子的學習進度與出席紀律，敬請您協助關心陳怡君同學近期的到校情形，並提醒孩子準時到校、維持穩定出席。學校也會持續留意其出席狀況，若後續仍有缺席情形，將再與您聯繫。\n\n感謝您的配合與支持。\n\n敬祝  \n平安順心\n\n學校教務處 敬上\n\n**請登入教務系統將該生標記為「留意名單」**\n\n---\n\n## 學生C 結果\n- **林柏廷（七年二班）**本學期缺席 **2 次**，**未達 3 次**。  \n  **暫不寄發警告信，也不需標記為留意名單。**\n\n如果你要，我也可以把這三份內容整理成可直接複製到通知系統的表格格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "85bc257a-4f5b-4fa8-b134-85890f733820",
+    "run_id": "fe946766-3b8e-4fbd-b227-043435a8e1fb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次輸出正確依 3 次缺席門檻處理：對缺席 3 次與 4 次的學生產生家長警告信並要求標記留意名單；對缺席 2 次的學生則明確不寄信、不標記。警告信亦包含達門檻及關注出席狀況的提醒。",
+    "criterion_results": [
+      {
+        "criterion_id": "cbf88ecc-52f6-4665-93e3-eeb2c96e039d",
+        "text": "當輸入中學生本學期缺席次數是 3 時，Skill 會輸出一封給家長的缺席警告信。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對缺席 3 次的張小明，輸出包含收件人、主旨與正文的家長缺席警告信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 學生A 缺席警告信\n**收件人：張媽媽（mom.zhang@example.com）**  \n**主旨：關於張小明同學本學期缺席情形提醒**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "04c50872-0885-40b9-a4ef-fd3550ec2bf5",
+        "text": "當輸入中學生本學期缺席次數是 4 或以上時，Skill 也會輸出一封給家長的缺席警告信。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對缺席 4 次的陳怡君，輸出包含收件人、主旨與正文的家長缺席警告信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 學生B 缺席警告信\n**收件人：陳爸爸（dad.chen@example.com）**  \n**主旨：關於陳怡君同學本學期缺席情形提醒**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca8c091f-adb4-49e6-bce0-cf77ec8ea25c",
+        "text": "當輸入中學生本學期缺席次數是 3 或以上時，Skill 會在輸出中要求將該生標記為「留意名單」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩位缺席達 3 次以上的學生之警告信後均明確要求標記為「留意名單」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**請登入教務系統將該生標記為「留意名單」**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c9f23b6-fae6-4a16-a7ea-ff1ef768f435",
+        "text": "當輸入中學生本學期缺席次數小於 3 時，Skill 不會產生缺席警告信，也不會要求標記為「留意名單」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對缺席 2 次的林柏廷，明確表示不寄發警告信且不標記為留意名單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**暫不寄發警告信，也不需標記為留意名單。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5819e938-b7e4-45a3-8403-99e247ee9bb0",
+        "text": "警告信內容會明確提到學生本學期缺席已達門檻，並提醒家長關注出席狀況。",
+        "result": "passed",
+        "source": "model",
+        "reason": "警告信明確說明本學期缺席已達提醒門檻，並請家長關心到校與出席情形。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "張小明同學目前本學期缺席次數已達 **3 次**，已達學校缺席提醒門檻。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "為了維護孩子的學習進度與出席紀律，敬請您協助關心張小明同學近期的到校情形，並提醒孩子準時到校、維持穩定出席。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19036 input and 1124 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

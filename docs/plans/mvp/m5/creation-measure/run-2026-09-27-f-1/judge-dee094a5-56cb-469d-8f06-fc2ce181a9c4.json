@@ -1,0 +1,169 @@
+{
+  "request": {
+    "RunID": "dee094a5-56cb-469d-8f06-fc2ce181a9c4",
+    "EvaluationID": "ca037e2d-02d4-4425-aa30-0f7afa6705d3",
+    "Skill": {
+      "Name": "minsu-nightly-price-calculator",
+      "Summary": "Calculate a homestay stay total from consecutive check-in and check-out dates, using a weekday nightly rate of 2000 and a holiday surcharge rule. Use it when you need a portable Skill that totals lodging fees for an exact date range."
+    },
+    "UserPrompt": "請幫我算這段住宿總金額：2026-05-01 進房，2026-05-05 退房；其中 2026-05-01、2026-05-04 是平日，2026-05-02、2026-05-03 是假日；假日每晚加價 500 元。",
+    "Criteria": [
+      {
+        "ID": "3d4f6f7e-2c4d-4e62-a8d6-86dee43dace4",
+        "Text": "當輸入一段連續入住日期時，Skill 會輸出該期間的總金額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3f0127dc-eb92-4fff-a4d9-c1c09c422834",
+        "Text": "當期間只包含平日時，總金額會以每晚 2000 元計算。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e3751e31-2145-4c83-a683-813215cc9d63",
+        "Text": "當期間包含假日時，Skill 會依假日加價規則計算每一晚並加總。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a39a9826-7532-4733-bfda-f484eb15108d",
+        "Text": "輸出會明確區分每一晚是平日或假日，或至少能看出每晚的費率來源。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "26f0da47-db24-4810-a75b-5ea6c6479a52",
+        "Text": "「退房當天不算一晚」會正確套用，不會多算退房日。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "總金額：**9,000 元**\n\n計算如下：\n- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元\n\n合計：**9,000 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "20d9cb18-7242-48c4-a7dc-7d1c5bf8ffeb",
+          "OccurredAt": "2026-09-27T13:41:13.913Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"minsu-nightly-price-calculator\", \"skill_version_id\": \"c8fb8163-cdec-4f59-81e9-4f89a903dc65\"}"
+        },
+        {
+          "TraceEventID": "70704f12-b812-4176-a2be-76ebf68013cc",
+          "OccurredAt": "2026-09-27T13:41:13.932Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"2026-05-01 到 2026-05-05，平日 2026-05-01、2026-05-04，假日 2026-05-02、2026-05-03，每晚假日加價 500。\", \"skill\": \"minsu-nightly-price-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_pI46kA5P4ObI3eRXdjTl2ks5\", \"result_summary\": \"Launching skill: minsu-nightly-price-calculator\"}"
+        },
+        {
+          "TraceEventID": "6353fe46-73af-4e0c-a79e-c11aab095535",
+          "OccurredAt": "2026-09-27T13:41:17.145Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"總金額：**9,000 元**\\n\\n計算如下：\\n- 2026-05-01（平日）：2,000 元\\n- 2026-05-02（假日）：2,500 元\\n- 2026-05-03（假日）：2,500 元\\n- 2026-05-04（平日）：2,000 元\\n\\n合計：**9,000 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "52e801b2-ddab-4e3b-9bde-44472790a76c",
+          "OccurredAt": "2026-09-27T13:41:17.384Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"總金額：**9,000 元**\\n\\n計算如下：\\n- 2026-05-01（平日）：2,000 元\\n- 2026-05-02（假日）：2,500 元\\n- 2026-05-03（假日）：2,500 元\\n- 2026-05-04（平日）：2,000 元\\n\\n合計：**9,000 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2fc2c5da-892c-47bf-868f-28aabb20b2f6",
+          "OccurredAt": "2026-09-27T13:41:21.422Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00754365, \"cost_source\": \"gateway\", \"duration_ms\": 10689, \"input_tokens\": 2994, \"token_source\": \"result\", \"output_tokens\": 518, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3d4f6f7e-2c4d-4e62-a8d6-86dee43dace4",
+        "Result": "passed",
+        "Reason": "輸出已計算該連續入住區間的總金額為 9,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額：**9,000 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "3f0127dc-eb92-4fff-a4d9-c1c09c422834",
+        "Result": "passed",
+        "Reason": "列出的兩個平日晚間皆以每晚 2,000 元計算。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-05-04（平日）：2,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e3751e31-2145-4c83-a683-813215cc9d63",
+        "Result": "passed",
+        "Reason": "假日的 2026-05-02 與 2026-05-03 均以 2,500 元計入，並納入 9,000 元合計。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "合計：**9,000 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a39a9826-7532-4733-bfda-f484eb15108d",
+        "Result": "passed",
+        "Reason": "輸出逐晚標示平日或假日，並列出各晚費率。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "26f0da47-db24-4810-a75b-5ea6c6479a52",
+        "Result": "passed",
+        "Reason": "只列入 5 月 1 日至 5 月 4 日四晚，未將 2026-05-05 退房日列為住宿晚數。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-05-01（平日）：2,000 元\n- 2026-05-02（假日）：2,500 元\n- 2026-05-03（假日）：2,500 元\n- 2026-05-04（平日）：2,000 元"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "此執行正確逐晚計算 5 月 1 日至 4 日的住宿費：兩晚平日各 2,000 元、兩晚假日各 2,500 元，總計 9,000 元；退房日未計入。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2455,
+      "CompletionTokens": 792,
+      "CostUSD": 0.0131054,
+      "CostReported": true
+    }
+  }
+}

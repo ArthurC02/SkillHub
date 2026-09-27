@@ -1,0 +1,210 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下訂書留言，列出訂購清單、書籍金額總計及另列的運費：\n客人留言：\n1. 我要《海風食堂》2本，每本300元，運費60元。\n2. 請幫我訂《月光地圖》，450元，運費80元。\n3. 《小熊的雨傘》兩本共500元，運費另加30元。\n4. 《雲朵郵局》三本，每本120元，運費50元。\n5. 我要《星河旅店》還是《星河旅程》……我記不清了，1本，每本200元。\n6. 請留一本《沒有標價的書》。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入中《海風食堂》列出數量 2、單價 300 元、小計 600 元；運費 60 元另列。"
+    },
+    {
+      "text": "對試跑輸入中未寫數量的《月光地圖》，按 1 本計算，列出單價 450 元、小計 450 元；運費 80 元另列。"
+    },
+    {
+      "text": "對試跑輸入中《小熊的雨傘》，由 2 本共 500 元推算單價 250 元並列小計 500 元；運費 30 元另列。"
+    },
+    {
+      "text": "對試跑輸入中《雲朵郵局》列出數量 3、單價 120 元、小計 360 元；運費 50 元另列。"
+    },
+    {
+      "text": "對試跑輸入中書名不確定的項目，保留兩個可能書名並標示待確認；仍列出數量 1、單價 200 元、小計 200 元，不自行選定書名。"
+    },
+    {
+      "text": "對試跑輸入中未提供價格的《沒有標價的書》，不猜單價或小計，標示無法計算，且清楚說明書籍金額總計不含此未定價項目。"
+    },
+    {
+      "text": "試跑輸入的可計算書籍小計總和列為 2,110 元（600 + 450 + 500 + 360 + 200）；運費另列，合計 220 元（60 + 80 + 30 + 50），不計入書籍總計。"
+    }
+  ],
+  "final_output": "## 訂購清單（幣別未註明）\n\n| 書名 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 海風食堂 | 2 | 300 | 600 |\n| 月光地圖 | 1 | 450 | 450 |\n| 小熊的雨傘 | 2 | 250 | 500 |\n| 雲朵郵局 | 3 | 120 | 360 |\n| 星河旅店／星河旅程（待確認） | 1 | 200 | 200 |\n| 沒有標價的書 | 1 | 無法計算 | 無法計算 |\n\n**書籍金額總計（不含運費）：2110 幣別未註明**  \n總計只包含可計算項目；《沒有標價的書》尚無金額，因此未計入。另請確認書名是《星河旅店》還是《星河旅程》。\n\n**運費明細：**60、80、30、50 幣別未註明  \n**運費合計：220 幣別未註明**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9a210057-cca7-4af7-9bb0-9d7c8ab91376",
+    "run_id": "f2a0c202-c65d-43cd-8ba0-6666b394b5f5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準均已達成：訂購項目、可計算金額、待確認書名及未定價項目都有妥善列示，書籍總計與運費也分開計算。答覆未沿用留言中的「元」，而標為「幣別未註明」，但不影響各項數值的判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "c9ceae74-784d-462e-8560-c369b12665cf",
+        "text": "對試跑輸入中《海風食堂》列出數量 2、單價 300 元、小計 600 元；運費 60 元另列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《海風食堂》列為 2 本、單價 300、小計 600；運費明細另列 60。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 海風食堂 | 2 | 300 | 600 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費明細：**60、80、30、50 幣別未註明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a1d5de08-5b86-4f14-a701-f65a0bf84e40",
+        "text": "對試跑輸入中未寫數量的《月光地圖》，按 1 本計算，列出單價 450 元、小計 450 元；運費 80 元另列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《月光地圖》按 1 本列出，單價及小計均為 450；運費明細另列 80。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 月光地圖 | 1 | 450 | 450 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費明細：**60、80、30、50 幣別未註明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "94bef423-66e3-401b-8f6f-a6c0ca3a598a",
+        "text": "對試跑輸入中《小熊的雨傘》，由 2 本共 500 元推算單價 250 元並列小計 500 元；運費 30 元另列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《小熊的雨傘》列為 2 本、單價 250、小計 500；運費明細另列 30。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小熊的雨傘 | 2 | 250 | 500 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費明細：**60、80、30、50 幣別未註明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f75d8d1c-dc28-4251-9827-28de2cf9e1e8",
+        "text": "對試跑輸入中《雲朵郵局》列出數量 3、單價 120 元、小計 360 元；運費 50 元另列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《雲朵郵局》列為 3 本、單價 120、小計 360；運費明細另列 50。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 雲朵郵局 | 3 | 120 | 360 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費明細：**60、80、30、50 幣別未註明",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4fa72b27-841b-4e61-b27a-7758060c44f4",
+        "text": "對試跑輸入中書名不確定的項目，保留兩個可能書名並標示待確認；仍列出數量 1、單價 200 元、小計 200 元，不自行選定書名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留兩個可能書名並標示待確認，未自行選定；數量、單價及小計分別列為 1、200、200。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 星河旅店／星河旅程（待確認） | 1 | 200 | 200 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43b3bc33-c314-4099-85ca-fd332f0fce1c",
+        "text": "對試跑輸入中未提供價格的《沒有標價的書》，不猜單價或小計，標示無法計算，且清楚說明書籍金額總計不含此未定價項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《沒有標價的書》的單價與小計均標為無法計算，並明確說明未計入書籍金額總計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 沒有標價的書 | 1 | 無法計算 | 無法計算 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總計只包含可計算項目；《沒有標價的書》尚無金額，因此未計入。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9d72706a-2a29-4f8c-96ba-637cce6fd3d7",
+        "text": "試跑輸入的可計算書籍小計總和列為 2,110 元（600 + 450 + 500 + 360 + 200）；運費另列，合計 220 元（60 + 80 + 30 + 50），不計入書籍總計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "可計算的書籍小計合計為 2110，標明不含運費；運費另列，合計 220。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍金額總計（不含運費）：2110 幣別未註明**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費合計：220 幣別未註明**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1526 input and 886 output tokens on skillhub-run; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 33,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

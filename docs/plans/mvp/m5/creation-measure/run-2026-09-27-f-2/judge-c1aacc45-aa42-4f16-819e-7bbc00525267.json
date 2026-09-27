@@ -1,0 +1,85 @@
+{
+  "request": {
+    "RunID": "c1aacc45-aa42-4f16-819e-7bbc00525267",
+    "EvaluationID": "5c75022d-c46c-4912-a5a9-762ae8b6dcb3",
+    "Skill": {
+      "Name": "community-garden-maintenance-fee",
+      "Summary": "Calculate community garden maintenance fees from lawn area and tree count, including area rounding, tiered base fees, tree pruning surcharges, and a service cap. Use it when you need a ready-to-run fee calculator for this pricing rule set."
+    },
+    "UserPrompt": "草坪面積 100 平方公尺，樹木 3 棵，請算這次服務總費用。",
+    "Criteria": [
+      {
+        "ID": "de5ef458-ec77-43c2-8feb-2b67bdcf0a0e",
+        "Text": "總費用為 2000 元",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "進位後面積：100 平方公尺  \n草坪基本費：2000 元（100 平方公尺以下）  \n樹木加收費：0 元（3 棵已包含在基本費內）  \n未封頂總額：2000 元  \n封頂後總費用：2000 元  \n\n**本次服務總費用：2000 元**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "2fb7c1a7-fb34-41a4-974a-7f68522a038f",
+          "OccurredAt": "2026-09-27T14:29:53.544Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-garden-maintenance-fee\", \"skill_version_id\": \"3693d226-de22-4091-a04f-c92dd5be7135\"}"
+        },
+        {
+          "TraceEventID": "7afeb8ca-4f28-4477-8890-49bb9a3db31f",
+          "OccurredAt": "2026-09-27T14:29:53.586Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-garden-maintenance-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 42, \"invocation_id\": \"call_zOOI8icp6zwVgts5HbIvw4yD\", \"result_summary\": \"Launching skill: community-garden-maintenance-fee\"}"
+        },
+        {
+          "TraceEventID": "5bd5723a-c7a8-4491-b25b-9251b085cfb3",
+          "OccurredAt": "2026-09-27T14:29:56.826Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"進位後面積：100 平方公尺  \\n草坪基本費：2000 元（100 平方公尺以下）  \\n樹木加收費：0 元（3 棵已包含在基本費內）  \\n未封頂總額：2000 元  \\n封頂後總費用：2000 元  \\n\\n**本次服務總費用：2000 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "75a1425a-28ea-4d8e-95e1-cc54408f6475",
+          "OccurredAt": "2026-09-27T14:29:56.997Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"進位後面積：100 平方公尺  \\n草坪基本費：2000 元（100 平方公尺以下）  \\n樹木加收費：0 元（3 棵已包含在基本費內）  \\n未封頂總額：2000 元  \\n封頂後總費用：2000 元  \\n\\n**本次服務總費用：2000 元**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a755a7f7-c7a0-48f6-bebe-c97ee8769ee2",
+          "OccurredAt": "2026-09-27T14:30:01.041Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00354615, \"cost_source\": \"gateway\", \"duration_ms\": 9751, \"input_tokens\": 3447, \"token_source\": \"result\", \"output_tokens\": 416, \"cache_read_input_tokens\": 33280, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "de5ef458-ec77-43c2-8feb-2b67bdcf0a0e",
+        "Result": "passed",
+        "Reason": "最終回覆明確指出本次服務總費用為 2000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**本次服務總費用：2000 元**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "唯一的驗收條件已滿足：回覆計算出的總費用為 2000 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2121,
+      "CompletionTokens": 136,
+      "CostUSD": 0.0043984,
+      "CostReported": true
+    }
+  }
+}

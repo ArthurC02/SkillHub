@@ -1,0 +1,195 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下訂書留言，列出書名、數量、單價、小計、書籍總金額（不含運費），並另列運費：想訂《小王子》2本，每本180元；《解憂雜貨店》一本，單價320元；《原子習慣》單價250元（沒說數量）；《被討厭的勇氣》1本（未提單價）；《深夜食堂》或《深夜食堂 2》1本，單價200元（書名不確定是哪一本）。運費60元。",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑留言中明確的《小王子》2 本、單價 180 元，輸出小計 360 元。"
+    },
+    {
+      "text": "對試跑留言中明確的《解憂雜貨店》1 本、單價 320 元，輸出小計 320 元。"
+    },
+    {
+      "text": "對試跑留言中只寫《原子習慣》單價 250 元、未寫數量的項目，按 1 本處理並輸出小計 250 元。"
+    },
+    {
+      "text": "對試跑留言中單價未提供的《被討厭的勇氣》，將單價及小計標記為未提供／待確認，不自行補價，也不計入可確認書籍金額。"
+    },
+    {
+      "text": "對試跑留言中書名不確定是《深夜食堂》或《深夜食堂 2》的項目，標記書名待確認，不自行選定，也不計入可確認書籍金額。"
+    },
+    {
+      "text": "試跑留言中可確認項目的書籍金額合計為 930 元（360＋320＋250），並因另有未定價及待確認項目而註明總額尚未完整。"
+    },
+    {
+      "text": "試跑留言中的運費 60 元須另列，且不得加入書籍金額合計。"
+    }
+  ],
+  "final_output": "| 書名 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 小王子 | 2 本 | 180 元 | 360 元 |\n| 解憂雜貨店 | 1 本 | 320 元 | 320 元 |\n| 原子習慣 | 1 本（留言未寫數量，按 1 本預設） | 250 元 | 250 元 |\n| 被討厭的勇氣 | 1 本 | 待確認（未提供） | 待確認 |\n| 《深夜食堂》或《深夜食堂 2》 | 1 本 | 200 元 | 待確認（書名不確定） |\n\n**書籍總金額（不含運費）：930 元，總額尚未完整。**  \n**運費：60 元**（另列，不計入書籍總金額）。\n\n待確認：請確認《被討厭的勇氣》的單價，以及「《深夜食堂》或《深夜食堂 2》」要訂哪一本。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "11a4a407-b1ba-4de1-879b-6173de5b3659",
+    "run_id": "33463620-93da-48ac-8108-2398880d5fbf",
+    "status": "completed",
+    "overall": "met",
+    "summary": "七項驗收標準均已達成。回覆正確列出可確認的書籍小計與 930 元合計，將資訊未定的項目標為待確認，並另列 60 元運費。",
+    "criterion_results": [
+      {
+        "criterion_id": "2fe89e36-31d2-4f1d-b3f4-7638f4f58e07",
+        "text": "對試跑留言中明確的《小王子》2 本、單價 180 元，輸出小計 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《小王子》列為 2 本、單價 180 元，小計 360 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小王子 | 2 本 | 180 元 | 360 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce7ad0b6-0660-4bb3-a0c5-5e02edfa1c52",
+        "text": "對試跑留言中明確的《解憂雜貨店》1 本、單價 320 元，輸出小計 320 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《解憂雜貨店》列為 1 本、單價 320 元，小計 320 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 解憂雜貨店 | 1 本 | 320 元 | 320 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b054045d-725a-4c0a-b47a-9fc2507471ab",
+        "text": "對試跑留言中只寫《原子習慣》單價 250 元、未寫數量的項目，按 1 本處理並輸出小計 250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《原子習慣》未寫數量，回覆明確按 1 本處理，單價 250 元，小計 250 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 原子習慣 | 1 本（留言未寫數量，按 1 本預設） | 250 元 | 250 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8392592d-4bf4-424c-abe2-00bf47b6e160",
+        "text": "對試跑留言中單價未提供的《被討厭的勇氣》，將單價及小計標記為未提供／待確認，不自行補價，也不計入可確認書籍金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "《被討厭的勇氣》的單價及小計均標為待確認，未自行補價；書籍合計 930 元也未納入這項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 被討厭的勇氣 | 1 本 | 待確認（未提供） | 待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍總金額（不含運費）：930 元，總額尚未完整。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32a2a558-36a5-4cd2-8bb8-aa60688b96a7",
+        "text": "對試跑留言中書名不確定是《深夜食堂》或《深夜食堂 2》的項目，標記書名待確認，不自行選定，也不計入可確認書籍金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留《深夜食堂》或《深夜食堂 2》兩種可能，標示書名及小計待確認，未自行選定，也未計入 930 元的可確認書籍金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 《深夜食堂》或《深夜食堂 2》 | 1 本 | 200 元 | 待確認（書名不確定） |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍總金額（不含運費）：930 元，總額尚未完整。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79d04a30-e870-4725-9e53-acdac23203ac",
+        "text": "試跑留言中可確認項目的書籍金額合計為 930 元（360＋320＋250），並因另有未定價及待確認項目而註明總額尚未完整。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆列出可確認項目的小計 360、320、250 元，合計 930 元，並註明總額尚未完整及待確認事項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍總金額（不含運費）：930 元，總額尚未完整。**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "待確認：請確認《被討厭的勇氣》的單價，以及「《深夜食堂》或《深夜食堂 2》」要訂哪一本。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef1ec1c9-3664-4fe0-8a80-4a224d5b6d71",
+        "text": "試跑留言中的運費 60 元須另列，且不得加入書籍金額合計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "運費 60 元另列，且明確註明不計入書籍總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**運費：60 元**（另列，不計入書籍總金額）。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1529 input and 708 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

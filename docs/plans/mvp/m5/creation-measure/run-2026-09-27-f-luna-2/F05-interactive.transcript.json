@@ -1,0 +1,117 @@
+{
+  "acceptance_criteria": [
+    "試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。",
+    "試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。",
+    "試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。",
+    "試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。"
+  ],
+  "brief": "製作一個每次處理一則通知的 Skill，根據使用者提供的資料，以繁體中文、正式簡潔的語氣撰寫開庭通知簡訊。通知本文最多 3 句，且必須包含案號及下一次開庭日期時間。其他資訊應優先合併並精簡；若為了維持簡短、易讀而省略或合併資訊，須另加一句話指出省略或合併了哪些資訊，該句不計入本文 3 句上限。假設以「句號、問號、驚嘆號」作為句子界線，不另設字數上限；只使用使用者提供的事實，不推測或增添法律資訊。若案號或開庭日期時間缺漏，先詢問缺少的必要資料，不編造通知。無需外部工具或網路資料。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我做一個寫『開庭通知簡訊』的 Skill：通知本文不能超過 3 句話，但一定要包含案號和下一次開庭日期時間這兩項；如果我提供的其他資訊塞不進 3 句話，可以省略或合併，但請額外用一句話（不算在 3 句話的上限內）告訴我省略或合併了哪些資訊。",
+      "created_at": "2026-09-27T15:49:15.73920757Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先查找是否有可參考的通知簡訊撰寫 Skill。",
+      "created_at": "2026-09-27T15:49:20.271481587Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄裡沒有符合的 Skill（第 1／2 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。",
+      "created_at": "2026-09-27T15:49:21.242243026Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我再用另一組關鍵詞查找相關 Skill。",
+      "created_at": "2026-09-27T15:49:24.120436422Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。",
+      "created_at": "2026-09-27T15:49:24.885053579Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請問你通常會提供哪些通知資料？例如案號、開庭日期時間，以及法院、法庭或開庭方式；若沒有固定欄位，我可以採用這些常見欄位並以正式簡潔語氣撰寫。",
+      "created_at": "2026-09-27T15:49:30.05873402Z"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。",
+      "created_at": "2026-09-27T15:49:30.064611061Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認以下 Skill brief、驗收標準及試跑輸入；確認後我會依此製作 Skill。",
+      "created_at": "2026-09-27T15:49:58.083921619Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依確認的 brief 起草 Skill，並提交 Go 驗證。草稿要求逐筆處理通知、保留必要事實，並以檢查腳本核對通知本文的句數與必備內容。",
+      "created_at": "2026-09-27T15:50:23.613896862Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T15:50:23.615293961Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Go 靜態驗證已通過（blocked=false），但目前沒有試跑評估結果，尚不能確認各項驗收標準是否通過。以下保留已驗證的草稿；請由此草稿開始試跑，之後可依評估結果再修訂。",
+      "created_at": "2026-09-27T15:50:34.821907396Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"d12bbc15-cb6e-45f5-b768-46fe94bd188a\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"第一則通知符合句數、資訊呈現及事實準確性的要求。第二則正確指出缺少開庭日期時間，但未向使用者詢問該資料。\",\"criterion_results\":[{\"criterion_id\":\"c7db85a9-3467-4bfc-842c-dc8b5682a6e9\",\"text\":\"試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":217,\"end\":256},\"excerpt\":\"資料不足：115年度訴字第456號缺少下一次開庭日期及時間，無法撰寫完整通知。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第二行未捏造日期時間，也未輸出看似完整的通知；但僅指出資料不足，沒有詢問或請使用者提供下一次開庭日期時間。\"},{\"criterion_id\":\"4b753ce8-9c3c-4a8f-9ba9-72fb4fa81675\",\"text\":\"試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":6,\"end\":168},\"excerpt\":\"臺灣臺北地方法院通知您，115年度訴字第123號案件將於2026年10月12日上午9時30分在第8法庭親自開庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第一則通知本文共兩句，案號與下一次開庭日期時間均準確列出。\"},{\"criterion_id\":\"a7fa7b5c-184b-4312-9365-a6da05763008\",\"text\":\"試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":62,\"end\":168},\"excerpt\":\"請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":169,\"end\":209},\"excerpt\":\"資訊合併說明：已合併呈現攜帶資料、抵達報到、無法到庭時聯絡及保持手機開機等事項。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知以正式文字將其他資訊合併在本文第二句，並在本文之外另以一句話指出合併涉及的事項。\"},{\"criterion_id\":\"361d7c63-2503-4aa4-ab1a-fae3afc90109\",\"text\":\"試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":6,\"end\":168},\"excerpt\":\"臺灣臺北地方法院通知您，115年度訴字第123號案件將於2026年10月12日上午9時30分在第8法庭親自開庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水及與本案相關的全部紙本和電子紀錄，並於開庭前30分鐘抵達、先至服務台報到；若無法到庭，請儘早聯絡承辦窗口說明原因，並確認手機保持開機以便法院聯絡。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第一則通知保留了所提供的案號、日期時間、法院、法庭、到庭方式及其他事項，未見改動或補入未提供的具體事實。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"5aa04671-2300-40c8-959e-0ef943fb4f95\",\"occurred_at\":\"2026-09-27T15:50:55.122Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"court-hearing-sms\\\", \\\"skill_version_id\\\": \\\"16d8a326-f346-4a6d-8caf-ce399206919b\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the run recorded 1 readable output file(s): 開庭通知簡訊.txt\",\"evidence\":[{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"開庭通知簡訊.txt\",\"excerpt\":\"開庭通知簡訊.txt (690 bytes, application/octet-stream, 84300f2ed9ea3299339b2e31b8b1fcbdc517efd6bc292e056b1bd6e32cc7bbd3)\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1569 input and 2157 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"b2b2dbe1-a8a8-4d38-974e-aa2e3c6a5566\",\"skill_version_id\":\"16d8a326-f346-4a6d-8caf-ce399206919b\"}",
+      "created_at": "2026-09-27T15:51:41.180572817Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。」：沒過——第二行未捏造日期時間，也未輸出看似完整的通知；但僅指出資料不足，沒有詢問或請使用者提供下一次開庭日期時間。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T15:51:41.180617017Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T15:51:41.190502333Z"
+    },
+    {
+      "role": "assistant",
+      "content": "試跑有 1 項驗收條件未通過：輸入第 2 行缺少下一次開庭日期時間時，草稿只提示資料不足，沒有請使用者提供缺少的資料。已依此修訂步驟 2：明確要求指出缺少的必要資料並以問題請使用者補充，同時禁止捏造日期時間或輸出看似完整的通知。其餘驗收條件已通過。你可以接受這份草稿，或告訴我還要修改哪裡。",
+      "created_at": "2026-09-27T15:52:08.56556546Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T15:52:08.569967923Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"748f022f-81a5-4d7d-9bb9-90c5e20c29ed\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"第一筆通知符合句數及資料準確性要求；第二筆正確詢問缺少的開庭日期時間。但第一筆合併其他資訊後，未另行說明合併涉及哪些資訊。\",\"criterion_results\":[{\"criterion_id\":\"f4c5b1ec-21a6-4eea-90cc-1e8df666382b\",\"text\":\"試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":65,\"end\":215},\"excerpt\":\"請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\\n\\n第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"文字正式且易讀，但將多項其他資訊合併在通知句中，沒有在通知本文之外另用一句話明確指出合併涉及的資訊。\"},{\"criterion_id\":\"70486bf6-c6d2-4aad-953e-e2b6dd17b71e\",\"text\":\"試跑輸入第 1 行：輸出通知本文不超過 3 句，並準確包含所提供的案號及下一次開庭日期時間。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":174},\"excerpt\":\"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第一筆通知本文共三句，案號及下一次開庭日期時間均與輸入一致。\"},{\"criterion_id\":\"e6b30d5d-cef2-4948-bcfd-02e9b05234c3\",\"text\":\"試跑輸入第 1 行：不得改動案號、日期時間或其他已提供事實，也不得補入輸入中沒有的事實。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":174},\"excerpt\":\"臺灣臺北地方法院通知您，案號：115年度訴字第123號，下一次開庭時間為2026年10月12日上午9時30分，於第8法庭親自到庭。請攜帶身分證正本、所有原始契約、2023至2025年度完整銀行流水，以及與本案相關的全部紙本和電子紀錄；請於開庭前30分鐘抵達並先至服務台報到。若無法到庭，請儘早聯絡承辦窗口並說明原因，並確認手機保持開機以便法院聯絡。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第一筆通知保留了所提供的案號、日期時間及其他事實，未見改動或補入未提供的事實。\"},{\"criterion_id\":\"1a958c73-f68c-4c0e-8624-faf125f9fed6\",\"text\":\"試跑輸入第 2 行：因缺少下一次開庭日期時間，應詢問該項資料，不得捏造日期時間或輸出一則看似完整的通知。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":176,\"end\":215},\"excerpt\":\"第二筆資料（案號：115年度訴字第456號）缺少下一次開庭日期及時間，請補充。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第二筆資料只要求補充缺少的下一次開庭日期及時間，沒有捏造時間或產出完整通知。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"b0c648a9-c431-4bbb-93e9-29a2da0a4e56\",\"occurred_at\":\"2026-09-27T15:52:28.092Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"court-hearing-sms\\\", \\\"skill_version_id\\\": \\\"27777cb2-a442-4f94-a3eb-638fb46f1dee\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the run recorded 2 readable output file(s): final.txt, notice.txt\",\"evidence\":[{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"final.txt\",\"excerpt\":\"final.txt (573 bytes, application/octet-stream, cbf76d3b6382fc93f553126ccc9d094282cc0edaf07ea798d5b2db893d537dd3)\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"notice.txt\",\"excerpt\":\"notice.txt (466 bytes, application/octet-stream, b9233ee1457445835dd2eda5a5520e4ad653ca8506acc9fd89b86369bb268942)\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1549 input and 1976 output tokens on skillhub-run; reported cost $0.0046 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"7b05c7fa-898f-46ac-b059-b19c9fd93b1f\",\"skill_version_id\":\"27777cb2-a442-4f94-a3eb-638fb46f1dee\"}",
+      "created_at": "2026-09-27T15:53:12.365518264Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「試跑輸入第 1 行：以正式、易讀的簡短文字處理其他資訊；若有省略或合併，另用一句話明確指出涉及的資訊，且該句與通知本文分開、不計入本文句數。」：沒過——文字正式且易讀，但將多項其他資訊合併在通知句中，沒有在通知本文之外另用一句話明確指出合併涉及的資訊。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T15:53:12.365551267Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T15:53:12.376172635Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有 1 項驗收條件未通過：輸入第 1 行的通知合併了多項其他資訊，但沒有在通知本文外說明合併了哪些資訊。已依此修訂步驟 4：只要有任何其他資訊被合併或省略，即使內容仍完整易讀，也必須在本文外逐項明確列出；該說明不計入本文三句上限。其餘驗收條件已通過。你可以接受這份草稿，或告訴我還要修改哪裡。",
+      "created_at": "2026-09-27T15:53:41.951297729Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T15:53:41.955594939Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

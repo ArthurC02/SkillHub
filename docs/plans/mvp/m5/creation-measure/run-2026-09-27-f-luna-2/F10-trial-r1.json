@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請依規則計算以下每筆社區庭園維護費用，列出進位面積、基本費、樹木修剪費、封頂前金額與最終費用。\n\n| 筆次 | 草坪面積（平方公尺） | 樹木棵數 |\n|---|---:|---:|\n| 1 | 36 | 3 |\n| 2 | 100 | 0 |\n| 3 | 101 | 4 |\n| 4 | 300 | 3 |\n| 5 | 301 | 5 |\n| 6 | 600 | 3 |",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑輸入第 1 筆，將 36 平方公尺進位為 40；3 棵樹不加收修剪費，基本費與最終費用均為 NT$2,000。"
+    },
+    {
+      "text": "對第 2 筆，100 平方公尺維持 100，落在含 100 的級距，最終費用為 NT$2,000。"
+    },
+    {
+      "text": "對第 3 筆，101 平方公尺進位為 110，基本費為 NT$3,500；4 棵樹加收 NT$300，最終費用為 NT$3,800。"
+    },
+    {
+      "text": "對第 4 筆，300 平方公尺維持 300，落在含 300 的級距，最終費用為 NT$3,500。"
+    },
+    {
+      "text": "對第 5 筆，301 平方公尺進位為 310；超過 300 的 10 平方公尺加收 NT$100，5 棵樹加收 NT$600，最終費用為 NT$4,200。"
+    },
+    {
+      "text": "對第 6 筆，600 平方公尺的基本費與超額費合計 NT$6,500，應套用單次上限，最終費用為 NT$6,000。"
+    }
+  ],
+  "final_output": "第 1 筆  \n進位面積：40 平方公尺  \n基本費：NT$2,000  \n樹木修剪費：NT$0  \n封頂前金額：NT$2,000  \n最終費用：NT$2,000  \n\n第 2 筆  \n進位面積：100 平方公尺  \n基本費：NT$2,000  \n樹木修剪費：NT$0  \n封頂前金額：NT$2,000  \n最終費用：NT$2,000  \n\n第 3 筆  \n進位面積：110 平方公尺  \n基本費：NT$3,500  \n樹木修剪費：NT$300  \n封頂前金額：NT$3,800  \n最終費用：NT$3,800  \n\n第 4 筆  \n進位面積：300 平方公尺  \n基本費：NT$3,500  \n樹木修剪費：NT$0  \n封頂前金額：NT$3,500  \n最終費用：NT$3,500  \n\n第 5 筆  \n進位面積：310 平方公尺  \n基本費：NT$3,500（超過 300 平方公尺部分加收：NT$100）  \n樹木修剪費：NT$600  \n封頂前金額：NT$4,200  \n最終費用：NT$4,200  \n\n第 6 筆  \n進位面積：600 平方公尺  \n基本費：NT$3,500（超過 300 平方公尺部分加收：NT$3,000）  \n樹木修剪費：NT$0  \n封頂前金額：NT$6,500  \n最終費用：NT$6,000",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c601dfc4-f1c4-4b25-b8aa-bf58c62fc418",
+    "run_id": "fd956c89-1396-43b0-b4cb-bdbeda33c3da",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆均列出進位面積、費用明細、封頂前金額與最終費用；各筆數值符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "53e7c6ee-7065-44d0-928f-68cdc602e66c",
+        "text": "對試跑輸入第 1 筆，將 36 平方公尺進位為 40；3 棵樹不加收修剪費，基本費與最終費用均為 NT$2,000。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆進位為 40 平方公尺，基本費與最終費用均為 NT$2,000，樹木修剪費為 NT$0。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆  \n進位面積：40 平方公尺  \n基本費：NT$2,000  \n樹木修剪費：NT$0  \n封頂前金額：NT$2,000  \n最終費用：NT$2,000",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43071c6b-1e3d-42bc-9657-4a1c91da0c66",
+        "text": "對第 2 筆，100 平方公尺維持 100，落在含 100 的級距，最終費用為 NT$2,000。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆進位面積維持 100 平方公尺，基本費與最終費用均為 NT$2,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆  \n進位面積：100 平方公尺  \n基本費：NT$2,000  \n樹木修剪費：NT$0  \n封頂前金額：NT$2,000  \n最終費用：NT$2,000",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1eac1b22-503f-4834-a2a7-aa9e9b5091ee",
+        "text": "對第 3 筆，101 平方公尺進位為 110，基本費為 NT$3,500；4 棵樹加收 NT$300，最終費用為 NT$3,800。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆進位為 110 平方公尺，基本費 NT$3,500、樹木修剪費 NT$300，最終費用 NT$3,800。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 筆  \n進位面積：110 平方公尺  \n基本費：NT$3,500  \n樹木修剪費：NT$300  \n封頂前金額：NT$3,800  \n最終費用：NT$3,800",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "22d99d4c-6b66-4361-961b-3aec7ee5b5bf",
+        "text": "對第 4 筆，300 平方公尺維持 300，落在含 300 的級距，最終費用為 NT$3,500。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆進位面積維持 300 平方公尺，基本費與最終費用均為 NT$3,500。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 筆  \n進位面積：300 平方公尺  \n基本費：NT$3,500  \n樹木修剪費：NT$0  \n封頂前金額：NT$3,500  \n最終費用：NT$3,500",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "56ba47c4-567b-4a76-b5af-fa93e6a99e86",
+        "text": "對第 5 筆，301 平方公尺進位為 310；超過 300 的 10 平方公尺加收 NT$100，5 棵樹加收 NT$600，最終費用為 NT$4,200。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆進位為 310 平方公尺，超過 300 平方公尺部分加收 NT$100，樹木修剪費 NT$600，最終費用 NT$4,200。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆  \n進位面積：310 平方公尺  \n基本費：NT$3,500（超過 300 平方公尺部分加收：NT$100）  \n樹木修剪費：NT$600  \n封頂前金額：NT$4,200  \n最終費用：NT$4,200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e652f3b-9446-408e-9e82-e0b22f3819c6",
+        "text": "對第 6 筆，600 平方公尺的基本費與超額費合計 NT$6,500，應套用單次上限，最終費用為 NT$6,000。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 6 筆基本費 NT$3,500 加上超額費 NT$3,000，封頂前為 NT$6,500，最終費用為 NT$6,000。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 6 筆  \n進位面積：600 平方公尺  \n基本費：NT$3,500（超過 300 平方公尺部分加收：NT$3,000）  \n樹木修剪費：NT$0  \n封頂前金額：NT$6,500  \n最終費用：NT$6,000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 708 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "cc6fe62a-b478-4ccc-809a-284fad923c8f",
+    "EvaluationID": "2d62a52b-2602-4e33-9696-3cb90f38b3df",
+    "Skill": {
+      "Name": "translation-case-triage",
+      "Summary": "依語言對、字數與剩餘交期，逐案分類翻譯社案件為「退件」、「加急」或「普通」，並附簡短理由。當使用者提供包含這些欄位的案件表格並要求分類時使用。"
+    },
+    "UserPrompt": "這批要分類的案件如下：\n1. 中文-英文，6000字，交期24小時\n2. 中文-韓文，3000字，交期10小時\n3. 中文-日文，5000字，交期48小時\n4. 中文-英文，5001字，交期48小時\n請幫我分類。",
+    "Criteria": [
+      {
+        "ID": "8d076df6-f316-45a2-be43-b8dd14a2932e",
+        "Text": "案件1（中文-英文，6000字，24小時）判定為加急",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "840f1650-6c44-4833-b63f-6760d7d2ea7e",
+        "Text": "案件2（中文-韓文）判定為退件",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "eb7f2ddb-18b2-4d15-9e90-924c1b8055c6",
+        "Text": "案件3（中文-日文，5000字，48小時）判定為普通",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "50a478ed-2fe2-4a1f-8aae-3bc4cccdaae5",
+        "Text": "案件4（中文-英文，5001字，48小時）判定為加急",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\n案件2：退件；理由：語言對不支援（中文-韓文）。\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "c1a08b3b-4116-4a62-9199-a662361e3f5f",
+          "OccurredAt": "2026-09-27T15:12:24.785Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"translation-case-triage\", \"skill_version_id\": \"745d0e18-8e19-43a0-bbaf-b686332841d9\"}"
+        },
+        {
+          "TraceEventID": "1e9bf7bf-5110-48f4-9c51-b7654f7822bd",
+          "OccurredAt": "2026-09-27T15:12:24.805Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"translation-case-triage\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_uBsQ4OXOfxGW0GNLzgBwsfD7\", \"result_summary\": \"Launching skill: translation-case-triage\"}"
+        },
+        {
+          "TraceEventID": "beca1262-0ab2-405a-9219-9fc6a41cddef",
+          "OccurredAt": "2026-09-27T15:12:26.251Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 2486, \"resource_path\": \"translation-case-triage/scripts/classify_cases.py\"}"
+        },
+        {
+          "TraceEventID": "ee15ffb2-e3bc-4c8e-99cd-a09becfb3160",
+          "OccurredAt": "2026-09-27T15:12:26.251Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/translation-case-triage/scripts/classify_cases.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 20, \"invocation_id\": \"call_08RMKnrYXC5gPuHqpaxswpwY\", \"result_summary\": \"1\\t#!/usr/bin/env python3\\n2\\t\\\"\\\"\\\"Classify translation cases from a UTF-8 TSV file.\\\"\\\"\\\"\\n3\\t\\n4\\timport argparse\\n5\\timport csv\\n6\\timport sys\\n7\\tfrom decimal import Decimal, InvalidOperation\\n8\\t\\n9\\tHEADERS = [\\\"語言對\\\", \\\"字數\\\", \\\"剩餘交期（小時）\\\"]\\n10\\tSUPPORTED = {\\\"中文-英文\\\", \\\"中文-日文\\\"}\\n11\\t\\n12\\t\\n13\\tdef fail(message: str) -\u003e None:\\n14\\t    print(message.replace(\\\"\\\\n\\\", \\\" \\\"), file=sys.stderr)\\n15\\t    raise SystemExit(2)\\n16\\t\\n17\\t\\n18\\tdef read_cases(path: str) -\u003e list[tuple[str, Decimal, Decimal]]:\\n19\\t    try:\\n20\\t        with open(path, \\\"r\\\", encoding=\\\"utf-8-sig\\\", newline=\\\"\\\") as source:\\n21\\t            rows = list(csv.reader(source, delimiter=\\\"\\\\t\\\"))\\n22\\t    except (OSError, UnicodeError, csv.Error) as exc:\\n23\\t        fail(f\\\"無法讀取輸入檔：{exc}\\\")\\n24\\t\\n25\\t    rows = [row for row in rows if any(cell.strip() for cell in row)]\\n26\\t    if not rows:\\n27\\t        fail(\\\"輸入檔沒有表頭或案件資料。\\\")\\n28\\t    if [cell.strip() for cell in rows[0]] != HEADERS:\\n29\\t        fail(\\\"表頭須依序為：語言對、字數、剩餘交期（小時）。\\\")\\n30\\t    if len(rows) == 1:\\n31\\t        fail(\\\"輸入檔沒有案件資料。\\\")\\n32\\t\\n33\\t    cases = []\\n34\\t    for line_number, row in enumerate(rows[1:], start=2):\\n35\\t        if len(row) != 3:\\n36\\t            fail(f\\\"第 {line_number} 列須恰有 3 個欄位。\\\")\\n37\\t        pair = row[0].strip()\\n38\\t        if not pair:\\n39\\t            fail(f\\\"第 {line_number} 列缺少語言對。\\\")\\n40\\t        values = []\\n41\\t        for column, raw in zip((\\\"字數\\\", \\\"剩餘交期（小時）\\\"), row[1:]):\\n42\\t            try:\\n43\\t                value = Decimal(raw.strip())\\n44\\t            except (InvalidOperation, ValueError):\\n45\\t                fail(f\\\"第 {line_number} 列的{column}不是有效數值。\\\")\\n46\\t            if not value.is_finite() or value \u003c 0:\\n47\\t                fail(f\\\"第 {line_number} 列的{column}須為非負數。\\\")\\n48\\t            values.append(value)\\n49\\t        cases.append((pair, values[0], values[1]))\\n50\\t    return cases\\n51\\t\\n52\\t\\n53\\tdef main() -\u003e None:\\n54\\t    parser = argparse.ArgumentParser(description=\\\"分類翻譯社案件 TSV 資料。\\\")\\n55\\t    parser.add_argument(\\\"input\\\", help=\\\"含指定表頭的 UTF-8 TSV 檔\\\")\\n56\\t    args = parser.parse_args()\\n57\\t\\n58\\t    for number, (pair, words, hours) in enumerate(read_cases(args.input), start=1):\\n59\\t        if pair not in SUPPORTED:\\n60\\t            category = \\\"退件\\\"\\n61\\t            reason = f\\\"語言對不支援（{pair}）\\\"\\n62\\t        elif words \u003e 5000 and hours \u003c= 48:\\n63\\t            category = \\\"加急\\\"\\n64\\t            reason = \\\"受支援語言對，字數超過 5000 且交期在 48 小時以內\\\"\\n65\\t        else:\\n66\\t            category = \\\"普通\\\"\\n67\\t            reason = \\\"受支援語言對，未同時符合加急條件\\\"\\n68\\t        print(f\\\"案件{number}：{category}；理由：{reason}。\\\")\\n69\\t\\n70\\t\\n71\\tif __name__ == \\\"__main__\\\":\\n72\\t    main()\\n73\\t\"}"
+        },
+        {
+          "TraceEventID": "a3ab800d-47f5-4ba6-904d-4997f026b693",
+          "OccurredAt": "2026-09-27T15:12:30.696Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\\n案件2：退件；理由：語言對不支援（中文-韓文）。\\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "ef55db49-625a-4579-8b11-c42ce3e2c0e2",
+          "OccurredAt": "2026-09-27T15:12:30.696Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python -c 'from pathlib import Path; Path(\\\"/tmp/cases.tsv\\\").write_text(\\\"語言對\\\\t字數\\\\t剩餘交期（小時）\\\\n中文-英文\\\\t6000\\\\t24\\\\n中文-韓文\\\\t3000\\\\t10\\\\n中文-日文\\\\t5000\\\\t48\\\\n中文-英文\\\\t5001\\\\t48\\\\n\\\", encoding=\\\"utf-8\\\")' \u0026\u0026 cd /work/.claude/skills/translation-case-triage \u0026\u0026 python scripts/classify_cases.py /tmp/cases.tsv\", \"description\": \"Classify the provided translation cases\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 117, \"invocation_id\": \"call_k9YMUByAKQrP1Y3p7uVqrCA3\", \"result_summary\": \"案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\\n案件2：退件；理由：語言對不支援（中文-韓文）。\\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\"}"
+        },
+        {
+          "TraceEventID": "766b2c14-5a4d-4ecd-80b0-c10262530dc4",
+          "OccurredAt": "2026-09-27T15:12:32.395Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\\n案件2：退件；理由：語言對不支援（中文-韓文）。\\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c928499a-cadf-4ced-bcb3-fa7a51f5ec0b",
+          "OccurredAt": "2026-09-27T15:12:32.493Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\\n案件2：退件；理由：語言對不支援（中文-韓文）。\\n案件3：普通；理由：受支援語言對，未同時符合加急條件。\\n案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "45afc62b-e777-446d-8bfb-4909aac9c750",
+          "OccurredAt": "2026-09-27T15:12:36.536Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.0035686, \"cost_source\": \"gateway\", \"duration_ms\": 13725, \"input_tokens\": 1528, \"token_source\": \"result\", \"output_tokens\": 704, \"cache_read_input_tokens\": 54520, \"cache_write_input_tokens\": 19704}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "8d076df6-f316-45a2-be43-b8dd14a2932e",
+        "Result": "passed",
+        "Reason": "案件1判定為加急。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "案件1：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "840f1650-6c44-4833-b63f-6760d7d2ea7e",
+        "Result": "passed",
+        "Reason": "案件2判定為退件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "案件2：退件；理由：語言對不支援（中文-韓文）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "eb7f2ddb-18b2-4d15-9e90-924c1b8055c6",
+        "Result": "passed",
+        "Reason": "案件3判定為普通。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "案件3：普通；理由：受支援語言對，未同時符合加急條件。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "50a478ed-2fe2-4a1f-8aae-3bc4cccdaae5",
+        "Result": "passed",
+        "Reason": "案件4判定為加急。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "案件4：加急；理由：受支援語言對，字數超過 5000 且交期在 48 小時以內。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四件案件的分類均符合各自的驗收標準。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 4161,
+      "CompletionTokens": 452,
+      "CostUSD": 0.012386400000000002,
+      "CostReported": true
+    }
+  }
+}

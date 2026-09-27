@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "包裹重量 44 公斤，請算運費。",
+  "acceptance_criteria": [
+    {
+      "text": "運費為 600 元"
+    }
+  ],
+  "final_output": "600",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a7816525-f28c-4c13-99f5-98b8a73d6ad8",
+    "run_id": "df5a7ea9-b1e5-4bde-90db-127d518ec4ee",
+    "status": "completed",
+    "overall": "met",
+    "summary": "唯一的驗收標準已達成：回覆的運費金額為 600 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "315e8769-e0f6-43d0-9bf8-62fd93a50a10",
+        "text": "運費為 600 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆為 600，符合運費為 600 元的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "600",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18888 input and 177 output tokens on gpt-5.4-mini; reported cost $0.0167 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 5,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

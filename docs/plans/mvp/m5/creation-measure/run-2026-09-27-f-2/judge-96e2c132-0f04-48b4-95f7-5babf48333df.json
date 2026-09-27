@@ -1,0 +1,139 @@
+{
+  "request": {
+    "RunID": "96e2c132-0f04-48b4-95f7-5babf48333df",
+    "EvaluationID": "77d27027-e655-4e46-8548-084f4e077b12",
+    "Skill": {
+      "Name": "translation-job-classifier",
+      "Summary": "Classify translation agency jobs by language pair, word count, and deadline; use it when you need to label requests as 退件, 加急, or 普通 from those three inputs."
+    },
+    "UserPrompt": "這批要分類的案件如下：\n1. 中文-英文，6000字，交期24小時\n2. 中文-韓文，3000字，交期10小時\n3. 中文-日文，5000字，交期48小時\n4. 中文-英文，5001字，交期48小時\n請幫我分類。",
+    "Criteria": [
+      {
+        "ID": "d15dcb02-182c-41c0-add4-9b3ef45ba6cb",
+        "Text": "案件1（中文-英文，6000字，24小時）判定為加急",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f373409e-3b4c-4484-aca0-d76c03b9f493",
+        "Text": "案件2（中文-韓文）判定為退件",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a39dbb28-5511-49ba-8652-4b0e3214a59e",
+        "Text": "案件3（中文-日文，5000字，48小時）判定為普通",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5eb698f5-6a3d-499d-ace6-55b2f75a1a67",
+        "Text": "案件4（中文-英文，5001字，48小時）判定為加急",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "加急\n退件\n普通\n加急",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0fd64381-6cbe-40a0-aec9-8570a92c9c3b",
+          "OccurredAt": "2026-09-27T14:09:08.479Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"translation-job-classifier\", \"skill_version_id\": \"330a49d2-1c8d-439c-b47f-5234e6f39a5c\"}"
+        },
+        {
+          "TraceEventID": "eae11cbf-5aed-4bbe-a449-226e47f90938",
+          "OccurredAt": "2026-09-27T14:09:08.488Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"translation-job-classifier\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_xXZ00hSIy1GZVjSIbGlYxHVQ\", \"result_summary\": \"Launching skill: translation-job-classifier\"}"
+        },
+        {
+          "TraceEventID": "2ff5d676-526e-4243-b046-b6f2928abcbe",
+          "OccurredAt": "2026-09-27T14:09:11.12Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"加急\\n退件\\n普通\\n加急\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "efedf629-20fc-4659-8f14-30e1514bc6f2",
+          "OccurredAt": "2026-09-27T14:09:11.458Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"加急\\n退件\\n普通\\n加急\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "51360e3c-b06c-4a6a-b0de-2555d53e42eb",
+          "OccurredAt": "2026-09-27T14:09:15.498Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00634215, \"cost_source\": \"gateway\", \"duration_ms\": 9551, \"input_tokens\": 2650, \"token_source\": \"result\", \"output_tokens\": 311, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d15dcb02-182c-41c0-add4-9b3ef45ba6cb",
+        "Result": "passed",
+        "Reason": "最終輸出的第一項為「加急」，對應案件1。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "加急\n退件\n普通\n加急"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f373409e-3b4c-4484-aca0-d76c03b9f493",
+        "Result": "passed",
+        "Reason": "最終輸出的第二項為「退件」，對應案件2。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "加急\n退件\n普通\n加急"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a39dbb28-5511-49ba-8652-4b0e3214a59e",
+        "Result": "passed",
+        "Reason": "最終輸出的第三項為「普通」，對應案件3。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "加急\n退件\n普通\n加急"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5eb698f5-6a3d-499d-ace6-55b2f75a1a67",
+        "Result": "passed",
+        "Reason": "最終輸出的第四項為「加急」，對應案件4。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "加急\n退件\n普通\n加急"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "四個案件的分類結果依輸入順序分別為加急、退件、普通、加急，均符合驗收標準。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2060,
+      "CompletionTokens": 399,
+      "CostUSD": 0.0074018999999999995,
+      "CostReported": true
+    }
+  }
+}

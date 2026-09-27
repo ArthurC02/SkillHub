@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請寫出到府維修預約確認簡訊：\n2026/10/05，14:30，訂金500元",
+  "acceptance_criteria": [
+    {
+      "text": "給定一組日期、時間、訂金金額時，輸出只會是一段簡訊正文，沒有前後說明文字。"
+    },
+    {
+      "text": "輸出內容必須同時包含預約日期、預約時間、應收訂金金額三項資訊。"
+    },
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 30 字。"
+    },
+    {
+      "text": "在字數限制內，輸出仍維持可作為簡訊直接發送的完整句子或短句。"
+    },
+    {
+      "text": "若輸入同時提供日期、時間、金額，輸出不得省略其中任一項。"
+    }
+  ],
+  "final_output": "當然可以，以下是一則簡潔的確認簡訊範本：\n\n您好，已為您確認到府維修預約，時間為 **2026/10/05 14:30**，訂金 **500元**。如需更改時間，請提前與我們聯繫，謝謝。\n\n如果你想要，我也可以幫你改成：\n- 更正式版\n- 更口語版\n- 更短的簡訊版",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4755948d-dc68-4992-bbb9-8b8e511de95b",
+    "run_id": "8615d6c8-0b36-4f8c-b764-91bcc82d03c7",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "內容包含所有預約資訊，但回覆加入前後說明與選項，且整體明顯超過30字，未能輸出為僅一段、可直接發送的短簡訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "858468ea-c643-4fcc-a97b-a92d82ec76fc",
+        "text": "給定一組日期、時間、訂金金額時，輸出只會是一段簡訊正文，沒有前後說明文字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出除了簡訊內容外，另有前導說明與後續選項文字，並非只包含一段簡訊正文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "當然可以，以下是一則簡潔的確認簡訊範本：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "如果你想要，我也可以幫你改成：\n- 更正式版\n- 更口語版\n- 更短的簡訊版",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fb387ada-1bc6-4f65-a7da-4607d27a2ed9",
+        "text": "輸出內容必須同時包含預約日期、預約時間、應收訂金金額三項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊內容同時列出預約日期、時間與訂金金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，已為您確認到府維修預約，時間為 **2026/10/05 14:30**，訂金 **500元**。如需更改時間，請提前與我們聯繫，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "894afe4d-eece-4942-bd2d-a1385fd81d73",
+        "text": "輸出總字數（含標點與英數字）不超過 30 字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "整體輸出包含說明、簡訊正文與多個後續選項，明顯超過30字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "當然可以，以下是一則簡潔的確認簡訊範本：\n\n您好，已為您確認到府維修預約，時間為 **2026/10/05 14:30**，訂金 **500元**。如需更改時間，請提前與我們聯繫，謝謝。\n\n如果你想要，我也可以幫你改成：\n- 更正式版\n- 更口語版\n- 更短的簡訊版",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a877670-37b1-490f-af1f-4aba34899595",
+        "text": "在字數限制內，輸出仍維持可作為簡訊直接發送的完整句子或短句。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖含可發送的完整預約句子，但整體輸出未符合30字內的限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，已為您確認到府維修預約，時間為 **2026/10/05 14:30**，訂金 **500元**。如需更改時間，請提前與我們聯繫，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32d2a2dc-23d5-4fda-9d73-707f616ba492",
+        "text": "若輸入同時提供日期、時間、金額，輸出不得省略其中任一項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未省略所提供的日期、時間或金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，已為您確認到府維修預約，時間為 **2026/10/05 14:30**，訂金 **500元**。如需更改時間，請提前與我們聯繫，謝謝。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2055 input and 273 output tokens on gpt-5.4-mini; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

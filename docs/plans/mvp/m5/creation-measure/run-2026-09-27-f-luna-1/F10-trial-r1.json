@@ -1,0 +1,203 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下每筆社區庭園單次維護費，列出各項費用明細與最終費用：\n青禾園：草坪面積 36 平方公尺，樹木 3 棵\n小徑園：草坪面積 100 平方公尺，樹木 4 棵\n晨光園：草坪面積 101 平方公尺，樹木 3 棵\n中央園：草坪面積 300 平方公尺，樹木 5 棵\n河畔園：草坪面積 301 平方公尺，樹木 3 棵\n山景園：草坪面積 600 平方公尺，樹木 3 棵",
+  "acceptance_criteria": [
+    {
+      "text": "輸入「青禾園」面積 36 平方公尺、3 棵樹時，輸出進位面積 40 平方公尺、基本費 2000 元、面積加收費 0 元、修剪費 0 元、最終費用 2000 元。"
+    },
+    {
+      "text": "輸入「小徑園」面積 100 平方公尺、4 棵樹時，輸出進位面積 100 平方公尺、基本費 2000 元、修剪費 300 元、最終費用 2300 元；並且 3 棵以內不收修剪費。"
+    },
+    {
+      "text": "輸入「晨光園」面積 101 平方公尺、3 棵樹時，輸出進位面積 110 平方公尺、基本費 3500 元、最終費用 3500 元；輸入「中央園」面積 300 平方公尺、5 棵樹時，輸出進位面積 300 平方公尺、基本費 3500 元、修剪費 600 元、最終費用 4100 元。"
+    },
+    {
+      "text": "輸入「河畔園」面積 301 平方公尺、3 棵樹時，輸出進位面積 310 平方公尺、基本費 3500 元、面積加收費 100 元、最終費用 3600 元。"
+    },
+    {
+      "text": "輸入「山景園」面積 600 平方公尺、3 棵樹時，計算出的封頂前費用為 6500 元，輸出最終費用 6000 元。"
+    },
+    {
+      "text": "對試跑輸入的每筆服務各輸出一筆明細，並列出進位後面積、基本費、面積加收費、修剪費和最終費用；不把多筆服務合併計算或合併套用上限。"
+    }
+  ],
+  "final_output": "| 庭園 | 草坪面積 | 樹木 | 進位後面積 | 基本費 | 面積加收費 | 樹木修剪費 | 最終費用 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| 青禾園 | 36 平方公尺 | 3 棵 | 40 平方公尺 | 2,000 元 | 0 元 | 0 元 | **2,000 元** |\n| 小徑園 | 100 平方公尺 | 4 棵 | 100 平方公尺 | 2,000 元 | 0 元 | 300 元 | **2,300 元** |\n| 晨光園 | 101 平方公尺 | 3 棵 | 110 平方公尺 | 3,500 元 | 0 元 | 0 元 | **3,500 元** |\n| 中央園 | 300 平方公尺 | 5 棵 | 300 平方公尺 | 3,500 元 | 0 元 | 600 元 | **4,100 元** |\n| 河畔園 | 301 平方公尺 | 3 棵 | 310 平方公尺 | 3,500 元 | 100 元 | 0 元 | **3,600 元** |\n| 山景園 | 600 平方公尺 | 3 棵 | 600 平方公尺 | 3,500 元 | 3,000 元 | 0 元 | **6,000 元** |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ae4cc992-aff1-4822-8fe2-3b2ae3084f65",
+    "run_id": "100ab5f8-d434-4f68-aed5-4ce29fbe2b11",
+    "status": "completed",
+    "overall": "met",
+    "summary": "六筆庭園均有獨立明細，進位面積、費用及單筆封頂結果符合所有驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "3a655c50-47db-4ea1-b197-f612cbe7b841",
+        "text": "輸入「青禾園」面積 36 平方公尺、3 棵樹時，輸出進位面積 40 平方公尺、基本費 2000 元、面積加收費 0 元、修剪費 0 元、最終費用 2000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "青禾園的進位面積、各項費用及最終費用均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 青禾園 | 36 平方公尺 | 3 棵 | 40 平方公尺 | 2,000 元 | 0 元 | 0 元 | **2,000 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b0072bc-effb-4ee1-b3b3-b242d5b90358",
+        "text": "輸入「小徑園」面積 100 平方公尺、4 棵樹時，輸出進位面積 100 平方公尺、基本費 2000 元、修剪費 300 元、最終費用 2300 元；並且 3 棵以內不收修剪費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "小徑園的數值正確；表中三棵樹的服務修剪費均為零。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小徑園 | 100 平方公尺 | 4 棵 | 100 平方公尺 | 2,000 元 | 0 元 | 300 元 | **2,300 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 青禾園 | 36 平方公尺 | 3 棵 | 40 平方公尺 | 2,000 元 | 0 元 | 0 元 | **2,000 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25f8fe71-85d7-41a0-9cc9-6d8f3ca2c329",
+        "text": "輸入「晨光園」面積 101 平方公尺、3 棵樹時，輸出進位面積 110 平方公尺、基本費 3500 元、最終費用 3500 元；輸入「中央園」面積 300 平方公尺、5 棵樹時，輸出進位面積 300 平方公尺、基本費 3500 元、修剪費 600 元、最終費用 4100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "晨光園與中央園的進位面積、基本費、修剪費及最終費用均符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 晨光園 | 101 平方公尺 | 3 棵 | 110 平方公尺 | 3,500 元 | 0 元 | 0 元 | **3,500 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 中央園 | 300 平方公尺 | 5 棵 | 300 平方公尺 | 3,500 元 | 0 元 | 600 元 | **4,100 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "76ca0053-3a3b-49fc-920e-1f3c9b59f640",
+        "text": "輸入「河畔園」面積 301 平方公尺、3 棵樹時，輸出進位面積 310 平方公尺、基本費 3500 元、面積加收費 100 元、最終費用 3600 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "河畔園的進位面積為 310 平方公尺，面積加收 100 元，最終費用為 3,600 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 河畔園 | 301 平方公尺 | 3 棵 | 310 平方公尺 | 3,500 元 | 100 元 | 0 元 | **3,600 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bc9408df-1a81-4a34-95e1-c31ce1a7dc5b",
+        "text": "輸入「山景園」面積 600 平方公尺、3 棵樹時，計算出的封頂前費用為 6500 元，輸出最終費用 6000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "山景園列出的基本費與加收費合計為封頂前 6,500 元，最終費用為 6,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 山景園 | 600 平方公尺 | 3 棵 | 600 平方公尺 | 3,500 元 | 3,000 元 | 0 元 | **6,000 元** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "43974e5a-9bfb-4296-a018-52175b3ade96",
+        "text": "對試跑輸入的每筆服務各輸出一筆明細，並列出進位後面積、基本費、面積加收費、修剪費和最終費用；不把多筆服務合併計算或合併套用上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以六個獨立列項呈現六筆服務，逐筆列出所需明細；山景園的費用亦獨立封頂，未合併計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 庭園 | 草坪面積 | 樹木 | 進位後面積 | 基本費 | 面積加收費 | 樹木修剪費 | 最終費用 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 青禾園 | 36 平方公尺 | 3 棵 | 40 平方公尺 | 2,000 元 | 0 元 | 0 元 | **2,000 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 小徑園 | 100 平方公尺 | 4 棵 | 100 平方公尺 | 2,000 元 | 0 元 | 300 元 | **2,300 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 晨光園 | 101 平方公尺 | 3 棵 | 110 平方公尺 | 3,500 元 | 0 元 | 0 元 | **3,500 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 中央園 | 300 平方公尺 | 5 棵 | 300 平方公尺 | 3,500 元 | 0 元 | 600 元 | **4,100 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 河畔園 | 301 平方公尺 | 3 棵 | 310 平方公尺 | 3,500 元 | 100 元 | 0 元 | **3,600 元** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 山景園 | 600 平方公尺 | 3 棵 | 600 平方公尺 | 3,500 元 | 3,000 元 | 0 元 | **6,000 元** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1543 input and 642 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 36,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

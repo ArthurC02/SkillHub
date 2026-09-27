@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請幫我算這段住宿總價：2026-10-02 入住，2026-10-06 退房。期間包含 10/2、10/3、10/4、10/5 四晚；其中 10/3 是假日，其餘三晚是平日。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段連續入住日期後，Skill 會輸出總金額。"
+    },
+    {
+      "text": "逐晚明細會列出每一晚的日期與金額。"
+    },
+    {
+      "text": "退房當天不會被算入住宿晚數。"
+    },
+    {
+      "text": "平日每晚金額為 2000 元。"
+    },
+    {
+      "text": "假日每晚金額為 2500 元。"
+    },
+    {
+      "text": "總金額會等於所有住宿晚數金額加總。"
+    }
+  ],
+  "final_output": "住宿區間：2026-10-02 入住，2026-10-06 退房  \n共 4 晚\n\n逐晚明細：\n- 10/02：平日，2000 元\n- 10/03：假日，2500 元\n- 10/04：平日，2000 元\n- 10/05：平日，2000 元\n\n總金額：8500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "92fe553d-69d2-4fd3-9d43-90001ef45412",
+    "run_id": "3a46f77e-f683-449a-a5d6-3045ee157f9e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆正確計算 2026-10-02 至 2026-10-06 的四個住宿晚數，逐晚列出平日與假日費用，未計入退房日，且總額 8500 元與明細加總一致。",
+    "criterion_results": [
+      {
+        "criterion_id": "e7ec6aae-c083-4e38-9c7e-31e254cdb65b",
+        "text": "輸入一段連續入住日期後，Skill 會輸出總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆針對連續入住區間輸出了總金額 8500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：8500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ee855235-82f4-4a90-a091-6be026eb509c",
+        "text": "逐晚明細會列出每一晚的日期與金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐晚明細列出了四個住宿日期及各自金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10/02：平日，2000 元\n- 10/03：假日，2500 元\n- 10/04：平日，2000 元\n- 10/05：平日，2000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "15fa576a-90e1-41c8-8bd3-79391b00c68c",
+        "text": "退房當天不會被算入住宿晚數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明細僅包含 10/02 至 10/05 共四晚，未將 10/06 退房日列入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "住宿區間：2026-10-02 入住，2026-10-06 退房  \n共 4 晚",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68c38709-7c39-4af7-b3a0-ca293b262b38",
+        "text": "平日每晚金額為 2000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個標示為平日的晚數均按每晚 2000 元計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10/02：平日，2000 元\n- 10/03：假日，2500 元\n- 10/04：平日，2000 元\n- 10/05：平日，2000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25858a7e-3705-4b4d-8a83-4e0421373007",
+        "text": "假日每晚金額為 2500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "10/03 標示為假日，金額為 2500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10/03：假日，2500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4a5cd832-9065-4c19-b615-177e1574a4b2",
+        "text": "總金額會等於所有住宿晚數金額加總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐晚金額 2000、2500、2000、2000 加總為 8500 元，與輸出的總金額一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 10/02：平日，2000 元\n- 10/03：假日，2500 元\n- 10/04：平日，2000 元\n- 10/05：平日，2000 元\n\n總金額：8500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18794 input and 332 output tokens on gpt-5.4-mini; reported cost $0.0174 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

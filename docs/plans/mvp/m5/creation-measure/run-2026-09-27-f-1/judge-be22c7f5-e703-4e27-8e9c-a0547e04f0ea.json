@@ -1,0 +1,187 @@
+{
+  "request": {
+    "RunID": "be22c7f5-e703-4e27-8e9c-a0547e04f0ea",
+    "EvaluationID": "a4368cab-a29b-4566-83b3-b5d9e68a0d8a",
+    "Skill": {
+      "Name": "translation-case-classifier",
+      "Summary": "Classify translation-agency cases as 退件、加急、或普通 based on language pair, word count, and deadline. Use it when you need a portable Skill to triage案件先看語言對，再依字數與交期判定。"
+    },
+    "UserPrompt": "請判定以下案件分類：\n1) 語言對：中文-英文，字數：5001，交期：48 小時\n2) 語言對：中文-日文，字數：8000，交期：72 小時\n3) 語言對：英文-中文，字數：12000，交期：12 小時\n4) 語言對：中文-英文，字數：5000，交期：48 小時\n\n這份 brief 已把兩種支援語言對、退件條件、加急邊界（5000 以上、48 小時含邊界）與普通情況都覆蓋到。請你確認是否要照這個版本建立 Skill。",
+    "Criteria": [
+      {
+        "ID": "d8386485-a217-4834-9388-870b7160cd8f",
+        "Text": "當輸入語言對不是「中文-英文」也不是「中文-日文」時，輸出必須是「退件」，即使字數超過 5000 且交期小於等於 48 小時。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2fb241ab-f5d4-4069-9124-f461665a5bcd",
+        "Text": "當輸入語言對是「中文-英文」且字數為 5001、交期為 48 小時時，輸出必須是「加急」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6c5ab42d-db59-4a08-aa2c-c562f6774a5c",
+        "Text": "當輸入語言對是「中文-日文」且字數為 6000、交期為 12 小時時，輸出必須是「加急」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bfb98f35-ab58-491d-b51c-09e591b2c88c",
+        "Text": "當輸入語言對是「中文-英文」且字數為 5000、交期為 48 小時時，輸出必須是「普通」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c8cde70f-1a8e-41b0-beca-1ba34d5dbc1a",
+        "Text": "當輸入語言對是「中文-日文」且字數為 8000、交期為 72 小時時，輸出必須是「普通」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e19c982a-1cc7-44a1-9bd1-6e4ee1fcc1d8",
+        "Text": "當輸入語言對是「中文-英文」且字數為 1000、交期為 24 小時時，輸出必須是「普通」。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "分類結果如下：\n\n1. 中文-英文，5001 字，48 小時：**加急**\n2. 中文-日文，8000 字，72 小時：**普通**\n3. 英文-中文，12000 字，12 小時：**退件**\n4. 中文-英文，5000 字，48 小時：**普通**\n\n**確認：可以照這個版本建立 Skill。**  \n這份 brief 已完整涵蓋：\n- 兩種支援語言對\n- 非支援語言對直接退件\n- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**\n- 其餘支援案件為普通\n\n如果你要，我也可以直接幫你把這份規則整理成更正式的 Skill 版文案。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "bd783409-60b5-4ed2-a4d3-9434359983a1",
+          "OccurredAt": "2026-09-27T13:37:53.05Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"translation-case-classifier\", \"skill_version_id\": \"e55b49f6-c3a1-4eef-9838-711752d0d68a\"}"
+        },
+        {
+          "TraceEventID": "2f7a86f3-6399-4dd9-9514-401b1a3c9cd0",
+          "OccurredAt": "2026-09-27T13:37:53.06Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請判定以下案件分類：\\n1) 語言對：中文-英文，字數：5001，交期：48 小時\\n2) 語言對：中文-日文，字數：8000，交期：72 小時\\n3) 語言對：英文-中文，字數：12000，交期：12 小時\\n4) 語言對：中文-英文，字數：5000，交期：48 小時\\n\\n這份 brief 已把兩種支援語言對、退件條件、加急邊界（5000 以上、48 小時含邊界）與普通情況都覆蓋到。請你確認是否要照這個版本建立 Skill。\", \"skill\": \"translation-case-classifier\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_k5BicBHaPnMpyuWKcsZlz820\", \"result_summary\": \"Launching skill: translation-case-classifier\"}"
+        },
+        {
+          "TraceEventID": "989139cb-1eb8-428c-af42-c26543dc3867",
+          "OccurredAt": "2026-09-27T13:37:57.209Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"分類結果如下：\\n\\n1. 中文-英文，5001 字，48 小時：**加急**\\n2. 中文-日文，8000 字，72 小時：**普通**\\n3. 英文-中文，12000 字，12 小時：**退件**\\n4. 中文-英文，5000 字，48 小時：**普通**\\n\\n**確認：可以照這個版本建立 Skill。**  \\n這份 brief 已完整涵蓋：\\n- 兩種支援語言對\\n- 非支援語言對直接退件\\n- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**\\n- 其餘支援案件為普通\\n\\n如果你要，我也可以直接幫你把這份規則整理成更正式的 Skill 版文案。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "4201e81f-3e9c-4e37-b08f-4ed7ea34f5b6",
+          "OccurredAt": "2026-09-27T13:37:57.322Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"分類結果如下：\\n\\n1. 中文-英文，5001 字，48 小時：**加急**\\n2. 中文-日文，8000 字，72 小時：**普通**\\n3. 英文-中文，12000 字，12 小時：**退件**\\n4. 中文-英文，5000 字，48 小時：**普通**\\n\\n**確認：可以照這個版本建立 Skill。**  \\n這份 brief 已完整涵蓋：\\n- 兩種支援語言對\\n- 非支援語言對直接退件\\n- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**\\n- 其餘支援案件為普通\\n\\n如果你要，我也可以直接幫你把這份規則整理成更正式的 Skill 版文案。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f28ee8ef-006e-4b68-8dff-1b04e92dc6d7",
+          "OccurredAt": "2026-09-27T13:38:02.895Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0207945, \"cost_source\": \"gateway\", \"duration_ms\": 13417, \"input_tokens\": 19164, \"token_source\": \"result\", \"output_tokens\": 1020, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d8386485-a217-4834-9388-870b7160cd8f",
+        "Result": "passed",
+        "Reason": "回覆明確將非支援語言對設定為直接退件，且實例中英文-中文即使字數與交期符合加急門檻仍被判為退件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. 英文-中文，12000 字，12 小時：**退件**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 非支援語言對直接退件"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2fb241ab-f5d4-4069-9124-f461665a5bcd",
+        "Result": "passed",
+        "Reason": "回覆直接將中文-英文、5001 字、48 小時判定為加急。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 中文-英文，5001 字，48 小時：**加急**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6c5ab42d-db59-4a08-aa2c-c562f6774a5c",
+        "Result": "passed",
+        "Reason": "回覆所述規則為支援語言對且字數大於 5000、交期小於等於 48 小時即加急；中文-日文 6000 字、12 小時符合此規則。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bfb98f35-ab58-491d-b51c-09e591b2c88c",
+        "Result": "passed",
+        "Reason": "回覆直接將中文-英文、5000 字、48 小時判定為普通。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 中文-英文，5000 字，48 小時：**普通**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c8cde70f-1a8e-41b0-beca-1ba34d5dbc1a",
+        "Result": "passed",
+        "Reason": "回覆直接將中文-日文、8000 字、72 小時判定為普通。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. 中文-日文，8000 字，72 小時：**普通**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e19c982a-1cc7-44a1-9bd1-6e4ee1fcc1d8",
+        "Result": "passed",
+        "Reason": "回覆規定其餘支援案件為普通；中文-英文 1000 字、24 小時未達字數大於 5000 的加急條件，因此為普通。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 加急條件：字數 **\u003e 5000** 且交期 **\u003c= 48 小時**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 其餘支援案件為普通"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "回覆正確處理四個提供的邊界與非支援語言對案例，並明示的規則亦涵蓋其餘兩項驗收情境。所有驗收條件均已滿足。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3097,
+      "CompletionTokens": 931,
+      "CostUSD": 0.0163784,
+      "CostReported": true
+    }
+  }
+}

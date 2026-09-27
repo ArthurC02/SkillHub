@@ -1,0 +1,314 @@
+{
+  "request": {
+    "RunID": "6b07acd7-1e97-46fe-878a-4a62b8da68fa",
+    "EvaluationID": "da452c90-458c-4e09-80f5-b142eab7ebd2",
+    "Skill": {
+      "Name": "court-hearing-notice-sms",
+      "Summary": "依使用者提供的案件資料撰寫繁體中文開庭通知簡訊；當你需要為一筆或多筆案件整理通知，並確保各則本文不超過三句且含案號與下次開庭日期時間時使用。"
+    },
+    "UserPrompt": "請依下列三筆案件資料各寫一則開庭通知簡訊，並遵守以上規則。\n案件甲｜案號：114年度訴字第321號｜下一次開庭：2026年10月8日上午9時30分｜法庭：第六法庭｜地址：臺北市中正區重慶南路一段○號｜提醒：請攜帶身分證及開庭通知書。\n案件乙｜案號：115年度簡字第48號｜下一次開庭：2026年11月12日下午2時｜法庭：第三法庭｜地址：新北市板橋區○○路○號｜提醒：請提早20分鐘到庭；請在開庭前20分鐘抵達；請攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間請提前聯繫書記官。\n案件丙｜案號：未提供｜下一次開庭日期時間：未提供｜提醒：請攜帶身分證。",
+    "Criteria": [
+      {
+        "ID": "0885a0d6-7650-4df2-959f-195ff8a5007b",
+        "Text": "對試跑輸入中的每筆案件，輸出各自一則通知；每則本文不超過三句，且案號與下一次開庭日期時間均有明確呈現，缺漏者以待補欄位標記。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "3cbe5435-1dbf-41ea-b1e5-dd99ee8011e4",
+        "Text": "對案件甲，保留提供的案號、日期時間、法庭、地址及應攜物品；若沒有合併或省略其他資訊，不額外聲稱有合併或省略。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d53b093e-eb3d-4bd6-946c-deae8b37e3a7",
+        "Text": "對案件乙，將重複的「提早20分鐘到庭」資訊合併表達；如有合併或省略資訊，另列一句本文外說明，指出具體處理的資訊，且不把說明句計入本文句數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "973b96cf-a6f1-42f2-b5b1-e79168ac0138",
+        "Text": "對案件丙，不捏造案號或開庭日期時間，以待補欄位標示兩項缺漏，並在本文外提醒使用者補充。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "未指定日期時間格式，採台灣常用寫法。\n\n**案件甲**  \n通知本文：  \n【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\n\n**案件乙**  \n通知本文：  \n【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。  \n本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。\n\n**案件丙**  \n通知本文：  \n【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。  \n本文外說明：請補充案號及下一次開庭日期時間。",
+    "Artifacts": [
+      {
+        "Path": "final-notices.txt",
+        "SizeBytes": 1015,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "notice-a.txt",
+        "SizeBytes": 221,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "notice-b.txt",
+        "SizeBytes": 329,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      },
+      {
+        "Path": "notice-c.txt",
+        "SizeBytes": 137,
+        "ContentType": "application/octet-stream",
+        "TextExcerpt": ""
+      }
+    ],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "03e62e82-3c93-4892-95f0-4008e99d1e37",
+          "OccurredAt": "2026-09-27T16:22:40.479Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"court-hearing-notice-sms\", \"skill_version_id\": \"6be5d7e4-f59b-4925-ad87-cc5f34c74059\"}"
+        },
+        {
+          "TraceEventID": "a9b8e7b1-4e8a-4dad-8f8a-cf2b5991f435",
+          "OccurredAt": "2026-09-27T16:22:40.502Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"court-hearing-notice-sms\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 24, \"invocation_id\": \"call_vw7fJI2ZEd8oHoWGUb9LKM5N\", \"result_summary\": \"Launching skill: court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "817b663d-4b10-4887-a3e2-4589145c1392",
+          "OccurredAt": "2026-09-27T16:22:42.988Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"subject\": \"整理並驗證三則通知簡訊\", \"activeForm\": \"撰寫並驗證通知簡訊\", \"description\": \"依技能規則撰寫三則繁體中文開庭通知，逐則以檢查腳本驗證，並將本文與必要說明按案件順序輸出至 /out/artifacts。\"}, \"tool_name\": \"TaskCreate\", \"truncated\": false, \"duration_ms\": 6, \"invocation_id\": \"call_eqvGqDNz4nXnHYgPlLvyk5c4\", \"result_summary\": \"Task #1 created successfully: 整理並驗證三則通知簡訊\"}"
+        },
+        {
+          "TraceEventID": "dbec5ce9-dc05-4b71-9f70-f9237709a309",
+          "OccurredAt": "2026-09-27T16:22:49.958Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 14, \"resource_path\": \"court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "c6de5b95-353d-4d77-a973-110989b9161b",
+          "OccurredAt": "2026-09-27T16:22:49.958Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/court-hearing-notice-sms\", \"pattern\": \"scripts/check_output.py\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_qA5H3YI75uEqmGiS2IGiAw8t\", \"result_summary\": \"No files found\"}"
+        },
+        {
+          "TraceEventID": "236dee3a-5e21-4512-bec1-268d136f81d6",
+          "OccurredAt": "2026-09-27T16:22:51.585Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 112, \"resource_path\": \"court-hearing-notice-sms\"}"
+        },
+        {
+          "TraceEventID": "df2ccf48-54cf-4361-bb65-fac9b08a0843",
+          "OccurredAt": "2026-09-27T16:22:51.585Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"path\": \"/work/.claude/skills/court-hearing-notice-sms\", \"pattern\": \"**/*\"}, \"tool_name\": \"Glob\", \"truncated\": false, \"duration_ms\": 7, \"invocation_id\": \"call_yuN6G63jdq9TSD4EQflVsI0z\", \"result_summary\": \".claude/skills/court-hearing-notice-sms/scripts/check_output.py\\n.claude/skills/court-hearing-notice-sms/SKILL.md\"}"
+        },
+        {
+          "TraceEventID": "993805d1-c94d-4d26-9c87-b4810c7250a8",
+          "OccurredAt": "2026-09-27T16:22:53.731Z",
+          "Type": "resource_read",
+          "Excerpt": "{\"outcome\": \"read\", \"truncated\": false, \"bytes_read\": 4163, \"resource_path\": \"court-hearing-notice-sms/scripts/check_output.py\"}"
+        },
+        {
+          "TraceEventID": "a9f4426f-78c4-4901-be77-87f1f303791b",
+          "OccurredAt": "2026-09-27T16:22:53.731Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"file_path\": \"/work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py\"}, \"tool_name\": \"Read\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_vlwXkgnrOJyXRUpGv911ED4e\", \"result_summary\": \"1\\t\\\"\\\"\\\"Count sentences, characters and items in a file and check them against limits.\\\"\\\"\\\"\\n2\\t\\n3\\tfrom __future__ import annotations\\n4\\t\\n5\\timport argparse\\n6\\timport re\\n7\\timport sys\\n8\\t\\n9\\tSENTENCE_SPLIT = re.compile(r\\\"[。！？!?]|\\\\n\\\")\\n10\\tITEM_LINE = re.compile(r\\\"^\\\\s*(?:[-*•]|\\\\d+[.)、．])\\\\s\\\")\\n11\\t\\n12\\t\\n13\\tdef count_sentences(text: str) -\u003e int:\\n14\\t    return sum(1 for part in SENTENCE_SPLIT.split(text) if part.strip())\\n15\\t\\n16\\t\\n17\\tdef count_chars(text: str) -\u003e int:\\n18\\t    return sum(1 for ch in text if not ch.isspace())\\n19\\t\\n20\\t\\n21\\tdef count_items(text: str) -\u003e int:\\n22\\t    return sum(1 for line in text.splitlines() if ITEM_LINE.match(line))\\n23\\t\\n24\\t\\n25\\tdef missing_requirements(text: str, requirements: list[str]) -\u003e list[str]:\\n26\\t    return [req for req in requirements if req not in text]\\n27\\t\\n28\\t\\n29\\tdef check(\\n30\\t    text: str,\\n31\\t    max_sentences: int | None,\\n32\\t    max_chars: int | None,\\n33\\t    max_items: int | None,\\n34\\t    require: list[str],\\n35\\t) -\u003e list[str]:\\n36\\t    failures: list[str] = []\\n37\\t    sentences = count_sentences(text)\\n38\\t    if max_sentences is not None and sentences \u003e max_sentences:\\n39\\t        failures.append(f\\\"sentences {sentences} \u003e {max_sentences}\\\")\\n40\\t    chars = count_chars(text)\\n41\\t    if max_chars is not None and chars \u003e max_chars:\\n42\\t        failures.append(f\\\"chars {chars} \u003e {max_chars}\\\")\\n43\\t    items = count_items(text)\\n44\\t    if max_items is not None and items \u003e max_items:\\n45\\t        failures.append(f\\\"items {items} \u003e {max_items}\\\")\\n46\\t    missing = missing_requirements(text, require)\\n47\\t    if missing:\\n48\\t        failures.append(\\\"missing: \\\" + \\\", \\\".join(missing))\\n49\\t    return failures\\n50\\t\\n51\\t\\n52\\tdef build_parser() -\u003e argparse.ArgumentParser:\\n53\\t    parser = argparse.ArgumentParser(\\n54\\t        description=(\\\"Check a file's draft answer against countable limits and required facts.\\\")\\n55\\t    )\\n56\\t    parser.add_argument(\\n57\\t        \\\"--max-sentences\\\",\\n58\\t        type=int,\\n59\\t        help=(\\n60\\t            \\\"reject if the file has more sentences than this; a sentence is a run of \\\"\\n61\\t            \\\"text separated by 。！？!? or a newline, trimmed and non-empty\\\"\\n62\\t        ),\\n63\\t    )\\n64\\t    parser.add_argument(\\n65\\t        \\\"--max-chars\\\",\\n66\\t        type=int,\\n67\\t        help=\\\"reject if the file has more non-whitespace characters than this\\\",\\n68\\t    )\\n69\\t    parser.add_argument(\\n70\\t        \\\"--max-items\\\",\\n71\\t        type=int,\\n72\\t        help=(\\n73\\t            \\\"reject if the file has more list items than this; an item is a line \\\"\\n74\\t            \\\"starting with -, * or •, or a numbered marker such as '1.' '2)' '3、'\\\"\\n75\\t        ),\\n76\\t    )\\n77\\t    parser.add_argument(\\n78\\t        \\\"--require\\\",\\n79\\t        action=\\\"append\\\",\\n80\\t        default=[],\\n81\\t        metavar=\\\"TEXT\\\",\\n82\\t        help=\\\"reject if this exact text is missing from the file; repeatable\\\",\\n83\\t    )\\n84\\t    parser.add_argument(\\\"file\\\", metavar=\\\"FILE\\\", help=\\\"path to check, or - for stdin\\\")\\n85\\t    return parser\\n86\\t\\n87\\t\\n88\\tdef _read(path: str) -\u003e str:\\n89\\t    if path == \\\"-\\\":\\n90\\t        return sys.stdin.read()\\n91\\t    with open(path, encoding=\\\"utf-8\\\") as handle:\\n92\\t        return handle.read()\\n93\\t\\n94\\t\\n95\\tdef main(argv: list[str] | None = None) -\u003e int:\\n96\\t    args = build_parser().parse_args(argv)\\n97\\t    no_checks = (\\n98\\t        args.max_sentences is None\\n99\\t        and args.max_chars is None\\n100\\t        and args.max_items is None\\n101\\t        and not args.require\\n102\\t    )\\n103\\t    if no_checks:\\n104\\t        print(\\n105\\t            \\\"no checks given: pass at least one of --max-sentences, --max-chars, \\\"\\n106\\t            \\\"--max-items, --require\\\"\\n107\\t        )\\n108\\t        return 2\\n109\\t    try:\\n110\\t        text = _read(args.file)\\n111\\t    except OSError as exc:\\n112\\t        print(f\\\"cannot read {args.file}: {exc}\\\")\\n113\\t        return 2\\n114\\t    except UnicodeDecodeError as exc:\\n115\\t        print(f\\\"cannot decode {args.file} as UTF-8: {exc}\\\")\\n116\\t        return 2\\n117\\t    failures = check(text, args.max_sentences, args.max_chars, args.max_items, args.require)\\n118\\t    if not failures:\\n119\\t        print(\\\"OK\\\")\\n120\\t        return 0\\n121\\t    for failure in failures:\\n122\\t        print(failure)\\n123\\t    return 1\\n124\\t\\n125\\t\\n126\\tif __name__ == \\\"__main__\\\":\\n127\\t    sys.exit(main())\\n128\\t\"}"
+        },
+        {
+          "TraceEventID": "f6cf7b1a-7334-4177-b360-8ce27131868f",
+          "OccurredAt": "2026-09-27T16:23:01.687Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"status\": \"in_progress\", \"taskId\": \"1\"}, \"tool_name\": \"TaskUpdate\", \"truncated\": false, \"duration_ms\": 7, \"invocation_id\": \"call_KGxcGAqizht0aBllwgiDeXMm\", \"result_summary\": \"Updated task #1 status\"}"
+        },
+        {
+          "TraceEventID": "46b971ff-545e-4481-b74a-ed5cc800e6dd",
+          "OccurredAt": "2026-09-27T16:23:07.196Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"(Bash completed with no output)\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "416f35be-81f5-45ed-ab71-670bdff3d274",
+          "OccurredAt": "2026-09-27T16:23:07.196Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"mkdir -p /out/artifacts\", \"description\": \"Create output folder\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 44, \"invocation_id\": \"call_3PzufyTgbx9x9THzgcwBPC9b\", \"result_summary\": \"(Bash completed with no output)\"}"
+        },
+        {
+          "TraceEventID": "b3de22fe-1a83-4fed-bdae-400a9ae0e8fc",
+          "OccurredAt": "2026-09-27T16:23:12.519Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\\n\", \"file_path\": \"/out/artifacts/notice-a.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 7, \"invocation_id\": \"call_mb4sayjCbarbjdzYa0c1N28b\", \"result_summary\": \"File created successfully at: /out/artifacts/notice-a.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "202cb845-400e-4378-96b2-4a7d8452d42e",
+          "OccurredAt": "2026-09-27T16:23:15.886Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。\\n\", \"file_path\": \"/out/artifacts/notice-b.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 5, \"invocation_id\": \"call_u4zep19lmyCNzL2NjrlCU5eU\", \"result_summary\": \"File created successfully at: /out/artifacts/notice-b.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "37a1bdc6-d2c2-42bd-b617-e00c8be2af93",
+          "OccurredAt": "2026-09-27T16:23:19.305Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。\\n\", \"file_path\": \"/out/artifacts/notice-c.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 5, \"invocation_id\": \"call_ZofFoX3rRhukMjbPw9YIqMhE\", \"result_summary\": \"File created successfully at: /out/artifacts/notice-c.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "9afabf9a-55af-40cf-909a-47c17d6a021e",
+          "OccurredAt": "2026-09-27T16:23:21.956Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "4e72b83b-11fd-4348-bb7d-049a6c7837c4",
+          "OccurredAt": "2026-09-27T16:23:21.956Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py /out/artifacts/notice-a.txt --max-sentences 3 --require '114年度訴字第321號' --require '2026年10月8日上午9時30分'\", \"description\": \"Validate notice A\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 61, \"invocation_id\": \"call_wQYVEqlSUjsNOZaA2Rs0GwgA\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "56e22ab5-24f5-4e3a-8dc5-48acf1e1640e",
+          "OccurredAt": "2026-09-27T16:23:21.995Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "664431b5-d0cb-4c44-9fca-c86c94871887",
+          "OccurredAt": "2026-09-27T16:23:21.995Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py /out/artifacts/notice-b.txt --max-sentences 3 --require '115年度簡字第48號' --require '2026年11月12日下午2時'\", \"description\": \"Validate notice B\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 85, \"invocation_id\": \"call_Q87X2M1hRyJkDjPV3bG4wRMd\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "425720e2-903d-495b-9ed2-1eb330ca9435",
+          "OccurredAt": "2026-09-27T16:23:22.025Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"OK\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "1053ec97-6a20-48a0-aa25-91cf5298ac20",
+          "OccurredAt": "2026-09-27T16:23:22.026Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"python /work/.claude/skills/court-hearing-notice-sms/scripts/check_output.py /out/artifacts/notice-c.txt --max-sentences 3 --require '[待補：案號]' --require '[待補：下一次開庭日期時間]'\", \"description\": \"Validate notice C\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 113, \"invocation_id\": \"call_3fzS3Q8sfE1aoQebQX0JKggr\", \"result_summary\": \"OK\"}"
+        },
+        {
+          "TraceEventID": "998469f8-696d-41f1-9725-33a933de2c5b",
+          "OccurredAt": "2026-09-27T16:23:26.453Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"content\": \"未指定日期時間格式，採台灣常用寫法。\\n\\n案件甲\\n通知本文：\\n【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\\n\\n案件乙\\n通知本文：\\n【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。\\n本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。\\n\\n案件丙\\n通知本文：\\n【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。\\n本文外說明：請補充案號及下一次開庭日期時間。\\n\", \"file_path\": \"/out/artifacts/final-notices.txt\"}, \"tool_name\": \"Write\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_IL0kTJVIwA0Ys2fgbYAaPMZU\", \"result_summary\": \"File created successfully at: /out/artifacts/final-notices.txt (file state is current in your context — no need to Read it back)\"}"
+        },
+        {
+          "TraceEventID": "0c90185b-117b-4812-ad1b-878c93fabb78",
+          "OccurredAt": "2026-09-27T16:23:27.987Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"status\": \"completed\", \"taskId\": \"1\"}, \"tool_name\": \"TaskUpdate\", \"truncated\": false, \"duration_ms\": 4, \"invocation_id\": \"call_9TwqIWoMrIvEHoXnSt8Tf9kq\", \"result_summary\": \"Updated task #1 status\"}"
+        },
+        {
+          "TraceEventID": "18fa6115-a96c-4ba3-9d37-848d7e15bdd2",
+          "OccurredAt": "2026-09-27T16:23:30.42Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"未指定日期時間格式，採台灣常用寫法。\\n\\n**案件甲**  \\n通知本文：  \\n【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\\n\\n**案件乙**  \\n通知本文：  \\n【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。  \\n本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。\\n\\n**案件丙**  \\n通知本文：  \\n【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。  \\n本文外說明：請補充案號及下一次開庭日期時間。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2c92c0c8-76d0-4fb6-8624-bd72093f64d7",
+          "OccurredAt": "2026-09-27T16:23:30.707Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"未指定日期時間格式，採台灣常用寫法。\\n\\n**案件甲**  \\n通知本文：  \\n【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。\\n\\n**案件乙**  \\n通知本文：  \\n【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。  \\n本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。\\n\\n**案件丙**  \\n通知本文：  \\n【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。  \\n本文外說明：請補充案號及下一次開庭日期時間。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f07d9c4b-534f-4c15-b178-5020403b7b50",
+          "OccurredAt": "2026-09-27T16:23:36.27Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.007846384999999999, \"cost_source\": \"gateway\", \"duration_ms\": 57722, \"input_tokens\": 1727, \"token_source\": \"result\", \"output_tokens\": 4609, \"cache_read_input_tokens\": 258876, \"cache_write_input_tokens\": 21653}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "0885a0d6-7650-4df2-959f-195ff8a5007b",
+        "Result": "passed",
+        "Reason": "甲、乙、丙各有一則通知本文，每則均為兩句；甲、乙明列案號及下次開庭時間，丙以待補欄位標示兩項缺漏。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【開庭通知】案號：115年度簡字第48號；下次開庭時間：2026年11月12日下午2時，地點：第三法庭（新北市板橋區○○路○號）。請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "3cbe5435-1dbf-41ea-b1e5-dd99ee8011e4",
+        "Result": "passed",
+        "Reason": "案件甲保留案號、日期時間、法庭、地址及應攜物品，且未額外聲稱合併或省略資訊。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【開庭通知】案號：114年度訴字第321號；下次開庭時間：2026年10月8日上午9時30分，地點：第六法庭（臺北市中正區重慶南路一段○號）。請攜帶身分證及開庭通知書。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d53b093e-eb3d-4bd6-946c-deae8b37e3a7",
+        "Result": "passed",
+        "Reason": "案件乙的本文只表達一次提前20分鐘抵達，並在本文外另列說明，具體指出合併的兩項原始提醒。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "請於開庭前20分鐘抵達，並攜帶身分證、開庭通知書、相關契約正本及所有往來信件；如需調整時間，請提前聯繫書記官。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本文外說明：已將「請提早20分鐘到庭」與「請在開庭前20分鐘抵達」合併為相同意思的提醒。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "973b96cf-a6f1-42f2-b5b1-e79168ac0138",
+        "Result": "passed",
+        "Reason": "案件丙未捏造案號或開庭日期時間；本文以待補欄位標示兩項缺漏，本文外也提醒補充。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【開庭通知】案號：[待補：案號]；下次開庭日期時間：[待補：下一次開庭日期時間]。請攜帶身分證。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本文外說明：請補充案號及下一次開庭日期時間。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三筆案件均有獨立且不超過三句的通知本文。案件甲資訊完整；案件乙合併重複提醒並另作說明；案件丙標示缺漏並請使用者補充。",
+    "Model": "skillhub-judge",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 8109,
+      "CompletionTokens": 1045,
+      "CostUSD": 0.028186400000000004,
+      "CostReported": true
+    }
+  }
+}

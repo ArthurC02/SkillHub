@@ -1,0 +1,175 @@
+{
+  "request": {
+    "RunID": "7ba3f810-5a2a-499f-b0c7-21b3cc66c681",
+    "EvaluationID": "d2f9a484-b27c-441d-8ccc-27883094eb3a",
+    "Skill": {
+      "Name": "community-garden-maintenance-fee",
+      "Summary": "Calculate community garden maintenance fees from lawn area and tree count, including area rounding, tiered base fees, tree pruning surcharges, and a service cap. Use it when you need a ready-to-run fee calculator for this pricing rule set."
+    },
+    "UserPrompt": "請計算這些社區庭園維護費用：\n1. 草坪面積 36 平方公尺，樹木 3 棵\n2. 草坪面積 100 平方公尺，樹木 4 棵\n3. 草坪面積 101 平方公尺，樹木 3 棵\n4. 草坪面積 305 平方公尺，樹木 3 棵\n5. 草坪面積 305 平方公尺，樹木 10 棵\n6. 草坪面積 299 平方公尺，樹木 4 棵",
+    "Criteria": [
+      {
+        "ID": "12806026-b3a7-4703-a0b8-e947fa735867",
+        "Text": "當輸入草坪面積 36、樹木 3 棵時，Skill 先將面積進位為 40，並輸出總費用 2000 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "83426e68-03d4-48aa-9beb-a093efc6c096",
+        "Text": "當輸入草坪面積 100、樹木 4 棵時，Skill 先將面積維持為 100，基礎費為 2000 元，樹木第 4 棵加收 300 元，總費用為 2300 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "afa589fe-036f-421d-92d5-2e43c0548f88",
+        "Text": "當輸入草坪面積 101、樹木 3 棵時，Skill 先將面積進位為 110，依超過 100 但不超過 300 的級距收基本費 3500 元，總費用為 3500 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cebd329a-9621-4b20-b482-0ca1694d6038",
+        "Text": "當輸入草坪面積 305、樹木 3 棵時，Skill 先將面積進位為 310，基本費 3500 元，加上超過 300 的 10 平方公尺部分 1 單位 × 100 元，未加樹木費時總額應為 3600 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "913f01d5-874a-4c43-b601-0cb8b24adac9",
+        "Text": "當輸入草坪面積 305、樹木 10 棵時，草坪費與樹木費合計後會超過 6000 元，因此總費用必須封頂為 6000 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fc7b8256-c255-4668-928b-86af491c737f",
+        "Text": "當輸入草坪面積 299、樹木 4 棵時，面積先進位為 300，適用 3500 元基本費，再加 300 元樹木費，總費用為 3800 元。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下依規則逐筆計算：\n\n1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。  \n2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。  \n3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。  \n4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。  \n5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。  \n6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "32ebf8d9-5c78-4951-846f-d837c2f2e945",
+          "OccurredAt": "2026-09-27T14:27:54.849Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"community-garden-maintenance-fee\", \"skill_version_id\": \"06378352-c54a-4578-8915-40e4b28dee82\"}"
+        },
+        {
+          "TraceEventID": "6fe9163f-ec8c-4d66-b879-55b7556f9602",
+          "OccurredAt": "2026-09-27T14:27:54.864Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"community-garden-maintenance-fee\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_k9TdlksOB0DUHdKWNxme4pek\", \"result_summary\": \"Launching skill: community-garden-maintenance-fee\"}"
+        },
+        {
+          "TraceEventID": "31a48029-3153-4b86-935d-6bc490c2140c",
+          "OccurredAt": "2026-09-27T14:28:22.715Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下依規則逐筆計算：\\n\\n1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。  \\n2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。  \\n3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。  \\n4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。  \\n5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。  \\n6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b136bbb9-a185-4303-b101-5f167fdf683f",
+          "OccurredAt": "2026-09-27T14:28:23.138Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下依規則逐筆計算：\\n\\n1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。  \\n2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。  \\n3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。  \\n4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。  \\n5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。  \\n6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "2ffffcb0-5451-4b92-9f22-17d87cae8503",
+          "OccurredAt": "2026-09-27T14:28:27.174Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.03618, \"cost_source\": \"gateway\", \"duration_ms\": 36056, \"input_tokens\": 18988, \"token_source\": \"result\", \"output_tokens\": 4466, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "12806026-b3a7-4703-a0b8-e947fa735867",
+        "Result": "passed",
+        "Reason": "輸出將 36 平方公尺進位為 40，且封頂後總費用為 2000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 進位後面積：40 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：2000 元；封頂後總費用：2000 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "83426e68-03d4-48aa-9beb-a093efc6c096",
+        "Result": "passed",
+        "Reason": "輸出維持面積 100，列出基本費 2000 元、第 4 棵樹加收 300 元，總費用為 2300 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. 進位後面積：100 平方公尺；草坪基本費：2000 元（100 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：2300 元；封頂後總費用：2300 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "afa589fe-036f-421d-92d5-2e43c0548f88",
+        "Result": "passed",
+        "Reason": "輸出將 101 平方公尺進位為 110，採用 3500 元基本費，總費用為 3500 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. 進位後面積：110 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：0 元；未封頂總額：3500 元；封頂後總費用：3500 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cebd329a-9621-4b20-b482-0ca1694d6038",
+        "Result": "passed",
+        "Reason": "輸出將 305 平方公尺進位為 310，並列出 3500 元基本費及超過 300 的 10 平方公尺加收 100 元，未含樹木費總額為 3600 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：0 元；未封頂總額：3600 元；封頂後總費用：3600 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "913f01d5-874a-4c43-b601-0cb8b24adac9",
+        "Result": "failed",
+        "Reason": "輸出對 305 平方公尺、10 棵樹計算的未封頂總額為 5700 元，並輸出封頂後仍為 5700 元，未符合此情況必須封頂為 6000 元的要求。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "5. 進位後面積：310 平方公尺；草坪基本費：3500 元（超過 300 的部分：10 平方公尺 × 1 單位，加收 100 元）；樹木加收費：2100 元（第 4 棵起 7 棵 × 300 元）；未封頂總額：5700 元；封頂後總費用：5700 元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fc7b8256-c255-4668-928b-86af491c737f",
+        "Result": "passed",
+        "Reason": "輸出將 299 平方公尺進位為 300，列出 3500 元基本費與 300 元樹木費，總費用為 3800 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "6. 進位後面積：300 平方公尺；草坪基本費：3500 元（超過 100、300 平方公尺以下級距）；樹木加收費：300 元（第 4 棵起 1 棵 × 300 元）；未封頂總額：3800 元；封頂後總費用：3800 元。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "六項驗收條件中五項的進位、級距與費用輸出符合要求。第 5 項未輸出規定的 6000 元封頂結果，而是輸出 5700 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3888,
+      "CompletionTokens": 1200,
+      "CostUSD": 0.0215839,
+      "CostReported": true
+    }
+  }
+}

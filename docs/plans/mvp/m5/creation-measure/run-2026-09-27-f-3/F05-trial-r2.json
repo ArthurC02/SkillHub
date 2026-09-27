@@ -1,0 +1,178 @@
+{
+  "round": 2,
+  "sample_input": "請幫我寫開庭通知簡訊：\n\n案例一（完整資訊）：案號 113 年度訴字第 248 號，被告王小明，原告台北市立醫院，下一次開庭日期時間是 2026/10/15 上午 9:30，地點在台北地方法院第 5 法庭，請提醒準時出席並攜帶身分證件，另附上聯絡窗口是書記官陳小姐、電話 02-1234-5678、也請提到如需請假要提前通知。\n\n案例二（較少資訊）：案號 114 年度訴字第 7 號，下一次開庭日期時間是 2026/11/03 下午 2:00，其餘資訊未提供。",
+  "acceptance_criteria": [
+    {
+      "text": "在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。"
+    },
+    {
+      "text": "通知正文中明確出現案號。"
+    },
+    {
+      "text": "通知正文中明確出現下一次開庭日期時間。"
+    },
+    {
+      "text": "當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。"
+    },
+    {
+      "text": "該額外說明不計入通知正文的 3 句話上限。"
+    },
+    {
+      "text": "當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。"
+    }
+  ],
+  "final_output": "案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。\n案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\n已省略案例二的地點、當事人、聯絡窗口與提醒事項。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3b530683-c989-4132-8881-6e1dfe7ac540",
+    "run_id": "a8773d11-b8da-41ae-9a54-d187c845031a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知正文均含案號與下一次開庭日期時間，且案例二未補造未提供的案件細節。不過，案例一已將多項資訊合併，額外說明未交代該合併內容，反而將案例二未提供的欄位稱為省略。",
+    "criterion_results": [
+      {
+        "criterion_id": "55e39216-3291-4d9b-a225-2dc214e763f7",
+        "text": "在提供完整案件資訊時，輸出包含一段不超過 3 句話的通知正文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例一的通知正文為一個以句號結束的句子，未超過 3 句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "691494fc-93a4-4aea-bd41-8d8da2a4b7fd",
+        "text": "通知正文中明確出現案號。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩則通知正文均明確列出案號。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1c49cde5-3766-456f-9f3d-51fd56c417af",
+        "text": "通知正文中明確出現下一次開庭日期時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩則通知正文均明確列出下一次開庭日期及時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "762ea663-252e-48e4-8591-58727b715357",
+        "text": "當輸入包含超過 3 句話無法容納的其他資訊時，輸出會另外附上一句說明，指出哪些資訊被省略或合併。",
+        "result": "failed",
+        "source": "model",
+        "reason": "案例一將地點、提醒、聯絡窗口與請假事項合併於同一句，但額外說明僅稱案例二省略了原本就未提供的資訊，沒有指出案例一哪些資訊被合併或省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例一：案號113年度訴字第248號，下一次開庭日期時間為2026/10/15 上午9:30，地點在台北地方法院第5法庭，請準時出席並攜帶身分證件，聯絡窗口為書記官陳小姐，電話02-1234-5678，如需請假請提前通知。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已省略案例二的地點、當事人、聯絡窗口與提醒事項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8511a95-aa62-4a07-8114-eac2a0e11277",
+        "text": "該額外說明不計入通知正文的 3 句話上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "額外說明以獨立一行、獨立一句呈現，與兩則通知正文分開；通知正文各自均未超過 3 句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。\n已省略案例二的地點、當事人、聯絡窗口與提醒事項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0c471b83-1769-4305-82f2-5ce45672dd02",
+        "text": "當輸入資訊較少時，仍能輸出符合限制的簡訊，而不會自行補造未提供的案件細節。",
+        "result": "passed",
+        "source": "model",
+        "reason": "案例二僅使用提供的案號與開庭日期時間，並標示其餘資訊未提供，未補造地點、當事人或聯絡資料等細節。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "案例二：案號114年度訴字第7號，下一次開庭日期時間為2026/11/03 下午2:00，其餘資訊未提供。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 6511 input and 3132 output tokens on gpt-5.4-mini; reported cost $0.0292 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 45,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

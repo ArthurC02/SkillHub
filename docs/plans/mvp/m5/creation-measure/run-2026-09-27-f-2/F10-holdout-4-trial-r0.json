@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "草坪面積 500 平方公尺，樹木 6 棵，請算這次服務總費用。",
+  "acceptance_criteria": [
+    {
+      "text": "總費用為 6000 元"
+    }
+  ],
+  "final_output": "這次服務計算如下：\n\n- 進位後面積：500 平方公尺\n- 草坪基本費：5500 元  \n  - 屬於「超過 300 平方公尺」級距，基本 3500 元  \n  - 超過 300 的部分為 200 平方公尺 = 20 個 10 平方公尺單位  \n  - 這部分加收 2000 元\n- 樹木加收費：900 元  \n  - 第 4 棵起共 3 棵 × 300 元\n- 未封頂總額：6400 元\n- 封頂後總費用：6000 元（已套用上限）\n\n最後總費用：6000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ae7c2e3b-b567-43db-a6ed-4858eb95fdcf",
+    "run_id": "924a7657-7ad7-4bf3-8d73-b795c6f9f95b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆的最終總費用為 6000 元，符合驗收條件。",
+    "criterion_results": [
+      {
+        "criterion_id": "da7b6553-8092-44ed-a130-54931c6fb287",
+        "text": "總費用為 6000 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確給出封頂後與最後總費用皆為 6000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "最後總費用：6000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3510 input and 746 output tokens on gpt-5.4-mini; reported cost $0.0089 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

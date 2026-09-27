@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "08d60582-82cf-440b-ba7e-b6ec15cfafb9",
+    "EvaluationID": "94128661-f027-4ec3-ad91-70dec9fe8778",
+    "Skill": {
+      "Name": "homestay-price-calculator",
+      "Summary": "計算民宿連續入住期間的總房價與每晚明細；當你收到入住/退房日期或逐晚日期資訊時就用它。"
+    },
+    "UserPrompt": "請幫我算住宿總金額。\n\n案例 A：混合平假日\n入住 2026-09-18，退房 2026-09-22。\n日期明細如下：\n- 2026-09-18（星期五）\n- 2026-09-19（星期六）\n- 2026-09-20（星期日）\n- 2026-09-21（星期一）\n這筆資料應計算 4 晚：星期五 2000 + 星期六 2500 + 星期日 2500 + 星期一 2000 = 總金額 8000 元。\n\n案例 B：純平日\n入住 2026-09-14，退房 2026-09-17。\n日期明細如下：\n- 2026-09-14（星期一）\n- 2026-09-15（星期二）\n- 2026-09-16（星期三）\n這筆資料應計算 3 晚：星期一 2000 + 星期二 2000 + 星期三 2000 = 總金額 6000 元。\n\n案例 C：純假日\n入住 2026-09-19，退房 2026-09-21。\n日期明細如下：\n- 2026-09-19（星期六）\n- 2026-09-20（星期日）\n這筆資料應計算 2 晚：星期六 2500 + 星期日 2500 = 總金額 5000 元。\n\n依規則：平日每晚 2000 元，假日（星期六、星期日）每晚 2500 元，退房日不算一晚。",
+    "Criteria": [
+      {
+        "ID": "a3fa9028-004d-4422-87cb-fed6e2427ba5",
+        "Text": "給定一段只包含平日的連續入住期間，輸出總金額等於 2000 乘以住宿晚數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f4382cfd-a8ba-4944-b9f9-96bc8c884fec",
+        "Text": "給定一段只包含假日的連續入住期間，輸出總金額等於 2500 乘以住宿晚數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d63715ee-1ca9-44fe-abd2-73a4c0b2f16d",
+        "Text": "給定一段同時包含平日與假日的連續入住期間，輸出會逐晚區分平日與假日並正確加總。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0b494cfb-c685-4b03-82c0-d05c6a63cad1",
+        "Text": "輸入中明確標示退房日時，系統不把退房當天算進住宿晚數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ac722a90-3431-4a6b-9eff-33921d1226e6",
+        "Text": "輸出除了總金額外，還要包含每一晚的日期、平假日判定與當晚金額。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下依規則計算：\n\n## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元\n\n## 案例 B\n- 住宿晚數：3 晚\n- 2026-09-14｜星期一｜平日｜2000 元\n- 2026-09-15｜星期二｜平日｜2000 元\n- 2026-09-16｜星期三｜平日｜2000 元\n- 總金額：6000 元\n\n## 案例 C\n- 住宿晚數：2 晚\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 總金額：5000 元\n\n如果你要，我也可以幫你整理成可直接貼到 Excel 的表格格式。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a2a27e88-c75e-4716-b401-69a90a8cca07",
+          "OccurredAt": "2026-09-27T14:12:41.284Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"homestay-price-calculator\", \"skill_version_id\": \"59f7d5f3-622e-4f07-b402-acb527a78e03\"}"
+        },
+        {
+          "TraceEventID": "81decd9c-d8ee-48f0-aa8d-4310eadbf730",
+          "OccurredAt": "2026-09-27T14:12:41.302Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"請根據下列規則計算住宿總金額並列出每晚明細：平日每晚 2000 元，假日（星期六、星期日）每晚 2500 元，退房日不算一晚。\\n\\n案例 A：入住 2026-09-18，退房 2026-09-22。請計算 2026-09-18、09-19、09-20、09-21 四晚總額。\\n案例 B：入住 2026-09-14，退房 2026-09-17。請計算 2026-09-14、09-15、09-16 三晚總額。\\n案例 C：入住 2026-09-19，退房 2026-09-21。請計算 2026-09-19、09-20 兩晚總額。\", \"skill\": \"homestay-price-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 19, \"invocation_id\": \"call_9jY89XBKVzmMOJz2oXYY8Foj\", \"result_summary\": \"Launching skill: homestay-price-calculator\"}"
+        },
+        {
+          "TraceEventID": "9f2d835b-74e9-4253-9d5a-61583c9f6c27",
+          "OccurredAt": "2026-09-27T14:12:47.755Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下依規則計算：\\n\\n## 案例 A\\n- 住宿晚數：4 晚\\n- 2026-09-18｜星期五｜平日｜2000 元\\n- 2026-09-19｜星期六｜假日｜2500 元\\n- 2026-09-20｜星期日｜假日｜2500 元\\n- 2026-09-21｜星期一｜平日｜2000 元\\n- 總金額：8000 元\\n\\n## 案例 B\\n- 住宿晚數：3 晚\\n- 2026-09-14｜星期一｜平日｜2000 元\\n- 2026-09-15｜星期二｜平日｜2000 元\\n- 2026-09-16｜星期三｜平日｜2000 元\\n- 總金額：6000 元\\n\\n## 案例 C\\n- 住宿晚數：2 晚\\n- 2026-09-19｜星期六｜假日｜2500 元\\n- 2026-09-20｜星期日｜假日｜2500 元\\n- 總金額：5000 元\\n\\n如果你要，我也可以幫你整理成可直接貼到 Excel 的表格格式。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d252b677-dbea-4dcd-912b-9155f9f5463e",
+          "OccurredAt": "2026-09-27T14:12:47.911Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下依規則計算：\\n\\n## 案例 A\\n- 住宿晚數：4 晚\\n- 2026-09-18｜星期五｜平日｜2000 元\\n- 2026-09-19｜星期六｜假日｜2500 元\\n- 2026-09-20｜星期日｜假日｜2500 元\\n- 2026-09-21｜星期一｜平日｜2000 元\\n- 總金額：8000 元\\n\\n## 案例 B\\n- 住宿晚數：3 晚\\n- 2026-09-14｜星期一｜平日｜2000 元\\n- 2026-09-15｜星期二｜平日｜2000 元\\n- 2026-09-16｜星期三｜平日｜2000 元\\n- 總金額：6000 元\\n\\n## 案例 C\\n- 住宿晚數：2 晚\\n- 2026-09-19｜星期六｜假日｜2500 元\\n- 2026-09-20｜星期日｜假日｜2500 元\\n- 總金額：5000 元\\n\\n如果你要，我也可以幫你整理成可直接貼到 Excel 的表格格式。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b88d202e-dd96-4c8c-83c6-403830e11d81",
+          "OccurredAt": "2026-09-27T14:12:51.973Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0203085, \"cost_source\": \"gateway\", \"duration_ms\": 15574, \"input_tokens\": 19620, \"token_source\": \"result\", \"output_tokens\": 800, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "a3fa9028-004d-4422-87cb-fed6e2427ba5",
+        "Result": "passed",
+        "Reason": "案例 B 為連續 3 晚平日，輸出總額為 6000 元，等於 2000 × 3。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 案例 B\n- 住宿晚數：3 晚\n- 2026-09-14｜星期一｜平日｜2000 元\n- 2026-09-15｜星期二｜平日｜2000 元\n- 2026-09-16｜星期三｜平日｜2000 元\n- 總金額：6000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f4382cfd-a8ba-4944-b9f9-96bc8c884fec",
+        "Result": "passed",
+        "Reason": "案例 C 為連續 2 晚假日，輸出總額為 5000 元，等於 2500 × 2。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 案例 C\n- 住宿晚數：2 晚\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 總金額：5000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d63715ee-1ca9-44fe-abd2-73a4c0b2f16d",
+        "Result": "passed",
+        "Reason": "案例 A 逐晚區分平日與假日，並正確加總為 8000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0b494cfb-c685-4b03-82c0-d05c6a63cad1",
+        "Result": "passed",
+        "Reason": "三個案例都列出入住日至退房日前一天的晚數；例如案例 A 僅列至 2026-09-21 且為 4 晚，未將 2026-09-22 退房日列入。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 案例 A\n- 住宿晚數：4 晚\n- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ac722a90-3431-4a6b-9eff-33921d1226e6",
+        "Result": "passed",
+        "Reason": "輸出每個案例均包含總金額，且每晚都有日期、星期資訊、平日或假日判定及當晚金額。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 2026-09-18｜星期五｜平日｜2000 元\n- 2026-09-19｜星期六｜假日｜2500 元\n- 2026-09-20｜星期日｜假日｜2500 元\n- 2026-09-21｜星期一｜平日｜2000 元\n- 總金額：8000 元"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "三個測試案例的住宿晚數、平假日分類、逐晚價格與總金額均正確。輸出亦未將退房日計入，並提供每晚完整明細。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3467,
+      "CompletionTokens": 977,
+      "CostUSD": 0.0178554,
+      "CostReported": true
+    }
+  }
+}

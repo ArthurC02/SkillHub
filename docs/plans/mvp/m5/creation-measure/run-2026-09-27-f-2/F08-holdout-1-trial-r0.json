@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這是本次看診紀錄：\n看診日期：2026年02月30日\n狂犬病疫苗 1劑 單價800元，後面又寫狂犬病疫苗其實是900元一劑\n驅蟲藥 2份，單價250元\n洗牙服務 數量-1，單價1500元\n掛號費 1次150元\n請幫我整理並算出總金額。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出指出2026年02月30日這個日期不存在，請人確認正確日期，而不是自己假設一個日期"
+    },
+    {
+      "text": "輸出指出狂犬病疫苗有兩個不同單價（800元與900元），需要人工確認，而不是自己選一個或相加"
+    },
+    {
+      "text": "輸出指出洗牙服務數量為 -1 這件事不合理，需要人工確認，而不是直接當成負數金額計入"
+    },
+    {
+      "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額"
+    }
+  ],
+  "final_output": "以下依你提供的原始內容整理，並以**後面更正的「狂犬病疫苗 900元/劑」**計算：\n\n### 看診收費清單\n\n| 日期 | 項目 | 數量 | 單價 | 金額 |\n|---|---|---:|---:|---:|\n| 2026年02月30日 | 狂犬病疫苗 | 1劑 | 900元 | 900元 |\n| 2026年02月30日 | 驅蟲藥 | 2份 | 250元 | 500元 |\n| 2026年02月30日 | 洗牙服務 | -1 | 1500元 | -1500元 |\n| 2026年02月30日 | 掛號費 | 1次 | 150元 | 150元 |\n\n### 總金額\n**900 + 500 - 1500 + 150 = 50元**\n\n**合計：50元**\n\n補充說明：  \n- 你提供的「狂犬病疫苗」先寫 800 元，後面又註明其實是 **900 元/劑**，我已採較後面的更正內容計算。  \n- 「洗牙服務 數量 -1」我依原文照算為 **-1500 元**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f7c38f87-0f1e-48f8-bb3e-d67d5f717934",
+    "run_id": "57f56e08-ab82-44fc-8211-65670f4d44af",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "此回覆未標示不存在的日期，也未要求確認疫苗單價衝突及洗牙負數數量；反而自行選定單價、將負數計入，並提供確定總額。",
+    "criterion_results": [
+      {
+        "criterion_id": "4ac1a2b0-2045-41e3-9227-110d29f65c1c",
+        "text": "輸出指出2026年02月30日這個日期不存在，請人確認正確日期，而不是自己假設一個日期",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出直接使用該日期，未指出 2026 年 2 月 30 日不存在或請求確認正確日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026年02月30日 | 狂犬病疫苗 | 1劑 | 900元 | 900元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ef8029b-503c-4598-a454-6ce6b84e4ab5",
+        "text": "輸出指出狂犬病疫苗有兩個不同單價（800元與900元），需要人工確認，而不是自己選一個或相加",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出自行採用 900 元單價計算，而非要求人工確認兩個不同單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "你提供的「狂犬病疫苗」先寫 800 元，後面又註明其實是 **900 元/劑**，我已採較後面的更正內容計算。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5fe4f7eb-2e5b-4784-84b4-40f9e671f36b",
+        "text": "輸出指出洗牙服務數量為 -1 這件事不合理，需要人工確認，而不是直接當成負數金額計入",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出將洗牙服務的 -1 數量直接計成 -1500 元，未指出其不合理並請人工確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "「洗牙服務 數量 -1」我依原文照算為 **-1500 元**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3f43e987-3bc6-4086-915e-056a9ae86d2d",
+        "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額",
+        "result": "failed",
+        "source": "model",
+        "reason": "在有多項疑義未確認前，輸出給出了確定的合計金額 50 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計：50元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18752 input and 909 output tokens on gpt-5.4-mini; reported cost $0.0200 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

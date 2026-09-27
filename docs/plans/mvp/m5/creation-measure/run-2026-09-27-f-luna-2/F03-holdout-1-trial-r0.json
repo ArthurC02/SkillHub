@@ -1,0 +1,164 @@
+{
+  "round": 0,
+  "sample_input": "hi 我要跟你們訂書，就是那個村上春樹的挪威的森林要2本單價320，然後三体那套小說，上冊跟下冊各一本，單價賣450一本，喔對了還有一本東野圭吾的嫌疑犯X的獻身199元只要1本，運費另外算好像是80元。",
+  "acceptance_criteria": [
+    {
+      "text": "書籍總金額為 1739 元（不含運費）"
+    },
+    {
+      "text": "運費 80 元有另外列出、沒有計入書籍總金額"
+    },
+    {
+      "text": "訂購清單包含挪威的森林 2 本、三体上冊 1 本、三体下冊 1 本、嫌疑犯X的獻身 1 本"
+    },
+    {
+      "text": "沒有捏造清單以外的書籍或數量"
+    }
+  ],
+  "final_output": "訂購清單：\n\n| 書名 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 挪威的森林 | 2 本 | 320 元 | 640 元 |\n| 三体上冊 | 1 本 | 450 元 | 450 元 |\n| 三体下冊 | 1 本 | 450 元 | 450 元 |\n| 嫌疑犯X的獻身 | 1 本 | 199 元 | 199 元 |\n\n**書籍總金額（不含運費）：1739 元（總額完整）**  \n運費（另列）：80 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7c67cbf2-5713-4f2b-b8b5-5e008107c0a5",
+    "run_id": "27b9665c-4ee6-4603-b4ec-e957ca529869",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：訂購品項與數量正確，書籍總金額為不含運費的 1739 元，80 元運費另列。",
+    "criterion_results": [
+      {
+        "criterion_id": "a4cf56cf-6789-4e5a-98ca-7ec3645fe571",
+        "text": "書籍總金額為 1739 元（不含運費）",
+        "result": "passed",
+        "source": "model",
+        "reason": "書籍總金額列為 1739 元，且標明不含運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍總金額（不含運費）：1739 元（總額完整）**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "94113d0b-3e9d-44d2-aafc-de4ed1c4d4a6",
+        "text": "運費 80 元有另外列出、沒有計入書籍總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "運費 80 元另外列出，書籍總金額明確標示不含運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**書籍總金額（不含運費）：1739 元（總額完整）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "運費（另列）：80 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a055b6a-8106-40fb-a7fe-020b8c33c287",
+        "text": "訂購清單包含挪威的森林 2 本、三体上冊 1 本、三体下冊 1 本、嫌疑犯X的獻身 1 本",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單列出指定的四個書籍品項，數量分別為 2、1、1、1 本。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 挪威的森林 | 2 本 | 320 元 | 640 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 三体上冊 | 1 本 | 450 元 | 450 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 三体下冊 | 1 本 | 450 元 | 450 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 嫌疑犯X的獻身 | 1 本 | 199 元 | 199 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf7e771a-17c6-41c2-abce-85fab851b1c5",
+        "text": "沒有捏造清單以外的書籍或數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單僅有留言指定的四個品項，數量也與留言一致，沒有額外書籍或數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 挪威的森林 | 2 本 | 320 元 | 640 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 三体上冊 | 1 本 | 450 元 | 450 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 三体下冊 | 1 本 | 450 元 | 450 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 嫌疑犯X的獻身 | 1 本 | 199 元 | 199 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1529 input and 649 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "skillhub-judge",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

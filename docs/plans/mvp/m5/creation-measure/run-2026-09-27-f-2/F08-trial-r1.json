@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理這份看診收費清單並算總金額：\n\n2026/09/01，項圈消毒，1，150\n2026/09/01，皮下點滴，2，300\n2026/09/02，耳道清潔，1，500\n2026/09/02，腸胃藥，3，80\n\n這份樣本包含多筆資料，可同時驗證清單整理、逐筆金額與總金額計算。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一筆包含日期、項目、數量、單價的看診資料時，Skill 會輸出整理後的清單，且每筆都包含這四個欄位。"
+    },
+    {
+      "text": "給定數量與單價時，Skill 會正確計算每筆金額為 `數量 × 單價`。"
+    },
+    {
+      "text": "給定多筆看診資料時，Skill 會把所有筆數都整理進同一份清單中。"
+    },
+    {
+      "text": "給定多筆資料時，Skill 會正確加總所有筆金額並輸出總金額。"
+    },
+    {
+      "text": "輸出會以中文呈現，且格式足以直接交給獸醫診所使用。"
+    }
+  ],
+  "final_output": "以下是整理好的看診收費清單：\n\n| 日期 | 項目 | 數量 | 單價 | 金額 |\n|---|---|---:|---:|---:|\n| 2026/09/01 | 項圈消毒 | 1 | 150 | 150 |\n| 2026/09/01 | 皮下點滴 | 2 | 300 | 600 |\n| 2026/09/02 | 耳道清潔 | 1 | 500 | 500 |\n| 2026/09/02 | 腸胃藥 | 3 | 80 | 240 |\n\n**總金額：1490**\n\n如果你要，我也可以幫你把這份清單改成更正式的診所收費單格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4be21860-1315-463d-9757-db0e3f7b0b02",
+    "run_id": "e0ddd566-6828-45f0-a230-07cc5a89fbd9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出將四筆看診資料整理為中文收費表，包含日期、項目、數量、單價與逐筆金額。各筆乘法及總金額1490均正確。",
+    "criterion_results": [
+      {
+        "criterion_id": "15a3072c-ab24-4e30-9368-c771b33e34fe",
+        "text": "給定一筆包含日期、項目、數量、單價的看診資料時，Skill 會輸出整理後的清單，且每筆都包含這四個欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出表格中每筆資料均包含日期、項目、數量及單價欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/01 | 項圈消毒 | 1 | 150 | 150 |\n| 2026/09/01 | 皮下點滴 | 2 | 300 | 600 |\n| 2026/09/02 | 耳道清潔 | 1 | 500 | 500 |\n| 2026/09/02 | 腸胃藥 | 3 | 80 | 240 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54e15217-0c53-41a0-ac7a-105d7974b16a",
+        "text": "給定數量與單價時，Skill 會正確計算每筆金額為 `數量 × 單價`。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各筆金額與數量乘以單價一致：1×150=150、2×300=600、1×500=500、3×80=240。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/01 | 項圈消毒 | 1 | 150 | 150 |\n| 2026/09/01 | 皮下點滴 | 2 | 300 | 600 |\n| 2026/09/02 | 耳道清潔 | 1 | 500 | 500 |\n| 2026/09/02 | 腸胃藥 | 3 | 80 | 240 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6c505c6-9a30-418c-b45c-4faa4f50a26d",
+        "text": "給定多筆看診資料時，Skill 會把所有筆數都整理進同一份清單中。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四筆提供的看診資料均被列於同一張收費清單表格中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/01 | 項圈消毒 | 1 | 150 | 150 |\n| 2026/09/01 | 皮下點滴 | 2 | 300 | 600 |\n| 2026/09/02 | 耳道清潔 | 1 | 500 | 500 |\n| 2026/09/02 | 腸胃藥 | 3 | 80 | 240 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0a6346c1-191a-44ee-8d86-bdce838fa47f",
+        "text": "給定多筆資料時，Skill 會正確加總所有筆金額並輸出總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐筆金額150、600、500與240的加總為1490，與輸出的總金額一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：1490**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4cfbb9f0-6010-4fa8-bc1d-76d970ad7fc2",
+        "text": "輸出會以中文呈現，且格式足以直接交給獸醫診所使用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以中文標示看診收費清單、欄位名稱與總金額，並以清楚的表格呈現可直接使用的收費項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是整理好的看診收費清單：\n\n| 日期 | 項目 | 數量 | 單價 | 金額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：1490**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2851 input and 437 output tokens on gpt-5.4-mini; reported cost $0.0071 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
