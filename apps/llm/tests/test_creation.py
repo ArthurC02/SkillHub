@@ -983,7 +983,8 @@ def test_search_intent_carries_up_to_three_rewrites():
             tool_intent={"kind": "search_knowledge", "query": "x", "queries": ["a", "b", "c", "d"]},
         ),
     )
-    assert response.status_code == 502
+    assert response.status_code == 200
+    assert response.json()["tool_intent"]["queries"] == ["a", "b", "c"]
 
 
 def test_search_knowledge_intent_passes_through_and_needs_a_query():

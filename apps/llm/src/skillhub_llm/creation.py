@@ -713,15 +713,10 @@ def _reason_node(gateway_key: str, phase: str):
                 raise ValueError("over cap: acceptance_criteria")
             if len(decision.sample_input or "") > 4000:
                 raise ValueError("over cap: sample_input")
-            if (
-                decision.tool_intent
-                and decision.tool_intent.queries is not None
-                and (
-                    len(decision.tool_intent.queries) > 3
-                    or any(len(x) > 200 for x in decision.tool_intent.queries)
-                )
-            ):
-                raise ValueError("over cap: tool_intent.queries")
+            if decision.tool_intent and decision.tool_intent.queries is not None:
+                decision.tool_intent.queries = decision.tool_intent.queries[:3]
+                if any(len(x) > 200 for x in decision.tool_intent.queries):
+                    raise ValueError("over cap: tool_intent.queries")
             if (
                 rewritten_body
                 and decision.draft is not None
