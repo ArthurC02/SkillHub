@@ -2,9 +2,8 @@ module github.com/ArthurC02/skillhub/tools/codegen/go
 
 go 1.27.1
 
-require github.com/ogen-go/ogen v1.24.0
-
 require (
+	github.com/ogen-go/ogen v1.24.0
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
