@@ -369,7 +369,7 @@ func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
 	if body.Status != "completed" || body.Overall != "met" {
 		t.Fatalf("evaluation = status %q, overall %q, want completed met", body.Status, body.Overall)
 	}
-	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run/v2" {
+	if body.JudgeModel != "gpt-5.6-terra" || body.JudgePromptVersion != "judge-run/v3" {
 		t.Errorf("judge provenance = %q / %q", body.JudgeModel, body.JudgePromptVersion)
 	}
 	if len(body.CriterionResults) != 2 || len(body.CriterionResults[0].Evidence) == 0 || len(body.CriterionResults[1].Evidence) == 0 {
