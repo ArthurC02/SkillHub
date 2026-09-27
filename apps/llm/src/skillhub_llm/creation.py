@@ -31,8 +31,15 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v28"
+PROMPT_VERSION = "creation-step/v29"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
+SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
+SCRIPTS_SECTION = (
+    "## Scripts\n\n"
+    "Run each script below from this Skill's directory (the directory holding this "
+    "SKILL.md) with the inputs taken from the message, and present what it prints; never "
+    "work its result out yourself. `python <script> --help` lists its arguments.\n"
+)
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
     "its complete content; a body that runs a script the files do not ship is incomplete."
@@ -409,8 +416,10 @@ PHASE_INSTRUCTIONS = {
         "an input it cannot use; the body tells the agent to take the inputs out of the "
         "message, run `python scripts/<name>.py` from this Skill's directory with them, and "
         "present what it printed — the agent never computes, rounds or decides a rule by "
-        "itself; a figure the script does not cover is computed by running python, never in "
-        "the head; when the request "
+        "itself; the body's steps contain that command literally, and the body never lists "
+        "worked answers for particular inputs — the script produces them; a figure the "
+        "script does not cover is computed by running python, never in the head; when the "
+        "request "
         "sets a countable limit (a number of sentences, characters or items) or names facts "
         "that must appear in the output, the workflow is: write the draft answer to a file, "
         "run `python scripts/check_output.py` from this Skill's directory (the directory "
@@ -1044,6 +1053,20 @@ def _supply_check_script(draft: GeneratedSkill | None) -> GeneratedSkill | None:
     return draft.model_copy(update={"files": files})
 
 
+def _bind_shipped_scripts(draft: GeneratedSkill | None) -> GeneratedSkill | None:
+    if draft is None:
+        return draft
+    unbound = [
+        f.path
+        for f in draft.files
+        if SHIPPED_SCRIPT_PATH.match(f.path) and f.path not in draft.body
+    ]
+    if not unbound:
+        return draft
+    section = SCRIPTS_SECTION + "".join(f"\n- `python {path}`" for path in unbound) + "\n"
+    return draft.model_copy(update={"body": draft.body.rstrip() + "\n\n" + section})
+
+
 def _render(state: _State) -> dict:
     req, d = state["request"], state["decision"]
     brief = d.brief or req.brief
@@ -1083,7 +1106,7 @@ def _render(state: _State) -> dict:
             diagram_description=d.diagram_description or "",
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
-            draft=_supply_check_script(d.draft),
+            draft=_bind_shipped_scripts(_supply_check_script(d.draft)),
             model=MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),
