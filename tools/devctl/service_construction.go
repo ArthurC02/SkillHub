@@ -26,114 +26,145 @@ func serviceConstructionProblems(root string) []string {
 		if !known || (isCompositionRoot(caller.ID) && filepath.ToSlash(filepath.Dir(rel)) == strings.TrimSuffix(caller.Path, "/*")) {
 			return nil
 		}
-
-		fset := token.NewFileSet()
-		file, err := parser.ParseFile(fset, path, nil, 0)
+		fileProblems, err := serviceConstructionFileProblems(root, base, path, caller, identities)
 		if err != nil {
 			return err
 		}
-		foreign := map[string]string{}
-		constructors := map[string]map[string]bool{}
-		dotForeign := ""
-		dotConstructors := map[string]bool{}
-		for _, spec := range file.Imports {
-			importPath, err := strconv.Unquote(spec.Path.Value)
-			if err != nil {
-				continue
-			}
-			internalPath, ok := strings.CutPrefix(importPath, denyPackagePrefix)
-			if !ok {
-				continue
-			}
-			target, known := resolveContextPath(internalPath, identities)
-			if !known || target.ID == caller.ID || (target.Kind != architectureCore && target.Kind != architectureSupporting) {
-				continue
-			}
-			importDir := filepath.Join(base, filepath.FromSlash(internalPath))
-			alias := packageNameAt(importDir, target.ID)
-			serviceConstructors := serviceConstructorNamesAt(importDir)
-			if spec.Name != nil {
-				alias = spec.Name.Name
-			}
-			if alias == "." {
-				dotForeign = target.ID
-				for name := range serviceConstructors {
-					dotConstructors[name] = true
-				}
-				continue
-			}
-			if alias != "_" {
-				foreign[alias] = target.ID
-				constructors[alias] = serviceConstructors
-			}
-		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			if typeSpec, ok := node.(*ast.TypeSpec); ok {
-				target := foreignServiceTarget(typeSpec.Type, foreign, dotForeign)
-				if target != "" {
-					problems = append(problems, fmt.Sprintf(
-						"service-construction: %s:%d context %q defines a local type from %q Service; inject it from the process composition root",
-						filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, target))
-				}
-			}
-			if valueSpec, ok := node.(*ast.ValueSpec); ok && valueSpec.Type != nil {
-				if target := foreignServiceTarget(valueSpec.Type, foreign, dotForeign); target != "" {
-					problems = append(problems, fmt.Sprintf(
-						"service-construction: %s:%d context %q declares a local %q Service value; inject a pointer from the process composition root",
-						filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, target))
-				}
-			}
-			switch ref := node.(type) {
-			case *ast.SelectorExpr:
-				if pkg, ok := ref.X.(*ast.Ident); ok && pkg.Obj == nil && constructors[pkg.Name][ref.Sel.Name] {
-					if target := foreign[pkg.Name]; target != "" {
-						problems = append(problems, fmt.Sprintf(
-							"service-construction: %s:%d context %q references %q Service constructor %q; inject the Service from the process composition root",
-							filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, target, ref.Sel.Name))
-					}
-				}
-			case *ast.Ident:
-				if ref.Obj == nil && dotForeign != "" && dotConstructors[ref.Name] {
-					problems = append(problems, fmt.Sprintf(
-						"service-construction: %s:%d context %q references %q Service constructor %q; inject the Service from the process composition root",
-						filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, dotForeign, ref.Name))
-				}
-			}
-			var typ ast.Expr
-			switch node := node.(type) {
-			case *ast.CompositeLit:
-				typ = unparen(node.Type)
-			case *ast.CallExpr:
-				fun := unparen(node.Fun)
-				if target := foreignServiceTarget(fun, foreign, dotForeign); target != "" {
-					problems = append(problems, fmt.Sprintf(
-						"service-construction: %s:%d context %q converts a value into %q Service; inject it from the process composition root",
-						filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, target))
-					return true
-				}
-				name, ok := fun.(*ast.Ident)
-				if !ok || name.Name != "new" || len(node.Args) != 1 {
-					return true
-				}
-				typ = unparen(node.Args[0])
-			default:
-				return true
-			}
-			target := foreignCompositeServiceTarget(typ, foreign, dotForeign)
-			foreignContext := target != ""
-			if foreignContext {
-				problems = append(problems, fmt.Sprintf(
-					"service-construction: %s:%d context %q constructs %q Service; inject it from the process composition root",
-					filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator))), fset.Position(node.Pos()).Line, caller.ID, target))
-			}
-			return true
-		})
+		problems = append(problems, fileProblems...)
 		return nil
 	})
 	if err != nil {
 		problems = append(problems, fmt.Sprintf("service-construction: apps/platform/internal: %v", err))
 	}
 	return problems
+}
+
+type foreignServiceImports struct {
+	byAlias         map[string]string
+	constructors    map[string]map[string]bool
+	dotTarget       string
+	dotConstructors map[string]bool
+}
+
+func serviceConstructionFileProblems(root, base, path string, caller packageIdentity,
+	identities map[string]packageIdentity) ([]string, error) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+	imports := foreignServiceImportsOf(file, base, caller.ID, identities)
+	shownPath := filepath.ToSlash(strings.TrimPrefix(path, root+string(filepath.Separator)))
+	var problems []string
+	ast.Inspect(file, func(node ast.Node) bool {
+		if finding := imports.constructionFinding(node); finding != "" {
+			problems = append(problems, fmt.Sprintf("service-construction: %s:%d context %q %s",
+				shownPath, fset.Position(node.Pos()).Line, caller.ID, finding))
+		}
+		return true
+	})
+	return problems, nil
+}
+
+func foreignServiceImportsOf(file *ast.File, base, callerID string, identities map[string]packageIdentity) foreignServiceImports {
+	imports := foreignServiceImports{
+		byAlias:         map[string]string{},
+		constructors:    map[string]map[string]bool{},
+		dotConstructors: map[string]bool{},
+	}
+	for _, spec := range file.Imports {
+		importPath, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			continue
+		}
+		internalPath, ok := strings.CutPrefix(importPath, denyPackagePrefix)
+		if !ok {
+			continue
+		}
+		target, known := resolveContextPath(internalPath, identities)
+		if !known || target.ID == callerID || (target.Kind != architectureCore && target.Kind != architectureSupporting) {
+			continue
+		}
+		importDir := filepath.Join(base, filepath.FromSlash(internalPath))
+		alias := packageNameAt(importDir, target.ID)
+		serviceConstructors := serviceConstructorNamesAt(importDir)
+		if spec.Name != nil {
+			alias = spec.Name.Name
+		}
+		if alias == "." {
+			imports.dotTarget = target.ID
+			for name := range serviceConstructors {
+				imports.dotConstructors[name] = true
+			}
+			continue
+		}
+		if alias != "_" {
+			imports.byAlias[alias] = target.ID
+			imports.constructors[alias] = serviceConstructors
+		}
+	}
+	return imports
+}
+
+func (imports foreignServiceImports) constructionFinding(node ast.Node) string {
+	switch node := node.(type) {
+	case *ast.TypeSpec:
+		if target := foreignServiceTarget(node.Type, imports.byAlias, imports.dotTarget); target != "" {
+			return fmt.Sprintf("defines a local type from %q Service; inject it from the process composition root", target)
+		}
+	case *ast.ValueSpec:
+		if node.Type == nil {
+			return ""
+		}
+		if target := foreignServiceTarget(node.Type, imports.byAlias, imports.dotTarget); target != "" {
+			return fmt.Sprintf("declares a local %q Service value; inject a pointer from the process composition root", target)
+		}
+	case *ast.SelectorExpr:
+		return imports.qualifiedConstructorFinding(node)
+	case *ast.Ident:
+		if node.Obj == nil && imports.dotTarget != "" && imports.dotConstructors[node.Name] {
+			return constructorReferenceFinding(imports.dotTarget, node.Name)
+		}
+	case *ast.CompositeLit:
+		return imports.compositeConstructionFinding(unparen(node.Type))
+	case *ast.CallExpr:
+		return imports.callConstructionFinding(node)
+	}
+	return ""
+}
+
+func (imports foreignServiceImports) qualifiedConstructorFinding(ref *ast.SelectorExpr) string {
+	pkg, ok := ref.X.(*ast.Ident)
+	if !ok || pkg.Obj != nil || !imports.constructors[pkg.Name][ref.Sel.Name] {
+		return ""
+	}
+	if target := imports.byAlias[pkg.Name]; target != "" {
+		return constructorReferenceFinding(target, ref.Sel.Name)
+	}
+	return ""
+}
+
+func constructorReferenceFinding(target, constructor string) string {
+	return fmt.Sprintf("references %q Service constructor %q; inject the Service from the process composition root", target, constructor)
+}
+
+func (imports foreignServiceImports) callConstructionFinding(call *ast.CallExpr) string {
+	fun := unparen(call.Fun)
+	if target := foreignServiceTarget(fun, imports.byAlias, imports.dotTarget); target != "" {
+		return fmt.Sprintf("converts a value into %q Service; inject it from the process composition root", target)
+	}
+	name, ok := fun.(*ast.Ident)
+	if !ok || name.Name != "new" || len(call.Args) != 1 {
+		return ""
+	}
+	return imports.compositeConstructionFinding(unparen(call.Args[0]))
+}
+
+func (imports foreignServiceImports) compositeConstructionFinding(typ ast.Expr) string {
+	if target := foreignCompositeServiceTarget(typ, imports.byAlias, imports.dotTarget); target != "" {
+		return fmt.Sprintf("constructs %q Service; inject it from the process composition root", target)
+	}
+	return ""
 }
 
 func foreignCompositeServiceTarget(expr ast.Expr, foreign map[string]string, dotForeign string) string {

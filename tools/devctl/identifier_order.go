@@ -74,70 +74,58 @@ func identifierOrderFileProblems(path, relative string) ([]string, int, error) {
 	for _, decl := range file.Decls {
 		switch d := decl.(type) {
 		case *ast.FuncDecl:
-			checkNestedParamNames(d.Type, d.Name.Name, report)
-			params := flattenIdentifierParams(d.Type.Params)
-			if countPgtypeUUIDParams(params) == 0 {
-				continue
-			}
-			seen++
-			checkWorkspaceOrder(params, d.Name.Name, d.Pos(), report)
+			seen += checkIdentifierSignature(d.Type, d.Name.Name, d.Pos(), report)
 		case *ast.GenDecl:
-			if d.Tok != token.TYPE {
-				continue
-			}
-			for _, spec := range d.Specs {
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				switch t := typeSpec.Type.(type) {
-				case *ast.FuncType:
-					checkNestedParamNames(t, typeSpec.Name.Name, report)
-					params := flattenIdentifierParams(t.Params)
-					if countPgtypeUUIDParams(params) == 0 {
-						continue
-					}
-					seen++
-					checkWorkspaceOrder(params, typeSpec.Name.Name, typeSpec.Pos(), report)
-				case *ast.InterfaceType:
-					for _, method := range t.Methods.List {
-						if len(method.Names) == 0 {
-							continue
-						}
-						checkNestedParamNames(method.Type, method.Names[0].Name, report)
-						methodType, ok := method.Type.(*ast.FuncType)
-						if !ok {
-							continue
-						}
-						params := flattenIdentifierParams(methodType.Params)
-						if countPgtypeUUIDParams(params) == 0 {
-							continue
-						}
-						seen++
-						checkWorkspaceOrder(params, method.Names[0].Name, method.Pos(), report)
-					}
-				case *ast.StructType:
-					for _, field := range t.Fields.List {
-						if len(field.Names) == 0 {
-							continue
-						}
-						checkNestedParamNames(field.Type, field.Names[0].Name, report)
-						fieldType, ok := field.Type.(*ast.FuncType)
-						if !ok {
-							continue
-						}
-						params := flattenIdentifierParams(fieldType.Params)
-						if countPgtypeUUIDParams(params) == 0 {
-							continue
-						}
-						seen++
-						checkWorkspaceOrder(params, field.Names[0].Name, field.Pos(), report)
-					}
-				}
+			if d.Tok == token.TYPE {
+				seen += checkTypeDeclSignatures(d, report)
 			}
 		}
 	}
 	return problems, seen, nil
+}
+
+func checkTypeDeclSignatures(decl *ast.GenDecl, report func(token.Pos, string, ...any)) int {
+	seen := 0
+	for _, spec := range decl.Specs {
+		typeSpec, ok := spec.(*ast.TypeSpec)
+		if !ok {
+			continue
+		}
+		switch t := typeSpec.Type.(type) {
+		case *ast.FuncType:
+			seen += checkIdentifierSignature(t, typeSpec.Name.Name, typeSpec.Pos(), report)
+		case *ast.InterfaceType:
+			seen += checkNamedFieldSignatures(t.Methods, report)
+		case *ast.StructType:
+			seen += checkNamedFieldSignatures(t.Fields, report)
+		}
+	}
+	return seen
+}
+
+func checkNamedFieldSignatures(fields *ast.FieldList, report func(token.Pos, string, ...any)) int {
+	seen := 0
+	for _, field := range fields.List {
+		if len(field.Names) == 0 {
+			continue
+		}
+		seen += checkIdentifierSignature(field.Type, field.Names[0].Name, field.Pos(), report)
+	}
+	return seen
+}
+
+func checkIdentifierSignature(node ast.Node, subject string, pos token.Pos, report func(token.Pos, string, ...any)) (uuidSignaturesSeen int) {
+	checkNestedParamNames(node, subject, report)
+	funcType, ok := node.(*ast.FuncType)
+	if !ok {
+		return 0
+	}
+	params := flattenIdentifierParams(funcType.Params)
+	if countPgtypeUUIDParams(params) == 0 {
+		return 0
+	}
+	checkWorkspaceOrder(params, subject, pos, report)
+	return 1
 }
 
 type identifierParam struct {
