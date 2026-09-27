@@ -48,8 +48,8 @@ func main() {
 	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-13")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
 
-	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
-	if err := refuseDevSettings(runtime, image, allowDevCmd, cleanMode); err != nil {
+	cleanMode := cleanNode(os.Getenv("SKILLHUB_CLEAN_MODE") == "1")
+	if err := refuseDevSettings(runtime, image, allowDevCmd, bool(cleanMode)); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
@@ -60,73 +60,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	var (
-		drv          sandbox.Driver
-		closer       func() error
-		maxResources = sandbox.DefaultLimits
+	node := openDriver(kind, mxcBin, dockerdrv.Config{
+		Image:        image,
+		Runtime:      runtime,
+		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
+		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
+		GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
+		StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
+		AllowDevCmd:  allowDevCmd,
+		Log:          log,
+	}, log)
+	drv := node.drv
 
-		unenforced    []string
-		reapsDetached = true
-	)
-	switch kind {
-	case driverMXC:
-		d := mxcDriver(mxcBin, log)
-		drv, closer = d, d.Close
-		unenforced = unenforcedCeilings(d.ResourceEnforcement())
-		reapsDetached = d.Reaping().Detached
-	case driverLocal:
-		script, err := cleanModeRunnerScript()
-		if err != nil {
-			log.Error(err.Error())
-			os.Exit(1)
-		}
-		d, err := localdrv.New(localdrv.Config{RunnerScript: script})
-		if err != nil {
-			log.Error("local driver unavailable", "err", err)
-			os.Exit(1)
-		}
-		drv, closer = d, d.Close
-		maxResources = cleanModeMaxResources(d.ResourceEnforcement(), log)
-		unenforced = unenforcedCeilings(d.ResourceEnforcement())
-		reapsDetached = d.Reaping().Detached
-	default:
-		d, err := dockerdrv.New(dockerdrv.Config{
-			Image:        image,
-			Runtime:      runtime,
-			Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
-			UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
-			GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
-			StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
-			AllowDevCmd:  allowDevCmd,
-			Log:          log,
-		})
-		if err != nil {
-			log.Error("docker driver unavailable", "err", err)
-			os.Exit(1)
-		}
-		drv, closer = d, d.Close
-	}
-
-	defer func() { _ = closer() }()
-
-	var egressAllow []sandbox.EgressDestination
 	network := os.Getenv("SKILLHUB_SANDBOX_NETWORK")
-	if network != "" && network != "none" {
-		path := os.Getenv("SKILLHUB_SANDBOX_EGRESS_ALLOW")
-		if path == "" {
-
-			log.Error("SKILLHUB_SANDBOX_EGRESS_ALLOW is required when SKILLHUB_SANDBOX_NETWORK is set",
-				"network", network,
-				"hint", "render it: python3 tools/egress/render.py --out infra/egress/rendered")
-			os.Exit(1)
-		}
-		var err error
-		egressAllow, err = sandbox.LoadEgressAllow(path)
-		if err != nil {
-			log.Error("could not load the rendered egress allow list", "path", path, "err", err)
-			os.Exit(1)
-		}
-	}
+	egressAllow := egressAllowFor(network, log)
 	modes := sandbox.EgressModesFor(network, egressAllow)
 	if kind == driverMXC {
 		modes = []string{"none"}
@@ -152,9 +99,9 @@ func main() {
 			Versions:         []string{envOr("SKILLHUB_SANDBOX_RUNTIME_VERSION", "0.3.233")},
 			AgentIntegration: []string{"in_sandbox_sdk"},
 		}},
-		MaxResources:             maxResources,
-		MaxResourcesUnenforced:   unenforced,
-		ReapsDetachedDescendants: reapsDetached,
+		MaxResources:             node.maxResources,
+		MaxResourcesUnenforced:   node.unenforced,
+		ReapsDetachedDescendants: node.reapsDetached,
 		EgressModes:              modes,
 		EgressAllow:              egressAllow,
 		EgressUnenforced:         egressUnenforced,
@@ -172,7 +119,6 @@ func main() {
 		os.Exit(1)
 	}
 	probeCtx, stopProbe := context.WithCancel(context.Background())
-	defer stopProbe()
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
@@ -192,7 +138,6 @@ func main() {
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -206,6 +151,74 @@ func main() {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+	stop()
+	stopProbe()
+	_ = node.closer()
+}
+
+type openedDriver struct {
+	drv           sandbox.Driver
+	closer        func() error
+	maxResources  sandbox.ResourceLimits
+	unenforced    []string
+	reapsDetached bool
+}
+
+func openDriver(kind, mxcBin string, docker dockerdrv.Config, log *slog.Logger) openedDriver {
+	switch kind {
+	case driverMXC:
+		d := mxcDriver(mxcBin, log)
+		return openedDriver{
+			drv: d, closer: d.Close, maxResources: sandbox.DefaultLimits,
+			unenforced: unenforcedCeilings(d.ResourceEnforcement()), reapsDetached: d.Reaping().Detached,
+		}
+	case driverLocal:
+		d := localDriver(log)
+		return openedDriver{
+			drv: d, closer: d.Close, maxResources: cleanModeMaxResources(d.ResourceEnforcement(), log),
+			unenforced: unenforcedCeilings(d.ResourceEnforcement()), reapsDetached: d.Reaping().Detached,
+		}
+	default:
+		d, err := dockerdrv.New(docker)
+		if err != nil {
+			log.Error("docker driver unavailable", "err", err)
+			os.Exit(1)
+		}
+		return openedDriver{drv: d, closer: d.Close, maxResources: sandbox.DefaultLimits, reapsDetached: true}
+	}
+}
+
+func localDriver(log *slog.Logger) *localdrv.Driver {
+	script, err := cleanModeRunnerScript()
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	d, err := localdrv.New(localdrv.Config{RunnerScript: script})
+	if err != nil {
+		log.Error("local driver unavailable", "err", err)
+		os.Exit(1)
+	}
+	return d
+}
+
+func egressAllowFor(network string, log *slog.Logger) []sandbox.EgressDestination {
+	if network == "" || network == "none" {
+		return nil
+	}
+	path := os.Getenv("SKILLHUB_SANDBOX_EGRESS_ALLOW")
+	if path == "" {
+		log.Error("SKILLHUB_SANDBOX_EGRESS_ALLOW is required when SKILLHUB_SANDBOX_NETWORK is set",
+			"network", network,
+			"hint", "render it: python3 tools/egress/render.py --out infra/egress/rendered")
+		os.Exit(1)
+	}
+	egressAllow, err := sandbox.LoadEgressAllow(path)
+	if err != nil {
+		log.Error("could not load the rendered egress allow list", "path", path, "err", err)
+		os.Exit(1)
+	}
+	return egressAllow
 }
 
 func adoptBeforeProtection(adopt func() error, protect func()) error {
@@ -215,6 +228,8 @@ func adoptBeforeProtection(adopt func() error, protect func()) error {
 	protect()
 	return nil
 }
+
+type cleanNode bool
 
 func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error {
 	if runtime != "runsc" {
@@ -242,7 +257,7 @@ func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 		"verified by a resident probe, and a node with no targets reports not_configured forever")
 }
 
-func driverKind(cleanMode bool) string {
+func driverKind(cleanMode cleanNode) string {
 	if cleanMode {
 		return driverLocal
 	}
@@ -255,7 +270,7 @@ const (
 	driverLocal  = "local"
 )
 
-func selectDriver(requested, runtime, mxcBin string, cleanMode bool) (string, error) {
+func selectDriver(requested, runtime, mxcBin string, cleanMode cleanNode) (string, error) {
 	switch requested {
 	case "":
 		return driverKind(cleanMode), nil
@@ -272,7 +287,7 @@ func selectDriver(requested, runtime, mxcBin string, cleanMode bool) (string, er
 				"set SKILLHUB_CLEAN_MODE=1, or choose docker or mxc")
 		}
 	case driverMXC:
-		if err := refuseMXCSettings(runtime, mxcBin, cleanMode); err != nil {
+		if err := refuseMXCSettings(runtime, mxcBin, bool(cleanMode)); err != nil {
 			return "", err
 		}
 	default:

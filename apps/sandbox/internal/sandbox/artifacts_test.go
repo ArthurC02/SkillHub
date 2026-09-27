@@ -36,43 +36,22 @@ func tarOf(t *testing.T, files map[string][]byte) []byte {
 	return buf.Bytes()
 }
 
+func archivedNames(archive []byte) map[string]bool {
+	names := map[string]bool{}
+	r := tar.NewReader(bytes.NewReader(archive))
+	for {
+		h, err := r.Next()
+		if err != nil {
+			break
+		}
+		names[h.Name] = true
+	}
+	return names
+}
+
 func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 
-	t.Run("per-file ceiling", func(t *testing.T) {
-		limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20}
-		raw := tarOf(t, map[string][]byte{
-			"artifacts/small.txt": []byte("ok"),
-			"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32),
-		})
-
-		manifest, archive, _, err := filterArchive(raw, limits)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(manifest) != 1 || manifest[0].FileName != "small.txt" {
-			t.Fatalf("manifest = %#v, want only small.txt", manifest)
-		}
-
-		if !manifest[0].Truncated {
-			t.Error("a dropped file did not mark the collection as truncated")
-		}
-		if manifest[0].SizeBytes != 2 || manifest[0].ContentHash == "" {
-			t.Errorf("manifest entry = %#v, want the real size and a hash", manifest[0])
-		}
-
-		names := map[string]bool{}
-		r := tar.NewReader(bytes.NewReader(archive))
-		for {
-			h, err := r.Next()
-			if err != nil {
-				break
-			}
-			names[h.Name] = true
-		}
-		if len(names) != 1 || !names["small.txt"] {
-			t.Errorf("uploaded archive holds %v, want only small.txt", names)
-		}
-	})
+	t.Run("per-file ceiling", filterArchiveEnforcesThePerFileCeiling)
 
 	t.Run("run total ceiling", func(t *testing.T) {
 
@@ -82,7 +61,7 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 			"artifacts/b.txt": bytes.Repeat([]byte("b"), 8),
 		})
 
-		manifest, _, _, err := filterArchive(raw, limits)
+		manifest, _, _, err := unpackFiltered(filterArchive(raw, limits))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,6 +72,34 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 			t.Errorf("manifest entry = %#v, want 8 bytes and the truncated mark", manifest[0])
 		}
 	})
+}
+
+func filterArchiveEnforcesThePerFileCeiling(t *testing.T) {
+	limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20}
+	raw := tarOf(t, map[string][]byte{
+		"artifacts/small.txt": []byte("ok"),
+		"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32),
+	})
+
+	manifest, archive, _, err := unpackFiltered(filterArchive(raw, limits))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest) != 1 || manifest[0].FileName != "small.txt" {
+		t.Fatalf("manifest = %#v, want only small.txt", manifest)
+	}
+
+	if !manifest[0].Truncated {
+		t.Error("a dropped file did not mark the collection as truncated")
+	}
+	if manifest[0].SizeBytes != 2 || manifest[0].ContentHash == "" {
+		t.Errorf("manifest entry = %#v, want the real size and a hash", manifest[0])
+	}
+
+	names := archivedNames(archive)
+	if len(names) != 1 || !names["small.txt"] {
+		t.Errorf("uploaded archive holds %v, want only small.txt", names)
+	}
 }
 
 func TestArtifactUploadAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
@@ -111,7 +118,7 @@ func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
 	for i := range artifactMaxEntries + 5 {
 		files[fmt.Sprintf("artifacts/f%04d.txt", i)] = nil
 	}
-	manifest, _, _, err := filterArchive(tarOf(t, files), DefaultLimits)
+	manifest, _, _, err := unpackFiltered(filterArchive(tarOf(t, files), DefaultLimits))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +129,8 @@ func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
 		t.Error("entries were dropped but the collection is not marked truncated")
 	}
 }
+
+const nameWithTrailingDotAndSpace = "artifacts/trailing. "
 
 func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 	raw := tarOf(t, map[string][]byte{
@@ -135,10 +144,10 @@ func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 		`artifacts\..\..\etc\passwd`: []byte("no"),
 		"artifacts/NUL":              []byte("no"),
 		"artifacts/bad?.txt":         []byte("no"),
-		"artifacts/trailing. ":       []byte("no"),
+		nameWithTrailingDotAndSpace:  []byte("no"),
 		"artifacts/keep.txt":         []byte("yes"),
 	})
-	manifest, _, truncated, err := filterArchive(raw, DefaultLimits)
+	manifest, _, truncated, err := unpackFiltered(filterArchive(raw, DefaultLimits))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,9 +160,9 @@ func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 }
 
 func TestFilterArchiveReportsWhenEveryArtifactWasDropped(t *testing.T) {
-	manifest, _, truncated, err := filterArchive(tarOf(t, map[string][]byte{
+	manifest, _, truncated, err := unpackFiltered(filterArchive(tarOf(t, map[string][]byte{
 		"artifacts/NUL": []byte("no"),
-	}), DefaultLimits)
+	}), DefaultLimits))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +176,7 @@ func TestFilterArchiveDropsPortableNameCollisions(t *testing.T) {
 		"artifacts/Report.txt": []byte("first"),
 		"artifacts/report.txt": []byte("second"),
 	})
-	manifest, _, _, err := filterArchive(raw, DefaultLimits)
+	manifest, _, _, err := unpackFiltered(filterArchive(raw, DefaultLimits))
 	if err != nil {
 		t.Fatal(err)
 	}

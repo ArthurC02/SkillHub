@@ -164,6 +164,50 @@ func TestRemoveAndStopAreIdempotentOnUnknownID(t *testing.T) {
 	}
 }
 
+func waitForWorkloadDone(t *testing.T, d *Driver, id string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		done, err := d.WorkloadDone(context.Background(), id)
+		if err != nil {
+			t.Fatalf("WorkloadDone: %v", err)
+		}
+		if done {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("workload never signalled WorkloadDone")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func assertResultArtifact(t *testing.T, rawArtifacts []byte) {
+	t.Helper()
+	found := false
+	tr := tar.NewReader(bytes.NewReader(rawArtifacts))
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("reading artifact tar: %v", err)
+		}
+		if hdr.Name != "result.txt" {
+			continue
+		}
+		found = true
+		body, _ := io.ReadAll(tr)
+		if string(body) != "hello from the workload\n" {
+			t.Fatalf("unexpected artifact content: %q", body)
+		}
+	}
+	if !found {
+		t.Fatal("expected artifact result.txt was not in the tar")
+	}
+}
+
 func TestDriverLifecycle(t *testing.T) {
 	nodeBin := requireNode(t)
 	base := t.TempDir()
@@ -179,20 +223,7 @@ func TestDriverLifecycle(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		done, err := d.WorkloadDone(ctx, id)
-		if err != nil {
-			t.Fatalf("WorkloadDone: %v", err)
-		}
-		if done {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("workload never signalled WorkloadDone")
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	waitForWorkloadDone(t, d, id)
 
 	trace, more, err := d.ReadTrace(ctx, id, 0)
 	if err != nil {
@@ -209,27 +240,7 @@ func TestDriverLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadArtifacts: %v", err)
 	}
-	found := false
-	tr := tar.NewReader(bytes.NewReader(rawArtifacts))
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			t.Fatalf("reading artifact tar: %v", err)
-		}
-		if hdr.Name == "result.txt" {
-			found = true
-			body, _ := io.ReadAll(tr)
-			if string(body) != "hello from the workload\n" {
-				t.Fatalf("unexpected artifact content: %q", body)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("expected artifact result.txt was not in the tar")
-	}
+	assertResultArtifact(t, rawArtifacts)
 
 	if err := d.ReleaseWorkload(ctx, id); err != nil {
 		t.Fatalf("ReleaseWorkload: %v", err)

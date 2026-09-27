@@ -128,19 +128,12 @@ func TestCleanModeMaxResourcesReflectsDetection(t *testing.T) {
 	}
 }
 
-func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
-	names := resourceLimitNames()
-	if len(names) == 0 {
-		t.Fatal("resourceLimitNames() read no fields off sandbox.ResourceLimits")
-	}
-
-	claims := osCeilings(localdrv.ResourceEnforcement{})
+func assertEveryLimitIsClassifiedOnce(t *testing.T, names []string, claims map[string]bool) {
+	t.Helper()
 	for _, name := range names {
-		if !heldElsewhere[name] {
-			if _, ok := claims[name]; !ok {
-				t.Errorf("ResourceLimits field %q is classified neither as an OS ceiling "+
-					"(osCeilings) nor as held elsewhere (heldElsewhere)", name)
-			}
+		if _, ok := claims[name]; !heldElsewhere[name] && !ok {
+			t.Errorf("ResourceLimits field %q is classified neither as an OS ceiling "+
+				"(osCeilings) nor as held elsewhere (heldElsewhere)", name)
 		}
 	}
 
@@ -152,6 +145,16 @@ func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
 			t.Errorf("osCeilings names %q, which sandbox.ResourceLimits does not have", name)
 		}
 	}
+}
+
+func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
+	names := resourceLimitNames()
+	if len(names) == 0 {
+		t.Fatal("resourceLimitNames() read no fields off sandbox.ResourceLimits")
+	}
+
+	claims := osCeilings(localdrv.ResourceEnforcement{})
+	assertEveryLimitIsClassifiedOnce(t, names, claims)
 
 	if got, want := len(claims), reflect.TypeOf(localdrv.ResourceEnforcement{}).NumField(); got != want {
 		t.Errorf("osCeilings covers %d ceilings but ResourceEnforcement has %d fields: "+

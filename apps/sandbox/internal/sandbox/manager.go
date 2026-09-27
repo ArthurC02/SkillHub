@@ -354,24 +354,7 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	}
 
 	if err := m.drv.Start(startCtx, id, req); err != nil {
-		if refusal := m.p02Refusal(); refusal != nil {
-			_ = m.destroyBounded(id)
-			return ProviderRun{}, false, refusal
-		}
-		m.finish(id, Outcome{}, &RunError{
-			Class:     ClassProvision,
-			Message:   "sandbox could not be created",
-			Retryable: true,
-		})
-		m.log.Error("sandbox start failed", "provider_run_id", id, "err", err)
-		run, _, snapshotErr := m.snapshot(id)
-		if snapshotErr != nil {
-			_ = m.destroyBounded(id)
-			return ProviderRun{}, false, &RunError{
-				Class: ClassProvision, Message: "sandbox creation was revoked", Retryable: true,
-			}
-		}
-		return run, true, nil
+		return m.startFailed(id, err)
 	}
 
 	if refusal := m.p02Refusal(); refusal != nil {
@@ -402,14 +385,38 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	hard := time.Duration(req.ResourceLimits.WallClockHardSeconds) * time.Second
 	m.watch(id, soft, hard)
 	if cancelled {
-
-		stopCtx, stopCancel := context.WithTimeout(context.Background(), m.cfg.CancelGrace+time.Second)
-		defer stopCancel()
-		if err := m.drv.Stop(stopCtx, id, m.cfg.CancelGrace); err != nil {
-			m.log.Error("post-start cancel stop failed", "provider_run_id", id, "err", err)
-		}
+		m.stopCancelledStart(id)
 	}
 	return running, true, nil
+}
+
+func (m *Manager) startFailed(id string, err error) (ProviderRun, bool, error) {
+	if refusal := m.p02Refusal(); refusal != nil {
+		_ = m.destroyBounded(id)
+		return ProviderRun{}, false, refusal
+	}
+	m.finish(id, Outcome{}, &RunError{
+		Class:     ClassProvision,
+		Message:   "sandbox could not be created",
+		Retryable: true,
+	})
+	m.log.Error("sandbox start failed", "provider_run_id", id, "err", err)
+	run, _, snapshotErr := m.snapshot(id)
+	if snapshotErr != nil {
+		_ = m.destroyBounded(id)
+		return ProviderRun{}, false, &RunError{
+			Class: ClassProvision, Message: "sandbox creation was revoked", Retryable: true,
+		}
+	}
+	return run, true, nil
+}
+
+func (m *Manager) stopCancelledStart(id string) {
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), m.cfg.CancelGrace+time.Second)
+	defer stopCancel()
+	if err := m.drv.Stop(stopCtx, id, m.cfg.CancelGrace); err != nil {
+		m.log.Error("post-start cancel stop failed", "provider_run_id", id, "err", err)
+	}
 }
 
 func (m *Manager) p02Refusal() error {

@@ -336,9 +336,10 @@ func (w *tailWriter) String() string {
 	return strings.TrimSpace(string(w.buf))
 }
 
+type envVar struct{ k, v string }
+
 func env(req sandbox.RunRequest, workDir, outDir string) []string {
-	type kv struct{ k, v string }
-	pairs := []kv{
+	pairs := []envVar{
 		{"SKILLHUB_RUN_ID", req.RunID},
 		{"SKILLHUB_RUN_ATTEMPT_ID", req.RunAttemptID},
 		{"SKILLHUB_ATTEMPT", strconv.Itoa(req.Attempt)},
@@ -357,31 +358,45 @@ func env(req sandbox.RunRequest, workDir, outDir string) []string {
 		{"SKILLHUB_ARTIFACT_MAX_BYTES", strconv.FormatInt(req.ResourceLimits.ArtifactFileBytes, 10)},
 		{"HOME", workDir},
 	}
+	pairs = append(pairs, optionalRunEnv(req)...)
+
+	out := inheritedHostEnv(pairs)
+	for _, p := range pairs {
+		out = append(out, p.k+"="+p.v)
+	}
+	return out
+}
+
+func optionalRunEnv(req sandbox.RunRequest) []envVar {
+	var pairs []envVar
 	if req.Trace.IngestionURL != "" {
-		pairs = append(pairs, kv{"SKILLHUB_TRACE_URL", req.Trace.IngestionURL})
+		pairs = append(pairs, envVar{"SKILLHUB_TRACE_URL", req.Trace.IngestionURL})
 	}
 	if tb := req.ResourceLimits.TokenBudget; tb != nil {
 		if tb.MaxInputTokens > 0 {
-			pairs = append(pairs, kv{"SKILLHUB_MAX_INPUT_TOKENS", strconv.FormatInt(tb.MaxInputTokens, 10)})
+			pairs = append(pairs, envVar{"SKILLHUB_MAX_INPUT_TOKENS", strconv.FormatInt(tb.MaxInputTokens, 10)})
 		}
 		if tb.MaxOutputTokens > 0 {
-			pairs = append(pairs, kv{"SKILLHUB_MAX_OUTPUT_TOKENS", strconv.FormatInt(tb.MaxOutputTokens, 10)})
+			pairs = append(pairs, envVar{"SKILLHUB_MAX_OUTPUT_TOKENS", strconv.FormatInt(tb.MaxOutputTokens, 10)})
 		}
 	}
 	if req.Runtime.Model != "" {
-		pairs = append(pairs, kv{"SKILLHUB_MODEL", req.Runtime.Model})
+		pairs = append(pairs, envVar{"SKILLHUB_MODEL", req.Runtime.Model})
 	}
 	if g := req.ModelGateway; g != nil {
-		pairs = append(pairs, kv{grantBaseURLVar, g.BaseURL})
+		pairs = append(pairs, envVar{grantBaseURLVar, g.BaseURL})
 		if g.VirtualKey != "" {
-			pairs = append(pairs, kv{grantTokenVar, g.VirtualKey})
+			pairs = append(pairs, envVar{grantTokenVar, g.VirtualKey})
 		}
 	}
 
 	if mb := req.ResourceLimits.MemoryBytes / (1 << 20); mb > 0 {
-		pairs = append(pairs, kv{"NODE_OPTIONS", fmt.Sprintf("--max-old-space-size=%d", mb)})
+		pairs = append(pairs, envVar{"NODE_OPTIONS", fmt.Sprintf("--max-old-space-size=%d", mb)})
 	}
+	return pairs
+}
 
+func inheritedHostEnv(pairs []envVar) []string {
 	set := make(map[string]bool, len(pairs))
 	for _, p := range pairs {
 		set[p.k] = true
@@ -399,9 +414,6 @@ func env(req sandbox.RunRequest, workDir, outDir string) []string {
 			continue
 		}
 		out = append(out, raw)
-	}
-	for _, p := range pairs {
-		out = append(out, p.k+"="+p.v)
 	}
 	return out
 }

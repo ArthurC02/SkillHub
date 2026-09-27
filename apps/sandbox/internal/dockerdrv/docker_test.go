@@ -17,6 +17,7 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
@@ -198,6 +199,12 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 		t.Errorf("host mounts present: binds=%v mounts=%v (C-05, C-07)", hc.Binds, hc.Mounts)
 	}
 
+	assertPrivateNamespacesAndScratch(t, hc)
+	assertResourceCeilings(t, hc, testRequest("").ResourceLimits)
+}
+
+func assertPrivateNamespacesAndScratch(t *testing.T, hc *container.HostConfig) {
+	t.Helper()
 	for name, mode := range map[string]string{
 		"pid": string(hc.PidMode), "ipc": string(hc.IpcMode),
 		"uts": string(hc.UTSMode), "network": string(hc.NetworkMode),
@@ -211,8 +218,10 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 			t.Errorf("no tmpfs at %s: the run has no bounded scratch space (C-01, C-12)", path)
 		}
 	}
+}
 
-	lim := testRequest("").ResourceLimits
+func assertResourceCeilings(t *testing.T, hc *container.HostConfig, lim sandbox.ResourceLimits) {
+	t.Helper()
 	if hc.Memory != lim.MemoryBytes {
 		t.Errorf("Memory = %d, want %d", hc.Memory, lim.MemoryBytes)
 	}

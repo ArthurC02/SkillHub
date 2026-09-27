@@ -148,39 +148,7 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 		if err != nil || path == dir {
 			return err
 		}
-		rel, err := filepath.Rel(dir, path)
-		if err != nil {
-			return err
-		}
-
-		rel = filepath.ToSlash(rel)
-
-		if !de.IsDir() && !de.Type().IsRegular() {
-			return nil
-		}
-		fi, err := de.Info()
-		if err != nil {
-			return err
-		}
-		hdr, err := tar.FileInfoHeader(fi, "")
-		if err != nil {
-			return err
-		}
-		hdr.Name = rel
-		if de.IsDir() {
-			hdr.Name += "/"
-			return tw.WriteHeader(hdr)
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			return err
-		}
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		_, err = io.Copy(tw, f)
-		return err
+		return archiveEntry(tw, dir, path, de)
 	})
 	if walkErr != nil {
 		return nil, walkErr
@@ -192,6 +160,42 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 		return nil, nil
 	}
 	return buf.Bytes(), nil
+}
+
+func archiveEntry(tw *tar.Writer, dir, path string, de fs.DirEntry) error {
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return err
+	}
+
+	rel = filepath.ToSlash(rel)
+
+	if !de.IsDir() && !de.Type().IsRegular() {
+		return nil
+	}
+	fi, err := de.Info()
+	if err != nil {
+		return err
+	}
+	hdr, err := tar.FileInfoHeader(fi, "")
+	if err != nil {
+		return err
+	}
+	hdr.Name = rel
+	if de.IsDir() {
+		hdr.Name += "/"
+		return tw.WriteHeader(hdr)
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(tw, f)
+	return err
 }
 
 func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte, bool, error) {

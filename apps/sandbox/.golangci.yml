@@ -3,12 +3,31 @@ version: "2"
 linters:
   enable:
     - gocognit
+    - nestif
+    - errorlint
+    - gocritic
+    - unparam
+    - dupl
+    - revive
 
   exclusions:
     presets:
       - std-error-handling
     warn-unused: true
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - revive
+          - unparam
 
   settings:
     gocognit:
-      min-complexity: 30
+      min-complexity: 20
+    revive:
+      rules:
+        - name: argument-limit
+          arguments: [5]
+        - name: function-result-limit
+          arguments: [3]
+        - name: flag-parameter

@@ -167,7 +167,7 @@ func (m *Manager) flushTrace(parent context.Context, id, url string) bool {
 			continue
 		}
 
-		if !m.pushTraceLines(ctx, id, url, secrets, offset, lines) {
+		if !m.pushTraceLines(ctx, id, url, secrets, traceRead{offset: offset, lines: lines}) {
 			return false
 		}
 
@@ -198,9 +198,15 @@ func (m *Manager) recordTraceOffset(id string, offset int64) {
 	}
 }
 
-func (m *Manager) pushTraceLines(ctx context.Context, id, url string, secrets []string, offset int64, lines []traceLine) bool {
+type traceRead struct {
+	offset int64
+	lines  []traceLine
+}
+
+func (m *Manager) pushTraceLines(ctx context.Context, id, url string, secrets []string, read traceRead) bool {
+	lines := read.lines
 	for sent := 0; sent < len(lines); {
-		if m.dropOversizedTraceEvent(id, offset, lines[sent]) {
+		if m.dropOversizedTraceEvent(id, read.offset, lines[sent]) {
 			sent++
 			continue
 		}
@@ -209,7 +215,7 @@ func (m *Manager) pushTraceLines(ctx context.Context, id, url string, secrets []
 			return false
 		}
 		sent = end
-		m.recordTraceOffset(id, offset+lines[sent-1].end)
+		m.recordTraceOffset(id, read.offset+lines[sent-1].end)
 	}
 	return true
 }

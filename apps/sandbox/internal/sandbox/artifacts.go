@@ -72,25 +72,39 @@ func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]
 		return nil, false
 	}
 
-	manifest, archive, truncated, err := filterArchive(raw, e.limits)
+	filtered, err := filterArchive(raw, e.limits)
 	if err != nil {
 		m.log.Warn("artifact archive could not be read", "provider_run_id", id, "err", err)
 		return nil, true
 	}
-	if len(manifest) == 0 {
-		return nil, truncated
+	if len(filtered.manifest) == 0 {
+		return nil, filtered.truncated
 	}
-	if err := upload(ctx, e.artifactGrant.URL, archive); err != nil {
+	if err := upload(ctx, e.artifactGrant.URL, filtered.archive); err != nil {
 
 		m.log.Error("artifact upload failed", "provider_run_id", id,
 			"object_key", e.artifactGrant.ObjectKey, "err", err)
-		return nil, truncated
+		return nil, filtered.truncated
 	}
-	m.log.Info("artifacts collected", "provider_run_id", id, "files", len(manifest))
-	return manifest, truncated
+	m.log.Info("artifacts collected", "provider_run_id", id, "files", len(filtered.manifest))
+	return filtered.manifest, filtered.truncated
 }
 
-func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool, error) {
+type filteredArchive struct {
+	manifest  []Artifact
+	archive   []byte
+	truncated bool
+}
+
+type archiveCeilings struct {
+	perFile int64
+	total   int64
+	seen    map[string]struct{}
+	used    int64
+	dropped bool
+}
+
+func newArchiveCeilings(limits ResourceLimits) *archiveCeilings {
 	perFile := limits.ArtifactFileBytes
 	if perFile <= 0 {
 		perFile = DefaultLimits.ArtifactFileBytes
@@ -99,14 +113,41 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool,
 	if total <= 0 {
 		total = DefaultLimits.ArtifactTotalBytes
 	}
+	return &archiveCeilings{perFile: perFile, total: total, seen: map[string]struct{}{}}
+}
 
+func (c *archiveCeilings) admit(header *tar.Header, collected int) (name string, stop bool) {
+	if header.Typeflag != tar.TypeReg {
+		return "", false
+	}
+	if collected >= artifactMaxEntries {
+		c.dropped = true
+		return "", true
+	}
+	name = artifactName(header.Name)
+	if name == "" {
+		c.dropped = true
+		return "", false
+	}
+	key := strings.ToLower(name)
+	if _, duplicate := c.seen[key]; duplicate {
+		c.dropped = true
+		return "", false
+	}
+	if header.Size > c.perFile || c.used+header.Size > c.total {
+		c.dropped = true
+		return "", false
+	}
+	c.seen[key] = struct{}{}
+	return name, false
+}
+
+func filterArchive(raw []byte, limits ResourceLimits) (filteredArchive, error) {
+	ceilings := newArchiveCeilings(limits)
 	reader := tar.NewReader(bytes.NewReader(raw))
 	var out bytes.Buffer
 	writer := tar.NewWriter(&out)
 	manifest := []Artifact{}
-	seen := map[string]struct{}{}
-	var used int64
-	dropped := false
 
 	for {
 		header, err := reader.Next()
@@ -114,66 +155,59 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool,
 			break
 		}
 		if err != nil {
-
-			dropped = true
+			ceilings.dropped = true
 			break
 		}
-		if header.Typeflag != tar.TypeReg {
-			continue
-		}
-		if len(manifest) >= artifactMaxEntries {
-
-			dropped = true
+		name, stop := ceilings.admit(header, len(manifest))
+		if stop {
 			break
 		}
-		name := artifactName(header.Name)
 		if name == "" {
-			dropped = true
 			continue
 		}
-		key := strings.ToLower(name)
-		if _, duplicate := seen[key]; duplicate {
-			dropped = true
-			continue
-		}
-		if header.Size > perFile || used+header.Size > total {
-			dropped = true
-
-			continue
-		}
-
-		seen[key] = struct{}{}
 		body, err := io.ReadAll(io.LimitReader(reader, header.Size))
 		if err != nil {
-			dropped = true
+			ceilings.dropped = true
 			break
 		}
-		sum := sha256.Sum256(body)
-		if err := writer.WriteHeader(&tar.Header{
-			Name: name, Mode: 0o600, Size: int64(len(body)),
-			ModTime: header.ModTime, Typeflag: tar.TypeReg,
-		}); err != nil {
-			return nil, nil, dropped, err
+		artifact, err := writeArtifact(writer, name, header.ModTime, body)
+		if err != nil {
+			return filteredArchive{truncated: ceilings.dropped}, err
 		}
-		if _, err := writer.Write(body); err != nil {
-			return nil, nil, dropped, err
-		}
-		used += int64(len(body))
-		manifest = append(manifest, Artifact{
-			FileName:    name,
-			SizeBytes:   int64(len(body)),
-			ContentHash: hex.EncodeToString(sum[:]),
-		})
+		ceilings.used += artifact.SizeBytes
+		manifest = append(manifest, artifact)
 	}
 	if err := writer.Close(); err != nil {
-		return nil, nil, dropped, err
+		return filteredArchive{truncated: ceilings.dropped}, err
 	}
-	if dropped {
-		for i := range manifest {
-			manifest[i].Truncated = true
-		}
+	if ceilings.dropped {
+		markTruncated(manifest)
 	}
-	return manifest, out.Bytes(), dropped, nil
+	return filteredArchive{manifest: manifest, archive: out.Bytes(), truncated: ceilings.dropped}, nil
+}
+
+func markTruncated(manifest []Artifact) {
+	for i := range manifest {
+		manifest[i].Truncated = true
+	}
+}
+
+func writeArtifact(writer *tar.Writer, name string, modTime time.Time, body []byte) (Artifact, error) {
+	sum := sha256.Sum256(body)
+	if err := writer.WriteHeader(&tar.Header{
+		Name: name, Mode: 0o600, Size: int64(len(body)),
+		ModTime: modTime, Typeflag: tar.TypeReg,
+	}); err != nil {
+		return Artifact{}, err
+	}
+	if _, err := writer.Write(body); err != nil {
+		return Artifact{}, err
+	}
+	return Artifact{
+		FileName:    name,
+		SizeBytes:   int64(len(body)),
+		ContentHash: hex.EncodeToString(sum[:]),
+	}, nil
 }
 
 // artifactName rejects any name that would traverse outside the collection,

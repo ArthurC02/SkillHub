@@ -24,7 +24,7 @@ func TestSelectDriverPicksTheRequestedBackend(t *testing.T) {
 		{name: "mxc with its executable", requested: "mxc", mxcBin: testMXCBin, want: "mxc"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := selectDriver(tc.requested, tc.runtime, tc.mxcBin, tc.cleanMode)
+			got, err := selectDriver(tc.requested, tc.runtime, tc.mxcBin, cleanNode(tc.cleanMode))
 			if err != nil {
 				t.Fatalf("selectDriver refused a valid combination: %v", err)
 			}
@@ -74,7 +74,7 @@ func TestSelectDriverRefusesCombinationsThatCannotHoldTheirPromise(t *testing.T)
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := selectDriver(tc.requested, tc.runtime, tc.mxcBin, tc.cleanMode)
+			got, err := selectDriver(tc.requested, tc.runtime, tc.mxcBin, cleanNode(tc.cleanMode))
 			if err == nil {
 				t.Fatalf("selectDriver accepted the combination and chose %q", got)
 			}
