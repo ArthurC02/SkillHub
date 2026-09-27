@@ -333,9 +333,10 @@ jobs:
           ARCH="$(uname -m)"
           # Release tags read `release-YYYYMMDD.N`; the download path drops the prefix.
           URL="https://storage.googleapis.com/gvisor/releases/release/${BASELINE#release-}/${ARCH}"
-          wget -q "${URL}/runsc" "${URL}/runsc.sha512"                "${URL}/containerd-shim-runsc-v1" "${URL}/containerd-shim-runsc-v1.sha512"
-          sha512sum -c runsc.sha512 -c containerd-shim-runsc-v1.sha512
-          sudo install -m 0755 -t /usr/local/bin runsc containerd-shim-runsc-v1
+          wget -q "${URL}/gvisor.tar.zstd" "${URL}/gvisor.tar.zstd.sha512"
+          sha512sum -c gvisor.tar.zstd.sha512
+          sudo tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
+          rm -f gvisor.tar.zstd gvisor.tar.zstd.sha512
           sudo runsc install
           sudo systemctl reload docker
         working-directory: .

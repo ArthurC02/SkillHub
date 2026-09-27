@@ -8,7 +8,7 @@ set -e
 # this apt silently consumes the rest of the script.
 if ! command -v runsc >/dev/null 2>&1; then
   apt-get update -qq >/dev/null 2>&1 </dev/null
-  apt-get install -y -qq curl ca-certificates >/dev/null 2>&1 </dev/null
+  apt-get install -y -qq curl ca-certificates zstd >/dev/null 2>&1 </dev/null
 
   ARCH=$(uname -m)
   # The version comes from the caller, which reads the same baseline file node
@@ -16,10 +16,11 @@ if ! command -v runsc >/dev/null 2>&1; then
   # binary no Run will ever execute. `latest` no longer serves these files.
   : "${SEC009_RUNSC_VERSION:?the calling script must pass the gVisor baseline}"
   URL=https://storage.googleapis.com/gvisor/releases/release/${SEC009_RUNSC_VERSION#release-}/${ARCH}
-  curl -fsSL -o /usr/local/bin/runsc "${URL}/runsc"
-  curl -fsSL -o /tmp/runsc.sha512 "${URL}/runsc.sha512"
-  ( cd /usr/local/bin && sha512sum -c /tmp/runsc.sha512 --ignore-missing )
-  chmod 755 /usr/local/bin/runsc
+  curl -fsSL -o /tmp/gvisor.tar.zstd "${URL}/gvisor.tar.zstd"
+  curl -fsSL -o /tmp/gvisor.tar.zstd.sha512 "${URL}/gvisor.tar.zstd.sha512"
+  ( cd /tmp && sha512sum -c gvisor.tar.zstd.sha512 )
+  tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+  rm -f /tmp/gvisor.tar.zstd /tmp/gvisor.tar.zstd.sha512
 fi
 
 # Empties the root cgroup so subtree_control becomes writable: cgroup v2's

@@ -11,12 +11,11 @@ esac
 url="https://storage.googleapis.com/gvisor/releases/release/${baseline#release-}/$(uname -m)"
 work="$(mktemp -d)"
 cd "$work"
-for file in runsc containerd-shim-runsc-v1; do
+for file in gvisor.tar.zstd gvisor.tar.zstd.sha512; do
     curl -fsSL -o "$file" "$url/$file"
-    curl -fsSL -o "$file.sha512" "$url/$file.sha512"
 done
-sha512sum -c runsc.sha512 containerd-shim-runsc-v1.sha512
-install -m 0755 -t /usr/local/bin runsc containerd-shim-runsc-v1
+sha512sum -c gvisor.tar.zstd.sha512
+tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
 cd /
 rm -rf "$work"
 runsc --version
