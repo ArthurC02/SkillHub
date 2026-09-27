@@ -714,105 +714,137 @@ func (s *Service) persist(
 func (s *Service) store(
 	ctx context.Context, ws identity.Workspace, retention time.Duration, pkg storedPackage,
 ) (Artifact, bool, error) {
-	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + pkg.contentHash + ".zip"
+	locks := &downloadObjectLocks{
+		workspaceID: ws.ID,
+		objectKey:   "downloads/" + pgconv.UUIDString(ws.ID) + "/" + pkg.contentHash + ".zip",
+	}
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
 		return Artifact{}, false, err
 	}
-	workspaceLocked, objectLocked := false, false
-	defer func() {
-		unlockCtx, cancel := context.WithTimeout(context.Background(), objectCleanupTimeout)
-		defer cancel()
-		// A session lock that fails to release must not go back to the pool
-		// still held; hijacking and closing the connection instead forces the
-		// pool to open a fresh one.
-		q := gen.New(conn)
-		if objectLocked {
-			if _, err := q.UnlockDownloadObjectKeySession(unlockCtx, downloadObjectLockKey(objectKey)); err != nil {
-				slog.Error("download object lock could not be released; closing connection", "error", err)
-				_ = conn.Hijack().Close(context.Background())
-				return
-			}
-		}
-		if workspaceLocked {
-			if _, err := q.UnlockPackagingWorkspaceObjectsSession(unlockCtx, ws.ID); err != nil {
-				slog.Error("packaging workspace lock could not be released; closing connection", "error", err)
-				_ = conn.Hijack().Close(context.Background())
-				return
-			}
-		}
-		conn.Release()
-	}()
-	q := gen.New(conn)
-	if err := q.LockPackagingWorkspaceObjectsSession(ctx, ws.ID); err != nil {
+	locks.conn = conn
+	defer locks.release()
+	if err := s.holdDownloadObject(ctx, locks); err != nil {
 		return Artifact{}, false, err
 	}
-	workspaceLocked = true
-	if s.MayStoreObjects == nil {
-		return Artifact{}, false, errors.New("packaging: identity lifecycle read is not configured")
-	}
-	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
-	if err != nil {
-		return Artifact{}, false, err
-	}
-	if !allowed {
-		return Artifact{}, false, ErrNotFound
-	}
-	lockKey := downloadObjectLockKey(objectKey)
-	if err := q.LockDownloadObjectKeySession(ctx, lockKey); err != nil {
-		return Artifact{}, false, err
-	}
-	objectLocked = true
-	if existing, ok, err := pkg.reuse(q); err != nil || ok {
+	if existing, ok, err := pkg.reuse(gen.New(conn)); err != nil || ok {
 		return existing, ok, err
 	}
+	artifact, err := s.putDownloadPackage(ctx, conn, locks.workspaceID, locks.objectKey, retention, pkg)
+	return artifact, false, err
+}
+
+type downloadObjectLocks struct {
+	conn          *pgxpool.Conn
+	workspaceID   pgtype.UUID
+	objectKey     string
+	workspaceHeld bool
+	objectHeld    bool
+}
+
+func (s *Service) holdDownloadObject(ctx context.Context, locks *downloadObjectLocks) error {
+	if err := gen.New(locks.conn).LockPackagingWorkspaceObjectsSession(ctx, locks.workspaceID); err != nil {
+		return err
+	}
+	locks.workspaceHeld = true
+	if s.MayStoreObjects == nil {
+		return errors.New("packaging: identity lifecycle read is not configured")
+	}
+	allowed, err := s.MayStoreObjects(ctx, locks.conn, locks.workspaceID)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrNotFound
+	}
+	if err := gen.New(locks.conn).LockDownloadObjectKeySession(ctx, downloadObjectLockKey(locks.objectKey)); err != nil {
+		return err
+	}
+	locks.objectHeld = true
+	return nil
+}
+
+func (l *downloadObjectLocks) release() {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), objectCleanupTimeout)
+	defer cancel()
+	// A session lock that fails to release must not go back to the pool
+	// still held; hijacking and closing the connection instead forces the
+	// pool to open a fresh one.
+	q := gen.New(l.conn)
+	if l.objectHeld {
+		if _, err := q.UnlockDownloadObjectKeySession(unlockCtx, downloadObjectLockKey(l.objectKey)); err != nil {
+			slog.Error("download object lock could not be released; closing connection", "error", err)
+			_ = l.conn.Hijack().Close(context.Background())
+			return
+		}
+	}
+	if l.workspaceHeld {
+		if _, err := q.UnlockPackagingWorkspaceObjectsSession(unlockCtx, l.workspaceID); err != nil {
+			slog.Error("packaging workspace lock could not be released; closing connection", "error", err)
+			_ = l.conn.Hijack().Close(context.Background())
+			return
+		}
+	}
+	l.conn.Release()
+}
+
+func (s *Service) putDownloadPackage(
+	ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, objectKey string,
+	retention time.Duration, pkg storedPackage,
+) (Artifact, error) {
 	exists, err := s.Store.Exists(ctx, objectKey)
 	if err != nil {
-		return Artifact{}, false, err
+		return Artifact{}, err
 	}
-	ownsObject, commitAttempted := false, false
-	intentCreated := false
-
-	// Removes the object only if this call put it there and never committed;
-	// an object another artifact already shares is left alone.
+	if _, err := gen.New(conn).CreateDownloadCleanupIntent(ctx, gen.CreateDownloadCleanupIntentParams{
+		WorkspaceID: workspaceID, ObjectKey: objectKey, Hold: pgconv.Interval(downloadCleanupHold),
+	}); err != nil {
+		return Artifact{}, err
+	}
+	ownsObject, commitAttempted := !exists, false
 	defer func() {
 		if ownsObject && !commitAttempted {
-			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
-			defer cancel()
-			if err := s.Store.Remove(cleanupCtx, objectKey); err != nil {
-				slog.Error("failed to compensate download package object", "key", objectKey, "error", err)
-				return
-			}
-			if intentCreated {
-				if err := gen.New(conn).DeleteDownloadCleanupIntent(cleanupCtx, gen.DeleteDownloadCleanupIntentParams{
-					ObjectKey: objectKey, WorkspaceID: ws.ID,
-				}); err != nil {
-					slog.Error("failed to clear compensated download cleanup intent", "key", objectKey, "error", err)
-				}
-			}
+			s.compensateDownloadObject(ctx, conn, workspaceID, objectKey)
 		}
 	}()
-	if _, err := q.CreateDownloadCleanupIntent(ctx, gen.CreateDownloadCleanupIntentParams{
-		WorkspaceID: ws.ID, ObjectKey: objectKey, Hold: pgconv.Interval(downloadCleanupHold),
-	}); err != nil {
-		return Artifact{}, false, err
-	}
-	intentCreated = true
-	ownsObject = !exists
-
 	if err := s.Store.Put(ctx, objectKey, pkg.zip); err != nil {
-		return Artifact{}, false, err
+		return Artifact{}, err
 	}
+	var row gen.Artifact
+	row, commitAttempted, err = recordDownloadPackage(ctx, conn, workspaceID, objectKey, retention, pkg)
+	if err != nil {
+		return Artifact{}, err
+	}
+	return pkg.fresh(row), nil
+}
 
+func (s *Service) compensateDownloadObject(ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, objectKey string) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
+	defer cancel()
+	if err := s.Store.Remove(cleanupCtx, objectKey); err != nil {
+		slog.Error("failed to compensate download package object", "key", objectKey, "error", err)
+		return
+	}
+	if err := gen.New(conn).DeleteDownloadCleanupIntent(cleanupCtx, gen.DeleteDownloadCleanupIntentParams{
+		ObjectKey: objectKey, WorkspaceID: workspaceID,
+	}); err != nil {
+		slog.Error("failed to clear compensated download cleanup intent", "key", objectKey, "error", err)
+	}
+}
+
+func recordDownloadPackage(
+	ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, objectKey string,
+	retention time.Duration, pkg storedPackage,
+) (row gen.Artifact, commitAttempted bool, err error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return Artifact{}, false, err
+		return gen.Artifact{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q = gen.New(tx)
+	q := gen.New(tx)
 
-	row, err := q.CreateDownloadArtifactRow(ctx, gen.CreateDownloadArtifactRowParams{
-		WorkspaceID: ws.ID,
+	row, err = q.CreateDownloadArtifactRow(ctx, gen.CreateDownloadArtifactRowParams{
+		WorkspaceID: workspaceID,
 		FileName:    pkg.fileName,
 		ContentType: "application/zip",
 		SizeBytes:   int64(len(pkg.zip)),
@@ -821,30 +853,22 @@ func (s *Service) store(
 		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(retention), Valid: true},
 	})
 	if err != nil {
-		return Artifact{}, false, err
+		return gen.Artifact{}, false, err
 	}
 	if err := pkg.record(q, row.ID); err != nil {
-		return Artifact{}, false, err
+		return gen.Artifact{}, false, err
 	}
-
 	if err := q.MarkDownloadArtifactAvailable(ctx, gen.MarkDownloadArtifactAvailableParams{
-		ID: row.ID, WorkspaceID: ws.ID,
+		ID: row.ID, WorkspaceID: workspaceID,
 	}); err != nil {
-		return Artifact{}, false, err
+		return gen.Artifact{}, false, err
 	}
-	if intentCreated {
-		if err := q.DeleteDownloadCleanupIntent(ctx, gen.DeleteDownloadCleanupIntentParams{
-			ObjectKey: objectKey, WorkspaceID: ws.ID,
-		}); err != nil {
-			return Artifact{}, false, err
-		}
+	if err := q.DeleteDownloadCleanupIntent(ctx, gen.DeleteDownloadCleanupIntentParams{
+		ObjectKey: objectKey, WorkspaceID: workspaceID,
+	}); err != nil {
+		return gen.Artifact{}, false, err
 	}
-	commitAttempted = true
-	if err := tx.Commit(ctx); err != nil {
-		return Artifact{}, false, err
-	}
-
-	return pkg.fresh(row), false, nil
+	return row, true, tx.Commit(ctx)
 }
 
 func reusableArtifact(newestFirst []gen.ListDownloadArtifactsWithIdentityRow, now time.Time) (gen.ListDownloadArtifactsWithIdentityRow, bool) {

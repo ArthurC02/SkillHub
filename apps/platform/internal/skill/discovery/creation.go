@@ -31,59 +31,79 @@ func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDis
 	if err != nil {
 		return nil, 0, false, err
 	}
-	queries := gen.New(s.Pool)
-	lexical := func(op string, limit int32) ([]string, error) {
-		q := lexicalQuery(query, op)
-		if q == "" {
-			return nil, nil
-		}
-		rows, err := queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys, Query: q, ResultLimit: limit})
-		if err != nil {
-			return nil, err
-		}
-		out := make([]string, 0, len(rows))
-		for _, r := range rows {
-			out = append(out, pgconv.UUIDString(r.SkillID))
-		}
-		return out, nil
+	words := creationWordSearch{queries: gen.New(s.Pool), scope: scope, query: query}
+	if s.LLM == nil {
+		return words.degradedAnswer(ctx)
 	}
-	degradedAnswer := func() ([]string, float64, bool, error) {
-		all, err := lexical("&", 3)
+	embedding, costUSD, ok := s.embedCreationQuery(ctx, query)
+	if !ok {
+		return words.degradedAnswer(ctx)
+	}
+	return s.rankedCreationIDs(ctx, words.queries, query, embedding, maxDistance, costUSD)
+}
+
+type creationWordSearch struct {
+	queries *gen.Queries
+	scope   publicScope
+	query   string
+}
+
+func (w creationWordSearch) ids(ctx context.Context, op string, limit int32) ([]string, error) {
+	q := lexicalQuery(w.query, op)
+	if q == "" {
+		return nil, nil
+	}
+	rows, err := w.queries.CreationLexicalSearchSkills(ctx, gen.CreationLexicalSearchSkillsParams{CatalogWorkspaceIds: w.scope.catalogs, ExposedKeys: w.scope.exposedKeys, Query: q, ResultLimit: limit})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, pgconv.UUIDString(r.SkillID))
+	}
+	return out, nil
+}
+
+func (w creationWordSearch) degradedAnswer(ctx context.Context) ([]string, float64, bool, error) {
+	all, err := w.ids(ctx, "&", 3)
+	if err != nil {
+		return nil, 0, true, err
+	}
+	if len(all) < 3 {
+		any, err := w.ids(ctx, "|", 3)
 		if err != nil {
 			return nil, 0, true, err
 		}
-		if len(all) < 3 {
-			any, err := lexical("|", 3)
-			if err != nil {
-				return nil, 0, true, err
-			}
-			for _, id := range any {
-				if !containsID(all, id) && len(all) < 3 {
-					all = append(all, id)
-				}
+		for _, id := range any {
+			if !containsID(all, id) && len(all) < 3 {
+				all = append(all, id)
 			}
 		}
-		return all, 0, true, nil
 	}
-	if s.LLM == nil {
-		return degradedAnswer()
-	}
+	return all, 0, true, nil
+}
+
+func (s *Service) embedCreationQuery(ctx context.Context, query string) (pgvector.Vector, float64, bool) {
 	embedCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
 	embedResp, err := s.LLM.Embed(embedCtx, []string{query}, 10*time.Second)
 	if err != nil || len(embedResp.Vectors) == 0 {
-		return degradedAnswer()
+		return pgvector.Vector{}, 0, false
 	}
+	var costUSD float64
 	if embedResp.Usage != nil && embedResp.Usage.CostUSD != nil {
 		costUSD = *embedResp.Usage.CostUSD
 	}
-	embedding := pgvector.NewVector(embedResp.Vectors[0])
+	return pgvector.NewVector(embedResp.Vectors[0]), costUSD, true
+}
+
+func (s *Service) rankedCreationIDs(ctx context.Context, queries *gen.Queries, query string, embedding pgvector.Vector, maxDistance, costUSD float64) ([]string, float64, bool, error) {
 	rows, _, err := s.hybridSearch(ctx, queries, query, &embedding, 10, searchFilters{}, maxDistance)
 	if err != nil {
 		return nil, costUSD, false, err
 	}
+	var ids []string
 	for _, r := range rows {
-
 		if r.unranked {
 			continue
 		}

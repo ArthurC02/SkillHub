@@ -168,129 +168,180 @@ func (d *driver) dispatch(ctx context.Context) error {
 			d.reasonFor(failureProvider, err))
 	}
 
-	avoid := lostProviders(attempts, halts.byTarget)
-	placements, err := d.svc.providers().Place(ctx, req, avoid)
+	placements, placed, err := d.place(ctx, req, lostProviders(attempts, halts.byTarget))
+	if !placed {
+		return err
+	}
+	return d.dispatchAttempts(ctx, &dispatchRound{
+		attempts: attempts, placements: placements, policy: policy, budget: budget,
+	})
+}
+
+func (d *driver) place(ctx context.Context, req Requirements, avoid map[string]SetAsideProvider) (placements []Placement, placed bool, err error) {
+	placements, err = d.svc.providers().Place(ctx, req, avoid)
 	switch {
 	case errors.Is(err, ErrNoFreeSlot):
-		return d.waitForSlot()
+		return nil, false, d.waitForSlot()
 	case errors.Is(err, ErrNoSandboxAvailableYet):
-		return d.waitForSandbox(err)
+		return nil, false, d.waitForSandbox(err)
 	case err != nil:
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
+		return nil, false, d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider,
 			d.reasonFor(failureNoProvider, err))
 	}
 	if d.cur.Status == gen.RunStatusQueued {
 		yield, err := d.svc.turnBelongsToAnother(ctx, d.cur, placements, avoid)
 		if err != nil {
-			return err
+			return nil, false, err
 		}
 		if yield {
-			return d.waitForTurn()
+			return nil, false, d.waitForTurn()
 		}
 	}
+	return placements, true, nil
+}
 
-	var (
-		lastReason    statusReason
-		lastAttemptID pgtype.UUID
-		failures      int
-	)
-dispatching:
-	for failures < d.svc.maxAttempts() {
-		if len(placements) == 0 {
+type dispatchRound struct {
+	attempts   []gen.RunAttempt
+	placements []Placement
+	policy     policySnapshot
+	budget     float64
+
+	lastReason    statusReason
+	lastAttemptID pgtype.UUID
+	failures      int
+}
+
+type attemptOutcome int
+
+const (
+	attemptSettled attemptOutcome = iota
+	attemptRetry
+	attemptNextProvider
+	attemptGiveUp
+)
+
+func (d *driver) dispatchAttempts(ctx context.Context, round *dispatchRound) error {
+	for round.failures < d.svc.maxAttempts() {
+		if len(round.placements) == 0 {
 			return d.waitForSlot()
 		}
-		placement := placements[0]
-		provider := placement.Provider
-		d.provider = provider
-		if d.expired() {
-			return d.finish(ctx, lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
-		}
-		if cancelled, err := d.cancelRequested(ctx); err != nil {
+		outcome, err := d.tryPlacement(ctx, round)
+		switch outcome {
+		case attemptSettled:
 			return err
-		} else if cancelled {
-			return d.finish(ctx, lastAttemptID, gen.RunStatusCancelled, failureCancelled, "派送進行中被取消")
+		case attemptRetry:
+			round.failures++
+		case attemptNextProvider:
+			round.placements = round.placements[1:]
+		case attemptGiveUp:
+			return d.dispatchFailed(ctx, round)
 		}
+	}
+	return d.dispatchFailed(ctx, round)
+}
 
-		started, err := d.command(ctx, func(r *Run) { r.StartAttempt(provider.Name()) })
-		if err != nil {
-			return err
-		}
-		attempt := started.LatestAttempt()
-		lastAttemptID = attempt.ID
+func (d *driver) dispatchFailed(ctx context.Context, round *dispatchRound) error {
+	return d.finish(ctx, round.lastAttemptID, gen.RunStatusFailed, failureProvider,
+		orDefault(round.lastReason, "派送沒有成功"))
+}
 
-		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, policy, budget)
-		if err != nil {
-
-			if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
-				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
-			}
-			reason := d.reasonFor(failurePlatform, err)
-			return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failurePlatform, reason)
-		}
-		pr, err := provider.Start(ctx, request)
-		if err != nil {
-			lastReason = d.reasonFor(failureProvider, err)
-			if err := d.finishAttempt(ctx, attempt, dispatchErrorClass(err), string(lastReason)); err != nil {
-				return err
-			}
-			switch {
-			case refusedForCapacity(err):
-				d.svc.providers().forget(provider.Name())
-				placements = placements[1:]
-				continue
-			case !retryable(err):
-				break dispatching
-			}
-			failures++
-			slog.Warn("run dispatch failed, retrying with a new attempt",
-				"run_id", pgconv.UUIDString(d.cur.ID), "attempt", attempt.AttemptNumber, "error", err)
-			continue
-		}
-
-		snapshot, err := pinnedRuntime(provider, placement.Capability, placement.Profile)
-		if err != nil {
-			return err
-		}
-		dispatched, err := d.command(ctx, func(r *Run) {
-			r.RecordDispatch(attempt.ID, pr.ProviderRunID)
-			r.AssignProvider(provider.Name(), snapshot)
-		})
-		if err == nil {
-			attempt = dispatched.Attempt(attempt.ID)
-			d.cur = dispatched.Row()
-			d.clock = d.clock.dispatchedAt(attempt.StartedAt.Time)
-		}
-		if err != nil {
-
-			if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
-
-				slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed; the orphan scan will reclaim it",
-					"run_id", pgconv.UUIDString(d.cur.ID), "error", destroyErr)
-			}
-			return err
-		}
-		if d.cur.Status == gen.RunStatusQueued {
-			if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider.Name())); err != nil {
-				return err
-			}
-		}
-
-		if pr.State == ProviderStateFailed {
-			slog.Error("a run failed on an external system; the run carries the platform's own wording instead",
-				"run_id", pgconv.UUIDString(d.cur.ID),
-				"error", fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason)))
-			lastReason = "執行沙箱在準備階段就失敗了"
-			if err := d.finishAttempt(ctx, attempt, errClassProvision, string(lastReason)); err != nil {
-				return err
-			}
-			failures++
-			continue
-		}
-		return d.follow(ctx, append(slices.Clone(attempts), attempt), attempt)
+func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemptOutcome, error) {
+	placement := round.placements[0]
+	provider := placement.Provider
+	d.provider = provider
+	if d.expired() {
+		return attemptSettled, d.finish(ctx, round.lastAttemptID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+	}
+	if cancelled, err := d.cancelRequested(ctx); err != nil {
+		return attemptSettled, err
+	} else if cancelled {
+		return attemptSettled, d.finish(ctx, round.lastAttemptID, gen.RunStatusCancelled, failureCancelled, "派送進行中被取消")
 	}
 
-	return d.finish(ctx, lastAttemptID, gen.RunStatusFailed, failureProvider,
-		orDefault(lastReason, "派送沒有成功"))
+	started, err := d.command(ctx, func(r *Run) { r.StartAttempt(provider.Name()) })
+	if err != nil {
+		return attemptSettled, err
+	}
+	attempt := started.LatestAttempt()
+	round.lastAttemptID = attempt.ID
+
+	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, round.policy, round.budget)
+	if err != nil {
+		return attemptSettled, d.abandonUnbuiltAttempt(ctx, attempt, err)
+	}
+	pr, err := provider.Start(ctx, request)
+	if err != nil {
+		return d.startRefused(ctx, round, attempt, provider, err)
+	}
+	return d.startAccepted(ctx, round, placement, attempt, pr)
+}
+
+func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttempt, err error) error {
+	if expiryErr := d.svc.recordObjectGrantExpiry(ctx, attempt, objectGrantsExpiredOnArrival()); expiryErr != nil {
+		slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
+	}
+	reason := d.reasonFor(failurePlatform, err)
+	return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failurePlatform, reason)
+}
+
+func (d *driver) startRefused(
+	ctx context.Context, round *dispatchRound, attempt gen.RunAttempt, provider SandboxProvider, err error,
+) (attemptOutcome, error) {
+	round.lastReason = d.reasonFor(failureProvider, err)
+	if err := d.finishAttempt(ctx, attempt, dispatchErrorClass(err), string(round.lastReason)); err != nil {
+		return attemptSettled, err
+	}
+	switch {
+	case refusedForCapacity(err):
+		d.svc.providers().forget(provider.Name())
+		return attemptNextProvider, nil
+	case !retryable(err):
+		return attemptGiveUp, nil
+	}
+	slog.Warn("run dispatch failed, retrying with a new attempt",
+		"run_id", pgconv.UUIDString(d.cur.ID), "attempt", attempt.AttemptNumber, "error", err)
+	return attemptRetry, nil
+}
+
+func (d *driver) startAccepted(
+	ctx context.Context, round *dispatchRound, placement Placement, attempt gen.RunAttempt, pr ProviderRun,
+) (attemptOutcome, error) {
+	provider := placement.Provider
+	snapshot, err := pinnedRuntime(provider, placement.Capability, placement.Profile)
+	if err != nil {
+		return attemptSettled, err
+	}
+	dispatched, err := d.command(ctx, func(r *Run) {
+		r.RecordDispatch(attempt.ID, pr.ProviderRunID)
+		r.AssignProvider(provider.Name(), snapshot)
+	})
+	if err != nil {
+		if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
+			slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed; the orphan scan will reclaim it",
+				"run_id", pgconv.UUIDString(d.cur.ID), "error", destroyErr)
+		}
+		return attemptSettled, err
+	}
+	attempt = dispatched.Attempt(attempt.ID)
+	d.cur = dispatched.Row()
+	d.clock = d.clock.dispatchedAt(attempt.StartedAt.Time)
+	if d.cur.Status == gen.RunStatusQueued {
+		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+statusReason(provider.Name())); err != nil {
+			return attemptSettled, err
+		}
+	}
+
+	if pr.State == ProviderStateFailed {
+		slog.Error("a run failed on an external system; the run carries the platform's own wording instead",
+			"run_id", pgconv.UUIDString(d.cur.ID),
+			"error", fmt.Errorf("provider failed during provisioning: %s", truncate(pr.StateReason)))
+		round.lastReason = "執行沙箱在準備階段就失敗了"
+		if err := d.finishAttempt(ctx, attempt, errClassProvision, string(round.lastReason)); err != nil {
+			return attemptSettled, err
+		}
+		return attemptRetry, nil
+	}
+	return attemptSettled, d.follow(ctx, append(slices.Clone(round.attempts), attempt), attempt)
 }
 
 func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt gen.RunAttempt) error {

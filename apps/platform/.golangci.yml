@@ -12,42 +12,6 @@ linters:
     rules:
       - path: _test\.go
         linters: [gocognit]
-      - path: cmd/api/main\.go
-        linters: [gocognit]
-        text: 'func `main`'
-      - path: internal/creator/workspace/purge\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.purgeAccount`'
-      - path: internal/entrypoint/api/apiserver/creation_stream\.go
-        linters: [gocognit]
-        text: 'func `\(\*creationHandler\)\.Stream`'
-      - path: internal/entrypoint/api/apiserver/creation_wiring\.go
-        linters: [gocognit]
-        text: 'func `wireCreationReads`'
-      - path: internal/entrypoint/worker/creation_wiring\.go
-        linters: [gocognit]
-        text: 'func `wireCreationReads`'
-      - path: internal/foundation/storage/objreconcile/objreconcile\.go
-        linters: [gocognit]
-        text: 'func `PurgeExpired`'
-      - path: internal/skill/admission/generate\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.GenerateSkill`'
-      - path: internal/skill/delivery/packaging\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.store`'
-      - path: internal/skill/discovery/creation\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.CreationKnowledgeIDs`'
-      - path: internal/trial/design/dataset\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.UploadDataset`'
-      - path: internal/trial/execution/job\.go
-        linters: [gocognit]
-        text: 'func `\(\*driver\)\.dispatch`'
-      - path: internal/trial/improvement/apply\.go
-        linters: [gocognit]
-        text: 'func `\(\*Service\)\.ApplySuggestions`'
 
   settings:
     gocognit:

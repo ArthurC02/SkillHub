@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -127,8 +128,7 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 }
 
 func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID pgtype.UUID) error {
-	q := s.queries()
-	workspaces, err := q.ListWorkspacesByOwner(ctx, userID)
+	workspaces, err := s.queries().ListWorkspacesByOwner(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -136,25 +136,58 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if err != nil {
 		return err
 	}
-	locked := make([]pgtype.UUID, 0, len(workspaces))
-	defer func() {
-		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		for i := len(locked) - 1; i >= 0; i-- {
-			if _, err := gen.New(conn).UnlockAccountWorkspaceObjects(unlockCtx, locked[i]); err != nil {
-				slog.Error("account purge workspace lock could not be released; closing connection", "error", err)
-				_ = conn.Hijack().Close(context.Background())
-				return
-			}
-		}
-		conn.Release()
-	}()
+	locks := &accountWorkspaceLocks{conn: conn, held: make([]pgtype.UUID, 0, len(workspaces))}
+	defer locks.release()
+	if err := locks.hold(ctx, workspaces); err != nil {
+		return err
+	}
+	if err := s.claimAccountPurge(ctx, conn, userID, workspaces); err != nil {
+		return err
+	}
+	if err := s.removeAccountObjects(ctx, conn, store, workspaces); err != nil {
+		return err
+	}
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'"); err != nil {
+		return err
+	}
+	return s.eraseAccount(ctx, tx, userID, workspaces)
+}
+
+type accountWorkspaceLocks struct {
+	conn *pgxpool.Conn
+	held []pgtype.UUID
+}
+
+func (l *accountWorkspaceLocks) hold(ctx context.Context, workspaces []gen.Workspace) error {
 	for _, ws := range workspaces {
-		if err := gen.New(conn).LockAccountWorkspaceObjects(ctx, ws.ID); err != nil {
+		if err := gen.New(l.conn).LockAccountWorkspaceObjects(ctx, ws.ID); err != nil {
 			return err
 		}
-		locked = append(locked, ws.ID)
+		l.held = append(l.held, ws.ID)
 	}
+	return nil
+}
+
+func (l *accountWorkspaceLocks) release() {
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for i := len(l.held) - 1; i >= 0; i-- {
+		if _, err := gen.New(l.conn).UnlockAccountWorkspaceObjects(unlockCtx, l.held[i]); err != nil {
+			slog.Error("account purge workspace lock could not be released; closing connection", "error", err)
+			_ = l.conn.Hijack().Close(context.Background())
+			return
+		}
+	}
+	l.conn.Release()
+}
+
+func (s *Service) claimAccountPurge(ctx context.Context, conn *pgxpool.Conn, userID pgtype.UUID, workspaces []gen.Workspace) error {
 	for _, ws := range workspaces {
 		ready, err := s.WorkspaceQuiescent(ctx, conn, ws.ID)
 		if err != nil {
@@ -171,20 +204,17 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if started == 0 {
 		return errAccountPurgeDeferred
 	}
+	return nil
+}
 
-	// Objects removed before the transaction opens: object storage has no
-	// rollback, so a later failure leaves rows pointing at missing files
-	// (recoverable by the next sweep) rather than an orphaned file no row names.
+// Objects removed before the transaction opens: object storage has no
+// rollback, so a later failure leaves rows pointing at missing files
+// (recoverable by the next sweep) rather than an orphaned file no row names.
+func (s *Service) removeAccountObjects(ctx context.Context, conn *pgxpool.Conn, store ObjectRemover, workspaces []gen.Workspace) error {
 	for _, ws := range workspaces {
-		keys := map[string]struct{}{}
-		for _, step := range s.objectKeySteps() {
-			owned, err := step.list(ctx, conn, ws.ID)
-			if err != nil {
-				return fmt.Errorf("list %s object keys: %w", step.context, err)
-			}
-			for _, key := range owned {
-				keys[key] = struct{}{}
-			}
+		keys, err := s.workspaceObjectKeys(ctx, conn, ws.ID)
+		if err != nil {
+			return err
 		}
 		for key := range keys {
 			if err := store.Remove(ctx, key); err != nil {
@@ -192,18 +222,24 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 			}
 		}
 	}
+	return nil
+}
 
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return err
+func (s *Service) workspaceObjectKeys(ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID) (map[string]struct{}, error) {
+	keys := map[string]struct{}{}
+	for _, step := range s.objectKeySteps() {
+		owned, err := step.list(ctx, conn, workspaceID)
+		if err != nil {
+			return nil, fmt.Errorf("list %s object keys: %w", step.context, err)
+		}
+		for _, key := range owned {
+			keys[key] = struct{}{}
+		}
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	return keys, nil
+}
 
-	if _, err := tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'"); err != nil {
-		return err
-	}
-	q = gen.New(tx)
-
+func (s *Service) eraseAccount(ctx context.Context, tx pgx.Tx, userID pgtype.UUID, workspaces []gen.Workspace) error {
 	for _, ws := range workspaces {
 		for _, step := range s.purgeSteps() {
 			if err := step.purge(ctx, tx, ws.ID); err != nil {
@@ -211,6 +247,21 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 			}
 		}
 	}
+	if err := anonymizeAccount(ctx, gen.New(tx), userID); err != nil {
+		return err
+	}
+	if err := audit.Log(ctx, tx, audit.Event{
+		Actor:        userID,
+		Action:       audit.ActionAccountPurge,
+		ResourceType: audit.ResourceAccount,
+		ResourceID:   userID,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func anonymizeAccount(ctx context.Context, q *gen.Queries, userID pgtype.UUID) error {
 	if _, err := q.DeleteUserIdentities(ctx, userID); err != nil {
 		return err
 	}
@@ -227,16 +278,7 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	}); err != nil {
 		return err
 	}
-
-	if err := audit.Log(ctx, tx, audit.Event{
-		Actor:        userID,
-		Action:       audit.ActionAccountPurge,
-		ResourceType: audit.ResourceAccount,
-		ResourceID:   userID,
-	}); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 func uuidText(u pgtype.UUID) string {

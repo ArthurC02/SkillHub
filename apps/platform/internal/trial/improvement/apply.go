@@ -375,26 +375,56 @@ func (s *Service) ApplySuggestions(
 	if s.Versions == nil || s.store() == nil {
 		return out, errNoStore
 	}
+	base, err := s.evaluatedSkill(ctx, ws.ID, skillID, evaluationID)
+	if err != nil {
+		return out, err
+	}
+	suggestions, notAccepted, err := s.selectedSuggestions(ctx, ws.ID, evaluationID, ids)
+	out.NotAccepted = notAccepted
+	if err != nil {
+		return out, err
+	}
+	if len(out.NotAccepted) > 0 {
+		return out, ErrNotAccepted
+	}
+	sortByTarget(suggestions)
 
+	plan := planPatches(base, suggestions, len(ids))
+	out.Applied, out.Rejected = plan.appliedIDs, plan.rejected
+	if len(plan.patches) == 0 {
+		return out, nil
+	}
+	if blocked := validatePatched(base, plan.patches, out.Applied); blocked != nil {
+		out.rejectApplied(blocked.Reason, blocked.Message)
+		return out, nil
+	}
+	return s.buildImprovedVersion(ctx, ws, skillID, evaluationID, base, plan, out)
+}
+
+func (s *Service) evaluatedSkill(ctx context.Context, workspaceID, skillID, evaluationID pgtype.UUID) (suggestionCtx, error) {
 	ev, err := s.queries().GetEvaluation(ctx, gen.GetEvaluationParams{
-		ID: evaluationID, WorkspaceID: ws.ID,
+		ID: evaluationID, WorkspaceID: workspaceID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return out, ErrNotFound
+		return suggestionCtx{}, ErrNotFound
 	}
 	if err != nil {
-		return out, err
+		return suggestionCtx{}, err
 	}
-	base, err := s.loadVersions(ctx, ws.ID, ev, suggestionCtx{})
+	base, err := s.loadVersions(ctx, workspaceID, ev, suggestionCtx{})
 	if err != nil {
-		return out, err
+		return suggestionCtx{}, err
 	}
-
 	if base.skill.ID != skillID {
-		return out, ErrNotFound
+		return suggestionCtx{}, ErrNotFound
 	}
+	return base, nil
+}
 
-	suggestions := make([]gen.EvaluationSuggestion, 0, len(ids))
+func (s *Service) selectedSuggestions(
+	ctx context.Context, workspaceID, evaluationID pgtype.UUID, ids []pgtype.UUID,
+) (suggestions []gen.EvaluationSuggestion, notAccepted []string, err error) {
+	suggestions = make([]gen.EvaluationSuggestion, 0, len(ids))
 	seenIDs := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		idText := pgconv.UUIDString(id)
@@ -403,24 +433,23 @@ func (s *Service) ApplySuggestions(
 		}
 		seenIDs[idText] = true
 		sug, err := s.queries().GetEvaluationSuggestion(ctx, gen.GetEvaluationSuggestionParams{
-			ID: id, WorkspaceID: ws.ID,
+			ID: id, WorkspaceID: workspaceID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && sug.EvaluationID != evaluationID) {
-
-			return out, ErrNotFound
+			return nil, notAccepted, ErrNotFound
 		}
 		if err != nil {
-			return out, err
+			return nil, notAccepted, err
 		}
 		if Decision(sug.Decision) != DecisionAccepted {
-			out.NotAccepted = append(out.NotAccepted, pgconv.UUIDString(sug.ID))
+			notAccepted = append(notAccepted, pgconv.UUIDString(sug.ID))
 		}
 		suggestions = append(suggestions, sug)
 	}
-	if len(out.NotAccepted) > 0 {
+	return suggestions, notAccepted, nil
+}
 
-		return out, ErrNotAccepted
-	}
+func sortByTarget(suggestions []gen.EvaluationSuggestion) {
 	sort.Slice(suggestions, func(i, j int) bool {
 		left, leftOK := cleanTargetPath(suggestions[i].TargetPath)
 		right, rightOK := cleanTargetPath(suggestions[j].TargetPath)
@@ -435,19 +464,27 @@ func (s *Service) ApplySuggestions(
 		}
 		return pgconv.UUIDString(suggestions[i].ID) < pgconv.UUIDString(suggestions[j].ID)
 	})
+}
 
-	patches := map[string]string{}
+type patchPlan struct {
+	patches    map[string]string
+	applied    []pgtype.UUID
+	appliedIDs []string
+	rejected   []Blocked
+}
+
+func planPatches(base suggestionCtx, suggestions []gen.EvaluationSuggestion, capacity int) patchPlan {
+	plan := patchPlan{patches: map[string]string{}, applied: make([]pgtype.UUID, 0, capacity)}
 	targetCounts := make(map[string]int, len(suggestions))
 	for _, sug := range suggestions {
 		if target, ok := cleanTargetPath(sug.TargetPath); ok {
 			targetCounts[target]++
 		}
 	}
-	applied := make([]pgtype.UUID, 0, len(ids))
 	for _, sug := range suggestions {
 		target, _ := cleanTargetPath(sug.TargetPath)
 		if targetCounts[target] > 1 {
-			out.Rejected = append(out.Rejected, Blocked{
+			plan.rejected = append(plan.rejected, Blocked{
 				SuggestionID: pgconv.UUIDString(sug.ID), Reason: BlockedTargetChanged,
 				Message: "multiple suggestions replace " + target + "; select exactly one",
 			})
@@ -455,53 +492,45 @@ func (s *Service) ApplySuggestions(
 		}
 		sc := base
 		sc.suggestion = sug
-		_, blocked := check(sc)
-		if blocked != nil {
-			out.Rejected = append(out.Rejected, *blocked)
+		if _, blocked := check(sc); blocked != nil {
+			plan.rejected = append(plan.rejected, *blocked)
 			continue
 		}
-		patches[target] = sug.ProposedContent
-		applied = append(applied, sug.ID)
-		out.Applied = append(out.Applied, pgconv.UUIDString(sug.ID))
+		plan.patches[target] = sug.ProposedContent
+		plan.applied = append(plan.applied, sug.ID)
+		plan.appliedIDs = append(plan.appliedIDs, pgconv.UUIDString(sug.ID))
 	}
-	if len(patches) == 0 {
-		return out, nil
+	return plan
+}
+
+func (r *ApplyResult) rejectApplied(reason, message string) {
+	for _, id := range r.Applied {
+		r.Rejected = append(r.Rejected, Blocked{SuggestionID: id, Reason: reason, Message: message})
 	}
+	r.Applied = nil
+}
 
-	if blocked := validatePatched(base, patches, out.Applied); blocked != nil {
-
-		for _, id := range out.Applied {
-			out.Rejected = append(out.Rejected, Blocked{
-				SuggestionID: id, Reason: blocked.Reason, Message: blocked.Message,
-			})
-		}
-		out.Applied = nil
-		return out, nil
-	}
-
-	patched, err := patchArchive(base.latestZip, patches)
+func (s *Service) buildImprovedVersion(
+	ctx context.Context, ws identity.Workspace, skillID, evaluationID pgtype.UUID,
+	base suggestionCtx, plan patchPlan, out ApplyResult,
+) (ApplyResult, error) {
+	patched, err := patchArchive(base.latestZip, plan.patches)
 	if err != nil {
 		return out, err
 	}
-	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, evaluationID, applied)
+	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, evaluationID, plan.applied)
 	if err != nil {
 		return out, err
 	}
 	if res.Report.Blocked {
-
-		for _, id := range out.Applied {
-			out.Rejected = append(out.Rejected, Blocked{SuggestionID: id, Reason: BlockedValidation,
-				Message: "with these changes applied the package no longer passes import validation"})
-		}
-		out.Applied = nil
+		out.rejectApplied(BlockedValidation, "with these changes applied the package no longer passes import validation")
 		return out, nil
 	}
 	if res.Duplicate {
-		if err := s.RecordSuggestionsApplied(ctx, ws.ID, evaluationID, res.Version.ID, applied); err != nil {
+		if err := s.RecordSuggestionsApplied(ctx, ws.ID, evaluationID, res.Version.ID, plan.applied); err != nil {
 			return out, err
 		}
 	}
-
 	out.Created, out.Version = true, ingest.NewUploadResult(res)
 	return out, nil
 }

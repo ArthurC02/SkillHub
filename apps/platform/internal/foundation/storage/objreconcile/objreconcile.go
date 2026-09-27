@@ -119,7 +119,20 @@ func PurgeExpired(
 	if err != nil {
 		return 0, err
 	}
+	keys, byKey := groupByObjectKey(rows)
+	purge := expiredObjectPurge{pool: pool, store: store, mark: mark, guard: guard}
 	purged := 0
+	for _, key := range keys {
+		n, err := purge.object(ctx, key, byKey[key])
+		purged += n
+		if err != nil {
+			return purged, err
+		}
+	}
+	return purged, nil
+}
+
+func groupByObjectKey(rows []Candidate) ([]string, map[string][]Candidate) {
 	byKey := make(map[string][]Candidate, len(rows))
 	keys := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -128,49 +141,66 @@ func PurgeExpired(
 		}
 		byKey[row.ObjectKey] = append(byKey[row.ObjectKey], row)
 	}
-	for _, key := range keys {
-		group := byKey[key]
-		var removeErr error
-		action := func(retain bool, tx pgx.Tx) error {
-			if !retain {
-				removeErr = store.Remove(ctx, key)
-				if removeErr != nil {
-					return nil
-				}
-			}
+	return keys, byKey
+}
 
-			for _, row := range group {
-				var err error
-				if tx == nil {
-					err = markPurged(ctx, pool, mark, row.ID)
-				} else {
-					err = mark(ctx, tx, row.ID)
-				}
-				if err != nil {
-					return err
-				}
-				purged++
-				slog.Info("artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
-			}
-			return nil
-		}
-		var guardErr error
-		if guard == nil {
-			guardErr = action(false, nil)
-		} else {
-			guardErr = guard(ctx, key, action)
-		}
-		if guardErr != nil {
-			return purged, guardErr
-		}
-		if removeErr != nil {
-			for _, row := range group {
-				slog.Warn("expired object not removed; will retry",
-					"artifact_id", pgconv.UUIDString(row.ID), "error", removeErr)
+type expiredObjectPurge struct {
+	pool  *pgxpool.Pool
+	store ObjectStore
+	mark  MarkFunc
+	guard RetentionGuard
+}
+
+func (p expiredObjectPurge) object(ctx context.Context, key string, rows []Candidate) (int, error) {
+	var removeErr error
+	purged := 0
+	removeThenMark := func(retain bool, tx pgx.Tx) error {
+		if !retain {
+			removeErr = p.store.Remove(ctx, key)
+			if removeErr != nil {
+				return nil
 			}
 		}
+		n, err := p.markRows(ctx, tx, rows)
+		purged += n
+		return err
+	}
+	var err error
+	if p.guard == nil {
+		err = removeThenMark(false, nil)
+	} else {
+		err = p.guard(ctx, key, removeThenMark)
+	}
+	if err != nil {
+		return purged, err
+	}
+	if removeErr != nil {
+		warnObjectNotRemoved(rows, removeErr)
 	}
 	return purged, nil
+}
+
+func (p expiredObjectPurge) markRows(ctx context.Context, tx pgx.Tx, rows []Candidate) (int, error) {
+	for i, row := range rows {
+		var err error
+		if tx == nil {
+			err = markPurged(ctx, p.pool, p.mark, row.ID)
+		} else {
+			err = p.mark(ctx, tx, row.ID)
+		}
+		if err != nil {
+			return i, err
+		}
+		slog.Info("artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
+	}
+	return len(rows), nil
+}
+
+func warnObjectNotRemoved(rows []Candidate, removeErr error) {
+	for _, row := range rows {
+		slog.Warn("expired object not removed; will retry",
+			"artifact_id", pgconv.UUIDString(row.ID), "error", removeErr)
+	}
 }
 
 func ClearArtifactSightings(ctx context.Context, tx pgx.Tx, ids []pgtype.UUID) error {

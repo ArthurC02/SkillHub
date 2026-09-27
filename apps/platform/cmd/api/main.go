@@ -231,10 +231,7 @@ func main() {
 	creationTransient := wiring.CreationTransientFromEnv(creationLimits)
 
 	if len(os.Args) > 1 && os.Args[1] == "--capabilities" {
-		if err := printCapabilitiesJSON(os.Stdout); err != nil {
-			slog.Error("print capabilities", "error", err)
-			os.Exit(1)
-		}
+		exitOn(printCapabilitiesJSON(os.Stdout), "print capabilities")
 		return
 	}
 
@@ -244,64 +241,22 @@ func main() {
 	clean := cleanModeFromEnv()
 
 	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
-	if err != nil {
-		slog.Error("database pool: DATABASE_URL is not a valid connection string", "error", err)
-		os.Exit(1)
-	}
+	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
 	applyCleanModePool(poolCfg, clean)
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
-	if err != nil {
-		slog.Error("database pool", "error", err)
-		os.Exit(1)
-	}
+	exitOn(err, "database pool")
 	defer pool.Close()
 
 	store, stopStore, err := newStore(clean)
-	if err != nil {
-		slog.Error("object store", "error", err)
-		os.Exit(1)
-	}
+	exitOn(err, "object store")
 	if stopStore != nil {
 		defer stopStore()
 	}
-	if err := store.EnsureBucket(ctx); err != nil {
-		slog.Error("object store bucket", "error", err)
-		os.Exit(1)
-	}
+	exitOn(store.EnsureBucket(ctx), "object store bucket")
 
-	var llm *llmclient.Client
-	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		token := os.Getenv("LLM_SERVICE_TOKEN")
-		if token == "" {
-			slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
-			os.Exit(1)
-		}
-		llm = wiring.LLMClient(llmURL, token)
-		slog.Info("llm service configured", "url", llmURL)
-	} else {
-		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
-	}
-
-	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
-	if !traceSigner.Enabled() {
-		slog.Warn("SKILLHUB_TRACE_INGEST_SECRET not set; run traces will not be collected")
-	}
-
-	profileDir := envx.Or(os.Getenv("PACKAGING_PROFILES_DIR"), "contracts/packaging/profiles")
-	profiles, err := packaging.LoadProfiles(profileDir)
-	if err != nil {
-		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
-		profiles = nil
-	}
-	if len(profiles) == 0 {
-
-		resolved, absErr := filepath.Abs(profileDir)
-		if absErr != nil {
-			resolved = profileDir
-		}
-		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503",
-			"reason", profileDirReason(profileDir), "dir", profileDir, "resolved", resolved)
-	}
+	llm := llmFromEnv()
+	traceSigner := traceSignerFromEnv()
+	profiles := packagingProfilesFromEnv()
 
 	analyticsRetention := analyticsRetentionFromEnv()
 	if analyticsRetention < time.Second {
@@ -313,12 +268,7 @@ func main() {
 
 	posture := wiring.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()
-	if refusals := startupRefusals(posture, providers, rateLimitErr); len(refusals) > 0 {
-		for _, reason := range refusals {
-			slog.Error("refusing to start", "reason", reason)
-		}
-		os.Exit(1)
-	}
+	refuseToStartOn(startupRefusals(posture, providers, rateLimitErr))
 	secure, devLogin := posture.SecureCookies, posture.DevLogin
 	if devLogin {
 		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
@@ -329,12 +279,7 @@ func main() {
 	reportCapabilities(ctx, capabilities)
 
 	if clean {
-		creationTransient = func(ctx context.Context, a creation.JobArgs, d *creation.Diagram) error {
-			if cleanWorker == nil {
-				return creation.ErrUnavailable
-			}
-			return cleanWorker.Creation.Step(ctx, a, d)
-		}
+		creationTransient = inProcessCreation(&cleanWorker)
 	}
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool:               pool,
@@ -371,50 +316,30 @@ func main() {
 
 		CleanMode: clean,
 	})
-	if err != nil {
-		slog.Error("api composition", "error", err)
-		os.Exit(1)
-	}
+	exitOn(err, "api composition")
 	for _, task := range startupTasks(app) {
 		task(ctx)
 	}
 
 	if clean {
-		if err := queue.EnsureSchema(ctx, pool); err != nil {
-			slog.Error("clean mode: queue schema", "error", err)
-			os.Exit(1)
-		}
-		cleanWorker, err = worker.BuildWorkers(pool, worker.Deps{
-			CreationLimits:     creationLimits,
-			Providers:          providers,
-			Store:              store,
-			Gateway:            wiring.GatewayFromEnv(),
-			RunDeployment:      runDeployment,
-			TraceSigner:        traceSigner,
-			TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
-			LLM:                llm,
-			PollOnly:           true,
+		cleanWorker = startCleanWorker(ctx, pool, func() worker.Deps {
+			return worker.Deps{
+				CreationLimits:     creationLimits,
+				Providers:          providers,
+				Store:              store,
+				Gateway:            wiring.GatewayFromEnv(),
+				RunDeployment:      runDeployment,
+				TraceSigner:        traceSigner,
+				TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
+				LLM:                llm,
+				PollOnly:           true,
+			}
 		})
-		if err != nil {
-			slog.Error("clean mode: worker composition", "error", err)
-			os.Exit(1)
-		}
-		if err := cleanWorker.Queue.Start(ctx); err != nil {
-			slog.Error("clean mode: queue start", "error", err)
-			os.Exit(1)
-		}
-		slog.Info("clean mode: worker started in-process")
 	}
 
 	handler := app.Handler()
 	if clean {
-		static, err := cleanModeStaticHandler(devLogin)
-		if err != nil {
-			slog.Error("clean mode: web assets", "error", err)
-			os.Exit(1)
-		}
-		handler = cleanModeHandler(handler, clean, static)
-		slog.Info("clean mode: serving the web build with the 02:PORT-003 disclosure flag injected")
+		handler = cleanModeServing(handler, clean, devLogin)
 	}
 
 	srv := &http.Server{
@@ -429,21 +354,7 @@ func main() {
 		go loop(ctx)
 	}
 
-	serveErr := make(chan error, 1)
-	go func() {
-		slog.Info("api listening", "addr", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serveErr <- err
-		}
-	}()
-
-	failed := false
-	select {
-	case <-ctx.Done():
-	case err := <-serveErr:
-		slog.Error("api stopped", "error", err)
-		failed = true
-	}
+	failed := serveUntilStopped(ctx, srv)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -460,6 +371,107 @@ func main() {
 			stopStore()
 		}
 		os.Exit(1)
+	}
+}
+
+func exitOn(err error, msg string) {
+	if err != nil {
+		slog.Error(msg, "error", err)
+		os.Exit(1)
+	}
+}
+
+func refuseToStartOn(refusals []string) {
+	if len(refusals) == 0 {
+		return
+	}
+	for _, reason := range refusals {
+		slog.Error("refusing to start", "reason", reason)
+	}
+	os.Exit(1)
+}
+
+func llmFromEnv() *llmclient.Client {
+	llmURL := os.Getenv("LLM_SERVICE_URL")
+	if llmURL == "" {
+		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
+		return nil
+	}
+	token := os.Getenv("LLM_SERVICE_TOKEN")
+	if token == "" {
+		slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
+		os.Exit(1)
+	}
+	llm := wiring.LLMClient(llmURL, token)
+	slog.Info("llm service configured", "url", llmURL)
+	return llm
+}
+
+func traceSignerFromEnv() *trace.Signer {
+	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
+	if !traceSigner.Enabled() {
+		slog.Warn("SKILLHUB_TRACE_INGEST_SECRET not set; run traces will not be collected")
+	}
+	return traceSigner
+}
+
+func packagingProfilesFromEnv() packaging.Profiles {
+	profileDir := envx.Or(os.Getenv("PACKAGING_PROFILES_DIR"), "contracts/packaging/profiles")
+	profiles, err := packaging.LoadProfiles(profileDir)
+	if err != nil {
+		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
+		profiles = nil
+	}
+	if len(profiles) == 0 {
+		resolved, absErr := filepath.Abs(profileDir)
+		if absErr != nil {
+			resolved = profileDir
+		}
+		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503",
+			"reason", profileDirReason(profileDir), "dir", profileDir, "resolved", resolved)
+	}
+	return profiles
+}
+
+func inProcessCreation(set **worker.Set) func(context.Context, creation.JobArgs, *creation.Diagram) error {
+	return func(ctx context.Context, a creation.JobArgs, d *creation.Diagram) error {
+		if *set == nil {
+			return creation.ErrUnavailable
+		}
+		return (*set).Creation.Step(ctx, a, d)
+	}
+}
+
+func startCleanWorker(ctx context.Context, pool *pgxpool.Pool, deps func() worker.Deps) *worker.Set {
+	exitOn(queue.EnsureSchema(ctx, pool), "clean mode: queue schema")
+	set, err := worker.BuildWorkers(pool, deps())
+	exitOn(err, "clean mode: worker composition")
+	exitOn(set.Queue.Start(ctx), "clean mode: queue start")
+	slog.Info("clean mode: worker started in-process")
+	return set
+}
+
+func cleanModeServing(handler http.Handler, clean, devLogin bool) http.Handler {
+	static, err := cleanModeStaticHandler(devLogin)
+	exitOn(err, "clean mode: web assets")
+	slog.Info("clean mode: serving the web build with the 02:PORT-003 disclosure flag injected")
+	return cleanModeHandler(handler, clean, static)
+}
+
+func serveUntilStopped(ctx context.Context, srv *http.Server) (failed bool) {
+	serveErr := make(chan error, 1)
+	go func() {
+		slog.Info("api listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- err
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		return false
+	case err := <-serveErr:
+		slog.Error("api stopped", "error", err)
+		return true
 	}
 }
 

@@ -1,12 +1,16 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
 const (
@@ -31,78 +35,98 @@ func (h *creationHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor := creation.StreamCursor(0)
-	if n, convErr := strconv.ParseInt(r.Header.Get("Last-Event-ID"), 10, 64); convErr == nil && n > 0 {
-		cursor = creation.StreamCursor(n)
-	}
-
-	first, changed, err := h.Svc.Changed(r.Context(), ws, id, cursor)
+	stream := &creationStream{h: h, w: w, flusher: flusher, cursor: lastEventCursor(r)}
+	first, changed, err := h.Svc.Changed(r.Context(), ws, id, stream.cursor)
 	if err != nil {
 		h.creationError(w, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-store")
-
-	w.Header().Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
-	send := func(v creation.View) bool {
-		presented, presentErr := h.present(v)
-		if presentErr != nil {
-			return false
-		}
-		b, marshalErr := json.Marshal(presented)
-		if marshalErr != nil {
-			return false
-		}
-
-		if _, writeErr := w.Write([]byte("id: " + strconv.FormatInt(v.Revision, 10) + "\ndata: " + string(b) + "\n\n")); writeErr != nil {
-			return false
-		}
-		flusher.Flush()
-		cursor = creation.StreamCursor(v.Revision)
-		return true
-	}
-
-	if changed && !send(first) {
+	stream.open()
+	if changed && !stream.send(first) {
 		return
 	}
 	if changed && creation.StreamDone(first) {
 		return
 	}
+	stream.follow(r.Context(), ws, id)
+}
 
+func lastEventCursor(r *http.Request) creation.StreamCursor {
+	if n, err := strconv.ParseInt(r.Header.Get("Last-Event-ID"), 10, 64); err == nil && n > 0 {
+		return creation.StreamCursor(n)
+	}
+	return creation.StreamCursor(0)
+}
+
+type creationStream struct {
+	h       *creationHandler
+	w       http.ResponseWriter
+	flusher http.Flusher
+	cursor  creation.StreamCursor
+}
+
+func (s *creationStream) open() {
+	s.w.Header().Set("Content-Type", "text/event-stream")
+	s.w.Header().Set("Cache-Control", "no-store")
+	s.w.Header().Set("X-Accel-Buffering", "no")
+	s.w.WriteHeader(http.StatusOK)
+	s.flusher.Flush()
+}
+
+func (s *creationStream) send(v creation.View) bool {
+	presented, err := s.h.present(v)
+	if err != nil {
+		return false
+	}
+	b, err := json.Marshal(presented)
+	if err != nil {
+		return false
+	}
+	if _, err := s.w.Write([]byte("id: " + strconv.FormatInt(v.Revision, 10) + "\ndata: " + string(b) + "\n\n")); err != nil {
+		return false
+	}
+	s.flusher.Flush()
+	s.cursor = creation.StreamCursor(v.Revision)
+	return true
+}
+
+func (s *creationStream) keepAlive() bool {
+	if _, err := s.w.Write([]byte(": keep-alive\n\n")); err != nil {
+		return false
+	}
+	s.flusher.Flush()
+	return true
+}
+
+func (s *creationStream) follow(ctx context.Context, ws identity.Workspace, id pgtype.UUID) {
 	tick := time.NewTicker(streamTick)
 	defer tick.Stop()
 	keepAlive := time.NewTicker(streamKeepAlive)
 	defer keepAlive.Stop()
 	for {
 		select {
-		case <-r.Context().Done():
+		case <-ctx.Done():
 			return
 		case <-keepAlive.C:
-
-			if _, err := w.Write([]byte(": keep-alive\n\n")); err != nil {
+			if !s.keepAlive() {
 				return
 			}
-			flusher.Flush()
 		case <-tick.C:
-			v, moved, err := h.Svc.Changed(r.Context(), ws, id, cursor)
-			if err != nil {
-
-				return
-			}
-			if !moved {
-				continue
-			}
-			if !send(v) {
-				return
-			}
-			if creation.StreamDone(v) {
+			if !s.relayChange(ctx, ws, id) {
 				return
 			}
 		}
 	}
+}
+
+func (s *creationStream) relayChange(ctx context.Context, ws identity.Workspace, id pgtype.UUID) bool {
+	v, moved, err := s.h.Svc.Changed(ctx, ws, id, s.cursor)
+	if err != nil {
+		return false
+	}
+	if !moved {
+		return true
+	}
+	return s.send(v) && !creation.StreamDone(v)
 }

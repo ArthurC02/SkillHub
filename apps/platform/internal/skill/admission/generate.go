@@ -153,40 +153,13 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 		return GenerateResult{}, errors.New("ingest: generation needs an LLM service")
 	}
 
-	if ws.IsCatalog {
-		return GenerateResult{}, ErrGenerateNotForCatalogue
-	}
 	task := strings.TrimSpace(in.TaskDescription)
-
-	if err := classifyTaskDescription(task, in.Diagram != nil); err != nil {
+	if err := validateGenerateInput(ws, task, in); err != nil {
 		return GenerateResult{}, err
 	}
-
-	if in.Diagram != nil {
-		if !validDiagramMediaType(in.Diagram.MediaType) ||
-			len(in.Diagram.Data) == 0 || len(in.Diagram.Data) > generateMaxDiagramBytes {
-			return GenerateResult{}, ErrDiagramInvalid
-		}
-	}
-
-	if len(in.ReferenceSkillIDs) > generateMaxReferences {
-		return GenerateResult{}, ErrTooManyReferences
-	}
-
-	var references []ReferenceSkill
-	var refProvenance []referenceProvenance
-	if len(in.ReferenceSkillIDs) > 0 {
-		if s.References == nil {
-			return GenerateResult{}, ErrReferenceUnavailable
-		}
-		for _, id := range in.ReferenceSkillIDs {
-			ref, prov, err := s.resolveReference(ctx, ws, id)
-			if err != nil {
-				return GenerateResult{}, err
-			}
-			references = append(references, ref)
-			refProvenance = append(refProvenance, prov)
-		}
+	references, refProvenance, err := s.resolveReferences(ctx, ws, in.ReferenceSkillIDs)
+	if err != nil {
+		return GenerateResult{}, err
 	}
 	generationInputsJSON, err := marshalGenerationInputs(in.Diagram, refProvenance)
 	if err != nil {
@@ -198,107 +171,164 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, in G
 	}
 	defer s.releaseGenerateSlot(ws.ID)
 
-	if reason, err := s.requireGenerateAllowance(ctx, ws.ID); err != nil {
+	if err := s.admitGeneration(ctx, ws, task, in); err != nil {
+		return GenerateResult{}, err
+	}
 
+	job := generation{ws: ws, task: task, in: in, references: references, inputsJSON: generationInputsJSON}
+	var out GenerateResult
+	defer logGenerateUsage(&out)
+	for attempt := 1; attempt <= generateMaxAttempts; attempt++ {
+		out.Attempts = attempt
+		if done, err := s.generateAttempt(ctx, job, &out); done {
+			return out, err
+		}
+	}
+	return out, nil
+}
+
+func validateGenerateInput(ws identity.Workspace, task string, in GenerateInput) error {
+	if ws.IsCatalog {
+		return ErrGenerateNotForCatalogue
+	}
+	if err := classifyTaskDescription(task, in.Diagram != nil); err != nil {
+		return err
+	}
+	if in.Diagram != nil {
+		if !validDiagramMediaType(in.Diagram.MediaType) ||
+			len(in.Diagram.Data) == 0 || len(in.Diagram.Data) > generateMaxDiagramBytes {
+			return ErrDiagramInvalid
+		}
+	}
+	if len(in.ReferenceSkillIDs) > generateMaxReferences {
+		return ErrTooManyReferences
+	}
+	return nil
+}
+
+func (s *Service) resolveReferences(ctx context.Context, ws identity.Workspace, ids []pgtype.UUID) ([]ReferenceSkill, []referenceProvenance, error) {
+	if len(ids) == 0 {
+		return nil, nil, nil
+	}
+	if s.References == nil {
+		return nil, nil, ErrReferenceUnavailable
+	}
+	var references []ReferenceSkill
+	var provenance []referenceProvenance
+	for _, id := range ids {
+		ref, prov, err := s.resolveReference(ctx, ws, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		references = append(references, ref)
+		provenance = append(provenance, prov)
+	}
+	return references, provenance, nil
+}
+
+func (s *Service) admitGeneration(ctx context.Context, ws identity.Workspace, task string, in GenerateInput) error {
+	if reason, err := s.requireGenerateAllowance(ctx, ws.ID); err != nil {
 		failure := FailureQuota
 		if errors.Is(err, policy.ErrAllowanceUnavailable) {
 			failure = FailureUnavailable
 		}
-
 		s.auditGenerateFailure(ctx, ws, task, in, GenerateResult{}, map[string]any{
 			"failure": failure,
 			"reason":  reason,
 		})
-		return GenerateResult{}, err
+		return err
 	}
-
-	if s.CreditCanStart != nil {
-		ok, err := s.CreditCanStart(ctx, ws.ID)
-		if err != nil {
-			return GenerateResult{}, err
-		}
-		if !ok {
-			s.auditGenerateFailure(ctx, ws, task, in, GenerateResult{}, map[string]any{"failure": FailureCredit})
-			return GenerateResult{}, ErrCreditThreshold
-		}
+	if s.CreditCanStart == nil {
+		return nil
 	}
+	ok, err := s.CreditCanStart(ctx, ws.ID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		s.auditGenerateFailure(ctx, ws, task, in, GenerateResult{}, map[string]any{"failure": FailureCredit})
+		return ErrCreditThreshold
+	}
+	return nil
+}
 
-	var out GenerateResult
+func logGenerateUsage(out *GenerateResult) {
+	if out.Attempts == 0 {
+		return
+	}
+	attrs := []any{
+		"attempts", out.Attempts, "model", out.Model,
+		"prompt_tokens", out.PromptTokens, "completion_tokens", out.CompletionTokens,
+	}
+	if out.CostUSD != nil {
+		attrs = append(attrs, "cost_usd", *out.CostUSD)
+	}
+	slog.Info("generate: model usage", attrs...)
+}
 
-	defer func() {
-		if out.Attempts == 0 {
-			return
-		}
-		attrs := []any{
-			"attempts", out.Attempts, "model", out.Model,
-			"prompt_tokens", out.PromptTokens, "completion_tokens", out.CompletionTokens,
-		}
+type generation struct {
+	ws         identity.Workspace
+	task       string
+	in         GenerateInput
+	references []ReferenceSkill
+	inputsJSON []byte
+}
 
-		if out.CostUSD != nil {
-			attrs = append(attrs, "cost_usd", *out.CostUSD)
-		}
-		slog.Info("generate: model usage", attrs...)
-	}()
-	for attempt := 1; attempt <= generateMaxAttempts; attempt++ {
-		out.Attempts = attempt
-
-		gen, err := s.generateOnce(ctx, ws.ID, task, in.Diagram, references)
-		if err != nil {
-
-			slog.Warn("generate: gateway call failed", "attempt", attempt, "error", err)
-
-			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
-				"failure":   FailureGateway,
-				"truncated": errors.Is(err, ErrGenerationTruncated),
-			})
-			return out, err
-		}
-		out.Model, out.PromptVersion = gen.Model, gen.PromptVersion
-
-		out.addUsage(gen.Usage)
-
-		data, err := buildGeneratedPackage(gen.Skill)
-		if err != nil {
-			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{"failure": FailureUnpackageable})
-			return out, err
-		}
-
-		desc, model, promptVersion := task, gen.Model, gen.PromptVersion
-		res, err := s.importZip(ctx, ws, data, sourceMeta{
-			Type:                   SourceGenerated,
-			TaskDescription:        &desc,
-			GeneratorModel:         &model,
-			GeneratorPromptVersion: &promptVersion,
-
-			CostUSD:          out.CostUSD,
-			PromptTokens:     out.PromptTokens,
-			CompletionTokens: out.CompletionTokens,
-
-			GenerationInputs: generationInputsJSON,
+func (s *Service) generateAttempt(ctx context.Context, job generation, out *GenerateResult) (bool, error) {
+	gen, err := s.generateOnce(ctx, job.ws.ID, job.task, job.in.Diagram, job.references)
+	if err != nil {
+		slog.Warn("generate: gateway call failed", "attempt", out.Attempts, "error", err)
+		s.auditGenerateFailure(ctx, job.ws, job.task, job.in, *out, map[string]any{
+			"failure":   FailureGateway,
+			"truncated": errors.Is(err, ErrGenerationTruncated),
 		})
-		if err != nil {
-
-			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
-				"failure":   FailureRejected,
-				"collision": errors.Is(err, ErrGeneratedNameCollision),
-			})
-			return out, err
-		}
-		out.Result = res
-		if !res.Report.Blocked {
-			return out, nil
-		}
-
-		if !shouldRetry(attempt, res.Report) {
-			s.auditGenerateFailure(ctx, ws, task, in, out, map[string]any{
-				"failure": FailureBlocked,
-
-				"codes": blockingCodes(res.Report),
-			})
-			return out, nil
-		}
+		return true, err
 	}
-	return out, nil
+	out.Model, out.PromptVersion = gen.Model, gen.PromptVersion
+	out.addUsage(gen.Usage)
+
+	data, err := buildGeneratedPackage(gen.Skill)
+	if err != nil {
+		s.auditGenerateFailure(ctx, job.ws, job.task, job.in, *out, map[string]any{"failure": FailureUnpackageable})
+		return true, err
+	}
+
+	res, err := s.importZip(ctx, job.ws, data, generatedSource(job, gen, *out))
+	if err != nil {
+		s.auditGenerateFailure(ctx, job.ws, job.task, job.in, *out, map[string]any{
+			"failure":   FailureRejected,
+			"collision": errors.Is(err, ErrGeneratedNameCollision),
+		})
+		return true, err
+	}
+	out.Result = res
+	if !res.Report.Blocked {
+		return true, nil
+	}
+	if !shouldRetry(out.Attempts, res.Report) {
+		s.auditGenerateFailure(ctx, job.ws, job.task, job.in, *out, map[string]any{
+			"failure": FailureBlocked,
+			"codes":   blockingCodes(res.Report),
+		})
+		return true, nil
+	}
+	return false, nil
+}
+
+func generatedSource(job generation, gen *GeneratedDraft, out GenerateResult) sourceMeta {
+	desc, model, promptVersion := job.task, gen.Model, gen.PromptVersion
+	return sourceMeta{
+		Type:                   SourceGenerated,
+		TaskDescription:        &desc,
+		GeneratorModel:         &model,
+		GeneratorPromptVersion: &promptVersion,
+
+		CostUSD:          out.CostUSD,
+		PromptTokens:     out.PromptTokens,
+		CompletionTokens: out.CompletionTokens,
+
+		GenerationInputs: job.inputsJSON,
+	}
 }
 
 func shouldRetry(attempt int, r skillpkg.Report) bool {

@@ -16,73 +16,87 @@ import (
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
 	s.SearchKnowledge = func(ctx context.Context, ws identity.Workspace, queries []string) ([]creation.Reference, float64, error) {
-		var rankings [][]string
-		var cost float64
-		for _, query := range queries {
-			ids, c, _, err := search.CreationKnowledgeIDs(ctx, query, catalog.CreationMaxDistance)
-			cost += c
-			if err != nil {
-				return nil, cost, err
-			}
-			rankings = append(rankings, ids)
+		rankings, cost, err := knowledgeRankings(ctx, search, queries)
+		if err != nil {
+			return nil, cost, err
 		}
-		ids := catalog.FuseRanked(rankings)
-		refs := []creation.Reference{}
-		for _, id := range ids {
-			r, _, err := s.ResolveReference(ctx, ws, id, "")
-			if err == nil {
-				refs = append(refs, r)
-			}
-			if len(refs) == creation.MaxReferences {
-				break
-			}
-		}
-		return refs, cost, nil
+		return firstResolvedReferences(ctx, s, ws, catalog.FuseRanked(rankings)), cost, nil
 	}
 	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
 		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
 	}
 	s.Mask = (&trace.Masker{}).MaskString
-	s.ResolveReference = func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, creation.ReferenceSkill, error) {
-		sid, err := creation.ParseID(skillID)
-		if err != nil {
-			return creation.Reference{}, creation.ReferenceSkill{}, err
-		}
-		var vid pgtype.UUID
-		if versionID != "" {
-			vid, err = creation.ParseID(versionID)
-			if err != nil {
-				return creation.Reference{}, creation.ReferenceSkill{}, err
-			}
-		}
-		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
-		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
-
-		if tier, scan, warnings, ferr := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID); ferr == nil {
-			ref.Tier, ref.ScanStatus = tier, scan
-			if scan == "scanned" {
-				w := warnings
-				ref.Warnings = &w
-			}
-		}
-		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
-	}
+	s.ResolveReference = referenceResolver(versions, search)
 	s.SearchReferences = func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, error) {
 		ids, err := search.CreationReferenceIDs(ctx, query)
 		if err != nil {
 			return nil, err
 		}
-		refs := []creation.Reference{}
-		for _, id := range ids {
-			r, _, err := s.ResolveReference(ctx, ws, id, "")
-			if err == nil {
-				refs = append(refs, r)
-			}
-			if len(refs) == creation.MaxReferences {
-				break
-			}
+		return firstResolvedReferences(ctx, s, ws, ids), nil
+	}
+}
+
+func knowledgeRankings(ctx context.Context, search *catalog.Service, queries []string) ([][]string, float64, error) {
+	var rankings [][]string
+	var cost float64
+	for _, query := range queries {
+		ids, c, _, err := search.CreationKnowledgeIDs(ctx, query, catalog.CreationMaxDistance)
+		cost += c
+		if err != nil {
+			return nil, cost, err
 		}
-		return refs, nil
+		rankings = append(rankings, ids)
+	}
+	return rankings, cost, nil
+}
+
+func firstResolvedReferences(ctx context.Context, s *creation.Service, ws identity.Workspace, ids []string) []creation.Reference {
+	refs := []creation.Reference{}
+	for _, id := range ids {
+		r, _, err := s.ResolveReference(ctx, ws, id, "")
+		if err == nil {
+			refs = append(refs, r)
+		}
+		if len(refs) == creation.MaxReferences {
+			break
+		}
+	}
+	return refs
+}
+
+func referenceResolver(versions *ingest.Service, search *catalog.Service) func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
+	return func(ctx context.Context, ws identity.Workspace, skillID, versionID string) (creation.Reference, creation.ReferenceSkill, error) {
+		sid, vid, err := parseReferenceIDs(skillID, versionID)
+		if err != nil {
+			return creation.Reference{}, creation.ReferenceSkill{}, err
+		}
+		fixed, content, err := versions.ReadCreationReference(ctx, ws, sid, vid)
+		ref := creation.Reference{SkillID: creation.UUID(fixed.SkillID), VersionID: creation.UUID(fixed.VersionID), Name: fixed.Name, Available: err == nil, Description: fixed.Description, Compatibility: fixed.Compatibility, AllowedTools: fixed.AllowedTools}
+		addCatalogFacts(ctx, search, &ref)
+		return ref, creation.ReferenceSkill{Name: content.Name, SkillMD: content.SkillMD}, err
+	}
+}
+
+func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, error) {
+	var vid pgtype.UUID
+	sid, err := creation.ParseID(skillID)
+	if err != nil {
+		return sid, vid, err
+	}
+	if versionID != "" {
+		vid, err = creation.ParseID(versionID)
+	}
+	return sid, vid, err
+}
+
+func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation.Reference) {
+	tier, scan, warnings, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
+	if err != nil {
+		return
+	}
+	ref.Tier, ref.ScanStatus = tier, scan
+	if scan == "scanned" {
+		ref.Warnings = &warnings
 	}
 }
 

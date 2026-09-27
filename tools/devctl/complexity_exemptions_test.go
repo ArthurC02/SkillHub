@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func complexityFixtureLint(t *testing.T, enableGocognit bool, minComplexity string, exemptionCount int) string {
-	t.Helper()
+func complexityFixtureLint(enableGocognit bool, minComplexity string, exemptionCount int) string {
 	var b strings.Builder
 	b.WriteString("version: \"2\"\n\nlinters:\n  enable:\n")
 	if enableGocognit {
@@ -29,43 +26,43 @@ func complexityFixtureLint(t *testing.T, enableGocognit bool, minComplexity stri
 	return b.String()
 }
 
-func withComplexityFixture(t *testing.T, registeredExempt int, contents string) string {
+func withComplexityFixture(t *testing.T, contents string) string {
 	t.Helper()
 	root := t.TempDir()
 	const lintPath = "fixture/.golangci.yml"
 	writeAt(t, root, lintPath, contents)
 
-	original := complexityGateModules
-	complexityGateModules = []complexityGateModule{{lintPath: lintPath, registeredExempt: registeredExempt}}
-	t.Cleanup(func() { complexityGateModules = original })
+	original := complexityGateLintPaths
+	complexityGateLintPaths = []string{lintPath}
+	t.Cleanup(func() { complexityGateLintPaths = original })
 	return root
 }
 
-func TestComplexityExemptionsAcceptsAnExactMatch(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, true, "30", 2))
+func TestComplexityExemptionsAcceptsAModuleThatExemptsNoFunction(t *testing.T) {
+	root := withComplexityFixture(t, complexityFixtureLint(true, "30", 0))
 	if problems := complexityExemptionProblems(root); len(problems) != 0 {
-		t.Fatalf("a module whose exemption count matches the registry was rejected: %v", problems)
+		t.Fatalf("a module with no per-function exemption at the ceiling was rejected: %v", problems)
 	}
 }
 
-func TestComplexityExemptionsRejectsOneMoreExemptionThanRegistered(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, true, "30", 3))
+func TestComplexityExemptionsRejectsASingleExemptedFunction(t *testing.T) {
+	root := withComplexityFixture(t, complexityFixtureLint(true, "30", 1))
 	problems := complexityExemptionProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], "carries 3 per-function gocognit exemptions, more than the registered 2") {
-		t.Fatalf("an over-registered exemption count was accepted: %v", problems)
+	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 1 functions by name; none are allowed") {
+		t.Fatalf("a module that exempts one function by name was accepted: %v", problems)
 	}
 }
 
-func TestComplexityExemptionsRejectsOneFewerExemptionThanRegistered(t *testing.T) {
-	root := withComplexityFixture(t, 3, complexityFixtureLint(t, true, "30", 2))
+func TestComplexityExemptionsCountsEveryExemptedFunction(t *testing.T) {
+	root := withComplexityFixture(t, complexityFixtureLint(true, "30", 3))
 	problems := complexityExemptionProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], "carries 2 per-function gocognit exemptions, fewer than the registered 3") {
-		t.Fatalf("an under-registered exemption count was accepted: %v", problems)
+	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 3 functions by name") {
+		t.Fatalf("three exempted functions were not counted as three: %v", problems)
 	}
 }
 
 func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, false, "30", 2))
+	root := withComplexityFixture(t, complexityFixtureLint(false, "30", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "does not enable gocognit") {
 		t.Fatalf("a module that never enables gocognit was accepted: %v", problems)
@@ -73,22 +70,15 @@ func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
 }
 
 func TestComplexityExemptionsRejectsAMissingMinComplexity(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, true, "", 2))
+	root := withComplexityFixture(t, complexityFixtureLint(true, "", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets no gocognit min-complexity") {
 		t.Fatalf("a module with no min-complexity setting was accepted: %v", problems)
 	}
 }
 
-func TestComplexityExemptionsAcceptsTheCeilingBoundary(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, true, "30", 2))
-	if problems := complexityExemptionProblems(root); len(problems) != 0 {
-		t.Fatalf("min-complexity at the registered ceiling was rejected: %v", problems)
-	}
-}
-
 func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
-	root := withComplexityFixture(t, 2, complexityFixtureLint(t, true, "31", 2))
+	root := withComplexityFixture(t, complexityFixtureLint(true, "31", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets min-complexity 31, above the registered ceiling 30") {
 		t.Fatalf("a raised gocognit ceiling was accepted: %v", problems)
@@ -97,9 +87,9 @@ func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
 
 func TestComplexityExemptionsReportsAMissingLintFile(t *testing.T) {
 	root := t.TempDir()
-	original := complexityGateModules
-	complexityGateModules = []complexityGateModule{{lintPath: "does/not/exist.yml", registeredExempt: 0}}
-	t.Cleanup(func() { complexityGateModules = original })
+	original := complexityGateLintPaths
+	complexityGateLintPaths = []string{"does/not/exist.yml"}
+	t.Cleanup(func() { complexityGateLintPaths = original })
 
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "does/not/exist.yml") {
@@ -113,26 +103,6 @@ func TestComplexityExemptionsOnTheRealRepoConfigsHasNoProblems(t *testing.T) {
 		t.Fatal(err)
 	}
 	if problems := complexityExemptionProblems(root); len(problems) != 0 {
-		t.Fatalf("the repo's three .golangci.yml files disagree with the registered exemption counts: %v", problems)
-	}
-}
-
-func TestComplexityExemptionsCheckerHasNoUnusedFixtureFiles(t *testing.T) {
-	// Sanity check on the fixture builder itself: an empty exemption count
-	// must not accidentally match a nonzero file glob (T9, false green).
-	root := t.TempDir()
-	path := filepath.Join(root, "fixture", ".golangci.yml")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(complexityFixtureLint(t, true, "30", 0)), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	original := complexityGateModules
-	complexityGateModules = []complexityGateModule{{lintPath: "fixture/.golangci.yml", registeredExempt: 0}}
-	t.Cleanup(func() { complexityGateModules = original })
-
-	if problems := complexityExemptionProblems(root); len(problems) != 0 {
-		t.Fatalf("a module registered for zero exemptions with zero actual exemptions was rejected: %v", problems)
+		t.Fatalf("a .golangci.yml in this repo excuses a function or loosens the gate: %v", problems)
 	}
 }

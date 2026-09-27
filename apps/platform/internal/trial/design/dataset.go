@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -22,158 +23,222 @@ import (
 )
 
 func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (Dataset, error) {
-	name := sanitizeFileName(fileName)
-	if name == "" {
-		return Dataset{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
-	}
-	if len(data) == 0 {
-		return Dataset{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
-	}
-	if len(data) > MaxFileBytes {
-		return Dataset{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
-	}
-	contentType, err := detectContentType(data)
+	file, err := acceptDatasetFile(fileName, data)
 	if err != nil {
 		return Dataset{}, err
 	}
-
 	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
 		return Dataset{}, err
 	}
 
-	sum := sha256.Sum256(data)
-	hash := hex.EncodeToString(sum[:])
-	id := newUUID()
-	key := fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(ws.ID), pgconv.UUIDString(id))
 	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
 		return Dataset{}, err
 	}
-	locked := false
-	objectLocked := false
-	defer func() {
-		if objectLocked {
-			unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			if _, err := gen.New(conn).UnlockDatasetObjectKeySession(unlockCtx, key); err != nil {
-				slog.Error("dataset object lock could not be released; closing connection", "error", err)
-				_ = conn.Hijack().Close(context.Background())
-				return
-			}
-		}
-		if !locked {
-			conn.Release()
-			return
-		}
+	locks := &datasetObjectLocks{conn: conn, workspaceID: ws.ID, key: file.key(ws.ID)}
+	defer locks.release()
+	intentID, err := s.reserveDatasetObject(ctx, locks)
+	if err != nil {
+		return Dataset{}, err
+	}
+	return s.writeDataset(ctx, conn, ws, testCaseID, file, locks.key, intentID)
+}
+
+type datasetFile struct {
+	name        string
+	contentType string
+	hash        string
+	data        []byte
+	id          pgtype.UUID
+}
+
+func acceptDatasetFile(fileName string, data []byte) (datasetFile, error) {
+	name := sanitizeFileName(fileName)
+	if name == "" {
+		return datasetFile{}, fmt.Errorf("%w: 檔案需要有檔名", ErrInvalid)
+	}
+	if len(data) == 0 {
+		return datasetFile{}, fmt.Errorf("%w: 檔案是空的", ErrInvalid)
+	}
+	if len(data) > MaxFileBytes {
+		return datasetFile{}, fmt.Errorf("%w: 檔案超過 %s", ErrLimitExceeded, humanMB(MaxFileBytes))
+	}
+	contentType, err := detectContentType(data)
+	if err != nil {
+		return datasetFile{}, err
+	}
+	sum := sha256.Sum256(data)
+	return datasetFile{name: name, contentType: contentType, hash: hex.EncodeToString(sum[:]), data: data, id: newUUID()}, nil
+}
+
+func (f datasetFile) key(workspaceID pgtype.UUID) string {
+	return fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(workspaceID), pgconv.UUIDString(f.id))
+}
+
+type datasetObjectLocks struct {
+	conn          *pgxpool.Conn
+	workspaceID   pgtype.UUID
+	key           string
+	workspaceHeld bool
+	objectHeld    bool
+}
+
+func (l *datasetObjectLocks) holdWorkspace(ctx context.Context) error {
+	if err := gen.New(l.conn).LockDatasetWorkspaceObjects(ctx, l.workspaceID); err != nil {
+		return err
+	}
+	l.workspaceHeld = true
+	return nil
+}
+
+func (l *datasetObjectLocks) holdObject(ctx context.Context) error {
+	if err := gen.New(l.conn).LockDatasetObjectKeySession(ctx, l.key); err != nil {
+		return err
+	}
+	l.objectHeld = true
+	return nil
+}
+
+func (l *datasetObjectLocks) release() {
+	if l.objectHeld {
 		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if _, err := gen.New(conn).UnlockDatasetWorkspaceObjects(unlockCtx, ws.ID); err != nil {
-			slog.Error("dataset workspace lock could not be released; closing connection", "error", err)
-			_ = conn.Hijack().Close(context.Background())
+		if _, err := gen.New(l.conn).UnlockDatasetObjectKeySession(unlockCtx, l.key); err != nil {
+			slog.Error("dataset object lock could not be released; closing connection", "error", err)
+			_ = l.conn.Hijack().Close(context.Background())
 			return
 		}
-		conn.Release()
-	}()
-	if err := gen.New(conn).LockDatasetWorkspaceObjects(ctx, ws.ID); err != nil {
-		return Dataset{}, err
 	}
-	locked = true
+	if !l.workspaceHeld {
+		l.conn.Release()
+		return
+	}
+	unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := gen.New(l.conn).UnlockDatasetWorkspaceObjects(unlockCtx, l.workspaceID); err != nil {
+		slog.Error("dataset workspace lock could not be released; closing connection", "error", err)
+		_ = l.conn.Hijack().Close(context.Background())
+		return
+	}
+	l.conn.Release()
+}
+
+func (s *Service) reserveDatasetObject(ctx context.Context, locks *datasetObjectLocks) (pgtype.UUID, error) {
+	if err := locks.holdWorkspace(ctx); err != nil {
+		return pgtype.UUID{}, err
+	}
 	if s.MayStoreObjects == nil {
-		return Dataset{}, errors.New("testlab: identity lifecycle read is not configured")
+		return pgtype.UUID{}, errors.New("testlab: identity lifecycle read is not configured")
 	}
-	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
+	allowed, err := s.MayStoreObjects(ctx, locks.conn, locks.workspaceID)
 	if err != nil {
-		return Dataset{}, err
+		return pgtype.UUID{}, err
 	}
 	if !allowed {
-		return Dataset{}, ErrNotFound
+		return pgtype.UUID{}, ErrNotFound
 	}
-	if err := gen.New(conn).LockDatasetObjectKeySession(ctx, key); err != nil {
-		return Dataset{}, err
+	if err := locks.holdObject(ctx); err != nil {
+		return pgtype.UUID{}, err
 	}
-	objectLocked = true
-	intent, err := gen.New(conn).CreateDatasetCleanupIntent(ctx, gen.CreateDatasetCleanupIntentParams{
-		WorkspaceID: ws.ID, ObjectKey: key, Hold: pgconv.Interval(datasetCleanupHold),
+	intent, err := gen.New(locks.conn).CreateDatasetCleanupIntent(ctx, gen.CreateDatasetCleanupIntentParams{
+		WorkspaceID: locks.workspaceID, ObjectKey: locks.key, Hold: pgconv.Interval(datasetCleanupHold),
 	})
 	if err != nil {
-		return Dataset{}, err
+		return pgtype.UUID{}, err
 	}
+	return intent.ID, nil
+}
 
-	commitAttempted := false
+func (s *Service) writeDataset(
+	ctx context.Context, conn *pgxpool.Conn, ws identity.Workspace, testCaseID pgtype.UUID,
+	file datasetFile, key string, intentID pgtype.UUID,
+) (Dataset, error) {
+	keepObject := false
 	defer func() {
-		if commitAttempted {
-			return
-		}
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-		defer cancel()
-		if err := s.Store.Remove(cleanupCtx, key); err != nil {
-			slog.Error("failed to compensate dataset object", "key", key, "error", err)
-			return
-		}
-		if err := gen.New(conn).DeleteDatasetCleanupIntent(cleanupCtx, gen.DeleteDatasetCleanupIntentParams{
-			ID: intent.ID, WorkspaceID: ws.ID,
-		}); err != nil {
-			slog.Error("failed to clear compensated dataset cleanup intent", "key", key, "error", err)
+		if !keepObject {
+			s.compensateDatasetObject(ctx, conn, ws.ID, key, intentID)
 		}
 	}()
-	if err := s.Store.Put(ctx, key, data); err != nil {
+	if err := s.Store.Put(ctx, key, file.data); err != nil {
 		return Dataset{}, err
 	}
+	ds, commitAttempted, err := recordDataset(ctx, conn, ws.ID, testCaseID, file, key, intentID)
+	keepObject = commitAttempted && !shouldCompensateCommit(err)
+	return datasetDTO(ds), err
+}
 
+func (s *Service) compensateDatasetObject(ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, key string, intentID pgtype.UUID) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := s.Store.Remove(cleanupCtx, key); err != nil {
+		slog.Error("failed to compensate dataset object", "key", key, "error", err)
+		return
+	}
+	if err := gen.New(conn).DeleteDatasetCleanupIntent(cleanupCtx, gen.DeleteDatasetCleanupIntentParams{
+		ID: intentID, WorkspaceID: workspaceID,
+	}); err != nil {
+		slog.Error("failed to clear compensated dataset cleanup intent", "key", key, "error", err)
+	}
+}
+
+func recordDataset(
+	ctx context.Context, conn *pgxpool.Conn, workspaceID, testCaseID pgtype.UUID,
+	file datasetFile, key string, intentID pgtype.UUID,
+) (row gen.Dataset, commitAttempted bool, err error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return Dataset{}, err
+		return gen.Dataset{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: ws.ID})
+	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Dataset{}, ErrNotFound
+		return gen.Dataset{}, false, ErrNotFound
 	}
 	if err != nil {
-		return Dataset{}, err
+		return gen.Dataset{}, false, err
 	}
-	usage, err := q.SumDatasetUsage(ctx, gen.SumDatasetUsageParams{
-		TestCaseID: tc.ID, WorkspaceID: ws.ID,
-	})
-	if err != nil {
-		return Dataset{}, err
+	if err := checkTestCaseRoom(ctx, q, workspaceID, tc.ID, len(file.data)); err != nil {
+		return gen.Dataset{}, false, err
 	}
-	if usage.FileCount+1 > MaxFilesPerTestCase {
-		return Dataset{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 個檔案",
-			ErrLimitExceeded, MaxFilesPerTestCase)
-	}
-	if usage.TotalBytes+int64(len(data)) > MaxTestCaseBytes {
-		return Dataset{}, fmt.Errorf("%w: 一個 Test Case 的檔案總量最多 %s",
-			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
-	}
-
 	ds, err := q.CreateDataset(ctx, gen.CreateDatasetParams{
-		WorkspaceID: ws.ID,
+		WorkspaceID: workspaceID,
 		TestCaseID:  tc.ID,
-		FileName:    name,
-		ContentType: contentType,
-		SizeBytes:   int64(len(data)),
-		ContentHash: hash,
+		FileName:    file.name,
+		ContentType: file.contentType,
+		SizeBytes:   int64(len(file.data)),
+		ContentHash: file.hash,
 		ObjectKey:   key,
 		ExpiresAt:   pgtype.Timestamptz{Time: time.Now().Add(DatasetRetention), Valid: true},
 	})
 	if err != nil {
-		return Dataset{}, err
+		return gen.Dataset{}, false, err
 	}
 	if err := q.DeleteDatasetCleanupIntent(ctx, gen.DeleteDatasetCleanupIntentParams{
-		ID: intent.ID, WorkspaceID: ws.ID,
+		ID: intentID, WorkspaceID: workspaceID,
 	}); err != nil {
-		return Dataset{}, err
+		return gen.Dataset{}, false, err
 	}
-	commitAttempted = true
-	commitErr := tx.Commit(ctx)
-	if shouldCompensateCommit(commitErr) {
-		// Commit definitely failed, so no row exists; let the deferred cleanup remove the object.
-		commitAttempted = false
+	return ds, true, tx.Commit(ctx)
+}
+
+func checkTestCaseRoom(ctx context.Context, q *gen.Queries, workspaceID, testCaseID pgtype.UUID, size int) error {
+	usage, err := q.SumDatasetUsage(ctx, gen.SumDatasetUsageParams{
+		TestCaseID: testCaseID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return err
 	}
-	return datasetDTO(ds), commitErr
+	if usage.FileCount+1 > MaxFilesPerTestCase {
+		return fmt.Errorf("%w: 一個 Test Case 最多 %d 個檔案",
+			ErrLimitExceeded, MaxFilesPerTestCase)
+	}
+	if usage.TotalBytes+int64(size) > MaxTestCaseBytes {
+		return fmt.Errorf("%w: 一個 Test Case 的檔案總量最多 %s",
+			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
+	}
+	return nil
 }
 
 // shouldCompensateCommit reports whether tx.Commit definitely failed rather
