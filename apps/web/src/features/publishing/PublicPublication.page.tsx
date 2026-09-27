@@ -3,7 +3,7 @@ import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { LabelledBadge } from "../../shared/ui/LabelledBadge";
-import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge";
+import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge.model";
 import { Findings } from "../../shared/ui/Findings";
 import { API_BASE_URL, ApiError } from "../../core/api/client";
 import {

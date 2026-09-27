@@ -1,5 +1,5 @@
 import { Loading } from "../../../shared/ui/Loading";
-import { formatAt } from "../../../shared/ui/Timestamp";
+import { formatAt } from "../../../shared/ui/Timestamp.model";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";

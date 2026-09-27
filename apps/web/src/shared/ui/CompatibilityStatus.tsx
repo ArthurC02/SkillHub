@@ -1,12 +1,7 @@
 import type { SkillCompatibility } from "../../core/api/types";
 import { StateIcon, type IconState } from "./StateIcon";
 import { Timestamp } from "./Timestamp";
-
-export const BADGE_TINT: Record<string, string> = {
-  unverified: "unverified",
-  not_activated: "failed",
-  failed: "failed",
-};
+import { BADGE_TINT } from "./CompatibilityStatus.model";
 
 function axisIconState(value: string, tint?: string): IconState | undefined {
   if (tint === "unverified") return "unknown";

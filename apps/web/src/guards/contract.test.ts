@@ -183,7 +183,7 @@ const LABEL_TABLES: Array<{
     what: "OwnSkill.redistribution → 我的 Skill 的徽章",
     values: generated.OwnSkillRedistributionEnum,
     table: async () =>
-      (await import("../features/workspace/skills/WorkspaceSkills.page")).REDISTRIBUTION_BADGE,
+      (await import("../features/workspace/skills/WorkspaceSkills.model")).REDISTRIBUTION_BADGE,
   },
   {
     what: "RunPermissionSummary.blocked → 為什麼這一對開不了 Run (05 R-37 (a))",
@@ -247,17 +247,17 @@ const LABEL_TABLES: Array<{
   {
     what: "SkillLicense.source → License 出處",
     values: generated.SkillLicenseSourceEnum,
-    table: async () => (await import("../shared/ui/LicenseBadge")).SOURCE_LABELS,
+    table: async () => (await import("../shared/ui/LicenseBadge.model")).SOURCE_LABELS,
   },
   {
     what: "SubmitFeedbackRequest.kind → 回報種類 (BETA-004/005)",
     values: generated.SubmitFeedbackRequestKindEnum,
-    table: async () => (await import("../app/shell/FeedbackEntry")).KIND_LABEL,
+    table: async () => (await import("../app/shell/FeedbackEntry.model")).KIND_LABEL,
   },
   {
     what: "SubmitFeedbackRequest.kind → 回報種類的例子",
     values: generated.SubmitFeedbackRequestKindEnum,
-    table: async () => (await import("../app/shell/FeedbackEntry")).KIND_NOTE,
+    table: async () => (await import("../app/shell/FeedbackEntry.model")).KIND_NOTE,
   },
 ];
 
@@ -286,12 +286,12 @@ const FALLBACK_TABLES: Array<{
   {
     what: "Evaluation 判定徽章 (RunVerdict)",
     values: Object.values(generated.EvaluationOverallEnum),
-    table: async () => (await import("../features/runs/components/RunVerdict")).VERDICT_BADGE,
+    table: async () => (await import("../features/runs/components/RunVerdict.model")).VERDICT_BADGE,
   },
   {
     what: "相容性三軸的色調 (CompatibilityStatus)",
     values: ["unverified", "passed", "failed", "activated", "not_activated"],
-    table: async () => (await import("../shared/ui/CompatibilityStatus")).BADGE_TINT,
+    table: async () => (await import("../shared/ui/CompatibilityStatus.model")).BADGE_TINT,
   },
   {
     what: "Run.cleanup_status → 清理狀態的色調 (runStatus)",

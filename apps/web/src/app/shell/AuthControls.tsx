@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { unauthenticated } from "../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { SignInAction } from "../../shared/ui/SignIn";
 import { useMe, useSignOut } from "../../core/session/me.service";
 

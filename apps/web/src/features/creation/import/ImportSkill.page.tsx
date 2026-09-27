@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Findings } from "../../../shared/ui/Findings";
-import { LoginRequired, ReadFailure, unauthenticated } from "../../../shared/ui/LoginRequired";
+import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
 import { ApiError } from "../../../core/api/client";
 import { isImportResult, useImportSkill, useSkillImportLimits } from "../import.service";

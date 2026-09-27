@@ -631,13 +631,13 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
   await render();
   await submitSearch("沒有人做過的事");
 
-  let capturedReader: FakeFileReader | undefined;
+  const readers: FakeFileReader[] = [];
   class FakeFileReader {
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
     result: string | ArrayBuffer | null = null;
     readAsDataURL() {
-      capturedReader = this;
+      readers.push(this);
     }
   }
   vi.stubGlobal("FileReader", FakeFileReader as unknown as typeof FileReader);
@@ -656,7 +656,7 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
   expect(fileInput.disabled).toBe(true);
 
   await act(async () => {
-    capturedReader!.onerror?.();
+    readers.at(-1)!.onerror?.();
   });
 
   expect(fileInput.disabled).toBe(false);

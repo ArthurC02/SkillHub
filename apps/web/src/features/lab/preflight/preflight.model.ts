@@ -1,4 +1,4 @@
-import { unauthenticated } from "../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { bytes } from "../../../shared/format";
 import { ApiError } from "../../../core/api/client";
 import type { PreflightResponse, PreflightSummary } from "../lab.service";

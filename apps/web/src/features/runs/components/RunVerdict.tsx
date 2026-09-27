@@ -1,10 +1,6 @@
 import type { Labelled } from "../../../core/api/types";
 import { StateIcon } from "../../../shared/ui/StateIcon";
-
-export const VERDICT_BADGE: Record<string, string> = {
-  met: "badge",
-  not_met: "badge badge-danger",
-};
+import { VERDICT_BADGE } from "./RunVerdict.model";
 
 const NOTE_SHOWN = new Set(["not_evaluated", "evaluating", "evaluation_failed", "undetermined"]);
 

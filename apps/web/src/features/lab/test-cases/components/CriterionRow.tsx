@@ -1,4 +1,4 @@
-import { formatAt } from "../../../../shared/ui/Timestamp";
+import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import { useState } from "react";
 import { useCriterionAction } from "../../testcases.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";

@@ -1,7 +1,7 @@
 import { useSkillVersions } from "../skills.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { formatAt } from "../../../shared/ui/Timestamp";
+import { formatAt } from "../../../shared/ui/Timestamp.model";
 
 export function SkillVersionPicker({
   skillId,

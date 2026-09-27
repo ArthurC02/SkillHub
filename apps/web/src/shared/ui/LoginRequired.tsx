@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
-import { ApiError } from "../../core/api/client";
 import { SignInAction } from "./SignIn";
-
-export function unauthenticated(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 401;
-}
+import { unauthenticated } from "./LoginRequired.model";
 
 export function LoginRequired({ what }: { what: string }) {
   return (

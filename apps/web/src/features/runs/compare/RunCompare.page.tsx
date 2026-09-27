@@ -1,6 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { LoginRequired, ReadFailure, unauthenticated } from "../../../shared/ui/LoginRequired";
+import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
+import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";

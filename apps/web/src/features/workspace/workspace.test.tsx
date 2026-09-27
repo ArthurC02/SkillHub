@@ -1046,14 +1046,14 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
   queryClient.setQueryData(["own-skills"], { skills: [] });
   queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
 
-  let fork: ReturnType<typeof useForkSkill> | undefined;
+  const forks: ReturnType<typeof useForkSkill>[] = [];
   function ForkHarness() {
-    fork = useForkSkill();
+    forks.push(useForkSkill());
     return null;
   }
-  await render(<ForkHarness />, () => fork !== undefined);
+  await render(<ForkHarness />, () => forks.length > 0);
   await act(async () => {
-    await fork!.mutateAsync(SKILL);
+    await forks.at(-1)!.mutateAsync(SKILL);
   });
 
   expect(queryClient.getQueryState(["own-skills"])?.isInvalidated).toBe(true);

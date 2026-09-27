@@ -70,11 +70,8 @@ export function CreationSession() {
     setError(undefined);
     setFile(picked);
   };
-  const thumbs = useRef(new Map<string, string>());
-  useEffect(() => {
-    const held = thumbs.current;
-    return () => held.forEach((url) => URL.revokeObjectURL(url));
-  }, []);
+  const [thumbs] = useState(() => new Map<string, string>());
+  useEffect(() => () => thumbs.forEach((url) => URL.revokeObjectURL(url)), [thumbs]);
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : undefined), [file]);
   useEffect(
     () => () => {
@@ -177,7 +174,7 @@ export function CreationSession() {
         });
         const recorded = next.snapshot.attachments ?? [];
         const mine = recorded[recorded.length - 1];
-        if (mine && file) thumbs.current.set(mine.sha256, URL.createObjectURL(file));
+        if (mine && file) thumbs.set(mine.sha256, URL.createObjectURL(file));
         clearFile();
         setMessage("");
       }
@@ -277,7 +274,7 @@ export function CreationSession() {
             <>
               <ConversationLog
                 session={session}
-                thumbs={thumbs.current}
+                thumbs={thumbs}
                 working={working}
                 busy={busy}
                 perform={perform}
