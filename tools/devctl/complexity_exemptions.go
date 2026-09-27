@@ -17,7 +17,7 @@ type complexityGateModule struct {
 
 var complexityGateModules = []complexityGateModule{
 	{lintPath: "apps/platform/.golangci.yml", registeredExempt: 12},
-	{lintPath: "apps/sandbox/.golangci.yml", registeredExempt: 2},
+	{lintPath: "apps/sandbox/.golangci.yml", registeredExempt: 0},
 	{lintPath: "tools/devctl/.golangci.yml", registeredExempt: 15},
 }
 

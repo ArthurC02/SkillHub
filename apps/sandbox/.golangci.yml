@@ -8,13 +8,6 @@ linters:
     presets:
       - std-error-handling
     warn-unused: true
-    rules:
-      - path: internal/sandbox/manager\.go
-        linters: [gocognit]
-        text: 'func `\(Config\)\.accept`'
-      - path: internal/sandbox/trace\.go
-        linters: [gocognit]
-        text: 'func `\(\*Manager\)\.flushTrace`'
 
   settings:
     gocognit:

@@ -147,95 +147,113 @@ func (m *Manager) flushTrace(parent context.Context, id, url string) bool {
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 	for {
-
-		m.mu.Lock()
-		e := m.runs[id]
-		if e == nil {
-			m.mu.Unlock()
+		offset, secrets, tracked := m.traceCursor(id)
+		if !tracked {
 			return true
 		}
-		offset := e.traceOffset
-
-		secrets := e.secrets
-		m.mu.Unlock()
 
 		raw, more, err := m.drv.ReadTrace(ctx, id, offset)
 		if err != nil {
 			return false
 		}
 		if len(raw) == 0 {
-
 			return true
 		}
 		lines, consumed := splitEvents(raw)
 		if more && consumed == 0 {
 			// A single line fills the whole read window with no terminator yet;
 			// skip past it so the collector doesn't stall waiting for it to end.
-			m.mu.Lock()
-			if e := m.runs[id]; e != nil {
-				e.traceOffset = offset + int64(len(raw))
-			}
-			m.mu.Unlock()
+			m.recordTraceOffset(id, offset+int64(len(raw)))
 			continue
 		}
 
-		for sent := 0; sent < len(lines); {
-			firstWireBytes, err := traceEventWireBytes(lines[sent].event)
-			if err != nil || firstWireBytes+3 > traceBatchBytes {
-
-				m.log.Warn("dropping oversized trace event", "provider_run_id", id, "bytes", firstWireBytes)
-				m.metrics.tracePush("dropped_oversized", 0)
-				m.mu.Lock()
-				if e := m.runs[id]; e != nil {
-					e.traceOffset = offset + lines[sent].end
-				}
-				m.mu.Unlock()
-				sent++
-				continue
-			}
-			end, size := sent, 2
-			for end < len(lines) && end-sent < traceBatch {
-				wireBytes, err := traceEventWireBytes(lines[end].event)
-				if err != nil {
-					break
-				}
-				next := wireBytes + 1
-				if end > sent && size+next > traceBatchBytes {
-					break
-				}
-				size += next
-				end++
-			}
-			events := make([]json.RawMessage, 0, end-sent)
-			for _, line := range lines[sent:end] {
-				events = append(events, line.event)
-			}
-			if err := m.sink.Push(ctx, url, events); err != nil {
-				// mask() scrubs the run's secrets from the error text: a *url.Error
-				// embeds the request URL, which carries the ingestion token.
-				m.log.Warn("trace push failed", "provider_run_id", id, "err", mask(err.Error(), secrets))
-				m.metrics.tracePush("error", 0)
-				return false
-			}
-			m.metrics.tracePush("ok", end-sent)
-			sent = end
-
-			m.mu.Lock()
-			if e := m.runs[id]; e != nil {
-				e.traceOffset = offset + lines[sent-1].end
-			}
-			m.mu.Unlock()
+		if !m.pushTraceLines(ctx, id, url, secrets, offset, lines) {
+			return false
 		}
 
 		if consumed > 0 {
-			m.mu.Lock()
-			if e := m.runs[id]; e != nil {
-				e.traceOffset = offset + consumed
-			}
-			m.mu.Unlock()
+			m.recordTraceOffset(id, offset+consumed)
 		}
 		if !more {
 			return true
 		}
 	}
+}
+
+func (m *Manager) traceCursor(id string) (int64, []string, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e := m.runs[id]
+	if e == nil {
+		return 0, nil, false
+	}
+	return e.traceOffset, e.secrets, true
+}
+
+func (m *Manager) recordTraceOffset(id string, offset int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if e := m.runs[id]; e != nil {
+		e.traceOffset = offset
+	}
+}
+
+func (m *Manager) pushTraceLines(ctx context.Context, id, url string, secrets []string, offset int64, lines []traceLine) bool {
+	for sent := 0; sent < len(lines); {
+		if m.dropOversizedTraceEvent(id, offset, lines[sent]) {
+			sent++
+			continue
+		}
+		end := traceBatchEnd(lines, sent)
+		if !m.pushTraceBatch(ctx, id, url, secrets, lines[sent:end]) {
+			return false
+		}
+		sent = end
+		m.recordTraceOffset(id, offset+lines[sent-1].end)
+	}
+	return true
+}
+
+func (m *Manager) dropOversizedTraceEvent(id string, offset int64, line traceLine) bool {
+	wireBytes, err := traceEventWireBytes(line.event)
+	if err != nil || wireBytes+3 > traceBatchBytes {
+		m.log.Warn("dropping oversized trace event", "provider_run_id", id, "bytes", wireBytes)
+		m.metrics.tracePush("dropped_oversized", 0)
+		m.recordTraceOffset(id, offset+line.end)
+		return true
+	}
+	return false
+}
+
+func traceBatchEnd(lines []traceLine, start int) int {
+	end, size := start, 2
+	for end < len(lines) && end-start < traceBatch {
+		wireBytes, err := traceEventWireBytes(lines[end].event)
+		if err != nil {
+			break
+		}
+		next := wireBytes + 1
+		if end > start && size+next > traceBatchBytes {
+			break
+		}
+		size += next
+		end++
+	}
+	return end
+}
+
+func (m *Manager) pushTraceBatch(ctx context.Context, id, url string, secrets []string, batch []traceLine) bool {
+	events := make([]json.RawMessage, 0, len(batch))
+	for _, line := range batch {
+		events = append(events, line.event)
+	}
+	if err := m.sink.Push(ctx, url, events); err != nil {
+		// mask() scrubs the run's secrets from the error text: a *url.Error
+		// embeds the request URL, which carries the ingestion token.
+		m.log.Warn("trace push failed", "provider_run_id", id, "err", mask(err.Error(), secrets))
+		m.metrics.tracePush("error", 0)
+		return false
+	}
+	m.metrics.tracePush("ok", len(batch))
+	return true
 }

@@ -699,110 +699,133 @@ func validate(req RunRequest) error {
 }
 
 func (c Config) accept(req RunRequest) *RunError {
-	mismatch := func(format string, args ...any) *RunError {
-		return &RunError{Class: ClassCapabilityMismatch, Message: fmt.Sprintf(format, args...), Retryable: false}
+	if re := c.acceptRuntime(req.Runtime); re != nil {
+		return re
 	}
-	ok := false
+	if re := c.acceptResourceLimits(req.ResourceLimits); re != nil {
+		return re
+	}
+	if re := c.acceptTokenBudget(req.ResourceLimits.TokenBudget); re != nil {
+		return re
+	}
+	if re := c.acceptEgressMode(req.Egress); re != nil {
+		return re
+	}
+	return c.acceptEgressRoutes(req.Egress.Allow)
+}
+
+func capabilityMismatch(format string, args ...any) *RunError {
+	return &RunError{Class: ClassCapabilityMismatch, Message: fmt.Sprintf(format, args...), Retryable: false}
+}
+
+func (c Config) acceptRuntime(want RuntimeProfile) *RunError {
+	versionAvailable := false
 	for _, rt := range c.Runtimes {
-		if rt.Runtime != req.Runtime.Runtime {
+		if rt.Runtime != want.Runtime {
 			continue
 		}
-		for _, v := range rt.Versions {
-			if v == req.Runtime.RuntimeVersion {
-				ok = true
-			}
+		versionAvailable = versionAvailable || slices.Contains(rt.Versions, want.RuntimeVersion)
+		if !versionAvailable {
+			return capabilityMismatch("runtime %s version %s is not available here", want.Runtime, want.RuntimeVersion)
 		}
-		if !ok {
-			return mismatch("runtime %s version %s is not available here", req.Runtime.Runtime, req.Runtime.RuntimeVersion)
-		}
-		if req.Runtime.AgentIntegration != "" {
-			found := false
-			for _, ai := range rt.AgentIntegration {
-				if ai == req.Runtime.AgentIntegration {
-					found = true
-				}
-			}
-			if !found {
-				return mismatch("agent integration %s is not supported here", req.Runtime.AgentIntegration)
-			}
+		if want.AgentIntegration != "" && !slices.Contains(rt.AgentIntegration, want.AgentIntegration) {
+			return capabilityMismatch("agent integration %s is not supported here", want.AgentIntegration)
 		}
 	}
-	if !ok {
-		return mismatch("runtime %s is not available here", req.Runtime.Runtime)
+	if !versionAvailable {
+		return capabilityMismatch("runtime %s is not available here", want.Runtime)
 	}
+	return nil
+}
 
-	l, max := req.ResourceLimits, c.MaxResources
-	switch {
-	case l.VCPU <= 0 || l.MemoryBytes <= 0 || l.DiskBytes <= 0 || l.MaxPIDs <= 0 || l.MaxOpenFiles <= 0 ||
+func missingCeiling(l ResourceLimits) bool {
+	return l.VCPU <= 0 || l.MemoryBytes <= 0 || l.DiskBytes <= 0 || l.MaxPIDs <= 0 || l.MaxOpenFiles <= 0 ||
 		l.WallClockSoftSeconds <= 0 || l.WallClockHardSeconds <= 0 ||
-		l.ArtifactTotalBytes <= 0 || l.ArtifactFileBytes <= 0:
-		return mismatch("resource_limits must set every ceiling: this provider will not run unbounded")
-	case max.VCPU <= 0 || max.MemoryBytes <= 0 || max.DiskBytes <= 0 || max.MaxPIDs <= 0 || max.MaxOpenFiles <= 0 ||
-		max.WallClockSoftSeconds <= 0 || max.WallClockHardSeconds <= 0 ||
-		max.ArtifactTotalBytes <= 0 || max.ArtifactFileBytes <= 0:
-		return mismatch("provider capability must declare every resource ceiling")
+		l.ArtifactTotalBytes <= 0 || l.ArtifactFileBytes <= 0
+}
+
+func (c Config) acceptResourceLimits(l ResourceLimits) *RunError {
+	ceiling := c.MaxResources
+	switch {
+	case missingCeiling(l):
+		return capabilityMismatch("resource_limits must set every ceiling: this provider will not run unbounded")
+	case missingCeiling(ceiling):
+		return capabilityMismatch("provider capability must declare every resource ceiling")
 	case l.WallClockHardSeconds <= l.WallClockSoftSeconds:
-		return mismatch("wall_clock_hard_seconds must be greater than wall_clock_soft_seconds")
-	case l.VCPU > max.VCPU:
-		return mismatch("vcpu %.2f exceeds the %.2f this provider can enforce", l.VCPU, max.VCPU)
-	case l.MemoryBytes > max.MemoryBytes:
-		return mismatch("memory_bytes %d exceeds the %d this provider can enforce", l.MemoryBytes, max.MemoryBytes)
-	case l.DiskBytes > max.DiskBytes:
-		return mismatch("disk_bytes %d exceeds the %d this provider can enforce", l.DiskBytes, max.DiskBytes)
-	case l.MaxPIDs > max.MaxPIDs:
-		return mismatch("max_pids %d exceeds the %d this provider can enforce", l.MaxPIDs, max.MaxPIDs)
-	case l.MaxOpenFiles > max.MaxOpenFiles:
-		return mismatch("max_open_files %d exceeds the %d this provider can enforce", l.MaxOpenFiles, max.MaxOpenFiles)
-	case l.WallClockSoftSeconds > max.WallClockSoftSeconds:
-		return mismatch("wall_clock_soft_seconds %d exceeds the %d this provider allows", l.WallClockSoftSeconds, max.WallClockSoftSeconds)
-	case l.WallClockHardSeconds > max.WallClockHardSeconds:
-		return mismatch("wall_clock_hard_seconds %d exceeds the %d this provider allows", l.WallClockHardSeconds, max.WallClockHardSeconds)
-	case l.ArtifactTotalBytes > max.ArtifactTotalBytes:
-		return mismatch("artifact_total_bytes %d exceeds the %d this provider can enforce", l.ArtifactTotalBytes, max.ArtifactTotalBytes)
-	case l.ArtifactFileBytes > max.ArtifactFileBytes:
-		return mismatch("artifact_file_bytes %d exceeds the %d this provider can enforce", l.ArtifactFileBytes, max.ArtifactFileBytes)
-
-	case l.TokenBudget != nil && max.TokenBudget == nil:
-		return mismatch("provider capability does not declare a token budget")
-	case l.TokenBudget != nil && (l.TokenBudget.MaxInputTokens <= 0 || l.TokenBudget.MaxOutputTokens <= 0):
-		return mismatch("token_budget must set both ceilings")
-	case l.TokenBudget != nil &&
-		(l.TokenBudget.MaxInputTokens > max.TokenBudget.MaxInputTokens ||
-			l.TokenBudget.MaxOutputTokens > max.TokenBudget.MaxOutputTokens):
-		return mismatch("token_budget %d/%d exceeds the %d/%d this provider can enforce",
-			l.TokenBudget.MaxInputTokens, l.TokenBudget.MaxOutputTokens,
-			max.TokenBudget.MaxInputTokens, max.TokenBudget.MaxOutputTokens)
-	case req.Egress.Mode != "default_deny" && req.Egress.Mode != "none":
-		return mismatch("egress mode %q is not supported", req.Egress.Mode)
-	case req.Egress.Mode == "none" && len(req.Egress.Allow) > 0:
-		return mismatch("egress mode none cannot carry an allow list")
-
-	case len(req.Egress.Allow) > 0 && !slices.Contains(c.EgressModes, "default_deny"):
-		return mismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(req.Egress.Allow))
+		return capabilityMismatch("wall_clock_hard_seconds must be greater than wall_clock_soft_seconds")
+	case l.VCPU > ceiling.VCPU:
+		return capabilityMismatch("vcpu %.2f exceeds the %.2f this provider can enforce", l.VCPU, ceiling.VCPU)
+	case l.MemoryBytes > ceiling.MemoryBytes:
+		return capabilityMismatch("memory_bytes %d exceeds the %d this provider can enforce", l.MemoryBytes, ceiling.MemoryBytes)
+	case l.DiskBytes > ceiling.DiskBytes:
+		return capabilityMismatch("disk_bytes %d exceeds the %d this provider can enforce", l.DiskBytes, ceiling.DiskBytes)
+	case l.MaxPIDs > ceiling.MaxPIDs:
+		return capabilityMismatch("max_pids %d exceeds the %d this provider can enforce", l.MaxPIDs, ceiling.MaxPIDs)
+	case l.MaxOpenFiles > ceiling.MaxOpenFiles:
+		return capabilityMismatch("max_open_files %d exceeds the %d this provider can enforce", l.MaxOpenFiles, ceiling.MaxOpenFiles)
+	case l.WallClockSoftSeconds > ceiling.WallClockSoftSeconds:
+		return capabilityMismatch("wall_clock_soft_seconds %d exceeds the %d this provider allows", l.WallClockSoftSeconds, ceiling.WallClockSoftSeconds)
+	case l.WallClockHardSeconds > ceiling.WallClockHardSeconds:
+		return capabilityMismatch("wall_clock_hard_seconds %d exceeds the %d this provider allows", l.WallClockHardSeconds, ceiling.WallClockHardSeconds)
+	case l.ArtifactTotalBytes > ceiling.ArtifactTotalBytes:
+		return capabilityMismatch("artifact_total_bytes %d exceeds the %d this provider can enforce", l.ArtifactTotalBytes, ceiling.ArtifactTotalBytes)
+	case l.ArtifactFileBytes > ceiling.ArtifactFileBytes:
+		return capabilityMismatch("artifact_file_bytes %d exceeds the %d this provider can enforce", l.ArtifactFileBytes, ceiling.ArtifactFileBytes)
 	}
+	return nil
+}
 
+func (c Config) acceptTokenBudget(requested *TokenBudget) *RunError {
+	if requested == nil {
+		return nil
+	}
+	offered := c.MaxResources.TokenBudget
+	switch {
+	case offered == nil:
+		return capabilityMismatch("provider capability does not declare a token budget")
+	case requested.MaxInputTokens <= 0 || requested.MaxOutputTokens <= 0:
+		return capabilityMismatch("token_budget must set both ceilings")
+	case requested.MaxInputTokens > offered.MaxInputTokens || requested.MaxOutputTokens > offered.MaxOutputTokens:
+		return capabilityMismatch("token_budget %d/%d exceeds the %d/%d this provider can enforce",
+			requested.MaxInputTokens, requested.MaxOutputTokens,
+			offered.MaxInputTokens, offered.MaxOutputTokens)
+	}
+	return nil
+}
+
+func (c Config) acceptEgressMode(egress EgressPolicy) *RunError {
+	switch {
+	case egress.Mode != "default_deny" && egress.Mode != "none":
+		return capabilityMismatch("egress mode %q is not supported", egress.Mode)
+	case egress.Mode == "none" && len(egress.Allow) > 0:
+		return capabilityMismatch("egress mode none cannot carry an allow list")
+	case len(egress.Allow) > 0 && !slices.Contains(c.EgressModes, "default_deny"):
+		return capabilityMismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(egress.Allow))
+	}
+	return nil
+}
+
+func (c Config) acceptEgressRoutes(allow []EgressAllowEntry) *RunError {
 	if c.EgressUnenforced {
 		return nil
 	}
-	for _, want := range req.Egress.Allow {
-		routed := false
-		for _, have := range c.EgressAllow {
-			if have.routes(want) {
-				routed = true
-				break
-			}
+	for _, want := range allow {
+		if c.routesTo(want) {
+			continue
 		}
-		if !routed {
-			host, port, ok := hostPort(want.URL)
-			if !ok {
-				return mismatch("egress destination %q for %s is not a URL naming a host and port, "+
-					"so no accept rule could match it", want.URL, want.Purpose)
-			}
-			return mismatch("this node renders no egress rule for %s at %s:%d; "+
-				"it routes to %s", want.Purpose, host, port, c.renderedSummary())
+		host, port, ok := hostPort(want.URL)
+		if !ok {
+			return capabilityMismatch("egress destination %q for %s is not a URL naming a host and port, "+
+				"so no accept rule could match it", want.URL, want.Purpose)
 		}
+		return capabilityMismatch("this node renders no egress rule for %s at %s:%d; "+
+			"it routes to %s", want.Purpose, host, port, c.renderedSummary())
 	}
 	return nil
+}
+
+func (c Config) routesTo(want EgressAllowEntry) bool {
+	return slices.ContainsFunc(c.EgressAllow, func(have EgressDestination) bool { return have.routes(want) })
 }
 
 func (c Config) renderedSummary() string {
