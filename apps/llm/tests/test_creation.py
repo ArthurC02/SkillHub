@@ -950,6 +950,28 @@ def test_review_uses_the_latest_trial_even_after_static_validation():
     assert response.json()["draft"] == SKILL
 
 
+def test_reconfirming_a_confirmed_brief_needs_a_change_go_can_show():
+    confirmed = request(
+        brief="b",
+        brief_confirmed=True,
+        acceptance_criteria=["c1"],
+        sample_input="s",
+    )
+    unchanged = decision(
+        outcome="confirm_brief", brief="b", acceptance_criteria=["c1"], sample_input="s"
+    )
+    response, _ = invoke(confirmed, unchanged)
+    assert response.json()["outcome"] == "clarification"
+    assert response.json()["reason"] == "brief_missing"
+
+    response, _ = invoke(confirmed, decision(outcome="confirm_brief"))
+    assert response.json()["reason"] == "brief_missing"
+
+    response, _ = invoke(confirmed, unchanged | {"sample_input": "s, plus the missing case"})
+    assert response.json()["outcome"] == "confirm_brief"
+    assert response.json()["sample_input"] == "s, plus the missing case"
+
+
 def test_an_empty_brief_is_a_reason_code_go_retries():
     response, _ = invoke(request(), decision(outcome="confirm_brief", brief="   "))
     assert response.status_code == 200
