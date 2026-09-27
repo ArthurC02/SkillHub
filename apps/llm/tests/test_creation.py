@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from skillhub_llm import creation
+from skillhub_llm import creation, generate
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -1247,6 +1247,17 @@ def test_field_rules_are_in_compose_but_not_understand_phase():
     assert "lowercase letters, digits and single hyphens" in compose_prompt
     assert "do not return confirm_brief again" in compose_prompt
     assert "do not return confirm_brief again" not in understand_prompt
+
+
+def test_compose_prompt_demands_shipped_scripts_and_never_prefers_instructions():
+    response, calls = invoke(
+        request(brief="agreed", brief_confirmed=True), decision(outcome="draft", draft=SKILL)
+    )
+    assert response.status_code == 200
+    compose_prompt = calls[0]["messages"][0]["content"]
+    assert creation.SHIPPED_FILES_RULE in compose_prompt
+    assert "Prefer instructions" not in compose_prompt
+    assert "Prefer instructions" in generate.SYSTEM_PROMPT
 
 
 def test_tool_observation_is_fenced_and_its_closing_tag_stripped():

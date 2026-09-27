@@ -171,7 +171,9 @@ FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most
   skill needs specific tools. An empty string otherwise.
 - `body`: the actual instructions, in Markdown. Concrete steps a competent agent
   can follow. No placeholders for someone to fill in later, no "TODO", no
-  "insert X here" - if you do not know a value, write instructions for finding it.
+  "insert X here" - if you do not know a value, write instructions for finding it."""
+
+PREFER_INSTRUCTIONS_RULE = """\
 - `files`: only when a script genuinely does the work better than instructions.
   Prefer instructions."""
 
@@ -187,6 +189,8 @@ front matter yourself; do not write `---` delimiters; do not include a licence.
 
 """
     + FIELD_RULES
+    + "\n"
+    + PREFER_INSTRUCTIONS_RULE
     + """
 
 Write in the language of the task description, or of the diagram's own labels

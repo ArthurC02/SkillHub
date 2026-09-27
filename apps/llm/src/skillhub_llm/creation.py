@@ -31,8 +31,12 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v27"
+PROMPT_VERSION = "creation-step/v28"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
+SHIPPED_FILES_RULE = (
+    "- `files`: every script the body runs, each with its full path under scripts/ and "
+    "its complete content; a body that runs a script the files do not ship is incomplete."
+)
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -547,7 +551,7 @@ def _reason_node(gateway_key: str, phase: str):
             )
         )
         if phase != "understand":
-            system += "\n\n" + FIELD_RULES
+            system += "\n\n" + FIELD_RULES + "\n" + SHIPPED_FILES_RULE
         content: str | list[dict] = state["prompt"]
         if req.diagram is not None:
             content = [
