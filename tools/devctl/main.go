@@ -451,7 +451,7 @@ func parseManifestSection(path, section string) (map[string]string, error) {
 			continue
 		}
 		key, value, ok := parseKeyValue(trimmed, ":")
-		if !ok {
+		if !ok || key == "" || strings.ContainsAny(key, " \t\"'") {
 			return nil, fmt.Errorf("invalid toolchain entry %q", line)
 		}
 		values[key] = value
