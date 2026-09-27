@@ -263,6 +263,35 @@ func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 		t.Fatal("original diagram persisted")
 	}
 }
+func TestTheMeasureHarnessBuildsAHoldoutCaseThroughTheAPI(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "holdout-case-author")
+	skillID := seedSkill(t, pool, c.workspaceID, "holdout-case-skill")
+	hc := holdoutCase{Name: "499 元", Prompt: "訂單金額 499 元，請回覆客戶運費。", Criteria: []string{"運費為 80 元。", "只有一句。"}}
+
+	id, err := createHoldoutCase(t, c, skillID, hc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var prompt string
+	var criteria []trialCriterion
+	var raw []byte
+	if err := pool.QueryRow(context.Background(), `SELECT user_prompt, acceptance_criteria FROM test_cases WHERE id = $1`, mustUUID(t, id)).Scan(&prompt, &raw); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &criteria); err != nil {
+		t.Fatal(err)
+	}
+	if prompt != hc.Prompt || len(criteria) != 2 || criteria[0].Text != hc.Criteria[0] || criteria[1].Text != hc.Criteria[1] {
+		t.Fatalf("stored prompt %q criteria %+v, want %q and %q", prompt, criteria, hc.Prompt, hc.Criteria)
+	}
+
+	if _, err := createHoldoutCase(t, c, "00000000-0000-0000-0000-000000000000", hc); err == nil {
+		t.Fatal("a holdout case on a skill outside the workspace was created")
+	}
+}
+
 func TestTheMeasureHarnessAnswersEveryDiagramUncertaintyThroughTheAPI(t *testing.T) {
 	a, s, _ := creationFixture(t)
 	c := a.login(t, "creation-diagram-answers")

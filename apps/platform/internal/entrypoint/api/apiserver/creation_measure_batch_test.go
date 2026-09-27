@@ -93,6 +93,11 @@ type sessionRow struct {
 
 	CriteriaChangedBeforeMet *bool `json:"criteria_changed_before_met,omitempty"`
 
+	HoldoutMet    *bool    `json:"holdout_met,omitempty"`
+	HoldoutPassed int      `json:"holdout_passed,omitempty"`
+	HoldoutCases  int      `json:"holdout_cases,omitempty"`
+	HoldoutNotes  []string `json:"holdout_notes,omitempty"`
+
 	MetByOwner  *bool `json:"met_by_owner"`
 	KeptByOwner *bool `json:"kept_by_owner"`
 }
@@ -124,6 +129,8 @@ type creationMeasureSummary struct {
 	MetFirstCount         int `json:"met_first_count"`
 	MetCount              int `json:"met_count"`
 	MetOnChangedCriteria  int `json:"met_on_changed_criteria"`
+	HoldoutMetCount       int `json:"holdout_met_count"`
+	HoldoutDenominator    int `json:"holdout_denominator"`
 	MetDenominator        int `json:"met_denominator"`
 	DiagramMetCount       int `json:"diagram_met_count"`
 	DiagramMetDenominator int `json:"diagram_met_denominator"`
@@ -160,6 +167,94 @@ type measureTask struct {
 
 	DiagramNodes []string
 	ReferenceMD  string
+	Holdout      []holdoutCase
+}
+
+type holdoutCase struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	Criteria []string `json:"criteria"`
+}
+
+func allHoldoutsMet(results []*bool) bool {
+	if len(results) == 0 {
+		return false
+	}
+	for _, met := range results {
+		if met == nil || !*met {
+			return false
+		}
+	}
+	return true
+}
+
+func TestAHoldoutCountsAsMetOnlyWhenEveryCaseRanAndMet(t *testing.T) {
+	yes, no := true, false
+	cases := []struct {
+		name    string
+		results []*bool
+		want    bool
+	}{
+		{"no case ran", nil, false},
+		{"every case met", []*bool{&yes, &yes}, true},
+		{"one case failed", []*bool{&yes, &no}, false},
+		{"one case never ran", []*bool{&yes, nil}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := allHoldoutsMet(tc.results); got != tc.want {
+				t.Fatalf("allHoldoutsMet = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func createHoldoutCase(t *testing.T, c *client, skillID string, hc holdoutCase) (string, error) {
+	t.Helper()
+	body, _ := json.Marshal(map[string]string{"skill_id": skillID, "name": hc.Name, "user_prompt": hc.Prompt})
+	code, created := postJSON(t, c, "/test-cases", string(body))
+	id, _ := created["test_case_id"].(string)
+	if code != http.StatusCreated || id == "" {
+		return "", fmt.Errorf("POST /test-cases: %d %v", code, created)
+	}
+	for _, criterion := range hc.Criteria {
+		text, _ := json.Marshal(map[string]string{"text": criterion})
+		if code, out := postJSON(t, c, "/test-cases/"+id+"/criteria", string(text)); code != http.StatusCreated {
+			return "", fmt.Errorf("POST criterion: %d %v", code, out)
+		}
+	}
+	return id, nil
+}
+
+func runHoldout(t *testing.T, a *api, ctx context.Context, c *client, trial *trialRun, v creation.View, task measureTask, row sessionRow, outDir string) sessionRow {
+	t.Helper()
+	if len(task.Holdout) == 0 || v.Snapshot.Candidate == nil {
+		return row
+	}
+	var results []*bool
+	for i, hc := range task.Holdout {
+		id, err := createHoldoutCase(t, c, v.Snapshot.Candidate.SkillID, hc)
+		if err != nil {
+			row.HoldoutNotes = append(row.HoldoutNotes, hc.Name+": "+err.Error())
+			results = append(results, nil)
+			continue
+		}
+		candidate := *v.Snapshot.Candidate
+		candidate.TestCaseID = id
+		out := trialCandidate(t, a, ctx, c, trial, &candidate)
+		writeTrialRecord(t, outDir, fmt.Sprintf("%s-holdout-%d", row.ID, i+1), 0, out.record)
+		if out.note != "" {
+			row.HoldoutNotes = append(row.HoldoutNotes, hc.Name+": "+out.note)
+		}
+		results = append(results, out.met)
+		if out.met != nil && *out.met {
+			row.HoldoutPassed++
+		}
+	}
+	row.HoldoutCases = len(results)
+	met := allHoldoutsMet(results)
+	row.HoldoutMet = &met
+	return row
 }
 
 func creationMessage(t *testing.T, c *client, v creation.View, message string) creation.View {
@@ -543,12 +638,12 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	var tasks []measureTask
 	if textOnly {
 		for _, r := range corpus.Reference {
-			tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description})
+			tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
 		}
 	}
 	for i := 0; i < 5 && !textOnly; i++ {
 		r := corpus.Reference[i]
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
 	}
 	for i := 0; i < 5 && !textOnly; i++ {
 		d := corpus.Diagram[i]
@@ -568,7 +663,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	}
 	for i := 5; i < 10 && !textOnly; i++ {
 		r := corpus.Reference[i]
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD})
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
 	}
 	if only := os.Getenv("CREATION_MEASURE_ONLY"); only != "" {
 		tasks = slices.DeleteFunc(tasks, func(task measureTask) bool { return task.Kind != only })
@@ -624,6 +719,12 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 			}
 			if row.CriteriaChangedBeforeMet != nil && *row.CriteriaChangedBeforeMet {
 				results.Summary.MetOnChangedCriteria++
+			}
+			if row.HoldoutMet != nil {
+				results.Summary.HoldoutDenominator++
+				if *row.HoldoutMet {
+					results.Summary.HoldoutMetCount++
+				}
 			}
 		}
 	}
@@ -803,6 +904,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			if trial != nil {
 
 				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row, outDir)
+				row = runHoldout(t, a, ctx, c, trial, v, task, row, outDir)
 			}
 			return row
 		default:

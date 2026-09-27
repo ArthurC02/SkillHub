@@ -34,6 +34,7 @@ type modesCorpus struct {
 			SkillMD string   `json:"skill_md"`
 			Markers []string `json:"markers"`
 		} `json:"reference"`
+		Holdout []holdoutCase `json:"holdout"`
 	} `json:"reference"`
 }
 
