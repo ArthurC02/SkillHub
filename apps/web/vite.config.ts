@@ -21,7 +21,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          return id.includes("node_modules") ? "vendor" : undefined;
+          if (!id.includes("node_modules")) return undefined;
+          const packagePath = id.split("node_modules/")[1];
+          if (!packagePath) return "vendor";
+          const packageSegments = packagePath.split("/");
+          const packageName = packageSegments[0]?.startsWith("@")
+            ? `${packageSegments[0]}/${packageSegments[1]}`
+            : packageSegments[0];
+          if (!packageName) return "vendor";
+          return `vendor-${packageName.replace("@", "").replace("/", "-")}`;
         },
       },
     },
