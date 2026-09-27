@@ -584,6 +584,9 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	if corpusPath == "" || diagramDir == "" || outDir == "" || base == "" || gatewayKey == "" {
 		t.Skip("set CREATION_MEASURE_CORPUS, CREATION_MEASURE_DIAGRAMS, CREATION_MEASURE_OUT, SKILLHUB_E2E_LLM_URL and LITELLM_API_KEY; this test spends money")
 	}
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	raw, err := os.ReadFile(corpusPath)
 	if err != nil {
 		t.Fatal(err)
