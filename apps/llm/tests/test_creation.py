@@ -1007,6 +1007,16 @@ def test_search_intent_carries_up_to_three_rewrites():
     )
     assert response.status_code == 200
     assert response.json()["tool_intent"]["queries"] == ["a", "b", "c"]
+    at_cap, over_cap = "q" * 200, "q" * 201
+    response, _ = invoke(
+        req,
+        decision(
+            outcome="tool_intent",
+            tool_intent={"kind": "search_knowledge", "query": "x", "queries": [over_cap, at_cap]},
+        ),
+    )
+    assert response.status_code == 200
+    assert response.json()["tool_intent"]["queries"] == [at_cap]
 
 
 def test_search_knowledge_intent_passes_through_and_needs_a_query():

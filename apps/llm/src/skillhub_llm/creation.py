@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v23"
+PROMPT_VERSION = "creation-step/v24"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -354,8 +354,9 @@ PHASE_INSTRUCTIONS = {
         "compatibility, allowed_tools, the full SKILL.md body, files); outcome draft with "
         "draft null is a wasted turn. The body must make the agent act on the input it is "
         "handed in one pass: perform every acceptance criterion directly, choose sensible "
-        "defaults and state them in the output instead of asking the user, and refuse or ask "
-        "only when the input itself is missing. A Skill whose run ends in a question has "
+        "defaults and state them in the output instead of asking the user; when the input "
+        "itself is missing, deliver a usable template with clearly marked blanks and say what "
+        "to fill in, never only a list of questions. A Skill whose run ends in a question has "
         "failed every criterion. When a confirmed diagram_understanding exists, the body "
         "walks its nodes as steps, in order, each named as the diagram names it, and adds "
         "no step, condition, role or tool the diagram does not show; where the diagram is "
@@ -720,9 +721,9 @@ def _reason_node(gateway_key: str, phase: str):
             if len(decision.sample_input or "") > 4000:
                 raise ValueError("over cap: sample_input")
             if decision.tool_intent and decision.tool_intent.queries is not None:
-                decision.tool_intent.queries = decision.tool_intent.queries[:3]
-                if any(len(x) > 200 for x in decision.tool_intent.queries):
-                    raise ValueError("over cap: tool_intent.queries")
+                decision.tool_intent.queries = [
+                    q for q in decision.tool_intent.queries if len(q) <= 200
+                ][:3]
             if (
                 rewritten_body
                 and decision.draft is not None
