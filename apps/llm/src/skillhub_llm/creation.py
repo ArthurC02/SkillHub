@@ -32,7 +32,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v31"
+PROMPT_VERSION = "creation-step/v32"
 CHECK_SCRIPT_PATH = "scripts/check_output.py"
 SHIPPED_SCRIPT_PATH = re.compile(r"^scripts/[^/]+\.py$")
 SHIPPED_REFERENCE_PATH = re.compile(r"^references/[^/]+\.md$")
@@ -465,13 +465,18 @@ PHASE_INSTRUCTIONS = {
         "only; the platform supplies that script. The agent must act in one pass on the "
         "input it is handed: it takes the common default for a missing setting and says "
         "which; it gives a usable template with marked blanks when the input itself is "
-        "missing; it never invents a fact and marks a missing one as not given in the "
+        "missing; it never invents a fact, writes every fact it was given exactly as given "
+        "and never marks one as pending, and marks a missing one as not given in the "
         "output's language; it totals what belongs together; it names every value that "
         "cannot be right (a date that does not exist, a negative count, two different values "
-        "for one thing), asks the person to confirm each, and gives no total that depends on "
-        "one; a missing name or label never stops a calculation; when two "
+        "for one thing, including a later remark that changes an earlier figure), asks the "
+        "person to confirm each, gives no total that depends on one, and questions nothing "
+        "else; a missing name, label or date it was not asked for never stops a calculation "
+        "or a document; when two "
         "requirements cannot both hold it keeps the hard limit and says in one line what was "
-        "left out; and it delivers the artifact itself, never a plan or a question. A "
+        "left out; and it delivers the artifact itself in this same answer, complete, with a "
+        "marked blank for anything not given, never a plan, a question or a promise to write "
+        "it once something is confirmed. A "
         "Skill whose run ends in a question has failed every criterion. When a confirmed "
         "diagram_understanding exists, the body walks its nodes as steps, in order, each "
         "named as the diagram names it, and adds no step, condition, role or tool the "
