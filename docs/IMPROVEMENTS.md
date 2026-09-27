@@ -3,8 +3,8 @@
 ## 本 PR 已完成（低風險垂直切片）
 
 1. **共享邏輯抽離（tools/devctl）**
-   - 抽出 key/value 與字串正規化 helper，並套用到 `.env`、toolchain section、Claude agent frontmatter 解析。
-   - 實際 caller：`readDotEnv`、`parseManifestSection`、`parseClaudeAgent`。
+   - 抽出 key/value 與字串正規化 helper，並套用到 `.env` 與 toolchain section 解析。
+   - 實際 caller：`readDotEnv`、`parseManifestSection`。
    - 附帶測試：`TestParseKeyValue` 與既有解析測試。
 2. **關鍵邊界測試補強（apps/platform）**
    - 針對 diagram 文字驗證補上 2000/2001 rune 邊界與空白輸入案例。
