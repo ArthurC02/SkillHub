@@ -798,7 +798,7 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
-	if err != nil || !next || state != StateQueued {
+	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
 	}
 	if e.PreviousDraft != prior || e.Snapshot.PreviousDraft != prior {

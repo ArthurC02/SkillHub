@@ -115,6 +115,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	if err != nil {
 		return "", false, err
 	}
+	revisedAfterUnmetRun := p.RunUnmet && p.Draft != nil && p.Draft.ContentHash != hash
 	if p.Draft != nil && p.Draft.ContentHash != hash {
 		e.PreviousDraft = p.Draft
 	}
@@ -130,6 +131,9 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	p.PreviousDraft = e.PreviousDraft
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
 	p.appendMessage("tool", fmt.Sprintf("Go 靜態驗證完成，blocked=%t；完整 finding 隨 draft_validation 提供，不代表試跑成功。", blocked))
+	if revisedAfterUnmetRun && !blocked {
+		return StateDraftReady, false, nil
+	}
 	return StateQueued, true, nil
 }
 

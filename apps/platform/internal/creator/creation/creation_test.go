@@ -421,6 +421,35 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 	}
 }
 
+func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) {
+	cases := []struct {
+		name      string
+		blocked   bool
+		wantState State
+		wantNext  bool
+	}{
+		{"the revision validates", false, StateDraftReady, false},
+		{"the revision is blocked", true, StateQueued, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+				return "revised-hash", "{}", tc.blocked, nil
+			}}
+			zero := 0.0
+			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: &Draft{Revision: 3, ContentHash: "ran-hash"}, RunUnmet: true}}
+			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
+			state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+			if err != nil || state != tc.wantState || next != tc.wantNext {
+				t.Fatalf("state=%q next=%v err=%v, want %q next=%v", state, next, err, tc.wantState, tc.wantNext)
+			}
+			if e.Snapshot.Draft.ContentHash != "revised-hash" || e.Snapshot.RunUnmet {
+				t.Fatalf("the revision was not stored as the new draft: %+v unmet=%v", e.Snapshot.Draft, e.Snapshot.RunUnmet)
+			}
+		})
+	}
+}
+
 func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
