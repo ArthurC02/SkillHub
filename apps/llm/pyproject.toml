@@ -36,7 +36,17 @@ build-backend = "uv_build"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "C901", "PLR0912", "PLR0915"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-branches = 12
+max-statements = 50
+
+[tool.ruff.lint.per-file-ignores]
+"src/skillhub_llm/creation.py" = ["C901", "PLR0912", "PLR0915"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
