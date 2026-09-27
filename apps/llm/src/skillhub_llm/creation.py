@@ -859,7 +859,7 @@ def _reason_node(gateway_key: str, phase: str):
             return {
                 "decision": decision,
                 "usage": usage,
-                "served_model": served_model(completion, MODEL),
+                "served_model": served_model(completion, raw.headers, MODEL),
             }
         except (
             OpenAIError,

@@ -283,14 +283,14 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         logger.warning("match-reasons: model output did not match the schema")
         return MatchReasonsResponse(
             reasons=[],
-            model=served_model(response, MATCH_REASON_MODEL),
+            model=served_model(response, raw.headers, MATCH_REASON_MODEL),
             usage=_usage(response, raw.headers),
         )
 
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
-        model=served_model(response, MATCH_REASON_MODEL),
+        model=served_model(response, raw.headers, MATCH_REASON_MODEL),
         usage=_usage(response, raw.headers),
     )
 

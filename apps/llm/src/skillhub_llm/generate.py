@@ -320,7 +320,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
 
     return GenerateSkillResponse(
         skill=skill,
-        model=served_model(completion, GENERATE_SKILL_MODEL),
+        model=served_model(completion, raw.headers, GENERATE_SKILL_MODEL),
         prompt_version=GENERATE_SKILL_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

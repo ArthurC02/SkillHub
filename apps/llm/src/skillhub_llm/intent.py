@@ -148,7 +148,7 @@ async def analyze_intent(req: AnalyzeSearchIntentRequest) -> AnalyzeSearchIntent
 
     response = AnalyzeSearchIntentResponse(
         valid=False,
-        model=served_model(completion, INTENT_MODEL),
+        model=served_model(completion, raw.headers, INTENT_MODEL),
         prompt_version=PROMPT_VERSION,
     )
     usage = _usage(completion, raw.headers)

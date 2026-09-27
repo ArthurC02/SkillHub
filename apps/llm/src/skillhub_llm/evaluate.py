@@ -439,7 +439,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
 
     return JudgeRunResponse(
         verdict=verdict,
-        model=served_model(completion, JUDGE_MODEL),
+        model=served_model(completion, raw.headers, JUDGE_MODEL),
         prompt_version=JUDGE_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,
@@ -593,7 +593,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
 
     return SuggestImprovementsResponse(
         suggestions=kept,
-        model=served_model(completion, JUDGE_MODEL),
+        model=served_model(completion, raw.headers, JUDGE_MODEL),
         prompt_version=SUGGEST_IMPROVEMENTS_PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

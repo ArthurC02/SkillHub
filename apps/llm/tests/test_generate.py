@@ -32,7 +32,9 @@ GOOD_SKILL = {
 }
 
 
-def _fake_client(content: str, capture: list | None = None, finish_reason=None, served=None):
+def _fake_client(
+    content: str, capture: list | None = None, finish_reason=None, served=None, served_header=None
+):
     """Stand-in for AsyncOpenAI, shaped like the one in test_evaluate.
 
     `finish_reason` defaults to None, meaning "not truncated".
@@ -50,9 +52,10 @@ def _fake_client(content: str, capture: list | None = None, finish_reason=None, 
         )
         if served is not None:
             completion.model = served
-        return SimpleNamespace(
-            parse=lambda: completion, headers={"x-litellm-response-cost": "0.0055"}
-        )
+        headers = {"x-litellm-response-cost": "0.0055"}
+        if served_header is not None:
+            headers["x-litellm-model-name"] = served_header
+        return SimpleNamespace(parse=lambda: completion, headers=headers)
 
     return SimpleNamespace(
         chat=SimpleNamespace(
@@ -85,7 +88,14 @@ def test_generates_a_skill_and_reports_its_own_provenance(capture):
     assert calls[0]["max_tokens"] == generate.MAX_OUTPUT_TOKENS
 
 
-def test_the_response_names_the_model_the_gateway_served_not_the_role_it_asked_for(capture):
+def test_the_response_names_the_provider_model_from_the_gateway_header_without_its_prefix(capture):
+    capture(json.dumps(GOOD_SKILL), served="skillhub-generate", served_header="openai/gpt-6-luna")
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 200
+    assert r.json()["model"] == "gpt-6-luna"
+
+
+def test_without_the_header_the_response_names_the_model_in_the_body(capture):
     capture(json.dumps(GOOD_SKILL), served="gpt-6-luna-2026-09-22")
     r = client.post("/v1/generate-skill", json={"task_description": TASK})
     assert r.status_code == 200

@@ -227,7 +227,7 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
                 + enrichment.tags.dependencies
             ),
         ),
-        model=served_model(completion, ENRICH_MODEL),
+        model=served_model(completion, raw.headers, ENRICH_MODEL),
         prompt_version=PROMPT_VERSION,
         temperature=TEMPERATURE,
         seed=SEED,

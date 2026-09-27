@@ -123,8 +123,15 @@ def _usage(completion, headers) -> GatewayUsage | None:
     )
 
 
-def served_model(completion, requested: str) -> str:
-    """The model the gateway served, so records name a model and not a role."""
+def served_model(completion, headers, requested: str) -> str:
+    """The model the gateway served, so records name a model and not a role.
+
+    The gateway answers a role alias with the alias in the body and the
+    provider model in `x-litellm-model-name`, prefixed with the provider.
+    """
+    named = headers.get("x-litellm-model-name") if headers is not None else None
+    if named:
+        return named.split("/", 1)[-1]
     return getattr(completion, "model", None) or requested
 
 
