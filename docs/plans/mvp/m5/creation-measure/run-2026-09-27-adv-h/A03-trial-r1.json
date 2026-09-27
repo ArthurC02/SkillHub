@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面 6 封上週客訴信整理成分類統計表：\n1. 我訂的耳機左邊沒有聲音，請協助退換。\n2. 外送餐點比預定時間晚了 40 分鐘，已經冷掉。\n3. 收到的衣服尺寸比我下單的小一號。\n4. 客服電話一直打不進去，等了 20 分鐘還是沒接通。\n5. 耳機右邊也沒有聲音，和第 1 封類似問題。\n6. 外送員把飲料灑出來，包裝也破損了。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出包含一個分類統計表。"
+    },
+    {
+      "text": "表中每個分類都有對應的數量。"
+    },
+    {
+      "text": "統計結果只根據提供的信件內容產生，不使用外部資料。"
+    },
+    {
+      "text": "若信件中出現多封相同或相近主題，會被歸到同一類並正確計數。"
+    },
+    {
+      "text": "若提供了明確分類名稱，輸出會使用那些名稱；若未提供，會用內容歸納出的分類名稱。"
+    }
+  ],
+  "final_output": "# 上週客訴分類統計表\n\n| category | count | representative issue summary |\n|---|---:|---|\n| 耳機單邊無聲 | 2 | 耳機左邊或右邊沒有聲音，需退換處理 |\n| 外送延遲／餐點變冷 | 1 | 外送比預定時間晚 40 分鐘，餐點已冷掉 |\n| 尺寸不符 | 1 | 收到的衣服尺寸比下單的小一號 |\n| 客服電話無法接通 | 1 | 客服電話一直打不進去，等待 20 分鐘仍未接通 |\n| 外送損壞／飲料外漏 | 1 | 外送員把飲料灑出來，且包裝破損 |\n\n**合計：6 封客訴**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "63d98096-83a1-4c8e-b706-94464c211d1f",
+    "run_id": "6e7d30b5-3e55-4514-a812-b46b23e4911c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出提供完整分類統計表，所有分類均有數量，六封信件均被納入且總數正確。相近的耳機無聲問題已合併計數，分類名稱亦由信件內容適當歸納。",
+    "criterion_results": [
+      {
+        "criterion_id": "8977c450-22ef-46de-8615-4f0c0f66ef08",
+        "text": "輸出包含一個分類統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出包含一個以分類、數量與代表性問題摘要組成的 Markdown 統計表。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| category | count | representative issue summary |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "57055269-fccb-41d8-b9e2-239952244862",
+        "text": "表中每個分類都有對應的數量。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表中的五個分類均在 count 欄位標示了對應數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 耳機單邊無聲 | 2 | 耳機左邊或右邊沒有聲音，需退換處理 |\n| 外送延遲／餐點變冷 | 1 | 外送比預定時間晚 40 分鐘，餐點已冷掉 |\n| 尺寸不符 | 1 | 收到的衣服尺寸比下單的小一號 |\n| 客服電話無法接通 | 1 | 客服電話一直打不進去，等待 20 分鐘仍未接通 |\n| 外送損壞／飲料外漏 | 1 | 外送員把飲料灑出來，且包裝破損 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "15994d22-383e-4c3e-b887-5722d6cfe882",
+        "text": "統計結果只根據提供的信件內容產生，不使用外部資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出的分類與摘要均可對應到所提供的六封信件，且合計為 6 封；未呈現任何外部資料內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計：6 封客訴**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ab4d2e9f-8467-4602-99ec-c3ba36a51d30",
+        "text": "若信件中出現多封相同或相近主題，會被歸到同一類並正確計數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩封耳機單邊無聲的相近問題被合併為同一分類，並正確計為 2。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 耳機單邊無聲 | 2 | 耳機左邊或右邊沒有聲音，需退換處理 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f2226bfc-91ed-45ba-aa3f-74497cd93700",
+        "text": "若提供了明確分類名稱，輸出會使用那些名稱；若未提供，會用內容歸納出的分類名稱。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原始信件未提供明確分類名稱，輸出使用了依內容歸納的分類名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 尺寸不符 | 1 | 收到的衣服尺寸比下單的小一號 |\n| 客服電話無法接通 | 1 | 客服電話一直打不進去，等待 20 分鐘仍未接通 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18675 input and 818 output tokens on gpt-5.4-mini; reported cost $0.0195 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

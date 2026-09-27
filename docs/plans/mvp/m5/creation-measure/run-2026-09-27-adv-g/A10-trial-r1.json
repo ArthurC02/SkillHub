@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請將以下文章摘要成 50 字以內，並保留所有數字與人名：\n今天上午，台北市長陳志明在市政府宣布，2025 年將投入 3000 萬元改善 12 所國小的老舊設備。他表示，這項計畫預計惠及超過 8000 名學生，並由教育局長林雅婷負責執行。這次更新將優先處理空調、照明與飲水設備，目標在 9 月前完成第一階段工程。",
+  "acceptance_criteria": [
+    {
+      "text": "面對一篇中文文章，輸出是一段 50 字以內的摘要。"
+    },
+    {
+      "text": "摘要保留原文中的所有數字。"
+    },
+    {
+      "text": "摘要保留原文中的所有人名。"
+    },
+    {
+      "text": "輸出不包含多餘的解釋、前言或格式標記。"
+    }
+  ],
+  "final_output": "陳志明宣布2025年投3000萬元改善12所國小設備，惠及8000名學生，由林雅婷執行，9月前完成首階段。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bec5a086-6fcd-49e7-8d70-ba0f21d1e748",
+    "run_id": "b318e71e-6f51-495f-970a-50fc8598ee22",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆為50字以內的單段中文摘要，並保留全部數字與人名，且沒有額外文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "27186b8f-2ee3-4ce8-92cb-0bb7378ed484",
+        "text": "面對一篇中文文章，輸出是一段 50 字以內的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單一摘要段落，內容字數（不計標點）為49字，未超過50字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明宣布2025年投3000萬元改善12所國小設備，惠及8000名學生，由林雅婷執行，9月前完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aa2bbdd1-48bb-4312-bc2c-54cadf1258eb",
+        "text": "摘要保留原文中的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要包含原文所有數字：2025、3000、12、8000、9。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明宣布2025年投3000萬元改善12所國小設備，惠及8000名學生，由林雅婷執行，9月前完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "084305eb-f643-4acd-90d4-422faa6a3d86",
+        "text": "摘要保留原文中的所有人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留原文所有人名：陳志明與林雅婷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明宣布2025年投3000萬元改善12所國小設備，惠及8000名學生，由林雅婷執行，9月前完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f11d0148-e002-4fcd-a56e-2c868765f114",
+        "text": "輸出不包含多餘的解釋、前言或格式標記。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅包含摘要正文，沒有額外解釋、前言或格式標記。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明宣布2025年投3000萬元改善12所國小設備，惠及8000名學生，由林雅婷執行，9月前完成首階段。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2781 input and 483 output tokens on gpt-5.4-mini; reported cost $0.0073 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請把以下本週業績整理成週報，並同時產出寄給全部門的信件內容與 Slack 公告內容：本週營收 1280 萬、達成率 106%、新客戶 18 家、續約 7 家。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一組本週業績數字時，輸出同時包含電子郵件版與 Slack 版兩段內容。"
+    },
+    {
+      "text": "電子郵件版明確寫出寄送對象是全部門，且內容可直接作為信件內文使用。"
+    },
+    {
+      "text": "Slack 版明確是適合公告的短文，且可直接貼到 Slack。"
+    },
+    {
+      "text": "輸出會保留使用者提供的業績數字，不會自行改寫成其他數值。"
+    },
+    {
+      "text": "若輸入包含多個數字項目，輸出會把它們整理成同一週報，不會拆成多則獨立內容。"
+    }
+  ],
+  "final_output": "以下是可直接使用的版本：\n\n## Email draft\n\n**主旨：本週業績週報**\n\n各位同仁大家好：\n\n以下為本週業績摘要：\n\n- **本週營收：1280 萬**\n- **達成率：106%**\n- **新客戶：18 家**\n- **續約：7 家**\n\n本週整體表現穩定，營收與達成率皆維持在良好水準，新客戶與續約也有不錯成果，感謝大家的努力與配合。\n\n謝謝大家。\n\n---\n\n## Slack announcement draft\n\n**本週業績更新：**  \n- 營收：**1280 萬**  \n- 達成率：**106%**  \n- 新客戶：**18 家**  \n- 續約：**7 家**\n\n感謝大家本週的努力，持續加油！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9e5dfa7d-ab1a-413b-8587-40a6bebc23c1",
+    "run_id": "616c7f24-45f5-4930-9421-af2371204c7a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆成功產出可直接使用的電子郵件與 Slack 公告，並完整保留並整合所有業績數字。不過電子郵件未明確標示寄送對象為全部門，因此未完全符合該項要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "d69217d1-1e4a-4611-b34f-af932f805934",
+        "text": "在輸入一組本週業績數字時，輸出同時包含電子郵件版與 Slack 版兩段內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆同時提供了 Email draft 與 Slack announcement draft 兩段內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Email draft",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## Slack announcement draft",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f09db47b-a49e-4ad8-b34c-8f758b34c4e3",
+        "text": "電子郵件版明確寫出寄送對象是全部門，且內容可直接作為信件內文使用。",
+        "result": "failed",
+        "source": "model",
+        "reason": "電子郵件內容可作為信件內文使用，但未明確寫出寄送對象為「全部門」；「各位同仁」不足以明確指定全部門。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "各位同仁大家好：\n\n以下為本週業績摘要：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "77784fce-1c3a-4462-bb83-23579721c7e3",
+        "text": "Slack 版明確是適合公告的短文，且可直接貼到 Slack。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Slack 段落以簡短公告形式列出本週業績，並附有鼓勵語，可直接貼到 Slack。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Slack announcement draft\n\n**本週業績更新：**  \n- 營收：**1280 萬**  \n- 達成率：**106%**  \n- 新客戶：**18 家**  \n- 續約：**7 家**\n\n感謝大家本週的努力，持續加油！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a1954fb2-7f04-42bb-9237-fd0f8aa0d115",
+        "text": "輸出會保留使用者提供的業績數字，不會自行改寫成其他數值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "電子郵件與 Slack 內容均保留了輸入的營收、達成率、新客戶及續約數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **本週營收：1280 萬**\n- **達成率：106%**\n- **新客戶：18 家**\n- **續約：7 家**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 營收：**1280 萬**  \n- 達成率：**106%**  \n- 新客戶：**18 家**  \n- 續約：**7 家**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "673dee55-09c4-4b56-aee1-50a3ddb118ab",
+        "text": "若輸入包含多個數字項目，輸出會把它們整理成同一週報，不會拆成多則獨立內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四個數字項目均被整合在單一電子郵件週報與單一 Slack 公告中，未被拆成多則各自獨立的內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為本週業績摘要：\n\n- **本週營收：1280 萬**\n- **達成率：106%**\n- **新客戶：18 家**\n- **續約：7 家**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18542 input and 683 output tokens on gpt-5.4-mini; reported cost $0.0187 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

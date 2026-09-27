@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫一篇自我介紹。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。"
+    }
+  ],
+  "final_output": "可以，我可以直接幫你寫。  \n不過你目前沒有提供足夠資料，請先給我這幾項：\n\n1. 你的名字或稱呼  \n2. 身份／職業／年級  \n3. 學歷、工作經驗或專長  \n4. 你的個性特色  \n5. 這篇自我介紹的用途（面試、報告、社團、交友、自我介紹影片等）  \n6. 想要的長度與語氣（正式／自然／活潑）\n\n你也可以直接照這個格式回我：\n\n\u003e 我叫＿＿＿，目前是＿＿＿。  \n\u003e 我的專長是＿＿＿，曾經＿＿＿。  \n\u003e 我的個性是＿＿＿。  \n\u003e 這篇自我介紹要用在＿＿＿，希望語氣＿＿＿，長度＿＿＿。\n\n你回覆後，我就幫你寫成完整版本。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "6fe83bab-3395-4754-965d-dbcb8b66234a",
+    "run_id": "2aeb2436-8712-4ef8-866c-e53a14b5bece",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆未完成使用者所要的自我介紹範文，而是請求補充資料；但沒有捏造個人背景，並以填空方式標示所需資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "10fe1950-c85c-476a-af8f-da95212eab93",
+        "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出僅要求使用者提供資料並列出回覆格式，未提供一篇完整可用的自我介紹範文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "不過你目前沒有提供足夠資料，請先給我這幾項：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "你回覆後，我就幫你寫成完整版本。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "def68302-ffd0-44e9-a1ae-c52c1c69ef11",
+        "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出沒有提供或捏造具體姓名、學校、公司、年資或成就；涉及個人資料時均以明顯的底線填空標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我叫＿＿＿，目前是＿＿＿。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我的專長是＿＿＿，曾經＿＿＿。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19094 input and 603 output tokens on gpt-5.4-mini; reported cost $0.0144 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

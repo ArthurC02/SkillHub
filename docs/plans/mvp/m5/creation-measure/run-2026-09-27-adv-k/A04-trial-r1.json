@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這週業績整理成寄給全部門的 email 以及 Slack 公告：\n\n2026-09-21 產品A 120000\n2026-09-22 產品A 98000\n2026-09-23 產品B 156000\n2026-09-24 產品A 132000\n2026-09-25 產品B 174000",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含同一週的多筆業績紀錄時，輸出會彙總成一份週摘要，並同時產生 email 版與 Slack 版內容。"
+    },
+    {
+      "text": "當輸入中包含數字可計算總額、成長率或達成率時，輸出會正確計算並呈現這些數字。"
+    },
+    {
+      "text": "當輸入資料不足以完成週摘要時，輸出會明確列出缺少的必要欄位，而不是猜測數字。"
+    },
+    {
+      "text": "輸出中的 email 版本會包含適合寄給全部門的正式口吻與主旨建議。"
+    },
+    {
+      "text": "輸出中的 Slack 版本會是適合直接貼到 Slack 的精簡公告格式。"
+    }
+  ],
+  "final_output": "Email subject:\n【本週業績彙整】2026/09/21–09/25 合計 680,000\n\nEmail body:\n各位同仁好，\n\n以下以正式、可直接轉寄的格式整理本週業績（2026/09/21–09/25；未提供前週比較或目標值，以下僅列本週數據）：\n\n- 2026/09/21　產品A　120,000\n- 2026/09/22　產品A　98,000\n- 2026/09/23　產品B　156,000\n- 2026/09/24　產品A　132,000\n- 2026/09/25　產品B　174,000\n\n本週彙總如下：\n- 產品A：350,000\n- 產品B：330,000\n- 總業績：680,000\n\n謝謝大家。\n\nSlack message:\n本週業績整理（2026/09/21–09/25）：\n\n- 產品A：350,000\n- 產品B：330,000\n- 總業績：680,000\n\n明細：\n9/21 A 120,000｜9/22 A 98,000｜9/23 B 156,000｜9/24 A 132,000｜9/25 B 174,000\n\n未提供前週比較或目標值，先彙整本週數據供大家參考。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "95c40504-f1f9-4e26-b76b-a2a2b3962ce9",
+    "run_id": "036f00f6-d981-4755-8a73-c58f38a98d24",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行正確彙整本週五筆業績，計算產品別與總額，並提供具正式主旨與語氣的Email內容及可直接發布的精簡Slack公告。對未提供的前週與目標資料亦有明確說明，沒有猜測相關數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "75f8810e-8ebe-4ce9-bf15-e7c7dab6c019",
+        "text": "當輸入包含同一週的多筆業績紀錄時，輸出會彙總成一份週摘要，並同時產生 email 版與 Slack 版內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將五筆同週資料彙整為週期間、產品別合計與總業績，並同時提供 Email 與 Slack 兩種版本。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Email subject:\n【本週業績彙整】2026/09/21–09/25 合計 680,000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "Slack message:\n本週業績整理（2026/09/21–09/25）：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cfdeaf9b-74bf-4b62-b95e-2073fa611d58",
+        "text": "當輸入中包含數字可計算總額、成長率或達成率時，輸出會正確計算並呈現這些數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出正確計算產品A為350,000、產品B為330,000，總業績為680,000；且未在缺少前週與目標資料時虛構成長率或達成率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本週彙總如下：\n- 產品A：350,000\n- 產品B：330,000\n- 總業績：680,000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "未提供前週比較或目標值，先彙整本週數據供大家參考。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "565aa2e9-42c9-47b4-99b1-d76c90b497f4",
+        "text": "當輸入資料不足以完成週摘要時，輸出會明確列出缺少的必要欄位，而不是猜測數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "針對未提供的前週比較與目標值，輸出明確指出缺少這些資料，並僅呈現可由本週資料得出的結果，未猜測成長率或達成率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下以正式、可直接轉寄的格式整理本週業績（2026/09/21–09/25；未提供前週比較或目標值，以下僅列本週數據）：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2371b081-4e92-4d8d-a90b-0f3557c74793",
+        "text": "輸出中的 email 版本會包含適合寄給全部門的正式口吻與主旨建議。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Email版本包含明確主旨建議、正式稱呼、週業績摘要及結語，適合寄發給全部門。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Email subject:\n【本週業績彙整】2026/09/21–09/25 合計 680,000",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "各位同仁好，",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "謝謝大家。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "619efa31-d9cc-4d3d-9027-da5186759e7b",
+        "text": "輸出中的 Slack 版本會是適合直接貼到 Slack 的精簡公告格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Slack版本以簡短標題、產品別彙總、總業績及單行明細呈現，可直接貼到Slack公告。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Slack message:\n本週業績整理（2026/09/21–09/25）：\n\n- 產品A：350,000\n- 產品B：330,000\n- 總業績：680,000\n\n明細：\n9/21 A 120,000｜9/22 A 98,000｜9/23 B 156,000｜9/24 A 132,000｜9/25 B 174,000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19013 input and 1571 output tokens on gpt-5.4-mini; reported cost $0.0231 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

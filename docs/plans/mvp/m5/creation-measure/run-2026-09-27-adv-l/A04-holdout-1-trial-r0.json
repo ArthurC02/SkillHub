@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "本週業績：營收 1,250,000 元、成交 38 件、新客戶 12 家。請照每週五下午的慣例，寄給全部門並在 Slack 公告。",
+  "acceptance_criteria": [
+    {
+      "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。"
+    },
+    {
+      "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。"
+    },
+    {
+      "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。"
+    }
+  ],
+  "final_output": "以下為可直接使用的內容；實際寄出與張貼請由你執行。  \n我先用常見的「簡潔、專業」語氣來寫。\n\n## Email 版本\n**主旨：** 本週業績更新｜營收 1,250,000 元、成交 38 件、新客戶 12 家\n\n各位同仁您好：\n\n以下為本週業績更新：\n\n- **營收：** 1,250,000 元  \n- **成交：** 38 件  \n- **新客戶：** 12 家  \n\n感謝大家本週的努力與投入，持續推進各項目標。  \n也請大家依照既有節奏，持續維持這樣的表現。\n\n謝謝大家。\n\n---\n\n## Slack 版本\n各位同仁，本週業績更新如下：\n\n- 營收：1,250,000 元  \n- 成交：38 件  \n- 新客戶：12 家  \n\n感謝大家本週的努力與合作，辛苦了！  \n我們持續加油，維持這個節奏。\n\n如果你要，我也可以幫你改成「更正式版」或「更有激勵感版」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4e9a3379-ce4b-4fd3-90ac-4d74e99413c7",
+    "run_id": "83740075-7972-4265-ac34-d9fb5805302a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆產出可直接使用的全員郵件與 Slack 公告，兩者皆正確包含營收 1,250,000 元、成交 38 件與新客戶 12 家，且沒有宣稱已完成寄送、發布或排程。",
+    "criterion_results": [
+      {
+        "criterion_id": "f8fb4136-6b50-4929-bdbf-d8efdb163769",
+        "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆提供可直接寄送的 Email 版本，含主旨、稱呼與內文，並列出營收、成交件數及新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Email 版本\n**主旨：** 本週業績更新｜營收 1,250,000 元、成交 38 件、新客戶 12 家",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **營收：** 1,250,000 元  \n- **成交：** 38 件  \n- **新客戶：** 12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f411c351-f7d5-4c38-894c-35181b1604ea",
+        "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆提供 Slack 版本公告，並含有相同的營收、成交件數及新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Slack 版本\n各位同仁，本週業績更新如下：\n\n- 營收：1,250,000 元  \n- 成交：38 件  \n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9a6cec5e-8e5c-45fd-8829-216a0d771a44",
+        "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確說明實際寄出與張貼須由使用者執行，未宣稱郵件已寄出、Slack 已發布或每週排程已設定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為可直接使用的內容；實際寄出與張貼請由你執行。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3390 input and 874 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 3,
+  "sample_input": "請比較這三家競爭對手官網的價格，並輸出可直接貼出的通知文字。以下資料分成四段，請一次同時處理：\n\n【段一：有變動情境】\nA 站：https://a.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nB 站：https://b.example.com/pricing\n價格：方案 A 每月 NT$1,250；加購支援 NT$300；運費 NT$100\nC 站：https://c.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$350；含稅 NT$1,320\n\n【段二：未變動情境】\nA 站：https://a.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nB 站：https://b.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nC 站：https://c.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；含稅 NT$1,320\n\n【段三：只看主價格】\nA 站：https://a.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nB 站：https://b.example.com/pricing\n價格：方案 A 每月 NT$1,250；加購支援 NT$300；運費 NT$100\nC 站：https://c.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$350；含稅 NT$1,320\n\n【段四：缺少可比較價格】\nA 站：https://a.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nB 站：https://b.example.com/pricing\n價格：本頁只提供公司簡介與聯絡方式，未列出任何方案月費或可比較價格\nC 站：https://c.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$350；含稅 NT$1,320",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含三個官網網址與各自價格文字時，輸出會逐一比較三家網站的價格。"
+    },
+    {
+      "text": "當其中一家價格與基準不同時，輸出會明確指出那一家、變動前後數值與變動欄位。"
+    },
+    {
+      "text": "當三家價格都未變動時，輸出會明確表示沒有偵測到變動。"
+    },
+    {
+      "text": "當頁面同時出現運費、稅金與商品售價時，輸出只以商品主價格為比較依據。"
+    },
+    {
+      "text": "當頁面缺少可比較價格時，輸出會標示該家無法比較，而不是宣告價格變動。"
+    }
+  ],
+  "final_output": "以下以各段 **A 站方案 A 主價格** 作比較基準，且**只看主價格**（忽略加購、運費、含稅）：\n\n【段一｜有變動情境】  \n- A 站：NT$1,200（基準）  \n- B 站：NT$1,250（較 A 站 +NT$50）  \n- C 站：NT$1,200（與 A 站相同）  \n\n【段二｜未變動情境】  \n- A 站：NT$1,200（基準）  \n- B 站：NT$1,200（與 A 站相同）  \n- C 站：NT$1,200（與 A 站相同）  \n\n【段三｜只看主價格】  \n- A 站：NT$1,200（基準）  \n- B 站：NT$1,250（較 A 站 +NT$50）  \n- C 站：NT$1,200（與 A 站相同）  \n\n【段四｜缺少可比較價格】  \n- A 站：NT$1,200（基準）  \n- B 站：不可比較（本頁只提供公司簡介與聯絡方式，未列出任何方案月費或可比較價格）  \n- C 站：NT$1,200（與 A 站相同）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cba1da71-357f-410c-8e3f-1403fb9661ea",
+    "run_id": "9e0ab94a-3fbf-49db-ba0c-5494e5070170",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出完成三站逐一比較、僅採主價格，並正確處理缺少可比較價格的站點。但對有變動情境未明確列出同一站的前後數值及變動欄位，且未變動情境未明說沒有偵測到變動。",
+    "criterion_results": [
+      {
+        "criterion_id": "2b7a4db0-021b-443d-b881-2f9ecb4c9359",
+        "text": "當輸入包含三個官網網址與各自價格文字時，輸出會逐一比較三家網站的價格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出在各段皆逐一列出 A、B、C 三站的主價格及其與基準的比較結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【段一｜有變動情境】  \n- A 站：NT$1,200（基準）  \n- B 站：NT$1,250（較 A 站 +NT$50）  \n- C 站：NT$1,200（與 A 站相同）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "caaffac8-b76f-45e6-a0ad-c142f54ec19c",
+        "text": "當其中一家價格與基準不同時，輸出會明確指出那一家、變動前後數值與變動欄位。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖指出 B 站較 A 站高 NT$50，但未以變動前→變動後的形式明確提供同一站的前後數值，也未明確標示變動欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- B 站：NT$1,250（較 A 站 +NT$50）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4c4b80b-6937-429b-ae6c-c2385b95cd6e",
+        "text": "當三家價格都未變動時，輸出會明確表示沒有偵測到變動。",
+        "result": "failed",
+        "source": "model",
+        "reason": "段二僅逐站表示與 A 站相同，沒有明確表示「沒有偵測到變動」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "【段二｜未變動情境】  \n- A 站：NT$1,200（基準）  \n- B 站：NT$1,200（與 A 站相同）  \n- C 站：NT$1,200（與 A 站相同）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8e648989-ee03-4f0f-ab61-cb37900e1852",
+        "text": "當頁面同時出現運費、稅金與商品售價時，輸出只以商品主價格為比較依據。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明只比較方案 A 主價格，並忽略加購、運費與含稅，且段三的比較結果僅使用主價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下以各段 **A 站方案 A 主價格** 作比較基準，且**只看主價格**（忽略加購、運費、含稅）：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0108bb7a-c1ec-43ff-8d8c-9a12dab4d670",
+        "text": "當頁面缺少可比較價格時，輸出會標示該家無法比較，而不是宣告價格變動。",
+        "result": "passed",
+        "source": "model",
+        "reason": "段四將沒有方案月費的 B 站明確標示為不可比較，未將其宣告為價格變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- B 站：不可比較（本頁只提供公司簡介與聯絡方式，未列出任何方案月費或可比較價格）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 4253 input and 2837 output tokens on gpt-5.4-mini; reported cost $0.0048 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

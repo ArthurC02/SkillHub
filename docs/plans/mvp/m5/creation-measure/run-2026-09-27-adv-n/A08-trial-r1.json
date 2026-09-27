@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "Please share your feedback on the new checkout flow. The page feels faster, but the payment error message is unclear, and I had to retry twice before it worked.",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一段英文客戶回饋時，輸出會先給出完整的繁體中文翻譯。"
+    },
+    {
+      "text": "當輸入同一段英文客戶回饋時，輸出會在翻譯後再提供剛好三點摘要。"
+    },
+    {
+      "text": "摘要內容會用繁體中文表達。"
+    },
+    {
+      "text": "輸出不會省略原文中明顯存在的重要資訊。"
+    },
+    {
+      "text": "若輸入包含多句回饋，輸出仍然是先翻譯整段，再摘要成三點。"
+    }
+  ],
+  "final_output": "Here’s a polished version of your feedback:\n\n- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.\n\nSuggested follow-up: make the payment failure message more specific and add clearer guidance on next steps.",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "12538b99-ff06-499d-aef1-3b9b48a63de7",
+    "run_id": "e8517c46-59a4-49a8-8516-dfa7427e820c",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆保留了原始回饋的重要內容，但沒有提供繁體中文完整翻譯，摘要也不是繁體中文，且未依要求在翻譯後給出三點摘要。",
+    "criterion_results": [
+      {
+        "criterion_id": "37e3be07-b286-4829-8018-1953c7edb06b",
+        "text": "當輸入一段英文客戶回饋時，輸出會先給出完整的繁體中文翻譯。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出沒有先提供完整的繁體中文翻譯，而是以英文改寫回饋。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Here’s a polished version of your feedback:\n\n- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "01d577b3-b863-4db3-b2de-db0a604875ca",
+        "text": "當輸入同一段英文客戶回饋時，輸出會在翻譯後再提供剛好三點摘要。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然輸出含有三個條列，但其前未提供翻譯，且後面還附加了額外的建議內容，因此未符合「翻譯後再提供剛好三點摘要」的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.\n\nSuggested follow-up: make the payment failure message more specific and add clearer guidance on next steps.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "677b3158-b661-4d1d-88ec-fd56fecd722e",
+        "text": "摘要內容會用繁體中文表達。",
+        "result": "failed",
+        "source": "model",
+        "reason": "摘要條列內容均以英文表達，不是繁體中文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47fd4f16-49c8-4e53-95d5-e6d2df5ab10b",
+        "text": "輸出不會省略原文中明顯存在的重要資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留了結帳流程變快、付款錯誤訊息不清楚，以及需重試兩次才成功這三項明顯的重要資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25a769ac-5dcf-4af1-b38d-6844c9fb70b3",
+        "text": "若輸入包含多句回饋，輸出仍然是先翻譯整段，再摘要成三點。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸入包含多句回饋，但輸出未先翻譯整段，僅以英文條列改寫，因此未符合先整段翻譯再三點摘要的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "Here’s a polished version of your feedback:\n\n- The new checkout flow feels noticeably faster, which is a great improvement.\n- The payment error message is unclear and doesn’t tell me what went wrong or how to fix it.\n- I had to retry twice before the payment went through, which made the experience feel unreliable.",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 17959 input and 303 output tokens on gpt-5.4-mini; reported cost $0.0152 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

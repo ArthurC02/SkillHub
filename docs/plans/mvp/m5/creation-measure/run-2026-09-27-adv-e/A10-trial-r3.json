@@ -1,0 +1,146 @@
+{
+  "round": 3,
+  "sample_input": "請將以下接近三千字的文章摘要成 50 字以內，並保留所有數字與人名；只回覆摘要正文，不要附加前言、解釋、步驟或其他說明：\n\n2024 年春天，台北市政府在市政會議上正式提出「城市綠能與社區韌性提升計畫」，由市長王志明親自主持說明會。王志明指出，過去 10 年間，台北市的夏季平均溫度上升了 1.8 度，老舊社區的電費與停電事故也逐年增加，因此市府決定在 2024 年至 2027 年之間，投入 3.5 億元預算推動一連串能源轉型工程。計畫分成三個階段：第一階段先在 12 個行政區設置社區太陽能站，每站提供 25 千瓦的發電容量，優先照顧 8 個高齡人口比例較高的老社區；第二階段將與教育局合作，讓 48 所學校裝設節能照明系統與智慧電表；第三階段則會和環保局、工務局共同建立 6 組即時監測平台，追蹤用電、空氣品質與維修效率。\n\n在說明會上，研究員李雅婷列出多份田野調查結果。她提到，2023 年底的一份問卷顯示，超過 62% 的居民希望政府能優先處理巷弄照明、屋頂隔熱與社區共用充電設施問題；而另一份針對 1,200 戶家庭的訪談則指出，若能在 18 個月內完成示範站，將有助於降低 15% 至 20% 的用電峰值。與會的張偉強補充，城市更新不應只看建築外觀，也要考慮 65 歲以上長者的生活安全，因此他建議將無障礙通道、緊急照明與防災廣播納入評估項目。王志明對此表示認同，並承諾會在 2025 年前先完成 4 次跨局處協調會議，確認預算、施工與維護責任。\n\n除了硬體建設，計畫也包括教育與社區參與。教育局將與 20 所國小合作設計能源課程，讓學生實際記錄教室每日用電；環保局則會邀請 30 位社區志工接受培訓，協助住戶理解節電方法與設備操作。計畫說明文件提到，若試辦成果達標，2026 年起可把模式擴大到 15 個更多行政區，並希望在 2027 年使整體社區碳排放下降 20%。王志明最後強調，這不是單一局處能完成的工作，而是需要市府、學校、研究單位與居民共同參與的長期改革。\n\n會後，李雅婷接受媒體訪問時表示，很多國際城市都已將再生能源與社區治理結合，例如某些城市會在 5 年內完成 100 個屋頂太陽能專案，並透過資料公開平台讓居民查詢即時效益；台北若能把 3.5 億元預算用在刀口上，便有機會在 2024 到 2027 年間建立可複製的模型。張偉強也提到，政策成功與否不只取決於技術，還要看居民是否願意配合維護與監督，因此他建議每半年公布一次進度報告，並由王志明親自主持檢討會。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一篇約 3000 字的文章時，輸出一段 50 字以內的摘要。"
+    },
+    {
+      "text": "摘要中保留原文出現的所有數字。"
+    },
+    {
+      "text": "摘要中保留原文出現的人名。"
+    },
+    {
+      "text": "輸出內容是中文摘要，不改寫成其他語言。"
+    },
+    {
+      "text": "輸出只包含摘要結果，不附加分析或說明。"
+    }
+  ],
+  "final_output": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fbb88727-53a1-4517-8842-e42436012149",
+    "run_id": "8f7e2605-13e3-4b15-aa17-16b996034337",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "摘要符合字數、中文、僅輸出摘要及保留全部人名的要求，但未保留原文所有數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "d2d17a2c-fa42-461f-acc9-e1d400172d62",
+        "text": "輸入一篇約 3000 字的文章時，輸出一段 50 字以內的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為單一摘要句，長度在 50 字以內。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c11d3044-e6db-43c0-abef-73e4a61201ec",
+        "text": "摘要中保留原文出現的所有數字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "摘要僅保留部分數字，遺漏原文中的多個數字，例如 10、1.8、2023、62%、1,200、18、15% 至 20%、65、2025、4、30、2026、15、2027、5、100 等。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c58b4c68-6568-4152-b43a-51f423d18112",
+        "text": "摘要中保留原文出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文出現的人名王志明、李雅婷、張偉強皆保留於摘要中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7fa54e3-8ded-4a9b-bac1-a6a83474a473",
+        "text": "輸出內容是中文摘要，不改寫成其他語言。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為中文摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f8d8c0e3-f2e9-4ae9-af41-8b04251107c2",
+        "text": "輸出只包含摘要結果，不附加分析或說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅包含摘要句，未附加前言、分析、步驟或說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明推2024-2027年3.5億綠能案，李雅婷張偉強倡12區48校6平台、20%。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19597 input and 1676 output tokens on gpt-5.4-mini; reported cost $0.0158 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

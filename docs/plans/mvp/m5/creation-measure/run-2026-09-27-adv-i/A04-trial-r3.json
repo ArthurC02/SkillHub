@@ -1,0 +1,173 @@
+{
+  "round": 3,
+  "sample_input": "情境一：請把以下本週業績整理成每週五下午要寄給全部門並同步公告到 Slack 的內容。\n本週業績：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n收件/公告對象：全部門\nSlack 頻道：#general\n\n情境二：請把這份本週業績整理成每週五下午要寄給全部門並同步公告到 Slack 的內容，但不要補任何數字。\n\n情境三：請把以下本週業績整理成每週五下午要寄給全部門並同步公告到 Slack 的內容。\n本週業績：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n但這次沒有提供收件人名單，也沒有提供 Slack 頻道。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含本週業績數字與收件/公告對象時，輸出會同時產生一封可寄送的郵件內容與一則 Slack 公告內容。"
+    },
+    {
+      "text": "郵件內容會明確包含本週業績數字，且文字可直接用於發送。"
+    },
+    {
+      "text": "Slack 公告內容會明確包含本週業績數字，且文字可直接貼上發佈。"
+    },
+    {
+      "text": "若輸入未提供業績數字，輸出不會捏造數字，而是明確標示資料缺漏或可取得來源。"
+    },
+    {
+      "text": "若輸入未提供收件/公告對象，輸出會依預設的部門名單與 Slack 對象處理。"
+    },
+    {
+      "text": "輸出不會聲稱已實際寄出或已實際在 Slack 發佈，除非工具或輸入明確提供該結果。"
+    }
+  ],
+  "final_output": "以下依三個情境分別整理成可直接使用的 Email 與 Slack 內容。\n\n## 情境一\n\n**Email**\n\n**主旨：** 本週業績彙整\n\n各位同仁好，\n\n本週業績如下：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800\n\n以上供全體部門參考。\n\n**Slack post（#general）**\n\n本週業績彙整：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800\n\n---\n\n## 情境二\n\n**說明：** 已使用預設 Slack 主頻道；本次未提供數字。\n\n**Email**\n\n**主旨：** 本週業績更新\n\n各位同仁好，\n\n本週業績數字 not given。\n\n以上供參考。\n\n**Slack post（主頻道）**\n\n本週業績數字 not given。\n\n---\n\n## 情境三\n\n**說明：** 已使用預設收件對象為全部門、Slack 主頻道。\n\n**Email**\n\n**主旨：** 本週業績彙整\n\n各位同仁好，\n\n本週業績如下：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800\n\n以上供參考。\n\n**Slack post（主頻道）**\n\n本週業績彙整：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b4db01cd-cb53-4ffe-96d7-15754da5e80b",
+    "run_id": "b0c21421-8740-4bdd-b951-b01f3f888231",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三個情境均提供相應的郵件與 Slack 內容。數字在有提供時被正確列出，未提供時被明確標示為缺漏；缺少對象時亦採用了預設對象，且未聲稱已實際發送或發布。",
+    "criterion_results": [
+      {
+        "criterion_id": "7df2bc39-e0a3-40e1-afd0-788d0caec5ff",
+        "text": "當輸入包含本週業績數字與收件/公告對象時，輸出會同時產生一封可寄送的郵件內容與一則 Slack 公告內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "情境一在提供業績、全部門對象及 #general 頻道時，同時提供了 Email 與 Slack 貼文內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Email**\n\n**主旨：** 本週業績彙整",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**Slack post（#general）**\n\n本週業績彙整：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "415a239c-14d4-4a62-9722-5abe28b63e5d",
+        "text": "郵件內容會明確包含本週業績數字，且文字可直接用於發送。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Email 範本列出各產品本週業績及合計，並具有主旨、稱呼與結語，可直接用於發送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本週業績如下：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36dee06c-6d6c-4f41-a116-e89a46bb9303",
+        "text": "Slack 公告內容會明確包含本週業績數字，且文字可直接貼上發佈。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Slack 貼文內容明確列出各產品業績與合計，可直接貼到指定的 #general 頻道。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Slack post（#general）**\n\n本週業績彙整：\n- A 產品：NT$120,000\n- B 產品：NT$85,500\n- C 產品：NT$46,300\n\n合計：NT$251,800",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bdfe000d-a46d-482c-9e2a-fe11319c350d",
+        "text": "若輸入未提供業績數字，輸出不會捏造數字，而是明確標示資料缺漏或可取得來源。",
+        "result": "passed",
+        "source": "model",
+        "reason": "情境二未提供數字時，輸出明確標示未提供數字，且未加入任何業績數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**說明：** 已使用預設 Slack 主頻道；本次未提供數字。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本週業績數字 not given。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "20b81002-fa92-4318-bdb6-e806f12bca1c",
+        "text": "若輸入未提供收件/公告對象，輸出會依預設的部門名單與 Slack 對象處理。",
+        "result": "passed",
+        "source": "model",
+        "reason": "情境三缺少收件人名單與 Slack 頻道時，輸出明確採用預設全部門收件對象及 Slack 主頻道。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**說明：** 已使用預設收件對象為全部門、Slack 主頻道。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "785a22be-ffb5-4a41-9214-e9e43a8c72f7",
+        "text": "輸出不會聲稱已實際寄出或已實際在 Slack 發佈，除非工具或輸入明確提供該結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將內容描述為可直接使用的 Email 與 Slack 內容，未聲稱已寄出郵件或已在 Slack 發佈。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下依三個情境分別整理成可直接使用的 Email 與 Slack 內容。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3247 input and 4639 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

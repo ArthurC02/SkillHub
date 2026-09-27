@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這 4 封客訴信整理成分類統計表：\n1. 「昨天收到的耳機有一邊沒聲音，已經試過重插還是一樣，請協助處理。」\n2. 「我在結帳時被重複扣款兩次，請幫我確認退款。」\n3. 「收到的外套尺寸跟訂單不符，我下的是 M 號卻寄來 L 號。」\n4. 「物流顯示已送達，但我根本沒有收到包裹，請查明。」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多封客訴信時，輸出會整理成分類統計表，而不是逐封摘要。"
+    },
+    {
+      "text": "表格中每個分類都會列出對應件數，且件數可由輸入信件逐一對應驗證。"
+    },
+    {
+      "text": "若多封信屬於同一問題類型，會被合併到同一分類並累計件數。"
+    },
+    {
+      "text": "若某封信同時提到多個問題，輸出只會將其歸入一個主要分類，不會重複計數。"
+    },
+    {
+      "text": "輸出內容不包含回信草稿、建議話術或處理流程。"
+    },
+    {
+      "text": "在輸入為多封信的情況下，輸出格式仍保持為可閱讀的統計表。"
+    }
+  ],
+  "final_output": "以下是 4 封客訴信的分類統計表：\n\n| 分類 | 數量 |\n|---|---:|\n| 商品瑕疵／功能異常（耳機單邊無聲） | 1 |\n| 付款異常／重複扣款 | 1 |\n| 出貨錯誤／尺寸不符 | 1 |\n| 物流異常／已送達但未收到 | 1 |\n| **合計** | **4** |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fbd35b25-b490-4ac1-81a2-26c1aac118bf",
+    "run_id": "3eccbd11-9a6d-426e-ab8f-3084df8ec0ce",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行成功將四封客訴整理為可閱讀的分類統計表，分類、件數及合計皆可與輸入對應，且沒有加入回信或處理建議。不過輸入未涵蓋重複類型信件或單封多問題信件，因此這兩種行為無法由本次證據判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "56ec23fb-ac12-46ff-9f5d-7cea2551d6c3",
+        "text": "當輸入包含多封客訴信時，輸出會整理成分類統計表，而不是逐封摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將四封信彙整為單一分類統計表，未逐封撰寫摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是 4 封客訴信的分類統計表：\n\n| 分類 | 數量 |\n|---|---:|\n| 商品瑕疵／功能異常（耳機單邊無聲） | 1 |\n| 付款異常／重複扣款 | 1 |\n| 出貨錯誤／尺寸不符 | 1 |\n| 物流異常／已送達但未收到 | 1 |\n| **合計** | **4** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8c2b8964-d195-4c3d-a531-5d97b138ede1",
+        "text": "表格中每個分類都會列出對應件數，且件數可由輸入信件逐一對應驗證。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格列出四個分類及各自件數 1，合計為 4；各分類分別可對應到輸入中的耳機故障、重複扣款、尺寸寄錯與未收到包裹四封信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 商品瑕疵／功能異常（耳機單邊無聲） | 1 |\n| 付款異常／重複扣款 | 1 |\n| 出貨錯誤／尺寸不符 | 1 |\n| 物流異常／已送達但未收到 | 1 |\n| **合計** | **4** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36d4cc18-6059-4c86-9755-599ed9daefa0",
+        "text": "若多封信屬於同一問題類型，會被合併到同一分類並累計件數。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次四封信分屬四種不同問題類型，沒有多封同類型信件可用來觀察是否會合併並累計。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "f5c21c66-ece6-4422-a033-fa621c1910bd",
+        "text": "若某封信同時提到多個問題，輸出只會將其歸入一個主要分類，不會重複計數。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "輸入中沒有同時提到多個問題的單封信件，無法判定系統對此情況是否只歸入一個主要分類。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "2b1f8a97-359d-4083-949e-a574476b2ef9",
+        "text": "輸出內容不包含回信草稿、建議話術或處理流程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有分類統計表與合計，未包含回信草稿、建議話術或處理流程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是 4 封客訴信的分類統計表：\n\n| 分類 | 數量 |\n|---|---:|\n| 商品瑕疵／功能異常（耳機單邊無聲） | 1 |\n| 付款異常／重複扣款 | 1 |\n| 出貨錯誤／尺寸不符 | 1 |\n| 物流異常／已送達但未收到 | 1 |\n| **合計** | **4** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "161e0310-89b1-42e6-a661-821f34b21b01",
+        "text": "在輸入為多封信的情況下，輸出格式仍保持為可閱讀的統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在四封信的輸入情境下，結果以欄位清楚的 Markdown 統計表呈現，格式可閱讀。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 分類 | 數量 |\n|---|---:|\n| 商品瑕疵／功能異常（耳機單邊無聲） | 1 |\n| 付款異常／重複扣款 | 1 |\n| 出貨錯誤／尺寸不符 | 1 |\n| 物流異常／已送達但未收到 | 1 |\n| **合計** | **4** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18666 input and 659 output tokens on gpt-5.4-mini; reported cost $0.0149 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

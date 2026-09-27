@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "用出勤紀錄算加班時數：王小明 9/1 09:00 上班、18:30 下班；9/2 09:00 上班、20:00 下班；兩天都有午休 1 小時。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。"
+    },
+    {
+      "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。"
+    },
+    {
+      "text": "輸出沒有只回答無法計算或只列出缺少的資訊。"
+    }
+  ],
+  "final_output": "已採用常見默認：**每日 8 小時工時**，且你提供的**午休 1 小時已扣除**。\n\n| 姓名 | 加班時數 | 是否超過 46 小時 |\n|---|---:|---|\n| 王小明 | 2.5 小時（2 小時 30 分） | 否 |\n\n**計算明細**\n- 9/1：09:00–18:30，扣午休 1 小時後，實際工時 8.5 小時 → **加班 0.5 小時**\n- 9/2：09:00–20:00，扣午休 1 小時後，實際工時 10 小時 → **加班 2 小時**\n\n**合計加班：2.5 小時**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "551e7a8c-31a4-407a-bd1e-2a758cc44725",
+    "run_id": "109925d3-976d-4fb7-858d-64b2b65f8734",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出說明了每日 8 小時的計算標準，扣除午休後正確計算王小明兩日合計加班 2.5 小時，且提供具體計算明細。",
+    "criterion_results": [
+      {
+        "criterion_id": "537ddd4f-f344-4948-8825-c679e74e1b91",
+        "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確採用每日正常工時 8 小時作為加班起算標準。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "已採用常見默認：**每日 8 小時工時**，且你提供的**午休 1 小時已扣除**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5275034d-7321-429e-ba0d-106d3801bb3f",
+        "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依每日 8 小時標準，輸出計得王小明合計加班 2.5 小時，並提供每日計算明細。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 2.5 小時（2 小時 30 分） | 否 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計加班：2.5 小時**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8a5819d-730e-45bf-874e-1ea60805d406",
+        "text": "輸出沒有只回答無法計算或只列出缺少的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出實際完成工時與加班計算，並非僅稱無法計算或僅列出缺少資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 9/1：09:00–18:30，扣午休 1 小時後，實際工時 8.5 小時 → **加班 0.5 小時**\n- 9/2：09:00–20:00，扣午休 1 小時後，實際工時 10 小時 → **加班 2 小時**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2840 input and 857 output tokens on gpt-5.4-mini; reported cost $0.0089 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

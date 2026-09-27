@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這段英文客戶回饋翻成繁體中文，再摘要成三點：\n\n“The product arrived late, but the quality is good. Customer service replied quickly and helped fix the issue. I would consider buying again if shipping improves.”",
+  "acceptance_criteria": [
+    {
+      "text": "When given an English customer feedback paragraph, the output includes a Traditional Chinese translation of that feedback."
+    },
+    {
+      "text": "The output includes exactly three summary points in Traditional Chinese."
+    },
+    {
+      "text": "The summary points are based on the feedback content and do not introduce new information."
+    },
+    {
+      "text": "The output keeps the translation and the three-point summary as separate sections."
+    },
+    {
+      "text": "When the input contains multiple English feedback sentences, the translation still covers the full content before summarizing."
+    }
+  ],
+  "final_output": "## 繁體中文翻譯\n產品送達得比較晚，但品質不錯。客服回覆很快，也協助解決了這個問題。如果出貨改善，我會考慮再次購買。\n\n## 三點摘要\n1. 產品雖然延遲送達，但品質令人滿意。\n2. 客服回覆迅速，並協助處理了問題。\n3. 若出貨情況改善，客戶願意再次購買。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8b3f916d-1a61-438d-8f6b-46cd78ba24f2",
+    "run_id": "ccc50862-3e65-4f7c-a815-dbdc48c010db",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出提供完整繁體中文翻譯，並以獨立區塊列出恰好三點、忠於原文內容的摘要。",
+    "criterion_results": [
+      {
+        "criterion_id": "3dfb4b57-31f2-448e-a862-250f564d9c52",
+        "text": "When given an English customer feedback paragraph, the output includes a Traditional Chinese translation of that feedback.",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含完整的繁體中文翻譯。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 繁體中文翻譯\n產品送達得比較晚，但品質不錯。客服回覆很快，也協助解決了這個問題。如果出貨改善，我會考慮再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "086afe60-6d97-40b7-aed7-51f2c8261b92",
+        "text": "The output includes exactly three summary points in Traditional Chinese.",
+        "result": "passed",
+        "source": "model",
+        "reason": "三點摘要區塊恰有三個繁體中文條列重點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 三點摘要\n1. 產品雖然延遲送達，但品質令人滿意。\n2. 客服回覆迅速，並協助處理了問題。\n3. 若出貨情況改善，客戶願意再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6c0abaef-0079-4a79-b3c8-1a13e3fc715b",
+        "text": "The summary points are based on the feedback content and do not introduce new information.",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項摘要分別對應延遲但品質良好、客服迅速協助，以及出貨改善後考慮回購，未見新增資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 產品雖然延遲送達，但品質令人滿意。\n2. 客服回覆迅速，並協助處理了問題。\n3. 若出貨情況改善，客戶願意再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "289fc82e-18d9-4426-b307-3e8d0a8d7d3f",
+        "text": "The output keeps the translation and the three-point summary as separate sections.",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯與三點摘要以不同標題分成兩個區塊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 繁體中文翻譯\n產品送達得比較晚，但品質不錯。客服回覆很快，也協助解決了這個問題。如果出貨改善，我會考慮再次購買。\n\n## 三點摘要\n1. 產品雖然延遲送達，但品質令人滿意。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "239697f7-7f8a-430b-a83a-562f9b56e9e9",
+        "text": "When the input contains multiple English feedback sentences, the translation still covers the full content before summarizing.",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯在摘要前涵蓋了原回饋的全部三句內容：到貨延遲與品質、客服協助，以及出貨改善後的回購意願。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品送達得比較晚，但品質不錯。客服回覆很快，也協助解決了這個問題。如果出貨改善，我會考慮再次購買。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2797 input and 223 output tokens on gpt-5.4-mini; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

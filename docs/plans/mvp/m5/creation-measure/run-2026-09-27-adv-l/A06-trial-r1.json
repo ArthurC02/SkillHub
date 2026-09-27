@@ -1,0 +1,170 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇自我介紹。\n\n我叫王怡婷，台北人，畢業於國立中山大學行銷管理系，曾在電商公司實習，負責社群貼文與活動整理。我個性細心、有耐心，也喜歡學習新工具，平常興趣是閱讀、跑步和拍照。",
+  "acceptance_criteria": [
+    {
+      "text": "產出內容為中文自我介紹短文，語氣自然且完整。"
+    },
+    {
+      "text": "內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。"
+    },
+    {
+      "text": "內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。"
+    },
+    {
+      "text": "文章可直接貼用，段落結構清楚，不需要再重寫才能理解。"
+    },
+    {
+      "text": "若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。"
+    }
+  ],
+  "final_output": "以下採用「通用、短篇、書面式自我介紹」的預設風格，語氣中性友善。\n\n大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理，透過實務經驗更了解品牌經營與行銷工作的細節，也培養了我對工作的責任感與執行力。\n\n我個性細心、有耐心，也很喜歡學習新工具，會主動嘗試提升自己的效率與能力。平常我喜歡閱讀、跑步和拍照，這些興趣讓我能在忙碌之餘保持生活節奏，也持續累積觀察與感受世界的能力。希望未來有機會能持續挑戰自己，並把所學運用在更多實際工作中。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e09ef770-96bd-4dae-9abc-265570040368",
+    "run_id": "abe626c5-2b50-497f-96d1-176cb5b65d3f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次回覆完成了可直接使用的通用中文自我介紹，並涵蓋使用者提供的核心資料與完整結尾。不過，沒有不同用途的請求或對應版本可供檢驗，因此用途調整能力無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "fa760aa1-236d-437d-9a68-2fef2a89979d",
+        "text": "產出內容為中文自我介紹短文，語氣自然且完整。",
+        "result": "passed",
+        "source": "model",
+        "reason": "產出為完整、自然的中文自我介紹短文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "69d2f5e7-ed80-450d-b37a-286d26c08b79",
+        "text": "內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文章包含姓名、台北與學歷背景、電商實習經歷、細心耐心等特質、閱讀跑步拍照等興趣，以及未來展望結尾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我個性細心、有耐心，也很喜歡學習新工具",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "平常我喜歡閱讀、跑步和拍照",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "希望未來有機會能持續挑戰自己，並把所學運用在更多實際工作中。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79ac2b4f-eff6-456c-bcc8-8d557854ed2f",
+        "text": "內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "自我介紹使用的姓名、背景、實習工作、特質與興趣均來自使用者提供的資料；沒有因資訊缺漏而加入需要替換的個人身分資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我個性細心、有耐心，也很喜歡學習新工具",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "平常我喜歡閱讀、跑步和拍照",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba030e7e-a9c0-4e25-964c-7d31c47fecd8",
+        "text": "文章可直接貼用，段落結構清楚，不需要再重寫才能理解。",
+        "result": "passed",
+        "source": "model",
+        "reason": "正文分為兩個結構清楚的段落，內容連貫完整，可直接作為通用書面自我介紹使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理，透過實務經驗更了解品牌經營與行銷工作的細節，也培養了我對工作的責任感與執行力。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "我個性細心、有耐心，也很喜歡學習新工具，會主動嘗試提升自己的效率與能力。平常我喜歡閱讀、跑步和拍照，這些興趣讓我能在忙碌之餘保持生活節奏，也持續累積觀察與感受世界的能力。希望未來有機會能持續挑戰自己，並把所學運用在更多實際工作中。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b81b1c6-ada4-42e9-953b-7a5deaa4442a",
+        "text": "若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次使用者未要求面試、履歷或社群等特定用途，回覆僅呈現通用短篇書面版本，無法據此判定面對不同用途時是否能調整語氣與長度。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3097 input and 639 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

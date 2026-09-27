@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆這位客人的抱怨：\n\n「我昨天晚上下單，等了兩個小時都還沒送到，打電話也沒人接，真的很失望。」\n\n請確認這個 brief 是否符合你的需求。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入一段客人抱怨時，輸出一段可直接發送給客人的繁體中文回覆。"
+    },
+    {
+      "text": "回覆內容包含道歉、理解對方感受與後續協助三個要素。"
+    },
+    {
+      "text": "回覆語氣保持正式、禮貌，不使用口語化或情緒化用字。"
+    },
+    {
+      "text": "若原始抱怨沒有提到補償，輸出不會自行承諾退款、折扣或賠償。"
+    },
+    {
+      "text": "若原始抱怨沒有提到處理方式，輸出會補上合理的後續跟進說明。"
+    }
+  ],
+  "final_output": "可以，這個 brief 已經足夠我幫你撰寫回覆了。\n\n目前包含了：\n- 客人的主要抱怨內容\n- 需要一則可直接回覆的文字\n- 語氣需求是「確認是否符合需求」，表示你在確認我能否開始\n\n如果你希望回覆更精準，我也可以再依以下資訊調整：\n- 要偏正式還是親切\n- 是否要提到補償或補送\n- 是否要承諾後續追蹤\n- 需要控制在多長\n\n如果你要，我現在就可以直接幫你寫一版回覆。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b1dee514-1359-4be5-968a-297c6d1949c9",
+    "run_id": "1dc53b86-dcdc-4fff-a0f9-351f27788010",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次輸出未撰寫客人可直接收到的客訴回覆，而是確認 brief 並要求可能的補充資訊。因此未包含應有的道歉、同理與後續處理說明；唯一可確認的是沒有自行承諾任何補償。",
+    "criterion_results": [
+      {
+        "criterion_id": "8af24f55-5cc6-4b11-a7b2-8ed1b5a04e64",
+        "text": "當輸入一段客人抱怨時，輸出一段可直接發送給客人的繁體中文回覆。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出僅確認 brief 是否足夠，未產出可直接發送給客人的繁體中文回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "如果你要，我現在就可以直接幫你寫一版回覆。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d54c8ac0-79cb-4c3c-b8d3-4f47a73b9f69",
+        "text": "回覆內容包含道歉、理解對方感受與後續協助三個要素。",
+        "result": "failed",
+        "source": "model",
+        "reason": "未提供客訴回覆，因此沒有對客人的道歉、理解感受及後續協助內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "可以，這個 brief 已經足夠我幫你撰寫回覆了。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e0de2bb-8346-47e3-ab6d-a67fa9fbba4a",
+        "text": "回覆語氣保持正式、禮貌，不使用口語化或情緒化用字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出不是面向客人的正式回覆，而是向使用者說明可再提供資訊及可協助撰寫，未滿足客訴回覆應有的正式禮貌語氣要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "如果你希望回覆更精準，我也可以再依以下資訊調整：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62fe6b02-7b98-4542-9d58-dfe1ae6b35dc",
+        "text": "若原始抱怨沒有提到補償，輸出不會自行承諾退款、折扣或賠償。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出沒有自行承諾退款、折扣、賠償或補送；僅將補償或補送列為可由使用者決定的調整資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 是否要提到補償或補送",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a261ec15-c488-45eb-b2c7-5667acc5d3f4",
+        "text": "若原始抱怨沒有提到處理方式，輸出會補上合理的後續跟進說明。",
+        "result": "failed",
+        "source": "model",
+        "reason": "原始抱怨未提出處理方式，但輸出未補上任何實際後續跟進說明，僅詢問是否要承諾後續追蹤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 是否要承諾後續追蹤",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2109 input and 401 output tokens on gpt-5.4-mini; reported cost $0.0004 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

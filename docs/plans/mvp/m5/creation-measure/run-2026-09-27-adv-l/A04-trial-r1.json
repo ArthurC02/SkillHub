@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "每週五下午自動把本週業績數字寄給全部門，同時在 Slack 公告。\n2026/09/21–2026/09/25 本週業績：\n- 營收：NT$1,250,000\n- 新增客戶：18\n- 成交率：23%\n- 主要亮點：A 客戶完成續約，B 方案本週上線",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含一週的業績數字時，輸出會整理成可直接寄送的訊息內容。"
+    },
+    {
+      "text": "當輸入包含一週的業績數字時，輸出會整理成可直接發布到 Slack 的公告內容。"
+    },
+    {
+      "text": "輸出會同時涵蓋「寄給全部門」與「Slack 公告」兩個動作。"
+    },
+    {
+      "text": "輸出會明確表達這是「本週」業績數字，而不是其他期間。"
+    },
+    {
+      "text": "當輸入提供完整業績數字時，輸出不會要求再去查找未提供的資料。"
+    }
+  ],
+  "final_output": "以下內容可直接寄給全體同仁與貼到 Slack；實際寄送／排程由你執行。\n\n---\n\n## Email 版本\n\n**主旨：** 2026/09/21–2026/09/25 本週業績更新\n\n各位同仁好，\n\n以下為 **2026/09/21–2026/09/25** 本週業績摘要：\n\n- **營收：** NT$1,250,000  \n- **新增客戶：** 18  \n- **成交率：** 23%  \n- **主要亮點：** A 客戶完成續約，B 方案本週上線  \n\n感謝大家本週的努力與合作，持續朝下一階段目標前進。\n\n謝謝。  \n\n---\n\n## Slack 版本\n\n📣 **2026/09/21–2026/09/25 本週業績更新**\n\n- 營收：NT$1,250,000  \n- 新增客戶：18  \n- 成交率：23%  \n- 主要亮點：A 客戶完成續約，B 方案本週上線  \n\n感謝大家本週的努力，一起加油！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "93a1495b-2da1-4941-9cc6-a35dd73e27f9",
+    "run_id": "b53fa43e-a8c2-4a2b-881c-4e28659c86ef",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回合產出可直接使用的 Email 與 Slack 公告，完整呈現所提供的本週業績與亮點，且未要求額外資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "35866bde-c7d9-4b52-8846-7ef814fcf7e6",
+        "text": "當輸入包含一週的業績數字時，輸出會整理成可直接寄送的訊息內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供具主旨、稱呼、業績摘要與結語的 Email 版本，可直接寄送。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Email 版本\n\n**主旨：** 2026/09/21–2026/09/25 本週業績更新",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2b475caa-d40b-45e5-be5c-1ceb1a059c04",
+        "text": "當輸入包含一週的業績數字時，輸出會整理成可直接發布到 Slack 的公告內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供獨立的 Slack 版本，包含本週業績數字與亮點，可直接發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## Slack 版本\n\n📣 **2026/09/21–2026/09/25 本週業績更新**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "65f788a9-7bfb-4909-abfd-f187be9a2f93",
+        "text": "輸出會同時涵蓋「寄給全部門」與「Slack 公告」兩個動作。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確同時提供寄給全體同仁的 Email 與 Slack 公告兩種內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下內容可直接寄給全體同仁與貼到 Slack；實際寄送／排程由你執行。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6e27e5a8-33b9-4df8-9520-08ae406aff22",
+        "text": "輸出會明確表達這是「本週」業績數字，而不是其他期間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Email 與 Slack 標題均明確標示「本週業績」及期間 2026/09/21–2026/09/25。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**主旨：** 2026/09/21–2026/09/25 本週業績更新",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "📣 **2026/09/21–2026/09/25 本週業績更新**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b7e1dbc5-b467-44c2-a353-7db52a64f995",
+        "text": "當輸入提供完整業績數字時，輸出不會要求再去查找未提供的資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出直接使用所提供的營收、新增客戶、成交率與主要亮點，未要求查找或補充任何未提供資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **營收：** NT$1,250,000  \n- **新增客戶：** 18  \n- **成交率：** 23%  \n- **主要亮點：** A 客戶完成續約，B 方案本週上線",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18739 input and 1115 output tokens on gpt-5.4-mini; reported cost $0.0209 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

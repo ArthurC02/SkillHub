@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫一篇自我介紹。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。"
+    }
+  ],
+  "final_output": "大家好，我是一個積極、樂於學習，而且重視責任感與合作精神的人。在日常生活中，我喜歡接觸新事物，也願意接受挑戰，因為我相信每一次經驗都是成長的機會。面對學習或工作上的任務，我會保持耐心與細心，盡力把事情做好，同時也重視與他人的溝通和配合。未來我希望能持續提升自己的能力，讓自己在不同的環境中都能穩定發揮，並為團隊帶來正向的幫助。謝謝大家。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "97d88803-400d-4b20-987c-7195150ffed2",
+    "run_id": "c2001c14-b223-49ff-8ac8-dbcf7cce439d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆提供了一篇完整、可直接使用的中文自我介紹，且只使用概括性的個人特質與目標，沒有虛構具體背景資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "70babbd0-144e-4a21-b3f9-bc90ef8fc4ba",
+        "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出是一篇可直接使用、具開場、個人特質、做事方式與結語的完整自我介紹，而非問題清單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是一個積極、樂於學習，而且重視責任感與合作精神的人。在日常生活中，我喜歡接觸新事物，也願意接受挑戰，因為我相信每一次經驗都是成長的機會。面對學習或工作上的任務，我會保持耐心與細心，盡力把事情做好，同時也重視與他人的溝通和配合。未來我希望能持續提升自己的能力，讓自己在不同的環境中都能穩定發揮，並為團隊帶來正向的幫助。謝謝大家。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7260bd5b-80bc-42e4-a633-c7013ad02af4",
+        "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未出現具體姓名、學校、公司、年資或可驗證的具體成就，因此沒有捏造此類個人資料；文中也未使用需要填入個人資料的位置。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是一個積極、樂於學習，而且重視責任感與合作精神的人。在日常生活中，我喜歡接觸新事物，也願意接受挑戰，因為我相信每一次經驗都是成長的機會。面對學習或工作上的任務，我會保持耐心與細心，盡力把事情做好，同時也重視與他人的溝通和配合。未來我希望能持續提升自己的能力，讓自己在不同的環境中都能穩定發揮，並為團隊帶來正向的幫助。謝謝大家。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19237 input and 821 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

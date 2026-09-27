@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面文章摘要成 50 字以內，並保留所有數字與人名：\n2024 年，台北市政府與王小明合作推出 3 項新政策，預計投入 1200 萬元改善交通、教育與醫療。王小明表示，這次計畫將分 2 年完成，並惠及 5 萬名市民。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入是一篇中文文章時，輸出會是一段不超過 50 個字的摘要。"
+    },
+    {
+      "text": "摘要中會保留原文出現的所有數字。"
+    },
+    {
+      "text": "摘要中會保留原文出現的人名。"
+    },
+    {
+      "text": "摘要只輸出摘要本身，不額外加入說明、標題或條列。"
+    },
+    {
+      "text": "當原文同時包含數字與人名時，兩者都仍可在摘要中找到。"
+    }
+  ],
+  "final_output": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7f31b14b-bbbf-4d84-a750-697d2ef17279",
+    "run_id": "669a68d3-cee0-4eac-9cc9-963b6618e07d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出符合長度限制，保留了所有數字與人名，且僅包含摘要本身。",
+    "criterion_results": [
+      {
+        "criterion_id": "6f6896f6-34e1-4b02-8e73-ed193a8a65f6",
+        "text": "輸入是一篇中文文章時，輸出會是一段不超過 50 個字的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單一中文摘要，長度不超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a86f070-bc65-4f56-bf51-d55ae37eea90",
+        "text": "摘要中會保留原文出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文中的數字 2024、3、1200、2、5 均保留於摘要中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8f86839-c3bc-4538-875b-94a0de3d7366",
+        "text": "摘要中會保留原文出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文人名「王小明」保留於摘要中。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b332016d-ff7a-4049-971b-8f4e89c6d923",
+        "text": "摘要只輸出摘要本身，不額外加入說明、標題或條列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有摘要文字，未加入說明、標題或條列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dca43ccd-b66d-425f-8866-04733f67be21",
+        "text": "當原文同時包含數字與人名時，兩者都仍可在摘要中找到。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要同時包含所有原文數字及人名「王小明」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年台北市政府與王小明推3項政策，投1200萬改善交通教育醫療，2年惠及5萬名市民",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18889 input and 760 output tokens on gpt-5.4-mini; reported cost $0.0194 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

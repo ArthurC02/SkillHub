@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆這位客人的抱怨：昨天收到的外送餐點有灑出來，而且我等了 90 分鐘才送到，這次體驗真的很差。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一則客訴時，輸出是一段可直接發送的中文回覆。"
+    },
+    {
+      "text": "回覆會先對客人的不滿表示理解或致歉。"
+    },
+    {
+      "text": "回覆會包含處理態度或後續安排，而不只是重述抱怨。"
+    },
+    {
+      "text": "在未指定語氣時，回覆語氣預設為道歉安撫且專業。"
+    },
+    {
+      "text": "在未提供品牌資訊時，回覆不會捏造品牌專屬細節。"
+    }
+  ],
+  "final_output": "非常抱歉這次外送讓您遇到餐點灑出、且等了 90 分鐘才送達的情況，這確實不是應有的服務品質，也非常影響您的用餐體驗。  \n我們已經記下您的反饋，會立即協助您查詢這筆訂單，並盡快安排後續補救處理。若您方便，也請提供訂單資訊給我們，我們會盡快跟進，謝謝您的提醒與包容。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "590952a0-bbb6-46b7-a582-4c6fa413e858",
+    "run_id": "cfe655aa-d9f6-40fd-a06f-c9b7917a3f2d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆以繁體中文提供可直接發送的客服訊息，先致歉並理解客人的負面體驗，再說明查詢、補救與跟進安排。內容專業安撫，且沒有虛構品牌專屬資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "f24ab981-3415-4200-9afd-2f0dd781f340",
+        "text": "輸入一則客訴時，輸出是一段可直接發送的中文回覆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為一段繁體中文客服回覆，可直接發送給客人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉這次外送讓您遇到餐點灑出、且等了 90 分鐘才送達的情況，這確實不是應有的服務品質，也非常影響您的用餐體驗。  \n我們已經記下您的反饋，會立即協助您查詢這筆訂單，並盡快安排後續補救處理。若您方便，也請提供訂單資訊給我們，我們會盡快跟進，謝謝您的提醒與包容。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b53d415a-c49a-4f0f-a590-640cf295ff13",
+        "text": "回覆會先對客人的不滿表示理解或致歉。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆開頭明確就餐點灑出與久候送達致歉，並承認對用餐體驗的影響。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉這次外送讓您遇到餐點灑出、且等了 90 分鐘才送達的情況，這確實不是應有的服務品質，也非常影響您的用餐體驗。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "07be865a-74bd-4639-8777-2e9c2f70fee3",
+        "text": "回覆會包含處理態度或後續安排，而不只是重述抱怨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提出查詢訂單、安排補救處理及跟進訂單資訊等後續安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我們已經記下您的反饋，會立即協助您查詢這筆訂單，並盡快安排後續補救處理。若您方便，也請提供訂單資訊給我們，我們會盡快跟進，謝謝您的提醒與包容。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c6e4e87e-30b0-478b-a57c-ef7c272d7155",
+        "text": "在未指定語氣時，回覆語氣預設為道歉安撫且專業。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆採真誠致歉、安撫並說明後續處理的專業客服語氣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉這次外送讓您遇到餐點灑出、且等了 90 分鐘才送達的情況，這確實不是應有的服務品質，也非常影響您的用餐體驗。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "09297fb8-d10e-4ac3-bb02-de08d876dfd4",
+        "text": "在未提供品牌資訊時，回覆不會捏造品牌專屬細節。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未提及或捏造任何品牌名稱、品牌政策或品牌專屬服務細節。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我們已經記下您的反饋，會立即協助您查詢這筆訂單，並盡快安排後續補救處理。若您方便，也請提供訂單資訊給我們，我們會盡快跟進，謝謝您的提醒與包容。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18854 input and 745 output tokens on gpt-5.4-mini; reported cost $0.0148 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

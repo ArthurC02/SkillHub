@@ -1,0 +1,155 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇自我介紹。我的名字是林怡安，目前是大學三年級學生，主修心理學，個性細心、喜歡與人溝通，曾經擔任社團幹部，想用在實習面試。",
+  "acceptance_criteria": [
+    {
+      "text": "在使用者提供姓名、身分/背景、優勢、目標後，輸出一篇完整自我介紹。"
+    },
+    {
+      "text": "文章語言為繁體中文，語氣自然，適合直接貼上使用。"
+    },
+    {
+      "text": "內容會依使用者指定場合調整，例如面試、課堂、社群自介或活動介紹。"
+    },
+    {
+      "text": "若使用者要求長度，輸出會符合該長度範圍。"
+    },
+    {
+      "text": "若使用者提供關鍵資訊，輸出不會編造未提供的個人事實。"
+    }
+  ],
+  "final_output": "您好，我是林怡安，目前就讀大學三年級，主修心理學。在學期間，我對人際互動與溝通一直很有興趣，也持續培養自己的觀察力與同理心。我的個性比較細心，做事時會注意細節，也習慣把事情安排好、確實完成。除此之外，我曾擔任社團幹部，這段經驗讓我學會和不同的人溝通協調，也更懂得在團隊中承擔責任。希望未來有機會透過實習，把所學運用在實務上，並持續學習、累積更多經驗，謝謝您。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cbcd925e-dbf2-4ef6-bf9a-5ba91cfba9f6",
+    "run_id": "7c8f59dc-962e-4b75-be62-c8d195061e7e",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "自我介紹完整、語言自然，並針對實習面試調整了內容。惟文中加入多項使用者未提供的個人特質與經驗性敘述，不符合不得編造個人事實的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "a175fe04-b418-411b-b5f8-0d8cd76e8c55",
+        "text": "在使用者提供姓名、身分/背景、優勢、目標後，輸出一篇完整自我介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為完整的自我介紹，包含姓名、就學背景、個人特質、社團經驗與實習目標。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡安，目前就讀大學三年級，主修心理學。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "希望未來有機會透過實習，把所學運用在實務上，並持續學習、累積更多經驗，謝謝您。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "959fe0a5-1bae-4819-b5a5-be23f9e8e888",
+        "text": "文章語言為繁體中文，語氣自然，適合直接貼上使用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文章使用自然、通順的繁體中文，具備可直接用於口頭或貼上使用的正式自我介紹語氣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我的個性比較細心，做事時會注意細節，也習慣把事情安排好、確實完成。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a274d546-ea64-4b7b-8609-1ea4adea3c6c",
+        "text": "內容會依使用者指定場合調整，例如面試、課堂、社群自介或活動介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確以實習為目標，結尾聚焦於將所學運用於實務與累積經驗，符合實習面試場合。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "希望未來有機會透過實習，把所學運用在實務上，並持續學習、累積更多經驗，謝謝您。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "87feb163-45c3-49ea-ab5b-c131d01d6a06",
+        "text": "若使用者要求長度，輸出會符合該長度範圍。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "the judge returned no verifiable evidence for this verdict. The judge's own reasoning was: 使用者原始需求未指定長度範圍，因此此條件不適用，輸出未違反任何明示的篇幅要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "b091132e-d31f-4663-a04e-c850dc61fb4e",
+        "text": "若使用者提供關鍵資訊，輸出不會編造未提供的個人事實。",
+        "result": "failed",
+        "source": "model",
+        "reason": "除了使用者提供的資訊外，文章新增了未被提供的個人經歷或特質性事實，例如持續培養觀察力與同理心、習慣安排事情，以及社團經驗使其更懂得承擔責任。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "在學期間，我對人際互動與溝通一直很有興趣，也持續培養自己的觀察力與同理心。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "也習慣把事情安排好、確實完成。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "這段經驗讓我學會和不同的人溝通協調，也更懂得在團隊中承擔責任。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2985 input and 664 output tokens on gpt-5.4-mini; reported cost $0.0082 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

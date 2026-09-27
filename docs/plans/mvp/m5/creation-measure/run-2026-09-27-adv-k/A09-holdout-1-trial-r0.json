@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "用這個月的出勤紀錄算每個人的加班時數，超過 46 小時的要標出來。規則：正常工時每日 8 小時，午休 1 小時不算工時。\n甲：9/1 到 9/26 共 20 個工作日，每天 09:00 上班、20:30 下班。\n乙：同樣 20 個工作日，每天 09:00 上班、19:00 下班。",
+  "acceptance_criteria": [
+    {
+      "text": "甲的加班時數是 50 小時，並被標示為超過 46 小時。"
+    },
+    {
+      "text": "乙的加班時數是 20 小時，沒有被標示為超過 46 小時。"
+    }
+  ],
+  "final_output": "以下依你提供的規則計算：\n\n- 正常工時：每日 8 小時\n- 午休：1 小時不算工時\n- 加班時數 = 實際在場時間 − 1 小時午休 − 8 小時\n\n## 每人加班時數\n\n| 人員 | 每日工時（扣午休後） | 每日加班 | 工作日數 | 月加班總時數 |\n|---|---:|---:|---:|---:|\n| 甲 | 09:00–20:30 = 11.5 小時；扣午休後 10.5 小時 | 2.5 小時 | 20 | 50 小時 |\n| 乙 | 09:00–19:00 = 10 小時；扣午休後 9 小時 | 1 小時 | 20 | 20 小時 |\n\n## 超過 46 小時名單\n\n- 甲：50 小時（超過 46 小時）\n- 乙：未超過\n\n## 簡短說明\n\n- 甲每天加班 2 小時 30 分，20 個工作日共 **50 小時**\n- 乙每天加班 1 小時，20 個工作日共 **20 小時**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c11248b7-ea21-41ac-8759-47ea8748b8fd",
+    "run_id": "1293741c-85e1-4c2f-9509-73db00086dcb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆正確計算甲為 50 小時並標示超過 46 小時；乙為 20 小時且未標示為超過門檻。",
+    "criterion_results": [
+      {
+        "criterion_id": "2264c9f5-058b-43ab-9147-069e8b1cf878",
+        "text": "甲的加班時數是 50 小時，並被標示為超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出甲的月加班總時數為 50 小時，且在超過 46 小時名單中明確標示其超過門檻。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 甲 | 09:00–20:30 = 11.5 小時；扣午休後 10.5 小時 | 2.5 小時 | 20 | 50 小時 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 甲：50 小時（超過 46 小時）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9a4ee2a0-74f4-4143-ad69-c56859b6a5a1",
+        "text": "乙的加班時數是 20 小時，沒有被標示為超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出乙的月加班總時數為 20 小時，並明確表示乙未超過門檻。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 09:00–19:00 = 10 小時；扣午休後 9 小時 | 1 小時 | 20 | 20 小時 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 乙：未超過",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3040 input and 750 output tokens on gpt-5.4-mini; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

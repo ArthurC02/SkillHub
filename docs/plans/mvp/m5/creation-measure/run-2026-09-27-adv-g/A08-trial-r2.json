@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "The checkout flow is confusing on mobile.\nThe new search bar is helpful, but it shows irrelevant results when I type quickly.\nI also wish the invoice email arrived sooner after payment.",
+  "acceptance_criteria": [
+    {
+      "text": "輸入英文客戶回饋後，輸出中會先出現完整的繁體中文翻譯。"
+    },
+    {
+      "text": "翻譯後會接著輸出恰好三點摘要。"
+    },
+    {
+      "text": "摘要內容與原文一致，不新增原文沒有的事實。"
+    },
+    {
+      "text": "若輸入包含多句或多段回饋，輸出會整體翻譯並整體摘要。"
+    },
+    {
+      "text": "最終輸出以繁體中文呈現。"
+    }
+  ],
+  "final_output": "**繁體中文翻譯**\n\n結帳流程在手機上讓人感到困惑。  \n新的搜尋列很有幫助，但我快速輸入時，它會顯示不相關的結果。  \n我也希望付款後的發票電子郵件能更快寄到。\n\n**三點摘要**\n\n1. 手機上的結帳流程讓人感到困惑。  \n2. 新的搜尋列有幫助，但快速輸入時會出現不相關的結果。  \n3. 希望付款後發票電子郵件能更早送達。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a7341b66-fa4d-4821-bf04-bd80c8bd47aa",
+    "run_id": "4bd76d0b-97ac-4611-80f0-cfd252c474e3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "最終輸出先完整翻譯所有英文回饋，再提供恰好三點、與原文一致的繁體中文摘要。",
+    "criterion_results": [
+      {
+        "criterion_id": "71cfd936-397c-4427-9fc1-0aee6618d0f6",
+        "text": "輸入英文客戶回饋後，輸出中會先出現完整的繁體中文翻譯。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出先以「繁體中文翻譯」呈現了三句原始英文回饋的完整繁體中文翻譯，之後才開始摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**繁體中文翻譯**\n\n結帳流程在手機上讓人感到困惑。  \n新的搜尋列很有幫助，但我快速輸入時，它會顯示不相關的結果。  \n我也希望付款後的發票電子郵件能更快寄到。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9d042f72-6ed5-4ee6-8822-315fa8d94d78",
+        "text": "翻譯後會接著輸出恰好三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯段落後接著是「三點摘要」，且摘要明確只有編號 1、2、3 三點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**三點摘要**\n\n1. 手機上的結帳流程讓人感到困惑。  \n2. 新的搜尋列有幫助，但快速輸入時會出現不相關的結果。  \n3. 希望付款後發票電子郵件能更早送達。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ea4e5b3e-aacd-4587-a412-693efdb02b8b",
+        "text": "摘要內容與原文一致，不新增原文沒有的事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項摘要分別忠實概括手機結帳困惑、快速輸入時搜尋結果不相關、以及希望付款後發票郵件更快送達，未見新增事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 手機上的結帳流程讓人感到困惑。  \n2. 新的搜尋列有幫助，但快速輸入時會出現不相關的結果。  \n3. 希望付款後發票電子郵件能更早送達。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0be44cb4-3a0a-4812-9172-d8d11f2d0d2f",
+        "text": "若輸入包含多句或多段回饋，輸出會整體翻譯並整體摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出整體涵蓋輸入中的三句回饋：結帳流程、搜尋列與發票郵件，並對全部內容完成翻譯及整體三點摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "結帳流程在手機上讓人感到困惑。  \n新的搜尋列很有幫助，但我快速輸入時，它會顯示不相關的結果。  \n我也希望付款後的發票電子郵件能更快寄到。\n\n**三點摘要**\n\n1. 手機上的結帳流程讓人感到困惑。  \n2. 新的搜尋列有幫助，但快速輸入時會出現不相關的結果。  \n3. 希望付款後發票電子郵件能更早送達。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "95bf3a9e-265a-4d53-b910-20acf0a767b7",
+        "text": "最終輸出以繁體中文呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的標題、翻譯與摘要均使用繁體中文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**繁體中文翻譯**\n\n結帳流程在手機上讓人感到困惑。  \n新的搜尋列很有幫助，但我快速輸入時，它會顯示不相關的結果。  \n我也希望付款後的發票電子郵件能更快寄到。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3246 input and 464 output tokens on gpt-5.4-mini; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

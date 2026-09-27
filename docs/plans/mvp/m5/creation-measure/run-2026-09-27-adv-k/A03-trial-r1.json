@@ -1,0 +1,166 @@
+{
+  "round": 1,
+  "sample_input": "請把以下 3 封客訴信整理成分類統計表：\n1. 我們上週下單的洗衣機到貨後無法開機，客服電話也一直打不通，請盡快安排換貨。\n2. 物流延誤了 5 天，原本說週一到貨，結果拖到週六才送到，而且包裝有破損。\n3. 我收到的耳機左右聲道音量不一致，雖然已經申請退貨，但希望你們也改善品管。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 3 封以上客訴信時，輸出會同時包含整體分類統計表與逐封信分類明細。"
+    },
+    {
+      "text": "輸出會針對每封信標示主分類、次分類、情緒傾向與是否需要人工跟進。"
+    },
+    {
+      "text": "統計表會列出各分類的件數，且件數加總等於輸入信件數。"
+    },
+    {
+      "text": "當信件內容同時包含多個問題時，輸出會依主要客訴內容歸類，並在明細中保留次要問題。"
+    },
+    {
+      "text": "輸出會是可直接貼入報告的表格格式，而不是散亂段落。"
+    }
+  ],
+  "final_output": "### 1. 整體統計表\n\n| 主分類 | 件數 | 百分比 |\n|---|---:|---:|\n| 產品故障／商品瑕疵 | 1 | 33.3% |\n| 物流配送問題 | 1 | 33.3% |\n| 產品品質問題 | 1 | 33.3% |\n| **總計** | **3** | **100.0%** |\n\n### 2. 逐封信明細\n\n| 編號 | 主分類 | 次分類 | 情緒傾向 | 是否需要人工跟進 | 重點摘要 |\n|---|---|---|---|---|---|\n| 1 | 產品故障／商品瑕疵 | 無法開機／換貨需求／客服聯繫不通 | 強烈負向 | 是 | 洗衣機到貨後無法開機，且客服電話一直打不通，要求盡快安排換貨。 |\n| 2 | 物流配送問題 | 延誤到貨／包裝破損 | 負向 | 是 | 物流延誤 5 天，原訂週一到貨卻拖到週六才送達，且包裝有破損。 |\n| 3 | 產品品質問題 | 左右聲道音量不一致／退貨申請／品管改善 | 負向 | 是 | 耳機左右聲道音量不一致，已申請退貨，並希望加強品管。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8c59306c-4520-41a9-b7d2-1dd16f6e8168",
+    "run_id": "d39565b5-606b-4f25-a7c9-0684d403f559",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整包含分類統計表及三封信的明細表。各件分類、次分類、情緒與人工跟進狀態均有標示，統計件數合計為 3，並以可直接用於報告的表格格式呈現。",
+    "criterion_results": [
+      {
+        "criterion_id": "e1934300-dffd-4e47-a5fc-531111e46a9b",
+        "text": "輸入 3 封以上客訴信時，輸出會同時包含整體分類統計表與逐封信分類明細。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時提供整體分類統計表與逐封信分類明細，涵蓋 3 封信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 1. 整體統計表",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 2. 逐封信明細",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "62fadfeb-95a4-4d09-93df-c60e99f1dd8b",
+        "text": "輸出會針對每封信標示主分類、次分類、情緒傾向與是否需要人工跟進。",
+        "result": "passed",
+        "source": "model",
+        "reason": "逐封明細表包含主分類、次分類、情緒傾向與是否需要人工跟進欄位，且三封信均已填列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 編號 | 主分類 | 次分類 | 情緒傾向 | 是否需要人工跟進 | 重點摘要 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 產品故障／商品瑕疵 | 無法開機／換貨需求／客服聯繫不通 | 強烈負向 | 是 | 洗衣機到貨後無法開機，且客服電話一直打不通，要求盡快安排換貨。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f9eeff8-3558-4635-951f-377a7eac75ec",
+        "text": "統計表會列出各分類的件數，且件數加總等於輸入信件數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "統計表列出三個主分類各 1 件，總計為 3 件，等於輸入的三封信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 產品故障／商品瑕疵 | 1 | 33.3% |\n| 物流配送問題 | 1 | 33.3% |\n| 產品品質問題 | 1 | 33.3% |\n| **總計** | **3** | **100.0%** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f7edcbc4-e7bf-49a6-a156-75c437616407",
+        "text": "當信件內容同時包含多個問題時，輸出會依主要客訴內容歸類，並在明細中保留次要問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每封含多個問題的信件均以一個主分類歸類，並在次分類保留其他問題，例如物流延誤信保留包裝破損。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2 | 物流配送問題 | 延誤到貨／包裝破損 | 負向 | 是 | 物流延誤 5 天，原訂週一到貨卻拖到週六才送達，且包裝有破損。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 產品故障／商品瑕疵 | 無法開機／換貨需求／客服聯繫不通 | 強烈負向 | 是 | 洗衣機到貨後無法開機，且客服電話一直打不通，要求盡快安排換貨。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "84e9fd9c-ae8a-42f5-8fa9-afe5f4f8c03e",
+        "text": "輸出會是可直接貼入報告的表格格式，而不是散亂段落。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以 Markdown 統計表與逐封明細表呈現，可直接貼入報告。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 主分類 | 件數 | 百分比 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 編號 | 主分類 | 次分類 | 情緒傾向 | 是否需要人工跟進 | 重點摘要 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2951 input and 954 output tokens on gpt-5.4-mini; reported cost $0.0095 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

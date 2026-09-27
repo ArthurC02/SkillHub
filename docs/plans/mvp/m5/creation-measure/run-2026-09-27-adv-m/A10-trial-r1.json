@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請將下列文章摘要成 50 字以內，並保留所有數字與人名：\n2024 年，台北市長陳建民宣布投入 12 億元改善捷運系統。這項計畫將在 18 個月內完成，預計服務 300 萬名通勤族。專家王志強表示，若工程順利，事故率可下降 20%，並提升整體運輸效率。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一篇文章全文時，輸出是一段 50 字以內的摘要。"
+    },
+    {
+      "text": "摘要中保留原文出現的數字。"
+    },
+    {
+      "text": "摘要中保留原文出現的人名。"
+    },
+    {
+      "text": "摘要內容仍需表達原文主旨，而不是只列出數字與人名。"
+    }
+  ],
+  "final_output": "2024陳建民投12億元改善捷運，18個月服務300萬名通勤族；王志強稱事故率降20%。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fb433ca8-af34-4e5e-8592-bf6b206ad556",
+    "run_id": "483762db-adbf-4b8a-9651-7abc124af904",
+    "status": "completed",
+    "overall": "met",
+    "summary": "摘要符合 50 字以內要求，並保留全部數字與人名，同時傳達捷運改善計畫及降低事故率的核心內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "915be5fe-ec09-44d7-a110-5b46051bed5c",
+        "text": "給定一篇文章全文時，輸出是一段 50 字以內的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單一摘要句，且字數明顯少於 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024陳建民投12億元改善捷運，18個月服務300萬名通勤族；王志強稱事故率降20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6ebb32ba-8201-4d71-994c-4e60f8767840",
+        "text": "摘要中保留原文出現的數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文全部數字：2024、12 億、18 個月、300 萬與 20%。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024陳建民投12億元改善捷運，18個月服務300萬名通勤族；王志強稱事故率降20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0728a39e-6014-4413-8cf8-5df607dbd28f",
+        "text": "摘要中保留原文出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文的人名陳建民與王志強。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024陳建民投12億元改善捷運，18個月服務300萬名通勤族；王志強稱事故率降20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dae8538e-cd7d-4f34-a388-e485d644b30f",
+        "text": "摘要內容仍需表達原文主旨，而不是只列出數字與人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要表達了投入經費改善捷運、服務通勤族，以及預期降低事故率的原文主旨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024陳建民投12億元改善捷運，18個月服務300萬名通勤族；王志強稱事故率降20%。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18762 input and 998 output tokens on gpt-5.4-mini; reported cost $0.0204 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

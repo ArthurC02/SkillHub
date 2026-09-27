@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請審核以下 5 筆請假申請，並逐筆判斷是否通過，若退回請寫明原因：\n1) 事假，申請日 2026-04-01，請假日 2026-04-03，1 天\n2) 事假，申請日 2026-04-01，請假日 2026-04-04，1 天\n3) 病假，申請日 2026-04-10，請假日 2026-04-10，2 天，未附證明\n4) 病假，申請日 2026-04-10，請假日 2026-04-10，3 天，已附證明\n5) 病假，申請日 2026-04-10，請假日 2026-04-10，3 天，未附證明",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入為「事假，申請時間晚於請假開始日少於 3 天」時，輸出必須判定退回，且原因明確寫出「事假需提前 3 天申請」。"
+    },
+    {
+      "text": "當輸入為「事假，申請時間至少提前 3 天」時，輸出必須判定通過，且不附退回原因。"
+    },
+    {
+      "text": "當輸入為「病假，當天申請，天數不超過 2 天」時，輸出必須判定通過。"
+    },
+    {
+      "text": "當輸入為「病假，天數超過 2 天且有附證明」時，輸出必須判定通過。"
+    },
+    {
+      "text": "當輸入為「病假，天數超過 2 天但未附證明」時，輸出必須判定退回，且原因明確寫出「病假超過 2 天需附證明」。"
+    },
+    {
+      "text": "當輸入不符合任一規則時，輸出必須寫明退回原因，不得只寫「不通過」。"
+    }
+  ],
+  "final_output": "1) **退回**：事假需提前 3 天申請；本案申請日為 2026-04-01，請假日為 2026-04-03，僅提前 2 天，不符合規定。  \n2) **通過**：事假已提前 3 天以上申請；本案申請日為 2026-04-01，請假日為 2026-04-04，符合規定。  \n3) **通過**：病假可當天申請；且本案僅 2 天，未超過 2 天，免附證明。  \n4) **通過**：病假可當天申請；且本案超過 2 天但已附證明，符合規定。  \n5) **退回**：病假超過 2 天需附證明。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c860c76a-6167-474f-b242-6a3104bb9424",
+    "run_id": "b028efb5-2193-4b6f-b959-779d63ffc868",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆申請均依規則作出正確判定；兩筆退回案件均明確提供適用的退回原因。",
+    "criterion_results": [
+      {
+        "criterion_id": "1546fd2f-9225-4a8c-930f-04cde1ad0fbb",
+        "text": "當輸入為「事假，申請時間晚於請假開始日少於 3 天」時，輸出必須判定退回，且原因明確寫出「事假需提前 3 天申請」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆事假僅提前 2 天，輸出判定退回，並明確列出規定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1) **退回**：事假需提前 3 天申請；本案申請日為 2026-04-01，請假日為 2026-04-03，僅提前 2 天，不符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c13bd4f8-a250-4e7e-a2db-106297f6e65a",
+        "text": "當輸入為「事假，申請時間至少提前 3 天」時，輸出必須判定通過，且不附退回原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆事假提前 3 天申請，輸出判定通過，未附退回原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2) **通過**：事假已提前 3 天以上申請；本案申請日為 2026-04-01，請假日為 2026-04-04，符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a9d5565e-a919-4138-bb7c-756afc241c9d",
+        "text": "當輸入為「病假，當天申請，天數不超過 2 天」時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆病假為當天申請且共 2 天，輸出判定通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3) **通過**：病假可當天申請；且本案僅 2 天，未超過 2 天，免附證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2dbd2132-c159-4f78-872b-d481b4954603",
+        "text": "當輸入為「病假，天數超過 2 天且有附證明」時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆病假超過 2 天且已附證明，輸出判定通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4) **通過**：病假可當天申請；且本案超過 2 天但已附證明，符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "442648c8-5d09-4b82-b889-48fd0fa7e992",
+        "text": "當輸入為「病假，天數超過 2 天但未附證明」時，輸出必須判定退回，且原因明確寫出「病假超過 2 天需附證明」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆病假超過 2 天且未附證明，輸出判定退回，並明確寫出指定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5) **退回**：病假超過 2 天需附證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "acfabdcd-b124-454e-8458-44eca519a15a",
+        "text": "當輸入不符合任一規則時，輸出必須寫明退回原因，不得只寫「不通過」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本次不符合規則的第 1 與第 5 筆均有具體退回原因，未僅寫不通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1) **退回**：事假需提前 3 天申請；本案申請日為 2026-04-01，請假日為 2026-04-03，僅提前 2 天，不符合規定。  \n2) **通過**：事假已提前 3 天以上申請；本案申請日為 2026-04-01，請假日為 2026-04-04，符合規定。  \n3) **通過**：病假可當天申請；且本案僅 2 天，未超過 2 天，免附證明。  \n4) **通過**：病假可當天申請；且本案超過 2 天但已附證明，符合規定。  \n5) **退回**：病假超過 2 天需附證明。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3119 input and 577 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

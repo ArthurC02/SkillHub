@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "上次記錄的價格：A 公司 1,290 元、B 公司 990 元、C 公司 1,450 元。今天從官網抄下來的價格：A 公司 1,190 元、B 公司 990 元、C 公司 1,500 元。請比對後告訴我哪些有變動。",
+  "acceptance_criteria": [
+    {
+      "text": "A 公司被標示為有變動，並寫出從 1,290 元降到 1,190 元。"
+    },
+    {
+      "text": "C 公司被標示為有變動，並寫出從 1,450 元漲到 1,500 元。"
+    },
+    {
+      "text": "B 公司被標示為沒有變動。"
+    },
+    {
+      "text": "輸出沒有宣稱自己連上官網抓了價格，或已經設定好自動通知。"
+    }
+  ],
+  "final_output": "比對結果如下：\n\n- **A 公司**：1,290 元 → 1,190 元，**下降 100 元**\n- **B 公司**：990 元 → 990 元，**沒有變動**\n- **C 公司**：1,450 元 → 1,500 元，**上升 50 元**\n\n**有變動的是 A 公司和 C 公司。**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "10eb118a-9ce5-4a35-89be-1cffc60cacb8",
+    "run_id": "fe775ab6-3044-407c-8371-da4a30ef2af6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有公司價格比對均正確：A 公司降價、C 公司漲價、B 公司無變動；輸出亦未作出官網連線或自動通知的宣稱。",
+    "criterion_results": [
+      {
+        "criterion_id": "93259c74-f657-4872-9ca4-b0ae3a84818f",
+        "text": "A 公司被標示為有變動，並寫出從 1,290 元降到 1,190 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 A 公司列為有變動，並明確呈現價格由 1,290 元降至 1,190 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A 公司**：1,290 元 → 1,190 元，**下降 100 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d663895a-2b87-40fd-b86d-31fa883c2499",
+        "text": "C 公司被標示為有變動，並寫出從 1,450 元漲到 1,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 C 公司列為有變動，並明確呈現價格由 1,450 元漲至 1,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **C 公司**：1,450 元 → 1,500 元，**上升 50 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47ca738b-ddc5-439b-be75-84ce51f1c371",
+        "text": "B 公司被標示為沒有變動。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確標示 B 公司價格相同且沒有變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **B 公司**：990 元 → 990 元，**沒有變動**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8983b26f-191d-43a1-a89d-d731dfd522d4",
+        "text": "輸出沒有宣稱自己連上官網抓了價格，或已經設定好自動通知。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅呈現使用者提供價格的比對結果，未宣稱連上官網抓取價格，也未聲稱已設定自動通知。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**有變動的是 A 公司和 C 公司。**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2129 input and 194 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

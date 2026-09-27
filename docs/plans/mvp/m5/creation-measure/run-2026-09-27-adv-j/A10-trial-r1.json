@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將下文摘要成 50 字以內，並保留所有數字與人名：2023 年，王小明在台北完成 3 項研究，與李美玲合作發表 2 篇論文，並於 2024 年獲得獎項。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一篇含有人名與數字的文章時，輸出會是 50 字以內的中文摘要。"
+    },
+    {
+      "text": "摘要會保留原文中所有數字。"
+    },
+    {
+      "text": "摘要會保留原文中所有人名。"
+    },
+    {
+      "text": "若原文同時含多個數字與多個人名，摘要仍不遺漏任何一個。"
+    },
+    {
+      "text": "輸出內容是摘要，不會附加分析、條列或解釋。"
+    }
+  ],
+  "final_output": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a23151a7-0cb9-45ca-9831-2512a0182c65",
+    "run_id": "260bf266-c408-40ad-af89-d822e7d479b0",
+    "status": "completed",
+    "overall": "met",
+    "summary": "該回應以 50 字內中文概述原文，保留全部數字與人名，並且未加入額外分析或說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "6f597c5d-76ec-4089-b32b-2773982f606a",
+        "text": "輸入一篇含有人名與數字的文章時，輸出會是 50 字以內的中文摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為中文摘要，且共 36 字（含標點）以內，符合 50 字限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "11e037ea-0f87-41fb-9075-7e270c27b806",
+        "text": "摘要會保留原文中所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文所有數字：2023、3、2、2024。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6fa8249b-05f3-4205-90e0-3b506e7853c9",
+        "text": "摘要會保留原文中所有人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文所有人名：王小明與李美玲。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1bd69ad3-7f06-4fc8-9965-b96c2bff43fd",
+        "text": "若原文同時含多個數字與多個人名，摘要仍不遺漏任何一個。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文含多個數字及多個人名，摘要仍包含全部數字（2023、3、2、2024）及兩位人名（王小明、李美玲）。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ec5ae18c-f4f1-4aa5-aa60-fd657fde121f",
+        "text": "輸出內容是摘要，不會附加分析、條列或解釋。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有一段精簡摘要，未附加分析、條列或解釋。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2023年王小明在台北完成3項研究，與李美玲發表2篇論文，2024年獲得獎項。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2661 input and 509 output tokens on gpt-5.4-mini; reported cost $0.0074 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

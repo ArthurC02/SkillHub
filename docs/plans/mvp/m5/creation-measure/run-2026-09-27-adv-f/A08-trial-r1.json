@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "Please translate and summarize this customer feedback: \"The product arrived late, but the support team was very helpful and solved my issue quickly. I like the product quality, though the packaging could be better.\"",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段英文客戶回饋時，輸出包含繁體中文翻譯與三點摘要。"
+    },
+    {
+      "text": "輸出中的翻譯部分以繁體中文呈現，不保留整段英文原文。"
+    },
+    {
+      "text": "摘要固定整理成三點。"
+    },
+    {
+      "text": "當輸入是一段完整的客戶回饋文字時，技能能直接處理並產出結果。"
+    }
+  ],
+  "final_output": "## 繁體中文翻譯\n產品送達延遲，但客服團隊非常有幫助，並且很快解決了我的問題。我喜歡產品品質，不過包裝可以再好一點。\n\n## 三點摘要\n1. 產品送達延遲。\n2. 客服團隊表現出色，快速協助解決問題。\n3. 使用者對產品品質滿意，但認為包裝還有改進空間。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "99897af8-387b-49e0-a4ab-9874f6147211",
+    "run_id": "0d22f0d8-ae61-4129-863e-edc3afed5c12",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整提供繁體中文翻譯與恰好三點摘要，翻譯未保留整段英文原文，並直接處理了完整的客戶回饋文字。",
+    "criterion_results": [
+      {
+        "criterion_id": "7d17f9bd-7afd-41e1-8c47-bc4412d51280",
+        "text": "輸入一段英文客戶回饋時，輸出包含繁體中文翻譯與三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出包含「繁體中文翻譯」段落及「三點摘要」段落。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 繁體中文翻譯\n產品送達延遲，但客服團隊非常有幫助，並且很快解決了我的問題。我喜歡產品品質，不過包裝可以再好一點。\n\n## 三點摘要\n1. 產品送達延遲。\n2. 客服團隊表現出色，快速協助解決問題。\n3. 使用者對產品品質滿意，但認為包裝還有改進空間。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5bbbbaa6-e4b3-4a6a-81c4-3567117972e3",
+        "text": "輸出中的翻譯部分以繁體中文呈現，不保留整段英文原文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯段落以繁體中文呈現，未保留整段英文原文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品送達延遲，但客服團隊非常有幫助，並且很快解決了我的問題。我喜歡產品品質，不過包裝可以再好一點。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b44b3649-cc4f-4c18-9a3a-cbf09c161169",
+        "text": "摘要固定整理成三點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要明確以編號 1 至 3 整理為固定三點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 產品送達延遲。\n2. 客服團隊表現出色，快速協助解決問題。\n3. 使用者對產品品質滿意，但認為包裝還有改進空間。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aaf1cc54-0e53-4514-be2a-adc6657f0ed2",
+        "text": "當輸入是一段完整的客戶回饋文字時，技能能直接處理並產出結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對完整客戶回饋內容直接產出翻譯與三點摘要結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 繁體中文翻譯\n產品送達延遲，但客服團隊非常有幫助，並且很快解決了我的問題。我喜歡產品品質，不過包裝可以再好一點。\n\n## 三點摘要\n1. 產品送達延遲。\n2. 客服團隊表現出色，快速協助解決問題。\n3. 使用者對產品品質滿意，但認為包裝還有改進空間。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2681 input and 273 output tokens on gpt-5.4-mini; reported cost $0.0062 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

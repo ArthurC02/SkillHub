@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇適合面試用的自我介紹，語氣自然自信，約 150 字。我的資料如下：\n姓名：林怡君\n學歷：國立中山大學企業管理學系畢業\n經歷：在電商公司擔任行銷企劃 3 年，負責社群經營、廣告投放與活動規劃\n專長：溝通協調、內容企劃、數據分析\n個人特質：細心、主動、喜歡團隊合作",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含姓名、背景、專長與用途時，輸出會生成一篇完整自我介紹。"
+    },
+    {
+      "text": "當輸入指定語氣或風格時，輸出會符合該語氣或風格。"
+    },
+    {
+      "text": "當輸入指定長度時，輸出篇幅會落在該要求範圍內。"
+    },
+    {
+      "text": "當輸入指定語言時，輸出會使用該語言撰寫。"
+    },
+    {
+      "text": "當輸入提供多項個人資訊時，輸出會整合所有明確提供的事實。"
+    }
+  ],
+  "final_output": "您好，我是林怡君，畢業於國立中山大學企業管理學系。過去三年在電商公司擔任行銷企劃，主要負責社群經營、廣告投放與活動規劃，也累積了內容企劃與數據分析的實務經驗。我擅長溝通協調，做事細心、主動，也很喜歡和團隊一起合作完成目標。希望未來能把這些能力發揮在新的工作中，謝謝。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "34946d59-fa84-490a-b861-8dcb8592d3e8",
+    "run_id": "63b99327-27f9-40f9-b44c-b0b3fd750b44",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆產出了一篇完整的繁體中文面試自我介紹，篇幅約符合150字要求，並以自然自信的語氣整合所有提供的個人資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "0c223026-0f45-47fb-9c10-a2a0536ef41d",
+        "text": "當輸入包含姓名、背景、專長與用途時，輸出會生成一篇完整自我介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一篇完整、可直接在面試中口說的自我介紹，包含開場、背景、經歷、能力與結語。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，畢業於國立中山大學企業管理學系。過去三年在電商公司擔任行銷企劃，主要負責社群經營、廣告投放與活動規劃，也累積了內容企劃與數據分析的實務經驗。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6cf0d6e5-4368-4cd3-aa70-f6dda7cd5962",
+        "text": "當輸入指定語氣或風格時，輸出會符合該語氣或風格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文字以禮貌開場、清楚陳述經驗與優勢，語氣自然且具自信，符合面試使用情境。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我擅長溝通協調，做事細心、主動，也很喜歡和團隊一起合作完成目標。希望未來能把這些能力發揮在新的工作中，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd8e53a8-88e8-418e-9450-a54c3d8ad899",
+        "text": "當輸入指定長度時，輸出篇幅會落在該要求範圍內。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出約137個字元（含標點），與「約150字」的篇幅要求相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，畢業於國立中山大學企業管理學系。過去三年在電商公司擔任行銷企劃，主要負責社群經營、廣告投放與活動規劃，也累積了內容企劃與數據分析的實務經驗。我擅長溝通協調，做事細心、主動，也很喜歡和團隊一起合作完成目標。希望未來能把這些能力發揮在新的工作中，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f257297-d81f-42ab-98d6-719975cb7284",
+        "text": "當輸入指定語言時，輸出會使用該語言撰寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以繁體中文撰寫，符合使用者以中文提出的需求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡君，畢業於國立中山大學企業管理學系。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "57711f2b-b666-4577-af2c-f4eb07056fab",
+        "text": "當輸入提供多項個人資訊時，輸出會整合所有明確提供的事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容整合了姓名、學歷、三年電商行銷企劃經歷、三項工作職責、三項專長及三項個人特質。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "過去三年在電商公司擔任行銷企劃，主要負責社群經營、廣告投放與活動規劃，也累積了內容企劃與數據分析的實務經驗。我擅長溝通協調，做事細心、主動，也很喜歡和團隊一起合作完成目標。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19085 input and 688 output tokens on gpt-5.4-mini; reported cost $0.0149 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

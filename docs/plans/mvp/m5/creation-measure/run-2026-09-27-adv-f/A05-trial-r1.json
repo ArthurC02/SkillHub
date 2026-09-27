@@ -1,0 +1,133 @@
+{
+  "round": 1,
+  "sample_input": "請追蹤以下三個競品價格頁，若有變動就通知我。\nA 品牌：\nhttps://example.com/a/pricing\n目前價格：NT$1,200\nB 品牌：\nhttps://example.com/b/pricing\n目前價格：NT$980\nC 品牌：\nhttps://example.com/c/pricing\n目前價格：NT$1,500",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含 3 個競爭對手各 1 個價格頁面時，輸出能逐一列出三個來源與各自的價格比較結果。"
+    },
+    {
+      "text": "當某一頁面的價格與上次記錄不同時，輸出中明確標示「有變動」，並顯示原價與新價。"
+    },
+    {
+      "text": "當某一頁面的價格未變動時，輸出中明確標示「無變動」。"
+    },
+    {
+      "text": "輸出包含每個變動項目的頁面來源或 URL。"
+    },
+    {
+      "text": "輸出是一則可直接轉送的通知文字，而不是分析草稿。"
+    }
+  ],
+  "final_output": "以下是可直接使用的通知草稿（目前無法直接讀取這三個頁面的即時價格，因此新價格與變動狀態為 not given）：\n\n- A 品牌\n  - URL: https://example.com/a/pricing\n  - Old price: NT$1,200\n  - New price: not given\n  - Status: not given\n\n- B 品牌\n  - URL: https://example.com/b/pricing\n  - Old price: NT$980\n  - New price: not given\n  - Status: not given\n\n- C 品牌\n  - URL: https://example.com/c/pricing\n  - Old price: NT$1,500\n  - New price: not given\n  - Status: not given\n\nOverall summary: 目前未取得各頁面的最新價格，因此無法判定是否有變動。  \n如果你要我幫你做成「定期檢查」提醒，告訴我想要的頻率即可。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b1cfcf7b-b19a-4148-9e38-0c2698cd4aeb",
+    "run_id": "b0879a5c-7e0e-4cf7-8c88-b3e1f370fe37",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "回覆列出了三個競品及其 URL 與舊價格，但未取得新價格，因而未能產出逐項比較、變動或未變動狀態。內容也被明確表述為通知草稿，而非完成的可轉送通知。",
+    "criterion_results": [
+      {
+        "criterion_id": "97a6407c-1270-4d3e-a92b-83b36a12be3d",
+        "text": "輸入包含 3 個競爭對手各 1 個價格頁面時，輸出能逐一列出三個來源與各自的價格比較結果。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖逐一列出 A、B、C 與其 URL、舊價格，但三者的新價格與狀態皆為「not given」，未提供各自的價格比較結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A 品牌\n  - URL: https://example.com/a/pricing\n  - Old price: NT$1,200\n  - New price: not given\n  - Status: not given",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5552a8ea-ab65-4ab4-95cd-f1ff824277da",
+        "text": "當某一頁面的價格與上次記錄不同時，輸出中明確標示「有變動」，並顯示原價與新價。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有取得任一頁面的最新價格，因此無法判斷是否存在價格不同的頁面，也無從驗證變動時是否會標示「有變動」及原價、新價。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "a53b4ea0-4c1a-4544-8cb1-8d23c90eabef",
+        "text": "當某一頁面的價格未變動時，輸出中明確標示「無變動」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有取得任一頁面的最新價格，因此無法判斷是否存在未變動的頁面，也無從驗證是否會明確標示「無變動」。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "56ad9898-1d02-4d88-9854-f30ef984cf42",
+        "text": "輸出包含每個變動項目的頁面來源或 URL。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "輸出列出了三個頁面的 URL，但未識別出任何變動項目；因此無法驗證變動項目是否都會附上其頁面來源或 URL。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "117e357f-2757-4e2b-881c-ec71fc26b70c",
+        "text": "輸出是一則可直接轉送的通知文字，而不是分析草稿。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出明確稱為「通知草稿」，且結尾要求使用者另行提供定期檢查頻率，不是已完成、可直接轉送的價格變更通知。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是可直接使用的通知草稿（目前無法直接讀取這三個頁面的即時價格，因此新價格與變動狀態為 not given）：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "如果你要我幫你做成「定期檢查」提醒，告訴我想要的頻率即可。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18852 input and 3075 output tokens on gpt-5.4-mini; reported cost $0.0298 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

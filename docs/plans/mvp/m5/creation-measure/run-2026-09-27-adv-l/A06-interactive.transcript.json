@@ -1,0 +1,103 @@
+{
+  "acceptance_criteria": [
+    "產出內容為中文自我介紹短文，語氣自然且完整。",
+    "內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。",
+    "內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。",
+    "文章可直接貼用，段落結構清楚，不需要再重寫才能理解。",
+    "若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。"
+  ],
+  "brief": "幫使用者寫一篇中文自我介紹，採用通用的書面短文版，適合自我介紹、面試或一般提交情境。內容要自然、清楚、可直接使用，並可保留可替換的個人資訊位置。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我寫一篇自我介紹。",
+      "created_at": "2026-09-27T05:07:32.120609912Z"
+    },
+    {
+      "role": "assistant",
+      "content": "你想要的「自我介紹」是要寫成哪一種用途？例如：面試口語版、書面短文版、履歷版，或是社群/講座開場版。",
+      "created_at": "2026-09-27T05:07:34.030471091Z"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。",
+      "created_at": "2026-09-27T05:07:34.034896449Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我會先用合理預設補齊需求，並把假設寫進草案供你確認：\n\n**brief**\n幫使用者寫一篇中文自我介紹，採用通用的書面短文版，適合自我介紹、面試或一般提交情境。內容要自然、清楚、可直接使用，並可保留可替換的個人資訊位置。\n\n**acceptance_criteria**\n1. 產出內容為中文自我介紹短文，語氣自然且完整。\n2. 內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。\n3. 內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。\n4. 文章可直接貼用，段落結構清楚，不需要再重寫才能理解。\n5. 若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。\n\n**sample_input**\n請幫我寫一篇自我介紹。\n\n我叫王怡婷，台北人，畢業於國立中山大學行銷管理系，曾在電商公司實習，負責社群貼文與活動整理。我個性細心、有耐心，也喜歡學習新工具，平常興趣是閱讀、跑步和拍照。",
+      "created_at": "2026-09-27T05:07:38.688624639Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依既有確認需求直接起草。以下是完整 Skill 草案，待你用 Go 驗證。",
+      "created_at": "2026-09-27T05:07:44.990693202Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T05:07:44.993068257Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的評估回饋需要修正。以下保留已驗證草案不變，供你直接接受或告訴我想改哪些地方。",
+      "created_at": "2026-09-27T05:07:50.418098851Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"e09ef770-96bd-4dae-9abc-265570040368\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"本次回覆完成了可直接使用的通用中文自我介紹，並涵蓋使用者提供的核心資料與完整結尾。不過，沒有不同用途的請求或對應版本可供檢驗，因此用途調整能力無法判定。\",\"criterion_results\":[{\"criterion_id\":\"7b81b1c6-ada4-42e9-953b-7a5deaa4442a\",\"text\":\"若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"本次使用者未要求面試、履歷或社群等特定用途，回覆僅呈現通用短篇書面版本，無法據此判定面對不同用途時是否能調整語氣與長度。\"},{\"criterion_id\":\"fa760aa1-236d-437d-9a68-2fef2a89979d\",\"text\":\"產出內容為中文自我介紹短文，語氣自然且完整。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":34,\"end\":64},\"excerpt\":\"大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"產出為完整、自然的中文自我介紹短文。\"},{\"criterion_id\":\"69d2f5e7-ed80-450d-b37a-286d26c08b79\",\"text\":\"內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":34,\"end\":92},\"excerpt\":\"大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":134,\"end\":153},\"excerpt\":\"我個性細心、有耐心，也很喜歡學習新工具\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":170,\"end\":183},\"excerpt\":\"平常我喜歡閱讀、跑步和拍照\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":219,\"end\":249},\"excerpt\":\"希望未來有機會能持續挑戰自己，並把所學運用在更多實際工作中。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"文章包含姓名、台北與學歷背景、電商實習經歷、細心耐心等特質、閱讀跑步拍照等興趣，以及未來展望結尾。\"},{\"criterion_id\":\"79ac2b4f-eff6-456c-bcc8-8d557854ed2f\",\"text\":\"內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":34,\"end\":92},\"excerpt\":\"大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":134,\"end\":153},\"excerpt\":\"我個性細心、有耐心，也很喜歡學習新工具\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":170,\"end\":183},\"excerpt\":\"平常我喜歡閱讀、跑步和拍照\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"自我介紹使用的姓名、背景、實習工作、特質與興趣均來自使用者提供的資料；沒有因資訊缺漏而加入需要替換的個人身分資料。\"},{\"criterion_id\":\"ba030e7e-a9c0-4e25-964c-7d31c47fecd8\",\"text\":\"文章可直接貼用，段落結構清楚，不需要再重寫才能理解。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":34,\"end\":132},\"excerpt\":\"大家好，我是王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我曾於電商公司實習，主要負責社群貼文與活動整理，透過實務經驗更了解品牌經營與行銷工作的細節，也培養了我對工作的責任感與執行力。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":134,\"end\":249},\"excerpt\":\"我個性細心、有耐心，也很喜歡學習新工具，會主動嘗試提升自己的效率與能力。平常我喜歡閱讀、跑步和拍照，這些興趣讓我能在忙碌之餘保持生活節奏，也持續累積觀察與感受世界的能力。希望未來有機會能持續挑戰自己，並把所學運用在更多實際工作中。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"正文分為兩個結構清楚的段落，內容連貫完整，可直接作為通用書面自我介紹使用。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"dff4f134-f7e0-44b2-ad5c-2e7ad4940970\",\"occurred_at\":\"2026-09-27T05:08:16.634Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"self-introduction-writer\\\", \\\"skill_version_id\\\": \\\"613851a0-a2b4-4131-ba95-66e31439399a\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3097 input and 639 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"abe626c5-2b50-497f-96d1-176cb5b65d3f\",\"skill_version_id\":\"613851a0-a2b4-4131-ba95-66e31439399a\"}",
+      "created_at": "2026-09-27T05:08:40.963032639Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。」：尚無法判定——本次使用者未要求面試、履歷或社群等特定用途，回覆僅呈現通用短篇書面版本，無法據此判定面對不同用途時是否能調整語氣與長度。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T05:08:40.963070441Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T05:08:40.970242531Z"
+    },
+    {
+      "role": "assistant",
+      "content": "本次試跑只失敗 1 項、其餘都通過。\n\n失敗的條件：\n- 「若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。」\n  - 原因：試跑範例沒有涵蓋面試、履歷或社群等不同用途，所以這條在評估中只能判定為 undetermined，無法證明草稿已直接處理各用途的改寫規則。\n\n我已改的草稿內容：\n- 在 `What to do` 後補上一條明確規則，要求當使用者指定 interview、resume 或 social opening 等用途時，直接依用途調整語氣與長度，但維持同一份自我介紹的核心內容。\n- 在 `If the user asks for a different use case` 小節，把各用途改寫成可執行的寫法：\n  - interview：更有說服力、偏動機表達\n  - resume：更精簡、專業，採條列或短段落\n  - social opening：更溫暖、對話感更強\n  - school or submission：平衡且正式\n  - 並保留「輸出仍是改寫後的自我介紹，而不是建議」\n\n你可以直接接受這個草案；如果你想，我也可以再替你把語氣調得更口語、更正式，或改成更短的版型。",
+      "created_at": "2026-09-27T05:08:53.924562432Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T05:08:53.927818127Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"bb7d7314-9d45-4099-b694-190892e17c44\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"本次回覆提供了自然、完整且可直接使用的中文自我介紹，並涵蓋基本介紹要素。不過內容包含少量未由使用者提供支持的能力與效果描述；此外，沒有不同用途的請求，因此無法判斷其用途調整能力。\",\"criterion_results\":[{\"criterion_id\":\"de47638c-e4c5-4b83-a4f5-da11a88f9c36\",\"text\":\"內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":130,\"end\":163},\"excerpt\":\"我的個性細心、有耐心，也喜歡學習新工具，能夠快速適應新的工作內容。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":177,\"end\":202},\"excerpt\":\"這些興趣也讓我在生活中保持觀察力與持續學習的習慣。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"文中加入使用者未提供的個人能力與興趣帶來的效果，例如可快速適應工作內容，以及興趣使其保持觀察力；這些並未以可替換占位內容標示。\"},{\"criterion_id\":\"13e281e1-c439-47ad-b62d-a9bb868ae346\",\"text\":\"若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"本次使用者僅要求一般自我介紹，回覆也僅提供一般用途版本；沒有不同用途的要求或對應版本可供判斷是否能依面試、履歷或社群情境調整語氣與長度。\"},{\"criterion_id\":\"59a07f2c-a084-4ae0-9192-eb2ea050dbbd\",\"text\":\"產出內容為中文自我介紹短文，語氣自然且完整。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":38,\"end\":232},\"excerpt\":\"大家好，我叫王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我培養了行銷相關的基礎知識，也曾在電商公司實習，主要負責社群貼文與活動整理，讓我對內容規劃與活動執行有了實際經驗。我的個性細心、有耐心，也喜歡學習新工具，能夠快速適應新的工作內容。平常我喜歡閱讀、跑步和拍照，這些興趣也讓我在生活中保持觀察力與持續學習的習慣。未來希望能持續精進自己，並把所學運用在實際工作中，謝謝大家。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"產出為完整、自然的中文自我介紹短文，語氣親切且專業。\"},{\"criterion_id\":\"4bc910bb-ba8f-4e3a-992d-98be35d1e0c9\",\"text\":\"內容包含基本自我介紹要素：姓名/稱呼、背景、能力或特質、經歷或興趣、結尾。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":38,\"end\":68},\"excerpt\":\"大家好，我叫王怡婷，來自台北，畢業於國立中山大學行銷管理系。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":130,\"end\":176},\"excerpt\":\"我的個性細心、有耐心，也喜歡學習新工具，能夠快速適應新的工作內容。平常我喜歡閱讀、跑步和拍照\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":202,\"end\":232},\"excerpt\":\"未來希望能持續精進自己，並把所學運用在實際工作中，謝謝大家。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"內容具備姓名、所在地與學歷背景、實習經歷、個人特質與興趣，並以未來展望和致謝作結。\"},{\"criterion_id\":\"b5d950d2-0c3c-4641-8f33-6577eb186f6f\",\"text\":\"文章可直接貼用，段落結構清楚，不需要再重寫才能理解。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":38,\"end\":232},\"excerpt\":\"大家好，我叫王怡婷，來自台北，畢業於國立中山大學行銷管理系。在學期間，我培養了行銷相關的基礎知識，也曾在電商公司實習，主要負責社群貼文與活動整理，讓我對內容規劃與活動執行有了實際經驗。我的個性細心、有耐心，也喜歡學習新工具，能夠快速適應新的工作內容。平常我喜歡閱讀、跑步和拍照，這些興趣也讓我在生活中保持觀察力與持續學習的習慣。未來希望能持續精進自己，並把所學運用在實際工作中，謝謝大家。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"自我介紹以單一完整段落依序呈現背景、經歷、特質、興趣與展望，內容連貫，可直接使用。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"f49b43a5-46e3-4408-8bd5-6c6f1fd5f5b6\",\"occurred_at\":\"2026-09-27T05:09:11.03Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"self-introduction-writer\\\", \\\"skill_version_id\\\": \\\"ef73289f-85a5-4856-b115-970dc5000455\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3187 input and 608 output tokens on gpt-5.4-mini; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"451d4e8a-00c9-4daa-95a1-216a70fedaad\",\"skill_version_id\":\"ef73289f-85a5-4856-b115-970dc5000455\"}",
+      "created_at": "2026-09-27T05:09:33.464597594Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。」：沒過——文中加入使用者未提供的個人能力與興趣帶來的效果，例如可快速適應工作內容，以及興趣使其保持觀察力；這些並未以可替換占位內容標示。\n- 「若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。」：尚無法判定——本次使用者僅要求一般自我介紹，回覆也僅提供一般用途版本；沒有不同用途的要求或對應版本可供判斷是否能依面試、履歷或社群情境調整語氣與長度。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T05:09:33.464638796Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T05:09:33.473611384Z"
+    },
+    {
+      "role": "assistant",
+      "content": "以下是依你要求修正後的草案確認稿。這次只補齊沒過的兩項，不改動原本已通過的條件。\n\n未過條件與原因：\n1. 「內容不依賴未提供的個人資料；若缺少資訊，使用明確標示的可替換占位內容。」\n   - 原因：草稿會把未提供的能力、特質或效果直接寫成事實，例如快速適應、觀察力等，沒有用占位內容標示缺口。\n2. 「若使用者要求不同用途（例如面試、履歷、社群開場），可在同一主題下調整語氣與長度。」\n   - 原因：前一次範例輸入沒有包含多用途請求，所以這條無法在一次試跑中驗證。\n\n我改了什麼：\n- 在 body 的 `What to do` 第 4 點後補上規則：如果要補寫能力、特質或經歷的延伸說法，但使用者沒有明說，就改用可替換占位內容呈現，例如「【能力】」、「【特質】」、「【成果】」，不要把推測寫成事實。\n- 把第 5 點改成：如果某些個人資訊缺少，就不要用推測補足；改以可替換占位內容保留缺口。\n- 把 sample_input 改成同一則訊息內包含三種用途，讓一次試跑可同時檢驗用途調整能力：面試用、履歷用、社群開場用。其餘個人資料維持不變。\n\n你可以接受這個草案，或直接告訴我還想改哪一段。",
+      "created_at": "2026-09-27T05:09:41.181612962Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依你要求修正草稿：保留原本已通過的條件不變，並只針對未過項目調整草稿本身；同時把範例輸入補成一次可驗到多用途改寫的內容。主要變更有兩點：一是把原本會把未提供資訊寫成事實的部分，改成缺資料時使用明確占位符，避免推測；二是保留用途可調整的要求，讓面試、履歷、社群開場都能在同一主題下切換語氣與長度。",
+      "created_at": "2026-09-27T05:09:47.094984279Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T05:09:47.096404559Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

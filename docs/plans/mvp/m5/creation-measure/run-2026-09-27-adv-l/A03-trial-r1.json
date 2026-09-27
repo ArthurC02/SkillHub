@@ -1,0 +1,140 @@
+{
+  "round": 1,
+  "sample_input": "請把以下客訴信整理成分類統計表：\n1. 「我 11/3 訂的耳機到現在還沒收到，物流查詢顯示卡在配送中，請協助。」\n2. 「昨天收到的衣服有污漬，且尺寸比下單時小很多，要求退換貨。」\n3. 「App 更新後一直閃退，登入也會跳出錯誤訊息，請盡快修正。」\n4. 「客服回覆速度太慢，我上週寄信到現在還沒有人處理。」\n5. 「收到的商品與網站照片差很多，但我沒有拍照佐證。」\n6. 「包裹外箱有破損，裡面的杯子也裂了。」",
+  "acceptance_criteria": [
+    {
+      "text": "使用者貼上多封客訴信時，輸出會是一張分類統計表，且每一類別都有封數。"
+    },
+    {
+      "text": "當多封信內容可明確歸入不同主題時，統計表會把它們分成多個分類，而不是合併成單一總數。"
+    },
+    {
+      "text": "當某封信內容不足以判斷分類時，該封信會被列入「未分類」。"
+    },
+    {
+      "text": "輸出可以包含每個分類的一句簡短摘要，但摘要不會取代封數統計。"
+    },
+    {
+      "text": "Skill 不會要求連到郵件系統、資料庫或外部檔案；只根據貼上的文字完成分類。"
+    }
+  ],
+  "final_output": "| 分類 | 數量 | 重點摘要 |\n|---|---:|---|\n| 配送延遲／物流卡關 | 1 | 商品已訂購但遲遲未收到，物流顯示仍在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到衣服有污漬，且尺寸明顯偏小，要求退換貨。 |\n| App 異常／閃退登入錯誤 | 1 | 更新後 App 反覆閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 已寄信反映問題，但客服回覆與處理速度太慢。 |\n| 商品與網站描述不符 | 1 | 實際收到的商品與網站照片落差大。 |\n| 運送破損／商品破裂 | 1 | 外箱受損，內部杯子也已裂開。 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fff6707f-d5ac-4e01-95d3-a431ea395520",
+    "run_id": "4602124e-add1-47b0-b431-d7b5fdc200ea",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次回覆成功將六封客訴分成多個分類，逐類提供封數與簡短摘要，且未要求任何外部系統或檔案。不過測試資料沒有分類資訊不足的客訴，無法驗證是否會正確歸入「未分類」。",
+    "criterion_results": [
+      {
+        "criterion_id": "e6d21caf-14e8-4aac-ab43-ef4a6723d3f5",
+        "text": "使用者貼上多封客訴信時，輸出會是一張分類統計表，且每一類別都有封數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為分類統計表，包含「分類」與「數量」欄位，且六個類別均各列出 1 封。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 分類 | 數量 | 重點摘要 |\n|---|---:|---|\n| 配送延遲／物流卡關 | 1 | 商品已訂購但遲遲未收到，物流顯示仍在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到衣服有污漬，且尺寸明顯偏小，要求退換貨。 |\n| App 異常／閃退登入錯誤 | 1 | 更新後 App 反覆閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 已寄信反映問題，但客服回覆與處理速度太慢。 |\n| 商品與網站描述不符 | 1 | 實際收到的商品與網站照片落差大。 |\n| 運送破損／商品破裂 | 1 | 外箱受損，內部杯子也已裂開。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "46b2e64f-8f52-4ed7-87f6-8addadea817d",
+        "text": "當多封信內容可明確歸入不同主題時，統計表會把它們分成多個分類，而不是合併成單一總數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格將可明確辨識的配送、商品、App、客服與運送破損等問題分列為六個不同分類，未合併為單一總數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 配送延遲／物流卡關 | 1 | 商品已訂購但遲遲未收到，物流顯示仍在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到衣服有污漬，且尺寸明顯偏小，要求退換貨。 |\n| App 異常／閃退登入錯誤 | 1 | 更新後 App 反覆閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 已寄信反映問題，但客服回覆與處理速度太慢。 |\n| 商品與網站描述不符 | 1 | 實際收到的商品與網站照片落差大。 |\n| 運送破損／商品破裂 | 1 | 外箱受損，內部杯子也已裂開。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "64c3f9a8-9b28-4673-81d0-9087a5202865",
+        "text": "當某封信內容不足以判斷分類時，該封信會被列入「未分類」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次六封客訴皆有足夠內容可分類，未出現內容不足以判斷分類的信件，因此無法由本次輸出驗證此情況是否會列入「未分類」。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "2675ea17-d4b9-4361-8dc6-665b8b4d4894",
+        "text": "輸出可以包含每個分類的一句簡短摘要，但摘要不會取代封數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各分類均附有一句重點摘要，且摘要與獨立的數量欄位並存，未取代封數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 分類 | 數量 | 重點摘要 |\n|---|---:|---|\n| 配送延遲／物流卡關 | 1 | 商品已訂購但遲遲未收到，物流顯示仍在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到衣服有污漬，且尺寸明顯偏小，要求退換貨。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef90bf7d-398b-4c16-8ecf-8ecbf67d00b6",
+        "text": "Skill 不會要求連到郵件系統、資料庫或外部檔案；只根據貼上的文字完成分類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出直接依貼上的客訴內容提供表格，未要求連接郵件系統、資料庫或外部檔案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 分類 | 數量 | 重點摘要 |\n|---|---:|---|\n| 配送延遲／物流卡關 | 1 | 商品已訂購但遲遲未收到，物流顯示仍在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到衣服有污漬，且尺寸明顯偏小，要求退換貨。 |\n| App 異常／閃退登入錯誤 | 1 | 更新後 App 反覆閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 已寄信反映問題，但客服回覆與處理速度太慢。 |\n| 商品與網站描述不符 | 1 | 實際收到的商品與網站照片落差大。 |\n| 運送破損／商品破裂 | 1 | 外箱受損，內部杯子也已裂開。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3048 input and 836 output tokens on gpt-5.4-mini; reported cost $0.0038 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

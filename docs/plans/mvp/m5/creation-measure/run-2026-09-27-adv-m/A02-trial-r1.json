@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下 5 筆請假申請，並逐筆判斷是否通過，若退回請寫明原因：\n1) 事假，申請日 2026-04-01，請假日 2026-04-03，1 天\n2) 事假，申請日 2026-04-01，請假日 2026-04-04，1 天\n3) 病假，申請日 2026-04-10，請假日 2026-04-10，2 天，未附證明\n4) 病假，申請日 2026-04-10，請假日 2026-04-10，3 天，已附證明\n5) 病假，申請日 2026-04-10，請假日 2026-04-10，3 天，未附證明",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入為「事假，申請時間晚於請假開始日少於 3 天」時，輸出必須判定退回，且原因明確寫出「事假需提前 3 天申請」。"
+    },
+    {
+      "text": "當輸入為「事假，申請時間至少提前 3 天」時，輸出必須判定通過，且不附退回原因。"
+    },
+    {
+      "text": "當輸入為「病假，當天申請，天數不超過 2 天」時，輸出必須判定通過。"
+    },
+    {
+      "text": "當輸入為「病假，天數超過 2 天且有附證明」時，輸出必須判定通過。"
+    },
+    {
+      "text": "當輸入為「病假，天數超過 2 天但未附證明」時，輸出必須判定退回，且原因明確寫出「病假超過 2 天需附證明」。"
+    },
+    {
+      "text": "當輸入不符合任一規則時，輸出必須寫明退回原因，不得只寫「不通過」。"
+    }
+  ],
+  "final_output": "以下為逐筆審核結果：\n\n1) **事假，申請日 2026-04-01，請假日 2026-04-03，1 天**  \n   **退回**：事假需提前 3 天申請，但本案申請日距請假日僅 2 天，不符合規則。\n\n2) **事假，申請日 2026-04-01，請假日 2026-04-04，1 天**  \n   **通過**：符合事假需提前 3 天申請的規則。\n\n3) **病假，申請日 2026-04-10，請假日 2026-04-10，2 天，未附證明**  \n   **通過**：病假可當天申請，且本案未超過 2 天，不需附證明。\n\n4) **病假，申請日 2026-04-10，請假日 2026-04-10，3 天，已附證明**  \n   **通過**：病假超過 2 天時需附證明，本案已附證明，符合規則。\n\n5) **病假，申請日 2026-04-10，請假日 2026-04-10，3 天，未附證明**  \n   **退回**：病假超過 2 天必須附證明，但本案未附證明，不符合規則。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "3947cd6d-5f4c-43dc-9184-bdd45da0bac1",
+    "run_id": "ced94e0e-0505-4173-9164-50836e06fa1b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "審核判定整體符合各案例規則，且所有退回案件都有具體原因。惟第 5 筆未逐字寫出要求的「病假超過 2 天需附證明」，而寫為「必須附證明」。",
+    "criterion_results": [
+      {
+        "criterion_id": "050e1f05-b877-430d-aa20-cbb6e54f66a9",
+        "text": "當輸入為「事假，申請時間晚於請假開始日少於 3 天」時，輸出必須判定退回，且原因明確寫出「事假需提前 3 天申請」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆事假提前僅 2 天，判定為退回，並明確寫出指定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**退回**：事假需提前 3 天申請，但本案申請日距請假日僅 2 天，不符合規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e8a60231-8d92-4eb6-9496-0d4a599a29b8",
+        "text": "當輸入為「事假，申請時間至少提前 3 天」時，輸出必須判定通過，且不附退回原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆事假提前 3 天申請，判定通過，且未附加退回原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**通過**：符合事假需提前 3 天申請的規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b034dea1-734c-4ed7-b456-182a16d7f220",
+        "text": "當輸入為「病假，當天申請，天數不超過 2 天」時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆病假於當天申請且為 2 天，判定通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**通過**：病假可當天申請，且本案未超過 2 天，不需附證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c301152f-5637-4c37-9e00-bfceb39b5d4d",
+        "text": "當輸入為「病假，天數超過 2 天且有附證明」時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆病假超過 2 天且已附證明，判定通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**通過**：病假超過 2 天時需附證明，本案已附證明，符合規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "94db1e36-27ba-4095-9aed-1d2586290511",
+        "text": "當輸入為「病假，天數超過 2 天但未附證明」時，輸出必須判定退回，且原因明確寫出「病假超過 2 天需附證明」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第 5 筆雖正確判定退回並說明未附證明，但未明確寫出要求的「病假超過 2 天需附證明」；輸出使用的是「病假超過 2 天必須附證明」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**退回**：病假超過 2 天必須附證明，但本案未附證明，不符合規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f8ffc8a8-952c-42d2-97de-8e202aad57b4",
+        "text": "當輸入不符合任一規則時，輸出必須寫明退回原因，不得只寫「不通過」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆不符合規則的申請均判定退回，且各自說明了提前申請天數不足或未附證明的具體原因，並非只寫不通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**退回**：事假需提前 3 天申請，但本案申請日距請假日僅 2 天，不符合規則。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**退回**：病假超過 2 天必須附證明，但本案未附證明，不符合規則。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18954 input and 672 output tokens on gpt-5.4-mini; reported cost $0.0191 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

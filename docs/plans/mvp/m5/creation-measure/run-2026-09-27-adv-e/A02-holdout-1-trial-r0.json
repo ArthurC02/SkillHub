@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "請審核以下請假申請，逐筆寫出通過或退回，退回的要寫原因：\n1. 王小明，事假，10/1 申請，請 10/4 一天。\n2. 李小華，事假，10/2 申請，請 10/4 一天。\n3. 陳美玲，病假，10/5 當天申請，請 10/5 到 10/6 兩天，沒有附證明。\n4. 林志強，病假，10/7 當天申請，請 10/7 到 10/9 三天，沒有附證明。\n5. 周雅婷，病假，10/10 當天申請，請 10/10 到 10/12 三天，已附醫師證明。",
+  "acceptance_criteria": [
+    {
+      "text": "王小明（提前 3 天申請的事假）被判定通過。"
+    },
+    {
+      "text": "李小華（只提前 2 天申請的事假）被判定退回，原因提到事假需要提前 3 天申請。"
+    },
+    {
+      "text": "陳美玲（2 天病假、沒有附證明）被判定通過。"
+    },
+    {
+      "text": "林志強（3 天病假、沒有附證明）被判定退回，原因提到病假超過 2 天要附證明。"
+    },
+    {
+      "text": "周雅婷（3 天病假、已附證明）被判定通過。"
+    }
+  ],
+  "final_output": "1. 王小明：**通過**\n2. 李小華：**退回**  \n   原因：事假需至少提前 3 天申請，10/2 申請 10/4，未達 3 天前。\n3. 陳美玲：**通過**\n4. 林志強：**退回**  \n   原因：病假超過 2 天需附證明，未附醫師證明。\n5. 周雅婷：**通過**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "05e2e7dc-776e-4194-b750-f8d832c8fabc",
+    "run_id": "58b11903-c184-41f4-90f7-defb175d0cd4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項審核結果均符合驗收標準；兩筆退回均提供了符合規則的明確原因。",
+    "criterion_results": [
+      {
+        "criterion_id": "bfd76152-dc3b-4923-bca9-adc531353422",
+        "text": "王小明（提前 3 天申請的事假）被判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將王小明判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 王小明：**通過**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "69349ce7-dbdd-457b-9dce-6c5ecc4a6f51",
+        "text": "李小華（只提前 2 天申請的事假）被判定退回，原因提到事假需要提前 3 天申請。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將李小華判定為退回，且明確說明事假須至少提前 3 天申請。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 李小華：**退回**  \n   原因：事假需至少提前 3 天申請，10/2 申請 10/4，未達 3 天前。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "58ac7899-b175-4afe-8664-c0b2a4ff004b",
+        "text": "陳美玲（2 天病假、沒有附證明）被判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將陳美玲判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 陳美玲：**通過**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8d95bae8-46b9-42db-826b-b82337a5318e",
+        "text": "林志強（3 天病假、沒有附證明）被判定退回，原因提到病假超過 2 天要附證明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將林志強判定為退回，且原因說明病假超過 2 天需附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 林志強：**退回**  \n   原因：病假超過 2 天需附證明，未附醫師證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f46fc91a-0505-4d4f-8d06-5f0c20f07e33",
+        "text": "周雅婷（3 天病假、已附證明）被判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將周雅婷判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 周雅婷：**通過**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18854 input and 712 output tokens on gpt-5.4-mini; reported cost $0.0192 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

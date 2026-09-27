@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆這位客人的抱怨：\n1.「我昨天點的餐等了快一小時才送到，打開後還是冷的，真的很失望。」\n2.「你們一直說會改善，但每次都一樣，我已經不想再等了。」\n3.「如果可以，請幫我直接處理，不要再推來推去。」\n\n請輸出一則可直接發送的繁體中文回覆，語氣要禮貌、同理、專業，不要捏造退款或補償承諾。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入只包含客人的抱怨內容時，輸出會是一則完整的繁體中文回覆，而不是要求補資料。"
+    },
+    {
+      "text": "當抱怨內容帶有負面情緒時，輸出會先表達理解或歉意，再提出回應。"
+    },
+    {
+      "text": "當抱怨內容涉及問題處理時，輸出會包含可執行的後續方向，例如請對方提供訂單資訊、表示會協助確認，或提出下一步聯繫方式。"
+    },
+    {
+      "text": "當輸入未提供店家政策或補償資訊時，輸出不會捏造退款、折扣或賠償承諾。"
+    },
+    {
+      "text": "當輸入未指定語氣時，輸出會維持禮貌、同理、專業的客服口吻。"
+    },
+    {
+      "text": "當輸入內容已明確要求特定語氣時，輸出會符合該語氣且仍保持可直接發送。"
+    }
+  ],
+  "final_output": "非常抱歉讓您遇到這樣的情況。您反映的等待過久、餐點送達時已經冷掉，以及多次反映卻未見改善，我們都非常重視，也理解這讓您感到失望和不耐煩。\n\n這次我們會直接協助您處理，不再讓您反覆轉達。麻煩您提供訂單編號、下單電話，以及大約的送達時間或餐點品項，我們會立即幫您確認並進一步跟進。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cca91af0-6c12-4d86-a5dd-6833634ca001",
+    "run_id": "5163df11-ef07-41dc-9af4-947b490ac906",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整使用繁體中文，先致歉並表達理解，接著提出提供訂單資訊以供確認與跟進的可執行步驟。內容維持禮貌、同理與專業，且未捏造任何退款或補償承諾。",
+    "criterion_results": [
+      {
+        "criterion_id": "6693337c-9dd1-4a69-b254-66dac1113c83",
+        "text": "當輸入只包含客人的抱怨內容時，輸出會是一則完整的繁體中文回覆，而不是要求補資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一則完整的繁體中文客服回覆，直接針對客訴處理，未要求使用者補充設定或改為提問。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉讓您遇到這樣的情況。您反映的等待過久、餐點送達時已經冷掉，以及多次反映卻未見改善，我們都非常重視，也理解這讓您感到失望和不耐煩。\n\n這次我們會直接協助您處理，不再讓您反覆轉達。麻煩您提供訂單編號、下單電話，以及大約的送達時間或餐點品項，我們會立即幫您確認並進一步跟進。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "25d4e7d8-eefb-4bd1-8935-19597fc063b4",
+        "text": "當抱怨內容帶有負面情緒時，輸出會先表達理解或歉意，再提出回應。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆開頭先致歉並理解客人的失望與不耐煩，之後才說明處理方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉讓您遇到這樣的情況。您反映的等待過久、餐點送達時已經冷掉，以及多次反映卻未見改善，我們都非常重視，也理解這讓您感到失望和不耐煩。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4be17c0-f7d8-420c-98d3-1eb55ccb4a68",
+        "text": "當抱怨內容涉及問題處理時，輸出會包含可執行的後續方向，例如請對方提供訂單資訊、表示會協助確認，或提出下一步聯繫方式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提出明確後續方向：請客人提供訂單及送達資訊，並表示會確認與跟進。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "麻煩您提供訂單編號、下單電話，以及大約的送達時間或餐點品項，我們會立即幫您確認並進一步跟進。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "512acea6-2420-4187-81a9-5516a3bbd14d",
+        "text": "當輸入未提供店家政策或補償資訊時，輸出不會捏造退款、折扣或賠償承諾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未承諾退款、折扣、賠償或其他未提供政策支持的補償。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這次我們會直接協助您處理，不再讓您反覆轉達。麻煩您提供訂單編號、下單電話，以及大約的送達時間或餐點品項，我們會立即幫您確認並進一步跟進。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e671896a-b169-4c43-81b1-543c69df2c3e",
+        "text": "當輸入未指定語氣時，輸出會維持禮貌、同理、專業的客服口吻。",
+        "result": "passed",
+        "source": "model",
+        "reason": "措辭包含致歉、理解、重視與具體處理說明，維持禮貌、同理且專業的客服口吻。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉讓您遇到這樣的情況。您反映的等待過久、餐點送達時已經冷掉，以及多次反映卻未見改善，我們都非常重視，也理解這讓您感到失望和不耐煩。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1dee6377-df74-4ab3-adaf-220effdb4aa0",
+        "text": "當輸入內容已明確要求特定語氣時，輸出會符合該語氣且仍保持可直接發送。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸入要求禮貌、同理、專業且可直接發送；回覆符合該口吻，並可直接用於聯繫客人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "非常抱歉讓您遇到這樣的情況。您反映的等待過久、餐點送達時已經冷掉，以及多次反映卻未見改善，我們都非常重視，也理解這讓您感到失望和不耐煩。\n\n這次我們會直接協助您處理，不再讓您反覆轉達。麻煩您提供訂單編號、下單電話，以及大約的送達時間或餐點品項，我們會立即幫您確認並進一步跟進。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19032 input and 661 output tokens on gpt-5.4-mini; reported cost $0.0191 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

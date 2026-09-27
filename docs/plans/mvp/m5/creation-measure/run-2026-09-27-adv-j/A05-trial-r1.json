@@ -1,0 +1,144 @@
+{
+  "round": 1,
+  "sample_input": "請追蹤以下三家競爭對手官網的價格變動，若有變動請通知我：\nhttps://competitor-a.example.com/pricing\nhttps://competitor-b.example.com/store/item-123\nhttps://competitor-c.example.com/products/pro-plan",
+  "acceptance_criteria": [
+    {
+      "text": "輸入三個公開官網價格頁網址時，Skill 會把三個來源都列入追蹤範圍。"
+    },
+    {
+      "text": "當同一頁面前後價格不同時，輸出會明確指出哪一個競品、哪一個價格項目、由多少變成多少。"
+    },
+    {
+      "text": "當三個來源都沒有價格變動時，輸出會明確表示未偵測到變動。"
+    },
+    {
+      "text": "當某個來源無法取得公開頁面內容時，輸出會把該來源列為無法追蹤的來源，而不是偽造價格結果。"
+    },
+    {
+      "text": "輸出內容會是可直接通知使用者的摘要，而不是只有原始抓取內容。"
+    }
+  ],
+  "final_output": "**追蹤摘要（可直接作為通知內容）**\n\n- **tracked sources**\n  1. https://competitor-a.example.com/pricing\n  2. https://competitor-b.example.com/store/item-123\n  3. https://competitor-c.example.com/products/pro-plan\n\n- **baseline status**\n  - **baseline not given**：目前沒有可用的前次價格基準可供比較。\n\n- **current fetch status**\n  - 三個來源目前都**無法擷取**：系統無法驗證這些網域的安全性，頁面內容未能抓取。\n\n- **changed prices**\n  - **none detected**\n  - 原因：未取得可讀取的價格頁內容，無法做前後比較。\n\n- **unchanged sources**\n  - 無法確認，因為頁面未成功擷取。\n\n- **unreachable sources**\n  - competitor-a.example.com/pricing\n  - competitor-b.example.com/store/item-123\n  - competitor-c.example.com/products/pro-plan\n\n- **notification delivery / cadence**\n  - **未配置**\n  - 本次僅產出可貼用的通知摘要；實際發送與排程需由你的現有監控/通知機制處理。\n\n**結論**\n- 目前沒有可確認的價格變動。\n- 三個頁面都暫時不可抓取，因此無法建立價格基準或進行變動偵測。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2aa336b1-59de-4c59-aa68-3e7284aea1d7",
+    "run_id": "f5e7e6bb-0b43-43b7-9ec8-72f58941d0a7",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次已將三個網址納入追蹤嘗試，並在全部擷取失敗時如實列為無法追蹤，且提供通知可用摘要。由於沒有成功取得價格或前次基準，無法驗證實際價格變動的前後項目呈現，也無法驗證三個來源成功比對後的無變動訊息。",
+    "criterion_results": [
+      {
+        "criterion_id": "894f20d7-cd3a-4948-b724-7cb4132e20b1",
+        "text": "輸入三個公開官網價格頁網址時，Skill 會把三個來源都列入追蹤範圍。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將使用者提供的三個網址全部列於 tracked sources，且三個網址亦分別被嘗試擷取。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **tracked sources**\n  1. https://competitor-a.example.com/pricing\n  2. https://competitor-b.example.com/store/item-123\n  3. https://competitor-c.example.com/products/pro-plan",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4ea72e03-65a2-4443-9284-39834017f846",
+        "text": "當同一頁面前後價格不同時，輸出會明確指出哪一個競品、哪一個價格項目、由多少變成多少。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次沒有取得任何頁面內容或前次價格基準，沒有出現可驗證的同頁價格變動案例，因此無法判定遇到變動時是否會列出競品、項目及變動前後價格。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "98139c49-c463-41e5-be50-29c125a8772a",
+        "text": "當三個來源都沒有價格變動時，輸出會明確表示未偵測到變動。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "三個來源均無法擷取，輸出明確表示無法確認未變動；這不是三個來源皆成功比對且沒有價格變動的情況。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "5ca37f33-eec7-426f-a01d-73b6010196cc",
+        "text": "當某個來源無法取得公開頁面內容時，輸出會把該來源列為無法追蹤的來源，而不是偽造價格結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個無法取得內容的來源被列入 unreachable sources，並說明無法進行比較，沒有捏造價格結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **unreachable sources**\n  - competitor-a.example.com/pricing\n  - competitor-b.example.com/store/item-123\n  - competitor-c.example.com/products/pro-plan",
+            "available": true
+          },
+          {
+            "kind": "trace_event",
+            "excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"url\": \"https://competitor-a.example.com/pricing\", \"prompt\": \"Extract the visible pricing information on this page. Return the plan/item names and prices exactly as shown, and say if the page is inaccessible or does not expose pricing.\"}, \"tool_name\": \"WebFetch\", \"truncated\": false, \"duration_ms\": 32, \"invocation_id\": \"call_dfR8sRWrQhqm34CLurpSP3RH\", \"result_summary\": \"Unable to verify if domain competitor-a.example.com is safe to fetch. This may be due to network restrictions or enterprise security policies blocking claude.ai.\"}",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "23c26304-2d57-4484-ab18-2cebdc1f9c9b",
+        "text": "輸出內容會是可直接通知使用者的摘要，而不是只有原始抓取內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「追蹤摘要」組織來源、基準、擷取狀態、無法追蹤來源及結論，並明示可直接作為通知內容，而非僅提供原始抓取資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**追蹤摘要（可直接作為通知內容）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**結論**\n- 目前沒有可確認的價格變動。\n- 三個頁面都暫時不可抓取，因此無法建立價格基準或進行變動偵測。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3783 input and 2619 output tokens on gpt-5.4-mini; reported cost $0.0133 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

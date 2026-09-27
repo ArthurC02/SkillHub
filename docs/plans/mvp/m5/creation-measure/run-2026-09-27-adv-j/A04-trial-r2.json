@@ -1,0 +1,150 @@
+{
+  "round": 2,
+  "sample_input": "請幫我產生每週五下午要自動寄給全部門並同步公告到 Slack 的週報內容。以下是本週業績數字：A 部門 128 萬、B 部門 96 萬、C 部門 143 萬；收件人是 all-dept@example.com；Slack 頻道是 #sales-updates。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含一份本週業績數字與部門收件人清單時，技能會產生一份可同時用於 Email 與 Slack 的週報內容。"
+    },
+    {
+      "text": "當輸入指定「每週五下午」觸發時，技能會明確輸出週五下午的排程要求，不改成其他日期或時段。"
+    },
+    {
+      "text": "當輸入要求寄給「全部門」時，技能會在輸出中保留整個部門作為收件對象，而不是只列出單一個人。"
+    },
+    {
+      "text": "當輸入要求同時 Slack 公告時，技能會輸出包含 Slack 公告內容的版本，且內容與 Email 主旨/內文一致或明確對應。"
+    },
+    {
+      "text": "當輸入只有業績數字但沒有收件人或 Slack 頻道資訊時，技能會指出需要補齊發布目的地資訊，不能假設具體地址或頻道。"
+    }
+  ],
+  "final_output": "- **Email subject**  \n  【週報】本週業績更新｜A 部門 128 萬、B 部門 96 萬、C 部門 143 萬\n\n- **Email body**  \n  各位同仁好，  \n  這是本週的業績更新：\n\n  - A 部門：128 萬  \n  - B 部門：96 萬  \n  - C 部門：143 萬  \n\n  **本週總業績：367 萬**\n\n  本週以 C 部門表現最佳，A 部門穩定成長，B 部門持續推進中。感謝大家本週的努力與支持，請各部門持續保持動能，朝下週目標前進。\n\n  以上週報同步寄送至：all-dept@example.com\n\n  謝謝。  \n\n- **Slack message**  \n  :bar_chart: **本週業績更新**\n\n  - A 部門：128 萬  \n  - B 部門：96 萬  \n  - C 部門：143 萬  \n\n  **本週總業績：367 萬**\n\n  本週由 C 部門表現最佳，A 部門維持穩定，B 部門持續推進。感謝大家本週的努力，請持續保持節奏，迎接下週目標。  \n  發布頻道：#sales-updates\n\n- **Timing note**  \n  你提供的是「每週五下午」但未指定精確時間，因此我採用常見預設 **每週五下午 3:00 PM**。實際自動寄送／排程仍需由你設定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "89ab3341-1b40-4f3d-83d1-825fa7d1fa0b",
+    "run_id": "50505967-ae3f-4051-a0f8-a273c2ee0ffb",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次有提供發布目的地的情境下，已產生 Email 與 Slack 週報、保留全部門收件群組、指定 Slack 頻道，並明確輸出週五下午排程。對於未提供收件人或 Slack 頻道時是否會要求補齊資訊，本次證據無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "939c72a4-9c19-4bba-8b48-eba5625e8ad1",
+        "text": "當輸入包含一份本週業績數字與部門收件人清單時，技能會產生一份可同時用於 Email 與 Slack 的週報內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "已產生可用於 Email 的主旨與內文，以及包含相同業績資訊的 Slack 公告版本。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Email subject**  \n  【週報】本週業績更新｜A 部門 128 萬、B 部門 96 萬、C 部門 143 萬",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Slack message**  \n  :bar_chart: **本週業績更新**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "18f703cb-4591-4133-8613-2cd3755f4d36",
+        "text": "當輸入指定「每週五下午」觸發時，技能會明確輸出週五下午的排程要求，不改成其他日期或時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確保留每週五下午的排程要求，並將其具體化為每週五下午 3:00 PM。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "你提供的是「每週五下午」但未指定精確時間，因此我採用常見預設 **每週五下午 3:00 PM**。實際自動寄送／排程仍需由你設定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6a05e536-7f53-436f-9583-8ed63938adfd",
+        "text": "當輸入要求寄給「全部門」時，技能會在輸出中保留整個部門作為收件對象，而不是只列出單一個人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將週報寄送對象保留為全部門的群組地址 all-dept@example.com，未改列為單一個人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以上週報同步寄送至：all-dept@example.com",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a033eec1-3418-4b04-bd7e-94d0bca3df92",
+        "text": "當輸入要求同時 Slack 公告時，技能會輸出包含 Slack 公告內容的版本，且內容與 Email 主旨/內文一致或明確對應。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含指定 Slack 頻道的公告內容，且其業績項目與總業績明確對應 Email 內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Slack message**  \n  :bar_chart: **本週業績更新**\n\n  - A 部門：128 萬  \n  - B 部門：96 萬  \n  - C 部門：143 萬  \n\n  **本週總業績：367 萬**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "發布頻道：#sales-updates",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b1e0b2a-fb73-4cf4-bf82-200c1b48481e",
+        "text": "當輸入只有業績數字但沒有收件人或 Slack 頻道資訊時，技能會指出需要補齊發布目的地資訊，不能假設具體地址或頻道。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入同時提供了收件人及 Slack 頻道，沒有缺少發布目的地資訊的情境可供判定。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19274 input and 1219 output tokens on gpt-5.4-mini; reported cost $0.0217 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

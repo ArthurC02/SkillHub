@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把以下英文客戶回饋翻成繁體中文，再摘要成三點：\nThe app is easy to use, but it crashes when I upload photos. I like the design and the fast response from support, though I wish dark mode were available. Overall, it solves most of my workflow needs.",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段英文客戶回饋時，輸出會先給出繁體中文翻譯，再給出三點摘要。"
+    },
+    {
+      "text": "翻譯內容會使用繁體中文，且不改寫成簡體中文。"
+    },
+    {
+      "text": "摘要部分會固定只有三點，且每點都是原文回饋的重點。"
+    },
+    {
+      "text": "輸出不會加入原文沒有提到的新事實或推測。"
+    },
+    {
+      "text": "當輸入包含多句英文回饋時，結果仍會完整翻譯並濃縮成三點摘要。"
+    }
+  ],
+  "final_output": "### 翻譯\n這個應用程式很容易使用，但我上傳照片時會當機。我喜歡它的設計和客服快速的回覆，不過我希望它能提供深色模式。整體來說，它解決了我大部分的工作流程需求。\n\n### 三點摘要\n1. 介面容易使用，但上傳照片時會當機。\n2. 使用者喜歡設計與客服的快速回應，但希望新增深色模式。\n3. 整體而言，這個應用程式已滿足大部分工作流程需求。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "99483387-09e5-4619-8466-1c50e35ab87f",
+    "run_id": "a74ba800-54e0-4d74-8e24-a22875851480",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆先完整以繁體中文翻譯多句英文回饋，再以恰好三點摘要其主要正負面意見與整體評價。內容忠於原文，未見新增事實或推測。",
+    "criterion_results": [
+      {
+        "criterion_id": "97cc2911-e4e1-4e22-9f88-0411c704dbe8",
+        "text": "在輸入一段英文客戶回饋時，輸出會先給出繁體中文翻譯，再給出三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出先提供「翻譯」段落，後提供「三點摘要」段落。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 翻譯\n這個應用程式很容易使用，但我上傳照片時會當機。我喜歡它的設計和客服快速的回覆，不過我希望它能提供深色模式。整體來說，它解決了我大部分的工作流程需求。\n\n### 三點摘要\n1. 介面容易使用，但上傳照片時會當機。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cccb5bbd-f728-4422-a8e0-3a7ef5742398",
+        "text": "翻譯內容會使用繁體中文，且不改寫成簡體中文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯使用繁體中文用字，例如「這個」、「應用程式」、「當機」、「整體來說」，未改寫為簡體中文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個應用程式很容易使用，但我上傳照片時會當機。我喜歡它的設計和客服快速的回覆，不過我希望它能提供深色模式。整體來說，它解決了我大部分的工作流程需求。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "24fbf903-76cb-4109-9910-996ad8874f42",
+        "text": "摘要部分會固定只有三點，且每點都是原文回饋的重點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要恰有三點，分別涵蓋易用性與當機問題、設計與客服及深色模式需求、以及整體工作流程滿足程度。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 介面容易使用，但上傳照片時會當機。\n2. 使用者喜歡設計與客服的快速回應，但希望新增深色模式。\n3. 整體而言，這個應用程式已滿足大部分工作流程需求。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e154fe89-56bb-43ff-bb54-86c1536da666",
+        "text": "輸出不會加入原文沒有提到的新事實或推測。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯與摘要僅重述原文的易用性、上傳照片當機、設計、客服回應、深色模式願望與工作流程需求，未見新增事實或推測。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個應用程式很容易使用，但我上傳照片時會當機。我喜歡它的設計和客服快速的回覆，不過我希望它能提供深色模式。整體來說，它解決了我大部分的工作流程需求。\n\n### 三點摘要\n1. 介面容易使用，但上傳照片時會當機。\n2. 使用者喜歡設計與客服的快速回應，但希望新增深色模式。\n3. 整體而言，這個應用程式已滿足大部分工作流程需求。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a01786b1-f977-48df-9a56-b1a8601a8b6c",
+        "text": "當輸入包含多句英文回饋時，結果仍會完整翻譯並濃縮成三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對包含多句內容的回饋，翻譯保留了所有原文要點，並濃縮為三點摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這個應用程式很容易使用，但我上傳照片時會當機。我喜歡它的設計和客服快速的回覆，不過我希望它能提供深色模式。整體來說，它解決了我大部分的工作流程需求。\n\n### 三點摘要\n1. 介面容易使用，但上傳照片時會當機。\n2. 使用者喜歡設計與客服的快速回應，但希望新增深色模式。\n3. 整體而言，這個應用程式已滿足大部分工作流程需求。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2681 input and 259 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這篇文章摘要成 50 字以內，而且要保留文中所有數字與人名：\n2019 年，王志明與林佳慧在台中創立綠光能源，第一年只有 12 名員工。2021 年公司取得 3.5 億元 B 輪融資，由陳建宏領投。2023 年營收成長 48%，在全台設立 7 座儲能站，服務超過 1,200 家企業客戶。黃淑芬在 2024 年接任營運長後，把維修回應時間從 72 小時縮短到 24 小時，客戶續約率提升到 91%。公司預計 2025 年再募集 5 億元，在 60 天內完成南部 3 座新站，並把員工擴增到 300 人。",
+  "acceptance_criteria": [
+    {
+      "text": "摘要本文不超過 50 字。"
+    },
+    {
+      "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。"
+    },
+    {
+      "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。"
+    }
+  ],
+  "final_output": "2019王志明林佳慧台中創綠光能源(12人)；2021陳建宏領投3.5億B輪；2023營收+48%、7站、1200客；2024黃淑芬72→24h、續約91%；2025募5億、60天3站、300人",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fa3490c8-df68-40f8-bdde-49e495e05d0b",
+    "run_id": "ec28d28c-62ae-42b4-921c-988d244f4be8",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "內容數字與人名大致忠實於原文，但摘要超過 50 字，且未說明在字數限制下的不可兼得與取捨。",
+    "criterion_results": [
+      {
+        "criterion_id": "34f880b1-f369-48a9-98ba-a62ba6da8e3c",
+        "text": "摘要本文不超過 50 字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出內容明顯超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧台中創綠光能源(12人)；2021陳建宏領投3.5億B輪；2023營收+48%、7站、1200客；2024黃淑芬72→24h、續約91%；2025募5億、60天3站、300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4086abe8-e996-4b03-bd9f-7a2d1f52e742",
+        "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未明確說明無法在 50 字內保留全部數字與人名，也未說明任何取捨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧台中創綠光能源(12人)；2021陳建宏領投3.5億B輪；2023營收+48%、7站、1200客；2024黃淑芬72→24h、續約91%；2025募5億、60天3站、300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38a27bf9-ce11-4ea7-be8e-894b3ba07ce3",
+        "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要中的年份、金額、比例、站數、客戶數、時間、人數與人名皆可對應原文；未見原文以外的數字或人名。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧台中創綠光能源(12人)；2021陳建宏領投3.5億B輪；2023營收+48%、7站、1200客；2024黃淑芬72→24h、續約91%；2025募5億、60天3站、300人",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18813 input and 1434 output tokens on gpt-5.4-mini; reported cost $0.0225 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

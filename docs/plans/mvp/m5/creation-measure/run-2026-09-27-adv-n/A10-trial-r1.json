@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將下列文章摘要成 50 字以內，並保留所有數字與人名：\n2024 年 3 月，張偉在台北宣布新計畫，預計投入 1200 萬元，並與李娜合作推動 5 個城市試點。該計畫在 6 個月內完成第一階段，張偉表示這將改善公共服務效率，李娜則負責資料分析與回饋機制。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一篇中文文章後，輸出一段 50 字以內的中文摘要。"
+    },
+    {
+      "text": "摘要保留原文出現的所有數字。"
+    },
+    {
+      "text": "摘要保留原文出現的所有人名。"
+    },
+    {
+      "text": "若原文同時包含多個數字與人名，摘要仍需全部保留。"
+    },
+    {
+      "text": "輸出內容只包含摘要，不額外加上說明、標題或條列。"
+    }
+  ],
+  "final_output": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1aa779f0-9a49-412d-b27e-9eeaeb3fc45d",
+    "run_id": "44063e43-bd39-4d0a-9797-6b8f3299f73b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出符合 50 字內中文摘要要求，並完整保留原文所有數字與人名，且沒有額外內容。",
+    "criterion_results": [
+      {
+        "criterion_id": "1c79364a-a6c6-4731-87e3-96fec6c76893",
+        "text": "輸入一篇中文文章後，輸出一段 50 字以內的中文摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單段中文摘要，且共 47 字（含數字與標點），少於 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7fd5222a-28ea-4611-9bf0-3f2aa638c62e",
+        "text": "摘要保留原文出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文全部數字：2024、3、1200、5、6。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf92c909-c097-4a07-8755-d781d200d773",
+        "text": "摘要保留原文出現的所有人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文所有人名：張偉與李娜。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32844f47-1be1-49ae-b211-7bf0de62bc81",
+        "text": "若原文同時包含多個數字與人名，摘要仍需全部保留。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文同時含有多個數字與兩位人名，摘要仍完整保留所有數字及張偉、李娜。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b421cf6-d40e-4bce-a2fc-3a5eadccf7c5",
+        "text": "輸出內容只包含摘要，不額外加上說明、標題或條列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅含摘要句，未加入標題、說明或條列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年3月張偉宣布新計畫，投入1200萬元，與李娜合作推動5個城市試點，6個月完成首階段。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2576 input and 721 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

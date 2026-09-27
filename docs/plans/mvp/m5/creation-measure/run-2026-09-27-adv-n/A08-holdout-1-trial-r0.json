@@ -1,0 +1,146 @@
+{
+  "round": 0,
+  "sample_input": "I ordered the standing desk on May 3rd. The delivery was two weeks late and nobody answered my emails. When it finally arrived, one leg was scratched, but assembly was easy and the motor is quiet. I'd buy again if shipping improves.",
+  "acceptance_criteria": [
+    {
+      "text": "輸出包含這段回饋的繁體中文翻譯。"
+    },
+    {
+      "text": "輸出有一份剛好三點的摘要。"
+    },
+    {
+      "text": "摘要提到配送晚了兩週而且寄信沒有人回。"
+    },
+    {
+      "text": "摘要提到有一支桌腳刮傷。"
+    },
+    {
+      "text": "翻譯與摘要都使用繁體中文，沒有簡體字。"
+    }
+  ],
+  "final_output": "**翻譯：**\n\n我在 5 月 3 日訂購了這張升降桌。送貨晚了兩週，而且沒有人回覆我的電子郵件。最後送到時，其中一隻桌腳有刮痕，不過組裝很容易，馬達也很安靜。如果運送改善了，我還會再買。\n\n**摘要：**\n- 訂單在 5 月 3 日下單，但實際配送晚了兩週。  \n- 多次寄出電子郵件都沒有得到回覆，且到貨時其中一隻桌腳有刮痕。  \n- 優點是組裝容易、馬達安靜；若運送改善，仍願意再次購買。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7f58352a-b24e-40d1-a2a7-3f4a9e60d673",
+    "run_id": "8c25a12c-8cd8-477b-a751-9bd1870c671b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆提供完整的繁體中文翻譯，以及恰好三點的繁體中文摘要。摘要包含兩週配送延誤、電子郵件未回覆與桌腳刮痕等必要資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "f8326670-aab5-4405-abc3-0fad2bb4cd5b",
+        "text": "輸出包含這段回饋的繁體中文翻譯。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了完整的繁體中文回饋翻譯，涵蓋下單日期、延遲配送、未回信、桌腳刮痕、組裝、馬達及再次購買意願。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我在 5 月 3 日訂購了這張升降桌。送貨晚了兩週，而且沒有人回覆我的電子郵件。最後送到時，其中一隻桌腳有刮痕，不過組裝很容易，馬達也很安靜。如果運送改善了，我還會再買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b99db4f6-3003-4be0-8d71-33f4636d10e1",
+        "text": "輸出有一份剛好三點的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要區塊包含剛好三個條列點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 訂單在 5 月 3 日下單，但實際配送晚了兩週。  \n- 多次寄出電子郵件都沒有得到回覆，且到貨時其中一隻桌腳有刮痕。  \n- 優點是組裝容易、馬達安靜；若運送改善，仍願意再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f682f649-aac5-4184-b0df-e434d9557abb",
+        "text": "摘要提到配送晚了兩週而且寄信沒有人回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要明確提及配送晚了兩週，並提及寄出電子郵件未獲回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 訂單在 5 月 3 日下單，但實際配送晚了兩週。  \n- 多次寄出電子郵件都沒有得到回覆，且到貨時其中一隻桌腳有刮痕。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "80cca059-dc6b-44fd-ad92-8e7ad9557d94",
+        "text": "摘要提到有一支桌腳刮傷。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要提到到貨時其中一隻桌腳有刮痕。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 多次寄出電子郵件都沒有得到回覆，且到貨時其中一隻桌腳有刮痕。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d884f5eb-1d1d-4ed5-b34d-c742eacfc3f8",
+        "text": "翻譯與摘要都使用繁體中文，沒有簡體字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "翻譯與摘要均以繁體中文撰寫，所引文字未見簡體字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我在 5 月 3 日訂購了這張升降桌。送貨晚了兩週，而且沒有人回覆我的電子郵件。最後送到時，其中一隻桌腳有刮痕，不過組裝很容易，馬達也很安靜。如果運送改善了，我還會再買。\n\n**摘要：**\n- 訂單在 5 月 3 日下單，但實際配送晚了兩週。  \n- 多次寄出電子郵件都沒有得到回覆，且到貨時其中一隻桌腳有刮痕。  \n- 優點是組裝容易、馬達安靜；若運送改善，仍願意再次購買。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19164 input and 535 output tokens on gpt-5.4-mini; reported cost $0.0185 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

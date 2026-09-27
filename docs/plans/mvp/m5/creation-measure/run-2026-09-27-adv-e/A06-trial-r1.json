@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇自我介紹。\n\n我是林子涵，24歲，住在台中，畢業於逢甲大學資訊管理系，目前在一家新創公司擔任產品助理。我個性細心、負責，也喜歡學習新工具，平常會做簡單的UI設計和整理需求文件。",
+  "acceptance_criteria": [
+    {
+      "text": "產出內容是中文自我介紹，而不是大綱或提綱。"
+    },
+    {
+      "text": "內容是一篇完整可直接使用的文章。"
+    },
+    {
+      "text": "文章會自然補上未提供但必要的通用資訊，不會追問使用者補資料。"
+    },
+    {
+      "text": "文章語氣正式、通順，適合一般自介用途。"
+    },
+    {
+      "text": "輸出不包含多版本比較或額外分析。"
+    }
+  ],
+  "final_output": "大家好，我是林子涵，今年24歲，住在台中，畢業於逢甲大學資訊管理系。目前在一家新創公司擔任產品助理，主要協助整理需求文件、與團隊溝通產品內容，也會負責一些簡單的UI設計。我的個性細心、負責，做事時習慣把細節確認清楚，讓整體流程更順暢。平常我也很喜歡學習新的工具與方法，持續提升自己的工作效率與專業能力。未來希望能在產品相關領域中持續成長，累積更多實務經驗，並為團隊帶來實際的幫助。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7d125ea1-5946-4d25-8b38-39ad70cfe669",
+    "run_id": "0bef99d9-c29b-4853-bbfd-3234f924bd59",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件均已滿足：產出為單一、完整且可直接使用的正式中文自我介紹，並自然補足通用職涯資訊，未包含追問、多版本或額外分析。",
+    "criterion_results": [
+      {
+        "criterion_id": "d0a4cfbc-fb90-4f42-ad27-c1c957882b96",
+        "text": "產出內容是中文自我介紹，而不是大綱或提綱。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為以第一人稱撰寫的中文自我介紹正文，而非條列式大綱或提綱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是林子涵，今年24歲，住在台中，畢業於逢甲大學資訊管理系。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6c7e194-4070-4e47-a331-eabc6cee4771",
+        "text": "內容是一篇完整可直接使用的文章。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文章包含背景、現職與工作內容、個人特質、學習態度及未來目標，結構完整且可直接使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前在一家新創公司擔任產品助理，主要協助整理需求文件、與團隊溝通產品內容，也會負責一些簡單的UI設計。我的個性細心、負責，做事時習慣把細節確認清楚，讓整體流程更順暢。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9bc6c1a5-3bca-4b62-b623-90c828e1df6b",
+        "text": "文章會自然補上未提供但必要的通用資訊，不會追問使用者補資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未追問使用者補充資料，並自然加入通用的職涯目標與工作態度，使自介完整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "未來希望能在產品相關領域中持續成長，累積更多實務經驗，並為團隊帶來實際的幫助。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a13ddde3-a203-4199-ad70-38c61561171d",
+        "text": "文章語氣正式、通順，適合一般自介用途。",
+        "result": "passed",
+        "source": "model",
+        "reason": "措辭正式、語句通順，內容適合一般求職或面試自我介紹。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "平常我也很喜歡學習新的工具與方法，持續提升自己的工作效率與專業能力。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6f50219-e096-447f-91c3-fd3b396aa5f9",
+        "text": "輸出不包含多版本比較或額外分析。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅提供單一自我介紹文章，沒有多版本比較、說明或額外分析。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是林子涵，今年24歲，住在台中，畢業於逢甲大學資訊管理系。目前在一家新創公司擔任產品助理，主要協助整理需求文件、與團隊溝通產品內容，也會負責一些簡單的UI設計。我的個性細心、負責，做事時習慣把細節確認清楚，讓整體流程更順暢。平常我也很喜歡學習新的工具與方法，持續提升自己的工作效率與專業能力。未來希望能在產品相關領域中持續成長，累積更多實務經驗，並為團隊帶來實際的幫助。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18727 input and 507 output tokens on gpt-5.4-mini; reported cost $0.0181 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "請比較以下三家競爭對手官網的價格是否有變動，並列出變動摘要。\n\n1. https://example.com/competitor-a\n   商品 A：NT$1,200\n   商品 B：NT$980\n\n2. https://example.com/competitor-b\n   商品 A：NT$1,150\n   商品 C：NT$760\n\n3. https://example.com/competitor-c\n   商品 D：NT$2,300\n   商品 E：NT$1,050\n\n請依這三個網址的公開頁面內容，判斷各自是否有價格變動，並整理成對照摘要。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入三個競爭對手官網網址與對應價格頁面時，輸出會逐一比較三家網站的價格。"
+    },
+    {
+      "text": "當任一網站價格與前次記錄不同時，輸出會明確標示該網站的品項、舊價格、新價格與變動幅度。"
+    },
+    {
+      "text": "當三家網站都沒有價格變動時，輸出會明確寫出未偵測到變動。"
+    },
+    {
+      "text": "當輸入包含三家網站中的部分或全部商品價格資訊時，輸出仍會以可讀格式整理成摘要，而不是只回傳原始頁面內容。"
+    },
+    {
+      "text": "當某網站的價格無法從公開頁面直接取得時，輸出會明確指出無法比較該網站的原因。"
+    }
+  ],
+  "final_output": "我先說明一下：這三個網址都是 `example.com`，目前無法從公開頁面驗證/擷取內容，因此**無法判斷是否真的有價格變動**。以下依你提供的參考價整理；**目前頁面價格皆為 not given**。\n\n| 網站 | 參考價 | 目前頁面價 | 是否變動 | 變動摘要 |\n|---|---|---|---|---|\n| https://example.com/competitor-a | 商品 A：NT$1,200；商品 B：NT$980 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 A / B 是否有變動。 |\n| https://example.com/competitor-b | 商品 A：NT$1,150；商品 C：NT$760 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 A / C 是否有變動。 |\n| https://example.com/competitor-c | 商品 D：NT$2,300；商品 E：NT$1,050 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 D / E 是否有變動。 |\n\n**結論：**目前沒有足夠的公開頁面資料可判定三家是否漲價或降價。  \n如果你提供可直接存取的實際商品頁網址，我可以再幫你做一次對照。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "318192b0-8d1f-402f-af17-09116e7d97bb",
+    "run_id": "7770a265-fb1c-4480-ad57-56b57b169ed8",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行將三家網站與提供的參考價格整理為逐站對照摘要，並清楚說明公開頁面無法取得時無法比較的原因。不過，由於未能取得任何目前價格或實際價格變動案例，無法驗證對價格變動細節及全部未變動情境的處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "777db5b2-fab2-45f1-b73c-1a5691106260",
+        "text": "當輸入三個競爭對手官網網址與對應價格頁面時，輸出會逐一比較三家網站的價格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格逐一列出三個網站，並分別呈現各自的參考價、目前頁面價、是否變動與摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| https://example.com/competitor-a | 商品 A：NT$1,200；商品 B：NT$980 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 A / B 是否有變動。 |\n| https://example.com/competitor-b | 商品 A：NT$1,150；商品 C：NT$760 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 A / C 是否有變動。 |\n| https://example.com/competitor-c | 商品 D：NT$2,300；商品 E：NT$1,050 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 D / E 是否有變動。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "953cf4e3-2737-40fc-b050-ca443e66a1a4",
+        "text": "當任一網站價格與前次記錄不同時，輸出會明確標示該網站的品項、舊價格、新價格與變動幅度。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有可取得的目前頁面價格，未出現任何可驗證為與前次記錄不同的價格，因此無法判定在實際有變動時是否會完整列出舊價、新價與變動幅度。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "e1e940fd-1dc9-4810-82f5-6af85014a0c9",
+        "text": "當三家網站都沒有價格變動時，輸出會明確寫出未偵測到變動。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "證據顯示三家網站的目前價格均無法取得，而非已確認三家皆未變動；因此無法判定「三家都沒有價格變動」時的輸出行為。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "0f98629c-f9e1-44bc-97f6-9e05c381cba4",
+        "text": "當輸入包含三家網站中的部分或全部商品價格資訊時，輸出仍會以可讀格式整理成摘要，而不是只回傳原始頁面內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "即使目前頁面價格無法取得，輸出仍將使用者提供的各網站商品與參考價整理為可讀表格與結論，而非回傳原始頁面內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 網站 | 參考價 | 目前頁面價 | 是否變動 | 變動摘要 |\n|---|---|---|---|---|\n| https://example.com/competitor-a | 商品 A：NT$1,200；商品 B：NT$980 | not given | No（無法確認） | 公開頁面內容無法存取，無法比對商品 A / B 是否有變動。 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**結論：**目前沒有足夠的公開頁面資料可判定三家是否漲價或降價。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0d3b164e-c276-4482-843c-13b63f69365b",
+        "text": "當某網站的價格無法從公開頁面直接取得時，輸出會明確指出無法比較該網站的原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確指出三個網站的公開頁面內容無法驗證或擷取，且逐站說明因公開頁面無法存取而無法比較。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這三個網址都是 `example.com`，目前無法從公開頁面驗證/擷取內容，因此**無法判斷是否真的有價格變動**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "公開頁面內容無法存取，無法比對商品 A / B 是否有變動。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "公開頁面內容無法存取，無法比對商品 A / C 是否有變動。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "公開頁面內容無法存取，無法比對商品 D / E 是否有變動。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3616 input and 1767 output tokens on gpt-5.4-mini; reported cost $0.0151 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 30,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

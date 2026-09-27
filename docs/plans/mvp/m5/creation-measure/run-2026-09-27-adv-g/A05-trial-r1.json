@@ -1,0 +1,154 @@
+{
+  "round": 1,
+  "sample_input": "「請幫我追蹤這三家競爭對手官網價格並通知變動：A 公司、B 公司、C 公司。以下是各自的公開價格頁：A 公司 https://example.com/a/pricing ，B 公司 https://example.com/b/pricing ，C 公司 https://example.com/c/pricing。A 公司目前價格為每月 1000 元，B 公司目前價格為每月 2000 元，C 公司目前價格為每月 3000 元；如果之後有變動，請回報舊價與新價。」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入提供 3 個官網網址與對應價格頁時，輸出能逐一列出 3 家網站的變動狀態。"
+    },
+    {
+      "text": "當某一網站價格與上次紀錄不同時，輸出能同時顯示舊價格、新價格與頁面網址。"
+    },
+    {
+      "text": "當某一網站價格與上次紀錄相同時，輸出能明確標示未變動。"
+    },
+    {
+      "text": "當輸入未提供網址但提供 3 個公司名稱時，輸出會先整理成待監測名單，而不是直接偵測結果。"
+    },
+    {
+      "text": "當頁面不可公開訪問時，輸出會說明無法抓取，且不聲稱已讀取內容。"
+    },
+    {
+      "text": "當變動發生時，輸出會包含「通知」性摘要，而不是只輸出原始頁面內容。"
+    }
+  ],
+  "final_output": "# 競爭對手價格追蹤摘要\n\n- **A 公司**｜頁面：\u003chttps://example.com/a/pricing\u003e｜**狀態：無法讀取公開價格頁**。已知舊價為**每月 1000 元**；目前無法確認新價，因此**暫無法判定是否變動**。\n- **B 公司**｜頁面：\u003chttps://example.com/b/pricing\u003e｜**狀態：無法讀取公開價格頁**。已知舊價為**每月 2000 元**；目前無法確認新價，因此**暫無法判定是否變動**。\n- **C 公司**｜頁面：\u003chttps://example.com/c/pricing\u003e｜**狀態：無法讀取公開價格頁**。已知舊價為**每月 3000 元**；目前無法確認新價，因此**暫無法判定是否變動**。\n\n**備註：** 這三個公開價格頁目前無法直接讀取，所以我不能替你確認是否有價格變動。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0cc8de63-3548-4f52-860e-6830023fcaf8",
+    "run_id": "7b9814b2-230a-42b4-9bb7-30048a9e249f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次輸出完整列出三家網站並正確說明無法抓取公開頁面，沒有虛稱讀取或確認價格。由於所有頁面均無法讀取，價格變動、價格未變、無網址輸入與變動通知摘要等情境均未在本次執行中出現，無法據此判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "aeb87455-73bd-455c-a217-0b80d443ea83",
+        "text": "當輸入提供 3 個官網網址與對應價格頁時，輸出能逐一列出 3 家網站的變動狀態。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出 A、B、C 三家公司，各自提供頁面網址及無法確認變動的狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A 公司**｜頁面：\u003chttps://example.com/a/pricing\u003e｜**狀態：無法讀取公開價格頁**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **B 公司**｜頁面：\u003chttps://example.com/b/pricing\u003e｜**狀態：無法讀取公開價格頁**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **C 公司**｜頁面：\u003chttps://example.com/c/pricing\u003e｜**狀態：無法讀取公開價格頁**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2887d73e-11d4-496c-860c-103a1762bac1",
+        "text": "當某一網站價格與上次紀錄不同時，輸出能同時顯示舊價格、新價格與頁面網址。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次未能讀取任何頁面，沒有觀察到價格變動案例，因此無法判斷發生變動時是否會同時顯示舊價、新價與網址。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "4a8dd47f-3fb1-4566-94cf-3282c62fe372",
+        "text": "當某一網站價格與上次紀錄相同時，輸出能明確標示未變動。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次無法確認目前價格，輸出未出現價格與上次紀錄相同的案例，無法判斷相同時是否會明確標示未變動。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "056fa816-f83e-4906-8b98-527e7552d8a7",
+        "text": "當輸入未提供網址但提供 3 個公司名稱時，輸出會先整理成待監測名單，而不是直接偵測結果。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入包含三個網址，沒有「僅提供三家公司名稱而未提供網址」的情況可供判斷。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "16a20e4b-8824-4d5a-9632-49926b703f80",
+        "text": "當頁面不可公開訪問時，輸出會說明無法抓取，且不聲稱已讀取內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明公開價格頁無法讀取，並表示無法確認新價格及是否變動，未聲稱已讀取頁面內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**備註：** 這三個公開價格頁目前無法直接讀取，所以我不能替你確認是否有價格變動。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "已知舊價為**每月 1000 元**；目前無法確認新價，因此**暫無法判定是否變動**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e6f8b17d-a9e5-4de7-bdad-ccd97e0b8a51",
+        "text": "當變動發生時，輸出會包含「通知」性摘要，而不是只輸出原始頁面內容。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次未確認有價格變動，且輸出未包含變動通知案例，因此無法判斷變動發生時是否會提供通知性摘要。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3287 input and 1328 output tokens on gpt-5.4-mini; reported cost $0.0083 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

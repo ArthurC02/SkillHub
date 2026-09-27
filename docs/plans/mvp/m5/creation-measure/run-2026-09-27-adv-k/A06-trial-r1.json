@@ -1,0 +1,134 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫一篇自我介紹。我叫林依婷，是大學三年級學生，主修資訊管理，個性細心、有責任感，喜歡團隊合作，也曾擔任系學會活動組組員，正在準備應徵實習工作。",
+  "acceptance_criteria": [
+    {
+      "text": "產出內容是中文自我介紹，而不是分析、摘要或條列說明。"
+    },
+    {
+      "text": "內容能直接使用，語氣自然完整。"
+    },
+    {
+      "text": "若有提供個人資訊，會納入自我介紹中。"
+    },
+    {
+      "text": "若有指定場合或用途，內容會配合該場合調整。"
+    },
+    {
+      "text": "若未提供場合、長度或語氣，會套用上面的預設假設。"
+    }
+  ],
+  "final_output": "大家好，我叫林依婷，目前是大學三年級學生，主修資訊管理。我的個性細心，也很有責任感，平時喜歡和團隊一起合作完成目標。大學期間，我曾擔任系學會活動組組員，透過活動籌備與執行，培養了溝通協調與團隊合作的能力。現在我正準備應徵實習工作，希望能將所學運用在實務中，持續學習並提升自己，謝謝大家。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8847cba0-e7b8-4d67-a3b8-8bb071a269c0",
+    "run_id": "5971efef-d7e9-404b-9fc4-b81e9d026723",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆產出自然、可直接使用的中文實習自我介紹，並完整納入提供的個人資訊且配合實習應徵用途。惟無法從現有證據判定未指定長度或語氣時是否套用了技能預設假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "dd14fd8d-ddf9-41a2-be0f-c6c0d11ba50b",
+        "text": "產出內容是中文自我介紹，而不是分析、摘要或條列說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆為以第一人稱撰寫的完整中文自我介紹，並非分析、摘要或條列說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫林依婷，目前是大學三年級學生，主修資訊管理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b97f7d7a-c3b8-4281-9c32-10f15e362bf8",
+        "text": "內容能直接使用，語氣自然完整。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容有開場、背景、經驗、能力與求職目標，語句連貫自然，可直接作為實習應徵時的自我介紹使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "現在我正準備應徵實習工作，希望能將所學運用在實務中，持續學習並提升自己，謝謝大家。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c58a2fa8-068e-41a9-8a0a-2d31d4d466b3",
+        "text": "若有提供個人資訊，會納入自我介紹中。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 回覆納入姓名、年級、主修、細心與責任感、團隊合作偏好、系學會活動組經驗及實習應徵目標。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "183f768d-7005-492a-8fcf-fa7bca9daa06",
+        "text": "若有指定場合或用途，內容會配合該場合調整。",
+        "result": "passed",
+        "source": "model",
+        "reason": "使用者指定用途為應徵實習，回覆明確將介紹聚焦於活動經驗、協作能力、實務運用與持續學習，符合該場合。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "現在我正準備應徵實習工作，希望能將所學運用在實務中，持續學習並提升自己，謝謝大家。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "10ebed42-69af-4153-bdb1-f320c5b04bec",
+        "text": "若未提供場合、長度或語氣，會套用上面的預設假設。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "證據未提供此技能所稱的「上面的預設假設」具體內容，且使用者已提供實習應徵用途，無法據此判定未指定的長度或語氣是否依預設處理。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2923 input and 652 output tokens on gpt-5.4-mini; reported cost $0.0081 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

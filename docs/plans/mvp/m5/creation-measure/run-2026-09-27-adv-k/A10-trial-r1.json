@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把以下文章摘要成 50 字以內，並保留文中所有數字與人名：\n今天上午，台北市長陳志明在 2024 年 5 月 3 日宣布，市府將投入 1200 萬元改善 3 所國小的操場。教育局指出，第一期工程會先完成文山、松山與中山 3 區，預計 8 月前完工。陳志明表示，這項計畫是與副市長林雅婷共同規劃，目標讓 2 萬名學生受益。",
+  "acceptance_criteria": [
+    {
+      "text": "在提供一篇中文文章時，輸出為一段中文摘要，且長度不超過 50 字。"
+    },
+    {
+      "text": "摘要中保留文章裡出現的所有數字。"
+    },
+    {
+      "text": "摘要中保留文章裡出現的所有人名。"
+    },
+    {
+      "text": "摘要只依據使用者提供的文章內容，不加入原文未提及的重要新資訊。"
+    },
+    {
+      "text": "當文章同時包含多個數字與多個人名時，輸出仍能在 50 字內完成摘要。"
+    }
+  ],
+  "final_output": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5cbd64f0-65da-406a-a355-feeb5a9c35fe",
+    "run_id": "78e5b0b5-7cc9-4795-b9a6-5a01bf28a3d3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "摘要在 50 字內，保留所有數字與人名，且內容未超出原文資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "59892ab7-0cde-4f7f-aa5e-073f0b739bd7",
+        "text": "在提供一篇中文文章時，輸出為一段中文摘要，且長度不超過 50 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一段中文摘要，計 48 字，未超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2a4b8277-df1c-487c-9a14-b463bd34d3fe",
+        "text": "摘要中保留文章裡出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文的日期、經費、學校數、完工期限、行政區數與受益學生數等所有數字資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a5363461-ed1c-44a9-a52e-5d1a84d7948f",
+        "text": "摘要中保留文章裡出現的所有人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文出現的兩位人名陳志明與林雅婷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "abe79f7d-f65f-44e4-8eac-88f81953183c",
+        "text": "摘要只依據使用者提供的文章內容，不加入原文未提及的重要新資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要內容均可由原文支持，未加入重要的新資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83cc7882-188a-48f4-b4cf-029245c4ac9e",
+        "text": "當文章同時包含多個數字與多個人名時，輸出仍能在 50 字內完成摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文含多個數字與兩位人名，輸出同時保留這些資訊且長度為 48 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明與林雅婷：2024年5月3日投1200萬元改善3所國小操場，8月前完工3區，惠及2萬名學生",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18641 input and 828 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

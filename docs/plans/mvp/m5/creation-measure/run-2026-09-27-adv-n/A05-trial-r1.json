@@ -1,0 +1,144 @@
+{
+  "round": 1,
+  "sample_input": "請比較這三家競爭對手官網的價格，指出有變動者並整理成通知文字。\nA 站：https://a.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$300；運費 NT$100\nB 站：https://b.example.com/pricing\n價格：方案 A 每月 NT$1,250；加購支援 NT$300；運費 NT$100\nC 站：https://c.example.com/pricing\n價格：方案 A 每月 NT$1,200；加購支援 NT$350；含稅 NT$1,320",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含三個官網網址與各自價格文字時，輸出會逐一比較三家網站的價格。"
+    },
+    {
+      "text": "當其中一家價格與基準不同時，輸出會明確指出那一家、變動前後數值與變動欄位。"
+    },
+    {
+      "text": "當三家價格都未變動時，輸出會明確表示沒有偵測到變動。"
+    },
+    {
+      "text": "當頁面同時出現運費、稅金與商品售價時，輸出只以商品主價格為比較依據。"
+    },
+    {
+      "text": "當頁面缺少可比較價格時，輸出會標示該家無法比較，而不是宣告價格變動。"
+    }
+  ],
+  "final_output": "價格變動通知（未提供前次基準，以下以本次三站價格橫向比較；僅看主方案，運費／含稅不列入主價比較）\n\n- A 站：方案 A 每月 NT$1,200；加購支援 NT$300。作為本次比較基準，未見變動。  \n- B 站：方案 A 每月 NT$1,250，較 A 站高 NT$50；加購支援 NT$300，未變。  \n- C 站：方案 A 每月 NT$1,200，與 A 站相同；加購支援 NT$350，較 A／B 站高 NT$50。  \n\n本次有變動者：\n- 方案 A 每月：B 站上調 NT$50  \n- 加購支援：C 站上調 NT$50",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "4d561894-b3f1-41d6-8192-3a2213d374e7",
+    "run_id": "0e76eb86-b1e2-4bfe-b05d-846f647a219b",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出有逐站比較並以通知形式呈現，但在沒有前次基準的情況下將跨站價差誤稱為上調，且把加購支援也列為變動，未嚴格限於商品主價格。未變動與缺價情境未出現在本次輸入中，無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "7558fa4e-2b80-43fb-ba78-b51c9f14b8c8",
+        "text": "當輸入包含三個官網網址與各自價格文字時，輸出會逐一比較三家網站的價格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出 A、B、C 三站的方案與加購支援價格，並說明 B、C 相對於 A 或 A／B 的差異。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A 站：方案 A 每月 NT$1,200；加購支援 NT$300。作為本次比較基準，未見變動。  \n- B 站：方案 A 每月 NT$1,250，較 A 站高 NT$50；加購支援 NT$300，未變。  \n- C 站：方案 A 每月 NT$1,200，與 A 站相同；加購支援 NT$350，較 A／B 站高 NT$50。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7cb4b606-d6af-441a-994a-2648defb1875",
+        "text": "當其中一家價格與基準不同時，輸出會明確指出那一家、變動前後數值與變動欄位。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出明確承認未提供前次基準，卻把三站橫向價差宣告為「上調」。因此沒有針對同一站點的前次與本次基準提供可驗證的變動前後數值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "價格變動通知（未提供前次基準，以下以本次三站價格橫向比較；僅看主方案，運費／含稅不列入主價比較）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本次有變動者：\n- 方案 A 每月：B 站上調 NT$50  \n- 加購支援：C 站上調 NT$50",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c9f963de-da1b-431c-8077-3bb36f5d4d97",
+        "text": "當三家價格都未變動時，輸出會明確表示沒有偵測到變動。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次資料沒有提供三家皆未變動的前次基準情境，無法判定輸出在該情境下是否會明確表示沒有偵測到變動。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "6731f966-ae5d-4e37-8f5d-124ad52e45ee",
+        "text": "當頁面同時出現運費、稅金與商品售價時，輸出只以商品主價格為比較依據。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖然輸出表示運費與含稅不列入主價比較，但仍將「加購支援」的差異列為價格變動；這不是商品主價格，未符合只以商品主價格為比較依據。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "價格變動通知（未提供前次基準，以下以本次三站價格橫向比較；僅看主方案，運費／含稅不列入主價比較）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "本次有變動者：\n- 方案 A 每月：B 站上調 NT$50  \n- 加購支援：C 站上調 NT$50",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "38e0b2b3-5a82-4afe-96f4-10d555675d38",
+        "text": "當頁面缺少可比較價格時，輸出會標示該家無法比較，而不是宣告價格變動。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "三家站點皆提供可比較的方案主價格；證據未涵蓋任一家缺少可比較價格時的處理方式。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3326 input and 2481 output tokens on gpt-5.4-mini; reported cost $0.0167 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

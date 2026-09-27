@@ -1,0 +1,127 @@
+{
+  "round": 0,
+  "sample_input": "用出勤紀錄算加班時數：王小明 9/1 09:00 上班、18:30 下班；9/2 09:00 上班、20:00 下班；兩天都有午休 1 小時。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。"
+    },
+    {
+      "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。"
+    },
+    {
+      "text": "輸出沒有只回答無法計算或只列出缺少的資訊。"
+    }
+  ],
+  "final_output": "以 **每日正常工時 8 小時** 來算，並扣掉 **午休 1 小時**：\n\n- **9/1**：09:00–18:30，共 9.5 小時  \n  扣午休 1 小時後，實際工時 **8.5 小時**  \n  → **加班 0.5 小時（30 分）**\n\n- **9/2**：09:00–20:00，共 11 小時  \n  扣午休 1 小時後，實際工時 **10 小時**  \n  → **加班 2 小時**\n\n**合計加班：2.5 小時（2 小時 30 分）**\n\n如果你要，我也可以幫你整理成表格格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8e5a19ae-4c72-4de8-85f5-63e0a552b75b",
+    "run_id": "cbe7aaa8-8adc-4afd-8dbe-6ece0b7551cf",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出明示以每日正常工時 8 小時、扣除午休 1 小時計算，並正確得出王小明兩日合計加班 2.5 小時。",
+    "criterion_results": [
+      {
+        "criterion_id": "2423cccc-78c0-4ba6-981e-a95e79bcff4a",
+        "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確採用每日正常工時 8 小時作為加班起算標準。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以 **每日正常工時 8 小時** 來算，並扣掉 **午休 1 小時**：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2c483cf8-49e2-4149-856d-82b5d2d70a4b",
+        "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依每日 8 小時並扣除午休的標準，輸出計算 9/1 加班 0.5 小時、9/2 加班 2 小時，合計 2.5 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "→ **加班 0.5 小時（30 分）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "→ **加班 2 小時**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計加班：2.5 小時（2 小時 30 分）**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3decb28e-cc43-48df-b61f-8cdb038bd9b2",
+        "text": "輸出沒有只回答無法計算或只列出缺少的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供逐日工時與加班計算，並非僅表示無法計算或僅列缺少資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **9/1**：09:00–18:30，共 9.5 小時  \n  扣午休 1 小時後，實際工時 **8.5 小時**  \n  → **加班 0.5 小時（30 分）**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **9/2**：09:00–20:00，共 11 小時  \n  扣午休 1 小時後，實際工時 **10 小時**  \n  → **加班 2 小時**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2123 input and 449 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

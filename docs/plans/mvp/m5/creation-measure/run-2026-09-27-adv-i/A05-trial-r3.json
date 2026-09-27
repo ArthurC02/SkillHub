@@ -1,0 +1,171 @@
+{
+  "round": 3,
+  "sample_input": "請追蹤以下三家競爭對手官網的價格變動，並列出是否有變動與通知摘要。\nhttps://alpha.example.com/pricing\nhttps://beta.example.com/products/plan\nhttps://gamma.example.com/store/item-123\n\nalpha.example.com/pricing：Basic 月費 NT$990；上次紀錄 NT$890\nbeta.example.com/products/plan：Pro 月費 NT$1,500；上次紀錄 NT$1,500\ngamma.example.com/store/item-123：Standard 售價 NT$2,280；上次紀錄 NT$2,180",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入三個官網 URL 與對應頁面資訊時，輸出會逐一列出三家網站的價格狀態。"
+    },
+    {
+      "text": "若某家網站價格與上次紀錄不同，輸出會明確標示「有變動」。"
+    },
+    {
+      "text": "若某家網站價格與上次紀錄相同，輸出會明確標示「無變動」。"
+    },
+    {
+      "text": "若某家網站無法抓取公開價格，輸出會明確標示原因，不會編造價格。"
+    },
+    {
+      "text": "輸出會包含可直接用來通知的摘要文字。"
+    }
+  ],
+  "final_output": "可直接手動送出的純文字通知如下（此處無法直接抓取頁面，因此以下依您提供的目前價格與上次紀錄比對）。\n\n### alpha.example.com/pricing\n- **Current price**: Basic 月費 **NT$990**\n- **Prior price**: **NT$890**\n- **Status**: **changed**\n- **Notification text**:  \n  alpha.example.com/pricing 的 Basic 月費已由 NT$890 調整為 NT$990，價格有變動。\n\n### beta.example.com/products/plan\n- **Current price**: Pro 月費 **NT$1,500**\n- **Prior price**: **NT$1,500**\n- **Status**: **unchanged**\n- **Notification text**:  \n  beta.example.com/products/plan 的 Pro 月費維持 NT$1,500，未發生變動。\n\n### gamma.example.com/store/item-123\n- **Current price**: Standard 售價 **NT$2,280**\n- **Prior price**: **NT$2,180**\n- **Status**: **changed**\n- **Notification text**:  \n  gamma.example.com/store/item-123 的 Standard 售價已由 NT$2,180 調整為 NT$2,280，價格有變動。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "44c87d7b-fedf-45d7-bc31-6be658be0180",
+    "run_id": "27587b39-8473-45bb-b1b6-507fe52cdd32",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出涵蓋三家網站的價格狀態，正確以中文明確表達價格變動與未變動情況，並提供逐家可直接使用的通知內容。無法抓取頁面的限制也有揭露，且比較基於使用者提供的價格資料。",
+    "criterion_results": [
+      {
+        "criterion_id": "8905e0b8-3aa8-41d1-bbe1-88758fc6845a",
+        "text": "在輸入三個官網 URL 與對應頁面資訊時，輸出會逐一列出三家網站的價格狀態。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出 alpha、beta、gamma 三個網站，並各自提供目前價格、先前價格與狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### alpha.example.com/pricing",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### beta.example.com/products/plan",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### gamma.example.com/store/item-123",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d3312cef-19e2-4a00-b421-76af7e07d7a8",
+        "text": "若某家網站價格與上次紀錄不同，輸出會明確標示「有變動」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "alpha 與 gamma 的通知文字明確寫出「價格有變動」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "alpha.example.com/pricing 的 Basic 月費已由 NT$890 調整為 NT$990，價格有變動。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "gamma.example.com/store/item-123 的 Standard 售價已由 NT$2,180 調整為 NT$2,280，價格有變動。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca40e164-4bb2-49b3-b0ea-9baeeb2a33fe",
+        "text": "若某家網站價格與上次紀錄相同，輸出會明確標示「無變動」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "beta 的目前與先前價格相同，且輸出明確標示 unchanged 及「未發生變動」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Status**: **unchanged**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "beta.example.com/products/plan 的 Pro 月費維持 NT$1,500，未發生變動。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "30917815-17b4-4ad2-9482-7f4db90519dd",
+        "text": "若某家網站無法抓取公開價格，輸出會明確標示原因，不會編造價格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確說明無法直接抓取頁面，並限定價格比較是依使用者提供的目前價格與上次紀錄，而非聲稱自行抓取或編造價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "可直接手動送出的純文字通知如下（此處無法直接抓取頁面，因此以下依您提供的目前價格與上次紀錄比對）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b6a4f1a-a56a-4058-b276-2a30f56ae9b9",
+        "text": "輸出會包含可直接用來通知的摘要文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每家網站皆包含可直接手動發送的通知文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Notification text**:",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "alpha.example.com/pricing 的 Basic 月費已由 NT$890 調整為 NT$990，價格有變動。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19706 input and 1846 output tokens on gpt-5.4-mini; reported cost $0.0263 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "訂單金額 499 元，請回覆客戶運費。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出說明這筆訂單運費為 80 元。"
+    },
+    {
+      "text": "輸出只有一句給客戶的說明。"
+    }
+  ],
+  "final_output": "您好，您的訂單金額為 499 元，運費為 80 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "909b1572-4983-431c-9e6d-b6855fde774f",
+    "run_id": "807b5e0e-c910-46a8-b4f3-d4dc06505e5a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆以一句中文客戶說明清楚告知訂單運費為 80 元，兩項驗收標準皆已滿足。",
+    "criterion_results": [
+      {
+        "criterion_id": "5a25f530-c8d3-47aa-8d5c-15a8c699c2d8",
+        "text": "輸出說明這筆訂單運費為 80 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確說明運費為 80 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單金額為 499 元，運費為 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "04942b7d-2388-42c8-9582-98ebd29610de",
+        "text": "輸出只有一句給客戶的說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅包含一句給客戶的運費說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，您的訂單金額為 499 元，運費為 80 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18743 input and 171 output tokens on gpt-5.4-mini; reported cost $0.0004 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

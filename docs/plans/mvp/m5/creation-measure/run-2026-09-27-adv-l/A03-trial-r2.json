@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請把以下客訴信整理成分類統計表：\n1. 「我 11/3 訂的耳機到現在還沒收到，物流查詢顯示卡在配送中，請協助。」\n2. 「昨天收到的衣服有污漬，且尺寸比下單時小很多，要求退換貨。」\n3. 「App 更新後一直閃退，登入也會跳出錯誤訊息，請盡快修正。」\n4. 「客服回覆速度太慢，我上週寄信到現在還沒有人處理。」\n5. 「收到的商品與網站照片差很多，但我沒有拍照佐證。」\n6. 「包裹外箱有破損，裡面的杯子也裂了。」\n7. 「最近出現問題，麻煩協助處理，謝謝。」",
+  "acceptance_criteria": [
+    {
+      "text": "使用者貼上多封客訴信時，輸出會是一張分類統計表，且每一類別都有封數。"
+    },
+    {
+      "text": "當多封信內容可明確歸入不同主題時，統計表會把它們分成多個分類，而不是合併成單一總數。"
+    },
+    {
+      "text": "當某封信內容不足以判斷分類時，該封信會被列入「未分類」。"
+    },
+    {
+      "text": "輸出可以包含每個分類的一句簡短摘要，但摘要不會取代封數統計。"
+    },
+    {
+      "text": "Skill 不會要求連到郵件系統、資料庫或外部檔案；只根據貼上的文字完成分類。"
+    }
+  ],
+  "final_output": "以下是整理後的分類統計表：\n\n| 類別 | 件數 | 簡短摘要 |\n|---|---:|---|\n| 物流延遲／配送卡住 | 1 | 商品已下單但長時間未送達，物流顯示卡在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到商品有污漬，且尺寸明顯比訂購時小。 |\n| App／登入異常 | 1 | App 更新後閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 客服回信太慢，客訴已寄出但遲遲未處理。 |\n| 商品與網站描述不符 | 1 | 實際收到的商品和網站照片差異很大。 |\n| 包裝損壞／商品破裂 | 1 | 外箱破損，內部商品也已裂開。 |\n| 未分類 | 1 | 內容過於籠統，無法明確判定問題類型。 |\n\n如果你要，我也可以再幫你整理成「類別／代表案例／處理建議」的版本。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "63dc88c9-17e6-4fb9-91a3-5c0af071242e",
+    "run_id": "a33464ff-4e81-49dc-bf7e-df9b04ddc322",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此執行產出含類別、件數與簡短摘要的分類統計表，將不同主題分開統計，並把資訊不足的信件列為未分類。回覆亦未要求任何外部系統或檔案連線。",
+    "criterion_results": [
+      {
+        "criterion_id": "d83f9c24-ad2e-4318-9082-2a51eecf348e",
+        "text": "使用者貼上多封客訴信時，輸出會是一張分類統計表，且每一類別都有封數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為分類統計表，表格列出「類別」及每類對應的「件數」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 簡短摘要 |\n|---|---:|---|\n| 物流延遲／配送卡住 | 1 | 商品已下單但長時間未送達，物流顯示卡在配送中。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bc39fd67-bcf8-4b92-b838-f0bede537e7f",
+        "text": "當多封信內容可明確歸入不同主題時，統計表會把它們分成多個分類，而不是合併成單一總數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確不同主題被拆分為物流、商品問題、App/登入、客服回覆、包裝損壞等多個分類，而非合併為單一總數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 物流延遲／配送卡住 | 1 | 商品已下單但長時間未送達，物流顯示卡在配送中。 |\n| 商品瑕疵／尺寸不符 | 1 | 收到商品有污漬，且尺寸明顯比訂購時小。 |\n| App／登入異常 | 1 | App 更新後閃退，登入時也出現錯誤訊息。 |\n| 客服回覆延遲 | 1 | 客服回信太慢，客訴已寄出但遲遲未處理。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0dc6d52e-fb0a-45b2-a1e3-7e77bab8b23c",
+        "text": "當某封信內容不足以判斷分類時，該封信會被列入「未分類」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容過於籠統、無法判定主題的信件被列入「未分類」，且有件數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 未分類 | 1 | 內容過於籠統，無法明確判定問題類型。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f4354c24-1bec-4042-9890-9a3dc0cc122d",
+        "text": "輸出可以包含每個分類的一句簡短摘要，但摘要不會取代封數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格包含每類的簡短摘要欄位，並仍以獨立的件數欄位呈現統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 件數 | 簡短摘要 |\n|---|---:|---|",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "59b0da7d-8c23-4e05-bc52-6a0f60127005",
+        "text": "Skill 不會要求連到郵件系統、資料庫或外部檔案；只根據貼上的文字完成分類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆直接依據貼上的內容完成分類統計，未要求連接郵件系統、資料庫或外部檔案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下是整理後的分類統計表：",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2829 input and 1003 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

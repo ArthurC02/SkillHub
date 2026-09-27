@@ -1,0 +1,161 @@
+{
+  "round": 3,
+  "sample_input": "請比較三家競爭對手官網價格並列出有變動的項目。A站：Pro方案 NT$1,200；B站：Pro方案 NT$1,180；C站：Pro方案 NT$1,250。上一輪價格：A站 Pro方案 NT$1,100，B站 Pro方案 NT$1,180，C站 Pro方案 NT$1,250。\n\n請再比較另一組三家都沒有變動的資料。A站：Pro方案 NT$1,100；B站：Pro方案 NT$1,180；C站：Pro方案 NT$1,250。上一輪價格：A站 Pro方案 NT$1,100，B站 Pro方案 NT$1,180，C站 Pro方案 NT$1,250。\n\n請再比較一組價格格式不一致的資料並列出有變動的項目。A站：Pro方案 1,200元；B站：Pro方案 NT$1,180；C站：Pro方案 TWD 1250。上一輪價格：A站 Pro方案 NT$1,100，B站 Pro方案 NT$1,180，C站 Pro方案 TWD 1,250。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入包含三家競爭對手的價格資料與上一輪價格時，輸出必須列出所有有變動的項目、每項的舊價格、新價格與變動方向。"
+    },
+    {
+      "text": "在輸入包含三家競爭對手且其中至少一家價格未變時，輸出必須明確區分變動與未變動項目。"
+    },
+    {
+      "text": "在輸入三家都沒有變動時，輸出必須明確表示沒有價格變動，而不是空白或省略。"
+    },
+    {
+      "text": "輸出必須以可直接供後續通知系統使用的摘要形式呈現，內容包含競品名稱與變動明細。"
+    },
+    {
+      "text": "當價格格式不一致時，輸出必須保留原始價格字串並標註格式不一致，而不是自行猜測轉換。"
+    }
+  ],
+  "final_output": "以下依三組資料逐一比對：\n\n## 1) 第一組：有變動\n**上一輪價格**\n- A站：Pro方案 NT$1,100\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 NT$1,250\n\n**本輪價格**\n- A站：Pro方案 NT$1,200\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 NT$1,250\n\n**有變動的項目**\n- **A站 Pro方案**：NT$1,100 → NT$1,200\n\n---\n\n## 2) 第二組：皆無變動\n**上一輪價格**\n- A站：Pro方案 NT$1,100\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 NT$1,250\n\n**本輪價格**\n- A站：Pro方案 NT$1,100\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 NT$1,250\n\n**有變動的項目**\n- **無**\n\n---\n\n## 3) 第三組：價格格式不一致，但僅有一項變動\n**上一輪價格**\n- A站：Pro方案 NT$1,100\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 TWD 1,250\n\n**本輪價格**\n- A站：Pro方案 1,200元\n- B站：Pro方案 NT$1,180\n- C站：Pro方案 TWD 1250\n\n**有變動的項目**\n- **A站 Pro方案**：NT$1,100 → 1,200元\n\n**未變動的項目**\n- B站 Pro方案：NT$1,180 → NT$1,180\n- C站 Pro方案：TWD 1,250 → TWD 1250\n\n如果你要，我也可以把這三組整理成一個「變動/未變動」的表格格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c4983639-6f45-490b-925c-64f058b091d8",
+    "run_id": "39e0b264-bb5c-4f17-bbcf-0ad8b09c6bf2",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆正確列出變動與未變動項目，且在全數未變動及格式不一致的情境中都有明確呈現。不過，變動項目僅提供價格箭頭，沒有明示上漲或下跌方向。",
+    "criterion_results": [
+      {
+        "criterion_id": "1cbe3172-18fa-4e31-a9cb-b3438814ff22",
+        "text": "在輸入包含三家競爭對手的價格資料與上一輪價格時，輸出必須列出所有有變動的項目、每項的舊價格、新價格與變動方向。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出列出了變動項目及舊、新價格，但未明確標示變動方向（如上漲或下跌）。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A站 Pro方案**：NT$1,100 → NT$1,200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b4df83ae-3b09-4098-b9fc-6851232c9ea8",
+        "text": "在輸入包含三家競爭對手且其中至少一家價格未變時，輸出必須明確區分變動與未變動項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第三組將變動的 A站與未變動的 B、C站分列，明確區分兩類項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**有變動的項目**\n- **A站 Pro方案**：NT$1,100 → 1,200元\n\n**未變動的項目**\n- B站 Pro方案：NT$1,180 → NT$1,180\n- C站 Pro方案：TWD 1,250 → TWD 1250",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e00734e-f705-4e37-9189-cd0c12297676",
+        "text": "在輸入三家都沒有變動時，輸出必須明確表示沒有價格變動，而不是空白或省略。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二組在三家價格均相同時，明確寫出無變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 2) 第二組：皆無變動",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**有變動的項目**\n- **無**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ce438b4-9171-4f38-ae02-7e62b65f6030",
+        "text": "輸出必須以可直接供後續通知系統使用的摘要形式呈現，內容包含競品名稱與變動明細。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以分組摘要呈現，包含競品名稱、方案名稱及變動前後價格明細，可供後續通知使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**有變動的項目**\n- **A站 Pro方案**：NT$1,100 → NT$1,200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f41cf6b6-3adb-4a49-87a3-c3b12bcd527d",
+        "text": "當價格格式不一致時，輸出必須保留原始價格字串並標註格式不一致，而不是自行猜測轉換。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第三組明確標示價格格式不一致，並在變動與未變動項目中保留原始價格字串，未將其統一改寫為單一格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 3) 第三組：價格格式不一致，但僅有一項變動",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **A站 Pro方案**：NT$1,100 → 1,200元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- C站 Pro方案：TWD 1,250 → TWD 1250",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2324 input and 684 output tokens on gpt-5.4-mini; reported cost $0.0006 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

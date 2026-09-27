@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將以下文章摘要成 50 字以內，並保留所有數字與人名：\n2024 年 5 月 3 日，王小明與李美華在台北發表研究，指出 3 個月內樣本數從 120 增加到 180，最後於 2025 年完成報告，並由陳志強審閱後提交給 7 家媒體。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一篇含有多個數字與人名的中文文章，輸出摘要不超過 50 字。"
+    },
+    {
+      "text": "給定同一篇文章，摘要中保留原文所有出現的數字。"
+    },
+    {
+      "text": "給定同一篇文章，摘要中保留原文所有出現的人名。"
+    },
+    {
+      "text": "輸出不得加入原文沒有的新事實。"
+    },
+    {
+      "text": "當原文資訊很多時，摘要仍以壓縮方式完成，而不是超過 50 字。"
+    }
+  ],
+  "final_output": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0e94e4da-d819-4446-905d-2f25731733a7",
+    "run_id": "537fa581-600f-447e-a083-fdbbc9e30ac3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "摘要符合 50 字以內要求，保留全部數字與人名，並以壓縮方式忠實重述原文，未加入新事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "98b1d6a4-07dd-47ac-8b14-d4a73ddd4fb8",
+        "text": "給定一篇含有多個數字與人名的中文文章，輸出摘要不超過 50 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要共 50 字（含標點），未超過限制。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02e98fb4-cbec-40ad-96ca-8b9134d8ef34",
+        "text": "給定同一篇文章，摘要中保留原文所有出現的數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文數字 2024、5、3、3、120、180、2025、7 均在摘要中保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "125b850b-6ea4-406c-82bb-cb4e0cf411f3",
+        "text": "給定同一篇文章，摘要中保留原文所有出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文所有人名王小明、李美華、陳志強均被保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aa194836-36b8-4f5b-8609-e0fb007172cf",
+        "text": "輸出不得加入原文沒有的新事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要僅以壓縮措辭重述日期、人物、地點、研究、樣本變化、報告、審閱與提交媒體等原文資訊，未見新增事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "34276c69-28f4-48cb-8a90-d4403c779c31",
+        "text": "當原文資訊很多時，摘要仍以壓縮方式完成，而不是超過 50 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在保留多項日期、數字與人名資訊的情況下，摘要以極度壓縮表述，且剛好 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/3王小明李美華台北發表研究，3個月120增180，2025完報告，陳志強審閱交7媒體。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2803 input and 1170 output tokens on gpt-5.4-mini; reported cost $0.0104 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

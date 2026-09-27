@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這段英文客戶回饋翻成繁體中文，然後摘要成三點：\n\"The product arrived late, but the support team was very helpful. I like the design, though the battery life could be better. Overall, I would consider buying again if the shipping improves.\"",
+  "acceptance_criteria": [
+    {
+      "text": "給定英文客戶回饋，輸出包含繁體中文翻譯。"
+    },
+    {
+      "text": "輸出包含且僅包含三點摘要的主體內容，不少於三點也不多於三點。"
+    },
+    {
+      "text": "摘要內容與原文回饋一致，不新增原文沒有的事實。"
+    },
+    {
+      "text": "若輸入有多段英文回饋，翻譯與摘要都能涵蓋全部內容。"
+    },
+    {
+      "text": "輸出格式清楚區分翻譯與三點摘要。"
+    }
+  ],
+  "final_output": "**翻譯：**  \n產品送達延遲了，但客服團隊非常樂於協助。我很喜歡它的設計，不過電池續航力可以再好一點。整體來說，如果出貨速度有改善，我會考慮再次購買。\n\n**摘要：**\n- 產品雖然送達延遲，但客服團隊很有幫助。  \n- 使用者喜歡產品設計，但認為電池續航力仍可提升。  \n- 若出貨情況改善，整體上仍會考慮再次購買。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1f9e7e9b-a48d-496c-9aba-b5f2e87da889",
+    "run_id": "9bccbc83-9950-4348-aa03-c8571b0c2ed9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出提供繁體中文翻譯，並以清楚分隔的摘要區塊列出恰好三點。摘要與原始回饋一致，未新增事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "9cb5ba72-9bee-4b89-b726-5a7e57e8ebd4",
+        "text": "給定英文客戶回饋，輸出包含繁體中文翻譯。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出包含完整的繁體中文翻譯。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品送達延遲了，但客服團隊非常樂於協助。我很喜歡它的設計，不過電池續航力可以再好一點。整體來說，如果出貨速度有改善，我會考慮再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8979208d-d0f2-46c0-8278-778053bf62e9",
+        "text": "輸出包含且僅包含三點摘要的主體內容，不少於三點也不多於三點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要區塊恰有三個條列項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**摘要：**\n- 產品雖然送達延遲，但客服團隊很有幫助。  \n- 使用者喜歡產品設計，但認為電池續航力仍可提升。  \n- 若出貨情況改善，整體上仍會考慮再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8f3cdb94-748f-4dfc-9d2b-45eb8be49113",
+        "text": "摘要內容與原文回饋一致，不新增原文沒有的事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三點摘要分別忠實涵蓋送達延遲與客服協助、設計與續航力、以及出貨改善後可能再次購買，未見新增事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 產品雖然送達延遲，但客服團隊很有幫助。  \n- 使用者喜歡產品設計，但認為電池續航力仍可提升。  \n- 若出貨情況改善，整體上仍會考慮再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b695328-0f67-4e10-b40f-20a1e9bd3bc0",
+        "text": "若輸入有多段英文回饋，翻譯與摘要都能涵蓋全部內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "此輸入只有一段英文回饋；輸出翻譯與摘要均涵蓋該段的全部主要內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品送達延遲了，但客服團隊非常樂於協助。我很喜歡它的設計，不過電池續航力可以再好一點。整體來說，如果出貨速度有改善，我會考慮再次購買。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f95560c9-0ccb-4f41-859c-cf36f74dd63c",
+        "text": "輸出格式清楚區分翻譯與三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以「翻譯」與「摘要」標題明確分隔，且摘要採三個條列呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**翻譯：**  \n產品送達延遲了，但客服團隊非常樂於協助。我很喜歡它的設計，不過電池續航力可以再好一點。整體來說，如果出貨速度有改善，我會考慮再次購買。\n\n**摘要：**\n- 產品雖然送達延遲，但客服團隊很有幫助。  \n- 使用者喜歡產品設計，但認為電池續航力仍可提升。  \n- 若出貨情況改善，整體上仍會考慮再次購買。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2659 input and 293 output tokens on gpt-5.4-mini; reported cost $0.0063 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

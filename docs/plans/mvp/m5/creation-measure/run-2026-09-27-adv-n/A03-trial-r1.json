@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把下面 4 封客訴信整理成分類統計表：\n\n1. 主旨：訂單延遲未收到\n內容：我上週五下單，系統顯示 2 天內出貨，但到現在還沒收到包裹。客服也沒有回覆，請協助查詢。\n\n2. 主旨：商品瑕疵\n內容：收到的杯子有裂痕，打開包裹時就已經破損，請盡快換貨或退款。\n\n3. 主旨：退費太慢\n內容：我兩週前已經申請退貨，但到現在退款都還沒入帳，請協助確認進度。\n\n4. 主旨：客服態度不佳\n內容：我今天致電客服詢問訂單問題，但接電話的人語氣很差，沒有解決問題，讓我很失望。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段包含至少 4 封客訴信的純文字時，輸出中會出現一份分類統計表。"
+    },
+    {
+      "text": "每個被辨識出的分類都會列出件數，且件數總和會等於所有納入統計的信件數。"
+    },
+    {
+      "text": "若多封信明顯屬於同一主題，輸出會把它們歸到同一分類而不是分開列出。"
+    },
+    {
+      "text": "輸出會附上一段簡短摘要，說明各分類的主要客訴內容。"
+    },
+    {
+      "text": "當信件同時涉及多個主題時，輸出會將它歸為最主要的一個分類。"
+    }
+  ],
+  "final_output": "以下為 4 封客訴信的分類統計表：\n\n| 類別 | 數量 | 主要問題摘要 |\n|---|---:|---|\n| 訂單延遲／未收到 | 1 | 下單後超過預期出貨時間，至今仍未收到包裹，且客服未回覆。 |\n| 商品瑕疵 | 1 | 收到的杯子有裂痕，開箱時已破損，要求換貨或退款。 |\n| 退款延遲 | 1 | 已申請退貨兩週，但退款尚未入帳，需確認處理進度。 |\n| 客服態度不佳 | 1 | 致電客服詢問訂單問題時，對方語氣差且未解決問題。 |\n\n**總計：4 封客訴信**\n\n**整體摘要：**  \n本次客訴主要分布在「物流／未收到」、「商品瑕疵」、「退款進度」與「客服服務態度」四類，每類各 1 件。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "826b4602-f783-46ac-a51d-a0a8bed0a0dd",
+    "run_id": "c3549dcc-8310-49da-8a2b-8b06a95662d8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出提供四封客訴信的分類統計表、各類件數與問題摘要，件數合計為 4。涉及多項內容的訂單延遲信亦以未收到包裹作為主要分類。",
+    "criterion_results": [
+      {
+        "criterion_id": "277160c9-36cb-4a1c-8cb8-2ba06a898930",
+        "text": "輸入一段包含至少 4 封客訴信的純文字時，輸出中會出現一份分類統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含一份有「類別、數量、主要問題摘要」欄位的分類統計表。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 數量 | 主要問題摘要 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9bff128-a1dd-4370-b9e7-9f3ec17bb91f",
+        "text": "每個被辨識出的分類都會列出件數，且件數總和會等於所有納入統計的信件數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四個分類皆列出件數 1，合計為 4，並明確標示總計 4 封客訴信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 訂單延遲／未收到 | 1 | 下單後超過預期出貨時間，至今仍未收到包裹，且客服未回覆。 |\n| 商品瑕疵 | 1 | 收到的杯子有裂痕，開箱時已破損，要求換貨或退款。 |\n| 退款延遲 | 1 | 已申請退貨兩週，但退款尚未入帳，需確認處理進度。 |\n| 客服態度不佳 | 1 | 致電客服詢問訂單問題時，對方語氣差且未解決問題。 |\n\n**總計：4 封客訴信**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a4954e7f-bbc3-4716-9187-6f4610852f7d",
+        "text": "若多封信明顯屬於同一主題，輸出會把它們歸到同一分類而不是分開列出。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本次四封信的主要客訴主題彼此不同；輸出以主題分類呈現，沒有將同類主題依個別信件拆成重複分類。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 訂單延遲／未收到 | 1 | 下單後超過預期出貨時間，至今仍未收到包裹，且客服未回覆。 |\n| 商品瑕疵 | 1 | 收到的杯子有裂痕，開箱時已破損，要求換貨或退款。 |\n| 退款延遲 | 1 | 已申請退貨兩週，但退款尚未入帳，需確認處理進度。 |\n| 客服態度不佳 | 1 | 致電客服詢問訂單問題時，對方語氣差且未解決問題。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ef98065-5a21-475b-8c35-7c8d6e041950",
+        "text": "輸出會附上一段簡短摘要，說明各分類的主要客訴內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格逐類提供主要問題摘要，並附有整體摘要說明各類客訴內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**整體摘要：**  \n本次客訴主要分布在「物流／未收到」、「商品瑕疵」、「退款進度」與「客服服務態度」四類，每類各 1 件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "73f64d71-cc6f-419e-8f44-82c3243311c9",
+        "text": "當信件同時涉及多個主題時，輸出會將它歸為最主要的一個分類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一封同時提到未收到包裹與客服未回覆，輸出將其歸入「訂單延遲／未收到」單一主要分類，而非另計為客服類別。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 訂單延遲／未收到 | 1 | 下單後超過預期出貨時間，至今仍未收到包裹，且客服未回覆。 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3021 input and 482 output tokens on gpt-5.4-mini; reported cost $0.0075 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

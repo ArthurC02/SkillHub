@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "本週業績：營收 1,250,000 元、成交 38 件、新客戶 12 家。請照每週五下午的慣例，寄給全部門並在 Slack 公告。",
+  "acceptance_criteria": [
+    {
+      "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。"
+    },
+    {
+      "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。"
+    },
+    {
+      "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。"
+    }
+  ],
+  "final_output": "### Email subject\n本週業績彙報：營收 1,250,000 元、成交 38 件、新客戶 12 家\n\n### Email body\n各位同仁您好：\n\n以下為本週業績彙報：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家\n\n感謝大家本週的努力與合作，持續把成果累積起來。請各部門同仁參考，並持續推進後續目標。\n\n謝謝大家。\n\n### Slack announcement\n各位同仁，本週業績彙報：\n營收 1,250,000 元、成交 38 件、新客戶 12 家。感謝大家的努力，持續加油！\n\n寄送與 Slack 發佈請由你直接操作。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d49ed816-2c9c-4046-98a6-797c196fcb01",
+    "run_id": "24878956-9456-41d7-94e1-ec3f446efa12",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整提供可寄送的全員郵件及 Slack 公告文案，兩者皆包含指定三項業績數字，且未不實宣稱已完成寄送、發布或排程設定。",
+    "criterion_results": [
+      {
+        "criterion_id": "963444f2-c483-41c6-9da5-84347ba8a1c4",
+        "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供可直接寄送的郵件主旨與內文，並列出營收、成交件數及新客戶數三項數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### Email body\n各位同仁您好：\n\n以下為本週業績彙報：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8eaea0e7-6193-4483-b42b-2cc28dd023ae",
+        "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出包含一則 Slack 公告，且其中包含相同的營收、成交與新客戶三項數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### Slack announcement\n各位同仁，本週業績彙報：\n營收 1,250,000 元、成交 38 件、新客戶 12 家。感謝大家的努力，持續加油！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "75340b93-e675-4045-9225-545d1a643de4",
+        "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出未宣稱郵件或 Slack 已發送／發布，也未宣稱已設定每週排程；反而明確表示需由使用者直接操作寄送與發布。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "寄送與 Slack 發佈請由你直接操作。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2799 input and 664 output tokens on gpt-5.4-mini; reported cost $0.0080 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

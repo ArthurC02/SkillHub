@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "本週業績：營收 1,250,000 元、成交 38 件、新客戶 12 家。請照每週五下午的慣例，寄給全部門並在 Slack 公告。",
+  "acceptance_criteria": [
+    {
+      "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。"
+    },
+    {
+      "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。"
+    },
+    {
+      "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。"
+    }
+  ],
+  "final_output": "### 給全部門的週報信件\n各位同仁好：\n\n以下是本週業績更新：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家\n\n感謝大家本週的努力與配合，持續朝目標前進。也請各部門依據本週成果，持續推進後續工作。\n\n謝謝大家。\n\n---\n\n### Slack 公告\n各位同仁，以下是本週業績更新：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家\n\n感謝大家本週的努力，辛苦了！請各部門持續接續推進。\n\n---\n\n### 備註\n以上內容可直接使用；實際寄送或發布請由您自行操作。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f2c38aef-c645-48a6-89e3-7f04550558f4",
+    "run_id": "64af0330-29b0-4286-a729-6fe36210b477",
+    "status": "completed",
+    "overall": "met",
+    "summary": "已提供可直接使用的全員郵件與 Slack 公告，兩者皆包含正確的三項本週業績數字，且未聲稱已執行寄送、發布或排程。",
+    "criterion_results": [
+      {
+        "criterion_id": "b0c56e69-443b-45fc-bede-664118eff0c1",
+        "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含可直接寄給全部門的週報信件，並列出營收、成交件數與新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 給全部門的週報信件\n各位同仁好：\n\n以下是本週業績更新：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ce7b6529-282c-463c-aa88-061be617ca5e",
+        "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含 Slack 公告文案，且載有相同的營收、成交件數與新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### Slack 公告\n各位同仁，以下是本週業績更新：\n\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca8e8faa-dfc1-4e57-97fd-1a03b423bc6f",
+        "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未宣稱已寄出、已發布或已設定排程，並明確表示實際寄送或發布需由使用者自行操作。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以上內容可直接使用；實際寄送或發布請由您自行操作。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2706 input and 476 output tokens on gpt-5.4-mini; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

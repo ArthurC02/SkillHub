@@ -1,0 +1,168 @@
+{
+  "round": 2,
+  "sample_input": "請審核以下 4 筆請假申請並回覆結果與原因：\n1. 事假，請假開始日為 2026-10-10，申請日為 2026-10-08，天數 1 天。\n2. 病假，請假開始日為 2026-10-10，申請日為 2026-10-10，天數 2 天。\n3. 病假，請假開始日為 2026-10-10，申請日為 2026-10-10，天數 3 天，未附證明。\n4. 事假，請假開始日為 2026-10-15，申請日為 2026-10-11，天數 1 天；病假，請假開始日為 2026-10-12，申請日為 2026-10-12，天數 3 天，已附證明。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入為事假且申請時間距離請假開始日少於 3 天時，輸出會判定退回。"
+    },
+    {
+      "text": "當輸入為事假且申請時間距離請假開始日至少 3 天時，輸出會判定通過。"
+    },
+    {
+      "text": "當輸入為病假且為當天申請、天數不超過 2 天時，輸出會判定通過。"
+    },
+    {
+      "text": "當輸入為病假且天數超過 2 天但未附證明時，輸出會判定退回。"
+    },
+    {
+      "text": "當輸入為病假且天數超過 2 天並附證明時，輸出會判定通過。"
+    },
+    {
+      "text": "當輸入不符合規則時，輸出會明確寫出退回原因。"
+    }
+  ],
+  "final_output": "以下為審核結果：\n\n1. **Return**\n   - 原因：**事假需至少提前 3 天申請**；本案申請日為 2026-10-08，請假開始日為 2026-10-10，未達 3 天前。\n\n2. **Pass**\n   - 原因：病假可同日申請，且請假 **2 天未超過 2 天**，不需證明。\n\n3. **Return**\n   - 原因：**病假超過 2 天需附證明**；本案請假 **3 天**，但**未附證明**。\n\n4. 這筆內含兩個申請：\n   - **4-1 事假：Pass**\n     - 原因：申請日 2026-10-11，請假開始日 2026-10-15，已提前 **4 天**，符合至少提前 3 天申請。\n   - **4-2 病假：Pass**\n     - 原因：病假可同日申請，且 **3 天已附證明**，符合規定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0318b76c-a924-4bed-bcfd-d2a6bcbcd6ed",
+    "run_id": "39ff0c65-db31-42d9-a43f-7bb80335c0b4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出正確審核所有測試情境：兩筆不符規則者退回並說明原因，兩筆符合規則的事假與病假均通過。",
+    "criterion_results": [
+      {
+        "criterion_id": "52a5638e-0384-4143-8d61-1ce09c4e0aaf",
+        "text": "當輸入為事假且申請時間距離請假開始日少於 3 天時，輸出會判定退回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對提前不足 3 天的事假，輸出判定為 Return。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **Return**\n   - 原因：**事假需至少提前 3 天申請**；本案申請日為 2026-10-08，請假開始日為 2026-10-10，未達 3 天前。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e26e49c-5398-4d15-b628-b76922eea034",
+        "text": "當輸入為事假且申請時間距離請假開始日至少 3 天時，輸出會判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對提前 4 天申請的事假，輸出判定為 Pass。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **4-1 事假：Pass**\n     - 原因：申請日 2026-10-11，請假開始日 2026-10-15，已提前 **4 天**，符合至少提前 3 天申請。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd72ef3e-ee34-4812-acde-74c6f82fad43",
+        "text": "當輸入為病假且為當天申請、天數不超過 2 天時，輸出會判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對當天申請且 2 天的病假，輸出判定為 Pass。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **Pass**\n   - 原因：病假可同日申請，且請假 **2 天未超過 2 天**，不需證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d4c88808-818d-4c6e-9f17-47a77b841770",
+        "text": "當輸入為病假且天數超過 2 天但未附證明時，輸出會判定退回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對超過 2 天但未附證明的病假，輸出判定為 Return。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **Return**\n   - 原因：**病假超過 2 天需附證明**；本案請假 **3 天**，但**未附證明**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "15ae467c-e42b-4f86-a309-ee3cac083ee7",
+        "text": "當輸入為病假且天數超過 2 天並附證明時，輸出會判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對超過 2 天且附有證明的病假，輸出判定為 Pass。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **4-2 病假：Pass**\n     - 原因：病假可同日申請，且 **3 天已附證明**，符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c61aca45-fcd0-42c9-a76e-0fa2ef18824a",
+        "text": "當輸入不符合規則時，輸出會明確寫出退回原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆不符合規則的申請均明確說明退回原因：事假未提前 3 天，以及病假超過 2 天未附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "原因：**事假需至少提前 3 天申請**；本案申請日為 2026-10-08，請假開始日為 2026-10-10，未達 3 天前。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "原因：**病假超過 2 天需附證明**；本案請假 **3 天**，但**未附證明**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18901 input and 853 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

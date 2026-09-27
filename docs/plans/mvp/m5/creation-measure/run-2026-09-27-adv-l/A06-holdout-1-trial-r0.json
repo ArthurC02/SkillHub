@@ -1,0 +1,105 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫一篇自我介紹。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。"
+    }
+  ],
+  "final_output": "以下為**通用短版、友善中性語氣、適合學校／工作／一般提交用途**的自我介紹：\n\n大家好，我叫【姓名】。我目前的背景是【背景】，平常給人的印象是認真、負責，也很願意學習新事物。過去我曾有【經歷】的經驗，讓我在【技能／特質】方面累積了一些基礎，也更懂得如何與人合作、解決問題。私底下我對【興趣】很有興趣，這些興趣也讓我保持好奇心與積極的態度。未來我希望能持續提升自己，累積更多實力，並在新的環境中穩定成長。謝謝大家。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "87c9c3a8-c23b-43d2-98fc-6270f4e3a796",
+    "run_id": "f05a6855-dff9-4ccc-aa85-03c05eff736a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出是一篇可直接套用的完整中文自我介紹範文，並以清楚的填空欄位保留所有需要個人資料的內容，沒有捏造具體背景資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "ee56e67c-6ac0-48d1-9cec-40a242ce54fb",
+        "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了包含開場、背景、經歷、特質、興趣與未來目標的完整自我介紹範文，不是僅列出問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫【姓名】。我目前的背景是【背景】，平常給人的印象是認真、負責，也很願意學習新事物。過去我曾有【經歷】的經驗，讓我在【技能／特質】方面累積了一些基礎，也更懂得如何與人合作、解決問題。私底下我對【興趣】很有興趣，這些興趣也讓我保持好奇心與積極的態度。未來我希望能持續提升自己，累積更多實力，並在新的環境中穩定成長。謝謝大家。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "750c9342-6c5b-4663-a84e-8eee95d59093",
+        "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "範文未提供或捏造具體姓名、學校、公司、年資或成就；姓名、背景、經歷、技能／特質與興趣等需個人化的資訊均以明顯的【】填空標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我叫【姓名】。我目前的背景是【背景】",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "過去我曾有【經歷】的經驗，讓我在【技能／特質】方面累積了一些基礎",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "私底下我對【興趣】很有興趣",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3348 input and 472 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

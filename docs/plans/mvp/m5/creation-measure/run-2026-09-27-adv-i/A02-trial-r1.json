@@ -1,0 +1,167 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下請假申請：\n1. 「員工A申請事假，請假日期為 9/10，申請日期為 9/8。」\n2. 「員工B申請事假，請假日期為 9/10，申請日期為 9/9。」\n3. 「員工C申請病假 2 天，請假日期為 9/10 至 9/11。」\n4. 「員工D申請病假 3 天，請假日期為 9/10 至 9/12，附有醫師證明。」\n5. 「員工E申請病假 3 天，請假日期為 9/10 至 9/12，未附任何證明。」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入為事假且申請日距離請假開始日少於 3 天時，輸出必須判定退回，並明確寫出「事假需提前 3 天申請」的原因。"
+    },
+    {
+      "text": "當輸入為事假且申請日距離請假開始日至少 3 天時，輸出必須判定通過或可受理，且不得寫退回原因。"
+    },
+    {
+      "text": "當輸入為病假且請假天數為 1 或 2 天時，輸出必須判定通過或可受理，且不得要求證明。"
+    },
+    {
+      "text": "當輸入為病假且請假天數超過 2 天但未附證明時，輸出必須判定退回，並明確寫出「病假超過 2 天要附證明」的原因。"
+    },
+    {
+      "text": "當輸入為病假且請假天數超過 2 天且已附證明時，輸出必須判定通過或可受理，且不得要求補證明。"
+    },
+    {
+      "text": "當輸入不符合任一規則時，輸出必須包含退回結果與可讀的原因說明。"
+    }
+  ],
+  "final_output": "以下為逐筆審核結果：\n\n1. **員工A**\n   - **審核結果：退回**\n   - **原因：事假需提前 3 天申請。** 申請日期為 9/8，請假日期為 9/10，未達提前 3 天的規定。\n\n2. **員工B**\n   - **審核結果：退回**\n   - **原因：事假需提前 3 天申請。** 申請日期為 9/9，請假日期為 9/10，未達提前 3 天的規定。\n\n3. **員工C**\n   - **審核結果：可受理**\n   - **原因：病假 2 天，未超過 2 天，無需附證明。**\n\n4. **員工D**\n   - **審核結果：可受理**\n   - **原因：病假 3 天，已附醫師證明，符合規定。**\n\n5. **員工E**\n   - **審核結果：退回**\n   - **原因：病假超過 2 天要附證明。** 本案病假 3 天，未附任何證明，不符合規定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e55b7423-a59f-4460-8379-980a2673aecf",
+    "run_id": "2b84ef91-1681-49c3-918f-af18a746e158",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已觀察到的事假不足提前3天、病假1至2天、病假逾2天有／無證明，以及不符合規則時的處理皆符合要求。由於沒有事假提前至少3天的輸入案例，該情境無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "7a968a16-6772-403a-af8d-5c9d260aacef",
+        "text": "當輸入為事假且申請日距離請假開始日少於 3 天時，輸出必須判定退回，並明確寫出「事假需提前 3 天申請」的原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "員工A與員工B的事假申請日距請假開始日均少於3天，均被判定退回，且明確列出指定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **審核結果：退回**\n   - **原因：事假需提前 3 天申請。** 申請日期為 9/8，請假日期為 9/10，未達提前 3 天的規定。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **審核結果：退回**\n   - **原因：事假需提前 3 天申請。** 申請日期為 9/9，請假日期為 9/10，未達提前 3 天的規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "385eaae7-7199-473e-baf2-5ff914957da1",
+        "text": "當輸入為事假且申請日距離請假開始日至少 3 天時，輸出必須判定通過或可受理，且不得寫退回原因。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入沒有申請日距離事假開始日至少3天的事假案例，無法由此輸出判斷此情況會否受理且不寫退回原因。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "1b95610b-4b60-480a-973c-cde4c709d436",
+        "text": "當輸入為病假且請假天數為 1 或 2 天時，輸出必須判定通過或可受理，且不得要求證明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "員工C申請病假2天，被判定可受理，並明確表示無需附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **審核結果：可受理**\n   - **原因：病假 2 天，未超過 2 天，無需附證明。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "995332f5-acb3-459e-9335-27ee7efeea6e",
+        "text": "當輸入為病假且請假天數超過 2 天但未附證明時，輸出必須判定退回，並明確寫出「病假超過 2 天要附證明」的原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "員工E病假3天且未附證明，被判定退回，並明確寫出指定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **審核結果：退回**\n   - **原因：病假超過 2 天要附證明。** 本案病假 3 天，未附任何證明，不符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c07f5aa1-97b9-4a8d-beae-20e8f8d89ae5",
+        "text": "當輸入為病假且請假天數超過 2 天且已附證明時，輸出必須判定通過或可受理，且不得要求補證明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "員工D病假3天且已附醫師證明，被判定可受理，未要求補附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **審核結果：可受理**\n   - **原因：病假 3 天，已附醫師證明，符合規定。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9e9c1c82-4df7-485d-9587-43be5fdf1cb6",
+        "text": "當輸入不符合任一規則時，輸出必須包含退回結果與可讀的原因說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各不符合規則的案例均提供退回結果及可讀原因：事假未提前3天的員工A、B，以及病假逾2天未附證明的員工E。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **員工A**\n   - **審核結果：退回**\n   - **原因：事假需提前 3 天申請。** 申請日期為 9/8，請假日期為 9/10，未達提前 3 天的規定。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5. **員工E**\n   - **審核結果：退回**\n   - **原因：病假超過 2 天要附證明。** 本案病假 3 天，未附任何證明，不符合規定。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18874 input and 907 output tokens on gpt-5.4-mini; reported cost $0.0201 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

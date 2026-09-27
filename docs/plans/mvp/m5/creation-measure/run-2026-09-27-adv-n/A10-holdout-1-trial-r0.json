@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這篇文章摘要成 50 字以內，而且要保留文中所有數字與人名：\n2019 年，王志明與林佳慧在台中創立綠光能源，第一年只有 12 名員工。2021 年公司取得 3.5 億元 B 輪融資，由陳建宏領投。2023 年營收成長 48%，在全台設立 7 座儲能站，服務超過 1,200 家企業客戶。黃淑芬在 2024 年接任營運長後，把維修回應時間從 72 小時縮短到 24 小時，客戶續約率提升到 91%。公司預計 2025 年再募集 5 億元，在 60 天內完成南部 3 座新站，並把員工擴增到 300 人。",
+  "acceptance_criteria": [
+    {
+      "text": "摘要本文不超過 50 字。"
+    },
+    {
+      "text": "摘要本文至少保留原文的 3 個數字。"
+    },
+    {
+      "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。"
+    },
+    {
+      "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。"
+    }
+  ],
+  "final_output": "2019王志明林佳慧創業12人；2021陳建宏領投3.5億元；2023營收48%7座儲能站1,200家客戶；2024黃淑芬72→24小時91%；2025募5億元60天內3座300人",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0510fc6c-2cf4-4a29-8bcd-5a6b99c8558b",
+    "run_id": "0a5229f2-f858-4840-93b1-4c5c249d4a9e",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "摘要保留了多個原文數字，且未加入不符原文的人名或數字，但長度超過 50 字，並且沒有說明無法在字數限制內保留全部數字與人名的取捨。",
+    "criterion_results": [
+      {
+        "criterion_id": "413bde95-c8de-4528-8779-eb2e9cdfdbde",
+        "text": "摘要本文不超過 50 字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出摘要超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創業12人；2021陳建宏領投3.5億元；2023營收48%7座儲能站1,200家客戶；2024黃淑芬72→24小時91%；2025募5億元60天內3座300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9ce667ea-df4e-49ed-a4ef-c4b45d17eeb2",
+        "text": "摘要本文至少保留原文的 3 個數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了遠超過 3 個原文數字，例如 2019、12、2021、3.5、2023、48%、7 與 1,200。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創業12人；2021陳建宏領投3.5億元；2023營收48%7座儲能站1,200家客戶；2024黃淑芬72→24小時91%；2025募5億元60天內3座300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "37dc2d08-27ef-406e-b78b-367b5ad4c9dc",
+        "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未明確說明無法在 50 字內同時保留全部數字與人名，也未說明任何取捨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創業12人；2021陳建宏領投3.5億元；2023營收48%7座儲能站1,200家客戶；2024黃淑芬72→24小時91%；2025募5億元60天內3座300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9f2d6358-8e71-4466-bbfb-44242b109fd7",
+        "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要中的人名與數字均可對應原文，未見原文沒有的數字或人名；內容亦概括原文的創業、融資、營收、儲能站、維修改善與擴張計畫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創業12人；2021陳建宏領投3.5億元；2023營收48%7座儲能站1,200家客戶；2024黃淑芬72→24小時91%；2025募5億元60天內3座300人",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18646 input and 2685 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

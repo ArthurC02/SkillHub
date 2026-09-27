@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請回覆運費說明。訂單金額如下：\n- 320\n- 500\n- 999\n- 1000",
+  "acceptance_criteria": [
+    {
+      "text": "當金額小於 500 元時，輸出包含「運費 80 元」的一句說明。"
+    },
+    {
+      "text": "當金額介於 500 到 999 元時，輸出包含「運費 40 元」的一句說明。"
+    },
+    {
+      "text": "當金額大於等於 1000 元時，輸出包含「免運」的一句說明。"
+    },
+    {
+      "text": "輸出只能是一句話，不要列點或多行。"
+    },
+    {
+      "text": "輸出內容要能依金額正確選到三種費用之一，不可混用。"
+    }
+  ],
+  "final_output": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cbb29a0c-207e-40f3-afdd-ae610a4438df",
+    "run_id": "cfe6b10d-1a92-4a86-99ab-3c3734e55825",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆以一句話完整涵蓋四個指定金額，並正確套用三種運費規則。",
+    "criterion_results": [
+      {
+        "criterion_id": "914f180f-ccc2-44dc-838c-8021a896b47e",
+        "text": "當金額小於 500 元時，輸出包含「運費 80 元」的一句說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "320 元的運費說明為 80 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c72a393c-7245-47bd-8b0e-1d9dccb89607",
+        "text": "當金額介於 500 到 999 元時，輸出包含「運費 40 元」的一句說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "500 元與 999 元的運費說明皆為 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7dc9a210-f816-46e0-a7e0-873944b3d3ee",
+        "text": "當金額大於等於 1000 元時，輸出包含「免運」的一句說明。",
+        "result": "passed",
+        "source": "model",
+        "reason": "1000 元以上的運費說明為免運，涵蓋 1000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5241329e-c34c-4e6e-aeb6-1518dcaf790a",
+        "text": "輸出只能是一句話，不要列點或多行。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單一行的一句話，以逗號串接各金額的運費說明，未使用列點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3be66631-e110-4932-953b-fb37f306343f",
+        "text": "輸出內容要能依金額正確選到三種費用之一，不可混用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "320、500、999、1000 四個金額分別正確對應 80 元、40 元、40 元與免運，沒有混用費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "320元運費80元，500元與999元運費40元，1000元以上免運。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19115 input and 598 output tokens on gpt-5.4-mini; reported cost $0.0187 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

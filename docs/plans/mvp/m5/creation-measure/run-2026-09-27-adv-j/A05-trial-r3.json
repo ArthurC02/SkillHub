@@ -1,0 +1,139 @@
+{
+  "round": 3,
+  "sample_input": "請追蹤以下三家競爭對手官網的價格變動，若有變動請通知我：\n\n1. https://competitor-a.example.com/pricing\n   - 上次價格：Pro Plan US$100/月\n   - 目前價格：Pro Plan US$100/月\n   - 狀態：頁面可讀，價格未變動\n\n2. https://competitor-b.example.com/store/item-123\n   - 上次價格：Starter Pack NT$1,200\n   - 目前價格：Starter Pack NT$1,200\n   - 狀態：頁面可讀，價格未變動\n\n3. https://competitor-c.example.com/products/pro-plan\n   - 上次價格：Business Plan €90/月\n   - 目前價格：Business Plan €90/月\n   - 狀態：頁面可讀，價格未變動",
+  "acceptance_criteria": [
+    {
+      "text": "輸入三個公開官網價格頁網址時，Skill 會把三個來源都列入追蹤範圍。"
+    },
+    {
+      "text": "當同一頁面前後價格不同時，輸出會明確指出哪一個競品、哪一個價格項目、由多少變成多少。"
+    },
+    {
+      "text": "當三個來源都沒有價格變動時，輸出會明確表示未偵測到變動。"
+    },
+    {
+      "text": "當某個來源無法取得公開頁面內容時，輸出會把該來源列為無法追蹤的來源，而不是偽造價格結果。"
+    },
+    {
+      "text": "輸出內容會是可直接通知使用者的摘要，而不是只有原始抓取內容。"
+    }
+  ],
+  "final_output": "**Tracked sources**\n1. competitor-a.example.com/pricing — Pro Plan US$100/月  \n2. competitor-b.example.com/store/item-123 — Starter Pack NT$1,200  \n3. competitor-c.example.com/products/pro-plan — Business Plan €90/月  \n\n**Unchanged sources**\n- competitor-a.example.com/pricing：Pro Plan US$100/月，未變動\n- competitor-b.example.com/store/item-123：Starter Pack NT$1,200，未變動\n- competitor-c.example.com/products/pro-plan：Business Plan €90/月，未變動\n\n**Baseline status**\n- 已提供上次價格與目前價格；本次未偵測到任何價格變動。\n\n**Summary**\n- 目前沒有價格變動，不需通知變更警報。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b2436730-dab2-46dc-a6c6-87cc82c9c2da",
+    "run_id": "919c5732-2fc3-4b2e-a963-e4db2ee96bb6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次執行已列入三個來源，且在三者價格均未變動時明確回報無變動，並提供可通知使用者的摘要。價格變動與頁面無法取得的情境未在此執行中出現，因此兩項條件式行為無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "4505bc4a-3fb0-40e1-866b-fb0e83e55e08",
+        "text": "輸入三個公開官網價格頁網址時，Skill 會把三個來源都列入追蹤範圍。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將三個提供的競品價格頁都列為追蹤來源。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Tracked sources**\n1. competitor-a.example.com/pricing — Pro Plan US$100/月  \n2. competitor-b.example.com/store/item-123 — Starter Pack NT$1,200  \n3. competitor-c.example.com/products/pro-plan — Business Plan €90/月",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0522e1a1-2111-4bc1-82b2-1a350bea3896",
+        "text": "當同一頁面前後價格不同時，輸出會明確指出哪一個競品、哪一個價格項目、由多少變成多少。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次三個來源均未發生價格差異，沒有可觀察的價格變動案例可驗證輸出是否會同時明確列出競品、項目及變動前後價格。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "2cab653b-eb56-47e5-8a05-e457238b6443",
+        "text": "當三個來源都沒有價格變動時，輸出會明確表示未偵測到變動。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示三個來源皆未變動，並總結未偵測到任何價格變動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- competitor-a.example.com/pricing：Pro Plan US$100/月，未變動\n- competitor-b.example.com/store/item-123：Starter Pack NT$1,200，未變動\n- competitor-c.example.com/products/pro-plan：Business Plan €90/月，未變動",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 已提供上次價格與目前價格；本次未偵測到任何價格變動。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e030d16-1698-4cc6-ba7c-0b27630dbed1",
+        "text": "當某個來源無法取得公開頁面內容時，輸出會把該來源列為無法追蹤的來源，而不是偽造價格結果。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次資料中的三個頁面均標示為可讀，沒有來源無法取得的案例可驗證其是否會被列為無法追蹤而非產生價格結果。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "cde796a3-e6fa-45b6-8c39-bd5620873803",
+        "text": "輸出內容會是可直接通知使用者的摘要，而不是只有原始抓取內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以追蹤來源、未變動來源與摘要的形式整理，並直接說明目前不需通知變更警報，屬可直接通知使用者的摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Summary**\n- 目前沒有價格變動，不需通知變更警報。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2953 input and 621 output tokens on gpt-5.4-mini; reported cost $0.0081 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

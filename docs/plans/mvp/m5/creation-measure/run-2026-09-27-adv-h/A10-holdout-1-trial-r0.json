@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這篇文章摘要成 50 字以內，而且要保留文中所有數字與人名：\n2019 年，王志明與林佳慧在台中創立綠光能源，第一年只有 12 名員工。2021 年公司取得 3.5 億元 B 輪融資，由陳建宏領投。2023 年營收成長 48%，在全台設立 7 座儲能站，服務超過 1,200 家企業客戶。黃淑芬在 2024 年接任營運長後，把維修回應時間從 72 小時縮短到 24 小時，客戶續約率提升到 91%。公司預計 2025 年再募集 5 億元，在 60 天內完成南部 3 座新站，並把員工擴增到 300 人。",
+  "acceptance_criteria": [
+    {
+      "text": "摘要本文不超過 50 字。"
+    },
+    {
+      "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。"
+    },
+    {
+      "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。"
+    }
+  ],
+  "final_output": "王志明林佳慧2019創綠光能源；2021陳建宏領投3.5億；2023營收48%7站1200客；2024黃淑芬72→24小時91%；2025募5億60天3站300人",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7b5d67bd-7551-4b8e-b2a1-b80fb5f5c019",
+    "run_id": "c3152431-4d0c-40d2-bc54-dfdf7a105e9a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出的人名、數字與原文一致，未添加不實資訊，但未達 50 字限制，且未說明無法同時滿足限制時的取捨，並遺漏了部分原文資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "8c8a511f-c5e7-4c9d-b453-742db97b9ba8",
+        "text": "摘要本文不超過 50 字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "摘要字數明顯超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明林佳慧2019創綠光能源；2021陳建宏領投3.5億；2023營收48%7站1200客；2024黃淑芬72→24小時91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "996ce172-fe73-4982-91d7-8fb2b73b1280",
+        "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未明確說明無法在 50 字內保留全部數字與人名，也未交代取捨；且漏列原文的「12 名員工」等資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明林佳慧2019創綠光能源；2021陳建宏領投3.5億；2023營收48%7站1200客；2024黃淑芬72→24小時91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5542dd0e-d15e-4902-8267-c99453a18f84",
+        "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要中的人名與數字均可對應原文，未見原文不存在的人名或數字；「1200」是原文「1,200」的未加千分位寫法。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明林佳慧2019創綠光能源；2021陳建宏領投3.5億；2023營收48%7站1200客；2024黃淑芬72→24小時91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3147 input and 4857 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

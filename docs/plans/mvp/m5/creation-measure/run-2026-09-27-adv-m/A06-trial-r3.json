@@ -1,0 +1,140 @@
+{
+  "round": 3,
+  "sample_input": "請幫我寫一篇自我介紹。我的名字是林怡安，目前是大學三年級學生，主修心理學，個性細心、喜歡與人溝通，曾經擔任社團幹部，想用在實習面試。請只使用我提供的資訊，不要補充其他經歷或能力。",
+  "acceptance_criteria": [
+    {
+      "text": "在使用者提供姓名、身分/背景、優勢、目標後，輸出一篇完整自我介紹。"
+    },
+    {
+      "text": "文章語言為繁體中文，語氣自然，適合直接貼上使用。"
+    },
+    {
+      "text": "內容會依使用者指定場合調整，例如面試、課堂、社群自介或活動介紹。"
+    },
+    {
+      "text": "若使用者要求長度，輸出會符合該長度範圍。"
+    },
+    {
+      "text": "若使用者提供關鍵資訊，輸出不會編造未提供的個人事實。"
+    }
+  ],
+  "final_output": "您好，我是林怡安，目前就讀大學三年級，主修心理學。我的個性細心，也喜歡與人溝通，曾經擔任社團幹部。希望有機會透過實習持續學習與成長，謝謝。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1b3d3ebb-ab4c-4ed0-b304-421e97116bb9",
+    "run_id": "2b27ca8e-54ad-4527-9594-a24d7be31340",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆以繁體中文完成可直接使用的實習面試自我介紹，涵蓋所有提供的重點，並未加入未提供的個人事實。使用者沒有指定長度，因此該項無從判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "a576fe04-56a2-4b61-bf4a-42c8c66151cf",
+        "text": "在使用者提供姓名、身分/背景、優勢、目標後，輸出一篇完整自我介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含姓名、目前大學三年級與心理學主修、細心及喜歡溝通的特質、社團幹部經驗，以及實習學習成長的目標，構成完整自我介紹。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡安，目前就讀大學三年級，主修心理學。我的個性細心，也喜歡與人溝通，曾經擔任社團幹部。希望有機會透過實習持續學習與成長，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3e6bc4ae-db81-4ffe-a78c-55bdc2db99de",
+        "text": "文章語言為繁體中文，語氣自然，適合直接貼上使用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出使用自然的繁體中文書面語，具備開場、內容與結語，可直接用於自我介紹。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡安，目前就讀大學三年級，主修心理學。我的個性細心，也喜歡與人溝通，曾經擔任社團幹部。希望有機會透過實習持續學習與成長，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0a5117e4-b0f5-436b-97a5-d2b1082319bf",
+        "text": "內容會依使用者指定場合調整，例如面試、課堂、社群自介或活動介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確以實習為目標，加入「透過實習持續學習與成長」的表述，符合實習面試場合。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "希望有機會透過實習持續學習與成長，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3afd9ad6-3b4f-42c8-8040-1ebb2c522e91",
+        "text": "若使用者要求長度，輸出會符合該長度範圍。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "使用者未要求特定長度或長度範圍，因此沒有可供比對的長度要求。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "07caa9eb-69c4-45dd-92a4-52192a3fb55f",
+        "text": "若使用者提供關鍵資訊，輸出不會編造未提供的個人事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出所述姓名、年級、主修、個性、溝通偏好、社團幹部經驗及實習目標，皆可由使用者提供資訊支持，未見額外個人事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，我是林怡安，目前就讀大學三年級，主修心理學。我的個性細心，也喜歡與人溝通，曾經擔任社團幹部。希望有機會透過實習持續學習與成長，謝謝。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2784 input and 460 output tokens on gpt-5.4-mini; reported cost $0.0071 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

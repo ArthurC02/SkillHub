@@ -1,0 +1,166 @@
+{
+  "round": 2,
+  "sample_input": "請追蹤以下三家競爭對手官網的價格變動，並列出是否有變動與通知摘要。\nhttps://alpha.example.com/pricing\nhttps://beta.example.com/products/plan\nhttps://gamma.example.com/store/item-123\n\nalpha.example.com/pricing：Basic 月費 NT$990；上次紀錄 NT$890\nbeta.example.com/products/plan：Pro 月費 NT$1,500；上次紀錄 NT$1,500\ngamma.example.com/store/item-123：Standard 售價 NT$2,280；上次紀錄 NT$2,180",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入三個官網 URL 與對應頁面資訊時，輸出會逐一列出三家網站的價格狀態。"
+    },
+    {
+      "text": "若某家網站價格與上次紀錄不同，輸出會明確標示「有變動」。"
+    },
+    {
+      "text": "若某家網站價格與上次紀錄相同，輸出會明確標示「無變動」。"
+    },
+    {
+      "text": "若某家網站無法抓取公開價格，輸出會明確標示原因，不會編造價格。"
+    },
+    {
+      "text": "輸出會包含可直接用來通知的摘要文字。"
+    }
+  ],
+  "final_output": "以下為可直接手動送出的監測摘要（純文字）：\n\n## https://alpha.example.com/pricing\n- **頁面**：Basic 月費方案\n- **目前價格**：無法驗證\n- **上次紀錄**：NT$890\n- **狀態**：unavailable\n- **通知文字**：Alpha pricing 頁面目前無法公開抓取，因為系統無法通過網站安全驗證，因此**沒有可驗證的價格**可供比較。\n\n## https://beta.example.com/products/plan\n- **頁面**：Pro 月費方案\n- **目前價格**：無法驗證\n- **上次紀錄**：NT$1,500\n- **狀態**：unavailable\n- **通知文字**：Beta plan 頁面目前無法公開抓取，因為系統無法通過網站安全驗證，因此**沒有可驗證的價格**可供比較。\n\n## https://gamma.example.com/store/item-123\n- **頁面**：Standard 商品\n- **目前價格**：無法驗證\n- **上次紀錄**：NT$2,180\n- **狀態**：unavailable\n- **通知文字**：Gamma 商品頁面目前無法公開抓取，因為系統無法通過網站安全驗證，因此**沒有可驗證的價格**可供比較。\n\n**送出提醒**：我已整理成可手動轉發的通知文字；實際發送或排程需要由你來完成。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c8e6d11d-41e9-49f2-89e1-35b9ebe20902",
+    "run_id": "6cb2a091-404a-4a73-be30-63a9687c7c9f",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "執行結果列出三家網站，並在抓取失敗時說明原因且提供通知文字。然而，對輸入已提供的價格比較資料，未標示 Alpha、Gamma 的「有變動」及 Beta 的「無變動」。",
+    "criterion_results": [
+      {
+        "criterion_id": "fc245f57-4537-427e-84b6-365fead7d266",
+        "text": "在輸入三個官網 URL 與對應頁面資訊時，輸出會逐一列出三家網站的價格狀態。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出 Alpha、Beta、Gamma 三個網址，並各自提供目前價格、上次紀錄與狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## https://alpha.example.com/pricing\n- **頁面**：Basic 月費方案",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## https://beta.example.com/products/plan\n- **頁面**：Pro 月費方案",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## https://gamma.example.com/store/item-123\n- **頁面**：Standard 商品",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f08069dd-8fcf-4fa4-9e96-bc7b4e4b7404",
+        "text": "若某家網站價格與上次紀錄不同，輸出會明確標示「有變動」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸入中 Alpha 與 Gamma 的目前價格均與上次紀錄不同，但輸出對兩者僅標示 unavailable，未明確標示「有變動」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **狀態**：unavailable",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **目前價格**：無法驗證",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "abdff292-1de5-4931-b341-c4f15c9673c1",
+        "text": "若某家網站價格與上次紀錄相同，輸出會明確標示「無變動」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸入中 Beta 的目前價格與上次紀錄同為 NT$1,500，但輸出未明確標示「無變動」，而是標示 unavailable。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## https://beta.example.com/products/plan\n- **頁面**：Pro 月費方案\n- **目前價格**：無法驗證\n- **上次紀錄**：NT$1,500\n- **狀態**：unavailable",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4b7da803-04c7-4ec7-96d7-bd224db6cb52",
+        "text": "若某家網站無法抓取公開價格，輸出會明確標示原因，不會編造價格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對無法抓取的三個頁面均標示目前價格無法驗證，並說明無法通過網站安全驗證，且未編造價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **通知文字**：Alpha pricing 頁面目前無法公開抓取，因為系統無法通過網站安全驗證，因此**沒有可驗證的價格**可供比較。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ca34153-60ec-47fb-a32b-31b11665384b",
+        "text": "輸出會包含可直接用來通知的摘要文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含每個網站可手動轉發的通知文字，並明示為可直接手動送出的監測摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為可直接手動送出的監測摘要（純文字）：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**送出提醒**：我已整理成可手動轉發的通知文字；實際發送或排程需要由你來完成。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3753 input and 1559 output tokens on gpt-5.4-mini; reported cost $0.0142 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 24,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

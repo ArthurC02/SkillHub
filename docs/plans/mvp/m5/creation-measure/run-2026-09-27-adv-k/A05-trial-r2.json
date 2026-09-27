@@ -1,0 +1,155 @@
+{
+  "round": 2,
+  "sample_input": "請追蹤這三家競爭對手官網的價格，若有變動就整理給我：\n1. https://shop.alpha.example/products/widget-a\n   前次價格：NT$1,200\n   本次價格：NT$1,350\n2. https://www.beta.example/item/sku-2048\n   前次價格：NT$2,000\n   本次價格：NT$2,000\n3. https://gamma.example/pricing/plan-pro\n   前次價格：無法讀取\n   本次價格：NT$3,500\n\n另外，請再檢查這個只有兩個網址的迷你案例：\n1. https://shop.delta.example/products/widget-b\n   前次價格：NT$980\n   本次價格：NT$980\n2. https://shop.epsilon.example/products/widget-c\n   前次價格：NT$750\n   本次價格：NT$800",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入 3 個官網商品／價格頁連結時，輸出能逐一列出每個網址目前的價格與前次價格比較結果。"
+    },
+    {
+      "text": "當三者中任一頁價格有變動時，輸出中必須明確標示哪一個網址變了、舊價格是多少、新價格是多少。"
+    },
+    {
+      "text": "當三者價格都沒有變動時，輸出必須明確說明「無變動」且列出已檢查的 3 個網址。"
+    },
+    {
+      "text": "當輸入中只有部分網址可讀到價格時，輸出必須區分「可比較」與「無法判定」的網址。"
+    },
+    {
+      "text": "當網址數量不是 3 個時，輸出必須指出目前只以已提供網址進行比對，並清楚標示缺少的網址數。"
+    }
+  ],
+  "final_output": "以下是價格變動整理。\n\n## 主案例（3 個網址）\n- **https://shop.alpha.example/products/widget-a**\n  - 前次價格：NT$1,200\n  - 本次價格：NT$1,350\n  - 狀態：**changed**\n  - 備註：價格上調 **NT$150**\n\n- **https://www.beta.example/item/sku-2048**\n  - 前次價格：NT$2,000\n  - 本次價格：NT$2,000\n  - 狀態：**unchanged**\n\n- **https://gamma.example/pricing/plan-pro**\n  - 前次價格：無法讀取\n  - 本次價格：NT$3,500\n  - 狀態：**cannot determine**\n  - 備註：前次價格不可讀，無法判定是否變動\n\n**摘要：**有變動的網址是 **alpha**（NT$1,200 → NT$1,350）；**beta** 無變動；**gamma** 因前次價格不可讀，無法判定。\n\n---\n\n## 迷你案例（2 個網址）\n\u003e 只比較了你提供的 2 個網址，**缺少 1 個網址**。\n\n- **https://shop.delta.example/products/widget-b**\n  - 前次價格：NT$980\n  - 本次價格：NT$980\n  - 狀態：**unchanged**\n\n- **https://shop.epsilon.example/products/widget-c**\n  - 前次價格：NT$750\n  - 本次價格：NT$800\n  - 狀態：**changed**\n  - 備註：價格上調 **NT$50**\n\n**摘要：**迷你案例中，**epsilon** 有變動（NT$750 → NT$800），**delta** 無變動。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "06fcdc9f-0cdc-4146-ad2f-466537771dda",
+    "run_id": "3a81f622-4de8-4173-9bfd-0d2f77acbe17",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已完成三網址案例的逐一價格比較、變動網址與舊新價格標示，也能區分無法判定的網址；兩網址案例亦有標示僅比較已提供網址及缺少數量。三個網址皆無變動的條件情境未在本次輸入或輸出中出現，故該項無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "f04639db-832d-463e-ab86-1e8b61e66896",
+        "text": "在輸入 3 個官網商品／價格頁連結時，輸出能逐一列出每個網址目前的價格與前次價格比較結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "主案例逐一列出 3 個網址的前次價格、本次價格與比較狀態。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **https://shop.alpha.example/products/widget-a**\n  - 前次價格：NT$1,200\n  - 本次價格：NT$1,350\n  - 狀態：**changed**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **https://www.beta.example/item/sku-2048**\n  - 前次價格：NT$2,000\n  - 本次價格：NT$2,000\n  - 狀態：**unchanged**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **https://gamma.example/pricing/plan-pro**\n  - 前次價格：無法讀取\n  - 本次價格：NT$3,500\n  - 狀態：**cannot determine**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "95502c2c-4577-4452-9171-6c558abd1b94",
+        "text": "當三者中任一頁價格有變動時，輸出中必須明確標示哪一個網址變了、舊價格是多少、新價格是多少。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確指出 alpha 網址有變動，並列出舊價格與新價格。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**摘要：**有變動的網址是 **alpha**（NT$1,200 → NT$1,350）；**beta** 無變動；**gamma** 因前次價格不可讀，無法判定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ecfd80b-cd85-4c22-a736-9229649a66e1",
+        "text": "當三者價格都沒有變動時，輸出必須明確說明「無變動」且列出已檢查的 3 個網址。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次提供的 3 個網址主案例包含價格變動及無法判定情況，未出現三者皆無變動的情境，因此無法判定該情境下是否會明確說明「無變動」並列出 3 個網址。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "14ba1f46-f7e6-47ac-80a5-220736971a37",
+        "text": "當輸入中只有部分網址可讀到價格時，輸出必須區分「可比較」與「無法判定」的網址。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 alpha、beta 標為可得出比較結果的 changed／unchanged，並將前次價格不可讀的 gamma 明確標為 cannot determine，且說明無法判定原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **https://gamma.example/pricing/plan-pro**\n  - 前次價格：無法讀取\n  - 本次價格：NT$3,500\n  - 狀態：**cannot determine**\n  - 備註：前次價格不可讀，無法判定是否變動",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**摘要：**有變動的網址是 **alpha**（NT$1,200 → NT$1,350）；**beta** 無變動；**gamma** 因前次價格不可讀，無法判定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a8d467a-0283-4520-bc09-148d0678d4a8",
+        "text": "當網址數量不是 3 個時，輸出必須指出目前只以已提供網址進行比對，並清楚標示缺少的網址數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "迷你案例只有 2 個網址時，輸出明確說明僅比較已提供的 2 個網址，並標示缺少 1 個網址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "\u003e 只比較了你提供的 2 個網址，**缺少 1 個網址**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3289 input and 1056 output tokens on gpt-5.4-mini; reported cost $0.0103 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

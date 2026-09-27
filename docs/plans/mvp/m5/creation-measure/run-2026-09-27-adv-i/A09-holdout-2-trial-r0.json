@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "用出勤紀錄算加班時數：王小明 9/1 09:00 上班、18:30 下班；9/2 09:00 上班、20:00 下班；兩天都有午休 1 小時。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。"
+    },
+    {
+      "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。"
+    },
+    {
+      "text": "輸出沒有只回答無法計算或只列出缺少的資訊。"
+    }
+  ],
+  "final_output": "以每天 **8 小時工時** 計算，且 **午休 1 小時不算工時**：\n\n- **9/1**：09:00–18:30 = 9.5 小時，扣午休 1 小時後為 **8.5 小時**  \n  → **加班 0.5 小時 = 30 分鐘**\n- **9/2**：09:00–20:00 = 11 小時，扣午休 1 小時後為 **10 小時**  \n  → **加班 2 小時**\n\n**合計加班：2.5 小時 = 2 小時 30 分鐘**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a3f8b947-bf18-42b5-8d84-a1fe0c914342",
+    "run_id": "dca2a7fa-8f06-42aa-a5d4-1dc628a5ddf4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出清楚說明每日正常工時標準與午休處理方式，並正確逐日及合計計算王小明加班 2.5 小時。",
+    "criterion_results": [
+      {
+        "criterion_id": "1b1175d1-3ca7-4411-ad3a-b635a83667a5",
+        "text": "輸出寫明它採用的加班起算標準（例如每日正常工時 8 小時）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確採用每日 8 小時工時作為加班起算標準，並說明午休不計入工時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以每天 **8 小時工時** 計算，且 **午休 1 小時不算工時**：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dbd16d04-6953-48ef-8ab0-8c4c3ed15e83",
+        "text": "輸出依它寫明的標準算出王小明的加班時數；若採每日 8 小時，應為 2.5 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "依每日 8 小時標準，輸出計得王小明兩日合計加班 2.5 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**合計加班：2.5 小時 = 2 小時 30 分鐘**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cea2796c-1867-4470-b622-70795ad5b53f",
+        "text": "輸出沒有只回答無法計算或只列出缺少的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了逐日工時、午休扣除與加班計算結果，而非僅稱無法計算或僅列缺少資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **9/1**：09:00–18:30 = 9.5 小時，扣午休 1 小時後為 **8.5 小時**  \n  → **加班 0.5 小時 = 30 分鐘**\n- **9/2**：09:00–20:00 = 11 小時，扣午休 1 小時後為 **10 小時**  \n  → **加班 2 小時**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2123 input and 341 output tokens on gpt-5.4-mini; reported cost $0.0047 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

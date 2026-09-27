@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這篇文章摘要成 50 字以內，而且要保留文中所有數字與人名：\n2019 年，王志明與林佳慧在台中創立綠光能源，第一年只有 12 名員工。2021 年公司取得 3.5 億元 B 輪融資，由陳建宏領投。2023 年營收成長 48%，在全台設立 7 座儲能站，服務超過 1,200 家企業客戶。黃淑芬在 2024 年接任營運長後，把維修回應時間從 72 小時縮短到 24 小時，客戶續約率提升到 91%。公司預計 2025 年再募集 5 億元，在 60 天內完成南部 3 座新站，並把員工擴增到 300 人。",
+  "acceptance_criteria": [
+    {
+      "text": "摘要本文不超過 50 字。"
+    },
+    {
+      "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。"
+    },
+    {
+      "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。"
+    }
+  ],
+  "final_output": "2019王志明林佳慧創綠光能源；2021陳建宏投3.5億；2023+48%7站1200家；2024黃淑芬72→24h91%；2025募5億60天3站300人",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c411126f-17a4-458b-ab29-677503507c6f",
+    "run_id": "6db31e29-b4c7-43c4-bbe9-4c28d28b1629",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "摘要內容沒有新增原文以外的數字或人名，但長度超過 50 字，且未說明無法兼顧所有資訊的取捨，並漏列了 12 名員工。",
+    "criterion_results": [
+      {
+        "criterion_id": "574206b1-33a2-4c4c-b2c9-f4dac8a4572d",
+        "text": "摘要本文不超過 50 字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出摘要超過 50 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創綠光能源；2021陳建宏投3.5億；2023+48%7站1200家；2024黃淑芬72→24h91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3833bbd-c69c-4fb6-83db-73a871a3dd22",
+        "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出未明確說明無法在 50 字內保留全部數字與人名，也未交代取捨；且摘要中漏掉原文的「12」名員工。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創綠光能源；2021陳建宏投3.5億；2023+48%7站1200家；2024黃淑芬72→24h91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8aceca3e-deb1-43d3-9000-b5ded7417395",
+        "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要所列年份、數字與人名均可對應原文，未出現原文沒有的數字或人名；「1200」是原文「1,200」的省略逗號寫法。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2019王志明林佳慧創綠光能源；2021陳建宏投3.5億；2023+48%7站1200家；2024黃淑芬72→24h91%；2025募5億60天3站300人",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18761 input and 675 output tokens on gpt-5.4-mini; reported cost $0.0190 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

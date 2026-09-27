@@ -1,0 +1,159 @@
+{
+  "round": 1,
+  "sample_input": "請追蹤以下三家競爭對手官網的價格變動，若有變動請摘要列出：\nhttps://alpha.example.com/pricing 目前顯示 Starter US$19/月、Pro US$49/月\nhttps://beta.example.com/plans 目前顯示 Basic NT$299/月、Business NT$799/月\nhttps://gamma.example.com/pricing 目前顯示 Standard €15/月、Enterprise €45/月",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入三個官網網址與對應價格頁時，Skill 會輸出三家網站各自擷取到的價格摘要。"
+    },
+    {
+      "text": "當兩次執行中某一家網站的價格文字改變時，Skill 會在輸出中明確標示該網站「有變動」。"
+    },
+    {
+      "text": "當三家網站的價格文字都未改變時，Skill 會輸出「無變動」或等價明確說法。"
+    },
+    {
+      "text": "當某網站存在多個價格且未指定目標時，Skill 會依預設規則選出主要公開價格並說明採用哪一個。"
+    },
+    {
+      "text": "當某網站無法存取或沒有可辨識價格時，Skill 會在輸出中標示該網站無法確認。"
+    }
+  ],
+  "final_output": "以下為本次比對結果；我無法直接抓取這三個頁面（連線/安全驗證被阻擋），因此先以你提供的現況價格作為可記錄的價格文字，變動狀態皆標示為「未能確認」。\n\n**1) https://alpha.example.com/pricing**\n- 目標頁面：Pricing 主頁\n- 擷取到的價格文字：Starter US$19/月、Pro US$49/月\n- 狀態：未能確認\n- 備註：頁面無法直接驗證；未取得可比對的前次結果\n\n**2) https://beta.example.com/plans**\n- 目標頁面：Plans 主頁\n- 擷取到的價格文字：Basic NT$299/月、Business NT$799/月\n- 狀態：未能確認\n- 備註：頁面無法直接驗證；未取得可比對的前次結果\n\n**3) https://gamma.example.com/pricing**\n- 目標頁面：Pricing 主頁\n- 擷取到的價格文字：Standard €15/月、Enterprise €45/月\n- 狀態：未能確認\n- 備註：頁面無法直接驗證；未取得可比對的前次結果\n\n**總結：** 這三家目前都無法直接確認是否有價格變動；若以你提供的現況價格為基準，尚不能判定變更。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a59899de-92f2-4e84-99a2-a415df7abdac",
+    "run_id": "4754d790-252f-4044-8c6f-657ac47af269",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次輸出涵蓋三家網站及其價格摘要，且在無法存取頁面時清楚標示無法確認。不過，未在多價格情境中選定並說明主要公開價格；價格變動與全數未變動的條件情境則沒有可供判定的執行證據。",
+    "criterion_results": [
+      {
+        "criterion_id": "494e32e4-b8b8-48b8-897b-da692dc278f6",
+        "text": "當輸入三個官網網址與對應價格頁時，Skill 會輸出三家網站各自擷取到的價格摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出三個網址，並為每家提供價格文字摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**1) https://alpha.example.com/pricing**\n- 目標頁面：Pricing 主頁\n- 擷取到的價格文字：Starter US$19/月、Pro US$49/月",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**2) https://beta.example.com/plans**\n- 目標頁面：Plans 主頁\n- 擷取到的價格文字：Basic NT$299/月、Business NT$799/月",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**3) https://gamma.example.com/pricing**\n- 目標頁面：Pricing 主頁\n- 擷取到的價格文字：Standard €15/月、Enterprise €45/月",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f95aee5f-60ae-4018-a5a6-e08b494083dd",
+        "text": "當兩次執行中某一家網站的價格文字改變時，Skill 會在輸出中明確標示該網站「有變動」。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次證據沒有兩次執行的可比較價格結果，也沒有任何網站實際價格文字改變的情境。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "dbb804f5-480f-4401-b646-dce7ea27ea16",
+        "text": "當三家網站的價格文字都未改變時，Skill 會輸出「無變動」或等價明確說法。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "沒有證據顯示三家網站的價格文字均已確認未改變；輸出僅表示無法確認變動。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "66ab42fc-42da-4e7e-8a14-b3cfd9580fa5",
+        "text": "當某網站存在多個價格且未指定目標時，Skill 會依預設規則選出主要公開價格並說明採用哪一個。",
+        "result": "failed",
+        "source": "model",
+        "reason": "各網站均有多個價格且未指定目標，但輸出僅羅列所有方案，未依預設規則選出一個主要公開價格，也未說明採用哪一個。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 擷取到的價格文字：Starter US$19/月、Pro US$49/月\n- 狀態：未能確認",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 擷取到的價格文字：Basic NT$299/月、Business NT$799/月\n- 狀態：未能確認",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 擷取到的價格文字：Standard €15/月、Enterprise €45/月\n- 狀態：未能確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b5036ec-d9d0-4cee-89e9-5156e10b81a2",
+        "text": "當某網站無法存取或沒有可辨識價格時，Skill 會在輸出中標示該網站無法確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個頁面均無法抓取時，輸出對每家皆標示「未能確認」，並說明頁面無法直接驗證。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 狀態：未能確認\n- 備註：頁面無法直接驗證；未取得可比對的前次結果",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總結：** 這三家目前都無法直接確認是否有價格變動；若以你提供的現況價格為基準，尚不能判定變更。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 20122 input and 2550 output tokens on gpt-5.4-mini; reported cost $0.0311 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

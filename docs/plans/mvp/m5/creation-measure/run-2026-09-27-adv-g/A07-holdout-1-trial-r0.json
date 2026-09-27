@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "幫我回覆這位客人的抱怨。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出沒有捏造客人抱怨的具體內容（商品、日期、金額或事件）。"
+    },
+    {
+      "text": "輸出是一則可以套用的通用回覆範本，或清楚說明需要客人的抱怨原文才能回覆；兩者其一即可。"
+    }
+  ],
+  "final_output": "您好，謝謝您向我們反映這個問題。對於這次造成您的不便與困擾，我們深感抱歉，也非常重視您的感受。\n\n目前我們尚未收到足夠資訊，還無法立即確認問題原因；若方便，請您提供訂單編號、相關照片／截圖，或更詳細的情況說明，我們會盡快協助您進一步處理。\n\n感謝您的耐心與配合，若您有任何補充，也歡迎直接回覆，我們會持續為您跟進。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "202f9f44-d168-4e37-90c1-6531d4795e0a",
+    "run_id": "e5c40a92-d0c1-4fe2-aace-efeccc10b65b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆採用通用、道歉且專業的客服措辭，未捏造任何客訴細節，並明確要求客人補充必要資訊以便處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "d3345eb4-b6be-453e-9865-53cf7246040e",
+        "text": "輸出沒有捏造客人抱怨的具體內容（商品、日期、金額或事件）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未提及任何特定商品、日期、金額或具體事件，只以「這個問題」及待補充資訊作通用表述。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前我們尚未收到足夠資訊，還無法立即確認問題原因；若方便，請您提供訂單編號、相關照片／截圖，或更詳細的情況說明，我們會盡快協助您進一步處理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "793bb28b-105a-4db4-8cf0-970f496fbc24",
+        "text": "輸出是一則可以套用的通用回覆範本，或清楚說明需要客人的抱怨原文才能回覆；兩者其一即可。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆清楚說明目前資訊不足，並請客人提供訂單編號、照片／截圖或詳細情況，符合需要客人抱怨原文或更多資訊才能進一步回覆的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前我們尚未收到足夠資訊，還無法立即確認問題原因；若方便，請您提供訂單編號、相關照片／截圖，或更詳細的情況說明，我們會盡快協助您進一步處理。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3264 input and 554 output tokens on gpt-5.4-mini; reported cost $0.0078 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

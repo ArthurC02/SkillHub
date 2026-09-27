@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下請假申請並逐筆回覆是否通過與原因：\n1) 事假，申請日 2026-10-01，請假日 2026-10-03\n2) 事假，申請日 2026-10-01，請假日 2026-10-04\n3) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 1 天，無證明\n4) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 3 天，無證明\n5) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 3 天，附醫生證明",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含事假且申請日距請假日少於 3 天時，輸出必須判定為退回。"
+    },
+    {
+      "text": "輸入包含事假且申請日距請假日至少 3 天時，輸出必須判定為通過。"
+    },
+    {
+      "text": "輸入包含病假且為當天請假時，輸出必須判定為可接受。"
+    },
+    {
+      "text": "輸入包含病假且請假天數超過 2 天但未附證明時，輸出必須判定為退回。"
+    },
+    {
+      "text": "輸入包含病假且請假天數超過 2 天並附證明時，輸出必須判定為可接受。"
+    },
+    {
+      "text": "對任何不符合規則的案例，輸出必須明確寫出退回原因。"
+    }
+  ],
+  "final_output": "1) 事假，申請日 2026-10-01，請假日 2026-10-03  \n- Decision: returned  \n- Reason: 申請日距請假日只有 2 天，少於 3 天。\n\n2) 事假，申請日 2026-10-01，請假日 2026-10-04  \n- Decision: approved  \n- Reason: 申請日距請假日已滿 3 天，符合事假規則。\n\n3) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 1 天，無證明  \n- Decision: accepted  \n- Reason: 同日病假可接受。\n\n4) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 3 天，無證明  \n- Decision: returned  \n- Reason: 病假超過 2 天且未附證明，需退回。\n\n5) 病假，申請日 2026-10-05，請假日 2026-10-05，請假 3 天，附醫生證明  \n- Decision: accepted  \n- Reason: 病假超過 2 天但已附醫生證明，符合規則。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f239b54e-300f-4a9d-92ca-9383d00468d8",
+    "run_id": "3f394349-d622-4417-b1a7-e8a77fcb872a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有列出的案例均依相應規則判定，且兩個退回案例皆提供明確原因。",
+    "criterion_results": [
+      {
+        "criterion_id": "1f87fcfc-77b1-4047-9f50-c8e0677d9ae3",
+        "text": "輸入包含事假且申請日距請假日少於 3 天時，輸出必須判定為退回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "事假申請日距請假日 2 天的案例被判定為退回。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Decision: returned  \n- Reason: 申請日距請假日只有 2 天，少於 3 天。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "26c32fb9-e325-4d45-96a2-3f61f6faa7cb",
+        "text": "輸入包含事假且申請日距請假日至少 3 天時，輸出必須判定為通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "事假申請日距請假日滿 3 天的案例被判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Decision: approved  \n- Reason: 申請日距請假日已滿 3 天，符合事假規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fcd9ed43-74d8-4111-b52d-52bf8111b295",
+        "text": "輸入包含病假且為當天請假時，輸出必須判定為可接受。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同日病假案例被判定為可接受。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Decision: accepted  \n- Reason: 同日病假可接受。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5ea00c54-8885-4bfc-b159-051254d9ffe0",
+        "text": "輸入包含病假且請假天數超過 2 天但未附證明時，輸出必須判定為退回。",
+        "result": "passed",
+        "source": "model",
+        "reason": "請假 3 天且未附證明的病假案例被判定為退回。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Decision: returned  \n- Reason: 病假超過 2 天且未附證明，需退回。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3936104-68a6-4c38-814f-1d60ec8e9914",
+        "text": "輸入包含病假且請假天數超過 2 天並附證明時，輸出必須判定為可接受。",
+        "result": "passed",
+        "source": "model",
+        "reason": "請假 3 天且附醫生證明的病假案例被判定為可接受。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Decision: accepted  \n- Reason: 病假超過 2 天但已附醫生證明，符合規則。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c34c194b-9698-4e35-9077-88bee862355f",
+        "text": "對任何不符合規則的案例，輸出必須明確寫出退回原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個不符合規則的案例均明確寫出退回原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Reason: 申請日距請假日只有 2 天，少於 3 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- Reason: 病假超過 2 天且未附證明，需退回。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18832 input and 923 output tokens on gpt-5.4-mini; reported cost $0.0201 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請依訂單金額回覆客戶運費，並只回覆一句說明：\n訂單金額 1200 元\n訂單金額 750 元\n訂單金額 300 元",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入金額小於 500 時，輸出會明確寫出運費 80 元。"
+    },
+    {
+      "text": "當輸入金額介於 500 到 999（含）時，輸出會明確寫出運費 40 元。"
+    },
+    {
+      "text": "當輸入金額大於或等於 1000 時，輸出會明確寫出免運。"
+    },
+    {
+      "text": "輸出只有一句中文說明，不包含多餘段落或條列。"
+    }
+  ],
+  "final_output": "訂單金額 1200 元免運，750 元運費 40 元，300 元運費 80 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b44c63c4-e92d-43ff-8a18-186209c31f34",
+    "run_id": "37dfe751-aa76-440d-ae7a-2dd6a10bdfc2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三個訂單金額分別正確對應免運、40 元及 80 元運費，且回覆僅有一句中文說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "5a10fb85-0fbb-4335-98a7-fbc445d92963",
+        "text": "當輸入金額小於 500 時，輸出會明確寫出運費 80 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對於 300 元（小於 500），回覆明確寫出運費 80 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單金額 1200 元免運，750 元運費 40 元，300 元運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0087ab99-7b21-44ea-8a7f-02719736301f",
+        "text": "當輸入金額介於 500 到 999（含）時，輸出會明確寫出運費 40 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對於 750 元（介於 500 至 999），回覆明確寫出運費 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單金額 1200 元免運，750 元運費 40 元，300 元運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9975124e-d7b8-4e94-9e80-db8276bfb10a",
+        "text": "當輸入金額大於或等於 1000 時，輸出會明確寫出免運。",
+        "result": "passed",
+        "source": "model",
+        "reason": "對於 1200 元（大於或等於 1000），回覆明確寫出免運。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單金額 1200 元免運，750 元運費 40 元，300 元運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e66dd5f8-ac5a-418f-91bc-aced1d2cf151",
+        "text": "輸出只有一句中文說明，不包含多餘段落或條列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為一個中文句子，以逗號串連三筆訂單資訊，未包含額外段落或條列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "訂單金額 1200 元免運，750 元運費 40 元，300 元運費 80 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2945 input and 326 output tokens on gpt-5.4-mini; reported cost $0.0066 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

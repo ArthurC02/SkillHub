@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請依下列四筆獨立試跑請求回覆客戶運費，且每筆都只輸出一句說明：\n1) 499\n2) 500\n3) 999\n4) 1000",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入金額為 499 時，輸出一句說明且內容表示運費為 80 元。"
+    },
+    {
+      "text": "當輸入金額為 500 時，輸出一句說明且內容表示運費為 40 元。"
+    },
+    {
+      "text": "當輸入金額為 999 時，輸出一句說明且內容表示運費為 40 元。"
+    },
+    {
+      "text": "當輸入金額為 1000 時，輸出一句說明且內容表示免運。"
+    },
+    {
+      "text": "每次輸出都只有一句中文說明，不附加條列、標題或其他解釋。"
+    }
+  ],
+  "final_output": "運費 80 元。\n運費 40 元。\n運費 40 元。\n免運。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0d5e535b-ffaa-4dda-9df3-b13fab306a32",
+    "run_id": "def9ca14-1cb5-43ef-af8c-7237177310d8",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四筆金額依原列順序均得到正確運費說明，且每筆均僅有一句中文說明。",
+    "criterion_results": [
+      {
+        "criterion_id": "e8fefdf1-c369-4e90-a775-e3448520847c",
+        "text": "當輸入金額為 499 時，輸出一句說明且內容表示運費為 80 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一筆回覆為一句中文說明，表示運費為 80 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 80 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9533eba3-1a66-49ca-b428-6f043155479d",
+        "text": "當輸入金額為 500 時，輸出一句說明且內容表示運費為 40 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二筆回覆為一句中文說明，表示運費為 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 40 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "18b79ea4-ccfb-4461-8c09-0b0a4d8346aa",
+        "text": "當輸入金額為 999 時，輸出一句說明且內容表示運費為 40 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第三筆回覆為一句中文說明，表示運費為 40 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 40 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4b2f4ddc-0072-44d5-b6c2-61493314bc51",
+        "text": "當輸入金額為 1000 時，輸出一句說明且內容表示免運。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第四筆回覆為一句中文說明，表示免運。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "免運。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "81e6ef8f-da82-4c84-af56-2a172f5742b1",
+        "text": "每次輸出都只有一句中文說明，不附加條列、標題或其他解釋。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出共有四行，每行皆為一句中文說明，沒有條列、標題或額外解釋。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "運費 80 元。\n運費 40 元。\n運費 40 元。\n免運。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18495 input and 424 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

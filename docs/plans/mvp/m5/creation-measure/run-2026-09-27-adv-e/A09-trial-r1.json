@@ -1,0 +1,123 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下出勤紀錄，計算每個人的加班時數，並標示超過 46 小時的人：\n- 王小明：本月加班 38 小時\n- 李小華：本月加班 47.5 小時\n- 陳美玲：本月加班 46 小時\n- 張志強：本月加班 52 小時",
+  "acceptance_criteria": [
+    {
+      "text": "輸入包含多筆出勤紀錄時，輸出能列出每個人的加班時數。"
+    },
+    {
+      "text": "輸出中會明確標示加班時數超過 46 小時的人。"
+    },
+    {
+      "text": "若某人的加班時數不超過 46 小時，輸出不會把他標成超過門檻。"
+    },
+    {
+      "text": "輸出會保留每個人的姓名與對應的加班時數。"
+    }
+  ],
+  "final_output": "以下為計算結果：\n\n| 姓名 | 本月加班時數 | 超過 46 小時 |\n|---|---:|---|\n| 王小明 | 38 小時 | 否 |\n| 李小華 | 47.5 小時 | 是 |\n| 陳美玲 | 46 小時 | 否 |\n| 張志強 | 52 小時 | 是 |\n\n超過 46 小時的人：\n- 李小華\n- 張志強",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "72e88d6b-0107-4d26-ba70-ce2c780b4083",
+    "run_id": "b6307563-a6db-4e17-b828-b5724304bc33",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出完整列出四位人員的姓名與加班時數，並正確只將加班時數嚴格超過 46 小時的李小華與張志強標示為超過門檻。",
+    "criterion_results": [
+      {
+        "criterion_id": "b97558b2-8113-4bd3-a983-d57959ce0171",
+        "text": "輸入包含多筆出勤紀錄時，輸出能列出每個人的加班時數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出表格列出四位人員及其本月加班時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 38 小時 | 否 |\n| 李小華 | 47.5 小時 | 是 |\n| 陳美玲 | 46 小時 | 否 |\n| 張志強 | 52 小時 | 是 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6b978453-c405-4479-947f-1b8339a143f3",
+        "text": "輸出中會明確標示加班時數超過 46 小時的人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確以「是」及名單標示超過 46 小時的李小華與張志強。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "超過 46 小時的人：\n- 李小華\n- 張志強",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a205596e-2357-468b-ae03-ce2f2e1054a7",
+        "text": "若某人的加班時數不超過 46 小時，輸出不會把他標成超過門檻。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 王小明為 38 小時、陳美玲為 46 小時，均標示為「否」，沒有被標成超過門檻。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "287f1ba0-a9bf-4aaa-a448-24f070f612c0",
+        "text": "輸出會保留每個人的姓名與對應的加班時數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格保留每位人員姓名及其對應的加班時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 38 小時 | 否 |\n| 李小華 | 47.5 小時 | 是 |\n| 陳美玲 | 46 小時 | 否 |\n| 張志強 | 52 小時 | 是 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2611 input and 254 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

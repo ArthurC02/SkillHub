@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請幫我回覆這位客人的抱怨。\n客人說：「我昨天收到的外套尺寸跟網頁寫的不一樣，而且客服到現在都沒有回我，真的很失望。」\n客人補充：「我只要先協助換貨，不要退款。」",
+  "acceptance_criteria": [
+    {
+      "text": "面對明確抱怨時，輸出是一則可直接複製發送的中文回覆。"
+    },
+    {
+      "text": "回覆必須包含同理或致歉語句。"
+    },
+    {
+      "text": "回覆必須針對抱怨內容做出具體對應，而不是空泛模板。"
+    },
+    {
+      "text": "若輸入提供處理方向，回覆需反映該方向。"
+    },
+    {
+      "text": "若輸入未提供足夠細節，回覆不得捏造訂單、商品或補償資訊。"
+    },
+    {
+      "text": "回覆語氣需保持禮貌、專業、不中傷客人。"
+    }
+  ],
+  "final_output": "您好，真的很抱歉讓您遇到這樣的情況，也很抱歉讓您久等了。  \n關於您反映外套尺寸與網頁標示不一致的問題，我們會先協助您辦理換貨，請您放心，我們會優先幫您處理。\n\n麻煩您提供以下資訊，方便我們盡快為您確認並安排後續換貨：\n1. 訂單編號  \n2. 收件人姓名  \n3. 聯絡電話  \n4. 收件地址  \n5. 外套照片與尺寸標示截圖（若方便提供）\n\n收到資料後，我們會立刻協助您處理，謝謝您的耐心與配合。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1f11547c-ed8a-4eb1-98ad-688a3bcf1ea7",
+    "run_id": "ca03b80a-a606-4f97-988c-4bcf425ec3cc",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆是一則可直接發送的中文客服訊息，具體回應尺寸不符及客服未回覆的抱怨，表達歉意並依客人要求優先協助換貨。內容未捏造訂單、補償或既有處理資訊，整體語氣禮貌專業。",
+    "criterion_results": [
+      {
+        "criterion_id": "1ae6b150-f5d2-4a0a-940e-9175f6b79aca",
+        "text": "面對明確抱怨時，輸出是一則可直接複製發送的中文回覆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為完整、可直接傳送給客人的中文客服訊息。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，真的很抱歉讓您遇到這樣的情況，也很抱歉讓您久等了。  \n關於您反映外套尺寸與網頁標示不一致的問題，我們會先協助您辦理換貨，請您放心，我們會優先幫您處理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e2208830-c57d-4448-84e5-80980a0d2e71",
+        "text": "回覆必須包含同理或致歉語句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表達歉意，並承認客人等待客服回覆的不便。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，真的很抱歉讓您遇到這樣的情況，也很抱歉讓您久等了。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91a449e0-d85c-4793-83a6-fab8c6919e64",
+        "text": "回覆必須針對抱怨內容做出具體對應，而不是空泛模板。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆具體提及外套尺寸與網頁標示不一致，以及後續換貨安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "關於您反映外套尺寸與網頁標示不一致的問題，我們會先協助您辦理換貨，請您放心，我們會優先幫您處理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9759babc-3fe0-46fe-a250-b71d1d168128",
+        "text": "若輸入提供處理方向，回覆需反映該方向。",
+        "result": "passed",
+        "source": "model",
+        "reason": "客人要求優先換貨，回覆明確表示先協助辦理換貨，未主動提出退款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我們會先協助您辦理換貨，請您放心，我們會優先幫您處理。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1b183270-0ef5-4279-b4cb-108c2067930d",
+        "text": "若輸入未提供足夠細節，回覆不得捏造訂單、商品或補償資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未虛構訂單編號、商品規格、補償或處理結果；僅請客人提供必要資料以供確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "麻煩您提供以下資訊，方便我們盡快為您確認並安排後續換貨：\n1. 訂單編號  \n2. 收件人姓名  \n3. 聯絡電話  \n4. 收件地址  \n5. 外套照片與尺寸標示截圖（若方便提供）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3eef3625-fbb7-47a6-81e7-0d8bf9b1b12e",
+        "text": "回覆語氣需保持禮貌、專業、不中傷客人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆全程使用禮貌、真誠且專業的語氣，沒有指責或中傷客人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "收到資料後，我們會立刻協助您處理，謝謝您的耐心與配合。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18859 input and 524 output tokens on gpt-5.4-mini; reported cost $0.0183 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

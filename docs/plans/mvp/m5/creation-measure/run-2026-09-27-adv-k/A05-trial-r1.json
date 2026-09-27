@@ -1,0 +1,132 @@
+{
+  "round": 1,
+  "sample_input": "請追蹤這三家競爭對手官網的價格，若有變動就整理給我：\n1. https://shop.alpha.example/products/widget-a\n2. https://www.beta.example/item/sku-2048\n3. https://gamma.example/pricing/plan-pro",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入 3 個官網商品／價格頁連結時，輸出能逐一列出每個網址目前的價格與前次價格比較結果。"
+    },
+    {
+      "text": "當三者中任一頁價格有變動時，輸出中必須明確標示哪一個網址變了、舊價格是多少、新價格是多少。"
+    },
+    {
+      "text": "當三者價格都沒有變動時，輸出必須明確說明「無變動」且列出已檢查的 3 個網址。"
+    },
+    {
+      "text": "當輸入中只有部分網址可讀到價格時，輸出必須區分「可比較」與「無法判定」的網址。"
+    },
+    {
+      "text": "當網址數量不是 3 個時，輸出必須指出目前只以已提供網址進行比對，並清楚標示缺少的網址數。"
+    }
+  ],
+  "final_output": "本次比較結果：三個頁面都因存取/安全限制無法讀取價格，所以都標記為 **cannot determine**。  \n另外，這次沒有提供「前次記錄價格」，因此無法做變動比對；我也不會自行推測。\n\n- URL: https://shop.alpha.example/products/widget-a  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine  \n  note: 頁面無法存取，無法讀取主價格\n\n- URL: https://www.beta.example/item/sku-2048  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine  \n  note: 頁面無法存取，無法讀取主價格\n\n- URL: https://gamma.example/pricing/plan-pro  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine  \n  note: 頁面無法存取，無法讀取主價格\n\n**一句話摘要：** 這三個競爭對手頁面本次都無法判定價格變動。  \n\n如果你要我之後持續幫你整理，我可以先幫你把追蹤用的比較格式整理好；實際通知/排程則需要你那邊送出或設定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8d0932ff-2c35-41b6-b449-6d1b0819ba42",
+    "run_id": "92430182-a845-4c0b-8782-b2d4d10046b4",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此執行已逐一回報三個網址的目前價格欄位、前次價格欄位與比較狀態，但網站存取均受限，無法取得實際價格。價格變動、全數無變動、部分可讀及非三網址等條件情境均未在本次執行中出現，無法據此判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "5aa0201e-c20a-4ff7-bb80-fe09e959c49a",
+        "text": "在輸入 3 個官網商品／價格頁連結時，輸出能逐一列出每個網址目前的價格與前次價格比較結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐一列出三個提供的網址，且每個網址均包含 current price、previous price 與 status；因頁面無法讀取，價格與比較結果被明確標為無法判定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- URL: https://shop.alpha.example/products/widget-a  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- URL: https://www.beta.example/item/sku-2048  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- URL: https://gamma.example/pricing/plan-pro  \n  current price: cannot determine  \n  previous price: not given  \n  status: cannot determine",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ecada8d9-e449-4308-8cb4-ba1b05da1724",
+        "text": "當三者中任一頁價格有變動時，輸出中必須明確標示哪一個網址變了、舊價格是多少、新價格是多少。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次三個頁面皆無法讀取價格，沒有任何已確認的價格變動可用以判斷變動時是否會標示網址及舊、新價格。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "86600655-f94f-47bf-9199-da6051b9a261",
+        "text": "當三者價格都沒有變動時，輸出必須明確說明「無變動」且列出已檢查的 3 個網址。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次並非確認三者價格皆無變動，而是三者皆無法判定；因此無法判斷在三者皆無變動時的輸出行為。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "0631a333-6597-4902-9655-5b1a9210654a",
+        "text": "當輸入中只有部分網址可讀到價格時，輸出必須區分「可比較」與「無法判定」的網址。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次沒有出現僅部分網址可讀到價格的情況，三個網址均無法讀取，故無法判斷是否能在部分可比較時區分可比較與無法判定網址。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "32817d2f-1511-4e5b-9e16-1f33bcc4091f",
+        "text": "當網址數量不是 3 個時，輸出必須指出目前只以已提供網址進行比對，並清楚標示缺少的網址數。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "輸入剛好包含三個網址，未測試網址數量不是三個時是否會說明僅比對已提供網址及缺少數量。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 6060 input and 2120 output tokens on gpt-5.4-mini; reported cost $0.0243 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

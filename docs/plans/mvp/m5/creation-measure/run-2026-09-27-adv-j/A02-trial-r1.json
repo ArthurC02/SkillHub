@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下 5 筆請假申請：\n1. 事假，2 天後開始請假，未提供其他證明。\n2. 事假，4 天後開始請假，未提供其他證明。\n3. 病假，2 天，未提供證明。\n4. 病假，3 天，已附醫師證明。\n5. 病假，3 天，未提供證明。\n\n請依規則逐筆判定是否通過，若退回請寫出原因。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入事假且申請時間少於提前 3 天時，輸出必須判定退回，且原因提到「事假需提前 3 天申請」。"
+    },
+    {
+      "text": "輸入事假且申請時間至少提前 3 天時，輸出必須判定通過。"
+    },
+    {
+      "text": "輸入病假 2 天或以下時，即使沒有證明，輸出必須判定通過。"
+    },
+    {
+      "text": "輸入病假超過 2 天且有證明時，輸出必須判定通過。"
+    },
+    {
+      "text": "輸入病假超過 2 天但沒有證明時，輸出必須判定退回，且原因提到「超過 2 天要附證明」。"
+    },
+    {
+      "text": "輸入不符合規則時，退回訊息必須明寫原因，而不是只寫「不通過」。"
+    }
+  ],
+  "final_output": "第 1 筆：退回｜原因：事假需提前 3 天申請，這筆僅於 2 天後開始請假，未達規定。  \n第 2 筆：通過｜原因：事假提前 4 天申請，符合事假需提前 3 天申請。  \n第 3 筆：通過｜原因：病假 2 天，未超過 2 天，不需要附證明。  \n第 4 筆：通過｜原因：病假 3 天且已附醫師證明，符合病假超過 2 天要附證明。  \n第 5 筆：退回｜原因：病假超過 2 天要附證明，這筆為 3 天但未提供證明。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7f238ba7-ba75-44bc-9669-764d0ec9b003",
+    "run_id": "94aae69a-d6e3-4b5f-bf4b-179dad8ece8d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆申請均依對應規則正確判定；兩筆退回皆具體列出規則與不符合的事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "5cb18534-aa7c-406b-8328-a86d88f84bc7",
+        "text": "輸入事假且申請時間少於提前 3 天時，輸出必須判定退回，且原因提到「事假需提前 3 天申請」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆事假在 2 天後開始，判定為退回，且明確說明須提前 3 天申請。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：退回｜原因：事假需提前 3 天申請，這筆僅於 2 天後開始請假，未達規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4ed088b6-fde2-4f93-9f01-7d9ac0934467",
+        "text": "輸入事假且申請時間至少提前 3 天時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆事假提前 4 天申請，判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆：通過｜原因：事假提前 4 天申請，符合事假需提前 3 天申請。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "91ac736d-ced0-4c02-9b27-55f4bd4e9cec",
+        "text": "輸入病假 2 天或以下時，即使沒有證明，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆病假為 2 天且未提供證明，仍判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 3 筆：通過｜原因：病假 2 天，未超過 2 天，不需要附證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "06e12af6-801e-41f2-bb52-fef80be56c5e",
+        "text": "輸入病假超過 2 天且有證明時，輸出必須判定通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆病假為 3 天且已附醫師證明，判定為通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 4 筆：通過｜原因：病假 3 天且已附醫師證明，符合病假超過 2 天要附證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8d82892d-6314-42f7-8805-7c23c244dfd7",
+        "text": "輸入病假超過 2 天但沒有證明時，輸出必須判定退回，且原因提到「超過 2 天要附證明」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆病假為 3 天且未提供證明，判定為退回，並明確提到超過 2 天要附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆：退回｜原因：病假超過 2 天要附證明，這筆為 3 天但未提供證明。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b380a9a2-cb3d-47d7-b655-84836b6eba8a",
+        "text": "輸入不符合規則時，退回訊息必須明寫原因，而不是只寫「不通過」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆不符合規則的申請均以「原因」欄位具體說明退回理由，而非僅寫不通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆：退回｜原因：事假需提前 3 天申請，這筆僅於 2 天後開始請假，未達規定。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 5 筆：退回｜原因：病假超過 2 天要附證明，這筆為 3 天但未提供證明。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3242 input and 760 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

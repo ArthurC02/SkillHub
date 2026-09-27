@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這篇文章摘要成 50 字以內，而且要保留文中所有數字與人名：\n2019 年，王志明與林佳慧在台中創立綠光能源，第一年只有 12 名員工。2021 年公司取得 3.5 億元 B 輪融資，由陳建宏領投。2023 年營收成長 48%，在全台設立 7 座儲能站，服務超過 1,200 家企業客戶。黃淑芬在 2024 年接任營運長後，把維修回應時間從 72 小時縮短到 24 小時，客戶續約率提升到 91%。公司預計 2025 年再募集 5 億元，在 60 天內完成南部 3 座新站，並把員工擴增到 300 人。",
+  "acceptance_criteria": [
+    {
+      "text": "摘要本文不超過 50 字。"
+    },
+    {
+      "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。"
+    },
+    {
+      "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。"
+    }
+  ],
+  "final_output": "王志明、林佳慧創綠光；陳建宏領投，黃淑芬提效。\n因50字限制，略去2019、12、2021、3.5億、2023、48%、7、1,200、2024、72→24、91%、2025、5億、60天、3、300。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e842f0ae-3b83-47be-b7bc-f67d0bc6af45",
+    "run_id": "53400abf-05e3-4b38-92b6-f1f8a08b9f34",
+    "status": "completed",
+    "overall": "met",
+    "summary": "摘要正文在50字內，且保留全部人名。由於無法同時容納所有數字，輸出明確列出省略的數字與取捨；摘要本身未新增原文外的人名或數字。",
+    "criterion_results": [
+      {
+        "criterion_id": "8936abed-e296-4599-8ca1-1a90421f94d1",
+        "text": "摘要本文不超過 50 字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要正文「王志明、林佳慧創綠光；陳建宏領投，黃淑芬提效。」未超過50字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明、林佳慧創綠光；陳建宏領投，黃淑芬提效。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a6516282-2830-4fe5-a327-6213be1626a2",
+        "text": "輸出明確說明無法在 50 字內同時保留全部數字與人名，並說出做了什麼取捨；沒有默默漏掉卻宣稱全數保留。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示受50字限制，並逐項說明省略的數字，未宣稱已保留全部數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因50字限制，略去2019、12、2021、3.5億、2023、48%、7、1,200、2024、72→24、91%、2025、5億、60天、3、300。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bd726176-805c-427a-bb75-ee0fc8789125",
+        "text": "摘要內容與原文一致，沒有原文沒有的數字或人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要中的王志明、林佳慧、陳建宏與黃淑芬皆見於原文；「創綠光」「領投」「提效」均為原文事實的簡述，未加入原文沒有的人名或數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "王志明、林佳慧創綠光；陳建宏領投，黃淑芬提效。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2905 input and 1211 output tokens on gpt-5.4-mini; reported cost $0.0109 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

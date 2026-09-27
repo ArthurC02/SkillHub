@@ -1,0 +1,157 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下請假申請並逐筆輸出結果：\n1. 事假，申請日 2026-10-01，請假開始日 2026-10-03，請假 1 天。\n2. 事假，申請日 2026-10-01，請假開始日 2026-10-05，請假 1 天。\n3. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 2 天，未附證明。\n4. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 3 天，未附證明。\n5. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 3 天，已附證明。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一筆事假，若申請日比請假開始日少於 3 天，輸出必須退回並指出「事假需提前 3 天申請」。"
+    },
+    {
+      "text": "輸入一筆事假，若申請日比請假開始日至少早 3 天，輸出必須通過。"
+    },
+    {
+      "text": "輸入一筆病假，若為當天申請且不超過 2 天，輸出必須通過。"
+    },
+    {
+      "text": "輸入一筆病假，若超過 2 天且未附證明，輸出必須退回並指出「病假超過 2 天需附證明」。"
+    },
+    {
+      "text": "輸入一筆病假，若超過 2 天且有附證明，輸出必須通過。"
+    },
+    {
+      "text": "對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。"
+    }
+  ],
+  "final_output": "- Request 1: reject  \n  - Reason: 事假需於請假開始日前至少 3 天申請；本案申請日 2026-10-01，請假開始日 2026-10-03，僅提前 2 天，未符合規定。\n\n- Request 2: approve  \n  - Reason: 事假於請假開始日前至少 3 天申請即可；本案申請日 2026-10-01，請假開始日 2026-10-05，已提前 4 天，符合規定。\n\n- Request 3: approve  \n  - Reason: 病假可於當天申請；且請假 2 天，未超過 2 天，不需要附證明，因此符合規定。\n\n- Request 4: reject  \n  - Reason: 病假超過 2 天時需附證明；本案請假 3 天且未附證明，違反證明要求。\n\n- Request 5: approve  \n  - Reason: 病假可於當天申請；本案請假 3 天且已附證明，符合規定。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0d7d9c27-f81f-4e69-86d5-fd5a3600bbc4",
+    "run_id": "361016a8-6fbd-4936-b9a3-b87080f638ca",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "五筆申請均已逐筆判定，結果符合事假提前申請及病假證明規則；兩筆退回案件也均附有對應的具體退回原因。",
+    "criterion_results": [
+      {
+        "criterion_id": "1ee2bbe9-2572-40d5-96f0-3dbdcdb4e64a",
+        "text": "輸入一筆事假，若申請日比請假開始日少於 3 天，輸出必須退回並指出「事假需提前 3 天申請」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "事假提前僅 2 天的申請被退回，且原因明確說明須至少提前 3 天申請。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Request 1: reject  \n  - Reason: 事假需於請假開始日前至少 3 天申請；本案申請日 2026-10-01，請假開始日 2026-10-03，僅提前 2 天，未符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d064583d-bd6d-4294-bb47-386575389032",
+        "text": "輸入一筆事假，若申請日比請假開始日至少早 3 天，輸出必須通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "事假提前 4 天申請的案件被通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Request 2: approve  \n  - Reason: 事假於請假開始日前至少 3 天申請即可；本案申請日 2026-10-01，請假開始日 2026-10-05，已提前 4 天，符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2f646f4a-7663-4316-9093-0328d32e9db5",
+        "text": "輸入一筆病假，若為當天申請且不超過 2 天，輸出必須通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "當天申請且請假 2 天的病假被通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Request 3: approve  \n  - Reason: 病假可於當天申請；且請假 2 天，未超過 2 天，不需要附證明，因此符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "168b7598-7cb2-4334-8f6c-6e10338b4e00",
+        "text": "輸入一筆病假，若超過 2 天且未附證明，輸出必須退回並指出「病假超過 2 天需附證明」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "請假 3 天且未附證明的病假被退回，並明確說明超過 2 天須附證明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Request 4: reject  \n  - Reason: 病假超過 2 天時需附證明；本案請假 3 天且未附證明，違反證明要求。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e4e29d64-7015-41e8-877d-c27e73897f17",
+        "text": "輸入一筆病假，若超過 2 天且有附證明，輸出必須通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "請假超過 2 天且已附證明的病假被通過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Request 5: approve  \n  - Reason: 病假可於當天申請；本案請假 3 天且已附證明，符合規定。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d6ba02aa-4a29-4ed0-a0b9-8e0e629de311",
+        "text": "對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 兩筆不符合規則的申請均被退回，且各自原因對應到提前申請天數不足及病假證明不足的具體違規條件。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3083 input and 712 output tokens on gpt-5.4-mini; reported cost $0.0086 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

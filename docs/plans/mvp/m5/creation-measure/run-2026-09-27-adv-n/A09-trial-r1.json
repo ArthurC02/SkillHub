@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下本月出勤紀錄，算出每個人的加班時數，並標出超過 46 小時的人：\n\n- 王小明：本月加班 18 小時，另有 12 小時，另有 19 小時\n- 李小美：本月加班 20 小時，另有 26 小時\n- 陳大華：本月加班 14 小時，另有 32 小時\n- 張雅婷：本月加班 46 小時\n\n這組資料同時包含：同一人多筆紀錄、合計超過 46 小時、合計剛好 46 小時、合計未超過 46 小時。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多位員工的出勤紀錄時，輸出會逐一列出每位員工的加班時數。"
+    },
+    {
+      "text": "當某位員工的加班時數合計為 47 小時時，輸出會標示該員工超過 46 小時。"
+    },
+    {
+      "text": "當某位員工的加班時數合計為 46 小時時，輸出不會標示該員工超過 46 小時。"
+    },
+    {
+      "text": "當同一員工有多筆出勤紀錄時，輸出會先加總後再判定是否超過 46 小時。"
+    },
+    {
+      "text": "當輸入同時包含超過與未超過 46 小時的員工時，輸出會正確區分兩類。"
+    }
+  ],
+  "final_output": "以下是每個人的本月加班總時數與是否超過 46 小時：\n\n| 人員 | 加班總時數 | 是否超過 46 小時 |\n|---|---:|---|\n| 王小明 | 49 小時 | **是** |\n| 李小美 | 46 小時 | 否 |\n| 陳大華 | 46 小時 | 否 |\n| 張雅婷 | 46 小時 | 否 |\n\n**超過 46 小時的人：王小明**\n\n計算明細：\n- 王小明：18 + 12 + 19 = 49\n- 李小美：20 + 26 = 46\n- 陳大華：14 + 32 = 46\n- 張雅婷：46",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f74e2124-e58e-4427-bfd7-7a5ce6f136ae",
+    "run_id": "b215f66d-ed74-404d-a16d-fe5ad6e399ec",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出正確彙總每位員工的多筆加班紀錄，將王小明算為 49 小時並標示超過 46 小時；三位合計恰為 46 小時者均未被標示超過。",
+    "criterion_results": [
+      {
+        "criterion_id": "f26a3e86-c896-447d-a432-eb154d5cc4b5",
+        "text": "當輸入包含多位員工的出勤紀錄時，輸出會逐一列出每位員工的加班時數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出表格逐一列出王小明、李小美、陳大華與張雅婷，並顯示各自的加班總時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 49 小時 | **是** |\n| 李小美 | 46 小時 | 否 |\n| 陳大華 | 46 小時 | 否 |\n| 張雅婷 | 46 小時 | 否 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f1c2330f-2dad-45fa-b1d0-339760d9de89",
+        "text": "當某位員工的加班時數合計為 47 小時時，輸出會標示該員工超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "王小明多筆紀錄加總為 49 小時（高於 47 小時情境所要求的超過 46 小時判定），且被標示為超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 49 小時 | **是** |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**超過 46 小時的人：王小明**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b913e322-1797-44d8-9b02-a291a34444e5",
+        "text": "當某位員工的加班時數合計為 46 小時時，輸出不會標示該員工超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "所有合計為 46 小時的人員均標示為「否」，未被標示為超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 李小美 | 46 小時 | 否 |\n| 陳大華 | 46 小時 | 否 |\n| 張雅婷 | 46 小時 | 否 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "39344fcf-2916-478d-b3f0-fc09088f49a1",
+        "text": "當同一員工有多筆出勤紀錄時，輸出會先加總後再判定是否超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供多筆紀錄的加總明細，並依加總結果判定王小明超過門檻、其餘人未超過。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 王小明：18 + 12 + 19 = 49\n- 李小美：20 + 26 = 46\n- 陳大華：14 + 32 = 46",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "51767438-0d9f-4912-a672-d3527e6a3e50",
+        "text": "當輸入同時包含超過與未超過 46 小時的員工時，輸出會正確區分兩類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確將王小明標為超過 46 小時，並將合計 46 小時的其餘人員標為未超過，正確區分兩類。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 王小明 | 49 小時 | **是** |\n| 李小美 | 46 小時 | 否 |\n| 陳大華 | 46 小時 | 否 |\n| 張雅婷 | 46 小時 | 否 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3034 input and 480 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

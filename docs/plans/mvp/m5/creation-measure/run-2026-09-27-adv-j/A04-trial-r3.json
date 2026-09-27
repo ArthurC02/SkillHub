@@ -1,0 +1,156 @@
+{
+  "round": 3,
+  "sample_input": "請幫我產生每週五下午要自動寄給全部門並同步公告到 Slack 的週報內容。以下是本週業績數字：A 部門 128 萬、B 部門 96 萬、C 部門 143 萬；收件人是 all-dept@example.com；Slack 頻道是 #sales-updates。\n\n另外，請只根據以下資料試做缺件處理：本週業績數字為 A 部門 128 萬、B 部門 96 萬、C 部門 143 萬。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含一份本週業績數字與部門收件人清單時，技能會產生一份可同時用於 Email 與 Slack 的週報內容。"
+    },
+    {
+      "text": "當輸入指定「每週五下午」觸發時，技能會明確輸出週五下午的排程要求，不改成其他日期或時段。"
+    },
+    {
+      "text": "當輸入要求寄給「全部門」時，技能會在輸出中保留整個部門作為收件對象，而不是只列出單一個人。"
+    },
+    {
+      "text": "當輸入要求同時 Slack 公告時，技能會輸出包含 Slack 公告內容的版本，且內容與 Email 主旨/內文一致或明確對應。"
+    },
+    {
+      "text": "當輸入只有業績數字但沒有收件人或 Slack 頻道資訊時，技能會指出需要補齊發布目的地資訊，不能假設具體地址或頻道。"
+    }
+  ],
+  "final_output": "- **Email subject**  \n週五業績週報｜A 部門 128 萬、B 部門 96 萬、C 部門 143 萬\n\n- **Email body**  \n各位同仁好：\n\n以下為本週部門業績摘要：\n\n- A 部門：128 萬\n- B 部門：96 萬\n- C 部門：143 萬\n\n本週合計業績為 367 萬。  \n謝謝各部門的努力，請持續保持。\n\n祝好\n\n- **Slack message**  \n@all-dept 本週業績更新：\n\n- A 部門：128 萬\n- B 部門：96 萬\n- C 部門：143 萬\n\n本週合計業績為 367 萬。  \n感謝大家的努力，請持續衝刺。\n\n- **Timing note**  \n您只提供「每週五下午」，未指定精確時間；我採用常見預設為「週五下午 3:00」來撰寫。  \n實際寄送與 Slack 發布仍需由您或排程系統執行。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cce0ed4b-b29d-4313-af0e-a071574b78df",
+    "run_id": "4a5f341e-50dd-4c37-8d49-a50ae61d7a57",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "週報內容、週五下午時段、全體部門導向及對應的 Slack 訊息均有產生。不過，對於只有業績數字且缺少發布目的地資訊的試做，未要求補齊收件人及 Slack 頻道，反而假設了對象。",
+    "criterion_results": [
+      {
+        "criterion_id": "06be4d61-9dac-45a2-a1e8-cd06e2d40f48",
+        "text": "當輸入包含一份本週業績數字與部門收件人清單時，技能會產生一份可同時用於 Email 與 Slack 的週報內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出同時提供 Email 主旨、Email 內文與 Slack 訊息，且均包含所提供的三個部門業績與合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Email subject**  \n週五業績週報｜A 部門 128 萬、B 部門 96 萬、C 部門 143 萬",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Slack message**  \n@all-dept 本週業績更新：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "549ad6ff-ab68-4928-9b09-477f843556c9",
+        "text": "當輸入指定「每週五下午」觸發時，技能會明確輸出週五下午的排程要求，不改成其他日期或時段。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確保留週五下午的排程，並具體寫為週五下午 3:00，未改為其他日期或時段。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您只提供「每週五下午」，未指定精確時間；我採用常見預設為「週五下午 3:00」來撰寫。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b0026d5d-c9a6-41f2-8559-0368344b520f",
+        "text": "當輸入要求寄給「全部門」時，技能會在輸出中保留整個部門作為收件對象，而不是只列出單一個人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Slack 公告以 @all-dept 面向全部門，而非單一個人。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "@all-dept 本週業績更新：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "221c4c01-b85d-4c10-91cd-050c48e16216",
+        "text": "當輸入要求同時 Slack 公告時，技能會輸出包含 Slack 公告內容的版本，且內容與 Email 主旨/內文一致或明確對應。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含 Slack 公告版本，並與 Email 對應地列出相同的三部門業績及 367 萬合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Email body**  \n各位同仁好：\n\n以下為本週部門業績摘要：\n\n- A 部門：128 萬\n- B 部門：96 萬\n- C 部門：143 萬\n\n本週合計業績為 367 萬。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Slack message**  \n@all-dept 本週業績更新：\n\n- A 部門：128 萬\n- B 部門：96 萬\n- C 部門：143 萬\n\n本週合計業績為 367 萬。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79fe17c9-c535-4bfd-a1f7-4aeb949a92a0",
+        "text": "當輸入只有業績數字但沒有收件人或 Slack 頻道資訊時，技能會指出需要補齊發布目的地資訊，不能假設具體地址或頻道。",
+        "result": "failed",
+        "source": "model",
+        "reason": "針對僅提供業績數字的缺件試做，輸出未指出需要補齊 Email 收件人與 Slack 頻道；反而直接假設了 @all-dept 作為公告對象。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **Slack message**  \n@all-dept 本週業績更新：",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3249 input and 919 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

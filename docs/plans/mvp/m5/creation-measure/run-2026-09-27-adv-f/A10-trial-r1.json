@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請將下列文章摘要成 50 字以內，並保留所有數字與人名：\n2024年，台北市長王志明在1月3日宣布，與李雅婷共同推動三項改革。該計畫預計投入1200萬元，分三階段執行。王志明表示，這項措施將於2025年完成，並以第2季作為第一個檢核點。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一篇中文文章時，輸出是一段 50 字以內的摘要。"
+    },
+    {
+      "text": "輸出會保留原文中出現的所有數字。"
+    },
+    {
+      "text": "輸出會保留原文中出現的所有人名。"
+    },
+    {
+      "text": "當原文同時包含多個數字與多個人名時，輸出仍會全部保留。"
+    },
+    {
+      "text": "輸出不會加入原文沒有的新數字或新人名。"
+    }
+  ],
+  "final_output": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c57ff62a-185b-464a-b46e-538326ff39f4",
+    "run_id": "fb19e118-b331-4ba9-bd47-6d0fb3b8df33",
+    "status": "completed",
+    "overall": "met",
+    "summary": "摘要為50字以內的單段文字，並完整保留原文所有數字及兩位人名，未添加新的數字或人名。",
+    "criterion_results": [
+      {
+        "criterion_id": "112b39ac-de85-4b56-8327-10f49af40b6c",
+        "text": "輸入一篇中文文章時，輸出是一段 50 字以內的摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為單段中文摘要，且字數少於50字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "52e0066b-471c-4aa2-9c5d-802cd73a7bc5",
+        "text": "輸出會保留原文中出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文的2024、1月3日、三項、1200萬元、三階段、2025及第2季等所有數字資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "80daaae1-7957-45c9-9c17-19ffb6f144b8",
+        "text": "輸出會保留原文中出現的所有人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留原文的兩位人名王志明與李雅婷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9b4f2f97-f973-425a-a727-58501d5612c2",
+        "text": "當原文同時包含多個數字與多個人名時，輸出仍會全部保留。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原文同時有多個數字及王志明、李雅婷兩個人名，摘要均予以保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b442721-9e8e-4717-9408-e76fbca9cb91",
+        "text": "輸出不會加入原文沒有的新數字或新人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要中的數字與人名皆可在原文找到，未加入新的數字或新人名。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024年王志明與李雅婷1月3日推三項改革，投1200萬元分三階段，2025年完成，第2季檢核。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2681 input and 707 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

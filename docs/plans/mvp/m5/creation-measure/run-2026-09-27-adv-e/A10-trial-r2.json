@@ -1,0 +1,134 @@
+{
+  "round": 2,
+  "sample_input": "請將以下文章摘要成 50 字以內，並保留所有數字與人名：\n\n2024 年 5 月 12 日，台北市長王志明宣布啟動「城市綠能計畫」。他表示，第一階段將投入 3.5 億元，預計在 18 個月內完成 12 座社區太陽能站建置。專案由環保局與教育局共同推動，並邀請研究員李雅婷、張偉強參與評估。王志明指出，此計畫將優先改善 8 個老舊行政區的能源使用效率，並在 2025 年達成減碳 20% 的目標。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一篇約 3000 字的文章時，輸出一段 50 字以內的摘要。"
+    },
+    {
+      "text": "摘要中保留原文出現的所有數字。"
+    },
+    {
+      "text": "摘要中保留原文出現的人名。"
+    },
+    {
+      "text": "輸出內容是中文摘要，不改寫成其他語言。"
+    },
+    {
+      "text": "輸出只包含摘要結果，不附加分析或說明。"
+    }
+  ],
+  "final_output": "2024/5/12王志明綠能案：3.5億18月12座；李雅婷張偉強，8區，2025減碳20%。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "2aaa19b1-947b-4e03-9847-64ddac95dabc",
+    "run_id": "39778d05-7521-4b9e-b301-a170ebb2072d",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次輸出保留所有數字與人名，並以中文且僅輸出摘要。由於實際測試輸入不是約 3000 字，無法判定長文情境下的 50 字摘要能力。",
+    "criterion_results": [
+      {
+        "criterion_id": "349eb5ac-fab5-4ddc-80b6-47bc9c9d7e5f",
+        "text": "輸入一篇約 3000 字的文章時，輸出一段 50 字以內的摘要。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次提供的輸入文章並非約 3000 字，無法據此判定面對約 3000 字文章時是否仍能輸出 50 字以內摘要。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "b17f951a-fc3e-4b7d-90ac-309f01f168e2",
+        "text": "摘要中保留原文出現的所有數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了原文所有數字：2024、5、12、3.5、18、12、8、2025、20。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/12王志明綠能案：3.5億18月12座；李雅婷張偉強，8區，2025減碳20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6bf3371e-90ba-4010-8d6c-ab1366686a48",
+        "text": "摘要中保留原文出現的人名。",
+        "result": "passed",
+        "source": "model",
+        "reason": "摘要保留了全部原文人名：王志明、李雅婷、張偉強。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/12王志明綠能案：3.5億18月12座；李雅婷張偉強，8區，2025減碳20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3e9400c-6cb9-458a-a99e-7f74e8cc11f3",
+        "text": "輸出內容是中文摘要，不改寫成其他語言。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為中文摘要，沒有改寫為其他語言。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2024/5/12王志明綠能案：3.5億18月12座；李雅婷張偉強，8區，2025減碳20%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d455603-a1bc-493b-8f96-a5ba3c330f57",
+        "text": "輸出只包含摘要結果，不附加分析或說明。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 最終輸出僅包含摘要文字，未附加分析、說明或其他內容。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18675 input and 1587 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

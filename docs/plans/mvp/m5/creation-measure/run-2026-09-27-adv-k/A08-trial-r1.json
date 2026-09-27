@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "Please translate this customer feedback into Traditional Chinese and summarize it in three points.\nThe product is easy to use, but the battery drains faster than expected.\nCustomer service replied quickly and was helpful.\nI would recommend it if the battery life improves.",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段英文客戶回饋時，輸出會先給出完整的繁體中文翻譯。"
+    },
+    {
+      "text": "在同一則輸出中，會另外提供恰好三點摘要。"
+    },
+    {
+      "text": "摘要內容會對應原文主要意思，而不是重新創作新內容。"
+    },
+    {
+      "text": "若輸入包含多段回饋，輸出會整合所有內容後再翻譯與摘要。"
+    },
+    {
+      "text": "輸出會以繁體中文呈現，除非原文專有名詞需保留原文。"
+    }
+  ],
+  "final_output": "- **繁體中文翻譯：**\n  產品很容易使用，但電池耗電比預期更快。  \n  客服回覆迅速且很有幫助。  \n  如果電池續航力有所改善，我會推薦這款產品。\n\n- **三點摘要：**\n  1. 產品操作簡單、容易上手。\n  2. 電池續航表現不如預期，耗電偏快。\n  3. 客服回覆迅速且有幫助，若續航改善則值得推薦。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "90debac9-acbe-4f6f-8b90-79fb9a48f29e",
+    "run_id": "64c99630-c42b-4197-911b-d83b03274cd9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆先提供完整繁體中文翻譯，再提供恰好三點、忠於原文的摘要。多段回饋內容均被納入，且輸出使用繁體中文。",
+    "criterion_results": [
+      {
+        "criterion_id": "f6099bcc-2721-4259-a073-002151967f95",
+        "text": "在輸入一段英文客戶回饋時，輸出會先給出完整的繁體中文翻譯。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出先提供完整的繁體中文翻譯，涵蓋產品易用性、耗電、客服回覆及推薦條件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **繁體中文翻譯：**\n  產品很容易使用，但電池耗電比預期更快。  \n  客服回覆迅速且很有幫助。  \n  如果電池續航力有所改善，我會推薦這款產品。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7cac8fbc-2592-4f37-aae6-ffca897c2107",
+        "text": "在同一則輸出中，會另外提供恰好三點摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一則輸出在翻譯後另列出三點摘要，且恰為三點。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **三點摘要：**\n  1. 產品操作簡單、容易上手。\n  2. 電池續航表現不如預期，耗電偏快。\n  3. 客服回覆迅速且有幫助，若續航改善則值得推薦。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c68be428-b842-4ab4-9529-7d9b40da0bd6",
+        "text": "摘要內容會對應原文主要意思，而不是重新創作新內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三點摘要分別對應原文的易用性、電池耗電問題、客服品質與推薦條件，未加入不相關的新內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 產品操作簡單、容易上手。\n  2. 電池續航表現不如預期，耗電偏快。\n  3. 客服回覆迅速且有幫助，若續航改善則值得推薦。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f459fb83-b7ae-4458-b0af-955c5f1ec901",
+        "text": "若輸入包含多段回饋，輸出會整合所有內容後再翻譯與摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸入中的三段回饋已整合為一份翻譯與同一組三點摘要，包含各段資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品很容易使用，但電池耗電比預期更快。  \n  客服回覆迅速且很有幫助。  \n  如果電池續航力有所改善，我會推薦這款產品。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "76ba6279-dc6b-4f24-a984-64ef0fe6375f",
+        "text": "輸出會以繁體中文呈現，除非原文專有名詞需保留原文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出內容以繁體中文呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "產品很容易使用，但電池耗電比預期更快。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2695 input and 307 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

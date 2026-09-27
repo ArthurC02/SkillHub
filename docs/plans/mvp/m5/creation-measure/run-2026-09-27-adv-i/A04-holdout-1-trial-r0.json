@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "本週業績：營收 1,250,000 元、成交 38 件、新客戶 12 家。請照每週五下午的慣例，寄給全部門並在 Slack 公告。",
+  "acceptance_criteria": [
+    {
+      "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。"
+    },
+    {
+      "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。"
+    },
+    {
+      "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。"
+    }
+  ],
+  "final_output": "以下為可直接寄送／貼上的內容；實際寄送與 Slack 公告請由你手動送出。\n\n**Email**\n\n**主旨：** 本週業績更新｜營收 1,250,000 元、成交 38 件、新客戶 12 家\n\n各位同仁好：\n\n本週業績如下：\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家\n\n感謝大家本週的努力與配合，辛苦了。請持續保持節奏，我們下週再接再厲。\n\n---\n\n**Slack post**\n\n本週業績更新：\n- 營收 1,250,000 元\n- 成交 38 件\n- 新客戶 12 家\n\n感謝大家本週的努力與配合，辛苦了！下週繼續加油 💪",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e0af1e9b-ab9e-43a8-8653-02afeadb44b0",
+    "run_id": "653a204a-c2d9-4380-921d-b656045d2843",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收條件皆有達成：提供了含指定數字的全體部門 Email 與 Slack 公告文案，且沒有聲稱已完成寄送、發布或排程。",
+    "criterion_results": [
+      {
+        "criterion_id": "bda4471d-2277-4db9-8bf4-119fed6105bc",
+        "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供可直接寄送給全體同仁的 Email，並列出營收、成交件數與新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Email**\n\n**主旨：** 本週業績更新｜營收 1,250,000 元、成交 38 件、新客戶 12 家\n\n各位同仁好：\n\n本週業績如下：\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "303d5181-7847-44c5-885d-eb3ac966c9d7",
+        "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供 Slack 公告內容，且包含相同的營收、成交件數與新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Slack post**\n\n本週業績更新：\n- 營收 1,250,000 元\n- 成交 38 件\n- 新客戶 12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c68f9d3b-dbda-4f73-83ea-62ddf4353cf0",
+        "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示實際寄送與 Slack 公告需由使用者手動送出，未宣稱已寄出、已發布或已設定週排程。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為可直接寄送／貼上的內容；實際寄送與 Slack 公告請由你手動送出。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3036 input and 1171 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

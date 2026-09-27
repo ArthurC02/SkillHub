@@ -1,0 +1,140 @@
+{
+  "round": 2,
+  "sample_input": "請根據以下這個月的出勤紀錄，計算每個人的加班時數，並標出超過 46 小時的人：\n\nAlice  10 小時\nAlice  12 小時\nAlice  14 小時\nAlice  12 小時\nBob    20 小時\nBob    26 小時\nCindy  15 小時\nCindy  12 小時\nCindy  12 小時\nDavid  18 小時\nDavid  17 小時\nDavid  17 小時",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多人的本月出勤紀錄時，Skill 會輸出每個人的加班時數。"
+    },
+    {
+      "text": "當某人的加班時數大於 46 小時時，輸出會明確標記該人為超過 46 小時。"
+    },
+    {
+      "text": "當某人的加班時數等於 46 小時時，輸出不會把該人標成超過 46 小時。"
+    },
+    {
+      "text": "輸出會保留人名與對應的加班時數，讓每個人都能被逐一核對。"
+    },
+    {
+      "text": "輸出會依據本月的出勤紀錄進行計算，而不是只回傳原始資料。"
+    }
+  ],
+  "final_output": "以下為本月加班時數統計：\n\n| 姓名 | 加班時數 | 是否超過 46 小時 |\n|---|---:|---|\n| Alice | 48 小時 | **OVER 46 / 已標記** |\n| Bob | 46 小時 | 未超過 |\n| Cindy | 39 小時 | 未超過 |\n| David | 52 小時 | **OVER 46 / 已標記** |\n\n超過 46 小時的人：**Alice、David**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "ca0bd23e-f6a8-47b6-8dab-bac4f6447412",
+    "run_id": "2d3dbe5d-96ad-4abd-b822-373165f3d7c6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "所有人員的本月加班時數皆已加總並列出；超過 46 小時的 Alice 與 David 被明確標記，而剛好 46 小時的 Bob 未被標示為超過。",
+    "criterion_results": [
+      {
+        "criterion_id": "dfcee26a-876a-405a-ae95-2c9107623470",
+        "text": "當輸入包含多人的本月出勤紀錄時，Skill 會輸出每個人的加班時數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 Alice、Bob、Cindy、David 四人的彙總加班時數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Alice | 48 小時 | **OVER 46 / 已標記** |\n| Bob | 46 小時 | 未超過 |\n| Cindy | 39 小時 | 未超過 |\n| David | 52 小時 | **OVER 46 / 已標記** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "36abf05a-ab3b-4502-9c41-a436aa493c70",
+        "text": "當某人的加班時數大於 46 小時時，輸出會明確標記該人為超過 46 小時。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 加班時數大於 46 小時的 Alice（48）與 David（52）均被明確標記，且另行列出。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "fc9669f8-1340-4c65-8707-fef57ed5c20a",
+        "text": "當某人的加班時數等於 46 小時時，輸出不會把該人標成超過 46 小時。",
+        "result": "passed",
+        "source": "model",
+        "reason": "Bob 的加班時數為 46 小時，輸出標示為「未超過」，沒有被標成超過 46 小時。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Bob | 46 小時 | 未超過 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bbe468df-2872-4c6d-a5cd-0dd924baf63f",
+        "text": "輸出會保留人名與對應的加班時數，讓每個人都能被逐一核對。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格逐一保留每位人員姓名及其對應的加班時數，可逐項核對。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| Alice | 48 小時 | **OVER 46 / 已標記** |\n| Bob | 46 小時 | 未超過 |\n| Cindy | 39 小時 | 未超過 |\n| David | 52 小時 | **OVER 46 / 已標記** |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3a54d339-dad0-48c2-b996-ea33309991f0",
+        "text": "輸出會依據本月的出勤紀錄進行計算，而不是只回傳原始資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供的是每人跨多筆紀錄加總後的本月統計，而非逐筆原始紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為本月加班時數統計：\n\n| 姓名 | 加班時數 | 是否超過 46 小時 |\n|---|---:|---|\n| Alice | 48 小時 | **OVER 46 / 已標記** |\n| Bob | 46 小時 | 未超過 |\n| Cindy | 39 小時 | 未超過 |\n| David | 52 小時 | **OVER 46 / 已標記** |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2912 input and 334 output tokens on gpt-5.4-mini; reported cost $0.0039 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

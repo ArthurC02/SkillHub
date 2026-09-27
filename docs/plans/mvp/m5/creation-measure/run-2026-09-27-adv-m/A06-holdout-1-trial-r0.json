@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "幫我寫一篇自我介紹。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。"
+    }
+  ],
+  "final_output": "以下為使用「一般場合、自然中性語氣」的通用版本；因未提供個人資訊，已保留可替換處：\n\n大家好，我是＿＿＿，很高興有機會向大家做自我介紹。我目前主要以＿＿＿為重心，平時喜歡＿＿＿，也樂於學習新事物、接受不同挑戰。我做事認真，重視溝通與合作，希望未來能持續成長，並在新的環境中發揮自己的能力。很期待有機會認識大家，謝謝。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cdd3fe10-eaf7-461b-99b8-16c5b3ce030e",
+    "run_id": "31c453b2-75e5-4660-8fbe-6f7fb5bd8dd1",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆是一篇完整、自然的繁體中文自我介紹範文，並針對未提供的個人資料使用明顯填空欄位，未捏造具體背景資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "7e6c84e6-8de8-40b7-8041-a2018d5adc40",
+        "text": "輸出是一篇完整的自我介紹範文，而不是只列出要使用者回答的問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供了可直接使用的完整自我介紹段落，而非僅提問或列出問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是＿＿＿，很高興有機會向大家做自我介紹。我目前主要以＿＿＿為重心，平時喜歡＿＿＿，也樂於學習新事物、接受不同挑戰。我做事認真，重視溝通與合作，希望未來能持續成長，並在新的環境中發揮自己的能力。很期待有機會認識大家，謝謝。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "33d84a7f-893b-44fa-8e77-106f579aae71",
+        "text": "輸出沒有捏造具體的姓名、學校、公司、年資或成就；需要個人資料的地方用明顯的填空標示。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出未提供或捏造姓名、學校、公司、年資或成就等具體個資；姓名、目前重心與興趣均以明顯空格保留替換。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為使用「一般場合、自然中性語氣」的通用版本；因未提供個人資訊，已保留可替換處：\n\n大家好，我是＿＿＿，很高興有機會向大家做自我介紹。我目前主要以＿＿＿為重心，平時喜歡＿＿＿，也樂於學習新事物、接受不同挑戰。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19028 input and 784 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 11,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

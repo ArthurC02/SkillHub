@@ -1,0 +1,151 @@
+{
+  "round": 2,
+  "sample_input": "請幫我寫一篇自我介紹。我的名字是林怡安，今年 22 歲，住在台中，畢業於國立中興大學企管系。大學期間我曾擔任系學會公關，參與過校園市集企劃，也在暑假到行銷公司實習三個月。我平常喜歡閱讀、跑步和拍照。這篇自我介紹是要用在研究所面試，語氣希望專業但自然，長度約 300 字。另外，關於「系學會公關」與「行銷公司實習三個月」的描述，僅提供這兩項名稱，不提供任何具體工作內容、成果或心得。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入包含姓名、背景、經歷、興趣與用途時，輸出一篇完整且連貫的自我介紹。"
+    },
+    {
+      "text": "輸出語言為繁體中文，且語氣自然、適合自我介紹使用。"
+    },
+    {
+      "text": "當使用者指定用途（例如面試、課堂報告、社團申請）時，內容會對應該用途調整語氣與重點。"
+    },
+    {
+      "text": "當使用者指定字數或長度時，輸出會符合該限制。"
+    },
+    {
+      "text": "輸出不會捏造未提供的個人事實；缺少資訊時會以保守方式措辭。"
+    }
+  ],
+  "final_output": "大家好，我是林怡安，今年22歲，來自台中，畢業於國立中興大學企管系。大學期間，我曾擔任系學會公關，參與過校園市集企劃，也在暑假到行銷公司實習三個月。平時我喜歡閱讀、跑步和拍照。對我來說，研究所是一個能夠持續學習、深化專業並拓展視野的重要階段，因此我希望自己在未來能夠持續充實管理相關知識，培養更穩健的思考與表達能力，並把所學更實際地運用在未來的學習與發展中。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "32e9732d-b427-4788-8710-75e97a95f388",
+    "run_id": "29c41bb5-c8aa-4b88-8c60-bd29360a30ac",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "自我介紹以繁體中文自然且連貫地涵蓋了提供的個人資訊，並針對研究所面試調整重點，沒有捏造經歷細節。但篇幅明顯未達約300字的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "322871e8-42c9-4213-b9dd-6e9e5a2012a9",
+        "text": "在輸入包含姓名、背景、經歷、興趣與用途時，輸出一篇完整且連貫的自我介紹。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含姓名、年齡、居住地、學歷、經歷、興趣及研究所申請動機，並以連貫段落呈現完整自我介紹。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是林怡安，今年22歲，來自台中，畢業於國立中興大學企管系。大學期間，我曾擔任系學會公關，參與過校園市集企劃，也在暑假到行銷公司實習三個月。平時我喜歡閱讀、跑步和拍照。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "144acd3d-6ad4-49d5-87e2-a0aa0ed5baff",
+        "text": "輸出語言為繁體中文，且語氣自然、適合自我介紹使用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文使用繁體中文，開場與敘述方式自然，適合作為自我介紹使用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是林怡安，今年22歲，來自台中，畢業於國立中興大學企管系。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "21ac0bd0-48bb-4322-8a6a-a7d0c73ade24",
+        "text": "當使用者指定用途（例如面試、課堂報告、社團申請）時，內容會對應該用途調整語氣與重點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確將研究所定位為持續學習、深化專業與拓展視野的階段，並著重管理知識與未來學習發展，符合研究所面試用途。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "對我來說，研究所是一個能夠持續學習、深化專業並拓展視野的重要階段，因此我希望自己在未來能夠持續充實管理相關知識，培養更穩健的思考與表達能力，並把所學更實際地運用在未來的學習與發展中。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "576de9ca-6e74-4fed-b32b-b8aaa6e8ccc6",
+        "text": "當使用者指定字數或長度時，輸出會符合該限制。",
+        "result": "failed",
+        "source": "model",
+        "reason": "使用者要求長度約300字，但輸出明顯僅約180字左右，與指定長度有顯著落差。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大家好，我是林怡安，今年22歲，來自台中，畢業於國立中興大學企管系。大學期間，我曾擔任系學會公關，參與過校園市集企劃，也在暑假到行銷公司實習三個月。平時我喜歡閱讀、跑步和拍照。對我來說，研究所是一個能夠持續學習、深化專業並拓展視野的重要階段，因此我希望自己在未來能夠持續充實管理相關知識，培養更穩健的思考與表達能力，並把所學更實際地運用在未來的學習與發展中。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "70413778-8d34-4628-9d60-d881e22fcc4e",
+        "text": "輸出不會捏造未提供的個人事實；缺少資訊時會以保守方式措辭。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出僅列出所提供的系學會公關與三個月行銷公司實習名稱，未補充未提供的工作內容、成果或心得；其餘以「希望」表述未來規劃，措辭保守。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "大學期間，我曾擔任系學會公關，參與過校園市集企劃，也在暑假到行銷公司實習三個月。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "因此我希望自己在未來能夠持續充實管理相關知識，培養更穩健的思考與表達能力，並把所學更實際地運用在未來的學習與發展中。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3567 input and 1756 output tokens on gpt-5.4-mini; reported cost $0.0049 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

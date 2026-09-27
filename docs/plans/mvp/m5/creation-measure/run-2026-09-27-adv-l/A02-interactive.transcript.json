@@ -1,0 +1,69 @@
+{
+  "acceptance_criteria": [
+    "輸入一筆事假，若申請日比請假開始日少於 3 天，輸出必須退回並指出「事假需提前 3 天申請」。",
+    "輸入一筆事假，若申請日比請假開始日至少早 3 天，輸出必須通過。",
+    "輸入一筆病假，若為當天申請且不超過 2 天，輸出必須通過。",
+    "輸入一筆病假，若超過 2 天且未附證明，輸出必須退回並指出「病假超過 2 天需附證明」。",
+    "輸入一筆病假，若超過 2 天且有附證明，輸出必須通過。",
+    "對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。"
+  ],
+  "brief": "建立一個技能，用來審核請假申請，判斷是否符合規則並在不符合時退回且說明原因。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "審核請假申請：事假要提前 3 天申請，病假可以當天請但超過 2 天要附證明；不符合的要寫明原因退回。",
+      "created_at": "2026-09-27T04:57:52.477123183Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先整理成可確認的 brief：\n\n**任務**：建立一個技能，用來審核請假申請，判斷是否符合規則並在不符合時退回且說明原因。\n\n**輸入**：一筆或多筆請假申請資料，至少包含假別、申請時間與請假天數；若是病假，還需要是否附證明。\n\n**輸出**：每筆申請的審核結果，包含「通過 / 退回」以及原因；退回時必須明確指出違反哪條規則。\n\n**規則**：\n- 事假需提前 3 天申請。\n- 病假可當天申請。\n- 病假超過 2 天時必須附證明。\n- 不符合規則的申請要退回並寫明原因。\n\n**工具需求**：不需要外部工具。\n\n**限制**：只根據上述規則判斷，不補充其他未提及的請假制度。\n\n**假設**：\n- 「提前 3 天」以申請日相對於請假開始日計算。\n- 「當天請」表示申請日等於請假開始日。\n- 請假天數以整天計。\n\n**驗收條件**：\n1. 輸入一筆事假，若申請日比請假開始日少於 3 天，輸出必須退回並指出「事假需提前 3 天申請」。\n2. 輸入一筆事假，若申請日比請假開始日至少早 3 天，輸出必須通過。\n3. 輸入一筆病假，若為當天申請且不超過 2 天，輸出必須通過。\n4. 輸入一筆病假，若超過 2 天且未附證明，輸出必須退回並指出「病假超過 2 天需附證明」。\n5. 輸入一筆病假，若超過 2 天且有附證明，輸出必須通過。\n6. 對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。\n\n**sample_input**：\n請審核以下請假申請並逐筆輸出結果：\n1. 事假，申請日 2026-10-01，請假開始日 2026-10-03，請假 1 天。\n2. 事假，申請日 2026-10-01，請假開始日 2026-10-05，請假 1 天。\n3. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 2 天，未附證明。\n4. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 3 天，未附證明。\n5. 病假，申請日 2026-10-08，請假開始日 2026-10-08，請假 3 天，已附證明。",
+      "created_at": "2026-09-27T04:57:58.867958693Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已根據確認的需求產出技能草稿。",
+      "created_at": "2026-09-27T04:58:04.155360297Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T04:58:04.156786955Z"
+    },
+    {
+      "role": "assistant",
+      "content": "驗證已通過，且目前沒有新的 evaluation 需要修正；我保留草稿不變供你直接進入 trial。注意：驗證只顯示 license-unknown 警告，未指出功能錯誤。你可以接受這份草稿，或告訴我你想改哪裡。",
+      "created_at": "2026-09-27T04:58:08.908892086Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"0d7d9c27-f81f-4e69-86d5-fd5a3600bbc4\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"五筆申請均已逐筆判定，結果符合事假提前申請及病假證明規則；兩筆退回案件也均附有對應的具體退回原因。\",\"criterion_results\":[{\"criterion_id\":\"d6ba02aa-4a29-4ed0-a0b9-8e0e629de311\",\"text\":\"對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。\",\"result\":\"undetermined\",\"source\":\"model\",\"evidence\":[],\"reason\":\"evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 兩筆不符合規則的申請均被退回，且各自原因對應到提前申請天數不足及病假證明不足的具體違規條件。\"},{\"criterion_id\":\"1ee2bbe9-2572-40d5-96f0-3dbdcdb4e64a\",\"text\":\"輸入一筆事假，若申請日比請假開始日少於 3 天，輸出必須退回並指出「事假需提前 3 天申請」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":101},\"excerpt\":\"- Request 1: reject  \\n  - Reason: 事假需於請假開始日前至少 3 天申請；本案申請日 2026-10-01，請假開始日 2026-10-03，僅提前 2 天，未符合規定。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"事假提前僅 2 天的申請被退回，且原因明確說明須至少提前 3 天申請。\"},{\"criterion_id\":\"d064583d-bd6d-4294-bb47-386575389032\",\"text\":\"輸入一筆事假，若申請日比請假開始日至少早 3 天，輸出必須通過。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":103,\"end\":205},\"excerpt\":\"- Request 2: approve  \\n  - Reason: 事假於請假開始日前至少 3 天申請即可；本案申請日 2026-10-01，請假開始日 2026-10-05，已提前 4 天，符合規定。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"事假提前 4 天申請的案件被通過。\"},{\"criterion_id\":\"2f646f4a-7663-4316-9093-0328d32e9db5\",\"text\":\"輸入一筆病假，若為當天申請且不超過 2 天，輸出必須通過。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":207,\"end\":281},\"excerpt\":\"- Request 3: approve  \\n  - Reason: 病假可於當天申請；且請假 2 天，未超過 2 天，不需要附證明，因此符合規定。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"當天申請且請假 2 天的病假被通過。\"},{\"criterion_id\":\"168b7598-7cb2-4334-8f6c-6e10338b4e00\",\"text\":\"輸入一筆病假，若超過 2 天且未附證明，輸出必須退回並指出「病假超過 2 天需附證明」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":283,\"end\":352},\"excerpt\":\"- Request 4: reject  \\n  - Reason: 病假超過 2 天時需附證明；本案請假 3 天且未附證明，違反證明要求。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"請假 3 天且未附證明的病假被退回，並明確說明超過 2 天須附證明。\"},{\"criterion_id\":\"e4e29d64-7015-41e8-877d-c27e73897f17\",\"text\":\"輸入一筆病假，若超過 2 天且有附證明，輸出必須通過。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":354,\"end\":417},\"excerpt\":\"- Request 5: approve  \\n  - Reason: 病假可於當天申請；本案請假 3 天且已附證明，符合規定。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"請假超過 2 天且已附證明的病假被通過。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"warning\",\"message\":\"the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"28b92960-94e9-4a38-896c-972d44b699dc\",\"occurred_at\":\"2026-09-27T04:58:29.196Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"leave-request-review\\\", \\\"skill_version_id\\\": \\\"84972038-f2f2-40b7-92eb-74dc571b1d63\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 3083 input and 712 output tokens on gpt-5.4-mini; reported cost $0.0086 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"361016a8-6fbd-4936-b9a3-b87080f638ca\",\"skill_version_id\":\"84972038-f2f2-40b7-92eb-74dc571b1d63\"}",
+      "created_at": "2026-09-27T04:58:54.06479654Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「對任何不符合規則的申請，輸出都必須包含退回原因，且原因需對應到具體違規條件。」：尚無法判定——evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 兩筆不符合規則的申請均被退回，且各自原因對應到提前申請天數不足及病假證明不足的具體違規條件。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T04:58:54.064854742Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T04:58:54.073666222Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我會照沒過的條件修草稿，並保留你確認過的條件不變；我只補強範例輸入，讓那條可被單次試跑穩定驗到。請你確認下面這版 brief、驗收條件與 sample_input。若要改，我再依你說的調整。\n\n已做的處理：\n- 針對未驗證的條件，我不改寫、不刪掉條件本身。\n- 我只會在草稿的輸出規則中加強「退回原因必須直接點出具體違規條件」。\n- 我會把 sample_input 擴充成能直接測到這個要求的版本，加入更明確的退回案例與對應輸出要求。\n\n請確認這份草案。",
+      "created_at": "2026-09-27T04:59:01.097872454Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我已修正草稿，重點是讓「退回原因需對應具體違規條件」能被單次試跑驗到，同時不改動你已確認的條件內容。變更如下：\n- 保留原本 5 條驗收條件不變，沒有改寫或刪除任何條件。\n- 只強化草稿的輸出規範：拒絕時必須同時點出違反的規則名稱與具體事實，避免只寫籠統理由。\n- 擴充 sample_input，新增一筆更明確的退回事假案例，讓試跑可以直接驗證拒絕輸出是否包含具體違規原因。\n- 另外把草稿中容易造成不穩定的「common default / not given」處理改成更直接的行為說明，避免把此任務不需要的缺省邏輯混進去。",
+      "created_at": "2026-09-27T04:59:07.09205383Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T04:59:07.094430507Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

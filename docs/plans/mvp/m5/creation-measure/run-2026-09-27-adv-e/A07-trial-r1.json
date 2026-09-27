@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆這位客人的抱怨：\n「我昨天晚上訂的餐點等了快一個小時才送到，而且薯條已經冷掉了，這樣真的很失望。」",
+  "acceptance_criteria": [
+    {
+      "text": "給定一段客訴內容，輸出是一段完整可直接貼上的回覆文字。"
+    },
+    {
+      "text": "回覆文字包含同理或致歉語句。"
+    },
+    {
+      "text": "回覆文字包含後續處理或補救方向。"
+    },
+    {
+      "text": "回覆文字語氣正式、溫和，不帶挑釁或責備。"
+    },
+    {
+      "text": "回覆文字不捏造未提供的事實或補償內容。"
+    },
+    {
+      "text": "回覆文字有禮貌結尾。"
+    }
+  ],
+  "final_output": "您好，\n\n很抱歉讓您昨晚有這樣不愉快的體驗。您提到餐點等了將近一個小時才送達，而且薯條已經冷掉，這確實令人失望。造成延誤與餐點品質不佳的原因目前未提供。\n\n為了進一步協助您處理，請您回覆此訊息提供訂單資訊，我們會盡快協助確認並跟進。謝謝您的反映，敬請見諒。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1b4584cc-741f-4547-8546-a33a894a1fa9",
+    "run_id": "f6c47c28-2b14-44c2-be53-ef405a1b4643",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整處理了客人的延誤與餐點品質抱怨，包含致歉、後續確認方式及禮貌結尾。內容未虛構延誤原因或補償方案，整體語氣正式溫和。",
+    "criterion_results": [
+      {
+        "criterion_id": "f9da7ba4-e144-4717-b195-81b1f3ab94f5",
+        "text": "給定一段客訴內容，輸出是一段完整可直接貼上的回覆文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一段完整、可直接貼上使用的客訴回覆，包含稱呼、說明與結尾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，\n\n很抱歉讓您昨晚有這樣不愉快的體驗。您提到餐點等了將近一個小時才送達，而且薯條已經冷掉，這確實令人失望。造成延誤與餐點品質不佳的原因目前未提供。\n\n為了進一步協助您處理，請您回覆此訊息提供訂單資訊，我們會盡快協助確認並跟進。謝謝您的反映，敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e1e396fb-b0e2-46ba-8bf3-6d50068f8398",
+        "text": "回覆文字包含同理或致歉語句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表達歉意並認同客人的失望感受。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉讓您昨晚有這樣不愉快的體驗。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "這確實令人失望。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fd6372cc-65a2-4fec-9412-bdb7e1c31f28",
+        "text": "回覆文字包含後續處理或補救方向。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提出請客人提供訂單資訊，並表示會協助確認及跟進的後續處理方向。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "為了進一步協助您處理，請您回覆此訊息提供訂單資訊，我們會盡快協助確認並跟進。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d996544-d454-4e9b-a52d-6f46ffa413c7",
+        "text": "回覆文字語氣正式、溫和，不帶挑釁或責備。",
+        "result": "passed",
+        "source": "model",
+        "reason": "全文使用尊稱、致歉及協助處理的措辭，語氣正式溫和，未見挑釁或責備。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "為了進一步協助您處理，請您回覆此訊息提供訂單資訊，我們會盡快協助確認並跟進。謝謝您的反映，敬請見諒。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "115941cc-9824-4053-83a6-8fdc860adc48",
+        "text": "回覆文字不捏造未提供的事實或補償內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆僅重述客人所述的等待時間與薯條冷掉情況，未宣稱具體原因、已完成的處理或任何補償；並明示原因尚未提供。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您提到餐點等了將近一個小時才送達，而且薯條已經冷掉，這確實令人失望。造成延誤與餐點品質不佳的原因目前未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f0d51d77-1168-44c7-99bb-a665446692fc",
+        "text": "回覆文字有禮貌結尾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以感謝客人反映及「敬請見諒」作為有禮貌的結尾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "謝謝您的反映，敬請見諒。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2539 input and 1318 output tokens on gpt-5.4-mini; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

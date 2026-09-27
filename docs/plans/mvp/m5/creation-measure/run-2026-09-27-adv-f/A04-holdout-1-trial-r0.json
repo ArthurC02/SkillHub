@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "本週業績：營收 1,250,000 元、成交 38 件、新客戶 12 家。請照每週五下午的慣例，寄給全部門並在 Slack 公告。",
+  "acceptance_criteria": [
+    {
+      "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。"
+    },
+    {
+      "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。"
+    },
+    {
+      "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。"
+    }
+  ],
+  "final_output": "以下提供可直接貼上的內容；實際寄送與 Slack 發布請由你操作。\n\n**Email draft**\n\n各位部門同仁您好：\n\n本週業績如下：\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家\n\n感謝大家本週的努力與投入，持續推進各項目標。\n\n敬上\n\n**Slack announcement draft**\n\n各位同仁，本週業績更新：\n- 營收 1,250,000 元\n- 成交 38 件\n- 新客戶 12 家\n\n感謝大家本週的努力，持續加油！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e67ba58c-5a0f-487c-bec7-0b99f974addd",
+    "run_id": "64541936-f91d-415b-b18d-42d92f4d2ddb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "已產出含三項業績數字的部門郵件草稿與 Slack 公告草稿，且未宣稱已完成寄送、發布或排程。",
+    "criterion_results": [
+      {
+        "criterion_id": "3958e4f9-e9d0-4273-adad-01cb37b7c55e",
+        "text": "產出一封可以直接寄給全部門的郵件內容，裡面有營收、成交件數、新客戶數三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供可直接寄給全部門的 Email draft，並包含營收、成交件數與新客戶數三項數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Email draft**\n\n各位部門同仁您好：\n\n本週業績如下：\n- 營收：1,250,000 元\n- 成交：38 件\n- 新客戶：12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a250b488-6c05-484d-af1f-12d1fe00fdcb",
+        "text": "產出一則 Slack 公告內容，裡面有同樣三項數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出提供 Slack announcement draft，且包含相同的營收、成交件數與新客戶數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**Slack announcement draft**\n\n各位同仁，本週業績更新：\n- 營收 1,250,000 元\n- 成交 38 件\n- 新客戶 12 家",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "59997cfb-f72d-466f-b5be-cf6aa8a8355a",
+        "text": "輸出沒有宣稱已經寄出郵件、已經發布到 Slack，或已經設定好每週排程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示實際寄送與 Slack 發布需由使用者操作，沒有宣稱郵件已寄出、Slack 已發布或週排程已設定。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下提供可直接貼上的內容；實際寄送與 Slack 發布請由你操作。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2679 input and 843 output tokens on gpt-5.4-mini; reported cost $0.0040 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

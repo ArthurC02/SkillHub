@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "請把上週的這些客訴信整理成分類統計表：\n1. 包裹晚了五天才到。\n2. 訂單顯示已出貨，但物流資訊一週都沒更新。\n3. 退貨寄回兩週了，還沒收到退款。\n4. 收到的杯子有裂痕。\n5. 配送員把包裹放在樓下沒通知我，結果被人拿走。\n6. 取消訂單時說好三天內退款，現在已經第十天了。\n7. 寫信給客服，三天都沒有人回。",
+  "acceptance_criteria": [
+    {
+      "text": "和退款有關的客訴（第 3、6 封）歸在同一類，件數為 2。"
+    },
+    {
+      "text": "各類件數加起來是 7，每一封信都有被歸到某一類。"
+    },
+    {
+      "text": "輸出是一張分類統計表。"
+    }
+  ],
+  "final_output": "| 類別 | 數量 | 簡短摘要 |\n|---|---:|---|\n| 配送延誤 | 1 | 包裹比預期晚了 5 天才送達。 |\n| 物流資訊未更新／出貨狀態異常 | 1 | 訂單顯示已出貨，但物流一週沒有更新。 |\n| 退貨／退款延遲 | 2 | 退貨寄回後久未退款，取消訂單的退款也超過承諾時間未到帳。 |\n| 商品破損 | 1 | 收到的杯子有裂痕。 |\n| 配送未通知導致包裹遺失 | 1 | 配送員未通知就放在樓下，結果包裹被拿走。 |\n| 客服回覆延遲 | 1 | 寄信給客服三天都沒有回覆。 |\n\n如果你要，我也可以再幫你整理成「件數占比」版本，或改成更適合簡報用的表格。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0819d9c6-cf62-4350-8d17-b4507ea1906d",
+    "run_id": "426fc88b-908f-4072-a930-a042967ea817",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收條件皆已滿足：兩件退款相關客訴合併計為 2，所有分類合計為 7 且涵蓋全部客訴，並以分類統計表呈現。",
+    "criterion_results": [
+      {
+        "criterion_id": "2198c091-73de-428a-b897-096b065849cf",
+        "text": "和退款有關的客訴（第 3、6 封）歸在同一類，件數為 2。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格將退貨後未退款與取消訂單後退款逾期合併為「退貨／退款延遲」，數量標示為 2。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 退貨／退款延遲 | 2 | 退貨寄回後久未退款，取消訂單的退款也超過承諾時間未到帳。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8b12a604-c2f3-4bd4-8fe3-b06c4b1b3528",
+        "text": "各類件數加起來是 7，每一封信都有被歸到某一類。",
+        "result": "passed",
+        "source": "model",
+        "reason": "六個類別的數量依序為 1、1、2、1、1、1，合計 7；各摘要分別涵蓋原始七封客訴的配送延誤、物流未更新、兩件退款延遲、商品破損、包裹遺失及客服未回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 配送延誤 | 1 | 包裹比預期晚了 5 天才送達。 |\n| 物流資訊未更新／出貨狀態異常 | 1 | 訂單顯示已出貨，但物流一週沒有更新。 |\n| 退貨／退款延遲 | 2 | 退貨寄回後久未退款，取消訂單的退款也超過承諾時間未到帳。 |\n| 商品破損 | 1 | 收到的杯子有裂痕。 |\n| 配送未通知導致包裹遺失 | 1 | 配送員未通知就放在樓下，結果包裹被拿走。 |\n| 客服回覆延遲 | 1 | 寄信給客服三天都沒有回覆。 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7d8486b-ca5c-42cb-af11-742e595fd813",
+        "text": "輸出是一張分類統計表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為含有類別、數量與簡短摘要欄位的 Markdown 分類統計表。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 類別 | 數量 | 簡短摘要 |\n|---|---:|---|",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2731 input and 693 output tokens on gpt-5.4-mini; reported cost $0.0082 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

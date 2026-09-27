@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆這位客人的抱怨。客人說：『你們昨天送來的餐點完全冷掉了，而且少了一份薯條，等了很久才到，真的很失望。』",
+  "acceptance_criteria": [
+    {
+      "text": "在只提供一段客訴內容時，輸出是一則完整可直接使用的中文回覆。"
+    },
+    {
+      "text": "回覆語氣包含同理與禮貌，且必要時會先道歉或致意。"
+    },
+    {
+      "text": "回覆不會捏造未在客訴中出現的事實、原因或補償承諾。"
+    },
+    {
+      "text": "若客訴內容指出具體問題，回覆會提到正在關注或處理該問題。"
+    },
+    {
+      "text": "若資訊不足以做出具體承諾，回覆會保持保守，不過度保證。"
+    }
+  ],
+  "final_output": "很抱歉讓您有這樣不愉快的體驗，也謝謝您願意告知我們。您提到餐點送達時已經冷掉，另外還少了一份薯條，且等候時間過長，這些情況確實都會影響用餐感受，我們深感抱歉。我們會立即協助確認並處理這次訂單的狀況，避免類似問題再次發生。造成您的不便，真的很抱歉。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "91c245ee-7086-46a2-873e-3b37c61fc935",
+    "run_id": "04f6e2f0-eaf2-43dc-b364-0a01627f10b2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整且可直接使用，具備禮貌、同理與致歉，準確提及客人反映的具體問題並表示會處理。內容沒有虛構原因或提出未經支持的補償承諾，整體措辭保持保守。",
+    "criterion_results": [
+      {
+        "criterion_id": "0d4c529a-4ab2-4bb5-b88b-1bc0f80d1cfe",
+        "text": "在只提供一段客訴內容時，輸出是一則完整可直接使用的中文回覆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為一段完整、可直接提供給客人的繁體中文回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉讓您有這樣不愉快的體驗，也謝謝您願意告知我們。您提到餐點送達時已經冷掉，另外還少了一份薯條，且等候時間過長，這些情況確實都會影響用餐感受，我們深感抱歉。我們會立即協助確認並處理這次訂單的狀況，避免類似問題再次發生。造成您的不便，真的很抱歉。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c87b4eaf-38be-41fe-80d4-57d1a2d9ea0c",
+        "text": "回覆語氣包含同理與禮貌，且必要時會先道歉或致意。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以禮貌致歉及感謝開頭，並表達對客人不愉快體驗與用餐感受的理解。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "很抱歉讓您有這樣不愉快的體驗，也謝謝您願意告知我們。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "這些情況確實都會影響用餐感受，我們深感抱歉。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c671e08b-40ed-4805-9c25-e491d88ae230",
+        "text": "回覆不會捏造未在客訴中出現的事實、原因或補償承諾。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆僅重述客人提出的餐點冷掉、缺少薯條及等候過久等問題，未捏造原因、其他事實或補償內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您提到餐點送達時已經冷掉，另外還少了一份薯條，且等候時間過長，這些情況確實都會影響用餐感受，我們深感抱歉。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f6e3299f-fd70-4afa-9837-69b66c0db72c",
+        "text": "若客訴內容指出具體問題，回覆會提到正在關注或處理該問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示會確認並處理本次訂單狀況，直接關注客人所述的具體問題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我們會立即協助確認並處理這次訂單的狀況，避免類似問題再次發生。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b95da301-19fd-490c-bf91-6245f5f961cb",
+        "text": "若資訊不足以做出具體承諾，回覆會保持保守，不過度保證。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆未承諾退款、補償或特定處理結果，僅表示將確認與處理，因此維持保守。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "我們會立即協助確認並處理這次訂單的狀況，避免類似問題再次發生。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3294 input and 373 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
