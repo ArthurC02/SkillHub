@@ -90,6 +90,48 @@ func TestParseManifestSection(t *testing.T) {
 	}
 }
 
+func TestParseManifestSectionRejectsMalformedEntry(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "toolchain.yaml")
+	contents := "images:\n  openapi_generator \"image@sha256:abc\"\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := parseManifestSection(path, "images")
+	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") {
+		t.Fatalf("parseManifestSection malformed entry error = %v, want invalid toolchain entry", err)
+	}
+}
+
+func TestParseManifestSectionRejectsEmptyKey(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "toolchain.yaml")
+	contents := "images:\n  : \"image@sha256:abc\"\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := parseManifestSection(path, "images")
+	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") {
+		t.Fatalf("parseManifestSection empty-key error = %v, want invalid toolchain entry", err)
+	}
+}
+
+func TestParseManifestSectionRejectsKeyWithWhitespace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "toolchain.yaml")
+	contents := "images:\n  open api_generator: \"image@sha256:abc\"\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := parseManifestSection(path, "images")
+	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") || !strings.Contains(err.Error(), "open api_generator") {
+		t.Fatalf("parseManifestSection whitespace-key error = %v, want invalid toolchain entry including key", err)
+	}
+}
+
 func TestEnvInitDoesNotOverwriteExistingFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
