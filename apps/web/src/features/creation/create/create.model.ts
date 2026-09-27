@@ -176,6 +176,10 @@ export function nextStepBudget(
   };
 }
 
+export const MAX_MESSAGE_RUNES = 4000;
+
+export const points = (v: number) => v + " 點";
+
 export function budgetChoices(min: number, max: number) {
   return [...new Set([min, 200, 500, 1000, 2000, 5000, max])]
     .filter((v) => v >= min && v <= max)
