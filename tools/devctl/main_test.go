@@ -104,7 +104,7 @@ func TestParseManifestSectionRejectsMalformedEntry(t *testing.T) {
 	}
 }
 
-func TestParseManifestSectionRejectsAnEmptyKey(t *testing.T) {
+func TestParseManifestSectionRejectsEmptyKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "toolchain.yaml")
