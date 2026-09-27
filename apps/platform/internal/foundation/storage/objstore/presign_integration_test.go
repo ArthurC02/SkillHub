@@ -199,7 +199,11 @@ func TestPresignedURLStatesItsExpiryAndBindsItsMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	putQuery, err := url.ParseQuery(strings.TrimPrefix(put[strings.Index(put, "?"):], "?"))
+	_, rawPutQuery, found := strings.Cut(put, "?")
+	if !found {
+		t.Fatalf("the PUT grant carries no query: %q", put)
+	}
+	putQuery, err := url.ParseQuery(rawPutQuery)
 	if err != nil {
 		t.Fatal(err)
 	}

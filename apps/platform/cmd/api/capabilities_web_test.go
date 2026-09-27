@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 )
 
 func writeBuild(t *testing.T, index string, assets map[string]string) string {
@@ -72,24 +74,24 @@ func TestWebAssetProbeSaysSoWhenThereIsNoBuildAtAll(t *testing.T) {
 }
 
 func TestWebAppRowIsDeclaredOnlyWhereThisProcessServesTheBuild(t *testing.T) {
-	has := func(servesWeb bool) bool {
-		for _, c := range capabilityTable(nil, 0, servesWeb).Capabilities() {
+	has := func(reg *envx.Registry) bool {
+		for _, c := range reg.Capabilities() {
 			if c.ID == "web_app" {
 				return true
 			}
 		}
 		return false
 	}
-	if has(false) {
+	if has(capabilityTable(nil, 0)) {
 		t.Error("web_app was declared by a deployment that serves no build")
 	}
-	if !has(true) {
+	if !has(cleanModeCapabilityTable(nil, 0)) {
 		t.Error("web_app was missing from a deployment that serves the build")
 	}
 }
 
 func TestWebAppRowCarriesAProbe(t *testing.T) {
-	for _, c := range capabilityTable(nil, 0, true).Capabilities() {
+	for _, c := range cleanModeCapabilityTable(nil, 0).Capabilities() {
 		if c.ID != "web_app" {
 			continue
 		}
@@ -105,7 +107,7 @@ func TestWebAppRowCarriesAProbe(t *testing.T) {
 }
 
 func TestWebAppDeclaresNoDeploymentVariables(t *testing.T) {
-	for _, c := range capabilityTable(nil, 0, true).Capabilities() {
+	for _, c := range cleanModeCapabilityTable(nil, 0).Capabilities() {
 		if c.ID != "web_app" {
 			continue
 		}
@@ -118,8 +120,8 @@ func TestWebAppDeclaresNoDeploymentVariables(t *testing.T) {
 }
 
 func TestCleanModeDropsOnlyTheWorkerInternalVars(t *testing.T) {
-	full := creationCapability(false).Needs
-	clean := creationCapability(true).Needs
+	full := creationCapability().Needs
+	clean := cleanModeCreationCapability().Needs
 	dropped := map[string]bool{}
 	for _, v := range full {
 		dropped[v] = true

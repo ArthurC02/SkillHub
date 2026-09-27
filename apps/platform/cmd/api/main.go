@@ -103,12 +103,12 @@ func newStore(clean bool) (*objstore.Client, func(), error) {
 	return store, stop, err
 }
 
-func cleanModeStaticHandler(devLogin bool) (http.Handler, error) {
+func cleanModeStaticHandler(posture envx.Posture) (http.Handler, error) {
 	distDir, err := webDistDir()
 	if err != nil {
 		return nil, err
 	}
-	return webStaticHandlerUnder(distDir, devLogin)
+	return webStaticHandlerUnder(distDir, posture)
 }
 
 func webDistDir() (string, error) {
@@ -121,7 +121,7 @@ func webDistDir() (string, error) {
 	return filepath.Join(repoRoot, "apps", "web", "dist"), nil
 }
 
-func webStaticHandlerUnder(distDir string, devLogin bool) (http.Handler, error) {
+func webStaticHandlerUnder(distDir string, posture envx.Posture) (http.Handler, error) {
 	indexPath := filepath.Join(distDir, "index.html")
 	raw, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -131,7 +131,7 @@ func webStaticHandlerUnder(distDir string, devLogin bool) (http.Handler, error) 
 	}
 	flags := cleanModeFlagScript
 	inlineScripts := []string{cleanModeFlagJS}
-	if devLogin {
+	if posture.DevLogin {
 		flags = append(append([]byte{}, flags...), devLoginFlagScript...)
 		inlineScripts = append(inlineScripts, devLoginFlagJS)
 	}
@@ -226,13 +226,19 @@ func startupRefusals(posture envx.Posture, providers *run.Registry, rateLimitErr
 }
 
 func main() {
+	if failed := runAPI(); failed {
+		os.Exit(1)
+	}
+}
+
+func runAPI() (failed bool) {
 	creationLimits, _ := wiring.CreationLimitsFromEnv()
 	var cleanWorker *worker.Set
 	creationTransient := wiring.CreationTransientFromEnv(creationLimits)
 
 	if len(os.Args) > 1 && os.Args[1] == "--capabilities" {
 		exitOn(printCapabilitiesJSON(os.Stdout), "print capabilities")
-		return
+		return false
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -275,7 +281,10 @@ func main() {
 			"as any name without a credential. Never in production")
 	}
 
-	capabilities := capabilityTable(pool, len(profiles), clean)
+	capabilities := capabilityTable(pool, len(profiles))
+	if clean {
+		capabilities = cleanModeCapabilityTable(pool, len(profiles))
+	}
 	reportCapabilities(ctx, capabilities)
 
 	if clean {
@@ -339,7 +348,7 @@ func main() {
 
 	handler := app.Handler()
 	if clean {
-		handler = cleanModeServing(handler, clean, devLogin)
+		handler = cleanModeServing(handler, clean, posture)
 	}
 
 	srv := &http.Server{
@@ -354,7 +363,7 @@ func main() {
 		go loop(ctx)
 	}
 
-	failed := serveUntilStopped(ctx, srv)
+	failed = serveUntilStopped(ctx, srv)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -364,14 +373,7 @@ func main() {
 	if cleanWorker != nil {
 		queue.Stop(cleanWorker.Queue)
 	}
-	if failed {
-
-		pool.Close()
-		if stopStore != nil {
-			stopStore()
-		}
-		os.Exit(1)
-	}
+	return failed
 }
 
 func exitOn(err error, msg string) {
@@ -451,8 +453,8 @@ func startCleanWorker(ctx context.Context, pool *pgxpool.Pool, deps func() worke
 	return set
 }
 
-func cleanModeServing(handler http.Handler, clean, devLogin bool) http.Handler {
-	static, err := cleanModeStaticHandler(devLogin)
+func cleanModeServing(handler http.Handler, clean bool, posture envx.Posture) http.Handler {
+	static, err := cleanModeStaticHandler(posture)
 	exitOn(err, "clean mode: web assets")
 	slog.Info("clean mode: serving the web build with the 02:PORT-003 disclosure flag injected")
 	return cleanModeHandler(handler, clean, static)

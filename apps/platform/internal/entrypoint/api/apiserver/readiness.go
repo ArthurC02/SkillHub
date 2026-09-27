@@ -16,7 +16,8 @@ type readinessResponse struct {
 	Detail       string        `json:"detail,omitempty"`
 }
 
-func readinessHandler(reg *envx.Registry, clean bool) http.HandlerFunc {
+func readinessHandler(d Deps) http.HandlerFunc {
+	reg := d.Readiness
 	return func(w http.ResponseWriter, r *http.Request) {
 		if reg == nil {
 
@@ -30,7 +31,7 @@ func readinessHandler(reg *envx.Registry, clean bool) http.HandlerFunc {
 		defer cancel()
 
 		rows := reg.Report(ctx, os.Getenv)
-		if !clean {
+		if !d.CleanMode {
 			for i := range rows {
 				rows[i].Missing = nil
 				rows[i].Detail = ""

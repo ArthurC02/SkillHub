@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
@@ -40,6 +41,12 @@ func startupRefusals(providers *run.Registry) []string {
 }
 
 func main() {
+	if code := runWorker(); code != 0 {
+		os.Exit(code)
+	}
+}
+
+func runWorker() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -47,65 +54,39 @@ func main() {
 		for _, reason := range refusals {
 			slog.Error("worker refuses to start", "reason", reason)
 		}
-		os.Exit(1)
+		return 1
 	}
 
 	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		slog.Error("database pool", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer pool.Close()
 
 	if err := queue.EnsureSchema(ctx, pool); err != nil {
 		slog.Error("queue schema", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	providers := wiring.NewRunRegistryFromEnv()
 	runDeployment := wiring.RunDeploymentFromEnv()
-	names := make([]string, 0, len(providers.Providers))
-	for _, p := range providers.Providers {
-		names = append(names, p.Name())
-	}
-	if len(names) == 0 {
-		slog.Warn("no sandbox provider configured; runs will fail at dispatch")
-	} else {
-		slog.Info("sandbox providers configured", "providers", names)
-	}
+	logSandboxProviders(providers)
 
-	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
-	traceBase := os.Getenv("SKILLHUB_TRACE_INGEST_URL")
-	if !traceSigner.Enabled() || traceBase == "" {
-		slog.Warn("trace ingestion not configured; sandboxes will be dispatched with no trace destination",
-			"has_secret", traceSigner.Enabled(), "has_url", traceBase != "")
-	}
+	traceSigner, traceBase := traceIngestFromEnv()
 
 	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	gateway := wiring.GatewayFromEnv()
-	if gateway == nil {
-		slog.Warn("no model gateway configured; runs will be dispatched with no model credential")
-	} else {
+	logModelGateway(gateway, runDeployment)
 
-		slog.Info("model gateway configured", "sandbox_base_url", runDeployment.GatewayURL, "model", runDeployment.Model)
-	}
-
-	var llm *llmclient.Client
-	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		token := os.Getenv("LLM_SERVICE_TOKEN")
-		if token == "" {
-			slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
-			os.Exit(1)
-		}
-		llm = wiring.LLMClient(llmURL, token)
-		slog.Info("judge service configured", "url", llmURL)
-	} else {
-		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
+	llm, ok := judgeFromEnv()
+	if !ok {
+		return 1
 	}
 
 	creationLimits, _ := wiring.CreationLimitsFromEnv()
@@ -121,25 +102,15 @@ func main() {
 	})
 	if err != nil {
 		slog.Error("worker composition", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	if err := set.Queue.Start(ctx); err != nil {
 		slog.Error("queue start", "error", err)
-		os.Exit(1)
+		return 1
 	}
-	if addr, token := os.Getenv("CREATION_WORKER_INTERNAL_ADDR"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"); addr != "" && token != "" && creationLimits.Valid() {
-		server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
-		go func() {
-			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				slog.Error("creation internal listener failed")
-			}
-		}()
-		defer func() {
-			stop, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = server.Shutdown(stop)
-		}()
+	if server := startCreationListener(set, creationLimits); server != nil {
+		defer shutdownCreationListener(server)
 	}
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 	slog.Info("worker started")
@@ -148,4 +119,72 @@ func main() {
 
 	queue.Stop(set.Queue)
 	slog.Info("worker stopped")
+	return 0
+}
+
+func logSandboxProviders(providers *run.Registry) {
+	names := make([]string, 0, len(providers.Providers))
+	for _, p := range providers.Providers {
+		names = append(names, p.Name())
+	}
+	if len(names) == 0 {
+		slog.Warn("no sandbox provider configured; runs will fail at dispatch")
+		return
+	}
+	slog.Info("sandbox providers configured", "providers", names)
+}
+
+func traceIngestFromEnv() (*trace.Signer, string) {
+	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
+	traceBase := os.Getenv("SKILLHUB_TRACE_INGEST_URL")
+	if !traceSigner.Enabled() || traceBase == "" {
+		slog.Warn("trace ingestion not configured; sandboxes will be dispatched with no trace destination",
+			"has_secret", traceSigner.Enabled(), "has_url", traceBase != "")
+	}
+	return traceSigner, traceBase
+}
+
+func logModelGateway(gateway *run.Gateway, runDeployment run.Deployment) {
+	if gateway == nil {
+		slog.Warn("no model gateway configured; runs will be dispatched with no model credential")
+		return
+	}
+
+	slog.Info("model gateway configured", "sandbox_base_url", runDeployment.GatewayURL, "model", runDeployment.Model)
+}
+
+func judgeFromEnv() (*llmclient.Client, bool) {
+	llmURL := os.Getenv("LLM_SERVICE_URL")
+	if llmURL == "" {
+		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
+		return nil, true
+	}
+	token := os.Getenv("LLM_SERVICE_TOKEN")
+	if token == "" {
+		slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
+		return nil, false
+	}
+	llm := wiring.LLMClient(llmURL, token)
+	slog.Info("judge service configured", "url", llmURL)
+	return llm, true
+}
+
+func startCreationListener(set *worker.Set, creationLimits creation.Limits) *http.Server {
+	addr, token := os.Getenv("CREATION_WORKER_INTERNAL_ADDR"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN")
+	if addr == "" || token == "" || !creationLimits.Valid() {
+		return nil
+	}
+	server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("creation internal listener failed")
+		}
+	}()
+	return server
+}
+
+func shutdownCreationListener(server *http.Server) {
+	stop, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = server.Shutdown(stop)
 }

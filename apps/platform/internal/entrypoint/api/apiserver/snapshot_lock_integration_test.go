@@ -2,6 +2,7 @@ package apiserver_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -93,13 +94,13 @@ func TestLockDraftIsScopedToItsWorkspace(t *testing.T) {
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // read-only
 
-	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, stranger.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
+	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, stranger.workspaceID), mustUUID(t, testCaseID)); !errors.Is(err, testlab.ErrNotFound) {
 		t.Errorf("cross-workspace lock err = %v, want ErrNotFound", err)
 	}
 	if _, err := tx.Exec(ctx, `UPDATE test_cases SET deleted_at = now() WHERE id = $1`, mustUUID(t, testCaseID)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, owner.workspaceID), mustUUID(t, testCaseID)); err != testlab.ErrNotFound {
+	if _, err := testlab.LockDraft(ctx, tx, mustUUID(t, owner.workspaceID), mustUUID(t, testCaseID)); !errors.Is(err, testlab.ErrNotFound) {
 		t.Errorf("soft-deleted lock err = %v, want ErrNotFound", err)
 	}
 }

@@ -34,15 +34,21 @@ func main() {
 			"collect-objects|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
+	if code := runJob(os.Args[1]); code != 0 {
+		os.Exit(code)
+	}
+}
+
+func runJob(job string) int {
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, purgeDatabaseURL())
 	if err != nil {
 		slog.Error("database pool", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer pool.Close()
 
-	switch os.Args[1] {
+	switch job {
 	case "purge-accounts":
 		err = purgeAccounts(ctx, pool)
 	case "check-sources":
@@ -62,13 +68,14 @@ func main() {
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
-		slog.Error("unknown job", "job", os.Args[1])
-		os.Exit(2)
+		slog.Error("unknown job", "job", job)
+		return 2
 	}
 	if err != nil {
-		slog.Error("maintenance job failed", "job", os.Args[1], "error", err)
-		os.Exit(1)
+		slog.Error("maintenance job failed", "job", job, "error", err)
+		return 1
 	}
+	return 0
 }
 
 func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {

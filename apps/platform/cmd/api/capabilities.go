@@ -20,28 +20,38 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 )
 
-func creationCapability(clean bool) envx.Capability {
+func cleanModeCreationCapability() envx.Capability {
 
-	needs := []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON"}
-	without := "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid）"
-	if !clean {
-		needs = append(needs, "CREATION_WORKER_INTERNAL_ADDR", "CREATION_WORKER_INTERNAL_URL", "CREATION_WORKER_INTERNAL_TOKEN")
-		without += "，Worker 的內部 listener 不啟動、流程圖沒有地方送"
-	}
 	return envx.Capability{
 		ID:      "interactive_creation",
 		Name:    "互動創作會話",
-		Needs:   needs,
-		Without: without,
+		Needs:   []string{"CREATION_EXPOSED", "CREATION_LIMITS_JSON"},
+		Without: "刻意的狀態：/creation-sessions* 不掛載、GET /me 不列 creation_skill；LIMITS 缺任何一鍵時 API 拒絕開始會話（Limits.Valid）",
 		Fix: "值照 05 R-45 的裁定表（.env.example 帶著同一行 JSON）；CREATION_EXPOSED 與 GENERATE_SKILL_EXPOSED 一樣，" +
 			"在 01 §10 的 M5 邊界解除前不要設成 on。淨測試模式不需要那三個 Worker 內部變數：" +
 			"創作 worker 就跑在同一個行程裡",
 	}
 }
 
-func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *envx.Registry {
+func creationCapability() envx.Capability {
+	c := cleanModeCreationCapability()
+	c.Needs = append(c.Needs, "CREATION_WORKER_INTERNAL_ADDR", "CREATION_WORKER_INTERNAL_URL", "CREATION_WORKER_INTERNAL_TOKEN")
+	c.Without += "，Worker 的內部 listener 不啟動、流程圖沒有地方送"
+	return c
+}
+
+func capabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
+	return envx.NewRegistry(append(sharedCapabilities(pool, packagingTargets), creationCapability()))
+}
+
+func cleanModeCapabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
+	return envx.NewRegistry(append(sharedCapabilities(pool, packagingTargets),
+		cleanModeCreationCapability(), webAppCapability()))
+}
+
+func sharedCapabilities(pool *pgxpool.Pool, packagingTargets int) []envx.Capability {
 	client := &http.Client{Timeout: 2 * time.Second}
-	caps := []envx.Capability{
+	return []envx.Capability{
 		{
 			ID:      "catalogue_search",
 			Name:    "目錄搜尋（關鍵字）",
@@ -172,27 +182,26 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *
 				"發佈與公開閱讀不受影響",
 			Fix: "閘門與封測的結論出來之前不要設成 on——一個對所有人開放的下載入口就是一次沒有名單的封測",
 		},
-		creationCapability(servesWeb),
 	}
-	if servesWeb {
-		caps = append(caps, envx.Capability{
-			ID:   "web_app",
-			Name: "網頁介面（這個行程送出的 SPA）",
+}
 
-			Without: "index.html 送得出去，但它引用的 JavaScript 不在——瀏覽器拿到一個空白頁，" +
-				"伺服器這邊每一條路由都還是 200",
-			Fix: "重新 `task build:web`，然後**重啟這個行程**：index.html 在啟動時就讀進記憶體並烙上旗標，" +
-				"而 asset 檔名帶 build hash，重建卻不重啟就會指向一個已經不存在的檔案",
-			Probe: func(context.Context) error {
-				distDir, err := webDistDir()
-				if err != nil {
-					return err
-				}
-				return probeWebAssetsUnder(distDir)
-			},
-		})
+func webAppCapability() envx.Capability {
+	return envx.Capability{
+		ID:   "web_app",
+		Name: "網頁介面（這個行程送出的 SPA）",
+
+		Without: "index.html 送得出去，但它引用的 JavaScript 不在——瀏覽器拿到一個空白頁，" +
+			"伺服器這邊每一條路由都還是 200",
+		Fix: "重新 `task build:web`，然後**重啟這個行程**：index.html 在啟動時就讀進記憶體並烙上旗標，" +
+			"而 asset 檔名帶 build hash，重建卻不重啟就會指向一個已經不存在的檔案",
+		Probe: func(context.Context) error {
+			distDir, err := webDistDir()
+			if err != nil {
+				return err
+			}
+			return probeWebAssetsUnder(distDir)
+		},
 	}
-	return envx.NewRegistry(caps)
 }
 
 var assetRef = regexp.MustCompile(`/assets/[A-Za-z0-9._-]+`)
@@ -332,7 +341,7 @@ func printCapabilitiesJSON(w io.Writer) error {
 		Needs []string `json:"needs"`
 	}
 
-	reg := capabilityTable(nil, 0, false)
+	reg := capabilityTable(nil, 0)
 	out := make([]row, 0, len(reg.Capabilities()))
 	for _, c := range reg.Capabilities() {
 		out = append(out, row{ID: c.ID, Name: c.Name, Needs: c.Needs})

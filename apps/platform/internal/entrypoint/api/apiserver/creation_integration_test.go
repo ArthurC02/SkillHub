@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
@@ -443,7 +444,7 @@ func TestCreationPurgeFencesLateModelResult(t *testing.T) {
 	if err = <-done; err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.Get(context.Background(), identity.Workspace{ID: job.WorkspaceID}, job.SessionID); err != creation.ErrNotFound {
+	if _, err = s.Get(context.Background(), identity.Workspace{ID: job.WorkspaceID}, job.SessionID); !errors.Is(err, creation.ErrNotFound) {
 		t.Fatalf("purged session returned: %v", err)
 	}
 	var rows int

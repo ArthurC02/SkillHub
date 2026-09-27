@@ -12,7 +12,7 @@ func packagingRow(t *testing.T, targets int) envx.Status {
 	t.Helper()
 
 	env := func(name string) string { return "set" }
-	for _, s := range capabilityTable(nil, targets, false).Report(context.Background(), env) {
+	for _, s := range capabilityTable(nil, targets).Report(context.Background(), env) {
 		if s.ID == "packaging_download" {
 			return s
 		}

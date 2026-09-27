@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -135,6 +136,35 @@ type creationMeasureSummary struct {
 	DiagramMetCount       int `json:"diagram_met_count"`
 	DiagramMetDenominator int `json:"diagram_met_denominator"`
 }
+
+func (s *creationMeasureSummary) countJudged(row sessionRow) {
+	within := row.MetRound > 0
+	if row.Kind == "diagram" {
+		s.DiagramMetDenominator++
+		if within {
+			s.DiagramMetCount++
+		}
+		return
+	}
+	s.MetDenominator++
+	if *row.Met {
+		s.MetFirstCount++
+	}
+	if within {
+		s.MetCount++
+	}
+	if row.CriteriaChangedBeforeMet != nil && *row.CriteriaChangedBeforeMet {
+		s.MetOnChangedCriteria++
+	}
+	if row.HoldoutMet == nil {
+		return
+	}
+	s.HoldoutDenominator++
+	if *row.HoldoutMet {
+		s.HoldoutMetCount++
+	}
+}
+
 type creationMeasureResults struct {
 	Interactive []sessionRow              `json:"interactive"`
 	SingleShot  []singleShotRow           `json:"single_shot"`
@@ -232,7 +262,7 @@ func TestTheMeasureHarnessKeepsEveryJudgeRequestItSends(t *testing.T) {
 			dir := t.TempDir()
 			req := eval.JudgeRequest{RunID: "run-1", UserPrompt: "summarise this", FinalOutput: "a summary"}
 			got, err := recordingJudge{next: tc.judge, outDir: dir}.JudgeRun(context.Background(), req)
-			if got != tc.judge.judgement || err != tc.judge.err {
+			if got != tc.judge.judgement || !errors.Is(err, tc.judge.err) {
 				t.Fatalf("the recorder changed what the judge returned: %v, %v", got, err)
 			}
 			raw, rerr := os.ReadFile(filepath.Join(dir, "judge-run-1.json"))
@@ -776,30 +806,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 			results.Summary.FormatPass++
 		}
 		if row.Met != nil {
-			within := row.MetRound > 0
-			if row.Kind == "diagram" {
-				results.Summary.DiagramMetDenominator++
-				if within {
-					results.Summary.DiagramMetCount++
-				}
-				continue
-			}
-			results.Summary.MetDenominator++
-			if *row.Met {
-				results.Summary.MetFirstCount++
-			}
-			if within {
-				results.Summary.MetCount++
-			}
-			if row.CriteriaChangedBeforeMet != nil && *row.CriteriaChangedBeforeMet {
-				results.Summary.MetOnChangedCriteria++
-			}
-			if row.HoldoutMet != nil {
-				results.Summary.HoldoutDenominator++
-				if *row.HoldoutMet {
-					results.Summary.HoldoutMetCount++
-				}
-			}
+			results.Summary.countJudged(row)
 		}
 	}
 	for _, row := range results.SingleShot {
@@ -830,6 +837,29 @@ func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body strin
 	if err := os.WriteFile(filepath.Join(outDir, id+"-"+suffix+".SKILL.md"), []byte(md), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func recordCatalogSearch(row *sessionRow, v creation.View, refID string) {
+	offered := v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_references"
+	searched := v.Snapshot.CatalogChecked || offered
+	for _, m := range v.Snapshot.Messages {
+		if m.Role == "tool" && strings.Contains(m.Content, "目錄") {
+			searched = true
+		}
+	}
+	if !searched {
+		row.SearchNote = "model did not search"
+		return
+	}
+	hit := false
+	if offered {
+		for _, ref := range v.Snapshot.References {
+			if ref.SkillID == refID {
+				hit = true
+			}
+		}
+	}
+	row.SearchHit = &hit
 }
 
 var measureRunNonce = time.Now().UTC().Format("0102-150405")
@@ -877,29 +907,7 @@ func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx contex
 			row.ModelCalls++
 		}
 		if os.Getenv("CREATION_MEASURE_SEARCH") == "1" {
-
-			searched := v.Snapshot.CatalogChecked
-			for _, m := range v.Snapshot.Messages {
-				if m.Role == "tool" && strings.Contains(m.Content, "目錄") {
-					searched = true
-				}
-			}
-			if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_references" {
-				searched = true
-			}
-			if !searched {
-				row.SearchNote = "model did not search"
-			} else {
-				hit := false
-				if v.State == "waiting_confirmation" && v.Snapshot.PendingAction == "confirm_references" {
-					for _, ref := range v.Snapshot.References {
-						if ref.SkillID == refID {
-							hit = true
-						}
-					}
-				}
-				row.SearchHit = &hit
-			}
+			recordCatalogSearch(&row, v, refID)
 		} else {
 			v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
 				"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",

@@ -63,7 +63,7 @@ func NewRouter(d Deps) http.Handler {
 
 	mux.Handle("GET /healthz", newGeneratedHealthHandler())
 
-	mux.HandleFunc("GET /readyz", readinessHandler(d.Readiness, d.CleanMode))
+	mux.HandleFunc("GET /readyz", readinessHandler(d))
 	auth.Mount(mux)
 
 	mux.HandleFunc("GET /skills/import/limits", auth.RequireSession(d.Importer.Limits))

@@ -245,11 +245,7 @@ func measureGoldenSearch(t *testing.T, hybrid bool) {
 				}
 			}
 			t.Logf("%s_INPUT corpus=%s indexed=%d poison=%d versions=%v", mode, corpus, indexed, len(poisonCategories), versions)
-			type tally struct {
-				Queries, Top1, Top3, Recall5, Distractors, Rejected, PoisonTop3 int
-				F1, Recall                                                      float64
-			}
-			counts := map[string]*tally{"zh": {}, "en": {}}
+			counts := map[string]*intentGoldenTally{"zh": {}, "en": {}}
 			handler := &catalog.Handler{Svc: svc}
 			for _, query := range queries.Queries {
 				beforeCalls := vectors.calls
@@ -310,38 +306,7 @@ func measureGoldenSearch(t *testing.T, hybrid bool) {
 						break
 					}
 				}
-				if len(relevant) == 0 {
-					count.Distractors++
-					if len(results) == 0 {
-						count.Rejected++
-						count.F1++
-						count.Recall++
-					}
-				} else {
-					count.Queries++
-					page := results[:min(len(relevant), len(results))]
-					hits := 0
-					for _, id := range page {
-						if slices.Contains(relevant, id) {
-							hits++
-						}
-					}
-					count.F1 += float64(2*hits) / float64(len(page)+len(relevant))
-					count.Recall += float64(hits) / float64(len(relevant))
-					for rank, id := range results {
-						if !slices.Contains(relevant, id) {
-							continue
-						}
-						if rank == 0 {
-							count.Top1++
-						}
-						if rank < 3 {
-							count.Top3++
-						}
-						count.Recall5++
-						break
-					}
-				}
+				count.score(relevant, results)
 				t.Logf("%s_QUERY corpus=%s id=%s lang=%s results=%v gold=%v interpretation=%+v", mode, corpus, query.ID, query.Lang, results, relevant, body.Interpretation)
 			}
 			for _, lang := range []string{"zh", "en"} {
@@ -358,6 +323,46 @@ func measureGoldenSearch(t *testing.T, hybrid bool) {
 				t.Logf("LEXICAL_FLOOR corpus=%s measured_only=true metric=top1 observed=%d/%d historical_english=14/18 passes_floor=%v", corpus, zh.Top1, zh.Queries, historicalLexicalFloorMet(zh.Top1, zh.Queries))
 			}
 		})
+	}
+}
+
+type intentGoldenTally struct {
+	Queries, Top1, Top3, Recall5, Distractors, Rejected, PoisonTop3 int
+	F1, Recall                                                      float64
+}
+
+func (count *intentGoldenTally) score(relevant, results []string) {
+	if len(relevant) == 0 {
+		count.Distractors++
+		if len(results) == 0 {
+			count.Rejected++
+			count.F1++
+			count.Recall++
+		}
+		return
+	}
+	count.Queries++
+	page := results[:min(len(relevant), len(results))]
+	hits := 0
+	for _, id := range page {
+		if slices.Contains(relevant, id) {
+			hits++
+		}
+	}
+	count.F1 += float64(2*hits) / float64(len(page)+len(relevant))
+	count.Recall += float64(hits) / float64(len(relevant))
+	for rank, id := range results {
+		if !slices.Contains(relevant, id) {
+			continue
+		}
+		if rank == 0 {
+			count.Top1++
+		}
+		if rank < 3 {
+			count.Top3++
+		}
+		count.Recall5++
+		break
 	}
 }
 

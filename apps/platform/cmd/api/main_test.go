@@ -298,7 +298,7 @@ func writeCleanModeFixture(t *testing.T, indexBody string) string {
 func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>t</title>\n<!--SKILLHUB_CLEAN_MODE_FLAG-->\n</head><body></body></html>")
 
-	handler, err := webStaticHandlerUnder(dir, false)
+	handler, err := webStaticHandlerUnder(dir, envx.Posture{})
 	if err != nil {
 		t.Fatalf("webStaticHandlerUnder: %v", err)
 	}
@@ -332,7 +332,7 @@ func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(
 		{"DEV_LOGIN on", true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), tc.devLogin)
+			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), envx.Posture{DevLogin: tc.devLogin})
 			if err != nil {
 				t.Fatalf("webStaticHandlerUnder: %v", err)
 			}
@@ -358,7 +358,7 @@ func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(
 func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head></html>")
 
-	handler, err := webStaticHandlerUnder(dir, false)
+	handler, err := webStaticHandlerUnder(dir, envx.Posture{})
 	if err != nil {
 		t.Fatalf("webStaticHandlerUnder: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "does-not-exist")
 
-	_, err := webStaticHandlerUnder(dir, false)
+	_, err := webStaticHandlerUnder(dir, envx.Posture{})
 	if err == nil {
 		t.Fatal("webStaticHandlerUnder on a missing directory returned no error")
 	}
@@ -389,7 +389,7 @@ func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 func TestWebStaticHandlerUnderRequiresThePlaceholder(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>no placeholder here</title></head></html>")
 
-	_, err := webStaticHandlerUnder(dir, false)
+	_, err := webStaticHandlerUnder(dir, envx.Posture{})
 	if err == nil {
 		t.Fatal("webStaticHandlerUnder on an index.html with no placeholder returned no error")
 	}
@@ -729,7 +729,7 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 func TestWebStaticHandlerUnderSendsAPolicyNoRemoteImageCanCross(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>")
 
-	handler, err := webStaticHandlerUnder(dir, false)
+	handler, err := webStaticHandlerUnder(dir, envx.Posture{})
 	if err != nil {
 		t.Fatalf("webStaticHandlerUnder: %v", err)
 	}
@@ -770,7 +770,7 @@ func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
 		{"DEV_LOGIN on", true, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), tc.devLogin)
+			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), envx.Posture{DevLogin: tc.devLogin})
 			if err != nil {
 				t.Fatalf("webStaticHandlerUnder: %v", err)
 			}

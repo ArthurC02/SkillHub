@@ -238,14 +238,14 @@ func (s *Service) checkArtifacts(ctx context.Context) error {
 		return err
 	}
 	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, checked, kindArtifact, row.ID, row.ObjectKey)
+		confirmed, err := s.sight(ctx, q, checked, kindArtifact, row)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
 			continue
 		}
-		if err := s.markLost(ctx, kindArtifact, row.WorkspaceID, row.ID, row.ObjectKey,
+		if err := s.markLost(ctx, kindArtifact, row,
 			s.RecordArtifactPurged,
 			audit.ResourceArtifact); err != nil {
 			return err
@@ -262,14 +262,14 @@ func (s *Service) checkDatasets(ctx context.Context) error {
 		return err
 	}
 	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, checked, kindDataset, row.ID, row.ObjectKey)
+		confirmed, err := s.sight(ctx, q, checked, kindDataset, row)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
 			continue
 		}
-		if err := s.markLost(ctx, kindDataset, row.WorkspaceID, row.ID, row.ObjectKey,
+		if err := s.markLost(ctx, kindDataset, row,
 			s.RecordDatasetLost,
 			audit.ResourceDataset); err != nil {
 			return err
@@ -285,8 +285,9 @@ type objectCheck struct {
 
 func (s *Service) sight(
 	ctx context.Context, q *gen.Queries, checked map[string]objectCheck,
-	kind string, id pgtype.UUID, key string,
+	kind string, row Candidate,
 ) (bool, error) {
+	id, key := row.ID, row.ObjectKey
 	check, ok := checked[key]
 	if !ok {
 		check.present, check.err = s.Store.Exists(ctx, key)
@@ -319,9 +320,10 @@ func (s *Service) sight(
 }
 
 func (s *Service) markLost(
-	ctx context.Context, kind string, workspaceID, id pgtype.UUID, key string,
+	ctx context.Context, kind string, row Candidate,
 	mark MarkFunc, resourceType string,
 ) error {
+	workspaceID, id, key := row.WorkspaceID, row.ID, row.ObjectKey
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err

@@ -17,11 +17,17 @@ import (
 )
 
 func main() {
+	if code := runReindex(); code != 0 {
+		os.Exit(code)
+	}
+}
+
+func runReindex() int {
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		slog.Error("database pool", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer pool.Close()
 
@@ -29,31 +35,31 @@ func main() {
 	n, pruned, err := catalogSvc.RebuildIndex(ctx)
 	if err != nil {
 		slog.Error("reindex", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
 
 	filled, err := catalog.BackfillBigram(ctx, pool, 500)
 	if err != nil {
 		slog.Error("bigram backfill", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	slog.Info("bigram column filled", "documents", filled)
 
 	llmURL := os.Getenv("LLM_SERVICE_URL")
 	if llmURL == "" {
 		slog.Warn("LLM_SERVICE_URL not set; skipping enrichment backfill, documents stay pending")
-		return
+		return 0
 	}
 	llmToken := os.Getenv("LLM_SERVICE_TOKEN")
 	if llmToken == "" {
 		slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
-		os.Exit(1)
+		return 1
 	}
 	store, err := wiring.ObjectStoreFromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	svc := &ingest.Service{
@@ -76,7 +82,7 @@ func main() {
 	creditCfg, err := wiring.CreditConfigFromEnv()
 	if err != nil {
 		slog.Error("credit config", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
 
@@ -84,21 +90,22 @@ func main() {
 		catalogs, err := (&identity.Service{Pool: pool}).CatalogWorkspaceIDs(ctx, pool)
 		if err != nil {
 			slog.Error("catalog workspaces", "error", err)
-			os.Exit(1)
+			return 1
 		}
 		reset, err := catalog.RequeueCatalogueEnrichment(ctx, pool, catalogs, keep)
 		if err != nil {
 			slog.Error("re-enrichment reset", "error", err)
-			os.Exit(1)
+			return 1
 		}
 		slog.Info("catalogue documents queued for re-enrichment", "documents", reset, "keeping", keep)
 	}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
 		slog.Error("enrichment backfill", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	slog.Info("enrichment backfill complete", "enriched", done, "still_pending", failed)
+	return 0
 }
 
 func pendingEnrichments(ctx context.Context, svc *catalog.Service, limit int32) ([]ingest.PendingEnrichment, error) {

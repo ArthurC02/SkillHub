@@ -398,7 +398,7 @@ const truncationMarker = "generate model output was truncated at the token ceili
 func (c *Client) GenerateSkill(ctx context.Context, req GenerateSkillRequest) (*GenerateSkillResponse, error) {
 	resp, err := post[GenerateSkillRequest, GenerateSkillResponse](ctx, c, "/v1/generate-skill", req)
 	if err != nil && strings.Contains(err.Error(), truncationMarker) {
-		return nil, fmt.Errorf("%w: %v", ErrGenerateTruncated, err)
+		return nil, fmt.Errorf("%w: %w", ErrGenerateTruncated, err)
 	}
 	return resp, err
 }
