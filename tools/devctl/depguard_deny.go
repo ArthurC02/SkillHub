@@ -152,16 +152,26 @@ func isBoundedContextKind(kind architectureKind) bool {
 	return kind == architectureCore || kind == architectureSupporting
 }
 
-func depguardMembershipProblems(lintPath, rule string, want, actual map[string]bool, missing, extra string) []string {
+type depguardMembershipVerb struct {
+	base        string
+	thirdPerson string
+}
+
+var (
+	depguardDenies  = depguardMembershipVerb{base: "deny", thirdPerson: "denies"}
+	depguardSelects = depguardMembershipVerb{base: "select", thirdPerson: "selects"}
+)
+
+func depguardMembershipProblems(lintPath, rule string, want, actual map[string]bool, verb depguardMembershipVerb) []string {
 	var problems []string
 	for _, id := range sortedKeys(want) {
 		if !actual[id] {
-			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not %s %q", lintPath, rule, missing, id))
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not %s %q", lintPath, rule, verb.base, id))
 		}
 	}
 	for _, id := range sortedKeys(actual) {
 		if !want[id] {
-			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly %s %q", lintPath, rule, extra, id))
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly %s %q", lintPath, rule, verb.thirdPerson, id))
 		}
 	}
 	return problems
@@ -212,7 +222,7 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 			}
 			actual[id] = true
 		}
-		problems = append(problems, depguardMembershipProblems(lintPath, rule, expected[rule], actual, "deny", "denies")...)
+		problems = append(problems, depguardMembershipProblems(lintPath, rule, expected[rule], actual, depguardDenies)...)
 	}
 	return problems
 }
@@ -223,7 +233,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 	for rule, want := range expectedDepguardSelections(declared) {
 		actual, selectorProblems := selectedContexts(lintPath, rule, rules[rule]["files"], pathIDs)
 		problems = append(problems, selectorProblems...)
-		problems = append(problems, depguardMembershipProblems(lintPath, rule, want, actual, "select", "selects")...)
+		problems = append(problems, depguardMembershipProblems(lintPath, rule, want, actual, depguardSelects)...)
 	}
 	return problems
 }

@@ -52,23 +52,7 @@ func backlogTallyProblems(root string) []string {
 	}
 	lines := strings.Split(string(raw), "\n")
 
-	type item struct {
-		line   int
-		closed bool
-	}
-	items := map[string]item{}
-	for n, line := range lines {
-		m := backlogItem.FindStringSubmatch(line)
-		if m == nil {
-			continue
-		}
-		closed := backlogRowClosed(line)
-		id := m[1] + "-" + m[2]
-
-		if _, seen := items[id]; !seen {
-			items[id] = item{line: n + 1, closed: closed}
-		}
-	}
+	items := backlogItems(lines)
 	if len(items) == 0 {
 		return []string{fmt.Sprintf(
 			"backlog-tally: %s has no 甲/乙/丙 rows; this check has lost its subject", backlogDoc)}
@@ -82,42 +66,7 @@ func backlogTallyProblems(root string) []string {
 			continue
 		}
 		ledgers++
-		category, stated := m[1], m[2]
-		want, _ := strconv.Atoi(stated)
-
-		trailer := backlogOpen.FindStringSubmatch(line)
-		if trailer == nil {
-			problems = append(problems, fmt.Sprintf(
-				"backlog-tally: %s:%d the %s ledger states **%s** with no `<!-- open: … -->` list; "+
-					"the number is then a claim about rows nothing compares it to",
-				backlogDoc, n+1, category, stated))
-			continue
-		}
-
-		ids, dupes := backlogIDs(category, trailer[1])
-		if len(ids) != want {
-			problems = append(problems, fmt.Sprintf(
-				"backlog-tally: %s:%d the %s ledger states **%s** but lists %d: %s",
-				backlogDoc, n+1, category, stated, len(ids), strings.Join(ids, ", ")))
-		}
-		for _, id := range dupes {
-			problems = append(problems, fmt.Sprintf(
-				"backlog-tally: %s:%d the %s ledger lists %s twice", backlogDoc, n+1, category, id))
-		}
-		for _, id := range ids {
-			row, ok := items[id]
-			if !ok {
-				problems = append(problems, fmt.Sprintf(
-					"backlog-tally: %s:%d the %s ledger lists %s, which is not a row in this file",
-					backlogDoc, n+1, category, id))
-				continue
-			}
-			if row.closed {
-				problems = append(problems, fmt.Sprintf(
-					"backlog-tally: %s:%d the %s ledger lists %s as open, but its row (line %d) "+
-						"records it closed", backlogDoc, n+1, category, id, row.line))
-			}
-		}
+		problems = append(problems, backlogLedgerProblems(n+1, line, m, items)...)
 	}
 	if ledgers == 0 {
 		problems = append(problems, fmt.Sprintf(
@@ -126,6 +75,66 @@ func backlogTallyProblems(root string) []string {
 	}
 
 	sort.Strings(problems)
+	return problems
+}
+
+type backlogRow struct {
+	line   int
+	closed bool
+}
+
+func backlogItems(lines []string) map[string]backlogRow {
+	items := map[string]backlogRow{}
+	for n, line := range lines {
+		m := backlogItem.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		id := m[1] + "-" + m[2]
+		if _, seen := items[id]; !seen {
+			items[id] = backlogRow{line: n + 1, closed: backlogRowClosed(line)}
+		}
+	}
+	return items
+}
+
+func backlogLedgerProblems(lineNumber int, line string, ledger []string, items map[string]backlogRow) []string {
+	category, stated := ledger[1], ledger[2]
+	want, _ := strconv.Atoi(stated)
+
+	trailer := backlogOpen.FindStringSubmatch(line)
+	if trailer == nil {
+		return []string{fmt.Sprintf(
+			"backlog-tally: %s:%d the %s ledger states **%s** with no `<!-- open: … -->` list; "+
+				"the number is then a claim about rows nothing compares it to",
+			backlogDoc, lineNumber, category, stated)}
+	}
+
+	var problems []string
+	ids, dupes := backlogIDs(category, trailer[1])
+	if len(ids) != want {
+		problems = append(problems, fmt.Sprintf(
+			"backlog-tally: %s:%d the %s ledger states **%s** but lists %d: %s",
+			backlogDoc, lineNumber, category, stated, len(ids), strings.Join(ids, ", ")))
+	}
+	for _, id := range dupes {
+		problems = append(problems, fmt.Sprintf(
+			"backlog-tally: %s:%d the %s ledger lists %s twice", backlogDoc, lineNumber, category, id))
+	}
+	for _, id := range ids {
+		row, ok := items[id]
+		if !ok {
+			problems = append(problems, fmt.Sprintf(
+				"backlog-tally: %s:%d the %s ledger lists %s, which is not a row in this file",
+				backlogDoc, lineNumber, category, id))
+			continue
+		}
+		if row.closed {
+			problems = append(problems, fmt.Sprintf(
+				"backlog-tally: %s:%d the %s ledger lists %s as open, but its row (line %d) "+
+					"records it closed", backlogDoc, lineNumber, category, id, row.line))
+		}
+	}
 	return problems
 }
 

@@ -88,39 +88,44 @@ func sharedNumberProblemsFor(root string, roster []string) []string {
 }
 
 func sharedNumberScan(root string) (map[string][]sharedNumberSite, []string) {
-	found := map[string][]sharedNumberSite{}
-	var problems []string
-
+	scanner := &sharedNumberScanner{root: root, found: map[string][]sharedNumberSite{}}
 	for _, tree := range sharedNumberRoots {
-		err := filepath.WalkDir(filepath.Join(root, tree), func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			rel, relErr := filepath.Rel(root, path)
-			if relErr != nil {
-				rel = path
-			}
-			if sharedNumberSkipped(rel) {
-				if d.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if d.IsDir() || !sharedNumberScannedFile(path, rel) {
-				return nil
-			}
-			data, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return nil
-			}
-			problems = append(problems, collectSharedNumbers(found, rel, string(data))...)
-			return nil
-		})
-		if err != nil {
-			problems = append(problems, fmt.Sprintf("%s: %v", tree, err))
+		if err := filepath.WalkDir(filepath.Join(root, tree), scanner.visit); err != nil {
+			scanner.problems = append(scanner.problems, fmt.Sprintf("%s: %v", tree, err))
 		}
 	}
-	return found, problems
+	return scanner.found, scanner.problems
+}
+
+type sharedNumberScanner struct {
+	root     string
+	found    map[string][]sharedNumberSite
+	problems []string
+}
+
+func (s *sharedNumberScanner) visit(path string, d os.DirEntry, err error) error {
+	if err != nil {
+		return nil
+	}
+	rel, relErr := filepath.Rel(s.root, path)
+	if relErr != nil {
+		rel = path
+	}
+	if sharedNumberSkipped(rel) {
+		if d.IsDir() {
+			return filepath.SkipDir
+		}
+		return nil
+	}
+	if d.IsDir() || !sharedNumberScannedFile(path, rel) {
+		return nil
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return nil
+	}
+	s.problems = append(s.problems, collectSharedNumbers(s.found, rel, string(data))...)
+	return nil
 }
 
 func sharedNumberSkipped(rel string) bool {

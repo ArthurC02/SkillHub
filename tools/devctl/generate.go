@@ -171,19 +171,7 @@ func acquireGenerationLock(root string, now time.Time) (func(), error) {
 	}
 	file, err := create()
 	if errors.Is(err, os.ErrExist) {
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return nil, fmt.Errorf("generation lock exists but cannot be read: %w", readErr)
-		}
-		var existing generationLock
-		if json.Unmarshal(data, &existing) == nil && now.Sub(existing.CreatedAt) > generationLockMaxAge {
-			if removeErr := os.Remove(path); removeErr != nil {
-				return nil, fmt.Errorf("remove stale generation lock: %w", removeErr)
-			}
-			file, err = create()
-		} else {
-			return nil, fmt.Errorf("generation is already running (%s); shared worktree allows one writer", strings.TrimSpace(string(data)))
-		}
+		file, err = takeOverStaleGenerationLock(path, now, create)
 	}
 	if err != nil {
 		return nil, err
@@ -199,6 +187,21 @@ func acquireGenerationLock(root string, now time.Time) (func(), error) {
 		return nil, err
 	}
 	return func() { _ = os.Remove(path) }, nil
+}
+
+func takeOverStaleGenerationLock(path string, now time.Time, create func() (*os.File, error)) (*os.File, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("generation lock exists but cannot be read: %w", err)
+	}
+	var existing generationLock
+	if json.Unmarshal(data, &existing) != nil || now.Sub(existing.CreatedAt) <= generationLockMaxAge {
+		return nil, fmt.Errorf("generation is already running (%s); shared worktree allows one writer", strings.TrimSpace(string(data)))
+	}
+	if err := os.Remove(path); err != nil {
+		return nil, fmt.Errorf("remove stale generation lock: %w", err)
+	}
+	return create()
 }
 
 func generateSQL(root, scratch, image string, out io.Writer) (string, error) {
@@ -319,7 +322,7 @@ func atomicReplaceDir(source, target string) error {
 	if err := os.Rename(source, target); err != nil {
 		if hadTarget {
 			if restoreErr := os.Rename(backup, target); restoreErr != nil {
-				return fmt.Errorf("install generated tree: %v; rollback also failed: %v; original remains at %s", err, restoreErr, backup)
+				return fmt.Errorf("install generated tree: %w; rollback also failed: %w; original remains at %s", err, restoreErr, backup)
 			}
 		}
 		return err

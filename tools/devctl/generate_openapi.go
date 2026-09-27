@@ -38,7 +38,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"--global-property", "apis,models,supportingFiles,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false",
 		"--additional-properties", "supportsES6=true,useSingleRequestParameter=true,withInterfaces=true,npmName=@skillhub/api-client-ts",
 	)
-	if err := runCaptured("TypeScript OpenAPI generation", "docker", tsArgs, out); err != nil {
+	if err := runDocker("TypeScript OpenAPI generation", tsArgs, out); err != nil {
 		return nil, err
 	}
 	tsSource := filepath.Join(tsRoot, "src")
@@ -52,7 +52,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"-t", pyImage,
 		filepath.Join(root, "tools", "codegen", "python"),
 	}
-	if err := runCaptured("Python codegen image build", "docker", buildArgs, out); err != nil {
+	if err := runDocker("Python codegen image build", buildArgs, out); err != nil {
 		return nil, err
 	}
 	pyRoot := filepath.Join(scratch, "python")
@@ -72,7 +72,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"--encoding", "utf-8",
 		"--disable-timestamp",
 	)
-	if err := runCaptured("Python OpenAPI generation", "docker", pyArgs, out); err != nil {
+	if err := runDocker("Python OpenAPI generation", pyArgs, out); err != nil {
 		return nil, err
 	}
 	init := "# Code generated boundary. models.py is replaced by `task gen:openapi`.\nfrom .models import *  # noqa: F403\n"
@@ -89,7 +89,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"-t", goImage,
 		filepath.Join(root, "tools", "codegen", "go"),
 	}
-	if err := runCaptured("Go codegen image build", "docker", goBuildArgs, out); err != nil {
+	if err := runDocker("Go codegen image build", goBuildArgs, out); err != nil {
 		return nil, err
 	}
 	goRoot := filepath.Join(scratch, "go")
@@ -107,7 +107,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"--config", "/src/tools/codegen/go/ogen.yaml",
 		"/src/contracts/openapi/public.yaml",
 	)
-	if err := runCaptured("Go OpenAPI generation", "docker", goArgs, out); err != nil {
+	if err := runDocker("Go OpenAPI generation", goArgs, out); err != nil {
 		return nil, err
 	}
 	if err := validateGeneratedContent(goRoot, root); err != nil {
@@ -133,8 +133,8 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 	}, nil
 }
 
-func runCaptured(label, name string, args []string, out io.Writer) error {
-	cmd := exec.Command(name, args...)
+func runDocker(label string, args []string, out io.Writer) error {
+	cmd := exec.Command("docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if len(output) > 0 {

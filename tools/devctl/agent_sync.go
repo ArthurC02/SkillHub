@@ -104,14 +104,14 @@ func writeCodexAgents(source, target string) error {
 		if err != nil {
 			return err
 		}
-		name, description, body, err := parseClaudeAgent(string(data))
+		agent, err := parseClaudeAgent(string(data))
 		if err != nil {
 			return fmt.Errorf("parse %s: %w", entry.Name(), err)
 		}
 		output := "# Code generated from .claude/agents/" + entry.Name() + "; DO NOT EDIT.\n" +
-			"name = " + strconv.Quote(name) + "\n" +
-			"description = " + strconv.Quote(description) + "\n" +
-			"developer_instructions = " + strconv.Quote(body) + "\n"
+			"name = " + strconv.Quote(agent.name) + "\n" +
+			"description = " + strconv.Quote(agent.description) + "\n" +
+			"developer_instructions = " + strconv.Quote(agent.body) + "\n"
 		if err := os.WriteFile(filepath.Join(target, strings.TrimSuffix(entry.Name(), ".md")+".toml"), []byte(output), 0o644); err != nil {
 			return err
 		}
@@ -119,14 +119,20 @@ func writeCodexAgents(source, target string) error {
 	return nil
 }
 
-func parseClaudeAgent(source string) (name, description, body string, err error) {
+type claudeAgent struct {
+	name        string
+	description string
+	body        string
+}
+
+func parseClaudeAgent(source string) (claudeAgent, error) {
 	source = strings.TrimPrefix(strings.ReplaceAll(source, "\r\n", "\n"), "\uFEFF")
 	if !strings.HasPrefix(source, "---\n") {
-		return "", "", "", errors.New("missing frontmatter")
+		return claudeAgent{}, errors.New("missing frontmatter")
 	}
 	end := strings.Index(source[len("---\n"):], "\n---\n")
 	if end < 0 {
-		return "", "", "", errors.New("unterminated frontmatter")
+		return claudeAgent{}, errors.New("unterminated frontmatter")
 	}
 	frontmatterEnd := len("---\n") + end
 	fields := map[string]string{}
@@ -137,10 +143,13 @@ func parseClaudeAgent(source string) (name, description, body string, err error)
 		}
 	}
 	if fields["name"] == "" || fields["description"] == "" {
-		return "", "", "", errors.New("frontmatter needs name and description")
+		return claudeAgent{}, errors.New("frontmatter needs name and description")
 	}
-	body = strings.TrimSpace(source[frontmatterEnd+len("\n---\n"):]) + "\n"
-	return fields["name"], fields["description"], body, nil
+	return claudeAgent{
+		name:        fields["name"],
+		description: fields["description"],
+		body:        strings.TrimSpace(source[frontmatterEnd+len("\n---\n"):]) + "\n",
+	}, nil
 }
 
 func sortedMarkdownFiles(entries []os.DirEntry) []os.DirEntry {

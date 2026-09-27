@@ -82,55 +82,75 @@ func commentLint(root string, pathPrefixes []string, out io.Writer) error {
 	return nil
 }
 
-func commentViolationsByFile(root string) (map[string][]commentViolation, error) {
-	violations := map[string][]commentViolation{}
-	inspect := func(path, name string) error {
-		prefixes, ok := commentPrefixesFor(name)
-		if !ok {
-			return nil
-		}
-		src, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		if generatedFileHeader.Match(src[:min(len(src), 512)]) {
-			return nil
-		}
-		if found := commentViolations(string(src), prefixes); len(found) > 0 {
-			violations[harnessRelative(root, path)] = found
-		}
-		return nil
-	}
+type commentScan struct {
+	root       string
+	violations map[string][]commentViolation
+}
 
-	entries, err := os.ReadDir(root)
-	if err != nil {
+func commentViolationsByFile(root string) (map[string][]commentViolation, error) {
+	scan := commentScan{root: root, violations: map[string][]commentViolation{}}
+	if err := scan.rootFiles(); err != nil {
 		return nil, err
 	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			if err := inspect(filepath.Join(root, entry.Name()), entry.Name()); err != nil {
-				return nil, err
-			}
-		}
-	}
 	for _, top := range commentSourceRoots {
-		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(top)), func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				if commentSkippedDirs[d.Name()] || strings.HasPrefix(d.Name(), ".") {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			return inspect(path, d.Name())
-		})
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		if err := scan.tree(top); err != nil {
 			return nil, err
 		}
 	}
-	return violations, nil
+	return scan.violations, nil
+}
+
+func (s commentScan) rootFiles() error {
+	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if err := s.inspect(filepath.Join(s.root, entry.Name()), entry.Name()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s commentScan) tree(top string) error {
+	err := filepath.WalkDir(filepath.Join(s.root, filepath.FromSlash(top)), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if commentSkippedDirs[d.Name()] || strings.HasPrefix(d.Name(), ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		return s.inspect(path, d.Name())
+	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func (s commentScan) inspect(path, name string) error {
+	prefixes, ok := commentPrefixesFor(name)
+	if !ok {
+		return nil
+	}
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if generatedFileHeader.Match(src[:min(len(src), 512)]) {
+		return nil
+	}
+	if found := commentViolations(string(src), prefixes); len(found) > 0 {
+		s.violations[harnessRelative(s.root, path)] = found
+	}
+	return nil
 }
 
 func commentPrefixesFor(name string) ([]string, bool) {

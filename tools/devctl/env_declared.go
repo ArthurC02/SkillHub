@@ -65,26 +65,29 @@ func envVarsRead(root string) (map[string]string, error) {
 		read[name] = where
 	}
 	for _, dir := range envReadingPythonRoots {
-		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() || !strings.HasSuffix(path, ".py") {
-				return err
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			for _, m := range pythonEnvRead.FindAllStringSubmatch(string(data), -1) {
-				if _, seen := read[m[1]]; !seen {
-					read[m[1]] = relSlash(root, path)
-				}
-			}
-			return nil
-		})
-		if err != nil {
+		if err := addPythonEnvReads(root, dir, read); err != nil {
 			return nil, err
 		}
 	}
 	return read, nil
+}
+
+func addPythonEnvReads(root, dir string, read map[string]string) error {
+	return filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".py") {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range pythonEnvRead.FindAllStringSubmatch(string(data), -1) {
+			if _, seen := read[m[1]]; !seen {
+				read[m[1]] = relSlash(root, path)
+			}
+		}
+		return nil
+	})
 }
 
 type goSource struct {

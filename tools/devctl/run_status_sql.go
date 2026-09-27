@@ -107,27 +107,33 @@ func runTerminalListProblems(root string, known, terminal map[string]bool) []str
 			if err != nil {
 				return []string{fmt.Sprintf("run-status-sql: %v", err)}
 			}
-			text := string(raw)
-			transitionRows := map[string]bool{}
-			for _, row := range runTransitionRow.FindAllString(text, -1) {
-				transitionRows[row] = true
-			}
-			for _, match := range runStatusInList.FindAllStringSubmatchIndex(text, -1) {
-				whole := text[match[0]:match[1]]
-				if partOfTransitionRow(transitionRows, whole) {
-					continue
-				}
-				values := quotedSQLValues(text[match[2]:match[3]])
-				if !allRunStatuses(values, known) || !values["timed_out"] {
-					continue
-				}
-				where := fmt.Sprintf("%s:%d", filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(path, root), string(filepath.Separator))), lineOf(text, match[0]))
-				problems = append(problems, setDifference(
-					"run-status-sql: the terminal statuses",
-					where, values,
-					fmt.Sprintf("%s's table", runStateMachineFile), terminal)...)
-			}
+			relative := filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(path, root), string(filepath.Separator)))
+			problems = append(problems, fileTerminalListProblems(relative, string(raw), known, terminal)...)
 		}
+	}
+	return problems
+}
+
+func fileTerminalListProblems(relative, text string, known, terminal map[string]bool) []string {
+	transitionRows := map[string]bool{}
+	for _, row := range runTransitionRow.FindAllString(text, -1) {
+		transitionRows[row] = true
+	}
+	var problems []string
+	for _, match := range runStatusInList.FindAllStringSubmatchIndex(text, -1) {
+		whole := text[match[0]:match[1]]
+		if partOfTransitionRow(transitionRows, whole) {
+			continue
+		}
+		values := quotedSQLValues(text[match[2]:match[3]])
+		if !allRunStatuses(values, known) || !values["timed_out"] {
+			continue
+		}
+		where := fmt.Sprintf("%s:%d", relative, lineOf(text, match[0]))
+		problems = append(problems, setDifference(
+			"run-status-sql: the terminal statuses",
+			where, values,
+			fmt.Sprintf("%s's table", runStateMachineFile), terminal)...)
 	}
 	return problems
 }

@@ -94,7 +94,7 @@ const (
 	only := []domainVocabulary{{
 		name: "run status",
 		sources: []vocabularySource{
-			postgresEnum("db/migrations/0001_runs.sql", "run_status"),
+			runStatusEnum("db/migrations/0001_runs.sql"),
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}
@@ -127,7 +127,7 @@ const (
 	only := []domainVocabulary{{
 		name: "run status",
 		sources: []vocabularySource{
-			postgresEnum("db/migrations/0001_runs.sql", "run_status"),
+			runStatusEnum("db/migrations/0001_runs.sql"),
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}
@@ -150,7 +150,7 @@ type RunStatus string
 	only := []domainVocabulary{{
 		name: "run status",
 		sources: []vocabularySource{
-			postgresEnum("db/migrations/0001_runs.sql", "run_status"),
+			runStatusEnum("db/migrations/0001_runs.sql"),
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}

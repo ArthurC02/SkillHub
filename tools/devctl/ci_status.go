@@ -187,27 +187,35 @@ func (c githubClient) report(out io.Writer, sha, verdict string, runs []workflow
 		if err := c.get(fmt.Sprintf("/actions/runs/%d/jobs?per_page=100", run.ID), &page); err != nil {
 			return err
 		}
-		var skipped []string
-		for _, job := range page.Jobs {
-			switch job.Conclusion {
-			case "success", "neutral":
-			case "skipped":
-				skipped = append(skipped, job.Name)
-			default:
-				var steps []string
-				for _, step := range job.Steps {
-					if step.Conclusion == "failure" || step.Conclusion == "cancelled" {
-						steps = append(steps, step.Name)
-					}
-				}
-				fmt.Fprintf(out, "    %s %s: %s\n", orDash(job.Conclusion), job.Name, strings.Join(steps, " | "))
-			}
-		}
-		if len(skipped) > 0 {
-			fmt.Fprintf(out, "    did not run: %s\n", strings.Join(skipped, ", "))
-		}
+		reportJobs(out, page.Jobs)
 	}
 	return nil
+}
+
+func reportJobs(out io.Writer, jobs []workflowJob) {
+	var skipped []string
+	for _, job := range jobs {
+		switch job.Conclusion {
+		case "success", "neutral":
+		case "skipped":
+			skipped = append(skipped, job.Name)
+		default:
+			fmt.Fprintf(out, "    %s %s: %s\n", orDash(job.Conclusion), job.Name, strings.Join(failedSteps(job), " | "))
+		}
+	}
+	if len(skipped) > 0 {
+		fmt.Fprintf(out, "    did not run: %s\n", strings.Join(skipped, ", "))
+	}
+}
+
+func failedSteps(job workflowJob) []string {
+	var steps []string
+	for _, step := range job.Steps {
+		if step.Conclusion == "failure" || step.Conclusion == "cancelled" {
+			steps = append(steps, step.Name)
+		}
+	}
+	return steps
 }
 
 func orDash(value string) string {

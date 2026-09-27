@@ -115,7 +115,7 @@ func TestGovulncheckGateCountsOnlyCalledCodeAndTheWeeklyScanCountsModules(t *tes
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			findings, err := govulncheckFindings([]byte(govulncheckStream), tc.calledOnly)
+			findings, err := govulncheckFindings([]byte(govulncheckStream), auditScope{full: !tc.calledOnly})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,7 +137,7 @@ func TestGovulncheckGateCountsOnlyCalledCodeAndTheWeeklyScanCountsModules(t *tes
 
 func TestGovulncheckOutputWithoutAConfigMessageIsNotAScan(t *testing.T) {
 	t.Parallel()
-	if _, err := govulncheckFindings([]byte(""), true); err == nil {
+	if _, err := govulncheckFindings([]byte(""), auditScope{}); err == nil {
 		t.Fatal("empty govulncheck output parsed as a clean scan")
 	}
 }

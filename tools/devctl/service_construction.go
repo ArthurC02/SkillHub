@@ -234,21 +234,28 @@ func serviceConstructorNamesAt(dir string) map[string]bool {
 		}
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv != nil || fn.Type.Results == nil {
-				continue
-			}
-			for _, result := range fn.Type.Results.List {
-				resultType := unparen(result.Type)
-				if pointer, ok := resultType.(*ast.StarExpr); ok {
-					resultType = unparen(pointer.X)
-				}
-				if name, ok := resultType.(*ast.Ident); ok && name.Name == "Service" {
-					constructors[fn.Name.Name] = true
-				}
+			if ok && fn.Recv == nil && returnsService(fn.Type.Results) {
+				constructors[fn.Name.Name] = true
 			}
 		}
 	}
 	return constructors
+}
+
+func returnsService(results *ast.FieldList) bool {
+	if results == nil {
+		return false
+	}
+	for _, result := range results.List {
+		resultType := unparen(result.Type)
+		if pointer, ok := resultType.(*ast.StarExpr); ok {
+			resultType = unparen(pointer.X)
+		}
+		if name, ok := resultType.(*ast.Ident); ok && name.Name == "Service" {
+			return true
+		}
+	}
+	return false
 }
 
 func packageNameAt(dir, fallback string) string {

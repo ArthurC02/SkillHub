@@ -87,11 +87,13 @@ func sqlColumnCheck(table, column string) vocabularySource {
 	}
 }
 
-func postgresEnum(path, typeName string) vocabularySource {
+const runStatusEnumType = "run_status"
+
+func runStatusEnum(path string) vocabularySource {
 	return vocabularySource{
-		label: fmt.Sprintf("%s (enum %s)", path, typeName),
+		label: fmt.Sprintf("%s (enum %s)", path, runStatusEnumType),
 		read: func(root string) (map[string]bool, error) {
-			return postgresEnumValues(filepath.Join(root, filepath.FromSlash(path)), typeName)
+			return postgresEnumValues(filepath.Join(root, filepath.FromSlash(path)), runStatusEnumType)
 		},
 	}
 }
@@ -100,7 +102,7 @@ var domainVocabularies = []domainVocabulary{
 	{
 		name: "run status",
 		sources: []vocabularySource{
-			postgresEnum("db/migrations/0004_test_lab_and_runs.sql", "run_status"),
+			runStatusEnum("db/migrations/0004_test_lab_and_runs.sql"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "RunStatus"),
 			goListedConstEnum(
 				"apps/platform/internal/trial/execution/statemachine.go", "AllStatuses",
@@ -474,52 +476,56 @@ func coverageProblems(root string, reconciled []domainVocabulary, unreconciled m
 func reconcileVocabularies(root string, vocabularies []domainVocabulary) []string {
 	var problems []string
 	for _, vocabulary := range vocabularies {
-		readings := map[string]map[string]bool{}
-		union := map[string]bool{}
-		failed := false
-		for _, source := range vocabulary.sources {
-			values, err := source.read(root)
-			if err != nil {
-				problems = append(problems, fmt.Sprintf("domain-vocabulary: %s: %v", vocabulary.name, err))
-				failed = true
-				continue
-			}
-			if len(values) == 0 {
-				problems = append(problems, fmt.Sprintf(
-					"domain-vocabulary: %s: %s declares no value; either the vocabulary moved or this check is now looking at the wrong place",
-					vocabulary.name, source.label))
-				failed = true
-				continue
-			}
-			readings[source.label] = values
-			for value := range values {
-				union[value] = true
-			}
-		}
-		if failed || len(readings) < 2 {
+		reading, readProblems := readVocabularySources(root, vocabulary)
+		problems = append(problems, readProblems...)
+		if len(readProblems) > 0 || len(reading.byLabel) < 2 {
 			continue
 		}
-		var values []string
-		for value := range union {
-			values = append(values, value)
+		problems = append(problems, reading.missingValueProblems(vocabulary.name)...)
+		problems = append(problems, readerProblems(root, vocabulary, reading.union)...)
+	}
+	return problems
+}
+
+type vocabularyReading struct {
+	byLabel map[string]map[string]bool
+	union   map[string]bool
+}
+
+func readVocabularySources(root string, vocabulary domainVocabulary) (vocabularyReading, []string) {
+	reading := vocabularyReading{byLabel: map[string]map[string]bool{}, union: map[string]bool{}}
+	var problems []string
+	for _, source := range vocabulary.sources {
+		values, err := source.read(root)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("domain-vocabulary: %s: %v", vocabulary.name, err))
+			continue
 		}
-		sort.Strings(values)
-		var labels []string
-		for label := range readings {
-			labels = append(labels, label)
+		if len(values) == 0 {
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: %s: %s declares no value; either the vocabulary moved or this check is now looking at the wrong place",
+				vocabulary.name, source.label))
+			continue
 		}
-		sort.Strings(labels)
-		for _, value := range values {
-			for _, label := range labels {
-				if readings[label][value] {
-					continue
-				}
-				problems = append(problems, fmt.Sprintf(
-					"domain-vocabulary: %s %q is missing from %s; a closed vocabulary declared in more than one place and reconciled in none is how the same concept ends up meaning two things",
-					vocabulary.name, value, label))
+		reading.byLabel[source.label] = values
+		for value := range values {
+			reading.union[value] = true
+		}
+	}
+	return reading, problems
+}
+
+func (r vocabularyReading) missingValueProblems(name string) []string {
+	var problems []string
+	for _, value := range sortedKeys(r.union) {
+		for _, label := range sortedKeys(r.byLabel) {
+			if r.byLabel[label][value] {
+				continue
 			}
+			problems = append(problems, fmt.Sprintf(
+				"domain-vocabulary: %s %q is missing from %s; a closed vocabulary declared in more than one place and reconciled in none is how the same concept ends up meaning two things",
+				name, value, label))
 		}
-		problems = append(problems, readerProblems(root, vocabulary, union)...)
 	}
 	return problems
 }
@@ -560,37 +566,50 @@ func goConstStrings(path, typeName string) (map[string]string, error) {
 		return nil, err
 	}
 	values := map[string]string{}
+	for _, value := range constSpecs(file) {
+		declared, ok := value.Type.(*ast.Ident)
+		if !ok || declared.Name != typeName {
+			continue
+		}
+		if err := addConstStrings(path, value, values); err != nil {
+			return nil, err
+		}
+	}
+	return values, nil
+}
+
+func constSpecs(file *ast.File) []*ast.ValueSpec {
+	var specs []*ast.ValueSpec
 	for _, decl := range file.Decls {
 		group, ok := decl.(*ast.GenDecl)
 		if !ok || group.Tok != token.CONST {
 			continue
 		}
 		for _, spec := range group.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			declared, ok := value.Type.(*ast.Ident)
-			if !ok || declared.Name != typeName {
-				continue
-			}
-			for i, name := range value.Names {
-				if i >= len(value.Values) {
-					continue
-				}
-				lit, ok := value.Values[i].(*ast.BasicLit)
-				if !ok || lit.Kind != token.STRING {
-					continue
-				}
-				unquoted, err := strconv.Unquote(lit.Value)
-				if err != nil {
-					return nil, fmt.Errorf("%s: %s has an unreadable value: %w", path, name.Name, err)
-				}
-				values[name.Name] = unquoted
+			if value, ok := spec.(*ast.ValueSpec); ok {
+				specs = append(specs, value)
 			}
 		}
 	}
-	return values, nil
+	return specs
+}
+
+func addConstStrings(path string, value *ast.ValueSpec, values map[string]string) error {
+	for i, name := range value.Names {
+		if i >= len(value.Values) {
+			continue
+		}
+		lit, ok := value.Values[i].(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			continue
+		}
+		unquoted, err := strconv.Unquote(lit.Value)
+		if err != nil {
+			return fmt.Errorf("%s: %s has an unreadable value: %w", path, name.Name, err)
+		}
+		values[name.Name] = unquoted
+	}
+	return nil
 }
 
 func goListedIdentifiers(path, listName string) ([]string, error) {
@@ -599,30 +618,46 @@ func goListedIdentifiers(path, listName string) ([]string, error) {
 		return nil, err
 	}
 	for _, decl := range file.Decls {
-		switch declared := decl.(type) {
-		case *ast.GenDecl:
-			if declared.Tok != token.VAR {
-				continue
-			}
-			for _, spec := range declared.Specs {
-				value, ok := spec.(*ast.ValueSpec)
-				if !ok || len(value.Names) != 1 || value.Names[0].Name != listName || len(value.Values) != 1 {
-					continue
-				}
-				return compositeIdentifiers(path, listName, value.Values[0])
-			}
-		case *ast.FuncDecl:
-			if declared.Recv != nil || declared.Name.Name != listName || declared.Body == nil || len(declared.Body.List) != 1 {
-				continue
-			}
-			returned, ok := declared.Body.List[0].(*ast.ReturnStmt)
-			if !ok || len(returned.Results) != 1 {
-				continue
-			}
-			return compositeIdentifiers(path, listName, returned.Results[0])
+		if expression, ok := listedExpression(decl, listName); ok {
+			return compositeIdentifiers(path, listName, expression)
 		}
 	}
 	return nil, fmt.Errorf("%s declares no %s; either the list moved or this check is now looking at the wrong file", path, listName)
+}
+
+func listedExpression(decl ast.Decl, listName string) (ast.Expr, bool) {
+	switch declared := decl.(type) {
+	case *ast.GenDecl:
+		return listedVariable(declared, listName)
+	case *ast.FuncDecl:
+		return listedReturn(declared, listName)
+	}
+	return nil, false
+}
+
+func listedVariable(declared *ast.GenDecl, listName string) (ast.Expr, bool) {
+	if declared.Tok != token.VAR {
+		return nil, false
+	}
+	for _, spec := range declared.Specs {
+		value, ok := spec.(*ast.ValueSpec)
+		if !ok || len(value.Names) != 1 || value.Names[0].Name != listName || len(value.Values) != 1 {
+			continue
+		}
+		return value.Values[0], true
+	}
+	return nil, false
+}
+
+func listedReturn(declared *ast.FuncDecl, listName string) (ast.Expr, bool) {
+	if declared.Recv != nil || declared.Name.Name != listName || declared.Body == nil || len(declared.Body.List) != 1 {
+		return nil, false
+	}
+	returned, ok := declared.Body.List[0].(*ast.ReturnStmt)
+	if !ok || len(returned.Results) != 1 {
+		return nil, false
+	}
+	return returned.Results[0], true
 }
 
 func compositeIdentifiers(path, listName string, expression ast.Expr) ([]string, error) {

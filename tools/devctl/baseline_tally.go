@@ -56,22 +56,9 @@ func baselineTallyProblems(root string) []string {
 	}
 	owner := string(raw)
 
-	seen := map[string]bool{}
-	perZone := map[string][3]int{} // [total, blocking, warning]
-	for _, m := range baselineRow.FindAllStringSubmatch(owner, -1) {
-		id := m[1] + "-" + m[2]
-		if seen[id] {
-			return []string{fmt.Sprintf("baseline-tally: %s lists %s twice", baselineOwner, id)}
-		}
-		seen[id] = true
-		c := perZone[m[1]]
-		c[0]++
-		if m[3] == "阻擋" {
-			c[1]++
-		} else {
-			c[2]++
-		}
-		perZone[m[1]] = c
+	perZone, duplicate := baselineZoneCounts(owner)
+	if duplicate != "" {
+		return []string{fmt.Sprintf("baseline-tally: %s lists %s twice", baselineOwner, duplicate)}
 	}
 	total, blocking, warning := 0, 0, 0
 	for _, z := range zoneOrder {
@@ -85,26 +72,7 @@ func baselineTallyProblems(root string) []string {
 			baselineOwner)}
 	}
 
-	var problems []string
-
-	m := baselineTotal.FindStringSubmatch(owner)
-	if m == nil {
-		problems = append(problems, fmt.Sprintf(
-			"baseline-tally: %s states no 「合計：N 項檢查（阻擋 N 項、告警 N 項）」; the rows say %d (%d/%d)",
-			baselineOwner, total, blocking, warning))
-	} else if atoi(m[1]) != total || atoi(m[2]) != blocking || atoi(m[3]) != warning {
-		problems = append(problems, fmt.Sprintf(
-			"baseline-tally: %s says 合計 %s 項（阻擋 %s、告警 %s） but its rows are %d（阻擋 %d、告警 %d）",
-			baselineOwner, m[1], m[2], m[3], total, blocking, warning))
-	}
-
-	if zt := baselineZoneTotal.FindStringSubmatch(owner); zt != nil {
-		if atoi(zt[1]) != total || atoi(zt[2]) != blocking || atoi(zt[3]) != warning {
-			problems = append(problems, fmt.Sprintf(
-				"baseline-tally: %s zone table totals %s/%s/%s but the rows are %d/%d/%d",
-				baselineOwner, zt[1], zt[2], zt[3], total, blocking, warning))
-		}
-	}
+	problems := baselineStatedTotalProblems(owner, [3]int{total, blocking, warning})
 
 	for _, zm := range baselineZoneRow.FindAllStringSubmatch(owner, -1) {
 		z := zm[1]
@@ -126,6 +94,52 @@ func baselineTallyProblems(root string) []string {
 			continue
 		}
 		problems = append(problems, staleBaselineFigures(path, string(body), total)...)
+	}
+	return problems
+}
+
+func baselineZoneCounts(owner string) (perZone map[string][3]int, duplicate string) {
+	seen := map[string]bool{}
+	perZone = map[string][3]int{}
+	for _, m := range baselineRow.FindAllStringSubmatch(owner, -1) {
+		id := m[1] + "-" + m[2]
+		if seen[id] {
+			return nil, id
+		}
+		seen[id] = true
+		c := perZone[m[1]]
+		c[0]++
+		if m[3] == "阻擋" {
+			c[1]++
+		} else {
+			c[2]++
+		}
+		perZone[m[1]] = c
+	}
+	return perZone, ""
+}
+
+func baselineStatedTotalProblems(owner string, counted [3]int) []string {
+	total, blocking, warning := counted[0], counted[1], counted[2]
+	var problems []string
+
+	m := baselineTotal.FindStringSubmatch(owner)
+	if m == nil {
+		problems = append(problems, fmt.Sprintf(
+			"baseline-tally: %s states no 「合計：N 項檢查（阻擋 N 項、告警 N 項）」; the rows say %d (%d/%d)",
+			baselineOwner, total, blocking, warning))
+	} else if atoi(m[1]) != total || atoi(m[2]) != blocking || atoi(m[3]) != warning {
+		problems = append(problems, fmt.Sprintf(
+			"baseline-tally: %s says 合計 %s 項（阻擋 %s、告警 %s） but its rows are %d（阻擋 %d、告警 %d）",
+			baselineOwner, m[1], m[2], m[3], total, blocking, warning))
+	}
+
+	if zt := baselineZoneTotal.FindStringSubmatch(owner); zt != nil {
+		if atoi(zt[1]) != total || atoi(zt[2]) != blocking || atoi(zt[3]) != warning {
+			problems = append(problems, fmt.Sprintf(
+				"baseline-tally: %s zone table totals %s/%s/%s but the rows are %d/%d/%d",
+				baselineOwner, zt[1], zt[2], zt[3], total, blocking, warning))
+		}
 	}
 	return problems
 }

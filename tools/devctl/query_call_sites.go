@@ -23,18 +23,18 @@ type callSite struct {
 func queryCallSites(platform string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
 	calls := map[string][]callSite{}
 	for _, tree := range []string{"internal", "cmd"} {
-		base := filepath.Join(platform, tree)
-		if _, err := os.Stat(base); err != nil {
+		source := platformSourceTree{name: tree, base: filepath.Join(platform, tree)}
+		if _, err := os.Stat(source.base); err != nil {
 			continue
 		}
-		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
+		err := filepath.WalkDir(source.base, func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
 				return err
 			}
 			if !isScannedPlatformSource(path) {
 				return nil
 			}
-			return addFileQueryCallSites(calls, base, tree, path, names, identities)
+			return addFileQueryCallSites(calls, source, path, names, identities)
 		})
 		if err != nil {
 			return nil, err
@@ -56,7 +56,12 @@ func isScannedPlatformSource(path string) bool {
 	return true
 }
 
-func addFileQueryCallSites(calls map[string][]callSite, base, tree, path string,
+type platformSourceTree struct {
+	name string
+	base string
+}
+
+func addFileQueryCallSites(calls map[string][]callSite, tree platformSourceTree, path string,
 	names map[string]bool, identities map[string]packageIdentity) error {
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
@@ -66,15 +71,15 @@ func addFileQueryCallSites(calls map[string][]callSite, base, tree, path string,
 	if len(seen) == 0 {
 		return nil
 	}
-	relative, err := filepath.Rel(base, path)
+	relative, err := filepath.Rel(tree.base, path)
 	if err != nil {
 		return err
 	}
 	relative = filepath.ToSlash(relative)
 	directory := filepath.ToSlash(filepath.Dir(relative))
-	boundary, known := callerBoundary(tree, directory, identities)
+	boundary, known := callerBoundary(tree.name, directory, identities)
 	if !known {
-		return unknownQueryCallerError(tree, directory)
+		return unknownQueryCallerError(tree.name, directory)
 	}
 
 	for name := range seen {
@@ -85,7 +90,7 @@ func addFileQueryCallSites(calls map[string][]callSite, base, tree, path string,
 		calls[name] = append(calls[name], callSite{
 			boundary: siteBoundary,
 			caller:   caller,
-			path:     "apps/platform/" + tree + "/" + relative,
+			path:     "apps/platform/" + tree.name + "/" + relative,
 		})
 	}
 	return nil
@@ -171,50 +176,63 @@ func rawSQLCallSites(path string) ([]rawSQLSite, error) {
 	if err != nil {
 		return nil, err
 	}
-	packageStrings := map[string]string{}
-	for _, decl := range file.Decls {
-		if gen, ok := decl.(*ast.GenDecl); ok && gen.Tok == token.CONST {
-			bindValueSpecs(gen.Specs, packageStrings)
-		}
-	}
+	packageStrings := packageConstStrings(file)
 	var sites []rawSQLSite
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			continue
 		}
-		stringsByName := make(map[string]string, len(packageStrings))
-		for name, value := range packageStrings {
-			stringsByName[name] = value
-		}
-		bindLocalStrings(fn.Body, stringsByName)
-		ast.Inspect(fn.Body, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
-				return true
-			}
-
-			for _, arg := range call.Args {
-				text, ok := stringValue(arg, stringsByName)
-				if !ok {
-					continue
-				}
-				if rawSQLKeywordPattern.MatchString(normalizeSQL(text)) {
-					sites = append(sites, rawSQLSite{
-						line: fset.Position(arg.Pos()).Line, function: fn.Name.Name,
-						method: selector.Sel.Name, sql: sqlPrefix(text),
-					})
-				}
-				break
-			}
-			return true
-		})
+		sites = append(sites, functionRawSQLSites(fset, fn, packageStrings)...)
 	}
 	return sites, nil
+}
+
+func packageConstStrings(file *ast.File) map[string]string {
+	packageStrings := map[string]string{}
+	for _, decl := range file.Decls {
+		if gen, ok := decl.(*ast.GenDecl); ok && gen.Tok == token.CONST {
+			bindValueSpecs(gen.Specs, packageStrings)
+		}
+	}
+	return packageStrings
+}
+
+func functionRawSQLSites(fset *token.FileSet, fn *ast.FuncDecl, packageStrings map[string]string) []rawSQLSite {
+	stringsByName := make(map[string]string, len(packageStrings))
+	for name, value := range packageStrings {
+		stringsByName[name] = value
+	}
+	bindLocalStrings(fn.Body, stringsByName)
+	var sites []rawSQLSite
+	ast.Inspect(fn.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
+			return true
+		}
+		arg, text, found := firstStringArgument(call, stringsByName)
+		if found && rawSQLKeywordPattern.MatchString(normalizeSQL(text)) {
+			sites = append(sites, rawSQLSite{
+				line: fset.Position(arg.Pos()).Line, function: fn.Name.Name,
+				method: selector.Sel.Name, sql: sqlPrefix(text),
+			})
+		}
+		return true
+	})
+	return sites
+}
+
+func firstStringArgument(call *ast.CallExpr, stringsByName map[string]string) (ast.Expr, string, bool) {
+	for _, arg := range call.Args {
+		if text, ok := stringValue(arg, stringsByName); ok {
+			return arg, text, true
+		}
+	}
+	return nil, "", false
 }
 
 func bindLocalStrings(body *ast.BlockStmt, values map[string]string) {

@@ -38,10 +38,7 @@ func docLinkProblems(root string) []string {
 		}
 		relative := filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(p, root), string(filepath.Separator)))
 		if entry.IsDir() {
-			if _, skipped := docLinkSkippedDirs[entry.Name()]; skipped {
-				return fs.SkipDir
-			}
-			if relative == docLinkFrozenCorpus {
+			if _, skipped := docLinkSkippedDirs[entry.Name()]; skipped || relative == docLinkFrozenCorpus {
 				return fs.SkipDir
 			}
 			return nil
@@ -53,24 +50,29 @@ func docLinkProblems(root string) []string {
 		if readErr != nil {
 			return nil
 		}
-		dir := filepath.Dir(p)
-		for i, line := range strings.Split(string(body), "\n") {
-			for _, match := range docLinkPattern.FindAllStringSubmatch(line, -1) {
-				target, ok := docLinkTarget(match[1])
-				if !ok {
-					continue
-				}
-				if _, statErr := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); statErr != nil {
-					problems = append(problems, fmt.Sprintf(
-						"doc-links: %s:%d links to %q and no such file exists. Check the real filename "+
-							"(`ls` the directory) rather than the one the subject suggests — every dead "+
-							"link found on 2026-09-03 read correctly and pointed at nothing",
-						relative, i+1, match[1]))
-				}
-			}
-		}
+		problems = append(problems, deadDocLinks(filepath.Dir(p), relative, string(body))...)
 		return nil
 	})
+	return problems
+}
+
+func deadDocLinks(dir, relative, body string) []string {
+	var problems []string
+	for i, line := range strings.Split(body, "\n") {
+		for _, match := range docLinkPattern.FindAllStringSubmatch(line, -1) {
+			target, ok := docLinkTarget(match[1])
+			if !ok {
+				continue
+			}
+			if _, statErr := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); statErr != nil {
+				problems = append(problems, fmt.Sprintf(
+					"doc-links: %s:%d links to %q and no such file exists. Check the real filename "+
+						"(`ls` the directory) rather than the one the subject suggests — every dead "+
+						"link found on 2026-09-03 read correctly and pointed at nothing",
+					relative, i+1, match[1]))
+			}
+		}
+	}
 	return problems
 }
 

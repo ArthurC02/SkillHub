@@ -101,9 +101,13 @@ var codeExtensions = map[string]bool{
 }
 
 func docIdentifierFiles(root string) ([]string, []string) {
-	files := append([]string(nil), docIdentifierScope...)
+	return markdownFilesUnder(root, "doc-identifier", docIdentifierScope, docIdentifierTrees)
+}
+
+func markdownFilesUnder(root, check string, listed, trees []string) ([]string, []string) {
+	files := append([]string(nil), listed...)
 	var problems []string
-	for _, tree := range docIdentifierTrees {
+	for _, tree := range trees {
 		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(tree)), func(path string, entry os.DirEntry, err error) error {
 			switch {
 			case err != nil:
@@ -119,7 +123,7 @@ func docIdentifierFiles(root string) ([]string, []string) {
 			return nil
 		})
 		if err != nil && !os.IsNotExist(err) {
-			problems = append(problems, fmt.Sprintf("doc-identifier: %v", err))
+			problems = append(problems, fmt.Sprintf("%s: %v", check, err))
 		}
 	}
 	sort.Strings(files)

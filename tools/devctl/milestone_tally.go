@@ -117,28 +117,7 @@ func (s tallySubject) problems(root, owner string) []string {
 		if err != nil {
 			continue
 		}
-		text := string(body)
-		for _, loc := range prose.FindAllStringIndex(text, -1) {
-			lo := loc[0] - 240
-			if lo < 0 {
-				lo = 0
-			}
-			hi := loc[1] + 240
-			if hi > len(text) {
-				hi = len(text)
-			}
-			near := text[lo:hi]
-			relevant := false
-			for _, needle := range s.nearby {
-				if strings.Contains(near, needle) {
-					relevant = true
-					break
-				}
-			}
-			if !relevant {
-				continue
-			}
-			hit := text[loc[0]:loc[1]]
+		for _, hit := range s.statedTallies(string(body), prose) {
 			problems = append(problems, fmt.Sprintf(
 				"milestone-tally: %s states %s's tally (%q) while %s counts %d ticked and %d open. "+
 					"Only %s may state the number — carry the narrative (which items and why) and point at it, "+
@@ -147,4 +126,24 @@ func (s tallySubject) problems(root, owner string) []string {
 		}
 	}
 	return problems
+}
+
+func (s tallySubject) statedTallies(text string, prose *regexp.Regexp) []string {
+	var hits []string
+	for _, loc := range prose.FindAllStringIndex(text, -1) {
+		near := text[max(loc[0]-240, 0):min(loc[1]+240, len(text))]
+		if s.mentionedIn(near) {
+			hits = append(hits, text[loc[0]:loc[1]])
+		}
+	}
+	return hits
+}
+
+func (s tallySubject) mentionedIn(near string) bool {
+	for _, needle := range s.nearby {
+		if strings.Contains(near, needle) {
+			return true
+		}
+	}
+	return false
 }

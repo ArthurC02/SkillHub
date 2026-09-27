@@ -32,25 +32,31 @@ func secondDataLayerProblems(root string) []string {
 		if _, err := os.Stat(dir); err != nil {
 			continue
 		}
-		walkErr := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") {
-				return err
-			}
-			relative, err := filepath.Rel(root, path)
-			if err != nil {
-				return err
-			}
-			relative = filepath.ToSlash(relative)
-			if strings.HasPrefix(relative, genDirRelative+"/") {
-				return nil
-			}
-			return collectSecondDataLayerHits(path, relative, genSigs, hitsByType)
-		})
-		if walkErr != nil {
+		if walkErr := collectSecondDataLayerTree(root, dir, genSigs, hitsByType); walkErr != nil {
 			return []string{fmt.Sprintf("%s: %v", base, walkErr)}
 		}
 	}
+	return secondDataLayerReport(hitsByType)
+}
 
+func collectSecondDataLayerTree(root, dir string, genSigs map[string]string, hitsByType map[string][]sigHit) error {
+	return filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") {
+			return err
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if strings.HasPrefix(relative, genDirRelative+"/") {
+			return nil
+		}
+		return collectSecondDataLayerHits(path, relative, genSigs, hitsByType)
+	})
+}
+
+func secondDataLayerReport(hitsByType map[string][]sigHit) []string {
 	var problems []string
 	for _, key := range sortedKeys(hitsByType) {
 		hits := hitsByType[key]

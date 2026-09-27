@@ -39,12 +39,12 @@ func doctor(root string, out io.Writer) error {
 	}
 
 	results := []checkResult{
-		checkVersion("go", []string{"version"}, "go"+goVersion, true),
-		checkVersion("node", []string{"--version"}, "v"+nodeVersion, true),
-		checkVersion("uv", []string{"--version"}, "uv "+toolchain["uv"], true),
-		checkVersion("task", []string{"--version"}, toolchain["task"], true),
-		checkVersion("docker", []string{"version", "--format", "{{.Client.Version}}"}, "", true),
-		checkVersion("golangci-lint", []string{"--version"}, toolchain["golangci_lint"], false),
+		checkRequiredVersion("go", []string{"version"}, "go"+goVersion),
+		checkRequiredVersion("node", []string{"--version"}, "v"+nodeVersion),
+		checkRequiredVersion("uv", []string{"--version"}, "uv "+toolchain["uv"]),
+		checkRequiredVersion("task", []string{"--version"}, toolchain["task"]),
+		checkRequiredVersion("docker", []string{"version", "--format", "{{.Client.Version}}"}, ""),
+		checkOptionalVersion("golangci-lint", []string{"--version"}, toolchain["golangci_lint"]),
 	}
 	results = append(results, checkDockerCompose())
 	results = append(results, checkDockerDaemon())
@@ -66,24 +66,30 @@ func doctor(root string, out io.Writer) error {
 	return nil
 }
 
-func checkVersion(name string, args []string, want string, required bool) checkResult {
+func checkRequiredVersion(name string, args []string, want string) checkResult {
+	result := checkVersion(name, args, want, "FAIL")
+	result.required = true
+	return result
+}
+
+func checkOptionalVersion(name string, args []string, want string) checkResult {
+	return checkVersion(name, args, want, "WARN")
+}
+
+func checkVersion(name string, args []string, want, statusWhenMissing string) checkResult {
 	path, err := exec.LookPath(name)
 	if err != nil {
-		status := "WARN"
-		if required {
-			status = "FAIL"
-		}
-		return checkResult{name: name, status: status, detail: "not found on PATH", required: required}
+		return checkResult{name: name, status: statusWhenMissing, detail: "not found on PATH"}
 	}
 	output, err := exec.Command(path, args...).CombinedOutput()
 	got := strings.TrimSpace(string(output))
 	if err != nil {
-		return checkResult{name: name, status: "FAIL", detail: got, required: required}
+		return checkResult{name: name, status: "FAIL", detail: got}
 	}
 	if want != "" && !compatibleVersion(got, want) {
-		return checkResult{name: name, status: "FAIL", detail: fmt.Sprintf("got %q; want %q", firstLine(got), want), required: required}
+		return checkResult{name: name, status: "FAIL", detail: fmt.Sprintf("got %q; want %q", firstLine(got), want)}
 	}
-	return checkResult{name: name, status: "PASS", detail: firstLine(got), required: required}
+	return checkResult{name: name, status: "PASS", detail: firstLine(got)}
 }
 
 func checkDockerCompose() checkResult {

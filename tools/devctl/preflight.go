@@ -162,7 +162,7 @@ func formatterFor(root, file string) (formatter, bool) {
 
 func (f formatter) format(root, source string) (string, error) {
 	if _, err := exec.LookPath(f.cmd); err != nil {
-		return "", fmt.Errorf("%w: %v", errFormatterUnavailable, err)
+		return "", fmt.Errorf("%w: %w", errFormatterUnavailable, err)
 	}
 	if f.requires != "" && !fileExists(f.requires) {
 		return "", fmt.Errorf("%w: %s is missing, run task bootstrap", errFormatterUnavailable, f.requires)
@@ -176,7 +176,7 @@ func (f formatter) format(root, source string) (string, error) {
 		if strings.Contains(stderr.String(), "No parser could be inferred") {
 			return "", errNotFormattable
 		}
-		return "", fmt.Errorf("%v: %s", err, firstLine(strings.TrimSpace(stderr.String())))
+		return "", fmt.Errorf("%w: %s", err, firstLine(strings.TrimSpace(stderr.String())))
 	}
 	return stdout.String(), nil
 }

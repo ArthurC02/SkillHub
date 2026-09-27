@@ -39,7 +39,7 @@ func TestAgentSyncGeneratesPortableArtifactsAndDetectsDrift(t *testing.T) {
 }
 
 func TestParseClaudeAgentRejectsIncompleteFrontmatter(t *testing.T) {
-	if _, _, _, err := parseClaudeAgent("---\nname: x\n---\n\nBody.\n"); err == nil {
+	if _, err := parseClaudeAgent("---\nname: x\n---\n\nBody.\n"); err == nil {
 		t.Fatal("incomplete frontmatter was accepted")
 	}
 }

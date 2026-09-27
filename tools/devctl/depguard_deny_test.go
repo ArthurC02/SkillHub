@@ -267,7 +267,10 @@ func TestDepguardSelectorsRejectMalformedGlobs(t *testing.T) {
 func TestDepguardDenySaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("no reviewed policies", func(t *testing.T) {
-		adr := denyADRTable[:strings.Index(denyADRTable, "## 跨 context import 白名單")]
+		adr, _, found := strings.Cut(denyADRTable, "## 跨 context import 白名單")
+		if !found {
+			t.Fatal("the fixture no longer carries the dependency policy heading this case removes")
+		}
 		problems := depguardDenyProblems(writeDenyFixture(t, adr, denyConfig()))
 		if len(problems) == 0 {
 			t.Fatal("a Registry with no reviewed dependency policy was accepted")

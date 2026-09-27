@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -26,29 +25,7 @@ var requirementCiterTrees = []string{
 }
 
 func requirementCiterFiles(root string) ([]string, []string) {
-	files := append([]string(nil), requirementCiters...)
-	var problems []string
-	for _, tree := range requirementCiterTrees {
-		err := filepath.WalkDir(filepath.Join(root, filepath.FromSlash(tree)), func(path string, entry fs.DirEntry, err error) error {
-			switch {
-			case err != nil:
-				return err
-			case entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md"):
-				return nil
-			}
-			relative, err := filepath.Rel(root, path)
-			if err != nil {
-				return err
-			}
-			files = append(files, filepath.ToSlash(relative))
-			return nil
-		})
-		if err != nil && !os.IsNotExist(err) {
-			problems = append(problems, fmt.Sprintf("requirement-refs: %v", err))
-		}
-	}
-	sort.Strings(files)
-	return files, problems
+	return markdownFilesUnder(root, "requirement-refs", requirementCiters, requirementCiterTrees)
 }
 
 var (

@@ -110,33 +110,30 @@ func gateIsolationLevels(path string) (map[string]string, error) {
 		return nil, err
 	}
 	levels := map[string]string{}
-	for _, decl := range file.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.CONST {
-			continue
-		}
-		for _, spec := range gen.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			for i, name := range value.Names {
-				if !strings.HasSuffix(name.Name, isolationConstSuffix) || i >= len(value.Values) {
-					continue
-				}
-				lit, ok := value.Values[i].(*ast.BasicLit)
-				if !ok || lit.Kind != token.STRING {
-					continue
-				}
-				unquoted, err := strconv.Unquote(lit.Value)
-				if err != nil {
-					return nil, fmt.Errorf("%s: %s has an unreadable value: %w", path, name.Name, err)
-				}
-				levels[name.Name] = unquoted
-			}
+	for _, value := range constSpecs(file) {
+		if err := addIsolationLevels(path, value, levels); err != nil {
+			return nil, err
 		}
 	}
 	return levels, nil
+}
+
+func addIsolationLevels(path string, value *ast.ValueSpec, levels map[string]string) error {
+	for i, name := range value.Names {
+		if !strings.HasSuffix(name.Name, isolationConstSuffix) || i >= len(value.Values) {
+			continue
+		}
+		lit, ok := value.Values[i].(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			continue
+		}
+		unquoted, err := strconv.Unquote(lit.Value)
+		if err != nil {
+			return fmt.Errorf("%s: %s has an unreadable value: %w", path, name.Name, err)
+		}
+		levels[name.Name] = unquoted
+	}
+	return nil
 }
 
 func contractIsolationEnum(path, marker string) (map[string]bool, error) {

@@ -136,29 +136,26 @@ func goStringConst(path, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, decl := range file.Decls {
-		gen, ok := decl.(*ast.GenDecl)
-		if !ok || gen.Tok != token.CONST {
-			continue
-		}
-		for _, spec := range gen.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-			for i, ident := range value.Names {
-				if ident.Name != name || i >= len(value.Values) {
-					continue
-				}
-				lit, ok := value.Values[i].(*ast.BasicLit)
-				if !ok || lit.Kind != token.STRING {
-					return "", fmt.Errorf("%s: %s is not a string literal constant", path, name)
-				}
-				return strconv.Unquote(lit.Value)
+	value, found := constValue(file, name)
+	if !found {
+		return "", fmt.Errorf("%s no longer declares the constant %s", path, name)
+	}
+	lit, ok := value.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", fmt.Errorf("%s: %s is not a string literal constant", path, name)
+	}
+	return strconv.Unquote(lit.Value)
+}
+
+func constValue(file *ast.File, name string) (ast.Expr, bool) {
+	for _, value := range constSpecs(file) {
+		for i, ident := range value.Names {
+			if ident.Name == name && i < len(value.Values) {
+				return value.Values[i], true
 			}
 		}
 	}
-	return "", fmt.Errorf("%s no longer declares the constant %s", path, name)
+	return nil, false
 }
 
 var (

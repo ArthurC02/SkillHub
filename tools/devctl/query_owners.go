@@ -45,21 +45,29 @@ func queryOwnerProblems(root string) []string {
 		return append(problems, fmt.Sprintf("apps/platform: %v", err))
 	}
 
-	owner := func(name string) string {
-		if context, ok := queryOwners[name]; ok {
-			return context
-		}
-		return fileOwners[queries[name].file]
-	}
+	ownership := queryOwnership{queries: queries, fileOwners: fileOwners, queryOwners: queryOwners}
 
 	for _, side := range queryAccessSides {
 		tolerated := sections[side.section]
 		problems = append(problems, toleratedAccessProblems(side.section, tolerated)...)
-		problems = append(problems, crossContextAccessProblems(side, tolerated, queries, calls, owner, identities)...)
+		problems = append(problems, crossContextAccessProblems(side, tolerated, ownership, calls, identities)...)
 	}
-	problems = append(problems, tableOwnershipProblems(root, sections, queries, owner, identities)...)
+	problems = append(problems, tableOwnershipProblems(root, sections, ownership, identities)...)
 	problems = append(problems, immutableTableProblems(root, sections, queries)...)
 	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
+}
+
+type queryOwnership struct {
+	queries     map[string]sqlQuery
+	fileOwners  map[string]string
+	queryOwners map[string]string
+}
+
+func (o queryOwnership) ownerOf(name string) string {
+	if context, ok := o.queryOwners[name]; ok {
+		return context
+	}
+	return o.fileOwners[o.queries[name].file]
 }
 
 func ownerBoundaryIDProblems(sections map[string]map[string]string, identities map[string]packageIdentity) []string {
@@ -150,21 +158,22 @@ func toleratedAccessProblems(section string, tolerated map[string]string) []stri
 	return problems
 }
 
-func crossContextAccessProblems(side queryAccessSide, tolerated map[string]string, queries map[string]sqlQuery,
-	calls map[string][]callSite, owner func(string) string, identities map[string]packageIdentity) []string {
+func crossContextAccessProblems(side queryAccessSide, tolerated map[string]string, ownership queryOwnership,
+	calls map[string][]callSite, identities map[string]packageIdentity) []string {
 	var problems []string
-	for _, name := range sortedKeys(queries) {
-		if queries[name].write != side.write || owner(name) == "" {
+	for _, name := range sortedKeys(ownership.queries) {
+		owner := ownership.ownerOf(name)
+		if ownership.queries[name].write != side.write || owner == "" {
 			continue
 		}
 		allowed := toleratedBoundaries(tolerated[name], identities)
 		for _, site := range calls[name] {
-			if site.boundary == owner(name) || allowed[site.boundary] {
+			if site.boundary == owner || allowed[site.boundary] {
 				continue
 			}
 			problems = append(problems, fmt.Sprintf(
 				"cross-context %s: %s is owned by %q but %q %ss it at %s",
-				side.verb, name, owner(name), site.caller, side.verb, site.path))
+				side.verb, name, owner, site.caller, side.verb, site.path))
 		}
 	}
 	return problems
@@ -191,8 +200,14 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 		return nil
 	}
 
-	var problems []string
+	problems := undeclaredFrozenTableProblems(frozen, declared)
+	problems = append(problems, declaredImmutableTableProblems(declared, frozen)...)
+	problems = append(problems, immutableTableWriteProblems(queries, declared, allow)...)
+	return append(problems, immutableAllowProblems(queries, declared, allow)...)
+}
 
+func undeclaredFrozenTableProblems(frozen map[string]bool, declared map[string]string) []string {
+	var problems []string
 	for _, table := range sortedKeys(frozen) {
 		if _, ok := declared[table]; !ok {
 			problems = append(problems, fmt.Sprintf(
@@ -201,19 +216,27 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 				queryOwnersFile, table))
 		}
 	}
+	return problems
+}
+
+func declaredImmutableTableProblems(declared map[string]string, frozen map[string]bool) []string {
+	var problems []string
 	for _, table := range sortedKeys(declared) {
 		switch {
 		case strings.TrimSpace(declared[table]) == "":
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: immutable.%s has no reason; name the invariant it carries", queryOwnersFile, table))
 		case !frozen[table]:
-
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: immutable.%s has no unconditional enforce_immutable() trigger in db/migrations",
 				queryOwnersFile, table))
 		}
 	}
+	return problems
+}
 
+func immutableTableWriteProblems(queries map[string]sqlQuery, declared, allow map[string]string) []string {
+	var problems []string
 	for _, name := range sortedKeys(queries) {
 		exempt := map[string]bool{}
 		for _, table := range splitList(allow[name]) {
@@ -228,7 +251,11 @@ func immutableTableProblems(root string, sections map[string]map[string]string, 
 				table, name, queries[name].file))
 		}
 	}
+	return problems
+}
 
+func immutableAllowProblems(queries map[string]sqlQuery, declared, allow map[string]string) []string {
+	var problems []string
 	for _, name := range sortedKeys(allow) {
 		query, ok := queries[name]
 		if !ok {
@@ -288,45 +315,64 @@ func parseOwnerDeclaration(path string) (map[string]map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	sections := map[string]map[string]string{}
-	current := ""
+	declaration := ownerDeclaration{sections: map[string]map[string]string{}}
 	for number, line := range strings.Split(string(data), "\n") {
-		if comment := strings.Index(line, "#"); comment >= 0 {
-			line = line[:comment]
+		if err := declaration.read(number+1, line); err != nil {
+			return nil, err
 		}
-		line = strings.TrimRight(line, " \t\r")
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		key, value, found := strings.Cut(strings.TrimSpace(line), ":")
-		if !found {
-			return nil, fmt.Errorf("line %d: expected `key: value`, got %q", number+1, line)
-		}
-		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
-		if !strings.HasPrefix(line, " ") {
-			if value != "" {
-				return nil, fmt.Errorf("line %d: section %q must have no inline value", number+1, key)
-			}
-			if _, duplicate := sections[key]; duplicate {
-				return nil, fmt.Errorf("line %d: section %q declared twice", number+1, key)
-			}
-			current, sections[key] = key, map[string]string{}
-			continue
-		}
-		if current == "" {
-			return nil, fmt.Errorf("line %d: entry %q before any section", number+1, key)
-		}
-		if _, duplicate := sections[current][key]; duplicate {
-			return nil, fmt.Errorf("line %d: %s.%s declared twice", number+1, current, key)
-		}
-		sections[current][key] = value
 	}
 	for _, section := range []string{"files", "queries", "allow", readAllowSection, "immutable", "immutable_allow"} {
-		if _, ok := sections[section]; !ok {
+		if _, ok := declaration.sections[section]; !ok {
 			return nil, fmt.Errorf("missing section %q", section)
 		}
 	}
-	return sections, nil
+	return declaration.sections, nil
+}
+
+type ownerDeclaration struct {
+	sections map[string]map[string]string
+	current  string
+}
+
+func (d *ownerDeclaration) read(number int, line string) error {
+	if comment := strings.Index(line, "#"); comment >= 0 {
+		line = line[:comment]
+	}
+	line = strings.TrimRight(line, " \t\r")
+	if strings.TrimSpace(line) == "" {
+		return nil
+	}
+	key, value, found := strings.Cut(strings.TrimSpace(line), ":")
+	if !found {
+		return fmt.Errorf("line %d: expected `key: value`, got %q", number, line)
+	}
+	key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+	if !strings.HasPrefix(line, " ") {
+		return d.openSection(number, key, value)
+	}
+	return d.addEntry(number, key, value)
+}
+
+func (d *ownerDeclaration) openSection(number int, key, value string) error {
+	if value != "" {
+		return fmt.Errorf("line %d: section %q must have no inline value", number, key)
+	}
+	if _, duplicate := d.sections[key]; duplicate {
+		return fmt.Errorf("line %d: section %q declared twice", number, key)
+	}
+	d.current, d.sections[key] = key, map[string]string{}
+	return nil
+}
+
+func (d *ownerDeclaration) addEntry(number int, key, value string) error {
+	if d.current == "" {
+		return fmt.Errorf("line %d: entry %q before any section", number, key)
+	}
+	if _, duplicate := d.sections[d.current][key]; duplicate {
+		return fmt.Errorf("line %d: %s.%s declared twice", number, d.current, key)
+	}
+	d.sections[d.current][key] = value
+	return nil
 }
 
 var (
@@ -456,8 +502,8 @@ func createdTables(dir string) (map[string]bool, error) {
 	return tables, nil
 }
 
-func tableOwnershipProblems(root string, sections map[string]map[string]string, queries map[string]sqlQuery,
-	owner func(string) string, identities map[string]packageIdentity) []string {
+func tableOwnershipProblems(root string, sections map[string]map[string]string, ownership queryOwnership,
+	identities map[string]packageIdentity) []string {
 	created, err := createdTables(filepath.Join(root, "db", "migrations"))
 	if err != nil {
 		return []string{fmt.Sprintf("db/migrations: %v", err)}
@@ -471,6 +517,13 @@ func tableOwnershipProblems(root string, sections map[string]map[string]string, 
 			"db/%s: missing section %q; every table needs the context that owns it", queryOwnersFile, tablesSection)}
 	}
 
+	problems := unownedTableProblems(created, declared)
+	owners, ownerProblems := declaredTableOwners(declared, created, identities)
+	problems = append(problems, ownerProblems...)
+	return append(problems, crossContextTableProblems(ownership, owners)...)
+}
+
+func unownedTableProblems(created map[string]bool, declared map[string]string) []string {
 	var problems []string
 	for _, table := range sortedKeys(created) {
 		if _, ok := declared[table]; !ok {
@@ -479,6 +532,12 @@ func tableOwnershipProblems(root string, sections map[string]map[string]string, 
 				queryOwnersFile, table, tablesSection))
 		}
 	}
+	return problems
+}
+
+func declaredTableOwners(declared map[string]string, created map[string]bool,
+	identities map[string]packageIdentity) (map[string][]string, []string) {
+	var problems []string
 	owners := map[string][]string{}
 	for _, table := range sortedKeys(declared) {
 		if !created[table] {
@@ -498,20 +557,24 @@ func tableOwnershipProblems(root string, sections map[string]map[string]string, 
 		}
 		owners[table] = ids
 	}
+	return owners, problems
+}
 
-	for _, name := range sortedKeys(queries) {
-		context := owner(name)
+func crossContextTableProblems(ownership queryOwnership, owners map[string][]string) []string {
+	var problems []string
+	for _, name := range sortedKeys(ownership.queries) {
+		context := ownership.ownerOf(name)
 		if context == "" {
 			continue
 		}
-		for _, table := range queries[name].tables {
+		for _, table := range ownership.queries[name].tables {
 			ids, ok := owners[table]
 			if !ok || slices.Contains(ids, context) {
 				continue
 			}
 			problems = append(problems, fmt.Sprintf(
 				"cross-context table: %s is owned by %q but its SQL touches %s, which belongs to %s (db/queries/%s)",
-				name, context, table, strings.Join(ids, ", "), queries[name].file))
+				name, context, table, strings.Join(ids, ", "), ownership.queries[name].file))
 		}
 	}
 	return problems
@@ -537,31 +600,9 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return err
 			}
-			relative, err := filepath.Rel(root, path)
-			if err != nil {
-				return err
-			}
-			relative = filepath.ToSlash(relative)
-			for _, skipped := range rawSQLSkippedDirs {
-				if strings.HasPrefix(relative, skipped+"/") {
-					return nil
-				}
-			}
-			found, err := rawSQLCallSites(path)
-			if err != nil {
-				return err
-			}
-			for _, site := range found {
-				key := relative + "@" + site.function
-				if _, exempt := allow[key]; exempt {
-					hit[key] = true
-					continue
-				}
-				problems = append(problems, fmt.Sprintf(
-					"raw SQL outside sqlc: %s:%d (%s) passes %q to %s; write it as a db/queries/*.sql query so the query-owner check can see it",
-					relative, site.line, site.function, site.sql, site.method))
-			}
-			return nil
+			found, err := rawSQLFileProblems(root, path, allow, hit)
+			problems = append(problems, found...)
+			return err
 		})
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("apps/platform/%s: %v", dir, err))
@@ -571,6 +612,42 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 	problems = append(problems, rawSQLAllowEntryProblems(allow, hit)...)
 	sort.Strings(problems)
 	return problems
+}
+
+func rawSQLFileProblems(root, path string, allow map[string]string, hit map[string]bool) ([]string, error) {
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return nil, err
+	}
+	relative = filepath.ToSlash(relative)
+	if isInRawSQLSkippedDir(relative) {
+		return nil, nil
+	}
+	found, err := rawSQLCallSites(path)
+	if err != nil {
+		return nil, err
+	}
+	var problems []string
+	for _, site := range found {
+		key := relative + "@" + site.function
+		if _, exempt := allow[key]; exempt {
+			hit[key] = true
+			continue
+		}
+		problems = append(problems, fmt.Sprintf(
+			"raw SQL outside sqlc: %s:%d (%s) passes %q to %s; write it as a db/queries/*.sql query so the query-owner check can see it",
+			relative, site.line, site.function, site.sql, site.method))
+	}
+	return problems, nil
+}
+
+func isInRawSQLSkippedDir(relative string) bool {
+	for _, skipped := range rawSQLSkippedDirs {
+		if strings.HasPrefix(relative, skipped+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func rawSQLAllowEntryProblems(allow map[string]string, hit map[string]bool) []string {

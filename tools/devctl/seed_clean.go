@@ -313,14 +313,9 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 }
 
 func seedClean(root string, args []string, out io.Writer) error {
-	dryRun := false
-	for _, a := range args {
-		switch a {
-		case "--dry-run":
-			dryRun = true
-		default:
-			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run is accepted)", a)
-		}
+	dryRun, err := parseSeedCleanArgs(args)
+	if err != nil {
+		return err
 	}
 
 	all, err := collectSeedEntries(root)
@@ -351,37 +346,56 @@ func seedClean(root string, args []string, out io.Writer) error {
 		return err
 	}
 
-	imported, failed := 0, 0
+	tally, err := uploadSeedEntries(client, api, entries, out)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "\nimported=%d failed=%d excluded=%d\n", tally.imported, tally.failed, len(excluded))
+	writeSeedExclusions(out, excluded)
+	if tally.failed > 0 {
+		return fmt.Errorf("seed-clean: %d of %d upload(s) failed", tally.failed, len(entries))
+	}
+	return verifyCatalogVisible(client, api, entries, out)
+}
+
+func parseSeedCleanArgs(args []string) (dryRun bool, err error) {
+	for _, a := range args {
+		if a != "--dry-run" {
+			return false, fmt.Errorf("seed-clean: unknown argument %q (only --dry-run is accepted)", a)
+		}
+		dryRun = true
+	}
+	return dryRun, nil
+}
+
+type seedUploadTally struct {
+	imported int
+	failed   int
+}
+
+func uploadSeedEntries(client *http.Client, api string, entries []seedEntry, out io.Writer) (seedUploadTally, error) {
+	var tally seedUploadTally
 	for i, e := range entries {
 		zipBytes, err := packSkillZip(e.skillMD)
 		if err != nil {
-			return fmt.Errorf("seed-clean: pack %s: %w", e.provenance, err)
+			return tally, fmt.Errorf("seed-clean: pack %s: %w", e.provenance, err)
 		}
 		status, body, err := seedCleanUpload(client, api, zipBytes)
 		if err != nil {
-			return fmt.Errorf("seed-clean: upload %s: %w", e.provenance, err)
-		}
-		ok := status == http.StatusCreated
-		if ok {
-			imported++
-		} else {
-			failed++
+			return tally, fmt.Errorf("seed-clean: upload %s: %w", e.provenance, err)
 		}
 		fmt.Fprintf(out, "[%3d/%d] %-55s source=%-60s -> %d\n", i+1, len(entries), e.name, e.provenance, status)
-		if !ok {
+		if status != http.StatusCreated {
+			tally.failed++
 			fmt.Fprintf(out, "          %s\n", firstLine(body))
 			continue
 		}
-		if imported == 1 {
+		tally.imported++
+		if tally.imported == 1 {
 			if err := verifyEnrichmentReached(client, api, e.name, firstImportedSkillID(body), out); err != nil {
-				return err
+				return tally, err
 			}
 		}
 	}
-	fmt.Fprintf(out, "\nimported=%d failed=%d excluded=%d\n", imported, failed, len(excluded))
-	writeSeedExclusions(out, excluded)
-	if failed > 0 {
-		return fmt.Errorf("seed-clean: %d of %d upload(s) failed", failed, len(entries))
-	}
-	return verifyCatalogVisible(client, api, entries, out)
+	return tally, nil
 }

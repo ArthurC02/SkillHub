@@ -159,22 +159,28 @@ func harnessWorkflowProblems(root string) []string {
 				"harness: %s declares meta.name %q; the file name is the command name, keep them equal",
 				relative, m[1]))
 		}
-		for i, line := range strings.Split(text, "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "//") {
-				continue // a comment line is prose, not a call
-			}
-			if workflowAgentCall.MatchString(line) && !strings.Contains(line, "model:") {
+		problems = append(problems, workflowAgentCallProblems(relative, text)...)
+	}
+	return problems
+}
+
+func workflowAgentCallProblems(relative, text string) []string {
+	var problems []string
+	for i, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+			continue // a comment line is prose, not a call
+		}
+		if workflowAgentCall.MatchString(line) && !strings.Contains(line, "model:") {
+			problems = append(problems, fmt.Sprintf(
+				"harness: %s:%d calls agent() without model: on the same line; a bare agent() inherits "+
+					"the dispatcher's flagship model, which subagents may not use (AGENTS.md 開發自動化 3)",
+				relative, i+1))
+		}
+		for _, m := range workflowModelLiteral.FindAllStringSubmatch(line, -1) {
+			if workflowForbiddenName.MatchString(m[1]) {
 				problems = append(problems, fmt.Sprintf(
-					"harness: %s:%d calls agent() without model: on the same line; a bare agent() inherits "+
-						"the dispatcher's flagship model, which subagents may not use (AGENTS.md 開發自動化 3)",
-					relative, i+1))
-			}
-			for _, m := range workflowModelLiteral.FindAllStringSubmatch(line, -1) {
-				if workflowForbiddenName.MatchString(m[1]) {
-					problems = append(problems, fmt.Sprintf(
-						"harness: %s:%d sets model %q; subagents must not use fable, sol or inherit",
-						relative, i+1, m[1]))
-				}
+					"harness: %s:%d sets model %q; subagents must not use fable, sol or inherit",
+					relative, i+1, m[1]))
 			}
 		}
 	}

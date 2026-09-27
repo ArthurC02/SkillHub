@@ -33,6 +33,10 @@ var auditTargets = []auditTarget{
 
 var npmSeverityRank = map[string]int{"info": 0, "low": 1, "moderate": 2, "high": 3, "critical": 4}
 
+type auditScope struct {
+	full bool
+}
+
 type vulnFinding struct {
 	subject string
 	id      string
@@ -53,12 +57,13 @@ func depAudit(root string, args []string, out io.Writer) error {
 			return fmt.Errorf("%s version is missing from tools/toolchain.yaml", key)
 		}
 	}
+	scope := auditScope{full: full}
 	var fail, note []string
 	for _, target := range auditTargets {
-		if !full && !target.shipped {
+		if !scope.full && !target.shipped {
 			continue
 		}
-		findings, err := scanTarget(filepath.Join(root, filepath.FromSlash(target.dir)), target.ecosystem, full, toolchain)
+		findings, err := scanTarget(filepath.Join(root, filepath.FromSlash(target.dir)), target.ecosystem, scope, toolchain)
 		if err != nil {
 			return fmt.Errorf("%s %s: %w", target.ecosystem, target.dir, err)
 		}
@@ -114,12 +119,12 @@ func reportAudit(fail, note []string, out io.Writer) error {
 	return nil
 }
 
-func scanTarget(dir, ecosystem string, full bool, toolchain map[string]string) ([]vulnFinding, error) {
+func scanTarget(dir, ecosystem string, scope auditScope, toolchain map[string]string) ([]vulnFinding, error) {
 	switch ecosystem {
 	case "npm":
 		args := []string{"audit", "--json"}
 		minSeverity := "moderate"
-		if !full {
+		if !scope.full {
 			args = append(args, "--omit=dev")
 			minSeverity = "high"
 		}
@@ -134,9 +139,9 @@ func scanTarget(dir, ecosystem string, full bool, toolchain map[string]string) (
 		if err != nil {
 			return nil, err
 		}
-		return govulncheckFindings(data, !full)
+		return govulncheckFindings(data, scope)
 	case "python":
-		data, err := pipAuditOutput(dir, full, toolchain["pip_audit"])
+		data, err := pipAuditOutput(dir, scope, toolchain["pip_audit"])
 		if err != nil {
 			return nil, err
 		}
@@ -145,9 +150,9 @@ func scanTarget(dir, ecosystem string, full bool, toolchain map[string]string) (
 	return nil, fmt.Errorf("unknown ecosystem %q", ecosystem)
 }
 
-func pipAuditOutput(dir string, full bool, version string) ([]byte, error) {
+func pipAuditOutput(dir string, scope auditScope, version string) ([]byte, error) {
 	args := []string{"export", "--frozen", "--no-emit-project", "--no-emit-local", "--quiet"}
-	if !full {
+	if !scope.full {
 		args = append(args, "--no-dev")
 	}
 	requirements, err := auditToolOutput(dir, "uv", args...)
@@ -231,7 +236,7 @@ func npmAdvisories(via []json.RawMessage) string {
 	return strings.Join(urls, " ")
 }
 
-func govulncheckFindings(data []byte, calledOnly bool) ([]vulnFinding, error) {
+func govulncheckFindings(data []byte, scope auditScope) ([]vulnFinding, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	sawConfig := false
 	byOSV := map[string]vulnFinding{}
@@ -261,7 +266,7 @@ func govulncheckFindings(data []byte, calledOnly bool) ([]vulnFinding, error) {
 		if finding == nil || len(finding.Trace) == 0 {
 			continue
 		}
-		if calledOnly && finding.Trace[0].Function == "" {
+		if !scope.full && finding.Trace[0].Function == "" {
 			continue
 		}
 		byOSV[finding.OSV] = vulnFinding{subject: finding.Trace[0].Module, id: finding.OSV, fix: finding.FixedVersion}

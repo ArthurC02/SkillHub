@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,11 +31,12 @@ type testSummary struct {
 var skipMessage = regexp.MustCompile(`^\s*[\w./-]+\.go:\d+:\s*(.+)$`)
 
 func summarize(r io.Reader, raw io.Writer) (testSummary, error) {
-	s := testSummary{Reasons: map[string]int{}}
-
-	lastMessage := map[string]string{}
-	held := map[string][]string{}
-
+	tally := testEventTally{
+		summary:     testSummary{Reasons: map[string]int{}},
+		lastMessage: map[string]string{},
+		held:        map[string][]string{},
+		raw:         raw,
+	}
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
 	for scanner.Scan() {
@@ -44,52 +46,66 @@ func summarize(r io.Reader, raw io.Writer) (testSummary, error) {
 		}
 		var ev goTestEvent
 		if err := json.Unmarshal(line, &ev); err != nil {
-
 			fmt.Fprintln(raw, string(line))
 			continue
 		}
-		switch ev.Action {
-		case "output":
-			if ev.Test == "" {
-
-				fmt.Fprint(raw, ev.Output)
-				continue
-			}
-			key := ev.Package + "\x00" + ev.Test
-			held[key] = append(held[key], ev.Output)
-			if m := skipMessage.FindStringSubmatch(strings.TrimRight(ev.Output, "\n")); m != nil {
-				lastMessage[key] = strings.TrimSpace(m[1])
-			}
-		case "pass":
-			if ev.Test != "" {
-				s.Passed++
-				delete(held, ev.Package+"\x00"+ev.Test)
-			}
-		case "fail":
-			if ev.Test != "" {
-				s.Failed++
-				key := ev.Package + "\x00" + ev.Test
-				for _, line := range held[key] {
-					fmt.Fprint(raw, line)
-				}
-				delete(held, key)
-			}
-		case "skip":
-			if ev.Test == "" {
-
-				continue
-			}
-			s.Skipped++
-			key := ev.Package + "\x00" + ev.Test
-			delete(held, key)
-			reason := lastMessage[key]
-			if reason == "" {
-				reason = "(no reason given)"
-			}
-			s.Reasons[reason]++
-		}
+		tally.record(ev)
 	}
-	return s, scanner.Err()
+	return tally.summary, scanner.Err()
+}
+
+type testEventTally struct {
+	summary     testSummary
+	lastMessage map[string]string
+	held        map[string][]string
+	raw         io.Writer
+}
+
+func (t *testEventTally) record(ev goTestEvent) {
+	if ev.Action == "output" && ev.Test == "" {
+		fmt.Fprint(t.raw, ev.Output)
+		return
+	}
+	if ev.Test == "" {
+		return
+	}
+	key := ev.Package + "\x00" + ev.Test
+	switch ev.Action {
+	case "output":
+		t.output(key, ev.Output)
+	case "pass":
+		t.summary.Passed++
+		delete(t.held, key)
+	case "fail":
+		t.fail(key)
+	case "skip":
+		t.skip(key)
+	}
+}
+
+func (t *testEventTally) output(key, output string) {
+	t.held[key] = append(t.held[key], output)
+	if m := skipMessage.FindStringSubmatch(strings.TrimRight(output, "\n")); m != nil {
+		t.lastMessage[key] = strings.TrimSpace(m[1])
+	}
+}
+
+func (t *testEventTally) fail(key string) {
+	t.summary.Failed++
+	for _, line := range t.held[key] {
+		fmt.Fprint(t.raw, line)
+	}
+	delete(t.held, key)
+}
+
+func (t *testEventTally) skip(key string) {
+	t.summary.Skipped++
+	delete(t.held, key)
+	reason := t.lastMessage[key]
+	if reason == "" {
+		reason = "(no reason given)"
+	}
+	t.summary.Reasons[reason]++
 }
 
 func (s testSummary) write(out io.Writer, label string) {
@@ -158,7 +174,8 @@ func testReport(root, dir string, args []string, out io.Writer) (int, error) {
 	}
 	s.write(out, label)
 	if waitErr != nil {
-		if exit, ok := waitErr.(*exec.ExitError); ok {
+		var exit *exec.ExitError
+		if errors.As(waitErr, &exit) {
 			return exit.ExitCode(), nil
 		}
 		return 1, waitErr
