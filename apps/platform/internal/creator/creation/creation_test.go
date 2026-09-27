@@ -424,12 +424,16 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) {
 	cases := []struct {
 		name      string
+		ranDraft  *Draft
+		runUnmet  bool
 		blocked   bool
 		wantState State
 		wantNext  bool
 	}{
-		{"the revision validates", false, StateDraftReady, false},
-		{"the revision is blocked", true, StateQueued, true},
+		{"the revision validates", &Draft{Revision: 3, ContentHash: "ran-hash"}, true, false, StateDraftReady, false},
+		{"the revision is blocked", &Draft{Revision: 3, ContentHash: "ran-hash"}, true, true, StateQueued, true},
+		{"a sample change cleared the ran draft before the revision", nil, true, false, StateDraftReady, false},
+		{"a first draft with no trial yet", nil, false, false, StateQueued, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -437,7 +441,7 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 				return "revised-hash", "{}", tc.blocked, nil
 			}}
 			zero := 0.0
-			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: &Draft{Revision: 3, ContentHash: "ran-hash"}, RunUnmet: true}}
+			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
 			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
 			state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
 			if err != nil || state != tc.wantState || next != tc.wantNext {

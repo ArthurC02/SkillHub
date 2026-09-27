@@ -115,7 +115,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	if err != nil {
 		return "", false, err
 	}
-	revisedAfterUnmetRun := p.RunUnmet && p.Draft != nil && p.Draft.ContentHash != hash
+	revisedAfterUnmetRun := p.RunUnmet && (p.Draft == nil || p.Draft.ContentHash != hash)
 	if p.Draft != nil && p.Draft.ContentHash != hash {
 		e.PreviousDraft = p.Draft
 	}
