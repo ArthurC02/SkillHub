@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v20"
+PROMPT_VERSION = "creation-step/v21"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -398,7 +398,10 @@ def _reason_node(gateway_key: str, phase: str):
             f"Current phase: {phase}. {PHASE_INSTRUCTIONS[phase]} "
             "Help a person create a portable Agent Skill through dialogue. Choose ONE next step. "
             "Ask a short, answerable clarification when task, inputs, tools or desired outputs "
-            "are missing. Never invent available tools or pretend a trial succeeded. "
+            "are missing, at most once. Once the person says to assume, proceed or use your "
+            "judgment, or has already answered one clarification, never ask again: fill each "
+            "gap with the common default, name every assumption in the brief, and return "
+            "confirm_brief. Never invent available tools or pretend a trial succeeded. "
             "Propose a brief containing task, inputs, outputs, tool requirements and limitations, "
             "then ask the user to confirm it. "
             "Propose the brief and 3-8 acceptance_criteria together: each an observable sentence "
