@@ -108,95 +108,138 @@ func PackageFS(data []byte) (fs.FS, error) {
 	seen := make(map[string]bool, len(zr.File))
 	requiredDirs := make(map[string]struct{}, len(zr.File))
 	for _, f := range zr.File {
-		if f.Name == "" || strings.ContainsRune(f.Name, 0) || !utf8.ValidString(f.Name) {
-			return nil, badArchive(ArchiveUnsafeName, "archive has an empty or invalid UTF-8 entry name")
-		}
 		nameIsDir := strings.HasSuffix(f.Name, "/")
-		mode := f.Mode()
-		if mode.IsDir() != nameIsDir || (nameIsDir && mode&fs.ModeSymlink != 0) {
-			return nil, badArchive(ArchiveUnsafeName, "archive entry type disagrees with its name for %q", f.Name)
+		if err := checkExtractableHeader(f, nameIsDir); err != nil {
+			return nil, err
 		}
-		hasZip64, extraErr := hasZip64Extra(f.Extra)
-		if extraErr != nil {
-			return nil, badArchive(ArchiveCorrupt, "malformed extra field for %q: %v", f.Name, extraErr)
+		escapeFinding, escapes := ArchiveEntryFinding(f.Name)
+		if err := checkPortableName(f.Name, escapes); err != nil {
+			return nil, err
 		}
-		if hasZip64 {
-			return nil, badArchive(ArchiveUnsupported, "unsupported zip64 entry %q", f.Name)
+		if err := claimUniquePath(seen, requiredDirs, f.Name, nameIsDir); err != nil {
+			return nil, err
 		}
-		if f.Flags&1 != 0 {
-			return nil, badArchive(ArchiveEncrypted, "encrypted archive entry %q", f.Name)
-		}
-		if f.Method != zip.Store && f.Method != zip.Deflate {
-			return nil, badArchive(ArchiveUnsupported, "unsupported compression method %d for %q", f.Method, f.Name)
-		}
-		finding, escapes := ArchiveEntryFinding(f.Name)
-		name := canonicalArchiveName(f.Name)
-		if !escapes && !isCanonicalArchiveName(f.Name) {
-			return nil, badArchive(ArchiveUnsafeName, "archive entry has a non-canonical portable name %q", f.Name)
-		}
-		for _, part := range strings.Split(strings.TrimSuffix(f.Name, "/"), "/") {
-			if len(part) > 255 {
-				return nil, badArchive(ArchiveBeyondLimits, "archive entry component exceeds 255 bytes in %q", f.Name)
-			}
-		}
-		if _, duplicate := seen[name]; duplicate {
-			return nil, badArchive(ArchiveUnsafeName, "duplicate archive entry %q", f.Name)
-		}
-		portable := strings.TrimSuffix(name, "/")
-		parts := strings.Split(portable, "/")
-		for i := 1; i < len(parts); i++ {
-			ancestor := strings.Join(parts[:i], "/")
-			if isDir, exists := seen[ancestor]; exists && !isDir {
-				return nil, badArchive(ArchiveUnsafeName, "archive file %q is an ancestor of %q", ancestor, f.Name)
-			}
-			requiredDirs[ancestor] = struct{}{}
-		}
-		if !nameIsDir {
-			if _, neededAsDir := requiredDirs[portable]; neededAsDir {
-				return nil, badArchive(ArchiveUnsafeName, "archive file %q conflicts with a descendant entry", f.Name)
-			}
-		}
-		seen[portable] = nameIsDir
-		if f.UncompressedSize64 > maxEntryBytes {
-			return nil, badArchive(ArchiveBeyondLimits, "%s declares %d bytes, more than the %d allowed for one file",
-				f.Name, f.UncompressedSize64, maxEntryBytes)
-		}
-		if depth := strings.Count(strings.Trim(f.Name, "/"), "/"); depth > maxEntryDepth {
-			return nil, badArchive(ArchiveBeyondLimits, "%s nests %d directories deep, more than the %d allowed",
-				f.Name, depth, maxEntryDepth)
+		if err := checkEntryCeilings(f); err != nil {
+			return nil, err
 		}
 		unpacked += f.UncompressedSize64
 		if unpacked > maxUnpackedBytes {
 			return nil, badArchive(ArchiveBeyondLimits, "uncompressed content exceeds %d bytes", maxUnpackedBytes)
 		}
-
-		if !nameIsDir && LooksLikeArchive(f.Name) {
-			findings = append(findings, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: f.Name,
-				Message: "這個套件裡有一個壓縮檔，平台沒有打開它——上面的解壓上限管的是平台自己解開的內容，不涵蓋它。解壓縮這個套件的人要自己決定要不要打開。"})
-		}
-
-		if escapes {
-			findings = append(findings, finding)
-		}
-		if !f.FileInfo().IsDir() {
-			r, err := f.Open()
-			if err != nil {
-				return nil, badArchive(ArchiveCorrupt, "cannot open entry %q: %v", f.Name, err)
-			}
-			_, readErr := io.Copy(io.Discard, r)
-			closeErr := r.Close()
-			if readErr != nil || closeErr != nil {
-				return nil, badArchive(ArchiveCorrupt, "corrupt entry %q: %v", f.Name, errors.Join(readErr, closeErr))
-			}
+		findings = append(findings, entryDisclosures(f.Name, nameIsDir, escapeFinding, escapes)...)
+		if err := verifyEntryIntegrity(f); err != nil {
+			return nil, err
 		}
 	}
-	var tree fs.FS = zr
+	return packageFS{FS: packageTree(zr), findings: findings}, nil
+}
+
+func checkExtractableHeader(f *zip.File, nameIsDir bool) error {
+	if f.Name == "" || strings.ContainsRune(f.Name, 0) || !utf8.ValidString(f.Name) {
+		return badArchive(ArchiveUnsafeName, "archive has an empty or invalid UTF-8 entry name")
+	}
+	mode := f.Mode()
+	if mode.IsDir() != nameIsDir || (nameIsDir && mode&fs.ModeSymlink != 0) {
+		return badArchive(ArchiveUnsafeName, "archive entry type disagrees with its name for %q", f.Name)
+	}
+	hasZip64, extraErr := hasZip64Extra(f.Extra)
+	if extraErr != nil {
+		return badArchive(ArchiveCorrupt, "malformed extra field for %q: %v", f.Name, extraErr)
+	}
+	if hasZip64 {
+		return badArchive(ArchiveUnsupported, "unsupported zip64 entry %q", f.Name)
+	}
+	if f.Flags&1 != 0 {
+		return badArchive(ArchiveEncrypted, "encrypted archive entry %q", f.Name)
+	}
+	if f.Method != zip.Store && f.Method != zip.Deflate {
+		return badArchive(ArchiveUnsupported, "unsupported compression method %d for %q", f.Method, f.Name)
+	}
+	return nil
+}
+
+func checkPortableName(rawName string, escapes bool) error {
+	if !escapes && !isCanonicalArchiveName(rawName) {
+		return badArchive(ArchiveUnsafeName, "archive entry has a non-canonical portable name %q", rawName)
+	}
+	for _, part := range strings.Split(strings.TrimSuffix(rawName, "/"), "/") {
+		if len(part) > 255 {
+			return badArchive(ArchiveBeyondLimits, "archive entry component exceeds 255 bytes in %q", rawName)
+		}
+	}
+	return nil
+}
+
+func claimUniquePath(seen map[string]bool, requiredDirs map[string]struct{}, rawName string, nameIsDir bool) error {
+	name := canonicalArchiveName(rawName)
+	if _, duplicate := seen[name]; duplicate {
+		return badArchive(ArchiveUnsafeName, "duplicate archive entry %q", rawName)
+	}
+	portable := strings.TrimSuffix(name, "/")
+	parts := strings.Split(portable, "/")
+	for i := 1; i < len(parts); i++ {
+		ancestor := strings.Join(parts[:i], "/")
+		if isDir, exists := seen[ancestor]; exists && !isDir {
+			return badArchive(ArchiveUnsafeName, "archive file %q is an ancestor of %q", ancestor, rawName)
+		}
+		requiredDirs[ancestor] = struct{}{}
+	}
+	if !nameIsDir {
+		if _, neededAsDir := requiredDirs[portable]; neededAsDir {
+			return badArchive(ArchiveUnsafeName, "archive file %q conflicts with a descendant entry", rawName)
+		}
+	}
+	seen[portable] = nameIsDir
+	return nil
+}
+
+func checkEntryCeilings(f *zip.File) error {
+	if f.UncompressedSize64 > maxEntryBytes {
+		return badArchive(ArchiveBeyondLimits, "%s declares %d bytes, more than the %d allowed for one file",
+			f.Name, f.UncompressedSize64, maxEntryBytes)
+	}
+	if depth := strings.Count(strings.Trim(f.Name, "/"), "/"); depth > maxEntryDepth {
+		return badArchive(ArchiveBeyondLimits, "%s nests %d directories deep, more than the %d allowed",
+			f.Name, depth, maxEntryDepth)
+	}
+	return nil
+}
+
+func entryDisclosures(rawName string, nameIsDir bool, escapeFinding Finding, escapes bool) []Finding {
+	var disclosed []Finding
+	if !nameIsDir && LooksLikeArchive(rawName) {
+		disclosed = append(disclosed, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: rawName,
+			Message: "這個套件裡有一個壓縮檔，平台沒有打開它——上面的解壓上限管的是平台自己解開的內容，不涵蓋它。解壓縮這個套件的人要自己決定要不要打開。"})
+	}
+	if escapes {
+		disclosed = append(disclosed, escapeFinding)
+	}
+	return disclosed
+}
+
+func verifyEntryIntegrity(f *zip.File) error {
+	if f.FileInfo().IsDir() {
+		return nil
+	}
+	r, err := f.Open()
+	if err != nil {
+		return badArchive(ArchiveCorrupt, "cannot open entry %q: %v", f.Name, err)
+	}
+	_, readErr := io.Copy(io.Discard, r)
+	closeErr := r.Close()
+	if readErr != nil || closeErr != nil {
+		return badArchive(ArchiveCorrupt, "corrupt entry %q: %v", f.Name, errors.Join(readErr, closeErr))
+	}
+	return nil
+}
+
+func packageTree(zr *zip.Reader) fs.FS {
 	if root := PackageRoot(zr); root != "" {
 		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
-			tree = sub
+			return sub
 		}
 	}
-	return packageFS{FS: tree, findings: findings}, nil
+	return zr
 }
 
 func validateZipEnvelope(data []byte) error {

@@ -236,7 +236,6 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 
 	var fields map[string]any
 	if err := yaml.Unmarshal([]byte(fm), &fields); err != nil {
-
 		r.add(SeverityError, "frontmatter-invalid-yaml", "SKILL.md", "frontmatter 不是合法的 YAML")
 		return body
 	}
@@ -251,54 +250,67 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 		case "license":
 			m.License, _ = v.(string)
 		case "compatibility":
-
 			m.Compatibility, _ = v.(string)
 		case "allowed-tools":
-			switch t := v.(type) {
-			case string:
-
-				for _, s := range strings.Fields(strings.ReplaceAll(t, ",", " ")) {
-					if s = strings.TrimSpace(s); s != "" {
-						m.AllowedTools = append(m.AllowedTools, s)
-					}
-				}
-			case []any:
-
-				for _, e := range t {
-					if s, ok := e.(string); ok {
-						m.AllowedTools = append(m.AllowedTools, s)
-					}
-				}
-				r.add(SeverityWarning, "spec-allowed-tools-not-a-string", "SKILL.md",
-					"allowed-tools 是一個 YAML 陣列；Agent Skills 規格將它定義為以空白分隔的字串，"+
-						"陣列是特定客戶端的擴充寫法，其他 Runtime 可能會忽略它")
-			}
+			m.AllowedTools = append(m.AllowedTools, r.decodeAllowedTools(v)...)
 		case "metadata":
 			m.Extra[k] = v
-
-			if mm, ok := v.(map[string]any); ok {
-				for mk, mv := range mm {
-					if _, isString := mv.(string); !isString {
-						r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
-							fmt.Sprintf("metadata.%s 的值不是字串；規格將 metadata 定義為「字串鍵對應字串值」的映射", mk))
-					}
-				}
-			} else if v != nil {
-				r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
-					"metadata 不是一個映射；規格將它定義為「字串鍵對應字串值」的映射")
-			}
+			r.checkMetadataIsStringMap(v)
 		default:
 			m.Extra[k] = v
-			r.add(SeverityError, "frontmatter-unknown-field", "SKILL.md",
-				fmt.Sprintf("不明的 frontmatter 欄位 %q — Agent Skills 規格只定義了六個欄位"+
-					"（name、description、license、compatibility、metadata、allowed-tools），其參考驗證器"+
-					"會拒絕其他任何欄位，至少一個主要客戶端的上傳流程也是如此。"+
-					"請把它搬進 metadata（字串鍵對應字串值的映射）或移除它；"+
-					"帶有此欄位的套件無法被本平台判定為符合規格", k))
+			r.rejectUnknownField(k)
 		}
 	}
 	r.Manifest = m
 	return body
+}
+
+func (r *Report) decodeAllowedTools(v any) []string {
+	var tools []string
+	switch t := v.(type) {
+	case string:
+		for _, s := range strings.Fields(strings.ReplaceAll(t, ",", " ")) {
+			if s = strings.TrimSpace(s); s != "" {
+				tools = append(tools, s)
+			}
+		}
+	case []any:
+		for _, e := range t {
+			if s, ok := e.(string); ok {
+				tools = append(tools, s)
+			}
+		}
+		r.add(SeverityWarning, "spec-allowed-tools-not-a-string", "SKILL.md",
+			"allowed-tools 是一個 YAML 陣列；Agent Skills 規格將它定義為以空白分隔的字串，"+
+				"陣列是特定客戶端的擴充寫法，其他 Runtime 可能會忽略它")
+	}
+	return tools
+}
+
+func (r *Report) checkMetadataIsStringMap(v any) {
+	mm, ok := v.(map[string]any)
+	if !ok {
+		if v != nil {
+			r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+				"metadata 不是一個映射；規格將它定義為「字串鍵對應字串值」的映射")
+		}
+		return
+	}
+	for mk, mv := range mm {
+		if _, isString := mv.(string); !isString {
+			r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+				fmt.Sprintf("metadata.%s 的值不是字串；規格將 metadata 定義為「字串鍵對應字串值」的映射", mk))
+		}
+	}
+}
+
+func (r *Report) rejectUnknownField(k string) {
+	r.add(SeverityError, "frontmatter-unknown-field", "SKILL.md",
+		fmt.Sprintf("不明的 frontmatter 欄位 %q — Agent Skills 規格只定義了六個欄位"+
+			"（name、description、license、compatibility、metadata、allowed-tools），其參考驗證器"+
+			"會拒絕其他任何欄位，至少一個主要客戶端的上傳流程也是如此。"+
+			"請把它搬進 metadata（字串鍵對應字串值的映射）或移除它；"+
+			"帶有此欄位的套件無法被本平台判定為符合規格", k))
 }
 
 func cutClosingDelimiter(s string) (fm, body string, ok bool) {
