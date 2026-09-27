@@ -127,8 +127,8 @@ func TestParseManifestSectionRejectsKeyWithWhitespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := parseManifestSection(path, "images")
-	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") {
-		t.Fatalf("parseManifestSection whitespace-key error = %v, want invalid toolchain entry", err)
+	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") || !strings.Contains(err.Error(), "open api_generator") {
+		t.Fatalf("parseManifestSection whitespace-key error = %v, want invalid toolchain entry including key", err)
 	}
 }
 
