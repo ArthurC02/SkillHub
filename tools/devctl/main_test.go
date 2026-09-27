@@ -118,6 +118,20 @@ func TestParseManifestSectionRejectsEmptyKey(t *testing.T) {
 	}
 }
 
+func TestParseManifestSectionRejectsKeyWithWhitespace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "toolchain.yaml")
+	contents := "images:\n  open api_generator: \"image@sha256:abc\"\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := parseManifestSection(path, "images")
+	if err == nil || !strings.Contains(err.Error(), "invalid toolchain entry") {
+		t.Fatalf("parseManifestSection whitespace-key error = %v, want invalid toolchain entry", err)
+	}
+}
+
 func TestEnvInitDoesNotOverwriteExistingFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
