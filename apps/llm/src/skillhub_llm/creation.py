@@ -29,7 +29,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "gpt-5.4-mini"
-PROMPT_VERSION = "creation-step/v21"
+PROMPT_VERSION = "creation-step/v22"
 DATA_TAG = "untrusted_creation_snapshot"
 REFERENCE_TAG = "untrusted_reference_skill"
 TOOL_TAG = "untrusted_tool_observation"
@@ -357,7 +357,10 @@ PHASE_INSTRUCTIONS = {
         "walks its nodes as steps, in order, each named as the diagram names it, and adds "
         "no step, condition, role or tool the diagram does not show; where the diagram is "
         "silent, say so instead of inventing. Go refuses a draft whose body skips a node. "
-        "Three rules go into the body verbatim as instructions to the agent: never invent a "
+        "Four rules go into the body verbatim as instructions to the agent: when the input "
+        "makes two requirements impossible to meet together (a length limit and 'keep "
+        "everything'), keep the hard limit and say in one line what you left out — never "
+        "drop it silently; never invent a "
         "fact the input does not give — no name, date, figure or event — and write 'not "
         "given' only for such a missing fact; when a setting the work needs is missing (a "
         "working-day length, a tone, a format), use the common default, say which one you "
