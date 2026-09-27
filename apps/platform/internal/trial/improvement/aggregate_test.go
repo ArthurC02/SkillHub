@@ -834,8 +834,8 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 		m := seedRun(t, s.Pool)
 
 		got := failed(t, s, m)
-		if derefString(got.JudgeModel) != "gpt-6-sol" {
-			t.Errorf("the judge tier is a real declaration even when unconfigured, got %q",
+		if derefString(got.JudgeModel) != "skillhub-judge" {
+			t.Errorf("the judge role is a real declaration even when unconfigured, got %q",
 				derefString(got.JudgeModel))
 		}
 		if got.JudgePromptVersion != nil {

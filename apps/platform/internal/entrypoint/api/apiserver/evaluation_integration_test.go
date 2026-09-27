@@ -721,7 +721,7 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 		t.Error("the rule findings came from the platform's own records and survive a judge failure")
 	}
 
-	if body.JudgeModel != "gpt-6-sol" {
+	if body.JudgeModel != "skillhub-judge" {
 		t.Errorf("a failed evaluation must record the judge it was attempted with, got %q", body.JudgeModel)
 	}
 	assertEvaluationTraceEvents(t, pool, runID, "error")
