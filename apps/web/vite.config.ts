@@ -17,6 +17,15 @@ function buildId(): string {
 export default defineConfig({
   plugins: [react()],
   define: { "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId()) },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          return id.includes("node_modules") ? "vendor" : undefined;
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     // e2e/** is Playwright's; vitest's default glob would otherwise collect
