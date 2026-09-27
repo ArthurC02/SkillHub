@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 )
@@ -34,13 +30,6 @@ Usage:
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
 
-type checkResult struct {
-	name     string
-	status   string
-	detail   string
-	required bool
-}
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
@@ -50,79 +39,57 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
+	code, err := runCommand(root, os.Args[1], os.Args[2:])
+	if err != nil {
+		fatal(err)
+	}
+	if code != 0 {
+		os.Exit(code)
+	}
+}
 
-	switch os.Args[1] {
+func runCommand(root, command string, args []string) (int, error) {
+	switch command {
 	case "doctor":
-		if err := doctor(root, os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, doctor(root, os.Stdout)
 	case "bootstrap":
-		if err := bootstrap(root, os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, bootstrap(root, os.Stdout)
 	case "env-init":
-		if err := envInit(root, os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, envInit(root, os.Stdout)
 	case "profile-check":
-		if len(os.Args) != 3 {
-			fatal(errors.New("usage: devctl profile-check model"))
+		if len(args) != 1 {
+			return 0, errors.New("usage: devctl profile-check model")
 		}
-		if err := profileCheck(root, os.Args[2], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, profileCheck(root, args[0], os.Stdout)
 	case "gen":
-		if err := generate(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, generate(root, args, os.Stdout)
 	case "agent-sync":
-		if err := agentSync(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, agentSync(root, args, os.Stdout)
 	case "automation-check":
-		if err := automationCheck(root, os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, automationCheck(root, os.Stdout)
 	case "comment-lint":
-		if err := commentLint(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, commentLint(root, args, os.Stdout)
 	case "test-report":
-		if len(os.Args) < 3 {
-			fatal(errors.New("usage: devctl test-report dir [go test args]"))
+		if len(args) < 1 {
+			return 0, errors.New("usage: devctl test-report dir [go test args]")
 		}
-		code, err := testReport(root, filepath.Join(root, os.Args[2]), os.Args[3:], os.Stdout)
-		if err != nil {
-			fatal(err)
-		}
-		os.Exit(code)
+		return testReport(root, filepath.Join(root, args[0]), args[1:], os.Stdout)
 	case "seed-clean":
-		if err := seedClean(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, seedClean(root, args, os.Stdout)
 	case "image-gate":
-		if err := imageGate(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, imageGate(root, args, os.Stdout)
 	case "preflight":
-		if err := preflight(root, os.Args[2:], os.Stdin, os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, preflight(root, args, os.Stdin, os.Stdout)
 	case "ci-status":
-		code, err := ciStatus(root, os.Args[2:], os.Stdout)
-		if err != nil {
-			fatal(err)
-		}
-		os.Exit(code)
+		return ciStatus(root, args, os.Stdout)
 	case "dep-audit":
-		if err := depAudit(root, os.Args[2:], os.Stdout); err != nil {
-			fatal(err)
-		}
+		return 0, depAudit(root, args, os.Stdout)
 	case "help", "-h", "--help":
 		fmt.Print(usage)
+		return 0, nil
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", os.Args[1], usage)
-		os.Exit(2)
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
+		return 2, nil
 	}
 }
 
@@ -146,187 +113,6 @@ func findRepoRoot() (string, error) {
 		}
 		dir = parent
 	}
-}
-
-func doctor(root string, out io.Writer) error {
-	toolchain, err := parseToolchain(filepath.Join(root, "tools", "toolchain.yaml"))
-	if err != nil {
-		return err
-	}
-	goVersion, err := readGoVersion(filepath.Join(root, "apps", "platform", "go.mod"))
-	if err != nil {
-		return err
-	}
-	nodeVersion, err := readTrimmed(filepath.Join(root, ".node-version"))
-	if err != nil {
-		return err
-	}
-	pythonVersion, err := readTrimmed(filepath.Join(root, "apps", "llm", ".python-version"))
-	if err != nil {
-		return err
-	}
-
-	results := []checkResult{
-		checkVersion("go", []string{"version"}, "go"+goVersion, true),
-		checkVersion("node", []string{"--version"}, "v"+nodeVersion, true),
-		checkVersion("uv", []string{"--version"}, "uv "+toolchain["uv"], true),
-		checkVersion("task", []string{"--version"}, toolchain["task"], true),
-		checkVersion("docker", []string{"version", "--format", "{{.Client.Version}}"}, "", true),
-		checkVersion("golangci-lint", []string{"--version"}, toolchain["golangci_lint"], false),
-	}
-	results = append(results, checkDockerCompose())
-	results = append(results, checkDockerDaemon())
-	results = append(results, checkPython(pythonVersion))
-	results = append(results, checkEnv(root))
-	results = append(results, checkPgliteInstall(root, toolchain)...)
-
-	failed := false
-	for _, result := range results {
-		fmt.Fprintf(out, "%-5s %-18s %s\n", result.status, result.name, result.detail)
-		if result.required && result.status == "FAIL" {
-			failed = true
-		}
-	}
-	fmt.Fprintf(out, "\nplatform=%s/%s; tool versions: tools/toolchain.yaml\n", runtime.GOOS, runtime.GOARCH)
-	if failed {
-		return errors.New("required developer prerequisites are missing or incompatible; use the Dev Container or install the versions above")
-	}
-	return nil
-}
-
-func checkVersion(name string, args []string, want string, required bool) checkResult {
-	path, err := exec.LookPath(name)
-	if err != nil {
-		status := "WARN"
-		if required {
-			status = "FAIL"
-		}
-		return checkResult{name: name, status: status, detail: "not found on PATH", required: required}
-	}
-	output, err := exec.Command(path, args...).CombinedOutput()
-	got := strings.TrimSpace(string(output))
-	if err != nil {
-		return checkResult{name: name, status: "FAIL", detail: got, required: required}
-	}
-	if want != "" && !compatibleVersion(got, want) {
-		return checkResult{name: name, status: "FAIL", detail: fmt.Sprintf("got %q; want %q", firstLine(got), want), required: required}
-	}
-	return checkResult{name: name, status: "PASS", detail: firstLine(got), required: required}
-}
-
-func checkDockerCompose() checkResult {
-	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: "docker compose", status: "FAIL", detail: "docker not found", required: true}
-	}
-	output, err := exec.Command("docker", "compose", "version").CombinedOutput()
-	if err != nil {
-		return checkResult{name: "docker compose", status: "FAIL", detail: strings.TrimSpace(string(output)), required: true}
-	}
-	return checkResult{name: "docker compose", status: "PASS", detail: firstLine(strings.TrimSpace(string(output))), required: true}
-}
-
-func checkDockerDaemon() checkResult {
-	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: "docker daemon", status: "FAIL", detail: "docker not found", required: true}
-	}
-	output, err := exec.Command("docker", "info", "--format", "{{.ServerVersion}}").CombinedOutput()
-	if err != nil {
-		return checkResult{name: "docker daemon", status: "FAIL", detail: firstLine(strings.TrimSpace(string(output))), required: true}
-	}
-	return checkResult{name: "docker daemon", status: "PASS", detail: "server " + firstLine(strings.TrimSpace(string(output))), required: true}
-}
-
-func checkPython(want string) checkResult {
-	if _, err := exec.LookPath("uv"); err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: "uv not found", required: true}
-	}
-	find := exec.Command("uv", "python", "find", want)
-	find.Env = append(os.Environ(), "UV_LINK_MODE=copy")
-	pathOutput, err := find.CombinedOutput()
-	if err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: strings.TrimSpace(string(pathOutput)), required: true}
-	}
-	pythonPath := strings.TrimSpace(string(pathOutput))
-	output, err := exec.Command(pythonPath, "--version").CombinedOutput()
-	got := strings.TrimSpace(string(output))
-	if err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: got, required: true}
-	}
-	if !compatibleVersion(got, "Python "+want) {
-		return checkResult{name: "python", status: "FAIL", detail: fmt.Sprintf("got %q; want Python %s", firstLine(got), want), required: true}
-	}
-	return checkResult{name: "python", status: "PASS", detail: firstLine(got), required: true}
-}
-
-func checkEnv(root string) checkResult {
-	if fileExists(filepath.Join(root, ".env")) {
-		return checkResult{name: ".env", status: "PASS", detail: "present (values intentionally not inspected)", required: false}
-	}
-	return checkResult{name: ".env", status: "WARN", detail: "missing; run task env:init", required: false}
-}
-
-// Reads the version actually installed under node_modules rather than the
-// range in package.json.
-func checkPgliteInstall(root string, toolchain map[string]string) []checkResult {
-	packages := []struct {
-		checkName    string
-		toolchainKey string
-		nodeModule   string
-	}{
-		{"pglite", "pglite", "@electric-sql/pglite"},
-		{"pglite-socket", "pglite_socket", "@electric-sql/pglite-socket"},
-		{"pglite-pgvector", "pglite_pgvector", "@electric-sql/pglite-pgvector"},
-	}
-
-	results := make([]checkResult, 0, len(packages))
-	for _, pkg := range packages {
-		want := toolchain[pkg.toolchainKey]
-		pkgJSON := filepath.Join(root, "tools", "pglite", "node_modules", filepath.FromSlash(pkg.nodeModule), "package.json")
-		got, err := readNodePackageVersion(pkgJSON)
-		switch {
-		case err != nil:
-			results = append(results, checkResult{
-				name:     pkg.checkName,
-				status:   "WARN",
-				detail:   fmt.Sprintf("not installed under tools/pglite (run npm install there); toolchain.yaml pins %q", want),
-				required: false,
-			})
-		case want == "":
-			results = append(results, checkResult{
-				name:     pkg.checkName,
-				status:   "WARN",
-				detail:   fmt.Sprintf("installed %s but tools/toolchain.yaml has no %s pin", got, pkg.toolchainKey),
-				required: false,
-			})
-		case got != want:
-			results = append(results, checkResult{
-				name:     pkg.checkName,
-				status:   "FAIL",
-				detail:   fmt.Sprintf("installed %s; tools/toolchain.yaml pins %s", got, want),
-				required: true,
-			})
-		default:
-			results = append(results, checkResult{name: pkg.checkName, status: "PASS", detail: got, required: true})
-		}
-	}
-	return results
-}
-
-func readNodePackageVersion(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	var meta struct {
-		Version string `json:"version"`
-	}
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return "", fmt.Errorf("%s: %w", path, err)
-	}
-	if meta.Version == "" {
-		return "", fmt.Errorf("%s has no version field", path)
-	}
-	return meta.Version, nil
 }
 
 func bootstrap(root string, out io.Writer) error {
@@ -399,119 +185,6 @@ func profileCheck(root, profile string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "%s profile prerequisites are present (values not shown)\n", profile)
 	return nil
-}
-
-func readDotEnv(path string) (map[string]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	values := map[string]string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := parseKeyValue(line, "=")
-		if !ok {
-			continue
-		}
-		values[key] = value
-	}
-	return values, scanner.Err()
-}
-
-func parseToolchain(path string) (map[string]string, error) {
-	return parseManifestSection(path, "tools")
-}
-
-func parseManifestSection(path, section string) (map[string]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	values := map[string]string{}
-	inSection := false
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
-		if trimmed == section+":" {
-			inSection = true
-			continue
-		}
-		if !inSection || trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if len(line)-len(strings.TrimLeft(line, " ")) == 0 {
-			inSection = false
-			continue
-		}
-		key, value, ok := parseKeyValue(trimmed, ":")
-		if !ok || key == "" || strings.ContainsAny(key, " \t") {
-			return nil, fmt.Errorf("invalid toolchain entry %q", line)
-		}
-		values[key] = value
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	if len(values) == 0 {
-		return nil, fmt.Errorf("%s has no %s entries", path, section)
-	}
-	return values, nil
-}
-
-func readGoVersion(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) == 2 && fields[0] == "go" {
-			return fields[1], nil
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-	return "", errors.New("go directive not found in " + path)
-}
-
-func compatibleVersion(got, want string) bool {
-	gotParts := numericVersion(got)
-	wantParts := numericVersion(want)
-	if len(gotParts) < 2 || len(wantParts) < 2 {
-		return strings.Contains(got, want)
-	}
-	return gotParts[0] == wantParts[0] && gotParts[1] == wantParts[1]
-}
-
-var versionPattern = regexp.MustCompile(`\d+`)
-
-func numericVersion(value string) []string {
-	return versionPattern.FindAllString(value, -1)
-}
-
-func firstLine(value string) string {
-	if before, _, ok := strings.Cut(value, "\n"); ok {
-		return strings.TrimSpace(before)
-	}
-	return strings.TrimSpace(value)
-}
-
-func readTrimmed(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
 }
 
 func fileExists(path string) bool {

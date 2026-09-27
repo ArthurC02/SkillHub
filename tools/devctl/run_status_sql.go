@@ -178,17 +178,19 @@ func goIdentListMap(path, varName, constPath, constType string) (map[string]map[
 	if err != nil {
 		return nil, err
 	}
-	resolve := func(expression ast.Expr) (string, bool) {
-		switch identifier := expression.(type) {
-		case *ast.Ident:
-			value, ok := byName[identifier.Name]
-			return value, ok
-		case *ast.SelectorExpr:
-			value, ok := byName[identifier.Sel.Name]
-			return value, ok
-		}
-		return "", false
+	value, found := singleVarValue(file, varName)
+	if !found {
+		return nil, fmt.Errorf("%s declares no %s; either the table moved or this check is now looking at the wrong file", path, varName)
 	}
+	source := goIdentListSource{path: path, varName: varName, constPath: constPath, byName: byName}
+	composite, ok := value.(*ast.CompositeLit)
+	if !ok {
+		return nil, fmt.Errorf("%s: %s is not a map this check can read", path, varName)
+	}
+	return source.table(composite)
+}
+
+func singleVarValue(file *ast.File, varName string) (ast.Expr, bool) {
 	for _, decl := range file.Decls {
 		group, ok := decl.(*ast.GenDecl)
 		if !ok || group.Tok != token.VAR {
@@ -196,38 +198,63 @@ func goIdentListMap(path, varName, constPath, constType string) (map[string]map[
 		}
 		for _, spec := range group.Specs {
 			value, ok := spec.(*ast.ValueSpec)
-			if !ok || len(value.Names) != 1 || value.Names[0].Name != varName || len(value.Values) != 1 {
-				continue
+			if ok && len(value.Names) == 1 && value.Names[0].Name == varName && len(value.Values) == 1 {
+				return value.Values[0], true
 			}
-			composite, ok := value.Values[0].(*ast.CompositeLit)
-			if !ok {
-				return nil, fmt.Errorf("%s: %s is not a map this check can read", path, varName)
-			}
-			table := map[string]map[string]bool{}
-			for _, element := range composite.Elts {
-				pair, ok := element.(*ast.KeyValueExpr)
-				if !ok {
-					return nil, fmt.Errorf("%s: %s holds an entry this check cannot read", path, varName)
-				}
-				from, ok := resolve(pair.Key)
-				if !ok {
-					return nil, fmt.Errorf("%s: %s has a key %s does not declare", path, varName, constPath)
-				}
-				list, ok := pair.Value.(*ast.CompositeLit)
-				if !ok {
-					return nil, fmt.Errorf("%s: %s[%s] is not a list this check can read", path, varName, from)
-				}
-				table[from] = map[string]bool{}
-				for _, entry := range list.Elts {
-					to, ok := resolve(entry)
-					if !ok {
-						return nil, fmt.Errorf("%s: %s[%s] holds a value %s does not declare", path, varName, from, constPath)
-					}
-					table[from][to] = true
-				}
-			}
-			return table, nil
 		}
 	}
-	return nil, fmt.Errorf("%s declares no %s; either the table moved or this check is now looking at the wrong file", path, varName)
+	return nil, false
+}
+
+type goIdentListSource struct {
+	path, varName, constPath string
+	byName                   map[string]string
+}
+
+func (s goIdentListSource) resolve(expression ast.Expr) (string, bool) {
+	switch identifier := expression.(type) {
+	case *ast.Ident:
+		value, ok := s.byName[identifier.Name]
+		return value, ok
+	case *ast.SelectorExpr:
+		value, ok := s.byName[identifier.Sel.Name]
+		return value, ok
+	}
+	return "", false
+}
+
+func (s goIdentListSource) table(composite *ast.CompositeLit) (map[string]map[string]bool, error) {
+	table := map[string]map[string]bool{}
+	for _, element := range composite.Elts {
+		pair, ok := element.(*ast.KeyValueExpr)
+		if !ok {
+			return nil, fmt.Errorf("%s: %s holds an entry this check cannot read", s.path, s.varName)
+		}
+		from, ok := s.resolve(pair.Key)
+		if !ok {
+			return nil, fmt.Errorf("%s: %s has a key %s does not declare", s.path, s.varName, s.constPath)
+		}
+		row, err := s.row(from, pair.Value)
+		if err != nil {
+			return nil, err
+		}
+		table[from] = row
+	}
+	return table, nil
+}
+
+func (s goIdentListSource) row(from string, value ast.Expr) (map[string]bool, error) {
+	list, ok := value.(*ast.CompositeLit)
+	if !ok {
+		return nil, fmt.Errorf("%s: %s[%s] is not a list this check can read", s.path, s.varName, from)
+	}
+	row := map[string]bool{}
+	for _, entry := range list.Elts {
+		to, ok := s.resolve(entry)
+		if !ok {
+			return nil, fmt.Errorf("%s: %s[%s] holds a value %s does not declare", s.path, s.varName, from, s.constPath)
+		}
+		row[to] = true
+	}
+	return row, nil
 }

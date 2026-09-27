@@ -119,11 +119,7 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 				return nil
 			}
 			if d.IsDir() {
-				switch d.Name() {
-				case ".venv", "node_modules", "gen", "generated", "__pycache__":
-					return filepath.SkipDir
-				}
-				return nil
+				return skipTimeoutScanDir(d.Name())
 			}
 			if filepath.Ext(path) != ext || strings.HasSuffix(path, "_test"+ext) {
 				return nil
@@ -132,43 +128,57 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 			if readErr != nil {
 				return nil
 			}
-			relative, relErr := filepath.Rel(root, path)
-			if relErr != nil {
-				relative = path
-			}
-			relative = filepath.ToSlash(relative)
-			lines := strings.Split(string(data), "\n")
-			for i, line := range lines {
-				m := marker.FindStringSubmatch(line)
-				if m == nil {
-					continue
-				}
-				value, ok := parse(line)
-				at := i + 1
-				if !ok {
-
-					for j := i + 1; j < len(lines) && j <= i+2; j++ {
-						if strings.TrimSpace(lines[j]) == "" {
-							continue
-						}
-						value, ok = parse(lines[j])
-						at = j + 1
-						break
-					}
-				}
-				if !ok {
-					problems = append(problems, fmt.Sprintf(
-						"timeout-budget: %s:%d marks %s but neither that line nor the next carries a "+
-							"duration this check can read (Go: `N * time.Second`; Python: `NAME = N.N`)",
-						relative, i+1, m[1]))
-					continue
-				}
-				found[m[1]] = append(found[m[1]], timeoutSite{file: relative, line: at, value: value})
-			}
+			problems = append(problems,
+				collectTimeoutMarkers(found, relSlash(root, path), string(data), marker, parse)...)
 			return nil
 		})
 	}
 	return found, problems
+}
+
+func skipTimeoutScanDir(name string) error {
+	switch name {
+	case ".venv", "node_modules", "gen", "generated", "__pycache__":
+		return filepath.SkipDir
+	}
+	return nil
+}
+
+func collectTimeoutMarkers(found map[string][]timeoutSite, relative, text string, marker *regexp.Regexp,
+	parse func(string) (time.Duration, bool),
+) []string {
+	var problems []string
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		m := marker.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		value, at, ok := markedTimeoutValue(lines, i, parse)
+		if !ok {
+			problems = append(problems, fmt.Sprintf(
+				"timeout-budget: %s:%d marks %s but neither that line nor the next carries a "+
+					"duration this check can read (Go: `N * time.Second`; Python: `NAME = N.N`)",
+				relative, i+1, m[1]))
+			continue
+		}
+		found[m[1]] = append(found[m[1]], timeoutSite{file: relative, line: at, value: value})
+	}
+	return problems
+}
+
+func markedTimeoutValue(lines []string, marked int, parse func(string) (time.Duration, bool)) (time.Duration, int, bool) {
+	if value, ok := parse(lines[marked]); ok {
+		return value, marked + 1, true
+	}
+	for j := marked + 1; j < len(lines) && j <= marked+2; j++ {
+		if strings.TrimSpace(lines[j]) == "" {
+			continue
+		}
+		value, ok := parse(lines[j])
+		return value, j + 1, ok
+	}
+	return 0, marked + 1, false
 }
 
 func parseGoDuration(line string) (time.Duration, bool) {

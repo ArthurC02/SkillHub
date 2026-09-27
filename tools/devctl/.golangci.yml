@@ -11,51 +11,6 @@ linters:
     rules:
       - path: _test\.go
         linters: [gocognit]
-      - path: adr_citations\.go
-        linters: [gocognit]
-        text: 'func `adrCitationProblems`'
-      - path: dependency_policy\.go
-        linters: [gocognit]
-        text: 'func `dependencyPolicyProblems`'
-      - path: depguard_deny\.go
-        linters: [gocognit]
-        text: 'func `depguardDenyProblems`'
-      - path: depguard_deny\.go
-        linters: [gocognit]
-        text: 'func `depguardSelectorProblems`'
-      - path: doc_identifiers\.go
-        linters: [gocognit]
-        text: 'func `docIdentifierProblems`'
-      - path: env_declared\.go
-        linters: [gocognit]
-        text: 'func `goEnvReads`'
-      - path: env_declared\.go
-        linters: [gocognit]
-        text: 'func `envReaderFuncs`'
-      - path: generate\.go
-        linters: [gocognit]
-        text: 'func `generate`'
-      - path: main\.go
-        linters: [gocognit]
-        text: 'func `main`'
-      - path: requirement_refs\.go
-        linters: [gocognit]
-        text: 'func `requirementRefProblems`'
-      - path: requirement_test_matrix\.go
-        linters: [gocognit]
-        text: 'func `requirementTestMatrixProblems`'
-      - path: retention_floor\.go
-        linters: [gocognit]
-        text: 'func `runArtifactRetention`'
-      - path: run_status_sql\.go
-        linters: [gocognit]
-        text: 'func `goIdentListMap`'
-      - path: shared_number\.go
-        linters: [gocognit]
-        text: 'func `sharedNumberScan`'
-      - path: timeout_budgets\.go
-        linters: [gocognit]
-        text: 'func `scanTimeoutMarkers`'
 
   settings:
     gocognit:

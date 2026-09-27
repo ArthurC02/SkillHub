@@ -110,6 +110,16 @@ func parseGoSources(root, dir string) ([]*goSource, error) {
 }
 
 func goEnvReads(sources []*goSource) map[string]string {
+	consts := goStringConstants(sources)
+	readers := envReaderFuncs(sources)
+	read := map[string]string{}
+	for _, src := range sources {
+		recordGoEnvReads(src, readers, consts, read)
+	}
+	return read
+}
+
+func goStringConstants(sources []*goSource) map[string]string {
 	consts := map[string]string{}
 	for _, src := range sources {
 		for _, decl := range src.file.Decls {
@@ -118,41 +128,42 @@ func goEnvReads(sources []*goSource) map[string]string {
 				continue
 			}
 			for _, spec := range gen.Specs {
-				vs := spec.(*ast.ValueSpec)
-				for i, name := range vs.Names {
-					if i < len(vs.Values) {
-						if value, ok := stringLiteral(vs.Values[i]); ok {
-							consts[name.Name] = value
-						}
-					}
-				}
+				recordStringConstants(spec.(*ast.ValueSpec), consts)
 			}
 		}
 	}
+	return consts
+}
 
-	readers := envReaderFuncs(sources)
-	read := map[string]string{}
-	for _, src := range sources {
-		ast.Inspect(src.file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
+func recordStringConstants(vs *ast.ValueSpec, consts map[string]string) {
+	for i, name := range vs.Names {
+		if i < len(vs.Values) {
+			if value, ok := stringLiteral(vs.Values[i]); ok {
+				consts[name.Name] = value
 			}
-			arg, ok := readers[calleeName(call)]
-			if !ok || arg >= len(call.Args) {
-				return true
-			}
-			name, ok := stringLiteral(call.Args[arg])
-			if !ok {
-				name, ok = consts[identName(call.Args[arg])]
-			}
-			if _, seen := read[name]; ok && envVarName.MatchString(name) && !seen {
-				read[name] = src.path
-			}
-			return true
-		})
+		}
 	}
-	return read
+}
+
+func recordGoEnvReads(src *goSource, readers map[string]int, consts, read map[string]string) {
+	ast.Inspect(src.file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		arg, ok := readers[calleeName(call)]
+		if !ok || arg >= len(call.Args) {
+			return true
+		}
+		name, ok := stringLiteral(call.Args[arg])
+		if !ok {
+			name, ok = consts[identName(call.Args[arg])]
+		}
+		if _, seen := read[name]; ok && envVarName.MatchString(name) && !seen {
+			read[name] = src.path
+		}
+		return true
+	})
 }
 
 func envReaderFuncs(sources []*goSource) map[string]int {
@@ -168,27 +179,35 @@ func envReaderFuncs(sources []*goSource) map[string]int {
 				if _, known := readers[fn.Name.Name]; known {
 					continue
 				}
-				params := paramIndexes(fn)
-				ast.Inspect(fn.Body, func(n ast.Node) bool {
-					call, ok := n.(*ast.CallExpr)
-					if !ok {
-						return true
-					}
-					arg, isReader := readers[calleeName(call)]
-					if !isReader || arg >= len(call.Args) {
-						return true
-					}
-					if index, isParam := params[identName(call.Args[arg])]; isParam {
-						readers[fn.Name.Name] = index
-						changed = true
-						return false
-					}
-					return true
-				})
+				if recordEnvReaderWrapper(fn, readers) {
+					changed = true
+				}
 			}
 		}
 	}
 	return readers
+}
+
+func recordEnvReaderWrapper(fn *ast.FuncDecl, readers map[string]int) bool {
+	params := paramIndexes(fn)
+	wraps := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		arg, isReader := readers[calleeName(call)]
+		if !isReader || arg >= len(call.Args) {
+			return true
+		}
+		if index, isParam := params[identName(call.Args[arg])]; isParam {
+			readers[fn.Name.Name] = index
+			wraps = true
+			return false
+		}
+		return true
+	})
+	return wraps
 }
 
 func paramIndexes(fn *ast.FuncDecl) map[string]int {

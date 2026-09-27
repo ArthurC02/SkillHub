@@ -116,44 +116,8 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 	if err != nil {
 		return append(problems, fmt.Sprintf("retention-floor: %v", err)), 0, ""
 	}
-	type site struct {
-		where string
-		value ast.Expr
-	}
-	var found []site
-	fset := token.NewFileSet()
-	for _, file := range files {
-		if strings.HasSuffix(file, "_test.go") {
-			continue
-		}
-		parsed, parseErr := parser.ParseFile(fset, file, nil, parser.SkipObjectResolution)
-		if parseErr != nil {
-			problems = append(problems, fmt.Sprintf("retention-floor: cannot parse %s: %v", file, parseErr))
-			continue
-		}
-		for _, decl := range parsed.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok || gen.Tok != token.CONST {
-				continue
-			}
-			for _, spec := range gen.Specs {
-				value := spec.(*ast.ValueSpec)
-				for i, name := range value.Names {
-					if name.Name != runArtifactRetentionName || i >= len(value.Values) {
-						continue
-					}
-					relative, relErr := filepath.Rel(root, file)
-					if relErr != nil {
-						relative = file
-					}
-					found = append(found, site{
-						where: fmt.Sprintf("%s:%d", filepath.ToSlash(relative), fset.Position(name.Pos()).Line),
-						value: value.Values[i],
-					})
-				}
-			}
-		}
-	}
+	found, parseProblems := runArtifactRetentionSites(root, files)
+	problems = append(problems, parseProblems...)
 	if len(problems) > 0 {
 		sort.Strings(problems)
 		return problems, 0, ""
@@ -186,6 +150,52 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 				"check has lost its subject", found[0].where, runArtifactRetentionName)}, 0, ""
 	}
 	return nil, duration, found[0].where
+}
+
+type runArtifactRetentionSite struct {
+	where string
+	value ast.Expr
+}
+
+func runArtifactRetentionSites(root string, files []string) ([]runArtifactRetentionSite, []string) {
+	var found []runArtifactRetentionSite
+	var problems []string
+	fset := token.NewFileSet()
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		parsed, parseErr := parser.ParseFile(fset, file, nil, parser.SkipObjectResolution)
+		if parseErr != nil {
+			problems = append(problems, fmt.Sprintf("retention-floor: cannot parse %s: %v", file, parseErr))
+			continue
+		}
+		found = append(found, runArtifactRetentionDeclarations(fset, relSlash(root, file), parsed)...)
+	}
+	return found, problems
+}
+
+func runArtifactRetentionDeclarations(fset *token.FileSet, relative string, parsed *ast.File) []runArtifactRetentionSite {
+	var found []runArtifactRetentionSite
+	for _, decl := range parsed.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			value := spec.(*ast.ValueSpec)
+			for i, name := range value.Names {
+				if name.Name != runArtifactRetentionName || i >= len(value.Values) {
+					continue
+				}
+				found = append(found, runArtifactRetentionSite{
+					where: fmt.Sprintf("%s:%d", relative, fset.Position(name.Pos()).Line),
+					value: value.Values[i],
+				})
+			}
+		}
+	}
+	return found
 }
 
 func constantDuration(expr ast.Expr) (time.Duration, bool) {

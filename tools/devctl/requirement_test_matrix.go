@@ -94,6 +94,7 @@ func requirementTestMatrixProblems(root string) []string {
 		return []string{fmt.Sprintf("requirement-test-matrix: %s names no MVP requirement; this check has lost its subject", requirementSpecPath)}
 	}
 	paths, corpus := testCorpus(root)
+	evidence := requirementMatrixEvidence{required: required, postMVP: postMVP, paths: paths, corpus: corpus}
 
 	var problems []string
 	listed := map[string]int{}
@@ -102,49 +103,63 @@ func requirementTestMatrixProblems(root string) []string {
 		if row == nil {
 			continue
 		}
-		id, status := row[1], strings.TrimSpace(row[2])
-		tests, gap := strings.TrimSpace(row[3]), strings.TrimSpace(row[4])
-		at := fmt.Sprintf("%s:%d", requirementMatrixPath, number+1)
-		listed[id]++
+		listed[row[1]]++
+		problems = append(problems, evidence.rowProblems(fmt.Sprintf("%s:%d", requirementMatrixPath, number+1), row)...)
+	}
+	return append(problems, matrixCoverageProblems(required, listed)...)
+}
 
-		switch {
-		case postMVP[id]:
-			problems = append(problems, fmt.Sprintf(
-				"requirement-test-matrix: %s lists %s, which %s marks 後 MVP; this table is the MVP-required set", at, id, requirementSpecPath))
-		case !required[id]:
-			problems = append(problems, fmt.Sprintf(
-				"requirement-test-matrix: %s lists %s, which is not a requirement heading in %s", at, id, requirementSpecPath))
-		}
-		if !matrixStatuses[status] {
-			problems = append(problems, fmt.Sprintf(
-				"requirement-test-matrix: %s gives %s the status %q, which is not one of the five the table declares", at, id, status))
-		}
+type requirementMatrixEvidence struct {
+	required, postMVP, paths map[string]bool
+	corpus                   string
+}
 
-		named := matrixQuoted.FindAllStringSubmatch(tests, -1)
-		if status == "有測試" {
-			if len(named) == 0 {
-				problems = append(problems, fmt.Sprintf(
-					"requirement-test-matrix: %s calls %s 有測試 but names no test", at, id))
-			}
-			if gap != "" {
-				problems = append(problems, fmt.Sprintf(
-					"requirement-test-matrix: %s calls %s 有測試 yet states a gap; a requirement with a gap is 部分 or one of the three 待/未 states", at, id))
-			}
-		} else if gap == "" {
-			problems = append(problems, fmt.Sprintf(
-				"requirement-test-matrix: %s gives %s the status %q without saying what is missing", at, id, status))
-		}
+func (e requirementMatrixEvidence) rowProblems(at string, row []string) []string {
+	var problems []string
+	id, status := row[1], strings.TrimSpace(row[2])
+	tests, gap := strings.TrimSpace(row[3]), strings.TrimSpace(row[4])
 
-		for _, quoted := range named {
-			name := quoted[1]
-			if paths[name] || strings.Contains(corpus, name) {
-				continue
-			}
-			problems = append(problems, fmt.Sprintf(
-				"requirement-test-matrix: %s names %q for %s, but no test file contains it and no such file exists", at, name, id))
-		}
+	switch {
+	case e.postMVP[id]:
+		problems = append(problems, fmt.Sprintf(
+			"requirement-test-matrix: %s lists %s, which %s marks 後 MVP; this table is the MVP-required set", at, id, requirementSpecPath))
+	case !e.required[id]:
+		problems = append(problems, fmt.Sprintf(
+			"requirement-test-matrix: %s lists %s, which is not a requirement heading in %s", at, id, requirementSpecPath))
+	}
+	if !matrixStatuses[status] {
+		problems = append(problems, fmt.Sprintf(
+			"requirement-test-matrix: %s gives %s the status %q, which is not one of the five the table declares", at, id, status))
 	}
 
+	named := matrixQuoted.FindAllStringSubmatch(tests, -1)
+	if status == "有測試" {
+		if len(named) == 0 {
+			problems = append(problems, fmt.Sprintf(
+				"requirement-test-matrix: %s calls %s 有測試 but names no test", at, id))
+		}
+		if gap != "" {
+			problems = append(problems, fmt.Sprintf(
+				"requirement-test-matrix: %s calls %s 有測試 yet states a gap; a requirement with a gap is 部分 or one of the three 待/未 states", at, id))
+		}
+	} else if gap == "" {
+		problems = append(problems, fmt.Sprintf(
+			"requirement-test-matrix: %s gives %s the status %q without saying what is missing", at, id, status))
+	}
+
+	for _, quoted := range named {
+		name := quoted[1]
+		if e.paths[name] || strings.Contains(e.corpus, name) {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf(
+			"requirement-test-matrix: %s names %q for %s, but no test file contains it and no such file exists", at, name, id))
+	}
+	return problems
+}
+
+func matrixCoverageProblems(required map[string]bool, listed map[string]int) []string {
+	var problems []string
 	missing := make([]string, 0, len(required))
 	for id := range required {
 		if listed[id] == 0 {

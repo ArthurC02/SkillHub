@@ -144,61 +144,9 @@ func trackedFiles(root string) map[string]bool {
 }
 
 func docIdentifierProblems(root string) []string {
-	declared := map[string]bool{}
-	word := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
-	skip := map[string]bool{".git": true, "node_modules": true, ".venv": true, ".devctl": true, "dist": true, "__pycache__": true}
-	tracked := trackedFiles(root)
-
-	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			if skip[d.Name()] {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !codeExtensions[strings.ToLower(filepath.Ext(path))] {
-			return nil
-		}
-
-		if filepath.Base(path) == "doc_identifiers.go" {
-			return nil
-		}
-		if tracked != nil {
-			relative, err := filepath.Rel(root, path)
-			if err != nil || !tracked[filepath.ToSlash(relative)] {
-				return nil
-			}
-		}
-		body, err := os.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-		for _, w := range word.FindAllString(string(body), -1) {
-			declared[w] = true
-		}
-		return nil
-	})
-
-	missing := map[string][]string{}
+	declared := declaredCodeWords(root)
 	scope, walkProblems := docIdentifierFiles(root)
-	for _, rel := range scope {
-		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
-		if err != nil {
-			continue
-		}
-		for _, m := range docIdentifierPattern.FindAllStringSubmatch(string(body), -1) {
-			name := m[1]
-			if declared[name] || allowedDocWords[name] != "" {
-				continue
-			}
-			if !contains(missing[name], rel) {
-				missing[name] = append(missing[name], rel)
-			}
-		}
-	}
+	missing := undeclaredDocIdentifiers(root, scope, declared)
 
 	names := make([]string, 0, len(missing))
 	for n := range missing {
@@ -214,6 +162,71 @@ func docIdentifierProblems(root string) []string {
 			n, strings.Join(missing[n], ", ")))
 	}
 	return problems
+}
+
+func declaredCodeWords(root string) map[string]bool {
+	declared := map[string]bool{}
+	word := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
+	skip := map[string]bool{".git": true, "node_modules": true, ".venv": true, ".devctl": true, "dist": true, "__pycache__": true}
+	tracked := trackedFiles(root)
+
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if skip[d.Name()] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !declaresDocIdentifiers(root, path, tracked) {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		for _, w := range word.FindAllString(string(body), -1) {
+			declared[w] = true
+		}
+		return nil
+	})
+	return declared
+}
+
+func declaresDocIdentifiers(root, path string, tracked map[string]bool) bool {
+	if !codeExtensions[strings.ToLower(filepath.Ext(path))] {
+		return false
+	}
+	if filepath.Base(path) == "doc_identifiers.go" {
+		return false
+	}
+	if tracked == nil {
+		return true
+	}
+	relative, err := filepath.Rel(root, path)
+	return err == nil && tracked[filepath.ToSlash(relative)]
+}
+
+func undeclaredDocIdentifiers(root string, scope []string, declared map[string]bool) map[string][]string {
+	missing := map[string][]string{}
+	for _, rel := range scope {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		for _, m := range docIdentifierPattern.FindAllStringSubmatch(string(body), -1) {
+			name := m[1]
+			if declared[name] || allowedDocWords[name] != "" {
+				continue
+			}
+			if !contains(missing[name], rel) {
+				missing[name] = append(missing[name], rel)
+			}
+		}
+	}
+	return missing
 }
 
 func contains(xs []string, x string) bool {

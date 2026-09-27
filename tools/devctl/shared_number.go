@@ -100,48 +100,20 @@ func sharedNumberScan(root string) (map[string][]sharedNumberSite, []string) {
 			if relErr != nil {
 				rel = path
 			}
-			for _, skip := range sharedNumberSkip {
-				if strings.Contains(string(filepath.Separator)+rel+string(filepath.Separator), skip) {
-					if d.IsDir() {
-						return filepath.SkipDir
-					}
-					return nil
+			if sharedNumberSkipped(rel) {
+				if d.IsDir() {
+					return filepath.SkipDir
 				}
-			}
-			if d.IsDir() {
 				return nil
 			}
-
-			if sharedNumberOwnTest(rel) {
-				return nil
-			}
-			switch filepath.Ext(path) {
-			case ".go", ".py", ".yaml", ".yml", ".sql", ".ts", ".tsx", ".mjs":
-			default:
+			if d.IsDir() || !sharedNumberScannedFile(path, rel) {
 				return nil
 			}
 			data, readErr := os.ReadFile(path)
 			if readErr != nil {
 				return nil
 			}
-			for i, line := range strings.Split(string(data), "\n") {
-				m := sharedNumberMarker.FindStringSubmatchIndex(line)
-				if m == nil {
-					continue
-				}
-				name := line[m[2]:m[3]]
-				before := line[:m[0]]
-				value := trailingIntPattern.FindStringSubmatch(before)
-				if value == nil {
-					problems = append(problems, fmt.Sprintf(
-						"%s:%d: one-number: %s marks a line with no number on it", rel, i+1, name))
-					continue
-				}
-				found[name] = append(found[name], sharedNumberSite{
-					file: rel, line: i + 1,
-					value: strings.ReplaceAll(value[1], "_", ""),
-				})
-			}
+			problems = append(problems, collectSharedNumbers(found, rel, string(data))...)
 			return nil
 		})
 		if err != nil {
@@ -149,6 +121,49 @@ func sharedNumberScan(root string) (map[string][]sharedNumberSite, []string) {
 		}
 	}
 	return found, problems
+}
+
+func sharedNumberSkipped(rel string) bool {
+	for _, skip := range sharedNumberSkip {
+		if strings.Contains(string(filepath.Separator)+rel+string(filepath.Separator), skip) {
+			return true
+		}
+	}
+	return false
+}
+
+func sharedNumberScannedFile(path, rel string) bool {
+	if sharedNumberOwnTest(rel) {
+		return false
+	}
+	switch filepath.Ext(path) {
+	case ".go", ".py", ".yaml", ".yml", ".sql", ".ts", ".tsx", ".mjs":
+		return true
+	}
+	return false
+}
+
+func collectSharedNumbers(found map[string][]sharedNumberSite, rel, text string) []string {
+	var problems []string
+	for i, line := range strings.Split(text, "\n") {
+		m := sharedNumberMarker.FindStringSubmatchIndex(line)
+		if m == nil {
+			continue
+		}
+		name := line[m[2]:m[3]]
+		before := line[:m[0]]
+		value := trailingIntPattern.FindStringSubmatch(before)
+		if value == nil {
+			problems = append(problems, fmt.Sprintf(
+				"%s:%d: one-number: %s marks a line with no number on it", rel, i+1, name))
+			continue
+		}
+		found[name] = append(found[name], sharedNumberSite{
+			file: rel, line: i + 1,
+			value: strings.ReplaceAll(value[1], "_", ""),
+		})
+	}
+	return problems
 }
 
 func sharedNumberComparison(found map[string][]sharedNumberSite, roster []string) []string {

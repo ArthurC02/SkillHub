@@ -48,8 +48,33 @@ func adrCitationProblems(root string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("adr-citations: git ls-files: %v", err)}
 	}
+	files := existingListedFiles(root, string(listed))
+	adrs, problems := adrFilesByNumber(files)
+	if len(adrs) == 0 {
+		return append(problems, fmt.Sprintf("adr-citations: %s holds no ADR, so every rule below would pass on nothing", adrDir))
+	}
+
+	index, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(adrIndex)))
+	if err != nil {
+		return append(problems, fmt.Sprintf("adr-citations: %v", err))
+	}
+	problems = append(problems, adrIndexProblems(root, string(index), adrs)...)
+	anchors := markdownAnchors(string(index))
+
+	for _, relative := range files {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+		if err != nil {
+			continue
+		}
+		problems = append(problems, adrCitationFileProblems(relative, string(body), adrs, anchors)...)
+	}
+	sort.Strings(problems)
+	return problems
+}
+
+func existingListedFiles(root, listed string) []string {
 	var files []string
-	for _, relative := range strings.Split(strings.TrimSpace(string(listed)), "\n") {
+	for _, relative := range strings.Split(strings.TrimSpace(listed), "\n") {
 		if relative == "" {
 			continue
 		}
@@ -57,7 +82,10 @@ func adrCitationProblems(root string) []string {
 			files = append(files, relative)
 		}
 	}
+	return files
+}
 
+func adrFilesByNumber(files []string) (map[string]string, []string) {
 	adrs := map[string]string{}
 	var problems []string
 	for _, relative := range files {
@@ -77,56 +105,48 @@ func adrCitationProblems(root string) []string {
 		}
 		adrs["ADR-"+m[1]] = relative
 	}
-	if len(adrs) == 0 {
-		return append(problems, fmt.Sprintf("adr-citations: %s holds no ADR, so every rule below would pass on nothing", adrDir))
-	}
+	return adrs, problems
+}
 
-	index, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(adrIndex)))
-	if err != nil {
-		return append(problems, fmt.Sprintf("adr-citations: %v", err))
+func adrCitationFileProblems(relative, text string, adrs map[string]string, anchors map[string]bool) []string {
+	var problems []string
+	insideADRs := strings.HasPrefix(relative, adrDir+"/")
+	exempt := adrCitationExempt(relative)
+	markdown := strings.HasSuffix(relative, ".md")
+	for i, line := range strings.Split(text, "\n") {
+		for _, number := range adrNumberPattern.FindAllString(line, -1) {
+			switch {
+			case insideADRs && adrs[number] == "":
+				problems = append(problems, fmt.Sprintf(
+					"adr-citations: %s:%d cites %s, and no such ADR exists in %s", relative, i+1, number, adrDir))
+			case !insideADRs && !exempt:
+				problems = append(problems, fmt.Sprintf(
+					"adr-citations: %s:%d names %s. Only the ADRs and their index carry ADR numbers: write the rule "+
+						"itself, and where the reason matters link the topic in %s (e.g. README.md#<topic>)",
+					relative, i+1, number, adrIndex))
+			}
+		}
+		if markdown {
+			problems = append(problems, adrAnchorProblems(relative, i+1, line, anchors)...)
+		}
 	}
-	problems = append(problems, adrIndexProblems(root, string(index), adrs)...)
-	anchors := markdownAnchors(string(index))
+	return problems
+}
 
-	for _, relative := range files {
-		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+func adrAnchorProblems(relative string, lineNo int, line string, anchors map[string]bool) []string {
+	var problems []string
+	for _, m := range adrAnchorLink.FindAllStringSubmatch(line, -1) {
+		target := path.Clean(path.Join(path.Dir(relative), m[1]))
+		anchor, err := url.PathUnescape(m[2])
 		if err != nil {
-			continue
+			anchor = m[2]
 		}
-		text := string(body)
-		insideADRs := strings.HasPrefix(relative, adrDir+"/")
-		exempt := adrCitationExempt(relative)
-		for i, line := range strings.Split(text, "\n") {
-			for _, number := range adrNumberPattern.FindAllString(line, -1) {
-				switch {
-				case insideADRs && adrs[number] == "":
-					problems = append(problems, fmt.Sprintf(
-						"adr-citations: %s:%d cites %s, and no such ADR exists in %s", relative, i+1, number, adrDir))
-				case !insideADRs && !exempt:
-					problems = append(problems, fmt.Sprintf(
-						"adr-citations: %s:%d names %s. Only the ADRs and their index carry ADR numbers: write the rule "+
-							"itself, and where the reason matters link the topic in %s (e.g. README.md#<topic>)",
-						relative, i+1, number, adrIndex))
-				}
-			}
-			if !strings.HasSuffix(relative, ".md") {
-				continue
-			}
-			for _, m := range adrAnchorLink.FindAllStringSubmatch(line, -1) {
-				target := path.Clean(path.Join(path.Dir(relative), m[1]))
-				anchor, err := url.PathUnescape(m[2])
-				if err != nil {
-					anchor = m[2]
-				}
-				if target == adrIndex && !anchors[anchor] {
-					problems = append(problems, fmt.Sprintf(
-						"adr-citations: %s:%d links %s#%s, and the index has no heading with that anchor; "+
-							"link one of its topic headings", relative, i+1, adrIndex, anchor))
-				}
-			}
+		if target == adrIndex && !anchors[anchor] {
+			problems = append(problems, fmt.Sprintf(
+				"adr-citations: %s:%d links %s#%s, and the index has no heading with that anchor; "+
+					"link one of its topic headings", relative, lineNo, adrIndex, anchor))
 		}
 	}
-	sort.Strings(problems)
 	return problems
 }
 

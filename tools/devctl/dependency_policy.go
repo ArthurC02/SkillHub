@@ -36,80 +36,93 @@ func dependencyPolicyProblems(root string) []string {
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
 		return string(data), err
 	}
-	var problems []string
-	updated := map[string]bool{}
-	composeFiles, ciFiles := map[string]string{}, map[string]string{}
-	var preflights strings.Builder
+	survey := &dependencyFileSurvey{
+		read:         read,
+		updated:      map[string]bool{},
+		composeFiles: map[string]string{},
+		ciFiles:      map[string]string{},
+	}
 	for _, file := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		dir, base := path.Dir(file), path.Base(file)
-		switch {
-		case base == "package-lock.json":
-			updated[dir] = true
-			npmrc, err := read(path.Join(dir, ".npmrc"))
-			if err != nil || !npmrcIgnoresScripts(npmrc) {
-				problems = append(problems, fmt.Sprintf("%s/.npmrc must set ignore-scripts=true", dir))
-			}
-		case base == "uv.lock":
-			updated[dir] = true
-			pyproject, err := read(path.Join(dir, "pyproject.toml"))
-			if err != nil || !uvCooldown.MatchString(pyproject) {
-				problems = append(problems, fmt.Sprintf("%s/pyproject.toml must set [tool.uv] exclude-newer", dir))
-			}
-		case base == "go.mod":
-			updated[dir] = true
-		case strings.HasPrefix(base, "Dockerfile"):
-			updated[dir] = true
-			content, err := read(file)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			problems = append(problems, dockerfilePinProblems(file, content)...)
-		case strings.HasPrefix(file, "infra/compose/") && isYAML(base):
-			updated[dir] = true
-			content, err := read(file)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			composeFiles[file] = content
-		case strings.HasPrefix(file, "infra/deploy/") && strings.HasSuffix(file, deployPreflightSuffix):
-			content, err := read(file)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			preflights.WriteString(content)
-		case (strings.HasPrefix(file, ".github/workflows/") || strings.HasPrefix(file, ".github/actions/")) && isYAML(base):
-			if strings.HasPrefix(file, ".github/actions/") {
-				updated[dir] = true
-			}
-			content, err := read(file)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			ciFiles[file] = content
-			problems = append(problems, workflowPinProblems(file, content)...)
-		case strings.HasPrefix(file, "tools/ci/") && strings.HasSuffix(base, ".sh"):
-			content, err := read(file)
-			if err != nil {
-				problems = append(problems, err.Error())
-				continue
-			}
-			ciFiles[file] = content
-		}
+		survey.record(file)
 	}
-	for _, file := range sortedKeys(composeFiles) {
-		problems = append(problems, deployComposeImageProblems(file, composeFiles[file], preflights.String())...)
+	problems := survey.problems
+	for _, file := range sortedKeys(survey.composeFiles) {
+		problems = append(problems, deployComposeImageProblems(file, survey.composeFiles[file], survey.preflights.String())...)
 	}
-	for dir := range updated {
+	for dir := range survey.updated {
 		if !dependabotCovers(string(dependabot), dir) {
 			problems = append(problems, fmt.Sprintf(".github/dependabot.yml does not list /%s", dir))
 		}
 	}
 	problems = append(problems, versionAgreementProblems(versionsThatMoveTogether, read)...)
-	return append(problems, composeAndWorkflowImageDrift(composeFiles, ciFiles)...)
+	return append(problems, composeAndWorkflowImageDrift(survey.composeFiles, survey.ciFiles)...)
+}
+
+type dependencyFileSurvey struct {
+	read         func(string) (string, error)
+	problems     []string
+	updated      map[string]bool
+	composeFiles map[string]string
+	ciFiles      map[string]string
+	preflights   strings.Builder
+}
+
+func (s *dependencyFileSurvey) record(file string) {
+	dir, base := path.Dir(file), path.Base(file)
+	switch {
+	case base == "package-lock.json":
+		s.updated[dir] = true
+		s.require(path.Join(dir, ".npmrc"), npmrcIgnoresScripts,
+			fmt.Sprintf("%s/.npmrc must set ignore-scripts=true", dir))
+	case base == "uv.lock":
+		s.updated[dir] = true
+		s.require(path.Join(dir, "pyproject.toml"), uvCooldown.MatchString,
+			fmt.Sprintf("%s/pyproject.toml must set [tool.uv] exclude-newer", dir))
+	case base == "go.mod":
+		s.updated[dir] = true
+	case strings.HasPrefix(base, "Dockerfile"):
+		s.updated[dir] = true
+		if content, ok := s.readTracked(file); ok {
+			s.problems = append(s.problems, dockerfilePinProblems(file, content)...)
+		}
+	case strings.HasPrefix(file, "infra/compose/") && isYAML(base):
+		s.updated[dir] = true
+		if content, ok := s.readTracked(file); ok {
+			s.composeFiles[file] = content
+		}
+	case strings.HasPrefix(file, "infra/deploy/") && strings.HasSuffix(file, deployPreflightSuffix):
+		if content, ok := s.readTracked(file); ok {
+			s.preflights.WriteString(content)
+		}
+	case (strings.HasPrefix(file, ".github/workflows/") || strings.HasPrefix(file, ".github/actions/")) && isYAML(base):
+		if strings.HasPrefix(file, ".github/actions/") {
+			s.updated[dir] = true
+		}
+		if content, ok := s.readTracked(file); ok {
+			s.ciFiles[file] = content
+			s.problems = append(s.problems, workflowPinProblems(file, content)...)
+		}
+	case strings.HasPrefix(file, "tools/ci/") && strings.HasSuffix(base, ".sh"):
+		if content, ok := s.readTracked(file); ok {
+			s.ciFiles[file] = content
+		}
+	}
+}
+
+func (s *dependencyFileSurvey) require(file string, holds func(string) bool, problem string) {
+	content, err := s.read(file)
+	if err != nil || !holds(content) {
+		s.problems = append(s.problems, problem)
+	}
+}
+
+func (s *dependencyFileSurvey) readTracked(file string) (string, bool) {
+	content, err := s.read(file)
+	if err != nil {
+		s.problems = append(s.problems, err.Error())
+		return "", false
+	}
+	return content, true
 }
 
 func isYAML(base string) bool {

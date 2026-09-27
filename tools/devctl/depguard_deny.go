@@ -44,68 +44,22 @@ func depguardDenyProblems(root string) []string {
 			"depguard-deny: %s holds no reviewed dependency policy; this check has lost its subject", dependencyPoliciesFile))
 	}
 
-	universe := map[string]bool{}
-	for id, identity := range declared {
-		if identity.Kind == architectureCore || identity.Kind == architectureSupporting {
-			universe[id] = true
-		}
-	}
-	for _, id := range alwaysDenied {
-		if !knownBoundaryID(declared, id) {
-			continue
-		}
-		universe[id] = true
-	}
-
 	rules := depguardRules(string(lint))
 	problems = append(problems, depguardSelectorProblems(rules, declared, lintPath)...)
-	checked := 0
-	pathIDs := map[string]string{}
-	for id, identity := range declared {
-		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
+	audit := depguardDenyAudit{
+		lintPath:  lintPath,
+		declared:  declared,
+		permitted: permitted,
+		universe:  boundedContextsAndAlwaysDenied(declared),
+		pathIDs:   contextIDsByPath(declared),
 	}
+	checked := 0
 	for _, rule := range sortedKeys(rules) {
-		files, deny := rules[rule]["files"], rules[rule]["deny"]
-
-		self, ok := soleContextOfRule(files, declared)
-		if !ok || (declared[self].Kind != architectureCore && declared[self].Kind != architectureSupporting) {
-			continue
+		guarded, ruleProblems := audit.ruleProblems(rule, rules[rule]["files"], rules[rule]["deny"])
+		if guarded {
+			checked++
 		}
-		checked++
-
-		denied := map[string]bool{}
-		for _, pkg := range deny {
-			path, found := strings.CutPrefix(pkg, denyPackagePrefix)
-			if !found {
-				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies %q, which is not an apps/platform/internal package", lintPath, rule, pkg))
-				continue
-			}
-			id, known := pathIDs[path]
-			if !known {
-				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", lintPath, rule, path, identityHomes))
-				continue
-			}
-			denied[id] = true
-		}
-
-		for _, target := range sortedKeys(universe) {
-			switch {
-			case target == self:
-			case denied[target] && permitted[self][target]:
-				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q denies %q, but %s keeps `%s` → `%s`; "+
-						"the two sides disagree about that collaboration",
-					lintPath, rule, target, dependencyPoliciesFile, self, target))
-			case !denied[target] && !permitted[self][target]:
-				problems = append(problems, fmt.Sprintf(
-					"depguard-deny: %s rule %q does not deny %q and %s does not permit `%s` → `%s`; "+
-						"a deletion from a deny list IS a new permission (\"legal but unlisted = denied\"), so add the "+
-						"appendix row or restore the deny entry",
-					lintPath, rule, target, dependencyPoliciesFile, self, target))
-			}
-		}
+		problems = append(problems, ruleProblems...)
 	}
 	if checked == 0 {
 		problems = append(problems, fmt.Sprintf(
@@ -114,6 +68,102 @@ func depguardDenyProblems(root string) []string {
 	}
 	problems = append(problems, specialDepguardProblems(rules, declared, lintPath)...)
 	sort.Strings(problems)
+	return problems
+}
+
+func boundedContextsAndAlwaysDenied(declared map[string]packageIdentity) map[string]bool {
+	universe := map[string]bool{}
+	for id, identity := range declared {
+		if isBoundedContextKind(identity.Kind) {
+			universe[id] = true
+		}
+	}
+	for _, id := range alwaysDenied {
+		if knownBoundaryID(declared, id) {
+			universe[id] = true
+		}
+	}
+	return universe
+}
+
+func contextIDsByPath(declared map[string]packageIdentity) map[string]string {
+	pathIDs := map[string]string{}
+	for id, identity := range declared {
+		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
+	}
+	return pathIDs
+}
+
+type depguardDenyAudit struct {
+	lintPath  string
+	declared  map[string]packageIdentity
+	permitted map[string]map[string]bool
+	universe  map[string]bool
+	pathIDs   map[string]string
+}
+
+func (a depguardDenyAudit) ruleProblems(rule string, files, deny []string) (bool, []string) {
+	self, ok := soleContextOfRule(files, a.declared)
+	if !ok || !isBoundedContextKind(a.declared[self].Kind) {
+		return false, nil
+	}
+	denied, problems := a.deniedContexts(rule, deny)
+	for _, target := range sortedKeys(a.universe) {
+		switch {
+		case target == self:
+		case denied[target] && a.permitted[self][target]:
+			problems = append(problems, fmt.Sprintf(
+				"depguard-deny: %s rule %q denies %q, but %s keeps `%s` → `%s`; "+
+					"the two sides disagree about that collaboration",
+				a.lintPath, rule, target, dependencyPoliciesFile, self, target))
+		case !denied[target] && !a.permitted[self][target]:
+			problems = append(problems, fmt.Sprintf(
+				"depguard-deny: %s rule %q does not deny %q and %s does not permit `%s` → `%s`; "+
+					"a deletion from a deny list IS a new permission (\"legal but unlisted = denied\"), so add the "+
+					"appendix row or restore the deny entry",
+				a.lintPath, rule, target, dependencyPoliciesFile, self, target))
+		}
+	}
+	return true, problems
+}
+
+func (a depguardDenyAudit) deniedContexts(rule string, deny []string) (map[string]bool, []string) {
+	denied := map[string]bool{}
+	var problems []string
+	for _, pkg := range deny {
+		path, found := strings.CutPrefix(pkg, denyPackagePrefix)
+		if !found {
+			problems = append(problems, fmt.Sprintf(
+				"depguard-deny: %s rule %q denies %q, which is not an apps/platform/internal package", a.lintPath, rule, pkg))
+			continue
+		}
+		id, known := a.pathIDs[path]
+		if !known {
+			problems = append(problems, fmt.Sprintf(
+				"depguard-deny: %s rule %q denies internal/%s, which is not an exact %s package path", a.lintPath, rule, path, identityHomes))
+			continue
+		}
+		denied[id] = true
+	}
+	return denied, problems
+}
+
+func isBoundedContextKind(kind architectureKind) bool {
+	return kind == architectureCore || kind == architectureSupporting
+}
+
+func depguardMembershipProblems(lintPath, rule string, want, actual map[string]bool, missing, extra string) []string {
+	var problems []string
+	for _, id := range sortedKeys(want) {
+		if !actual[id] {
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not %s %q", lintPath, rule, missing, id))
+		}
+	}
+	for _, id := range sortedKeys(actual) {
+		if !want[id] {
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly %s %q", lintPath, rule, extra, id))
+		}
+	}
 	return problems
 }
 
@@ -162,27 +212,27 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 			}
 			actual[id] = true
 		}
-		for _, id := range sortedKeys(expected[rule]) {
-			if !actual[id] {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not deny %q", lintPath, rule, id))
-			}
-		}
-		for _, id := range sortedKeys(actual) {
-			if !expected[rule][id] {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly denies %q", lintPath, rule, id))
-			}
-		}
+		problems = append(problems, depguardMembershipProblems(lintPath, rule, expected[rule], actual, "deny", "denies")...)
 	}
 	return problems
 }
 
 func depguardSelectorProblems(rules map[string]map[string][]string, declared map[string]packageIdentity, lintPath string) []string {
+	pathIDs := contextIDsByPath(declared)
+	var problems []string
+	for rule, want := range expectedDepguardSelections(declared) {
+		actual, selectorProblems := selectedContexts(lintPath, rule, rules[rule]["files"], pathIDs)
+		problems = append(problems, selectorProblems...)
+		problems = append(problems, depguardMembershipProblems(lintPath, rule, want, actual, "select", "selects")...)
+	}
+	return problems
+}
+
+func expectedDepguardSelections(declared map[string]packageIdentity) map[string]map[string]bool {
 	expected := map[string]map[string]bool{}
-	pathIDs := map[string]string{}
 	for id, identity := range declared {
-		pathIDs[strings.TrimSuffix(identity.Path, "/*")] = id
 		switch {
-		case identity.Kind == architectureCore || identity.Kind == architectureSupporting:
+		case isBoundedContextKind(identity.Kind):
 			expected[id] = map[string]bool{id: true}
 		case identity.Kind == architectureSharedKernel:
 			if expected["shared-kernel"] == nil {
@@ -198,38 +248,29 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 			expected["objreconcile"] = map[string]bool{id: true}
 		}
 	}
+	return expected
+}
 
+func selectedContexts(lintPath, rule string, selectors []string, pathIDs map[string]string) (map[string]bool, []string) {
+	actual := map[string]bool{}
 	var problems []string
-	for rule, want := range expected {
-		actual := map[string]bool{}
-		for _, selector := range rules[rule]["files"] {
-			if selector == "!$test" {
-				continue
-			}
-			match := depguardSelectorPattern.FindStringSubmatch(selector)
-			if match == nil {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q has unrecognised files selector %q", lintPath, rule, selector))
-				continue
-			}
-			id, known := pathIDs[match[1]]
-			if !known {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact %s package path", lintPath, rule, match[1], identityHomes))
-				continue
-			}
-			actual[id] = true
+	for _, selector := range selectors {
+		if selector == "!$test" {
+			continue
 		}
-		for _, id := range sortedKeys(want) {
-			if !actual[id] {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q does not select %q", lintPath, rule, id))
-			}
+		match := depguardSelectorPattern.FindStringSubmatch(selector)
+		if match == nil {
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q has unrecognised files selector %q", lintPath, rule, selector))
+			continue
 		}
-		for _, id := range sortedKeys(actual) {
-			if !want[id] {
-				problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q unexpectedly selects %q", lintPath, rule, id))
-			}
+		id, known := pathIDs[match[1]]
+		if !known {
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q selector internal/%s is not an exact %s package path", lintPath, rule, match[1], identityHomes))
+			continue
 		}
+		actual[id] = true
 	}
-	return problems
+	return actual, problems
 }
 
 func copySet(source map[string]bool) map[string]bool {

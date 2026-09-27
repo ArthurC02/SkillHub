@@ -34,21 +34,9 @@ type generationOutput struct {
 }
 
 func generate(root string, args []string, out io.Writer) (err error) {
-	check := false
-	scope := "all"
-	for _, arg := range args {
-		switch arg {
-		case "--check":
-			check = true
-		case "--scope=sql":
-			scope = "sql"
-		case "--scope=openapi":
-			scope = "openapi"
-		case "--scope=all":
-			scope = "all"
-		default:
-			return fmt.Errorf("unknown gen option %q", arg)
-		}
+	check, scope, err := parseGenerateArgs(args)
+	if err != nil {
+		return err
 	}
 
 	release, err := acquireGenerationLock(root, time.Now())
@@ -74,15 +62,54 @@ func generate(root string, args []string, out io.Writer) (err error) {
 		_ = os.RemoveAll(scratch)
 	}()
 
+	outputs, err := generateScope(root, scratch, scope, toolchain, out)
+	if err != nil {
+		return err
+	}
+	pending, err := driftedOutputs(outputs, out)
+	if err != nil {
+		return err
+	}
+	if check && len(pending) > 0 {
+		for _, output := range pending {
+			for _, path := range output.drift {
+				fmt.Fprintln(out, "DRIFT", output.label, filepath.ToSlash(path))
+			}
+		}
+		return errors.New("generated output is stale; run task gen and commit the result")
+	}
+	return installDriftedOutputs(pending, out)
+}
+
+func parseGenerateArgs(args []string) (check bool, scope string, err error) {
+	scope = "all"
+	for _, arg := range args {
+		switch arg {
+		case "--check":
+			check = true
+		case "--scope=sql":
+			scope = "sql"
+		case "--scope=openapi":
+			scope = "openapi"
+		case "--scope=all":
+			scope = "all"
+		default:
+			return false, "", fmt.Errorf("unknown gen option %q", arg)
+		}
+	}
+	return check, scope, nil
+}
+
+func generateScope(root, scratch, scope string, toolchain map[string]string, out io.Writer) ([]generationOutput, error) {
 	var outputs []generationOutput
 	images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if scope == "all" || scope == "sql" {
 		sqlOut, err := generateSQL(root, scratch, images["sqlc"], out)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		outputs = append(outputs, generationOutput{
 			label:  "sqlc",
@@ -93,35 +120,35 @@ func generate(root string, args []string, out io.Writer) (err error) {
 	if scope == "all" || scope == "openapi" {
 		openAPIOutputs, err := generateOpenAPI(root, scratch, toolchain, images, out)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		outputs = append(outputs, openAPIOutputs...)
 	}
+	return outputs, nil
+}
 
-	type pendingOutput struct {
-		generationOutput
-		drift []string
-	}
-	var pending []pendingOutput
+type driftedOutput struct {
+	generationOutput
+	drift []string
+}
+
+func driftedOutputs(outputs []generationOutput, out io.Writer) ([]driftedOutput, error) {
+	var pending []driftedOutput
 	for _, output := range outputs {
 		drift, err := compareTrees(output.source, output.target)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(drift) == 0 {
 			fmt.Fprintf(out, "%s: generated output is current\n", output.label)
 			continue
 		}
-		pending = append(pending, pendingOutput{generationOutput: output, drift: drift})
+		pending = append(pending, driftedOutput{generationOutput: output, drift: drift})
 	}
-	if check && len(pending) > 0 {
-		for _, output := range pending {
-			for _, path := range output.drift {
-				fmt.Fprintln(out, "DRIFT", output.label, filepath.ToSlash(path))
-			}
-		}
-		return errors.New("generated output is stale; run task gen and commit the result")
-	}
+	return pending, nil
+}
+
+func installDriftedOutputs(pending []driftedOutput, out io.Writer) error {
 	for _, output := range pending {
 		if err := atomicReplaceDir(output.source, output.target); err != nil {
 			return fmt.Errorf("replace %s output: %w", output.label, err)

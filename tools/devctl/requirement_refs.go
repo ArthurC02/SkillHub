@@ -82,29 +82,7 @@ func requirementRefProblems(root string) []string {
 	}
 	sort.Strings(ids)
 	for _, id := range ids {
-		at := headings[id]
-		if len(at) == 1 {
-			continue
-		}
-		shallowest := at[0].depth
-		for _, occurrence := range at[1:] {
-			if occurrence.depth < shallowest {
-				shallowest = occurrence.depth
-			}
-		}
-		var siblings []int
-		for _, occurrence := range at {
-			if occurrence.depth == shallowest {
-				siblings = append(siblings, occurrence.line)
-			}
-		}
-		if len(siblings) > 1 {
-			problems = append(problems, fmt.Sprintf(
-				"requirement-refs: %s declares %s in %d headings at the same depth (lines %v); a `02:%s` "+
-					"citation cannot say which one it means. One section owns an id; deeper sub-headings "+
-					"may repeat it (the SEC-010 shape), same-depth ones may not",
-				requirementSpec, id, len(siblings), siblings, id))
-		}
+		problems = append(problems, sameDepthHeadingProblems(id, headings[id])...)
 	}
 
 	citers, walkProblems := requirementCiterFiles(root)
@@ -117,20 +95,9 @@ func requirementRefProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf("requirement-refs: %v", err))
 			continue
 		}
-		for i, line := range strings.Split(string(data), "\n") {
-			for _, m := range requirementCitation.FindAllStringSubmatch(line, -1) {
-				citations++
-				if len(headings[m[1]]) > 0 {
-					continue
-				}
-				problems = append(problems, fmt.Sprintf(
-					"requirement-refs: %s:%d cites `02:%s`, and %s has no heading declaring %s. "+
-						"`02:<ID>` means \"the requirement with that heading in 02\"; if the number is "+
-						"defined somewhere else (an m0 proposal, an 03 work item, a line range), cite it "+
-						"the way that document is cited",
-					relative, i+1, m[1], requirementSpec, m[1]))
-			}
-		}
+		cited, citationProblems := unresolvedRequirementCitations(relative, string(data), headings)
+		citations += cited
+		problems = append(problems, citationProblems...)
 	}
 	if citations == 0 {
 		problems = append(problems, fmt.Sprintf(
@@ -141,6 +108,52 @@ func requirementRefProblems(root string) []string {
 	problems = append(problems, uncarriedRequirements(root, headings)...)
 	sort.Strings(problems)
 	return problems
+}
+
+func sameDepthHeadingProblems(id string, at []headingOccurrence) []string {
+	if len(at) == 1 {
+		return nil
+	}
+	shallowest := at[0].depth
+	for _, occurrence := range at[1:] {
+		if occurrence.depth < shallowest {
+			shallowest = occurrence.depth
+		}
+	}
+	var siblings []int
+	for _, occurrence := range at {
+		if occurrence.depth == shallowest {
+			siblings = append(siblings, occurrence.line)
+		}
+	}
+	if len(siblings) > 1 {
+		return []string{fmt.Sprintf(
+			"requirement-refs: %s declares %s in %d headings at the same depth (lines %v); a `02:%s` "+
+				"citation cannot say which one it means. One section owns an id; deeper sub-headings "+
+				"may repeat it (the SEC-010 shape), same-depth ones may not",
+			requirementSpec, id, len(siblings), siblings, id)}
+	}
+	return nil
+}
+
+func unresolvedRequirementCitations(relative, text string, headings map[string][]headingOccurrence) (int, []string) {
+	var citations int
+	var problems []string
+	for i, line := range strings.Split(text, "\n") {
+		for _, m := range requirementCitation.FindAllStringSubmatch(line, -1) {
+			citations++
+			if len(headings[m[1]]) > 0 {
+				continue
+			}
+			problems = append(problems, fmt.Sprintf(
+				"requirement-refs: %s:%d cites `02:%s`, and %s has no heading declaring %s. "+
+					"`02:<ID>` means \"the requirement with that heading in 02\"; if the number is "+
+					"defined somewhere else (an m0 proposal, an 03 work item, a line range), cite it "+
+					"the way that document is cited",
+				relative, i+1, m[1], requirementSpec, m[1]))
+		}
+	}
+	return citations, problems
 }
 
 var requirementsWithNoWorkItem = map[string]string{
