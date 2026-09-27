@@ -336,6 +336,53 @@ HASH_INPUT_NEGATIVE_CASES: list[tuple[str, dict]] = [
 ]
 
 
+def _profile_instances() -> tuple[list[tuple[str, dict]], int]:
+    instances = [
+        (f"profiles/{path.name}", json.loads(path.read_text(encoding="utf-8")))
+        for path in sorted(PROFILES_DIR.glob("*.json"))
+    ]
+    found = tuple(sorted(str(profile.get("id")) for _, profile in instances))
+    if found != PACKAGING_TARGETS:
+        print(f"FAIL  profiles/ declares {found}, expected {PACKAGING_TARGETS}")
+        return instances, 1
+    return instances, 0
+
+
+def _check_instances(validator: Draft202012Validator, instances: list[tuple[str, dict]]) -> int:
+    failures = 0
+    for label, instance in instances:
+        errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
+        if errors:
+            failures += 1
+            print(f"FAIL  example {label}")
+            for err in errors:
+                print(f"        /{'/'.join(map(str, err.path))}: {err.message}")
+        else:
+            print(f"ok    example {label}")
+    return failures
+
+
+def _check_counterexample(validator: Draft202012Validator, label: str, case: dict) -> int:
+    if validator.is_valid(case):
+        print(f"FAIL  counterexample accepted: {label}")
+        return 1
+    print(f"ok    counterexample rejected: {label}")
+    return 0
+
+
+def _check_hash_input(hash_schema: dict) -> tuple[int, int]:
+    """(examples checked, failures) for the manifest hash input sub-schema."""
+    hash_validator = Draft202012Validator(hash_schema)
+    examples = [
+        (f"manifestHashInput[{index}]", example)
+        for index, example in enumerate(hash_schema.get("examples", []))
+    ]
+    failures = _check_instances(hash_validator, examples)
+    for label, case in HASH_INPUT_NEGATIVE_CASES:
+        failures += _check_counterexample(hash_validator, label, case)
+    return len(examples), failures
+
+
 def main() -> int:
     failures = 0
     examples_total = 0
@@ -350,14 +397,8 @@ def main() -> int:
         validators[name] = validator
 
         if name == PROFILE:
-            instances = [
-                (f"profiles/{path.name}", json.loads(path.read_text(encoding="utf-8")))
-                for path in sorted(PROFILES_DIR.glob("*.json"))
-            ]
-            found = tuple(sorted(str(profile.get("id")) for _, profile in instances))
-            if found != PACKAGING_TARGETS:
-                failures += 1
-                print(f"FAIL  profiles/ declares {found}, expected {PACKAGING_TARGETS}")
+            instances, bad = _profile_instances()
+            failures += bad
         else:
             instances = [
                 (f"{name}[{index}]", example)
@@ -368,42 +409,15 @@ def main() -> int:
             print(f"FAIL  {name} has nothing to validate against")
             failures += 1
         examples_total += len(instances)
-        for label, instance in instances:
-            errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
-            if errors:
-                failures += 1
-                print(f"FAIL  example {label}")
-                for err in errors:
-                    print(f"        /{'/'.join(map(str, err.path))}: {err.message}")
-            else:
-                print(f"ok    example {label}")
+        failures += _check_instances(validator, instances)
 
         if name == MANIFEST:
-            hash_schema = schema["$defs"]["manifestHashInput"]
-            hash_validator = Draft202012Validator(hash_schema)
-            for index, example in enumerate(hash_schema.get("examples", [])):
-                examples_total += 1
-                errors = sorted(hash_validator.iter_errors(example), key=lambda e: e.path)
-                if errors:
-                    failures += 1
-                    print(f"FAIL  example manifestHashInput[{index}]")
-                    for err in errors:
-                        print(f"        /{'/'.join(map(str, err.path))}: {err.message}")
-                else:
-                    print(f"ok    example manifestHashInput[{index}]")
-            for label, case in HASH_INPUT_NEGATIVE_CASES:
-                if hash_validator.is_valid(case):
-                    failures += 1
-                    print(f"FAIL  counterexample accepted: {label}")
-                else:
-                    print(f"ok    counterexample rejected: {label}")
+            checked, bad = _check_hash_input(schema["$defs"]["manifestHashInput"])
+            examples_total += checked
+            failures += bad
 
     for schema_name, label, case in NEGATIVE_CASES:
-        if validators[schema_name].is_valid(case):
-            failures += 1
-            print(f"FAIL  counterexample accepted: {label}")
-        else:
-            print(f"ok    counterexample rejected: {label}")
+        failures += _check_counterexample(validators[schema_name], label, case)
 
     negatives = len(NEGATIVE_CASES) + len(HASH_INPUT_NEGATIVE_CASES)
     print(

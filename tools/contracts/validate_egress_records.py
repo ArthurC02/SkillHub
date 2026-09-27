@@ -55,21 +55,19 @@ NEGATIVE_CASES: list[tuple[str, dict]] = [
 ]
 
 
-def main() -> int:
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    Draft202012Validator.check_schema(schema)
-    validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
-
-    failures = 0
-    examples = schema["examples"]
+def _check_coverage(schema: dict, examples: list[dict]) -> int:
     kinds = {e["record"] for e in examples}
     missing = set(schema["properties"]["record"]["enum"]) - kinds
     decisions = {e.get("decision") for e in examples}
     missing |= set(schema["$defs"]["egress_flow"]["properties"]["decision"]["enum"]) - decisions
     if missing:
         print(f"FAIL  no example for: {', '.join(sorted(missing))}")
-        failures += 1
+        return 1
+    return 0
 
+
+def _check_examples(validator: Draft202012Validator, examples: list[dict]) -> int:
+    failures = 0
     for index, example in enumerate(examples):
         errors = sorted(validator.iter_errors(example), key=lambda e: e.path)
         if errors:
@@ -79,35 +77,55 @@ def main() -> int:
                 print(f"        /{'/'.join(map(str, err.path))}: {err.message}")
         else:
             print(f"ok    example {index} ({example['record']})")
+    return failures
+
+
+def _check_sample(validator: Draft202012Validator, path: pathlib.Path) -> int:
+    lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if not lines:
+        print(f"FAIL  sample {path.name} is empty")
+        return 1
+    bad = 0
+    for number, line in enumerate(lines, start=1):
+        instance = json.loads(line)
+        for err in sorted(validator.iter_errors(instance), key=lambda e: e.path):
+            bad += 1
+            pointer = "/".join(map(str, err.path))
+            print(f"FAIL  {path.name}:{number} /{pointer}: {err.message}")
+    if bad:
+        return 1
+    print(f"ok    sample {path.name} ({len(lines)} records)")
+    return 0
+
+
+def _check_counterexamples(validator: Draft202012Validator, cases: list[tuple[str, dict]]) -> int:
+    failures = 0
+    for label, case in cases:
+        if validator.is_valid(case):
+            failures += 1
+            print(f"FAIL  counterexample accepted: {label}")
+        else:
+            print(f"ok    counterexample rejected: {label}")
+    return failures
+
+
+def main() -> int:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+
+    examples = schema["examples"]
+    failures = _check_coverage(schema, examples)
+    failures += _check_examples(validator, examples)
 
     samples = sorted(SAMPLES_DIR.glob("*.jsonl")) if SAMPLES_DIR.is_dir() else []
     if not samples:
         print(f"FAIL  no recorded sample under {SAMPLES_DIR}")
         failures += 1
     for path in samples:
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        if not lines:
-            print(f"FAIL  sample {path.name} is empty")
-            failures += 1
-            continue
-        bad = 0
-        for number, line in enumerate(lines, start=1):
-            instance = json.loads(line)
-            for err in sorted(validator.iter_errors(instance), key=lambda e: e.path):
-                bad += 1
-                pointer = "/".join(map(str, err.path))
-                print(f"FAIL  {path.name}:{number} /{pointer}: {err.message}")
-        if bad:
-            failures += 1
-        else:
-            print(f"ok    sample {path.name} ({len(lines)} records)")
+        failures += _check_sample(validator, path)
 
-    for label, case in NEGATIVE_CASES:
-        if validator.is_valid(case):
-            failures += 1
-            print(f"FAIL  counterexample accepted: {label}")
-        else:
-            print(f"ok    counterexample rejected: {label}")
+    failures += _check_counterexamples(validator, NEGATIVE_CASES)
 
     print(
         f"\n{len(examples)} examples, {len(samples)} sample file(s), "

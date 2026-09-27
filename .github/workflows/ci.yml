@@ -533,6 +533,19 @@ jobs:
       - name: Judge evidence-citation regression
         run: python tools/eval-regression/test_judge_regression.py
 
+      - name: Tools scripts — complexity gate
+        run: |
+          pip install ruff==0.16.7
+          ruff check tools --config tools/ruff.toml
+
+      - name: Tools scripts — characterisation tests
+        run: |
+          pip install PyYAML==6.0.2
+          for test in tools/*/test_*_characterization.py; do
+            echo "== $test"
+            python "$test"
+          done
+
   qa002:
     needs: changes
     if: needs.changes.outputs.qa002 == 'true'

@@ -378,12 +378,7 @@ def lookup_main(allow_api: bool) -> None:
     try:
         vectors = embed(all_texts, allow_api=allow_api)
     except SystemExit as exc:
-        print(f"無法取得向量，只列出查詢集：{exc}\n")
-        for label, items in (("names", names), ("tokens", tokens)):
-            print(f"{label} (n={len(items)}):")
-            for it in items:
-                print(f"  {it['query']!r} -> {sorted(it['rel'])}")
-            print()
+        _print_query_sets(exc, names, tokens)
         return
 
     doc_ids = [d["id"] for d in docs]
@@ -415,37 +410,52 @@ def lookup_main(allow_api: bool) -> None:
         covered = [i for i, _ in r if q_tokens and q_tokens <= doc_tokens[i] and i not in kept]
         return kept + covered[:1]
 
-    def score(label: str, fn) -> dict:
-        print(f"== {label}")
-        summary = {}
-        for name, items in (("golden", golden), ("names", names), ("tokens", tokens)):
-            tasks = [x for x in items if x["rel"]]
-            dis = [x for x in items if not x["rel"]]
-            top1 = sum(1 for x in tasks if fn(x["query"])[:1] and fn(x["query"])[0] in x["rel"])
-            top3 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:3]))
-            r5 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:5]))
-            rej = sum(1 for x in dis if not fn(x["query"])[:5])
-            summary[name] = {"top1": top1, "top3": top3, "r5": r5, "n": len(tasks), "rej": rej, "n_dis": len(dis)}
-            extra = f" 干擾拒答@5={pct(rej, len(dis))}" if dis else ""
-            print(f"  {name:6s} n={len(tasks):2d} top1={pct(top1, len(tasks))} top3={pct(top3, len(tasks))} recall@5={pct(r5, len(tasks))}{extra}")
+    sets = (("golden", golden), ("names", names), ("tokens", tokens))
+    public = _score_rule("公開搜尋規則（05 R-48）：覆蓋全部 token 前置 + 向量 <= 0.75 + 名稱完全命中置頂", public_rule, sets)
+    creation = _score_rule("創作工具規則（05 R-49/R-50）：向量 <= 0.55 + 補一筆覆蓋全部 token", creation_rule, sets)
+    _print_red_lines(public, creation)
+
+
+def _print_query_sets(reason, names: list[dict], tokens: list[dict]) -> None:
+    print(f"無法取得向量，只列出查詢集：{reason}\n")
+    for label, items in (("names", names), ("tokens", tokens)):
+        print(f"{label} (n={len(items)}):")
+        for it in items:
+            print(f"  {it['query']!r} -> {sorted(it['rel'])}")
         print()
-        return summary
 
-    public = score("公開搜尋規則（05 R-48）：覆蓋全部 token 前置 + 向量 <= 0.75 + 名稱完全命中置頂", public_rule)
-    creation = score("創作工具規則（05 R-49/R-50）：向量 <= 0.55 + 補一筆覆蓋全部 token", creation_rule)
 
-    def ok(label: str, part: int, total: int, need: float) -> str:
-        rate = part / total if total else 0.0
-        verdict = "PASS" if rate >= need else "FAIL"
-        return f"  [{verdict}] {label}: {pct(part, total)} (紅線 >= {need:.0%})"
+def _score_rule(label: str, fn, sets) -> dict:
+    print(f"== {label}")
+    summary = {}
+    for name, items in sets:
+        tasks = [x for x in items if x["rel"]]
+        dis = [x for x in items if not x["rel"]]
+        top1 = sum(1 for x in tasks if fn(x["query"])[:1] and fn(x["query"])[0] in x["rel"])
+        top3 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:3]))
+        r5 = sum(1 for x in tasks if any(i in x["rel"] for i in fn(x["query"])[:5]))
+        rej = sum(1 for x in dis if not fn(x["query"])[:5])
+        summary[name] = {"top1": top1, "top3": top3, "r5": r5, "n": len(tasks), "rej": rej, "n_dis": len(dis)}
+        extra = f" 干擾拒答@5={pct(rej, len(dis))}" if dis else ""
+        print(f"  {name:6s} n={len(tasks):2d} top1={pct(top1, len(tasks))} top3={pct(top3, len(tasks))} recall@5={pct(r5, len(tasks))}{extra}")
+    print()
+    return summary
 
+
+def _red_line(label: str, part: int, total: int, need: float) -> str:
+    rate = part / total if total else 0.0
+    verdict = "PASS" if rate >= need else "FAIL"
+    return f"  [{verdict}] {label}: {pct(part, total)} (紅線 >= {need:.0%})"
+
+
+def _print_red_lines(public: dict, creation: dict) -> None:
     print("紅線（不擋 CI，只供人判讀）")
-    print(ok("公開規則 names Top-1", public["names"]["top1"], public["names"]["n"], 0.90))
-    print(ok("公開規則 tokens Top-1", public["tokens"]["top1"], public["tokens"]["n"], 0.80))
-    print(ok("公開規則 golden Top-3", public["golden"]["top3"], public["golden"]["n"], 0.90))
-    print(ok("公開規則 干擾拒答@5", public["golden"]["rej"], public["golden"]["n_dis"], 0.75))
-    print(ok("創作規則 golden Top-1", creation["golden"]["top1"], creation["golden"]["n"], 0.85))
-    print(ok("創作規則 names Top-1", creation["names"]["top1"], creation["names"]["n"], 0.90))
+    print(_red_line("公開規則 names Top-1", public["names"]["top1"], public["names"]["n"], 0.90))
+    print(_red_line("公開規則 tokens Top-1", public["tokens"]["top1"], public["tokens"]["n"], 0.80))
+    print(_red_line("公開規則 golden Top-3", public["golden"]["top3"], public["golden"]["n"], 0.90))
+    print(_red_line("公開規則 干擾拒答@5", public["golden"]["rej"], public["golden"]["n_dis"], 0.75))
+    print(_red_line("創作規則 golden Top-1", creation["golden"]["top1"], creation["golden"]["n"], 0.85))
+    print(_red_line("創作規則 names Top-1", creation["names"]["top1"], creation["names"]["n"], 0.90))
 
 
 def _selfcheck() -> None:
@@ -538,6 +548,14 @@ def main(allow_api: bool, index_mode: str) -> None:
     rows = results[index_mode if enriched_mode else "summary"]
 
     label = "enriched（真實 LLM 增強產出）" if enriched_mode else "summary（裸 frontmatter）"
+    _print_hit_rates(label, rows, results, grains)
+    _print_similarity(rows)
+    _print_threshold_curve(rows)
+    _print_repo_share(docs, queries)
+    _print_misses(results, grains, enriched_mode)
+
+
+def _print_hit_rates(label: str, rows: list[dict], results: dict, grains: list[str]) -> None:
     print(f"## 1. 命中率（索引欄位 = {label}）\n")
     print(table("全部 48 條有正解的查詢", rows))
     for cat in ("documents", "writing", "data"):
@@ -555,6 +573,8 @@ def main(allow_api: bool, index_mode: str) -> None:
         s = metrics(results[g], "emb")
         print(f"| {g} | {pct(s['top1'], s['n'])} | {pct(s['top3'], s['n'])} | {pct(s['r5'], s['n'])} |")
 
+
+def _print_similarity(rows: list[dict]) -> None:
     print("\n## 2. 相似度分布\n")
     print("| 分布 | n | min | p25 | 中位 | p75 | max |")
     print("| --- | --- | --- | --- | --- | --- | --- |")
@@ -572,6 +592,8 @@ def main(allow_api: bool, index_mode: str) -> None:
     for r in sorted((r for r in rows if not r["relevant"]), key=lambda r: -r["top_sim"]):
         print(f"| {r['id']} | {r['category']} | {r['lang']} | {r['top_sim']:.3f} | {r['top_id']} |")
 
+
+def _print_threshold_curve(rows: list[dict]) -> None:
     print("\n## 3. 門檻 trade-off 曲線\n")
     curve = sweep(rows)
     print("| 餘弦相似度門檻 | 餘弦距離門檻 | 干擾查詢正確回「無結果」 | 正常查詢召回損失 |")
@@ -601,12 +623,16 @@ def main(allow_api: bool, index_mode: str) -> None:
             c = min(cand, key=lambda c: c["t"])
             print(f"  {name} 最低門檻：相似度 {c['t']:.3f}（距離 {1 - c['t']:.3f}），召回損失 {c['loss']:.0%}")
 
+
+def _print_repo_share(docs: list[dict], queries: list[dict]) -> None:
     print("\n## 4. 跨 repo 抽樣（單一 repo 至多 20% 題目）\n")
     print("| 類別 | 來源 repo | 題數 | 判定 |")
     print("| --- | --- | --- | --- |")
     for line in check_repo_share(docs, queries):
         print(line)
 
+
+def _print_misses(results: dict, grains: list[str], enriched_mode: bool) -> None:
     print("\n## 5. 未命中的查詢（向量腿 recall@5 miss）\n")
     for g in grains:
         if g == "fulltext":

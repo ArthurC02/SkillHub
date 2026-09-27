@@ -239,15 +239,36 @@ def load_rubrics(path: Path) -> dict:
     return {"version": version, "skills": skills}
 
 
-def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None):
-    """The JudgeRunRequest, plus the digest map that verification checks against."""
-    truncation = []
-
+def last_final_output(events) -> str:
     final = ""
     for e in events:
         if e["event_type"] == "agent_output" and (e["payload"] or {}).get("kind") == "final":
             final = (e["payload"] or {}).get("text") or ""
-    final, cut_output = clip(final, MAX_FINAL_OUTPUT)
+    return final
+
+
+def digest_entries(citable):
+    """(digest entries, digest map, whether any excerpt was cut to its budget)."""
+    entries, digest = [], {}
+    trimmed = False
+    for e in citable:
+        excerpt, cut_excerpt = clip(json.dumps(e["payload"], ensure_ascii=False), MAX_DIGEST_ENTRY)
+        trimmed = trimmed or cut_excerpt
+        entries.append({
+            "trace_event_id": e["event_id"],
+            "occurred_at": e["occurred_at"],
+            "type": e["event_type"],
+            "excerpt": excerpt,
+        })
+        digest[e["event_id"]] = e
+    return entries, digest, trimmed
+
+
+def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None):
+    """The JudgeRunRequest, plus the digest map that verification checks against."""
+    truncation = []
+
+    final, cut_output = clip(last_final_output(events), MAX_FINAL_OUTPUT)
     if cut_output:
         truncation.append("final_output")
 
@@ -271,18 +292,7 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
         citable = citable[-MAX_DIGEST_COUNT:]
         truncation.append("trace_digest.entries")
 
-    entries, digest = [], {}
-    trimmed = False
-    for e in citable:
-        excerpt, cut_excerpt = clip(json.dumps(e["payload"], ensure_ascii=False), MAX_DIGEST_ENTRY)
-        trimmed = trimmed or cut_excerpt
-        entries.append({
-            "trace_event_id": e["event_id"],
-            "occurred_at": e["occurred_at"],
-            "type": e["event_type"],
-            "excerpt": excerpt,
-        })
-        digest[e["event_id"]] = e
+    entries, digest, trimmed = digest_entries(citable)
     if trimmed:
         truncation.append("trace_digest.entries[].excerpt")
 
@@ -404,52 +414,71 @@ def find_quote(quote: str, sources):
     return None
 
 
+def _resolve_trace_event(ref, digest):
+    """(settled (stored, why) or None, the failure to name if nothing else resolves it)."""
+    event_id = ref.get("trace_event_id") or ""
+    event = digest.get(event_id)
+    if event is None:
+        if not ref.get("quote"):
+            return (None, f"cited trace event {event_id!r} was not in the digest"), ""
+        return None, f"cited trace event {event_id!r} was not in the digest"
+    if not ref.get("quote"):
+        return ({**ref, "match": MATCH_EXACT, "reattributed_from": None}, ""), ""
+    match, _ = locate(trace_search_text(event["payload"]), ref["quote"])
+    if match:
+        return ({**ref, "match": match, "reattributed_from": None}, ""), ""
+    return None, f"the quote cited from trace event {event_id!r} is not in it"
+
+
+def _resolve_agent_output(ref, final_output):
+    """(settled (stored, why) or None, the failure to name if nothing else resolves it)."""
+    if not ref.get("quote"):
+        return (None, "an agent output reference was cited with no quote to locate"), ""
+    match, _ = locate(final_output, ref["quote"])
+    if match:
+        return ({**ref, "match": match, "reattributed_from": None}, ""), ""
+    return None, "the quote cited from the agent's final output is not in it"
+
+
+def _resolve_as_filed(ref, kind, digest, final_output):
+    """(settled (stored, why) or None, the failure to name if nothing else resolves it)."""
+    if kind == "trace_event":
+        return _resolve_trace_event(ref, digest)
+    if kind == "agent_output":
+        return _resolve_agent_output(ref, final_output)
+    if kind == "artifact":
+        return None, "an artifact citation's quote is verified against nothing"
+    return (None, f"reference kind {kind!r} is not one this platform can resolve"), ""
+
+
+def _reattribute(ref, kind, digest, final_output):
+    """The reference moved to wherever its quote actually is, or None."""
+    if not ref.get("quote"):
+        return None
+    hit = find_quote(ref["quote"], verifiable_sources(digest, final_output))
+    if not hit:
+        return None
+    src_kind, event_id, match = hit
+    out = {**ref, "kind": src_kind, "match": match, "reattributed_from": kind}
+    if src_kind == "trace_event":
+        out["trace_event_id"] = event_id
+    else:
+        out.pop("trace_event_id", None)
+    return out
+
+
 def verify(ref, digest, artifacts, final_output):
     """(stored reference, why it did not resolve): a citation holds only if
     its quote is findable in a verifiable source of this run. `ref["kind"]`
     is tried first as a hint, then every other source before giving up."""
     kind = ref.get("kind")
-    named_failure = ""
+    settled, named_failure = _resolve_as_filed(ref, kind, digest, final_output)
+    if settled is not None:
+        return settled
 
-    if kind == "trace_event":
-        event_id = ref.get("trace_event_id") or ""
-        event = digest.get(event_id)
-        if event is None:
-            if not ref.get("quote"):
-                return None, f"cited trace event {event_id!r} was not in the digest"
-            named_failure = f"cited trace event {event_id!r} was not in the digest"
-        elif not ref.get("quote"):
-            return {**ref, "match": MATCH_EXACT, "reattributed_from": None}, ""
-        else:
-            match, _ = locate(trace_search_text(event["payload"]), ref["quote"])
-            if match:
-                return {**ref, "match": match, "reattributed_from": None}, ""
-            named_failure = f"the quote cited from trace event {event_id!r} is not in it"
-
-    elif kind == "agent_output":
-        if not ref.get("quote"):
-            return None, "an agent output reference was cited with no quote to locate"
-        match, _ = locate(final_output, ref["quote"])
-        if match:
-            return {**ref, "match": match, "reattributed_from": None}, ""
-        named_failure = "the quote cited from the agent's final output is not in it"
-
-    elif kind == "artifact":
-        named_failure = "an artifact citation's quote is verified against nothing"
-
-    else:
-        return None, f"reference kind {kind!r} is not one this platform can resolve"
-
-    if ref.get("quote"):
-        hit = find_quote(ref["quote"], verifiable_sources(digest, final_output))
-        if hit:
-            src_kind, event_id, match = hit
-            out = {**ref, "kind": src_kind, "match": match, "reattributed_from": kind}
-            if src_kind == "trace_event":
-                out["trace_event_id"] = event_id
-            else:
-                out.pop("trace_event_id", None)
-            return out, ""
+    reattributed = _reattribute(ref, kind, digest, final_output)
+    if reattributed is not None:
+        return reattributed, ""
 
     if kind == "artifact":
         path = ref.get("artifact_path") or ""
@@ -555,7 +584,7 @@ def judge(request: dict, url: str) -> dict:
         return json.loads(r.read())
 
 
-def main() -> None:
+def parse_args():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, help="only the first N Runs")
     ap.add_argument(
@@ -570,7 +599,29 @@ def main() -> None:
         "--run-id", action="append", type=uuid.UUID, metavar="UUID",
         help="select this Run directly (repeatable); bypasses compatibility baseline selection",
     )
-    args = ap.parse_args()
+    return ap.parse_args()
+
+
+def narrow_to_rubric(rows, rubrics, explicit: bool):
+    """The rows a rubric covers. Explicitly chosen Runs must all be covered;
+    baseline Runs outside it are dropped, and uncovered rubric Skills named."""
+    if explicit:
+        not_covered = [r["run_id"] for r in rows if r["rubric_skill_name"] not in rubrics["skills"]]
+        if not_covered:
+            raise SystemExit(
+                "--rubric does not cover explicitly selected Run ids: "
+                + ", ".join(not_covered)
+            )
+    else:
+        rows = [r for r in rows if r["rubric_skill_name"] in rubrics["skills"]]
+    missing = set(rubrics["skills"]) - {r["rubric_skill_name"] for r in rows}
+    if missing:
+        print(f"! no baseline run for: {', '.join(sorted(missing))}")
+    return rows
+
+
+def main() -> None:
+    args = parse_args()
 
     rubrics = load_rubrics(args.rubric) if args.rubric else None
     started = datetime.datetime.now(datetime.UTC).isoformat()
@@ -578,18 +629,7 @@ def main() -> None:
     selection = "explicit_run_ids" if args.run_id else "m2_latest_compatibility"
     rows = explicit_run_set(args.run_id) if args.run_id else regression_set()
     if rubrics:
-        if args.run_id:
-            not_covered = [r["run_id"] for r in rows if r["rubric_skill_name"] not in rubrics["skills"]]
-            if not_covered:
-                raise SystemExit(
-                    "--rubric does not cover explicitly selected Run ids: "
-                    + ", ".join(not_covered)
-                )
-        else:
-            rows = [r for r in rows if r["rubric_skill_name"] in rubrics["skills"]]
-        missing = set(rubrics["skills"]) - {r["rubric_skill_name"] for r in rows}
-        if missing:
-            print(f"! no baseline run for: {', '.join(sorted(missing))}")
+        rows = narrow_to_rubric(rows, rubrics, bool(args.run_id))
     if args.limit:
         rows = rows[: args.limit]
     version = rubrics["version"] if rubrics else None
@@ -597,6 +637,27 @@ def main() -> None:
         raise SystemExit("selection produced zero Runs")
     print(f"regression {regression_id}: {len(rows)} runs, selection={selection}, rubric_version={version}")
 
+    total_cost, unreported, lines = replay(rows, args, rubrics, regression_id, started, selection, version)
+
+    if lines:
+        # newline="\n" keeps this file LF-only; text mode would append CRLF
+        # rows on Windows.
+        with OUT.open("a", encoding="utf-8", newline="\n") as f:
+            for line in lines:
+                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+        print(f"\nappended {len(lines)} rows to {OUT}")
+    summarise(lines, total_cost, unreported)
+
+
+def print_criteria(line) -> None:
+    for r in line["criteria"]:
+        mark = {"match": "ok", "mismatch": "MISMATCH", "unscored": "--",
+                "downgraded": "undet", "undetermined": "undet"}[r["outcome"]]
+        print(f"    {r['kind']:<12} want={r['expected'] or '-':<12} got={r['result']:<12} {mark}")
+
+
+def replay(rows, args, rubrics, regression_id, started, selection, version):
+    """(total cost, calls with no reported cost, result rows) for one pass over rows."""
     total_cost, unreported, lines = 0.0, 0, []
     for i, row in enumerate(rows, 1):
         events = trace_events(row["run_id"])
@@ -630,21 +691,10 @@ def main() -> None:
         line = record(regression_id, started, args.note, selection, row, request, want, results, response,
                       usage, version)
         lines.append(line)
-        for r in line["criteria"]:
-            mark = {"match": "ok", "mismatch": "MISMATCH", "unscored": "--",
-                    "downgraded": "undet", "undetermined": "undet"}[r["outcome"]]
-            print(f"    {r['kind']:<12} want={r['expected'] or '-':<12} got={r['result']:<12} {mark}")
+        print_criteria(line)
         print(f"    ${cost if cost is not None else float('nan'):.4f}  "
               f"running total ${total_cost:.4f}")
-
-    if lines:
-        # newline="\n" keeps this file LF-only; text mode would append CRLF
-        # rows on Windows.
-        with OUT.open("a", encoding="utf-8", newline="\n") as f:
-            for line in lines:
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
-        print(f"\nappended {len(lines)} rows to {OUT}")
-    summarise(lines, total_cost, unreported)
+    return total_cost, unreported, lines
 
 
 def record(regression_id, started, note, run_selection, row, request, want, results, response, usage,

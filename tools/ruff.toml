@@ -1,0 +1,11 @@
+line-length = 100
+
+[lint]
+select = ["C901", "PLR0912", "PLR0915"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-branches = 12
+max-statements = 50

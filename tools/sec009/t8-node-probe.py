@@ -257,55 +257,76 @@ def check_p04(rep: Report) -> None:
     rep.add("P-04", "gVisor at or above the baseline", *grade_gvisor(out if rc == 0 else None, first_value(BASELINE_FILE)))
 
 
-def check_p05(rep: Report) -> None:
-    """Long-lived core-DB / secrets credentials must not exist on the node.
-    Never prints a matched value — location and pattern name are enough."""
-    hits: list[str] = []
-    looked: list[str] = []
+def environ_hits(pid: str, blob: bytes) -> list[str]:
+    """Credential names and postgres:// values in one process environment, by name only."""
+    hits = []
+    for entry in blob.split(b"\0"):
+        name, _, value = entry.partition(b"=")
+        key = name.decode("utf-8", "replace")
+        if key in CRED_NAMES and value:
+            hits.append("pid %s env %s" % (pid, key))
+        elif value and CRED_VALUE_RE.search(value):
+            hits.append("pid %s env %s holds a postgres:// URL" % (pid, key))
+    return hits
 
-    if os.path.isdir("/proc"):
-        looked.append("every readable /proc/<pid>/environ")
-        for pid in os.listdir("/proc"):
-            if not pid.isdigit():
-                continue
-            try:
-                with open("/proc/%s/environ" % pid, "rb") as fh:
-                    blob = fh.read()
-            except OSError:
-                continue
-            for entry in blob.split(b"\0"):
-                name, _, value = entry.partition(b"=")
-                key = name.decode("utf-8", "replace")
-                if key in CRED_NAMES and value:
-                    hits.append("pid %s env %s" % (pid, key))
-                elif value and CRED_VALUE_RE.search(value):
-                    hits.append("pid %s env %s holds a postgres:// URL" % (pid, key))
-    else:
+
+def file_hit(path: str, blob: bytes) -> str | None:
+    """The first credential shape one file holds, by location and pattern name only."""
+    if CRED_VALUE_RE.search(blob):
+        return "%s contains a postgres:// URL" % path
+    for name in CRED_NAMES:
+        if re.search(rb"\b%s\s*[=:]\s*\S" % re.escape(name.encode()), blob):
+            return "%s sets %s" % (path, name)
+    return None
+
+
+def _scan_processes(hits: list[str], looked: list[str]) -> None:
+    if not os.path.isdir("/proc"):
         looked.append("no /proc, so running processes were not scanned")
+        return
+    looked.append("every readable /proc/<pid>/environ")
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            with open("/proc/%s/environ" % pid, "rb") as fh:
+                blob = fh.read()
+        except OSError:
+            continue
+        hits.extend(environ_hits(pid, blob))
 
+
+def _files_under(root: str) -> list[str]:
+    if os.path.isfile(root):
+        return [root]
+    if os.path.isdir(root):
+        return [os.path.join(dp, f) for dp, _, fs in os.walk(root) for f in fs]
+    return []
+
+
+def _scan_credential_paths(hits: list[str], looked: list[str]) -> None:
     for root in CRED_PATHS:
         looked.append(root)
-        if os.path.isfile(root):
-            files = [root]
-        elif os.path.isdir(root):
-            files = [os.path.join(dp, f) for dp, _, fs in os.walk(root) for f in fs]
-        else:
-            continue
-        for path in files:
+        for path in _files_under(root):
             try:
                 with open(path, "rb") as fh:
                     blob = fh.read(1 << 20)
             except OSError:
                 continue
-            if CRED_VALUE_RE.search(blob):
-                hits.append("%s contains a postgres:// URL" % path)
-                continue
-            for name in CRED_NAMES:
-                if re.search(rb"\b%s\s*[=:]\s*\S" % re.escape(name.encode()), blob):
-                    hits.append("%s sets %s" % (path, name))
-                    break
+            hit = file_hit(path, blob)
+            if hit:
+                hits.append(hit)
 
-    how = "scanned " + "; ".join(looked) + " for the names %s and for postgres:// URLs " \
+
+def check_p05(rep: Report) -> None:
+    """Long-lived core-DB / secrets credentials must not exist on the node.
+    Never prints a matched value — location and pattern name are enough."""
+    hits: list[str] = []
+    looked: list[str] = []
+    _scan_processes(hits, looked)
+    _scan_credential_paths(hits, looked)
+
+    how ="scanned " + "; ".join(looked) + " for the names %s and for postgres:// URLs " \
           "(values deliberately not printed)" % ", ".join(CRED_NAMES)
     if hits:
         rep.add("P-05", "no long-lived core-DB / secrets credential", FAIL,
@@ -314,57 +335,69 @@ def check_p05(rep: Report) -> None:
         rep.add("P-05", "no long-lived core-DB / secrets credential", PASS, how)
 
 
-def check_c01(rep: Report) -> None:
+def writable_binds(inspect_output: str) -> list[str]:
+    """`name:source(rw)` for every writable bind mount in `docker inspect` output."""
+    bad = []
+    for line in inspect_output.splitlines():
+        name, _, raw = line.partition("|")
+        try:
+            mounts = json.loads(raw) or []
+        except ValueError:
+            continue
+        for m in mounts:
+            if m.get("Type") == "bind" and m.get("RW"):
+                bad.append("%s:%s(rw)" % (name.lstrip("/"), m.get("Source")))
+    return bad
+
+
+def _check_c01a(rep: Report) -> None:
     rc, out = sh("docker", "info", "--format", "{{range $k, $v := .Runtimes}}{{$k}} {{end}}")
     if rc != 0:
         rep.add("C-01a", "runsc registered as a docker runtime", UNKNOWN,
                 "cannot read `docker info`, so we cannot see which runtimes dockerd offers")
+        return
+    runtimes = out.split()
+    if "runsc" in runtimes:
+        rep.add("C-01a", "runsc registered as a docker runtime", PASS,
+                "`docker info` lists: %s" % " ".join(runtimes))
     else:
-        runtimes = out.split()
-        if "runsc" in runtimes:
-            rep.add("C-01a", "runsc registered as a docker runtime", PASS,
-                    "`docker info` lists: %s" % " ".join(runtimes))
-        else:
-            rep.add("C-01a", "runsc registered as a docker runtime", FAIL,
-                    "`docker info` lists %s -- no runsc, so sandboxd's Runtime:\"runsc\" would "
-                    "fail to start rather than silently fall back, but this node cannot host Runs"
-                    % (" ".join(runtimes) or "<none>"))
+        rep.add("C-01a", "runsc registered as a docker runtime", FAIL,
+                "`docker info` lists %s -- no runsc, so sandboxd's Runtime:\"runsc\" would "
+                "fail to start rather than silently fall back, but this node cannot host Runs"
+                % (" ".join(runtimes) or "<none>"))
 
+
+def _check_c01b(rep: Report) -> None:
     rc, out = sh("docker", "ps", "-q", "--no-trunc")
     if rc != 0:
         rep.add("C-01b", "no host path shared writable into a container", UNKNOWN,
                 "cannot list containers, so their mounts were not inspected")
+        return
+    ids = out.split()
+    if not ids:
+        rep.add("C-01b", "no host path shared writable into a container", PASS,
+                "no containers are running, so no host path is shared by any")
+        return
+    rc2, out2 = sh("docker", "inspect", "--format",
+                   "{{.Name}}|{{json .Mounts}}", *ids)
+    if rc2 != 0:
+        rep.add("C-01b", "no host path shared writable into a container", UNKNOWN,
+                "`docker inspect` failed, so mounts were not read")
+        return
+    bad = writable_binds(out2)
+    how = "read `docker inspect .Mounts` on %d container(s); a Type=bind mount with " \
+          "RW=true is a writable host path (dockerdrv keeps Binds and Mounts empty " \
+          "on purpose -- C-05/C-07)" % len(ids)
+    if bad:
+        rep.add("C-01b", "no host path shared writable into a container", FAIL,
+                "%s -- %s" % (how, ", ".join(sorted(bad))))
     else:
-        ids = out.split()
-        if not ids:
-            rep.add("C-01b", "no host path shared writable into a container", PASS,
-                    "no containers are running, so no host path is shared by any")
-        else:
-            rc2, out2 = sh("docker", "inspect", "--format",
-                           "{{.Name}}|{{json .Mounts}}", *ids)
-            if rc2 != 0:
-                rep.add("C-01b", "no host path shared writable into a container", UNKNOWN,
-                        "`docker inspect` failed, so mounts were not read")
-            else:
-                bad = []
-                for line in out2.splitlines():
-                    name, _, raw = line.partition("|")
-                    try:
-                        mounts = json.loads(raw) or []
-                    except ValueError:
-                        continue
-                    for m in mounts:
-                        if m.get("Type") == "bind" and m.get("RW"):
-                            bad.append("%s:%s(rw)" % (name.lstrip("/"), m.get("Source")))
-                how = "read `docker inspect .Mounts` on %d container(s); a Type=bind mount with " \
-                      "RW=true is a writable host path (dockerdrv keeps Binds and Mounts empty " \
-                      "on purpose -- C-05/C-07)" % len(ids)
-                if bad:
-                    rep.add("C-01b", "no host path shared writable into a container", FAIL,
-                            "%s -- %s" % (how, ", ".join(sorted(bad))))
-                else:
-                    rep.add("C-01b", "no host path shared writable into a container", PASS, how)
+        rep.add("C-01b", "no host path shared writable into a container", PASS, how)
 
+
+def check_c01(rep: Report) -> None:
+    _check_c01a(rep)
+    _check_c01b(rep)
     rep.add("C-01c", "each Run gets its own scratch, Runs share none", ELSEWHERE,
             "NOT MEASURABLE FROM A SNAPSHOT OF ONE NODE, AND NOT THIS GATE'S TO JUDGE. "
             "C-01's runtime half is a statement about two concurrent Runs; this probe "

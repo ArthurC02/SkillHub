@@ -247,7 +247,13 @@ def probe_url(args) -> int:
 
 def selftest() -> int:
     """Offline check: the repacker must put SKILL.md at the package root."""
-    tmp = pathlib.Path(tempfile.mkdtemp()) / "repo.zip"
+    _selftest_repack(pathlib.Path(tempfile.mkdtemp()) / "repo.zip")
+    _selftest_import_results()
+    print("selftest ok")
+    return 0
+
+
+def _selftest_repack(tmp: pathlib.Path) -> None:
     with zipfile.ZipFile(tmp, "w") as z:
         z.writestr("repo-abc123/claude/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
         z.writestr("repo-abc123/claude/skills/demo/ref/guide.md", "guide")
@@ -319,6 +325,8 @@ def selftest() -> int:
         z.writestr("repo-abc123/LICENSE", "MIT License")
     assert repack_skill(tmp, "skills/demo/SKILL.md") == repack_skill(tmp, "skills/demo/SKILL.md")
 
+
+def _selftest_import_results() -> None:
     one = {"skill_id": "s", "duplicate": True, "findings": {"warnings": [{"code": "w"}]}}
     assert classify(201, {"skills": [one], "refused": []}) == "duplicate"
     assert classify(201, {"skills": [dict(one, duplicate=False)], "refused": []}) == "imported"
@@ -327,8 +335,6 @@ def selftest() -> int:
     refusal = {"path": "skills/bad", "findings": {"errors": [{"code": "e"}]}}
     assert findings_of({"skills": [], "refused": [refusal]})["errors"] == [{"code": "e"}]
     assert only_skill({"skills": [one, one]}) == {}, "two skills is not a seed package"
-    print("selftest ok")
-    return 0
 
 
 def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:

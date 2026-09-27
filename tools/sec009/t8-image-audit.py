@@ -276,22 +276,45 @@ def audit() -> Report:
 
     print("image:   %s/%s:%s" % (REGISTRY, IMAGE_REPO, version), file=sys.stderr)
 
+    digest = _published_digest(rep, reference, version, node_ref, token)
+    if not digest:
+        return rep
+
+    pinned, detail = dockerfile_base_is_pinned()
+    rep.add("I-02", "base pinned by digest", PASS if pinned else FAIL, detail)
+
+    _audit_attestations(rep, digest, token)
+    return rep
+
+
+def _published_digest(rep: Report, reference: str, version: str, node_ref: str, token: str) -> str:
+    """The digest the reference resolves to, or "" once I-01 records why there is none."""
     try:
         _, headers = _get("manifests/" + reference, token, MANIFEST_ACCEPT)
         digest = headers.get("Docker-Content-Digest", "").strip()
     except urllib.error.HTTPError as exc:
         rep.add("I-01", "versioned image published", FAIL, "GET manifest %s -> HTTP %d" % (reference, exc.code))
-        return rep
+        return ""
     if not digest:
         rep.add("I-01", "versioned image published", UNKNOWN, "no Docker-Content-Digest header")
-        return rep
+        return ""
     rep.add("I-01", "versioned image published", PASS, "%s -> %s%s" % (
         version, digest, " (the digest this node runs)" if node_ref else ""))
     print("digest:  %s" % digest, file=sys.stderr)
+    return digest
 
-    pinned, detail = dockerfile_base_is_pinned()
-    rep.add("I-02", "base pinned by digest", PASS if pinned else FAIL, detail)
 
+def attestation_predicates(index: dict) -> dict[str, str]:
+    """predicateType -> bundle digest for every attestation in an index."""
+    found: dict[str, str] = {}
+    for m in index.get("manifests", []):
+        ptype = (m.get("annotations") or {}).get("dev.sigstore.bundle.predicateType")
+        if ptype:
+            found[ptype] = m.get("digest", "")
+    return found
+
+
+def _audit_attestations(rep: Report, digest: str, token: str) -> None:
     # Read by tag, not the OCI referrers API: GHCR does not serve referrers, so
     # querying it returns an empty set even when attestations exist.
     att_tag = "sha256-" + digest.split(":", 1)[1]
@@ -301,13 +324,9 @@ def audit() -> Report:
         rep.add("I-03", "SBOM attestation", FAIL, "no attestation index (%s -> %d)" % (att_tag, exc.code))
         rep.add("I-04", "scan attestation in date", FAIL, "no attestation index")
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "no scan attestation to read")
-        return rep
+        return
 
-    found: dict[str, str] = {}
-    for m in index.get("manifests", []):
-        ptype = (m.get("annotations") or {}).get("dev.sigstore.bundle.predicateType")
-        if ptype:
-            found[ptype] = m.get("digest", "")
+    found = attestation_predicates(index)
 
     if SBOM_PREDICATE in found:
         rep.add("I-03", "SBOM attestation", PASS, "SPDX 2.3 bundle %s" % found[SBOM_PREDICATE][:19])
@@ -317,18 +336,27 @@ def audit() -> Report:
     if VULN_PREDICATE not in found:
         rep.add("I-04", "scan attestation in date", FAIL, "no %s in the index" % VULN_PREDICATE)
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "no scan attestation to read")
-        return rep
+        return
 
+    statement = _scan_statement(rep, found[VULN_PREDICATE], token)
+    if statement is not None:
+        _grade_scan_statement(rep, digest, statement)
+
+
+def _scan_statement(rep: Report, bundle_digest: str, token: str) -> dict | None:
+    """The decoded in-toto statement, or None once I-04 and I-06 record why not."""
     try:
-        bundle_manifest, _ = _get("manifests/" + found[VULN_PREDICATE], token, MANIFEST_ACCEPT)
+        bundle_manifest, _ = _get("manifests/" + bundle_digest, token, MANIFEST_ACCEPT)
         bundle = _blob(bundle_manifest["layers"][0]["digest"], token)
         envelope = bundle.get("dsseEnvelope") or bundle.get("dsse_envelope")
-        statement = json.loads(base64.b64decode(envelope["payload"]))
+        return json.loads(base64.b64decode(envelope["payload"]))
     except (urllib.error.HTTPError, KeyError, ValueError, TypeError) as exc:
         rep.add("I-04", "scan attestation in date", UNKNOWN, "cannot decode the bundle: %s" % exc)
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "cannot decode the bundle")
-        return rep
+        return None
 
+
+def _grade_scan_statement(rep: Report, digest: str, statement: dict) -> None:
     subjects = {
         "sha256:" + s.get("digest", {}).get("sha256", "")
         for s in statement.get("subject", [])
@@ -337,7 +365,7 @@ def audit() -> Report:
         rep.add("I-04", "scan attestation in date", FAIL,
                 "attestation subject %s != published digest" % (sorted(subjects) or ["<none>"])[0])
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "attestation is about other bytes")
-        return rep
+        return
 
     predicate = statement.get("predicate", {})
     finished = (predicate.get("metadata") or {}).get("scan_finished_on")
@@ -355,8 +383,6 @@ def audit() -> Report:
             fixable, summary.get("total"),
             ", ".join("%s %s" % (v, k) for k, v in sorted(by_sev.items())))
         rep.add("I-06", "no fixable Critical/High", PASS if fixable == 0 else FAIL, detail)
-
-    return rep
 
 
 def preconditions() -> Report:

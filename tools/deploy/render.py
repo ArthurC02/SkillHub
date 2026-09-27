@@ -121,13 +121,7 @@ def pinned(repository, tag, resolve, why):
     return "%s/%s/%s:%s@%s" % (REGISTRY, OWNER, repository, tag, digest)
 
 
-def release_env(role, release, settings, resolve=ghcr_digest, read_file=git_show):
-    if role not in ROLES:
-        raise RenderError("unknown role %r; known roles: %s" % (role, ", ".join(sorted(ROLES))))
-    if not RELEASE.match(release):
-        raise RenderError("release %r is not a full 40-character commit SHA" % release)
-    spec = ROLES[role]
-
+def _validate_settings(role, spec, settings):
     missing = [key for key in spec["settings"] if not settings.get(key)]
     if missing:
         raise RenderError("%s needs %s" % (role, ", ".join(missing)))
@@ -138,6 +132,15 @@ def release_env(role, release, settings, resolve=ghcr_digest, read_file=git_show
     for key, (accepts, shape) in SHAPES.items():
         if key in spec["settings"] and not accepts(settings[key]):
             raise RenderError("%s=%r is not %s" % (key, settings[key], shape))
+
+
+def release_env(role, release, settings, resolve=ghcr_digest, read_file=git_show):
+    if role not in ROLES:
+        raise RenderError("unknown role %r; known roles: %s" % (role, ", ".join(sorted(ROLES))))
+    if not RELEASE.match(release):
+        raise RenderError("release %r is not a full 40-character commit SHA" % release)
+    spec = ROLES[role]
+    _validate_settings(role, spec, settings)
 
     values = {
         "SKILLHUB_ROLE": role,

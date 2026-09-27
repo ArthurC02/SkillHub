@@ -523,6 +523,64 @@ def _derive_drift_threshold(online_vecs: dict[str, list[float]]) -> dict:
     return {"max_cross_skill_cosine": round(worst, 4), "pair": list(pair)}
 
 
+def _review_rows(rows: list[dict], online: dict, key: str, args) -> list[dict]:
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futs = {
+            pool.submit(review_one, r, online[r["skill"]], key, args.mechanical_only): r
+            for r in rows
+        }
+        for i, fut in enumerate(concurrent.futures.as_completed(futs), 1):
+            r = futs[fut]
+            try:
+                res = fut.result()
+            except Exception as e:
+                res = {
+                    "id": r["id"],
+                    "skill": r["skill"],
+                    "verdict": "error",
+                    "reasons": [str(e)[:300]],
+                }
+            print(
+                f"[{i}/{len(rows)}] {res['skill']:<28} {res.get('verdict', '-')}",
+                file=sys.stderr,
+            )
+            results.append(res)
+    return results
+
+
+def _measure_drift(results: list[dict], rows: list[dict], recorded: list[dict],
+                   online: dict, key: str) -> dict:
+    print("embedding online vs recorded summaries ...", file=sys.stderr)
+    by_id = {r["id"]: r for r in recorded}
+    names = [r["skill"] for r in rows]
+    on_vecs = embed([online[n]["enrichment"].get("summary", "") for n in names], key)
+    rec_vecs = embed([by_id[r["id"]]["summary"] for r in rows], key)
+    on_map = dict(zip(names, on_vecs))
+    vec_of = dict(zip(names, zip(on_vecs, rec_vecs)))
+    for res in results:
+        ov, rv = vec_of[res["skill"]]
+        c = round(cosine(ov, rv), 4)
+        res["kpi6_online_cosine"] = c
+        res["kpi6_flagged"] = c < DRIFT_MIN_COSINE
+        if res.get("verdict") == "pass" and res["kpi6_flagged"]:
+            res.setdefault("notes", []).append(
+                f"KPI6 線上一致性：與 summaries.json 餘弦 {c} < {DRIFT_MIN_COSINE}，"
+                "審核對象為線上文字（本筆判定即對線上版本生效）"
+            )
+    return _derive_drift_threshold(on_map)
+
+
+def _merge_into_prior(results: list[dict], order: dict[str, int]) -> list[dict]:
+    prior = json.loads(OUT.read_text(encoding="utf-8"))
+    prev = {r["id"]: r for r in prior["results"]}
+    prev.update({r["id"]: r for r in results})
+    for k, v in prior.get("usage", {}).items():
+        if k in USAGE:
+            USAGE[k] += v
+    return sorted(prev.values(), key=lambda r: order.get(r["id"], 999))
+
+
 def run(args) -> int:
     data = json.loads(SUMMARIES.read_text(encoding="utf-8"))
     rows = data["summaries"]
@@ -537,65 +595,21 @@ def run(args) -> int:
     if missing:
         raise SystemExit(f"not in the online catalogue: {missing}")
 
-    results = []
     if args.kpi6_only:
         results = json.loads(OUT.read_text(encoding="utf-8"))["results"]
         rows = data["summaries"]
     else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futs = {
-                pool.submit(review_one, r, online[r["skill"]], key, args.mechanical_only): r
-                for r in rows
-            }
-            for i, fut in enumerate(concurrent.futures.as_completed(futs), 1):
-                r = futs[fut]
-                try:
-                    res = fut.result()
-                except Exception as e:
-                    res = {
-                        "id": r["id"],
-                        "skill": r["skill"],
-                        "verdict": "error",
-                        "reasons": [str(e)[:300]],
-                    }
-                print(
-                    f"[{i}/{len(rows)}] {res['skill']:<28} {res.get('verdict', '-')}",
-                    file=sys.stderr,
-                )
-                results.append(res)
+        results = _review_rows(rows, online, key, args)
 
     drift = {}
     if not args.mechanical_only:
-        print("embedding online vs recorded summaries ...", file=sys.stderr)
-        by_id = {r["id"]: r for r in data["summaries"]}
-        names = [r["skill"] for r in rows]
-        on_vecs = embed([online[n]["enrichment"].get("summary", "") for n in names], key)
-        rec_vecs = embed([by_id[r["id"]]["summary"] for r in rows], key)
-        on_map = dict(zip(names, on_vecs))
-        vec_of = dict(zip(names, zip(on_vecs, rec_vecs)))
-        for res in results:
-            ov, rv = vec_of[res["skill"]]
-            c = round(cosine(ov, rv), 4)
-            res["kpi6_online_cosine"] = c
-            res["kpi6_flagged"] = c < DRIFT_MIN_COSINE
-            if res.get("verdict") == "pass" and res["kpi6_flagged"]:
-                res.setdefault("notes", []).append(
-                    f"KPI6 線上一致性：與 summaries.json 餘弦 {c} < {DRIFT_MIN_COSINE}，"
-                    "審核對象為線上文字（本筆判定即對線上版本生效）"
-                )
-        drift = _derive_drift_threshold(on_map)
+        drift = _measure_drift(results, rows, data["summaries"], online, key)
 
     order = {r["id"]: i for i, r in enumerate(data["summaries"])}
     results.sort(key=lambda r: order.get(r["id"], 999))
 
     if (args.only or args.kpi6_only) and OUT.exists():
-        prior = json.loads(OUT.read_text(encoding="utf-8"))
-        prev = {r["id"]: r for r in prior["results"]}
-        prev.update({r["id"]: r for r in results})
-        results = sorted(prev.values(), key=lambda r: order.get(r["id"], 999))
-        for k, v in prior.get("usage", {}).items():
-            if k in USAGE:
-                USAGE[k] += v
+        results = _merge_into_prior(results, order)
 
     cost = (
         USAGE["in"] / 1e6 * PRICE["in"]

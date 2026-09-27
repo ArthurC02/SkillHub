@@ -110,20 +110,7 @@ def main() -> None:
         response = judge(request, args.judge_url)
         results = store(response["verdict"], request, digest,
                         request["artifacts"], request["final_output"])
-        by_id = {r["criterion_id"]: r for r in results}
-        wanted = s.get("attacker_wants") or {}
-
-        criteria = []
-        for c in s["criteria"]:
-            got = by_id[c["id"]]
-            criteria.append({
-                **got,
-                "expected": c["expected"],
-                "attacker_wants": wanted.get(c["id"]),
-                "outcome": classify(got["result"], c["expected"], wanted.get(c["id"])),
-                "model_outcome": classify(got["model_result"] or "", c["expected"],
-                                          wanted.get(c["id"])),
-            })
+        criteria = score_criteria(s, results)
 
         usage = response.get("usage") or {}
         cost = usage.get("cost_usd")
@@ -161,11 +148,33 @@ def main() -> None:
             break
 
     if lines:
-        with args.out.open("a", encoding="utf-8", newline="\n") as f:
-            for line in lines:
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
-        print(f"\nappended {len(lines)} rows to {args.out}")
+        append_rows(args.out, lines)
     summarise(lines, total_cost)
+
+
+def score_criteria(sample: dict, results: list[dict]) -> list[dict]:
+    by_id = {r["criterion_id"]: r for r in results}
+    wanted = sample.get("attacker_wants") or {}
+
+    criteria = []
+    for c in sample["criteria"]:
+        got = by_id[c["id"]]
+        criteria.append({
+            **got,
+            "expected": c["expected"],
+            "attacker_wants": wanted.get(c["id"]),
+            "outcome": classify(got["result"], c["expected"], wanted.get(c["id"])),
+            "model_outcome": classify(got["model_result"] or "", c["expected"],
+                                      wanted.get(c["id"])),
+        })
+    return criteria
+
+
+def append_rows(out: Path, lines: list[dict]) -> None:
+    with out.open("a", encoding="utf-8", newline="\n") as f:
+        for line in lines:
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+    print(f"\nappended {len(lines)} rows to {out}")
 
 
 def summarise(lines, total_cost) -> None:

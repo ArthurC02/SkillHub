@@ -65,6 +65,54 @@ def _pin_errors(e, pin):
     return []
 
 
+def _tier_and_provider_errors(e):
+    errors = []
+    if e.get("tier") not in ("sandbox", "node"):
+        errors.append(f"{e.get('name')}: tier must be 'sandbox' or 'node'")
+    fqdn = str(e.get("fqdn", "")).lower()
+    for bad in PROVIDER_DOMAINS:
+        if bad in fqdn:
+            errors.append(
+                f"{e.get('name')}: {fqdn} is a model provider domain. N-07 has no "
+                f"exception path — add the provider inside the LiteLLM gateway "
+                f"instead (iron rule 8)."
+            )
+    return errors
+
+
+def _sandbox_findings(e):
+    errors, warnings = [], []
+    pin = str(e.get("pinned_ip", "")).strip()
+    if not pin:
+        errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip")
+    elif pin == "unset":
+        warnings.append(
+            f"{e.get('name')}: pinned_ip is 'unset' — fail-closed, no sandbox node "
+            f"built from this file can reach any destination"
+        )
+    else:
+        errors.extend(_pin_errors(e, pin))
+    # Sandbox entries always require a port: unset withholds the address,
+    # never the port.
+    err = _port_error(e)
+    if err:
+        errors.append(err)
+    return errors, warnings
+
+
+def _node_findings(e):
+    errors, warnings = [], []
+    if e.get("pinned_ip"):
+        warnings.append(f"{e.get('name')}: tier:node must not pin an IP")
+    if str(e.get("fqdn", "")).endswith(".internal"):
+        warnings.append(f"{e.get('name')}: platform-owned host on tier:node — should it be tier:sandbox?")
+    # Node entries match by FQDN, not IP:port, so a missing port is fine;
+    # a malformed one still is not.
+    if e.get("port") is not None and _port_error(e):
+        errors.append(_port_error(e))
+    return errors, warnings
+
+
 def check(entries):
     """Return (errors, warnings). Split out from main so the assertions are testable
     without a real allow-list on disk."""
@@ -74,16 +122,7 @@ def check(entries):
     node = [e for e in entries if e.get("tier") == "node"]
 
     for e in entries:
-        if e.get("tier") not in ("sandbox", "node"):
-            errors.append(f"{e.get('name')}: tier must be 'sandbox' or 'node'")
-        fqdn = str(e.get("fqdn", "")).lower()
-        for bad in PROVIDER_DOMAINS:
-            if bad in fqdn:
-                errors.append(
-                    f"{e.get('name')}: {fqdn} is a model provider domain. N-07 has no "
-                    f"exception path — add the provider inside the LiteLLM gateway "
-                    f"instead (iron rule 8)."
-                )
+        errors.extend(_tier_and_provider_errors(e))
 
     if len(sandbox) != 1 or sandbox[0].get("name") != "model_gateway":
         errors.append(
@@ -93,32 +132,9 @@ def check(entries):
             f"decision (Squid) must be re-opened before this lands."
         )
 
-    for e in sandbox:
-        pin = str(e.get("pinned_ip", "")).strip()
-        if not pin:
-            errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip")
-        elif pin == "unset":
-            warnings.append(
-                f"{e.get('name')}: pinned_ip is 'unset' — fail-closed, no sandbox node "
-                f"built from this file can reach any destination"
-            )
-        else:
-            errors.extend(_pin_errors(e, pin))
-        # Sandbox entries always require a port: unset withholds the address,
-        # never the port.
-        err = _port_error(e)
-        if err:
-            errors.append(err)
-
-    for e in node:
-        if e.get("pinned_ip"):
-            warnings.append(f"{e.get('name')}: tier:node must not pin an IP")
-        if str(e.get("fqdn", "")).endswith(".internal"):
-            warnings.append(f"{e.get('name')}: platform-owned host on tier:node — should it be tier:sandbox?")
-        # Node entries match by FQDN, not IP:port, so a missing port is fine;
-        # a malformed one still is not.
-        if e.get("port") is not None and _port_error(e):
-            errors.append(_port_error(e))
+    for findings in [_sandbox_findings(e) for e in sandbox] + [_node_findings(e) for e in node]:
+        errors.extend(findings[0])
+        warnings.extend(findings[1])
 
     return errors, warnings
 

@@ -72,25 +72,11 @@ def statement(run_id, workspace_id, created_at, key, name, size, digest):
     )
 
 
-def main():
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--tar-dir", required=True,
-                    help="local mirror of the run-artifacts/ prefix")
-    ap.add_argument("--apply", action="store_true",
-                    help="execute the SQL instead of only printing it")
-    args = ap.parse_args()
-
-    runs = {r["id"]: r for r in psql("""
-        select r.id::text, r.workspace_id::text as workspace_id,
-               r.created_at::text as created_at,
-               (select count(*) from artifacts a where a.run_id = r.id) as existing
-          from runs r
-    """)}
-
+def scan_archives(tar_dir, runs):
+    """(statements, archives with no run, runs already backfilled, rows, rows per run)."""
     stmts, orphan_archives, already, total_rows = [], [], 0, 0
     per_run = collections.Counter()
-    for root, _dirs, files in os.walk(args.tar_dir):
+    for root, _dirs, files in os.walk(tar_dir):
         if "artifacts.tar" not in files:
             continue
         attempt_id = os.path.basename(root)
@@ -108,6 +94,26 @@ def main():
             per_run[run_id] += 1
             stmts.append(statement(run_id, run["workspace_id"], run["created_at"],
                                    key, name, size, digest))
+    return stmts, orphan_archives, already, total_rows, per_run
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--tar-dir", required=True,
+                    help="local mirror of the run-artifacts/ prefix")
+    ap.add_argument("--apply", action="store_true",
+                    help="execute the SQL instead of only printing it")
+    args = ap.parse_args()
+
+    runs = {r["id"]: r for r in psql("""
+        select r.id::text, r.workspace_id::text as workspace_id,
+               r.created_at::text as created_at,
+               (select count(*) from artifacts a where a.run_id = r.id) as existing
+          from runs r
+    """)}
+
+    stmts, orphan_archives, already, total_rows, per_run = scan_archives(args.tar_dir, runs)
 
     say = lambda line: print(line, file=sys.stderr)  # noqa: E731
     say("archives read:       " + str(len(per_run) + already + len(orphan_archives)))

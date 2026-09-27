@@ -52,6 +52,17 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     node-service and metadata drops must precede the allow-list accepts."""
     lines = []
     a = lines.append
+    _nft_preamble(a, sandbox_iface)
+    _nft_forward_isolation(a)
+    _nft_forward_dns(a, resolver)
+    _nft_forward_allow_list(a, entries)
+    _nft_forward_private_ranges(a)
+    _nft_input_chain(a, control_plane)
+    _nft_ip6_table(a)
+    return "\n".join(lines) + "\n"
+
+
+def _nft_preamble(a, sandbox_iface):
     a("#!/usr/sbin/nft -f")
     a("#")
     a("# GENERATED - do not edit. Source: infra/egress/allowlist.yaml")
@@ -68,6 +79,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a("")
     a('define SANDBOX_IFACE = "' + sandbox_iface + '"')
     a("")
+
+
+def _nft_forward_isolation(a):
     a("table ip skillhub {")
     a("    chain forward {")
     a("        type filter hook forward priority filter; policy drop;")
@@ -100,6 +114,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a("        # refuses the name does nothing about the literal.")
     a('        iifname $SANDBOX_IFACE ip daddr ' + LINK_LOCAL_V4 + ' counter log prefix "skillhub-drop-metadata " drop')
     a("")
+
+
+def _nft_forward_dns(a, resolver):
     if resolver:
         a("        # N-04 the node's pinned resolver, and only it. A sandbox that")
         a("        # reaches any other resolver picks its own answers, which is the")
@@ -112,6 +129,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a('        iifname $SANDBOX_IFACE udp dport 53 counter log prefix "skillhub-drop-dns " drop')
     a('        iifname $SANDBOX_IFACE tcp dport 53 counter log prefix "skillhub-drop-dns " drop')
     a("")
+
+
+def _nft_forward_allow_list(a, entries):
     dests = rendered_destinations(entries)
     if dests:
         a("        # The allow list. The unit is IP:port, never IP - T5-7 probes the")
@@ -124,6 +144,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
         a("        # rendered and a sandbox on this node reaches nothing. That is")
         a("        # the fail-closed direction and it is deliberate (allowlist.yaml).")
     a("")
+
+
+def _nft_forward_private_ranges(a):
     a("        # N-03 the private ranges as a class, after the one hole punched in")
     a("        # them above.")
     for cidr in PRIVATE_V4:
@@ -135,6 +158,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a('        iifname $SANDBOX_IFACE counter log prefix "skillhub-drop-default " drop')
     a("    }")
     a("")
+
+
+def _nft_input_chain(a, control_plane):
     a("    chain input {")
     a("        type filter hook input priority filter; policy drop;")
     a("        ct state established,related counter accept")
@@ -150,6 +176,9 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
     a("    }")
     a("}")
     a("")
+
+
+def _nft_ip6_table(a):
     a("# N-08. This allow list is IPv4-only by decision, so v6 carries no accept")
     a("# rule at any point. A separate table rather than an `inet` one so that")
     a("# `nft list table ip6 skillhub` answers the question directly: T5's eight")
@@ -162,7 +191,6 @@ def render_nftables(entries, sandbox_iface, resolver, control_plane):
         a('        counter log prefix "skillhub-drop-v6 " drop')
         a("    }")
     a("}")
-    return "\n".join(lines) + "\n"
 
 
 def render_dnsmasq(entries, resolver):
