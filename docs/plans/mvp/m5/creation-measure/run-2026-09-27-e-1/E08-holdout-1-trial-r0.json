@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "今天品管紀錄如下：A 站回報不良品 12 件，後來李組長又說 A 站其實是 18 件；B 站回報不良品 -3 件；C 站回報不良品 7 件，記錄的盤點日期寫 2026 年 2 月 30 日；D 站回報不良品 5 件。麻煩幫我整理今日的不良品總數報表。",
+  "acceptance_criteria": [
+    {
+      "text": "有指出 A 站的不良品數量前後不一致（12 件與 18 件），並提出需要跟人確認，而不是自己選一個數字或兩個相加。"
+    },
+    {
+      "text": "有指出 B 站回報的 -3 件是不合理的負數，需要確認。"
+    },
+    {
+      "text": "有指出 C 站記錄的 2026 年 2 月 30 日不是實際存在的日期，需要確認。"
+    },
+    {
+      "text": "沒有在存在上述疑義的情況下，逕自算出一個看似確定的當日不良品總數。"
+    }
+  ],
+  "final_output": "今日不良品報表（待確認）\n\n- A站：先回報 12 件，後又更正為 18 件，請確認要採用哪一筆\n- B站：回報 -3 件，數量為負值，請確認是否輸入錯誤\n- C站：回報 7 件，但盤點日期寫為 2026/02/30，此日期不存在，請確認日期\n- D站：回報 5 件\n\n目前因資料有不一致與異常，**無法直接彙整今日總不良數**。  \n請先確認 A 站、B 站與 C 站資料後，我可以立刻幫你整理成正式總表。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a1c8a95f-3810-47c5-9f0e-97bb50a3bb0d",
+    "run_id": "da462172-2022-4b23-b370-6d164315ee16",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有疑義均被正確標示並要求確認；回覆未在資料未釐清前逕行計算確定的當日不良品總數。",
+    "criterion_results": [
+      {
+        "criterion_id": "6f2b62e9-30d8-47dd-9b5e-33a2d3000130",
+        "text": "有指出 A 站的不良品數量前後不一致（12 件與 18 件），並提出需要跟人確認，而不是自己選一個數字或兩個相加。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確列出 A 站先後為 12 件與 18 件，並要求確認採用哪一筆，未自行選定或加總。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- A站：先回報 12 件，後又更正為 18 件，請確認要採用哪一筆",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ecd111c3-4e20-4614-921d-56079c1e0ad5",
+        "text": "有指出 B 站回報的 -3 件是不合理的負數，需要確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出 B 站 -3 件為負值，並要求確認是否為輸入錯誤。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- B站：回報 -3 件，數量為負值，請確認是否輸入錯誤",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e3f561cc-71e1-48f4-a654-b87a72de7831",
+        "text": "有指出 C 站記錄的 2026 年 2 月 30 日不是實際存在的日期，需要確認。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆指出 C 站的 2026/02/30 不存在，並要求確認日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- C站：回報 7 件，但盤點日期寫為 2026/02/30，此日期不存在，請確認日期",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "373715d5-865c-4cd4-ba5e-8bd056eccc1d",
+        "text": "沒有在存在上述疑義的情況下，逕自算出一個看似確定的當日不良品總數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆在資料不一致與異常未確認前，明確表示無法直接彙整今日總不良數，沒有給出看似確定的總數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前因資料有不一致與異常，**無法直接彙整今日總不良數**。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2895 input and 854 output tokens on gpt-5.4-mini; reported cost $0.0090 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

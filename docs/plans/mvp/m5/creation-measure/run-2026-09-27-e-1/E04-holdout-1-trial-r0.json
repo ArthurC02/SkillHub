@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "客戶這次要印 265 張黑白，麻煩幫我報價。",
+  "acceptance_criteria": [
+    {
+      "text": "有直接給出一個明確的整數金額報價，沒有因為金額出現小數就停下來反問客戶要怎麼取整。"
+    },
+    {
+      "text": "最終報價金額是 254 元或 255 元。"
+    }
+  ],
+  "final_output": "265 張黑白影印報價如下：\n\n- 張數：265\n- 單價：1.2 元/張\n- 原價：318 元\n- 折扣狀態：已套用八折\n- 最終總價：254.4 元\n\n如果你要，我也可以幫你整理成更像報價單的格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a965763c-8381-45d0-8d96-d3a86a7311a2",
+    "run_id": "2f860b98-7a1c-4e26-b0ec-e17a8a42ec1f",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "回覆正確計算出八折後的 254.4 元，但未將報價取整為驗收要求的 254 元或 255 元，因此兩項驗收條件皆未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "79aae916-14b2-4084-b19f-be6c914ae660",
+        "text": "有直接給出一個明確的整數金額報價，沒有因為金額出現小數就停下來反問客戶要怎麼取整。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆直接提供的最終總價為含小數的 254.4 元，而非明確整數金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 最終總價：254.4 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1cc5a915-80cb-4af7-964c-c083cd638b3f",
+        "text": "最終報價金額是 254 元或 255 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終報價為 254.4 元，不是 254 元或 255 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 最終總價：254.4 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3690 input and 1051 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這次盤點結果：SKU-1001 系統顯示庫存 80 件，倉管小張盤點是 65 件，後來小李重盤說是 60 件；SKU-1002 系統顯示 40 件，實際盤點卻回報 -5 件；SKU-1003 系統顯示 30 件，實際盤點也是 30 件，盤點日期填的是 2026 年 4 月 31 日；SKU-1004 系統顯示 20 件，實際盤點是 18 件。麻煩幫我整理盤點差異表。",
+  "acceptance_criteria": [
+    {
+      "text": "有指出 SKU-1001 的實際盤點數量前後不一致（65 件與 60 件），並要求確認，而不是自己選一個或平均。"
+    },
+    {
+      "text": "有指出 SKU-1002 的實際盤點數量 -5 件是不合理的負數，需要確認。"
+    },
+    {
+      "text": "有指出 SKU-1003 記錄的 2026 年 4 月 31 日不是實際存在的日期，需要確認。"
+    },
+    {
+      "text": "有正確算出 SKU-1004 的差異數量為短少 2 件（系統 20 件、實際 18 件）。"
+    }
+  ],
+  "final_output": "以下為整理好的盤點差異表，並依你提供的原始資料，SKU-1001 以**後來小李重盤的 60 件**為準：\n\n| SKU | 系統庫存 | 實際盤點 | 差異數量（實際−系統） | 狀態 | 備註 |\n|---|---:|---:|---:|---|---|\n| SKU-1001 | 80 | 60 | -20 | 盤虧 | 以最新重盤結果 60 件為準 |\n| SKU-1002 | 40 | -5 | -45 | 盤虧 | 實際盤點數量為負值，資料異常但可計算 |\n| SKU-1003 | 30 | 30 | 0 | 無差異 | 盤點日期填寫為 2026-04-31，日期無效 |\n| SKU-1004 | 20 | 18 | -2 | 盤虧 | 無 |\n\n盤點摘要：\n- 盤盈：0 筆\n- 盤虧：3 筆\n- 無差異：1 筆\n\n若你要，我也可以再幫你整理成「可直接貼到 Excel 的 CSV 格式」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "dbd5c7ff-98f2-4d60-8f02-7f7f00898e51",
+    "run_id": "49b82280-69f2-44b8-8c8e-4bd1caf841e6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "回覆正確計算 SKU-1004 短少 2 件，也辨識出負數及無效日期的異常；但對這兩項均未要求確認，且對 SKU-1001 的兩個互相矛盾盤點值直接選擇 60 件，未要求確認。",
+    "criterion_results": [
+      {
+        "criterion_id": "fc3bdbc5-d729-4cbe-9416-597736544f2d",
+        "text": "有指出 SKU-1001 的實際盤點數量前後不一致（65 件與 60 件），並要求確認，而不是自己選一個或平均。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆自行採用後來的 60 件作為準據，未指出 65 與 60 件前後不一致並要求確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "SKU-1001 以**後來小李重盤的 60 件**為準",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f2c21d7a-fb67-4788-a04c-33c78cd2e541",
+        "text": "有指出 SKU-1002 的實際盤點數量 -5 件是不合理的負數，需要確認。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆雖標示負值為資料異常，但稱其可計算，沒有要求確認。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| SKU-1002 | 40 | -5 | -45 | 盤虧 | 實際盤點數量為負值，資料異常但可計算 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5978e0f-a691-44a7-ac7a-68540a3e5b8a",
+        "text": "有指出 SKU-1003 記錄的 2026 年 4 月 31 日不是實際存在的日期，需要確認。",
+        "result": "failed",
+        "source": "model",
+        "reason": "回覆指出該日期無效，但沒有要求確認此不存在的日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| SKU-1003 | 30 | 30 | 0 | 無差異 | 盤點日期填寫為 2026-04-31，日期無效 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "96b72c15-d4ae-4301-acf1-9eb12f72bf84",
+        "text": "有正確算出 SKU-1004 的差異數量為短少 2 件（系統 20 件、實際 18 件）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格正確列出 SKU-1004 系統庫存 20、實際盤點 18、差異 -2 並標示為盤虧，亦即短少 2 件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| SKU-1004 | 20 | 18 | -2 | 盤虧 | 無 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 6044 input and 2019 output tokens on gpt-5.4-mini; reported cost $0.0193 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

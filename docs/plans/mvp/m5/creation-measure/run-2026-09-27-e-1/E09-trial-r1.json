@@ -1,0 +1,180 @@
+{
+  "round": 1,
+  "sample_input": "請幫我寫幼兒園月訊裡的戶外教學段落。\n活動內容：小朋友將前往動物園觀察各種動物，並進行簡單的自然探索活動。\n日期：2026年4月18日（星期六）\n集合時間：上午8:10\n費用：每位幼兒新台幣350元\n需要攜帶：水壺、帽子、輕便外套、餐具、個人藥物（如有需要）",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一段中文月訊文案，語氣溫馨親切，適合直接給家長閱讀。"
+    },
+    {
+      "text": "文案有明確寫出活動日期。"
+    },
+    {
+      "text": "文案有明確寫出集合時間。"
+    },
+    {
+      "text": "文案有明確寫出費用。"
+    },
+    {
+      "text": "文案有明確寫出需要攜帶的物品。"
+    },
+    {
+      "text": "文案有簡要描述戶外教學的活動內容。"
+    },
+    {
+      "text": "文案不會自行補充未提供的行程、地點或其他活動細節。"
+    }
+  ],
+  "final_output": "本月我們將安排幼兒前往動物園進行戶外教學，讓孩子們透過觀察各種動物，並參與簡單的自然探索活動，開啟充滿樂趣的學習體驗。活動日期為2026年4月18日（星期六），集合時間為上午8:10，費用為每位幼兒新台幣350元。請家長協助孩子攜帶水壺、帽子、輕便外套、餐具及個人藥物（如有需要），謝謝您的配合與支持。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "05003b92-3753-4514-b6f9-ca81054331c8",
+    "run_id": "a50711c1-e759-459d-a9a3-92bb4021161f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件皆已滿足。文案以親切的中文段落完整交代活動內容、日期、集合時間、費用與攜帶物品，且未新增具體行程、地點或活動安排。",
+    "criterion_results": [
+      {
+        "criterion_id": "75c04cb0-ac7c-4404-a7c2-749189671c4b",
+        "text": "輸出是一段中文月訊文案，語氣溫馨親切，適合直接給家長閱讀。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一段中文月訊文案，使用「請家長協助」及「謝謝您的配合與支持」等溫馨親切措辭，適合家長閱讀。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請家長協助孩子攜帶水壺、帽子、輕便外套、餐具及個人藥物（如有需要），謝謝您的配合與支持。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8dc60f0f-3af0-4f29-a49c-4bbf0a8296e3",
+        "text": "文案有明確寫出活動日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案明確列出活動日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "活動日期為2026年4月18日（星期六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9bc04b07-22dc-443e-9e2c-d329319aa3ec",
+        "text": "文案有明確寫出集合時間。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案明確列出集合時間。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "集合時間為上午8:10",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32c1ddd2-dd38-4f10-91a7-eb0a619734c9",
+        "text": "文案有明確寫出費用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案明確列出每位幼兒的費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "費用為每位幼兒新台幣350元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47cc8595-6626-417a-934d-1b8b05f6a214",
+        "text": "文案有明確寫出需要攜帶的物品。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案明確列出全部需要攜帶的物品。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請家長協助孩子攜帶水壺、帽子、輕便外套、餐具及個人藥物（如有需要）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b26008fd-79dd-449a-bfe0-ad8d0a59db27",
+        "text": "文案有簡要描述戶外教學的活動內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案簡要說明將前往動物園觀察動物並參與自然探索活動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本月我們將安排幼兒前往動物園進行戶外教學，讓孩子們透過觀察各種動物，並參與簡單的自然探索活動",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "daa5edeb-9252-4ef4-825b-cf1a8cc79fae",
+        "text": "文案不會自行補充未提供的行程、地點或其他活動細節。",
+        "result": "passed",
+        "source": "model",
+        "reason": "文案僅包含所提供的動物園、觀察動物、自然探索、日期時間、費用及攜帶物品；「充滿樂趣的學習體驗」為概括性描述，未補充未提供的行程、地點或活動細節。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本月我們將安排幼兒前往動物園進行戶外教學，讓孩子們透過觀察各種動物，並參與簡單的自然探索活動，開啟充滿樂趣的學習體驗。活動日期為2026年4月18日（星期六），集合時間為上午8:10，費用為每位幼兒新台幣350元。請家長協助孩子攜帶水壺、帽子、輕便外套、餐具及個人藥物（如有需要），謝謝您的配合與支持。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3083 input and 340 output tokens on gpt-5.4-mini; reported cost $0.0069 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

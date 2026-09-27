@@ -1,0 +1,151 @@
+{
+  "round": 2,
+  "sample_input": "請把以下兩個案件進度各自整理成要寄給當事人的通知：\n\n第一則：\n「本案今天下午收到法院通知，原定下週的開庭改期，新的庭期是 11 月 18 日上午 9:30。法院表示，因承辦法官行程調整，請雙方先準備補充書狀；我們也已經在今天完成證據整理，並會在 3 個工作天內把補充資料送出。另外，對方律師昨天來信表示有意先談和解，但尚未提出具體條件。」\n\n第二則：\n「法院已准許本案開庭延期，新的日期是下月中旬。」",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入一段包含多個進度事實的案件更新時，輸出是一段可直接寄出的中文通知，且全文不超過 3 句。"
+    },
+    {
+      "text": "當輸入同時包含較新的進度與較舊的背景時，輸出會優先保留較新的進度資訊，較舊背景只在不超過 3 句且不損失重點時才保留。"
+    },
+    {
+      "text": "當輸入包含程序結果、下一步與期限時，輸出會保留至少一個最關鍵的程序結果，並盡量保留下一步或期限中的重要內容。"
+    },
+    {
+      "text": "當輸入資訊很多時，輸出不會逐字照抄全部內容，而會濃縮成 3 句以內的通知。"
+    },
+    {
+      "text": "當輸入只有少量進度事實時，輸出仍保持正式、簡潔、可直接發送給當事人的語氣。"
+    }
+  ],
+  "final_output": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。\n\n法院已准許本案開庭延期，新的開庭日期為下月中旬。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1878ce99-8f3f-4d2c-a09b-fb3eaacbcd18",
+    "run_id": "7f02dfb3-750f-490b-a7c9-f8e23d4217d2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩則案件進度均各自整理為正式、可直接寄送的中文通知。第一則在3句內保留改期、後續作業與期限及和解動向；第二則簡潔說明延期結果與新日期。",
+    "criterion_results": [
+      {
+        "criterion_id": "23eed289-39da-4cad-aacb-5a88e24ba69b",
+        "text": "在輸入一段包含多個進度事實的案件更新時，輸出是一段可直接寄出的中文通知，且全文不超過 3 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第一則多項進度已整理為可直接寄送的正式通知，且為3句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0e9e5ac5-74b9-4e02-b805-2bc5f7993fa7",
+        "text": "當輸入同時包含較新的進度與較舊的背景時，輸出會優先保留較新的進度資訊，較舊背景只在不超過 3 句且不損失重點時才保留。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知優先呈現當日下午收到的改期及新庭期，並在3句內保留補充書狀、送件期限及和解意向等仍具重要性的背景。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ccc124c9-db0c-4df0-a10a-36f9c5718d1e",
+        "text": "當輸入包含程序結果、下一步與期限時，輸出會保留至少一個最關鍵的程序結果，並盡量保留下一步或期限中的重要內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "保留了關鍵程序結果（庭期改至11月18日上午9:30），以及下一步與明確期限（準備補充書狀、3個工作天內送件）。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d16bc11e-e63c-463e-b94b-97e337cbe4d8",
+        "text": "當輸入資訊很多時，輸出不會逐字照抄全部內容，而會濃縮成 3 句以內的通知。",
+        "result": "passed",
+        "source": "model",
+        "reason": "資訊量較大的第一則被濃縮為3句，而非逐字照抄原始更新。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1bdf1e24-c813-4aa1-bef1-91cfb5b5527f",
+        "text": "當輸入只有少量進度事實時，輸出仍保持正式、簡潔、可直接發送給當事人的語氣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第二則僅有少量事實，仍以正式、簡潔且可直接發送的語氣表達。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "法院已准許本案開庭延期，新的開庭日期為下月中旬。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19282 input and 765 output tokens on gpt-5.4-mini; reported cost $0.0197 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

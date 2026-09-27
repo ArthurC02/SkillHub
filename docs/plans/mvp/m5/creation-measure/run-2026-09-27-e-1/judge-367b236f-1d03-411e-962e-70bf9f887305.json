@@ -1,0 +1,151 @@
+{
+  "request": {
+    "RunID": "367b236f-1d03-411e-962e-70bf9f887305",
+    "EvaluationID": "b97c3325-10e8-41b8-a507-f22321f9c1a2",
+    "Skill": {
+      "Name": "factory-quality-daily-defect-summary",
+      "Summary": "彙整工廠品管巡檢紀錄中各站回報的不良品數量，產出當日總不良數與各站加總結果；當你要把同日多站回報整理成報表時使用。"
+    },
+    "UserPrompt": "請整理以下巡檢紀錄，輸出當日總不良數與各站彙總：\nA站 3件，B站 5件，A站 2件，C站 0件，B站 4件，D站 1件。\n\n這組範例的正確彙總應為：A站 5件、B站 9件、C站 0件、D站 1件，當日總不良數 15件。",
+    "Criteria": [
+      {
+        "ID": "53afad6d-8852-4ff8-acc7-ab593ea1d6b2",
+        "Text": "輸入包含多站不良數量時，Skill 會輸出當日總不良數，且總數等於所有站點數量加總。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "609a4280-0949-4768-9834-b28ba0d9e2e3",
+        "Text": "輸入包含同一站多筆回報時，Skill 會先把同站數量合併，再納入當日總不良數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "973a39d6-c6a9-44df-9612-db4a484a9059",
+        "Text": "輸入包含不同站點資料時，Skill 會保留各站彙總結果，且各站數值加總後等於總不良數。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "53d0b3d8-a70a-4391-8e6d-fbf27228ce0b",
+        "Text": "輸入只提供一日資料時，Skill 只產出該日結果，不混入其他日期資料。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "126f1967-d518-4556-8b43-d4706d036b28",
+        "Text": "輸入的數量為整數時，輸出中的總不良數也是整數。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "當日總不良數：**15件**\n\n各站彙總：\n- **A站：5件**\n- **B站：9件**\n- **C站：0件**\n- **D站：1件**",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "8b4c9f2e-a4e7-41cb-9022-5598e3b18fd0",
+          "OccurredAt": "2026-09-27T13:03:03.1Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"當日總不良數：**15件**\\n\\n各站彙總：\\n- **A站：5件**\\n- **B站：9件**\\n- **C站：0件**\\n- **D站：1件**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d4de2585-b576-4ba5-a0d9-c5f74c353db3",
+          "OccurredAt": "2026-09-27T13:03:03.568Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"當日總不良數：**15件**\\n\\n各站彙總：\\n- **A站：5件**\\n- **B站：9件**\\n- **C站：0件**\\n- **D站：1件**\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "1f1e603d-6b46-45b0-be55-96100aba558c",
+          "OccurredAt": "2026-09-27T13:03:09.116Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.014904, \"cost_source\": \"gateway\", \"duration_ms\": 10193, \"input_tokens\": 18064, \"token_source\": \"result\", \"output_tokens\": 197, \"cache_read_input_tokens\": null, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "53afad6d-8852-4ff8-acc7-ab593ea1d6b2",
+        "Result": "passed",
+        "Reason": "輸出明確提供當日總不良數 15 件，與輸入各筆數量加總相符。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "當日總不良數：**15件**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "609a4280-0949-4768-9834-b28ba0d9e2e3",
+        "Result": "passed",
+        "Reason": "同一站的多筆回報已合併：A站為 5 件、B站為 9 件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **A站：5件**\n- **B站：9件**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "973a39d6-c6a9-44df-9612-db4a484a9059",
+        "Result": "passed",
+        "Reason": "輸出保留 A、B、C、D 各站彙總；各站數值 5、9、0、1 合計為 15，與總數一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "各站彙總：\n- **A站：5件**\n- **B站：9件**\n- **C站：0件**\n- **D站：1件**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "當日總不良數：**15件**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "53d0b3d8-a70a-4391-8e6d-fbf27228ce0b",
+        "Result": "passed",
+        "Reason": "輸出僅呈現「當日」總不良數與該次提供站點的彙總，未出現其他日期資料。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "當日總不良數：**15件**\n\n各站彙總：\n- **A站：5件**\n- **B站：9件**\n- **C站：0件**\n- **D站：1件**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "126f1967-d518-4556-8b43-d4706d036b28",
+        "Result": "passed",
+        "Reason": "輸出的當日總不良數為整數 15 件。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "當日總不良數：**15件**"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "本次輸出正確合併重複站點回報，列出各站彙總，且各站合計與整數總不良數 15 件一致。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2114,
+      "CompletionTokens": 679,
+      "CostUSD": 0.010896900000000001,
+      "CostReported": true
+    }
+  }
+}

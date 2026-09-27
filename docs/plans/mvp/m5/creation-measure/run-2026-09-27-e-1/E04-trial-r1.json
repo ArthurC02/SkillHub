@@ -1,0 +1,178 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下三筆黑白影印報價：\n199 張\n200 張\n250 張",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入 199 張時，輸出原價 238.8 元，且不套用折扣，最終總價為 238.8 元。"
+    },
+    {
+      "text": "當輸入 200 張時，輸出原價 240 元，套用八折後最終總價為 192 元。"
+    },
+    {
+      "text": "當輸入 250 張時，輸出原價 300 元，套用八折後最終總價為 240 元。"
+    },
+    {
+      "text": "任何符合門檻的輸入都必須明確標示「已套用八折」。"
+    },
+    {
+      "text": "任何未達門檻的輸入都必須明確標示「未套用折扣」。"
+    },
+    {
+      "text": "輸出必須包含張數、單價、原價、折扣狀態與最終總價五個資訊。"
+    }
+  ],
+  "final_output": "以下是三筆黑白影印報價：\n\n**1. 199 張**\n- 單價：1.2 元/張\n- 原價：238.8 元\n- 折扣狀態：未套用折扣\n- 最終總價：238.8 元\n\n**2. 200 張**\n- 單價：1.2 元/張\n- 原價：240 元\n- 折扣狀態：已套用八折\n- 最終總價：192 元\n\n**3. 250 張**\n- 單價：1.2 元/張\n- 原價：300 元\n- 折扣狀態：已套用八折\n- 最終總價：240 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fc0de90a-b786-4c59-8caf-f81f97d1c930",
+    "run_id": "cfd8a5e8-4049-4ef8-a751-1f41a6d5cc30",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三筆報價的原價、折扣門檻套用、最終總價與必要欄位均符合全部驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "8c6a580d-ccba-4634-922b-e60b62ffa1f6",
+        "text": "當輸入 199 張時，輸出原價 238.8 元，且不套用折扣，最終總價為 238.8 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "199 張的原價、未折扣狀態與最終總價皆符合要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**1. 199 張**\n- 單價：1.2 元/張\n- 原價：238.8 元\n- 折扣狀態：未套用折扣\n- 最終總價：238.8 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1f6c045d-5fde-4005-be6c-5d73cc6f58e7",
+        "text": "當輸入 200 張時，輸出原價 240 元，套用八折後最終總價為 192 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "200 張的原價為 240 元，並明確標示八折及最終 192 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**2. 200 張**\n- 單價：1.2 元/張\n- 原價：240 元\n- 折扣狀態：已套用八折\n- 最終總價：192 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d1cb417-9fd5-4115-8b98-da5476a7b1a3",
+        "text": "當輸入 250 張時，輸出原價 300 元，套用八折後最終總價為 240 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "250 張的原價為 300 元，並明確標示八折及最終 240 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**3. 250 張**\n- 單價：1.2 元/張\n- 原價：300 元\n- 折扣狀態：已套用八折\n- 最終總價：240 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5d1b40b0-e043-4979-8574-0a628c41af19",
+        "text": "任何符合門檻的輸入都必須明確標示「已套用八折」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆符合門檻的輸入（200 與 250 張）均明確標示「已套用八折」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**2. 200 張**\n- 單價：1.2 元/張\n- 原價：240 元\n- 折扣狀態：已套用八折\n- 最終總價：192 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**3. 250 張**\n- 單價：1.2 元/張\n- 原價：300 元\n- 折扣狀態：已套用八折\n- 最終總價：240 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "22d21303-f280-4db9-925c-03fc2dfec61d",
+        "text": "任何未達門檻的輸入都必須明確標示「未套用折扣」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未達門檻的 199 張明確標示「未套用折扣」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**1. 199 張**\n- 單價：1.2 元/張\n- 原價：238.8 元\n- 折扣狀態：未套用折扣\n- 最終總價：238.8 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "188b0f65-9e92-4798-8c5c-a144f73e51e1",
+        "text": "輸出必須包含張數、單價、原價、折扣狀態與最終總價五個資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每筆報價都包含張數、單價、原價、折扣狀態及最終總價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**1. 199 張**\n- 單價：1.2 元/張\n- 原價：238.8 元\n- 折扣狀態：未套用折扣\n- 最終總價：238.8 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**2. 200 張**\n- 單價：1.2 元/張\n- 原價：240 元\n- 折扣狀態：已套用八折\n- 最終總價：192 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**3. 250 張**\n- 單價：1.2 元/張\n- 原價：300 元\n- 折扣狀態：已套用八折\n- 最終總價：240 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19651 input and 702 output tokens on gpt-5.4-mini; reported cost $0.0238 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

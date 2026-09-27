@@ -1,0 +1,211 @@
+{
+  "request": {
+    "RunID": "08ee41f9-dc3a-4613-a4f4-9adb4eb3aa43",
+    "EvaluationID": "5b8d1921-5f66-4a3f-a217-e12428c3c956",
+    "Skill": {
+      "Name": "deposit-payment-followup-process",
+      "Summary": "Automates the post-deposit workflow for confirmed orders: when a customer has fully paid the deposit, update the order status to 已確認 and prepare the confirmation email. Use this skill when you need a ready-to-use process for handling paid-deposit orders in a company order system."
+    },
+    "UserPrompt": "請處理以下已付清訂金的訂單，並直接輸出每一筆訂單的可執行處理流程，逐筆包含登入公司訂單系統、更新為「已確認」、寄出確認信：\n訂單A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\n訂單B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\n訂單C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物",
+    "Criteria": [
+      {
+        "ID": "fce0bb20-2416-427f-abd7-088217659ce4",
+        "Text": "在輸入包含已付清訂金的訂單資料與客戶聯絡方式時，Skill 會輸出一個明確的處理流程，包含登入訂單系統、更新狀態為「已確認」、寄出確認信三個步驟。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9722428a-8681-4d59-9b0c-18ba6c68773e",
+        "Text": "在輸入包含多筆已付清訂金訂單時，Skill 會逐筆處理每一筆訂單，而不是只處理第一筆。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ed4ad719-441d-4f1c-9e3b-2ce0c72882ce",
+        "Text": "在輸入中明確指定訂單新狀態為「已確認」時，Skill 的輸出會保留這個狀態名稱，不會改寫成其他字樣。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "bf7fe696-4e01-4739-b6e4-e98e84249de0",
+        "Text": "在輸入中要求寄送確認信時，Skill 的輸出會包含寄信動作，且收件人是該訂單對應的客戶。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8fa30025-fafb-478f-9205-1fd8a11973ee",
+        "Text": "在輸入包含訂單編號與客戶聯絡方式時，Skill 的輸出會能對應到該筆訂單，而不是只描述通用流程。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d8a17b3c-5cd6-436e-843e-fe866d6028c0",
+        "Text": "在輸入同時含有流程與輸出要求時，Skill 的結果會以可直接執行的步驟描述呈現，且不會省略任何一個核心動作。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為三筆「已付清訂金」訂單的可執行處理流程，逐筆整理如下：\n\n---\n\n## 訂單 A1023\n- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **A1023**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。\n  5. 完成處理。\n\n---\n\n## 訂單 B2048\n- **訂單資訊**：B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **B2048**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。\n  5. 完成處理。\n\n---\n\n## 訂單 C3301\n- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **C3301**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\n  5. 完成處理。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "b5821170-a8e5-499b-a823-c173e1a6b07b",
+          "OccurredAt": "2026-09-27T13:01:41.368Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"deposit-payment-followup-process\", \"skill_version_id\": \"6af00b9e-31e4-4976-ae0d-0e0c45b1608e\"}"
+        },
+        {
+          "TraceEventID": "075ee15b-b859-47e6-a9a1-371fd6a76d26",
+          "OccurredAt": "2026-09-27T13:01:41.379Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"deposit-payment-followup-process\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_PkNEuVxlf0MuPgV5zkh94Nmv\", \"result_summary\": \"Launching skill: deposit-payment-followup-process\"}"
+        },
+        {
+          "TraceEventID": "9d6eab90-6dc0-4664-95e2-bfba773bb83a",
+          "OccurredAt": "2026-09-27T13:01:46.055Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為三筆「已付清訂金」訂單的可執行處理流程，逐筆整理如下：\\n\\n---\\n\\n## 訂單 A1023\\n- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **A1023**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。\\n  5. 完成處理。\\n\\n---\\n\\n## 訂單 B2048\\n- **訂單資訊**：B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **B2048**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。\\n  5. 完成處理。\\n\\n---\\n\\n## 訂單 C3301\\n- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **C3301**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\\n  5. 完成處理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c16e66b0-f0b0-4c71-9207-ef26cd307a81",
+          "OccurredAt": "2026-09-27T13:01:46.285Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為三筆「已付清訂金」訂單的可執行處理流程，逐筆整理如下：\\n\\n---\\n\\n## 訂單 A1023\\n- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **A1023**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。\\n  5. 完成處理。\\n\\n---\\n\\n## 訂單 B2048\\n- **訂單資訊**：B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **B2048**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。\\n  5. 完成處理。\\n\\n---\\n\\n## 訂單 C3301\\n- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物\\n- **處理流程**：\\n  1. 登入公司訂單系統。\\n  2. 找到訂單 **C3301**。\\n  3. 將訂單狀態更新為 **「已確認」**。\\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\\n  5. 完成處理。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "0c304399-08c2-406f-9a4c-869ce86cf8fc",
+          "OccurredAt": "2026-09-27T13:01:51.835Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0093654, \"cost_source\": \"gateway\", \"duration_ms\": 12905, \"input_tokens\": 2985, \"token_source\": \"result\", \"output_tokens\": 906, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "fce0bb20-2416-427f-abd7-088217659ce4",
+        "Result": "passed",
+        "Reason": "輸出為各筆已付清訂金訂單提供明確流程，包含登入系統、更新為「已確認」及寄出確認信。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 登入公司訂單系統。\n  2. 找到訂單 **A1023**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9722428a-8681-4d59-9b0c-18ba6c68773e",
+        "Result": "passed",
+        "Reason": "輸出逐筆列出並處理 A1023、B2048 與 C3301 三筆訂單。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 訂單 A1023"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 訂單 B2048"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 訂單 C3301"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ed4ad719-441d-4f1c-9e3b-2ce0c72882ce",
+        "Result": "passed",
+        "Reason": "各筆訂單的狀態更新步驟均保留指定名稱「已確認」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. 將訂單狀態更新為 **「已確認」**。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "bf7fe696-4e01-4739-b6e4-e98e84249de0",
+        "Result": "passed",
+        "Reason": "輸出包含寄出確認信，且每筆均指定相對應客戶姓名與電子郵件地址。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8fa30025-fafb-478f-9205-1fd8a11973ee",
+        "Result": "passed",
+        "Reason": "每個流程皆以訂單編號為標題，並包含對應客戶與聯絡方式，而非僅提供通用說明。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. 找到訂單 **B2048**。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d8a17b3c-5cd6-436e-843e-fe866d6028c0",
+        "Result": "passed",
+        "Reason": "結果以編號的可執行步驟呈現，且對每筆訂單均涵蓋登入、定位訂單、更新狀態與寄信等核心動作。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **C3301**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\n  5. 完成處理。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有六項驗收標準均有直接輸出證據支持：三筆訂單皆以可執行的逐筆流程處理，保留「已確認」狀態，並寄送確認信至各自對應客戶。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 3768,
+      "CompletionTokens": 1098,
+      "CostUSD": 0.0200599,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下電商倉庫盤點差異，逐 SKU 算出差異數量並標示盤盈/盤虧/無差異：\nSKU,系統庫存,實際盤點\nA100,120,125\nB205,80,74\nC330,50,50",
+  "acceptance_criteria": [
+    {
+      "text": "給定多筆 SKU 的系統庫存與實際盤點數量，Skill 會逐筆輸出每個 SKU 的差異數量。"
+    },
+    {
+      "text": "差異數量的計算結果符合「實際盤點數量 − 系統庫存數量」。"
+    },
+    {
+      "text": "當差異數量大於 0 時，輸出能標示為盤盈。"
+    },
+    {
+      "text": "當差異數量小於 0 時，輸出能標示為盤虧。"
+    },
+    {
+      "text": "當差異數量等於 0 時，輸出能標示為無差異。"
+    },
+    {
+      "text": "Sample input 會包含至少三個 SKU，且同時涵蓋盤盈、盤虧與無差異三種情況。"
+    }
+  ],
+  "final_output": "以下是逐 SKU 的盤點差異整理（**差異數量 = 實際盤點 − 系統庫存**）：\n\n| SKU  | 系統庫存 | 實際盤點 | 差異數量 | 結果 |\n|------|----------:|---------:|---------:|------|\n| A100 | 120 | 125 | +5 | 盤盈 |\n| B205 | 80  | 74  | -6 | 盤虧 |\n| C330 | 50  | 50  | 0  | 無差異 |\n\n如需，我也可以幫你再整理成「可直接貼到 Excel 的 CSV 格式」。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "66544450-5b99-46d4-90ce-4168082ed0b3",
+    "run_id": "93bc0c10-24f4-4a2b-93a1-8e25ea889b35",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆完整列出三個 SKU 的差異，依「實際盤點－系統庫存」正確計算，並正確涵蓋盤盈、盤虧與無差異。",
+    "criterion_results": [
+      {
+        "criterion_id": "ea8f03dc-5182-4a53-a713-31bae37ff505",
+        "text": "給定多筆 SKU 的系統庫存與實際盤點數量，Skill 會逐筆輸出每個 SKU 的差異數量。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆逐筆列出 A100、B205、C330，且各自有差異數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A100 | 120 | 125 | +5 | 盤盈 |\n| B205 | 80  | 74  | -6 | 盤虧 |\n| C330 | 50  | 50  | 0  | 無差異 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "541b9c0a-f17c-4bed-ac81-df59a80ed35d",
+        "text": "差異數量的計算結果符合「實際盤點數量 − 系統庫存數量」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明示差異計算公式，且三筆數值分別正確為 125−120=5、74−80=−6、50−50=0。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "差異數量 = 實際盤點 − 系統庫存",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A100 | 120 | 125 | +5 | 盤盈 |\n| B205 | 80  | 74  | -6 | 盤虧 |\n| C330 | 50  | 50  | 0  | 無差異 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "84b580ac-8776-4e37-b61b-f0ef1860ad6d",
+        "text": "當差異數量大於 0 時，輸出能標示為盤盈。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A100 的差異數量為 +5，並標示為盤盈。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A100 | 120 | 125 | +5 | 盤盈 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a324a4c6-f607-44a3-956b-c3773b4887de",
+        "text": "當差異數量小於 0 時，輸出能標示為盤虧。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B205 的差異數量為 -6，並標示為盤虧。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B205 | 80  | 74  | -6 | 盤虧 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79c5f677-7191-4f67-af15-f2e80fac89bc",
+        "text": "當差異數量等於 0 時，輸出能標示為無差異。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C330 的差異數量為 0，並標示為無差異。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| C330 | 50  | 50  | 0  | 無差異 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2ac52498-cc26-442c-a665-d4a0dea22cfd",
+        "text": "Sample input 會包含至少三個 SKU，且同時涵蓋盤盈、盤虧與無差異三種情況。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆所處理的輸入含三個 SKU，並呈現盤盈、盤虧與無差異三種結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A100 | 120 | 125 | +5 | 盤盈 |\n| B205 | 80  | 74  | -6 | 盤虧 |\n| C330 | 50  | 50  | 0  | 無差異 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2155 input and 357 output tokens on gpt-5.4-mini; reported cost $0.0004 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

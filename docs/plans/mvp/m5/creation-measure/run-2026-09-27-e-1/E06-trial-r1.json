@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請生成公祭時間確認簡訊：公祭日期 11/18、時間 14:30、地點 台北市立殯儀館、尾款金額 8,500 元。",
+  "acceptance_criteria": [
+    {
+      "text": "給定完整的日期、時間、地點與尾款金額時，輸出 1 則可直接傳送的簡訊。"
+    },
+    {
+      "text": "簡訊內容必須明確包含日期、時間、地點與尾款金額四項資訊。"
+    },
+    {
+      "text": "輸出需附上總字數，且該字數不得超過 35。"
+    },
+    {
+      "text": "字數計算需包含標點、英數字與空格。"
+    },
+    {
+      "text": "在資訊完整時，不得省略任何一項必要欄位以換取更短字數。"
+    }
+  ],
+  "final_output": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "74b67bf3-6953-4218-86ca-a930ef219e9e",
+    "run_id": "eba12e8e-b972-4f91-86b8-7efd19711000",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出為一則 31 字的公祭確認簡訊，包含所有必要欄位，且字數符合不超過 35 字的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "1fa33e3f-4383-4c11-95e4-d6338efb19b0",
+        "text": "給定完整的日期、時間、地點與尾款金額時，輸出 1 則可直接傳送的簡訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為一則包含公祭通知內容的可傳送簡訊，並附帶字數標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e49faa59-3bdf-47c3-b9d9-060d958439a3",
+        "text": "簡訊內容必須明確包含日期、時間、地點與尾款金額四項資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊明確列出日期 11/18、時間 14:30、地點台北市立殯儀館及尾款 8,500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "45272f4a-870e-4f41-bbf7-fb8a291a9e3f",
+        "text": "輸出需附上總字數，且該字數不得超過 35。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出附有「31字」總字數標示，且 31 未超過 35。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b960264-992d-4869-b3c8-514629825ae9",
+        "text": "字數計算需包含標點、英數字與空格。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊正文逐字計算為 31 字，計入空格、斜線、冒號、逗號、英數字及句號後與標示一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0aa84f77-51a9-408d-ae84-e9c8cc7443b9",
+        "text": "在資訊完整時，不得省略任何一項必要欄位以換取更短字數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在資訊完整的情況下，日期、時間、地點與尾款金額均未省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "公祭11/18 14:30 台北市立殯儀館，尾款8,500元。｜31字",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18708 input and 1789 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

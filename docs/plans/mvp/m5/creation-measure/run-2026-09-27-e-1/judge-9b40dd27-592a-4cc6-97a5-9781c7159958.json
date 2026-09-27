@@ -1,0 +1,174 @@
+{
+  "request": {
+    "RunID": "9b40dd27-592a-4cc6-97a5-9781c7159958",
+    "EvaluationID": "499149ba-4220-4e17-8b11-431c84800534",
+    "Skill": {
+      "Name": "real-estate-commission-fee-calculator",
+      "Summary": "Calculate a single real-estate brokerage commission fee from a transaction price using tiered percentage rates and rounding down to the nearest thousand. Use this skill when you need a ready-to-run fee calculator for one property transaction."
+    },
+    "UserPrompt": "請幫我計算以下四筆成交價的房仲服務費，並只輸出每筆最終金額：\n- 9,999,999 元\n- 10,000,000 元\n- 20,000,000 元\n- 30,000,001 元\n\n對應結果應分別為：\n- 9,999,999 × 1% = 99,999.99，無條件捨去到千元後為 99,000 元\n- 10,000,000 × 1.5% = 150,000，無條件捨去到千元後為 150,000 元\n- 20,000,000 × 1.5% = 300,000，無條件捨去到千元後為 300,000 元\n- 30,000,001 × 2% = 600,000.02，無條件捨去到千元後為 600,000 元",
+    "Criteria": [
+      {
+        "ID": "3216d975-a367-488b-aa81-a1d29d1a8208",
+        "Text": "When given a single成交價 below 10,000,000, the Skill outputs service fee = 成交價 × 1%, then floors to the nearest 1,000.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9a56000a-4baf-4056-bb77-62736d8f0880",
+        "Text": "When given a single成交價 exactly 10,000,000, the Skill uses the 1.5% tier and floors the result to the nearest 1,000.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "28020f99-552a-45bb-a155-9d460c6c109c",
+        "Text": "When given a single成交價 between 10,000,000 and 29,999,999, the Skill uses the 1.5% tier and floors the result to the nearest 1,000.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "6d9d3477-d820-4c5f-b260-ea745747e045",
+        "Text": "When given a single成交價 exactly 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ae7ed640-2616-4349-b010-ec9cf304d38b",
+        "Text": "When given a single成交價 above 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "35784635-488a-4fe5-bfc5-78d3dcbdab09",
+        "Text": "The Skill does not apply progressive marginal rates; it applies only one tier to the full成交價.",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "913b2640-ce8c-4d8e-9c86-7150a431962d",
+        "Text": "The output is the final fee amount only, not a step-by-step calculation.",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "d5defc7f-9902-4735-af7f-5f80954be776",
+          "OccurredAt": "2026-09-27T12:49:19.801Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"99,000 元\\n150,000 元\\n300,000 元\\n600,000 元\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7506b6dc-7bb8-44d9-a45d-b3e242bec6fa",
+          "OccurredAt": "2026-09-27T12:49:20.054Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"99,000 元\\n150,000 元\\n300,000 元\\n600,000 元\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "51b902b6-7441-4aa7-8365-a7d89656d170",
+          "OccurredAt": "2026-09-27T12:49:24.106Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00053625, \"cost_source\": \"gateway\", \"duration_ms\": 7115, \"input_tokens\": 18160, \"token_source\": \"result\", \"output_tokens\": 107, \"cache_read_input_tokens\": null, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3216d975-a367-488b-aa81-a1d29d1a8208",
+        "Result": "passed",
+        "Reason": "對 9,999,999 元的輸出為 99,000 元，符合以 1% 計算後無條件捨去至千元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9a56000a-4baf-4056-bb77-62736d8f0880",
+        "Result": "passed",
+        "Reason": "對恰好 10,000,000 元的輸出為 150,000 元，符合 1.5% 級距並捨去至千元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "28020f99-552a-45bb-a155-9d460c6c109c",
+        "Result": "passed",
+        "Reason": "對 20,000,000 元的輸出為 300,000 元，符合 1.5% 套用全額並捨去至千元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "6d9d3477-d820-4c5f-b260-ea745747e045",
+        "Result": "undetermined",
+        "Reason": "本次輸入未包含恰好 30,000,000 元的成交價；30,000,001 元的結果不足以直接驗證恰好等於該門檻時的行為。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "ae7ed640-2616-4349-b010-ec9cf304d38b",
+        "Result": "passed",
+        "Reason": "對高於 30,000,000 元的 30,000,001 元，輸出為 600,000 元，符合以 2% 計算後捨去至千元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "35784635-488a-4fe5-bfc5-78d3dcbdab09",
+        "Result": "passed",
+        "Reason": "20,000,000 元輸出 300,000 元、30,000,001 元輸出 600,000 元，與各自單一級距套用於全額的結果一致，而非累進邊際費率。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "913b2640-ce8c-4d8e-9c86-7150a431962d",
+        "Result": "passed",
+        "Reason": "最終輸出僅列出四筆費用金額，未包含計算步驟。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "99,000 元\n150,000 元\n300,000 元\n600,000 元"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "已驗證低於一千萬、恰好一千萬、一千萬至兩千九百九十九萬九千九百九十九區間，以及高於三千萬時的結果與單一級距計算一致，且只輸出最終金額。由於本次未測試恰好 30,000,000 元，該門檻行為無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2194,
+      "CompletionTokens": 1159,
+      "CostUSD": 0.0168569,
+      "CostReported": true
+    }
+  }
+}

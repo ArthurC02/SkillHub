@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "公祭日期是 2026 年 10 月 3 日星期六，時間是上午 8 點，地點在第一殯儀館景仰廳，家屬尾款是 32,000 元，麻煩幫我做這則簡訊。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出總字數（含標點與英數字）不超過 35 個字。"
+    },
+    {
+      "text": "內容有提到公祭日期是 10 月 3 日。"
+    },
+    {
+      "text": "內容有提到尾款金額是 32,000 元（或等值寫法，如 3 萬 2 千元）。"
+    },
+    {
+      "text": "內容有提到地點是第一殯儀館景仰廳（或可辨識該地點的關鍵字）。"
+    }
+  ],
+  "final_output": "2026年10月3日星期六上午8點第一殯儀館景仰廳尾款32,000元  \n字數：34",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b21bebba-9393-46e2-bc04-3f359fcac523",
+    "run_id": "bf6478b6-9507-4fd1-966f-89754f1ab242",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "日期、尾款與地點均已包含，但最終回覆額外輸出字數說明，使整體輸出超過35字。",
+    "criterion_results": [
+      {
+        "criterion_id": "784ead61-11db-49b2-a53e-36fe11e53b0c",
+        "text": "輸出總字數（含標點與英數字）不超過 35 個字。",
+        "result": "failed",
+        "source": "model",
+        "reason": "簡訊本文雖標示為34字，但最終輸出另包含「字數：34」這一行，因此整體輸出超過35個字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年10月3日星期六上午8點第一殯儀館景仰廳尾款32,000元  \n字數：34",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd7e26ea-8eb9-426b-b95b-b7056dd5c10a",
+        "text": "內容有提到公祭日期是 10 月 3 日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確包含日期「10月3日」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年10月3日星期六上午8點第一殯儀館景仰廳尾款32,000元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a571ef6c-df1a-4a00-9df9-3d4d923f1587",
+        "text": "內容有提到尾款金額是 32,000 元（或等值寫法，如 3 萬 2 千元）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確包含尾款金額「32,000元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年10月3日星期六上午8點第一殯儀館景仰廳尾款32,000元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0c1850e9-bb33-43dc-b884-337e200053fd",
+        "text": "內容有提到地點是第一殯儀館景仰廳（或可辨識該地點的關鍵字）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容明確包含地點「第一殯儀館景仰廳」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年10月3日星期六上午8點第一殯儀館景仰廳尾款32,000元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18853 input and 2251 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 18,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

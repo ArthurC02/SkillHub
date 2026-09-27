@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "有一筆房屋成交，成交價是 29,999,999 元，麻煩幫我算服務費。",
+  "acceptance_criteria": [
+    {
+      "text": "服務費為 449,000 元。"
+    }
+  ],
+  "final_output": "449000",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "474e7000-edd2-4019-bb86-63d36ce99d68",
+    "run_id": "6852a105-9538-4a65-b68b-48af1f8fecc9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "服務費計算結果符合驗收標準：449,000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "003586a7-d135-49a3-9837-fa5df77404c3",
+        "text": "服務費為 449,000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆為 449000，等同於 449,000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "449000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 4450 input and 664 output tokens on gpt-5.4-mini; reported cost $0.0133 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "round": 0,
+  "sample_input": "王會長好，最近天氣轉涼，跟您問聲好。我這次要跟合作社訂肥料，麻煩排一下：有機肥 20 包，一包 350 元；上次說要的除草劑我改主意了，這次先不要；複合肥料 15 包，單價 420 元；另外包裝袋也要順便訂，50 個，一個 12 元。對了，我姪女下個月要結婚，到時候再跟您說喜宴的事，謝謝！",
+  "acceptance_criteria": [
+    {
+      "text": "訂購清單有包含「有機肥 20 包」「複合肥料 15 包」「包裝袋 50 個」三項。"
+    },
+    {
+      "text": "訂購清單沒有把除草劑列進去，因為對方已經明確表示這次不要。"
+    },
+    {
+      "text": "算出的總金額是 13,900 元。"
+    }
+  ],
+  "final_output": "- 品項：有機肥  \n  數量：20 包  \n  單價：350 元  \n  小計：7,000 元  \n\n- 品項：複合肥料  \n  數量：15 包  \n  單價：420 元  \n  小計：6,300 元  \n\n- 品項：包裝袋  \n  數量：50 個  \n  單價：12 元  \n  小計：600 元  \n\n總金額：13,900 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "48d021f7-9432-4627-ac1c-cd9cd96f6326",
+    "run_id": "ca678593-b6f2-4132-912d-9efc3dccd96d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項訂購品項及其數量均正確列出，已排除取消的除草劑，總金額也正確為 13,900 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "d989b7d5-a70e-4f9c-aa90-1d8ad798a77f",
+        "text": "訂購清單有包含「有機肥 20 包」「複合肥料 15 包」「包裝袋 50 個」三項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的訂購明細列出有機肥 20 包、複合肥料 15 包與包裝袋 50 個。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：有機肥  \n  數量：20 包",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：複合肥料  \n  數量：15 包",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：包裝袋  \n  數量：50 個",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7d944bd-38ec-4db6-ad69-847e66f0cda5",
+        "text": "訂購清單沒有把除草劑列進去，因為對方已經明確表示這次不要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆僅列出有機肥、複合肥料與包裝袋，未將除草劑列為訂購品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：有機肥  \n  數量：20 包  \n  單價：350 元  \n  小計：7,000 元  \n\n- 品項：複合肥料  \n  數量：15 包  \n  單價：420 元  \n  小計：6,300 元  \n\n- 品項：包裝袋  \n  數量：50 個  \n  單價：12 元  \n  小計：600 元  \n\n總金額：13,900 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "32e6f3a9-2ec7-4b6e-881c-2f826be663b1",
+        "text": "算出的總金額是 13,900 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確顯示總金額為 13,900 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：13,900 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19291 input and 504 output tokens on gpt-5.4-mini; reported cost $0.0186 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

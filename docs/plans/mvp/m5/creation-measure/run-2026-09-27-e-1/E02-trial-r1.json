@@ -1,0 +1,183 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下 4 隻寵物的到店洗澡申請，逐一列出是否通過與費用：\n1. 小白，犬，體重 24.9 公斤，有狂犬病疫苗接種紀錄，沒有咬人紀錄\n2. 黑熊，犬，體重 25 公斤，有狂犬病疫苗接種紀錄，沒有咬人紀錄\n3. 花花，貓，體重 4.2 公斤，沒有狂犬病疫苗接種紀錄，沒有咬人紀錄\n4. 咖啡，犬，體重 18 公斤，有狂犬病疫苗接種紀錄，有咬人紀錄",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入中有一隻寵物沒有狂犬病疫苗接種紀錄時，輸出必須判定為退件，且原因包含缺少疫苗紀錄。"
+    },
+    {
+      "text": "當輸入中有一隻寵物有咬人紀錄時，輸出必須判定為退件，且即使同時有疫苗紀錄也不能通過。"
+    },
+    {
+      "text": "當輸入中有一隻體重 25 公斤的寵物且通過審核時，輸出費用必須是 1100 元。"
+    },
+    {
+      "text": "當輸入中有一隻體重 24.9 公斤且通過審核的寵物時，輸出費用必須是 800 元。"
+    },
+    {
+      "text": "當輸入包含多隻寵物時，輸出必須逐一列出每一隻寵物的結果，而不是只給總結。"
+    },
+    {
+      "text": "當輸入中有通過與退件並存的多隻寵物時，輸出必須同時包含兩種結果。"
+    }
+  ],
+  "final_output": "以下逐隻審核結果：\n\n1. **小白**\n   - 審核結果：**通過**\n   - 原因：有狂犬病疫苗接種紀錄，且沒有咬人紀錄\n   - 應收費用：**800 元**（體重 24.9 公斤，未達 25 公斤）\n\n2. **黑熊**\n   - 審核結果：**通過**\n   - 原因：有狂犬病疫苗接種紀錄，且沒有咬人紀錄\n   - 應收費用：**1100 元**（體重 25 公斤，屬大型犬）\n\n3. **花花**\n   - 審核結果：**退件**\n   - 退件原因：**沒有狂犬病疫苗接種紀錄**\n\n4. **咖啡**\n   - 審核結果：**退件**\n   - 退件原因：**有咬人紀錄**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7c66a376-4897-411b-915b-d885487f790b",
+    "run_id": "221e587e-ef8c-4e3f-84f3-7c1a01accdb5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有四隻寵物均被逐一審核。通過案件的兩個體重級距費用正確，缺疫苗與有咬人紀錄的案件均被正確退件。",
+    "criterion_results": [
+      {
+        "criterion_id": "6929b197-72cf-49e1-9508-d464a7866fe0",
+        "text": "當輸入中有一隻寵物沒有狂犬病疫苗接種紀錄時，輸出必須判定為退件，且原因包含缺少疫苗紀錄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "花花被判定為退件，且明確列出缺少狂犬病疫苗接種紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **花花**\n   - 審核結果：**退件**\n   - 退件原因：**沒有狂犬病疫苗接種紀錄**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5f29734c-8967-4ff3-bc6c-80e952458d2f",
+        "text": "當輸入中有一隻寵物有咬人紀錄時，輸出必須判定為退件，且即使同時有疫苗紀錄也不能通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "咖啡有咬人紀錄的申請被判定為退件；此結果符合即使具疫苗紀錄亦不得通過的要求。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **咖啡**\n   - 審核結果：**退件**\n   - 退件原因：**有咬人紀錄**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c0ffd6a8-9af9-4db7-a189-17af7fdf243c",
+        "text": "當輸入中有一隻體重 25 公斤的寵物且通過審核時，輸出費用必須是 1100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "黑熊體重 25 公斤且通過審核，輸出費用為 1100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **黑熊**\n   - 審核結果：**通過**\n   - 原因：有狂犬病疫苗接種紀錄，且沒有咬人紀錄\n   - 應收費用：**1100 元**（體重 25 公斤，屬大型犬）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6c11a3c7-099c-487a-b009-76eaa3430550",
+        "text": "當輸入中有一隻體重 24.9 公斤且通過審核的寵物時，輸出費用必須是 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "小白體重 24.9 公斤且通過審核，輸出費用為 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **小白**\n   - 審核結果：**通過**\n   - 原因：有狂犬病疫苗接種紀錄，且沒有咬人紀錄\n   - 應收費用：**800 元**（體重 24.9 公斤，未達 25 公斤）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a967fce6-5590-485b-9f8b-7873eba05884",
+        "text": "當輸入包含多隻寵物時，輸出必須逐一列出每一隻寵物的結果，而不是只給總結。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以編號逐一列出小白、黑熊、花花及咖啡的個別審核結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **小白**\n   - 審核結果：**通過**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **黑熊**\n   - 審核結果：**通過**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **花花**\n   - 審核結果：**退件**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **咖啡**\n   - 審核結果：**退件**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f7d3c2a9-b2b1-4edc-a3a4-3ce66f87410e",
+        "text": "當輸入中有通過與退件並存的多隻寵物時，輸出必須同時包含兩種結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一份逐隻結果同時包含通過與退件兩種結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **小白**\n   - 審核結果：**通過**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **花花**\n   - 審核結果：**退件**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3119 input and 582 output tokens on gpt-5.4-mini; reported cost $0.0080 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

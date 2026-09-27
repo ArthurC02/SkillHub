@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "今天有 4 隻寵物要預約到店洗澡，麻煩幫我審核：①米克斯，體重 25 公斤，有附上狂犬病疫苗接種紀錄，沒有咬人紀錄。②吉娃娃，體重 3 公斤，沒有附上狂犬病疫苗接種紀錄。③柴犬，體重 15 公斤，有附上狂犬病疫苗接種紀錄，但有咬人紀錄。④家貓，體重 4 公斤，有附上狂犬病疫苗接種紀錄，沒有咬人紀錄。",
+  "acceptance_criteria": [
+    {
+      "text": "①米克斯判定為通過，收費 1,100 元。"
+    },
+    {
+      "text": "②吉娃娃判定為退件。"
+    },
+    {
+      "text": "③柴犬判定為退件。"
+    },
+    {
+      "text": "④家貓判定為通過，收費 800 元。"
+    }
+  ],
+  "final_output": "以下為逐隻審核結果：\n\n1. **米克斯**\n   - **審核結果：通過**\n   - 有附上狂犬病疫苗接種紀錄，且**沒有咬人紀錄**\n   - **應收費用：1100 元**  \n     （25 公斤以上，洗澡費 800 元＋大型犬清潔費 300 元）\n\n2. **吉娃娃**\n   - **審核結果：退件**\n   - **退件原因：沒有附上狂犬病疫苗接種紀錄**\n\n3. **柴犬**\n   - **審核結果：退件**\n   - **退件原因：有咬人紀錄**  \n     （即使有附上狂犬病疫苗接種紀錄，仍需退件）\n\n4. **家貓**\n   - **審核結果：通過**\n   - 有附上狂犬病疫苗接種紀錄，且**沒有咬人紀錄**\n   - **應收費用：800 元**\n\n如果你要，我也可以幫你整理成可直接貼給客戶的正式回覆格式。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "99b5647f-be19-4194-9b3f-78cfae13a09e",
+    "run_id": "b7b5d794-879e-4df1-b837-2240e218e996",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項審核結果皆與驗收條件一致：米克斯與家貓通過且收費分別為 1100 元與 800 元；吉娃娃與柴犬皆退件。",
+    "criterion_results": [
+      {
+        "criterion_id": "88f3e2bc-1803-4ca4-9578-8b928b1cfc8a",
+        "text": "①米克斯判定為通過，收費 1,100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將米克斯判定為通過，並列出應收費用 1100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **米克斯**\n   - **審核結果：通過**\n   - 有附上狂犬病疫苗接種紀錄，且**沒有咬人紀錄**\n   - **應收費用：1100 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "483d8c36-23aa-4a6a-9697-9c72eec923da",
+        "text": "②吉娃娃判定為退件。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將吉娃娃判定為退件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **吉娃娃**\n   - **審核結果：退件**\n   - **退件原因：沒有附上狂犬病疫苗接種紀錄**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "430bf649-df3d-4ed1-a500-f84bd0309351",
+        "text": "③柴犬判定為退件。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將柴犬判定為退件。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **柴犬**\n   - **審核結果：退件**\n   - **退件原因：有咬人紀錄**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "47d254d6-5327-40d0-81a2-7a33992626e6",
+        "text": "④家貓判定為通過，收費 800 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將家貓判定為通過，並列出應收費用 800 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **家貓**\n   - **審核結果：通過**\n   - 有附上狂犬病疫苗接種紀錄，且**沒有咬人紀錄**\n   - **應收費用：800 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19252 input and 911 output tokens on gpt-5.4-mini; reported cost $0.0204 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

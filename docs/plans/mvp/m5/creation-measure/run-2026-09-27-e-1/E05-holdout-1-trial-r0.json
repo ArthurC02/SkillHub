@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "當事人是陳先生，案號 112 年度訴字第 455 號。上次開庭在 9 月 10 日，法官諭知需要補充財產交易明細。下次開庭時間是 2026 年 10 月 15 日星期四上午 9 點 30 分，地點在台北地方法院第 7 法庭。對造已經提出反訴，請求返還訂金新台幣 35 萬元。補充文件的提出期限是 10 月 8 日。承辦法官已經從王法官換成李法官。訴訟費用尾款 2 萬元需要在開庭前繳清。也可以考慮調解，如果同意調解要在 10 月 5 日前回覆事務所。麻煩幫我寫一封給陳先生的訴訟進度通知。",
+  "acceptance_criteria": [
+    {
+      "text": "整封通知本文不超過 3 句話（不含說明捨棄內容的那一句）。"
+    },
+    {
+      "text": "通知內容有提到下次開庭時間是 2026 年 10 月 15 日。"
+    },
+    {
+      "text": "通知內容有提到補充文件的提出期限是 10 月 8 日。"
+    },
+    {
+      "text": "輸出有一句話說明為了守住句數上限捨棄或合併了哪些內容。"
+    }
+  ],
+  "final_output": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a99ec03f-5f04-41f7-b6f1-a6a37952902a",
+    "run_id": "d57859f7-fef3-4262-a653-d6c11a8e1bb6",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "通知控制在三句內，且包含下次開庭日期與補充文件期限。但未提供為守住句數上限而捨棄或合併內容的說明句。",
+    "criterion_results": [
+      {
+        "criterion_id": "7f3e3604-736f-41ca-bc27-c2c5fed629fe",
+        "text": "整封通知本文不超過 3 句話（不含說明捨棄內容的那一句）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文共有 3 句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dce914d5-1d4d-435d-9882-e665fee69cd1",
+        "text": "通知內容有提到下次開庭時間是 2026 年 10 月 15 日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知明確載明下次開庭日期為 2026 年 10 月 15 日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "48929230-8257-4f31-a340-8c2ddf930eeb",
+        "text": "通知內容有提到補充文件的提出期限是 10 月 8 日。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知明確載明補充文件須於 10 月 8 日前提出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "539e478b-976f-4185-a7e0-92520545b99a",
+        "text": "輸出有一句話說明為了守住句數上限捨棄或合併了哪些內容。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終輸出僅有案件通知三句，未包含為遵守句數上限而捨棄或合併哪些內容的說明句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3163 input and 616 output tokens on gpt-5.4-mini; reported cost $0.0082 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

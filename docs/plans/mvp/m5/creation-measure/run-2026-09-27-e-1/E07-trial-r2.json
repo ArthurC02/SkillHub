@@ -1,0 +1,193 @@
+{
+  "round": 2,
+  "sample_input": "請處理以下已付清訂金的訂單，並直接輸出每一筆訂單的可執行處理流程，逐筆包含登入公司訂單系統、更新為「已確認」、寄出確認信：\n訂單A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\n訂單B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\n訂單C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入包含已付清訂金的訂單資料與客戶聯絡方式時，Skill 會輸出一個明確的處理流程，包含登入訂單系統、更新狀態為「已確認」、寄出確認信三個步驟。"
+    },
+    {
+      "text": "在輸入包含多筆已付清訂金訂單時，Skill 會逐筆處理每一筆訂單，而不是只處理第一筆。"
+    },
+    {
+      "text": "在輸入中明確指定訂單新狀態為「已確認」時，Skill 的輸出會保留這個狀態名稱，不會改寫成其他字樣。"
+    },
+    {
+      "text": "在輸入中要求寄送確認信時，Skill 的輸出會包含寄信動作，且收件人是該訂單對應的客戶。"
+    },
+    {
+      "text": "在輸入包含訂單編號與客戶聯絡方式時，Skill 的輸出會能對應到該筆訂單，而不是只描述通用流程。"
+    },
+    {
+      "text": "在輸入同時含有流程與輸出要求時，Skill 的結果會以可直接執行的步驟描述呈現，且不會省略任何一個核心動作。"
+    }
+  ],
+  "final_output": "以下為三筆「已付清訂金」訂單的可執行處理流程，逐筆整理如下：\n\n---\n\n## 訂單 A1023\n- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **A1023**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。\n  5. 完成處理。\n\n---\n\n## 訂單 B2048\n- **訂單資訊**：B2048｜客戶：王柏鈞｜Email：bojun.wang@example.com｜訂金：已付清｜商品：企業贈禮組\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **B2048**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。\n  5. 完成處理。\n\n---\n\n## 訂單 C3301\n- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物\n- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **C3301**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\n  5. 完成處理。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5b8d1921-5f66-4a3f-a217-e12428c3c956",
+    "run_id": "08ee41f9-dc3a-4613-a4f4-9adb4eb3aa43",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有六項驗收標準均有直接輸出證據支持：三筆訂單皆以可執行的逐筆流程處理，保留「已確認」狀態，並寄送確認信至各自對應客戶。",
+    "criterion_results": [
+      {
+        "criterion_id": "fce0bb20-2416-427f-abd7-088217659ce4",
+        "text": "在輸入包含已付清訂金的訂單資料與客戶聯絡方式時，Skill 會輸出一個明確的處理流程，包含登入訂單系統、更新狀態為「已確認」、寄出確認信三個步驟。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為各筆已付清訂金訂單提供明確流程，包含登入系統、更新為「已確認」及寄出確認信。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 登入公司訂單系統。\n  2. 找到訂單 **A1023**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9722428a-8681-4d59-9b0c-18ba6c68773e",
+        "text": "在輸入包含多筆已付清訂金訂單時，Skill 會逐筆處理每一筆訂單，而不是只處理第一筆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出逐筆列出並處理 A1023、B2048 與 C3301 三筆訂單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 訂單 A1023",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 訂單 B2048",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 訂單 C3301",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ed4ad719-441d-4f1c-9e3b-2ce0c72882ce",
+        "text": "在輸入中明確指定訂單新狀態為「已確認」時，Skill 的輸出會保留這個狀態名稱，不會改寫成其他字樣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "各筆訂單的狀態更新步驟均保留指定名稱「已確認」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 將訂單狀態更新為 **「已確認」**。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf7fe696-4e01-4739-b6e4-e98e84249de0",
+        "text": "在輸入中要求寄送確認信時，Skill 的輸出會包含寄信動作，且收件人是該訂單對應的客戶。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含寄出確認信，且每筆均指定相對應客戶姓名與電子郵件地址。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 寄出確認信給 **陳怡君**（yijun.chen@example.com）。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 寄出確認信給 **王柏鈞**（bojun.wang@example.com）。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8fa30025-fafb-478f-9205-1fd8a11973ee",
+        "text": "在輸入包含訂單編號與客戶聯絡方式時，Skill 的輸出會能對應到該筆訂單，而不是只描述通用流程。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每個流程皆以訂單編號為標題，並包含對應客戶與聯絡方式，而非僅提供通用說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **訂單資訊**：A1023｜客戶：陳怡君｜Email：yijun.chen@example.com｜訂金：已付清｜商品：客製化禮盒",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 找到訂單 **B2048**。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- **訂單資訊**：C3301｜客戶：林思妤｜Email：siyu.lin@example.com｜訂金：已付清｜商品：婚禮小物",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d8a17b3c-5cd6-436e-843e-fe866d6028c0",
+        "text": "在輸入同時含有流程與輸出要求時，Skill 的結果會以可直接執行的步驟描述呈現，且不會省略任何一個核心動作。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果以編號的可執行步驟呈現，且對每筆訂單均涵蓋登入、定位訂單、更新狀態與寄信等核心動作。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **處理流程**：\n  1. 登入公司訂單系統。\n  2. 找到訂單 **C3301**。\n  3. 將訂單狀態更新為 **「已確認」**。\n  4. 寄出確認信給 **林思妤**（siyu.lin@example.com）。\n  5. 完成處理。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2985 input and 906 output tokens on gpt-5.4-mini; reported cost $0.0094 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

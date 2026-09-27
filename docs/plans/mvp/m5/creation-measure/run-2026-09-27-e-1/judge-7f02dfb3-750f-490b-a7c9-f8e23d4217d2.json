@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "7f02dfb3-750f-490b-a7c9-f8e23d4217d2",
+    "EvaluationID": "1878ce99-8f3f-4d2c-a09b-fb3eaacbcd18",
+    "Skill": {
+      "Name": "litigation-progress-notice",
+      "Summary": "把法律案件的訴訟進度整理成可直接發給當事人的中文通知；當你有案件更新文字、需要在最多 3 句內保留最重要進度時使用。"
+    },
+    "UserPrompt": "請把以下兩個案件進度各自整理成要寄給當事人的通知：\n\n第一則：\n「本案今天下午收到法院通知，原定下週的開庭改期，新的庭期是 11 月 18 日上午 9:30。法院表示，因承辦法官行程調整，請雙方先準備補充書狀；我們也已經在今天完成證據整理，並會在 3 個工作天內把補充資料送出。另外，對方律師昨天來信表示有意先談和解，但尚未提出具體條件。」\n\n第二則：\n「法院已准許本案開庭延期，新的日期是下月中旬。」",
+    "Criteria": [
+      {
+        "ID": "23eed289-39da-4cad-aacb-5a88e24ba69b",
+        "Text": "在輸入一段包含多個進度事實的案件更新時，輸出是一段可直接寄出的中文通知，且全文不超過 3 句。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0e9e5ac5-74b9-4e02-b805-2bc5f7993fa7",
+        "Text": "當輸入同時包含較新的進度與較舊的背景時，輸出會優先保留較新的進度資訊，較舊背景只在不超過 3 句且不損失重點時才保留。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ccc124c9-db0c-4df0-a10a-36f9c5718d1e",
+        "Text": "當輸入包含程序結果、下一步與期限時，輸出會保留至少一個最關鍵的程序結果，並盡量保留下一步或期限中的重要內容。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d16bc11e-e63c-463e-b94b-97e337cbe4d8",
+        "Text": "當輸入資訊很多時，輸出不會逐字照抄全部內容，而會濃縮成 3 句以內的通知。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1bdf1e24-c813-4aa1-bef1-91cfb5b5527f",
+        "Text": "當輸入只有少量進度事實時，輸出仍保持正式、簡潔、可直接發送給當事人的語氣。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。\n\n法院已准許本案開庭延期，新的開庭日期為下月中旬。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "bca29d09-3d4e-4cf7-83a6-302899f80132",
+          "OccurredAt": "2026-09-27T12:57:41.569Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"litigation-progress-notice\", \"skill_version_id\": \"a79affcf-9f8a-43cd-9859-e69ebf08ce96\"}"
+        },
+        {
+          "TraceEventID": "ae8c1d26-17c4-4e1d-b956-463b72d99aa2",
+          "OccurredAt": "2026-09-27T12:57:41.586Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"將以下兩則案件進度各自整理成可直接寄給當事人的中文通知，保留重點、語氣正式清楚，盡量在 3 句內：\\n\\n第一則：本案今天下午收到法院通知，原定下週的開庭改期，新的庭期是 11 月 18 日上午 9:30。法院表示，因承辦法官行程調整，請雙方先準備補充書狀；我們也已經在今天完成證據整理，並會在 3 個工作天內把補充資料送出。另外，對方律師昨天來信表示有意先談和解，但尚未提出具體條件。\\n\\n第二則：法院已准許本案開庭延期，新的日期是下月中旬。\", \"skill\": \"litigation-progress-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 18, \"invocation_id\": \"call_RFmrJl7YWolCbQR9iC2o1oxn\", \"result_summary\": \"Launching skill: litigation-progress-notice\"}"
+        },
+        {
+          "TraceEventID": "94a6192f-b1bb-4983-8971-f350a39f67c8",
+          "OccurredAt": "2026-09-27T12:57:44.902Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。\\n\\n法院已准許本案開庭延期，新的開庭日期為下月中旬。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "014a9d8d-86c3-4441-9f9b-102b2d60bc46",
+          "OccurredAt": "2026-09-27T12:57:45.171Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。\\n\\n法院已准許本案開庭延期，新的開庭日期為下月中旬。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "c9a21eed-024d-4017-8935-5f1c8a82704d",
+          "OccurredAt": "2026-09-27T12:57:50.763Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01973475, \"cost_source\": \"gateway\", \"duration_ms\": 11878, \"input_tokens\": 19282, \"token_source\": \"result\", \"output_tokens\": 765, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "23eed289-39da-4cad-aacb-5a88e24ba69b",
+        "Result": "passed",
+        "Reason": "第一則多項進度已整理為可直接寄送的正式通知，且為3句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0e9e5ac5-74b9-4e02-b805-2bc5f7993fa7",
+        "Result": "passed",
+        "Reason": "通知優先呈現當日下午收到的改期及新庭期，並在3句內保留補充書狀、送件期限及和解意向等仍具重要性的背景。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ccc124c9-db0c-4df0-a10a-36f9c5718d1e",
+        "Result": "passed",
+        "Reason": "保留了關鍵程序結果（庭期改至11月18日上午9:30），以及下一步與明確期限（準備補充書狀、3個工作天內送件）。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d16bc11e-e63c-463e-b94b-97e337cbe4d8",
+        "Result": "passed",
+        "Reason": "資訊量較大的第一則被濃縮為3句，而非逐字照抄原始更新。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "本案今日下午接獲法院通知，原定下週開庭已改期至 11 月 18 日上午 9:30。法院表示係因承辦法官行程調整，請雙方先行準備補充書狀；我們已於今日完成證據整理，並將於 3 個工作天內送出補充資料。另對方律師昨日來信表示有意先行洽談和解，但尚未提出具體條件。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1bdf1e24-c813-4aa1-bef1-91cfb5b5527f",
+        "Result": "passed",
+        "Reason": "第二則僅有少量事實，仍以正式、簡潔且可直接發送的語氣表達。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "法院已准許本案開庭延期，新的開庭日期為下月中旬。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩則案件進度均各自整理為正式、可直接寄送的中文通知。第一則在3句內保留改期、後續作業與期限及和解動向；第二則簡潔說明延期結果與新日期。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2842,
+      "CompletionTokens": 1183,
+      "CostUSD": 0.0187649,
+      "CostReported": true
+    }
+  }
+}

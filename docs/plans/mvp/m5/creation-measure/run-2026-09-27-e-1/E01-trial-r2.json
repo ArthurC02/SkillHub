@@ -1,0 +1,174 @@
+{
+  "round": 2,
+  "sample_input": "請幫我計算以下四筆成交價的房仲服務費，並只輸出每筆最終金額：\n- 9,999,999 元\n- 10,000,000 元\n- 20,000,000 元\n- 30,000,001 元\n\n對應結果應分別為：\n- 9,999,999 × 1% = 99,999.99，無條件捨去到千元後為 99,000 元\n- 10,000,000 × 1.5% = 150,000，無條件捨去到千元後為 150,000 元\n- 20,000,000 × 1.5% = 300,000，無條件捨去到千元後為 300,000 元\n- 30,000,001 × 2% = 600,000.02，無條件捨去到千元後為 600,000 元",
+  "acceptance_criteria": [
+    {
+      "text": "When given a single成交價 below 10,000,000, the Skill outputs service fee = 成交價 × 1%, then floors to the nearest 1,000."
+    },
+    {
+      "text": "When given a single成交價 exactly 10,000,000, the Skill uses the 1.5% tier and floors the result to the nearest 1,000."
+    },
+    {
+      "text": "When given a single成交價 between 10,000,000 and 29,999,999, the Skill uses the 1.5% tier and floors the result to the nearest 1,000."
+    },
+    {
+      "text": "When given a single成交價 exactly 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000."
+    },
+    {
+      "text": "When given a single成交價 above 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000."
+    },
+    {
+      "text": "The Skill does not apply progressive marginal rates; it applies only one tier to the full成交價."
+    },
+    {
+      "text": "The output is the final fee amount only, not a step-by-step calculation."
+    }
+  ],
+  "final_output": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "499149ba-4220-4e17-8b11-431c84800534",
+    "run_id": "9b40dd27-592a-4cc6-97a5-9781c7159958",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已驗證低於一千萬、恰好一千萬、一千萬至兩千九百九十九萬九千九百九十九區間，以及高於三千萬時的結果與單一級距計算一致，且只輸出最終金額。由於本次未測試恰好 30,000,000 元，該門檻行為無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "3216d975-a367-488b-aa81-a1d29d1a8208",
+        "text": "When given a single成交價 below 10,000,000, the Skill outputs service fee = 成交價 × 1%, then floors to the nearest 1,000.",
+        "result": "passed",
+        "source": "model",
+        "reason": "對 9,999,999 元的輸出為 99,000 元，符合以 1% 計算後無條件捨去至千元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9a56000a-4baf-4056-bb77-62736d8f0880",
+        "text": "When given a single成交價 exactly 10,000,000, the Skill uses the 1.5% tier and floors the result to the nearest 1,000.",
+        "result": "passed",
+        "source": "model",
+        "reason": "對恰好 10,000,000 元的輸出為 150,000 元，符合 1.5% 級距並捨去至千元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "28020f99-552a-45bb-a155-9d460c6c109c",
+        "text": "When given a single成交價 between 10,000,000 and 29,999,999, the Skill uses the 1.5% tier and floors the result to the nearest 1,000.",
+        "result": "passed",
+        "source": "model",
+        "reason": "對 20,000,000 元的輸出為 300,000 元，符合 1.5% 套用全額並捨去至千元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6d9d3477-d820-4c5f-b260-ea745747e045",
+        "text": "When given a single成交價 exactly 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000.",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入未包含恰好 30,000,000 元的成交價；30,000,001 元的結果不足以直接驗證恰好等於該門檻時的行為。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "ae7ed640-2616-4349-b010-ec9cf304d38b",
+        "text": "When given a single成交價 above 30,000,000, the Skill uses the 2% tier and floors the result to the nearest 1,000.",
+        "result": "passed",
+        "source": "model",
+        "reason": "對高於 30,000,000 元的 30,000,001 元，輸出為 600,000 元，符合以 2% 計算後捨去至千元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "35784635-488a-4fe5-bfc5-78d3dcbdab09",
+        "text": "The Skill does not apply progressive marginal rates; it applies only one tier to the full成交價.",
+        "result": "passed",
+        "source": "model",
+        "reason": "20,000,000 元輸出 300,000 元、30,000,001 元輸出 600,000 元，與各自單一級距套用於全額的結果一致，而非累進邊際費率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "913b2640-ce8c-4d8e-9c86-7150a431962d",
+        "text": "The output is the final fee amount only, not a step-by-step calculation.",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出僅列出四筆費用金額，未包含計算步驟。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "99,000 元\n150,000 元\n300,000 元\n600,000 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18160 input and 107 output tokens on gpt-5.4-mini; reported cost $0.0005 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 22,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

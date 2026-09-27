@@ -1,0 +1,139 @@
+{
+  "request": {
+    "RunID": "d57859f7-fef3-4262-a653-d6c11a8e1bb6",
+    "EvaluationID": "a99ec03f-5f04-41f7-b6f1-a6a37952902a",
+    "Skill": {
+      "Name": "litigation-progress-notice",
+      "Summary": "把法律案件的訴訟進度整理成可直接發給當事人的中文通知；當你有案件更新文字、需要在最多 3 句內保留最重要進度時使用。"
+    },
+    "UserPrompt": "當事人是陳先生，案號 112 年度訴字第 455 號。上次開庭在 9 月 10 日，法官諭知需要補充財產交易明細。下次開庭時間是 2026 年 10 月 15 日星期四上午 9 點 30 分，地點在台北地方法院第 7 法庭。對造已經提出反訴，請求返還訂金新台幣 35 萬元。補充文件的提出期限是 10 月 8 日。承辦法官已經從王法官換成李法官。訴訟費用尾款 2 萬元需要在開庭前繳清。也可以考慮調解，如果同意調解要在 10 月 5 日前回覆事務所。麻煩幫我寫一封給陳先生的訴訟進度通知。",
+    "Criteria": [
+      {
+        "ID": "7f3e3604-736f-41ca-bc27-c2c5fed629fe",
+        "Text": "整封通知本文不超過 3 句話（不含說明捨棄內容的那一句）。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "dce914d5-1d4d-435d-9882-e665fee69cd1",
+        "Text": "通知內容有提到下次開庭時間是 2026 年 10 月 15 日。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "48929230-8257-4f31-a340-8c2ddf930eeb",
+        "Text": "通知內容有提到補充文件的提出期限是 10 月 8 日。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "539e478b-976f-4185-a7e0-92520545b99a",
+        "Text": "輸出有一句話說明為了守住句數上限捨棄或合併了哪些內容。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "ed7ce089-6db0-43fa-af94-4b43403b98a6",
+          "OccurredAt": "2026-09-27T12:58:07.026Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"litigation-progress-notice\", \"skill_version_id\": \"a79affcf-9f8a-43cd-9859-e69ebf08ce96\"}"
+        },
+        {
+          "TraceEventID": "29e4c65a-e584-44c0-a2ca-ab2a1e9272c3",
+          "OccurredAt": "2026-09-27T12:58:07.037Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"litigation-progress-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 10, \"invocation_id\": \"call_wR1GiXBC0wQoY34qesMIOnYm\", \"result_summary\": \"Launching skill: litigation-progress-notice\"}"
+        },
+        {
+          "TraceEventID": "d0647f41-28bc-450b-9715-3e7e2da78a56",
+          "OccurredAt": "2026-09-27T12:58:10.179Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "6cbee5b2-b09c-4ab1-9b5e-821f56248636",
+          "OccurredAt": "2026-09-27T12:58:10.313Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "01f683b6-69e4-434a-aa0b-a813523b9d8c",
+          "OccurredAt": "2026-09-27T12:58:15.872Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00824715, \"cost_source\": \"gateway\", \"duration_ms\": 10949, \"input_tokens\": 3163, \"token_source\": \"result\", \"output_tokens\": 616, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "7f3e3604-736f-41ca-bc27-c2c5fed629fe",
+        "Result": "passed",
+        "Reason": "通知本文共有 3 句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "dce914d5-1d4d-435d-9882-e665fee69cd1",
+        "Result": "passed",
+        "Reason": "通知明確載明下次開庭日期為 2026 年 10 月 15 日。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "48929230-8257-4f31-a340-8c2ddf930eeb",
+        "Result": "passed",
+        "Reason": "通知明確載明補充文件須於 10 月 8 日前提出。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "539e478b-976f-4185-a7e0-92520545b99a",
+        "Result": "failed",
+        "Reason": "最終輸出僅有案件通知三句，未包含為遵守句數上限而捨棄或合併哪些內容的說明句。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "陳先生您好，您案件（112年度訴字第455號）上次於9月10日開庭，法官已諭知需補充財產交易明細，且承辦法官已由王法官更換為李法官。下次開庭時間為2026年10月15日（星期四）上午9點30分，地點在台北地方法院第7法庭；對造已提起反訴，請求返還訂金新台幣35萬元。補充文件請於10月8日前提出，訴訟費用尾款2萬元需於開庭前繳清；如考慮調解，請於10月5日前回覆事務所。"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "通知控制在三句內，且包含下次開庭日期與補充文件期限。但未提供為守住句數上限而捨棄或合併內容的說明句。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 2678,
+      "CompletionTokens": 944,
+      "CostUSD": 0.0154869,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理訂購資料並算總金額。\n哈囉昨天辛苦了，謝謝你幫忙看場地。我要訂：\n1. 高麗菜 3 箱，每箱 280 元\n2. 白米 2 袋，每袋 650 元\n另外今天如果方便，也幫我把之前那批資料一起確認一下，謝謝。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一段含寒暄與閒聊的訂購訊息，Skill 會只輸出實際訂購品項，不會把寒暄內容列入結果。"
+    },
+    {
+      "text": "給定訊息中有多個訂購品項時，Skill 會逐項整理出來，每項都包含品項、數量與單價。"
+    },
+    {
+      "text": "給定可計算的數量與單價時，Skill 會正確算出每個品項金額與總金額。"
+    },
+    {
+      "text": "給定訊息中同時出現非訂購內容與訂購內容時，Skill 會忽略非訂購內容並保留訂購內容。"
+    },
+    {
+      "text": "輸出會是適合直接用來彙整訂單的結構化清單。"
+    }
+  ],
+  "final_output": "整理如下：\n\n- 品項：高麗菜  \n  數量：3 箱  \n  單價：280 元  \n  小計：840 元\n\n- 品項：白米  \n  數量：2 袋  \n  單價：650 元  \n  小計：1,300 元\n\n總金額：2,140 元\n\n另外你提到「之前那批資料」這則訊息裡沒有附內容，所以我先無法一起確認。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "cafb4297-c206-4766-a732-2c968fe80faa",
+    "run_id": "bdc4af32-1863-4398-9955-1d60a61bf932",
+    "status": "completed",
+    "overall": "met",
+    "summary": "此回覆正確擷取兩項訂購資料，排除寒暄與未提供內容的先前資料，並提供正確的小計及總金額。輸出為可直接彙整的結構化條列清單。",
+    "criterion_results": [
+      {
+        "criterion_id": "3f219fc2-42f2-4b3a-80f8-b4c2625a78a6",
+        "text": "給定一段含寒暄與閒聊的訂購訊息，Skill 會只輸出實際訂購品項，不會把寒暄內容列入結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出中的訂購清單只列出高麗菜與白米，未將寒暄或看場地等內容當成訂購品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：高麗菜  \n  數量：3 箱  \n  單價：280 元  \n  小計：840 元\n\n- 品項：白米  \n  數量：2 袋  \n  單價：650 元  \n  小計：1,300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "137340d4-8d1d-4f62-9ea0-b5f9f8766f30",
+        "text": "給定訊息中有多個訂購品項時，Skill 會逐項整理出來，每項都包含品項、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個訂購品項均逐項列出，且各自包含品項、數量與單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：高麗菜  \n  數量：3 箱  \n  單價：280 元  \n  小計：840 元\n\n- 品項：白米  \n  數量：2 袋  \n  單價：650 元  \n  小計：1,300 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5e437c9d-854e-488c-afb0-46b38a0bfa2e",
+        "text": "給定可計算的數量與單價時，Skill 會正確算出每個品項金額與總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "小計計算正確：3×280=840、2×650=1,300，總金額為2,140元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "  小計：840 元\n\n- 品項：白米  \n  數量：2 袋  \n  單價：650 元  \n  小計：1,300 元\n\n總金額：2,140 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "bf0623d0-569d-453b-851c-04580520e2b4",
+        "text": "給定訊息中同時出現非訂購內容與訂購內容時，Skill 會忽略非訂購內容並保留訂購內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆保留兩項訂購資料；對未附內容的先前資料僅說明無法確認，沒有將其或其他非訂購文字納入訂單。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "另外你提到「之前那批資料」這則訊息裡沒有附內容，所以我先無法一起確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "83226c8c-45ec-43fb-bb04-d4773c66f729",
+        "text": "輸出會是適合直接用來彙整訂單的結構化清單。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以逐項條列方式提供品項、數量、單價、小計及總金額，可直接用於訂單彙整。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 品項：高麗菜  \n  數量：3 箱  \n  單價：280 元  \n  小計：840 元\n\n- 品項：白米  \n  數量：2 袋  \n  單價：650 元  \n  小計：1,300 元\n\n總金額：2,140 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 36745 input and 651 output tokens on gpt-5.4-mini; reported cost $0.0309 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
