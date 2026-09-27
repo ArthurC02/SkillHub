@@ -111,6 +111,105 @@ function SkillFlags({ skill }: { skill: OwnSkill }) {
   return <p className="badge-row skill-card-flags">{flags}</p>;
 }
 
+function SkillCard({
+  skill,
+  remove,
+  onMessage,
+}: {
+  skill: OwnSkill;
+  remove: ReturnType<typeof useDeleteSkill>;
+  onMessage: (message: string) => void;
+}) {
+  return (
+    <li className="search-result skill-card" data-tone={toneOf(skill.skill_id)}>
+      <Link className="skill-card-link" to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
+        <span className="skill-cover" aria-hidden="true" />
+        <span className="skill-card-head">
+          <span className="skill-mono" aria-hidden="true">
+            {initialOf(skill.name)}
+          </span>
+          <strong className="skill-card-name">{skill.name}</strong>
+        </span>
+        <span className="skill-card-summary">{skill.summary}</span>
+      </Link>
+      <SkillFlags skill={skill} />
+      <details className="skill-menu" name="skill-menu">
+        <summary aria-label={`管理「${skill.name}」`}>
+          管理
+          <span className="skill-menu-caret" aria-hidden="true">
+            ▾
+          </span>
+        </summary>
+        <ul className="skill-menu-list">
+          <li>
+            <Link
+              className="skill-menu-item"
+              to="/skills/$skillId/files"
+              params={{ skillId: skill.skill_id }}
+            >
+              <MenuItem glyph="▤" label="檔案" hint="瀏覽套件裡的每個檔案" />
+            </Link>
+          </li>
+          <li>
+            <Link
+              className="skill-menu-item"
+              to="/skills/$skillId/package"
+              params={{ skillId: skill.skill_id }}
+              search={{ version: undefined }}
+            >
+              <MenuItem glyph="↓" label="打包與下載" hint="產生可以帶走的套件" />
+            </Link>
+          </li>
+          <li>
+            <Link
+              className="skill-menu-item"
+              to="/lab/test-cases"
+              search={{ skill: skill.skill_id }}
+            >
+              <MenuItem glyph="✓" label="Test Case" hint="設計測試並試跑" />
+            </Link>
+          </li>
+          {skill.forked_from_skill_id && (
+            <li>
+              <Link
+                className="skill-menu-item"
+                to="/skills/$skillId"
+                params={{ skillId: skill.forked_from_skill_id }}
+              >
+                <MenuItem glyph="↗" label="Fork 來源 Skill" hint="打開被 Fork 的原版" />
+              </Link>
+            </li>
+          )}
+          <li className="skill-menu-delete">
+            <ConfirmDelete
+              scopeId={`skill-delete-scope-${skill.skill_id}`}
+              pending={remove.isPending}
+              onAsk={() => {
+                onMessage("");
+                remove.reset();
+              }}
+              onConfirm={() =>
+                remove.mutate(skill.skill_id, {
+                  onSuccess: (result) => onMessage(`已刪除。${result.note}`),
+                })
+              }
+              scope={
+                <>
+                  刪除的是這個 Skill
+                  在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
+                  版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork 過的版本與歷史
+                  Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
+                  已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
+                </>
+              }
+            />
+          </li>
+        </ul>
+      </details>
+    </li>
+  );
+}
+
 export function WorkspaceSkills() {
   const skills = useOwnSkills();
   const remove = useDeleteSkill();
@@ -159,100 +258,7 @@ export function WorkspaceSkills() {
           onPointerLeave={releasePointer}
         >
           {rows.map((s) => (
-            <li
-              key={s.skill_id}
-              className="search-result skill-card"
-              data-tone={toneOf(s.skill_id)}
-            >
-              <Link
-                className="skill-card-link"
-                to="/skills/$skillId"
-                params={{ skillId: s.skill_id }}
-              >
-                <span className="skill-cover" aria-hidden="true" />
-                <span className="skill-card-head">
-                  <span className="skill-mono" aria-hidden="true">
-                    {initialOf(s.name)}
-                  </span>
-                  <strong className="skill-card-name">{s.name}</strong>
-                </span>
-                <span className="skill-card-summary">{s.summary}</span>
-              </Link>
-              <SkillFlags skill={s} />
-              <details className="skill-menu" name="skill-menu">
-                <summary aria-label={`管理「${s.name}」`}>
-                  管理
-                  <span className="skill-menu-caret" aria-hidden="true">
-                    ▾
-                  </span>
-                </summary>
-                <ul className="skill-menu-list">
-                  <li>
-                    <Link
-                      className="skill-menu-item"
-                      to="/skills/$skillId/files"
-                      params={{ skillId: s.skill_id }}
-                    >
-                      <MenuItem glyph="▤" label="檔案" hint="瀏覽套件裡的每個檔案" />
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      className="skill-menu-item"
-                      to="/skills/$skillId/package"
-                      params={{ skillId: s.skill_id }}
-                      search={{ version: undefined }}
-                    >
-                      <MenuItem glyph="↓" label="打包與下載" hint="產生可以帶走的套件" />
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      className="skill-menu-item"
-                      to="/lab/test-cases"
-                      search={{ skill: s.skill_id }}
-                    >
-                      <MenuItem glyph="✓" label="Test Case" hint="設計測試並試跑" />
-                    </Link>
-                  </li>
-                  {s.forked_from_skill_id && (
-                    <li>
-                      <Link
-                        className="skill-menu-item"
-                        to="/skills/$skillId"
-                        params={{ skillId: s.forked_from_skill_id }}
-                      >
-                        <MenuItem glyph="↗" label="Fork 來源 Skill" hint="打開被 Fork 的原版" />
-                      </Link>
-                    </li>
-                  )}
-                  <li className="skill-menu-delete">
-                    <ConfirmDelete
-                      scopeId={`skill-delete-scope-${s.skill_id}`}
-                      pending={remove.isPending}
-                      onAsk={() => {
-                        setMessage("");
-                        remove.reset();
-                      }}
-                      onConfirm={() =>
-                        remove.mutate(s.skill_id, {
-                          onSuccess: (result) => setMessage(`已刪除。${result.note}`),
-                        })
-                      }
-                      scope={
-                        <>
-                          刪除的是這個 Skill
-                          在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
-                          版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
-                          過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
-                          已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
-                        </>
-                      }
-                    />
-                  </li>
-                </ul>
-              </details>
-            </li>
+            <SkillCard key={s.skill_id} skill={s} remove={remove} onMessage={setMessage} />
           ))}
         </ul>
       )}
