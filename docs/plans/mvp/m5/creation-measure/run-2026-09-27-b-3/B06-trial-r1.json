@@ -1,0 +1,140 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理以下三家供應商報價，比出每個品項誰最便宜。\n\n供應商A\n品項：A規格螺絲　單價：NT$12\n品項：B規格螺絲　單價：NT$8\n品項：C規格螺絲　單價：NT$15\n\n供應商B\n品項：A規格螺絲　單價：NT$10\n品項：B規格螺絲　單價：NT$8\n品項：C規格螺絲　單價：NT$16\n\n供應商C\n品項：A規格螺絲　單價：NT$11\n品項：B規格螺絲　單價：NT$9\n品項：C規格螺絲　單價：NT$15",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含三家供應商、且每家都列出多個品項與單價時，輸出會是一張比價表，且每個品項都有對應的最低價供應商。"
+    },
+    {
+      "text": "當同一品項在兩家以上供應商出現相同最低價時，輸出會明確標示並列最低價，而不是只選出一家。"
+    },
+    {
+      "text": "當輸入中有多個品項時，輸出會逐品項比較，而不是只做整份報價總價比較。"
+    },
+    {
+      "text": "當輸入包含供應商名稱、品項名稱、單價時，輸出會保留這些欄位，不會只輸出結論。"
+    },
+    {
+      "text": "當輸入中的幣別或單位一致時，輸出不會自行換算成其他幣別或單位。"
+    }
+  ],
+  "final_output": "以下是整理後的比價表：\n\n| 品項 | 供應商A | 供應商B | 供應商C | 最低價 | 最便宜供應商 | 備註 |\n|---|---:|---:|---:|---:|---|---|\n| A規格螺絲 | NT$12 | NT$10 | NT$11 | NT$10 | 供應商B | 無 |\n| B規格螺絲 | NT$8 | NT$8 | NT$9 | NT$8 | 供應商A、供應商B | 並列最低 |\n| C規格螺絲 | NT$15 | NT$16 | NT$15 | NT$15 | 供應商A、供應商C | 並列最低 |\n\n結論：\n- A規格螺絲：供應商B最便宜\n- B規格螺絲：供應商A與供應商B並列最便宜\n- C規格螺絲：供應商A與供應商C並列最便宜",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "473f0411-2bba-4eb8-897b-de7106211180",
+    "run_id": "7d0f544b-372a-4fef-a761-f5d2bb39ddf2",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出提供完整逐品項比價表，正確保留供應商、品項與NT$單價，並標示每項最低價及並列最低價供應商。",
+    "criterion_results": [
+      {
+        "criterion_id": "45a48a68-398c-4f3c-9d1a-08025b8bd512",
+        "text": "當輸入包含三家供應商、且每家都列出多個品項與單價時，輸出會是一張比價表，且每個品項都有對應的最低價供應商。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為涵蓋三家供應商與三個品項的比價表，且每個品項均列出最低價及最便宜供應商。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A規格螺絲 | NT$12 | NT$10 | NT$11 | NT$10 | 供應商B | 無 |\n| B規格螺絲 | NT$8 | NT$8 | NT$9 | NT$8 | 供應商A、供應商B | 並列最低 |\n| C規格螺絲 | NT$15 | NT$16 | NT$15 | NT$15 | 供應商A、供應商C | 並列最低 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3679a06-281e-42d8-9bf5-d1a9b322a091",
+        "text": "當同一品項在兩家以上供應商出現相同最低價時，輸出會明確標示並列最低價，而不是只選出一家。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B規格螺絲與C規格螺絲的相同最低價均明確標示為並列最低，並列出所有最低價供應商。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| B規格螺絲 | NT$8 | NT$8 | NT$9 | NT$8 | 供應商A、供應商B | 並列最低 |\n| C規格螺絲 | NT$15 | NT$16 | NT$15 | NT$15 | 供應商A、供應商C | 並列最低 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c3dd84e7-9abf-463d-8256-979a7c13a038",
+        "text": "當輸入中有多個品項時，輸出會逐品項比較，而不是只做整份報價總價比較。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格對A、B、C三個規格螺絲分列比較，並逐項提供最低價結果，未僅比較整份報價總價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A規格螺絲 | NT$12 | NT$10 | NT$11 | NT$10 | 供應商B | 無 |\n| B規格螺絲 | NT$8 | NT$8 | NT$9 | NT$8 | 供應商A、供應商B | 並列最低 |\n| C規格螺絲 | NT$15 | NT$16 | NT$15 | NT$15 | 供應商A、供應商C | 並列最低 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "97168128-c802-4127-a0ed-b74a1fbd7114",
+        "text": "當輸入包含供應商名稱、品項名稱、單價時，輸出會保留這些欄位，不會只輸出結論。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出表格保留品項欄、供應商名稱欄及各供應商的單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品項 | 供應商A | 供應商B | 供應商C | 最低價 | 最便宜供應商 | 備註 |\n|---|---:|---:|---:|---:|---|---|",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "444d4cf5-7163-413b-ab7d-9cc1fdec3571",
+        "text": "當輸入中的幣別或單位一致時，輸出不會自行換算成其他幣別或單位。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 所有價格皆維持為輸入使用的NT$，未見轉換成其他幣別或單位。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3061 input and 504 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "f3ab475d-04d4-4991-8b69-a37750a38cfc",
+    "EvaluationID": "383bd6bb-dc4d-4226-afed-1351c67cb6ed",
+    "Skill": {
+      "Name": "installment-payment-splitter",
+      "Summary": "Calculates installment payment amounts from a total amount and number of periods, using equal earlier installments and putting any remainder into the final installment. Use this when you need a clear per-period payment list for evenly split or integer-split installment plans."
+    },
+    "UserPrompt": "請幫我算分期付款每期要繳多少：\n總金額 1000，期數 3\n總金額 1000，期數 6\n總金額 1200，期數 4",
+    "Criteria": [
+      {
+        "ID": "b314d134-6556-44b0-ae49-6c59f7fb021c",
+        "Text": "在輸入「總金額 1000、期數 3」時，輸出前兩期相同，最後一期補尾差，且三期合計等於 1000。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "f815f156-9099-448c-b9ab-611e23bd55ae",
+        "Text": "在輸入「總金額 1000、期數 6」時，輸出前五期相同，最後一期補尾差，且六期合計等於 1000。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "c9787da6-d6ff-4ee1-9cec-6a579d662ed2",
+        "Text": "在輸入無法整除的情況下，前面各期金額一致，最後一期金額不同且吸收全部差額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d954c1fb-54be-4217-9932-065674c2bb46",
+        "Text": "在輸入可整除的情況下，所有期數金額相同，最後一期不需要額外尾差。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2f28951e-0e88-426d-bbb2-384fb8dfddb3",
+        "Text": "輸出結果必須是可逐期閱讀的金額列表，而不是只有單一平均值。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "總金額 1000，期數 3\n- 第 1 期：333\n- 第 2 期：333\n- 第 3 期：334\n\n總金額 1000，期數 6\n- 第 1 期：166\n- 第 2 期：166\n- 第 3 期：166\n- 第 4 期：166\n- 第 5 期：166\n- 第 6 期：170\n\n總金額 1200，期數 4\n- 第 1 期：300\n- 第 2 期：300\n- 第 3 期：300\n- 第 4 期：300",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "17c7cb8a-e5f5-4fff-a3eb-04ddf75b7a00",
+          "OccurredAt": "2026-09-27T07:36:54.712Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"installment-payment-splitter\", \"skill_version_id\": \"92816ef2-55f8-4cbd-90e6-fb2849c11f7c\"}"
+        },
+        {
+          "TraceEventID": "07334bde-6cf9-48c0-b2fe-a7912ff5ce0c",
+          "OccurredAt": "2026-09-27T07:36:54.72Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"installment-payment-splitter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 8, \"invocation_id\": \"call_7kg1S4G1XdcXZtZ1RoGBM5s6\", \"result_summary\": \"Launching skill: installment-payment-splitter\"}"
+        },
+        {
+          "TraceEventID": "f8e60d9d-efba-4fd9-a735-187e0833528c",
+          "OccurredAt": "2026-09-27T07:36:57.729Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"總金額 1000，期數 3\\n- 第 1 期：333\\n- 第 2 期：333\\n- 第 3 期：334\\n\\n總金額 1000，期數 6\\n- 第 1 期：166\\n- 第 2 期：166\\n- 第 3 期：166\\n- 第 4 期：166\\n- 第 5 期：166\\n- 第 6 期：170\\n\\n總金額 1200，期數 4\\n- 第 1 期：300\\n- 第 2 期：300\\n- 第 3 期：300\\n- 第 4 期：300\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "f3864d78-dcd9-4597-941f-0df3f86a6470",
+          "OccurredAt": "2026-09-27T07:36:57.871Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"總金額 1000，期數 3\\n- 第 1 期：333\\n- 第 2 期：333\\n- 第 3 期：334\\n\\n總金額 1000，期數 6\\n- 第 1 期：166\\n- 第 2 期：166\\n- 第 3 期：166\\n- 第 4 期：166\\n- 第 5 期：166\\n- 第 6 期：170\\n\\n總金額 1200，期數 4\\n- 第 1 期：300\\n- 第 2 期：300\\n- 第 3 期：300\\n- 第 4 期：300\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "760cf436-7e27-47c8-90b6-f90fa5899605",
+          "OccurredAt": "2026-09-27T07:37:03.446Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0176985, \"cost_source\": \"gateway\", \"duration_ms\": 12285, \"input_tokens\": 18574, \"token_source\": \"result\", \"output_tokens\": 446, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b314d134-6556-44b0-ae49-6c59f7fb021c",
+        "Result": "passed",
+        "Reason": "1000 分 3 期列為 333、333、334；前兩期相同，末期補足 1，合計為 1000。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額 1000，期數 3\n- 第 1 期：333\n- 第 2 期：333\n- 第 3 期：334"
+          }
+        ]
+      },
+      {
+        "CriterionID": "f815f156-9099-448c-b9ab-611e23bd55ae",
+        "Result": "passed",
+        "Reason": "1000 分 6 期列為前五期各 166、末期 170；前五期相同，末期補足尾差，合計為 1000。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額 1000，期數 6\n- 第 1 期：166\n- 第 2 期：166\n- 第 3 期：166\n- 第 4 期：166\n- 第 5 期：166\n- 第 6 期：170"
+          }
+        ]
+      },
+      {
+        "CriterionID": "c9787da6-d6ff-4ee1-9cec-6a579d662ed2",
+        "Result": "passed",
+        "Reason": "兩個無法整除案例皆以前面各期相同的整數金額分配，最後一期不同並吸收全部尾差：3 期案例末期為 334，6 期案例末期為 170。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額 1000，期數 3\n- 第 1 期：333\n- 第 2 期：333\n- 第 3 期：334\n\n總金額 1000，期數 6\n- 第 1 期：166\n- 第 2 期：166\n- 第 3 期：166\n- 第 4 期：166\n- 第 5 期：166\n- 第 6 期：170"
+          }
+        ]
+      },
+      {
+        "CriterionID": "d954c1fb-54be-4217-9932-065674c2bb46",
+        "Result": "passed",
+        "Reason": "1200 可被 4 整除，輸出四期皆為 300，末期沒有額外尾差。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額 1200，期數 4\n- 第 1 期：300\n- 第 2 期：300\n- 第 3 期：300\n- 第 4 期：300"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2f28951e-0e88-426d-bbb2-384fb8dfddb3",
+        "Result": "passed",
+        "Reason": "每個方案均以第 1 期至最終期的逐期條列方式呈現，而非僅提供單一平均值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 第 1 期：333\n- 第 2 期：333\n- 第 3 期：334"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "回覆正確列出三個分期方案。無法整除時由最後一期吸收尾差；可整除時各期金額一致，且全部結果都以逐期金額清單呈現。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 2542,
+      "CompletionTokens": 832,
+      "CostUSD": 0.013888000000000001,
+      "CostReported": true
+    }
+  }
+}

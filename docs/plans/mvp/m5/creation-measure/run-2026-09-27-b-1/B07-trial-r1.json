@@ -1,0 +1,192 @@
+{
+  "round": 1,
+  "sample_input": "請幫我做一份客戶滿意度調查問卷，主題是線上購物平台，給我 10 題、繁體中文、可直接貼到 Google 表單使用。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入未指定產業時，輸出仍能生成一份通用版客戶滿意度問卷。"
+    },
+    {
+      "text": "在輸入指定產業時，輸出題目會貼近該產業情境。"
+    },
+    {
+      "text": "在輸入指定題數範圍時，輸出題數符合該範圍。"
+    },
+    {
+      "text": "輸出包含題目正文、建議量表與結尾致謝語。"
+    },
+    {
+      "text": "輸出使用繁體中文。"
+    },
+    {
+      "text": "若使用者要求可直接貼入表單，輸出格式仍保持可複製的題目文字。"
+    }
+  ],
+  "final_output": "# 線上購物平台客戶滿意度調查問卷\n\n**說明：**  \n本問卷採用 **5 點量表**（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意），請依您的實際體驗作答。  \n**（已採用的預設：5 點量表）**\n\n---\n\n### 1. 您對本次在平台上的整體購物體驗感到滿意。\n**題型：** 線性量表（1～5）\n\n### 2. 您認為平台的介面設計清楚，操作容易上手。\n**題型：** 線性量表（1～5）\n\n### 3. 您能夠快速找到想購買的商品。\n**題型：** 線性量表（1～5）\n\n### 4. 商品資訊（如描述、規格、圖片）清楚且足夠。\n**題型：** 線性量表（1～5）\n\n### 5. 結帳與付款流程順暢且方便。\n**題型：** 線性量表（1～5）\n\n### 6. 您對商品配送速度感到滿意。\n**題型：** 線性量表（1～5）\n\n### 7. 您收到的商品包裝完整，且商品狀況良好。\n**題型：** 線性量表（1～5）\n\n### 8. 當您有問題時，客服回應速度與服務態度令您滿意。\n**題型：** 線性量表（1～5）\n\n### 9. 您認為本平台商品與服務的整體價值符合價格。\n**題型：** 線性量表（1～5）\n\n### 10. 您認為本平台最需要改善的地方是什麼？\n**題型：** 段落題（開放式回答）\n\n---\n\n**感謝您的填寫，您的意見將協助我們持續優化服務！**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7d5611ad-7358-4371-ae53-2e14358f80e6",
+    "run_id": "1244b5a4-6ced-4e0e-b68a-1e1df3e3bc89",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次針對線上購物平台的問卷具備 10 題、繁體中文、題目與量表、結尾致謝及可複製的逐題格式，且內容貼近產業情境。未指定產業時是否能產出通用版問卷，因本次測試輸入已指定產業，無法判斷。",
+    "criterion_results": [
+      {
+        "criterion_id": "e2cb10de-0f78-4fab-b6ff-c0ed0007ffe5",
+        "text": "在輸入未指定產業時，輸出仍能生成一份通用版客戶滿意度問卷。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入已指定「線上購物平台」，沒有未指定產業時的輸出可供判斷。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "687a517d-cf12-4e41-a427-6be2d110f5b9",
+        "text": "在輸入指定產業時，輸出題目會貼近該產業情境。",
+        "result": "passed",
+        "source": "model",
+        "reason": "題目涵蓋線上購物平台特有的商品資訊、結帳付款、配送、包裝與客服等情境。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 5. 結帳與付款流程順暢且方便。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 6. 您對商品配送速度感到滿意。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 7. 您收到的商品包裝完整，且商品狀況良好。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3729d505-b8f9-4ae2-98ba-16e49001fdee",
+        "text": "在輸入指定題數範圍時，輸出題數符合該範圍。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確列出第 1 題至第 10 題，共 10 題，符合指定題數。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 1. 您對本次在平台上的整體購物體驗感到滿意。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 10. 您認為本平台最需要改善的地方是什麼？",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9008a2d7-c795-4a9d-8e4e-71c41c5c66a3",
+        "text": "輸出包含題目正文、建議量表與結尾致謝語。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出含有題目正文、5 點量表與結尾感謝語。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "本問卷採用 **5 點量表**（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意），請依您的實際體驗作答。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 1. 您對本次在平台上的整體購物體驗感到滿意。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**感謝您的填寫，您的意見將協助我們持續優化服務！**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d439b54d-9df6-4feb-b3df-bc2ea5739f36",
+        "text": "輸出使用繁體中文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "問卷內容以繁體中文撰寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您認為平台的介面設計清楚，操作容易上手。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "題型：** 段落題（開放式回答）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e0f520d8-8168-4b9a-b740-09cc76467920",
+        "text": "若使用者要求可直接貼入表單，輸出格式仍保持可複製的題目文字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以逐題題目文字及題型標示呈現，可直接複製到 Google 表單建立對應題目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 4. 商品資訊（如描述、規格、圖片）清楚且足夠。\n**題型：** 線性量表（1～5）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "### 10. 您認為本平台最需要改善的地方是什麼？\n**題型：** 段落題（開放式回答）",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2996 input and 1120 output tokens on gpt-5.4-mini; reported cost $0.0102 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

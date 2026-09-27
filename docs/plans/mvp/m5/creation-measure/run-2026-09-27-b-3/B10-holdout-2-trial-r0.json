@@ -1,0 +1,89 @@
+{
+  "round": 0,
+  "sample_input": "這通電話總共講了 11 分鐘，請算費用。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出金額為 5 元。"
+    },
+    {
+      "text": "輸出只對超過 10 分鐘的那 1 分鐘收費，不是免費的 10 分鐘也一起收費。"
+    }
+  ],
+  "final_output": "5元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8423adbd-1394-4cb7-adba-43c3d33a65fb",
+    "run_id": "4a7073fe-dcdd-4793-a8f0-3f9ed0973aba",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "最終回覆正確輸出 5元；但沒有展示計算或計費說明，因此無法確認其是否明確表達僅針對超過免費 10 分鐘的 1 分鐘收費。",
+    "criterion_results": [
+      {
+        "criterion_id": "cc9b6768-127a-43d4-b140-67d6d7eeade5",
+        "text": "輸出金額為 5 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出為 5元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6234253c-8028-41f3-94c0-d99aae31ecdd",
+        "text": "輸出只對超過 10 分鐘的那 1 分鐘收費，不是免費的 10 分鐘也一起收費。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "輸出金額符合，但最終回覆未說明計費方式，無法由可見證據確認是否明確只對超過 10 分鐘的 1 分鐘收費。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18927 input and 270 output tokens on gpt-5.4-mini; reported cost $0.0144 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 7,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

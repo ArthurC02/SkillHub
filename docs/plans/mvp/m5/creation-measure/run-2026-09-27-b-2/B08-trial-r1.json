@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我整理以下發票資料，輸出成可供核銷複核的清單：\n\n1. 2026/09/03，星辰文具行，發票金額 1,260，品項：A4紙、原子筆，統編 12345678\n2. 2026/09/05，晨光餐飲，含稅金額 840，品項：部門午餐，發票號碼 AA12345678\n3. 2026/09/05，晨光餐飲，含稅金額 840，品項：部門午餐，發票號碼 AA12345678\n4. 2026/09/08，立達資訊，金額 3,500，稅額缺漏，品項：雲端服務費\n5. 2026/09/10，捷運票務，金額 120，品項：交通費，備註：專案出差\n\n如果你同意，我就把這個 brief 固定下來再往下做。",
+  "acceptance_criteria": [
+    {
+      "text": "給定一批發票資料時，輸出會整理成結構化清單，每筆至少包含日期、廠商、金額、稅額/含稅資訊、品項或用途、可疑缺漏標記。"
+    },
+    {
+      "text": "當輸入中有多筆發票時，輸出會逐筆分列，不會把不同發票混在同一筆。"
+    },
+    {
+      "text": "當某筆發票缺少欄位時，輸出會保留該欄位為缺漏標記，而不是自行猜測。"
+    },
+    {
+      "text": "當資料中含有重複或疑似重複項目時，輸出會標示可能重複，供後續核對。"
+    },
+    {
+      "text": "當輸入包含可直接核銷的整理資訊時，輸出會同時提供適合上傳或複核的摘要格式。"
+    }
+  ],
+  "final_output": "以下為可供核銷複核的整理清單（繁體中文）：\n\n| Record | Date | Vendor | Invoice No. | Amount | Tax / Tax-inclusive | Item / Purpose | Notes |\n|---|---|---|---|---:|---|---|---|\n| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |\n\n### 重複檢查\n- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。\n\n### 缺漏欄位\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\n- 第 4 筆：發票號碼未提供；稅額缺漏。\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。\n\n### 可供核銷複核\n- 已整理完成，可直接供人工複核或後續匯入使用。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "09ca4110-c302-4795-b6a1-0053d87b4048",
+    "run_id": "aa84e459-e72c-47be-bb03-75988f9deec5",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出已將五筆發票結構化且逐筆分列，明確標記缺漏資料與第2、3筆重複情形，並附上可供核銷複核的摘要。",
+    "criterion_results": [
+      {
+        "criterion_id": "d14133d6-85c2-4972-9d4e-f523d8a4601f",
+        "text": "給定一批發票資料時，輸出會整理成結構化清單，每筆至少包含日期、廠商、金額、稅額/含稅資訊、品項或用途、可疑缺漏標記。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格逐筆列出日期、廠商、金額、稅務／含稅資訊、品項／用途及備註；缺漏稅務資訊以「not given」或「稅額缺漏」明示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cbca094f-a9e5-44cd-a727-e38e30e58f66",
+        "text": "當輸入中有多筆發票時，輸出會逐筆分列，不會把不同發票混在同一筆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "五筆資料分別以 Record 1 至 5 獨立列示，未混合為單一發票紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b4f07146-67fa-4f8c-9c8a-04695830666e",
+        "text": "當某筆發票缺少欄位時，輸出會保留該欄位為缺漏標記，而不是自行猜測。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未提供的發票號碼與稅務資訊均保留為未提供或缺漏標記，未自行補猜數值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 缺漏欄位\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\n- 第 4 筆：發票號碼未提供；稅額缺漏。\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "abee5989-55f7-4764-92d2-7171b53876ea",
+        "text": "當資料中含有重複或疑似重複項目時，輸出會標示可能重複，供後續核對。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第2與第3筆相同資料被標示為重複，並提示複核是否為重複登錄或請款。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fe3a6feb-52aa-4dca-a814-e6d4b47f3330",
+        "text": "當輸入包含可直接核銷的整理資訊時，輸出會同時提供適合上傳或複核的摘要格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "提供了欄位化表格以及重複檢查與缺漏欄位摘要，可供人工複核或後續匯入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "### 可供核銷複核\n- 已整理完成，可直接供人工複核或後續匯入使用。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19241 input and 1155 output tokens on gpt-5.4-mini; reported cost $0.0215 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 26,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

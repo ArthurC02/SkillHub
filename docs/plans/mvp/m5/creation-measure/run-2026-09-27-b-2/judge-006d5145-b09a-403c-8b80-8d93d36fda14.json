@@ -1,0 +1,109 @@
+{
+  "request": {
+    "RunID": "006d5145-b09a-403c-8b80-8d93d36fda14",
+    "EvaluationID": "eb84b756-68f6-48d5-8ad6-c499321ffcdd",
+    "Skill": {
+      "Name": "installment-payment-splitter",
+      "Summary": "Calculate equal installment amounts with any remainder added to the final installment. Use this when a request asks how much each payment should be for a total amount and number of periods."
+    },
+    "UserPrompt": "總金額 10000 元，分 3 期攤還，每期金額相同、尾差算在最後一期，請算出每一期要繳多少。",
+    "Criteria": [
+      {
+        "ID": "4d94ea14-49ce-4d5a-8d4c-bdb52ab3c6bf",
+        "Text": "第一期與第二期金額都是 3333 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "920261ed-e2cf-471e-a812-f492cdec1a3f",
+        "Text": "第三期（最後一期）金額是 3334 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a52db445-f4bc-4dc4-9273-6f57cfcf7d95",
+        "Text": "三期加起來等於 10000 元。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "每期先平均分攤：\n\n- 第 1 期：**3,333 元**\n- 第 2 期：**3,333 元**\n- 第 3 期：**3,334 元**\n\n合計 **10,000 元**。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "7a344359-862a-43f2-9aac-9fedb5b233bd",
+          "OccurredAt": "2026-09-27T08:02:41.209Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"每期先平均分攤：\\n\\n- 第 1 期：**3,333 元**\\n- 第 2 期：**3,333 元**\\n- 第 3 期：**3,334 元**\\n\\n合計 **10,000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "8529deda-2966-4395-93c3-74fbd7f6daf3",
+          "OccurredAt": "2026-09-27T08:02:41.465Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"每期先平均分攤：\\n\\n- 第 1 期：**3,333 元**\\n- 第 2 期：**3,333 元**\\n- 第 3 期：**3,334 元**\\n\\n合計 **10,000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3867c336-6f36-4488-b3f6-2377ca74f748",
+          "OccurredAt": "2026-09-27T08:02:45.506Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.003947399999999999, \"cost_source\": \"gateway\", \"duration_ms\": 8231, \"input_tokens\": 2105, \"token_source\": \"result\", \"output_tokens\": 169, \"cache_read_input_tokens\": 15872, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "4d94ea14-49ce-4d5a-8d4c-bdb52ab3c6bf",
+        "Result": "passed",
+        "Reason": "最終回覆列出第 1 期與第 2 期皆為 3,333 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 第 1 期：**3,333 元**\n- 第 2 期：**3,333 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "920261ed-e2cf-471e-a812-f492cdec1a3f",
+        "Result": "passed",
+        "Reason": "最終回覆列出第 3 期為 3,334 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 第 3 期：**3,334 元**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a52db445-f4bc-4dc4-9273-6f57cfcf7d95",
+        "Result": "passed",
+        "Reason": "最終回覆明示三期合計為 10,000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "合計 **10,000 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "回覆正確列出前兩期各 3,333 元、最後一期 3,334 元，並明示合計為 10,000 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 1834,
+      "CompletionTokens": 346,
+      "CostUSD": 0.006286000000000001,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "request": {
+    "RunID": "dd5a9292-980d-41a1-aa0e-877f2b08baed",
+    "EvaluationID": "c0f42a2c-7a52-4208-832d-a98d84035738",
+    "Skill": {
+      "Name": "customer-satisfaction-survey-questionnaire",
+      "Summary": "Generates a customer satisfaction survey questionnaire when a user needs a ready-to-use survey draft, including questions, scale, and closing thanks. Use it for general or industry-specific customer feedback surveys."
+    },
+    "UserPrompt": "請幫我做兩份客戶滿意度調查問卷，第一份不要指定產業，請直接產出一份通用版，給我 10 題、繁體中文、可直接貼到 Google 表單使用，並包含題目正文、建議量表與結尾致謝語；第二份以線上購物平台為情境，也請給我 10 題、繁體中文、可直接貼到 Google 表單使用，並包含題目正文、建議量表與結尾致謝語。",
+    "Criteria": [
+      {
+        "ID": "99865c43-bdbb-4499-87d7-33032db629e5",
+        "Text": "在輸入未指定產業時，輸出仍能生成一份通用版客戶滿意度問卷。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "04e77ff7-fa3e-4548-9be1-d2ff1641184a",
+        "Text": "在輸入指定產業時，輸出題目會貼近該產業情境。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ae96b168-e6d6-44df-8f8a-ee945138de29",
+        "Text": "在輸入指定題數範圍時，輸出題數符合該範圍。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a9916e29-3c21-43ec-b619-b172971cb8d6",
+        "Text": "輸出包含題目正文、建議量表與結尾致謝語。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0716d8c6-9403-40cc-b1e7-2aa7035de1ec",
+        "Text": "輸出使用繁體中文。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "52c32b82-66dd-49a0-ac2e-fa34cd74b290",
+        "Text": "若使用者要求可直接貼入表單，輸出格式仍保持可複製的題目文字。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "【通用版客戶滿意度調查問卷】  \n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\n\n1. 整體而言，您對本次產品／服務的體驗感到滿意。（1～5分）  \n2. 本次產品／服務有符合您的需求與期待。（1～5分）  \n3. 您認為本次產品／服務的品質表現良好。（1～5分）  \n4. 您覺得整體流程清楚、容易理解與使用。（1～5分）  \n5. 您對我們的回應速度感到滿意。（1～5分）  \n6. 若您有諮詢或問題，我們提供的協助符合您的需求。（1～5分）  \n7. 我們的服務人員態度友善且專業。（1～5分）  \n8. 您認為本次產品／服務的價格與價值相符。（1～5分）  \n9. 您願意再次選擇我們的產品／服務。（1～5分）  \n10. 請問您對我們有哪些建議或希望改進的地方？（開放式回答）\n\n感謝您撥冗填寫本問卷，您的寶貴意見將作為我們持續改進的重要參考。\n\n---\n\n【線上購物平台客戶滿意度調查問卷】  \n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\n\n1. 整體而言，您對本次線上購物平台的使用體驗感到滿意。（1～5分）  \n2. 平台的商品分類、搜尋與篩選功能方便您找到需要的商品。（1～5分）  \n3. 商品頁面的資訊（如規格、價格、圖片、說明）清楚且足夠。（1～5分）  \n4. 下單與結帳流程操作簡單、順暢。（1～5分）  \n5. 您對付款方式的多樣性與便利性感到滿意。（1～5分）  \n6. 訂單出貨速度符合您的期待。（1～5分）  \n7. 商品配送速度與包裝狀況符合您的期待。（1～5分）  \n8. 當您有問題時，客服回應速度與協助程度令人滿意。（1～5分）  \n9. 您對退換貨／退款流程的便利性感到滿意。（1～5分）  \n10. 請問您對本平台有哪些建議，或最希望改善的部分是什麼？（開放式回答）\n\n感謝您撥冗填寫本問卷，您的意見將幫助我們持續優化購物體驗與服務品質。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "8fffc072-212e-43d8-896f-080af1a68f4b",
+          "OccurredAt": "2026-09-27T07:46:25.706Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"customer-satisfaction-survey-questionnaire\", \"skill_version_id\": \"4f1b764c-4a49-49e3-9206-b989406b65e7\"}"
+        },
+        {
+          "TraceEventID": "8fb9b267-6c25-4469-a4d2-265f6bc6239a",
+          "OccurredAt": "2026-09-27T07:46:25.715Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"customer-satisfaction-survey-questionnaire\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_JJO3zU2oucDma5MMmXIgeCq8\", \"result_summary\": \"Launching skill: customer-satisfaction-survey-questionnaire\"}"
+        },
+        {
+          "TraceEventID": "945cc814-35d6-4ec9-b5b4-29ea38af5088",
+          "OccurredAt": "2026-09-27T07:46:34.044Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"【通用版客戶滿意度調查問卷】  \\n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\\n\\n1. 整體而言，您對本次產品／服務的體驗感到滿意。（1～5分）  \\n2. 本次產品／服務有符合您的需求與期待。（1～5分）  \\n3. 您認為本次產品／服務的品質表現良好。（1～5分）  \\n4. 您覺得整體流程清楚、容易理解與使用。（1～5分）  \\n5. 您對我們的回應速度感到滿意。（1～5分）  \\n6. 若您有諮詢或問題，我們提供的協助符合您的需求。（1～5分）  \\n7. 我們的服務人員態度友善且專業。（1～5分）  \\n8. 您認為本次產品／服務的價格與價值相符。（1～5分）  \\n9. 您願意再次選擇我們的產品／服務。（1～5分）  \\n10. 請問您對我們有哪些建議或希望改進的地方？（開放式回答）\\n\\n感謝您撥冗填寫本問卷，您的寶貴意見將作為我們持續改進的重要參考。\\n\\n---\\n\\n【線上購物平台客戶滿意度調查問卷】  \\n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\\n\\n1. 整體而言，您對本次線上購物平台的使用體驗感到滿意。（1～5分）  \\n2. 平台的商品分類、搜尋與篩選功能方便您找到需要的商品。（1～5分）  \\n3. 商品頁面的資訊（如規格、價格、圖片、說明）清楚且足夠。（1～5分）  \\n4. 下單與結帳流程操作簡單、順暢。（1～5分）  \\n5. 您對付款方式的多樣性與便利性感到滿意。（1～5分）  \\n6. 訂單出貨速度符合您的期待。（1～5分）  \\n7. 商品配送速度與包裝狀況符合您的期待。（1～5分）  \\n8. 當您有問題時，客服回應速度與協助程度令人滿意。（1～5分）  \\n9. 您對退換貨／退款流程的便利性感到滿意。（1～5分）  \\n10. 請問您對本平台有哪些建議，或最希望改善的部分是什麼？（開放式回答）\\n\\n感謝您撥冗填寫本問卷，您的意見將幫助我們持續優化購物體驗與服務品質。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b37c0d04-b773-42fd-9e01-5025ca20abb5",
+          "OccurredAt": "2026-09-27T07:46:34.412Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"【通用版客戶滿意度調查問卷】  \\n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\\n\\n1. 整體而言，您對本次產品／服務的體驗感到滿意。（1～5分）  \\n2. 本次產品／服務有符合您的需求與期待。（1～5分）  \\n3. 您認為本次產品／服務的品質表現良好。（1～5分）  \\n4. 您覺得整體流程清楚、容易理解與使用。（1～5分）  \\n5. 您對我們的回應速度感到滿意。（1～5分）  \\n6. 若您有諮詢或問題，我們提供的協助符合您的需求。（1～5分）  \\n7. 我們的服務人員態度友善且專業。（1～5分）  \\n8. 您認為本次產品／服務的價格與價值相符。（1～5分）  \\n9. 您願意再次選擇我們的產品／服務。（1～5分）  \\n10. 請問您對我們有哪些建議或希望改進的地方？（開放式回答）\\n\\n感謝您撥冗填寫本問卷，您的寶貴意見將作為我們持續改進的重要參考。\\n\\n---\\n\\n【線上購物平台客戶滿意度調查問卷】  \\n建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）\\n\\n1. 整體而言，您對本次線上購物平台的使用體驗感到滿意。（1～5分）  \\n2. 平台的商品分類、搜尋與篩選功能方便您找到需要的商品。（1～5分）  \\n3. 商品頁面的資訊（如規格、價格、圖片、說明）清楚且足夠。（1～5分）  \\n4. 下單與結帳流程操作簡單、順暢。（1～5分）  \\n5. 您對付款方式的多樣性與便利性感到滿意。（1～5分）  \\n6. 訂單出貨速度符合您的期待。（1～5分）  \\n7. 商品配送速度與包裝狀況符合您的期待。（1～5分）  \\n8. 當您有問題時，客服回應速度與協助程度令人滿意。（1～5分）  \\n9. 您對退換貨／退款流程的便利性感到滿意。（1～5分）  \\n10. 請問您對本平台有哪些建議，或最希望改善的部分是什麼？（開放式回答）\\n\\n感謝您撥冗填寫本問卷，您的意見將幫助我們持續優化購物體驗與服務品質。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "545456eb-0d01-49c4-9fef-ee7b138d2d02",
+          "OccurredAt": "2026-09-27T07:46:39.971Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0109959, \"cost_source\": \"gateway\", \"duration_ms\": 16068, \"input_tokens\": 3144, \"token_source\": \"result\", \"output_tokens\": 1249, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "99865c43-bdbb-4499-87d7-33032db629e5",
+        "Result": "passed",
+        "Reason": "輸出提供未限定產業的通用版客戶滿意度問卷。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "【通用版客戶滿意度調查問卷】"
+          }
+        ]
+      },
+      {
+        "CriterionID": "04e77ff7-fa3e-4548-9be1-d2ff1641184a",
+        "Result": "passed",
+        "Reason": "線上購物平台版本包含商品搜尋、商品頁、結帳、付款、出貨配送與退換貨等情境題目。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "平台的商品分類、搜尋與篩選功能方便您找到需要的商品。（1～5分）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您對退換貨／退款流程的便利性感到滿意。（1～5分）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ae96b168-e6d6-44df-8f8a-ee945138de29",
+        "Result": "passed",
+        "Reason": "兩份問卷皆明確列出第1至第10題，符合要求的10題數量。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "10. 請問您對我們有哪些建議或希望改進的地方？（開放式回答）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "10. 請問您對本平台有哪些建議，或最希望改善的部分是什麼？（開放式回答）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a9916e29-3c21-43ec-b619-b172971cb8d6",
+        "Result": "passed",
+        "Reason": "每份問卷均有題目、1～5分建議量表及結尾致謝語。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "建議量表：1～5分量表（1＝非常不同意／非常不滿意，5＝非常同意／非常滿意）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "感謝您撥冗填寫本問卷，您的寶貴意見將作為我們持續改進的重要參考。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0716d8c6-9403-40cc-b1e7-2aa7035de1ec",
+        "Result": "passed",
+        "Reason": "輸出全文以繁體中文撰寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "感謝您撥冗填寫本問卷，您的意見將幫助我們持續優化購物體驗與服務品質。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "52c32b82-66dd-49a0-ac2e-fa34cd74b290",
+        "Result": "passed",
+        "Reason": "內容以標題、量表說明與逐題編號的純文字呈現，可直接複製貼入表單。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. 整體而言，您對本次產品／服務的體驗感到滿意。（1～5分）  \n2. 本次產品／服務有符合您的需求與期待。（1～5分）"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "本次輸出完成兩份繁體中文、各10題的客戶滿意度問卷：一份為通用版，另一份貼合線上購物平台情境。兩者皆提供量表、題目與致謝語，並採清楚的編號文字格式。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 4205,
+      "CompletionTokens": 891,
+      "CostUSD": 0.0187535,
+      "CostReported": true
+    }
+  }
+}

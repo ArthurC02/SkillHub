@@ -1,0 +1,161 @@
+{
+  "round": 3,
+  "sample_input": "請把下面三家供應商的報價整理成比價表，並標出每個品項誰最便宜：\n\n供應商A\n- A101 螺絲 50mm：NT$12\n- A102 螺絲 80mm：NT$18\n- A103 螺帽 M8：NT$9\n- A104 螺絲 100mm：NT$22\n- A105 螺絲墊片 10mm：NT$6\n\n供應商B\n- 螺絲 50mm：NT$11\n- 螺絲 80mm：NT$20\n- 螺帽 M8：NT$9\n- 螺絲 100mm：NT$21\n- 螺絲墊片 10mm：NT$5\n\n供應商C\n- 50mm 螺絲：NT$13\n- 80mm 螺絲：NT$17\n- M8 螺帽：NT$10\n- 100mm 螺絲：NT$21\n\n如果你同意這個 brief，我就繼續。",
+  "acceptance_criteria": [
+    {
+      "text": "給定包含三家供應商與多個品項的貼上文字，輸出是一個 Markdown 比價表。"
+    },
+    {
+      "text": "表格中每個品項都列出三家供應商的價格與最低價供應商。"
+    },
+    {
+      "text": "若某品項有並列最低價，輸出會明確標示並列最低價。"
+    },
+    {
+      "text": "若同一品項在三家報價中的名稱略有差異，輸出會盡量對齊成同一列而不拆成多列。"
+    },
+    {
+      "text": "若某供應商缺少某品項價格，表格會保留該欄空白或以缺值標示，且不捏造數字。"
+    }
+  ],
+  "final_output": "| 品項 | 供應商A | 供應商B | 供應商C | 最便宜供應商 | 備註 |\n|---|---:|---:|---:|---|---|\n| 螺絲 50mm | NT$12 | NT$11 | NT$13 | 供應商B | A101；C 的「50mm 螺絲」已合併比對 |\n| 螺絲 80mm | NT$18 | NT$20 | NT$17 | 供應商C | A102；C 的「80mm 螺絲」已合併比對 |\n| 螺帽 M8 | NT$9 | NT$9 | NT$10 | 供應商A、供應商B（並列最低） | A103；C 的「M8 螺帽」已合併比對 |\n| 螺絲 100mm | NT$22 | NT$21 | NT$21 | 供應商B、供應商C（並列最低） | A104；C 的「100mm 螺絲」已合併比對 |\n| 螺絲墊片 10mm | NT$6 | NT$5 | — | 供應商B | A105；供應商C 未報價 |\n\n如需，我也可以再幫你整理成「含總價」版本。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "bee1d94d-bbe8-42cd-b1f6-211f71fdb8dc",
+    "run_id": "4d71a967-f42d-4979-82a1-615983ecba5b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆提供完整 Markdown 比價表，逐列比較三家價格、標示最低供應商與並列最低，並合併名稱詞序差異。供應商 C 缺少的墊片報價亦以缺值和未報價註記處理。",
+    "criterion_results": [
+      {
+        "criterion_id": "2bdfb550-e81e-4554-81b9-ad1441e5d8b0",
+        "text": "給定包含三家供應商與多個品項的貼上文字，輸出是一個 Markdown 比價表。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆以 Markdown 表格整理了三家供應商的多個品項報價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 品項 | 供應商A | 供應商B | 供應商C | 最便宜供應商 | 備註 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a9f26a93-fa77-4708-a616-d61ebf103320",
+        "text": "表格中每個品項都列出三家供應商的價格與最低價供應商。",
+        "result": "passed",
+        "source": "model",
+        "reason": "每個品項列均包含供應商 A、B、C 的價格或缺值，以及最便宜供應商欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲 50mm | NT$12 | NT$11 | NT$13 | 供應商B | A101；C 的「50mm 螺絲」已合併比對 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲墊片 10mm | NT$6 | NT$5 | — | 供應商B | A105；供應商C 未報價 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "27abb21c-1668-4e7c-9b62-a794c48c2887",
+        "text": "若某品項有並列最低價，輸出會明確標示並列最低價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩個價格並列最低的品項都明確以「並列最低」標示相關供應商。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺帽 M8 | NT$9 | NT$9 | NT$10 | 供應商A、供應商B（並列最低） | A103；C 的「M8 螺帽」已合併比對 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲 100mm | NT$22 | NT$21 | NT$21 | 供應商B、供應商C（並列最低） | A104；C 的「100mm 螺絲」已合併比對 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2fb9b85d-4255-4705-bff7-8b483d0a992e",
+        "text": "若同一品項在三家報價中的名稱略有差異，輸出會盡量對齊成同一列而不拆成多列。",
+        "result": "passed",
+        "source": "model",
+        "reason": "供應商 C 的詞序不同名稱已合併至對應品項列，而非拆成額外列。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲 80mm | NT$18 | NT$20 | NT$17 | 供應商C | A102；C 的「80mm 螺絲」已合併比對 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺帽 M8 | NT$9 | NT$9 | NT$10 | 供應商A、供應商B（並列最低） | A103；C 的「M8 螺帽」已合併比對 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "68282f67-46cf-4e78-9c21-c42689c853a9",
+        "text": "若某供應商缺少某品項價格，表格會保留該欄空白或以缺值標示，且不捏造數字。",
+        "result": "passed",
+        "source": "model",
+        "reason": "供應商 C 未提供螺絲墊片 10mm 的價格時，表格以破折號保留缺值，並註明未報價，沒有填造數字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 螺絲墊片 10mm | NT$6 | NT$5 | — | 供應商B | A105；供應商C 未報價 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3177 input and 997 output tokens on gpt-5.4-mini; reported cost $0.0100 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

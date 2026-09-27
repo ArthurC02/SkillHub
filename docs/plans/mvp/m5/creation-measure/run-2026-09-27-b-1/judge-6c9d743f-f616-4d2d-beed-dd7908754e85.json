@@ -1,0 +1,103 @@
+{
+  "request": {
+    "RunID": "6c9d743f-f616-4d2d-beed-dd7908754e85",
+    "EvaluationID": "8dcafb0b-47a7-45ee-8142-6041dc675c60",
+    "Skill": {
+      "Name": "parking-fee-calculator",
+      "Summary": "Use this skill when you need to calculate parking fees from a stay duration in hours, applying tiered pricing with a 200-unit cap after 3 hours."
+    },
+    "UserPrompt": "停留時間 3 小時 10 分鐘，請算停車費。",
+    "Criteria": [
+      {
+        "ID": "d3e52fad-cc32-473e-9a1d-ead60a80e065",
+        "Text": "輸出金額為 200 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "af8c4c8c-29e8-4efb-bafc-c4248ffd2762",
+        "Text": "輸出有提到超過 3 小時之後不再依時間往上加收。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "200",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "a75b666a-8ccc-4594-b157-89966c2fa13b",
+          "OccurredAt": "2026-09-27T07:34:42.653Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"parking-fee-calculator\", \"skill_version_id\": \"f1bf318e-7270-40dd-b332-9388f23c9ae6\"}"
+        },
+        {
+          "TraceEventID": "345a1898-5c2f-4aae-b74d-4d79dfd4dc3b",
+          "OccurredAt": "2026-09-27T07:34:42.664Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"parking-fee-calculator\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_2UYzYtRVGZGeDEM2sWRhTQma\", \"result_summary\": \"Launching skill: parking-fee-calculator\"}"
+        },
+        {
+          "TraceEventID": "719ac445-9247-44bb-b6b2-b2c301405457",
+          "OccurredAt": "2026-09-27T07:34:45.436Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"200\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "140d1c1f-d3fb-4ed2-90d6-7d58a7a78e70",
+          "OccurredAt": "2026-09-27T07:34:45.554Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"200\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "e3a45844-8f6a-4bfc-9783-27682fa73d18",
+          "OccurredAt": "2026-09-27T07:34:51.12Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01667835, \"cost_source\": \"gateway\", \"duration_ms\": 10248, \"input_tokens\": 18828, \"token_source\": \"result\", \"output_tokens\": 193, \"cache_read_input_tokens\": 17408, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d3e52fad-cc32-473e-9a1d-ead60a80e065",
+        "Result": "passed",
+        "Reason": "最終輸出為 200，符合金額 200 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "200"
+          }
+        ]
+      },
+      {
+        "CriterionID": "af8c4c8c-29e8-4efb-bafc-c4248ffd2762",
+        "Result": "failed",
+        "Reason": "最終輸出僅有金額，未提到超過 3 小時後不再依時間加收。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "200"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "金額計算正確，但輸出未說明超過 3 小時後費用不再隨時間增加。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 1831,
+      "CompletionTokens": 215,
+      "CostUSD": 0.004706500000000001,
+      "CostReported": true
+    }
+  }
+}

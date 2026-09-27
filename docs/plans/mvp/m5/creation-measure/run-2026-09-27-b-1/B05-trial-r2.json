@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請把下面會議記錄整理成待辦事項清單，並列出每項的負責人與期限：\n\n今天會議決定：Alice 負責完成新版首頁文案，期限是 10/05；Bob 負責整理客戶回饋，期限是 10/07；行銷部門確認下週三前提供廣告素材，但負責人未定；另外請工程部評估 API 速度優化，負責人是 Carol，期限未定。",
+  "acceptance_criteria": [
+    {
+      "text": "輸入一段包含多個待辦與不同負責人的會議記錄時，輸出會列出所有可辨識的待辦項目。"
+    },
+    {
+      "text": "每一個輸出項目都會包含事項、負責人與期限三個資訊欄位。"
+    },
+    {
+      "text": "當會議記錄明確寫出負責人或期限時，輸出會保留該原始資訊，不會改寫成其他人或日期。"
+    },
+    {
+      "text": "當會議記錄沒有寫出負責人或期限時，輸出會在對應欄位顯示「未指定」。"
+    },
+    {
+      "text": "輸出只會根據會議記錄內容整理，不會加入原文沒有提到的新任務。"
+    }
+  ],
+  "final_output": "| 事項 | 負責人 | 期限 | 備註 |\n| --- | --- | --- | --- |\n| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "eb55d3e5-0409-42ce-97c9-8fea61c92529",
+    "run_id": "34cb6c3a-71ee-4dae-b76e-7e7d3d29895d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "待辦清單完整列出四項會議決議，且每項均包含事項、負責人和期限。已如實保留明確資訊，並以「未指定」填列缺失的負責人或期限，沒有新增任務。",
+    "criterion_results": [
+      {
+        "criterion_id": "b756e2e6-d361-407f-9db3-1580244133f6",
+        "text": "輸入一段包含多個待辦與不同負責人的會議記錄時，輸出會列出所有可辨識的待辦項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出四項可辨識的待辦，涵蓋會議記錄中的新版首頁文案、客戶回饋、廣告素材與 API 速度優化。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "daa01c97-a115-4780-a449-4d68e5b8c7b5",
+        "text": "每一個輸出項目都會包含事項、負責人與期限三個資訊欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格中的每個待辦列均包含「事項」、「負責人」與「期限」欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 事項 | 負責人 | 期限 | 備註 |\n| --- | --- | --- | --- |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b04ebc8d-97be-44cf-a27c-478ba5000807",
+        "text": "當會議記錄明確寫出負責人或期限時，輸出會保留該原始資訊，不會改寫成其他人或日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "已保留原始明確指定的負責人與期限：Alice／10/05、Bob／10/07、下週三前，以及 Carol。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "eb21aae6-a1ff-4405-b16b-9e83c19e726e",
+        "text": "當會議記錄沒有寫出負責人或期限時，輸出會在對應欄位顯示「未指定」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "未指定負責人的廣告素材項目標示為「未指定」，未指定期限的 API 優化項目也標示為「未指定」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5d5d289d-e252-4a28-8bb6-3864d7d863dd",
+        "text": "輸出只會根據會議記錄內容整理，不會加入原文沒有提到的新任務。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出中的四個事項皆對應會議記錄所述工作，未見額外新增的任務。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3086 input and 577 output tokens on gpt-5.4-mini; reported cost $0.0079 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

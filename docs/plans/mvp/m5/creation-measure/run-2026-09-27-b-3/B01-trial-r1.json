@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我試算以下停車費：0.5 小時、1 小時、2 小時、3 小時、4.5 小時。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入停留時間為 1 小時或以下時，輸出費用是 50 元。"
+    },
+    {
+      "text": "當輸入停留時間大於 1 小時且不超過 3 小時時，輸出費用是 120 元。"
+    },
+    {
+      "text": "當輸入停留時間大於 3 小時時，輸出費用是 200 元。"
+    },
+    {
+      "text": "輸出內容能清楚對應輸入的停留時間與計算結果。"
+    },
+    {
+      "text": "同一筆試算中若出現多個測試值，工具能分別算出各自費用。"
+    }
+  ],
+  "final_output": "以下以「小時」計算：\n\n- 0.5 小時：50\n- 1 小時：50\n- 2 小時：120\n- 3 小時：120\n- 4.5 小時：200",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "00c5110b-faa9-4f71-aa68-4ad4f50f5baa",
+    "run_id": "f8c0a9ef-faeb-4801-8cf8-5630ac5dccd9",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五個指定停留時間皆已分別輸出，且費用結果符合各時數級距規則；輸入時數與結果的對應清楚。",
+    "criterion_results": [
+      {
+        "criterion_id": "638d0115-882c-48c2-97a3-2f0751324a66",
+        "text": "當輸入停留時間為 1 小時或以下時，輸出費用是 50 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 0.5 小時與 1 小時皆計為 50 元，符合停留時間 1 小時或以下的規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 0.5 小時：50\n- 1 小時：50",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7aad69f-fed9-4b89-bd6e-e2e3e42c75a6",
+        "text": "當輸入停留時間大於 1 小時且不超過 3 小時時，輸出費用是 120 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 2 小時與 3 小時皆計為 120 元，符合大於 1 小時且不超過 3 小時的規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2 小時：120\n- 3 小時：120",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b06a6b01-f5d6-45e8-b4e0-4b5e59b403fa",
+        "text": "當輸入停留時間大於 3 小時時，輸出費用是 200 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出將 4.5 小時計為 200 元，符合大於 3 小時的規則。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 4.5 小時：200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4ae91525-65ee-4451-bd2f-a03520f9eb57",
+        "text": "輸出內容能清楚對應輸入的停留時間與計算結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以條列方式逐項列出每個停留時間及其對應費用，對應關係清楚。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 0.5 小時：50\n- 1 小時：50\n- 2 小時：120\n- 3 小時：120\n- 4.5 小時：200",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "feed083c-4007-46a3-bd77-1c0c8a9dbb61",
+        "text": "同一筆試算中若出現多個測試值，工具能分別算出各自費用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "同一筆試算中的五個測試值均被分別計算並列出各自費用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 0.5 小時：50\n- 1 小時：50\n- 2 小時：120\n- 3 小時：120\n- 4.5 小時：200",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3162 input and 336 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

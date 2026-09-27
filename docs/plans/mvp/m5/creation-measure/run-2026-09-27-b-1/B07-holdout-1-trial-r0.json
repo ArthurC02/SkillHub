@@ -1,0 +1,127 @@
+{
+  "round": 0,
+  "sample_input": "幫我做一份客戶滿意度調查問卷。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一份可以直接拿去用的完整問卷，包含具體題目，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出有明確說明它採用了哪些調查構面（例如服務態度、產品品質、交貨速度、整體滿意度之類），以及這是在沒有指定時採用的常見預設。"
+    },
+    {
+      "text": "問卷題目不只一題，涵蓋一個以上的構面。"
+    }
+  ],
+  "final_output": "客戶滿意度調查問卷  \n預設：繁體中文、一般客戶滿意度\n\n1. 整體而言，您對本次購買／服務體驗的滿意程度如何？  \n（1 非常不滿意／2 不滿意／3 普通／4 滿意／5 非常滿意）\n\n2. 您對我們的產品／服務品質滿意嗎？  \n（1 非常不滿意／2 不滿意／3 普通／4 滿意／5 非常滿意）\n\n3. 您覺得我們的流程是否簡單、方便且容易完成？  \n（1 非常不同意／2 不同意／3 普通／4 同意／5 非常同意）\n\n4. 您對我們回覆速度或處理效率的滿意程度如何？  \n（1 非常不滿意／2 不滿意／3 普通／4 滿意／5 非常滿意）\n\n5. 您對客服／服務人員的態度與專業程度滿意嗎？  \n（1 非常不滿意／2 不滿意／3 普通／4 滿意／5 非常滿意）\n\n6. 您認為我們的產品／服務是否符合您的需求？  \n（1 非常不同意／2 不同意／3 普通／4 同意／5 非常同意）\n\n7. 您覺得我們提供的價格／收費是否合理，物有所值？  \n（1 非常不同意／2 不同意／3 普通／4 同意／5 非常同意）\n\n8. 您未來再次購買／再次使用我們產品或服務的意願有多高？  \n（1 非常低／2 低／3 普通／4 高／5 非常高）\n\n9. 您願意推薦我們給親友或同事的可能性有多高？  \n（0 完全不會推薦～10 非常願意推薦）\n\n10. 請問您對我們有哪些建議，或希望我們改善哪些地方？  \n（開放式回答）\n\n感謝您的填寫，您的意見將協助我們持續改進。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c6c25790-42ae-4be6-8cea-7ae3c22b4087",
+    "run_id": "6d6a8b84-358a-4167-9867-46d348bd661a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "問卷本身完整可用，且題目涵蓋多個客戶滿意度構面；但未明確說明所採用的調查構面及其作為未指定情境下常見預設的依據。",
+    "criterion_results": [
+      {
+        "criterion_id": "2ca89e5e-e83b-4c79-8384-39eaa6908040",
+        "text": "輸出是一份可以直接拿去用的完整問卷，包含具體題目，而不是只列出要使用者回答的問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供可直接使用的完整問卷，含10道具體題目、各題作答量表／開放式回答，以及結尾致謝。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 整體而言，您對本次購買／服務體驗的滿意程度如何？  \n（1 非常不滿意／2 不滿意／3 普通／4 滿意／5 非常滿意）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "感謝您的填寫，您的意見將協助我們持續改進。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a1317146-85f4-49ab-929a-356cbc3f9a93",
+        "text": "輸出有明確說明它採用了哪些調查構面（例如服務態度、產品品質、交貨速度、整體滿意度之類），以及這是在沒有指定時採用的常見預設。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖標示「預設：繁體中文、一般客戶滿意度」，但沒有明確列出本問卷採用的調查構面，亦未明確說明這些構面是在使用者未指定時所採用的常見預設。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "客戶滿意度調查問卷  \n預設：繁體中文、一般客戶滿意度",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "928f2636-8c79-44bd-8f51-f1caafb9ac41",
+        "text": "問卷題目不只一題，涵蓋一個以上的構面。",
+        "result": "passed",
+        "source": "model",
+        "reason": "問卷有多道題目，且涉及整體體驗、產品／服務品質、流程便利性、回覆效率、服務人員態度與專業等多個構面。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 您對我們的產品／服務品質滿意嗎？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 您對我們回覆速度或處理效率的滿意程度如何？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 您對客服／服務人員的態度與專業程度滿意嗎？",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3446 input and 1105 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

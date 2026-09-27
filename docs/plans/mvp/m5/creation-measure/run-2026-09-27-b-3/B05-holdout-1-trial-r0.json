@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這份會議記錄整理成待辦事項清單，每一項要寫負責人跟期限：\n今天會議大家討論了下一季的行銷規劃。小陳說他會在這個月 15 號之前把新版型錄的初稿寄給大家看。小美提到目前庫存系統的報表有點跑掉，她會盡快去跟資訊部確認，預計 10 號前給答案。阿光負責的部分是要在月底之前把三個新的合作店家名單整理好交給小陳。另外大家也聊到年底的尾牙要不要提前訂場地，但這件事還沒有人認領，也還沒有決定期限。",
+  "acceptance_criteria": [
+    {
+      "text": "待辦清單包含小陳在 15 號前完成型錄初稿。"
+    },
+    {
+      "text": "待辦清單包含小美在 10 號前確認庫存報表問題。"
+    },
+    {
+      "text": "待辦清單包含阿光在月底前整理三個合作店家名單交給小陳。"
+    },
+    {
+      "text": "清單沒有把還沒人認領、沒有期限的尾牙訂場地事項，寫成已經有負責人或期限。"
+    }
+  ],
+  "final_output": "以下是整理好的待辦事項清單：\n\n1. **Task:** 寄出新版型錄初稿給大家看  \n   **Owner:** 小陳  \n   **Deadline:** 這個月 15 號前\n\n2. **Task:** 向資訊部確認庫存系統報表跑掉的問題，並回覆結果  \n   **Owner:** 小美  \n   **Deadline:** 10 號前\n\n3. **Task:** 整理三個新的合作店家名單並交給小陳  \n   **Owner:** 阿光  \n   **Deadline:** 月底前\n\n4. **Task:** 評估年底尾牙是否要提前訂場地  \n   **Owner:** not given  \n   **Deadline:** not given",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "25a6e2a1-c1b2-4370-9448-7caea81772fb",
+    "run_id": "d4ac7b85-9923-4402-aa3d-0c6aae797a34",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有三項已指派待辦均正確包含負責人與期限；未認領的尾牙場地事項也正確保留為未提供負責人與期限。",
+    "criterion_results": [
+      {
+        "criterion_id": "c7f6113d-782d-4a9c-b131-084e3b526477",
+        "text": "待辦清單包含小陳在 15 號前完成型錄初稿。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出小陳寄出新版型錄初稿，期限為這個月 15 號前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **Task:** 寄出新版型錄初稿給大家看  \n   **Owner:** 小陳  \n   **Deadline:** 這個月 15 號前",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "79c5e998-8a5c-4a8c-9c84-3c6b6fca1812",
+        "text": "待辦清單包含小美在 10 號前確認庫存報表問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出小美向資訊部確認庫存系統報表問題並回覆，期限為 10 號前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **Task:** 向資訊部確認庫存系統報表跑掉的問題，並回覆結果  \n   **Owner:** 小美  \n   **Deadline:** 10 號前",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7fd41e34-2710-4492-8eda-606d7d96e38d",
+        "text": "待辦清單包含阿光在月底前整理三個合作店家名單交給小陳。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出阿光整理三個新的合作店家名單並交給小陳，期限為月底前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **Task:** 整理三個新的合作店家名單並交給小陳  \n   **Owner:** 阿光  \n   **Deadline:** 月底前",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2eb6a098-fe18-40c1-8339-edef84433913",
+        "text": "清單沒有把還沒人認領、沒有期限的尾牙訂場地事項，寫成已經有負責人或期限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "尾牙訂場地事項明確標示負責人與期限皆為 not given，沒有虛構已指派的負責人或期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **Task:** 評估年底尾牙是否要提前訂場地  \n   **Owner:** not given  \n   **Deadline:** not given",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18816 input and 544 output tokens on gpt-5.4-mini; reported cost $0.0184 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 15,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

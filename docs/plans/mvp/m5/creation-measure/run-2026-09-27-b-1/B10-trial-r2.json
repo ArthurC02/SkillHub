@@ -1,0 +1,146 @@
+{
+  "round": 2,
+  "sample_input": "請計算以下通話的超時費，並分別輸出每筆的費用與計算依據：\n10 分鐘、20 分鐘、30 分鐘、31 分鐘、45 分鐘",
+  "acceptance_criteria": [
+    {
+      "text": "輸入 10 分鐘時，輸出費用為 0 元。"
+    },
+    {
+      "text": "輸入 20 分鐘時，輸出費用為 50 元，且能反映 10 分鐘免費、10 分鐘按每分鐘 5 元計算。"
+    },
+    {
+      "text": "輸入 30 分鐘時，輸出費用為 100 元，且不包含 30 分鐘以上費率。"
+    },
+    {
+      "text": "輸入 31 分鐘時，輸出費用為 108 元，且多出的 1 分鐘按每分鐘 8 元計算。"
+    },
+    {
+      "text": "輸入 45 分鐘時，輸出費用為 228 元，且同時包含 10–30 分鐘與超過 30 分鐘兩段費率。"
+    }
+  ],
+  "final_output": "依照規則：\n\n- 前 10 分鐘免費\n- 超過 10 分鐘、且不超過 30 分鐘的部分：每分鐘 5 元\n- 超過 30 分鐘的部分：每分鐘 8 元\n\n計算結果如下：\n\n1. **10 分鐘**\n   - 計算：0 元\n   - **費用：0 元**\n\n2. **20 分鐘**\n   - 計算： (20 - 10) × 5 = 10 × 5 = 50\n   - **費用：50 元**\n\n3. **30 分鐘**\n   - 計算： (30 - 10) × 5 = 20 × 5 = 100\n   - **費用：100 元**\n\n4. **31 分鐘**\n   - 計算： 20 × 5 + (31 - 30) × 8 = 100 + 8 = 108\n   - **費用：108 元**\n\n5. **45 分鐘**\n   - 計算： 20 × 5 + (45 - 30) × 8 = 100 + 120 = 220\n   - **費用：220 元**\n\n整理表：\n\n| 通話時長 | 計算依據 | 費用 |\n|---|---|---:|\n| 10 分鐘 | 前 10 分鐘免費 | 0 元 |\n| 20 分鐘 | (20-10)×5 | 50 元 |\n| 30 分鐘 | (30-10)×5 | 100 元 |\n| 31 分鐘 | 20×5 + 1×8 | 108 元 |\n| 45 分鐘 | 20×5 + 15×8 | 220 元 |\n\n如果你要，我也可以幫你把這個規則整理成一個簡單公式或程式碼。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "db1dd7ef-b75f-425c-97c4-51b9bcc93398",
+    "run_id": "64c7f7d2-9008-4f0d-86ef-79c72f154e88",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "前四項時長的費用與計算依據均符合標準。45 分鐘項目包含兩段費率，但最終輸出為 220 元，未達要求的 228 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "508c6e5f-a1bf-4ae6-9194-3ebb6f2f3676",
+        "text": "輸入 10 分鐘時，輸出費用為 0 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "10 分鐘的費用明確輸出為 0 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. **10 分鐘**\n   - 計算：0 元\n   - **費用：0 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8cd71a1f-36ee-4665-a654-a34698b5ed03",
+        "text": "輸入 20 分鐘時，輸出費用為 50 元，且能反映 10 分鐘免費、10 分鐘按每分鐘 5 元計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "20 分鐘輸出 50 元，並列出前 10 分鐘後的 10 分鐘以每分鐘 5 元計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. **20 分鐘**\n   - 計算： (20 - 10) × 5 = 10 × 5 = 50\n   - **費用：50 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "42e33a0f-cd49-4bd5-9029-e45115d745c8",
+        "text": "輸入 30 分鐘時，輸出費用為 100 元，且不包含 30 分鐘以上費率。",
+        "result": "passed",
+        "source": "model",
+        "reason": "30 分鐘輸出 100 元，計算式僅使用 10 至 30 分鐘區段的每分鐘 5 元費率。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. **30 分鐘**\n   - 計算： (30 - 10) × 5 = 20 × 5 = 100\n   - **費用：100 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c2fa1aa2-5d34-45e3-bd54-73ad90f50402",
+        "text": "輸入 31 分鐘時，輸出費用為 108 元，且多出的 1 分鐘按每分鐘 8 元計算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "31 分鐘輸出 108 元，且將超過 30 分鐘的 1 分鐘以 8 元計算。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. **31 分鐘**\n   - 計算： 20 × 5 + (31 - 30) × 8 = 100 + 8 = 108\n   - **費用：108 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5b1f2882-f9e1-4f85-be03-10b8b1567a6c",
+        "text": "輸入 45 分鐘時，輸出費用為 228 元，且同時包含 10–30 分鐘與超過 30 分鐘兩段費率。",
+        "result": "failed",
+        "source": "model",
+        "reason": "45 分鐘雖列出兩段費率的計算依據，但輸出的費用是 220 元，不是此項標準要求的 228 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. **45 分鐘**\n   - 計算： 20 × 5 + (45 - 30) × 8 = 100 + 120 = 220\n   - **費用：220 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2525 input and 690 output tokens on gpt-5.4-mini; reported cost $0.0079 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

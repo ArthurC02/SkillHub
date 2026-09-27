@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請審核以下出差報銷：\n1. 金額 1800 元，有附發票，沒有主管簽核。\n2. 金額 1800 元，沒有附發票，沒有主管簽核。\n3. 金額 2500 元，有附發票，有主管簽核。\n4. 金額 2500 元，有附發票，沒有主管簽核。\n5. 金額 2500 元，沒有附發票，沒有主管簽核。",
+  "acceptance_criteria": [
+    {
+      "text": "當金額小於 2000 且有附發票、沒有主管簽核時，輸出為通過。"
+    },
+    {
+      "text": "當金額小於 2000 且沒有附發票時，輸出為退回，原因指出缺少發票。"
+    },
+    {
+      "text": "當金額大於等於 2000 且有附發票、也有主管簽核時，輸出為通過。"
+    },
+    {
+      "text": "當金額大於等於 2000 且有附發票、但沒有主管簽核時，輸出為退回，原因指出缺少主管簽核。"
+    },
+    {
+      "text": "當金額大於等於 2000 且沒有附發票時，輸出為退回，原因指出缺少發票；若同時缺少主管簽核，也要一併寫出原因。"
+    },
+    {
+      "text": "當案件未通過時，回覆中必須包含「退回」與具體原因。"
+    }
+  ],
+  "final_output": "1. 通過\n2. 退回：缺少發票\n3. 通過\n4. 退回：缺少主管簽核\n5. 退回：缺少發票、缺少主管簽核",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d87c1eb8-c7ca-42b8-bca0-ae580c1b4a7e",
+    "run_id": "2d56cd09-de67-43ad-b359-d48e0576d4d3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆報銷案件的判定均符合規則；所有退回案件均使用「退回」並提供具體原因。",
+    "criterion_results": [
+      {
+        "criterion_id": "7ba138e9-b4d4-4132-945a-9ca4c1064331",
+        "text": "當金額小於 2000 且有附發票、沒有主管簽核時，輸出為通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆金額 1800 元、有發票且無主管簽核，回覆為「通過」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1. 通過",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ffa50211-0237-4f6e-943d-3581c8578c1c",
+        "text": "當金額小於 2000 且沒有附發票時，輸出為退回，原因指出缺少發票。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆金額 1800 元且沒有發票，回覆為退回並明確指出缺少發票。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 退回：缺少發票",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0af8673c-8e76-4250-beea-985d012014ff",
+        "text": "當金額大於等於 2000 且有附發票、也有主管簽核時，輸出為通過。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 3 筆金額 2500 元、有發票且有主管簽核，回覆為「通過」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 通過",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e040eb63-9da8-4878-b2d5-9618cf7dce2a",
+        "text": "當金額大於等於 2000 且有附發票、但沒有主管簽核時，輸出為退回，原因指出缺少主管簽核。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 4 筆金額 2500 元、有發票但沒有主管簽核，回覆為退回並明確指出缺少主管簽核。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 退回：缺少主管簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d169979-ce38-4e1e-a409-f4849961aed9",
+        "text": "當金額大於等於 2000 且沒有附發票時，輸出為退回，原因指出缺少發票；若同時缺少主管簽核，也要一併寫出原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 5 筆金額 2500 元且沒有發票與主管簽核，回覆為退回，並同時列出缺少發票及缺少主管簽核。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 退回：缺少發票、缺少主管簽核",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6880c6fa-ef98-4ded-943a-293eeea45bf9",
+        "text": "當案件未通過時，回覆中必須包含「退回」與具體原因。",
+        "result": "passed",
+        "source": "model",
+        "reason": "所有未通過案件（第 2、4、5 筆）皆包含「退回」及具體缺件原因。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2. 退回：缺少發票\n3. 通過\n4. 退回：缺少主管簽核\n5. 退回：缺少發票、缺少主管簽核",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18930 input and 391 output tokens on gpt-5.4-mini; reported cost $0.0148 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

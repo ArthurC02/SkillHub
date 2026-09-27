@@ -1,0 +1,156 @@
+{
+  "round": 1,
+  "sample_input": "請幫我分攤這期電費 2680 元：\n- Alice：12 坪\n- Ben：8 坪\n- Cindy：4 坪",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入總電費與多個人的姓名、坪數時，輸出每個人的分攤金額。"
+    },
+    {
+      "text": "每個人的分攤金額必須等於「總電費 × 該人坪數 ÷ 總坪數」的結果，並以兩位小數呈現。"
+    },
+    {
+      "text": "輸出中必須同時顯示總坪數與每人坪數占比，讓讀者能驗算。"
+    },
+    {
+      "text": "所有人的分攤金額加總後，必須等於總電費。"
+    },
+    {
+      "text": "若輸入包含 3 人以上，Skill 仍須對每一人各自計算，不可只示範一人。"
+    }
+  ],
+  "final_output": "依坪數比例分攤如下：\n\n- 總電費：NT$ 2680.00\n- 總坪數：24 坪\n\n分攤明細：\n- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67\n\n合計：NT$ 2680.00",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "8e1c3ea7-b260-4722-9149-772b3323ef3c",
+    "run_id": "42ca39b3-3743-40d1-a0f2-d5393ba1ed4c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出完整依坪數比例計算三人的分攤，呈現總坪數、個人坪數與占比，金額均為兩位小數，且加總等於總電費。",
+    "criterion_results": [
+      {
+        "criterion_id": "17717ea4-223a-422e-8bc7-8277b6a3c271",
+        "text": "在輸入總電費與多個人的姓名、坪數時，輸出每個人的分攤金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出列出 Alice、Ben 與 Cindy 三人的個別分攤金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7de33fb-0fc5-464c-a813-fb07073a3cb0",
+        "text": "每個人的分攤金額必須等於「總電費 × 該人坪數 ÷ 總坪數」的結果，並以兩位小數呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "總坪數為 24；依 2680 × 坪數 ÷ 24 計算，三人的金額分別為 1340.00、893.33、446.67，且均以兩位小數呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 總電費：NT$ 2680.00\n- 總坪數：24 坪",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "370ac8b2-5142-496b-aeb6-31da3f1df178",
+        "text": "輸出中必須同時顯示總坪數與每人坪數占比，讓讀者能驗算。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出顯示總坪數 24 坪，並對每人顯示坪數與占比。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 總坪數：24 坪",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "575ae1f4-6625-489b-82a2-b703cc608617",
+        "text": "所有人的分攤金額加總後，必須等於總電費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "列出的分攤金額 1340.00、893.33、446.67 相加為 2680.00，且輸出明示合計為 NT$ 2680.00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67\n\n合計：NT$ 2680.00",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "932a31a8-9ab6-4125-9552-214a9659138f",
+        "text": "若輸入包含 3 人以上，Skill 仍須對每一人各自計算，不可只示範一人。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸入有三人，輸出對 Alice、Ben、Cindy 各自提供了計算結果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Alice：12 坪，占 50.00%，分攤 NT$ 1340.00\n- Ben：8 坪，占 33.33%，分攤 NT$ 893.33\n- Cindy：4 坪，占 16.67%，分攤 NT$ 446.67",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3518 input and 328 output tokens on gpt-5.4-mini; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

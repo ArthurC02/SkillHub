@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "「請幫我回覆客戶：他要 7 天內交貨，而且這次是新口味；公司規定新口味出貨前一定要做 14 天的品管全檢，請直接幫我寫給客戶的回覆文字。」",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含「7 天內交貨」與「新口味」且公司規定是「出貨前一定要做 14 天的品管全檢」時，輸出必須明確判定無法 7 天內交貨。"
+    },
+    {
+      "text": "輸出必須說明原因是 14 天品管全檢限制，而不是模糊地只說「不可行」。"
+    },
+    {
+      "text": "輸出必須用中文撰寫，且可直接作為回覆客戶的內容。"
+    },
+    {
+      "text": "輸出必須包含可替代的回覆方向，例如建議改期或說明需延後。"
+    },
+    {
+      "text": "輸出不得承諾違反公司規定的交期。"
+    }
+  ],
+  "final_output": "您好，感謝您的詢問。因本次為新口味，依公司規定出貨前需完成 14 天的品管全檢，因此目前無法承諾 7 天內交貨，還請您協助調整交期安排。若您方便，我們可以再一起確認可行的出貨時間，謝謝您的理解與配合。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f6a916f8-cf76-4b61-b36e-97c3517bf9f8",
+    "run_id": "2bc63ba0-f59c-4e8f-a770-da8227e09a8d",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆清楚說明新口味須完成 14 天品管全檢，因而無法承諾 7 天內交貨，並提出調整及確認可行交期的方向。文字為可直接發送給客戶的中文回覆，且未違反公司規定。",
+    "criterion_results": [
+      {
+        "criterion_id": "72b5470e-9941-4a68-a654-ab8cf46de952",
+        "text": "當輸入包含「7 天內交貨」與「新口味」且公司規定是「出貨前一定要做 14 天的品管全檢」時，輸出必須明確判定無法 7 天內交貨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示無法承諾在 7 天內交貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此目前無法承諾 7 天內交貨",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "aeb80530-3efd-4356-9753-8e4998109536",
+        "text": "輸出必須說明原因是 14 天品管全檢限制，而不是模糊地只說「不可行」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆具體說明限制原因為新口味出貨前須完成 14 天品管全檢。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因本次為新口味，依公司規定出貨前需完成 14 天的品管全檢",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9788347e-575d-433a-8aef-c91ffd0fc1c2",
+        "text": "輸出必須用中文撰寫，且可直接作為回覆客戶的內容。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出為中文，並以禮貌的客戶溝通語氣寫成可直接使用的回覆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，感謝您的詢問。因本次為新口味，依公司規定出貨前需完成 14 天的品管全檢，因此目前無法承諾 7 天內交貨，還請您協助調整交期安排。若您方便，我們可以再一起確認可行的出貨時間，謝謝您的理解與配合。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "22262b0d-e2f7-4305-906e-192498782e12",
+        "text": "輸出必須包含可替代的回覆方向，例如建議改期或說明需延後。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提出調整交期並共同確認可行出貨時間的替代方向。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "還請您協助調整交期安排。若您方便，我們可以再一起確認可行的出貨時間",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be2ed4ae-048e-4786-976a-eedc4363e052",
+        "text": "輸出不得承諾違反公司規定的交期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆拒絕承諾 7 天內交貨，且要求調整交期，未承諾違反 14 天品管規定的交期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此目前無法承諾 7 天內交貨，還請您協助調整交期安排。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2936 input and 437 output tokens on gpt-5.4-mini; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "request": {
+    "RunID": "52fbccf9-97f3-4a8f-b288-483c3c4801c7",
+    "EvaluationID": "60b29f20-8d4a-4a95-8a88-7a1c3acb1e4e",
+    "Skill": {
+      "Name": "customer-satisfaction-survey-questionnaire",
+      "Summary": "Generate a ready-to-use customer satisfaction survey questionnaire when a user needs a Traditional Chinese survey draft for a product, service, or customer group. Use it to create complete questionnaires with a title, intro, questions, and closing based on the provided context and constraints."
+    },
+    "UserPrompt": "請幫我寫一份給連鎖咖啡店顧客填寫的滿意度調查問卷，對象是最近一個月內有消費的會員，請用繁體中文，10 題，語氣親切專業，包含 8 題量表題和 2 題開放式題目。",
+    "Criteria": [
+      {
+        "ID": "e6909527-b4eb-4abe-a066-2a60287a5738",
+        "Text": "在輸入指定服務/產品名稱、調查對象與題數時，輸出一份完整問卷草案，且包含標題、前言、題目與結尾。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8adf1e3e-981f-4eb6-93ac-20b2d08ee44a",
+        "Text": "問卷題目數量符合使用者指定；若未指定，題數落在 8–12 題。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0d91fd3e-e388-4a1b-a89a-1dc1d0e4128c",
+        "Text": "問卷內容以繁體中文呈現。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "06bca7bc-8a23-4884-b751-21ddf566c4e5",
+        "Text": "問卷至少包含一題整體滿意度題與一題建議/意見題。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7ce22308-9816-4076-87d6-adf4722037ed",
+        "Text": "當使用者指定特定產業、語氣或題型比例時，輸出內容會依照這些條件調整。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "a9bca48b-ef00-46d2-886b-57bb8bd84a58",
+        "Text": "生成結果不會包含分析結論、回收統計或任何需要後續工具才能取得的資料。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "# 連鎖咖啡店會員滿意度調查問卷\n\n**填答對象：** 最近一個月內曾於本店消費之會員  \n**填答說明：** 本問卷僅供服務改善與顧客體驗優化使用，您的意見將予以保密。  \n**量表說明：** 第 1 至第 8 題請依您的實際感受勾選  \n1 = 非常不同意／非常不滿意　2 = 不同意／不滿意　3 = 普通　4 = 同意／滿意　5 = 非常同意／非常滿意\n\n---\n\n## 一、量表題（第 1～8 題）\n\n1. **整體而言，您對本品牌的消費體驗感到滿意。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n2. **本店飲品／餐點的品質符合您的期待。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n3. **您認為本店各門市的產品品質與服務水準具有一致性。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n4. **本店提供的品項種類能滿足您的需求。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n5. **門市人員的服務態度親切且專業。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n6. **您對本店的出餐／取餐速度感到滿意。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n7. **門市環境整潔、舒適，讓您願意再次到訪。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n8. **會員優惠、集點或活動內容對您具有吸引力。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n---\n\n## 二、開放式題（第 9～10 題）\n\n9. **請分享您最喜歡本品牌的地方。**  \n   ____________________________________________________  \n   ____________________________________________________\n\n10. **請提供您對本品牌的建議，或您希望我們改善的地方。**  \n   ____________________________________________________  \n   ____________________________________________________\n\n---\n\n**感謝您的寶貴意見！**  \n您的回饋將幫助我們持續提升產品與服務品質，期待未來再次為您服務。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "f4e57eba-6537-40a7-8723-11d8af1738df",
+          "OccurredAt": "2026-09-27T08:30:21.922Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"customer-satisfaction-survey-questionnaire\", \"skill_version_id\": \"44c512a1-eb4e-4bc0-aa25-79f975ae1252\"}"
+        },
+        {
+          "TraceEventID": "54faa17a-b4ef-4f8a-87b7-08fe6126a6f7",
+          "OccurredAt": "2026-09-27T08:30:21.933Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"連鎖咖啡店；對象：最近一個月內有消費的會員；語言：繁體中文；題數：10題；題型：8題量表題、2題開放式題目；語氣：親切專業。\", \"skill\": \"customer-satisfaction-survey-questionnaire\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_QciqgPr0UZ4WGXfgQPxzMrHk\", \"result_summary\": \"Launching skill: customer-satisfaction-survey-questionnaire\"}"
+        },
+        {
+          "TraceEventID": "030ebe5c-9abc-48b3-9e5b-898e7298f10c",
+          "OccurredAt": "2026-09-27T08:30:29.448Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"# 連鎖咖啡店會員滿意度調查問卷\\n\\n**填答對象：** 最近一個月內曾於本店消費之會員  \\n**填答說明：** 本問卷僅供服務改善與顧客體驗優化使用，您的意見將予以保密。  \\n**量表說明：** 第 1 至第 8 題請依您的實際感受勾選  \\n1 = 非常不同意／非常不滿意　2 = 不同意／不滿意　3 = 普通　4 = 同意／滿意　5 = 非常同意／非常滿意\\n\\n---\\n\\n## 一、量表題（第 1～8 題）\\n\\n1. **整體而言，您對本品牌的消費體驗感到滿意。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n2. **本店飲品／餐點的品質符合您的期待。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n3. **您認為本店各門市的產品品質與服務水準具有一致性。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n4. **本店提供的品項種類能滿足您的需求。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n5. **門市人員的服務態度親切且專業。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n6. **您對本店的出餐／取餐速度感到滿意。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n7. **門市環境整潔、舒適，讓您願意再次到訪。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n8. **會員優惠、集點或活動內容對您具有吸引力。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n---\\n\\n## 二、開放式題（第 9～10 題）\\n\\n9. **請分享您最喜歡本品牌的地方。**  \\n   ____________________________________________________  \\n   ____________________________________________________\\n\\n10. **請提供您對本品牌的建議，或您希望我們改善的地方。**  \\n   ____________________________________________________  \\n   ____________________________________________________\\n\\n---\\n\\n**感謝您的寶貴意見！**  \\n您的回饋將幫助我們持續提升產品與服務品質，期待未來再次為您服務。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "14604857-3c0f-483d-9173-daac802d8a82",
+          "OccurredAt": "2026-09-27T08:30:29.715Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"# 連鎖咖啡店會員滿意度調查問卷\\n\\n**填答對象：** 最近一個月內曾於本店消費之會員  \\n**填答說明：** 本問卷僅供服務改善與顧客體驗優化使用，您的意見將予以保密。  \\n**量表說明：** 第 1 至第 8 題請依您的實際感受勾選  \\n1 = 非常不同意／非常不滿意　2 = 不同意／不滿意　3 = 普通　4 = 同意／滿意　5 = 非常同意／非常滿意\\n\\n---\\n\\n## 一、量表題（第 1～8 題）\\n\\n1. **整體而言，您對本品牌的消費體驗感到滿意。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n2. **本店飲品／餐點的品質符合您的期待。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n3. **您認為本店各門市的產品品質與服務水準具有一致性。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n4. **本店提供的品項種類能滿足您的需求。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n5. **門市人員的服務態度親切且專業。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n6. **您對本店的出餐／取餐速度感到滿意。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n7. **門市環境整潔、舒適，讓您願意再次到訪。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n8. **會員優惠、集點或活動內容對您具有吸引力。**  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n---\\n\\n## 二、開放式題（第 9～10 題）\\n\\n9. **請分享您最喜歡本品牌的地方。**  \\n   ____________________________________________________  \\n   ____________________________________________________\\n\\n10. **請提供您對本品牌的建議，或您希望我們改善的地方。**  \\n   ____________________________________________________  \\n   ____________________________________________________\\n\\n---\\n\\n**感謝您的寶貴意見！**  \\n您的回饋將幫助我們持續提升產品與服務品質，期待未來再次為您服務。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ce6556e8-774e-453e-9055-18f3077f53b7",
+          "OccurredAt": "2026-09-27T08:30:33.8Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.02164125, \"cost_source\": \"gateway\", \"duration_ms\": 14164, \"input_tokens\": 19055, \"token_source\": \"result\", \"output_tokens\": 1232, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "e6909527-b4eb-4abe-a066-2a60287a5738",
+        "Result": "passed",
+        "Reason": "輸出為完整問卷草案，含標題、填答說明前言、10道題目與感謝結尾，並明確標示填答對象。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "# 連鎖咖啡店會員滿意度調查問卷\n\n**填答對象：** 最近一個月內曾於本店消費之會員  \n**填答說明：** 本問卷僅供服務改善與顧客體驗優化使用，您的意見將予以保密。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**感謝您的寶貴意見！**  \n您的回饋將幫助我們持續提升產品與服務品質，期待未來再次為您服務。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8adf1e3e-981f-4eb6-93ac-20b2d08ee44a",
+        "Result": "passed",
+        "Reason": "問卷明確編列第1至第10題，共10題，符合指定題數。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 一、量表題（第 1～8 題）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 二、開放式題（第 9～10 題）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0d91fd3e-e388-4a1b-a89a-1dc1d0e4128c",
+        "Result": "passed",
+        "Reason": "問卷標題、說明、題幹與結尾均以繁體中文呈現。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**量表說明：** 第 1 至第 8 題請依您的實際感受勾選  \n1 = 非常不同意／非常不滿意　2 = 不同意／不滿意　3 = 普通　4 = 同意／滿意　5 = 非常同意／非常滿意"
+          }
+        ]
+      },
+      {
+        "CriterionID": "06bca7bc-8a23-4884-b751-21ddf566c4e5",
+        "Result": "passed",
+        "Reason": "包含一題明確的整體消費體驗滿意度題目，以及一題徵求改善建議的開放式題目。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "1. **整體而言，您對本品牌的消費體驗感到滿意。**  \n   □ 1 □ 2 □ 3 □ 4 □ 5"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "10. **請提供您對本品牌的建議，或您希望我們改善的地方。**"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7ce22308-9816-4076-87d6-adf4722037ed",
+        "Result": "passed",
+        "Reason": "內容依連鎖咖啡店情境設計，納入飲品／餐點、門市、取餐速度與會員優惠；並依指定比例提供8題量表題與2題開放式題，措辭親切專業。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "2. **本店飲品／餐點的品質符合您的期待。**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "8. **會員優惠、集點或活動內容對您具有吸引力。**"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 一、量表題（第 1～8 題）"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 二、開放式題（第 9～10 題）"
+          }
+        ]
+      },
+      {
+        "CriterionID": "a9bca48b-ef00-46d2-886b-57bb8bd84a58",
+        "Result": "passed",
+        "Reason": "生成內容僅為可填寫的問卷、量表說明與致謝，未呈現分析結論、回收統計或需後續工具取得的資料。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**填答說明：** 本問卷僅供服務改善與顧客體驗優化使用，您的意見將予以保密。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**感謝您的寶貴意見！**  \n您的回饋將幫助我們持續提升產品與服務品質，期待未來再次為您服務。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "此執行產出一份繁體中文的連鎖咖啡店會員滿意度問卷，完整包含標題、前言、8題量表題、2題開放式題與結尾。題數、題型比例、產業情境及整體滿意度與建議題均符合要求，且未包含統計或分析資料。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 4058,
+      "CompletionTokens": 1638,
+      "CostUSD": 0.02735,
+      "CostReported": true
+    }
+  }
+}

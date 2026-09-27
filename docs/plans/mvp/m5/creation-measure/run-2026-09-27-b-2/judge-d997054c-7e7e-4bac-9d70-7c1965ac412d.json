@@ -1,0 +1,139 @@
+{
+  "request": {
+    "RunID": "d997054c-7e7e-4bac-9d70-7c1965ac412d",
+    "EvaluationID": "f3f74bfa-f9bd-46e1-a8b1-894113bc1854",
+    "Skill": {
+      "Name": "customer-satisfaction-survey-questionnaire",
+      "Summary": "Create a customer satisfaction survey questionnaire in Chinese when the user wants a ready-to-use survey with satisfaction, rating, and open-ended questions."
+    },
+    "UserPrompt": "幫我做一份客戶滿意度調查問卷。",
+    "Criteria": [
+      {
+        "ID": "b88df98a-3502-45fb-bd8c-70335ff4c1a5",
+        "Text": "輸出是一份可以直接拿去用的完整問卷，包含具體題目，而不是只列出要使用者回答的問題。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ebb9800a-4276-4ccf-aa9e-7c77c03ba1ec",
+        "Text": "輸出有明確說明它採用了哪些調查構面（例如服務態度、產品品質、交貨速度、整體滿意度之類），以及這是在沒有指定時採用的常見預設。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "d9f346c6-7ae0-406d-ac3c-d79b6ba17d93",
+        "Text": "問卷題目不只一題，涵蓋一個以上的構面。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "# 客戶滿意度調查問卷\n\n您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**：  \n1 = 非常不滿意　2 = 不滿意　3 = 普通　4 = 滿意　5 = 非常滿意\n\n請依您的實際感受作答，您的意見將協助我們持續改善服務品質。\n\n---\n\n## 一、整體滿意度\n\n1. 請問您對本次服務的**整體滿意度**如何？  \n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意\n\n2. 請問您對本次服務是否會推薦給他人？  \n   □ 1 非常不會 □ 2 不太會 □ 3 普通 □ 4 會 □ 5 非常會\n\n---\n\n## 二、服務體驗評分\n\n3. 請問您對**服務人員的態度與專業度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n4. 請問您對**回應速度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n5. 請問您對**問題解決效率**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n6. 請問您對**服務流程的清楚程度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n7. 請問您對**整體服務品質**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n---\n\n## 三、改善建議\n\n8. 您最滿意的部分是什麼？  \n   __________________________________________________  \n   __________________________________________________\n\n9. 您認為我們最需要改善的地方是什麼？  \n   __________________________________________________  \n   __________________________________________________\n\n10. 您對我們還有其他建議或想法嗎？  \n   __________________________________________________  \n   __________________________________________________\n\n---\n\n感謝您的填寫與寶貴意見，您的回饋對我們非常重要！",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "06dcc166-0a19-4e1e-b90b-76a8e93576ad",
+          "OccurredAt": "2026-09-27T08:10:30.153Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"customer-satisfaction-survey-questionnaire\", \"skill_version_id\": \"5c3df3c6-c8d0-4b77-8e7d-648abef92896\"}"
+        },
+        {
+          "TraceEventID": "80369f84-81ed-4161-a3ec-46ff83bf8acd",
+          "OccurredAt": "2026-09-27T08:10:30.167Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"customer-satisfaction-survey-questionnaire\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 14, \"invocation_id\": \"call_Qh3JkFfbxJA5wSrGS6Gzr3R2\", \"result_summary\": \"Launching skill: customer-satisfaction-survey-questionnaire\"}"
+        },
+        {
+          "TraceEventID": "d8241bc4-2793-42c4-8d1d-c0c32bad0fa8",
+          "OccurredAt": "2026-09-27T08:10:35.971Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"# 客戶滿意度調查問卷\\n\\n您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**：  \\n1 = 非常不滿意　2 = 不滿意　3 = 普通　4 = 滿意　5 = 非常滿意\\n\\n請依您的實際感受作答，您的意見將協助我們持續改善服務品質。\\n\\n---\\n\\n## 一、整體滿意度\\n\\n1. 請問您對本次服務的**整體滿意度**如何？  \\n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意\\n\\n2. 請問您對本次服務是否會推薦給他人？  \\n   □ 1 非常不會 □ 2 不太會 □ 3 普通 □ 4 會 □ 5 非常會\\n\\n---\\n\\n## 二、服務體驗評分\\n\\n3. 請問您對**服務人員的態度與專業度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n4. 請問您對**回應速度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n5. 請問您對**問題解決效率**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n6. 請問您對**服務流程的清楚程度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n7. 請問您對**整體服務品質**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n---\\n\\n## 三、改善建議\\n\\n8. 您最滿意的部分是什麼？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n9. 您認為我們最需要改善的地方是什麼？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n10. 您對我們還有其他建議或想法嗎？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n---\\n\\n感謝您的填寫與寶貴意見，您的回饋對我們非常重要！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "028dd64e-90ac-493f-8bf2-4e98f0d0482d",
+          "OccurredAt": "2026-09-27T08:10:36.273Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"# 客戶滿意度調查問卷\\n\\n您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**：  \\n1 = 非常不滿意　2 = 不滿意　3 = 普通　4 = 滿意　5 = 非常滿意\\n\\n請依您的實際感受作答，您的意見將協助我們持續改善服務品質。\\n\\n---\\n\\n## 一、整體滿意度\\n\\n1. 請問您對本次服務的**整體滿意度**如何？  \\n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意\\n\\n2. 請問您對本次服務是否會推薦給他人？  \\n   □ 1 非常不會 □ 2 不太會 □ 3 普通 □ 4 會 □ 5 非常會\\n\\n---\\n\\n## 二、服務體驗評分\\n\\n3. 請問您對**服務人員的態度與專業度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n4. 請問您對**回應速度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n5. 請問您對**問題解決效率**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n6. 請問您對**服務流程的清楚程度**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n7. 請問您對**整體服務品質**滿意嗎？  \\n   □ 1 □ 2 □ 3 □ 4 □ 5\\n\\n---\\n\\n## 三、改善建議\\n\\n8. 您最滿意的部分是什麼？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n9. 您認為我們最需要改善的地方是什麼？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n10. 您對我們還有其他建議或想法嗎？  \\n   __________________________________________________  \\n   __________________________________________________\\n\\n---\\n\\n感謝您的填寫與寶貴意見，您的回饋對我們非常重要！\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "5c9fd89c-265b-4656-afbe-5071ad4be59c",
+          "OccurredAt": "2026-09-27T08:10:40.348Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.02032035, \"cost_source\": \"gateway\", \"duration_ms\": 12538, \"input_tokens\": 19280, \"token_source\": \"result\", \"output_tokens\": 921, \"cache_read_input_tokens\": 17408, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b88df98a-3502-45fb-bd8c-70335ff4c1a5",
+        "Result": "passed",
+        "Reason": "輸出提供可直接填答的完整問卷，含量表說明、具體評分題、勾選選項與開放式填答欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "## 一、整體滿意度\n\n1. 請問您對本次服務的**整體滿意度**如何？  \n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "8. 您最滿意的部分是什麼？  \n   __________________________________________________  \n   __________________________________________________"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ebb9800a-4276-4ccf-aa9e-7c77c03ba1ec",
+        "Result": "failed",
+        "Reason": "雖說明此為「通用服務情境」及使用預設5點量表，但沒有明確列出或說明所採用的調查構面是未指定情境下的常見預設。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**："
+          }
+        ]
+      },
+      {
+        "CriterionID": "d9f346c6-7ae0-406d-ac3c-d79b6ba17d93",
+        "Result": "passed",
+        "Reason": "問卷共有10題，涵蓋整體滿意度、推薦意願、服務人員態度與專業度、回應速度、問題解決效率、流程清楚程度與改善建議等多個構面。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "3. 請問您對**服務人員的態度與專業度**滿意嗎？"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "4. 請問您對**回應速度**滿意嗎？"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "5. 請問您對**問題解決效率**滿意嗎？"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "問卷本身完整且可直接使用，並以多道題目涵蓋多個服務體驗構面。然而，未明確說明所選調查構面及其為未指定需求時採用的常見預設。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 3568,
+      "CompletionTokens": 633,
+      "CostUSD": 0.014065000000000001,
+      "CostReported": true
+    }
+  }
+}

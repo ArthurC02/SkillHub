@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "e641f607-31aa-444b-a52d-2a7282e1c3dc",
+    "EvaluationID": "f276dd9f-eeae-4bad-a6e8-4ab691a39d51",
+    "Skill": {
+      "Name": "installment-payment-trial",
+      "Summary": "Calculate installment payment amounts from a total amount and number of periods, with any rounding or tail difference absorbed into the final installment. Use this when a user needs a per-period payment schedule and a total-check output."
+    },
+    "UserPrompt": "請幫我算分期付款每期要繳多少：\n\n案例 1：總金額 1000，期數 3\n案例 2：總金額 1000，期數 6\n案例 3：總金額 1200，期數 4\n案例 4：總金額 1000，期數 6",
+    "Criteria": [
+      {
+        "ID": "deab5f8f-09f9-416f-bb98-6231700382b9",
+        "Text": "在輸入總金額 1000、期數 3 時，輸出前兩期相同、最後一期吸收尾差，且三期加總等於 1000。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e8f71f22-0046-4dc0-932f-2a6d96525fb9",
+        "Text": "在輸入總金額 1000、期數 6 時，輸出前五期相同、最後一期不同於前五期時，最後一期為尾差調整後金額。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "9f5913f6-5da5-4c47-9298-209f081df98f",
+        "Text": "在輸入可整除的例子總金額 1200、期數 4 時，四期金額都相同，且加總等於 1200。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "373095b7-401f-4ec3-8f4f-cc05932df44d",
+        "Text": "在輸入有尾差的例子總金額 1000、期數 6 時，前五期金額完全一致，最後一期與前五期不同，且加總等於 1000。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8399b11b-a8b9-4e51-af62-460555134a04",
+        "Text": "輸出格式包含每一期金額的逐期列表，而不只是單一平均值。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "我使用預設格式：簡單編號列表；金額以小數點後兩位表示，尾差都放在最後一期。\n\n1. 案例 1\n   - 總金額：1000\n   - 期數：3\n   - 基礎每期：1000 ÷ 3 = 333.333...\n   - 每期金額：333.33、333.33、333.34\n   - 總和檢查：333.33 + 333.33 + 333.34 = 1000.00\n\n2. 案例 2\n   - 總金額：1000\n   - 期數：6\n   - 基礎每期：1000 ÷ 6 = 166.666...\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\n\n3. 案例 3\n   - 總金額：1200\n   - 期數：4\n   - 基礎每期：1200 ÷ 4 = 300\n   - 每期金額：300.00、300.00、300.00、300.00\n   - 總和檢查：300.00 + 300.00 + 300.00 + 300.00 = 1200.00\n\n4. 案例 4\n   - 總金額：1000\n   - 期數：6\n   - 基礎每期：1000 ÷ 6 = 166.666...\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\n\n",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0aab07d2-e732-4e59-b13a-709468586a29",
+          "OccurredAt": "2026-09-27T08:22:59.509Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"installment-payment-trial\", \"skill_version_id\": \"e24af22f-3e80-49eb-9b0a-f0dc5d7c9d3e\"}"
+        },
+        {
+          "TraceEventID": "fd088ce7-589f-4d75-9153-cad48e1bd4e3",
+          "OccurredAt": "2026-09-27T08:22:59.533Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"案例 1：總金額 1000，期數 3\\n案例 2：總金額 1000，期數 6\\n案例 3：總金額 1200，期數 4\\n案例 4：總金額 1000，期數 6\", \"skill\": \"installment-payment-trial\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 24, \"invocation_id\": \"call_4WtMqauYU6VW3JUmMHHzMY7x\", \"result_summary\": \"Launching skill: installment-payment-trial\"}"
+        },
+        {
+          "TraceEventID": "4f636124-b81a-4786-a1ab-97e689780b6b",
+          "OccurredAt": "2026-09-27T08:23:16.753Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"我使用預設格式：簡單編號列表；金額以小數點後兩位表示，尾差都放在最後一期。\\n\\n1. 案例 1\\n   - 總金額：1000\\n   - 期數：3\\n   - 基礎每期：1000 ÷ 3 = 333.333...\\n   - 每期金額：333.33、333.33、333.34\\n   - 總和檢查：333.33 + 333.33 + 333.34 = 1000.00\\n\\n2. 案例 2\\n   - 總金額：1000\\n   - 期數：6\\n   - 基礎每期：1000 ÷ 6 = 166.666...\\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\\n\\n3. 案例 3\\n   - 總金額：1200\\n   - 期數：4\\n   - 基礎每期：1200 ÷ 4 = 300\\n   - 每期金額：300.00、300.00、300.00、300.00\\n   - 總和檢查：300.00 + 300.00 + 300.00 + 300.00 = 1200.00\\n\\n4. 案例 4\\n   - 總金額：1000\\n   - 期數：6\\n   - 基礎每期：1000 ÷ 6 = 166.666...\\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\\n\\n\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "916de802-0564-42a8-8bc8-1b3ecc7af2b7",
+          "OccurredAt": "2026-09-27T08:23:17.02Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"我使用預設格式：簡單編號列表；金額以小數點後兩位表示，尾差都放在最後一期。\\n\\n1. 案例 1\\n   - 總金額：1000\\n   - 期數：3\\n   - 基礎每期：1000 ÷ 3 = 333.333...\\n   - 每期金額：333.33、333.33、333.34\\n   - 總和檢查：333.33 + 333.33 + 333.34 = 1000.00\\n\\n2. 案例 2\\n   - 總金額：1000\\n   - 期數：6\\n   - 基礎每期：1000 ÷ 6 = 166.666...\\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\\n\\n3. 案例 3\\n   - 總金額：1200\\n   - 期數：4\\n   - 基礎每期：1200 ÷ 4 = 300\\n   - 每期金額：300.00、300.00、300.00、300.00\\n   - 總和檢查：300.00 + 300.00 + 300.00 + 300.00 = 1200.00\\n\\n4. 案例 4\\n   - 總金額：1000\\n   - 期數：6\\n   - 基礎每期：1000 ÷ 6 = 166.666...\\n   - 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00\\n\\n\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "67a772e2-fb15-4195-9c4c-be555b7aedf7",
+          "OccurredAt": "2026-09-27T08:23:21.101Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01668765, \"cost_source\": \"gateway\", \"duration_ms\": 24468, \"input_tokens\": 2993, \"token_source\": \"result\", \"output_tokens\": 2549, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "deab5f8f-09f9-416f-bb98-6231700382b9",
+        "Result": "passed",
+        "Reason": "案例 1 列出前兩期均為 333.33、最後一期為 333.34，並明示三期合計 1000.00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 每期金額：333.33、333.33、333.34\n   - 總和檢查：333.33 + 333.33 + 333.34 = 1000.00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e8f71f22-0046-4dc0-932f-2a6d96525fb9",
+        "Result": "passed",
+        "Reason": "案例 2 的前五期皆為 166.66，最後一期為不同的 166.70，且其為以前五期金額計算後的尾差。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 每期金額：166.66、166.66、166.66、166.66、166.66、166.70"
+          }
+        ]
+      },
+      {
+        "CriterionID": "9f5913f6-5da5-4c47-9298-209f081df98f",
+        "Result": "passed",
+        "Reason": "案例 3 的四期金額均為 300.00，並明示合計為 1200.00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 每期金額：300.00、300.00、300.00、300.00\n   - 總和檢查：300.00 + 300.00 + 300.00 + 300.00 = 1200.00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "373095b7-401f-4ec3-8f4f-cc05932df44d",
+        "Result": "passed",
+        "Reason": "案例 4 的前五期完全一致為 166.66，最後一期為不同的 166.70，且明示總和為 1000.00。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 每期金額：166.66、166.66、166.66、166.66、166.66、166.70\n   - 總和檢查：166.66 + 166.66 + 166.66 + 166.66 + 166.66 + 166.70 = 1000.00"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8399b11b-a8b9-4e51-af62-460555134a04",
+        "Result": "passed",
+        "Reason": "每個案例皆提供「每期金額」欄位，逐一列出各期支付金額，而非僅給平均值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 每期金額：333.33、333.33、333.34"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "所有案例均提供逐期付款列表，尾差均由最後一期吸收，並提供總和檢查；可整除案例則各期相同且總額正確。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 3645,
+      "CompletionTokens": 757,
+      "CostUSD": 0.015745500000000003,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請幫我回覆客戶這段話：客戶希望 7 天內交貨，但這次是新口味，公司規定新口味出貨前一定要做 14 天的品管全檢，請幫我寫一段可直接回給客戶的說明。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入明確寫出「7 天內交貨」且「新口味出貨前需 14 天品管全檢」時，輸出必須明確判定 7 天不可行。"
+    },
+    {
+      "text": "輸出必須說明不可行的原因是 14 天品管全檢規定，而不是模糊地只說「無法安排」。"
+    },
+    {
+      "text": "輸出必須提供可用的替代說法或替代交期方向，例如需延長至至少 14 天後出貨。"
+    },
+    {
+      "text": "當輸入同時包含客戶交期要求與內規限制時，輸出必須優先遵守內規限制。"
+    },
+    {
+      "text": "輸出必須是可直接發給客戶的自然語句，不是條列式規則說明或內部備註。"
+    }
+  ],
+  "final_output": "您好，感謝您的詢問。這次因為是新口味，依公司規定，出貨前必須先完成 14 天的品管全檢，因此 7 天內交貨目前無法配合。\n\n待 14 天品管全檢完成後，我們才能安排出貨。若您方便，交期建議以至少 14 天為基準，我們也會盡力協助後續出貨安排，謝謝您的理解與配合。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0b1873a8-def1-4501-aad0-7e2fdee1a85a",
+    "run_id": "f33d6d25-bd1e-4170-9083-6cf0b86bd04f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆明確拒絕 7 天內交貨，說明 14 天品管全檢的內規原因，並提出至少 14 天後出貨的替代方向。措辭自然且可直接發送給客戶。",
+    "criterion_results": [
+      {
+        "criterion_id": "1f5b3404-5a8d-4c71-b0ea-cc408e11af7a",
+        "text": "當輸入明確寫出「7 天內交貨」且「新口味出貨前需 14 天品管全檢」時，輸出必須明確判定 7 天不可行。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示 7 天內交貨無法配合。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此 7 天內交貨目前無法配合。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f5f42662-263d-479c-8ee9-58984b531f6b",
+        "text": "輸出必須說明不可行的原因是 14 天品管全檢規定，而不是模糊地只說「無法安排」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆具體說明原因是新口味須依公司規定於出貨前完成 14 天品管全檢。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這次因為是新口味，依公司規定，出貨前必須先完成 14 天的品管全檢，因此 7 天內交貨目前無法配合。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "315b31ed-9380-4dc2-b0d2-cab1403084e3",
+        "text": "輸出必須提供可用的替代說法或替代交期方向，例如需延長至至少 14 天後出貨。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提供替代交期方向，建議以至少 14 天為基準，且全檢完成後才安排出貨。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "待 14 天品管全檢完成後，我們才能安排出貨。若您方便，交期建議以至少 14 天為基準",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "caa94d04-cb59-4566-8b52-f8e0e0b38b06",
+        "text": "當輸入同時包含客戶交期要求與內規限制時，輸出必須優先遵守內規限制。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆沒有接受客戶的 7 天交期，而是以完成 14 天品管全檢作為安排出貨的前提，顯示優先遵守內規。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "待 14 天品管全檢完成後，我們才能安排出貨。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1e841566-657e-4765-8ee4-9d9f2dbca2a9",
+        "text": "輸出必須是可直接發給客戶的自然語句，不是條列式規則說明或內部備註。",
+        "result": "passed",
+        "source": "model",
+        "reason": "內容以問候、說明、替代安排及致謝構成，可直接作為對客戶的自然回覆，並非內部規則或條列備註。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好，感謝您的詢問。這次因為是新口味，依公司規定，出貨前必須先完成 14 天的品管全檢，因此 7 天內交貨目前無法配合。\n\n待 14 天品管全檢完成後，我們才能安排出貨。若您方便，交期建議以至少 14 天為基準，我們也會盡力協助後續出貨安排，謝謝您的理解與配合。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 3001 input and 414 output tokens on gpt-5.4-mini; reported cost $0.0037 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

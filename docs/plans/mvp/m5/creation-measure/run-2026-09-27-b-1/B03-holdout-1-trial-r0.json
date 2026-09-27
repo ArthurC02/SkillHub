@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "總金額 10000 元，分 3 期攤還，每期金額相同、尾差算在最後一期，請算出每一期要繳多少。",
+  "acceptance_criteria": [
+    {
+      "text": "第一期與第二期金額都是 3333 元。"
+    },
+    {
+      "text": "第三期（最後一期）金額是 3334 元。"
+    },
+    {
+      "text": "三期加起來等於 10000 元。"
+    }
+  ],
+  "final_output": "第 1 期：3333 元  \n第 2 期：3333 元  \n第 3 期：3334 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "5c01f4f8-eefb-403d-b6ea-083a8211dc05",
+    "run_id": "32073243-a87b-4f00-b1c5-ce9c311685e4",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三期付款金額均已正確列出：前兩期各 3333 元，最後一期 3334 元，合計 10000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "7af9e084-e61f-4c8d-a672-cf69f2417226",
+        "text": "第一期與第二期金額都是 3333 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出第 1 期與第 2 期皆為 3333 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 期：3333 元  \n第 2 期：3333 元  \n第 3 期：3334 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "afd5266e-3844-4e97-837f-326176bfb4b0",
+        "text": "第三期（最後一期）金額是 3334 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出第 3 期為 3334 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 期：3333 元  \n第 2 期：3333 元  \n第 3 期：3334 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "146828f7-67f6-4036-8849-59fcd1bc9971",
+        "text": "三期加起來等於 10000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆中的三期金額為 3333、3333、3334 元，合計為 10000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 期：3333 元  \n第 2 期：3333 元  \n第 3 期：3334 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2684 input and 214 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 10,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

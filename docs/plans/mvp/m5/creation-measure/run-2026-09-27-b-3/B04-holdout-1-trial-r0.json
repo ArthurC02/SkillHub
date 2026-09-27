@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "這期電費總共 3000 元，甲的房間 10 坪、乙的房間 8 坪、丙的房間 6 坪，請依坪數比例算出三人各要付多少。",
+  "acceptance_criteria": [
+    {
+      "text": "甲要付 1250 元。"
+    },
+    {
+      "text": "乙要付 1000 元。"
+    },
+    {
+      "text": "丙要付 750 元。"
+    },
+    {
+      "text": "三人金額加起來等於 3000 元。"
+    }
+  ],
+  "final_output": "### 電費分攤計算\n\n| 人員 | 房間坪數 | 比例 | 應付金額 |\n|---|---:|---:|---:|\n| 甲 | 10 坪 | 10/24 = 41.67% | 1,250.00 元 |\n| 乙 | 8 坪 | 8/24 = 33.33% | 1,000.00 元 |\n| 丙 | 6 坪 | 6/24 = 25.00% | 750.00 元 |\n\n總電費：3,000 元  \n總坪數：24 坪  \n加總後分攤金額：3,000.00 元\n\n未需要四捨五入調整。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "9638d045-c9a3-4467-8155-d092860d8987",
+    "run_id": "174ec01c-c1f5-43a8-adbc-9c60751e34be",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有三人的分攤金額均符合坪數比例，且列明加總為 3000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "95fe2b9e-ee96-4632-a3c1-d0e366aa2696",
+        "text": "甲要付 1250 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的分攤表列出甲應付 1,250.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 甲 | 10 坪 | 10/24 = 41.67% | 1,250.00 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "41be7039-2f04-45bc-bc72-5a2f783f7c26",
+        "text": "乙要付 1000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的分攤表列出乙應付 1,000.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乙 | 8 坪 | 8/24 = 33.33% | 1,000.00 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a61cebc0-ad32-4ae8-afc7-44a456c6053c",
+        "text": "丙要付 750 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆的分攤表列出丙應付 750.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 丙 | 6 坪 | 6/24 = 25.00% | 750.00 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e84e2567-ef30-41d2-9b93-71423fd1cd7f",
+        "text": "三人金額加起來等於 3000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確表示分攤金額加總為 3,000.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "加總後分攤金額：3,000.00 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18629 input and 388 output tokens on gpt-5.4-mini; reported cost $0.0175 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

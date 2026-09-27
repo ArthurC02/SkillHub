@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "這個月的發票資料如下，請幫我整理好上傳到記帳系統，完成核銷：\n1. 9/3，文具行，680 元。\n2. 9/10，加油站，1,250 元。\n3. 9/18，餐廳（客戶餐敘），2,400 元。\n4. 9/25，影印店，320 元。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出把四筆發票整理成一份結構化清單或表格，包含日期、項目與金額。"
+    },
+    {
+      "text": "輸出算出四筆發票的總金額為 4,650 元。"
+    },
+    {
+      "text": "輸出沒有宣稱自己已經登入記帳系統、已經上傳資料，或已經完成本月核銷。"
+    }
+  ],
+  "final_output": "以下已整理成可直接供記帳系統使用的核銷清單（未提供的欄位已標示為「not given」）：\n\n| Record | Date | Vendor | Invoice No. | Amount | Tax / Tax-inclusive | Item / Purpose | Notes |\n|---|---|---:|---|---:|---|---|---|\n| 1 | 2026-09-03 | 文具行 | not given | 680 | not given | not given |  |\n| 2 | 2026-09-10 | 加油站 | not given | 1,250 | not given | not given |  |\n| 3 | 2026-09-18 | 餐廳 | not given | 2,400 | not given | 客戶餐敘 |  |\n| 4 | 2026-09-25 | 影印店 | not given | 320 | not given | not given |  |\n\n- Duplicate check: 未見重複資料。\n- Missing fields: 發票號碼、稅額／含稅資訊、部分品項／用途未提供。\n- Ready for upload: 已整理完成，可直接貼入或匯入記帳系統；實際上傳與核銷仍需由您或系統執行。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "04b77381-efc0-4a1e-b0e2-438378c2c0cd",
+    "run_id": "b68208cc-b569-4ea9-99ea-c989622d9eb0",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "四筆發票已整理為包含日期、項目／用途與金額的結構化表格，且未虛稱已完成系統上傳或核銷。但輸出未提供四筆發票合計 4,650 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "867dbb94-640d-4d51-a8fe-1c5683a876b2",
+        "text": "輸出把四筆發票整理成一份結構化清單或表格，包含日期、項目與金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格列出四筆發票，並包含日期、供應商／項目與金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-09-03 | 文具行 | not given | 680 | not given | not given |  |\n| 2 | 2026-09-10 | 加油站 | not given | 1,250 | not given | not given |  |\n| 3 | 2026-09-18 | 餐廳 | not given | 2,400 | not given | 客戶餐敘 |  |\n| 4 | 2026-09-25 | 影印店 | not given | 320 | not given | not given |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cf0f251b-d342-42d0-a01a-6184191759c5",
+        "text": "輸出算出四筆發票的總金額為 4,650 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出列出各筆金額，但沒有計算或明確寫出四筆合計為 4,650 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026-09-03 | 文具行 | not given | 680 | not given | not given |  |\n| 2 | 2026-09-10 | 加油站 | not given | 1,250 | not given | not given |  |\n| 3 | 2026-09-18 | 餐廳 | not given | 2,400 | not given | 客戶餐敘 |  |\n| 4 | 2026-09-25 | 影印店 | not given | 320 | not given | not given |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4b97c33c-0078-4411-9bec-509f2c20f25c",
+        "text": "輸出沒有宣稱自己已經登入記帳系統、已經上傳資料，或已經完成本月核銷。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示實際上傳與核銷仍需由使用者或系統執行，未宣稱已登入、上傳或完成核銷。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- Ready for upload: 已整理完成，可直接貼入或匯入記帳系統；實際上傳與核銷仍需由您或系統執行。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19198 input and 1078 output tokens on gpt-5.4-mini; reported cost $0.0210 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "request": {
+    "RunID": "f18cc7d4-8561-45a8-9963-94dd27d7471a",
+    "EvaluationID": "00df5ac6-824a-425e-9704-b9771b8cdb25",
+    "Skill": {
+      "Name": "invoice-reimbursement-prep",
+      "Summary": "整理一批發票資料成可匯入記帳系統的核銷格式，並產出本月核銷摘要；在使用者貼上發票明細、需要上傳前整理或要做月結核銷時使用。"
+    },
+    "UserPrompt": "請把下面這批發票整理成可上傳的核銷資料，並附上本月摘要：\n\n1. 發票號碼：AB12345678\n   日期：2026/09/03\n   廠商：台北文具行\n   品項：A4紙 10包\n   金額：1500\n   稅額：75\n   部門：行政部\n\n2. 發票號碼：CD87654321\n   日期：2026/09/10\n   廠商：幸福餐飲有限公司\n   品項：會議便當 12份\n   金額：2400\n   稅額：120\n   部門：營運部\n\n3. 發票號碼：EF11223344\n   日期：2026/09/18\n   廠商：捷達交通\n   品項：計程車資\n   金額：680\n   稅額：0\n   部門：業務部",
+    "Criteria": [
+      {
+        "ID": "b147b849-3bc3-4149-a07d-f369935ad71d",
+        "Text": "當輸入多筆發票資料時，Skill 會輸出整理後的結構化表格，而不是只回覆文字摘要。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "98d48872-894b-4b99-ba96-b42fd3ed11bb",
+        "Text": "當輸入包含發票號碼、日期、廠商、金額、稅額或品項時，Skill 會保留或整理成一致欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "17144005-8beb-495f-928b-f7173fe4fcd0",
+        "Text": "當輸入包含多筆不同發票時，Skill 會把每筆發票分開列出，且不混寫成單一紀錄。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "02212b8f-20f0-4b3e-8b03-3e39b5692505",
+        "Text": "當輸入含有缺漏欄位時，Skill 會在結果中標示缺漏項目。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "dfdce4ef-f974-473e-9429-95ddea163b70",
+        "Text": "當輸入包含本月多張發票時，Skill 會另外產出本月核銷摘要，包含筆數與金額彙總。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "8082200e-18de-4d54-9a25-97510d25008f",
+        "Text": "當輸入適合匯出時，Skill 會以便於匯入記帳系統的格式輸出，例如表格或 CSV 欄位對應。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）：\n\n### A. 核銷明細表\n\n| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |\n|---|---|---|---|---:|---:|---|---|\n| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\n\n### B. 本月核銷摘要（2026/09）\n\n- 發票筆數：3\n- 金額合計：4580\n- 稅額合計：195\n- 核銷總計：4775\n- 明顯缺漏欄位：0 筆\n\n### 缺漏事項\n- 無明顯缺漏欄位。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "eb641429-e018-43de-930f-232053d8108b",
+          "OccurredAt": "2026-09-27T07:48:07.549Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"invoice-reimbursement-prep\", \"skill_version_id\": \"0c7d2620-9279-4c54-98be-605f1dfaf964\"}"
+        },
+        {
+          "TraceEventID": "acec0a8d-fa38-47ba-8685-d03961010da6",
+          "OccurredAt": "2026-09-27T07:48:07.564Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"invoice-reimbursement-prep\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_PPXyKfxug4l19rfgtYlWUkWB\", \"result_summary\": \"Launching skill: invoice-reimbursement-prep\"}"
+        },
+        {
+          "TraceEventID": "a0fdc0b6-0d43-4700-bbaa-4b4d3c208eb6",
+          "OccurredAt": "2026-09-27T07:48:12.754Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）：\\n\\n### A. 核銷明細表\\n\\n| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |\\n|---|---|---|---|---:|---:|---|---|\\n| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\\n\\n### B. 本月核銷摘要（2026/09）\\n\\n- 發票筆數：3\\n- 金額合計：4580\\n- 稅額合計：195\\n- 核銷總計：4775\\n- 明顯缺漏欄位：0 筆\\n\\n### 缺漏事項\\n- 無明顯缺漏欄位。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "633a5ffe-f9d2-4e71-8e39-01593be1fb41",
+          "OccurredAt": "2026-09-27T07:48:12.985Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）：\\n\\n### A. 核銷明細表\\n\\n| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |\\n|---|---|---|---|---:|---:|---|---|\\n| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\\n\\n### B. 本月核銷摘要（2026/09）\\n\\n- 發票筆數：3\\n- 金額合計：4580\\n- 稅額合計：195\\n- 核銷總計：4775\\n- 明顯缺漏欄位：0 筆\\n\\n### 缺漏事項\\n- 無明顯缺漏欄位。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ca987ec0-2e2d-4a71-8786-1ee7fd2abc68",
+          "OccurredAt": "2026-09-27T07:48:17.024Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0208845, \"cost_source\": \"gateway\", \"duration_ms\": 11643, \"input_tokens\": 19708, \"token_source\": \"result\", \"output_tokens\": 937, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b147b849-3bc3-4149-a07d-f369935ad71d",
+        "Result": "passed",
+        "Reason": "回覆提供了含多筆資料的 Markdown 結構化核銷明細表，而非僅文字摘要。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "98d48872-894b-4b99-ba96-b42fd3ed11bb",
+        "Result": "passed",
+        "Reason": "明細表以一致欄位保留了發票號碼、日期、廠商、品項、金額及稅額等輸入資料。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "17144005-8beb-495f-928b-f7173fe4fcd0",
+        "Result": "passed",
+        "Reason": "三張不同發票各自以獨立表格列呈現，未合併為單一紀錄。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "02212b8f-20f0-4b3e-8b03-3e39b5692505",
+        "Result": "undetermined",
+        "Reason": "本次輸入的發票必要資料均完整，沒有實際缺漏欄位可用以驗證遇到缺漏時是否會標示缺漏項目。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "dfdce4ef-f974-473e-9429-95ddea163b70",
+        "Result": "passed",
+        "Reason": "回覆另列 2026/09 本月核銷摘要，包含發票筆數與金額、稅額及總計彙總。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 發票筆數：3\n- 金額合計：4580\n- 稅額合計：195\n- 核銷總計：4775"
+          }
+        ]
+      },
+      {
+        "CriterionID": "8082200e-18de-4d54-9a25-97510d25008f",
+        "Result": "passed",
+        "Reason": "回覆以具明確欄位對應的表格輸出，適合直接貼入或對應至記帳系統匯入欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）："
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "已完成三筆發票的結構化明細、欄位標準化、逐筆列示及本月筆數與金額彙總，且格式便於匯入。由於本次輸入沒有缺漏欄位，無法根據此執行結果判定缺漏欄位標示行為。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 3231,
+      "CompletionTokens": 1302,
+      "CostUSD": 0.021250500000000002,
+      "CostReported": true
+    }
+  }
+}

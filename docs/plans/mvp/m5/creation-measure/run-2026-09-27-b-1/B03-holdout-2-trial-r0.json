@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "總金額 7500 元，分 5 期攤還，每期金額相同、尾差算在最後一期，請算出每一期要繳多少。",
+  "acceptance_criteria": [
+    {
+      "text": "每一期金額都是 1500 元。"
+    },
+    {
+      "text": "五期加起來等於 7500 元。"
+    }
+  ],
+  "final_output": "第 1 期：1500 元  \n第 2 期：1500 元  \n第 3 期：1500 元  \n第 4 期：1500 元  \n第 5 期：1500 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "d0d4630b-e3e3-4cdc-a2f0-b42a077c8fe9",
+    "run_id": "a7a4117f-9715-441c-ba0d-92f8162bdf7e",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆正確列出五期各 1500 元，五期合計 7500 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "9842ae1a-c49e-4c0a-b3a1-d77699dba5f1",
+        "text": "每一期金額都是 1500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆逐期列出第 1 期至第 5 期，金額皆為 1500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 期：1500 元  \n第 2 期：1500 元  \n第 3 期：1500 元  \n第 4 期：1500 元  \n第 5 期：1500 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9111d44a-fcfd-416d-8777-16c623231218",
+        "text": "五期加起來等於 7500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列有五期、每期 1500 元，因此合計為 7500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 期：1500 元  \n第 2 期：1500 元  \n第 3 期：1500 元  \n第 4 期：1500 元  \n第 5 期：1500 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18621 input and 274 output tokens on gpt-5.4-mini; reported cost $0.0170 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 9,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

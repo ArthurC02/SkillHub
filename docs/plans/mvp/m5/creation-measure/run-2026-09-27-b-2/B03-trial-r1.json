@@ -1,0 +1,111 @@
+{
+  "round": 1,
+  "sample_input": "請幫我算這筆分期付款每期要繳多少：\n總金額 1001，期數 3",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入總金額 1000、期數 3 時，輸出前 2 期各 333，最後 1 期 334。"
+    },
+    {
+      "text": "當輸入總金額 100、期數 4 時，輸出前 3 期各 25，最後 1 期 25。"
+    },
+    {
+      "text": "當輸入總金額 1001、期數 3 時，輸出前 2 期各 333，最後 1 期 335。"
+    },
+    {
+      "text": "當輸入總金額 10、期數 1 時，輸出只有 1 期且金額為 10."
+    }
+  ],
+  "final_output": "總金額 1001，分 3 期：\n\n1. 第 1 期：333\n2. 第 2 期：333\n3. 第 3 期：335\n\n合計：1001",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "b4f73a86-32ec-4bb7-9da7-a6b0bac4822c",
+    "run_id": "21879c2a-d33c-4059-9008-5164e1dd7ce3",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "本次實際測試的 1001 分 3 期情境正確：前兩期各 333，最後一期 335。其餘三個不同輸入情境未在本次執行證據中出現，因此無法判定。",
+    "criterion_results": [
+      {
+        "criterion_id": "3f1855d3-9152-4274-b7b8-56de993b2303",
+        "text": "當輸入總金額 1000、期數 3 時，輸出前 2 期各 333，最後 1 期 334。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 1000、期數 3 的執行結果可供驗證。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "dd1c5d16-caf6-47f9-b5d9-c30a66cd8c96",
+        "text": "當輸入總金額 100、期數 4 時，輸出前 3 期各 25，最後 1 期 25。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 100、期數 4 的執行結果可供驗證。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "b3d53d2a-5997-401e-9553-742cfa80753f",
+        "text": "當輸入總金額 1001、期數 3 時，輸出前 2 期各 333，最後 1 期 335。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出列出前兩期各為 333，第三期為 335，且合計為 1001。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額 1001，分 3 期：\n\n1. 第 1 期：333\n2. 第 2 期：333\n3. 第 3 期：335\n\n合計：1001",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be157233-5c49-404f-ba64-fb5779e8354d",
+        "text": "當輸入總金額 10、期數 1 時，輸出只有 1 期且金額為 10.",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 10、期數 1 的執行結果可供驗證。",
+        "evidence": []
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19075 input and 338 output tokens on gpt-5.4-mini; reported cost $0.0147 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

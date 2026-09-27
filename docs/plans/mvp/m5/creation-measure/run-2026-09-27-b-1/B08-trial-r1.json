@@ -1,0 +1,157 @@
+{
+  "round": 1,
+  "sample_input": "請把下面這批發票整理成可上傳的核銷資料，並附上本月摘要：\n\n1. 發票號碼：AB12345678\n   日期：2026/09/03\n   廠商：台北文具行\n   品項：A4紙 10包\n   金額：1500\n   稅額：75\n   部門：行政部\n\n2. 發票號碼：CD87654321\n   日期：2026/09/10\n   廠商：幸福餐飲有限公司\n   品項：會議便當 12份\n   金額：2400\n   稅額：120\n   部門：營運部\n\n3. 發票號碼：EF11223344\n   日期：2026/09/18\n   廠商：捷達交通\n   品項：計程車資\n   金額：680\n   稅額：0\n   部門：業務部",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入多筆發票資料時，Skill 會輸出整理後的結構化表格，而不是只回覆文字摘要。"
+    },
+    {
+      "text": "當輸入包含發票號碼、日期、廠商、金額、稅額或品項時，Skill 會保留或整理成一致欄位。"
+    },
+    {
+      "text": "當輸入包含多筆不同發票時，Skill 會把每筆發票分開列出，且不混寫成單一紀錄。"
+    },
+    {
+      "text": "當輸入含有缺漏欄位時，Skill 會在結果中標示缺漏項目。"
+    },
+    {
+      "text": "當輸入包含本月多張發票時，Skill 會另外產出本月核銷摘要，包含筆數與金額彙總。"
+    },
+    {
+      "text": "當輸入適合匯出時，Skill 會以便於匯入記帳系統的格式輸出，例如表格或 CSV 欄位對應。"
+    }
+  ],
+  "final_output": "以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）：\n\n### A. 核銷明細表\n\n| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |\n|---|---|---|---|---:|---:|---|---|\n| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\n\n### B. 本月核銷摘要（2026/09）\n\n- 發票筆數：3\n- 金額合計：4580\n- 稅額合計：195\n- 核銷總計：4775\n- 明顯缺漏欄位：0 筆\n\n### 缺漏事項\n- 無明顯缺漏欄位。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "00df5ac6-824a-425e-9704-b9771b8cdb25",
+    "run_id": "f18cc7d4-8561-45a8-9963-94dd27d7471a",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "已完成三筆發票的結構化明細、欄位標準化、逐筆列示及本月筆數與金額彙總，且格式便於匯入。由於本次輸入沒有缺漏欄位，無法根據此執行結果判定缺漏欄位標示行為。",
+    "criterion_results": [
+      {
+        "criterion_id": "b147b849-3bc3-4149-a07d-f369935ad71d",
+        "text": "當輸入多筆發票資料時，Skill 會輸出整理後的結構化表格，而不是只回覆文字摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆提供了含多筆資料的 Markdown 結構化核銷明細表，而非僅文字摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "98d48872-894b-4b99-ba96-b42fd3ed11bb",
+        "text": "當輸入包含發票號碼、日期、廠商、金額、稅額或品項時，Skill 會保留或整理成一致欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明細表以一致欄位保留了發票號碼、日期、廠商、品項、金額及稅額等輸入資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "17144005-8beb-495f-928b-f7173fe4fcd0",
+        "text": "當輸入包含多筆不同發票時，Skill 會把每筆發票分開列出，且不混寫成單一紀錄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三張不同發票各自以獨立表格列呈現，未合併為單一紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "02212b8f-20f0-4b3e-8b03-3e39b5692505",
+        "text": "當輸入含有缺漏欄位時，Skill 會在結果中標示缺漏項目。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "本次輸入的發票必要資料均完整，沒有實際缺漏欄位可用以驗證遇到缺漏時是否會標示缺漏項目。",
+        "evidence": []
+      },
+      {
+        "criterion_id": "dfdce4ef-f974-473e-9429-95ddea163b70",
+        "text": "當輸入包含本月多張發票時，Skill 會另外產出本月核銷摘要，包含筆數與金額彙總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆另列 2026/09 本月核銷摘要，包含發票筆數與金額、稅額及總計彙總。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 發票筆數：3\n- 金額合計：4580\n- 稅額合計：195\n- 核銷總計：4775",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8082200e-18de-4d54-9a25-97510d25008f",
+        "text": "當輸入適合匯出時，Skill 會以便於匯入記帳系統的格式輸出，例如表格或 CSV 欄位對應。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆以具明確欄位對應的表格輸出，適合直接貼入或對應至記帳系統匯入欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下為可直接貼入核銷系統的整理結果（本月以 2026/09 計）：",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19708 input and 937 output tokens on gpt-5.4-mini; reported cost $0.0209 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 28,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

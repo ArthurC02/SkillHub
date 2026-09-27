@@ -1,0 +1,163 @@
+{
+  "request": {
+    "RunID": "db2e3eb4-dcfd-436e-aa97-5fcfece019a3",
+    "EvaluationID": "528e9134-fc60-4e2f-a2b9-93395cbaa572",
+    "Skill": {
+      "Name": "meeting-to-todo-list",
+      "Summary": "將會議記錄整理成待辦事項清單，當你需要把會議內容轉成可執行項目並附上負責人與期限時使用。"
+    },
+    "UserPrompt": "請把下面會議記錄整理成待辦事項清單，每一項要寫負責人跟期限。\n\n今天會議討論三件事：第一，工程團隊週五前完成登入頁改版，Alice 負責；第二，行銷部門下週一前提交活動文案，Bob 與 Carol 協作；第三，財務部確認 10/15 前完成報銷流程更新，由 David 跟進。",
+    "Criteria": [
+      {
+        "ID": "64b6a1c1-0ce0-4279-8f38-d49da537202e",
+        "Text": "當輸入是一段會議記錄時，輸出會是一份待辦事項清單，而不是會議摘要。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e467a476-1a02-4c1f-8f65-6349a9da02e0",
+        "Text": "每一筆待辦都會包含三個欄位：待辦內容、負責人、期限。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0297bdfd-b4e3-4191-bc93-85530f71302f",
+        "Text": "如果原文有明示負責人或期限，輸出會正確帶出。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fdc1cc60-6e0b-4d4d-900e-663a97cf3a37",
+        "Text": "如果原文沒有明示負責人或期限，輸出會根據上下文推定，且可辨識為推定值。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "be18dee8-6fc5-41b5-983f-7644da6900a4",
+        "Text": "輸出會保留原始會議記錄中的主要行動項目，不會漏掉明顯的待辦。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "1199985f-d78d-4d07-aeab-245e6edbc36d",
+        "Text": "輸出會使用繁體中文。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "整理成待辦事項如下：\n\n| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |\n\n如果你要，我也可以再幫你改成更正式的會議紀錄格式，或轉成可直接貼到 Notion／Excel 的清單。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "d28ca562-37b4-42ad-a8b1-ba74c4d3ba46",
+          "OccurredAt": "2026-09-27T08:05:26.646Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"整理成待辦事項如下：\\n\\n| 待辦事項 | 負責人 | 期限 |\\n|---|---|---|\\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |\\n\\n如果你要，我也可以再幫你改成更正式的會議紀錄格式，或轉成可直接貼到 Notion／Excel 的清單。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "aed4c6ed-9983-4593-983b-3ab605f64fce",
+          "OccurredAt": "2026-09-27T08:05:26.948Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"整理成待辦事項如下：\\n\\n| 待辦事項 | 負責人 | 期限 |\\n|---|---|---|\\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |\\n\\n如果你要，我也可以再幫你改成更正式的會議紀錄格式，或轉成可直接貼到 Notion／Excel 的清單。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "b1d7ff6c-148a-4b3f-af37-df8d2966df98",
+          "OccurredAt": "2026-09-27T08:05:30.987Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.00045075, \"cost_source\": \"gateway\", \"duration_ms\": 9101, \"input_tokens\": 2166, \"token_source\": \"result\", \"output_tokens\": 591, \"cache_read_input_tokens\": 15872, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "64b6a1c1-0ce0-4279-8f38-d49da537202e",
+        "Result": "passed",
+        "Reason": "輸出以表格形式列出三項可執行的待辦事項，而非重述會議討論內容的摘要。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e467a476-1a02-4c1f-8f65-6349a9da02e0",
+        "Result": "passed",
+        "Reason": "表格明確包含待辦事項、負責人與期限三個欄位，且每一列皆有填寫。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0297bdfd-b4e3-4191-bc93-85530f71302f",
+        "Result": "passed",
+        "Reason": "三項待辦均正確帶出原文已明示的負責人及期限：Alice／週五前、Bob與Carol／下週一前、David／10/15前。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fdc1cc60-6e0b-4d4d-900e-663a97cf3a37",
+        "Result": "passed",
+        "Reason": "原始會議記錄的三項行動均已明示負責人與期限，因此不需要推定值；輸出未將任何未明示資訊冒充為原文內容。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "be18dee8-6fc5-41b5-983f-7644da6900a4",
+        "Result": "passed",
+        "Reason": "原始記錄中的登入頁改版、活動文案提交與報銷流程更新三個主要行動項目皆有保留。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "1199985f-d78d-4d07-aeab-245e6edbc36d",
+        "Result": "passed",
+        "Reason": "輸出使用繁體中文撰寫欄位名稱、待辦內容與說明文字。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "整理成待辦事項如下：\n\n| 待辦事項 | 負責人 | 期限 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出正確將會議記錄整理為繁體中文待辦清單，三項主要行動皆未遺漏，且每項均包含原文所示的負責人與期限。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 2345,
+      "CompletionTokens": 1255,
+      "CostUSD": 0.018471500000000002,
+      "CostReported": true
+    }
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "round": 1,
+  "sample_input": "請把以下發票資料整理成可上傳到記帳系統的核銷內容：\n1) 2026/09/03，發票號碼 AB-12345678，供應商：宏達文具，品名：A4紙 10包，金額：1,200，稅額：60，部門：行政部，備註：辦公用品\n2) 2026/09/05，發票號碼 CD-87654321，供應商：捷行科技，品名：雲端服務月費，金額：3,000，稅額：150，部門：資訊部，專案：CRM升級\n3) 2026/09/07，發票號碼 EF-11223344，供應商：星光餐飲，品名：會議餐費，金額：850，稅額：0，部門：業務部，備註：客戶會議",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入包含多筆發票時，輸出會逐筆整理成一致欄位的結構化清單，而不是只做摘要。"
+    },
+    {
+      "text": "當輸入含有日期、發票號碼、供應商與金額時，輸出會保留這些欄位且格式一致。"
+    },
+    {
+      "text": "當輸入缺少必要欄位時，輸出會明確列出缺漏欄位與需人工確認項目。"
+    },
+    {
+      "text": "當輸入包含可計算的稅額或合計資訊時，輸出會保留原始數值，不自行改寫為未提供的結果。"
+    },
+    {
+      "text": "當使用者未提供記帳系統欄位規格時，輸出會採用常見核銷欄位作預設，並在內容中列出這項假設。"
+    }
+  ],
+  "final_output": "已整理完成，以下為可直接貼入記帳/核銷系統的標準化內容。\n\n| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\n|---|---|---|---|---|---:|---:|---|---|---|\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |\n\n**assumptions：**  \n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。\n\n**missing_fields：**  \nnone",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "21780f56-b985-444a-be83-c9ae0c388a7e",
+    "run_id": "a0ebcd57-7237-424e-9d0a-0709fb519cba",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出將三筆發票逐筆以一致欄位表格整理，保留日期、發票號碼、供應商、金額及稅額原值，並明確說明採用常見核銷欄位的假設。",
+    "criterion_results": [
+      {
+        "criterion_id": "24ab69c8-6c9f-41d0-bce3-1a0fd7585926",
+        "text": "當輸入包含多筆發票時，輸出會逐筆整理成一致欄位的結構化清單，而不是只做摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以含三筆資料的表格逐筆整理，且每筆均採用相同欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\n|---|---|---|---|---|---:|---:|---|---|---|\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0af94778-4253-4bbb-a699-5e771fa5fb77",
+        "text": "當輸入含有日期、發票號碼、供應商與金額時，輸出會保留這些欄位且格式一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆資料皆保留日期、發票號碼、供應商與金額，並以一致的表格欄位及日期格式呈現。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebb0c55e-201c-4d1b-9f00-fcccb867226c",
+        "text": "當輸入缺少必要欄位時，輸出會明確列出缺漏欄位與需人工確認項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本次各筆均具日期、發票號碼、供應商、品名、金額、稅額及部門等核銷核心欄位；非每筆提供的專案或備註欄位以「not given」明示，且未宣稱存在未提供的必要欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7664458-28fb-462f-91f1-ddcaf25d5a4e",
+        "text": "當輸入包含可計算的稅額或合計資訊時，輸出會保留原始數值，不自行改寫為未提供的結果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出保留三筆原始金額與稅額，並明確說明未另行計算合計或更動數值。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7a9c3c37-0534-4d4c-94c0-61c9b2343dc1",
+        "text": "當使用者未提供記帳系統欄位規格時，輸出會採用常見核銷欄位作預設，並在內容中列出這項假設。",
+        "result": "passed",
+        "source": "model",
+        "reason": "在未提供記帳系統欄位規格的情況下，輸出採用常見核銷欄位表格，並在 assumptions 段落明示此預設。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**assumptions：**  \n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 21557 input and 940 output tokens on gpt-5.4-mini; reported cost $0.0146 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

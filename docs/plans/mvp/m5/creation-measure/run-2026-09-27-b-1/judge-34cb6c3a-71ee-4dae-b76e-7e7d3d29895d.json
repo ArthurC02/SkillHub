@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "34cb6c3a-71ee-4dae-b76e-7e7d3d29895d",
+    "EvaluationID": "eb55d3e5-0409-42ce-97c9-8fea61c92529",
+    "Skill": {
+      "Name": "meeting-notes-todo-list",
+      "Summary": "將使用者貼上的會議記錄整理成待辦事項清單，並在每項中標出負責人與期限；適合在需要把會議紀錄快速轉成可執行行動項時使用。"
+    },
+    "UserPrompt": "請把下面會議記錄整理成待辦事項清單，並列出每項的負責人與期限：\n\n今天會議決定：Alice 負責完成新版首頁文案，期限是 10/05；Bob 負責整理客戶回饋，期限是 10/07；行銷部門確認下週三前提供廣告素材，但負責人未定；另外請工程部評估 API 速度優化，負責人是 Carol，期限未定。",
+    "Criteria": [
+      {
+        "ID": "b756e2e6-d361-407f-9db3-1580244133f6",
+        "Text": "輸入一段包含多個待辦與不同負責人的會議記錄時，輸出會列出所有可辨識的待辦項目。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "daa01c97-a115-4780-a449-4d68e5b8c7b5",
+        "Text": "每一個輸出項目都會包含事項、負責人與期限三個資訊欄位。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b04ebc8d-97be-44cf-a27c-478ba5000807",
+        "Text": "當會議記錄明確寫出負責人或期限時，輸出會保留該原始資訊，不會改寫成其他人或日期。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "eb21aae6-a1ff-4405-b16b-9e83c19e726e",
+        "Text": "當會議記錄沒有寫出負責人或期限時，輸出會在對應欄位顯示「未指定」。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "5d5d289d-e252-4a28-8bb6-3864d7d863dd",
+        "Text": "輸出只會根據會議記錄內容整理，不會加入原文沒有提到的新任務。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "| 事項 | 負責人 | 期限 | 備註 |\n| --- | --- | --- | --- |\n| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "bc4887ef-5925-4638-9dd7-7866e092e154",
+          "OccurredAt": "2026-09-27T07:41:18.865Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"meeting-notes-todo-list\", \"skill_version_id\": \"0ce5cc91-efbf-4132-b93c-c127aafd4df7\"}"
+        },
+        {
+          "TraceEventID": "976b1866-54da-4271-8003-1703162edd66",
+          "OccurredAt": "2026-09-27T07:41:18.88Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"meeting-notes-todo-list\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 16, \"invocation_id\": \"call_KpoKOHQNKKMTNZLG1zkFlZHF\", \"result_summary\": \"Launching skill: meeting-notes-todo-list\"}"
+        },
+        {
+          "TraceEventID": "e0bb6148-cf17-43a3-896f-d7af1e65d7f4",
+          "OccurredAt": "2026-09-27T07:41:22.581Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"| 事項 | 負責人 | 期限 | 備註 |\\n| --- | --- | --- | --- |\\n| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ee1ddfb9-c15d-4003-95c8-094704f8bfcd",
+          "OccurredAt": "2026-09-27T07:41:22.9Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"| 事項 | 負責人 | 期限 | 備註 |\\n| --- | --- | --- | --- |\\n| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "72e94298-42ac-4160-b6cb-b78c6f1a9824",
+          "OccurredAt": "2026-09-27T07:41:26.957Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0079044, \"cost_source\": \"gateway\", \"duration_ms\": 10064, \"input_tokens\": 3086, \"token_source\": \"result\", \"output_tokens\": 577, \"cache_read_input_tokens\": 33792, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "b756e2e6-d361-407f-9db3-1580244133f6",
+        "Result": "passed",
+        "Reason": "輸出列出四項可辨識的待辦，涵蓋會議記錄中的新版首頁文案、客戶回饋、廣告素材與 API 速度優化。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "daa01c97-a115-4780-a449-4d68e5b8c7b5",
+        "Result": "passed",
+        "Reason": "表格中的每個待辦列均包含「事項」、「負責人」與「期限」欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 事項 | 負責人 | 期限 | 備註 |\n| --- | --- | --- | --- |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b04ebc8d-97be-44cf-a27c-478ba5000807",
+        "Result": "passed",
+        "Reason": "已保留原始明確指定的負責人與期限：Alice／10/05、Bob／10/07、下週三前，以及 Carol。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "eb21aae6-a1ff-4405-b16b-9e83c19e726e",
+        "Result": "passed",
+        "Reason": "未指定負責人的廣告素材項目標示為「未指定」，未指定期限的 API 優化項目也標示為「未指定」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "5d5d289d-e252-4a28-8bb6-3864d7d863dd",
+        "Result": "passed",
+        "Reason": "輸出中的四個事項皆對應會議記錄所述工作，未見額外新增的任務。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 完成新版首頁文案 | Alice | 10/05 | 會議決定事項 |\n| 整理客戶回饋 | Bob | 10/07 | 會議決定事項 |\n| 提供廣告素材 | 未指定 | 下週三前 | 行銷部門確認提供 |\n| 評估 API 速度優化 | Carol | 未指定 | 請工程部評估 |"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "待辦清單完整列出四項會議決議，且每項均包含事項、負責人和期限。已如實保留明確資訊，並以「未指定」填列缺失的負責人或期限，沒有新增任務。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 2484,
+      "CompletionTokens": 892,
+      "CostUSD": 0.014463,
+      "CostReported": true
+    }
+  }
+}

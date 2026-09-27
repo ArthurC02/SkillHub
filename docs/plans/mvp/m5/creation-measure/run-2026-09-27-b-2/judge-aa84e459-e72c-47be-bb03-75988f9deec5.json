@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "aa84e459-e72c-47be-bb03-75988f9deec5",
+    "EvaluationID": "09ca4110-c302-4795-b6a1-0053d87b4048",
+    "Skill": {
+      "Name": "invoice-reconciliation-organizer",
+      "Summary": "Organize invoice details into a structured reconciliation output for accounting-system upload or human review. Use it when the user provides invoice data that needs deduping, missing-field marking, and a ready-to-check summary."
+    },
+    "UserPrompt": "請幫我整理以下發票資料，輸出成可供核銷複核的清單：\n\n1. 2026/09/03，星辰文具行，發票金額 1,260，品項：A4紙、原子筆，統編 12345678\n2. 2026/09/05，晨光餐飲，含稅金額 840，品項：部門午餐，發票號碼 AA12345678\n3. 2026/09/05，晨光餐飲，含稅金額 840，品項：部門午餐，發票號碼 AA12345678\n4. 2026/09/08，立達資訊，金額 3,500，稅額缺漏，品項：雲端服務費\n5. 2026/09/10，捷運票務，金額 120，品項：交通費，備註：專案出差\n\n如果你同意，我就把這個 brief 固定下來再往下做。",
+    "Criteria": [
+      {
+        "ID": "d14133d6-85c2-4972-9d4e-f523d8a4601f",
+        "Text": "給定一批發票資料時，輸出會整理成結構化清單，每筆至少包含日期、廠商、金額、稅額/含稅資訊、品項或用途、可疑缺漏標記。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cbca094f-a9e5-44cd-a727-e38e30e58f66",
+        "Text": "當輸入中有多筆發票時，輸出會逐筆分列，不會把不同發票混在同一筆。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b4f07146-67fa-4f8c-9c8a-04695830666e",
+        "Text": "當某筆發票缺少欄位時，輸出會保留該欄位為缺漏標記，而不是自行猜測。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "abee5989-55f7-4764-92d2-7171b53876ea",
+        "Text": "當資料中含有重複或疑似重複項目時，輸出會標示可能重複，供後續核對。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "fe3a6feb-52aa-4dca-a814-e6d4b47f3330",
+        "Text": "當輸入包含可直接核銷的整理資訊時，輸出會同時提供適合上傳或複核的摘要格式。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "以下為可供核銷複核的整理清單（繁體中文）：\n\n| Record | Date | Vendor | Invoice No. | Amount | Tax / Tax-inclusive | Item / Purpose | Notes |\n|---|---|---|---|---:|---|---|---|\n| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |\n\n### 重複檢查\n- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。\n\n### 缺漏欄位\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\n- 第 4 筆：發票號碼未提供；稅額缺漏。\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。\n\n### 可供核銷複核\n- 已整理完成，可直接供人工複核或後續匯入使用。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "352f4180-6b83-46c4-b95e-72337ba974b7",
+          "OccurredAt": "2026-09-27T08:11:45.544Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"invoice-reconciliation-organizer\", \"skill_version_id\": \"a037e44e-0a54-478b-a5ef-29c151ebc6cc\"}"
+        },
+        {
+          "TraceEventID": "5ec63b8c-6e06-49ff-9f50-6decd11104dd",
+          "OccurredAt": "2026-09-27T08:11:45.553Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"invoice-reconciliation-organizer\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 9, \"invocation_id\": \"call_BJe4pwynEWfzSsfxVUKCLK11\", \"result_summary\": \"Launching skill: invoice-reconciliation-organizer\"}"
+        },
+        {
+          "TraceEventID": "cb6345f4-f765-416e-8b70-73d681f24191",
+          "OccurredAt": "2026-09-27T08:11:52.019Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"以下為可供核銷複核的整理清單（繁體中文）：\\n\\n| Record | Date | Vendor | Invoice No. | Amount | Tax / Tax-inclusive | Item / Purpose | Notes |\\n|---|---|---|---|---:|---|---|---|\\n| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |\\n\\n### 重複檢查\\n- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。\\n\\n### 缺漏欄位\\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\\n- 第 4 筆：發票號碼未提供；稅額缺漏。\\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。\\n\\n### 可供核銷複核\\n- 已整理完成，可直接供人工複核或後續匯入使用。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "4196790e-9ded-4a8a-a16d-dacff4e2f115",
+          "OccurredAt": "2026-09-27T08:11:52.219Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"以下為可供核銷複核的整理清單（繁體中文）：\\n\\n| Record | Date | Vendor | Invoice No. | Amount | Tax / Tax-inclusive | Item / Purpose | Notes |\\n|---|---|---|---|---:|---|---|---|\\n| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |\\n\\n### 重複檢查\\n- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。\\n\\n### 缺漏欄位\\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\\n- 第 4 筆：發票號碼未提供；稅額缺漏。\\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。\\n\\n### 可供核銷複核\\n- 已整理完成，可直接供人工複核或後續匯入使用。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "48452d01-7675-4a2b-a009-f0701e5281a1",
+          "OccurredAt": "2026-09-27T08:11:57.783Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.02153475, \"cost_source\": \"gateway\", \"duration_ms\": 14759, \"input_tokens\": 19241, \"token_source\": \"result\", \"output_tokens\": 1155, \"cache_read_input_tokens\": 17920, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "d14133d6-85c2-4972-9d4e-f523d8a4601f",
+        "Result": "passed",
+        "Reason": "輸出以表格逐筆列出日期、廠商、金額、稅務／含稅資訊、品項／用途及備註；缺漏稅務資訊以「not given」或「稅額缺漏」明示。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cbca094f-a9e5-44cd-a727-e38e30e58f66",
+        "Result": "passed",
+        "Reason": "五筆資料分別以 Record 1 至 5 獨立列示，未混合為單一發票紀錄。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1 | 2026/09/03 | 星辰文具行 | not given | 1,260 | not given | A4紙、原子筆 | 統編 12345678 |\n| 2 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 3 筆內容重複 |\n| 3 | 2026/09/05 | 晨光餐飲 | AA12345678 | 840 | 含稅金額 | 部門午餐 | 與第 2 筆內容重複（疑似重複報帳） |\n| 4 | 2026/09/08 | 立達資訊 | not given | 3,500 | 稅額缺漏 | 雲端服務費 | 稅額缺漏 |\n| 5 | 2026/09/10 | 捷運票務 | not given | 120 | not given | 交通費 | 備註：專案出差 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "b4f07146-67fa-4f8c-9c8a-04695830666e",
+        "Result": "passed",
+        "Reason": "未提供的發票號碼與稅務資訊均保留為未提供或缺漏標記，未自行補猜數值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 缺漏欄位\n- 第 1 筆：發票號碼未提供；稅額/含稅資訊未提供。\n- 第 2 筆：未提供稅額明細（僅有含稅金額）。\n- 第 3 筆：未提供稅額明細（僅有含稅金額），且為重複資料。\n- 第 4 筆：發票號碼未提供；稅額缺漏。\n- 第 5 筆：發票號碼未提供；稅額/含稅資訊未提供。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "abee5989-55f7-4764-92d2-7171b53876ea",
+        "Result": "passed",
+        "Reason": "第2與第3筆相同資料被標示為重複，並提示複核是否為重複登錄或請款。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- 第 2 筆與第 3 筆資料完全相同，判定為重複項目，建議複核是否為同一張發票重複登錄或重複請款。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "fe3a6feb-52aa-4dca-a814-e6d4b47f3330",
+        "Result": "passed",
+        "Reason": "提供了欄位化表格以及重複檢查與缺漏欄位摘要，可供人工複核或後續匯入。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "### 可供核銷複核\n- 已整理完成，可直接供人工複核或後續匯入使用。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出已將五筆發票結構化且逐筆分列，明確標記缺漏資料與第2、3筆重複情形，並附上可供核銷複核的摘要。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 3872,
+      "CompletionTokens": 1058,
+      "CostUSD": 0.019925000000000002,
+      "CostReported": true
+    }
+  }
+}

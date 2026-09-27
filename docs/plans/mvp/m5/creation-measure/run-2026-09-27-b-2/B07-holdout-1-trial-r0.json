@@ -1,0 +1,127 @@
+{
+  "round": 0,
+  "sample_input": "幫我做一份客戶滿意度調查問卷。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出是一份可以直接拿去用的完整問卷，包含具體題目，而不是只列出要使用者回答的問題。"
+    },
+    {
+      "text": "輸出有明確說明它採用了哪些調查構面（例如服務態度、產品品質、交貨速度、整體滿意度之類），以及這是在沒有指定時採用的常見預設。"
+    },
+    {
+      "text": "問卷題目不只一題，涵蓋一個以上的構面。"
+    }
+  ],
+  "final_output": "# 客戶滿意度調查問卷\n\n您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**：  \n1 = 非常不滿意　2 = 不滿意　3 = 普通　4 = 滿意　5 = 非常滿意\n\n請依您的實際感受作答，您的意見將協助我們持續改善服務品質。\n\n---\n\n## 一、整體滿意度\n\n1. 請問您對本次服務的**整體滿意度**如何？  \n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意\n\n2. 請問您對本次服務是否會推薦給他人？  \n   □ 1 非常不會 □ 2 不太會 □ 3 普通 □ 4 會 □ 5 非常會\n\n---\n\n## 二、服務體驗評分\n\n3. 請問您對**服務人員的態度與專業度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n4. 請問您對**回應速度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n5. 請問您對**問題解決效率**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n6. 請問您對**服務流程的清楚程度**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n7. 請問您對**整體服務品質**滿意嗎？  \n   □ 1 □ 2 □ 3 □ 4 □ 5\n\n---\n\n## 三、改善建議\n\n8. 您最滿意的部分是什麼？  \n   __________________________________________________  \n   __________________________________________________\n\n9. 您認為我們最需要改善的地方是什麼？  \n   __________________________________________________  \n   __________________________________________________\n\n10. 您對我們還有其他建議或想法嗎？  \n   __________________________________________________  \n   __________________________________________________\n\n---\n\n感謝您的填寫與寶貴意見，您的回饋對我們非常重要！",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f3f74bfa-f9bd-46e1-a8b1-894113bc1854",
+    "run_id": "d997054c-7e7e-4bac-9d70-7c1965ac412d",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "問卷本身完整且可直接使用，並以多道題目涵蓋多個服務體驗構面。然而，未明確說明所選調查構面及其為未指定需求時採用的常見預設。",
+    "criterion_results": [
+      {
+        "criterion_id": "b88df98a-3502-45fb-bd8c-70335ff4c1a5",
+        "text": "輸出是一份可以直接拿去用的完整問卷，包含具體題目，而不是只列出要使用者回答的問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供可直接填答的完整問卷，含量表說明、具體評分題、勾選選項與開放式填答欄位。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 一、整體滿意度\n\n1. 請問您對本次服務的**整體滿意度**如何？  \n   □ 1 非常不滿意 □ 2 不滿意 □ 3 普通 □ 4 滿意 □ 5 非常滿意",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "8. 您最滿意的部分是什麼？  \n   __________________________________________________  \n   __________________________________________________",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ebb9800a-4276-4ccf-aa9e-7c77c03ba1ec",
+        "text": "輸出有明確說明它採用了哪些調查構面（例如服務態度、產品品質、交貨速度、整體滿意度之類），以及這是在沒有指定時採用的常見預設。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖說明此為「通用服務情境」及使用預設5點量表，但沒有明確列出或說明所採用的調查構面是未指定情境下的常見預設。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您好！本問卷為**通用服務情境**版本，預設採用**5 點量表**：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d9f346c6-7ae0-406d-ac3c-d79b6ba17d93",
+        "text": "問卷題目不只一題，涵蓋一個以上的構面。",
+        "result": "passed",
+        "source": "model",
+        "reason": "問卷共有10題，涵蓋整體滿意度、推薦意願、服務人員態度與專業度、回應速度、問題解決效率、流程清楚程度與改善建議等多個構面。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "3. 請問您對**服務人員的態度與專業度**滿意嗎？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "4. 請問您對**回應速度**滿意嗎？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "5. 請問您對**問題解決效率**滿意嗎？",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19280 input and 921 output tokens on gpt-5.4-mini; reported cost $0.0203 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

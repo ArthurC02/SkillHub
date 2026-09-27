@@ -1,0 +1,178 @@
+{
+  "round": 1,
+  "sample_input": "請幫我分攤這期電費。電費總額是 2860 元，三個人的房間坪數與姓名如下：A 房 4.5 坪，B 房 6 坪，C 房 7.5 坪。",
+  "acceptance_criteria": [
+    {
+      "text": "會讀取一筆總電費與多個人的姓名、坪數。"
+    },
+    {
+      "text": "會依「個人坪數 ÷ 全部坪數總和 × 總電費」計算每個人的分攤金額。"
+    },
+    {
+      "text": "會輸出每個人的姓名、坪數、比例、分攤金額。"
+    },
+    {
+      "text": "若有小數金額，輸出會以四捨五入到小數點後兩位呈現。"
+    },
+    {
+      "text": "輸出中的分攤金額加總，會與原始電費一致或經微調後一致。"
+    },
+    {
+      "text": "會用表格或清楚分段方式呈現結果，方便直接抄用。"
+    }
+  ],
+  "final_output": "# 電費分攤結果\n\n| 房間 | 坪數 | 比例 | 分攤金額 |\n|---|---:|---:|---:|\n| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |\n\n四捨五入後總和正好等於 2860 元，無需調整。\n\n**總電費 2860 元；總坪數 18 坪；分攤合計 2860.00 元。**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "af93d761-9d0e-452f-8718-b2f2f6d94a8e",
+    "run_id": "5e732e6d-74a8-4a11-b1ff-a6db32532fd7",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有驗收條件均已滿足：正確依坪數比例分攤 2860 元，逐房列出所需資訊，金額格式為小數點後兩位，且加總與原始電費一致。",
+    "criterion_results": [
+      {
+        "criterion_id": "46a10551-13ff-47a9-be51-92ac1ffc6bda",
+        "text": "會讀取一筆總電費與多個人的姓名、坪數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果包含一筆總電費，以及三個房間的名稱與坪數資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總電費 2860 元；總坪數 18 坪；分攤合計 2860.00 元。**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f26c5b90-a985-461b-9ee4-c1df5abae9c8",
+        "text": "會依「個人坪數 ÷ 全部坪數總和 × 總電費」計算每個人的分攤金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "以總坪數 18 坪計算，各房金額分別為 2860×4.5/18=715、2860×6/18=953.33、2860×7.5/18=1191.67，與輸出一致。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總電費 2860 元；總坪數 18 坪；分攤合計 2860.00 元。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ffb7eb3e-2229-4860-8f1c-d3a381add37b",
+        "text": "會輸出每個人的姓名、坪數、比例、分攤金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格逐一列出每個房間的名稱、坪數、比例及分攤金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 房間 | 坪數 | 比例 | 分攤金額 |\n|---|---:|---:|---:|\n| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "f1f7c780-6f96-4ac2-ba87-c0c3d0ba0398",
+        "text": "若有小數金額，輸出會以四捨五入到小數點後兩位呈現。",
+        "result": "passed",
+        "source": "model",
+        "reason": "所有分攤金額均呈現至小數點後兩位，包含非整數金額 953.33 元與 1191.67 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ef1b466a-c9b0-40d0-918b-1456810baee3",
+        "text": "輸出中的分攤金額加總，會與原始電費一致或經微調後一致。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明示分攤合計為 2860.00 元，與原始總電費 2860 元一致；三筆金額相加亦為 2860.00 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "四捨五入後總和正好等於 2860 元，無需調整。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總電費 2860 元；總坪數 18 坪；分攤合計 2860.00 元。**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1fc1d8a3-4400-43ee-a535-378e7d87e075",
+        "text": "會用表格或清楚分段方式呈現結果，方便直接抄用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果以欄位清楚的 Markdown 表格呈現，可直接抄用。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 房間 | 坪數 | 比例 | 分攤金額 |\n|---|---:|---:|---:|\n| A 房 | 4.5 坪 | 25% | 715.00 元 |\n| B 房 | 6 坪 | 33.33% | 953.33 元 |\n| C 房 | 7.5 坪 | 41.67% | 1191.67 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2866 input and 605 output tokens on gpt-5.4-mini; reported cost $0.0078 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

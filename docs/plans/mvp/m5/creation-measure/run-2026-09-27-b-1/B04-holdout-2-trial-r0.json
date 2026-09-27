@@ -1,0 +1,95 @@
+{
+  "round": 0,
+  "sample_input": "這趟差旅費總共 1000 元，依出差天數比例分攤：甲 3 天、乙 2 天、丙 2 天、丁 1 天，請算出四人各要付多少。",
+  "acceptance_criteria": [
+    {
+      "text": "甲要付 375 元，乙要付 250 元，丙要付 250 元，丁要付 125 元。"
+    },
+    {
+      "text": "四人金額加起來等於 1000 元。"
+    }
+  ],
+  "final_output": "依天數比例分攤：\n\n總天數：3 + 2 + 2 + 1 = 8 天  \n每一天的費用：1000 ÷ 8 = 125 元\n\n所以四人分攤如下：\n\n- 甲：3 天 × 125 = **375 元**\n- 乙：2 天 × 125 = **250 元**\n- 丙：2 天 × 125 = **250 元**\n- 丁：1 天 × 125 = **125 元**\n\n合計：**1000 元**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "0aad071f-b11c-46e8-a30e-1cfd42f9a1ec",
+    "run_id": "c3f59b00-27f7-4ed6-ab48-8b60063cd1ee",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆依八天計算每日 125 元，四人的金額符合指定分攤，且合計為 1000 元。",
+    "criterion_results": [
+      {
+        "criterion_id": "985f270b-7e53-4b13-a470-3193a09665ac",
+        "text": "甲要付 375 元，乙要付 250 元，丙要付 250 元，丁要付 125 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆列出甲 375 元、乙 250 元、丙 250 元、丁 125 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 甲：3 天 × 125 = **375 元**\n- 乙：2 天 × 125 = **250 元**\n- 丙：2 天 × 125 = **250 元**\n- 丁：1 天 × 125 = **125 元**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "63a4db3a-6ae1-4bc9-9867-588b99b93aff",
+        "text": "四人金額加起來等於 1000 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆明確表示四人分攤合計為 1000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "合計：**1000 元**",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 17989 input and 196 output tokens on gpt-5.4-mini; reported cost $0.0148 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

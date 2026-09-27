@@ -1,0 +1,157 @@
+{
+  "request": {
+    "RunID": "a0ebcd57-7237-424e-9d0a-0709fb519cba",
+    "EvaluationID": "21780f56-b985-444a-be83-c9ae0c388a7e",
+    "Skill": {
+      "Name": "invoice-reconciliation-prep",
+      "Summary": "整理發票資料為可上傳或貼入公司記帳系統的核銷內容；當你要把多筆發票原文轉成一致欄位、找出缺漏欄位或建立可直接使用的彙整清單時使用。"
+    },
+    "UserPrompt": "請把以下發票資料整理成可上傳到記帳系統的核銷內容：\n1) 2026/09/03，發票號碼 AB-12345678，供應商：宏達文具，品名：A4紙 10包，金額：1,200，稅額：60，部門：行政部，備註：辦公用品\n2) 2026/09/05，發票號碼 CD-87654321，供應商：捷行科技，品名：雲端服務月費，金額：3,000，稅額：150，部門：資訊部，專案：CRM升級\n3) 2026/09/07，發票號碼 EF-11223344，供應商：星光餐飲，品名：會議餐費，金額：850，稅額：0，部門：業務部，備註：客戶會議",
+    "Criteria": [
+      {
+        "ID": "24ab69c8-6c9f-41d0-bce3-1a0fd7585926",
+        "Text": "當輸入包含多筆發票時，輸出會逐筆整理成一致欄位的結構化清單，而不是只做摘要。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "0af94778-4253-4bbb-a699-5e771fa5fb77",
+        "Text": "當輸入含有日期、發票號碼、供應商與金額時，輸出會保留這些欄位且格式一致。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "ebb0c55e-201c-4d1b-9f00-fcccb867226c",
+        "Text": "當輸入缺少必要欄位時，輸出會明確列出缺漏欄位與需人工確認項目。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "e7664458-28fb-462f-91f1-ddcaf25d5a4e",
+        "Text": "當輸入包含可計算的稅額或合計資訊時，輸出會保留原始數值，不自行改寫為未提供的結果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "7a9c3c37-0534-4d4c-94c0-61c9b2343dc1",
+        "Text": "當使用者未提供記帳系統欄位規格時，輸出會採用常見核銷欄位作預設，並在內容中列出這項假設。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "已整理完成，以下為可直接貼入記帳/核銷系統的標準化內容。\n\n| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\n|---|---|---|---|---|---:|---:|---|---|---|\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |\n\n**assumptions：**  \n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。\n\n**missing_fields：**  \nnone",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "5c41564a-3159-4886-979e-1af073372590",
+          "OccurredAt": "2026-09-27T08:31:52.203Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"invoice-reconciliation-prep\", \"skill_version_id\": \"735ce0a7-9ecc-43e4-939f-ae7d51afee23\"}"
+        },
+        {
+          "TraceEventID": "7a07729b-7eab-492c-954f-8e5988591a9b",
+          "OccurredAt": "2026-09-27T08:31:52.225Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"invoice-reconciliation-prep\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 23, \"invocation_id\": \"call_eotYU77ULKSjzNH74JmqclGt\", \"result_summary\": \"Launching skill: invoice-reconciliation-prep\"}"
+        },
+        {
+          "TraceEventID": "98cca6e4-d8ee-48f4-aab6-578fe1794549",
+          "OccurredAt": "2026-09-27T08:31:56.745Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"已整理完成，以下為可直接貼入記帳/核銷系統的標準化內容。\\n\\n| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\\n|---|---|---|---|---|---:|---:|---|---|---|\\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |\\n\\n**assumptions：**  \\n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。\\n\\n**missing_fields：**  \\nnone\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "cd1cef31-264b-4c71-872e-1a8b20852dae",
+          "OccurredAt": "2026-09-27T08:31:56.941Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"已整理完成，以下為可直接貼入記帳/核銷系統的標準化內容。\\n\\n| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\\n|---|---|---|---|---|---:|---:|---|---|---|\\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |\\n\\n**assumptions：**  \\n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。\\n\\n**missing_fields：**  \\nnone\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "ab04003e-e502-4466-b9f2-e723af0b4fca",
+          "OccurredAt": "2026-09-27T08:32:01.007Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.01459725, \"cost_source\": \"gateway\", \"duration_ms\": 10743, \"input_tokens\": 21557, \"token_source\": \"result\", \"output_tokens\": 940, \"cache_read_input_tokens\": 15872, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "24ab69c8-6c9f-41d0-bce3-1a0fd7585926",
+        "Result": "passed",
+        "Reason": "輸出以含三筆資料的表格逐筆整理，且每筆均採用相同欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 項次 | 日期 | 發票號碼 | 供應商 | 品名/摘要 | 金額 | 稅額 | 部門 | 專案 | 備註 |\n|---|---|---|---|---|---:|---:|---|---|---|\n| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "0af94778-4253-4bbb-a699-5e771fa5fb77",
+        "Result": "passed",
+        "Reason": "三筆資料皆保留日期、發票號碼、供應商與金額，並以一致的表格欄位及日期格式呈現。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "ebb0c55e-201c-4d1b-9f00-fcccb867226c",
+        "Result": "passed",
+        "Reason": "本次各筆均具日期、發票號碼、供應商、品名、金額、稅額及部門等核銷核心欄位；非每筆提供的專案或備註欄位以「not given」明示，且未宣稱存在未提供的必要欄位。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "| 1 | 2026/09/03 | AB-12345678 | 宏達文具 | A4紙 10包 | 1,200 | 60 | 行政部 | not given | 辦公用品 |\n| 2 | 2026/09/05 | CD-87654321 | 捷行科技 | 雲端服務月費 | 3,000 | 150 | 資訊部 | CRM升級 | not given |\n| 3 | 2026/09/07 | EF-11223344 | 星光餐飲 | 會議餐費 | 850 | 0 | 業務部 | not given | 客戶會議 |"
+          }
+        ]
+      },
+      {
+        "CriterionID": "e7664458-28fb-462f-91f1-ddcaf25d5a4e",
+        "Result": "passed",
+        "Reason": "輸出保留三筆原始金額與稅額，並明確說明未另行計算合計或更動數值。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "7a9c3c37-0534-4d4c-94c0-61c9b2343dc1",
+        "Result": "passed",
+        "Reason": "在未提供記帳系統欄位規格的情況下，輸出採用常見核銷欄位表格，並在 assumptions 段落明示此預設。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "**assumptions：**  \n採用常見核銷欄位預設，將「品名」視為內容/摘要欄，「備註」視為附註欄，「專案」視為專案欄；金額與稅額依使用者提供原值保留，不另外計算合計或更動格式。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "輸出將三筆發票逐筆以一致欄位表格整理，保留日期、發票號碼、供應商、金額及稅額原值，並明確說明採用常見核銷欄位的假設。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 3269,
+      "CompletionTokens": 1462,
+      "CostUSD": 0.0232655,
+      "CostReported": true
+    }
+  }
+}

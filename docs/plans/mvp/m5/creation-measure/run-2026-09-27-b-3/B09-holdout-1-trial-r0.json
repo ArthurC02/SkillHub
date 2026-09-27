@@ -1,0 +1,117 @@
+{
+  "round": 0,
+  "sample_input": "客戶這次訂的是新口味，要求 7 天內交貨。但公司規定新口味出貨前要先完成 14 天的品管全檢才能出貨。請幫我回覆客戶這次的交期。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出明確指出 7 天交貨與 14 天品管全檢這兩個要求無法同時滿足。"
+    },
+    {
+      "text": "輸出提出至少一個具體的處理方式（例如把交期延後到品管全檢完成之後，或說明需要跟客戶或主管確認是否能破例）。"
+    },
+    {
+      "text": "輸出沒有同時承諾 7 天交貨，又說已完成 14 天全檢。"
+    }
+  ],
+  "final_output": "您好，感謝您的詢問。這次是新口味，依公司規定，出貨前必須先完成 14 天的品管全檢，因此 7 天內交貨目前無法安排。\n\n若依現行流程，需待 14 天檢驗完成後才能安排出貨，交期至少需延長至 14 天以上。待檢驗完成後，我們會盡快為您安排後續出貨，謝謝您的理解與配合。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "fd74dd7c-22b8-448f-afca-9aea3d6e2422",
+    "run_id": "7ee12e96-8cf1-4995-9167-8a4745eb8922",
+    "status": "completed",
+    "overall": "met",
+    "summary": "回覆完整說明 7 天交貨與出貨前 14 天品管全檢無法兼顧，並提出完成檢驗後延後出貨的具體安排，且未作出矛盾承諾。",
+    "criterion_results": [
+      {
+        "criterion_id": "ee9b1fcc-902d-46ff-a05b-789caba1cb14",
+        "text": "輸出明確指出 7 天交貨與 14 天品管全檢這兩個要求無法同時滿足。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確說明新口味出貨前必須完成 14 天品管全檢，因此 7 天內交貨無法安排，指出兩項要求不能同時滿足。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "這次是新口味，依公司規定，出貨前必須先完成 14 天的品管全檢，因此 7 天內交貨目前無法安排。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "896d66db-14b2-4fe7-a8a7-0f2e0680c992",
+        "text": "輸出提出至少一個具體的處理方式（例如把交期延後到品管全檢完成之後，或說明需要跟客戶或主管確認是否能破例）。",
+        "result": "passed",
+        "source": "model",
+        "reason": "提出具體處理方式：待 14 天檢驗完成後再安排出貨，並將交期延長至至少 14 天以上。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "若依現行流程，需待 14 天檢驗完成後才能安排出貨，交期至少需延長至 14 天以上。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54248aa3-0275-4d3a-8f12-22c1994e9dc7",
+        "text": "輸出沒有同時承諾 7 天交貨，又說已完成 14 天全檢。",
+        "result": "passed",
+        "source": "model",
+        "reason": "回覆明確表示 7 天內交貨無法安排，且要求先完成 14 天全檢後才可出貨，沒有作出互相矛盾的承諾。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "因此 7 天內交貨目前無法安排。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "需待 14 天檢驗完成後才能安排出貨",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2983 input and 450 output tokens on gpt-5.4-mini; reported cost $0.0036 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

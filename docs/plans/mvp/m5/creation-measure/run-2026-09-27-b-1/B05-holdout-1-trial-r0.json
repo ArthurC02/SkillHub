@@ -1,0 +1,129 @@
+{
+  "round": 0,
+  "sample_input": "請把下面這份會議記錄整理成待辦事項清單，每一項要寫負責人跟期限：\n今天會議大家討論了下一季的行銷規劃。小陳說他會在這個月 15 號之前把新版型錄的初稿寄給大家看。小美提到目前庫存系統的報表有點跑掉，她會盡快去跟資訊部確認，預計 10 號前給答案。阿光負責的部分是要在月底之前把三個新的合作店家名單整理好交給小陳。另外大家也聊到年底的尾牙要不要提前訂場地，但這件事還沒有人認領，也還沒有決定期限。",
+  "acceptance_criteria": [
+    {
+      "text": "待辦清單包含小陳在 15 號前完成型錄初稿。"
+    },
+    {
+      "text": "待辦清單包含小美在 10 號前確認庫存報表問題。"
+    },
+    {
+      "text": "待辦清單包含阿光在月底前整理三個合作店家名單交給小陳。"
+    },
+    {
+      "text": "清單沒有把還沒人認領、沒有期限的尾牙訂場地事項，寫成已經有負責人或期限。"
+    }
+  ],
+  "final_output": "| 事項 | 負責人 | 期限 | 備註 |\n| --- | --- | --- | --- |\n| 把新版型錄的初稿寄給大家看 | 小陳 | 這個月 15 號之前 |  |\n| 跟資訊部確認庫存系統的報表問題，並給答案 | 小美 | 10 號前 | 目前庫存系統的報表有點跑掉，會盡快去確認 |\n| 把三個新的合作店家名單整理好交給小陳 | 阿光 | 月底之前 |  |\n| 尾牙要不要提前訂場地 | 未指定 | 未指定 | 目前還沒有人認領，也還沒有決定期限 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "46cb997f-012a-478d-9ad1-c3bacf7525ec",
+    "run_id": "50941636-97e6-4a1b-88be-b91ca21aa57f",
+    "status": "completed",
+    "overall": "met",
+    "summary": "所有待辦事項均正確整理出負責人與期限；未認領的尾牙場地事項未被誤列為已有負責人或期限。",
+    "criterion_results": [
+      {
+        "criterion_id": "c2a7e3f4-65d6-40ff-8831-580f6f16daee",
+        "text": "待辦清單包含小陳在 15 號前完成型錄初稿。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出小陳負責寄送新版型錄初稿，期限為這個月15號之前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 把新版型錄的初稿寄給大家看 | 小陳 | 這個月 15 號之前 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "99ed32a2-174f-4310-aa3b-e440218f329c",
+        "text": "待辦清單包含小美在 10 號前確認庫存報表問題。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出小美向資訊部確認庫存系統報表問題並給答案，期限為10號前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 跟資訊部確認庫存系統的報表問題，並給答案 | 小美 | 10 號前 | 目前庫存系統的報表有點跑掉，會盡快去確認 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "134a95b6-e442-46a0-a23c-4c14d5e7aa59",
+        "text": "待辦清單包含阿光在月底前整理三個合作店家名單交給小陳。",
+        "result": "passed",
+        "source": "model",
+        "reason": "待辦清單列出阿光於月底前整理三個新的合作店家名單並交給小陳。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 把三個新的合作店家名單整理好交給小陳 | 阿光 | 月底之前 |  |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3eb65009-2096-41b9-b854-52dba42cb16a",
+        "text": "清單沒有把還沒人認領、沒有期限的尾牙訂場地事項，寫成已經有負責人或期限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "尾牙訂場地事項明確標示負責人與期限皆為未指定，且備註說明尚未認領及未決定期限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 尾牙要不要提前訂場地 | 未指定 | 未指定 | 目前還沒有人認領，也還沒有決定期限 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19068 input and 691 output tokens on gpt-5.4-mini; reported cost $0.0145 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 14,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

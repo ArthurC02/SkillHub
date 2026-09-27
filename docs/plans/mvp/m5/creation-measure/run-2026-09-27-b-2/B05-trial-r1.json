@@ -1,0 +1,163 @@
+{
+  "round": 1,
+  "sample_input": "請把下面會議記錄整理成待辦事項清單，每一項要寫負責人跟期限。\n\n今天會議討論三件事：第一，工程團隊週五前完成登入頁改版，Alice 負責；第二，行銷部門下週一前提交活動文案，Bob 與 Carol 協作；第三，財務部確認 10/15 前完成報銷流程更新，由 David 跟進。",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入是一段會議記錄時，輸出會是一份待辦事項清單，而不是會議摘要。"
+    },
+    {
+      "text": "每一筆待辦都會包含三個欄位：待辦內容、負責人、期限。"
+    },
+    {
+      "text": "如果原文有明示負責人或期限，輸出會正確帶出。"
+    },
+    {
+      "text": "如果原文沒有明示負責人或期限，輸出會根據上下文推定，且可辨識為推定值。"
+    },
+    {
+      "text": "輸出會保留原始會議記錄中的主要行動項目，不會漏掉明顯的待辦。"
+    },
+    {
+      "text": "輸出會使用繁體中文。"
+    }
+  ],
+  "final_output": "整理成待辦事項如下：\n\n| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |\n\n如果你要，我也可以再幫你改成更正式的會議紀錄格式，或轉成可直接貼到 Notion／Excel 的清單。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "528e9134-fc60-4e2f-a2b9-93395cbaa572",
+    "run_id": "db2e3eb4-dcfd-436e-aa97-5fcfece019a3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "輸出正確將會議記錄整理為繁體中文待辦清單，三項主要行動皆未遺漏，且每項均包含原文所示的負責人與期限。",
+    "criterion_results": [
+      {
+        "criterion_id": "64b6a1c1-0ce0-4279-8f38-d49da537202e",
+        "text": "當輸入是一段會議記錄時，輸出會是一份待辦事項清單，而不是會議摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以表格形式列出三項可執行的待辦事項，而非重述會議討論內容的摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e467a476-1a02-4c1f-8f65-6349a9da02e0",
+        "text": "每一筆待辦都會包含三個欄位：待辦內容、負責人、期限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格明確包含待辦事項、負責人與期限三個欄位，且每一列皆有填寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 待辦事項 | 負責人 | 期限 |\n|---|---|---|\n| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0297bdfd-b4e3-4191-bc93-85530f71302f",
+        "text": "如果原文有明示負責人或期限，輸出會正確帶出。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三項待辦均正確帶出原文已明示的負責人及期限：Alice／週五前、Bob與Carol／下週一前、David／10/15前。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "fdc1cc60-6e0b-4d4d-900e-663a97cf3a37",
+        "text": "如果原文沒有明示負責人或期限，輸出會根據上下文推定，且可辨識為推定值。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原始會議記錄的三項行動均已明示負責人與期限，因此不需要推定值；輸出未將任何未明示資訊冒充為原文內容。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "be18dee8-6fc5-41b5-983f-7644da6900a4",
+        "text": "輸出會保留原始會議記錄中的主要行動項目，不會漏掉明顯的待辦。",
+        "result": "passed",
+        "source": "model",
+        "reason": "原始記錄中的登入頁改版、活動文案提交與報銷流程更新三個主要行動項目皆有保留。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 完成登入頁改版 | Alice | 週五前（2026/10/02） |\n| 提交活動文案 | Bob、Carol（協作） | 下週一前（2026/09/28） |\n| 確認並完成報銷流程更新 | David | 10/15 前（2026/10/15） |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1199985f-d78d-4d07-aeab-245e6edbc36d",
+        "text": "輸出會使用繁體中文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出使用繁體中文撰寫欄位名稱、待辦內容與說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "整理成待辦事項如下：\n\n| 待辦事項 | 負責人 | 期限 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "warning",
+        "message": "no activation event appeared for the skill version mounted for this run. That is all the trace can say: whether the agent saw the skill and used something else instead is not observable in the message stream (TRACE-002)"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 2166 input and 591 output tokens on gpt-5.4-mini; reported cost $0.0005 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "round": 2,
+  "sample_input": "請幫我做兩份客戶滿意度調查問卷，第一份不要指定產業，請直接產出一份通用版，給我 10 題、繁體中文、可直接貼到 Google 表單使用，並包含題目正文、建議量表與結尾致謝語；第二份以線上購物平台為情境，也請給我 10 題、繁體中文、可直接貼到 Google 表單使用，並包含題目正文、建議量表與結尾致謝語。",
+  "acceptance_criteria": [
+    {
+      "text": "在輸入未指定產業時，輸出仍能生成一份通用版客戶滿意度問卷。"
+    },
+    {
+      "text": "在輸入指定產業時，輸出題目會貼近該產業情境。"
+    },
+    {
+      "text": "在輸入指定題數範圍時，輸出題數符合該範圍。"
+    },
+    {
+      "text": "輸出包含題目正文、建議量表與結尾致謝語。"
+    },
+    {
+      "text": "輸出使用繁體中文。"
+    },
+    {
+      "text": "若使用者要求可直接貼入表單，輸出格式仍保持可複製的題目文字。"
+    }
+  ],
+  "final_output": "以下兩份皆可直接貼到 Google 表單使用。  \n**未指定量表時，以下統一採用 5 點量表**：  \n1＝非常不同意／非常不滿意，2＝不同意／不滿意，3＝普通，4＝同意／滿意，5＝非常同意／非常滿意；另可視需要加上「不適用」。\n\n---\n\n## 一、通用版客戶滿意度調查問卷（10 題）\n\n**表單標題：** 客戶滿意度調查問卷  \n**表單說明：**  \n感謝您撥冗填寫本問卷。您的回饋將協助我們持續優化服務品質與整體體驗。本問卷約需 3–5 分鐘完成，所有資料僅供內部改善使用。\n\n### 題目\n1. 您對本次整體體驗的滿意程度如何？  \n   【建議量表：5 點量表】\n\n2. 您認為本次提供的內容或服務品質是否符合您的期待？  \n   【建議量表：5 點量表】\n\n3. 您在使用或接觸本服務的過程中，是否覺得流程清楚且容易理解？  \n   【建議量表：5 點量表】\n\n4. 您認為我們的回應速度是否足夠迅速？  \n   【建議量表：5 點量表】\n\n5. 您對服務人員或客服人員的態度與專業程度是否滿意？  \n   【建議量表：5 點量表】\n\n6. 您認為本次體驗的便利性是否良好？  \n   【建議量表：5 點量表】\n\n7. 您認為本次體驗的整體價值是否符合您的付出或期待？  \n   【建議量表：5 點量表】\n\n8. 若未來有需要，您願意再次選擇我們嗎？  \n   【建議量表：5 點量表】\n\n9. 您願意將我們推薦給親友或同事嗎？  \n   【建議量表：5 點量表】\n\n10. 請問您對我們有哪些具體建議或希望改善的地方？  \n   【建議量表：段落式回答】\n\n**結尾致謝語：**  \n感謝您的寶貴意見！您的回饋是我們持續進步的重要依據，謝謝您。\n\n---\n\n## 二、線上購物平台情境版客戶滿意度調查問卷（10 題）\n\n**表單標題：** 線上購物平台滿意度調查問卷  \n**表單說明：**  \n感謝您使用我們的線上購物平台。為了持續提升購物體驗，誠摯邀請您提供回饋。本問卷約需 3–5 分鐘完成，您的意見將協助我們優化平台服務。\n\n### 題目\n1. 您對本次整體購物體驗的滿意程度如何？  \n   【建議量表：5 點量表】\n\n2. 您認為平台的商品搜尋與分類功能是否好用？  \n   【建議量表：5 點量表】\n\n3. 您認為商品資訊（如圖片、描述、規格、價格）是否清楚且足夠？  \n   【建議量表：5 點量表】\n\n4. 您在下單與結帳過程中，是否覺得操作順暢、容易完成？  \n   【建議量表：5 點量表】\n\n5. 您對付款方式的便利性與安全性是否滿意？  \n   【建議量表：5 點量表】\n\n6. 您對訂單確認、出貨通知或配送進度資訊是否滿意？  \n   【建議量表：5 點量表】\n\n7. 您對商品配送速度與包裝狀況是否滿意？  \n   【建議量表：5 點量表】\n\n8. 若有退換貨或客服需求，您認為平台的處理流程是否順暢？  \n   【建議量表：5 點量表】\n\n9. 您願意再次使用本平台進行購物嗎？  \n   【建議量表：5 點量表】\n\n10. 請問您最希望平台優先改善的地方是什麼？  \n   【建議量表：段落式回答】\n\n**結尾致謝語：**  \n感謝您的填寫與支持！您的意見將幫助我們持續改善購物體驗，謝謝您。\n\n---\n\n如果你要，我也可以再幫你把這兩份問卷改成 **更正式版、客服語氣版、或 Google 表單欄位格式版**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "67027cc5-68a1-44fa-a103-f893be328cd4",
+    "run_id": "3178a0c2-58f6-43e0-8860-e31e2c4fea73",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "此回覆完成兩份繁體中文、各 10 題的客戶滿意度問卷。通用版未限定產業，線上購物版則具備明確的購物平台情境；兩者皆包含題目、建議量表、結尾致謝與可直接複製使用的編排。",
+    "criterion_results": [
+      {
+        "criterion_id": "aedf3ef8-8bcb-445a-8547-85215e420d65",
+        "text": "在輸入未指定產業時，輸出仍能生成一份通用版客戶滿意度問卷。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出提供未指定產業的通用版客戶滿意度問卷，且內容採用不侷限特定產業的服務與整體體驗措辭。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 一、通用版客戶滿意度調查問卷（10 題）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您對本次整體體驗的滿意程度如何？",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6e842086-5d34-4f8e-b192-a5f704fd6833",
+        "text": "在輸入指定產業時，輸出題目會貼近該產業情境。",
+        "result": "passed",
+        "source": "model",
+        "reason": "線上購物平台版的題目涵蓋商品搜尋、商品資訊、結帳、付款、配送及退換貨等貼近該情境的項目。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 二、線上購物平台情境版客戶滿意度調查問卷（10 題）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您在下單與結帳過程中，是否覺得操作順暢、容易完成？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "若有退換貨或客服需求，您認為平台的處理流程是否順暢？",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7b94252-b9b4-4097-8f37-3e63dcedf1b6",
+        "text": "在輸入指定題數範圍時，輸出題數符合該範圍。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩份問卷均明確標示為 10 題，並各自列出第 1 題至第 10 題。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "## 一、通用版客戶滿意度調查問卷（10 題）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "10. 請問您對我們有哪些具體建議或希望改善的地方？",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "## 二、線上購物平台情境版客戶滿意度調查問卷（10 題）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "10. 請問您最希望平台優先改善的地方是什麼？",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b61c522a-3ef0-4abd-a722-f3da961cb728",
+        "text": "輸出包含題目正文、建議量表與結尾致謝語。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出含有各題題目正文、5 點量表與段落式回答的建議，以及兩份問卷的結尾致謝語。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "1＝非常不同意／非常不滿意，2＝不同意／不滿意，3＝普通，4＝同意／滿意，5＝非常同意／非常滿意；另可視需要加上「不適用」。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "【建議量表：段落式回答】",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**結尾致謝語：**  \n感謝您的寶貴意見！您的回饋是我們持續進步的重要依據，謝謝您。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0cccf727-a280-427e-8e3b-553476945e65",
+        "text": "輸出使用繁體中文。",
+        "result": "passed",
+        "source": "model",
+        "reason": "問卷標題、說明、題目、量表與致謝語均以繁體中文書寫。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "感謝您使用我們的線上購物平台。為了持續提升購物體驗，誠摯邀請您提供回饋。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "您對商品配送速度與包裝狀況是否滿意？",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1c3f94d3-0720-49f1-8474-b94ea8bdd663",
+        "text": "若使用者要求可直接貼入表單，輸出格式仍保持可複製的題目文字。",
+        "result": "undetermined",
+        "source": "model",
+        "reason": "evidence_unverifiable: the quote cited from the agent's final output is not in it, and it is in no other verifiable source of this run. The judge's own reasoning was: 輸出明確表示可直接貼到 Google 表單，並以標題、說明、連號題目及每題量表建議呈現可複製的文字格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "以下兩份皆可直接貼到 Google 表單使用。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 18934 input and 1965 output tokens on gpt-5.4-mini; reported cost $0.0249 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 37,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

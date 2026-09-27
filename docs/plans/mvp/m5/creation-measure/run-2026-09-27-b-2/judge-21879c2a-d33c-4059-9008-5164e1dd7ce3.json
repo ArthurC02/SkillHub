@@ -1,0 +1,118 @@
+{
+  "request": {
+    "RunID": "21879c2a-d33c-4059-9008-5164e1dd7ce3",
+    "EvaluationID": "b4f73a86-32ec-4bb7-9da7-a6b0bac4822c",
+    "Skill": {
+      "Name": "installment-payment-splitter",
+      "Summary": "Calculate equal installment amounts with any remainder added to the final installment. Use this when a request asks how much each payment should be for a total amount and number of periods."
+    },
+    "UserPrompt": "請幫我算這筆分期付款每期要繳多少：\n總金額 1001，期數 3",
+    "Criteria": [
+      {
+        "ID": "3f1855d3-9152-4274-b7b8-56de993b2303",
+        "Text": "當輸入總金額 1000、期數 3 時，輸出前 2 期各 333，最後 1 期 334。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "dd1c5d16-caf6-47f9-b5d9-c30a66cd8c96",
+        "Text": "當輸入總金額 100、期數 4 時，輸出前 3 期各 25，最後 1 期 25。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "b3d53d2a-5997-401e-9553-742cfa80753f",
+        "Text": "當輸入總金額 1001、期數 3 時，輸出前 2 期各 333，最後 1 期 335。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "be157233-5c49-404f-ba64-fb5779e8354d",
+        "Text": "當輸入總金額 10、期數 1 時，輸出只有 1 期且金額為 10.",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "總金額 1001，分 3 期：\n\n1. 第 1 期：333\n2. 第 2 期：333\n3. 第 3 期：335\n\n合計：1001",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "0d70c151-7051-4a2c-8849-0290d5842d27",
+          "OccurredAt": "2026-09-27T08:01:36.774Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"installment-payment-splitter\", \"skill_version_id\": \"d9f93b13-46b3-45cc-88eb-4900017c7f1e\"}"
+        },
+        {
+          "TraceEventID": "1bcd8e37-2293-4363-9a68-77d9447ed7db",
+          "OccurredAt": "2026-09-27T08:01:36.785Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"args\": \"總金額 1001，期數 3\", \"skill\": \"installment-payment-splitter\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 11, \"invocation_id\": \"call_04gUvu6jGNMpTluicmZ6Dzd9\", \"result_summary\": \"Launching skill: installment-payment-splitter\"}"
+        },
+        {
+          "TraceEventID": "bec1c1fe-0971-4d98-a925-01be8b4ac64f",
+          "OccurredAt": "2026-09-27T08:01:38.841Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"總金額 1001，分 3 期：\\n\\n1. 第 1 期：333\\n2. 第 2 期：333\\n3. 第 3 期：335\\n\\n合計：1001\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "a76a0227-2e6f-473d-b04a-bd10f3af1029",
+          "OccurredAt": "2026-09-27T08:01:38.994Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"總金額 1001，分 3 期：\\n\\n1. 第 1 期：333\\n2. 第 2 期：333\\n3. 第 3 期：335\\n\\n合計：1001\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "28cc0b36-23a5-4376-933c-18fe8f9e5273",
+          "OccurredAt": "2026-09-27T08:01:43.041Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0146685, \"cost_source\": \"gateway\", \"duration_ms\": 8910, \"input_tokens\": 19075, \"token_source\": \"result\", \"output_tokens\": 338, \"cache_read_input_tokens\": 17408, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "3f1855d3-9152-4274-b7b8-56de993b2303",
+        "Result": "undetermined",
+        "Reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 1000、期數 3 的執行結果可供驗證。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "dd1c5d16-caf6-47f9-b5d9-c30a66cd8c96",
+        "Result": "undetermined",
+        "Reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 100、期數 4 的執行結果可供驗證。",
+        "Citations": []
+      },
+      {
+        "CriterionID": "b3d53d2a-5997-401e-9553-742cfa80753f",
+        "Result": "passed",
+        "Reason": "最終輸出列出前兩期各為 333，第三期為 335，且合計為 1001。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "總金額 1001，分 3 期：\n\n1. 第 1 期：333\n2. 第 2 期：333\n3. 第 3 期：335\n\n合計：1001"
+          }
+        ]
+      },
+      {
+        "CriterionID": "be157233-5c49-404f-ba64-fb5779e8354d",
+        "Result": "undetermined",
+        "Reason": "本次執行的輸入為總金額 1001、期數 3，沒有總金額 10、期數 1 的執行結果可供驗證。",
+        "Citations": []
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "本次實際測試的 1001 分 3 期情境正確：前兩期各 333，最後一期 335。其餘三個不同輸入情境未在本次執行證據中出現，因此無法判定。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 2167,
+      "CompletionTokens": 531,
+      "CostUSD": 0.0093385,
+      "CostReported": true
+    }
+  }
+}

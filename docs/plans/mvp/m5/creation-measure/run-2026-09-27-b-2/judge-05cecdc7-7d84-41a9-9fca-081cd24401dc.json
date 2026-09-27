@@ -1,0 +1,91 @@
+{
+  "request": {
+    "RunID": "05cecdc7-7d84-41a9-9fca-081cd24401dc",
+    "EvaluationID": "4ba46788-cb2a-4cff-a724-2a30ce36cfff",
+    "Skill": {
+      "Name": "electricity-bill-by-room-size",
+      "Summary": "Calculate how to split a household electricity bill by each person's room size. Use this skill when you are given a total bill amount and room sizes for multiple people and need a proportional per-person breakdown."
+    },
+    "UserPrompt": "這趟差旅費總共 1000 元，依出差天數比例分攤：甲 3 天、乙 2 天、丙 2 天、丁 1 天，請算出四人各要付多少。",
+    "Criteria": [
+      {
+        "ID": "f86345d2-f926-494a-9512-c29461874f42",
+        "Text": "甲要付 375 元，乙要付 250 元，丙要付 250 元，丁要付 125 元。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "065ccbd9-0559-4436-ad04-e459eef685a1",
+        "Text": "四人金額加起來等於 1000 元。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "總共 8 份，1 份是 **1000 ÷ 8 = 125 元**。\n\n- **甲（3 天）**：375 元  \n- **乙（2 天）**：250 元  \n- **丙（2 天）**：250 元  \n- **丁（1 天）**：125 元  \n\n合計：**1000 元**。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "989dfadd-06f4-4fad-84cd-eebd81203ae8",
+          "OccurredAt": "2026-09-27T08:04:26.287Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"總共 8 份，1 份是 **1000 ÷ 8 = 125 元**。\\n\\n- **甲（3 天）**：375 元  \\n- **乙（2 天）**：250 元  \\n- **丙（2 天）**：250 元  \\n- **丁（1 天）**：125 元  \\n\\n合計：**1000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "d59a4f97-caaa-4e82-946f-36269c8bf568",
+          "OccurredAt": "2026-09-27T08:04:26.479Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"總共 8 份，1 份是 **1000 ÷ 8 = 125 元**。\\n\\n- **甲（3 天）**：375 元  \\n- **乙（2 天）**：250 元  \\n- **丙（2 天）**：250 元  \\n- **丁（1 天）**：125 元  \\n\\n合計：**1000 元**。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "7d375a41-e5fb-41e5-8216-6aa32cb34c3e",
+          "OccurredAt": "2026-09-27T08:04:33.535Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"gpt-5.4-mini\", \"scope\": \"run_total\", \"cost_usd\": 0.0038979, \"cost_source\": \"gateway\", \"duration_ms\": 9490, \"input_tokens\": 2121, \"token_source\": \"result\", \"output_tokens\": 154, \"cache_read_input_tokens\": 15872, \"cache_write_input_tokens\": null}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "f86345d2-f926-494a-9512-c29461874f42",
+        "Result": "passed",
+        "Reason": "最終回覆列出甲 375 元、乙 250 元、丙 250 元、丁 125 元，與標準完全一致。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "- **甲（3 天）**：375 元  \n- **乙（2 天）**：250 元  \n- **丙（2 天）**：250 元  \n- **丁（1 天）**：125 元"
+          }
+        ]
+      },
+      {
+        "CriterionID": "065ccbd9-0559-4436-ad04-e459eef685a1",
+        "Result": "passed",
+        "Reason": "最終回覆明確標示合計為 1000 元。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "合計：**1000 元**。"
+          }
+        ]
+      }
+    ],
+    "Overall": "met",
+    "Summary": "兩項驗收標準皆已滿足：四人的分攤金額正確，且合計為 1000 元。",
+    "Model": "gpt-5.6-terra",
+    "PromptVersion": "judge-run/v2",
+    "Usage": {
+      "PromptTokens": 1900,
+      "CompletionTokens": 273,
+      "CostUSD": 0.005575,
+      "CostReported": true
+    }
+  }
+}

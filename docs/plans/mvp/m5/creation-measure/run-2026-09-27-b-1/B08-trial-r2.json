@@ -1,0 +1,163 @@
+{
+  "round": 2,
+  "sample_input": "請把下面這批發票整理成可上傳的核銷資料，並附上本月摘要：\n\n1. 發票號碼：AB12345678\n   日期：2026/09/03\n   廠商：台北文具行\n   品項：A4紙 10包\n   金額：1500\n   稅額：75\n   部門：行政部\n\n2. 發票號碼：CD87654321\n   日期：2026/09/10\n   廠商：幸福餐飲有限公司\n   品項：會議便當 12份\n   金額：2400\n   稅額：120\n   部門：營運部\n\n3. 發票號碼：EF11223344\n   日期：2026/09/18\n   廠商：捷達交通\n   品項：計程車資\n   金額：680\n   稅額：0\n   部門：業務部\n\n4. 日期：2026/09/22\n   廠商：晨光顧問有限公司\n   金額：3200\n   部門：財務部\n   備註：會議顧問費（缺少發票號碼、稅額與品項）",
+  "acceptance_criteria": [
+    {
+      "text": "當輸入多筆發票資料時，Skill 會輸出整理後的結構化表格，而不是只回覆文字摘要。"
+    },
+    {
+      "text": "當輸入包含發票號碼、日期、廠商、金額、稅額或品項時，Skill 會保留或整理成一致欄位。"
+    },
+    {
+      "text": "當輸入包含多筆不同發票時，Skill 會把每筆發票分開列出，且不混寫成單一紀錄。"
+    },
+    {
+      "text": "當輸入含有缺漏欄位時，Skill 會在結果中標示缺漏項目。"
+    },
+    {
+      "text": "當輸入包含本月多張發票時，Skill 會另外產出本月核銷摘要，包含筆數與金額彙總。"
+    },
+    {
+      "text": "當輸入適合匯出時，Skill 會以便於匯入記帳系統的格式輸出，例如表格或 CSV 欄位對應。"
+    }
+  ],
+  "final_output": "以下為整理後可直接貼入/上傳的核銷資料（已統一日期格式並保留缺漏欄位）：\n\n### A. 核銷明細表\n\n| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |\n|---|---|---|---|---:|---:|---|---|\n| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\n| not given | 2026/09/22 | 晨光顧問有限公司 | 會議顧問費 | 3200 | not given | 財務部 | 原始資料缺少發票號碼、稅額與品項；原始備註為「會議顧問費」 |\n\n### B. 本月核銷摘要\n\n- **本月期間**：2026/09\n- **發票筆數**：4 筆\n- **金額合計**：7,780\n- **稅額合計**：195（另有 1 筆稅額未提供）\n- **核銷總計（已知可加總）**：7,975\n- **明顯缺漏欄位筆數**：1 筆\n\n### 缺漏事項\n\n1. **晨光顧問有限公司（2026/09/22）**\n   - 缺少：**發票號碼、稅額、品項**\n   - 目前僅能確認：金額 3,200、部門 財務部、備註「會議顧問費」\n\n如你要，我也可以再幫你轉成 **Excel 可直接貼上的 CSV 格式**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "597c048b-a00f-4a55-8679-12a28040bdd2",
+    "run_id": "eaea5a64-24ca-4fb8-a12a-41045776b15c",
+    "status": "completed",
+    "overall": "met",
+    "summary": "本次輸出提供四筆分列的核銷明細表，欄位一致並標示缺漏資料；另產出 2026/09 的筆數、金額及稅額彙總摘要。表格格式可作為記帳系統匯入欄位對應使用。",
+    "criterion_results": [
+      {
+        "criterion_id": "c48f237b-1343-468d-aa16-b83d98b689bd",
+        "text": "當輸入多筆發票資料時，Skill 會輸出整理後的結構化表格，而不是只回覆文字摘要。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出包含「核銷明細表」的結構化 Markdown 表格，而非僅文字摘要。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ee2aae74-6561-4545-b246-762a0459406b",
+        "text": "當輸入包含發票號碼、日期、廠商、金額、稅額或品項時，Skill 會保留或整理成一致欄位。",
+        "result": "passed",
+        "source": "model",
+        "reason": "表格以一致欄位保留發票號碼、日期、廠商、品項／用途、金額與稅額等資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "961ad996-fa1c-4c30-a3ed-a8373ee7514b",
+        "text": "當輸入包含多筆不同發票時，Skill 會把每筆發票分開列出，且不混寫成單一紀錄。",
+        "result": "passed",
+        "source": "model",
+        "reason": "明細表將四筆資料分為四個獨立列示的紀錄。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| AB12345678 | 2026/09/03 | 台北文具行 | A4紙 10包 | 1500 | 75 | 行政部 | not given |\n| CD87654321 | 2026/09/10 | 幸福餐飲有限公司 | 會議便當 12份 | 2400 | 120 | 營運部 | not given |\n| EF11223344 | 2026/09/18 | 捷達交通 | 計程車資 | 680 | 0 | 業務部 | not given |\n| not given | 2026/09/22 | 晨光顧問有限公司 | 會議顧問費 | 3200 | not given | 財務部 | 原始資料缺少發票號碼、稅額與品項；原始備註為「會議顧問費」 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7eb9936-673f-4ccf-84bb-f44ce94d7e34",
+        "text": "當輸入含有缺漏欄位時，Skill 會在結果中標示缺漏項目。",
+        "result": "passed",
+        "source": "model",
+        "reason": "針對缺漏資料，結果明確標示晨光顧問有限公司缺少發票號碼、稅額及品項。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 缺少：**發票號碼、稅額、品項**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "29795f3b-4912-4d61-bd8e-f99ac63f43ab",
+        "text": "當輸入包含本月多張發票時，Skill 會另外產出本月核銷摘要，包含筆數與金額彙總。",
+        "result": "passed",
+        "source": "model",
+        "reason": "另有本月核銷摘要，包含發票筆數及金額合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- **發票筆數**：4 筆\n- **金額合計**：7,780",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dc3bd0cf-ce3f-4cc5-b4a7-703f63fa4f27",
+        "text": "當輸入適合匯出時，Skill 會以便於匯入記帳系統的格式輸出，例如表格或 CSV 欄位對應。",
+        "result": "passed",
+        "source": "model",
+        "reason": "以欄位明確的結構化表格呈現核銷資料，便於對應匯入記帳系統。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 發票號碼 | 日期 | 廠商 | 品項 / 用途 | 金額 | 稅額 | 部門 | 備註 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 19840 input and 2118 output tokens on gpt-5.4-mini; reported cost $0.0263 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-5.6-terra",
+    "judge_prompt_version": "judge-run/v2",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 25,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
