@@ -1,0 +1,141 @@
+{
+  "round": 1,
+  "sample_input": "請依下列資料寫一則適合 LINE 發布的大學畢業二十週年同學會邀請文，語氣溫馨懷舊，並完整保留四項資料原文。\n同學會名稱：國立青禾大學中文系第 24 屆畢業二十週年同學會\n活動日期：2026年11月7日（星期六）\n集合時間：下午 5:30\n集合地點：台北市大安區和平東路一段 162 號，青禾會館一樓大廳",
+  "acceptance_criteria": [
+    {
+      "text": "對下方試跑輸入，產出一則繁體中文、適合直接發布於 LINE 的邀請文，語氣溫馨懷舊，並明確邀請同學重逢或回憶往日情誼。"
+    },
+    {
+      "text": "邀請文完整保留同學會名稱「國立青禾大學中文系第 24 屆畢業二十週年同學會」，不得省略或改寫。"
+    },
+    {
+      "text": "邀請文完整保留活動日期「2026年11月7日（星期六）」、集合時間「下午 5:30」及集合地點「台北市大安區和平東路一段 162 號，青禾會館一樓大廳」，不得省略或改寫。"
+    },
+    {
+      "text": "邀請文不添加輸入未提供的活動流程、費用、報名期限或其他具體活動資訊。"
+    }
+  ],
+  "final_output": "親愛的同學們：\n\n轉眼間，從青禾大學中文系畢業已經二十年了。那些一起讀書、相伴成長的日子，仍是心中珍貴的回憶。好久不見，期待與大家再相聚，聊聊近況，也重溫當年的情誼！\n\n國立青禾大學中文系第 24 屆畢業二十週年同學會  \n活動日期：2026年11月7日（星期六）  \n集合時間：下午 5:30  \n集合地點：台北市大安區和平東路一段 162 號，青禾會館一樓大廳\n\n期待相見！",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "ed1ca92e-dfee-4c6f-b718-442b5cde3cd0",
+    "run_id": "2b787244-a41e-4162-a36e-a4ee18979f56",
+    "status": "completed",
+    "overall": "met",
+    "summary": "邀請文符合 LINE 發布需求，語氣溫馨懷舊；四項資料均完整保留，且未增添未提供的具體活動資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "5cbe7d72-8ef4-4c8d-bfd9-4aa99c8c1517",
+        "text": "對下方試跑輸入，產出一則繁體中文、適合直接發布於 LINE 的邀請文，語氣溫馨懷舊，並明確邀請同學重逢或回憶往日情誼。",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文使用繁體中文，篇幅與格式適合直接發布於 LINE；語氣溫馨懷舊，並明確邀請同學再相聚、重溫情誼。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "那些一起讀書、相伴成長的日子，仍是心中珍貴的回憶。好久不見，期待與大家再相聚，聊聊近況，也重溫當年的情誼！",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "55787c25-95e8-41a2-a2c6-4833f72f6cd6",
+        "text": "邀請文完整保留同學會名稱「國立青禾大學中文系第 24 屆畢業二十週年同學會」，不得省略或改寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文完整保留同學會名稱原文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "國立青禾大學中文系第 24 屆畢業二十週年同學會",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7ed62a29-8697-4635-bced-5771164dca1c",
+        "text": "邀請文完整保留活動日期「2026年11月7日（星期六）」、集合時間「下午 5:30」及集合地點「台北市大安區和平東路一段 162 號，青禾會館一樓大廳」，不得省略或改寫。",
+        "result": "passed",
+        "source": "model",
+        "reason": "活動日期、集合時間及集合地點均完整保留原文。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月7日（星期六）",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "下午 5:30",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "台北市大安區和平東路一段 162 號，青禾會館一樓大廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4e950cc8-d11c-4674-a47c-6c024052c2e8",
+        "text": "邀請文不添加輸入未提供的活動流程、費用、報名期限或其他具體活動資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "完整邀請文僅包含懷舊邀請文字及提供的四項資料，未添加活動流程、費用、報名期限或其他具體活動資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "親愛的同學們：\n\n轉眼間，從青禾大學中文系畢業已經二十年了。那些一起讀書、相伴成長的日子，仍是心中珍貴的回憶。好久不見，期待與大家再相聚，聊聊近況，也重溫當年的情誼！\n\n國立青禾大學中文系第 24 屆畢業二十週年同學會  \n活動日期：2026年11月7日（星期六）  \n集合時間：下午 5:30  \n集合地點：台北市大安區和平東路一段 162 號，青禾會館一樓大廳\n\n期待相見！",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 672 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

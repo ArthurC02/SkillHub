@@ -1,0 +1,136 @@
+{
+  "round": 0,
+  "sample_input": "同學會名稱：「機械三甲畢業二十週年同學會」，活動日期2026年12月19日（六），集合時間下午5點，地點：台北國賓大飯店3樓宴會廳。請幫我寫一篇邀請文，大概150-200字。",
+  "acceptance_criteria": [
+    {
+      "text": "邀請文中包含同學會名稱「機械三甲畢業二十週年同學會」"
+    },
+    {
+      "text": "邀請文中包含活動日期 2026年12月19日"
+    },
+    {
+      "text": "邀請文中包含集合時間下午5點與地點台北國賓大飯店（或含3樓宴會廳）"
+    },
+    {
+      "text": "沒有捏造未提供的事實，例如虛構其他同學或贊助商或其他日期"
+    }
+  ],
+  "final_output": "「機械三甲畢業二十週年同學會」邀請大家在歲月流轉之中，再次相聚，重拾年少求學時的歡笑與珍貴情誼。畢業二十年，想必各自走過不同風景；無論生活如何變化，那段一起努力、一起成長的日子，仍值得我們好好回味。誠摯邀請你撥冗出席，與老同學相見、聊聊近況，讓熟悉的情誼再次延續。期待在這個溫暖的夜晚，和你一起留下屬於我們的美好回憶。\n\n同學會名稱：機械三甲畢業二十週年同學會  \n活動日期：2026年12月19日（六）  \n集合時間：下午5點  \n集合地點：台北國賓大飯店3樓宴會廳",
+  "artifacts": [
+    "invitation.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "6ec757db-bcc6-450c-bdc3-70475cb194f9",
+    "run_id": "06492294-c248-4205-891e-37ad8be1ea30",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收條件均已符合：名稱、日期、時間與地點完整呈現，邀請文也未見捏造額外事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "fa54ab9b-b5c0-4ce1-af14-eab943844b6a",
+        "text": "邀請文中包含同學會名稱「機械三甲畢業二十週年同學會」",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文包含指定的同學會名稱。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "「機械三甲畢業二十週年同學會」",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "d7416b33-a7be-41e3-8d05-14da8ac5b592",
+        "text": "邀請文中包含活動日期 2026年12月19日",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文列出指定活動日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "活動日期：2026年12月19日（六）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "318bc946-a697-4bcf-ad58-989bea22d3d0",
+        "text": "邀請文中包含集合時間下午5點與地點台北國賓大飯店（或含3樓宴會廳）",
+        "result": "passed",
+        "source": "model",
+        "reason": "邀請文列出下午5點及台北國賓大飯店3樓宴會廳。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "集合時間：下午5點",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "集合地點：台北國賓大飯店3樓宴會廳",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "982d1d43-eba1-48e2-920d-909b79b2dfac",
+        "text": "沒有捏造未提供的事實，例如虛構其他同學或贊助商或其他日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "文中以懷舊語句表達邀請，未見虛構其他同學、贊助商、日期或具體活動安排。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "誠摯邀請你撥冗出席，與老同學相見、聊聊近況，讓熟悉的情誼再次延續。期待在這個溫暖的夜晚，和你一起留下屬於我們的美好回憶。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): invitation.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1544 input and 1182 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 16,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

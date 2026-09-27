@@ -1,0 +1,78 @@
+{
+  "round": 0,
+  "sample_input": "外送距離 17.9 公里，請算這趟的運費。",
+  "acceptance_criteria": [
+    {
+      "text": "運費為 380 元"
+    }
+  ],
+  "final_output": "| 原始距離 | 進位後距離 | 運費（新台幣） | 計算說明 |\n|---|---:|---:|---|\n| 17.9 公里 | 18 公里 | 380 元 | 180 + (18−10)×25 = 380 元 |\n\n以上依單趟單程計算，未計來回或其他附加費。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "705c7837-97f4-495c-b24e-230f5b141282",
+    "run_id": "73bb6927-562e-4acd-a2ad-2e0488c67385",
+    "status": "completed",
+    "overall": "met",
+    "summary": "這趟的運費計算結果為 380 元，符合驗收標準。",
+    "criterion_results": [
+      {
+        "criterion_id": "e6cf0479-c4f6-4e12-ae54-7481f9c8a375",
+        "text": "運費為 380 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終回覆將 17.9 公里進位為 18 公里，計算並列出運費為 380 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 17.9 公里 | 18 公里 | 380 元 | 180 + (18−10)×25 = 380 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1512 input and 241 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 8,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

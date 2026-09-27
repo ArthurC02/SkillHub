@@ -1,0 +1,134 @@
+{
+  "round": 0,
+  "sample_input": "這是本次進貨紀錄：\n紅玫瑰 進貨數量100束，單價35元，後面又寫紅玫瑰其實到貨只有80束\n滿天星 數量-20束，單價20元\n多肉植物 進貨日期2026年06月31日，數量50盆，單價60元\n太陽花 數量50束，單價30元\n尤加利葉 數量30束，單價45元\n請幫我整理並算出總金額。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出指出紅玫瑰有兩個不同進貨數量（100束與80束），需要人工確認，而不是自己選一個或相加"
+    },
+    {
+      "text": "輸出指出滿天星數量為 -20束這件事不合理，需要人工確認，而不是直接當成負數量計入"
+    },
+    {
+      "text": "輸出指出多肉植物記錄的 2026年06月31日這個日期不存在（6月沒有31日），需要人工確認正確日期"
+    },
+    {
+      "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額"
+    }
+  ],
+  "final_output": "目前驗收清單無法通過日期與數量檢核，因此暫不列每筆金額及總金額。\n\n| 日期 | 品項 | 數量 | 單價 |\n|---|---|---:|---:|\n| 未提供 | 紅玫瑰 | 80束（原記100束，後更正為實到80束） | 35元 |\n| 未提供 | 滿天星 | -20束 | 20元 |\n| 2026年06月31日 | 多肉植物 | 50盆 | 60元 |\n| 未提供 | 太陽花 | 50束 | 30元 |\n| 未提供 | 尤加利葉 | 30束 | 45元 |\n\n腳本回報的錯誤如下：\n\n\u003e 第1筆日期「未提供」不是有效日期，請確認；第2筆日期「未提供」不是有效日期，請確認；第2筆數量「-20」為負值，請確認；第3筆日期「2026年06月31日」不是有效日期，請確認；第4筆日期「未提供」不是有效日期，請確認；第5筆日期「未提供」不是有效日期，請確認\n\n請補上紅玫瑰、滿天星、太陽花及尤加利葉的進貨日期，確認多肉植物的正確日期，並確認滿天星的數量是否確為 **-20束**。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "330929da-211b-4314-a1db-d81674787adc",
+    "run_id": "7556be1b-5daf-4ead-9fbc-a3a945303f60",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "輸出辨識了滿天星的負數量與多肉植物的無效日期，也未給出確定總額。但它自行將紅玫瑰的80束視為更正後數量，未要求確認100束與80束的差異。",
+    "criterion_results": [
+      {
+        "criterion_id": "a1404ba7-13ae-45e6-b94c-fb80736d4afe",
+        "text": "輸出指出紅玫瑰有兩個不同進貨數量（100束與80束），需要人工確認，而不是自己選一個或相加",
+        "result": "failed",
+        "source": "model",
+        "reason": "輸出列出100束與80束，但將80束視為已更正的實到數量，沒有要求人工確認兩個數量的差異。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "80束（原記100束，後更正為實到80束）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1352abe0-a4c0-4e73-a1e8-4667591051ed",
+        "text": "輸出指出滿天星數量為 -20束這件事不合理，需要人工確認，而不是直接當成負數量計入",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指出滿天星的負數量需要確認，且未將其計入金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第2筆數量「-20」為負值，請確認",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b19fecf9-3733-4ce9-b21b-5fd3b294b707",
+        "text": "輸出指出多肉植物記錄的 2026年06月31日這個日期不存在（6月沒有31日），需要人工確認正確日期",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指出多肉植物記錄的2026年06月31日不是有效日期，並要求確認正確日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第3筆日期「2026年06月31日」不是有效日期，請確認",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "確認多肉植物的正確日期",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1d26d1eb-b49f-4192-90e8-596cd851c303",
+        "text": "在有疑義的項目未確認前，輸出沒有給出一個確定的總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出明確表示暫不列出總金額，沒有給出確定總額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前驗收清單無法通過日期與數量檢核，因此暫不列每筆金額及總金額。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 1846 output tokens on skillhub-run; reported cost $0.0041 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

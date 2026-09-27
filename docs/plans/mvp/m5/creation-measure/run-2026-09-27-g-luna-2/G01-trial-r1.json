@@ -1,0 +1,183 @@
+{
+  "round": 1,
+  "sample_input": "請逐筆計算以下銀髮族送餐單趟距離的運費，列出原始距離、進位後距離、計算方式及運費。\nA, 3 公里\nB, 3.2 公里\nC, 10 公里\nD, 10.2 公里\nE, 18.2 公里",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸入中的所有紀錄都逐筆出現在結果中，並列出原始距離、進位後公里數、計算方式及運費。"
+    },
+    {
+      "text": "紀錄 A 的 3 公里進位後為 3 公里，運費為 100 元。"
+    },
+    {
+      "text": "紀錄 B 的 3.2 公里無條件進位後為 4 公里，運費為 180 元。"
+    },
+    {
+      "text": "紀錄 C 的 10 公里進位後為 10 公里，運費為 180 元。"
+    },
+    {
+      "text": "紀錄 D 的 10.2 公里進位後為 11 公里，運費計算為 180 + (11−10)×25，結果為 205 元。"
+    },
+    {
+      "text": "紀錄 E 的 18.2 公里進位後為 19 公里，未封頂金額為 180 + (19−10)×25 = 405 元，最後運費為 400 元。"
+    }
+  ],
+  "final_output": "A：原始距離 3 公里；進位後 3 公里；計算方式 100 元；運費 100 元  \nB：原始距離 3.2 公里；進位後 4 公里；計算方式 180 元；運費 180 元  \nC：原始距離 10 公里；進位後 10 公里；計算方式 180 元；運費 180 元  \nD：原始距離 10.2 公里；進位後 11 公里；計算方式 min(400, 180 + (11−10)×25)=205 元；運費 205 元  \nE：原始距離 18.2 公里；進位後 19 公里；計算方式 min(400, 180 + (19−10)×25)=400 元；運費 400 元",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "a448ad3b-eb7e-4239-8e47-da5f8878f536",
+    "run_id": "2fb236f8-19ef-470a-8789-01a0521f58e2",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五筆紀錄均逐筆列出，進位距離、計算方式與運費皆符合各項標準。E 雖未另寫出未封頂金額 405 元，但列出的算式可直接算得該金額，並正確套用 400 元上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "d6ddf8eb-0827-4227-a215-d8473f5ff46a",
+        "text": "試跑輸入中的所有紀錄都逐筆出現在結果中，並列出原始距離、進位後公里數、計算方式及運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "結果逐筆列出 A 至 E，且每筆都有原始距離、進位後公里數、計算方式及運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：原始距離 3 公里；進位後 3 公里；計算方式 100 元；運費 100 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：原始距離 3.2 公里；進位後 4 公里；計算方式 180 元；運費 180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C：原始距離 10 公里；進位後 10 公里；計算方式 180 元；運費 180 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：原始距離 10.2 公里；進位後 11 公里；計算方式 min(400, 180 + (11−10)×25)=205 元；運費 205 元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "E：原始距離 18.2 公里；進位後 19 公里；計算方式 min(400, 180 + (19−10)×25)=400 元；運費 400 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "914ecdd4-b9fc-4865-b5e7-990b428d8be6",
+        "text": "紀錄 A 的 3 公里進位後為 3 公里，運費為 100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 的 3 公里進位後仍為 3 公里，運費為 100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：原始距離 3 公里；進位後 3 公里；計算方式 100 元；運費 100 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ab61006c-cc23-451c-a926-cc065eb3c37c",
+        "text": "紀錄 B 的 3.2 公里無條件進位後為 4 公里，運費為 180 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "B 的 3.2 公里進位為 4 公里，運費為 180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "B：原始距離 3.2 公里；進位後 4 公里；計算方式 180 元；運費 180 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b17c2fd4-2b78-491d-80db-01f446e217cb",
+        "text": "紀錄 C 的 10 公里進位後為 10 公里，運費為 180 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C 的 10 公里進位後仍為 10 公里，運費為 180 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C：原始距離 10 公里；進位後 10 公里；計算方式 180 元；運費 180 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0138c0eb-db4e-4391-8019-d30a743869a3",
+        "text": "紀錄 D 的 10.2 公里進位後為 11 公里，運費計算為 180 + (11−10)×25，結果為 205 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "D 的 10.2 公里進位為 11 公里；所列公式包含 180 + (11−10)×25，結果為 205 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "D：原始距離 10.2 公里；進位後 11 公里；計算方式 min(400, 180 + (11−10)×25)=205 元；運費 205 元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5bd494d1-90bc-40f2-ac53-1bfce2091434",
+        "text": "紀錄 E 的 18.2 公里進位後為 19 公里，未封頂金額為 180 + (19−10)×25 = 405 元，最後運費為 400 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E 的 18.2 公里進位為 19 公里；所列未封頂算式 180 + (19−10)×25 等於 405 元，套用 400 元上限後運費為 400 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "E：原始距離 18.2 公里；進位後 19 公里；計算方式 min(400, 180 + (19−10)×25)=400 元；運費 400 元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1533 input and 478 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 27,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

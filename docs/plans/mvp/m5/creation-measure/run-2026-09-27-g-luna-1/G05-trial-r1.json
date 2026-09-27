@@ -1,0 +1,155 @@
+{
+  "round": 1,
+  "sample_input": "請將下面兩筆資料各自寫成貸款核准結果通知。\n第 1 筆：核准金額：新臺幣 1,200,000 元；首期還款日期：2026 年 11 月 15 日；貸款方案：安心房貸；年利率：2.35%；貸款期間：20 年；還款方式：本息平均攤還；帳務通知方式：電子郵件；專員：林小姐，02-2345-6789；撥款日：2026 年 10 月 1 日。\n第 2 筆：首期還款日期：2026 年 12 月 1 日；貸款方案：小額信用貸款；年利率：4.8%。",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。"
+    },
+    {
+      "text": "對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。"
+    },
+    {
+      "text": "對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。"
+    },
+    {
+      "text": "對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。"
+    },
+    {
+      "text": "對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。"
+    }
+  ],
+  "final_output": "第 1 筆  \n通知本文：您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。\n\n第 2 筆  \n通知本文：您的小額信用貸款已核准，核准金額為未提供，首期還款日期為 2026 年 12 月 1 日。年利率為 4.8%。",
+  "artifacts": [
+    "answer.txt",
+    "notification-1.txt",
+    "notification-2.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "8707f3fb-15bf-459e-9596-a0b45698bdbd",
+    "run_id": "68e709d2-c88e-4413-aed7-1ae590084caa",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "兩筆通知均以繁體中文撰寫、各不超過兩句，指定日期與金額處理也符合要求。第 1 筆雖列出所有提供的資訊，但將多項資訊合併後，未另附說明指出合併了哪些資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "6133f802-e23a-4453-93fd-cc91e741fe13",
+        "text": "對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆通知本文共兩句，且原樣包含核准金額與首期還款日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e7302894-b403-4840-9c93-86fed455289f",
+        "text": "對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。",
+        "result": "failed",
+        "source": "model",
+        "reason": "第 1 筆將多項資訊合併於通知本文第二句，但沒有另提供一句指出合併資訊的補充說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆  \n通知本文：您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7dc55aab-9305-4f0d-aaa9-6b6fb9d28387",
+        "text": "對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆通知本文列出貸款方案、年利率、期間、還款方式、帳務通知方式、專員及電話、撥款日，沒有默默省略這些資訊。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b47abc02-86b9-459e-b206-c7869af5185c",
+        "text": "對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆通知本文包含指定首期還款日期，並明確寫出「核准金額為未提供」，未編造金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的小額信用貸款已核准，核准金額為未提供，首期還款日期為 2026 年 12 月 1 日。年利率為 4.8%。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1a0695a7-f08f-4a70-92ff-a9222d758d05",
+        "text": "對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆資料分別標示並以繁體中文撰寫；每筆通知本文均為兩句，且沒有需與本文區分的補充說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆  \n通知本文：您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆  \n通知本文：您的小額信用貸款已核准，核准金額為未提供，首期還款日期為 2026 年 12 月 1 日。年利率為 4.8%。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 3 readable output file(s): answer.txt, notification-1.txt, notification-2.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1579 input and 1726 output tokens on skillhub-run; reported cost $0.0047 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 31,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "round": 0,
+  "sample_input": "核准金額80萬元，年利率2.1%，貸款期數240期（20年），首期還款日期2026年11月5日，承辦分行為松山分行，經辦專員陳專員分機1234，需於10月30日前完成對保，尚需檢附在職證明與最新月對帳單，逾期未繳將產生違約金。請幫我寫貸款核准結果通知。",
+  "acceptance_criteria": [
+    {
+      "text": "通知本文不超過 2 句話（不含說明省略內容的那一句）"
+    },
+    {
+      "text": "本文包含核准金額 80 萬元（或等同表示如 800,000 元）"
+    },
+    {
+      "text": "本文包含首期還款日期 2026 年 11 月 5 日"
+    },
+    {
+      "text": "輸出另有一句話說明為了守住 2 句話上限而省略或合併了哪些資訊"
+    }
+  ],
+  "final_output": "通知本文：\n您的貸款核准金額為80萬元，首期還款日期為2026年11月5日。貸款年利率為2.1%、期數為240期（20年），承辦分行為松山分行、經辦專員為陳專員（分機1234），請於2026年10月30日前完成對保並檢附在職證明及最新月對帳單；逾期未繳將產生違約金。\n\n補充說明：\n第二句將年利率與貸款期數、承辦分行與經辦專員及分機、對保期限與應檢附文件，以及逾期未繳將產生違約金的說明放在一起；提供的資料均已納入通知本文。",
+  "artifacts": [
+    "loan-approval-notification.txt",
+    "loan-notice-body.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "8ade2062-f6c0-41d9-b080-2bdb0880f53f",
+    "run_id": "6e010f8a-a828-415b-b7c3-2e0e35c49515",
+    "status": "completed",
+    "overall": "met",
+    "summary": "通知本文為兩句，包含80萬元核准金額及2026年11月5日首期還款日期；另以一句說明哪些資訊合併於第二句。",
+    "criterion_results": [
+      {
+        "criterion_id": "479b3104-004e-4ebb-b91f-ddcf7f19d675",
+        "text": "通知本文不超過 2 句話（不含說明省略內容的那一句）",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文恰有兩句，不計另列的補充說明。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的貸款核准金額為80萬元，首期還款日期為2026年11月5日。貸款年利率為2.1%、期數為240期（20年），承辦分行為松山分行、經辦專員為陳專員（分機1234），請於2026年10月30日前完成對保並檢附在職證明及最新月對帳單；逾期未繳將產生違約金。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "33c0dc4d-e2d3-4a6d-bf1e-0647355c4c61",
+        "text": "本文包含核准金額 80 萬元（或等同表示如 800,000 元）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文明確寫出核准金額為80萬元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "您的貸款核准金額為80萬元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ba40af21-d083-44a2-a0ff-90ac13cc3b0c",
+        "text": "本文包含首期還款日期 2026 年 11 月 5 日",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文明確寫出首期還款日期為2026年11月5日。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "首期還款日期為2026年11月5日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6284cfca-b99a-406a-9733-c68459f2cce2",
+        "text": "輸出另有一句話說明為了守住 2 句話上限而省略或合併了哪些資訊",
+        "result": "passed",
+        "source": "model",
+        "reason": "另有一句補充說明，列出合併到第二句的資訊；通知本文沒有省略所提供的資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第二句將年利率與貸款期數、承辦分行與經辦專員及分機、對保期限與應檢附文件，以及逾期未繳將產生違約金的說明放在一起；提供的資料均已納入通知本文。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): loan-approval-notification.txt, loan-notice-body.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1619 input and 5652 output tokens on skillhub-run; reported cost $0.0070 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

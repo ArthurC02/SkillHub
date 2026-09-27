@@ -1,0 +1,112 @@
+{
+  "round": 0,
+  "sample_input": "入住 2026-11-06（五）入住，2026-11-08（日）退房，這次住宿總金額是多少？",
+  "acceptance_criteria": [
+    {
+      "text": "輸出算出一個具體的總金額數字，不是只反問使用者假日要加價多少"
+    },
+    {
+      "text": "11/6（平日）那晚以 800 元計價"
+    },
+    {
+      "text": "11/7（六，假日）那晚房價高於 800 元"
+    }
+  ],
+  "final_output": "這次住宿共 **2 晚**：\n\n- 2026-11-06（五）：平日，NT$800\n- 2026-11-07（六）：假日，NT$1,000\n\n**總金額：NT$1,800**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "62a69422-7746-42ce-8334-c1bca11ee936",
+    "run_id": "afc216f6-550b-4553-93ff-411123378b48",
+    "status": "completed",
+    "overall": "met",
+    "summary": "三項驗收標準均已達成：兩晚分別計價 NT$800 與 NT$1,000，總金額為 NT$1,800。",
+    "criterion_results": [
+      {
+        "criterion_id": "4c08e6c7-116d-4bf4-aab3-edffeda47d7e",
+        "text": "輸出算出一個具體的總金額數字，不是只反問使用者假日要加價多少",
+        "result": "passed",
+        "source": "model",
+        "reason": "明確給出住宿總金額 NT$1,800。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：NT$1,800**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "4a748086-1eae-4fc2-a453-15ef74d93684",
+        "text": "11/6（平日）那晚以 800 元計價",
+        "result": "passed",
+        "source": "model",
+        "reason": "11 月 6 日那晚列為平日，房價為 NT$800。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-11-06（五）：平日，NT$800",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "6685727a-925d-4977-8c72-55ec0d22cdf4",
+        "text": "11/7（六，假日）那晚房價高於 800 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "11 月 7 日那晚列為假日，房價 NT$1,000，高於 NT$800。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- 2026-11-07（六）：假日，NT$1,000",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 377 output tokens on skillhub-run; reported cost $0.0033 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 12,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "acceptance_criteria": [
+    "對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。",
+    "對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。",
+    "對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。",
+    "對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。",
+    "對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。"
+  ],
+  "brief": "建立一個以繁體中文撰寫「貸款核准結果通知」的 Skill。輸入是使用者提供的一筆或多筆核准資料，包含核准金額、首期還款日期及可選的其他資訊。每筆資料各自產出通知本文，最多兩句，並且必須包含核准金額與首期還款日期；若必要資訊缺漏，以「未提供」明確標示，不猜測或捏造。優先保留兩項必要資訊，再盡量精簡納入其他資訊；若有資訊省略或合併，另以一句不計入通知本文句數的補充說明，指出省略或合併了哪些資訊；若沒有省略或合併則不需補充說明。輸出以繁體中文呈現，清楚區分通知本文與補充說明。假設以「。」「！」「？」作為句子結束標記，通知本文不得超過兩句。無需外部工具、查詢或資料來源；只依據使用者提供的資料。限制：不自行推斷或補造貸款條件、金額、日期或其他事實。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我做一個寫『貸款核准結果通知』的 Skill：通知本文不能超過 2 句話，但一定要包含核准金額和首期還款日期這兩項；如果我提供的其他資訊塞不進 2 句話，可以省略或合併，但請額外用一句話（不算在 2 句話的上限內）告訴我省略或合併了哪些資訊。",
+      "created_at": "2026-09-27T17:05:02.412028258Z"
+    },
+    {
+      "role": "assistant",
+      "content": "若未提供核准金額或首期還款日期，Skill 是否應先追問缺少的資料，而不自行補猜？我會預設通知使用繁體中文，且只使用你提供的資訊。",
+      "created_at": "2026-09-27T17:05:07.985973134Z"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。",
+      "created_at": "2026-09-27T17:05:07.992142943Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先查找是否有可參考的通知撰寫 Skill。",
+      "created_at": "2026-09-27T17:05:10.827957801Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄裡沒有符合的 Skill（第 1／2 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。",
+      "created_at": "2026-09-27T17:05:12.381885341Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我再用不同關鍵詞搜尋一次相關 Skill。",
+      "created_at": "2026-09-27T17:05:20.847364337Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。",
+      "created_at": "2026-09-27T17:05:21.750589688Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認以下 Skill 規格。特別是缺少核准金額或首期還款日期時，我採用明確標示「未提供」而不捏造數值的做法；通知仍會保留該必要欄位。",
+      "created_at": "2026-09-27T17:05:47.842551242Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依確認的規格起草 Skill，現在提交 Go 驗證。",
+      "created_at": "2026-09-27T17:06:12.340419251Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T17:06:12.343635664Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Go 靜態驗證已通過（blocked=false），但目前沒有試跑評估，因此尚不能確認 Skill 的實際輸出是否符合全部標準。以下是已驗證的草稿；請從此草稿開始試跑，之後可把評估結果帶回來修訂。",
+      "created_at": "2026-09-27T17:06:24.441327704Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"8707f3fb-15bf-459e-9596-a0b45698bdbd\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"兩筆通知均以繁體中文撰寫、各不超過兩句，指定日期與金額處理也符合要求。第 1 筆雖列出所有提供的資訊，但將多項資訊合併後，未另附說明指出合併了哪些資訊。\",\"criterion_results\":[{\"criterion_id\":\"e7302894-b403-4840-9c93-86fed455289f\",\"text\":\"對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":148},\"excerpt\":\"第 1 筆  \\n通知本文：您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第 1 筆將多項資訊合併於通知本文第二句，但沒有另提供一句指出合併資訊的補充說明。\"},{\"criterion_id\":\"6133f802-e23a-4453-93fd-cc91e741fe13\",\"text\":\"對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":13,\"end\":148},\"excerpt\":\"您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第 1 筆通知本文共兩句，且原樣包含核准金額與首期還款日期。\"},{\"criterion_id\":\"7dc55aab-9305-4f0d-aaa9-6b6fb9d28387\",\"text\":\"對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":13,\"end\":148},\"excerpt\":\"您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第 1 筆通知本文列出貸款方案、年利率、期間、還款方式、帳務通知方式、專員及電話、撥款日，沒有默默省略這些資訊。\"},{\"criterion_id\":\"b47abc02-86b9-459e-b206-c7869af5185c\",\"text\":\"對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":163,\"end\":218},\"excerpt\":\"您的小額信用貸款已核准，核准金額為未提供，首期還款日期為 2026 年 12 月 1 日。年利率為 4.8%。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"第 2 筆通知本文包含指定首期還款日期，並明確寫出「核准金額為未提供」，未編造金額。\"},{\"criterion_id\":\"1a0695a7-f08f-4a70-92ff-a9222d758d05\",\"text\":\"對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":148},\"excerpt\":\"第 1 筆  \\n通知本文：您的安心房貸已核准新臺幣 1,200,000 元，首期還款日期為 2026 年 11 月 15 日。年利率為 2.35%，貸款期間 20 年，採本息平均攤還，帳務通知方式為電子郵件，撥款日為 2026 年 10 月 1 日；專員為林小姐，電話 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":150,\"end\":218},\"excerpt\":\"第 2 筆  \\n通知本文：您的小額信用貸款已核准，核准金額為未提供，首期還款日期為 2026 年 12 月 1 日。年利率為 4.8%。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"兩筆資料分別標示並以繁體中文撰寫；每筆通知本文均為兩句，且沒有需與本文區分的補充說明。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"7aaa04a1-c51e-4f95-b539-878949565508\",\"occurred_at\":\"2026-09-27T17:06:45.356Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"loan-approval-notification\\\", \\\"skill_version_id\\\": \\\"03c908b5-017e-45a7-b7b2-6a51a02b51ce\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the run recorded 3 readable output file(s): answer.txt, notification-1.txt, notification-2.txt\",\"evidence\":[{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"answer.txt\",\"excerpt\":\"answer.txt (464 bytes, application/octet-stream, fa08e44dcbc6c8ed5def2ae889fefb65d62041974594048c488c4ac9409291e2)\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"notification-1.txt\",\"excerpt\":\"notification-1.txt (283 bytes, application/octet-stream, e278618e8ef390d0018a17e1cccdcc9c386d97e0463348a30ce63d2a71ffd161)\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"notification-2.txt\",\"excerpt\":\"notification-2.txt (129 bytes, application/octet-stream, 60949f247015faa66a6175dd286273006aa905d17fd6a32138790ed31b4ce1d8)\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1579 input and 1726 output tokens on skillhub-run; reported cost $0.0047 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"68e709d2-c88e-4413-aed7-1ae590084caa\",\"skill_version_id\":\"03c908b5-017e-45a7-b7b2-6a51a02b51ce\"}",
+      "created_at": "2026-09-27T17:07:27.242455764Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。」：沒過——第 1 筆將多項資訊合併於通知本文第二句，但沒有另提供一句指出合併資訊的補充說明。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T17:07:27.242577273Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T17:07:27.258573175Z"
+    },
+    {
+      "role": "assistant",
+      "content": "試跑有 1 項條件未通過：樣本第 1 筆把多項其他資訊合併在通知本文第二句，卻沒有另寫補充說明點名哪些資訊被合併。其餘條件均通過。我已按要求保留所有條件與範例輸入，並修改步驟 2，明確要求只要兩項以上其他資料放在同一句或同一分句，就須逐項指出；未納入的資料也須逐項列明。你可以接受這份修訂草稿，或告訴我還要改哪些地方。",
+      "created_at": "2026-09-27T17:08:01.089281408Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T17:08:01.093730514Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

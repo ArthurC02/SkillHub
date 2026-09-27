@@ -1,0 +1,131 @@
+{
+  "round": 0,
+  "sample_input": "客戶說：我是林先生，車牌ABC-1234，想約定期保養，希望約2026年11月12日星期四下午3點過去，預估費用是2500元，我電話0922333444。",
+  "acceptance_criteria": [
+    {
+      "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字"
+    },
+    {
+      "text": "本文總字數（含標點與英數字）不超過 32 字"
+    },
+    {
+      "text": "本文包含日期 11/12（或 2026/11/12 等同表示）與時間 15:00（或下午3點等同表示）"
+    },
+    {
+      "text": "本文包含預估費用 2500 元"
+    }
+  ],
+  "final_output": "2026年11月12日 下午3點 費用2500元",
+  "artifacts": [
+    "answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "13cd939c-7d63-4afc-805b-bd57078d7ae1",
+    "run_id": "e19dd9ac-cf9b-4512-998a-2e84acd1a338",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：最終輸出為單行簡訊，字數符合限制，且包含指定日期、時間及費用。",
+    "criterion_results": [
+      {
+        "criterion_id": "c58612a3-620e-4456-8ff8-458c71f8610c",
+        "text": "輸出只有簡訊本文一行，沒有附加任何字數統計或說明文字",
+        "result": "passed",
+        "source": "model",
+        "reason": "最終輸出只有一行簡訊本文，沒有字數統計或說明文字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月12日 下午3點 費用2500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "b1379ba1-4033-4cf4-b9f6-2d4d1aaff151",
+        "text": "本文總字數（含標點與英數字）不超過 32 字",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文含空格共 24 字元，未超過 32 字元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月12日 下午3點 費用2500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ac40c27b-14ee-44ea-9539-9faf8c764c3e",
+        "text": "本文包含日期 11/12（或 2026/11/12 等同表示）與時間 15:00（或下午3點等同表示）",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含日期「2026年11月12日」及時間「下午3點」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "2026年11月12日 下午3點 費用2500元",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "dfbe65d4-5f3a-4bc8-a7a4-6ab70374f1d8",
+        "text": "本文包含預估費用 2500 元",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文包含費用「2500元」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "費用2500元",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1590 input and 1205 output tokens on skillhub-run; reported cost $0.0044 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 17,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

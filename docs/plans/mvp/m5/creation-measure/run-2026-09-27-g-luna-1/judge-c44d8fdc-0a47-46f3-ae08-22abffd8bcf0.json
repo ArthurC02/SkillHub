@@ -1,0 +1,205 @@
+{
+  "request": {
+    "RunID": "c44d8fdc-0a47-46f3-ae08-22abffd8bcf0",
+    "EvaluationID": "6d39aa6f-1b6b-4bfb-9a5b-e7f7f2962acb",
+    "Skill": {
+      "Name": "management-fee-overdue-notice",
+      "Summary": "依住戶管理費到期日、查核日與繳費狀態，判斷是否逾期未繳滿 60 個日曆日，並為符合門檻的住戶產生管理費催繳通知、簡訊文案及人工操作指引。當你需要處理住戶管理費逾期催繳、但沒有可用的社區管理系統或簡訊工具時使用。"
+    },
+    "UserPrompt": "請依查核日判斷下列住戶是否逾期未繳滿 60 天，並依規則產生所需文案與人工操作指引。\n查核日：2026-09-27\n住戶資料：\n甲戶｜住戶：林美玲｜管理費：新臺幣 3,000 元｜到期日：2026-07-30｜電話：0912-345-678｜狀態：未繳\n乙戶｜住戶：陳志明｜管理費：新臺幣 4,500 元｜到期日：2026-07-29｜電話：0987-654-321｜狀態：未繳",
+    "Criteria": [
+      {
+        "ID": "66957d52-fc72-4c08-8986-20de28800cdc",
+        "Text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-30 的甲戶逾期 59 天；輸出須判定未達 60 天，且不為甲戶產生催繳通知、簡訊文案或欠繳戶處理指引。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2c2edcec-7f6a-4c73-99c1-27a337636a0e",
+        "Text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-29 的乙戶逾期 60 天；輸出須判定已達門檻，並為乙戶產生管理費催繳通知及簡訊文案。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "cf21c44c-d4f7-4d55-81fa-fcca6035a17b",
+        "Text": "乙戶的催繳通知與簡訊文案須正確帶入輸入中的戶別、住戶姓名、金額及到期日，不得捏造其他帳務資料或法律後果。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "315d6379-e065-4fd5-aa48-e8358bd9a627",
+        "Text": "乙戶的輸出須附上由人工登入社區管理系統、將該戶標記為「欠繳戶」及發送簡訊的操作指引；不得聲稱這些操作已完成。",
+        "EvidenceExcerpt": ""
+      },
+      {
+        "ID": "2d101406-61e9-419d-8805-cd0ce189dff8",
+        "Text": "輸出須按住戶分開呈現判定結果；甲戶與乙戶不得混淆或互用資料。",
+        "EvidenceExcerpt": ""
+      }
+    ],
+    "Rubric": null,
+    "FinalOutput": "戶別：甲戶｜住戶：林美玲\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\n\n戶別：乙戶｜住戶：陳志明\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\n判定：已逾期未繳滿 60 天。\n管理費催繳通知：\n陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\n簡訊文案：\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\n不能從這裡登入或標記系統；須由社區管理負責人操作。\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\n\n- 無法從這裡登入或標記社區管理系統；由社區管理負責人依既有流程操作。\n- 無法從這裡發送簡訊；由社區管理負責人使用核准的管道發送。",
+    "Artifacts": [],
+    "TraceDigest": {
+      "Complete": true,
+      "Entries": [
+        {
+          "TraceEventID": "4fdc95dc-af58-4e5d-81da-7fa962018ed4",
+          "OccurredAt": "2026-09-27T17:14:38.868Z",
+          "Type": "skill_activation",
+          "Excerpt": "{\"reason\": null, \"decision\": \"activated\", \"skill_name\": \"management-fee-overdue-notice\", \"skill_version_id\": \"9f84dd07-9881-40f4-a889-22bd025bee89\"}"
+        },
+        {
+          "TraceEventID": "c8c6dab2-fad1-4525-8521-41d03a6d43a4",
+          "OccurredAt": "2026-09-27T17:14:38.881Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"skill\": \"management-fee-overdue-notice\"}, \"tool_name\": \"Skill\", \"truncated\": false, \"duration_ms\": 13, \"invocation_id\": \"call_HNgA7v8pQd8Wj9zYozPrE9Wh\", \"result_summary\": \"Launching skill: management-fee-overdue-notice\"}"
+        },
+        {
+          "TraceEventID": "1020e7a8-d6dd-49ee-876e-c372d0380b2b",
+          "OccurredAt": "2026-09-27T17:14:41.864Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stderr\", \"message\": \"Exit code 2\\npython: can't open file '/work/scripts/evaluate_overdue.py': [Errno 2] No such file or directory\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "bfdb5f2b-553e-4233-b996-221e31ba190a",
+          "OccurredAt": "2026-09-27T17:14:41.864Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"failed\", \"arguments\": {\"command\": \"python scripts/evaluate_overdue.py --check-date '2026-09-27' --resident '甲戶|林美玲|3000|2026-07-30|未繳|0912-345-678' --resident '乙戶|陳志明|4500|2026-07-29|未繳|0987-654-321'\", \"timeout\": 120000, \"description\": \"Evaluate overdue management fees\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 116, \"invocation_id\": \"call_m33RxwAkaPPpUYKD4jSrpbWQ\", \"result_summary\": \"Exit code 2\\npython: can't open file '/work/scripts/evaluate_overdue.py': [Errno 2] No such file or directory\"}"
+        },
+        {
+          "TraceEventID": "9f18b80b-c4ff-4dc9-943f-7c401cc84e84",
+          "OccurredAt": "2026-09-27T17:14:44.15Z",
+          "Type": "script_log",
+          "Excerpt": "{\"stream\": \"stdout\", \"message\": \"戶別：甲戶｜住戶：林美玲\\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\\n\\n戶別：乙戶｜住戶：陳志明\\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\\n判定：已逾期未繳滿 60 天。\\n管理費催繳通知：\\n陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\\n簡訊文案：\\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\\n不能從這裡登入或標記系統；須由社區管理負責人操作。\\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\", \"truncated\": false, \"script_path\": null, \"dropped_bytes\": null}"
+        },
+        {
+          "TraceEventID": "91c74e13-1d39-4cbb-b347-3970d6360425",
+          "OccurredAt": "2026-09-27T17:14:44.15Z",
+          "Type": "tool_call",
+          "Excerpt": "{\"outcome\": \"succeeded\", \"arguments\": {\"command\": \"cd /work/.claude/skills/management-fee-overdue-notice \u0026\u0026 python scripts/evaluate_overdue.py --check-date '2026-09-27' --resident '甲戶|林美玲|3000|2026-07-30|未繳|0912-345-678' --resident '乙戶|陳志明|4500|2026-07-29|未繳|0987-654-321'\", \"timeout\": 120000, \"description\": \"Evaluate residents against overdue threshold\"}, \"tool_name\": \"Bash\", \"truncated\": false, \"duration_ms\": 130, \"invocation_id\": \"call_mSNOT0EckJNatF25J0gnrd6G\", \"result_summary\": \"戶別：甲戶｜住戶：林美玲\\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\\n\\n戶別：乙戶｜住戶：陳志明\\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\\n判定：已逾期未繳滿 60 天。\\n管理費催繳通知：\\n陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\\n簡訊文案：\\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\\n不能從這裡登入或標記系統；須由社區管理負責人操作。\\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\"}"
+        },
+        {
+          "TraceEventID": "59ddd2d7-d9d8-409f-b80f-05e367c20082",
+          "OccurredAt": "2026-09-27T17:14:50.209Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"intermediate\", \"text\": \"戶別：甲戶｜住戶：林美玲\\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\\n\\n戶別：乙戶｜住戶：陳志明\\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\\n判定：已逾期未繳滿 60 天。\\n管理費催繳通知：\\n陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\\n簡訊文案：\\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\\n不能從這裡登入或標記系統；須由社區管理負責人操作。\\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\\n\\n- 無法從這裡登入或標記社區管理系統；由社區管理負責人依既有流程操作。\\n- 無法從這裡發送簡訊；由社區管理負責人使用核准的管道發送。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "28d19083-dac4-4eaa-b34c-b54fa04d4a2a",
+          "OccurredAt": "2026-09-27T17:14:50.493Z",
+          "Type": "agent_output",
+          "Excerpt": "{\"kind\": \"final\", \"text\": \"戶別：甲戶｜住戶：林美玲\\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\\n\\n戶別：乙戶｜住戶：陳志明\\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\\n判定：已逾期未繳滿 60 天。\\n管理費催繳通知：\\n陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\\n簡訊文案：\\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\\n不能從這裡登入或標記系統；須由社區管理負責人操作。\\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\\n\\n- 無法從這裡登入或標記社區管理系統；由社區管理負責人依既有流程操作。\\n- 無法從這裡發送簡訊；由社區管理負責人使用核准的管道發送。\", \"truncated\": false}"
+        },
+        {
+          "TraceEventID": "3a8f0611-6577-4f80-905b-11c4041e564c",
+          "OccurredAt": "2026-09-27T17:14:54.613Z",
+          "Type": "usage",
+          "Excerpt": "{\"model\": \"skillhub-run\", \"scope\": \"run_total\", \"cost_usd\": 0.003738165, \"cost_source\": \"gateway\", \"duration_ms\": 18282, \"input_tokens\": 1570, \"token_source\": \"result\", \"output_tokens\": 1014, \"cache_read_input_tokens\": 54714, \"cache_write_input_tokens\": 19665}"
+        }
+      ]
+    },
+    "Truncation": [],
+    "Within": 130000000000
+  },
+  "judgement": {
+    "Criteria": [
+      {
+        "CriterionID": "66957d52-fc72-4c08-8986-20de28800cdc",
+        "Result": "passed",
+        "Reason": "甲戶列為逾期 59 天、未達 60 天；輸出未為甲戶提供催繳通知、簡訊文案或欠繳戶處理指引。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "戶別：甲戶｜住戶：林美玲\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2c2edcec-7f6a-4c73-99c1-27a337636a0e",
+        "Result": "passed",
+        "Reason": "乙戶列為逾期 60 天、已達門檻，並產生催繳通知及簡訊文案。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "戶別：乙戶｜住戶：陳志明\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\n判定：已逾期未繳滿 60 天。\n管理費催繳通知："
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "簡訊文案：\n陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "cf21c44c-d4f7-4d55-81fa-fcca6035a17b",
+        "Result": "failed",
+        "Reason": "催繳通知與簡訊文案均帶入乙戶住戶姓名、金額及到期日，亦未捏造其他帳務資料或法律後果；但兩份文案都只寫「本戶」，沒有帶入要求的戶別「乙戶」。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "陳志明 您好：本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "陳志明您好，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "315d6379-e065-4fd5-aa48-e8358bd9a627",
+        "Result": "passed",
+        "Reason": "乙戶附有人工登入系統、標記為「欠繳戶」及發送簡訊的指引，並明確表示這些操作須由社區管理負責人執行，未聲稱已完成。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "不能從這裡登入或標記系統；須由社區管理負責人操作。\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。"
+          }
+        ]
+      },
+      {
+        "CriterionID": "2d101406-61e9-419d-8805-cd0ce189dff8",
+        "Result": "passed",
+        "Reason": "甲戶與乙戶分段呈現，各自的姓名、到期日及逾期日數沒有混用。",
+        "Citations": [
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "戶別：甲戶｜住戶：林美玲\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天"
+          },
+          {
+            "Kind": "agent_output",
+            "TraceEventID": null,
+            "ArtifactPath": null,
+            "Quote": "戶別：乙戶｜住戶：陳志明\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天"
+          }
+        ]
+      }
+    ],
+    "Overall": "partially_met",
+    "Summary": "甲戶與乙戶的逾期判定、分戶呈現，以及乙戶的人工操作指引均符合要求。乙戶兩份文案雖有姓名、金額和到期日，卻未在文案內寫出戶別「乙戶」，因此未完全符合文案欄位要求。",
+    "Model": "gpt-6-sol",
+    "PromptVersion": "judge-run/v3",
+    "Usage": {
+      "PromptTokens": 5236,
+      "CompletionTokens": 1387,
+      "CostUSD": 0.024423900000000002,
+      "CostReported": true
+    }
+  }
+}

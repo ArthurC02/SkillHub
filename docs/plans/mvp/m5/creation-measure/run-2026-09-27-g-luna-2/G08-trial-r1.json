@@ -1,0 +1,169 @@
+{
+  "round": 1,
+  "sample_input": "請把以下花店進貨資料整理成驗收清單，列出每筆金額並計算總金額。\n2026-09-24, 玫瑰, 12, 18.50\n2026-09-24, 洋桔梗, 8, 25.00\n2026-09-25, 尤加利葉, 3.5, 40.00",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑範例中的每筆資料，輸出一列，並正確保留日期、花材品項、數量與單價。"
+    },
+    {
+      "text": "試跑範例中三筆列金額依序為 222.00、200.00、140.00，計算方式均為數量×單價。"
+    },
+    {
+      "text": "試跑範例的總金額為 562.00，且等於三筆列金額之和。"
+    },
+    {
+      "text": "輸出以清楚的表格呈現每筆金額，並在表格後明確標示總金額；不添加幣別、稅費或折扣。"
+    }
+  ],
+  "final_output": "| 日期 | 花材品項 | 數量 | 單價 | 金額 |\n|---|---|---:|---:|---:|\n| 2026-09-24 | 玫瑰 | 12 | 18.50 | 222.00 |\n| 2026-09-24 | 洋桔梗 | 8 | 25.00 | 200.00 |\n| 2026-09-25 | 尤加利葉 | 3.5 | 40.00 | 140.00 |\n\n總金額：562.00",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "1c1ddfb7-e84a-44c7-a95c-e3dcf2847d17",
+    "run_id": "4103a629-c1ee-4430-b421-e6005769ba44",
+    "status": "completed",
+    "overall": "met",
+    "summary": "驗收清單完整保留三筆進貨資料，列金額及總金額均正確。表格與總金額的呈現符合要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "f67c9d70-e1c8-4f91-9a00-37ffd8a009ed",
+        "text": "對試跑範例中的每筆資料，輸出一列，並正確保留日期、花材品項、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆資料各有一列，日期、花材品項、數量與單價均與原始資料相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 玫瑰 | 12 | 18.50 | 222.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 洋桔梗 | 8 | 25.00 | 200.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-25 | 尤加利葉 | 3.5 | 40.00 | 140.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a8fa768c-8a09-4ff9-a8a7-27b5663d17da",
+        "text": "試跑範例中三筆列金額依序為 222.00、200.00、140.00，計算方式均為數量×單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三筆列金額依序為 222.00、200.00、140.00，分別等於對應的數量乘以單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 玫瑰 | 12 | 18.50 | 222.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 洋桔梗 | 8 | 25.00 | 200.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-25 | 尤加利葉 | 3.5 | 40.00 | 140.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1e8b5558-310f-40a5-a0c8-2997547e0b3d",
+        "text": "試跑範例的總金額為 562.00，且等於三筆列金額之和。",
+        "result": "passed",
+        "source": "model",
+        "reason": "標示的總金額為 562.00，等於 222.00＋200.00＋140.00。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：562.00",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 玫瑰 | 12 | 18.50 | 222.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-24 | 洋桔梗 | 8 | 25.00 | 200.00 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026-09-25 | 尤加利葉 | 3.5 | 40.00 | 140.00 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "270aec76-8e08-438e-a899-a63f77f85eef",
+        "text": "輸出以清楚的表格呈現每筆金額，並在表格後明確標示總金額；不添加幣別、稅費或折扣。",
+        "result": "passed",
+        "source": "model",
+        "reason": "以表格呈現各筆金額，表格後明確標示總金額；最終回覆未添加幣別、稅費或折扣。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 花材品項 | 數量 | 單價 | 金額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "總金額：562.00",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1528 input and 452 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "acceptance_criteria": [
+    "對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。",
+    "通知本文明確包含核准金額「新臺幣 80 萬元」及首期還款日期「2026 年 11 月 5 日」，不得改動其數值或日期。",
+    "範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。",
+    "輸出不增加範例未提供的利率、費用、還款條件、核准承諾或其他事實。"
+  ],
+  "brief": "任務：根據使用者提供的貸款核准資料，撰寫繁體中文的「貸款核准結果通知」。輸入：核准金額、首期還款日期，以及使用者提供的其他貸款或通知資訊。輸出：通知本文最多 2 句，且必須明確包含核准金額和首期還款日期；若有資訊被省略或合併，另附一句說明，且此說明不計入本文句數。工具需求：不需要外部工具或查詢；只依據輸入撰寫。限制與假設：將「本文」與「省略／合併說明」分開標示；以繁體中文撰寫；不自行推測或補造未提供的金額、日期、條件或承諾；先精簡及合併資訊，若仍需省略，清楚指出省略項目。假設輸入以文字欄位提供，欄位名稱可能不同但意思清楚。",
+  "messages": [
+    {
+      "role": "user",
+      "content": "幫我做一個寫『貸款核准結果通知』的 Skill：通知本文不能超過 2 句話，但一定要包含核准金額和首期還款日期這兩項；如果我提供的其他資訊塞不進 2 句話，可以省略或合併，但請額外用一句話（不算在 2 句話的上限內）告訴我省略或合併了哪些資訊。",
+      "created_at": "2026-09-27T17:39:56.8794673Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我先查找是否有可參考的相關 Skill。",
+      "created_at": "2026-09-27T17:40:00.713034416Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄裡沒有符合的 Skill（第 1／2 回）；換個說法、加一個關鍵詞或另一種語言再搜一次，或直接起草。",
+      "created_at": "2026-09-27T17:40:01.407133194Z"
+    },
+    {
+      "role": "assistant",
+      "content": "我再用不同關鍵詞查找相關 Skill。",
+      "created_at": "2026-09-27T17:40:07.04762133Z"
+    },
+    {
+      "role": "tool",
+      "content": "目錄搜了兩回都沒有相近的 Skill：沒有可參考的，請直接依需求起草。",
+      "created_at": "2026-09-27T17:40:07.805173336Z"
+    },
+    {
+      "role": "assistant",
+      "content": "你希望提供貸款核准資料時採用什麼格式？請貼一筆範例，至少包含核准金額與首期還款日期；其他想納入通知的資訊也可一併列出。",
+      "created_at": "2026-09-27T17:40:11.716703524Z"
+    },
+    {
+      "role": "user",
+      "content": "請依合理假設補上缺的資訊，然後繼續。",
+      "created_at": "2026-09-27T17:40:11.720572435Z"
+    },
+    {
+      "role": "assistant",
+      "content": "請確認以下 Skill 規格；確認後我會依此起草。",
+      "created_at": "2026-09-27T17:40:25.841450871Z"
+    },
+    {
+      "role": "assistant",
+      "content": "已依確認的規格完成初稿，現在請 Go 驗證草稿。",
+      "created_at": "2026-09-27T17:40:49.808331361Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T17:40:49.809836074Z"
+    },
+    {
+      "role": "assistant",
+      "content": "草稿已通過 Go 靜態驗證（blocked=false），但目前沒有試跑評估，因此尚不能判定各項接受標準是否通過。請從這份草稿開始試跑；之後把評估結果帶回，我會依失敗或未定的標準修訂。",
+      "created_at": "2026-09-27T17:41:02.57355876Z"
+    },
+    {
+      "role": "tool",
+      "content": "{\"evaluation\":{\"evaluation_available\":true,\"evaluation_id\":\"fb78c236-6218-4a9c-89d1-f7713f8abcbf\",\"status\":\"completed\",\"overall\":\"partially_met\",\"summary\":\"通知本文為兩句，金額與首期還款日期正確，也未增加未提供的事實；但沒有在本文之外提供省略／合併說明。\",\"criterion_results\":[{\"criterion_id\":\"84429bb8-a032-45fc-8968-a609d6cd6b69\",\"text\":\"對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":0,\"end\":5},\"excerpt\":\"通知本文：\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":6,\"end\":149},\"excerpt\":\"陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率 3.2%，貸款期限 5 年；預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，往後每月 5 日還款。請於撥款前完成簽約並提供身分證影本；如有疑問請洽 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知本文為兩句，但輸出只有「通知本文」標示，沒有與之區分的省略／合併說明。\"},{\"criterion_id\":\"ba6bc0b3-beb9-4272-b6dd-8d27e1e3f702\",\"text\":\"範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。\",\"result\":\"failed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":6,\"end\":149},\"excerpt\":\"陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率 3.2%，貸款期限 5 年；預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，往後每月 5 日還款。請於撥款前完成簽約並提供身分證影本；如有疑問請洽 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"所列資訊均合併寫入兩句通知本文，但本文以外沒有說明句指出合併處理方式。\"},{\"criterion_id\":\"2bea853d-b561-47a2-bce3-e9da61862402\",\"text\":\"通知本文明確包含核准金額「新臺幣 80 萬元」及首期還款日期「2026 年 11 月 5 日」，不得改動其數值或日期。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":20,\"end\":34},\"excerpt\":\"核准金額為新臺幣 80 萬元\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":76,\"end\":99},\"excerpt\":\"首期還款日期為 2026 年 11 月 5 日\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知本文明確載明核准金額及首期還款日期，數值與日期均與範例一致。\"},{\"criterion_id\":\"42940773-4436-4059-ac1b-0dd66f08f8e4\",\"text\":\"輸出不增加範例未提供的利率、費用、還款條件、核准承諾或其他事實。\",\"result\":\"passed\",\"source\":\"model\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":6,\"end\":149},\"excerpt\":\"陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率 3.2%，貸款期限 5 年；預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，往後每月 5 日還款。請於撥款前完成簽約並提供身分證影本；如有疑問請洽 02-2345-6789。\",\"excerpt_truncated\":false,\"available\":true}],\"reason\":\"通知使用的利率、期限、還款與撥款日期、聯絡方式及簽約文件要求均來自範例，未見新增費用、條件或其他事實。\"}],\"deterministic_findings\":[{\"category\":\"spec\",\"severity\":\"warning\",\"message\":\"license-unknown (SKILL.md): 未宣告授權；視為未知授權\",\"evidence\":[]},{\"category\":\"activation\",\"severity\":\"info\",\"message\":\"the skill version mounted for this run was activated\",\"evidence\":[{\"kind\":\"trace_event\",\"match\":\"exact\",\"trace_event_id\":\"f521795b-6da3-493f-9863-4c0044b24c91\",\"occurred_at\":\"2026-09-27T17:41:17.705Z\",\"excerpt\":\"skill_activation {\\\"reason\\\": null, \\\"decision\\\": \\\"activated\\\", \\\"skill_name\\\": \\\"loan-approval-notice\\\", \\\"skill_version_id\\\": \\\"b2189b9f-792c-4e00-b5e2-83eae0a47ae3\\\"}\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the workload ran to its own end and reported success. That is an execution outcome and not a task verdict\",\"evidence\":[]},{\"category\":\"execution\",\"severity\":\"info\",\"message\":\"the run recorded 2 readable output file(s): notification-body.txt, notification.txt\",\"evidence\":[{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"notification-body.txt\",\"excerpt\":\"notification-body.txt (319 bytes, application/octet-stream, e69dc6e4be3138a66eeb16dc6939e90c0d7dd100789490225d988b3b0b1c18fd)\",\"excerpt_truncated\":false,\"available\":true},{\"kind\":\"artifact\",\"match\":\"not_checked\",\"artifact_path\":\"notification.txt\",\"excerpt\":\"notification.txt (336 bytes, application/octet-stream, dc4d183db27b7d3c06abdec28e6fb5475101a836f2db41ced97806b2f22bf4e9)\",\"excerpt_truncated\":false,\"available\":true}]},{\"category\":\"compatibility\",\"severity\":\"info\",\"message\":\"no compatibility measurement exists for this skill version, so nothing is claimed about it either way\",\"evidence\":[]},{\"category\":\"cost\",\"severity\":\"info\",\"message\":\"the run used 1554 input and 1186 output tokens on skillhub-run; reported cost $0.0042 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend\",\"evidence\":[]}],\"evidence_complete\":true,\"truncated\":false,\"omitted_criteria\":0,\"omitted_findings\":0},\"execution_status\":\"succeeded\",\"failure_class\":null,\"run_id\":\"ccb36268-5bd9-42e8-8d5a-1f34b13eeea9\",\"skill_version_id\":\"b2189b9f-792c-4e00-b5e2-83eae0a47ae3\"}",
+      "created_at": "2026-09-27T17:41:57.778766181Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有條件沒過：\n- 「對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。」：沒過——通知本文為兩句，但輸出只有「通知本文」標示，沒有與之區分的省略／合併說明。\n- 「範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。」：沒過——所列資訊均合併寫入兩句通知本文，但本文以外沒有說明句指出合併處理方式。\n要照這些條件改草稿、還是改條件或範例輸入？也可以直接說你要它改哪裡。",
+      "created_at": "2026-09-27T17:41:57.778882993Z"
+    },
+    {
+      "role": "user",
+      "content": "照沒過的條件改草稿。範例輸入驗不到的條件，就補範例輸入讓它驗得到；條件本身不要改寫或刪掉。",
+      "created_at": "2026-09-27T17:41:57.790133645Z"
+    },
+    {
+      "role": "assistant",
+      "content": "這次試跑有兩項條件未通過：\n- 「對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。」：通知本文有兩句，但沒有在本文外另列說明。\n- 「範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。」：這些資訊被合併進通知本文，卻沒有在本文外說明各項如何處理。\n\n我修改了步驟 4：只要其他資訊有合併或省略，就要求在正文外以獨立標題和換行提供處理說明，並逐項點名合併或省略的資訊及其處理方式。範例已包含試跑評估提到的資訊，因此不需更動。你可以接受這份草稿，或告訴我還想修改什麼。",
+      "created_at": "2026-09-27T17:42:49.470639064Z"
+    },
+    {
+      "role": "tool",
+      "content": "Go 靜態驗證完成，blocked=false；完整 finding 隨 draft_validation 提供，不代表試跑成功。",
+      "created_at": "2026-09-27T17:42:49.475084869Z"
+    }
+  ],
+  "state": "candidate_ready"
+}

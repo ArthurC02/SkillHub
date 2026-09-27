@@ -1,0 +1,131 @@
+{
+  "round": 1,
+  "sample_input": "請根據以下資料撰寫汽車保養預約確認簡訊，限 32 字內，只輸出簡訊本文。\n日期：6/8\n時間：14:30\n預估費用：$1,200",
+  "acceptance_criteria": [
+    {
+      "text": "在試跑範例的輸入下，輸出含有日期「6/8」、時間「14:30」及費用「$1,200」，且能看出該金額是預估費用。"
+    },
+    {
+      "text": "在試跑範例的輸入下，輸出總字數不超過 32 字，標點、空格及英數字均計入。"
+    },
+    {
+      "text": "在試跑範例的輸入下，輸出只有簡訊本文，不含前言、說明或字數統計。"
+    },
+    {
+      "text": "在試跑範例的輸入下，輸出保留費用格式「$1,200」，不更改其幣別或數字格式。"
+    }
+  ],
+  "final_output": "汽車保養預約確認：6/8 14:30，預估費用$1,200。",
+  "artifacts": [
+    "sms.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "4467872d-cc70-4f07-a2c0-9e04169ad818",
+    "run_id": "55cf6b02-4a4b-4f2a-9086-74226a71adc6",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出符合全部四項驗收標準：資料完整、字數合限、僅有簡訊本文，且費用格式未變。",
+    "criterion_results": [
+      {
+        "criterion_id": "38cba354-d95b-4d1f-a167-ca71eb8c7521",
+        "text": "在試跑範例的輸入下，輸出含有日期「6/8」、時間「14:30」及費用「$1,200」，且能看出該金額是預估費用。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊包含「6/8」、「14:30」及「$1,200」，並以「預估費用」標明金額性質。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "汽車保養預約確認：6/8 14:30，預估費用$1,200。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "041f4c0e-f538-496e-bb9d-6efda8aaa6e3",
+        "text": "在試跑範例的輸入下，輸出總字數不超過 32 字，標點、空格及英數字均計入。",
+        "result": "passed",
+        "source": "model",
+        "reason": "簡訊共 30 字元，計入標點、空格及英數字後仍未超過 32 字。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "汽車保養預約確認：6/8 14:30，預估費用$1,200。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "06693072-0345-4890-b4ed-9b4016a04fcc",
+        "text": "在試跑範例的輸入下，輸出只有簡訊本文，不含前言、說明或字數統計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出只有簡訊本文，沒有前言、說明或字數統計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "汽車保養預約確認：6/8 14:30，預估費用$1,200。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7b17bd1c-9321-4901-8e64-eb1acf7b54c4",
+        "text": "在試跑範例的輸入下，輸出保留費用格式「$1,200」，不更改其幣別或數字格式。",
+        "result": "passed",
+        "source": "model",
+        "reason": "費用保留原格式「$1,200」，未更改幣別或數字格式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "$1,200",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 1 readable output file(s): sms.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1504 input and 520 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 13,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

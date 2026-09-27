@@ -1,0 +1,142 @@
+{
+  "round": 2,
+  "sample_input": "請根據以下資料撰寫貸款核准結果通知。\n申請人：陳怡安；核准金額：新臺幣 80 萬元；首期還款日期：2026 年 11 月 5 日；年利率：3.2%；貸款期限：5 年；每月還款日：每月 5 日；預計撥款日期：2026 年 10 月 20 日；聯絡方式：02-2345-6789；其他事項：請於撥款前完成簽約，並提供身分證影本。",
+  "acceptance_criteria": [
+    {
+      "text": "對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。"
+    },
+    {
+      "text": "通知本文明確包含核准金額「新臺幣 80 萬元」及首期還款日期「2026 年 11 月 5 日」，不得改動其數值或日期。"
+    },
+    {
+      "text": "範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。"
+    },
+    {
+      "text": "輸出不增加範例未提供的利率、費用、還款條件、核准承諾或其他事實。"
+    }
+  ],
+  "final_output": "通知本文：\n陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率為 3.2%，貸款期限為 5 年。預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，每月還款日為每月 5 日；請於撥款前完成簽約並提供身分證影本，如有疑問請洽 02-2345-6789。\n\n省略／合併說明：年利率及貸款期限併入核准資訊；預計撥款日期、每月還款日、撥款前簽約及提供身分證影本的要求，以及聯絡電話併入還款與後續安排資訊。",
+  "artifacts": [
+    "notification-body.txt",
+    "notification.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "2656ee75-19a2-49d4-8a2b-d852cea9b917",
+    "run_id": "81358c74-a721-4fbd-a1d3-910a8989d5f3",
+    "status": "completed",
+    "overall": "met",
+    "summary": "通知本文為兩句，包含正確的核准金額及首期還款日期。另列的說明涵蓋各項合併資訊，未見新增未提供的貸款事實。",
+    "criterion_results": [
+      {
+        "criterion_id": "f027d9da-3758-4f0f-a361-cbd8f0f0d919",
+        "text": "對範例輸入，輸出清楚區分「通知本文」與省略／合併說明，且本文不超過 2 句。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出以標題區分通知本文與省略／合併說明；本文為兩句。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "通知本文：\n陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率為 3.2%，貸款期限為 5 年。預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，每月還款日為每月 5 日；請於撥款前完成簽約並提供身分證影本，如有疑問請洽 02-2345-6789。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "省略／合併說明：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "7f49b649-b0e8-46d1-a254-858ca1314509",
+        "text": "通知本文明確包含核准金額「新臺幣 80 萬元」及首期還款日期「2026 年 11 月 5 日」，不得改動其數值或日期。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知本文明確列出指定核准金額與首期還款日期，數值和日期均未更動。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "核准金額為新臺幣 80 萬元",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "首期還款日期為 2026 年 11 月 5 日",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0ccd5b93-a780-401a-b992-8bb1b7eae536",
+        "text": "範例中提供的利率、貸款期限、每月還款日、撥款日期、聯絡方式及簽約／文件要求，凡被省略或合併者，都在本文以外的說明句中指出其處理方式；不得把說明句算入本文句數。",
+        "result": "passed",
+        "source": "model",
+        "reason": "本文以外的說明指出利率、期限、撥款日期、每月還款日、簽約與文件要求及聯絡電話均併入本文的處理方式。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "省略／合併說明：年利率及貸款期限併入核准資訊；預計撥款日期、每月還款日、撥款前簽約及提供身分證影本的要求，以及聯絡電話併入還款與後續安排資訊。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0c6c717d-fd69-454b-a082-342321be113d",
+        "text": "輸出不增加範例未提供的利率、費用、還款條件、核准承諾或其他事實。",
+        "result": "passed",
+        "source": "model",
+        "reason": "通知使用提供的貸款資料，未增加其他利率、費用、還款條件、核准承諾或事實。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳怡安您好，您的貸款已核准，核准金額為新臺幣 80 萬元，年利率為 3.2%，貸款期限為 5 年。預計於 2026 年 10 月 20 日撥款，首期還款日期為 2026 年 11 月 5 日，每月還款日為每月 5 日；請於撥款前完成簽約並提供身分證影本，如有疑問請洽 02-2345-6789。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 2 readable output file(s): notification-body.txt, notification.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1554 input and 1738 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 23,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "round": 2,
+  "sample_input": "請依查核日判斷下列住戶是否逾期未繳滿 60 天，並依規則產生所需文案與人工操作指引。\n查核日：2026-09-27\n住戶資料：\n甲戶｜住戶：林美玲｜管理費：新臺幣 3,000 元｜到期日：2026-07-30｜電話：0912-345-678｜狀態：未繳\n乙戶｜住戶：陳志明｜管理費：新臺幣 4,500 元｜到期日：2026-07-29｜電話：0987-654-321｜狀態：未繳",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-30 的甲戶逾期 59 天；輸出須判定未達 60 天，且不為甲戶產生催繳通知、簡訊文案或欠繳戶處理指引。"
+    },
+    {
+      "text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-29 的乙戶逾期 60 天；輸出須判定已達門檻，並為乙戶產生管理費催繳通知及簡訊文案。"
+    },
+    {
+      "text": "乙戶的催繳通知與簡訊文案須正確帶入輸入中的戶別、住戶姓名、金額及到期日，不得捏造其他帳務資料或法律後果。"
+    },
+    {
+      "text": "乙戶的輸出須附上由人工登入社區管理系統、將該戶標記為「欠繳戶」及發送簡訊的操作指引；不得聲稱這些操作已完成。"
+    },
+    {
+      "text": "輸出須按住戶分開呈現判定結果；甲戶與乙戶不得混淆或互用資料。"
+    }
+  ],
+  "final_output": "戶別：甲戶｜住戶：林美玲\n查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天\n判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。\n\n戶別：乙戶｜住戶：陳志明\n查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天\n判定：已逾期未繳滿 60 天。\n管理費催繳通知：\n陳志明 您好：戶別 乙戶，本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。\n簡訊文案：\n陳志明您好，戶別 乙戶，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。\n人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。\n不能從這裡登入或標記系統；須由社區管理負責人操作。\n不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。\n\n- 無法從這裡登入或標記社區管理系統；由社區管理負責人依既有流程操作。\n- 無法從這裡發送簡訊；由社區管理負責人使用核准的管道發送。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c7a14831-d3e2-41e4-bec9-5f40084bf0ec",
+    "run_id": "b5c98d50-0135-4e3c-a24d-9404dae5551a",
+    "status": "completed",
+    "overall": "met",
+    "summary": "五項驗收標準均已符合。輸出將甲戶判定為逾期 59 天、不須催繳；將乙戶判定為逾期 60 天，並提供正確的文案與尚待人工執行的操作指引。",
+    "criterion_results": [
+      {
+        "criterion_id": "0f27eaeb-be6b-4ca2-993f-be4761b6caec",
+        "text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-30 的甲戶逾期 59 天；輸出須判定未達 60 天，且不為甲戶產生催繳通知、簡訊文案或欠繳戶處理指引。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲戶列為逾期 59 天、未達 60 天，且未產生甲戶的催繳通知、簡訊文案或欠繳戶處理指引。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "查核日：2026-09-27｜到期日：2026-07-30｜逾期日數：59 天",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：未達逾期未繳滿 60 天；不產生催繳通知、簡訊文案或欠繳戶處理指引。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ed84a0f2-875f-40c9-98a5-b84553ed5ae0",
+        "text": "試跑資料中，查核日為 2026-09-27、到期日為 2026-07-29 的乙戶逾期 60 天；輸出須判定已達門檻，並為乙戶產生管理費催繳通知及簡訊文案。",
+        "result": "passed",
+        "source": "model",
+        "reason": "乙戶列為逾期 60 天並判定達門檻，且有催繳通知及簡訊文案。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "查核日：2026-09-27｜到期日：2026-07-29｜逾期日數：60 天",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "判定：已逾期未繳滿 60 天。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "管理費催繳通知：",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "簡訊文案：",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a2c064f9-776f-4acf-b0f7-cff806ec961b",
+        "text": "乙戶的催繳通知與簡訊文案須正確帶入輸入中的戶別、住戶姓名、金額及到期日，不得捏造其他帳務資料或法律後果。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩份乙戶文案均使用正確的戶別、姓名、金額與到期日，未見捏造的帳務資料或法律後果。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明 您好：戶別 乙戶，本戶管理費 新臺幣 4,500 元，繳費到期日為 2026-07-29，目前紀錄為未繳。敬請查核並儘速辦理繳費；如已繳款，請忽略此通知或洽管理單位確認。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "陳志明您好，戶別 乙戶，本戶管理費 新臺幣 4,500 元（到期日 2026-07-29）目前紀錄為未繳，敬請查核並儘速辦理；如已繳款，請忽略或洽管理單位確認。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "547051bc-51cc-4af0-9eb0-302436b4a4dd",
+        "text": "乙戶的輸出須附上由人工登入社區管理系統、將該戶標記為「欠繳戶」及發送簡訊的操作指引；不得聲稱這些操作已完成。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出指引由社區管理負責人登入系統、標記乙戶為「欠繳戶」並發送簡訊，也明確表示這些操作尚須由人工執行。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "人工操作指引：由社區管理負責人依既有流程登入系統，將戶別 乙戶 標記為「欠繳戶」，並以簡訊文案通知住戶。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "不能從這裡登入或標記系統；須由社區管理負責人操作。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "不能從這裡發送簡訊；須由社區管理負責人使用核准的管道發送。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "2117542a-b001-4936-91a0-59b970a71f12",
+        "text": "輸出須按住戶分開呈現判定結果；甲戶與乙戶不得混淆或互用資料。",
+        "result": "passed",
+        "source": "model",
+        "reason": "甲戶與乙戶分段呈現，各自的姓名、到期日及判定結果均未混淆。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "戶別：甲戶｜住戶：林美玲",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "戶別：乙戶｜住戶：陳志明",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1550 input and 840 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 32,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

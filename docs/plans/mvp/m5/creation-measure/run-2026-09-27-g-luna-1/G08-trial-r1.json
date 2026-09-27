@@ -1,0 +1,206 @@
+{
+  "round": 1,
+  "sample_input": "請把以下花店進貨資料整理成驗收清單，計算每筆金額與總金額：\n\n2026/09/25，玫瑰，20 支，單價 NT$12\n2026/09/25，桔梗，8 把，單價 NT$35\n2026/09/26，玫瑰，10 支，單價 NT$12\n2026/09/26，向日葵，6 支，單價 NT$28",
+  "acceptance_criteria": [
+    {
+      "text": "試跑輸出需將輸入的 4 筆進貨資料逐筆列出，並保留每筆的日期、花材品項、數量與單價。"
+    },
+    {
+      "text": "試跑需正確計算各筆金額：2026/09/25 玫瑰為 NT$240、2026/09/25 桔梗為 NT$280、2026/09/26 玫瑰為 NT$120、2026/09/26 向日葵為 NT$168。"
+    },
+    {
+      "text": "試跑需將兩筆不同日期的玫瑰分開列出，不合併成一筆。"
+    },
+    {
+      "text": "試跑需在清單後標示總金額 NT$808，且不額外計入稅金或運費。"
+    },
+    {
+      "text": "試跑輸出需使用清楚易讀的清單格式，並以 NT$ 表示金額。"
+    }
+  ],
+  "final_output": "### 花店進貨驗收清單\n\n| 日期 | 花材品項 | 數量 | 單價 | 金額 |\n|---|---|---:|---:|---:|\n| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |\n| 2026/09/25 | 桔梗 | 8 把 | NT$ 35 | NT$ 280 |\n| 2026/09/26 | 玫瑰 | 10 支 | NT$ 12 | NT$ 120 |\n| 2026/09/26 | 向日葵 | 6 支 | NT$ 28 | NT$ 168 |\n\n**總金額：NT$ 808**",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "eb9c999b-08fc-49b0-b714-85df69c6f430",
+    "run_id": "3eb27ee4-c8c2-47f9-bc3d-133d557c613b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "試跑輸出完整保留四筆進貨資料，逐筆金額與 NT$808 總額均正確，格式也清楚易讀。",
+    "criterion_results": [
+      {
+        "criterion_id": "0919947f-c35b-4392-a7fe-f30e1e6a8ce0",
+        "text": "試跑輸出需將輸入的 4 筆進貨資料逐筆列出，並保留每筆的日期、花材品項、數量與單價。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單逐筆列出四筆進貨，並保留各筆日期、品項、數量與單價。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 桔梗 | 8 把 | NT$ 35 | NT$ 280 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 玫瑰 | 10 支 | NT$ 12 | NT$ 120 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 向日葵 | 6 支 | NT$ 28 | NT$ 168 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a3bafd16-5001-45ec-9411-1104734d2ed6",
+        "text": "試跑需正確計算各筆金額：2026/09/25 玫瑰為 NT$240、2026/09/25 桔梗為 NT$280、2026/09/26 玫瑰為 NT$120、2026/09/26 向日葵為 NT$168。",
+        "result": "passed",
+        "source": "model",
+        "reason": "四筆金額依序為 NT$240、NT$280、NT$120、NT$168，均計算正確。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 桔梗 | 8 把 | NT$ 35 | NT$ 280 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 玫瑰 | 10 支 | NT$ 12 | NT$ 120 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 向日葵 | 6 支 | NT$ 28 | NT$ 168 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "df30a198-b244-416a-ad1d-8d3d5b9c6ce0",
+        "text": "試跑需將兩筆不同日期的玫瑰分開列出，不合併成一筆。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆玫瑰分別按 9 月 25 日與 9 月 26 日列出，未合併。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 玫瑰 | 10 支 | NT$ 12 | NT$ 120 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "e97e21e7-670b-4ebc-9a0f-32c8e78233b2",
+        "text": "試跑需在清單後標示總金額 NT$808，且不額外計入稅金或運費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單後的總金額為 NT$808，等於四筆金額相加，未額外計入稅金或運費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 桔梗 | 8 把 | NT$ 35 | NT$ 280 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 玫瑰 | 10 支 | NT$ 12 | NT$ 120 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/26 | 向日葵 | 6 支 | NT$ 28 | NT$ 168 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "**總金額：NT$ 808**",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c87cfd80-2678-49bb-b0f5-e15cf65127b4",
+        "text": "試跑輸出需使用清楚易讀的清單格式，並以 NT$ 表示金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "輸出採用欄位清楚的表格，金額以 NT$ 標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 日期 | 花材品項 | 數量 | 單價 | 金額 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 2026/09/25 | 玫瑰 | 20 支 | NT$ 12 | NT$ 240 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1522 input and 537 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 29,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

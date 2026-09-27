@@ -1,0 +1,129 @@
+{
+  "round": 2,
+  "sample_input": "請分別計算以下遊覽車包車資料的人數費、里程費、未封頂小計及套用上限後的總額，並標示是否觸及上限。\nA：1 人，1 公里\nB：20 人，50 公里\nC：21 人，51 公里\nD：40 人，150 公里\nE：41 人，151 公里\nF：60 人，200 公里\nG：100 人，500 公里",
+  "acceptance_criteria": [
+    {
+      "text": "試跑 A、B、C、D、E、F、G 的人數費分別為 3,000、3,000、5,000、5,000、5,100、7,000、11,000 元，正確涵蓋 1–20、21–40 及超過 40 人的級距。"
+    },
+    {
+      "text": "試跑 A、B、C、D、E、F、G 的里程費分別為 1,500、1,500、2,500、2,500、2,520、3,500、9,500 元，正確涵蓋 1–50、51–150 及超過 150 公里的級距。"
+    },
+    {
+      "text": "逐筆獨立相加人數費與里程費後，A、B、C、D、E、F、G 的未封頂小計分別為 4,500、4,500、7,500、7,500、7,620、10,500、20,500 元。"
+    },
+    {
+      "text": "逐筆套用 12,000 元上限後，A 至 F 的總額維持各自小計；G 的總額為 12,000 元，且明確標示觸及上限。"
+    }
+  ],
+  "final_output": "| 資料 | 人數費（元） | 里程費（元） | 未封頂小計（元） | 套用上限後總額（元） | 觸及上限 |\n|---|---:|---:|---:|---:|:---:|\n| A | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| B | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| C | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| D | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| E | 5,100 | 2,520 | 7,620 | 7,620 | 否 |\n| F | 7,000 | 3,500 | 10,500 | 10,500 | 否 |\n| G | 11,000 | 9,500 | 20,500 | 12,000 | 是 |",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "43989757-a6cb-4104-ba19-253ec577d6c5",
+    "run_id": "052ccc42-18c5-47d9-b75c-5f88e127e851",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均通過。A 至 G 的人數費、里程費、未封頂小計及套用上限後總額皆正確，G 亦明確標示觸及上限。",
+    "criterion_results": [
+      {
+        "criterion_id": "347d2adc-11aa-485f-af73-4beb71343a79",
+        "text": "試跑 A、B、C、D、E、F、G 的人數費分別為 3,000、3,000、5,000、5,000、5,100、7,000、11,000 元，正確涵蓋 1–20、21–40 及超過 40 人的級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 G 的人數費均與指定金額相符，涵蓋各人數級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 資料 | 人數費（元） | 里程費（元） | 未封頂小計（元） | 套用上限後總額（元） | 觸及上限 |\n|---|---:|---:|---:|---:|:---:|\n| A | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| B | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| C | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| D | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| E | 5,100 | 2,520 | 7,620 | 7,620 | 否 |\n| F | 7,000 | 3,500 | 10,500 | 10,500 | 否 |\n| G | 11,000 | 9,500 | 20,500 | 12,000 | 是 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1dfc3a9c-50ad-43b3-a7f6-c1bf8b1c5bab",
+        "text": "試跑 A、B、C、D、E、F、G 的里程費分別為 1,500、1,500、2,500、2,500、2,520、3,500、9,500 元，正確涵蓋 1–50、51–150 及超過 150 公里的級距。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 G 的里程費均與指定金額相符，涵蓋各里程級距。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 資料 | 人數費（元） | 里程費（元） | 未封頂小計（元） | 套用上限後總額（元） | 觸及上限 |\n|---|---:|---:|---:|---:|:---:|\n| A | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| B | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| C | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| D | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| E | 5,100 | 2,520 | 7,620 | 7,620 | 否 |\n| F | 7,000 | 3,500 | 10,500 | 10,500 | 否 |\n| G | 11,000 | 9,500 | 20,500 | 12,000 | 是 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "24046cd7-ae0a-4c25-96fd-458dc52e5a98",
+        "text": "逐筆獨立相加人數費與里程費後，A、B、C、D、E、F、G 的未封頂小計分別為 4,500、4,500、7,500、7,500、7,620、10,500、20,500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 G 的未封頂小計均等於各自的人數費加里程費，且與指定金額相符。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 資料 | 人數費（元） | 里程費（元） | 未封頂小計（元） | 套用上限後總額（元） | 觸及上限 |\n|---|---:|---:|---:|---:|:---:|\n| A | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| B | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| C | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| D | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| E | 5,100 | 2,520 | 7,620 | 7,620 | 否 |\n| F | 7,000 | 3,500 | 10,500 | 10,500 | 否 |\n| G | 11,000 | 9,500 | 20,500 | 12,000 | 是 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a7284fca-b733-4524-bbae-c29f32add0ac",
+        "text": "逐筆套用 12,000 元上限後，A 至 F 的總額維持各自小計；G 的總額為 12,000 元，且明確標示觸及上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 F 的總額維持各自小計並標示未觸及上限；G 的總額降為 12,000 元，明確標示觸及上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 資料 | 人數費（元） | 里程費（元） | 未封頂小計（元） | 套用上限後總額（元） | 觸及上限 |\n|---|---:|---:|---:|---:|:---:|\n| A | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| B | 3,000 | 1,500 | 4,500 | 4,500 | 否 |\n| C | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| D | 5,000 | 2,500 | 7,500 | 7,500 | 否 |\n| E | 5,100 | 2,520 | 7,620 | 7,620 | 否 |\n| F | 7,000 | 3,500 | 10,500 | 10,500 | 否 |\n| G | 11,000 | 9,500 | 20,500 | 12,000 | 是 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1523 input and 571 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 34,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

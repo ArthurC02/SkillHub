@@ -1,0 +1,277 @@
+{
+  "round": 1,
+  "sample_input": "請計算以下每筆遊覽車包車費用，列出乘客費、里程費、封頂前合計及最終應收金額。\nA：1 人，1 公里\nB：20 人，50 公里\nC：21 人，51 公里\nD：40 人，150 公里\nE：41 人，151 公里\nF：100 人，500 公里",
+  "acceptance_criteria": [
+    {
+      "text": "試跑資料 A、B 的乘客費均為 3000 元，涵蓋 1 人及 20 人的區間端點。"
+    },
+    {
+      "text": "試跑資料 C、D 的乘客費均為 5000 元，涵蓋 21 人及 40 人的區間端點。"
+    },
+    {
+      "text": "試跑資料 E 的乘客費為 5100 元；資料 F 的乘客費為 11000 元，兩者均符合超過 40 人時以 5000 元加計超額人數每人 100 元。"
+    },
+    {
+      "text": "試跑資料 A、B 的里程費均為 1500 元，涵蓋 1 公里及 50 公里的區間端點。"
+    },
+    {
+      "text": "試跑資料 C、D 的里程費均為 2500 元，涵蓋 51 公里及 150 公里的區間端點。"
+    },
+    {
+      "text": "試跑資料 E 的里程費為 2520 元；資料 F 的里程費為 9500 元，兩者均符合超過 150 公里時以 2500 元加計超額里程每公里 20 元。"
+    },
+    {
+      "text": "輸出資料 A 至 F 的封頂前合計依序為 4500、4500、7500、7500、7620、20500 元。"
+    },
+    {
+      "text": "資料 F 的封頂前合計雖為 20500 元，最終應收金額仍為 12000 元；其餘資料的最終應收金額等於各自封頂前合計。"
+    }
+  ],
+  "final_output": "A：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。  \nB：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。  \nC：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。  \nD：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。  \nE：乘客費 5100 元；里程費 2520 元；封頂前合計 7620 元；最終應收金額 7620 元。  \nF：乘客費 11000 元；里程費 9500 元；封頂前合計 20500 元；最終應收金額 12000 元。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "f17ba617-dc6b-40f8-9b0c-e7e8efc7c1eb",
+    "run_id": "3a3f1958-664f-4acf-8253-c32a0e3f8423",
+    "status": "completed",
+    "overall": "met",
+    "summary": "八項驗收標準均已達成。A 至 F 的乘客費、里程費、封頂前合計與最終應收金額皆符合指定數值。",
+    "criterion_results": [
+      {
+        "criterion_id": "afc5cab8-e9bc-4612-9493-0e63b35f9fbc",
+        "text": "試跑資料 A、B 的乘客費均為 3000 元，涵蓋 1 人及 20 人的區間端點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A（1 人）與 B（20 人）的乘客費均列為 3000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3c4a066b-8c8a-46f6-8ed7-fd44ec0b03dd",
+        "text": "試跑資料 C、D 的乘客費均為 5000 元，涵蓋 21 人及 40 人的區間端點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C（21 人）與 D（40 人）的乘客費均列為 5000 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "309feb30-b74b-4120-9429-5e83a033686f",
+        "text": "試跑資料 E 的乘客費為 5100 元；資料 F 的乘客費為 11000 元，兩者均符合超過 40 人時以 5000 元加計超額人數每人 100 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E（41 人）的乘客費為 5100 元，F（100 人）為 11000 元，均符合超過 40 人後每人加收 100 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "E：乘客費 5100 元；里程費 2520 元；封頂前合計 7620 元；最終應收金額 7620 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "F：乘客費 11000 元；里程費 9500 元；封頂前合計 20500 元；最終應收金額 12000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "943f3133-71ef-4774-a38b-b72e03abeccb",
+        "text": "試跑資料 A、B 的里程費均為 1500 元，涵蓋 1 公里及 50 公里的區間端點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A（1 公里）與 B（50 公里）的里程費均列為 1500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "3632c944-1ee5-438a-9978-c4f242d28896",
+        "text": "試跑資料 C、D 的里程費均為 2500 元，涵蓋 51 公里及 150 公里的區間端點。",
+        "result": "passed",
+        "source": "model",
+        "reason": "C（51 公里）與 D（150 公里）的里程費均列為 2500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "C：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "54241c8e-5b2b-4eda-99ec-a0065dc84f9e",
+        "text": "試跑資料 E 的里程費為 2520 元；資料 F 的里程費為 9500 元，兩者均符合超過 150 公里時以 2500 元加計超額里程每公里 20 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "E（151 公里）的里程費為 2520 元，F（500 公里）為 9500 元，均符合超過 150 公里後每公里加收 20 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "E：乘客費 5100 元；里程費 2520 元；封頂前合計 7620 元；最終應收金額 7620 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "F：乘客費 11000 元；里程費 9500 元；封頂前合計 20500 元；最終應收金額 12000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0eae0139-d89a-46f8-bc80-3f3ce01f011c",
+        "text": "輸出資料 A 至 F 的封頂前合計依序為 4500、4500、7500、7500、7620、20500 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "A 至 F 的封頂前合計依序列為 4500、4500、7500、7500、7620、20500 元。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "E：乘客費 5100 元；里程費 2520 元；封頂前合計 7620 元；最終應收金額 7620 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "F：乘客費 11000 元；里程費 9500 元；封頂前合計 20500 元；最終應收金額 12000 元。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "ca72393d-4aba-4f22-9675-d65eaee0f244",
+        "text": "資料 F 的封頂前合計雖為 20500 元，最終應收金額仍為 12000 元；其餘資料的最終應收金額等於各自封頂前合計。",
+        "result": "passed",
+        "source": "model",
+        "reason": "F 的封頂前合計為 20500 元，最終應收 12000 元；A 至 E 的最終應收金額各自等於封頂前合計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "A：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "B：乘客費 3000 元；里程費 1500 元；封頂前合計 4500 元；最終應收金額 4500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "C：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "D：乘客費 5000 元；里程費 2500 元；封頂前合計 7500 元；最終應收金額 7500 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "E：乘客費 5100 元；里程費 2520 元；封頂前合計 7620 元；最終應收金額 7620 元。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "F：乘客費 11000 元；里程費 9500 元；封頂前合計 20500 元；最終應收金額 12000 元。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1521 input and 437 output tokens on skillhub-run; reported cost $0.0032 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 43,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

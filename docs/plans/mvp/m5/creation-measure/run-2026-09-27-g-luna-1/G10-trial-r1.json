@@ -1,0 +1,129 @@
+{
+  "round": 1,
+  "sample_input": "請分別計算以下遊覽車包車資料的人數費、里程費、未封頂小計及套用上限後的總額，並標示是否觸及上限。\nA：1 人，1 公里\nB：20 人，50 公里\nC：21 人，51 公里\nD：40 人，150 公里\nE：41 人，151 公里\nF：60 人，200 公里\nG：100 人，500 公里",
+  "acceptance_criteria": [
+    {
+      "text": "試跑 A、B、C、D、E、F、G 的人數費分別為 3,000、3,000、5,000、5,000、5,100、7,000、11,000 元，正確涵蓋 1–20、21–40 及超過 40 人的級距。"
+    },
+    {
+      "text": "試跑 A、B、C、D、E、F、G 的里程費分別為 1,500、1,500、2,500、2,500、2,520、3,500、9,500 元，正確涵蓋 1–50、51–150 及超過 150 公里的級距。"
+    },
+    {
+      "text": "逐筆獨立相加人數費與里程費後，A、B、C、D、E、F、G 的未封頂小計分別為 4,500、4,500、7,500、7,500、7,620、10,500、20,500 元。"
+    },
+    {
+      "text": "逐筆套用 12,000 元上限後，A 至 F 的總額維持各自小計；G 的總額為 12,000 元，且明確標示觸及上限。"
+    }
+  ],
+  "final_output": "目前無法可靠計算：這個計算器技能所需的 `scripts/calculate_fare.py` 不存在，因此無法確認人數費與里程費的計價級距。我不會自行假設費率。\n\n請提供該計算腳本，或提供人數費、里程費的計價規則；取得後即可逐筆列出 A–G 的費用、小計、封頂後總額及是否觸及上限。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e403dc60-d65d-47d5-b8d8-243fb65f55a0",
+    "run_id": "01ee30f4-e1d6-4c19-b14d-eb625b06dee7",
+    "status": "completed",
+    "overall": "not_met",
+    "summary": "本次試跑未提供 A–G 的任何費用、小計或封頂結果；最終回覆表示無法計算，並請使用者提供計算腳本或計價規則。四項驗收條件均未達成。",
+    "criterion_results": [
+      {
+        "criterion_id": "08d58ec1-a700-4ec9-a7d3-04d0ef6e99a4",
+        "text": "試跑 A、B、C、D、E、F、G 的人數費分別為 3,000、3,000、5,000、5,000、5,100、7,000、11,000 元，正確涵蓋 1–20、21–40 及超過 40 人的級距。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆表示無法計算，未列出 A–G 的人數費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法可靠計算：這個計算器技能所需的 `scripts/calculate_fare.py` 不存在，因此無法確認人數費與里程費的計價級距。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "5a701aea-4879-40ed-8111-3088ecf52f2e",
+        "text": "試跑 A、B、C、D、E、F、G 的里程費分別為 1,500、1,500、2,500、2,500、2,520、3,500、9,500 元，正確涵蓋 1–50、51–150 及超過 150 公里的級距。",
+        "result": "failed",
+        "source": "model",
+        "reason": "最終回覆表示無法計算，未列出 A–G 的里程費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "目前無法可靠計算：這個計算器技能所需的 `scripts/calculate_fare.py` 不存在，因此無法確認人數費與里程費的計價級距。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "9187b2d6-1567-4e0a-aa8e-35a34a071823",
+        "text": "逐筆獨立相加人數費與里程費後，A、B、C、D、E、F、G 的未封頂小計分別為 4,500、4,500、7,500、7,500、7,620、10,500、20,500 元。",
+        "result": "failed",
+        "source": "model",
+        "reason": "未逐筆計算或列出 A–G 的未封頂小計，而是請使用者補充資料。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請提供該計算腳本，或提供人數費、里程費的計價規則；取得後即可逐筆列出 A–G 的費用、小計、封頂後總額及是否觸及上限。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "8f6a76b8-85e4-4f05-bccf-67cee139eb89",
+        "text": "逐筆套用 12,000 元上限後，A 至 F 的總額維持各自小計；G 的總額為 12,000 元，且明確標示觸及上限。",
+        "result": "failed",
+        "source": "model",
+        "reason": "未列出套用上限後的總額，也未標示 G 觸及上限。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "請提供該計算腳本，或提供人數費、里程費的計價規則；取得後即可逐筆列出 A–G 的費用、小計、封頂後總額及是否觸及上限。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1603 input and 1544 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

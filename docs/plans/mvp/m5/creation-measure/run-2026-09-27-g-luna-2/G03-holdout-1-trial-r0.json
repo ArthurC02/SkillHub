@@ -1,0 +1,154 @@
+{
+  "round": 0,
+  "sample_input": "你好呀我要訂婚禮小物，就是那個迷你磁鐵禮盒要80份，單價35元，然後香氛蠟燭組40份，單價賣60元一份，喔對了還有乾燥花小卡120份，單價15元，這幾樣先這樣，另外我想先看實品，打樣費好像是300元對嗎，這個要另外算喔。",
+  "acceptance_criteria": [
+    {
+      "text": "小物總金額為 7000 元（不含打樣費）"
+    },
+    {
+      "text": "打樣費 300 元有另外列出、沒有計入總金額"
+    },
+    {
+      "text": "訂購清單包含迷你磁鐵禮盒 80 份、香氛蠟燭組 40 份、乾燥花小卡 120 份"
+    },
+    {
+      "text": "沒有捏造清單以外的品項或數量"
+    }
+  ],
+  "final_output": "訂購清單：\n\n| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 迷你磁鐵禮盒 | 80 份 | 35 元 | 2,800 元 |\n| 香氛蠟燭組 | 40 份 | 60 元 | 2,400 元 |\n| 乾燥花小卡 | 120 份 | 15 元 | 1,800 元 |\n\n**小物總金額：7,000 元**  \n**打樣費：300 元**（另計，不包含在小物總金額內）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "c41222d4-f9e6-42ea-a0b1-5453c147bc6e",
+    "run_id": "16c7527a-ef5e-40ed-ae72-9b2a667b1cbb",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成：清單品項與數量正確，小物總金額為 7,000 元，打樣費 300 元另列且未計入總金額。",
+    "criterion_results": [
+      {
+        "criterion_id": "32c66732-d8d6-4bea-ac4a-b138cd96d60a",
+        "text": "小物總金額為 7000 元（不含打樣費）",
+        "result": "passed",
+        "source": "model",
+        "reason": "小物總金額列為 7,000 元，且明確不含另計的打樣費。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**小物總金額：7,000 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "（另計，不包含在小物總金額內）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "898b5662-8d3e-4aea-8a3e-84d60702adcd",
+        "text": "打樣費 300 元有另外列出、沒有計入總金額",
+        "result": "passed",
+        "source": "model",
+        "reason": "打樣費 300 元另列，並註明不計入小物總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**打樣費：300 元**（另計，不包含在小物總金額內）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "17499ccf-1ba9-4b5f-a92f-0130b4d0b698",
+        "text": "訂購清單包含迷你磁鐵禮盒 80 份、香氛蠟燭組 40 份、乾燥花小卡 120 份",
+        "result": "passed",
+        "source": "model",
+        "reason": "訂購清單包含指定的三項品項及各自數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 迷你磁鐵禮盒 | 80 份 | 35 元 | 2,800 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 香氛蠟燭組 | 40 份 | 60 元 | 2,400 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乾燥花小卡 | 120 份 | 15 元 | 1,800 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "65de613d-7124-4eb5-a672-3bb384c74761",
+        "text": "沒有捏造清單以外的品項或數量",
+        "result": "passed",
+        "source": "model",
+        "reason": "清單只有留言中的三項品項，數量也與留言一致，沒有額外品項或數量。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 迷你磁鐵禮盒 | 80 份 | 35 元 | 2,800 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 香氛蠟燭組 | 40 份 | 60 元 | 2,400 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 乾燥花小卡 | 120 份 | 15 元 | 1,800 元 |",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1557 input and 433 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 20,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "round": 1,
+  "sample_input": "請整理以下訂購留言，列出品項、數量、單價、小計、小物總金額和打樣費：\n想訂手工香皂 12 個，每個 45 元；壓克力吊飾 8 個，每個 30 元；喜糖盒 20 個，每個 18 元。另外加購緞帶小卡 5 份，單價照之前說的。打樣費 500 元。請幫我整理，謝謝。",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本中三個有明確價格的品項，清單分別列出正確數量、單價與小計：手工香皂 12 個、每個 45 元、小計 540 元；壓克力吊飾 8 個、每個 30 元、小計 240 元；喜糖盒 20 個、每個 18 元、小計 360 元。"
+    },
+    {
+      "text": "小物總金額列為 1,140 元，並明確表示不含打樣費。"
+    },
+    {
+      "text": "打樣費另列為 500 元，且不加進小物總金額。"
+    },
+    {
+      "text": "緞帶小卡列出數量 5 份；因留言未提供可判定的單價，單價與小計標示「待確認」，不得猜填金額，並說明 1,140 元總額未包含此項。"
+    }
+  ],
+  "final_output": "| 品項 | 數量 | 單價 | 小計 |\n|---|---:|---:|---:|\n| 手工香皂 | 12 個 | 45 元 | 540 元 |\n| 壓克力吊飾 | 8 個 | 30 元 | 240 元 |\n| 喜糖盒 | 20 個 | 18 元 | 360 元 |\n| 緞帶小卡 | 5 份 | 待確認（留言稱「照之前說的」，但未提供金額） | 待確認 |\n\n**目前可確認的小物總金額：1,140 元**  \n此金額未包含緞帶小卡小計，因此總額不完整。\n\n**打樣費：500 元**（另列，不計入小物總金額）",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "e21aee98-0494-4789-addb-ce7a02f26060",
+    "run_id": "ca1f554f-3cec-4605-b7e5-d165e5985ede",
+    "status": "completed",
+    "overall": "met",
+    "summary": "四項驗收標準均已達成。回覆正確計算已知品項，將打樣費另列，並清楚標示緞帶小卡價格待確認及目前總額的範圍。",
+    "criterion_results": [
+      {
+        "criterion_id": "abf7e0db-1fd8-4015-b96b-ebf6e42be6d6",
+        "text": "對樣本中三個有明確價格的品項，清單分別列出正確數量、單價與小計：手工香皂 12 個、每個 45 元、小計 540 元；壓克力吊飾 8 個、每個 30 元、小計 240 元；喜糖盒 20 個、每個 18 元、小計 360 元。",
+        "result": "passed",
+        "source": "model",
+        "reason": "三個品項的數量、單價與小計均正確列出。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 手工香皂 | 12 個 | 45 元 | 540 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 壓克力吊飾 | 8 個 | 30 元 | 240 元 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "| 喜糖盒 | 20 個 | 18 元 | 360 元 |",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "c7bad444-5f0b-423e-9c80-a6a5e6786109",
+        "text": "小物總金額列為 1,140 元，並明確表示不含打樣費。",
+        "result": "passed",
+        "source": "model",
+        "reason": "將目前可確認的小物總金額列為 1,140 元，並註明打樣費不計入。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**目前可確認的小物總金額：1,140 元**",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "（另列，不計入小物總金額）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "cd859a38-5da6-49d4-9954-f966e65b1567",
+        "text": "打樣費另列為 500 元，且不加進小物總金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "打樣費另列為 500 元，明確不計入小物總金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "**打樣費：500 元**（另列，不計入小物總金額）",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0ebcf24d-351e-4815-9912-59dd26d08a91",
+        "text": "緞帶小卡列出數量 5 份；因留言未提供可判定的單價，單價與小計標示「待確認」，不得猜填金額，並說明 1,140 元總額未包含此項。",
+        "result": "passed",
+        "source": "model",
+        "reason": "緞帶小卡列為 5 份；單價與小計均標示待確認，並說明 1,140 元未包含其小計。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "| 緞帶小卡 | 5 份 | 待確認（留言稱「照之前說的」，但未提供金額） | 待確認 |",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "此金額未包含緞帶小卡小計，因此總額不完整。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1537 input and 625 output tokens on skillhub-run; reported cost $0.0035 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 19,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

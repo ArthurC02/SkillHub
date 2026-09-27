@@ -1,0 +1,151 @@
+{
+  "round": 1,
+  "sample_input": "請依規則分類以下手機送修資料，逐筆列出識別碼與分類：\n識別碼｜購買至今天數｜外觀痕跡\nR1｜30｜有明顯泡水痕跡\nR2｜500｜有明顯摔損痕跡\nR3｜365｜沒有明顯泡水或摔損痕跡\nR4｜366｜沒有明顯泡水或摔損痕跡",
+  "acceptance_criteria": [
+    {
+      "text": "對試跑中的 R1（有明顯泡水痕跡、購買 30 天），輸出「不保固維修」。"
+    },
+    {
+      "text": "對試跑中的 R2（有明顯摔損痕跡、購買 500 天），輸出「不保固維修」。"
+    },
+    {
+      "text": "對試跑中的 R3（沒有明顯泡水或摔損痕跡、購買 365 天），輸出「保固內免費維修」。"
+    },
+    {
+      "text": "對試跑中的 R4（沒有明顯泡水或摔損痕跡、購買 366 天），輸出「付費維修」。"
+    },
+    {
+      "text": "輸出逐筆保留 R1 至 R4 的識別碼，且每筆只給出一個上述三種分類。"
+    }
+  ],
+  "final_output": "- R1｜不保固維修\n- R2｜不保固維修\n- R3｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。\n- R4｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。",
+  "artifacts": [],
+  "evaluation": {
+    "evaluation_id": "7e87df21-16b7-4d60-ae54-8d3b8f2cc082",
+    "run_id": "9caeadef-9d8c-43a5-9788-2164d03b961d",
+    "status": "completed",
+    "overall": "partially_met",
+    "summary": "R1、R2 分類正確；R3、R4 被標為「未分類」，因此未達成其各自的分類要求，也未滿足每筆均須使用指定三種分類之一的要求。",
+    "criterion_results": [
+      {
+        "criterion_id": "0c3e4bd5-4557-4ee9-a396-84ab42959745",
+        "text": "對試跑中的 R1（有明顯泡水痕跡、購買 30 天），輸出「不保固維修」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "R1 輸出為「不保固維修」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- R1｜不保固維修",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "daa084ba-0a31-4b7c-beb2-7af83e18fd34",
+        "text": "對試跑中的 R2（有明顯摔損痕跡、購買 500 天），輸出「不保固維修」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "R2 輸出為「不保固維修」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- R2｜不保固維修",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "266a65c9-9ad2-465a-9271-df3682fc2fc5",
+        "text": "對試跑中的 R3（沒有明顯泡水或摔損痕跡、購買 365 天），輸出「保固內免費維修」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "R3 輸出為「未分類」，而非「保固內免費維修」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- R3｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "71e398f0-1716-4143-84d5-c4d5c71c0080",
+        "text": "對試跑中的 R4（沒有明顯泡水或摔損痕跡、購買 366 天），輸出「付費維修」。",
+        "result": "failed",
+        "source": "model",
+        "reason": "R4 輸出為「未分類」，而非「付費維修」。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- R4｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "382bf53a-e570-4f56-ac3f-d5259fd937f6",
+        "text": "輸出逐筆保留 R1 至 R4 的識別碼，且每筆只給出一個上述三種分類。",
+        "result": "failed",
+        "source": "model",
+        "reason": "雖逐筆保留 R1 至 R4 的識別碼，R3 與 R4 卻未給出指定三種分類之一。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "- R3｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "- R4｜未分類：腳本判定「沒有明顯泡水或摔損痕跡」同時包含肯定與否定資訊，請確認痕跡描述。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "warning",
+        "message": "the run reported success and no output files were recorded for it. Whether the task needed a file is for the criteria below to say"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1536 input and 596 output tokens on skillhub-run; reported cost $0.0034 (gateway). This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 21,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}

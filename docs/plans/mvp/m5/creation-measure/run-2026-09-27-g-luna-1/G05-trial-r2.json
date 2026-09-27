@@ -1,0 +1,170 @@
+{
+  "round": 2,
+  "sample_input": "請將下面兩筆資料各自寫成貸款核准結果通知。\n第 1 筆：核准金額：新臺幣 1,200,000 元；首期還款日期：2026 年 11 月 15 日；貸款方案：安心房貸；年利率：2.35%；貸款期間：20 年；還款方式：本息平均攤還；帳務通知方式：電子郵件；專員：林小姐，02-2345-6789；撥款日：2026 年 10 月 1 日。\n第 2 筆：首期還款日期：2026 年 12 月 1 日；貸款方案：小額信用貸款；年利率：4.8%。",
+  "acceptance_criteria": [
+    {
+      "text": "對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。"
+    },
+    {
+      "text": "對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。"
+    },
+    {
+      "text": "對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。"
+    },
+    {
+      "text": "對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。"
+    },
+    {
+      "text": "對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。"
+    }
+  ],
+  "final_output": "第 1 筆  \n通知本文：  \n核准金額：新臺幣 1,200,000 元；首期還款日期：2026 年 11 月 15 日。  \n貸款方案：安心房貸；年利率：2.35%；貸款期間：20 年；還款方式：本息平均攤還；帳務通知方式：電子郵件；專員：林小姐，電話：02-2345-6789；撥款日：2026 年 10 月 1 日。  \n補充說明：貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員姓名、專員電話及撥款日均列於同一句中。\n\n第 2 筆  \n通知本文：  \n核准金額：未提供；首期還款日期：2026 年 12 月 1 日。  \n貸款方案：小額信用貸款；年利率：4.8%。  \n補充說明：貸款方案及年利率列於同一句中。",
+  "artifacts": [
+    "loan_approval_1_body.txt",
+    "loan_approval_2_body.txt",
+    "loan_approval_answer.txt"
+  ],
+  "evaluation": {
+    "evaluation_id": "79887696-81a9-4dd9-89a2-dc7465713d19",
+    "run_id": "e9c7f499-b1f4-4c21-afea-ffff81d4224b",
+    "status": "completed",
+    "overall": "met",
+    "summary": "兩筆通知均符合兩句上限，必要欄位正確呈現；第 1 筆完整納入其他資料，並以獨立補充說明指出合併的資訊。",
+    "criterion_results": [
+      {
+        "criterion_id": "a9169d5d-1767-44f2-905e-e72469b07f06",
+        "text": "對樣本第 1 筆資料，通知本文以「。」「！」「？」計算不得超過兩句，且須原樣包含「新臺幣 1,200,000 元」及「2026 年 11 月 15 日」。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆通知本文共兩句，且原樣包含指定金額與首期還款日期。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "核准金額：新臺幣 1,200,000 元；首期還款日期：2026 年 11 月 15 日。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "貸款方案：安心房貸；年利率：2.35%；貸款期間：20 年；還款方式：本息平均攤還；帳務通知方式：電子郵件；專員：林小姐，電話：02-2345-6789；撥款日：2026 年 10 月 1 日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "534f2b45-c485-4f9d-9a8b-151a31836b74",
+        "text": "對樣本第 1 筆資料，若有資訊被省略或合併，輸出須另提供一句補充說明，明確指出哪些資訊被省略或合併；該句不計入通知本文的兩句上限。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆另以一句補充說明，逐項指出合併列於同一句的資訊，並與通知本文分開標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "補充說明：貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員姓名、專員電話及撥款日均列於同一句中。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "0a2c0c1f-7536-469f-b8ae-250fd3ce18d3",
+        "text": "對樣本第 1 筆資料，通知本文或補充說明須妥善處理貸款方案、年利率、貸款期間、還款方式、帳務通知方式、專員聯絡方式及撥款日等提供的其他資訊；不可默默省略未能納入通知本文的資訊。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 1 筆提供的貸款方案、利率、期間、還款及帳務通知方式、專員聯絡方式與撥款日，均列於通知本文，沒有默默省略。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "貸款方案：安心房貸；年利率：2.35%；貸款期間：20 年；還款方式：本息平均攤還；帳務通知方式：電子郵件；專員：林小姐，電話：02-2345-6789；撥款日：2026 年 10 月 1 日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "1837d0a1-3b51-49d2-8342-b06b031473cf",
+        "text": "對樣本第 2 筆資料，通知本文須包含首期還款日期「2026 年 12 月 1 日」，並在核准金額欄位明確標示「未提供」，不得自行編造核准金額。",
+        "result": "passed",
+        "source": "model",
+        "reason": "第 2 筆通知本文將核准金額標示為「未提供」，並包含指定的首期還款日期，未編造金額。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "核准金額：未提供；首期還款日期：2026 年 12 月 1 日。",
+            "available": true
+          }
+        ]
+      },
+      {
+        "criterion_id": "a63b7cc7-bea4-43e2-a0a3-814d29ce4188",
+        "text": "對樣本兩筆資料各自輸出繁體中文通知；每筆通知本文均不超過兩句，補充說明（如有）須與通知本文清楚區分。",
+        "result": "passed",
+        "source": "model",
+        "reason": "兩筆資料分別以繁體中文輸出；各筆通知本文均為兩句，補充說明另有明確標示。",
+        "evidence": [
+          {
+            "kind": "agent_output",
+            "excerpt": "第 1 筆",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "第 2 筆",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "貸款方案：小額信用貸款；年利率：4.8%。",
+            "available": true
+          },
+          {
+            "kind": "agent_output",
+            "excerpt": "補充說明：貸款方案及年利率列於同一句中。",
+            "available": true
+          }
+        ]
+      }
+    ],
+    "deterministic_findings": [
+      {
+        "category": "spec",
+        "severity": "warning",
+        "message": "license-unknown (SKILL.md): 未宣告授權；視為未知授權"
+      },
+      {
+        "category": "activation",
+        "severity": "info",
+        "message": "the skill version mounted for this run was activated"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the workload ran to its own end and reported success. That is an execution outcome and not a task verdict"
+      },
+      {
+        "category": "execution",
+        "severity": "info",
+        "message": "the run recorded 3 readable output file(s): loan_approval_1_body.txt, loan_approval_2_body.txt, loan_approval_answer.txt"
+      },
+      {
+        "category": "compatibility",
+        "severity": "info",
+        "message": "no compatibility measurement exists for this skill version, so nothing is claimed about it either way"
+      },
+      {
+        "category": "cost",
+        "severity": "info",
+        "message": "the run used 1701 input and 4843 output tokens on skillhub-run; no cost was reported, which is unreported and not $0. This total is a lower bound: a response still in flight when the stream ended is not in it, and the authoritative figure is the gateway's per-key spend"
+      }
+    ],
+    "judge_model": "gpt-6-sol",
+    "judge_prompt_version": "judge-run/v3",
+    "rubric_version": "",
+    "evidence_complete": true,
+    "superseded_at": null,
+    "cost": {
+      "evaluation_credits": 35,
+      "source": "gateway",
+      "note": "權威數字是閘道對這個 evaluation_id 的 per-key 實付換算的點數。"
+    },
+    "feedback": null,
+    "error": ""
+  }
+}
