@@ -17,6 +17,23 @@ function buildId(): string {
 export default defineConfig({
   plugins: [react()],
   define: { "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId()) },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          const packagePath = id.split("node_modules/")[1];
+          if (!packagePath) return "vendor";
+          const packageSegments = packagePath.split("/");
+          const packageName = packageSegments[0]?.startsWith("@")
+            ? `${packageSegments[0]}/${packageSegments[1]}`
+            : packageSegments[0];
+          if (!packageName) return "vendor";
+          return `vendor-${packageName.replace("@", "").replace("/", "-")}`;
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     // e2e/** is Playwright's; vitest's default glob would otherwise collect
