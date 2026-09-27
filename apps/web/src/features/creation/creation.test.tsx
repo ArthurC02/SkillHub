@@ -1332,6 +1332,56 @@ test("a network failure is said beside the composer, and 重試 resends the same
   await waitFor(() => posts.length === 2);
   expect(posts[1]).toEqual(posts[0]);
 });
+test("開場建立 session 的請求網路失敗，按重試沿用同一個 session 編號與內容", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return posts.length === 1
+          ? Promise.reject(new TypeError("network unavailable"))
+          : response(sample({ state: "queued" }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await input("想完成的任務", "建立摘要 Skill");
+  await click(START);
+  await waitFor(() => !!box.querySelector('[role="alert"]'));
+  expect(box.querySelector('[role="alert"]')!.textContent).toContain("網路連線失敗");
+  expect(posts).toHaveLength(1);
+  await click("重試");
+  await waitFor(() => posts.length === 2);
+  expect(posts[1]).toEqual(posts[0]);
+});
+test("重試前改了輸入內容，重新送出換成新的 session 編號", async () => {
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        return posts.length === 1
+          ? Promise.reject(new TypeError("network unavailable"))
+          : response(sample({ state: "queued" }));
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await input("想完成的任務", "建立摘要 Skill");
+  await click(START);
+  await waitFor(() => !!box.querySelector('[role="alert"]'));
+  await input("想完成的任務", "改成別的任務內容");
+  await click(START);
+  await waitFor(() => posts.length === 2);
+  expect(posts[1].id).not.toBe(posts[0].id);
+  expect(posts[1]).toMatchObject({ message: "改成別的任務內容", budget_credits: 500 });
+});
 test("no budget, no conversation: the composer is frozen until a step inside the band is chosen", async () => {
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal(
