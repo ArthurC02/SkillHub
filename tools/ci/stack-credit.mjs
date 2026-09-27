@@ -484,7 +484,7 @@ try {
         .locator(`#criterion-${removableCriterion.id}`)
         .locator("xpath=ancestor::li");
       await removableRow.getByRole("button", { name: "刪除這一條" }).click();
-      const deleteCriterionResponse = await Promise.all([
+      await Promise.all([
         page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname ===
@@ -492,7 +492,7 @@ try {
             response.request().method() === "DELETE",
         ),
         removableRow.getByRole("button", { name: "確認刪除這一條" }).click(),
-      ]).then(([response]) => response);
+      ]);
       await removableRow.waitFor({ state: "detached" });
       const afterCriterionDelete = await (
         await member.request.get(

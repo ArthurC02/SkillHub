@@ -134,6 +134,34 @@ const READINESS_LABEL = {
   broken: "✗ 前提齊全，但量到它壞的",
 };
 
+async function fetchReadiness() {
+  try {
+    const response = await fetch(`http://127.0.0.1:${API_PORT}/readyz`, {
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error(`GET /readyz -> ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.log(
+      `[launcher] 問不到平台的能力表（${error.message}）。三個行程都起來了，` +
+        `但「這個部署現在有什麼」這一題現在沒有答案——直接開 http://127.0.0.1:${API_PORT}/readyz 再試一次。`,
+    );
+    return null;
+  }
+}
+
+function logCapability(c) {
+  console.log(`[launcher]   ${READINESS_LABEL[c.readiness] ?? c.readiness} ${c.name}`);
+  if (c.detail) console.log(`[launcher]       ${c.detail}`);
+  if (c.missing?.length) console.log(`[launcher]       缺 ${c.missing.join("、")}`);
+  if (c.readiness !== "ready" && c.without) {
+    console.log(`[launcher]       沒有它會怎樣：${c.without}`);
+  }
+  if (c.readiness === "unavailable" && c.fix) {
+    console.log(`[launcher]       怎麼補：${c.fix}`);
+  }
+}
+
 async function reportCapabilities(filled) {
   console.log(
     `[launcher] 這次啟動自己補上的設定（不必也不該由人提供）：${filled.join("、") || "無"}`,
@@ -142,33 +170,13 @@ async function reportCapabilities(filled) {
   console.log(
     `[launcher] 從 repo 的 .env 讀進來、交給 API 的變數（只列名字）：${fromFile.join("、") || "無"}`,
   );
-  let body;
-  try {
-    const response = await fetch(`http://127.0.0.1:${API_PORT}/readyz`, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) throw new Error(`GET /readyz -> ${response.status}`);
-    body = await response.json();
-  } catch (error) {
-    console.log(
-      `[launcher] 問不到平台的能力表（${error.message}）。三個行程都起來了，` +
-        `但「這個部署現在有什麼」這一題現在沒有答案——直接開 http://127.0.0.1:${API_PORT}/readyz 再試一次。`,
-    );
-    return;
-  }
+  const body = await fetchReadiness();
+  if (!body) return;
   console.log(
     `[launcher] 這個部署現在有什麼、缺什麼（平台的答案，GET /readyz 是同一張表）：`,
   );
   for (const c of body.capabilities ?? []) {
-    console.log(`[launcher]   ${READINESS_LABEL[c.readiness] ?? c.readiness} ${c.name}`);
-    if (c.detail) console.log(`[launcher]       ${c.detail}`);
-    if (c.missing?.length) console.log(`[launcher]       缺 ${c.missing.join("、")}`);
-    if (c.readiness !== "ready" && c.without) {
-      console.log(`[launcher]       沒有它會怎樣：${c.without}`);
-    }
-    if (c.readiness === "unavailable" && c.fix) {
-      console.log(`[launcher]       怎麼補：${c.fix}`);
-    }
+    logCapability(c);
   }
   if (!body.ready) {
     console.log(
@@ -178,7 +186,7 @@ async function reportCapabilities(filled) {
   }
 }
 
-async function preflight() {
+function checkNodeVersion() {
   const [major] = process.versions.node.split(".").map(Number);
   if (major < 20) {
     fail(
@@ -186,12 +194,18 @@ async function preflight() {
       "this mode needs Node 20 or newer",
     );
   }
+}
+
+async function checkGoAvailable() {
   if (!(await has("go"))) {
     fail(
       "the go toolchain is not on PATH",
       "the API and the sandbox daemon are Go programs and this script builds them here rather than shipping a binary; install Go or run this on a machine that has it",
     );
   }
+}
+
+function checkCarrierDeps() {
   const carrierDeps = join(repoRoot, "tools", "pglite", "node_modules");
   if (!existsSync(carrierDeps)) {
     fail(
@@ -199,6 +213,9 @@ async function preflight() {
       "with a registry: `npm ci --prefix tools/pglite`. Without one: build the bundle on a machine that has a registry (`node tools/cleanmode/bundle.mjs <dir>`), copy that directory here, and run `npm ci --offline --cache <dir> --prefix tools/pglite`",
     );
   }
+}
+
+function checkAgentSdkInstalled() {
   const harnessDir = join(repoRoot, "infra", "images", "runtime-agent-sdk");
   const sdkDir = join(
     harnessDir,
@@ -215,7 +232,9 @@ async function preflight() {
         : "install @anthropic-ai/claude-agent-sdk under infra/images/runtime-agent-sdk at the version the Dockerfile's ARG CLAUDE_AGENT_SDK_VERSION pins",
     );
   }
+}
 
+function checkFrontendBuilt() {
   const dist = join(repoRoot, "apps", "web", "dist", "index.html");
   if (!existsSync(dist)) {
     fail(
@@ -223,6 +242,15 @@ async function preflight() {
       "run `npm --prefix apps/web run build`; clean mode serves this build itself so the disclosure reaches a visitor who has not logged in",
     );
   }
+}
+
+function portEnvVar(name) {
+  if (name === "the API") return "CLEAN_MODE_API_PORT";
+  if (name === "the sandbox daemon") return "CLEAN_MODE_SANDBOX_PORT";
+  return "CLEAN_MODE_PGLITE_PORT";
+}
+
+async function checkPortsFree() {
   for (const [name, port] of [
     ["the API", API_PORT],
     ["the sandbox daemon", SANDBOX_PORT],
@@ -231,11 +259,13 @@ async function preflight() {
     if (!(await portFree(port))) {
       fail(
         `port ${port} is already in use, and ${name} needs it`,
-        `stop whatever holds it, or set ${name === "the API" ? "CLEAN_MODE_API_PORT" : name === "the sandbox daemon" ? "CLEAN_MODE_SANDBOX_PORT" : "CLEAN_MODE_PGLITE_PORT"}`,
+        `stop whatever holds it, or set ${portEnvVar(name)}`,
       );
     }
   }
+}
 
+function checkModelGatewayConfig() {
   if (deployment("SKILLHUB_MODEL_GATEWAY_URL") && !deployment("SKILLHUB_RUN_MODEL")) {
     const models = gatewayModels();
     fail(
@@ -245,6 +275,16 @@ async function preflight() {
         : "set SKILLHUB_RUN_MODEL to a model name your gateway serves (the run tier is the mini one, PDM-003 v5)",
     );
   }
+}
+
+async function preflight() {
+  checkNodeVersion();
+  await checkGoAvailable();
+  checkCarrierDeps();
+  checkAgentSdkInstalled();
+  checkFrontendBuilt();
+  await checkPortsFree();
+  checkModelGatewayConfig();
 }
 
 async function grantCatalogWorkspace(dsn) {
@@ -296,7 +336,7 @@ function start(label, cmd, args, opts = {}) {
     cwd: repoRoot,
     shell: true,
     detached: process.platform !== "win32",
-    env: { ...process.env, ...(opts.env ?? {}) },
+    env: { ...process.env, ...opts.env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   children.push({ label, child });
@@ -340,7 +380,7 @@ function waitFor(child, pattern, timeoutMs, whatWasWaitedFor) {
 // On Windows the handle here is a cmd.exe wrapper (spawn used shell:true), so
 // killing it alone leaves the real child running; taskkill /T reaches the
 // whole tree. Elsewhere the negative pid signals the detached process group.
-function killTree({ label, child }) {
+function killTree({ child }) {
   if (child.pid === undefined) return;
   try {
     if (process.platform === "win32") {

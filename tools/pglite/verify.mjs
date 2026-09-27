@@ -150,6 +150,31 @@ await checkImmutability();
 
 await client.end();
 
+function describeAdvisoryLockOutcome({ aPid, bConnected, bPid, bGot, bError, maxConnections }) {
+  if (bConnected && bPid === aPid && bGot === true) {
+    return {
+      pass: false,
+      detail: `A and B share backend pid ${aPid} and both hold the lock -- mutual exclusion is fake (this is the multiplexer defect)`,
+    };
+  }
+  if (bConnected && bGot === true) {
+    return {
+      pass: false,
+      detail: `B connected as a distinct backend (pid ${bPid} != A's ${aPid}) but still acquired the lock`,
+    };
+  }
+  if (bConnected) {
+    return {
+      pass: true,
+      detail: `B connected as backend pid ${bPid} (A=${aPid}) and pg_try_advisory_lock returned ${bGot} -- real session isolation held`,
+    };
+  }
+  return {
+    pass: true,
+    detail: `B's connection attempt was rejected by the maxConnections=${maxConnections} cap (${bError}) -- it never got a session, so it never got the lock`,
+  };
+}
+
 // Under maxConnections=1, the socket server itself drops a second connection
 // attempt, so "the second client never got a session" is as valid a pass as
 // "it got a session but not the lock" — only holding both is the failure.
@@ -179,35 +204,13 @@ async function checkAdvisoryLockExclusion() {
     bError = String(err.message ?? err);
   }
 
-  if (bConnected && bPid === aPid && bGot === true) {
-    report(
-      "two independent connections cannot both hold the same advisory lock",
-      true,
-      false,
-      `A and B share backend pid ${aPid} and both hold the lock -- mutual exclusion is fake (this is the multiplexer defect)`,
-    );
-  } else if (bConnected && bGot === true) {
-    report(
-      "two independent connections cannot both hold the same advisory lock",
-      true,
-      false,
-      `B connected as a distinct backend (pid ${bPid} != A's ${aPid}) but still acquired the lock`,
-    );
-  } else if (bConnected) {
-    report(
-      "two independent connections cannot both hold the same advisory lock",
-      true,
-      true,
-      `B connected as backend pid ${bPid} (A=${aPid}) and pg_try_advisory_lock returned ${bGot} -- real session isolation held`,
-    );
-  } else {
-    report(
-      "two independent connections cannot both hold the same advisory lock",
-      true,
-      true,
-      `B's connection attempt was rejected by the maxConnections=${maxConnections} cap (${bError}) -- it never got a session, so it never got the lock`,
-    );
-  }
+  const outcome = describeAdvisoryLockOutcome({ aPid, bConnected, bPid, bGot, bError, maxConnections });
+  report(
+    "two independent connections cannot both hold the same advisory lock",
+    true,
+    outcome.pass,
+    outcome.detail,
+  );
 
   if (bConnected) await b.end().catch(() => {});
   await a.query("SELECT pg_advisory_unlock($1)", [lockId]).catch(() => {});
