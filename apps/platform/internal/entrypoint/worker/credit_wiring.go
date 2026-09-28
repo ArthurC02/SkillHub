@@ -11,6 +11,8 @@ import (
 
 const creditStatWindow = 7 * 24 * time.Hour
 
+const creditRecomputeInterval = 24 * time.Hour
+
 func wireCostRecording(svc *credit.Service, search *catalog.Service, versions, backfill *ingest.Service, evaluations *eval.Service) {
 	search.Credit = svc
 	versions.Credit = svc

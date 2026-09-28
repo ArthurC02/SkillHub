@@ -41,20 +41,27 @@ func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
 	}, nil
 }
 
+const (
+	defaultUSDPerCredit            = 0.001
+	defaultMarkupBPS               = 13000
+	defaultDebtFloorCredits        = -50
+	defaultMinStartFallbackCredits = 70
+)
+
 func CreditConfigFromEnv() (credit.Config, error) {
-	usd, err := creditEnvFloat("CREDIT_USD_PER_CREDIT", 0.001)
+	usd, err := creditEnvFloat("CREDIT_USD_PER_CREDIT", defaultUSDPerCredit)
 	if err != nil {
 		return credit.Config{}, fmt.Errorf("credit: CREDIT_USD_PER_CREDIT: %w", err)
 	}
-	markup, err := creditEnvInt("CREDIT_MARKUP_BPS", 13000)
+	markup, err := creditEnvInt("CREDIT_MARKUP_BPS", defaultMarkupBPS)
 	if err != nil {
 		return credit.Config{}, fmt.Errorf("credit: CREDIT_MARKUP_BPS: %w", err)
 	}
-	floor, err := creditEnvInt("CREDIT_DEBT_FLOOR", -50)
+	floor, err := creditEnvInt("CREDIT_DEBT_FLOOR", defaultDebtFloorCredits)
 	if err != nil {
 		return credit.Config{}, fmt.Errorf("credit: CREDIT_DEBT_FLOOR: %w", err)
 	}
-	fallback, err := creditEnvInt("CREDIT_MIN_START_FALLBACK", 70)
+	fallback, err := creditEnvInt("CREDIT_MIN_START_FALLBACK", defaultMinStartFallbackCredits)
 	if err != nil {
 		return credit.Config{}, fmt.Errorf("credit: CREDIT_MIN_START_FALLBACK: %w", err)
 	}

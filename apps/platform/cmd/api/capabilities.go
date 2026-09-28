@@ -51,6 +51,14 @@ func cleanModeCapabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Re
 
 func sharedCapabilities(pool *pgxpool.Pool, packagingTargets int) []envx.Capability {
 	client := &http.Client{Timeout: 2 * time.Second}
+	capabilities := searchAndModelCapabilities(pool, client)
+	capabilities = append(capabilities, distributionCapabilities(packagingTargets)...)
+	capabilities = append(capabilities, signInCapabilities()...)
+	capabilities = append(capabilities, objectStoreCapability())
+	return append(capabilities, exposureBoundaryCapabilities()...)
+}
+
+func searchAndModelCapabilities(pool *pgxpool.Pool, client *http.Client) []envx.Capability {
 	return []envx.Capability{
 		{
 			ID:      "catalogue_search",
@@ -90,6 +98,11 @@ func sharedCapabilities(pool *pgxpool.Pool, packagingTargets int) []envx.Capabil
 			Fix:   "起 infra/compose 的 litellm，URL 指向它，KEY 用該部署的 Virtual Key，MODEL 用它服務的模型名",
 			Probe: probeModelGateway(client),
 		},
+	}
+}
+
+func distributionCapabilities(packagingTargets int) []envx.Capability {
+	return []envx.Capability{
 		{
 			ID:      "packaging_download",
 			Name:    "打包下載",
@@ -131,6 +144,11 @@ func sharedCapabilities(pool *pgxpool.Pool, packagingTargets int) []envx.Capabil
 			Fix: "只有在這個部署的真實成本或加成與預設值不同時才設；" +
 				"改動只影響之後寫入的 credit_entries（每一筆都記下當時的 markup_bps，舊帳不回頭改寫）",
 		},
+	}
+}
+
+func signInCapabilities() []envx.Capability {
+	return []envx.Capability{
 		{
 			ID:      "github_login",
 			Name:    "GitHub OAuth 登入",
@@ -155,15 +173,23 @@ func sharedCapabilities(pool *pgxpool.Pool, packagingTargets int) []envx.Capabil
 			Without: "沒有名單管制：任何登入的 GitHub 帳號都能 Fork／試跑／下載",
 			Fix:     "填入允許的 provider_user_id（逗號分隔）",
 		},
-		{
-			ID:    "object_store",
-			Name:  "物件儲存（套件、產物、Trace 附件）",
-			Needs: []string{"OBJSTORE_ENDPOINT", "OBJSTORE_ACCESS_KEY", "OBJSTORE_SECRET_KEY", "OBJSTORE_BUCKET"},
-			Without: "ENDPOINT 與 BUCKET 有本機預設值（localhost:8333／skillhub），ACCESS_KEY／SECRET_KEY 留空代表" +
-				"匿名存取——只在本機 SeaweedFS 這樣設。正式環境沒有指到真正的物件儲存或金鑰不對時，" +
-				"EnsureBucket 會在啟動時失敗，整個行程結束",
-			Fix: "指向一個 S3 相容服務（本機用 SeaweedFS）並帶入它的存取金鑰",
-		},
+	}
+}
+
+func objectStoreCapability() envx.Capability {
+	return envx.Capability{
+		ID:    "object_store",
+		Name:  "物件儲存（套件、產物、Trace 附件）",
+		Needs: []string{"OBJSTORE_ENDPOINT", "OBJSTORE_ACCESS_KEY", "OBJSTORE_SECRET_KEY", "OBJSTORE_BUCKET"},
+		Without: "ENDPOINT 與 BUCKET 有本機預設值（localhost:8333／skillhub），ACCESS_KEY／SECRET_KEY 留空代表" +
+			"匿名存取——只在本機 SeaweedFS 這樣設。正式環境沒有指到真正的物件儲存或金鑰不對時，" +
+			"EnsureBucket 會在啟動時失敗，整個行程結束",
+		Fix: "指向一個 S3 相容服務（本機用 SeaweedFS）並帶入它的存取金鑰",
+	}
+}
+
+func exposureBoundaryCapabilities() []envx.Capability {
+	return []envx.Capability{
 		{
 			ID:    "generation_entry",
 			Name:  "M5 生成入口",

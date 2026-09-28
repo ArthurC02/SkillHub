@@ -169,12 +169,17 @@ func judgeFromEnv() (*llmclient.Client, bool) {
 	return llm, true
 }
 
+const (
+	creationListenerReadHeaderTimeout = 5 * time.Second
+	creationListenerIdleTimeout       = 30 * time.Second
+)
+
 func startCreationListener(set *worker.Set, creationLimits creation.Limits) *http.Server {
 	addr, token := os.Getenv("CREATION_WORKER_INTERNAL_ADDR"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN")
 	if addr == "" || token == "" || !creationLimits.Valid() {
 		return nil
 	}
-	server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	server := &http.Server{Addr: addr, Handler: set.Creation.TransientHandler(token), ReadHeaderTimeout: creationListenerReadHeaderTimeout, ReadTimeout: 10 * time.Second, IdleTimeout: creationListenerIdleTimeout}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("creation internal listener failed")

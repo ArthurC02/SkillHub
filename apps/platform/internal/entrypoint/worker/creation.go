@@ -20,8 +20,10 @@ func (w *CreationStepWorker) Work(ctx context.Context, job *river.Job[wiring.Cre
 }
 
 func (*CreationStepWorker) Timeout(*river.Job[wiring.CreationStepArgs]) time.Duration {
-	return 3 * time.Minute
+	return creationStepTimeout
 }
+
+const creationStepTimeout = 3 * time.Minute
 
 type CreationExpiryWorker struct {
 	river.WorkerDefaults[wiring.CreationExpiryArgs]

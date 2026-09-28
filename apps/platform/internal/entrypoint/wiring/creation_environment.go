@@ -15,8 +15,10 @@ func CreationLimitsFromEnv() (creation.Limits, error) {
 
 func CreationExposedFromEnv() bool { return os.Getenv("CREATION_EXPOSED") == "on" }
 
+const transientCallSlack = 30 * time.Second
+
 func CreationTransientFromEnv(limits creation.Limits) func(context.Context, creation.JobArgs, *creation.Diagram) error {
-	timeout := limits.CallTimeout + 30*time.Second
+	timeout := limits.CallTimeout + transientCallSlack
 	return creation.TransientClientWithHTTP(
 		os.Getenv("CREATION_WORKER_INTERNAL_URL"), os.Getenv("CREATION_WORKER_INTERNAL_TOKEN"), timeout,
 		&http.Client{Timeout: timeout},

@@ -27,6 +27,11 @@ type cleanupJobArgs struct {
 
 func (cleanupJobArgs) Kind() string { return "run_cleanup" }
 
+const (
+	runExecuteMaxAttempts = 3
+	runCleanupMaxAttempts = 5
+)
+
 var liveRunJobStates = []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateScheduled, rivertype.JobStateRetryable}
 
 func NewRunQueue(client *river.Client[pgx.Tx]) run.RunQueue {
@@ -66,8 +71,8 @@ func cleanupJob(work run.RunWork) cleanupJobArgs {
 	return cleanupJobArgs{RunID: pgconv.UUIDString(work.RunID), WorkspaceID: pgconv.UUIDString(work.WorkspaceID)}
 }
 func executeOptions() *river.InsertOpts {
-	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: 3}
+	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runExecuteMaxAttempts}
 }
 func cleanupOptions() *river.InsertOpts {
-	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: 5}
+	return &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: liveRunJobStates}, MaxAttempts: runCleanupMaxAttempts}
 }

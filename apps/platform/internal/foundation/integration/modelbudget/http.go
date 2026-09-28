@@ -118,9 +118,11 @@ func (h *Handler) writeRefusal(w http.ResponseWriter, err error, fallback string
 	}
 }
 
+const maxBudgetRequestBytes = 4096
+
 func decode(w http.ResponseWriter, r *http.Request) (budgetRequest, bool) {
 	var body budgetRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBudgetRequestBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
 		return budgetRequest{}, false
 	}

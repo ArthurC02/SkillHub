@@ -261,28 +261,18 @@ func runAPI() (failed bool) {
 	mode := deploymentFromEnv()
 	clean := mode == cleanModeDeployment
 
-	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
-	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
-	applyCleanModePool(poolCfg, mode)
-	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
-	exitOn(err, "database pool")
+	pool := openPool(ctx, mode)
 	defer pool.Close()
 
-	store, stopStore, err := newStore(mode)
-	exitOn(err, "object store")
+	store, stopStore := openStore(ctx, mode)
 	if stopStore != nil {
 		defer stopStore()
 	}
-	exitOn(store.EnsureBucket(ctx), "object store bucket")
 
 	llm := llmFromEnv()
 	traceSigner := traceSignerFromEnv()
 	profiles := packagingProfilesFromEnv()
-
-	analyticsRetention := analyticsRetentionFromEnv()
-	if analyticsRetention < time.Second {
-		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
-	}
+	analyticsRetention := measuredAnalyticsRetention()
 
 	providers := wiring.NewRunRegistryFromEnv()
 	runDeployment := wiring.RunDeploymentFromEnv()
@@ -290,87 +280,33 @@ func runAPI() (failed bool) {
 	posture := wiring.PostureFromEnv()
 	rateLimits, rateLimitErr := rateLimitsFromEnv()
 	refuseToStartOn(startupRefusals(posture, providers, rateLimitErr))
-	secure, devLogin := posture.SecureCookies, posture.DevLogin
-	if devLogin {
-		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
-			"as any name without a credential. Never in production")
-	}
+	warnWhenDevLoginOpen(posture)
 
-	capabilities := capabilityTable(pool, len(profiles))
-	if clean {
-		capabilities = cleanModeCapabilityTable(pool, len(profiles))
-	}
+	capabilities := capabilityTableFor(mode, pool, len(profiles))
 	reportCapabilities(ctx, capabilities)
 
 	if clean {
 		creationTransient = inProcessCreation(&cleanWorker)
 	}
-	app, err := apiserver.NewApp(apiserver.Config{
-		Pool:               pool,
-		Readiness:          capabilities,
-		Store:              store,
-		LLM:                llm,
-		Fetcher:            wiring.ImportFetcher(posture),
-		TraceSigner:        traceSigner,
-		Profiles:           profiles,
-		DownloadRetention:  retentionFromEnv(),
-		AnalyticsRetention: analyticsRetention,
-		FeedbackRetention:  feedbackRetentionFromEnv(),
-		OAuth: &identity.GitHubOAuth{
-			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
-			Client:       &http.Client{Timeout: 15 * time.Second},
-		},
-		Secure:    secure,
-		AppURL:    posture.AppURL,
-		DevLogin:  devLogin,
-		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
-
-		Invited:         operatorIDs(os.Getenv("BETA_ALLOWLIST")),
-		Providers:       providers,
-		RunDeployment:   runDeployment,
-		Quota:           quotaFromEnv(),
-		GenerateQuota:   generateQuotaFromEnv(),
-		GenerateExposed: generateExposedFromEnv(),
-		CreationExposed: wiring.CreationExposedFromEnv(), CreationLimits: creationLimits, CreationTransient: creationTransient,
-		RateLimits: rateLimits,
-
-		PublicationDownloadsOpen: publicationDownloadsOpenFromEnv(),
-
-		CleanMode: clean,
-	})
+	cfg := apiConfigFromEnv(posture)
+	cfg.Pool, cfg.Readiness, cfg.Store, cfg.LLM, cfg.TraceSigner = pool, capabilities, store, llm, traceSigner
+	cfg.Profiles, cfg.AnalyticsRetention, cfg.Providers, cfg.RunDeployment = profiles, analyticsRetention, providers, runDeployment
+	cfg.CreationLimits, cfg.CreationTransient, cfg.RateLimits, cfg.CleanMode = creationLimits, creationTransient, rateLimits, clean
+	app, err := apiserver.NewApp(cfg)
 	exitOn(err, "api composition")
 	for _, task := range startupTasks(app) {
 		task(ctx)
 	}
 
 	if clean {
-		cleanWorker = startCleanWorker(ctx, pool, func() worker.Deps {
-			return worker.Deps{
-				CreationLimits:     creationLimits,
-				Providers:          providers,
-				Store:              store,
-				Gateway:            wiring.GatewayFromEnv(),
-				RunDeployment:      runDeployment,
-				TraceSigner:        traceSigner,
-				TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
-				LLM:                llm,
-				PollOnly:           true,
-			}
-		})
+		cleanWorker = startCleanWorker(ctx, pool, inProcessWorkerDeps(cfg, store))
 	}
 
 	handler := app.Handler()
 	if clean {
 		handler = cleanModeServing(handler, mode, posture)
 	}
-
-	srv := &http.Server{
-		Addr:              envx.Or(os.Getenv("API_ADDR"), ":8080"),
-		Handler:           httpx.DevCORS(handler, posture.DevCORSOrigin),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+	srv := newAPIServer(handler, posture)
 
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 
@@ -379,8 +315,90 @@ func runAPI() (failed bool) {
 	}
 
 	failed = serveUntilStopped(ctx, srv)
+	shutdownAPI(srv, cleanWorker)
+	return failed
+}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+const (
+	apiReadHeaderTimeout = 5 * time.Second
+	apiShutdownGrace     = 10 * time.Second
+	githubOAuthTimeout   = 15 * time.Second
+)
+
+func openPool(ctx context.Context, mode deployment) *pgxpool.Pool {
+	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
+	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
+	applyCleanModePool(poolCfg, mode)
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	exitOn(err, "database pool")
+	return pool
+}
+
+func openStore(ctx context.Context, mode deployment) (*objstore.Client, func()) {
+	store, stopStore, err := newStore(mode)
+	exitOn(err, "object store")
+	exitOn(store.EnsureBucket(ctx), "object store bucket")
+	return store, stopStore
+}
+
+func measuredAnalyticsRetention() time.Duration {
+	analyticsRetention := analyticsRetentionFromEnv()
+	if analyticsRetention < time.Second {
+		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
+	}
+	return analyticsRetention
+}
+
+func warnWhenDevLoginOpen(posture envx.Posture) {
+	if posture.DevLogin {
+		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
+			"as any name without a credential. Never in production")
+	}
+}
+
+func capabilityTableFor(mode deployment, pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
+	if mode == cleanModeDeployment {
+		return cleanModeCapabilityTable(pool, packagingTargets)
+	}
+	return capabilityTable(pool, packagingTargets)
+}
+
+func apiConfigFromEnv(posture envx.Posture) apiserver.Config {
+	return apiserver.Config{
+		Fetcher:           wiring.ImportFetcher(posture),
+		DownloadRetention: retentionFromEnv(),
+		FeedbackRetention: feedbackRetentionFromEnv(),
+		OAuth: &identity.GitHubOAuth{
+			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
+			Client:       &http.Client{Timeout: githubOAuthTimeout},
+		},
+		Secure:    posture.SecureCookies,
+		AppURL:    posture.AppURL,
+		DevLogin:  posture.DevLogin,
+		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
+
+		Invited:         operatorIDs(os.Getenv("BETA_ALLOWLIST")),
+		Quota:           quotaFromEnv(),
+		GenerateQuota:   generateQuotaFromEnv(),
+		GenerateExposed: generateExposedFromEnv(),
+		CreationExposed: wiring.CreationExposedFromEnv(),
+
+		PublicationDownloadsOpen: publicationDownloadsOpenFromEnv(),
+	}
+}
+
+func newAPIServer(handler http.Handler, posture envx.Posture) *http.Server {
+	return &http.Server{
+		Addr:              envx.Or(os.Getenv("API_ADDR"), ":8080"),
+		Handler:           httpx.DevCORS(handler, posture.DevCORSOrigin),
+		ReadHeaderTimeout: apiReadHeaderTimeout,
+	}
+}
+
+func shutdownAPI(srv *http.Server, cleanWorker *worker.Set) {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), apiShutdownGrace)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("api shutdown", "error", err)
@@ -388,7 +406,6 @@ func runAPI() (failed bool) {
 	if cleanWorker != nil {
 		queue.Stop(cleanWorker.Queue)
 	}
-	return failed
 }
 
 func exitOn(err error, msg string) {
@@ -456,6 +473,22 @@ func inProcessCreation(set **worker.Set) func(context.Context, creation.JobArgs,
 			return creation.ErrUnavailable
 		}
 		return (*set).Creation.Step(ctx, a, d)
+	}
+}
+
+func inProcessWorkerDeps(cfg apiserver.Config, store *objstore.Client) func() worker.Deps {
+	return func() worker.Deps {
+		return worker.Deps{
+			CreationLimits:     cfg.CreationLimits,
+			Providers:          cfg.Providers,
+			Store:              store,
+			Gateway:            wiring.GatewayFromEnv(),
+			RunDeployment:      cfg.RunDeployment,
+			TraceSigner:        cfg.TraceSigner,
+			TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
+			LLM:                cfg.LLM,
+			PollOnly:           true,
+		}
 	}
 }
 
@@ -563,8 +596,13 @@ func rateLimitsFromEnv() (*httpx.RateLimiter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return httpx.NewRateLimiter(60, 30).TrustProxies(trusted), nil
+	return httpx.NewRateLimiter(rateLimitPerMinute, rateLimitBurst).TrustProxies(trusted), nil
 }
+
+const (
+	rateLimitPerMinute = 60
+	rateLimitBurst     = 30
+)
 
 func generateExposedFromEnv() bool {
 	raw := os.Getenv("GENERATE_SKILL_EXPOSED")

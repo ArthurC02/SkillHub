@@ -49,7 +49,7 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, errorBodyDrainBytes))
 		return nil, fmt.Errorf("llmclient: %s returned %d: %s", path, resp.StatusCode, string(b))
 	}
 
@@ -68,6 +68,8 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 }
 
 const MaxResponseBytes = 8 << 20
+
+const errorBodyDrainBytes = 1 << 20
 
 type EmbedRequest struct {
 	Texts []string `json:"texts"`

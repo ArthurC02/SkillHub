@@ -89,34 +89,7 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 		return nil, fmt.Errorf("llmclient: creation gateway key is required")
 	}
 
-	if in.Messages == nil {
-		in.Messages = []CreationMessage{}
-	}
-	if in.References == nil {
-		in.References = []GenerateReference{}
-	}
-	if in.AllowedTools == nil {
-		in.AllowedTools = []string{}
-	}
-	if in.AcceptanceCriteria == nil {
-		in.AcceptanceCriteria = []string{}
-	}
-	if in.DiagramInterpretation != nil {
-		interpretation := *in.DiagramInterpretation
-		interpretation.Nodes = nonNil(interpretation.Nodes)
-		interpretation.Conditions = nonNil(interpretation.Conditions)
-		interpretation.Branches = nonNil(interpretation.Branches)
-		interpretation.Uncertainties = nonNil(interpretation.Uncertainties)
-		in.DiagramInterpretation = &interpretation
-	}
-	if in.Draft != nil {
-		draft := *in.Draft
-		if draft.Files == nil {
-			draft.Files = []GeneratedFile{}
-		}
-		in.Draft = &draft
-	}
-	body, err := json.Marshal(in)
+	body, err := json.Marshal(withEmptyListsForNil(in))
 	if err != nil {
 		return nil, fmt.Errorf("llmclient: marshal creation step: %w", err)
 	}
@@ -151,6 +124,37 @@ func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*Cre
 		return nil, fmt.Errorf("llmclient: decode creation step response: %w", err)
 	}
 	return &out, nil
+}
+
+func withEmptyListsForNil(in CreationStepRequest) CreationStepRequest {
+	if in.Messages == nil {
+		in.Messages = []CreationMessage{}
+	}
+	if in.References == nil {
+		in.References = []GenerateReference{}
+	}
+	if in.AllowedTools == nil {
+		in.AllowedTools = []string{}
+	}
+	if in.AcceptanceCriteria == nil {
+		in.AcceptanceCriteria = []string{}
+	}
+	if in.DiagramInterpretation != nil {
+		interpretation := *in.DiagramInterpretation
+		interpretation.Nodes = nonNil(interpretation.Nodes)
+		interpretation.Conditions = nonNil(interpretation.Conditions)
+		interpretation.Branches = nonNil(interpretation.Branches)
+		interpretation.Uncertainties = nonNil(interpretation.Uncertainties)
+		in.DiagramInterpretation = &interpretation
+	}
+	if in.Draft != nil {
+		draft := *in.Draft
+		if draft.Files == nil {
+			draft.Files = []GeneratedFile{}
+		}
+		in.Draft = &draft
+	}
+	return in
 }
 
 func creationStepFailure(resp *http.Response) error {

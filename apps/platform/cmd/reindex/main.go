@@ -39,7 +39,7 @@ func runReindex() int {
 	}
 	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
 
-	filled, err := catalog.BackfillBigram(ctx, pool, 500)
+	filled, err := catalog.BackfillBigram(ctx, pool, bigramBackfillBatch)
 	if err != nil {
 		slog.Error("bigram backfill", "error", err)
 		return 1
@@ -86,18 +86,8 @@ func runReindex() int {
 	}
 	svc.Credit = &credit.Service{Store: credit.NewPostgresStore(pool), Config: creditCfg}
 
-	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" {
-		catalogs, err := (&identity.Service{Pool: pool}).CatalogWorkspaceIDs(ctx, pool)
-		if err != nil {
-			slog.Error("catalog workspaces", "error", err)
-			return 1
-		}
-		reset, err := catalog.RequeueCatalogueEnrichment(ctx, pool, catalogs, keep)
-		if err != nil {
-			slog.Error("re-enrichment reset", "error", err)
-			return 1
-		}
-		slog.Info("catalogue documents queued for re-enrichment", "documents", reset, "keeping", keep)
+	if keep := os.Getenv("REINDEX_REENRICH"); keep != "" && requeueCatalogueForReenrichment(ctx, pool, keep) != nil {
+		return 1
 	}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
@@ -106,6 +96,26 @@ func runReindex() int {
 	}
 	slog.Info("enrichment backfill complete", "enriched", done, "still_pending", failed)
 	return 0
+}
+
+const (
+	bigramBackfillBatch    = 500
+	defaultEnrichmentBatch = 200
+)
+
+func requeueCatalogueForReenrichment(ctx context.Context, pool *pgxpool.Pool, keep string) error {
+	catalogs, err := (&identity.Service{Pool: pool}).CatalogWorkspaceIDs(ctx, pool)
+	if err != nil {
+		slog.Error("catalog workspaces", "error", err)
+		return err
+	}
+	reset, err := catalog.RequeueCatalogueEnrichment(ctx, pool, catalogs, keep)
+	if err != nil {
+		slog.Error("re-enrichment reset", "error", err)
+		return err
+	}
+	slog.Info("catalogue documents queued for re-enrichment", "documents", reset, "keeping", keep)
+	return nil
 }
 
 func pendingEnrichments(ctx context.Context, svc *catalog.Service, limit int32) ([]ingest.PendingEnrichment, error) {
@@ -130,5 +140,5 @@ func batchSize() int32 {
 	if n, err := strconv.Atoi(os.Getenv("REINDEX_BATCH")); err == nil && n > 0 {
 		return int32(n)
 	}
-	return 200
+	return defaultEnrichmentBatch
 }

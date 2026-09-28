@@ -15,6 +15,12 @@ import (
 
 const isoDate = "2006-01-02"
 
+const (
+	weekTrendDays    = 7
+	monthTrendDays   = 30
+	quarterTrendDays = 90
+)
+
 type trendsHandler struct {
 	Credits            CreditLedger
 	DailyRuns          func(ctx context.Context, since time.Time) ([]run.RunsOnDay, error)
@@ -47,15 +53,15 @@ type trendView[T any] struct {
 func trendDays(r *http.Request) (int, error) {
 	q := r.URL.Query()
 	if !q.Has("days") {
-		return 30, nil
+		return monthTrendDays, nil
 	}
 	switch q.Get("days") {
 	case "7":
-		return 7, nil
+		return weekTrendDays, nil
 	case "30":
-		return 30, nil
+		return monthTrendDays, nil
 	case "90":
-		return 90, nil
+		return quarterTrendDays, nil
 	}
 	return 0, errors.New("query parameter days must be 7, 30 or 90")
 }

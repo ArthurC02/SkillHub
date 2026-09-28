@@ -99,15 +99,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	testlabSvc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
 	downloads.TestLab = testlabSvc
 
-	set.Runs = &run.Service{
-		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: run.GatewayOrNone(deps.Gateway),
-		ClearSightings: objreconcile.ClearArtifactSightings,
-		TestLab:        testlabSvc,
-		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
-		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
-		LastOrphanScan:           wiring.LastOrphanScan(pool),
-		Deployment:               deps.RunDeployment,
-	}
+	set.Runs = newRunService(pool, deps, testlabSvc)
 	wiring.WireRunRegistryReaders(set.Runs, registrySvc)
 	traceSvc := wiring.NewTraceService(pool, deps.TraceSigner, set.Runs)
 	set.Runs.Trace = traceSvc
@@ -118,13 +110,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	}
 	wiring.WireEvaluationRunReaders(set.Evaluations, set.Runs)
 	wiring.WireEvaluationRegistryReaders(set.Evaluations, registrySvc)
-	set.Evaluations.ReadEventsOfType = func(
-		ctx context.Context, eventType string, since time.Time, limit int32,
-	) ([]outbox.Event, error) {
-		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
-	}
-	set.Evaluations.Judge = eval.JudgeOrNone(deps.LLM)
-	set.Evaluations.Suggester = eval.SuggesterOrNone(deps.LLM)
+	wireEvaluationModelAndEvents(set.Evaluations, pool, deps.LLM)
 
 	budgets := wiring.NewModelBudgets(pool)
 	set.Evaluations.Budgets = budgets
@@ -132,9 +118,77 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 	set.SkillVersions = &eval.SkillVersionConsumer{}
 
-	set.Events = outbox.NewDispatcher().
-		On("evaluation", set.RunEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
-		On("suggestions applied", set.SkillVersions.Deliver, outbox.SkillVersionAdded).
+	set.Events = newEventDispatcher(set.RunEvents, set.SkillVersions)
+	if err := set.Events.Validate(); err != nil {
+		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
+	}
+	outboxWorker := &outbox.Worker{Pool: pool, Deliver: set.Events.Deliver}
+
+	var creationVersions *ingest.Service
+	set.Creation, creationVersions, set.CreationSearch = newCreationServices(pool, deps, registrySvc)
+	set.CreationSearch.Budgets = budgets
+
+	creditSvc, err := wiring.NewCreditService(pool)
+	if err != nil {
+		return nil, fmt.Errorf("credit wiring: %w", err)
+	}
+	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
+	wiring.WireCreationCredit(set.Creation, creditSvc, pool)
+	backfillSvc := newBackfillService(pool, deps)
+	wireCostRecording(creditSvc, set.CreationSearch, creationVersions, backfillSvc, set.Evaluations)
+	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
+	wiring.WireRunCredit(set.Runs, creditSvc, pool)
+	workers := river.NewWorkers()
+	addDomainWorkers(set, workers)
+	addWorker(set, workers, outboxWorker)
+
+	set.Objects = newObjectReconciler(pool, deps.Store, downloads, testlabSvc)
+	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
+
+	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
+	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
+	addWorker(set, workers, &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
+		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
+		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
+		metrics.BacklogEnrichment:    set.CreationSearch.OldestPendingEnrichment,
+	}})
+
+	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
+
+	client, err := queue.New(pool, riverConfig(workers, periodicJobs(set, deps, outboxWorker), deps.PollOnly))
+	if err != nil {
+		return nil, fmt.Errorf("queue client: %w", err)
+	}
+	connectQueue(set, client)
+	return set, nil
+}
+
+func newRunService(pool *pgxpool.Pool, deps Deps, testlabSvc *testlab.Service) *run.Service {
+	return &run.Service{
+		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: run.GatewayOrNone(deps.Gateway),
+		ClearSightings: objreconcile.ClearArtifactSightings,
+		TestLab:        testlabSvc,
+		TraceSigner:    deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
+		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
+		LastOrphanScan:           wiring.LastOrphanScan(pool),
+		Deployment:               deps.RunDeployment,
+	}
+}
+
+func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool, llm *llmclient.Client) {
+	evaluations.ReadEventsOfType = func(
+		ctx context.Context, eventType string, since time.Time, limit int32,
+	) ([]outbox.Event, error) {
+		return outbox.EventsOfTypeSince(ctx, pool, eventType, since, limit)
+	}
+	evaluations.Judge = eval.JudgeOrNone(llm)
+	evaluations.Suggester = eval.SuggesterOrNone(llm)
+}
+
+func newEventDispatcher(runEvents *eval.RunEventConsumer, skillVersions *eval.SkillVersionConsumer) *outbox.Dispatcher {
+	return outbox.NewDispatcher().
+		On("evaluation", runEvents.Deliver, outbox.RunSucceeded, outbox.RunFailed).
+		On("suggestions applied", skillVersions.Deliver, outbox.SkillVersionAdded).
 		Ignore("progress announcements: a run that is still moving is read from its own row by the UI, and no worker-side reaction is owed",
 			outbox.RunQueued, outbox.RunProvisioning, outbox.RunPreparing,
 			outbox.RunRunning, outbox.RunEvaluating).
@@ -153,31 +207,21 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
 			outbox.SkillRedistributionSet, outbox.SkillCategorized, outbox.SkillDeleted,
 			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet)
-	if err := set.Events.Validate(); err != nil {
-		return nil, fmt.Errorf("outbox dispatch wiring: %w", err)
-	}
-	outboxWorker := &outbox.Worker{Pool: pool, Deliver: set.Events.Deliver}
+}
 
-	set.Creation = &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: creation.ModelOrNone(deps.LLM)}
+func newCreationServices(
+	pool *pgxpool.Pool, deps Deps, registrySvc *registry.Service,
+) (*creation.Service, *ingest.Service, *catalog.Service) {
+	creationSvc := &creation.Service{Pool: pool, Limits: deps.CreationLimits, LLM: creation.ModelOrNone(deps.LLM)}
 	creationVersions := &ingest.Service{Pool: pool, Store: deps.Store, References: registrySvc}
 	creationSearch := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(deps.LLM), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	creationSearch.Budgets = budgets
-	set.CreationSearch = creationSearch
-	wireCreationReads(set.Creation, creationVersions, creationSearch)
-	wireCreationGateway(set.Creation, deps.Gateway)
-	wireCreationFetch(set.Creation)
+	wireCreationReads(creationSvc, creationVersions, creationSearch)
+	wireCreationGateway(creationSvc, deps.Gateway)
+	wireCreationFetch(creationSvc)
+	return creationSvc, creationVersions, creationSearch
+}
 
-	creditSvc, err := wiring.NewCreditService(pool)
-	if err != nil {
-		return nil, fmt.Errorf("credit wiring: %w", err)
-	}
-	creditSvc.Config.SessionIdle = deps.CreationLimits.SessionTimeout
-	wiring.WireCreationCredit(set.Creation, creditSvc, pool)
-	backfillSvc := newBackfillService(pool, deps)
-	wireCostRecording(creditSvc, creationSearch, creationVersions, backfillSvc, set.Evaluations)
-	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
-	wiring.WireRunCredit(set.Runs, creditSvc, pool)
-	workers := river.NewWorkers()
+func addDomainWorkers(set *Set, workers *river.Workers) {
 	addWorker(set, workers, &CreationStepWorker{Svc: set.Creation})
 	addWorker(set, workers, &CreationExpiryWorker{Svc: set.Creation})
 
@@ -188,10 +232,13 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	addWorker(set, workers, &EvaluationExecuteWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &EvaluationRecoveryWorker{Svc: set.Evaluations})
 	addWorker(set, workers, &SuggestionsAppliedWorker{Svc: set.Evaluations})
-	addWorker(set, workers, outboxWorker)
+}
 
-	set.Objects = &objreconcile.Service{
-		Pool: pool, Store: deps.Store,
+func newObjectReconciler(
+	pool *pgxpool.Pool, store *objstore.Client, downloads *packaging.Service, testlabSvc *testlab.Service,
+) *objreconcile.Service {
+	return &objreconcile.Service{
+		Pool: pool, Store: store,
 		ListExpiredArtifacts:       packagingCandidates(downloads.ExpiredReconcileCandidates),
 		ListDownloadIntents:        packagingCandidates(downloads.DownloadCleanupIntentCandidates),
 		ListClaimedArtifacts:       packagingCandidates(downloads.ClaimedReconcileCandidates),
@@ -201,18 +248,9 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		RecordDatasetLost:          testlabSvc.MarkDatasetObjectLost,
 		GuardArtifactRemoval:       downloads.GuardArtifactRemoval,
 	}
-	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
+}
 
-	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
-	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: backfillSvc})
-	addWorker(set, workers, &BacklogObserveWorker{Backlogs: map[string]backlogOldest{
-		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
-		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
-		metrics.BacklogEnrichment:    creationSearch.OldestPendingEnrichment,
-	}})
-
-	addWorker(set, workers, &CreditRecomputeWorker{Svc: creditSvc})
-
+func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.PeriodicJob {
 	var periodic []*river.PeriodicJob
 	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
 		set.Scheduled[args.Kind()] = runOnStart
@@ -235,33 +273,33 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
 
 	for _, kind := range credit.AllStatisticKinds() {
-		schedule(wiring.NewCreditRecomputeArgs(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}), 24*time.Hour, false)
+		schedule(wiring.NewCreditRecomputeArgs(credit.RecomputeArgs{StatKind: kind, WindowSeconds: int64(creditStatWindow / time.Second)}), creditRecomputeInterval, false)
 	}
 
 	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
 
 	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
 	schedule(BacklogObserveArgs{}, BacklogObserveInterval, true)
+	return periodic
+}
 
-	client, err := queue.New(pool, riverConfig(workers, periodic, deps.PollOnly))
-	if err != nil {
-		return nil, fmt.Errorf("queue client: %w", err)
-	}
+func connectQueue(set *Set, client *river.Client[pgx.Tx]) {
 	set.Queue = client
 	set.Creation.Insert = wiring.NewCreationQueue(client)
 
 	set.Runs.Queue = wiring.NewRunQueue(client)
 	set.RunEvents.Enqueue = wiring.NewEvaluationEnqueue(client)
 	set.SkillVersions.Enqueue = wiring.NewSuggestionsAppliedEnqueue(client)
-	return set, nil
 }
+
+const defaultQueueMaxWorkers = 4
 
 func riverConfig(workers *river.Workers, periodic []*river.PeriodicJob, pollOnly bool) *river.Config {
 	return &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
 
-			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), 4)},
+			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), defaultQueueMaxWorkers)},
 		},
 		PeriodicJobs: periodic,
 		PollOnly:     pollOnly,

@@ -22,7 +22,11 @@ type RunExecuteWorker struct {
 	Runs *run.Service
 }
 
-func (w *RunExecuteWorker) Timeout(*river.Job[RunExecuteArgs]) time.Duration { return 15 * time.Minute }
+const runExecuteTimeout = 15 * time.Minute
+
+func (w *RunExecuteWorker) Timeout(*river.Job[RunExecuteArgs]) time.Duration {
+	return runExecuteTimeout
+}
 
 func (w *RunExecuteWorker) Work(ctx context.Context, job *river.Job[RunExecuteArgs]) error {
 	var runID, workspaceID pgtype.UUID

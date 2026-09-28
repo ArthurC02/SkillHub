@@ -19,8 +19,10 @@ func (w *CreditRecomputeWorker) Work(ctx context.Context, job *river.Job[wiring.
 	command := job.Args.Command()
 	window := time.Duration(command.WindowSeconds) * time.Second
 	if window <= 0 {
-		window = 24 * time.Hour
+		window = fallbackRecomputeWindow
 	}
 	_, err := w.Svc.RecomputeStatistics(ctx, command.StatKind, window)
 	return err
 }
+
+const fallbackRecomputeWindow = 24 * time.Hour

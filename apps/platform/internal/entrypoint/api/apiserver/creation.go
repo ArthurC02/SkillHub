@@ -35,6 +35,8 @@ type creationLimitsResponse struct {
 
 var errNoCreditRate = errors.New("creation: credit conversion unavailable")
 
+const maxCreationRequestBytes = 8 << 20
+
 type snapshotCreditField struct {
 	Internal string
 	Public   string
@@ -103,10 +105,10 @@ func (h *creationHandler) present(v creation.View) (creationSessionResponse, err
 func (h *creationHandler) writeView(w http.ResponseWriter, v creation.View) {
 	out, err := h.present(v)
 	if err != nil {
-		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
 		return
 	}
-	httpx.WriteJSON(w, 200, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 func (h *creationHandler) budgetBand() (minCredits, maxCredits int64, ok bool) {
@@ -128,12 +130,12 @@ func (h *creationHandler) usdForCredits(credits int64) (float64, bool) {
 func (h *creationHandler) scope(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
 	u, ok := identity.SessionUser(r.Context())
 	if !ok {
-		httpx.WriteError(w, 401, "請先登入。")
+		httpx.WriteError(w, http.StatusUnauthorized, "請先登入。")
 		return identity.Workspace{}, false
 	}
 	ws, err := h.Identity.PersonalWorkspace(r.Context(), u)
 	if err != nil {
-		httpx.WriteError(w, 503, "工作區暫時無法讀取。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "工作區暫時無法讀取。")
 		return ws, false
 	}
 	return ws, true
@@ -176,15 +178,15 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	httpx.WriteError(w, code, text)
 }
 func creationDecode(w http.ResponseWriter, r *http.Request, v any) bool {
-	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<20))
+	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCreationRequestBytes))
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {
-		httpx.WriteError(w, 400, "輸入格式不正確或檔案太大。")
+		httpx.WriteError(w, http.StatusBadRequest, "輸入格式不正確或檔案太大。")
 		return false
 	}
 	var extra any
 	if d.Decode(&extra) != io.EOF {
-		httpx.WriteError(w, 400, "輸入格式不正確。")
+		httpx.WriteError(w, http.StatusBadRequest, "輸入格式不正確。")
 		return false
 	}
 	return true
@@ -203,12 +205,12 @@ func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 	for _, one := range v {
 		presented, err := h.present(one)
 		if err != nil {
-			httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+			httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
 			return
 		}
 		out = append(out, presented)
 	}
-	httpx.WriteJSON(w, 200, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 func (h *creationHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)
@@ -306,12 +308,12 @@ func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 func (h *creationHandler) Limits(w http.ResponseWriter, r *http.Request) {
 	l := h.Svc.Limits
 	if !l.Valid() {
-		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
 		return
 	}
 	minCredits, maxCredits, ok := h.budgetBand()
 	if !ok {
-		httpx.WriteError(w, 503, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, creationLimitsResponse{

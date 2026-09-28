@@ -36,7 +36,7 @@ func NewRateLimiter(perMinute int, burst int) *RateLimiter {
 		burst = 1
 	}
 	return &RateLimiter{
-		rate:  float64(perMinute) / 60.0,
+		rate:  float64(perMinute) / time.Minute.Seconds(),
 		burst: float64(burst),
 		last:  map[string]bucket{},
 		now:   time.Now,
@@ -159,5 +159,7 @@ func clientKey(address string) string {
 	if addr.Is4() {
 		return addr.String()
 	}
-	return netip.PrefixFrom(addr, 64).Masked().String()
+	return netip.PrefixFrom(addr, ipv6AllocationPrefixBits).Masked().String()
 }
+
+const ipv6AllocationPrefixBits = 64

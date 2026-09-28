@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
@@ -103,39 +104,8 @@ func NewApp(cfg Config) (*App, error) {
 	testlabSvc := &testlab.Service{
 		Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects, ClearSightings: objreconcile.ClearDatasetSightings,
 	}
-	runPurgeSvc := &run.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	registryPurgeSvc := &registry.Service{
-		Pool:                cfg.Pool,
-		VersionsInRuns:      run.SkillVersionsInRuns,
-		VersionsInDownloads: packaging.SkillVersionsInDownloads,
-		VersionsInBundles:   publishing.SkillVersionsInBundles,
-		SkillsWithTestCases: testlab.SkillsWithTestCases,
-	}
-	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool, SourcesInVersions: registry.SourcesInVersions}
-
-	identitySvc.PurgeAnalytics = analytics.PurgeWorkspace
-	identitySvc.PurgeTestData = testlabSvc.PurgeWorkspace
-	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
-	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
-	identitySvc.PurgeCreation = creation.PurgeWorkspace
-	identitySvc.PurgePublications = publishing.PurgeWorkspace
-	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
-	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
-	identitySvc.DatasetObjectKeys = testlab.WorkspaceObjectKeys
-	identitySvc.RunArtifactObjectKeys = run.WorkspaceObjectKeys
-	identitySvc.DownloadArtifactObjectKeys = packaging.WorkspaceObjectKeys
-	identitySvc.WorkspaceQuiescent = run.PurgeQuiescent
-	auth := &identity.Handler{
-		Service:     identitySvc,
-		Secure:      cfg.Secure,
-		AppURL:      cfg.AppURL,
-		DevLogin:    cfg.DevLogin,
-		Operators:   cfg.Operators,
-		Invited:     cfg.Invited,
-		Features:    entryPointFeatures(cfg),
-		Disclosures: disclosureFeatures(cfg),
-	}
+	wireWorkspacePurge(identitySvc, testlabSvc, cfg.Pool)
+	auth := newAuthHandler(cfg, identitySvc)
 
 	jobs, err := queue.New(cfg.Pool, nil)
 	if err != nil {
@@ -148,42 +118,15 @@ func NewApp(cfg Config) (*App, error) {
 		Secure:    cfg.Secure,
 	}
 
-	versions := &ingest.Service{
-		Pool:          cfg.Pool,
-		Store:         cfg.Store,
-		Fetcher:       ingest.FetcherOrNone(cfg.Fetcher),
-		LLM:           ingest.ModelOrNone(cfg.LLM),
-		GenerateQuota: cfg.GenerateQuota,
-	}
 	registrySvc := &registry.Service{
 		Pool: cfg.Pool, Store: cfg.Store,
 		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 	}
+	versions := newVersionsService(cfg, registrySvc)
+	wireTestLab(testlabSvc, cfg, registrySvc)
 
-	versions.References = registrySvc
-	testlabSvc.Store = cfg.Store
-	testlabSvc.LLM = testlab.ModelOrNone(cfg.LLM)
-	testlabSvc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (testlab.SkillFacts, bool, error) {
-		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
-		return testlab.SkillFacts{Name: skill.Name, Summary: skill.Summary}, found, err
-	}
-	testlabSvc.LockLiveSkillForCreate = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (bool, error) {
-		_, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
-		return found, err
-	}
-
-	runSvc := &run.Service{
-		Pool: cfg.Pool, TestLab: testlabSvc, Queue: wiring.NewRunQueue(jobs), Providers: cfg.Providers, Store: cfg.Store,
-		ClearSightings:     objreconcile.ClearArtifactSightings,
-		Quota:              cfg.Quota,
-		WorkspaceCreatedAt: auth.Service.WorkspaceCreatedAt,
-		LastOrphanScan:     wiring.LastOrphanScan(cfg.Pool),
-		Deployment:         cfg.RunDeployment,
-	}
-	wiring.WireRunRegistryReaders(runSvc, registrySvc)
+	runSvc, traceSvc := newRunServices(cfg, testlabSvc, identitySvc, registrySvc, wiring.NewRunQueue(jobs))
 	funnel.RunBelongsToWorkspace = runSvc.BelongsToWorkspace
-	traceSvc := wiring.NewTraceService(cfg.Pool, cfg.TraceSigner, runSvc)
-	runSvc.Trace = traceSvc
 
 	evalSvc := &eval.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Versions: versions, Trace: traceSvc,
@@ -191,68 +134,13 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireEvaluationRunReaders(evalSvc, runSvc)
 	wiring.WireEvaluationRegistryReaders(evalSvc, registrySvc)
 
-	packagingSvc := &packaging.Service{
-		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Profiles: cfg.Profiles,
-		ClearSightings:   objreconcile.ClearArtifactSightings,
-		MayStoreObjects:  identitySvc.MayStoreObjects,
-		ReadDisplayNames: identitySvc.DisplayNames,
-		Retention:        policy.DownloadRetention(cfg.DownloadRetention),
-		AppliedSuggestions: func(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
-			return packagingSuggestions(ctx, evalSvc, workspaceID, versionID)
-		},
-		SourceLineage: func(ctx context.Context, sourceID pgtype.UUID) (packaging.LineageSource, error) {
-			source, err := versions.SourceLineage(ctx, sourceID)
-			return packaging.LineageSource{
-				SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
-				ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
-			}, err
-		},
-	}
+	packagingSvc := newPackagingService(cfg, testlabSvc, identitySvc, evalSvc, versions)
 	wirePackagingRegistryReaders(packagingSvc, registrySvc)
-	runSvc.ActiveArtifactReferences = packaging.ActiveArtifactReferences
-	catalogSvc := wiring.NewCatalogService(cfg.Pool)
-	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
-	catalogSvc.LLM = catalog.ModelOrNone(cfg.LLM)
-	catalogSvc.IntentAnalyzer = catalog.IntentAnalyzerOrNone(cfg.LLM)
+	catalogSvc := newCatalogService(cfg, identitySvc, funnel, versions)
 
 	budgets := wiring.NewModelBudgets(cfg.Pool)
 	versions.Budgets, testlabSvc.Budgets, catalogSvc.Budgets, evalSvc.Budgets = budgets, budgets, budgets, budgets
-	catalogSvc.Store = cfg.Store
-	catalogSvc.Analytics = funnel
-	catalogSvc.SourceByID = func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
-		source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
-		return catalog.SourceFacts{
-			SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
-			ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
-			LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
-			TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
-			GeneratorPromptVersion: source.GeneratorPromptVersion,
-			GenerationInputs:       source.GenerationInputs,
-			PluginName:             source.PluginName,
-			PluginVersion:          source.PluginVersion,
-			PluginRepository:       source.PluginRepository,
-		}, found, err
-	}
-	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
-		return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
-			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
-			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
-			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
-			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
-		})
-	}
-	registrySvc.IndexSkill = func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
-		return catalogSvc.IndexSkill(ctx, tx, catalog.SkillProjection{
-			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
-		})
-	}
-	registrySvc.RemoveFromIndex = catalog.RemoveSkillFromIndex
-	registrySvc.RefreshListing = catalogSvc.RefreshListing
-	wireCatalogRegistryReaders(catalogSvc, registrySvc)
-
-	registrySvc.SkillRisks = catalogSvc.SkillRisks
-	registrySvc.CatalogSkillRisks = catalogSvc.CatalogSkillRisks
+	wireCatalogIndexing(catalogSvc, versions, registrySvc)
 
 	creationSvc := &creation.Service{Pool: cfg.Pool, Limits: cfg.CreationLimits}
 	creationSvc.Insert = wiring.NewCreationQueue(jobs)
@@ -275,58 +163,7 @@ func NewApp(cfg Config) (*App, error) {
 	publishingSvc := newPublishingService(cfg, registrySvc, packagingSvc)
 	wireExposure(catalogSvc, publishingSvc)
 
-	return &App{
-		Deps: Deps{
-			Auth:            auth,
-			Creation:        &creationHandler{Svc: creationSvc, Identity: identitySvc, Transient: cfg.CreationTransient, Credit: creditSvc},
-			CreationExposed: creationEnabled(cfg),
-			Readiness:       cfg.Readiness,
-			CleanMode:       cfg.CleanMode,
-			Importer:        &ingest.Handler{Svc: versions, Identity: auth.Service},
-			Search: &catalog.Handler{
-				Svc:      catalogSvc,
-				Identity: auth.Service,
-			},
-			Registry: &registry.Handler{
-
-				Svc:      registrySvc,
-				Identity: auth.Service,
-			},
-			TestLab: &testlab.Handler{
-				Svc:      testlabSvc,
-				Identity: auth.Service,
-			},
-			Runs:      &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
-			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
-			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
-			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
-			Publishing: &publishing.Handler{
-				Svc: publishingSvc, Identity: auth.Service, DescribeRedistribution: describeRedistribution,
-				DownloadsOpenToUninvited: cfg.PublicationDownloadsOpen,
-				InviteRosterConfigured:   func() bool { return len(auth.Invited) > 0 },
-			},
-			Credits: &creditsHandler{
-				Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
-				Identity:        identitySvc,
-				RunsInWorkspace: runSvc.RunsInWorkspace,
-			},
-			OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
-			ModelBudgets:  &modelbudget.Handler{Svc: budgets, Actor: sessionActorID},
-			Trends: &trendsHandler{
-				Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
-				DailyRuns:          runSvc.DailyRuns,
-				DailyRunWorkspaces: runSvc.DailyRunWorkspaces,
-				DailyFunnelReach:   funnel.DailyFunnelReach,
-				Audit:              cfg.Pool,
-				Now:                time.Now,
-			},
-			Analytics: &analytics.Handler{
-				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
-			},
-			GenerateExposed: cfg.GenerateExposed,
-			Limits:          cfg.RateLimits,
-			AppURL:          cfg.AppURL,
-		},
+	app := &App{
 		Auth:         auth,
 		RunSvc:       runSvc,
 		EvalSvc:      evalSvc,
@@ -334,7 +171,208 @@ func NewApp(cfg Config) (*App, error) {
 		Versions:     versions,
 		CreationSvc:  creationSvc,
 		TraceSvc:     traceSvc,
-	}, nil
+	}
+	app.Deps = newDeps(cfg, app, creditSvc, funnel)
+	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
+	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Identity: auth.Service}
+	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Identity: auth.Service}
+	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
+	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
+	return app, nil
+}
+
+func wireWorkspacePurge(identitySvc *identity.Service, testlabSvc *testlab.Service, pool *pgxpool.Pool) {
+	runPurgeSvc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
+	packagingPurgeSvc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
+	registryPurgeSvc := &registry.Service{
+		Pool:                pool,
+		VersionsInRuns:      run.SkillVersionsInRuns,
+		VersionsInDownloads: packaging.SkillVersionsInDownloads,
+		VersionsInBundles:   publishing.SkillVersionsInBundles,
+		SkillsWithTestCases: testlab.SkillsWithTestCases,
+	}
+	ingestPurgeSvc := &ingest.Service{Pool: pool, SourcesInVersions: registry.SourcesInVersions}
+
+	identitySvc.PurgeAnalytics = analytics.PurgeWorkspace
+	identitySvc.PurgeTestData = testlabSvc.PurgeWorkspace
+	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeCreation = creation.PurgeWorkspace
+	identitySvc.PurgePublications = publishing.PurgeWorkspace
+	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
+	identitySvc.DatasetObjectKeys = testlab.WorkspaceObjectKeys
+	identitySvc.RunArtifactObjectKeys = run.WorkspaceObjectKeys
+	identitySvc.DownloadArtifactObjectKeys = packaging.WorkspaceObjectKeys
+	identitySvc.WorkspaceQuiescent = run.PurgeQuiescent
+}
+
+func newAuthHandler(cfg Config, identitySvc *identity.Service) *identity.Handler {
+	return &identity.Handler{
+		Service:     identitySvc,
+		Secure:      cfg.Secure,
+		AppURL:      cfg.AppURL,
+		DevLogin:    cfg.DevLogin,
+		Operators:   cfg.Operators,
+		Invited:     cfg.Invited,
+		Features:    entryPointFeatures(cfg),
+		Disclosures: disclosureFeatures(cfg),
+	}
+}
+
+func newVersionsService(cfg Config, registrySvc *registry.Service) *ingest.Service {
+	return &ingest.Service{
+		Pool:          cfg.Pool,
+		Store:         cfg.Store,
+		Fetcher:       ingest.FetcherOrNone(cfg.Fetcher),
+		LLM:           ingest.ModelOrNone(cfg.LLM),
+		GenerateQuota: cfg.GenerateQuota,
+		References:    registrySvc,
+	}
+}
+
+func wireTestLab(testlabSvc *testlab.Service, cfg Config, registrySvc *registry.Service) {
+	testlabSvc.Store = cfg.Store
+	testlabSvc.LLM = testlab.ModelOrNone(cfg.LLM)
+	testlabSvc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (testlab.SkillFacts, bool, error) {
+		skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
+		return testlab.SkillFacts{Name: skill.Name, Summary: skill.Summary}, found, err
+	}
+	testlabSvc.LockLiveSkillForCreate = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (bool, error) {
+		_, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
+		return found, err
+	}
+}
+
+func newRunServices(
+	cfg Config, testlabSvc *testlab.Service, identitySvc *identity.Service, registrySvc *registry.Service, runQueue run.RunQueue,
+) (*run.Service, *trace.Service) {
+	runSvc := &run.Service{
+		Pool: cfg.Pool, TestLab: testlabSvc, Queue: runQueue, Providers: cfg.Providers, Store: cfg.Store,
+		ClearSightings:           objreconcile.ClearArtifactSightings,
+		Quota:                    cfg.Quota,
+		WorkspaceCreatedAt:       identitySvc.WorkspaceCreatedAt,
+		LastOrphanScan:           wiring.LastOrphanScan(cfg.Pool),
+		Deployment:               cfg.RunDeployment,
+		ActiveArtifactReferences: packaging.ActiveArtifactReferences,
+	}
+	wiring.WireRunRegistryReaders(runSvc, registrySvc)
+	traceSvc := wiring.NewTraceService(cfg.Pool, cfg.TraceSigner, runSvc)
+	runSvc.Trace = traceSvc
+	return runSvc, traceSvc
+}
+
+func newPackagingService(
+	cfg Config, testlabSvc *testlab.Service, identitySvc *identity.Service, evalSvc *eval.Service, versions *ingest.Service,
+) *packaging.Service {
+	return &packaging.Service{
+		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Profiles: cfg.Profiles,
+		ClearSightings:   objreconcile.ClearArtifactSightings,
+		MayStoreObjects:  identitySvc.MayStoreObjects,
+		ReadDisplayNames: identitySvc.DisplayNames,
+		Retention:        policy.DownloadRetention(cfg.DownloadRetention),
+		AppliedSuggestions: func(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
+			return packagingSuggestions(ctx, evalSvc, workspaceID, versionID)
+		},
+		SourceLineage: func(ctx context.Context, sourceID pgtype.UUID) (packaging.LineageSource, error) {
+			source, err := versions.SourceLineage(ctx, sourceID)
+			return packaging.LineageSource{
+				SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
+				ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
+			}, err
+		},
+	}
+}
+
+func newCatalogService(cfg Config, identitySvc *identity.Service, funnel *analytics.Service, versions *ingest.Service) *catalog.Service {
+	catalogSvc := wiring.NewCatalogService(cfg.Pool)
+	catalogSvc.CatalogWorkspaces = identitySvc.CatalogWorkspaceIDs
+	catalogSvc.LLM = catalog.ModelOrNone(cfg.LLM)
+	catalogSvc.IntentAnalyzer = catalog.IntentAnalyzerOrNone(cfg.LLM)
+	catalogSvc.Store = cfg.Store
+	catalogSvc.Analytics = funnel
+	catalogSvc.SourceByID = func(ctx context.Context, workspaceID, sourceID pgtype.UUID) (catalog.SourceFacts, bool, error) {
+		source, found, err := versions.ReadSource(ctx, workspaceID, sourceID)
+		return catalog.SourceFacts{
+			SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
+			ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
+			LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
+			TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
+			GeneratorPromptVersion: source.GeneratorPromptVersion,
+			GenerationInputs:       source.GenerationInputs,
+			PluginName:             source.PluginName,
+			PluginVersion:          source.PluginVersion,
+			PluginRepository:       source.PluginRepository,
+		}, found, err
+	}
+	return catalogSvc
+}
+
+func wireCatalogIndexing(catalogSvc *catalog.Service, versions *ingest.Service, registrySvc *registry.Service) {
+	versions.IndexSkill = func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
+		return catalogSvc.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
+			EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
+			Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
+			EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
+			EnrichmentPromptVersion: p.EnrichmentPromptVersion,
+		})
+	}
+	registrySvc.IndexSkill = func(ctx context.Context, tx pgx.Tx, p registry.SkillProjection) error {
+		return catalogSvc.IndexSkill(ctx, tx, catalog.SkillProjection{
+			SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
+		})
+	}
+	registrySvc.RemoveFromIndex = catalog.RemoveSkillFromIndex
+	registrySvc.RefreshListing = catalogSvc.RefreshListing
+	wireCatalogRegistryReaders(catalogSvc, registrySvc)
+
+	registrySvc.SkillRisks = catalogSvc.SkillRisks
+	registrySvc.CatalogSkillRisks = catalogSvc.CatalogSkillRisks
+}
+
+func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.Service) Deps {
+	auth, identitySvc, runSvc, evalSvc := app.Auth, app.Auth.Service, app.RunSvc, app.EvalSvc
+	return Deps{
+		Auth:            auth,
+		Creation:        &creationHandler{Svc: app.CreationSvc, Identity: identitySvc, Transient: cfg.CreationTransient, Credit: creditSvc},
+		CreationExposed: creationEnabled(cfg),
+		Readiness:       cfg.Readiness,
+		CleanMode:       cfg.CleanMode,
+		Importer:        &ingest.Handler{Svc: app.Versions, Identity: auth.Service},
+		Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service, RunVerdicts: evalSvc.RunVerdicts},
+		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
+		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
+		Credits: &creditsHandler{
+			Ledger:          &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+			Identity:        identitySvc,
+			RunsInWorkspace: runSvc.RunsInWorkspace,
+		},
+		OperatorAudit: &operatorAuditHandler{DB: cfg.Pool},
+		Trends: &trendsHandler{
+			Credits:            &creditLedger{svc: creditSvc, owner: identitySvc.WorkspaceOwner, pool: cfg.Pool},
+			DailyRuns:          runSvc.DailyRuns,
+			DailyRunWorkspaces: runSvc.DailyRunWorkspaces,
+			DailyFunnelReach:   funnel.DailyFunnelReach,
+			Audit:              cfg.Pool,
+			Now:                time.Now,
+		},
+		Analytics: &analytics.Handler{
+			Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
+		},
+		GenerateExposed: cfg.GenerateExposed,
+		Limits:          cfg.RateLimits,
+		AppURL:          cfg.AppURL,
+	}
+}
+
+func newPublishingHandler(cfg Config, publishingSvc *publishing.Service, auth *identity.Handler) *publishing.Handler {
+	return &publishing.Handler{
+		Svc: publishingSvc, Identity: auth.Service, DescribeRedistribution: describeRedistribution,
+		DownloadsOpenToUninvited: cfg.PublicationDownloadsOpen,
+		InviteRosterConfigured:   func() bool { return len(auth.Invited) > 0 },
+	}
 }
 
 func wireCatalogRegistryReaders(service *catalog.Service, registryService *registry.Service) {

@@ -161,12 +161,13 @@ type expiredObjectPurge struct {
 func (p expiredObjectPurge) object(ctx context.Context, key string, rows []Candidate) (int, error) {
 	var removeErr error
 	purged := 0
+	objectRemoved := func() bool {
+		removeErr = p.store.Remove(ctx, key)
+		return removeErr == nil
+	}
 	removeThenMark := func(retain bool, tx pgx.Tx) error {
-		if !retain {
-			removeErr = p.store.Remove(ctx, key)
-			if removeErr != nil {
-				return nil
-			}
+		if !retain && !objectRemoved() {
+			return nil
 		}
 		n, err := p.markRows(ctx, tx, rows)
 		purged += n

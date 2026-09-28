@@ -11,6 +11,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const (
+	labelProvider = "provider"
+	labelResult   = "result"
+)
+
 var (
 	fastBuckets  = []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10}
 	runBuckets   = []float64{1, 5, 15, 30, 60, 120, 300, 600, 900, 1800}
@@ -56,7 +61,7 @@ var (
 	Cleanup = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_run_cleanup_total",
 		Help: "Cleanup passes by outcome (RUN-007).",
-	}, []string{"result"})
+	}, []string{labelResult})
 	CleanupDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "skillhub_run_cleanup_duration_seconds",
 		Help:    "How long one run's cleanup took (RUN-007).",
@@ -75,7 +80,7 @@ var (
 	SandboxDestroyFailed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_sandbox_destroy_failed_total",
 		Help: "Sandbox teardowns that failed during cleanup (SBX-012).",
-	}, []string{"provider"})
+	}, []string{labelProvider})
 
 	RunTokenCeilingBreached = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "skillhub_run_token_ceiling_breached_total",
@@ -136,34 +141,34 @@ var (
 	ProviderCapability = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_provider_capability_total",
 		Help: "GET /capability attempts by outcome (O11Y-002, RUN-005).",
-	}, []string{"provider", "result"})
+	}, []string{labelProvider, labelResult})
 
 	ProviderRequest = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_provider_request_total",
 		Help: "Sandbox provider calls by operation and status class (O11Y-002).",
-	}, []string{"provider", "operation", "class"})
+	}, []string{labelProvider, "operation", "class"})
 	ProviderRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "skillhub_provider_request_duration_seconds",
 		Help:    "Sandbox provider call latency (O11Y-002).",
 		Buckets: fastBuckets,
-	}, []string{"provider", "operation"})
+	}, []string{labelProvider, "operation"})
 )
 
 var (
 	OrphanScan = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_orphan_scan_total",
 		Help: "Orphan scan passes per provider by outcome (RUN-007, O11Y-003).",
-	}, []string{"provider", "result"})
+	}, []string{labelProvider, labelResult})
 
 	OrphanSandbox = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_orphan_sandbox_total",
 		Help: "Sandboxes the orphan scan acted on, by outcome (O11Y-003).",
-	}, []string{"provider", "action"})
+	}, []string{labelProvider, "action"})
 
 	OrphanPersistent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_orphan_sandbox_persistent",
 		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012).",
-	}, []string{"provider"})
+	}, []string{labelProvider})
 
 	ObjectsMissing = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "skillhub_storage_objects_missing",
@@ -180,7 +185,7 @@ var (
 	TraceEvents = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_trace_events_total",
 		Help: "Trace events offered to ingestion, by outcome (TRACE-008).",
-	}, []string{"source", "result"})
+	}, []string{"source", labelResult})
 
 	TraceMaskedFields = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "skillhub_trace_masked_fields_total",
@@ -204,9 +209,9 @@ func StatusClass(status int) string {
 		return "error"
 	case status == http.StatusTooManyRequests:
 		return "throttled"
-	case status >= 500:
+	case status >= http.StatusInternalServerError:
 		return "server_error"
-	case status >= 400:
+	case status >= http.StatusBadRequest:
 		return "client_error"
 	default:
 		return "ok"
@@ -217,6 +222,8 @@ func ObserveSince(o prometheus.Observer, start time.Time) {
 	o.Observe(time.Since(start).Seconds())
 }
 
+const metricsReadHeaderTimeout = 5 * time.Second
+
 func Serve(addr string) {
 	if addr == "" {
 		slog.Info("metrics endpoint disabled (METRICS_ADDR unset)")
@@ -224,7 +231,7 @@ func Serve(addr string) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
-	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: metricsReadHeaderTimeout}
 	slog.Info("metrics listening", "addr", addr)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 
