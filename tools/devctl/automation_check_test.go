@@ -90,31 +90,21 @@ func TestDomainMemoryProblemsSaysWhyACheckCouldNotRun(t *testing.T) {
 	}
 }
 
-func TestAutomationCheckRunsEveryChecker(t *testing.T) {
-	t.Parallel()
-	root := t.TempDir()
-	write := func(relative, contents string) {
-		path := filepath.Join(root, filepath.FromSlash(relative))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	write("Taskfile.yml", "version: \"3\"\ntasks:\n")
-
-	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
+func writeAutomationCheckRepoScanFixture(t *testing.T, root string) {
+	t.Helper()
+	writeTestFile(t, root, "Taskfile.yml", "version: \"3\"\ntasks:\n")
+	writeTestFile(t, root, "AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
 		"見 [規則](./docs/rules/missing.md)。\n"+
 		"而那正是  修好的那個形狀。\n")
+	writeTestFile(t, root, "apps/platform/.golangci.yml", "version: \"2\"\n")
+	writeTestFile(t, root, contextMapDoc, "packages:\n")
+	writeTestFile(t, root, registryContextsFile, `{"contexts": []}`)
+	writeTestFile(t, root, dependencyPoliciesFile, `{"dependencies": []}`)
+}
 
-	write("apps/platform/.golangci.yml", "version: \"2\"\n")
-	write(contextMapDoc, "packages:\n")
-	write(registryContextsFile, `{"contexts": []}`)
-	write(dependencyPoliciesFile, `{"dependencies": []}`)
-
-	write(genDirRelative+"/fake.sql.go", `package gen
+func writeAutomationCheckGeneratedCodeFixture(t *testing.T, root string) {
+	t.Helper()
+	writeTestFile(t, root, genDirRelative+"/fake.sql.go", `package gen
 
 import "context"
 
@@ -133,7 +123,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 type CreateUserParams struct{ Email string }
 type User struct{ ID int64 }
 `)
-	write("apps/platform/internal/fake/mem.go", `package fake
+	writeTestFile(t, root, "apps/platform/internal/fake/mem.go", `package fake
 
 import (
 	"context"
@@ -153,13 +143,15 @@ func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
 	return nil
 }
 `)
+}
 
-	write("apps/platform/budgets.go",
+func writeAutomationCheckProductCodeFixture(t *testing.T, root string) {
+	t.Helper()
+	writeTestFile(t, root, "apps/platform/budgets.go",
 		"package x\n\nconst t = 135 * time.Second // budget-over: nothing.PAIRS_WITH_THIS\n")
-	write("apps/platform/internal/fake/decided.go",
+	writeTestFile(t, root, "apps/platform/internal/fake/decided.go",
 		"package fake\n\nimport _ \""+modelWirePackage+"\"\n\n// Decided in R-74.\nvar decided = true\n")
-
-	write("apps/platform/internal/fake/main_test.go", `package fake
+	writeTestFile(t, root, "apps/platform/internal/fake/main_test.go", `package fake
 
 import (
 	"os"
@@ -173,11 +165,22 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 `)
+}
 
-	write(".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
+func writeAutomationCheckDocsFixture(t *testing.T, root string) {
+	t.Helper()
+	writeTestFile(t, root, ".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
+	writeTestFile(t, root, ".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
+	writeTestFile(t, root, "docs/domain-memory/not-a-registry", "")
+}
 
-	write(".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
-	write("docs/domain-memory/not-a-registry", "")
+func TestAutomationCheckRunsEveryChecker(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeAutomationCheckRepoScanFixture(t, root)
+	writeAutomationCheckGeneratedCodeFixture(t, root)
+	writeAutomationCheckProductCodeFixture(t, root)
+	writeAutomationCheckDocsFixture(t, root)
 
 	var out bytes.Buffer
 	if err := automationCheck(root, &out); err == nil {

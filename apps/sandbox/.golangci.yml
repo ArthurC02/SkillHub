@@ -29,8 +29,6 @@ linters:
           - dupl
           - revive
           - unparam
-          - funlen
-          - cyclop
           - goconst
           - mnd
 

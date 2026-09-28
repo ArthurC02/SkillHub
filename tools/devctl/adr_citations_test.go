@@ -49,15 +49,35 @@ func TestADRCitationProblemsAcceptsACleanTree(t *testing.T) {
 	}
 }
 
-func TestADRCitationProblems(t *testing.T) {
+type adrCitationCase struct {
+	name   string
+	change func(root string, write func(string, string))
+	want   string
+	count  int
+}
+
+func runADRCitationCases(t *testing.T, cases []adrCitationCase) {
+	t.Helper()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			root, write := adrCitationFixture(t)
+			c.change(root, write)
+			problems := adrCitationProblems(root)
+			if len(problems) != c.count {
+				t.Fatalf("want %d problems, got %d:\n%s", c.count, len(problems), strings.Join(problems, "\n"))
+			}
+			if c.count > 0 && !strings.Contains(problems[0], c.want) {
+				t.Fatalf("problem does not contain %q:\n%s", c.want, problems[0])
+			}
+		})
+	}
+}
+
+func TestADRCitationProblemsFlagsProseInLivingDocuments(t *testing.T) {
 	t.Parallel()
-	one, two, seven := adrNumber(1), adrNumber(2), adrNumber(7)
-	for _, c := range []struct {
-		name   string
-		change func(root string, write func(string, string))
-		want   string
-		count  int
-	}{
+	one := adrNumber(1)
+	runADRCitationCases(t, []adrCitationCase{
 		{
 			name:   "a living document names an ADR",
 			change: func(_ string, write func(string, string)) { write("docs/plans/02.md", "見 "+one+"。\n") },
@@ -75,6 +95,20 @@ func TestADRCitationProblems(t *testing.T) {
 			change: func(_ string, write func(string, string)) { write("docs/plans/mvp/m1/report.md", "依 "+one+"。\n") },
 			want:   "docs/plans/mvp/m1/report.md:1 names " + one, count: 1,
 		},
+		{
+			name: "a Domain Memory draft PR's prose is not exempt",
+			change: func(_ string, write func(string, string)) {
+				write("docs/domain-memory/changes/x/draft-pr.md", "依 "+one+"。\n")
+			},
+			want: "docs/domain-memory/changes/x/draft-pr.md:1 names " + one, count: 1,
+		},
+	})
+}
+
+func TestADRCitationProblemsFlagsIndexAndADRStructure(t *testing.T) {
+	t.Parallel()
+	one, two, seven := adrNumber(1), adrNumber(2), adrNumber(7)
+	runADRCitationCases(t, []adrCitationCase{
 		{
 			name: "an ADR cites a number that has no file",
 			change: func(_ string, write func(string, string)) {
@@ -107,6 +141,23 @@ func TestADRCitationProblems(t *testing.T) {
 			want:   "docs/adr/superseded/old.md is in docs/adr but is neither an ADR nor the index", count: 1,
 		},
 		{
+			name: "an index without ADRs is a broken scan",
+			change: func(root string, _ func(string, string)) {
+				for _, name := range []string{one + "-alpha.md", two + "-beta.md"} {
+					if err := os.Remove(filepath.Join(root, "docs", "adr", name)); err != nil {
+						panic(err)
+					}
+				}
+			},
+			want: "docs/adr holds no ADR", count: 1,
+		},
+	})
+}
+
+func TestADRCitationProblemsChecksAnchorLinks(t *testing.T) {
+	t.Parallel()
+	runADRCitationCases(t, []adrCitationCase{
+		{
 			name: "a link to an index heading that does not exist",
 			change: func(_ string, write func(string, string)) {
 				write("docs/plans/03.md", "[x](../adr/README.md#不存在)\n")
@@ -127,6 +178,13 @@ func TestADRCitationProblems(t *testing.T) {
 			},
 			count: 0,
 		},
+	})
+}
+
+func TestADRCitationProblemsExemptsDataFiles(t *testing.T) {
+	t.Parallel()
+	one := adrNumber(1)
+	runADRCitationCases(t, []adrCitationCase{
 		{
 			name: "a Domain Memory record cites an ADR by path",
 			change: func(_ string, write func(string, string)) {
@@ -143,36 +201,5 @@ func TestADRCitationProblems(t *testing.T) {
 			},
 			count: 0,
 		},
-		{
-			name: "a Domain Memory draft PR's prose is not exempt",
-			change: func(_ string, write func(string, string)) {
-				write("docs/domain-memory/changes/x/draft-pr.md", "依 "+one+"。\n")
-			},
-			want: "docs/domain-memory/changes/x/draft-pr.md:1 names " + one, count: 1,
-		},
-		{
-			name: "an index without ADRs is a broken scan",
-			change: func(root string, _ func(string, string)) {
-				for _, name := range []string{one + "-alpha.md", two + "-beta.md"} {
-					if err := os.Remove(filepath.Join(root, "docs", "adr", name)); err != nil {
-						panic(err)
-					}
-				}
-			},
-			want: "docs/adr holds no ADR", count: 1,
-		},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			root, write := adrCitationFixture(t)
-			c.change(root, write)
-			problems := adrCitationProblems(root)
-			if len(problems) != c.count {
-				t.Fatalf("want %d problems, got %d:\n%s", c.count, len(problems), strings.Join(problems, "\n"))
-			}
-			if c.count > 0 && !strings.Contains(problems[0], c.want) {
-				t.Fatalf("problem does not contain %q:\n%s", c.want, problems[0])
-			}
-		})
-	}
+	})
 }

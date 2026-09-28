@@ -139,70 +139,15 @@ func TestRetentionFloorIsAFloorAndNotAThreshold(t *testing.T) {
 	}
 }
 
-func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
-	t.Parallel()
-	ninety := retentionGo(ninetyDays)
-	for _, tc := range []struct {
-		name, retention, sql, env, window, want string
-	}{{
-		name:      "no retention constant at all",
-		retention: "package run\n",
-		env:       allFloorsMet, want: "has lost its subject",
-	}, {
-		name:      "the SQL stamps a retention of its own again",
-		retention: ninety,
-		sql: "-- name: InsertRunArtifact :exec\n" +
-			"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
-			"VALUES (@workspace_id, @run_id, 'run_output', now() + interval '90 days');\n",
-		env: allFloorsMet, want: "there are now two authors of it",
-	}, {
-		name:      "the SQL adds a deployment parameter to now()",
-		retention: ninety,
-		sql: "-- name: InsertRunArtifact :exec\n" +
-			"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
-			"VALUES (@workspace_id, @run_id, 'run_output', now() + @retention);\n",
-		env: allFloorsMet, want: "there are now two authors of it",
-	}, {
-		name:      "two declarations of the constant",
-		retention: ninety + "\nconst runArtifactRetention = 30 * 24 * time.Hour\n",
-		env:       allFloorsMet, want: "there are now two authors of it",
-	}, {
-		name:      "the constant is no longer arithmetic on literals",
-		retention: "package run\n\nconst runArtifactRetention = retentionFromEnvironment\n",
-		env:       allFloorsMet, want: "something other than a positive product",
-	}, {
-		name:      "TRACE_RETENTION is gone",
-		retention: ninety,
-		env:       strings.Replace(allFloorsMet, "TRACE_RETENTION=2160h\n", "", 1),
-		want:      "no longer assigns TRACE_RETENTION",
-	}, {
-		name:      "DOWNLOAD_ARTIFACT_RETENTION is gone",
-		retention: ninety,
-		env:       strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h\n", "", 1),
-		want:      "no longer assigns DOWNLOAD_ARTIFACT_RETENTION",
-	}, {
-		name:      "ANALYTICS_RETENTION is gone",
-		retention: ninety,
-		env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h\n", "", 1),
-		want:      "no longer assigns ANALYTICS_RETENTION",
-	}, {
-		name:      "two assignments of one window",
-		retention: ninety,
-		env:       allFloorsMet + "TRACE_RETENTION=1h\n",
-		want:      "cannot have two values",
-	}, {
-		name:      "the observation window heading is gone",
-		retention: ninety,
-		env:       allFloorsMet,
-		window:    "### 8.2 B 版\n\n長度搬到別處了。\n",
-		want:      "lost half its subject",
-	}, {
-		name:      "two closed-beta lengths",
-		retention: ninety,
-		env:       allFloorsMet,
-		window:    defaultWindowDoc + "### 8.3 C 版：封閉測試（21 天）\n",
-		want:      "cannot have two lengths",
-	}} {
+var retentionFloorNinetyDaysGo = retentionGo(ninetyDays)
+
+type retentionFloorMissingSubjectCase struct {
+	name, retention, sql, env, window, want string
+}
+
+func runRetentionFloorMissingSubjectCases(t *testing.T, cases []retentionFloorMissingSubjectCase) {
+	t.Helper()
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			window := tc.window
@@ -219,12 +164,100 @@ func TestRetentionFloorSaysSoWhenItHasLostItsSubject(t *testing.T) {
 			}
 		})
 	}
-	t.Run("no tree at all", func(t *testing.T) {
-		t.Parallel()
-		if problems := retentionFloorProblems(t.TempDir()); len(problems) == 0 {
-			t.Fatal("an empty tree was accepted")
-		}
+}
+
+func TestRetentionFloorSaysSoWhenTheGoConstantLosesItsSubject(t *testing.T) {
+	t.Parallel()
+	runRetentionFloorMissingSubjectCases(t, []retentionFloorMissingSubjectCase{
+		{
+			name:      "no retention constant at all",
+			retention: "package run\n",
+			env:       allFloorsMet, want: "has lost its subject",
+		},
+		{
+			name:      "the SQL stamps a retention of its own again",
+			retention: retentionFloorNinetyDaysGo,
+			sql: "-- name: InsertRunArtifact :exec\n" +
+				"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
+				"VALUES (@workspace_id, @run_id, 'run_output', now() + interval '90 days');\n",
+			env: allFloorsMet, want: "there are now two authors of it",
+		},
+		{
+			name:      "the SQL adds a deployment parameter to now()",
+			retention: retentionFloorNinetyDaysGo,
+			sql: "-- name: InsertRunArtifact :exec\n" +
+				"INSERT INTO artifacts (workspace_id, run_id, kind, expires_at)\n" +
+				"VALUES (@workspace_id, @run_id, 'run_output', now() + @retention);\n",
+			env: allFloorsMet, want: "there are now two authors of it",
+		},
+		{
+			name:      "two declarations of the constant",
+			retention: retentionFloorNinetyDaysGo + "\nconst runArtifactRetention = 30 * 24 * time.Hour\n",
+			env:       allFloorsMet, want: "there are now two authors of it",
+		},
+		{
+			name:      "the constant is no longer arithmetic on literals",
+			retention: "package run\n\nconst runArtifactRetention = retentionFromEnvironment\n",
+			env:       allFloorsMet, want: "something other than a positive product",
+		},
 	})
+}
+
+func TestRetentionFloorSaysSoWhenAnEnvFloorLosesItsSubject(t *testing.T) {
+	t.Parallel()
+	runRetentionFloorMissingSubjectCases(t, []retentionFloorMissingSubjectCase{
+		{
+			name:      "TRACE_RETENTION is gone",
+			retention: retentionFloorNinetyDaysGo,
+			env:       strings.Replace(allFloorsMet, "TRACE_RETENTION=2160h\n", "", 1),
+			want:      "no longer assigns TRACE_RETENTION",
+		},
+		{
+			name:      "DOWNLOAD_ARTIFACT_RETENTION is gone",
+			retention: retentionFloorNinetyDaysGo,
+			env:       strings.Replace(allFloorsMet, "DOWNLOAD_ARTIFACT_RETENTION=720h\n", "", 1),
+			want:      "no longer assigns DOWNLOAD_ARTIFACT_RETENTION",
+		},
+		{
+			name:      "ANALYTICS_RETENTION is gone",
+			retention: retentionFloorNinetyDaysGo,
+			env:       strings.Replace(allFloorsMet, "ANALYTICS_RETENTION=8760h\n", "", 1),
+			want:      "no longer assigns ANALYTICS_RETENTION",
+		},
+		{
+			name:      "two assignments of one window",
+			retention: retentionFloorNinetyDaysGo,
+			env:       allFloorsMet + "TRACE_RETENTION=1h\n",
+			want:      "cannot have two values",
+		},
+	})
+}
+
+func TestRetentionFloorSaysSoWhenTheObservationWindowLosesItsSubject(t *testing.T) {
+	t.Parallel()
+	runRetentionFloorMissingSubjectCases(t, []retentionFloorMissingSubjectCase{
+		{
+			name:      "the observation window heading is gone",
+			retention: retentionFloorNinetyDaysGo,
+			env:       allFloorsMet,
+			window:    "### 8.2 B 版\n\n長度搬到別處了。\n",
+			want:      "lost half its subject",
+		},
+		{
+			name:      "two closed-beta lengths",
+			retention: retentionFloorNinetyDaysGo,
+			env:       allFloorsMet,
+			window:    defaultWindowDoc + "### 8.3 C 版：封閉測試（21 天）\n",
+			want:      "cannot have two lengths",
+		},
+	})
+}
+
+func TestRetentionFloorSaysSoOnAnEmptyTree(t *testing.T) {
+	t.Parallel()
+	if problems := retentionFloorProblems(t.TempDir()); len(problems) == 0 {
+		t.Fatal("an empty tree was accepted")
+	}
 }
 
 func TestRetentionFloorIgnoresCommentsAndTests(t *testing.T) {

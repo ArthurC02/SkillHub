@@ -134,30 +134,7 @@ func TestTraceEventsReachTheCollectorFromARealContainer(t *testing.T) {
 	defer sink.mu.Unlock()
 
 	for i, raw := range sink.events {
-		var e struct {
-			SchemaVersion string `json:"schema_version"`
-			EventID       string `json:"event_id"`
-			RunID         string `json:"run_id"`
-			Attempt       int    `json:"attempt"`
-			Seq           int    `json:"seq"`
-			EmittedBy     string `json:"emitted_by"`
-			Type          string `json:"type"`
-			Masked        bool   `json:"masked"`
-		}
-		if err := json.Unmarshal(raw, &e); err != nil {
-			t.Fatalf("event %d did not survive the round trip as JSON: %v", i, err)
-		}
-		switch {
-		case e.SchemaVersion != "1.0":
-			t.Errorf("event %d: schema_version %q", i, e.SchemaVersion)
-		case e.Seq != i+1:
-			t.Errorf("event %d: seq %d, want %d", i, e.Seq, i+1)
-		case e.EmittedBy != "sandbox" || e.Attempt != 1:
-			t.Errorf("event %d: emitted_by %q attempt %d", i, e.EmittedBy, e.Attempt)
-		case e.Masked:
-
-			t.Errorf("event %d claims to be masked by the producer", i)
-		}
+		assertTraceEventFields(t, i, raw)
 	}
 
 	if sink.pushes < 2 {
@@ -167,15 +144,49 @@ func TestTraceEventsReachTheCollectorFromARealContainer(t *testing.T) {
 		t.Errorf("push went to %q, not the signed ingestion path", sink.paths[0])
 	}
 
-	if out := os.Getenv("SKILLHUB_TRACE_SAMPLE_OUT"); out != "" {
-		var b strings.Builder
-		for _, raw := range sink.events {
-			b.Write(raw)
-			b.WriteString("\n")
-		}
-		if err := os.WriteFile(out, []byte(b.String()), 0o600); err != nil {
-			t.Fatal(err)
-		}
+	writeTraceSampleIfRequested(t, sink.events)
+}
+
+func assertTraceEventFields(t *testing.T, i int, raw json.RawMessage) {
+	t.Helper()
+	var e struct {
+		SchemaVersion string `json:"schema_version"`
+		EventID       string `json:"event_id"`
+		RunID         string `json:"run_id"`
+		Attempt       int    `json:"attempt"`
+		Seq           int    `json:"seq"`
+		EmittedBy     string `json:"emitted_by"`
+		Type          string `json:"type"`
+		Masked        bool   `json:"masked"`
+	}
+	if err := json.Unmarshal(raw, &e); err != nil {
+		t.Fatalf("event %d did not survive the round trip as JSON: %v", i, err)
+	}
+	switch {
+	case e.SchemaVersion != "1.0":
+		t.Errorf("event %d: schema_version %q", i, e.SchemaVersion)
+	case e.Seq != i+1:
+		t.Errorf("event %d: seq %d, want %d", i, e.Seq, i+1)
+	case e.EmittedBy != "sandbox" || e.Attempt != 1:
+		t.Errorf("event %d: emitted_by %q attempt %d", i, e.EmittedBy, e.Attempt)
+	case e.Masked:
+		t.Errorf("event %d claims to be masked by the producer", i)
+	}
+}
+
+func writeTraceSampleIfRequested(t *testing.T, events []json.RawMessage) {
+	t.Helper()
+	out := os.Getenv("SKILLHUB_TRACE_SAMPLE_OUT")
+	if out == "" {
+		return
+	}
+	var b strings.Builder
+	for _, raw := range events {
+		b.Write(raw)
+		b.WriteString("\n")
+	}
+	if err := os.WriteFile(out, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 

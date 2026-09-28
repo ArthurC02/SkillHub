@@ -78,26 +78,59 @@ const contextMapLintFixture = `      depguard:
               - "!$test"
 `
 
-func TestContextMapProblems(t *testing.T) {
+type contextMapCase struct {
+	name     string
+	adr      string
+	lint     string
+	packages []string
+	want     string
+}
+
+func runContextMapCases(t *testing.T, tests []contextMapCase) {
+	t.Helper()
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeContextMapFixture(t, test.adr, test.lint, test.packages)
+			problems := contextMapProblems(root)
+			if test.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %#v", problems)
+				}
+				return
+			}
+			for _, problem := range problems {
+				if strings.Contains(problem, test.want) {
+					return
+				}
+			}
+			t.Fatalf("no problem mentions %q, got %#v", test.want, problems)
+		})
+	}
+}
+
+func contextMapFlatPackages() []string {
+	return []string{"run", "ingest", "shared/skillpkg", "foundation/observability/audit",
+		"foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
+}
+
+func contextMapNestedFixture() (adr, lint string, packages []string) {
+	adr = strings.Replace(contextMapADRFixture, "    path: run\n", "    path: trial/execution\n", 1)
+	lint = strings.Replace(contextMapLintFixture, "**/internal/run/**", "**/internal/trial/execution/**", 1)
+	packages = []string{"trial/execution", "ingest", "shared/skillpkg", "foundation/observability/audit",
+		"foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
+	return adr, lint, packages
+}
+
+func TestContextMapProblemsAcceptsValidLayouts(t *testing.T) {
 	t.Parallel()
-
-	flatPackages := []string{"run", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
-	nestedADR := strings.Replace(contextMapADRFixture, "    path: run\n", "    path: trial/execution\n", 1)
-	nestedLint := strings.Replace(contextMapLintFixture, "**/internal/run/**", "**/internal/trial/execution/**", 1)
-	nestedPackages := []string{"trial/execution", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
-
-	tests := []struct {
-		name     string
-		adr      string
-		lint     string
-		packages []string
-		want     string
-	}{
+	nestedADR, nestedLint, nestedPackages := contextMapNestedFixture()
+	runContextMapCases(t, []contextMapCase{
 		{
 			name:     "flat layout remains compatible",
 			adr:      contextMapADRFixture,
 			lint:     contextMapLintFixture,
-			packages: flatPackages,
+			packages: contextMapFlatPackages(),
 		},
 		{
 			name:     "nested layout is complete",
@@ -105,6 +138,14 @@ func TestContextMapProblems(t *testing.T) {
 			lint:     nestedLint,
 			packages: nestedPackages,
 		},
+	})
+}
+
+func TestContextMapProblemsRejectsBadBoundaryDeclarations(t *testing.T) {
+	t.Parallel()
+	nestedADR, nestedLint, nestedPackages := contextMapNestedFixture()
+	flatPackages := contextMapFlatPackages()
+	runContextMapCases(t, []contextMapCase{
 		{
 			name:     "unknown nested package is rejected",
 			adr:      nestedADR,
@@ -133,8 +174,15 @@ func TestContextMapProblems(t *testing.T) {
 			packages: flatPackages,
 			want:     `declares internal path "run" twice (run and trace)`,
 		},
-		{
+	})
+}
 
+func TestContextMapProblemsRejectsUncoveredDepguardPaths(t *testing.T) {
+	t.Parallel()
+	nestedADR, nestedLint, nestedPackages := contextMapNestedFixture()
+	flatPackages := contextMapFlatPackages()
+	runContextMapCases(t, []contextMapCase{
+		{
 			name: "a commented-out rule does not count as coverage",
 			adr:  contextMapADRFixture,
 			lint: strings.Replace(contextMapLintFixture,
@@ -144,7 +192,6 @@ func TestContextMapProblems(t *testing.T) {
 			want:     `has no depguard rule covering internal/ingest`,
 		},
 		{
-
 			name: "a path named only in a comment does not count as coverage",
 			adr:  contextMapADRFixture,
 			lint: strings.Replace(contextMapLintFixture,
@@ -154,33 +201,54 @@ func TestContextMapProblems(t *testing.T) {
 			want:     `has no depguard rule covering internal/ingest`,
 		},
 		{
-			name:     "stale nested depguard glob is rejected",
-			adr:      nestedADR,
-			lint:     strings.Replace(nestedLint, "              - \"!$test\"", "              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
+			name: "stale nested depguard glob is rejected",
+			adr:  nestedADR,
+			lint: strings.Replace(nestedLint, "              - \"!$test\"",
+				"              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
 			packages: nestedPackages,
 			want:     "guards apps/platform/internal/ghost/nested but no Boundary ID in " + identityHomes + " declares that path",
 		},
-	}
+	})
+}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			root := writeContextMapFixture(t, test.adr, test.lint, test.packages)
-			problems := contextMapProblems(root)
-			if test.want == "" {
-				if len(problems) != 0 {
-					t.Fatalf("expected no problems, got %#v", problems)
-				}
-				return
-			}
-			for _, problem := range problems {
-				if strings.Contains(problem, test.want) {
-					return
-				}
-			}
-			t.Fatalf("no problem mentions %q, got %#v", test.want, problems)
-		})
+func appendContextMapLayout(t *testing.T, root, layout string) {
+	t.Helper()
+	if layout == "" {
+		return
 	}
+	path := filepath.Join(root, filepath.FromSlash(contextMapDoc))
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(existing, []byte(layout)...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func rewriteRegistryContexts(t *testing.T, root string, reviewed func(string) string) {
+	t.Helper()
+	if reviewed == nil {
+		return
+	}
+	path := filepath.Join(root, filepath.FromSlash(registryContextsFile))
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(reviewed(string(existing))), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func wantContextMapProblem(t *testing.T, root, want string) {
+	t.Helper()
+	for _, problem := range contextMapProblems(root) {
+		if strings.Contains(problem, want) {
+			return
+		}
+	}
+	t.Fatalf("no problem mentions %q, got %#v", want, contextMapProblems(root))
 }
 
 func TestAnArchitectureIdentityComesFromExactlyOneHome(t *testing.T) {
@@ -213,32 +281,9 @@ func TestAnArchitectureIdentityComesFromExactlyOneHome(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			root := writeContextMapFixture(t, contextMapADRFixture, contextMapLintFixture, packages)
-			if test.layout != "" {
-				path := filepath.Join(root, filepath.FromSlash(contextMapDoc))
-				existing, err := os.ReadFile(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, append(existing, []byte(test.layout)...), 0o600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if test.reviewed != nil {
-				path := filepath.Join(root, filepath.FromSlash(registryContextsFile))
-				existing, err := os.ReadFile(path)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte(test.reviewed(string(existing))), 0o600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			for _, problem := range contextMapProblems(root) {
-				if strings.Contains(problem, test.want) {
-					return
-				}
-			}
-			t.Fatalf("no problem mentions %q, got %#v", test.want, contextMapProblems(root))
+			appendContextMapLayout(t, root, test.layout)
+			rewriteRegistryContexts(t, root, test.reviewed)
+			wantContextMapProblem(t, root, test.want)
 		})
 	}
 }

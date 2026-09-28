@@ -357,31 +357,24 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 	}
 }
 
-func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
+func launcherFunctionBody(t *testing.T, launcher, header string) string {
+	t.Helper()
+	start := strings.Index(launcher, header)
+	if start < 0 {
+		t.Fatalf("tools/cleanmode/start.mjs no longer defines %q; this test cannot tell what it does", header)
+	}
+	end := strings.Index(launcher[start:], "\n}\n")
+	if end < 0 {
+		t.Fatalf("could not find the end of %q in tools/cleanmode/start.mjs", header)
+	}
+	return launcher[start : start+end]
+}
+
+func TestTheLauncherSuppliesWhatItOwnsAndLeavesOperatorValuesAlone(t *testing.T) {
 	t.Parallel()
-	root, err := findRepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, err := os.ReadFile(filepath.Join(root, "tools", "cleanmode", "start.mjs"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	launcher := string(raw)
+	launcher := readRepoFile(t, "tools", "cleanmode", "start.mjs")
 
-	body := func(header string) string {
-		start := strings.Index(launcher, header)
-		if start < 0 {
-			t.Fatalf("tools/cleanmode/start.mjs no longer defines %q; this test cannot tell what it does", header)
-		}
-		end := strings.Index(launcher[start:], "\n}\n")
-		if end < 0 {
-			t.Fatalf("could not find the end of %q in tools/cleanmode/start.mjs", header)
-		}
-		return launcher[start : start+end]
-	}
-
-	owned := body("function ownedSettings() {")
+	owned := launcherFunctionBody(t, launcher, "function ownedSettings() {")
 	for name, cost := range map[string]string{
 		"SKILLHUB_TRACE_INGEST_SECRET": "a failed run says only `workload exited with code 1`",
 		"SKILLHUB_TRACE_INGEST_URL":    "the sandbox posts no trace events at all",
@@ -392,7 +385,7 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		}
 	}
 
-	applied := body("function applyOwnedSettings() {")
+	applied := launcherFunctionBody(t, launcher, "function applyOwnedSettings() {")
 	if !strings.Contains(applied, "if (!deployment(name))") {
 		t.Error("applyOwnedSettings() no longer leaves an operator's own value alone")
 	}
@@ -401,6 +394,11 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		t.Error("ownedSettings() invents a DOWNLOAD_ARTIFACT_RETENTION: that value is a retention promise quoted to " +
 			"users in the consent form, and GOV-RETENTION-001 leaves it unset on purpose")
 	}
+}
+
+func TestTheLauncherReadsThePlatformsCapabilityAnswerInsteadOfAHardcodedList(t *testing.T) {
+	t.Parallel()
+	launcher := readRepoFile(t, "tools", "cleanmode", "start.mjs")
 
 	if strings.Contains(launcher, "const CAPABILITIES = [") {
 		t.Error("the launcher holds a capability list again. 05 R-36's hard condition is that it reads the " +
@@ -416,21 +414,24 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		}
 	}
 
-	table, err := os.ReadFile(filepath.Join(root, "apps", "platform", "cmd", "api", "capabilities.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	table := readRepoFile(t, "apps", "platform", "cmd", "api", "capabilities.go")
 	for _, name := range []string{
 		"DOWNLOAD_ARTIFACT_RETENTION", "LLM_SERVICE_URL",
 		"SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY", "OPERATOR_USER_IDS",
 	} {
-		if !strings.Contains(string(table), name) {
+		if !strings.Contains(table, name) {
 			t.Errorf("the capability table no longer names %s, so a launch missing it says nothing", name)
 		}
 	}
+}
 
-	gatewayCheck := body("function checkModelGatewayConfig() {")
-	if !strings.Contains(body("async function preflight() {"), "checkModelGatewayConfig()") ||
+func TestTheLauncherRefusesAGatewayWithNoRunModel(t *testing.T) {
+	t.Parallel()
+	launcher := readRepoFile(t, "tools", "cleanmode", "start.mjs")
+
+	gatewayCheck := launcherFunctionBody(t, launcher, "function checkModelGatewayConfig() {")
+	preflight := launcherFunctionBody(t, launcher, "async function preflight() {")
+	if !strings.Contains(preflight, "checkModelGatewayConfig()") ||
 		!strings.Contains(gatewayCheck, "SKILLHUB_RUN_MODEL") ||
 		!strings.Contains(gatewayCheck, "SKILLHUB_MODEL_GATEWAY_URL") {
 		t.Error("preflight() no longer refuses a gateway with no SKILLHUB_RUN_MODEL: the Agent SDK then asks for its " +
@@ -497,20 +498,15 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	}
 }
 
-func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
-	root, err := findRepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var logins, uploads int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func unindexedPackageStubHandler(t *testing.T, logins, uploads *int32) http.HandlerFunc {
+	t.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/auth/dev/login":
-			atomic.AddInt32(&logins, 1)
+			atomic.AddInt32(logins, 1)
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
-			atomic.AddInt32(&uploads, 1)
+			atomic.AddInt32(uploads, 1)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"shape":"skill","skills":[{"path":"","skill_id":"stub"}],"refused":[]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
@@ -522,7 +518,17 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
-	}))
+	}
+}
+
+func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var logins, uploads int32
+	server := httptest.NewServer(unindexedPackageStubHandler(t, &logins, &uploads))
 	defer server.Close()
 	t.Setenv("SKILLHUB_API", server.URL)
 

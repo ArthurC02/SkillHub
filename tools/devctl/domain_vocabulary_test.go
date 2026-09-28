@@ -7,6 +7,28 @@ import (
 	"testing"
 )
 
+func assertVocabularySourcesAndReadersAreLive(t *testing.T, root string, vocabulary domainVocabulary) {
+	t.Helper()
+	if len(vocabulary.sources) < 2 {
+		t.Errorf("%s is read from %d place; reconciliation needs at least two", vocabulary.name, len(vocabulary.sources))
+	}
+	for _, source := range vocabulary.sources {
+		values, err := source.read(root)
+		if err != nil {
+			t.Errorf("%s: %s: %v", vocabulary.name, source.label, err)
+			continue
+		}
+		if len(values) == 0 {
+			t.Errorf("%s: %s yielded nothing, so the comparison above compared nothing", vocabulary.name, source.label)
+		}
+	}
+	for _, reader := range vocabulary.readers {
+		if values, err := reader.read(root); err != nil || len(values) == 0 {
+			t.Errorf("%s: reader %s yielded %v (%v), so it was checked against nothing", vocabulary.name, reader.label, values, err)
+		}
+	}
+}
+
 func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 	root, err := findRepoRoot()
 	if err != nil {
@@ -20,26 +42,15 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 		t.Fatalf("only %d vocabulary is reconciled; a table this short cannot be the reason the check passed", len(domainVocabularies))
 	}
 	for _, vocabulary := range domainVocabularies {
-		if len(vocabulary.sources) < 2 {
-			t.Errorf("%s is read from %d place; reconciliation needs at least two", vocabulary.name, len(vocabulary.sources))
-		}
-		for _, source := range vocabulary.sources {
-			values, err := source.read(root)
-			if err != nil {
-				t.Errorf("%s: %s: %v", vocabulary.name, source.label, err)
-				continue
-			}
-			if len(values) == 0 {
-				t.Errorf("%s: %s yielded nothing, so the comparison above compared nothing", vocabulary.name, source.label)
-			}
-		}
-		for _, reader := range vocabulary.readers {
-			if values, err := reader.read(root); err != nil || len(values) == 0 {
-				t.Errorf("%s: reader %s yielded %v (%v), so it was checked against nothing", vocabulary.name, reader.label, values, err)
-			}
-		}
+		assertVocabularySourcesAndReadersAreLive(t, root, vocabulary)
 	}
+}
 
+func TestTheRealRunStatusEnumCoversTheRunLifecycle(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 	statuses, err := postgresEnumValues(
 		filepath.Join(root, filepath.FromSlash("db/migrations/0004_test_lab_and_runs.sql")), "run_status")
 	if err != nil {
@@ -51,7 +62,13 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 			break
 		}
 	}
+}
 
+func TestTheRealMigrationVocabulariesReflectLaterEdits(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 	vocabularies, err := migrationVocabularies(root)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +79,13 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 	if _, kept := vocabularies["analytics_events.arrival"]; kept {
 		t.Errorf("analytics_events.arrival was dropped by a migration but still reads as a vocabulary")
 	}
+}
 
+func TestTheRealCreationStateVocabularyIsLarge(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 	states, err := goConstStrings(
 		filepath.Join(root, filepath.FromSlash("apps/platform/internal/creator/creation/state.go")), "State")
 	if err != nil {
@@ -160,112 +183,16 @@ type RunStatus string
 	}
 }
 
-func TestMigrationVocabularies(t *testing.T) {
-	t.Parallel()
-	for _, c := range []struct {
-		name       string
-		migrations map[string]string
-		key        string
-		want       []string
-	}{
-		{
-			name: "the same column on two tables stays apart",
-			migrations: map[string]string{"0001_ledger.sql": `CREATE TABLE entries (
-    kind text NOT NULL CHECK (kind IN ('debit', 'grant'))
-);
-CREATE TABLE events (
-    kind text NOT NULL CHECK (kind IN ('step', 'review'))
-);
-`},
-			key:  "entries.kind",
-			want: []string{"debit", "grant"},
-		},
-		{
-			name: "a later migration replaces the list",
-			migrations: map[string]string{
-				"0001_events.sql": `CREATE TABLE events (
-    kind text NOT NULL CHECK (kind IN ('step', 'review'))
-);
-`,
-				"0002_more_kinds.sql": `ALTER TABLE events DROP CONSTRAINT events_kind_check;
-ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
-    'step', 'review', 'match'));
-`,
-			},
-			key:  "events.kind",
-			want: []string{"match", "review", "step"},
-		},
-		{
-			name: "a nullable list is a vocabulary",
-			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
-    ref_type text CHECK (ref_type IS NULL OR ref_type IN ('run', 'session'))
-);
-`},
-			key:  "events.ref_type",
-			want: []string{"run", "session"},
-		},
-		{
-			name: "a null test on another column is not a vocabulary",
-			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
-    CHECK (ref_id IS NULL OR ref_type IN ('run'))
-);
-`},
-			key: "events.ref_type",
-		},
-		{
-			name: "NOT IN is not a vocabulary",
-			migrations: map[string]string{"0001_entries.sql": `CREATE TABLE entries (
-    CONSTRAINT positive CHECK (
-        kind NOT IN ('grant') OR delta > 0)
-);
-`},
-			key: "entries.kind",
-		},
-		{
-			name: "a dropped column leaves no vocabulary",
-			migrations: map[string]string{
-				"0001_events.sql": `CREATE TABLE events (
-    arrival text CHECK (arrival IN ('search', 'direct'))
-);
-`,
-				"0002_drop.sql": `ALTER TABLE events DROP COLUMN arrival;
-`,
-			},
-			key: "events.arrival",
-		},
-		{
-			name: "a renamed column carries its vocabulary",
-			migrations: map[string]string{
-				"0001_events.sql": `CREATE TABLE events (
-    origin text CHECK (origin IN ('search', 'direct'))
-);
-`,
-				"0002_rename.sql": `ALTER TABLE events RENAME COLUMN origin TO arrival;
-`,
-			},
-			key:  "events.arrival",
-			want: []string{"direct", "search"},
-		},
-		{
-			name: "a comment inside the list is not a value",
-			migrations: map[string]string{"0001_runs.sql": `ALTER TABLE runs ADD COLUMN failure_class text
-    CHECK (failure_class IS NULL OR failure_class IN (
-        'provider_error',   -- the provider's own fault (not ours)
-        'timeout'           -- soft limit
-    ));
-`},
-			key:  "runs.failure_class",
-			want: []string{"provider_error", "timeout"},
-		},
-		{
-			name: "two dashes inside a string do not start a comment",
-			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (kind text);
-COMMENT ON COLUMN events.kind IS 'a -- b'; ALTER TABLE events ADD CONSTRAINT k CHECK (kind IN ('step'));
-`},
-			key:  "events.kind",
-			want: []string{"step"},
-		},
-	} {
+type migrationVocabularyCase struct {
+	name       string
+	migrations map[string]string
+	key        string
+	want       []string
+}
+
+func runMigrationVocabularyCases(t *testing.T, cases []migrationVocabularyCase) {
+	t.Helper()
+	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
@@ -293,6 +220,121 @@ COMMENT ON COLUMN events.kind IS 'a -- b'; ALTER TABLE events ADD CONSTRAINT k C
 			}
 		})
 	}
+}
+
+func TestMigrationVocabulariesWithinOneMigration(t *testing.T) {
+	t.Parallel()
+	runMigrationVocabularyCases(t, []migrationVocabularyCase{
+		{
+			name: "the same column on two tables stays apart",
+			migrations: map[string]string{"0001_ledger.sql": `CREATE TABLE entries (
+    kind text NOT NULL CHECK (kind IN ('debit', 'grant'))
+);
+CREATE TABLE events (
+    kind text NOT NULL CHECK (kind IN ('step', 'review'))
+);
+`},
+			key:  "entries.kind",
+			want: []string{"debit", "grant"},
+		},
+		{
+			name: "a nullable list is a vocabulary",
+			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
+    ref_type text CHECK (ref_type IS NULL OR ref_type IN ('run', 'session'))
+);
+`},
+			key:  "events.ref_type",
+			want: []string{"run", "session"},
+		},
+		{
+			name: "a null test on another column is not a vocabulary",
+			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (
+    CHECK (ref_id IS NULL OR ref_type IN ('run'))
+);
+`},
+			key: "events.ref_type",
+		},
+		{
+			name: "NOT IN is not a vocabulary",
+			migrations: map[string]string{"0001_entries.sql": `CREATE TABLE entries (
+    CONSTRAINT positive CHECK (
+        kind NOT IN ('grant') OR delta > 0)
+);
+`},
+			key: "entries.kind",
+		},
+	})
+}
+
+func TestMigrationVocabulariesAcrossMigrations(t *testing.T) {
+	t.Parallel()
+	runMigrationVocabularyCases(t, []migrationVocabularyCase{
+		{
+			name: "a later migration replaces the list",
+			migrations: map[string]string{
+				"0001_events.sql": `CREATE TABLE events (
+    kind text NOT NULL CHECK (kind IN ('step', 'review'))
+);
+`,
+				"0002_more_kinds.sql": `ALTER TABLE events DROP CONSTRAINT events_kind_check;
+ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
+    'step', 'review', 'match'));
+`,
+			},
+			key:  "events.kind",
+			want: []string{"match", "review", "step"},
+		},
+		{
+			name: "a dropped column leaves no vocabulary",
+			migrations: map[string]string{
+				"0001_events.sql": `CREATE TABLE events (
+    arrival text CHECK (arrival IN ('search', 'direct'))
+);
+`,
+				"0002_drop.sql": `ALTER TABLE events DROP COLUMN arrival;
+`,
+			},
+			key: "events.arrival",
+		},
+		{
+			name: "a renamed column carries its vocabulary",
+			migrations: map[string]string{
+				"0001_events.sql": `CREATE TABLE events (
+    origin text CHECK (origin IN ('search', 'direct'))
+);
+`,
+				"0002_rename.sql": `ALTER TABLE events RENAME COLUMN origin TO arrival;
+`,
+			},
+			key:  "events.arrival",
+			want: []string{"direct", "search"},
+		},
+	})
+}
+
+func TestMigrationVocabulariesIgnoreSQLComments(t *testing.T) {
+	t.Parallel()
+	runMigrationVocabularyCases(t, []migrationVocabularyCase{
+		{
+			name: "a comment inside the list is not a value",
+			migrations: map[string]string{"0001_runs.sql": `ALTER TABLE runs ADD COLUMN failure_class text
+    CHECK (failure_class IS NULL OR failure_class IN (
+        'provider_error',   -- the provider's own fault (not ours)
+        'timeout'           -- soft limit
+    ));
+`},
+			key:  "runs.failure_class",
+			want: []string{"provider_error", "timeout"},
+		},
+		{
+			name: "two dashes inside a string do not start a comment",
+			migrations: map[string]string{"0001_events.sql": `CREATE TABLE events (kind text);
+COMMENT ON COLUMN events.kind IS 'a -- b'; ALTER TABLE events ADD CONSTRAINT k CHECK (kind IN ('step'));
+`},
+			key:  "events.kind",
+			want: []string{"step"},
+		},
+	})
 }
 
 func TestSQLColumnCheckNamesTheColumnItCannotFind(t *testing.T) {

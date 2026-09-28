@@ -87,6 +87,23 @@ func TestBaseImagesMustBePinnedByDigestUnlessTheyAreAnEarlierStage(t *testing.T)
 	}
 }
 
+func wantNoImageBumpProblems(t *testing.T, root, context string) {
+	t.Helper()
+	problems, err := imageBumpProblems(root)
+	if err != nil || len(problems) != 0 {
+		t.Fatalf("%s: %v %v", context, problems, err)
+	}
+}
+
+func wantOneImageBumpProblem(t *testing.T, root, substr, context string) string {
+	t.Helper()
+	problems, err := imageBumpProblems(root)
+	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], substr) {
+		t.Fatalf("%s: %v %v", context, problems, err)
+	}
+	return problems[0]
+}
+
 func TestImageBumpComparesAgainstWhatTheVersionWasPublishedFrom(t *testing.T) {
 	t.Parallel()
 	repo := newGitRepo(t)
@@ -99,55 +116,38 @@ func TestImageBumpComparesAgainstWhatTheVersionWasPublishedFrom(t *testing.T) {
 	})
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/run.test.mjs": "test(1)\n"})
-	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
-		t.Fatalf("a file no COPY names asked for a bump: %v %v", problems, err)
-	}
+	wantNoImageBumpProblems(t, repo.root, "a file no COPY names asked for a bump")
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/run.mjs": "export const x = 1\n"})
-	problems, err := imageBumpProblems(repo.root)
-	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "run.mjs") {
-		t.Fatalf("an unbumped change to a copied file passed: %v %v", problems, err)
-	}
-	if !strings.HasPrefix(problems[0], "I-05: ") {
-		t.Fatalf("the failure does not name its gate: %q", problems[0])
+	problem := wantOneImageBumpProblem(t, repo.root, "run.mjs", "an unbumped change to a copied file passed")
+	if !strings.HasPrefix(problem, "I-05: ") {
+		t.Fatalf("the failure does not name its gate: %q", problem)
 	}
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/run.mjs": "export {}\n"})
-	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
-		t.Fatalf("putting the content back still demanded a version bump (%v %v); under that gate the only "+
-			"way out of a mistaken change is to publish a version nobody measured", problems, err)
-	}
+	wantNoImageBumpProblems(t, repo.root, "putting the content back still demanded a version bump; under that gate the only "+
+		"way out of a mistaken change is to publish a version nobody measured")
 
 	repo.commit(t, map[string]string{
 		runtimeImageDir + "/run.mjs": "export const x = 2\n",
 		runtimeDockerfile:            gateDockerfile + "ARG IMAGE_VERSION=2026.08-11\n",
 		runtimeUpgrades:              "# 2026.08-10\n\n# 2026.08-11\n",
 	})
-	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
-		t.Fatalf("a change that did bump the version was refused: %v %v", problems, err)
-	}
+	wantNoImageBumpProblems(t, repo.root, "a change that did bump the version was refused")
 
 	repo.commit(t, map[string]string{runtimeImageDir + "/constraints.txt": "x==2\n"})
-	problems, err = imageBumpProblems(repo.root)
-	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "constraints.txt") {
-		t.Fatalf("a change made after that bump, under the same version, passed: %v %v", problems, err)
-	}
+	wantOneImageBumpProblem(t, repo.root, "constraints.txt", "a change made after that bump, under the same version, passed")
 
 	published := gateDockerfile + "ARG IMAGE_VERSION=2026.08-11\n"
 	repo.commit(t, map[string]string{
 		runtimeImageDir + "/constraints.txt": "x==1\n",
 		runtimeDockerfile:                    "# a note someone added by mistake\n" + published,
 	})
-	problems, err = imageBumpProblems(repo.root)
-	if err != nil || len(problems) != 1 || !strings.Contains(problems[0], "Dockerfile") {
-		t.Fatalf("an edit to the Dockerfile under a published version passed: %v %v", problems, err)
-	}
+	wantOneImageBumpProblem(t, repo.root, "Dockerfile", "an edit to the Dockerfile under a published version passed")
 
 	repo.commit(t, map[string]string{runtimeDockerfile: published})
-	if problems, err := imageBumpProblems(repo.root); err != nil || len(problems) != 0 {
-		t.Fatalf("taking the mistaken edit back out still demanded a bump (%v %v); that is the shape where "+
-			"the only way to a green gate is publishing a version nobody measured", problems, err)
-	}
+	wantNoImageBumpProblems(t, repo.root, "taking the mistaken edit back out still demanded a bump; that is the shape where "+
+		"the only way to a green gate is publishing a version nobody measured")
 }
 
 func TestRangeEndNamesTheCommitBeingChecked(t *testing.T) {

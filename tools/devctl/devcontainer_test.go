@@ -30,22 +30,28 @@ type devContainerConfig struct {
 
 func readDevContainerConfig(t *testing.T) devContainerConfig {
 	t.Helper()
-	root, err := findRepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(filepath.Join(root, ".devcontainer", "devcontainer.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := readRepoFile(t, ".devcontainer", "devcontainer.json")
 	var cfg devContainerConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
 		t.Fatalf("parse devcontainer.json: %v", err)
 	}
 	return cfg
 }
 
-func TestDevContainerBootstrapsTheWorkspaceAndDockerDaemon(t *testing.T) {
+func readRepoFile(t *testing.T, parts ...string) string {
+	t.Helper()
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(append([]string{root}, parts...)...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func TestDevContainerConfigDeclaresTheWorkspaceBootstrap(t *testing.T) {
 	cfg := readDevContainerConfig(t)
 	if cfg.Build.Dockerfile != "../infra/images/devtools/Dockerfile" {
 		t.Fatalf("build.dockerfile = %q", cfg.Build.Dockerfile)
@@ -73,26 +79,21 @@ func TestDevContainerBootstrapsTheWorkspaceAndDockerDaemon(t *testing.T) {
 			t.Fatalf("forwardPorts is missing %d: %v", port, cfg.ForwardPorts)
 		}
 	}
+}
 
-	root, err := findRepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	postCreate, err := os.ReadFile(filepath.Join(root, ".devcontainer", "post-create.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(postCreate), "env-init") || !strings.Contains(string(postCreate), "bootstrap") {
+func TestPostCreateScriptInitializesEnvironmentAndDependencies(t *testing.T) {
+	postCreate := readRepoFile(t, ".devcontainer", "post-create.sh")
+	if !strings.Contains(postCreate, "env-init") || !strings.Contains(postCreate, "bootstrap") {
 		t.Fatalf("post-create.sh no longer initializes .env and dependencies:\n%s", postCreate)
 	}
-	postStart, err := os.ReadFile(filepath.Join(root, ".devcontainer", "post-start.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(postStart), "dockerd") || !strings.Contains(string(postStart), "docker info") {
+}
+
+func TestPostStartScriptStartsDockerAndProbesTheConfiguredSocket(t *testing.T) {
+	postStart := readRepoFile(t, ".devcontainer", "post-start.sh")
+	if !strings.Contains(postStart, "dockerd") || !strings.Contains(postStart, "docker info") {
 		t.Fatalf("post-start.sh no longer starts and verifies the nested Docker daemon:\n%s", postStart)
 	}
-	if strings.Contains(string(postStart), "pgrep dockerd") {
+	if strings.Contains(postStart, "pgrep dockerd") {
 		t.Fatalf("post-start.sh fell back to a process-wide dockerd check instead of probing the configured socket:\n%s", postStart)
 	}
 }

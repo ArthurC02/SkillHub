@@ -62,10 +62,7 @@ func decl(declaration string) string {
 	return declaration + "immutable:\nimmutable_allow:\n"
 }
 
-func TestQueryOwnerProblems(t *testing.T) {
-	t.Parallel()
-
-	const queries = `-- name: CreateRun :one
+const queryOwnerTestQueries = `-- name: CreateRun :one
 INSERT INTO runs (id) VALUES ($1) RETURNING *;
 
 -- name: GetRun :one
@@ -77,52 +74,85 @@ WITH doomed AS (SELECT id FROM runs WHERE stale)
 DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 `
 
-	baseDeclaration := decl("files:\n  runs.sql: run\nqueries:\nallow:\n")
+var queryOwnerBaseDeclaration = decl("files:\n  runs.sql: run\nqueries:\nallow:\n")
 
-	tests := []struct {
-		name        string
-		declaration string
-		callers     map[string]string
-		want        string
-	}{
+type queryOwnerCase struct {
+	name        string
+	declaration string
+	callers     map[string]string
+	want        string
+}
+
+func runQueryOwnerCases(t *testing.T, cases []queryOwnerCase) {
+	t.Helper()
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeQueryOwnerFixture(t, test.declaration, map[string]string{"runs.sql": queryOwnerTestQueries}, test.callers)
+			problems := queryOwnerProblems(root)
+			if test.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %#v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 {
+				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
+			}
+			if !strings.Contains(problems[0], test.want) {
+				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
+			}
+		})
+	}
+}
+
+func TestQueryOwnerProblemsEnforcesReadOwnership(t *testing.T) {
+	t.Parallel()
+	runQueryOwnerCases(t, []queryOwnerCase{
 		{
 			name:        "owner writes its own query",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"run": "func f(q Q) { q.CreateRun(ctx) }"},
 		},
 		{
 			name:        "owner reads its own query",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"run": "func f(q Q) { q.GetRun(ctx) }"},
 		},
 		{
 			name:        "another package in the owner context may read",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"run/read": "func f(q Q) { q.GetRun(ctx) }"},
 		},
 		{
 			name:        "foreign context reading is blocked",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun(ctx) }"},
 			want:        `GetRun is owned by "run" but "eval" reads it`,
 		},
 		{
 			name:        "comments cannot split a query call away from ownership",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun/* intentional */(ctx) }"},
 			want:        `GetRun is owned by "run" but "eval" reads it`,
 		},
 		{
 			name:        "query method values remain owned",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { call := q.GetRun; call(ctx) }"},
 			want:        `GetRun is owned by "run" but "eval" reads it`,
 		},
 		{
 			name:        "comments and strings are not query calls",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "// q.GetRun(ctx)\nvar note = \".GetRun(\""},
 		},
+	})
+}
+
+func TestQueryOwnerProblemsEnforcesReadAllowSection(t *testing.T) {
+	t.Parallel()
+	runQueryOwnerCases(t, []queryOwnerCase{
 		{
 			name:        "read_allow cannot re-open a cleared drift",
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  GetRun: eval\n"),
@@ -150,15 +180,21 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  ListRuns: eval\n"),
 			want:        "read_allow.ListRuns is forbidden",
 		},
+	})
+}
+
+func TestQueryOwnerProblemsEnforcesWriteOwnershipAndAllowSection(t *testing.T) {
+	t.Parallel()
+	runQueryOwnerCases(t, []queryOwnerCase{
 		{
 			name:        "foreign context writing is blocked",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { q.CreateRun(ctx) }"},
 			want:        `CreateRun is owned by "run" but "eval" writes it`,
 		},
 		{
 			name:        "CTE write is recognised as a write",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { q.PurgeRuns(ctx) }"},
 			want:        `PurgeRuns is owned by "run" but "eval" writes it`,
 		},
@@ -174,6 +210,12 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			callers:     map[string]string{"run": "func f(q Q) { q.CreateRun(ctx) }"},
 			want:        "allow.CreateRun is forbidden",
 		},
+	})
+}
+
+func TestQueryOwnerProblemsValidatesDeclarations(t *testing.T) {
+	t.Parallel()
+	runQueryOwnerCases(t, []queryOwnerCase{
 		{
 			name:        "undeclared sql file is reported",
 			declaration: decl("files:\nqueries:\nallow:\n"),
@@ -191,7 +233,7 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 		},
 		{
 			name:        "unregistered caller is reported",
-			declaration: baseDeclaration,
+			declaration: queryOwnerBaseDeclaration,
 			callers:     map[string]string{"billing": "func f(q Q) { q.GetRun(ctx) }"},
 			want:        `apps/platform/internal/billing calls sqlc but has no architecture identity`,
 		},
@@ -200,27 +242,7 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			declaration: decl("files:\n  runs.sql: run\nqueries:\n  CreateRun: eval\nallow:\n"),
 			callers:     map[string]string{"eval": "func f(q Q) { q.CreateRun(ctx) }"},
 		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			root := writeQueryOwnerFixture(t, test.declaration, map[string]string{"runs.sql": queries}, test.callers)
-			problems := queryOwnerProblems(root)
-			if test.want == "" {
-				if len(problems) != 0 {
-					t.Fatalf("expected no problems, got %#v", problems)
-				}
-				return
-			}
-			if len(problems) != 1 {
-				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
-			}
-			if !strings.Contains(problems[0], test.want) {
-				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
-			}
-		})
-	}
+	})
 }
 
 func TestOwnerDeclarationRequiresBothClearedAllowSections(t *testing.T) {
@@ -419,10 +441,7 @@ func TestQueryOwnerProblemsRequireDeclarationWhereThereIsNoDefault(t *testing.T)
 	})
 }
 
-func TestImmutableTableProblems(t *testing.T) {
-	t.Parallel()
-
-	const migration = `
+const immutableTableMigration = `
 CREATE TRIGGER skill_versions_immutable
     BEFORE UPDATE OR DELETE ON skill_versions
     FOR EACH ROW EXECUTE FUNCTION enforce_immutable();
@@ -432,78 +451,19 @@ CREATE TRIGGER notes_immutable
     FOR EACH ROW WHEN (OLD.status = 'draft')
     EXECUTE FUNCTION enforce_immutable();
 `
-	const frozen = "immutable:\n  skill_versions: versions never change\n"
 
-	tests := []struct {
-		name    string
-		queries string
-		suffix  string
-		want    string
-	}{
-		{
-			name:    "insert into a frozen table is fine",
-			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
-			suffix:  frozen + "immutable_allow:\n",
-		},
-		{
-			name:    "update of a frozen table is blocked",
-			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
-			suffix:  frozen + "immutable_allow:\n",
-			want:    "skill_versions is append-only but TouchVersion updates or deletes it",
-		},
-		{
-			name: "delete from a frozen table is blocked, CTE included",
-			queries: "-- name: PurgeVersions :execrows\n" +
-				"WITH doomed AS (SELECT id FROM skills)\nDELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM doomed);\n",
-			suffix: frozen + "immutable_allow:\n",
-			want:   "skill_versions is append-only but PurgeVersions updates or deletes it",
-		},
-		{
-			name:    "named exemption lets the retention purge through",
-			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skill_versions WHERE stale;\n",
-			suffix:  frozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
-		},
-		{
-			name:    "exemption whose statement no longer writes the table is reported",
-			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skills WHERE stale;\n",
-			suffix:  frozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
-			want:    `immutable_allow.PurgeVersions = "skill_versions" no longer writes it`,
-		},
-		{
-			name:    "exemption for a table nobody declared immutable is reported",
-			queries: "-- name: PurgeSkills :execrows\nDELETE FROM skills WHERE stale;\n",
-			suffix:  frozen + "immutable_allow:\n  PurgeSkills: skills\n",
-			want:    `immutable_allow.PurgeSkills = "skills" is not a declared immutable table`,
-		},
-		{
-			name:    "declaring a table the database does not freeze is reported",
-			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
-			suffix:  frozen + "  notes: conditional, not a frozen table\nimmutable_allow:\n",
-			want:    "immutable.notes has no unconditional enforce_immutable() trigger",
-		},
-		{
-			name:    "declaring a table without a reason is reported",
-			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
-			suffix:  "immutable:\n  skill_versions:\nimmutable_allow:\n",
-			want:    "immutable.skill_versions has no reason",
-		},
-		{
+const immutableTableFrozen = "immutable:\n  skill_versions: versions never change\n"
 
-			name:    "a table the database freezes but nobody declared is reported",
-			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
-			suffix:  "immutable:\nimmutable_allow:\n",
-			want:    "db/migrations freezes skill_versions with an unconditional enforce_immutable() trigger but immutable: does not declare it",
-		},
-		{
+type immutableTableCase struct {
+	name    string
+	queries string
+	suffix  string
+	want    string
+}
 
-			name:    "deleting the whole immutable block does not skip the check",
-			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
-			suffix:  "immutable:\nimmutable_allow:\n",
-			want:    "db/migrations freezes skill_versions",
-		},
-	}
-
-	for _, test := range tests {
+func runImmutableTableCases(t *testing.T, cases []immutableTableCase) {
+	t.Helper()
+	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			root := writeQueryOwnerFixture(t,
@@ -513,7 +473,7 @@ CREATE TRIGGER notes_immutable
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, []byte(migration), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(immutableTableMigration), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			problems := queryOwnerProblems(root)
@@ -531,6 +491,83 @@ CREATE TRIGGER notes_immutable
 			}
 		})
 	}
+}
+
+func TestImmutableTableProblemsBlocksWritesToFrozenTables(t *testing.T) {
+	t.Parallel()
+	runImmutableTableCases(t, []immutableTableCase{
+		{
+			name:    "insert into a frozen table is fine",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  immutableTableFrozen + "immutable_allow:\n",
+		},
+		{
+			name:    "update of a frozen table is blocked",
+			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
+			suffix:  immutableTableFrozen + "immutable_allow:\n",
+			want:    "skill_versions is append-only but TouchVersion updates or deletes it",
+		},
+		{
+			name: "delete from a frozen table is blocked, CTE included",
+			queries: "-- name: PurgeVersions :execrows\n" +
+				"WITH doomed AS (SELECT id FROM skills)\nDELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM doomed);\n",
+			suffix: immutableTableFrozen + "immutable_allow:\n",
+			want:   "skill_versions is append-only but PurgeVersions updates or deletes it",
+		},
+		{
+			name:    "named exemption lets the retention purge through",
+			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skill_versions WHERE stale;\n",
+			suffix:  immutableTableFrozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
+		},
+	})
+}
+
+func TestImmutableTableProblemsValidatesImmutableAllowExemptions(t *testing.T) {
+	t.Parallel()
+	runImmutableTableCases(t, []immutableTableCase{
+		{
+			name:    "exemption whose statement no longer writes the table is reported",
+			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skills WHERE stale;\n",
+			suffix:  immutableTableFrozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
+			want:    `immutable_allow.PurgeVersions = "skill_versions" no longer writes it`,
+		},
+		{
+			name:    "exemption for a table nobody declared immutable is reported",
+			queries: "-- name: PurgeSkills :execrows\nDELETE FROM skills WHERE stale;\n",
+			suffix:  immutableTableFrozen + "immutable_allow:\n  PurgeSkills: skills\n",
+			want:    `immutable_allow.PurgeSkills = "skills" is not a declared immutable table`,
+		},
+	})
+}
+
+func TestImmutableTableProblemsValidatesTheImmutableDeclaration(t *testing.T) {
+	t.Parallel()
+	runImmutableTableCases(t, []immutableTableCase{
+		{
+			name:    "declaring a table the database does not freeze is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  immutableTableFrozen + "  notes: conditional, not a frozen table\nimmutable_allow:\n",
+			want:    "immutable.notes has no unconditional enforce_immutable() trigger",
+		},
+		{
+			name:    "declaring a table without a reason is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  "immutable:\n  skill_versions:\nimmutable_allow:\n",
+			want:    "immutable.skill_versions has no reason",
+		},
+		{
+			name:    "a table the database freezes but nobody declared is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  "immutable:\nimmutable_allow:\n",
+			want:    "db/migrations freezes skill_versions with an unconditional enforce_immutable() trigger but immutable: does not declare it",
+		},
+		{
+			name:    "deleting the whole immutable block does not skip the check",
+			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
+			suffix:  "immutable:\nimmutable_allow:\n",
+			want:    "db/migrations freezes skill_versions",
+		},
+	})
 }
 
 func TestMutatedTables(t *testing.T) {
@@ -569,16 +606,48 @@ func TestIsWriteStatement(t *testing.T) {
 	}
 }
 
-func TestRawSQLProblems(t *testing.T) {
-	t.Parallel()
+type rawSQLCase struct {
+	name  string
+	path  string
+	body  string
+	allow map[string]string
+	want  string
+}
 
-	tests := []struct {
-		name  string
-		path  string
-		body  string
-		allow map[string]string
-		want  string
-	}{
+func runRawSQLCases(t *testing.T, cases []rawSQLCase) {
+	t.Helper()
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			path := filepath.Join(root, "apps", "platform", filepath.FromSlash(test.path))
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			source := "package p\n\n" + test.body + "\n"
+			if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			problems := rawSQLProblems(root, test.allow)
+			if test.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %#v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 {
+				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
+			}
+			if !strings.Contains(problems[0], test.want) {
+				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
+			}
+		})
+	}
+}
+
+func TestRawSQLProblemsDetectsStatementsAcrossCallShapes(t *testing.T) {
+	t.Parallel()
+	runRawSQLCases(t, []rawSQLCase{
 		{
 			name: "sqlc call is clean",
 			path: "internal/run/service.go",
@@ -601,16 +670,6 @@ func TestRawSQLProblems(t *testing.T) {
 			path: "cmd/worker/main.go",
 			body: `func f(b B) { b.Queue("INSERT INTO audit_events (id) VALUES ($1)", id) }`,
 			want: `apps/platform/cmd/worker/main.go:3 (f) passes "INSERT INTO audit_events (id) VALUES ($1)" to Queue`,
-		},
-		{
-			name: "raw DML in a _test.go file is not constrained",
-			path: "internal/run/service_test.go",
-			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
-		},
-		{
-			name: "raw DML in a generated directory is not constrained",
-			path: "internal/foundation/persistence/db/gen/queries.sql.go",
-			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
 		},
 		{
 			name: "raw SELECT is blocked",
@@ -642,6 +701,28 @@ func TestRawSQLProblems(t *testing.T) {
 			body: `func f(tx T) { tx.Exec(ctx, "WITH live AS (SELECT 1) SELECT * FROM live") }`,
 			want: `passes "WITH live AS (SELECT 1) SELECT * FROM live" to Exec`,
 		},
+	})
+}
+
+func TestRawSQLProblemsExemptsTestAndGeneratedFiles(t *testing.T) {
+	t.Parallel()
+	runRawSQLCases(t, []rawSQLCase{
+		{
+			name: "raw DML in a _test.go file is not constrained",
+			path: "internal/run/service_test.go",
+			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+		},
+		{
+			name: "raw DML in a generated directory is not constrained",
+			path: "internal/foundation/persistence/db/gen/queries.sql.go",
+			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+		},
+	})
+}
+
+func TestRawSQLProblemsHonorsFunctionScopedAllowEntries(t *testing.T) {
+	t.Parallel()
+	runRawSQLCases(t, []rawSQLCase{
 		{
 			name:  "function-scoped exemption lets known SQL through",
 			path:  "internal/packaging/packaging.go",
@@ -669,35 +750,7 @@ func TestRawSQLProblems(t *testing.T) {
 			allow: map[string]string{"apps/platform/internal/run/service.go@f": "technical query"},
 			want:  "raw_sql_allow.apps/platform/internal/run/service.go@f no longer contains raw SQL",
 		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			root := t.TempDir()
-			path := filepath.Join(root, "apps", "platform", filepath.FromSlash(test.path))
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			source := "package p\n\n" + test.body + "\n"
-			if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			problems := rawSQLProblems(root, test.allow)
-			if test.want == "" {
-				if len(problems) != 0 {
-					t.Fatalf("expected no problems, got %#v", problems)
-				}
-				return
-			}
-			if len(problems) != 1 {
-				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
-			}
-			if !strings.Contains(problems[0], test.want) {
-				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
-			}
-		})
-	}
+	})
 }
 
 func writeMigration(t *testing.T, root, name, sql string) {

@@ -65,26 +65,51 @@ func writeIdentitySources(t *testing.T, root, identities string) {
 
 var fixtureAppendixID = regexp.MustCompile("`([a-z][a-z0-9_]*)`")
 
+func parseKeptAppendixRow(trimmed string) (left, right string, ok bool) {
+	if !strings.HasPrefix(trimmed, "|") {
+		return "", "", false
+	}
+	cells := strings.Split(strings.Trim(trimmed, "|"), "|")
+	if len(cells) != 3 || !strings.HasPrefix(strings.TrimSpace(cells[2]), "保留") {
+		return "", "", false
+	}
+	left, right, arrow := strings.Cut(cells[0], "→")
+	if !arrow {
+		return "", "", false
+	}
+	return left, right, true
+}
+
+func appendixBoundaryIDs(cell string, declared map[string]packageIdentity) []string {
+	var ids []string
+	for _, m := range fixtureAppendixID.FindAllStringSubmatch(cell, -1) {
+		if knownBoundaryID(declared, m[1]) {
+			ids = append(ids, m[1])
+		}
+	}
+	return ids
+}
+
+type dependencyPolicyRecord struct {
+	ID     string `json:"id"`
+	From   string `json:"from_context"`
+	To     string `json:"to_context"`
+	Mode   string `json:"mode"`
+	Policy string `json:"policy"`
+	Status string `json:"status"`
+}
+
 // Converts a legacy "| A → B | … | 保留 |" whitelist fixture into the reviewed
 // dependency policies the checker now reads.
-func writeDependencyPolicies(t *testing.T, root, appendix string, declared map[string]packageIdentity) {
-	t.Helper()
-	type policy struct {
-		ID     string `json:"id"`
-		From   string `json:"from_context"`
-		To     string `json:"to_context"`
-		Mode   string `json:"mode"`
-		Policy string `json:"policy"`
-		Status string `json:"status"`
-	}
-	policies := []policy{}
+func appendixDependencyPolicies(appendix string, declared map[string]packageIdentity) []dependencyPolicyRecord {
+	policies := []dependencyPolicyRecord{}
 	seen := map[string]bool{}
 	add := func(from, to string) {
 		if from == to || seen[from+"→"+to] {
 			return
 		}
 		seen[from+"→"+to] = true
-		policies = append(policies, policy{
+		policies = append(policies, dependencyPolicyRecord{
 			ID: from + "-may-use-" + to, From: from, To: to,
 			Mode: "synchronous-query", Policy: "allowed", Status: "reviewed",
 		})
@@ -95,33 +120,16 @@ func writeDependencyPolicies(t *testing.T, root, appendix string, declared map[s
 			inAppendix = strings.HasPrefix(line, "## 跨 context import 白名單")
 			continue
 		}
-		trimmed := strings.TrimSpace(line)
-		if !inAppendix || !strings.HasPrefix(trimmed, "|") {
+		if !inAppendix {
 			continue
 		}
-		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
-		if len(cells) != 3 || !strings.HasPrefix(strings.TrimSpace(cells[2]), "保留") {
+		left, right, ok := parseKeptAppendixRow(strings.TrimSpace(line))
+		if !ok {
 			continue
 		}
-		left, right, arrow := strings.Cut(cells[0], "→")
-		if !arrow {
-			continue
-		}
-		var sources, targets []string
-		for _, m := range fixtureAppendixID.FindAllStringSubmatch(left, -1) {
-			if knownBoundaryID(declared, m[1]) {
-				sources = append(sources, m[1])
-			}
-		}
-		for _, m := range fixtureAppendixID.FindAllStringSubmatch(right, -1) {
-			if knownBoundaryID(declared, m[1]) {
-				targets = append(targets, m[1])
-			}
-		}
-		if len(targets) == 0 {
-			continue
-		}
-		if len(sources) == 0 {
+		sources := appendixBoundaryIDs(left, declared)
+		targets := appendixBoundaryIDs(right, declared)
+		if len(targets) == 0 || len(sources) == 0 {
 			continue
 		}
 		for _, from := range sources {
@@ -130,8 +138,13 @@ func writeDependencyPolicies(t *testing.T, root, appendix string, declared map[s
 			}
 		}
 	}
+	return policies
+}
+
+func writeDependencyPolicies(t *testing.T, root, appendix string, declared map[string]packageIdentity) {
+	t.Helper()
 	body, err := json.Marshal(map[string]any{
-		"format": "domain-dependencies/v1", "status": "reviewed", "dependencies": policies,
+		"format": "domain-dependencies/v1", "status": "reviewed", "dependencies": appendixDependencyPolicies(appendix, declared),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -40,76 +40,16 @@ func TestDocIdentifierAcceptsNamesThatStillExist(t *testing.T) {
 	}
 }
 
-func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		name string
-		doc  string
-		code map[string]string
-		want string
-	}{{
+type docIdentifierCase struct {
+	name string
+	doc  string
+	code map[string]string
+	want string
+}
 
-		name: "a function the document names is gone",
-		doc:  "配額由 `GenerateQuotaFor` 決定。\n",
-		code: map[string]string{"apps/platform/internal/policy/quota.go": "package policy\n"},
-		want: "GenerateQuotaFor is named in AGENTS.md but declared in no file",
-	}, {
-
-		name: "a test the document cites is gone",
-		doc:  "`TestPackageDownloadHashes` 證明雙雜湊。\n",
-		code: map[string]string{"apps/platform/internal/packaging/pack.go": "package packaging\n"},
-		want: "TestPackageDownloadHashes is named in AGENTS.md",
-	}, {
-
-		name: "a type nobody ever declared",
-		doc:  "搜尋回傳 `PublicSearchHit`。\n",
-		code: map[string]string{"apps/platform/internal/catalog/search.go": "package catalog\n\ntype SearchHit struct{}\n"},
-		want: "PublicSearchHit is named in AGENTS.md",
-	}, {
-
-		name: "prose and ledgered words are not identifiers",
-		doc:  "ADR 標 `Superseded` 後不再引用；`run` 與 `eval` 是 context 名。\n",
-		code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
-		want: "",
-	}, {
-
-		name: "an unexported function the document names is gone",
-		doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
-		code: map[string]string{"apps/platform/cmd/api/main.go": "package main\n"},
-		want: "applyCleanModePool is named in AGENTS.md but declared in no file",
-	}, {
-
-		name: "an unexported function that is still there",
-		doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
-		code: map[string]string{
-			"apps/platform/cmd/api/main.go": "package main\n\nfunc applyCleanModePool(clean bool) {}\n",
-		},
-		want: "",
-	}, {
-
-		name: "a column the document names is gone",
-		doc:  "重試新增一筆 `run_attempts`。\n",
-		code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE runs (id uuid);\n"},
-		want: "run_attempts is named in AGENTS.md but declared in no file",
-	}, {
-
-		name: "a column that is still there",
-		doc:  "重試新增一筆 `run_attempts`。\n",
-		code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE run_attempts (id uuid);\n"},
-		want: "",
-	}, {
-
-		name: "a lowercase word with no hump is prose, not a symbol",
-		doc:  "`clean` 模式與 `gvisor` 都是值，不是符號。\n",
-		code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
-		want: "",
-	}, {
-
-		name: "a name that exists only in prose elsewhere",
-		doc:  "見 `ApplyPreview` 的行為。\n",
-		code: map[string]string{"docs/plans/03-work-items.md": "`ApplyPreview` 的行為如下。\n"},
-		want: "ApplyPreview is named in AGENTS.md",
-	}} {
+func runDocIdentifierCases(t *testing.T, cases []docIdentifierCase) {
+	t.Helper()
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			problems := docIdentifierProblems(writeDocScope(t, tc.doc, tc.code))
@@ -127,6 +67,80 @@ func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDocIdentifierRejectsAClaimWearingADeletedName(t *testing.T) {
+	t.Parallel()
+	runDocIdentifierCases(t, []docIdentifierCase{
+		{
+			name: "a function the document names is gone",
+			doc:  "配額由 `GenerateQuotaFor` 決定。\n",
+			code: map[string]string{"apps/platform/internal/policy/quota.go": "package policy\n"},
+			want: "GenerateQuotaFor is named in AGENTS.md but declared in no file",
+		},
+		{
+			name: "a test the document cites is gone",
+			doc:  "`TestPackageDownloadHashes` 證明雙雜湊。\n",
+			code: map[string]string{"apps/platform/internal/packaging/pack.go": "package packaging\n"},
+			want: "TestPackageDownloadHashes is named in AGENTS.md",
+		},
+		{
+			name: "a type nobody ever declared",
+			doc:  "搜尋回傳 `PublicSearchHit`。\n",
+			code: map[string]string{"apps/platform/internal/catalog/search.go": "package catalog\n\ntype SearchHit struct{}\n"},
+			want: "PublicSearchHit is named in AGENTS.md",
+		},
+		{
+			name: "an unexported function the document names is gone",
+			doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
+			code: map[string]string{"apps/platform/cmd/api/main.go": "package main\n"},
+			want: "applyCleanModePool is named in AGENTS.md but declared in no file",
+		},
+		{
+			name: "a column the document names is gone",
+			doc:  "重試新增一筆 `run_attempts`。\n",
+			code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE runs (id uuid);\n"},
+			want: "run_attempts is named in AGENTS.md but declared in no file",
+		},
+		{
+			name: "a name that exists only in prose elsewhere",
+			doc:  "見 `ApplyPreview` 的行為。\n",
+			code: map[string]string{"docs/plans/03-work-items.md": "`ApplyPreview` 的行為如下。\n"},
+			want: "ApplyPreview is named in AGENTS.md",
+		},
+	})
+}
+
+func TestDocIdentifierAcceptsSymbolsThatStillExistOrAreNotIdentifiers(t *testing.T) {
+	t.Parallel()
+	runDocIdentifierCases(t, []docIdentifierCase{
+		{
+			name: "prose and ledgered words are not identifiers",
+			doc:  "ADR 標 `Superseded` 後不再引用；`run` 與 `eval` 是 context 名。\n",
+			code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
+			want: "",
+		},
+		{
+			name: "an unexported function that is still there",
+			doc:  "連線池上限由 `applyCleanModePool` 設定。\n",
+			code: map[string]string{
+				"apps/platform/cmd/api/main.go": "package main\n\nfunc applyCleanModePool(clean bool) {}\n",
+			},
+			want: "",
+		},
+		{
+			name: "a column that is still there",
+			doc:  "重試新增一筆 `run_attempts`。\n",
+			code: map[string]string{"db/migrations/0016_runs.sql": "CREATE TABLE run_attempts (id uuid);\n"},
+			want: "",
+		},
+		{
+			name: "a lowercase word with no hump is prose, not a symbol",
+			doc:  "`clean` 模式與 `gvisor` 都是值，不是符號。\n",
+			code: map[string]string{"apps/platform/internal/run/run.go": "package run\n"},
+			want: "",
+		},
+	})
 }
 
 func TestDocIdentifierReadsTheTreesItWalks(t *testing.T) {
