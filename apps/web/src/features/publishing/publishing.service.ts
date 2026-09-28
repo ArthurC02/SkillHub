@@ -257,10 +257,13 @@ export function useCreateBundleVersion() {
   });
 }
 
-export function useExportBundle(bundle: string) {
+export function useExportBundle(bundle: string, version: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => apiFetch<Acquisition>(`/me/bundles/${bundle}/export`, { method: "POST" }),
+    mutationFn: () =>
+      apiFetch<Acquisition>(`/me/bundles/${bundle}/export?version=${encodeURIComponent(version)}`, {
+        method: "POST",
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.packaging.downloads }),
   });
 }

@@ -1696,6 +1696,8 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   await resume();
   expect(box.textContent).toContain("已依確認的驗收條件建立 Test Case");
   expect(box.textContent).toContain("這份草稿尚未試跑");
+  const versionLink = [...box.querySelectorAll("a")].find((a) => a.textContent === "開啟候選版本");
+  expect(versionLink?.getAttribute("href")).toBe("/skills/sk-1/versions/v1");
   const link = [...box.querySelectorAll("a")].find(
     (a) => a.textContent === "檢查權限與費用後試跑此版本",
   );

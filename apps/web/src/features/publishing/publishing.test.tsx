@@ -22,6 +22,7 @@ import {
   PUBLISHER,
   ARTIFACT,
   ARTIFACT_ROW,
+  OWN_BUNDLE,
   SKILL,
   SKILL_VERSIONS,
   skillDetail,
@@ -161,7 +162,7 @@ test("an empty Bundle collection keeps creation available without making the pag
   expect(createBundle?.querySelector("form.bundle-form")).not.toBeNull();
 });
 
-test("a Bundle export continues from the exact saved artifact", async () => {
+test("an older Bundle row exports and first publishes the immutable version shown on that row", async () => {
   const bundle = {
     bundle: "pdf-toolkit",
     version: "1.0.0",
@@ -178,11 +179,19 @@ test("a Bundle export continues from the exact saved artifact", async () => {
       },
     ],
   };
+  const latest = {
+    ...bundle,
+    version: "2.0.0",
+    content_hash: "sha256:bundle-latest",
+    created_at: "2026-09-21T00:00:00Z",
+  };
+  let exportURL = "";
+  let published: Record<string, unknown> | undefined;
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const path = String(input)
-      .replace(/^https?:\/\/[^/]+/, "")
-      .split("?")[0];
+    const url = String(input);
+    const path = url.replace(/^https?:\/\/[^/]+/, "").split("?")[0];
     if (path === "/me/bundles/pdf-toolkit/export" && init?.method === "POST") {
+      exportURL = url;
       return json({
         artifact_id: ARTIFACT,
         file_name: "pdf-toolkit.zip",
@@ -193,10 +202,22 @@ test("a Bundle export continues from the exact saved artifact", async () => {
         content_url: `/downloads/${ARTIFACT}/content`,
       });
     }
+    if (path === "/me/bundles/pdf-toolkit/publication" && init?.method === "POST") {
+      published = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return json({
+        kind: "bundle",
+        publisher: PUBLISHER,
+        name: "pdf-toolkit",
+        address: `/p/${PUBLISHER}/pdf-toolkit`,
+        status: "published",
+        status_changed_at: "2026-09-22T00:00:00Z",
+        releases: [],
+      });
+    }
     const routes: Record<string, { body: unknown; status?: number }> = {
       "/me/publisher": { body: OWN_PUBLISHER },
       "/me/publications": { body: { publications: [] } },
-      "/me/bundles": { body: { bundles: [bundle] } },
+      "/me/bundles": { body: { bundles: [latest, bundle] } },
       "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
       "/downloads": { body: { downloads: [] } },
       "/me/bundles/pdf-toolkit/publication": {
@@ -215,13 +236,74 @@ test("a Bundle export continues from the exact saved artifact", async () => {
     )?.textContent,
   ).toBe("PDF Summariser v2");
 
-  await act(async () => button("匯出為 Plugin")?.click());
+  await act(async () => button("匯出 v1.0.0 為 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit.zip"));
+  expect(exportURL).toContain("/me/bundles/pdf-toolkit/export?version=1.0.0");
 
   const continuation = Array.from(container.querySelectorAll("a")).find((link) =>
     link.textContent?.includes("在交付紀錄查看這一份"),
   );
   expect(continuation?.getAttribute("href")).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
+
+  await act(async () => button("發佈 v1.0.0")?.click());
+  await waitFor(() => published !== undefined);
+  expect(published).toMatchObject({
+    name: "pdf-toolkit",
+    version: "1.0.0",
+    rights_attested: false,
+  });
+});
+
+test("an older published Bundle row republishes the immutable version shown on that row", async () => {
+  const older = {
+    ...OWN_BUNDLE,
+    version: "1.0.0",
+    content_hash: "sha256:bundle-1",
+    created_at: "2026-09-01T00:00:00Z",
+  };
+  const publication = {
+    kind: "bundle",
+    publisher: PUBLISHER,
+    name: OWN_BUNDLE.bundle,
+    address: `/p/${PUBLISHER}/${OWN_BUNDLE.bundle}`,
+    status: "published",
+    status_changed_at: "2026-09-20T00:00:00Z",
+    releases: [
+      {
+        bundle_version: OWN_BUNDLE.version,
+        content_hash: OWN_BUNDLE.content_hash,
+        released_at: "2026-09-20T00:00:00Z",
+        rights_attested: false,
+        findings: { errors: [], warnings: [], infos: [] },
+      },
+    ],
+  };
+  let published: Record<string, unknown> | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === `/me/bundles/${OWN_BUNDLE.bundle}/publication` && init?.method === "POST") {
+      published = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return json(publication);
+    }
+    const routes: Record<string, { body: unknown; status?: number }> = {
+      "/me/publisher": { body: OWN_PUBLISHER },
+      "/me/publications": { body: { publications: [] } },
+      "/me/bundles": { body: { bundles: [OWN_BUNDLE, older] } },
+      "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+      "/downloads": { body: { downloads: [] } },
+      [`/me/bundles/${OWN_BUNDLE.bundle}/publication`]: { body: publication },
+    };
+    const hit = routes[path];
+    return json(hit?.body ?? { error: "not found" }, hit?.status ?? (hit ? 200 : 404));
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("最新 Release：v1.1.0"));
+  await act(async () => button("發佈 v1.0.0")?.click());
+  await waitFor(() => published !== undefined);
+
+  expect(published).toMatchObject({ version: "1.0.0", rights_attested: false });
 });
 
 test("the publishing overview keeps public identity and the exact latest release connected", async () => {

@@ -1587,7 +1587,7 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
 
   expect(text()).toContain("Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。");
 
-  await act(async () => button("匯出為 Plugin")?.click());
+  await act(async () => button("匯出 v1.0.0 為 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit-1.0.0-plugin.zip"));
 
   const link = Array.from(container.querySelectorAll("a")).find((a) =>

@@ -69,6 +69,7 @@ export function DraftCard({
         <DraftCandidate
           candidate={p.candidate}
           adopted={p.adopted}
+          saved={state === "saved"}
           run={run}
           terminal={terminal}
           latest={latest}
@@ -85,14 +86,6 @@ export function DraftCard({
           perform={perform}
         />
       )}
-      {state === "saved" && p.candidate && (
-        <Link
-          to="/skills/$skillId/versions/$versionId"
-          params={{ skillId: p.candidate.skill_id, versionId: p.candidate.version_id }}
-        >
-          開啟已保存的版本
-        </Link>
-      )}
     </section>
   );
 }
@@ -100,6 +93,7 @@ export function DraftCard({
 function DraftCandidate({
   candidate,
   adopted,
+  saved,
   run,
   terminal,
   latest,
@@ -108,6 +102,7 @@ function DraftCandidate({
 }: {
   candidate: NonNullable<CreationSnapshot["candidate"]>;
   adopted: CreationSnapshot["adopted"];
+  saved: boolean;
   run: ReturnType<typeof findRunObservation>;
   terminal: boolean;
   latest: RunListItem | undefined;
@@ -117,6 +112,14 @@ function DraftCandidate({
   return (
     <>
       {adopted && <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>}
+      <p>
+        <Link
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId: candidate.skill_id, versionId: candidate.version_id }}
+        >
+          {saved ? "開啟已保存的版本" : "開啟候選版本"}
+        </Link>
+      </p>
       <p>
         {candidate.test_case_id ? (
           <Link

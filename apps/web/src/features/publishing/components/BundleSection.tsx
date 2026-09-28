@@ -80,7 +80,7 @@ export function BundleSection() {
         ) : (
           <ul className="download-list" data-role="evidence">
             {bundles.data.bundles.map((bundle) => (
-              <li key={bundle.bundle} className="download-item">
+              <li key={`${bundle.bundle}@${bundle.version}`} className="download-item">
                 <BundleRow bundle={bundle} needsAttestation={needsAttestationOf(bundle)} />
               </li>
             ))}
@@ -102,7 +102,7 @@ function BundleRow({
   bundle: BundleVersion;
   needsAttestation: boolean;
 }) {
-  const exportBundle = useExportBundle(bundle.bundle);
+  const exportBundle = useExportBundle(bundle.bundle, bundle.version);
 
   return (
     <div>
@@ -130,7 +130,9 @@ function BundleRow({
           onClick={() => exportBundle.mutate()}
           disabled={exportBundle.isPending}
         >
-          {exportBundle.isPending ? "匯出中…" : "匯出為 Plugin"}
+          {exportBundle.isPending
+            ? `正在匯出 v${bundle.version}…`
+            : `匯出 v${bundle.version} 為 Plugin`}
         </button>
       </p>
       {exportBundle.isError && (
@@ -184,6 +186,7 @@ function BundlePublishArea({
       {publication.data ? (
         <PublishedBundleView
           publication={publication.data}
+          bundleVersion={bundle.version}
           needsAttestation={needsAttestation}
           attested={attested}
           setAttested={setAttested}
@@ -195,7 +198,11 @@ function BundlePublishArea({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            publish.mutate({ name: name.trim(), rightsAttested: attested });
+            publish.mutate({
+              name: name.trim(),
+              version: bundle.version,
+              rightsAttested: attested,
+            });
           }}
         >
           <label htmlFor={nameInputId}>發佈名稱</label>
@@ -226,7 +233,7 @@ function BundlePublishArea({
               disabledReason ? `bundle-publish-disabled-${bundle.bundle}` : undefined
             }
           >
-            {publish.isPending ? "送出中…" : "發佈"}
+            {publish.isPending ? `正在發佈 v${bundle.version}…` : `發佈 v${bundle.version}`}
           </button>
           {disabledReason && (
             <p className="note" id={`bundle-publish-disabled-${bundle.bundle}`}>
@@ -246,6 +253,7 @@ function BundlePublishArea({
 
 function PublishedBundleView({
   publication,
+  bundleVersion,
   needsAttestation,
   attested,
   setAttested,
@@ -254,6 +262,7 @@ function PublishedBundleView({
   delist,
 }: {
   publication: Publication;
+  bundleVersion: string;
   needsAttestation: boolean;
   attested: boolean;
   setAttested: (value: boolean) => void;
@@ -300,9 +309,9 @@ function PublishedBundleView({
         <button
           type="button"
           disabled={publish.isPending || Boolean(disabledReason)}
-          onClick={() => publish.mutate({ rightsAttested: attested })}
+          onClick={() => publish.mutate({ version: bundleVersion, rightsAttested: attested })}
         >
-          {publish.isPending ? "送出中…" : "發佈目前的版本"}
+          {publish.isPending ? `正在發佈 v${bundleVersion}…` : `發佈 v${bundleVersion}`}
         </button>
       </p>
       {disabledReason && <p className="note">{disabledReason}</p>}
