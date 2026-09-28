@@ -38,26 +38,42 @@ export function useSkillSearch(
   filters: SearchFilters,
   enabled: boolean,
   purpose?: "reference",
-  correction?: string,
+) {
+  return useQuery({
+    queryKey: queryKeys.skills.search(query, filters, purpose),
+    queryFn: () => searchSkills(query, filters, 20, purpose),
+    enabled,
+  });
+}
+
+function fetchCorrectedSearch(query: string, filters: SearchFilters, correction: string) {
+  return apiFetch<PublicSearchResponse>("/api/skills/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query,
+      ...readSearchCorrection(correction),
+      filters,
+      limit: 20,
+    } satisfies CorrectedSearchRequest),
+  });
+}
+
+export function useCorrectedSkillSearch(
+  query: string,
+  filters: SearchFilters,
+  enabled: boolean,
+  correction: string | undefined,
 ) {
   return useQuery({
     queryKey:
       correction === undefined
-        ? queryKeys.skills.search(query, filters, purpose)
+        ? queryKeys.skills.search(query, filters, undefined)
         : queryKeys.skills.correctedSearch(query, filters, correction),
     queryFn: () =>
       correction === undefined
-        ? searchSkills(query, filters, 20, purpose)
-        : apiFetch<PublicSearchResponse>("/api/skills/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query,
-              ...readSearchCorrection(correction),
-              filters,
-              limit: 20,
-            } satisfies CorrectedSearchRequest),
-          }),
+        ? searchSkills(query, filters, 20)
+        : fetchCorrectedSearch(query, filters, correction),
     enabled,
   });
 }

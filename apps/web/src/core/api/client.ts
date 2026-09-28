@@ -22,6 +22,12 @@ export class ApiError extends Error {
   }
 }
 
+function errorMessageFromBody(body: unknown, fallback: string): string {
+  if (typeof body !== "object" || body === null || !("error" in body)) return fallback;
+  const error = (body as { error?: unknown }).error;
+  return typeof error === "string" ? error : fallback;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
@@ -37,10 +43,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     let body: unknown;
     try {
       body = await response.json();
-      if (typeof body === "object" && body !== null && "error" in body) {
-        const error = (body as { error?: unknown }).error;
-        if (typeof error === "string") message = error;
-      }
+      message = errorMessageFromBody(body, message);
     } catch {
       // Non-JSON error body; fall back to statusText.
     }

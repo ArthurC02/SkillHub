@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { RubricItem, TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
+import { RubricCriterionItem } from "./RubricCriterionItem";
 
 export function RubricSection({ testCase }: { testCase: TestCase }) {
   const stored = testCase.rubric;
@@ -52,51 +53,15 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
             </span>
           </p>
           <ul className="criterion-list" data-role="evidence">
-            {testCase.acceptance_criteria.map((c) => {
-              const item = items[c.id];
-              return (
-                <li key={c.id} className="criterion">
-                  <p className="note">驗收條件：{c.text}</p>
-                  <label htmlFor={`rubric-${c.id}`} className="note">
-                    這一條的 rubric 說明（留空＝這條沒有 rubric）
-                  </label>
-                  <br />
-                  <textarea
-                    id={`rubric-${c.id}`}
-                    rows={3}
-                    cols={60}
-                    maxLength={2000}
-                    value={item?.text ?? ""}
-                    onChange={(e) => update(c.id, { text: e.target.value })}
-                  />
-                  <p>
-                    <label htmlFor={`rubric-weight-${c.id}`}>權重</label>{" "}
-                    <input
-                      id={`rubric-weight-${c.id}`}
-                      type="number"
-                      min={0}
-                      step={1}
-                      size={4}
-                      value={item?.weight ?? ""}
-                      onChange={(e) =>
-                        update(c.id, {
-                          weight: e.target.value === "" ? undefined : Number(e.target.value),
-                        })
-                      }
-                    />{" "}
-                    <label htmlFor={`rubric-evidence-${c.id}`}>
-                      <input
-                        id={`rubric-evidence-${c.id}`}
-                        type="checkbox"
-                        checked={item?.evidence_required ?? false}
-                        onChange={(e) => update(c.id, { evidence_required: e.target.checked })}
-                      />{" "}
-                      要求引出原文
-                    </label>
-                  </p>
-                </li>
-              );
-            })}
+            {testCase.acceptance_criteria.map((c) => (
+              <RubricCriterionItem
+                key={c.id}
+                criterionId={c.id}
+                criterionText={c.text}
+                item={items[c.id]}
+                onUpdate={(patch) => update(c.id, patch)}
+              />
+            ))}
           </ul>
           <button
             type="button"

@@ -1,13 +1,36 @@
+import { ApiError } from "../../../core/api/client";
 import type { IconState } from "../../../shared/ui/StateIcon";
-import type {
-  CriterionResult,
-  DeterministicFinding,
-  Evaluation,
-  EvidenceMatch,
-  EvidenceRef,
-  ImprovementSuggestion,
-  SuggestionBlockedReason,
+import {
+  EVALUATION_POLL_MAX_404,
+  type CriterionResult,
+  type DeterministicFinding,
+  type Evaluation,
+  type EvidenceMatch,
+  type EvidenceRef,
+  type ImprovementSuggestion,
+  type SuggestionBlockedReason,
 } from "../evaluation.service";
+
+export type EvaluationPanelState = {
+  awaiting: boolean;
+  notEvaluated: boolean;
+  stoppedAsking: boolean;
+  evaluating: boolean;
+};
+
+export function evaluationPanelState(query: {
+  runStatus: string | undefined;
+  revision: string | undefined;
+  error: unknown;
+  errorUpdateCount: number;
+  dataStatus: Evaluation["status"] | undefined;
+}): EvaluationPanelState {
+  const awaiting = query.runStatus === "succeeded" || query.runStatus === "failed";
+  const notEvaluated = query.error instanceof ApiError && query.error.status === 404;
+  const stoppedAsking = notEvaluated && query.errorUpdateCount >= EVALUATION_POLL_MAX_404;
+  const evaluating = !query.revision && query.dataStatus === "pending";
+  return { awaiting, notEvaluated, stoppedAsking, evaluating };
+}
 
 export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
   met: "符合",

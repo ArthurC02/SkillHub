@@ -7,6 +7,20 @@ export type FacetNote<Row> = {
 
 export type LiftedNotes = Record<string, boolean>;
 
+// A combined line would credit the same word with two different notes if a
+// `by` word appeared under more than one note text.
+function eachWordMapsToOneText(byNote: Map<string, Set<string>>): boolean {
+  const claimed = new Map<string, string>();
+  for (const [text, words] of byNote) {
+    for (const word of words) {
+      const owner = claimed.get(word);
+      if (owner !== undefined && owner !== text) return false;
+      claimed.set(word, text);
+    }
+  }
+  return true;
+}
+
 export function facetNoteLines<Row>(
   rows: Row[],
   facets: Array<FacetNote<Row>>,
@@ -32,22 +46,7 @@ export function facetNoteLines<Row>(
       continue;
     }
     if (!by) continue;
-    // Each `by` word must map to exactly one note text, or a combined line
-    // would credit the same word with two different notes.
-    const claimed = new Map<string, string>();
-    let unambiguous = true;
-    for (const [text, words] of byNote) {
-      for (const word of words) {
-        const owner = claimed.get(word);
-        if (owner !== undefined && owner !== text) {
-          unambiguous = false;
-          break;
-        }
-        claimed.set(word, text);
-      }
-      if (!unambiguous) break;
-    }
-    if (!unambiguous) continue;
+    if (!eachWordMapsToOneText(byNote)) continue;
     for (const [text, words] of byNote) {
       lines.push({ key, text: `${label}「${[...words].join("、")}」：${text}` });
     }

@@ -1,4 +1,6 @@
 import { ApiError } from "../../core/api/client";
+import type { SkillDetail } from "../../core/api/types";
+import { packagingGate } from "../packaging";
 
 export type PublishingRefusalReason =
   | "no_publisher"
@@ -33,6 +35,28 @@ export const PUBLISHER_NAME_RULE =
   "名稱規則：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。";
 
 export const PUBLISHER_NAME_PERMANENT = "註冊之後這個名稱就是永久的：沒有改名的功能。";
+
+export type PublishGateState = {
+  needsAttestation: boolean;
+  disabledReason: string | undefined;
+  cannotSubmit: boolean;
+};
+
+export function publishGateState(skill: SkillDetail, attested: boolean): PublishGateState {
+  const redistValue = skill.redistribution?.value;
+  const needsAttestation = redistValue === "self_supplied" || redistValue === "generated";
+  const gate = packagingGate(skill);
+  const blocked =
+    gate === "license_hold" || gate === "not_redistributable" || gate === "license_unknown"
+      ? gate
+      : undefined;
+  const disabledReason = blocked
+    ? PUBLISHING_REFUSAL_LABEL[blocked]
+    : needsAttestation && !attested
+      ? "先勾選下面的聲明才能發佈。"
+      : undefined;
+  return { needsAttestation, disabledReason, cannotSubmit: Boolean(disabledReason) };
+}
 
 export function refusalReason(error: unknown): PublishingRefusalReason | undefined {
   if (!(error instanceof ApiError) || typeof error.body !== "object" || error.body === null) {

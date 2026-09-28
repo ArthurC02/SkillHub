@@ -2,9 +2,8 @@ import { ApiError } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import {
-  downloadHref,
   useCreateDownload,
   usePackagingPreview,
   usePackagingTargets,
@@ -13,23 +12,22 @@ import {
   type PackagingTargetId,
 } from "../packaging.service";
 import { useEmbeddedSkillDetail } from "../../skill";
-import { SkillVersionPicker } from "../../skill";
 import { packagingGate } from "../packaging.model";
-import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
+import { matchingBuiltArtifact, resolveTarget } from "./build.model";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../../../shared/ui/LicenseBadge";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
-import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 import { RiskVerdict } from "./components/RiskVerdict";
-import { CompatibilityVerdict } from "./components/CompatibilityVerdict";
-import { RetentionNotice } from "./components/RetentionNotice";
 import { BlockedNotice } from "./components/BlockedNotice";
-import { TargetOption } from "./components/TargetOption";
-import { PreviewReport } from "./components/PreviewReport";
+import { VersionPickerSection } from "./components/VersionPickerSection";
+import { CompatibilitySection } from "./components/CompatibilitySection";
+import { PackagingTargetsSection } from "./components/PackagingTargetsSection";
+import { IncludeTestCasesSection } from "./components/IncludeTestCasesSection";
+import { PackagingPreviewSection } from "./components/PackagingPreviewSection";
+import { BuildControl } from "./components/BuildControl";
+import { BuiltResultNotice } from "./components/BuiltResultNotice";
 
 type PackagingSearch = { version?: string };
-
-const DEAD_REASON_ID = "packaging-build-disabled-reason";
 
 function buildButtonReason({
   pending,
@@ -65,17 +63,13 @@ export function Packaging() {
 
   const [chosen, setChosen] = useState<PackagingTargetId | "">("");
   const [includeTestCases, setIncludeTestCases] = useState(false);
-  const navigate = useNavigate();
 
   const versionId = version || skill.data?.version?.version_id || "";
-  const target = chosen || (targets.data?.targets[0]?.id ?? "");
+  const target = resolveTarget(chosen, targets.data?.targets);
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
   const build = useCreateDownload(skillId);
-  const built =
-    build.data?.skill_id === skillId && build.variables?.versionId === versionId
-      ? build.data
-      : null;
+  const built = matchingBuiltArtifact(build, skillId, versionId);
   const buildPackage = () =>
     build.mutate(
       { versionId, target: target as PackagingTargetId, includeTestCases },
@@ -124,143 +118,26 @@ export function Packaging() {
         </p>
       ) : (
         <>
-          <details>
-            <summary>換一個版本打包，或看這個版本的識別碼</summary>
-            <SkillVersionPicker
-              skillId={skillId}
-              value={versionId}
-              onPick={(id) =>
-                void navigate({
-                  to: "/skills/$skillId/package",
-                  params: { skillId },
-                  search: { version: id },
-                })
-              }
-            />
-            <p className="note">
-              打包的是這一個不可變版本 <code>{versionId}</code>
-              ；打包不會建立也不會修改任何版本，每按一次得到的是一筆 Download Artifact。
-            </p>
-          </details>
+          <VersionPickerSection skillId={skillId} versionId={versionId} />
 
           {gate && <BlockedNotice reason={gate} />}
 
-          <h2>這個版本的相容性</h2>
-          <CompatibilityVerdict compatibility={skill.data.compatibility} />
-          <details>
-            <summary>相容性細項（每一軸的備註與實測環境）</summary>
-            <CompatibilityStatus compatibility={skill.data.compatibility} />
-          </details>
-          <p className="note" data-role="caveat">
-            <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
-          </p>
+          <CompatibilitySection compatibility={skill.data.compatibility} />
 
-          <h2>打包目標</h2>
-          <p className="note" data-role="teaching">
-            每個目標的安裝說明也隨套件內的 INSTALL.md 一起下載。
-          </p>
-          {targets.isPending && <Loading what="打包目標" />}
-          <ReadFailure error={targets.error} what="打包目標" />
-          {targets.data && (
-            <ul className="packaging-targets" data-role="evidence">
-              {targets.data.targets.map((t) => (
-                <TargetOption
-                  key={t.id}
-                  target={t}
-                  selected={t.id === target}
-                  onSelect={() => setChosen(t.id)}
-                />
-              ))}
-            </ul>
-          )}
+          <PackagingTargetsSection targets={targets} selected={target} onSelect={setChosen} />
 
-          <h2>要不要一起帶走 Test Case</h2>
-          <p>
-            <label>
-              <input
-                type="checkbox"
-                checked={includeTestCases}
-                onChange={(e) => setIncludeTestCases(e.target.checked)}
-              />{" "}
-              包含可散布的 Test Case 與範例資料
-            </label>
-          </p>
-          <p className="note">
-            只有平台策展產生的範例資料會進包。
-            <strong>你自己上傳的 Dataset 一律不會進包，也刻意不提供這個選項</strong>
-            ——那些檔案的授權判斷不該丟給拿不到判斷材料的人。評估報告、改善建議、Trace 與 Run
-            產出同樣不進包：它們是 Run 資料，不是 Skill 內容。
-          </p>
+          <IncludeTestCasesSection checked={includeTestCases} onChange={setIncludeTestCases} />
 
-          <h2>打包預覽</h2>
-          {preview.isPending && target !== "" && <p>計算這些設定會產生什麼…</p>}
-          <ReadFailure error={preview.error} what="打包預覽">
-            {preview.error instanceof ApiError && preview.error.status === 404 ? (
-              <p role="alert">這個版本讀不到，可能已經不屬於這個 Skill。回上一步重新挑一次版本。</p>
-            ) : preview.error instanceof ApiError && preview.error.status === 503 ? (
-              <p role="alert">這個部署沒有設定任何打包目標，所以沒有預覽。</p>
-            ) : (
-              <p role="alert">
-                無法讀取打包預覽：
-                {preview.error instanceof Error ? preview.error.message : String(preview.error)}
-              </p>
-            )}
-          </ReadFailure>
-          {preview.data && <PreviewReport preview={preview.data} />}
+          <PackagingPreviewSection preview={preview} target={target} />
 
-          {preview.data?.allowed && <RetentionNotice preview={preview.data} />}
+          <BuildControl
+            build={build}
+            preview={preview}
+            deadReason={deadReason}
+            onBuild={buildPackage}
+          />
 
-          <p className="note">平台目前只讓有封測邀請的帳號建立下載套件。</p>
-          <ReadFailure error={build.error} what="套件建立">
-            {build.error instanceof ApiError && build.error.status === 403 ? (
-              <p role="alert">
-                這個帳號還沒有封測邀請，所以套件沒有建立。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。
-              </p>
-            ) : (
-              <p role="alert">套件沒有建立成功，可以再按一次。</p>
-            )}
-          </ReadFailure>
-
-          <p>
-            <button
-              type="button"
-              className="action"
-              disabled={!preview.data?.allowed || build.isPending}
-              onClick={buildPackage}
-              aria-describedby={deadReason ? DEAD_REASON_ID : undefined}
-            >
-              {build.isPending ? "打包中…" : "建立下載套件"}
-            </button>
-          </p>
-          {deadReason && (
-            <p className="note" id={DEAD_REASON_ID}>
-              {deadReason}
-            </p>
-          )}
-
-          {built && (
-            <div>
-              <p role="status">
-                {built.duplicate
-                  ? "已有相同套件：同一個版本、同一個目標、同一個 Test Case 選項先前就打過，這就是那一份，不是第二份。"
-                  : "套件已建立。"}
-              </p>
-              <DownloadArtifactFacts artifact={built} />
-              <p className="note">
-                上面折起來的那兩串是雜湊，不是簽章。
-                <strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
-                （這是明文的「不做」）——它們證明得了「位元組沒有被改過」，
-                證明不了「這份東西是誰做的」。
-              </p>
-              <p>
-                <a href={downloadHref(built.artifact_id)} onClick={refreshDownloads}>
-                  下載 {built.file_name}
-                </a>
-                {" ｜ "}
-                <Link to="/workspace/downloads">到下載紀錄</Link>
-              </p>
-            </div>
-          )}
+          {built && <BuiltResultNotice built={built} onDownload={refreshDownloads} />}
         </>
       )}
     </section>

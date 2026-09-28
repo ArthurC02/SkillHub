@@ -4,6 +4,26 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
-    "react/exhaustive-deps": "error"
-  }
+    "react/exhaustive-deps": "error",
+    "eslint/complexity": ["error", { "max": 20 }],
+    "eslint/max-depth": ["error", { "max": 3 }],
+    "eslint/max-params": ["error", { "max": 4 }],
+    "eslint/max-lines-per-function": [
+      "error",
+      { "max": 120, "skipBlankLines": true, "skipComments": true }
+    ],
+    "eslint/max-nested-callbacks": ["error", { "max": 3 }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "src/testing/**", "src/guards/**", "e2e/**"],
+      "rules": {
+        "eslint/complexity": "off",
+        "eslint/max-depth": "off",
+        "eslint/max-params": "off",
+        "eslint/max-lines-per-function": "off",
+        "eslint/max-nested-callbacks": "off"
+      }
+    }
+  ]
 }

@@ -1,15 +1,11 @@
-import { Link } from "@tanstack/react-router";
-
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { SkillSource } from "../../../../core/api/types";
 import { ExternalLink } from "../../../../shared/ui/ExternalLink";
-import { StateIcon } from "../../../../shared/ui/StateIcon";
 import { GeneratedSourceBlock } from "./GeneratedSourceBlock";
-
-const AVAILABILITY_CLASS: Record<string, string> = {
-  lost: "badge badge-risk",
-  unreachable: "badge badge-unverified",
-};
+import { SourcePluginInfo } from "./SourcePluginInfo";
+import { SourceSiblingsList } from "./SourceSiblingsList";
+import { SourceAvailabilityNote } from "./SourceAvailabilityNote";
+import { SourceIdentifiersDetails } from "./SourceIdentifiersDetails";
 
 export function SourceBlock({ source }: { source: SkillSource }) {
   if (source.type === "generated") {
@@ -23,23 +19,7 @@ export function SourceBlock({ source }: { source: SkillSource }) {
           來源網址： <ExternalLink href={source.url}>{source.url}</ExternalLink>
         </p>
       )}
-      {source.plugin && (
-        <>
-          <p>
-            來自 Agent Plugin：<code>{source.plugin.name}</code>
-            {source.plugin.version ? ` ${source.plugin.version}` : ""}
-          </p>
-          {source.plugin.repository && (
-            <p>
-              Plugin 的 repository：{" "}
-              <ExternalLink href={source.plugin.repository}>
-                {source.plugin.repository}
-              </ExternalLink>
-            </p>
-          )}
-          <p className="note">{source.plugin.note}</p>
-        </>
-      )}
+      {source.plugin && <SourcePluginInfo plugin={source.plugin} />}
 
       {source.path && (
         <p>
@@ -55,69 +35,17 @@ export function SourceBlock({ source }: { source: SkillSource }) {
       )}
 
       {source.siblings && source.siblings.length > 0 && (
-        <>
-          <h3>同一個來源帶進來的其他 Skill（{source.siblings.length}）</h3>
-          <p className="note">
-            它們和這一個是同一次匯入進來的，各自是獨立的 Skill：各自有版本、各自試跑、各自下載。
-            平台沒有「一次取得整套」這個動作。
-          </p>
-          <ul>
-            {source.siblings.map((sibling) => (
-              <li key={sibling.skill_id}>
-                <Link to="/skills/$skillId" params={{ skillId: sibling.skill_id }}>
-                  {sibling.name}
-                </Link>
-                {sibling.path && (
-                  <>
-                    {" "}
-                    <code>{sibling.path}</code>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
+        <SourceSiblingsList siblings={source.siblings} />
       )}
 
       {source.availability && source.availability.value !== "available" && (
-        <p className={AVAILABILITY_CLASS[source.availability.value] ?? "note"}>
-          {source.availability.value === "lost" && <StateIcon state="fail" />}
-          {source.availability.label}
-          {source.unavailable_since && (
-            <>
-              （自 <Timestamp at={source.unavailable_since} /> 起抓不到）
-            </>
-          )}
-          ：{source.availability.note}
-        </p>
+        <SourceAvailabilityNote
+          availability={source.availability}
+          unavailableSince={source.unavailable_since}
+        />
       )}
 
-      {(source.source_version ||
-        source.content_hash ||
-        (!source.unavailable_since && source.last_checked_at)) && (
-        <details>
-          <summary>識別碼</summary>
-          <ul>
-            {!source.unavailable_since && source.last_checked_at && (
-              <li>
-                最近一次來源可用性檢查：
-                <Timestamp at={source.last_checked_at} />
-                （當時可取得）
-              </li>
-            )}
-            {source.source_version && (
-              <li>
-                來源版本／Commit：<code>{source.source_version}</code>
-              </li>
-            )}
-            {source.content_hash && (
-              <li>
-                內容雜湊：<code>{source.content_hash}</code>
-              </li>
-            )}
-          </ul>
-        </details>
-      )}
+      <SourceIdentifiersDetails source={source} />
     </>
   );
 }

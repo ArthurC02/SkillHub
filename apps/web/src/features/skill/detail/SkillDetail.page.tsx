@@ -1,6 +1,5 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { Timestamp } from "../../../shared/ui/Timestamp";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
 import { useSkillDetail, useSkillVersions } from "../skills.service";
@@ -16,7 +15,9 @@ import { CategoryEditor } from "./components/CategoryEditor";
 import { Redistribution } from "./components/Redistribution";
 import { Limitations } from "./components/Limitations";
 import { Enrichment } from "./components/Enrichment";
-import { SourceBlock } from "./components/SourceBlock";
+import { AllowedToolsSection } from "./components/AllowedToolsSection";
+import { SkillProvenanceSection } from "./components/SkillProvenanceSection";
+import { SkillIdentifiers } from "./components/SkillIdentifiers";
 import { TrialEntry } from "./components/TrialEntry";
 import { ForkAction } from "./components/ForkAction";
 import "./SkillDetail.page.css";
@@ -70,27 +71,10 @@ export function SkillDetail() {
 
             <section>
               <h2>套件宣告可用的工具</h2>
-              {skill.allowed_tools && skill.allowed_tools.length > 0 ? (
-                <>
-                  <ul>
-                    {skill.allowed_tools.map((tool) => (
-                      <li key={tool}>
-                        <code>{tool}</code>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
-                </>
-              ) : skill.risk.scan_status === "unavailable" ? (
-                <p className="note">
-                  未測量——這個版本沒有靜態掃描結果可讀，所以平台不知道套件宣告了哪些工具。
-                </p>
-              ) : (
-                <p className="note">
-                  不適用——套件沒有宣告 allowed-tools。在 Agent Skills 的格式裡那代表
-                  <strong>不設限</strong>，不代表它不用工具。
-                </p>
-              )}
+              <AllowedToolsSection
+                allowedTools={skill.allowed_tools}
+                scanStatus={skill.risk.scan_status}
+              />
             </section>
           </div>
 
@@ -106,49 +90,12 @@ export function SkillDetail() {
 
           <section>
             <h2>它從哪裡來</h2>
-            {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
-
-            <h3>{skill.derivation.label}</h3>
-            <p className="note">{skill.derivation.note}</p>
-            {skill.derivation.is_fork && skill.derivation.forked_from_skill_id && (
-              <p>
-                <Link
-                  to="/skills/$skillId"
-                  params={{ skillId: skill.derivation.forked_from_skill_id }}
-                >
-                  查看原始 Skill
-                </Link>
-              </p>
-            )}
+            <SkillProvenanceSection skill={skill} />
           </section>
 
           <VersionHistory skillId={skillId} />
 
-          <details>
-            <summary>進階資訊（版本與識別碼）</summary>
-            {skill.version ? (
-              <ul>
-                <li>版本編號：v{skill.version.version_number}</li>
-                <li>
-                  版本 ID：<code>{skill.version.version_id}</code>
-                </li>
-                <li>
-                  內容雜湊：<code>{skill.version.content_hash}</code>
-                </li>
-                <li>
-                  建立時間：
-                  <Timestamp at={skill.version.created_at} />
-                </li>
-              </ul>
-            ) : (
-              <p>無權檢視——這個工作區看不到這個 Skill 的版本內容（原因見上面的〈版本〉）。</p>
-            )}
-            {skill.derivation.forked_from_version_id && (
-              <p>
-                分岔自版本：<code>{skill.derivation.forked_from_version_id}</code>
-              </p>
-            )}
-          </details>
+          <SkillIdentifiers skill={skill} />
         </div>
 
         <aside className="detail-rail" aria-label="這個 Skill 的操作">

@@ -6,7 +6,6 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { SignInAction } from "../../../shared/ui/SignIn";
 import { ApiError } from "../../../core/api/client";
-import { packagingGate } from "../../packaging";
 import type { SkillDetail as SkillDetailModel } from "../../../core/api/types";
 import {
   useOwnPublisher,
@@ -15,7 +14,8 @@ import {
   useDelist,
   type Publication,
 } from "../publishing.service";
-import { PUBLISHING_REFUSAL_LABEL, refusalSentence } from "../publishing.model";
+import { publishGateState, refusalSentence } from "../publishing.model";
+import { PublishForm } from "./PublishForm";
 
 export function PublishPanel({
   skill,
@@ -48,19 +48,7 @@ export function PublishPanel({
   const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
   const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;
 
-  const redistValue = skill.redistribution?.value;
-  const needsAttestation = redistValue === "self_supplied" || redistValue === "generated";
-  const gate = packagingGate(skill);
-  const blocked: "license_hold" | "not_redistributable" | "license_unknown" | undefined =
-    gate === "license_hold" || gate === "not_redistributable" || gate === "license_unknown"
-      ? gate
-      : undefined;
-  const disabledReason = blocked
-    ? PUBLISHING_REFUSAL_LABEL[blocked]
-    : needsAttestation && !attested
-      ? "先勾選下面的聲明才能發佈。"
-      : undefined;
-  const cannotSubmit = Boolean(disabledReason);
+  const { needsAttestation, disabledReason, cannotSubmit } = publishGateState(skill, attested);
 
   return (
     <section>
@@ -94,53 +82,17 @@ export function PublishPanel({
               delist={delist}
             />
           ) : notPublishedYet ? (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                publish.mutate({ name: name.trim(), rightsAttested: attested });
-              }}
-            >
-              <p>
-                <label htmlFor={nameInputId}>發佈名稱</label>
-                <br />
-                <input
-                  id={nameInputId}
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  maxLength={64}
-                  required
-                />
-              </p>
-              {needsAttestation && (
-                <p>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={attested}
-                      onChange={(event) => setAttested(event.target.checked)}
-                    />{" "}
-                    我有權散布這些內容
-                  </label>
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={publish.isPending || cannotSubmit}
-                aria-describedby={disabledReason ? "publish-disabled-reason" : undefined}
-              >
-                {publish.isPending ? "送出中…" : "發佈"}
-              </button>
-              {disabledReason && (
-                <p className="note" id="publish-disabled-reason">
-                  {disabledReason}
-                </p>
-              )}
-              {publish.isError && (
-                <p role="alert">
-                  {refusalSentence(publish.error) ?? "發佈沒有成功，可以再試一次。"}
-                </p>
-              )}
-            </form>
+            <PublishForm
+              nameInputId={nameInputId}
+              name={name}
+              onNameChange={setName}
+              needsAttestation={needsAttestation}
+              attested={attested}
+              onAttestedChange={setAttested}
+              disabledReason={disabledReason}
+              cannotSubmit={cannotSubmit}
+              publish={publish}
+            />
           ) : null}
         </>
       ) : null}

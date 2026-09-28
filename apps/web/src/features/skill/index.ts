@@ -3,6 +3,7 @@ export {
   MAX_COMPARE,
   useCatalog,
   useCatalogTotal,
+  useCorrectedSkillSearch,
   useDeleteSkill,
   useEmbeddedSkillDetail,
   useEmbeddedSkillDetails,
