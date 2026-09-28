@@ -20,7 +20,7 @@
     },
     {
       "id": "stable-global-pagination",
-      "statement": "在資料集不變時，跨來源 Activity 以 last_updated_at、kind 與 source_id 的全域 keyset 順序續讀，不重複也不遺漏 item；游標不以單一來源的 offset 冒充全域位置。"
+      "statement": "在資料集不變時，跨來源 Activity 以 group_rank、last_updated_at、kind 與 source_id 的全域 keyset 順序續讀，不重複也不遺漏 item；游標不以單一來源的 offset 冒充全域位置。"
     },
     {
       "id": "incomplete-is-visible",
@@ -44,8 +44,8 @@
   "open_questions": [
     "Run 的 authoritative last update 應由哪一個既有狀態轉移或評估事實導出，是否需要新的 owner 欄位？",
     "Packaging 掃描狀態缺少狀態變更時間；owner 應增加哪個權威時間事實？",
-    "Publishing 的第一版應投影 Publication 狀態、最新 Release，還是兩者各自成為 item？",
-    "即時 keyset 續讀只保證資料集不變時不重複不遺漏；是否有真實需求必須提供跨請求快照？"
+    "Publishing 的第一版是否只投影一筆 Publication 並附最新 Release，Bundle Publication 是否同批納入？",
+    "Packaging 與 Publishing 目前只有清單網址；哪個穩定深鏈能把使用者帶到精確來源物件？"
   ],
   "risk_flags": [
     "cross_context",

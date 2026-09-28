@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useOwnSkills } from "../../skill";
@@ -69,6 +70,12 @@ function WorkspaceHomeContent({ name }: { name: string }) {
             <h2>執行中</h2>
             <p className="note">可以離開；回來時顯示的仍是伺服器狀態。</p>
           </header>
+          <ListFreshness
+            inFlight={active.length > 0}
+            updatedAt={runs.dataUpdatedAt}
+            fetching={runs.isFetching}
+            refetch={runs.refetch}
+          />
           {runs.data &&
             (active.length === 0 ? (
               <p>目前沒有正在執行的試跑。</p>

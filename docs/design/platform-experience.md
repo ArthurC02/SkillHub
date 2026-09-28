@@ -272,7 +272,7 @@ Activity 先依使用者能否採取行動分組，再依時間排序：
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
 
-現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意，並回到單一 Run 查看證據。畫面明示目前只收錄試跑；在 Run 尚無列級最後更新、Publication 尚無跨 Skill 清單、其他工作時間語意尚未統一以前，不把前端扇出結果稱為完整 Activity。
+現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意，並回到單一 Run 查看證據。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
 
 ### 5.5 微觀互動契約
 
@@ -345,7 +345,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
-**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。下一步是補上擁有者可讀的真實曝光狀態與交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
+**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 
 **階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 

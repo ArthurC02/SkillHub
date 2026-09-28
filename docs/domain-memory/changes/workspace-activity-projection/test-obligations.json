@@ -34,7 +34,7 @@
       "id": "global-cursor",
       "source_type": "acceptance-criterion",
       "source_id": "stable-global-pagination",
-      "expected_outcome": "Equal timestamps across all source kinds and page boundaries preserve total order and return every unchanged item exactly once.",
+      "expected_outcome": "Group boundaries, equal timestamps across all source kinds and page boundaries preserve total order and return every unchanged item exactly once.",
       "level": "integration",
       "status": "planned",
       "check": "multi-source keyset boundary-value integration test"
@@ -43,7 +43,7 @@
       "id": "source-failure-visible",
       "source_type": "acceptance-criterion",
       "source_id": "incomplete-is-visible",
-      "expected_outcome": "Fault injection for each owner reader makes incompleteness and the unavailable source observable, and never produces a normal complete empty state.",
+      "expected_outcome": "Fault injection for each enabled owner reader returns HTTP 503 with complete=false and that unavailable source, without items or a next cursor, and never produces a normal complete empty state.",
       "level": "integration",
       "status": "planned",
       "check": "owner-reader failure decision table integration test"

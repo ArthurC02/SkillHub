@@ -3,14 +3,17 @@
   "proposal_id": "workspace-activity-owner-facts",
   "proposer": "codex",
   "requirement_id": "workspace-activity-is-owner-backed",
-  "status": "draft",
+  "status": "submitted",
   "change_classification": "material",
-  "submitted_at": null,
+  "submitted_at": "2026-09-28T20:22:44.996328Z",
   "verified_at": null,
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
-  "base_registry_revision": null,
+  "base_registry_revision": {
+    "observed_commit": "c937756ed8f1fd7f5087f3a9d3f258c70ce48f9d",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
   "affected_contexts": [
     "identity",
     "run",
@@ -33,7 +36,7 @@
   },
   "boundary_decision": {
     "interaction": "Each lifecycle owner exposes a narrow Workspace-scoped Activity facts reader. The HTTP composition layer receives those readers through apiserver.NewApp, queries them with the Session-derived Workspace, merges their already-classified facts, applies the public cursor, and maps them to the OpenAPI response without importing owner packages into one another.",
-    "consistency": "Synchronous live reads with explicit per-source coverage; pagination is stable for an unchanged dataset and does not claim a cross-request snapshot.",
+    "consistency": "Synchronous live reads; pagination is stable for an unchanged dataset and does not claim a cross-request snapshot. If any enabled source is unavailable, the endpoint fails closed with HTTP 503, complete=false and unavailable_sources, returning neither items nor a cursor.",
     "prohibited_dependencies": [
       "browser fan-out across lifecycle endpoints",
       "entrypoint-owned interpretation of lifecycle statuses",
@@ -57,7 +60,7 @@
       "A useful cross-source feed must degrade visibly when a source fails and must paginate the union rather than paginate each existing list independently.",
       "The current Run-only UI is honest and should remain the visible scope until every contracted owner source is implemented."
     ],
-    "decision": "Use no new Aggregate, event stream or persisted Activity context. Each owner provides a minimal read DTO containing its own classification, original status, authoritative last_updated_at, stable source identity and typed continuation target. The API composition layer performs only Workspace-scoped fan-in, deterministic keyset merge, source-coverage reporting and transport mapping. Apply Jesse James Garrett's five planes in order: the return-and-resume outcome fixes Strategy; the four long-work sources and exclusions fix Scope; owner facts and composition fix Structure; grouping, ordering and one continuation action fix Skeleton; the existing design system fixes Surface.",
+    "decision": "Use no new Aggregate, event stream or persisted Activity context. Each owner provides a minimal read DTO containing its own classification, original status, authoritative last_updated_at, stable source identity and typed continuation target. GET /me/activity uses an opaque cursor ordered by group_rank, last_updated_at descending, kind and source_id; the live feed promises stable continuation only while the underlying dataset is unchanged. The API composition layer performs only Workspace-scoped fan-in, deterministic keyset merge, source-coverage reporting and transport mapping. Apply Jesse James Garrett's five planes in order: the return-and-resume outcome fixes Strategy; the four long-work sources and exclusions fix Scope; owner facts and composition fix Structure; grouping, ordering and one continuation action fix Skeleton; the existing design system fixes Surface.",
     "invariants_preserved": [
       "Workspace scope comes from the authenticated Session and is applied by every owner reader.",
       "Each lifecycle context remains authoritative for its statuses, transitions and actionable meaning.",
@@ -92,10 +95,10 @@
     "consumers": [
       "web"
     ],
-    "description": "Add a Session-authenticated Workspace Activity endpoint with a discriminated item union, deterministic keyset cursor and explicit source coverage. Existing lifecycle list endpoints remain unchanged.",
+    "description": "Add GET /me/activity as a Session-authenticated Workspace Activity endpoint with a discriminated item union, deterministic keyset cursor and explicit source coverage. Existing lifecycle list endpoints and the compatible /workspace/runs UI route remain unchanged during migration.",
     "compatibility": "Additive. Unknown item kinds and owner statuses remain displayable through stable summary fields; clients must not infer actionability from raw status.",
     "data_classification": "Workspace-scoped metadata only; excludes full snapshots, prompts, trace payloads, evaluation text, package contents and review findings.",
-    "retry_behavior": "Read-only and idempotent. A failed source is named in coverage and never silently converted to an empty source."
+    "retry_behavior": "Read-only and idempotent. Any enabled owner read failure returns HTTP 503 with complete=false and unavailable_sources, without items or next_cursor; the client retries the whole read and never presents the failure as a complete empty Activity."
   },
   "registry_updates": [],
   "risk_flags": [
@@ -103,10 +106,10 @@
     "public_contract"
   ],
   "open_questions": [
-    "Should the public route be /activity or /me/activity while the UI keeps the compatible /workspace/runs address during migration?",
-    "Should an unavailable source return HTTP 200 with complete=false and source errors, or should any unavailable owner fail the whole endpoint with 503? The proposal requires visible incompleteness either way; product and operational review must choose the transport behavior before implementation.",
     "Which owner states map to requires_action, in_progress and recent, and which continuation target is valid for each state?",
-    "Does a mutable source update between Activity pages need snapshot isolation, or is the documented live-feed behavior sufficient?"
+    "Does Run Activity recency include cancellation requests and cleanup changes, or only Run lifecycle transitions?",
+    "Should Publishing project one Publication with its latest Release, and should Bundle Publication ship in the same first scope?",
+    "Which stable deep links select one Packaging Artifact and one Publication in the existing management spaces?"
   ],
   "approvals": []
 }

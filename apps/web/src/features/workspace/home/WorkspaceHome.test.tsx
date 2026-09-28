@@ -60,14 +60,7 @@ async function render(node: ReactNode, settled: () => boolean) {
       </StrictMode>,
     );
   });
-  const deadline = Date.now() + 2000;
-  while (Date.now() < deadline) {
-    if (settled()) return;
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-  }
-  throw new Error(`render timed out: ${container.textContent}`);
+  await waitFor(settled);
 }
 
 function section(title: string) {
@@ -89,7 +82,7 @@ const run = (id: string, name: string, status: string, verdict: string) => ({
 });
 
 test("workspace home separates decisions, active work, and owned assets from server facts", async () => {
-  vi.stubGlobal("fetch", (input: string) => {
+  const fetchSpy = vi.fn((input: string) => {
     const url = String(input);
     if (url.endsWith("/me")) {
       return json({
@@ -128,6 +121,7 @@ test("workspace home separates decisions, active work, and owned assets from ser
     }
     return json({ error: "not found" }, 404);
   });
+  vi.stubGlobal("fetch", fetchSpy);
 
   await render(<WorkspaceHome />, () => (container.textContent ?? "").includes("PDF Summariser"));
 
@@ -137,4 +131,60 @@ test("workspace home separates decisions, active work, and owned assets from ser
   expect(section("執行中").textContent).not.toContain("Needs review");
   expect(container.textContent).not.toContain("Already good");
   expect(section("你的資產").textContent).toContain("PDF Summariser");
+
+  const refresh = Array.from(container.querySelectorAll("button")).find((candidate) =>
+    candidate.textContent?.includes("重新整理"),
+  );
+  expect(refresh).toBeDefined();
+  expect(refresh?.closest("p")?.querySelector("time")).not.toBeNull();
+
+  const before = fetchSpy.mock.calls.filter(([input]) => String(input).includes("/runs?")).length;
+  await act(async () => refresh?.click());
+  await waitFor(
+    () => fetchSpy.mock.calls.filter(([input]) => String(input).includes("/runs?")).length > before,
+  );
 });
+
+test("workspace home without active work does not show a stale refresh control", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/me")) {
+      return json({
+        user_id: "u-1",
+        email: "tester@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        operator: false,
+      });
+    }
+    if (url.includes("/runs?")) {
+      return json({ runs: [run("run-done", "Already good", "succeeded", "met")] });
+    }
+    if (url.endsWith("/skills")) {
+      return json({ skills: [], total: 0, limit: 100, truncated: false });
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await render(<WorkspaceHome />, () =>
+    (container.textContent ?? "").includes("目前沒有正在執行的試跑"),
+  );
+
+  expect(container.textContent).not.toContain("上次取得於");
+  expect(
+    Array.from(container.querySelectorAll("button")).find((candidate) =>
+      candidate.textContent?.includes("重新整理"),
+    ),
+  ).toBeUndefined();
+});
+
+async function waitFor(done: () => boolean) {
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error(`wait timed out: ${container.textContent}`);
+}

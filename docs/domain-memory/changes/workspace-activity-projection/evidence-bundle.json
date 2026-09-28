@@ -2,7 +2,10 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "workspace-activity-is-owner-backed",
   "proposal_id": "workspace-activity-owner-facts",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "c937756ed8f1fd7f5087f3a9d3f258c70ce48f9d",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  },
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": null,
@@ -30,8 +33,9 @@
     "Run 尚無通用列級 updated_at；以 created_at 代替會造成錯誤排序。",
     "Packaging 的掃描狀態尚無可直接使用的狀態變更時間。",
     "Creation、Packaging 與 Publishing 現有清單的分頁形狀不足以直接組成全域 keyset feed。",
-    "Publication 尚無 Workspace 跨 Skill 清單；現有查詢以單一 Skill 或 Bundle 為主。",
-    "部分失敗的 HTTP status 與 response body 形狀尚待產品與維運共同裁定。",
-    "本包是未送審草案，沒有核准、實作、測試通過或 Registry 更新。"
+    "Publication 已有 Workspace 跨 Skill 清單與有效 Catalog 曝光狀態，但尚無 Activity 專用分類、權威時間、續作入口或全域 keyset。",
+    "Run 是否把取消要求與清理變更算入 Activity 更新時間，仍待 owner 審查。",
+    "Publishing item 粒度、Bundle 範圍，以及 Packaging／Publishing 精確深鏈仍待 Scope 與 Skeleton 審查。",
+    "本包已送交 human review，但沒有核准、實作、測試通過或 Registry 更新。"
   ]
 }
