@@ -694,6 +694,30 @@ test("GEN-005: removing a diagram then re-selecting the same file shows it again
   expect(container.textContent).toContain("已選擇 flow.png");
 });
 
+test("a removed diagram leaves no selected line and no remove button behind", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const file = new File([new Uint8Array([137, 80, 78, 71])], "flow.png", { type: "image/png" });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("已選擇 flow.png"));
+
+  await act(async () => {
+    Array.from(container.querySelectorAll("button"))
+      .find((b) => b.textContent === "移除")!
+      .click();
+  });
+  expect(container.textContent).not.toContain("已選擇");
+  expect(Array.from(container.querySelectorAll("button")).map((b) => b.textContent)).not.toContain(
+    "移除",
+  );
+});
+
 test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected chips", async () => {
   stubSession(
     { generate_skill: true },

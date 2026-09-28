@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ApiError } from "../../../core/api/client";
 import {
   actOnCreationSession,
@@ -78,4 +78,27 @@ export function useCreationCommands(onSaved: (id: string) => void) {
     pending.current = undefined;
   };
   return { send, start, forgetPending };
+}
+
+export type CreationCommands = ReturnType<typeof useCreationCommands>;
+
+export type Attempt = "submit" | [CreationAction["kind"], CommandExtra];
+
+export function useCreationAttempt() {
+  const [error, setError] = useState<unknown>(),
+    [busy, setBusy] = useState(false);
+  const [lastAttempt, setLastAttempt] = useState<Attempt>();
+  const attempt = async (retryAs: Attempt, work: () => Promise<void>) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await work();
+    } catch (err) {
+      setError(err);
+      setLastAttempt(retryAs);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { error, setError, busy, lastAttempt, attempt };
 }

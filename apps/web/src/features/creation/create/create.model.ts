@@ -1,4 +1,11 @@
-import type { CreationSnapshot } from "../creation.service";
+import type { CreditBalance } from "../../../core/session/credits.service";
+import type {
+  CreationAction,
+  CreationLimits,
+  CreationSession,
+  CreationSnapshot,
+} from "../creation.service";
+import type { CommandExtra } from "./create.commands";
 
 export function diagramProblem(file: File): string | undefined {
   if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
@@ -184,6 +191,65 @@ export function budgetChoices(min: number, max: number) {
   return [...new Set([min, 200, 500, 1000, 2000, 5000, max])]
     .filter((v) => v >= min && v <= max)
     .sort((a, b) => a - b);
+}
+
+export function sessionPhase(session: CreationSession | undefined) {
+  return {
+    terminal: !!session && ["saved", "cancelled"].includes(session.state),
+    working: !!session && ["queued", "working"].includes(session.state),
+  };
+}
+
+export function startGate(
+  hasSession: boolean,
+  credits: CreditBalance | undefined,
+  limits: CreationLimits | undefined,
+  budget: string,
+) {
+  const creditsBlocked = !hasSession && !!credits && !credits.can_start;
+  const budgetCredits = Number(budget) || undefined;
+  return {
+    creditsBlocked,
+    choices: limits ? budgetChoices(limits.min_budget_credits, limits.max_budget_credits) : [],
+    budgetCredits,
+    frozen: !hasSession && (budgetCredits === undefined || creditsBlocked),
+  };
+}
+
+export function raiseBudgetProblem(raw: string, current: number, max: number) {
+  const amount = Number(raw);
+  if (!Number.isInteger(amount) || amount <= current || amount > max)
+    return `請填寫高於目前上限 ${current} 點且不超過 ${max} 點的點數。`;
+  return undefined;
+}
+
+export type CompositionMode = "diagram" | "references" | "message";
+
+export function compositionMode(file: File | undefined, referenceCount: number): CompositionMode {
+  return file ? "diagram" : referenceCount > 0 ? "references" : "message";
+}
+
+export function compositionProblem(note: string, hasFile: boolean, referenceCount: number) {
+  if (!hasFile && referenceCount === 0 && !note)
+    return "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考 Skill。";
+  if ([...note].length > MAX_MESSAGE_RUNES)
+    return `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`;
+  if (hasFile && referenceCount > 0)
+    return "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
+  return undefined;
+}
+
+export function compositionCommand(
+  message: string,
+  diagram: CommandExtra["diagram"],
+  referenceIDs: string[],
+): [CreationAction["kind"], CommandExtra] {
+  const note = message.trim();
+  const withNote = note ? { message: note } : {};
+  if (diagram) return ["diagram", { diagram, ...withNote }];
+  if (referenceIDs.length > 0)
+    return ["select_references", { reference_skill_ids: referenceIDs, ...withNote }];
+  return ["message", { message }];
 }
 
 export function newestMessageIn(pane: HTMLElement) {

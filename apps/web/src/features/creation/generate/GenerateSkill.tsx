@@ -29,19 +29,12 @@ const GENERATE_COST_HIGH_USD = 0.03;
 
 const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
 
-export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
-  const [task, setTask] = useState(initialTask);
+function useGenerateDiagram() {
   const [diagram, setDiagram] = useState<GenerateDiagram>();
   const [diagramName, setDiagramName] = useState("");
   const [diagramError, setDiagramError] = useState("");
   const [reading, setReading] = useState(false);
   const diagramFileRef = useRef<HTMLInputElement>(null);
-  const [references, setReferences] = useState<{ id: string; name: string }[]>([]);
-  const mutation = useGenerateSkill();
-  const rejected =
-    mutation.error instanceof ApiError && isCategorizedFindings(mutation.error.body)
-      ? (mutation.error.body as GenerateRejected)
-      : undefined;
 
   function handleDiagramChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -76,6 +69,35 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     setDiagramError("");
     if (diagramFileRef.current) diagramFileRef.current.value = "";
   }
+
+  return {
+    diagram,
+    diagramName,
+    diagramError,
+    reading,
+    diagramFileRef,
+    handleDiagramChange,
+    removeDiagram,
+  };
+}
+
+export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
+  const [task, setTask] = useState(initialTask);
+  const {
+    diagram,
+    diagramName,
+    diagramError,
+    reading,
+    diagramFileRef,
+    handleDiagramChange,
+    removeDiagram,
+  } = useGenerateDiagram();
+  const [references, setReferences] = useState<{ id: string; name: string }[]>([]);
+  const mutation = useGenerateSkill();
+  const rejected =
+    mutation.error instanceof ApiError && isCategorizedFindings(mutation.error.body)
+      ? (mutation.error.body as GenerateRejected)
+      : undefined;
 
   function toggleReference(id: string, name: string) {
     setReferences((prev) => {
@@ -156,34 +178,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         />
       </details>
 
-      <dl>
-        <dt>預估成本</dt>
-        <dd>
-          約 US${GENERATE_COST_LOW_USD.toFixed(3)}–${GENERATE_COST_HIGH_USD.toFixed(2)}
-          ，多數落在 US${GENERATE_COST_TYPICAL_USD.toFixed(3)} 上下——估計值，非報價。
-        </dd>
-      </dl>
-      <details>
-        <summary>這一次的上限，以及成本這個數字的來歷</summary>
-        <dl>
-          <dt>這一次最多會用到</dt>
-          <dd>
-            模型推理加輸出合計 {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
-            {GENERATE_MAX_ATTEMPTS} 次。
-          </dd>
-        </dl>
-        <p className="note">
-          上限那三個數字是伺服器實際擋你的上限，不是估計；超過第一個會被拒絕，超過第二個會直接停下、不重試。
-        </p>
-        <p className="note">
-          成本來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位 US$0.0062、最大
-          US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多 {GENERATE_MAX_ATTEMPTS}{" "}
-          次嘗試放寬並上取整，因為 10 次不是一個界。
-          <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
-          帶流程圖與帶參考各實測一次（US$0.0039、US$0.0040，2026-09-05），
-          都落在區間內，但一次不是分布。
-        </p>
-      </details>
+      <GenerateCostEstimate />
 
       {nothingToSend && (
         <p className="note" id="generate-why-disabled">
@@ -213,6 +208,41 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
 
       <GenerateHistory />
     </section>
+  );
+}
+
+function GenerateCostEstimate() {
+  return (
+    <>
+      <dl>
+        <dt>預估成本</dt>
+        <dd>
+          約 US${GENERATE_COST_LOW_USD.toFixed(3)}–${GENERATE_COST_HIGH_USD.toFixed(2)}
+          ，多數落在 US${GENERATE_COST_TYPICAL_USD.toFixed(3)} 上下——估計值，非報價。
+        </dd>
+      </dl>
+      <details>
+        <summary>這一次的上限，以及成本這個數字的來歷</summary>
+        <dl>
+          <dt>這一次最多會用到</dt>
+          <dd>
+            模型推理加輸出合計 {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
+            {GENERATE_MAX_ATTEMPTS} 次。
+          </dd>
+        </dl>
+        <p className="note">
+          上限那三個數字是伺服器實際擋你的上限，不是估計；超過第一個會被拒絕，超過第二個會直接停下、不重試。
+        </p>
+        <p className="note">
+          成本來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位 US$0.0062、最大
+          US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多 {GENERATE_MAX_ATTEMPTS}{" "}
+          次嘗試放寬並上取整，因為 10 次不是一個界。
+          <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
+          帶流程圖與帶參考各實測一次（US$0.0039、US$0.0040，2026-09-05），
+          都落在區間內，但一次不是分布。
+        </p>
+      </details>
+    </>
   );
 }
 

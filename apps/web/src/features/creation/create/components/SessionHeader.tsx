@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import type {
   CreationLimits,
@@ -7,7 +7,7 @@ import type {
   CreationState,
 } from "../../creation.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
-import { nextStepBudget, points } from "../create.model";
+import { nextStepBudget, points, raiseBudgetProblem } from "../create.model";
 import type { Perform } from "../create.commands";
 import { AgentAvatar } from "./ConversationLog";
 
@@ -61,9 +61,7 @@ export function SessionHeader({
   working,
   busy,
   perform,
-  raiseBudget,
-  onRaiseBudget,
-  onSubmitRaiseBudget,
+  onError,
   sessionList,
   currentId,
   onPickSession,
@@ -76,14 +74,22 @@ export function SessionHeader({
   working: boolean;
   busy: boolean;
   perform: Perform;
-  raiseBudget: string;
-  onRaiseBudget: (value: string) => void;
-  onSubmitRaiseBudget: () => void;
+  onError: (error: Error) => void;
   sessionList: CreationSession[] | undefined;
   currentId: string;
   onPickSession: (id: string) => void;
   historyMenu: RefObject<HTMLDetailsElement | null>;
 }) {
+  const [raiseBudget, setRaiseBudget] = useState("");
+  const submitRaiseBudget = async () => {
+    if (!p || !limits) return;
+    const problem = raiseBudgetProblem(raiseBudget, p.budget_credits, limits.max_budget_credits);
+    if (problem) {
+      onError(new Error(problem));
+      return;
+    }
+    await perform("raise_budget", { budget_credits: Number(raiseBudget) });
+  };
   return (
     <header className="creation-bar">
       <nav aria-label="離開這一頁">
@@ -106,89 +112,152 @@ export function SessionHeader({
         </span>
       </div>
       {session && p && (
-        <details className="creation-details">
-          <summary>
-            費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
-            {points(p.budget_credits)}
-            {limits && !terminal && <NextStep {...nextStepBudget(p, limits.min_budget_credits)} />}
-          </summary>
-          <div>
-            <p className="note">
-              仍占用預算 {p.reserved_credits} 點
-              {limits && (
-                <>
-                  {" "}
-                  · 工具 {p.tool_calls}／{limits.max_tool_calls} 次
-                </>
-              )}
-            </p>
-            {!terminal && (
-              <p className="note">
-                可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
-                <Timestamp at={session.expires_at} />
-              </p>
-            )}
-            {limits && (
-              <>
-                <label>
-                  提高這次預算上限（點）
-                  <input
-                    aria-label="提高這次預算上限（點）"
-                    inputMode="decimal"
-                    disabled={busy}
-                    value={raiseBudget}
-                    onChange={(e) => onRaiseBudget(e.target.value)}
-                  />
-                </label>
-                <button type="button" disabled={busy} onClick={() => void onSubmitRaiseBudget()}>
-                  提高預算後繼續
-                </button>
-              </>
-            )}
-            {!terminal && !working && session.state !== "failed" && (
-              <button
-                type="button"
-                className="destructive"
-                disabled={busy}
-                onClick={() => void perform("cancel")}
-              >
-                取消這次創作
-              </button>
-            )}
-          </div>
-        </details>
+        <SessionCostDetails
+          session={session}
+          p={p}
+          limits={limits}
+          terminal={terminal}
+          working={working}
+          busy={busy}
+          perform={perform}
+          raiseBudget={raiseBudget}
+          onRaiseBudget={setRaiseBudget}
+          onSubmitRaiseBudget={submitRaiseBudget}
+        />
       )}
       {sessionList && sessionList.length > 0 && (
-        <details className="creation-history" ref={historyMenu}>
-          <summary>對話紀錄</summary>
-          <ul>
-            <li>
-              <button
-                type="button"
-                disabled={busy}
-                aria-current={!currentId || undefined}
-                onClick={() => onPickSession("")}
-              >
-                ＋ 開始新的創作
-              </button>
-            </li>
-            {sessionList.slice(0, 50).map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  data-session={s.id}
-                  disabled={busy}
-                  aria-current={s.id === currentId || undefined}
-                  onClick={() => onPickSession(s.id)}
-                >
-                  <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
-                  <span className="note">{labels[s.state]}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <SessionHistoryMenu
+          sessionList={sessionList}
+          currentId={currentId}
+          busy={busy}
+          onPickSession={onPickSession}
+          historyMenu={historyMenu}
+        />
       )}
     </header>
+  );
+}
+
+function SessionCostDetails({
+  session,
+  p,
+  limits,
+  terminal,
+  working,
+  busy,
+  perform,
+  raiseBudget,
+  onRaiseBudget,
+  onSubmitRaiseBudget,
+}: {
+  session: CreationSession;
+  p: CreationSnapshot;
+  limits: CreationLimits | undefined;
+  terminal: boolean;
+  working: boolean;
+  busy: boolean;
+  perform: Perform;
+  raiseBudget: string;
+  onRaiseBudget: (value: string) => void;
+  onSubmitRaiseBudget: () => void;
+}) {
+  return (
+    <details className="creation-details">
+      <summary>
+        費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
+        {points(p.budget_credits)}
+        {limits && !terminal && <NextStep {...nextStepBudget(p, limits.min_budget_credits)} />}
+      </summary>
+      <div>
+        <p className="note">
+          仍占用預算 {p.reserved_credits} 點
+          {limits && (
+            <>
+              {" "}
+              · 工具 {p.tool_calls}／{limits.max_tool_calls} 次
+            </>
+          )}
+        </p>
+        {!terminal && (
+          <p className="note">
+            可進行到 <Timestamp at={session.deadline} /> · 紀錄保留到{" "}
+            <Timestamp at={session.expires_at} />
+          </p>
+        )}
+        {limits && (
+          <>
+            <label>
+              提高這次預算上限（點）
+              <input
+                aria-label="提高這次預算上限（點）"
+                inputMode="decimal"
+                disabled={busy}
+                value={raiseBudget}
+                onChange={(e) => onRaiseBudget(e.target.value)}
+              />
+            </label>
+            <button type="button" disabled={busy} onClick={() => void onSubmitRaiseBudget()}>
+              提高預算後繼續
+            </button>
+          </>
+        )}
+        {!terminal && !working && session.state !== "failed" && (
+          <button
+            type="button"
+            className="destructive"
+            disabled={busy}
+            onClick={() => void perform("cancel")}
+          >
+            取消這次創作
+          </button>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function SessionHistoryMenu({
+  sessionList,
+  currentId,
+  busy,
+  onPickSession,
+  historyMenu,
+}: {
+  sessionList: CreationSession[];
+  currentId: string;
+  busy: boolean;
+  onPickSession: (id: string) => void;
+  historyMenu: RefObject<HTMLDetailsElement | null>;
+}) {
+  return (
+    <details className="creation-history" ref={historyMenu}>
+      <summary>對話紀錄</summary>
+      <ul>
+        <li>
+          <button
+            type="button"
+            disabled={busy}
+            aria-current={!currentId || undefined}
+            onClick={() => onPickSession("")}
+          >
+            ＋ 開始新的創作
+          </button>
+        </li>
+        {sessionList.slice(0, 50).map((s) => (
+          <li key={s.id}>
+            <button
+              type="button"
+              data-session={s.id}
+              disabled={busy}
+              aria-current={s.id === currentId || undefined}
+              onClick={() => onPickSession(s.id)}
+            >
+              <span>{s.snapshot.brief.slice(0, 40) || "尚未確認需求"}</span>
+              <span className="note">{labels[s.state]}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

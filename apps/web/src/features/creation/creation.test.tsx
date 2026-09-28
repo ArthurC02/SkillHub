@@ -234,6 +234,25 @@ test("a balance below the threshold disables the start button and names the defi
   );
   expect(box.querySelector("textarea")!.placeholder).not.toContain("餘額");
 });
+test("a blocked balance keeps the budget choices but drops the balance-and-estimate line", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/me/credits")) {
+        return response(
+          creditsResponse({ balance_credits: 10, can_start: false, block_reason: "還差 55 點" }),
+        );
+      }
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render();
+  await pickBudget();
+  await waitFor(() => box.textContent!.includes("還差 55 點"));
+  expect(box.querySelector(".budget-picker")).not.toBeNull();
+  expect(box.querySelector(".budget-picker .creation-fact")).toBeNull();
+  expect(box.textContent).not.toContain("30–65 點");
+});
 async function attachDiagram(name = "flow.png", body = "diagram") {
   const el = box.querySelector('input[type="file"]') as HTMLInputElement;
   await act(async () => {

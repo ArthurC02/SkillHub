@@ -5,7 +5,12 @@ import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
 import { ApiError } from "../../../core/api/client";
-import { isImportResult, useImportSkill, useSkillImportLimits } from "../import.service";
+import {
+  isImportResult,
+  useImportSkill,
+  useSkillImportLimits,
+  type SkillImportLimits,
+} from "../import.service";
 import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
 
 function mb(bytes: number): string {
@@ -35,27 +40,7 @@ export function ImportSkill() {
       <h1>匯入 Skill</h1>
       <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
 
-      <ul className="note">
-        <li>
-          來源限 {rules ? rules.allowed_hosts.join("、") : "GitHub（PDM-002 的首批來源）"}
-          ，其他網域一律拒絕。
-        </li>
-        <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
-        {rules ? (
-          <li>
-            zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
-            {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
-            {rules.max_path_depth} 層。
-          </li>
-        ) : (
-          <li>正在讀這個部署的大小上限…</li>
-        )}
-        <li>
-          zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
-          <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
-          不必在這一頁手打。
-        </li>
-      </ul>
+      <ImportRules rules={rules} />
       {unauthenticated(me.error) ? (
         <LoginRequired what="匯入 Skill" />
       ) : (
@@ -144,6 +129,32 @@ export function ImportSkill() {
 
       {result && <ImportOutcome result={result} />}
     </section>
+  );
+}
+
+function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
+  return (
+    <ul className="note">
+      <li>
+        來源限 {rules ? rules.allowed_hosts.join("、") : "GitHub（PDM-002 的首批來源）"}
+        ，其他網域一律拒絕。
+      </li>
+      <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
+      {rules ? (
+        <li>
+          zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
+          {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
+          {rules.max_path_depth} 層。
+        </li>
+      ) : (
+        <li>正在讀這個部署的大小上限…</li>
+      )}
+      <li>
+        zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
+        <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
+        不必在這一頁手打。
+      </li>
+    </ul>
   );
 }
 
