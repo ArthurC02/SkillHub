@@ -121,7 +121,7 @@ type GrantEntry struct {
 	IdempotencyKey string
 }
 
-type Store interface {
+type LedgerStore interface {
 	Balance(ctx context.Context, tx DBTX, userID pgtype.UUID) (int64, error)
 
 	RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (id string, existed bool, err error)
@@ -132,6 +132,12 @@ type Store interface {
 
 	ApplyGrant(ctx context.Context, tx DBTX, g GrantEntry) (balanceAfter int64, err error)
 
+	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
+
+	OwnEntries(ctx context.Context, userID pgtype.UUID, page EntryPage) ([]StatementEntry, error)
+}
+
+type StatisticsStore interface {
 	RecentStatistics(ctx context.Context, kind CostKind) (Statistics, error)
 
 	RecomputeStatistics(ctx context.Context, kind CostKind, windowStart, windowEnd time.Time) (Statistics, error)
@@ -140,17 +146,21 @@ type Store interface {
 
 	SweepSessionSummaries(ctx context.Context, windowStart, idleBefore time.Time) (int64, error)
 
-	RecentEntries(ctx context.Context, tx DBTX, userID pgtype.UUID, limit int32) ([]LedgerEntry, error)
-
-	OwnEntries(ctx context.Context, userID pgtype.UUID, page EntryPage) ([]StatementEntry, error)
-
 	LatestStatistics(ctx context.Context) ([]KindStatistics, error)
+}
 
+type ReportStore interface {
 	DailyCost(ctx context.Context, since time.Time) ([]DailyAmount, error)
 
 	DailyCredits(ctx context.Context, since time.Time) ([]DailyAmount, error)
 
 	BalanceTotal(ctx context.Context) (int64, error)
+}
+
+type Store interface {
+	LedgerStore
+	StatisticsStore
+	ReportStore
 }
 
 type EntryPage struct {

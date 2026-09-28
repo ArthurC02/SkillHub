@@ -162,7 +162,7 @@ func declaredEgress(kind string, cleanMode cleanNode, log *slog.Logger) ([]strin
 	return modes, egressAllow, egressUnenforced
 }
 
-func serveUntilSignalled(srv *http.Server, drv sandbox.Driver, log *slog.Logger) {
+func serveUntilSignalled(srv *http.Server, drv sandbox.NodeCapabilities, log *slog.Logger) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ctx.Done()

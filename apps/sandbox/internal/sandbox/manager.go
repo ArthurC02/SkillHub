@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type Driver interface {
+type WorkloadRunner interface {
 	Start(ctx context.Context, providerRunID string, req RunRequest) error
 
 	Wait(ctx context.Context, providerRunID string) (Outcome, error)
@@ -24,15 +24,19 @@ type Driver interface {
 
 	Remove(ctx context.Context, providerRunID string) error
 
-	ReadTrace(ctx context.Context, providerRunID string, offset int64) (data []byte, more bool, err error)
-
-	ReadArtifacts(ctx context.Context, providerRunID string) ([]byte, error)
+	Adopt(ctx context.Context) ([]Adopted, error)
 
 	WorkloadDone(ctx context.Context, providerRunID string) (bool, error)
 	ReleaseWorkload(ctx context.Context, providerRunID string) error
+}
 
-	Adopt(ctx context.Context) ([]Adopted, error)
+type RunOutputReader interface {
+	ReadTrace(ctx context.Context, providerRunID string, offset int64) (data []byte, more bool, err error)
 
+	ReadArtifacts(ctx context.Context, providerRunID string) ([]byte, error)
+}
+
+type NodeCapabilities interface {
 	Healthy(ctx context.Context) bool
 
 	Rootless() bool
@@ -42,6 +46,12 @@ type Driver interface {
 	DedicatedWorkspacePerRun() bool
 
 	InjectsFromGrant() []string
+}
+
+type Driver interface {
+	WorkloadRunner
+	RunOutputReader
+	NodeCapabilities
 }
 
 type Outcome struct {

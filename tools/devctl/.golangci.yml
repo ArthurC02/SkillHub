@@ -16,6 +16,7 @@ linters:
     - usestdlibvars
     - unconvert
     - wastedassign
+    - interfacebloat
 
   exclusions:
     presets:
