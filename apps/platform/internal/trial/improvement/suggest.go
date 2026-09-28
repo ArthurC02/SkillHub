@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -283,12 +284,10 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []Tar
 	}
 
 	var tree []string
-	_ = fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || len(tree) >= maxFileTreeEntries {
-			return nil //nolint:nilerr // an unreadable entry is skipped, not fatal
+	skillpkg.EachReadableFile(fsys, func(p string, _ fs.DirEntry) {
+		if len(tree) < maxFileTreeEntries {
+			tree = append(tree, p)
 		}
-		tree = append(tree, p)
-		return nil
 	})
 	sort.Strings(tree)
 

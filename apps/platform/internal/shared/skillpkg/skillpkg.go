@@ -780,27 +780,23 @@ func IsScriptPath(path string) bool {
 func (r *Report) scanTree(fsys fs.FS) {
 	urlsByHost := map[string][]string{}
 	deps := newDepScan()
-	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
-		}
+	EachReadableFile(fsys, func(path string, d fs.DirEntry) {
 		info, err := d.Info()
 		if err != nil {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
+			return
 		}
 
 		if !r.admitEntryType(fsys, path, info) {
-			return nil
+			return
 		}
 		deps.note(path)
 		r.discloseFileKind(path)
 
 		data, err := readCapped(fsys, path, maxScanBytes)
 		if err != nil {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
+			return
 		}
 		r.scanContent(path, info.Size(), data, deps, urlsByHost)
-		return nil
 	})
 	deps.report(r)
 	r.addURLDisclosures(urlsByHost)

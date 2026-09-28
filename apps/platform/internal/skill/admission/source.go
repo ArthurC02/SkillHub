@@ -134,14 +134,18 @@ func prepareSkillAt(fsys fs.FS, dir, objectKey, packageHash string, sourceFindin
 		}
 		p.skillMD = strings.ToValidUTF8(string(md), "")
 	}
-	_ = fs.WalkDir(sub, ".", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || len(p.fileTree) >= maxEnrichFiles {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
-		}
-		p.fileTree = append(p.fileTree, path)
-		return nil
-	})
+	p.fileTree = enrichFileTree(sub)
 	return p, nil
+}
+
+func enrichFileTree(fsys fs.FS) []string {
+	var tree []string
+	skillpkg.EachReadableFile(fsys, func(path string, _ fs.DirEntry) {
+		if len(tree) < maxEnrichFiles {
+			tree = append(tree, path)
+		}
+	})
+	return tree
 }
 
 // fs.Sub hands back a plain fs.FS, so findings the archive reader raised about

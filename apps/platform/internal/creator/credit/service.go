@@ -213,13 +213,18 @@ func (s *Service) startThreshold(ctx context.Context, kind CostKind) (threshold 
 	if err != nil {
 		return 0, false, err
 	}
+	threshold, estimated = s.thresholdFrom(stats)
+	return threshold, estimated, nil
+}
+
+func (s *Service) thresholdFrom(stats Statistics) (threshold int64, estimated bool) {
 	if stats.SampleCount < MinStatSamples || time.Since(stats.WindowEnd) > MaxStatisticsAge {
-		return s.Config.StartFallbackCredits, true, nil
+		return s.Config.StartFallbackCredits, true
 	}
 	if credits, billable := s.billableCredits(stats.P95UsdMicros); billable {
-		return credits, false, nil
+		return credits, false
 	}
-	return s.Config.StartFallbackCredits, true, nil
+	return s.Config.StartFallbackCredits, true
 }
 
 func (s *Service) billableCredits(usdMicros int64) (int64, bool) {
@@ -250,10 +255,11 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	if s.Store == nil {
 		return Estimate{}, ErrUnavailable
 	}
-	threshold, estimated, err := s.startThreshold(ctx, statKind)
-	if err != nil {
+	stats, err := s.Store.RecentStatistics(ctx, statKind)
+	if err != nil && !errors.Is(err, ErrNoStatistics) {
 		return Estimate{}, err
 	}
+	threshold, estimated := s.thresholdFrom(stats)
 	est := Estimate{
 		LowCredits: threshold, HighCredits: threshold,
 		ThresholdCredits: threshold, Estimated: estimated,
@@ -261,14 +267,9 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	if estimated {
 		return est, nil
 	}
-	stats, err := s.Store.RecentStatistics(ctx, statKind)
-	if err != nil {
-
-		return est, nil
-	}
 	est.SampleCount = stats.SampleCount
-	if low, err := BilledMicros(stats.P50UsdMicros, s.Config.MarkupBps); err == nil {
-		est.LowCredits = CreditsForMicros(low, s.Config.MicrosPerCredit)
+	if low, billable := s.billableCredits(stats.P50UsdMicros); billable {
+		est.LowCredits = low
 	}
 	return est, nil
 }

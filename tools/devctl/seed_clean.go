@@ -257,26 +257,15 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 				"  Skipping it silently would let an unindexed catalog look seeded; stop here and read the reply shape",
 			name)
 	}
-	resp, err := client.Get(api + "/api/skills/" + url.PathEscape(skillID))
-	if err != nil {
+	status, answered := enrichmentStatus(client, api, skillID)
+	if !answered {
+		fmt.Fprintf(out, "index check: the detail of %q did not answer, so its indexing is unverified; "+
+			"the catalog search after the upload still has to find it\n", name)
 		return nil
 	}
-	b, _ := io.ReadAll(io.LimitReader(resp.Body, enrichmentCheckBodyLimit))
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil
-	}
-	var body struct {
-		Enrichment struct {
-			Status string `json:"status"`
-		} `json:"enrichment"`
-	}
-	if err := json.Unmarshal(b, &body); err != nil {
-		return nil
-	}
-	if body.Enrichment.Status != "pending" {
+	if status != "pending" {
 		fmt.Fprintf(out, "index check: the first package came back enriched (status %q) — intent search will work\n",
-			body.Enrichment.Status)
+			status)
 		return nil
 	}
 	return fmt.Errorf(
@@ -287,6 +276,27 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 			"  What is already uploaded is not lost while clean mode keeps running: the worker's hourly enrichment backfill\n"+
 			"  indexes pending packages once apps/llm answers. A restart does lose it, because the PGlite carrier is in memory",
 		name)
+}
+
+func enrichmentStatus(client *http.Client, api, skillID string) (status string, answered bool) {
+	resp, err := client.Get(api + "/api/skills/" + url.PathEscape(skillID))
+	if err != nil {
+		return "", false
+	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, enrichmentCheckBodyLimit))
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", false
+	}
+	var body struct {
+		Enrichment struct {
+			Status string `json:"status"`
+		} `json:"enrichment"`
+	}
+	if err := json.Unmarshal(b, &body); err != nil {
+		return "", false
+	}
+	return body.Enrichment.Status, true
 }
 
 const seedVerifyProbes = 5

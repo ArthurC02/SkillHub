@@ -248,13 +248,7 @@ func readPackage(data []byte, sourcePath string) (preparedPackage, error) {
 
 		p.skillMD = strings.ToValidUTF8(string(md), "")
 	}
-	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || len(p.fileTree) >= maxEnrichFiles {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
-		}
-		p.fileTree = append(p.fileTree, path)
-		return nil
-	})
+	p.fileTree = enrichFileTree(fsys)
 	return p, nil
 }
 

@@ -243,8 +243,10 @@ func (d *Driver) execOut(ctx context.Context, id string, cmd []string, out io.Wr
 		return err
 	}
 	defer attached.Close()
-	if _, err := stdcopy.StdCopy(out, io.Discard, io.LimitReader(attached.Reader, limit)); err != nil {
-		return nil //nolint:nilerr // a truncated stream is bounded output, not a failure to report
-	}
+	copyUntilLimitOrBrokenStream(out, io.LimitReader(attached.Reader, limit))
 	return nil
+}
+
+func copyUntilLimitOrBrokenStream(out io.Writer, stream io.Reader) {
+	_, _ = stdcopy.StdCopy(out, io.Discard, stream)
 }

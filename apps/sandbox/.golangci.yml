@@ -17,6 +17,7 @@ linters:
     - unconvert
     - wastedassign
     - interfacebloat
+    - nilerr
 
   exclusions:
     presets:

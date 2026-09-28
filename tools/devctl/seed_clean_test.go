@@ -602,3 +602,43 @@ func TestSeedCleanStopsWhenTheImportReplyCarriesNoSkillID(t *testing.T) {
 		t.Errorf("the refusal does not say what was missing: %v", err)
 	}
 }
+
+func TestTheIndexCheckSaysSoWhenTheDetailDoesNotAnswer(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"the detail is missing", http.StatusNotFound, `{}`},
+		{"the detail is not JSON", http.StatusOK, `<html>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = fmt.Fprint(w, tc.body)
+			}))
+			defer server.Close()
+
+			var out strings.Builder
+			if err := verifyEnrichmentReached(server.Client(), server.URL, "pkg", "stub", &out); err != nil {
+				t.Fatalf("an unanswered detail stopped the seed: %v", err)
+			}
+			if !strings.Contains(out.String(), `"pkg" did not answer`) {
+				t.Errorf("the skipped check left no trace in the output: %q", out.String())
+			}
+		})
+	}
+
+	t.Run("the API is gone", func(t *testing.T) {
+		server := httptest.NewServer(http.NotFoundHandler())
+		server.Close()
+
+		var out strings.Builder
+		if err := verifyEnrichmentReached(server.Client(), server.URL, "pkg", "stub", &out); err != nil {
+			t.Fatalf("an unreachable API stopped the seed: %v", err)
+		}
+		if !strings.Contains(out.String(), `"pkg" did not answer`) {
+			t.Errorf("the skipped check left no trace in the output: %q", out.String())
+		}
+	})
+}

@@ -273,6 +273,33 @@ func TestEveryMountedRouteIsInTheAnonymousMatrix(t *testing.T) {
 	}
 }
 
+var (
+	mountDefinitionRE = regexp.MustCompile(`(?m)^func (mount\w+Routes)\(`)
+	mountCallRE       = regexp.MustCompile(`(?m)^\t(mount\w+Routes)\(mux, d\)$`)
+)
+
+func TestEveryRouteGroupIsMountedExactlyOnce(t *testing.T) {
+	t.Parallel()
+	src, err := os.ReadFile("router.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := map[string]int{}
+	for _, m := range mountCallRE.FindAllStringSubmatch(string(src), -1) {
+		calls[m[1]]++
+	}
+	defined := mountDefinitionRE.FindAllStringSubmatch(string(src), -1)
+	if len(defined) == 0 {
+		t.Fatal("no route group found in router.go; the scan is broken rather than the table empty")
+	}
+	for _, m := range defined {
+		if calls[m[1]] != 1 {
+			t.Errorf("%s is called %d times in router.go, want 1: its routes pass the text scan "+
+				"and answer 404 (never called) or panic at startup (called twice)", m[1], calls[m[1]])
+		}
+	}
+}
+
 func TestTheRouteTableScanFindsAPlausibleTable(t *testing.T) {
 	t.Parallel()
 	mounted := mountedPatterns(t)

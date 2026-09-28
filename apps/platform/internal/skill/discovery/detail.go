@@ -870,16 +870,12 @@ func specValidation(r skillpkg.Report) string {
 
 func fileTree(fsys fs.FS) []fileEntry {
 	out := []fileEntry{}
-	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
-		}
+	skillpkg.EachReadableFile(fsys, func(path string, d fs.DirEntry) {
 		e := fileEntry{Path: path, IsScript: skillpkg.IsScriptPath(path)}
 		if info, err := d.Info(); err == nil {
 			e.Size = info.Size()
 		}
 		out = append(out, e)
-		return nil
 	})
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out

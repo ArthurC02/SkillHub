@@ -208,14 +208,10 @@ func (d *Discovery) collectPluginComponents(fsys fs.FS) {
 }
 
 func (d *Discovery) collectTreeSkills(fsys fs.FS) {
-	_ = fs.WalkDir(fsys, ".", func(p string, entry fs.DirEntry, err error) error {
-		if err != nil || !entry.IsDir() {
-			return nil //nolint:nilerr // an unreadable directory holds no skill we can package
-		}
-		if hasSkillFile(fsys, p) {
+	eachReadableEntry(fsys, func(p string, entry fs.DirEntry) {
+		if entry.IsDir() && hasSkillFile(fsys, p) {
 			d.Skills = append(d.Skills, p)
 		}
-		return nil
 	})
 	sort.Strings(d.Skills)
 }
