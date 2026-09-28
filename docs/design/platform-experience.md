@@ -345,7 +345,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
-**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
+**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；網址能以 owner API 已有的 Artifact UUID 或 `publisher/name` 續接到精確保存項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 也還沒有同等的 owner 摘要可供定位。下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 
 **階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 

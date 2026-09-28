@@ -278,6 +278,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
+| `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`） | 發佈與交付空間裡正在續接哪一筆保存紀錄。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication；兩者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。清單成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`、`version`（皆須為 UUID） | 「此 Skill／Version 的 Test Case」那條連結要的東西；`version` 會跟著進單筆 Test Case 與 preflight，不改變清單本身的 owner scope |
@@ -288,7 +289,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘十八條路由沒有 `validateSearch`**（31 條路由減去上表的 13 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、六條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十七條路由沒有 `validateSearch`**（31 條路由減去上表的 14 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 

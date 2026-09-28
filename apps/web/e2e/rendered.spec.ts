@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
+  ARTIFACT,
   OTHER_RUN,
   RUN,
   SKILL,
@@ -62,6 +63,18 @@ test.describe("QA-008 composite pixels", () => {
 });
 
 test.describe("QA-008 real layout", () => {
+  test("a publishing continuation brings the exact artifact into view", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(`/workspace/downloads?artifact=${ARTIFACT}`);
+
+    const target = page.locator('[aria-current="location"]');
+    await expect(target).toBeFocused();
+    await expect(target).toBeInViewport();
+    await expect(target).toContainText("pdf-summariser-v2.zip");
+    await expect(target).toContainText("續接位置");
+  });
+
   for (const [name, url] of PHONE_ROUTES) {
     test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {
       await stubPlatform(page);

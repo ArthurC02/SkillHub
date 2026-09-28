@@ -20,6 +20,8 @@ import {
   PUBLIC_PUBLICATION,
   PUBLICATION,
   PUBLISHER,
+  ARTIFACT,
+  ARTIFACT_ROW,
   SKILL,
   SKILL_VERSIONS,
   skillDetail,
@@ -28,9 +30,11 @@ import type { SkillDetail } from "../../core/api/types";
 
 let container: HTMLDivElement;
 let root: Root;
+let publishingSearch: { artifact?: string; publication?: string } = {};
 
 beforeEach(() => {
   queryClient.clear();
+  publishingSearch = {};
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -56,6 +60,7 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
   useParams: () => ({ publisher: PUBLISHER, name: PUBLICATION }),
+  useSearch: () => publishingSearch,
 }));
 
 function json(body: unknown, status = 200) {
@@ -170,6 +175,120 @@ test("the publishing overview keeps public identity and the exact latest release
   ).toBe("v2");
   expect(text()).toContain("Catalog 是否曝光仍由營運者另行審核");
   expect(text()).toContain("已發佈");
+});
+
+test("a publication continuation link focuses only the exact owner row after it loads", async () => {
+  publishingSearch = { publication: `${PUBLISHER}/${PUBLICATION}` };
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: OWN_PUBLICATIONS },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(
+    <PublishingWorkspace />,
+    () => document.activeElement?.getAttribute("aria-current") === "location",
+  );
+
+  const current = container.querySelector<HTMLElement>('li[aria-current="location"]');
+  expect(current?.textContent).toContain(PUBLICATION);
+  expect(current?.textContent).toContain("續接位置");
+  expect(document.activeElement).toBe(current);
+});
+
+test("an artifact continuation link focuses the exact package row after it loads", async () => {
+  publishingSearch = { artifact: ARTIFACT };
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [ARTIFACT_ROW] } },
+  });
+
+  await render(
+    <PublishingWorkspace />,
+    () => document.activeElement?.getAttribute("aria-current") === "location",
+  );
+
+  const current = container.querySelector<HTMLElement>('li[aria-current="location"]');
+  expect(current?.textContent).toContain(ARTIFACT_ROW.file_name);
+  expect(current?.textContent).toContain("續接位置");
+  expect(document.activeElement).toBe(current);
+});
+
+test("a delayed continuation result does not take focus after the user starts elsewhere", async () => {
+  publishingSearch = { publication: `${PUBLISHER}/${PUBLICATION}` };
+  let resolvePublications!: (response: Response) => void;
+  const publications = new Promise<Response>((resolve) => {
+    resolvePublications = resolve;
+  });
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publications") return publications;
+    const body: Record<string, unknown> = {
+      "/me/publisher": OWN_PUBLISHER,
+      "/me/bundles": { bundles: [] },
+      "/skills": { skills: [], total: 0, limit: 100, truncated: false },
+      "/downloads": { downloads: [] },
+    };
+    return json(body[path] ?? { error: "not found" }, path in body ? 200 : 404);
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("載入Skill 發佈清單中"));
+  const userControl = document.createElement("button");
+  document.body.appendChild(userControl);
+  userControl.focus();
+
+  resolvePublications(
+    new Response(JSON.stringify(OWN_PUBLICATIONS), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  await waitFor(() => container.querySelector('[aria-current="location"]') !== null);
+
+  expect(document.activeElement).toBe(userControl);
+  userControl.remove();
+});
+
+test("a successful owner read names a missing continuation target without selecting another row", async () => {
+  publishingSearch = { artifact: "ffffffff-ffff-ffff-ffff-ffffffffffff" };
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [ARTIFACT_ROW] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("目前找不到這筆交付紀錄"));
+
+  expect(container.querySelector('[role="status"]')?.textContent).toContain(
+    "目前找不到這筆交付紀錄",
+  );
+  expect(container.querySelector('[aria-current="location"]')).toBeNull();
+});
+
+test("a link with two continuation targets explains the conflict and moves no focus", async () => {
+  publishingSearch = { artifact: ARTIFACT, publication: `${PUBLISHER}/${PUBLICATION}` };
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: OWN_PUBLICATIONS },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [ARTIFACT_ROW] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("同時指定了兩個續接位置"));
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("一次只能續接一筆");
+  expect(container.querySelector('[aria-current="location"]')).toBeNull();
+  expect(container.contains(document.activeElement)).toBe(false);
 });
 
 test.each([

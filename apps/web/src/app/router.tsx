@@ -26,6 +26,30 @@ const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unver
 const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PUBLICATION_REFERENCE = /^[^/]+\/[^/]+$/;
+
+export type PublishingWorkspaceSearch = { artifact?: string; publication?: string };
+
+function publishingArtifact(search: Record<string, unknown>) {
+  return typeof search.artifact === "string" && UUID.test(search.artifact)
+    ? search.artifact
+    : undefined;
+}
+
+function publishingPublication(search: Record<string, unknown>) {
+  return typeof search.publication === "string" && PUBLICATION_REFERENCE.test(search.publication)
+    ? search.publication
+    : undefined;
+}
+
+export function validatePublishingWorkspaceSearch(
+  search: Record<string, unknown>,
+): PublishingWorkspaceSearch {
+  return {
+    artifact: publishingArtifact(search),
+    publication: publishingPublication(search),
+  };
+}
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -106,6 +130,10 @@ const downloadsRoute = createRoute({
     () => import("../features/publishing/PublishingWorkspace.page"),
     "PublishingWorkspace",
   ),
+  validateSearch: (search: Record<string, unknown>): PublishingWorkspaceSearch => ({
+    artifact: publishingArtifact(search),
+    publication: publishingPublication(search),
+  }),
 });
 
 const workspaceHomeRoute = createRoute({

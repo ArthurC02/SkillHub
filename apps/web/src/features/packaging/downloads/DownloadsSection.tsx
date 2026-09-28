@@ -1,7 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   downloadHref,
@@ -13,12 +13,24 @@ import {
 } from "../packaging.service";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
+import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
 
-export function Downloads({ embedded = false }: { embedded?: boolean }) {
+export function Downloads({
+  embedded = false,
+  selectedArtifact,
+}: {
+  embedded?: boolean;
+  selectedArtifact?: string;
+}) {
   const downloads = useDownloads();
   const [message, setMessage] = useState("");
   const remove = useDeleteDownload();
   const Heading = embedded ? "h2" : "h1";
+  const selected = downloads.data?.downloads.find(
+    (artifact) => artifact.artifact_id === selectedArtifact,
+  );
+  const selectedElement = useRef<HTMLLIElement>(null);
+  useContinuationFocus(selectedArtifact, Boolean(selected), selectedElement);
 
   return (
     <section>
@@ -29,6 +41,14 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
 
       {downloads.isPending && <Loading what="下載紀錄" />}
       <ReadFailure error={downloads.error} what="下載紀錄" />
+      {downloads.data && selectedArtifact && !selected && (
+        <p role="status" className="note">
+          這個工作區目前找不到這筆交付紀錄。它可能已刪除，或目前帳號無法檢視。{" "}
+          <Link to="/workspace/downloads" search={{}}>
+            顯示完整清單
+          </Link>
+        </p>
+      )}
       {message && <p role="status">{message}</p>}
       <ReadFailure error={remove.error} what="刪除">
         <p role="alert">沒有刪成，可以再按一次。</p>
@@ -43,22 +63,37 @@ export function Downloads({ embedded = false }: { embedded?: boolean }) {
         ) : (
           <>
             <ul className="download-list" data-role="evidence">
-              {downloads.data.downloads.map((artifact) => (
-                <li key={artifact.artifact_id} className="download-item">
-                  <DownloadArtifactFacts artifact={artifact} />
-                  <DownloadHistory artifact={artifact} />
-                  <DownloadActions
-                    artifact={artifact}
-                    pending={remove.isPending}
-                    onAskDelete={() => setMessage("")}
-                    onConfirmDelete={() =>
-                      remove.mutate(artifact.artifact_id, {
-                        onSuccess: () => setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。"),
-                      })
-                    }
-                  />
-                </li>
-              ))}
+              {downloads.data.downloads.map((artifact) => {
+                const current = artifact === selected;
+                return (
+                  <li
+                    key={artifact.artifact_id}
+                    className="download-item"
+                    ref={current ? selectedElement : undefined}
+                    tabIndex={current ? -1 : undefined}
+                    aria-current={current ? "location" : undefined}
+                  >
+                    {current && (
+                      <p>
+                        <span className="badge">續接位置</span>
+                      </p>
+                    )}
+                    <DownloadArtifactFacts artifact={artifact} />
+                    <DownloadHistory artifact={artifact} />
+                    <DownloadActions
+                      artifact={artifact}
+                      pending={remove.isPending}
+                      onAskDelete={() => setMessage("")}
+                      onConfirmDelete={() =>
+                        remove.mutate(artifact.artifact_id, {
+                          onSuccess: () =>
+                            setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。"),
+                        })
+                      }
+                    />
+                  </li>
+                );
+              })}
             </ul>
             <p className="note" data-role="teaching">
               每一列的徽章是打包目標；安裝說明在套件內的 INSTALL.md。到期後檔案刪除，

@@ -1,8 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
+import { useRef } from "react";
 import { Downloads } from "../packaging";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
+import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
 import { BundleSection } from "./components/BundleSection";
 import { PublisherSection } from "./components/PublisherSection";
 import { useOwnPublications } from "./publishing.service";
@@ -46,6 +48,9 @@ const catalogExposureCopy: Record<
 };
 
 export function PublishingWorkspace() {
+  const { artifact, publication } = useSearch({ from: "/workspace/downloads" });
+  const conflictingTargets = Boolean(artifact && publication);
+
   return (
     <section className="publishing-workspace">
       <header className="publishing-workspace-header">
@@ -55,6 +60,14 @@ export function PublishingWorkspace() {
           從一個不可變版本開始，準備公開位址、組合 Bundle，或取回已建立的套件。公開位址不等於
           Catalog 曝光；曝光仍由營運者審核精確 Release。
         </p>
+        {conflictingTargets && (
+          <p role="alert">
+            這個連結同時指定了兩個續接位置，因此無法判斷要打開哪一筆。一次只能續接一筆。{" "}
+            <Link to="/workspace/downloads" search={{}}>
+              顯示完整清單
+            </Link>
+          </p>
+        )}
         <Link className="action" to="/workspace/skills">
           選擇要發佈的 Skill
         </Link>
@@ -62,9 +75,9 @@ export function PublishingWorkspace() {
 
       <div className="publishing-workspace-grid">
         <div className="publishing-workspace-main">
-          <PublicationOverview />
+          <PublicationOverview selectedPublication={conflictingTargets ? undefined : publication} />
           <BundleSection />
-          <Downloads embedded />
+          <Downloads embedded selectedArtifact={conflictingTargets ? undefined : artifact} />
         </div>
         <aside className="publishing-workspace-rail" aria-label="發佈身分與開始方式">
           <PublisherSection />
@@ -81,9 +94,14 @@ export function PublishingWorkspace() {
   );
 }
 
-function PublicationOverview() {
+function PublicationOverview({ selectedPublication }: { selectedPublication?: string }) {
   const overview = useOwnPublications();
   const publications = overview.data?.publications ?? [];
+  const selected = publications.find(
+    (publication) => `${publication.publisher}/${publication.name}` === selectedPublication,
+  );
+  const selectedElement = useRef<HTMLLIElement>(null);
+  useContinuationFocus(selectedPublication, Boolean(selected), selectedElement);
 
   return (
     <section aria-labelledby="publication-overview-title">
@@ -95,6 +113,14 @@ function PublicationOverview() {
 
       {overview.isPending && <Loading what="Skill 發佈清單" />}
       <ReadFailure error={overview.error} what="Skill 發佈清單" />
+      {overview.data && selectedPublication && !selected && (
+        <p role="status" className="note">
+          這個工作區目前找不到這筆 Skill 發佈。它可能已不存在，或目前帳號無法檢視。{" "}
+          <Link to="/workspace/downloads" search={{}}>
+            顯示完整清單
+          </Link>
+        </p>
+      )}
 
       {overview.data &&
         (publications.length === 0 ? (
@@ -104,48 +130,58 @@ function PublicationOverview() {
           </p>
         ) : (
           <ul className="download-list" data-role="evidence">
-            {publications.map((publication) => (
-              <li key={publication.skill_id} className="download-item">
-                <p>
-                  <strong>{publication.name}</strong>
-                  <span
-                    className={publication.status === "delisted" ? "badge badge-danger" : "badge"}
-                  >
-                    {publication.status === "published" ? "已發佈" : "已撤回"}
-                  </span>
-                </p>
-                <p>
-                  公開位址：
-                  <Link
-                    to="/p/$publisher/$name"
-                    params={{ publisher: publication.publisher, name: publication.name }}
-                  >
-                    {publication.address}
-                  </Link>
-                </p>
-                {publication.latest_release ? (
+            {publications.map((publication) => {
+              const current = publication === selected;
+              return (
+                <li
+                  key={publication.skill_id}
+                  className="download-item"
+                  ref={current ? selectedElement : undefined}
+                  tabIndex={current ? -1 : undefined}
+                  aria-current={current ? "location" : undefined}
+                >
                   <p>
-                    最新 Release：
-                    <Link
-                      to="/skills/$skillId/versions/$versionId"
-                      params={{
-                        skillId: publication.skill_id,
-                        versionId: publication.latest_release.version_id,
-                      }}
+                    <strong>{publication.name}</strong>
+                    <span
+                      className={publication.status === "delisted" ? "badge badge-danger" : "badge"}
                     >
-                      v{publication.latest_release.version_number}
-                    </Link>
-                    ，發佈於 <Timestamp at={publication.latest_release.released_at} />
+                      {publication.status === "published" ? "已發佈" : "已撤回"}
+                    </span>
+                    {current && <span className="badge">續接位置</span>}
                   </p>
-                ) : (
-                  <p className="note">這筆 Publication 尚未建立 Release。</p>
-                )}
-                <CatalogExposure publication={publication} />
-                <p className="note">
-                  發佈狀態更新於 <Timestamp at={publication.status_changed_at} />
-                </p>
-              </li>
-            ))}
+                  <p>
+                    公開位址：
+                    <Link
+                      to="/p/$publisher/$name"
+                      params={{ publisher: publication.publisher, name: publication.name }}
+                    >
+                      {publication.address}
+                    </Link>
+                  </p>
+                  {publication.latest_release ? (
+                    <p>
+                      最新 Release：
+                      <Link
+                        to="/skills/$skillId/versions/$versionId"
+                        params={{
+                          skillId: publication.skill_id,
+                          versionId: publication.latest_release.version_id,
+                        }}
+                      >
+                        v{publication.latest_release.version_number}
+                      </Link>
+                      ，發佈於 <Timestamp at={publication.latest_release.released_at} />
+                    </p>
+                  ) : (
+                    <p className="note">這筆 Publication 尚未建立 Release。</p>
+                  )}
+                  <CatalogExposure publication={publication} />
+                  <p className="note">
+                    發佈狀態更新於 <Timestamp at={publication.status_changed_at} />
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         ))}
     </section>

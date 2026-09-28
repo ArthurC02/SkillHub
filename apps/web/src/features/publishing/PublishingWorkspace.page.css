@@ -70,6 +70,12 @@
   margin: 4px 0;
 }
 
+.publishing-workspace .download-item[aria-current="location"] {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--accent-bg);
+  scroll-margin-block: 24px;
+}
+
 @media (max-width: 840px) {
   .publishing-workspace-grid {
     grid-template-columns: minmax(0, 1fr);
