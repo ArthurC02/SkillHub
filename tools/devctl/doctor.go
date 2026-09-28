@@ -13,6 +13,17 @@ import (
 	"strings"
 )
 
+const (
+	statusPass = "PASS"
+	statusFail = "FAIL"
+	statusWarn = "WARN"
+
+	versionFlag = "--version"
+
+	checkNameDockerCompose = "docker compose"
+	checkNameDockerDaemon  = "docker daemon"
+)
+
 type checkResult struct {
 	name     string
 	status   string
@@ -40,11 +51,11 @@ func doctor(root string, out io.Writer) error {
 
 	results := []checkResult{
 		checkRequiredVersion("go", []string{"version"}, "go"+goVersion),
-		checkRequiredVersion("node", []string{"--version"}, "v"+nodeVersion),
-		checkRequiredVersion("uv", []string{"--version"}, "uv "+toolchain["uv"]),
-		checkRequiredVersion("task", []string{"--version"}, toolchain["task"]),
+		checkRequiredVersion("node", []string{versionFlag}, "v"+nodeVersion),
+		checkRequiredVersion("uv", []string{versionFlag}, "uv "+toolchain["uv"]),
+		checkRequiredVersion("task", []string{versionFlag}, toolchain["task"]),
 		checkRequiredVersion("docker", []string{"version", "--format", "{{.Client.Version}}"}, ""),
-		checkOptionalVersion("golangci-lint", []string{"--version"}, toolchain["golangci_lint"]),
+		checkOptionalVersion("golangci-lint", []string{versionFlag}, toolchain["golangci_lint"]),
 	}
 	results = append(results, checkDockerCompose())
 	results = append(results, checkDockerDaemon())
@@ -55,7 +66,7 @@ func doctor(root string, out io.Writer) error {
 	failed := false
 	for _, result := range results {
 		fmt.Fprintf(out, "%-5s %-18s %s\n", result.status, result.name, result.detail)
-		if result.required && result.status == "FAIL" {
+		if result.required && result.status == statusFail {
 			failed = true
 		}
 	}
@@ -67,13 +78,13 @@ func doctor(root string, out io.Writer) error {
 }
 
 func checkRequiredVersion(name string, args []string, want string) checkResult {
-	result := checkVersion(name, args, want, "FAIL")
+	result := checkVersion(name, args, want, statusFail)
 	result.required = true
 	return result
 }
 
 func checkOptionalVersion(name string, args []string, want string) checkResult {
-	return checkVersion(name, args, want, "WARN")
+	return checkVersion(name, args, want, statusWarn)
 }
 
 func checkVersion(name string, args []string, want, statusWhenMissing string) checkResult {
@@ -84,63 +95,63 @@ func checkVersion(name string, args []string, want, statusWhenMissing string) ch
 	output, err := exec.Command(path, args...).CombinedOutput()
 	got := strings.TrimSpace(string(output))
 	if err != nil {
-		return checkResult{name: name, status: "FAIL", detail: got}
+		return checkResult{name: name, status: statusFail, detail: got}
 	}
 	if want != "" && !compatibleVersion(got, want) {
-		return checkResult{name: name, status: "FAIL", detail: fmt.Sprintf("got %q; want %q", firstLine(got), want)}
+		return checkResult{name: name, status: statusFail, detail: fmt.Sprintf("got %q; want %q", firstLine(got), want)}
 	}
-	return checkResult{name: name, status: "PASS", detail: firstLine(got)}
+	return checkResult{name: name, status: statusPass, detail: firstLine(got)}
 }
 
 func checkDockerCompose() checkResult {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: "docker compose", status: "FAIL", detail: "docker not found", required: true}
+		return checkResult{name: checkNameDockerCompose, status: statusFail, detail: "docker not found", required: true}
 	}
 	output, err := exec.Command("docker", "compose", "version").CombinedOutput()
 	if err != nil {
-		return checkResult{name: "docker compose", status: "FAIL", detail: strings.TrimSpace(string(output)), required: true}
+		return checkResult{name: checkNameDockerCompose, status: statusFail, detail: strings.TrimSpace(string(output)), required: true}
 	}
-	return checkResult{name: "docker compose", status: "PASS", detail: firstLine(strings.TrimSpace(string(output))), required: true}
+	return checkResult{name: checkNameDockerCompose, status: statusPass, detail: firstLine(strings.TrimSpace(string(output))), required: true}
 }
 
 func checkDockerDaemon() checkResult {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: "docker daemon", status: "FAIL", detail: "docker not found", required: true}
+		return checkResult{name: checkNameDockerDaemon, status: statusFail, detail: "docker not found", required: true}
 	}
 	output, err := exec.Command("docker", "info", "--format", "{{.ServerVersion}}").CombinedOutput()
 	if err != nil {
-		return checkResult{name: "docker daemon", status: "FAIL", detail: firstLine(strings.TrimSpace(string(output))), required: true}
+		return checkResult{name: checkNameDockerDaemon, status: statusFail, detail: firstLine(strings.TrimSpace(string(output))), required: true}
 	}
-	return checkResult{name: "docker daemon", status: "PASS", detail: "server " + firstLine(strings.TrimSpace(string(output))), required: true}
+	return checkResult{name: checkNameDockerDaemon, status: statusPass, detail: "server " + firstLine(strings.TrimSpace(string(output))), required: true}
 }
 
 func checkPython(want string) checkResult {
 	if _, err := exec.LookPath("uv"); err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: "uv not found", required: true}
+		return checkResult{name: ecosystemPython, status: statusFail, detail: "uv not found", required: true}
 	}
-	find := exec.Command("uv", "python", "find", want)
+	find := exec.Command("uv", ecosystemPython, "find", want)
 	find.Env = append(os.Environ(), "UV_LINK_MODE=copy")
 	pathOutput, err := find.CombinedOutput()
 	if err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: strings.TrimSpace(string(pathOutput)), required: true}
+		return checkResult{name: ecosystemPython, status: statusFail, detail: strings.TrimSpace(string(pathOutput)), required: true}
 	}
 	pythonPath := strings.TrimSpace(string(pathOutput))
-	output, err := exec.Command(pythonPath, "--version").CombinedOutput()
+	output, err := exec.Command(pythonPath, versionFlag).CombinedOutput()
 	got := strings.TrimSpace(string(output))
 	if err != nil {
-		return checkResult{name: "python", status: "FAIL", detail: got, required: true}
+		return checkResult{name: ecosystemPython, status: statusFail, detail: got, required: true}
 	}
 	if !compatibleVersion(got, "Python "+want) {
-		return checkResult{name: "python", status: "FAIL", detail: fmt.Sprintf("got %q; want Python %s", firstLine(got), want), required: true}
+		return checkResult{name: ecosystemPython, status: statusFail, detail: fmt.Sprintf("got %q; want Python %s", firstLine(got), want), required: true}
 	}
-	return checkResult{name: "python", status: "PASS", detail: firstLine(got), required: true}
+	return checkResult{name: ecosystemPython, status: statusPass, detail: firstLine(got), required: true}
 }
 
 func checkEnv(root string) checkResult {
 	if fileExists(filepath.Join(root, ".env")) {
-		return checkResult{name: ".env", status: "PASS", detail: "present (values intentionally not inspected)", required: false}
+		return checkResult{name: ".env", status: statusPass, detail: "present (values intentionally not inspected)", required: false}
 	}
-	return checkResult{name: ".env", status: "WARN", detail: "missing; run task env:init", required: false}
+	return checkResult{name: ".env", status: statusWarn, detail: "missing; run task env:init", required: false}
 }
 
 // Reads the version actually installed under node_modules rather than the
@@ -165,26 +176,26 @@ func checkPgliteInstall(root string, toolchain map[string]string) []checkResult 
 		case err != nil:
 			results = append(results, checkResult{
 				name:     pkg.checkName,
-				status:   "WARN",
+				status:   statusWarn,
 				detail:   fmt.Sprintf("not installed under tools/pglite (run npm install there); toolchain.yaml pins %q", want),
 				required: false,
 			})
 		case want == "":
 			results = append(results, checkResult{
 				name:     pkg.checkName,
-				status:   "WARN",
+				status:   statusWarn,
 				detail:   fmt.Sprintf("installed %s but tools/toolchain.yaml has no %s pin", got, pkg.toolchainKey),
 				required: false,
 			})
 		case got != want:
 			results = append(results, checkResult{
 				name:     pkg.checkName,
-				status:   "FAIL",
+				status:   statusFail,
 				detail:   fmt.Sprintf("installed %s; tools/toolchain.yaml pins %s", got, want),
 				required: true,
 			})
 		default:
-			results = append(results, checkResult{name: pkg.checkName, status: "PASS", detail: got, required: true})
+			results = append(results, checkResult{name: pkg.checkName, status: statusPass, detail: got, required: true})
 		}
 	}
 	return results

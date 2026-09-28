@@ -184,7 +184,7 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 	}
 
 	var logins, uploads int32
-	server := httptest.NewServer(http.HandlerFunc(seedStubHandler(t, &logins, &uploads, 1)))
+	server := httptest.NewServer(seedStubHandler(t, &logins, &uploads, 1))
 	defer server.Close()
 	t.Setenv("SKILLHUB_API", server.URL)
 
@@ -234,7 +234,7 @@ func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
 	}
 
 	var logins, uploads int32
-	server := httptest.NewServer(http.HandlerFunc(seedStubHandler(t, &logins, &uploads, 0)))
+	server := httptest.NewServer(seedStubHandler(t, &logins, &uploads, 0))
 	defer server.Close()
 	t.Setenv("SKILLHUB_API", server.URL)
 

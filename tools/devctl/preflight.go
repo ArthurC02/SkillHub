@@ -51,7 +51,7 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 			return err
 		}
 		for _, warning := range warnings {
-			fmt.Fprintln(out, "WARN", warning)
+			fmt.Fprintln(out, statusWarn, warning)
 		}
 		problems = append(problems, format...)
 	}
@@ -63,7 +63,7 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 
 	if len(problems) > 0 {
 		for _, problem := range problems {
-			fmt.Fprintln(out, "FAIL", problem)
+			fmt.Fprintln(out, statusFail, problem)
 		}
 		return errors.New("preflight found what CI would fail on")
 	}
@@ -78,6 +78,8 @@ func unpushedRange(root string) string {
 	return "origin/main..HEAD"
 }
 
+const prePushInputFields = 4
+
 func prePushRanges(root string, in io.Reader) ([]string, error) {
 	var ranges []string
 	scanner := bufio.NewScanner(in)
@@ -86,7 +88,7 @@ func prePushRanges(root string, in io.Reader) ([]string, error) {
 		if len(fields) == 0 {
 			continue
 		}
-		if len(fields) != 4 {
+		if len(fields) != prePushInputFields {
 			return nil, fmt.Errorf("pre-push: unexpected input line %q", scanner.Text())
 		}
 		local, remote := fields[1], fields[3]
@@ -141,19 +143,19 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 
 func formatterFor(root, file string) (formatter, bool) {
 	switch {
-	case strings.HasSuffix(file, ".go") && (strings.HasPrefix(file, "apps/platform/") || strings.HasPrefix(file, "apps/sandbox/")):
+	case strings.HasSuffix(file, extGo) && (strings.HasPrefix(file, dirAppsPlatform+"/") || strings.HasPrefix(file, dirAppsSandbox+"/")):
 		return formatter{name: "gofmt", cmd: "gofmt", fix: "gofmt -w " + file}, true
-	case strings.HasPrefix(file, "apps/web/"):
+	case strings.HasPrefix(file, dirAppsWeb+"/"):
 		prettier := filepath.Join(root, "apps", "web", "node_modules", "prettier", "bin", "prettier.cjs")
 		return formatter{
-			name: "prettier", dir: "apps/web", cmd: "node",
-			args:     []string{prettier, "--stdin-filepath", strings.TrimPrefix(file, "apps/web/")},
+			name: "prettier", dir: dirAppsWeb, cmd: "node",
+			args:     []string{prettier, "--stdin-filepath", strings.TrimPrefix(file, dirAppsWeb+"/")},
 			requires: prettier, fix: "task format:web",
 		}, true
-	case strings.HasPrefix(file, "apps/llm/") && strings.HasSuffix(file, ".py"):
+	case strings.HasPrefix(file, dirAppsLLM+"/") && strings.HasSuffix(file, extPy):
 		return formatter{
-			name: "ruff", dir: "apps/llm", cmd: "uv",
-			args: []string{"run", "--no-sync", "ruff", "format", "--stdin-filename", strings.TrimPrefix(file, "apps/llm/"), "-"},
+			name: "ruff", dir: dirAppsLLM, cmd: "uv",
+			args: []string{cmdRun, "--no-sync", "ruff", "format", "--stdin-filename", strings.TrimPrefix(file, dirAppsLLM+"/"), "-"},
 			fix:  "task format:llm",
 		}, true
 	}

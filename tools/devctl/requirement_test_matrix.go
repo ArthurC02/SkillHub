@@ -51,11 +51,11 @@ func specRequirementIDs(root string) (required map[string]bool, postMVP map[stri
 func testCorpus(root string) (map[string]bool, string) {
 	paths := map[string]bool{}
 	var corpus strings.Builder
-	skip := map[string]bool{".git": true, "node_modules": true, ".venv": true, ".devctl": true, "dist": true, "__pycache__": true}
+	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true}
 
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		if entry.IsDir() {
 			if skip[entry.Name()] {
@@ -65,7 +65,7 @@ func testCorpus(root string) (map[string]bool, string) {
 		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		paths[filepath.ToSlash(relative)] = true
 		name := entry.Name()

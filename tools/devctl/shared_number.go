@@ -13,11 +13,11 @@ var sharedNumberMarker = regexp.MustCompile(`(?://|#)\s*one-number:\s*([A-Za-z0-
 
 var trailingIntPattern = regexp.MustCompile(`([0-9][0-9_]*)[^0-9]*$`)
 
-var sharedNumberRoots = []string{"apps", "contracts", "db", "infra", "tools"}
+var sharedNumberRoots = []string{rootApps, rootContracts, "db", "infra", rootTools}
 
 var sharedNumberSkip = []string{
-	".venv", "node_modules", ".devctl", "site-packages",
-	string(filepath.Separator) + "gen" + string(filepath.Separator),
+	dirVenv, dirNodeModules, dirDevctlCache, "site-packages",
+	string(filepath.Separator) + dirGen + string(filepath.Separator),
 	string(filepath.Separator) + "generated" + string(filepath.Separator),
 }
 
@@ -105,7 +105,7 @@ type sharedNumberScanner struct {
 
 func (s *sharedNumberScanner) visit(path string, d os.DirEntry, err error) error {
 	if err != nil {
-		return nil
+		return continuePastUnreadableEntry()
 	}
 	rel, relErr := filepath.Rel(s.root, path)
 	if relErr != nil {
@@ -122,7 +122,7 @@ func (s *sharedNumberScanner) visit(path string, d os.DirEntry, err error) error
 	}
 	data, readErr := os.ReadFile(path)
 	if readErr != nil {
-		return nil
+		return continuePastUnreadableEntry()
 	}
 	s.problems = append(s.problems, collectSharedNumbers(s.found, rel, string(data))...)
 	return nil
@@ -142,7 +142,7 @@ func sharedNumberScannedFile(path, rel string) bool {
 		return false
 	}
 	switch filepath.Ext(path) {
-	case ".go", ".py", ".yaml", ".yml", ".sql", ".ts", ".tsx", ".mjs":
+	case extGo, extPy, extYAML, extYML, extSQL, extTS, extTSX, ".mjs":
 		return true
 	}
 	return false

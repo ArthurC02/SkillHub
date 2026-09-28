@@ -20,18 +20,25 @@ type auditTarget struct {
 }
 
 var auditTargets = []auditTarget{
-	{ecosystem: "npm", dir: "apps/web", shipped: true},
-	{ecosystem: "go", dir: "apps/platform", shipped: true},
-	{ecosystem: "go", dir: "apps/sandbox", shipped: true},
-	{ecosystem: "python", dir: "apps/llm", shipped: true},
-	{ecosystem: "npm", dir: "packages/api-client-ts"},
-	{ecosystem: "npm", dir: "tools/pglite"},
-	{ecosystem: "npm", dir: "infra/images/runtime-agent-sdk"},
+	{ecosystem: ecosystemNPM, dir: dirAppsWeb, shipped: true},
+	{ecosystem: "go", dir: dirAppsPlatform, shipped: true},
+	{ecosystem: "go", dir: dirAppsSandbox, shipped: true},
+	{ecosystem: ecosystemPython, dir: dirAppsLLM, shipped: true},
+	{ecosystem: ecosystemNPM, dir: dirAPIClientTS},
+	{ecosystem: ecosystemNPM, dir: "tools/pglite"},
+	{ecosystem: ecosystemNPM, dir: "infra/images/runtime-agent-sdk"},
 	{ecosystem: "go", dir: "tools/devctl"},
-	{ecosystem: "python", dir: "tools/codegen/python"},
+	{ecosystem: ecosystemPython, dir: "tools/codegen/python"},
 }
 
-var npmSeverityRank = map[string]int{"info": 0, "low": 1, "moderate": 2, "high": 3, "critical": 4}
+const (
+	npmSeverityHighRank     = 3
+	npmSeverityCriticalRank = 4
+)
+
+var npmSeverityRank = map[string]int{
+	"info": 0, "low": 1, "moderate": 2, "high": npmSeverityHighRank, "critical": npmSeverityCriticalRank,
+}
 
 type auditScope struct {
 	full bool
@@ -110,7 +117,7 @@ func reportAudit(fail, note []string, out io.Writer) error {
 		fmt.Fprintln(out, "NOTE", line)
 	}
 	for _, line := range fail {
-		fmt.Fprintln(out, "FAIL", line)
+		fmt.Fprintln(out, statusFail, line)
 	}
 	if len(fail) > 0 {
 		return fmt.Errorf("%d problems to fix: upgrade to the fixed version, replace the dependency or fix the workflow", len(fail))
@@ -121,26 +128,26 @@ func reportAudit(fail, note []string, out io.Writer) error {
 
 func scanTarget(dir, ecosystem string, scope auditScope, toolchain map[string]string) ([]vulnFinding, error) {
 	switch ecosystem {
-	case "npm":
+	case ecosystemNPM:
 		args := []string{"audit", "--json"}
 		minSeverity := "moderate"
 		if !scope.full {
 			args = append(args, "--omit=dev")
 			minSeverity = "high"
 		}
-		data, err := auditToolOutput(dir, "npm", args...)
+		data, err := auditToolOutput(dir, ecosystemNPM, args...)
 		if err != nil {
 			return nil, err
 		}
 		return npmFindings(data, minSeverity)
 	case "go":
 		govulncheck := "golang.org/x/vuln/cmd/govulncheck@v" + toolchain["govulncheck"]
-		data, err := auditToolOutput(dir, "go", "run", govulncheck, "-format", "json", "./...")
+		data, err := auditToolOutput(dir, "go", cmdRun, govulncheck, "-format", "json", "./...")
 		if err != nil {
 			return nil, err
 		}
 		return govulncheckFindings(data, scope)
-	case "python":
+	case ecosystemPython:
 		data, err := pipAuditOutput(dir, scope, toolchain["pip_audit"])
 		if err != nil {
 			return nil, err
@@ -151,7 +158,7 @@ func scanTarget(dir, ecosystem string, scope auditScope, toolchain map[string]st
 }
 
 func pipAuditOutput(dir string, scope auditScope, version string) ([]byte, error) {
-	args := []string{"export", "--frozen", "--no-emit-project", "--no-emit-local", "--quiet"}
+	args := []string{"export", "--frozen", "--no-emit-project", "--no-emit-local", flagQuiet}
 	if !scope.full {
 		args = append(args, "--no-dev")
 	}

@@ -21,11 +21,27 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		return nil, errors.New("datamodel-code-generator version is missing from tools/toolchain.yaml")
 	}
 
-	tsRoot := filepath.Join(scratch, "typescript")
-	if err := os.MkdirAll(tsRoot, 0o755); err != nil {
+	ts, err := generateTypeScriptOpenAPI(root, scratch, tsImage, out)
+	if err != nil {
 		return nil, err
 	}
-	tsArgs := []string{"run", "--rm"}
+	py, err := generatePythonOpenAPI(root, scratch, pyImage, out)
+	if err != nil {
+		return nil, err
+	}
+	goOutput, err := generateGoOpenAPI(root, scratch, goImage, out)
+	if err != nil {
+		return nil, err
+	}
+	return []generationOutput{ts, py, goOutput}, nil
+}
+
+func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (generationOutput, error) {
+	tsRoot := filepath.Join(scratch, "typescript")
+	if err := os.MkdirAll(tsRoot, 0o755); err != nil {
+		return generationOutput{}, err
+	}
+	tsArgs := []string{cmdRun, dockerFlagRm}
 	tsArgs = append(tsArgs, dockerUserArgs()...)
 	tsArgs = append(tsArgs,
 		"-v", root+":/src",
@@ -39,27 +55,34 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"--additional-properties", "supportsES6=true,useSingleRequestParameter=true,withInterfaces=true,npmName=@skillhub/api-client-ts",
 	)
 	if err := runDocker("TypeScript OpenAPI generation", tsArgs, out); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	tsSource := filepath.Join(tsRoot, "src")
 	if err := validateGeneratedContent(tsSource, root); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
+	return generationOutput{
+		label:  "typescript-openapi",
+		source: tsSource,
+		target: filepath.Join(root, "packages", "api-client-ts", "src", "generated"),
+	}, nil
+}
 
+func generatePythonOpenAPI(root, scratch, pyImage string, out io.Writer) (generationOutput, error) {
 	buildArgs := []string{
-		"build", "--quiet",
+		cmdBuild, flagQuiet,
 		"-f", filepath.Join(root, "tools", "codegen", "python", "Dockerfile"),
 		"-t", pyImage,
 		filepath.Join(root, "tools", "codegen", "python"),
 	}
 	if err := runDocker("Python codegen image build", buildArgs, out); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	pyRoot := filepath.Join(scratch, "python")
 	if err := os.MkdirAll(pyRoot, 0o755); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
-	pyArgs := []string{"run", "--rm"}
+	pyArgs := []string{cmdRun, dockerFlagRm}
 	pyArgs = append(pyArgs, dockerUserArgs()...)
 	pyArgs = append(pyArgs,
 		"-v", root+":/src",
@@ -73,30 +96,37 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"--disable-timestamp",
 	)
 	if err := runDocker("Python OpenAPI generation", pyArgs, out); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	init := "# Code generated boundary. models.py is replaced by `task gen:openapi`.\nfrom .models import *  # noqa: F403\n"
 	if err := os.WriteFile(filepath.Join(pyRoot, "__init__.py"), []byte(init), 0o644); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	if err := validateGeneratedContent(pyRoot, root); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
+	return generationOutput{
+		label:  "python-openapi",
+		source: pyRoot,
+		target: filepath.Join(root, "packages", "api-stub-py", "src", "skillhub_api_stub", "generated"),
+	}, nil
+}
 
+func generateGoOpenAPI(root, scratch, goImage string, out io.Writer) (generationOutput, error) {
 	goBuildArgs := []string{
-		"build", "--quiet",
+		cmdBuild, flagQuiet,
 		"-f", filepath.Join(root, "tools", "codegen", "go", "Dockerfile"),
 		"-t", goImage,
 		filepath.Join(root, "tools", "codegen", "go"),
 	}
 	if err := runDocker("Go codegen image build", goBuildArgs, out); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	goRoot := filepath.Join(scratch, "go")
 	if err := os.MkdirAll(goRoot, 0o755); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
-	goArgs := []string{"run", "--rm"}
+	goArgs := []string{cmdRun, dockerFlagRm}
 	goArgs = append(goArgs, dockerUserArgs()...)
 	goArgs = append(goArgs,
 		"-v", root+":/src",
@@ -108,28 +138,15 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"/src/contracts/openapi/public.yaml",
 	)
 	if err := runDocker("Go OpenAPI generation", goArgs, out); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
 	if err := validateGeneratedContent(goRoot, root); err != nil {
-		return nil, err
+		return generationOutput{}, err
 	}
-
-	return []generationOutput{
-		{
-			label:  "typescript-openapi",
-			source: tsSource,
-			target: filepath.Join(root, "packages", "api-client-ts", "src", "generated"),
-		},
-		{
-			label:  "python-openapi",
-			source: pyRoot,
-			target: filepath.Join(root, "packages", "api-stub-py", "src", "skillhub_api_stub", "generated"),
-		},
-		{
-			label:  "go-openapi",
-			source: goRoot,
-			target: filepath.Join(root, "apps", "platform", "internal", "entrypoint", "api", "gen"),
-		},
+	return generationOutput{
+		label:  "go-openapi",
+		source: goRoot,
+		target: filepath.Join(root, "apps", "platform", "internal", "entrypoint", "api", dirGen),
 	}, nil
 }
 
@@ -154,6 +171,8 @@ func containerPath(root, hostPath string) string {
 	return "/src/" + filepath.ToSlash(rel)
 }
 
+const generatedHeaderScanLines = 20
+
 func validateGeneratedContent(root, repoRoot string) error {
 	return filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -171,8 +190,8 @@ func validateGeneratedContent(root, repoRoot string) error {
 			return fmt.Errorf("generated file contains repository absolute path: %s", path)
 		}
 		head := text
-		if lines := strings.Split(text, "\n"); len(lines) > 20 {
-			head = strings.Join(lines[:20], "\n")
+		if lines := strings.Split(text, "\n"); len(lines) > generatedHeaderScanLines {
+			head = strings.Join(lines[:generatedHeaderScanLines], "\n")
 		}
 		lower := strings.ToLower(head)
 		if strings.Contains(lower, "generated at") || strings.Contains(lower, "timestamp:") {

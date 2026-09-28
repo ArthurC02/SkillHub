@@ -25,11 +25,13 @@ var (
 
 var closedMarkers = []string{"已結案", "入列即結案", "已解決", "✅"}
 
+const minBacklogRowCells = 3
+
 // A row declares its own closure only in its id cell or its last cell;
 // everything between is prose that may discuss other rows' closures.
 func backlogRowClosed(line string) bool {
 	cells := strings.Split(line, "|")
-	if len(cells) < 3 {
+	if len(cells) < minBacklogRowCells {
 		return false
 	}
 	id, last := cells[1], cells[len(cells)-2]

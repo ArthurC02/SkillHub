@@ -48,27 +48,60 @@ func main() {
 	}
 }
 
+const (
+	cmdDoctor    = "doctor"
+	cmdBootstrap = "bootstrap"
+	cmdPreflight = "preflight"
+)
+
 func runCommand(root, command string, args []string) (int, error) {
 	switch command {
-	case "doctor":
+	case "help", "-h", "--help":
+		fmt.Print(usage)
+		return 0, nil
+	case cmdDoctor, cmdBootstrap, "env-init", "profile-check":
+		return runSetupCommand(root, command, args)
+	case cmdGen, "agent-sync", "automation-check", "comment-lint":
+		return runRepoCheckCommand(root, command, args)
+	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit":
+		return runPipelineCommand(root, command, args)
+	default:
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
+		return 2, nil
+	}
+}
+
+func runSetupCommand(root, command string, args []string) (int, error) {
+	switch command {
+	case cmdDoctor:
 		return 0, doctor(root, os.Stdout)
-	case "bootstrap":
+	case cmdBootstrap:
 		return 0, bootstrap(root, os.Stdout)
 	case "env-init":
 		return 0, envInit(root, os.Stdout)
-	case "profile-check":
+	default:
 		if len(args) != 1 {
 			return 0, errors.New("usage: devctl profile-check model")
 		}
 		return 0, profileCheck(root, args[0], os.Stdout)
-	case "gen":
+	}
+}
+
+func runRepoCheckCommand(root, command string, args []string) (int, error) {
+	switch command {
+	case cmdGen:
 		return 0, generate(root, args, os.Stdout)
 	case "agent-sync":
 		return 0, agentSync(root, args, os.Stdout)
 	case "automation-check":
 		return 0, automationCheck(root, os.Stdout)
-	case "comment-lint":
+	default:
 		return 0, commentLint(root, args, os.Stdout)
+	}
+}
+
+func runPipelineCommand(root, command string, args []string) (int, error) {
+	switch command {
 	case "test-report":
 		if len(args) < 1 {
 			return 0, errors.New("usage: devctl test-report dir [go test args]")
@@ -78,18 +111,12 @@ func runCommand(root, command string, args []string) (int, error) {
 		return 0, seedClean(root, args, os.Stdout)
 	case "image-gate":
 		return 0, imageGate(root, args, os.Stdout)
-	case "preflight":
+	case cmdPreflight:
 		return 0, preflight(root, args, os.Stdin, os.Stdout)
 	case "ci-status":
 		return ciStatus(root, args, os.Stdout)
-	case "dep-audit":
-		return 0, depAudit(root, args, os.Stdout)
-	case "help", "-h", "--help":
-		fmt.Print(usage)
-		return 0, nil
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
-		return 2, nil
+		return 0, depAudit(root, args, os.Stdout)
 	}
 }
 
@@ -104,7 +131,7 @@ func findRepoRoot() (string, error) {
 		return "", err
 	}
 	for {
-		if fileExists(filepath.Join(dir, "Taskfile.yml")) && fileExists(filepath.Join(dir, "AGENTS.md")) {
+		if fileExists(filepath.Join(dir, "Taskfile.yml")) && fileExists(filepath.Join(dir, agentsMdFile)) {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
@@ -123,12 +150,12 @@ func bootstrap(root string, out io.Writer) error {
 		args []string
 		env  []string
 	}{
-		{name: "platform Go modules", dir: "apps/platform", cmd: "go", args: []string{"mod", "download"}},
-		{name: "sandbox Go modules", dir: "apps/sandbox", cmd: "go", args: []string{"mod", "download"}},
-		{name: "generated TypeScript client packages", dir: "packages/api-client-ts", cmd: "npm", args: []string{"ci"}},
-		{name: "generated TypeScript client build", dir: "packages/api-client-ts", cmd: "npm", args: []string{"run", "build"}},
-		{name: "web packages", dir: "apps/web", cmd: "npm", args: []string{"ci"}},
-		{name: "LLM packages", dir: "apps/llm", cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
+		{name: "platform Go modules", dir: dirAppsPlatform, cmd: "go", args: []string{"mod", "download"}},
+		{name: "sandbox Go modules", dir: dirAppsSandbox, cmd: "go", args: []string{"mod", "download"}},
+		{name: "generated TypeScript client packages", dir: dirAPIClientTS, cmd: ecosystemNPM, args: []string{"ci"}},
+		{name: "generated TypeScript client build", dir: dirAPIClientTS, cmd: ecosystemNPM, args: []string{cmdRun, cmdBuild}},
+		{name: "web packages", dir: dirAppsWeb, cmd: ecosystemNPM, args: []string{"ci"}},
+		{name: "LLM packages", dir: dirAppsLLM, cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
 		{name: "git hooks (pre-push runs devctl preflight --hook)", dir: ".", cmd: "git", args: []string{"config", "core.hooksPath", ".githooks"}},
 	}
 	for _, step := range steps {

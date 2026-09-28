@@ -12,8 +12,8 @@ import (
 const requirementSpec = "docs/plans/02-specifications-and-acceptance-criteria.md"
 
 var requirementCiters = []string{
-	"docs/plans/03-work-items.md",
-	"docs/plans/04-backlog-and-handoffs.md",
+	tallyOwner,
+	backlogDoc,
 	"docs/plans/05-pending-rulings.md",
 }
 
@@ -42,12 +42,14 @@ type headingOccurrence struct {
 	depth, line int
 }
 
+const requirementHeadingFloor = 40
+
 func requirementRefProblems(root string) []string {
 	headings, problems := specHeadingIDs(filepath.Join(root, filepath.FromSlash(requirementSpec)))
 	if len(problems) > 0 {
 		return problems
 	}
-	if len(headings) < 40 {
+	if len(headings) < requirementHeadingFloor {
 		return []string{fmt.Sprintf(
 			"requirement-refs: %s declares %d heading ids; it has had more than forty since M2, so the "+
 				"heading scan is broken rather than the spec emptied", requirementSpec, len(headings))}

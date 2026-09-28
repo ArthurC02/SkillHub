@@ -48,8 +48,8 @@ func tallySubjects() []tallySubject {
 			return fmt.Sprintf("%d 項已勾、%d 項 ◐", ticked, open)
 		},
 		satellites: []string{
-			"AGENTS.md",
-			"docs/plans/01-goals-and-plan.md",
+			agentsMdFile,
+			goalsPlanDoc,
 			"docs/plans/mvp/README.md",
 			"docs/plans/mvp/m5/README.md",
 		},
@@ -57,7 +57,7 @@ func tallySubjects() []tallySubject {
 	}, {
 		prefix:     "RELEASE-",
 		what:       "M4 的封測准入（RELEASE-001～010）",
-		satellites: []string{"docs/plans/01-goals-and-plan.md"},
+		satellites: []string{goalsPlanDoc},
 		nearby:     []string{"RELEASE-", "§18"},
 	}, {
 
@@ -67,7 +67,7 @@ func tallySubjects() []tallySubject {
 			return fmt.Sprintf("完成 %d 項、撤回 %d 項、剩 %d 項", ticked, retracted, open)
 		},
 		prose:      portTallyInProse,
-		satellites: []string{"docs/plans/01-goals-and-plan.md", "docs/plans/mvp/m6/README.md", "docs/plans/mvp/README.md", "AGENTS.md"},
+		satellites: []string{goalsPlanDoc, "docs/plans/mvp/m6/README.md", "docs/plans/mvp/README.md", agentsMdFile},
 		nearby:     []string{"PORT-", "§20", "M6"},
 	}}
 }
@@ -128,10 +128,12 @@ func (s tallySubject) problems(root, owner string) []string {
 	return problems
 }
 
+const tallyNearbyWindowChars = 240
+
 func (s tallySubject) statedTallies(text string, prose *regexp.Regexp) []string {
 	var hits []string
 	for _, loc := range prose.FindAllStringIndex(text, -1) {
-		near := text[max(loc[0]-240, 0):min(loc[1]+240, len(text))]
+		near := text[max(loc[0]-tallyNearbyWindowChars, 0):min(loc[1]+tallyNearbyWindowChars, len(text))]
 		if s.mentionedIn(near) {
 			hits = append(hits, text[loc[0]:loc[1]])
 		}

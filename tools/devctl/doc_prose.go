@@ -11,8 +11,8 @@ import (
 )
 
 var docProseSkipDirs = map[string]bool{
-	".git": true, "node_modules": true, ".venv": true, ".devctl": true,
-	"dist": true, "__pycache__": true, ".agents": true, ".codex": true,
+	dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true,
+	dirDist: true, dirPycache: true, ".agents": true, ".codex": true,
 	"worktrees": true,
 }
 
@@ -60,7 +60,7 @@ func docProseProblems(root string) []string {
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		switch {
 		case err != nil:
-			return nil
+			return continuePastUnreadableEntry()
 		case entry.IsDir():
 			if docProseSkipDirs[entry.Name()] {
 				return filepath.SkipDir
@@ -71,7 +71,7 @@ func docProseProblems(root string) []string {
 		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		slashed := filepath.ToSlash(relative)
 		for _, tree := range docProseSkipTrees {
@@ -81,7 +81,7 @@ func docProseProblems(root string) []string {
 		}
 		body, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		problems = append(problems, docProseLineProblems(slashed, string(body))...)
 		return nil
@@ -118,13 +118,15 @@ func docProseLineProblems(relative, body string) []string {
 	return problems
 }
 
+const docProseExcerptContextRunes = 12
+
 func docProseExcerpt(line string, from, to int) string {
 	runes := []rune(line)
-	start := len([]rune(line[:from])) - 12
+	start := len([]rune(line[:from])) - docProseExcerptContextRunes
 	if start < 0 {
 		start = 0
 	}
-	end := len([]rune(line[:to])) + 12
+	end := len([]rune(line[:to])) + docProseExcerptContextRunes
 	if end > len(runes) {
 		end = len(runes)
 	}

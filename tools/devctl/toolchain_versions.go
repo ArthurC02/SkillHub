@@ -29,43 +29,48 @@ func toolchainPin(key string) *regexp.Regexp {
 	return regexp.MustCompile(`(?m)^  ` + key + `: "([^"]+)"`)
 }
 
+const (
+	devtoolsDockerfile = "infra/images/devtools/Dockerfile"
+	toolchainYAML      = "tools/toolchain.yaml"
+)
+
 var versionsThatMoveTogether = []versionGroup{
 	{"node", []versionSite{
 		{".node-version", regexp.MustCompile(`^(\d+\.\d+\.\d+)\s*$`)},
 		{"infra/images/web/Dockerfile", regexp.MustCompile(`(?m)^FROM node:(\d+\.\d+\.\d+)-`)},
-		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`(?m)^ARG NODE_VERSION=(\S+)`)},
+		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG NODE_VERSION=(\S+)`)},
 	}},
 	{"go", []versionSite{
 		{"apps/platform/go.mod", goDirective},
 		{"apps/sandbox/go.mod", goDirective},
 		{"tools/devctl/go.mod", goDirective},
 		{"tools/codegen/go/go.mod", goDirective},
-		{"infra/images/devtools/Dockerfile", golangBaseImage},
+		{devtoolsDockerfile, golangBaseImage},
 		{"infra/images/platform/Dockerfile", golangBaseImage},
 		{"tools/codegen/go/Dockerfile", golangBaseImage},
 	}},
-	{"python", []versionSite{
+	{ecosystemPython, []versionSite{
 		{"apps/llm/.python-version", regexp.MustCompile(`^(\d+\.\d+)\s*$`)},
 		{"apps/llm/pyproject.toml", pythonFloor},
 		{"packages/api-stub-py/pyproject.toml", pythonFloor},
 		{"tools/codegen/python/pyproject.toml", regexp.MustCompile(`(?m)^requires-python = "==(\d+\.\d+)\.\*"`)},
 		{"infra/images/llm/Dockerfile", pythonBaseImage},
 		{"tools/codegen/python/Dockerfile", pythonBaseImage},
-		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`uv python install (\d+\.\d+)`)},
+		{devtoolsDockerfile, regexp.MustCompile(`uv python install (\d+\.\d+)`)},
 	}},
 	{"uv", []versionSite{
-		{"tools/toolchain.yaml", toolchainPin("uv")},
+		{toolchainYAML, toolchainPin("uv")},
 		{"infra/images/llm/Dockerfile", uvArg},
-		{"infra/images/devtools/Dockerfile", uvArg},
+		{devtoolsDockerfile, uvArg},
 		{"tools/codegen/python/Dockerfile", regexp.MustCompile(`astral-sh/uv:([^@\s]+)@`)},
 	}},
 	{"task", []versionSite{
-		{"tools/toolchain.yaml", toolchainPin("task")},
-		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`(?m)^ARG TASK_VERSION=(\S+)`)},
+		{toolchainYAML, toolchainPin("task")},
+		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG TASK_VERSION=(\S+)`)},
 	}},
 	{"golangci-lint", []versionSite{
-		{"tools/toolchain.yaml", toolchainPin("golangci_lint")},
-		{"infra/images/devtools/Dockerfile", regexp.MustCompile(`(?m)^ARG GOLANGCI_LINT_VERSION=(\S+)`)},
+		{toolchainYAML, toolchainPin("golangci_lint")},
+		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG GOLANGCI_LINT_VERSION=(\S+)`)},
 	}},
 	{"syft", []versionSite{
 		{".github/workflows/runtime-image.yml", scannerPin("SYFT", "syft")},

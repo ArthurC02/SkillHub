@@ -15,20 +15,22 @@ import (
 const (
 	commentBlockMaxLines = 3
 	commentLintHint      = "go -C tools/devctl run . comment-lint"
+
+	generatedHeaderScanBytes = 512
 )
 
 var (
-	commentSourceRoots = []string{"apps", "packages", "tools", "infra", "contracts", "db", ".github/workflows"}
+	commentSourceRoots = []string{rootApps, rootPackages, rootTools, "infra", rootContracts, "db", ".github/workflows"}
 	commentSkippedDirs = map[string]bool{
-		"node_modules": true, "dist": true, "build": true, "generated": true, "gen": true, "testdata": true,
+		dirNodeModules: true, dirDist: true, dirBuildOutput: true, "generated": true, dirGen: true, "testdata": true,
 	}
 	slashComments        = []string{"//"}
 	cStyleComments       = []string{"//", "/*", "*"}
 	hashComments         = []string{"#"}
 	commentPrefixesByExt = map[string][]string{
-		".go": slashComments, ".ts": cStyleComments, ".tsx": cStyleComments, ".js": cStyleComments, ".mjs": cStyleComments,
-		".py": hashComments, ".yml": hashComments, ".yaml": hashComments, ".toml": hashComments, ".sh": hashComments,
-		".sql": {"--"},
+		extGo: slashComments, extTS: cStyleComments, extTSX: cStyleComments, ".js": cStyleComments, ".mjs": cStyleComments,
+		extPy: hashComments, extYML: hashComments, extYAML: hashComments, ".toml": hashComments, ".sh": hashComments,
+		extSQL: {"--"},
 	}
 	commentMachineMarker = regexp.MustCompile(`^(//|#|--)\s*(go:|line |export |lint:|nolint|one-number:|budget-over:|` +
 		`budget-ceiling:|Deprecated:|\+build|Output:|Unordered output:|eslint-|@ts-|/ <reference|@vitest-environment|` +
@@ -144,7 +146,7 @@ func (s commentScan) inspect(path, name string) error {
 	if err != nil {
 		return err
 	}
-	if generatedFileHeader.Match(src[:min(len(src), 512)]) {
+	if generatedFileHeader.Match(src[:min(len(src), generatedHeaderScanBytes)]) {
 		return nil
 	}
 	if found := commentViolations(string(src), prefixes); len(found) > 0 {

@@ -71,41 +71,69 @@ func (s *dependencyFileSurvey) record(file string) {
 	dir, base := path.Dir(file), path.Base(file)
 	switch {
 	case base == "package-lock.json":
-		s.updated[dir] = true
-		s.require(path.Join(dir, ".npmrc"), npmrcIgnoresScripts,
-			fmt.Sprintf("%s/.npmrc must set ignore-scripts=true", dir))
+		s.recordPackageLock(dir)
 	case base == "uv.lock":
-		s.updated[dir] = true
-		s.require(path.Join(dir, "pyproject.toml"), uvCooldown.MatchString,
-			fmt.Sprintf("%s/pyproject.toml must set [tool.uv] exclude-newer", dir))
+		s.recordUVLock(dir)
 	case base == "go.mod":
 		s.updated[dir] = true
 	case strings.HasPrefix(base, "Dockerfile"):
-		s.updated[dir] = true
-		if content, ok := s.readTracked(file); ok {
-			s.problems = append(s.problems, dockerfilePinProblems(file, content)...)
-		}
+		s.recordDockerfile(dir, file)
 	case strings.HasPrefix(file, "infra/compose/") && isYAML(base):
-		s.updated[dir] = true
-		if content, ok := s.readTracked(file); ok {
-			s.composeFiles[file] = content
-		}
+		s.recordComposeFile(dir, file)
 	case strings.HasPrefix(file, "infra/deploy/") && strings.HasSuffix(file, deployPreflightSuffix):
-		if content, ok := s.readTracked(file); ok {
-			s.preflights.WriteString(content)
-		}
+		s.recordDeployPreflight(file)
 	case (strings.HasPrefix(file, ".github/workflows/") || strings.HasPrefix(file, ".github/actions/")) && isYAML(base):
-		if strings.HasPrefix(file, ".github/actions/") {
-			s.updated[dir] = true
-		}
-		if content, ok := s.readTracked(file); ok {
-			s.ciFiles[file] = content
-			s.problems = append(s.problems, workflowPinProblems(file, content)...)
-		}
+		s.recordWorkflowFile(dir, file)
 	case strings.HasPrefix(file, "tools/ci/") && strings.HasSuffix(base, ".sh"):
-		if content, ok := s.readTracked(file); ok {
-			s.ciFiles[file] = content
-		}
+		s.recordCIScript(file)
+	}
+}
+
+func (s *dependencyFileSurvey) recordPackageLock(dir string) {
+	s.updated[dir] = true
+	s.require(path.Join(dir, ".npmrc"), npmrcIgnoresScripts,
+		fmt.Sprintf("%s/.npmrc must set ignore-scripts=true", dir))
+}
+
+func (s *dependencyFileSurvey) recordUVLock(dir string) {
+	s.updated[dir] = true
+	s.require(path.Join(dir, "pyproject.toml"), uvCooldown.MatchString,
+		fmt.Sprintf("%s/pyproject.toml must set [tool.uv] exclude-newer", dir))
+}
+
+func (s *dependencyFileSurvey) recordDockerfile(dir, file string) {
+	s.updated[dir] = true
+	if content, ok := s.readTracked(file); ok {
+		s.problems = append(s.problems, dockerfilePinProblems(file, content)...)
+	}
+}
+
+func (s *dependencyFileSurvey) recordComposeFile(dir, file string) {
+	s.updated[dir] = true
+	if content, ok := s.readTracked(file); ok {
+		s.composeFiles[file] = content
+	}
+}
+
+func (s *dependencyFileSurvey) recordDeployPreflight(file string) {
+	if content, ok := s.readTracked(file); ok {
+		s.preflights.WriteString(content)
+	}
+}
+
+func (s *dependencyFileSurvey) recordWorkflowFile(dir, file string) {
+	if strings.HasPrefix(file, ".github/actions/") {
+		s.updated[dir] = true
+	}
+	if content, ok := s.readTracked(file); ok {
+		s.ciFiles[file] = content
+		s.problems = append(s.problems, workflowPinProblems(file, content)...)
+	}
+}
+
+func (s *dependencyFileSurvey) recordCIScript(file string) {
+	if content, ok := s.readTracked(file); ok {
+		s.ciFiles[file] = content
 	}
 }
 

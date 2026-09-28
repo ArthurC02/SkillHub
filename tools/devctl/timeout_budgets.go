@@ -31,7 +31,7 @@ var goDurationUnits = map[string]time.Duration{
 }
 
 var (
-	timeoutGoRoots = []string{"apps/platform", "apps/sandbox"}
+	timeoutGoRoots = []string{dirAppsPlatform, dirAppsSandbox}
 	timeoutPyRoots = []string{"apps/llm/src"}
 )
 
@@ -116,7 +116,7 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 		base := filepath.Join(root, filepath.FromSlash(tree))
 		_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
-				return nil
+				return continuePastUnreadableEntry()
 			}
 			if d.IsDir() {
 				return skipTimeoutScanDir(d.Name())
@@ -126,7 +126,7 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 			}
 			data, readErr := os.ReadFile(path)
 			if readErr != nil {
-				return nil
+				return continuePastUnreadableEntry()
 			}
 			problems = append(problems,
 				collectTimeoutMarkers(found, relSlash(root, path), string(data), marker, parse)...)
@@ -138,7 +138,7 @@ func scanTimeoutMarkers(root string, trees []string, ext string, marker *regexp.
 
 func skipTimeoutScanDir(name string) error {
 	switch name {
-	case ".venv", "node_modules", "gen", "generated", "__pycache__":
+	case dirVenv, dirNodeModules, dirGen, "generated", dirPycache:
 		return filepath.SkipDir
 	}
 	return nil

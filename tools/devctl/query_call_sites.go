@@ -22,7 +22,7 @@ type callSite struct {
 
 func queryCallSites(platform string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
 	calls := map[string][]callSite{}
-	for _, tree := range []string{"internal", "cmd"} {
+	for _, tree := range []string{"internal", platformCmdDir} {
 		source := platformSourceTree{name: tree, base: filepath.Join(platform, tree)}
 		if _, err := os.Stat(source.base); err != nil {
 			continue
@@ -132,7 +132,7 @@ func importsSQLCPackage(file *ast.File) bool {
 }
 
 func unknownQueryCallerError(tree, directory string) error {
-	if tree == "cmd" {
+	if tree == platformCmdDir {
 		return fmt.Errorf("apps/platform/cmd/%s calls sqlc but has no entry in commandContexts "+
 			"(tools/devctl/query_owners.go); name the context whose data it touches", directory)
 	}
@@ -140,7 +140,7 @@ func unknownQueryCallerError(tree, directory string) error {
 }
 
 func callerBoundary(tree, directory string, identities map[string]packageIdentity) (string, bool) {
-	if tree == "cmd" {
+	if tree == platformCmdDir {
 		command, _, _ := strings.Cut(directory, "/")
 		boundary, ok := commandContexts[command]
 		if !ok || !knownBoundaryID(identities, boundary) {
@@ -309,10 +309,12 @@ func stringValue(expr ast.Expr, values map[string]string) (string, bool) {
 	}
 }
 
+const sqlPrefixMaxChars = 60
+
 func sqlPrefix(sql string) string {
 	flat := strings.Join(strings.Fields(sql), " ")
-	if len(flat) > 60 {
-		return flat[:60] + "…"
+	if len(flat) > sqlPrefixMaxChars {
+		return flat[:sqlPrefixMaxChars] + "…"
 	}
 	return flat
 }

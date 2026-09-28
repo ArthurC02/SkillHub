@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	envReadingGoRoots     = []string{"apps/platform/cmd", "apps/platform/internal", "apps/sandbox"}
+	envReadingGoRoots     = []string{"apps/platform/cmd", "apps/platform/internal", dirAppsSandbox}
 	envReadingPythonRoots = []string{"apps/llm/src"}
 	envVarName            = regexp.MustCompile(`^[A-Z][A-Z0-9]*_[A-Z0-9_]*[A-Z0-9]$`)
 	pythonEnvRead         = regexp.MustCompile(`os\.(?:getenv\(|environ\.get\(|environ\[)\s*"([A-Z][A-Z0-9_]*)"`)

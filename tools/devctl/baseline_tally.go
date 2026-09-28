@@ -13,8 +13,8 @@ const baselineOwner = "docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md"
 
 var baselineQuoters = []string{
 	"docs/plans/02-specifications-and-acceptance-criteria.md",
-	"docs/plans/03-work-items.md",
-	"docs/plans/04-backlog-and-handoffs.md",
+	tallyOwner,
+	backlogDoc,
 	"docs/plans/mvp/m4/README.md",
 	"docs/plans/mvp/m4/beta-design.md",
 	"docs/plans/mvp/m4/release-checklist.md",

@@ -26,6 +26,11 @@ const (
 	goldensetExpectedCount = 31
 
 	seedDevLoginUser = "seed-importer"
+
+	devLoginErrorBodyLimit   = 500
+	uploadErrorBodyLimit     = 2000
+	searchErrorBodyLimit     = 4000
+	enrichmentCheckBodyLimit = 20000
 )
 
 var seedExclusions = map[string]string{
@@ -175,7 +180,7 @@ func seedCleanDevLogin(client *http.Client, api string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, devLoginErrorBodyLimit))
 		return fmt.Errorf("seed-clean: dev login failed (%d): %s — is DEV_LOGIN=1 set on the target deployment?", resp.StatusCode, firstLine(string(b)))
 	}
 	return nil
@@ -188,7 +193,7 @@ func seedCleanUpload(client *http.Client, api string, zipBytes []byte) (status i
 		if err != nil {
 			return 0, "", err
 		}
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2000))
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, uploadErrorBodyLimit))
 		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusTooManyRequests || attempt == maxAttempts {
 			return resp.StatusCode, string(b), nil
@@ -213,7 +218,7 @@ func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4000))
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, searchErrorBodyLimit))
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < maxAttempts {
 			time.Sleep(retryAfter(resp.Header.Get("Retry-After"), attempt))
@@ -256,7 +261,7 @@ func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out
 	if err != nil {
 		return nil
 	}
-	b, _ := io.ReadAll(io.LimitReader(resp.Body, 20000))
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, enrichmentCheckBodyLimit))
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil

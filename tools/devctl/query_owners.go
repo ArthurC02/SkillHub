@@ -14,6 +14,8 @@ const queryOwnersFile = "query-owners.yaml"
 
 const readAllowSection = "read_allow"
 
+const queryOwnersFilesSection = "files"
+
 type sqlQuery struct {
 	file    string
 	write   bool
@@ -35,7 +37,7 @@ func queryOwnerProblems(root string) []string {
 		return []string{fmt.Sprintf("db/queries: %v", err)}
 	}
 
-	fileOwners, queryOwners := sections["files"], sections["queries"]
+	fileOwners, queryOwners := sections[queryOwnersFilesSection], sections["queries"]
 	problems = append(problems, ownerBoundaryIDProblems(sections, identities)...)
 	problems = append(problems, ownerDeclarationDriftProblems(fileOwners, queryOwners, queries)...)
 	problems = append(problems, unownedQueryProblems(fileOwners, queryOwners, queries)...)
@@ -72,11 +74,11 @@ func (o queryOwnership) ownerOf(name string) string {
 
 func ownerBoundaryIDProblems(sections map[string]map[string]string, identities map[string]packageIdentity) []string {
 	var problems []string
-	for _, section := range []string{"files", "queries"} {
+	for _, section := range []string{queryOwnersFilesSection, "queries"} {
 		for _, key := range sortedKeys(sections[section]) {
 			owner := sections[section][key]
 
-			if section == "files" && owner == "" {
+			if section == queryOwnersFilesSection && owner == "" {
 				continue
 			}
 			if !knownBoundaryID(identities, owner) {
@@ -591,7 +593,7 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 	var problems []string
 	hit := map[string]bool{}
 
-	for _, dir := range []string{"internal", "cmd"} {
+	for _, dir := range []string{"internal", platformCmdDir} {
 		base := filepath.Join(root, "apps", "platform", dir)
 		if _, err := os.Stat(base); err != nil {
 			continue

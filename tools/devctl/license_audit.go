@@ -15,17 +15,19 @@ import (
 	"time"
 )
 
+const pypiRequestTimeout = 20 * time.Second
+
 type licenseTarget struct {
 	ecosystem string
 	dir       string
 }
 
 var licenseTargets = []licenseTarget{
-	{ecosystem: "npm", dir: "apps/web"},
-	{ecosystem: "go", dir: "apps/platform"},
-	{ecosystem: "go", dir: "apps/sandbox"},
-	{ecosystem: "python", dir: "apps/llm"},
-	{ecosystem: "npm", dir: "infra/images/runtime-agent-sdk"},
+	{ecosystem: ecosystemNPM, dir: dirAppsWeb},
+	{ecosystem: "go", dir: dirAppsPlatform},
+	{ecosystem: "go", dir: dirAppsSandbox},
+	{ecosystem: ecosystemPython, dir: dirAppsLLM},
+	{ecosystem: ecosystemNPM, dir: "infra/images/runtime-agent-sdk"},
 }
 
 var allowedLicenses = map[string]bool{
@@ -161,13 +163,15 @@ func npmLockLicenses(data []byte) ([]packageLicense, error) {
 }
 
 func goLicenses(dir, version string) ([]packageLicense, error) {
-	data, err := strictToolOutput(dir, "go", "run", "github.com/google/go-licenses/v2@v"+version,
+	data, err := strictToolOutput(dir, "go", cmdRun, "github.com/google/go-licenses/v2@v"+version,
 		"report", "./...", "--ignore", "github.com/ArthurC02/skillhub")
 	if err != nil {
 		return nil, err
 	}
 	return goLicenseReport(data)
 }
+
+const goLicensesReportColumns = 3
 
 func goLicenseReport(data []byte) ([]packageLicense, error) {
 	records, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
@@ -179,7 +183,7 @@ func goLicenseReport(data []byte) ([]packageLicense, error) {
 	}
 	var packages []packageLicense
 	for _, record := range records {
-		if len(record) != 3 {
+		if len(record) != goLicensesReportColumns {
 			return nil, fmt.Errorf("go-licenses report line %q does not have three columns", strings.Join(record, ","))
 		}
 		packages = append(packages, packageLicense{name: record[0], license: record[2]})
@@ -190,7 +194,7 @@ func goLicenseReport(data []byte) ([]packageLicense, error) {
 
 func pythonLicenses(dir string) ([]packageLicense, error) {
 	requirements, err := strictToolOutput(dir, "uv", "export", "--frozen", "--no-dev",
-		"--no-emit-project", "--no-emit-local", "--no-hashes", "--quiet")
+		"--no-emit-project", "--no-emit-local", "--no-hashes", flagQuiet)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +202,7 @@ func pythonLicenses(dir string) ([]packageLicense, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{Timeout: 20 * time.Second}
+	client := &http.Client{Timeout: pypiRequestTimeout}
 	var packages []packageLicense
 	for _, pin := range pins {
 		info, err := pypiInfo(client, pin)

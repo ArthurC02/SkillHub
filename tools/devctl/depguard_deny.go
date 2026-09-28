@@ -13,9 +13,13 @@ import (
 
 const denyPackagePrefix = "github.com/ArthurC02/skillhub/apps/platform/internal/"
 
+const objreconcileContextID = "objreconcile"
+
+const depguardFilesKey = "files"
+
 var compositionRoots = []string{"apiserver", "worker", "wiring"}
 
-var alwaysDenied = append(slices.Clone(compositionRoots), "objreconcile")
+var alwaysDenied = append(slices.Clone(compositionRoots), objreconcileContextID)
 
 func isCompositionRoot(id string) bool { return slices.Contains(compositionRoots, id) }
 
@@ -55,7 +59,7 @@ func depguardDenyProblems(root string) []string {
 	}
 	checked := 0
 	for _, rule := range sortedKeys(rules) {
-		guarded, ruleProblems := audit.ruleProblems(rule, rules[rule]["files"], rules[rule]["deny"])
+		guarded, ruleProblems := audit.ruleProblems(rule, rules[rule][depguardFilesKey], rules[rule]["deny"])
 		if guarded {
 			checked++
 		}
@@ -191,9 +195,9 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 		}
 	}
 	expected := map[string]map[string]bool{
-		"shared-kernel": copySet(bounded),
-		"generic":       copySet(bounded),
-		"objreconcile":  copySet(bounded),
+		"shared-kernel":       copySet(bounded),
+		"generic":             copySet(bounded),
+		objreconcileContextID: copySet(bounded),
 	}
 	for _, id := range alwaysDenied {
 		if _, ok := declared[id]; !ok {
@@ -201,13 +205,13 @@ func specialDepguardProblems(rules map[string]map[string][]string, declared map[
 		}
 		expected["generic"][id] = true
 		expected["shared-kernel"][id] = true
-		if id != "objreconcile" {
-			expected["objreconcile"][id] = true
+		if id != objreconcileContextID {
+			expected[objreconcileContextID][id] = true
 		}
 	}
 
 	var problems []string
-	for _, rule := range []string{"generic", "objreconcile", "shared-kernel"} {
+	for _, rule := range []string{"generic", objreconcileContextID, "shared-kernel"} {
 		actual := map[string]bool{}
 		for _, pkg := range rules[rule]["deny"] {
 			path, ok := strings.CutPrefix(pkg, denyPackagePrefix)
@@ -231,7 +235,7 @@ func depguardSelectorProblems(rules map[string]map[string][]string, declared map
 	pathIDs := contextIDsByPath(declared)
 	var problems []string
 	for rule, want := range expectedDepguardSelections(declared) {
-		actual, selectorProblems := selectedContexts(lintPath, rule, rules[rule]["files"], pathIDs)
+		actual, selectorProblems := selectedContexts(lintPath, rule, rules[rule][depguardFilesKey], pathIDs)
 		problems = append(problems, selectorProblems...)
 		problems = append(problems, depguardMembershipProblems(lintPath, rule, want, actual, depguardSelects)...)
 	}
@@ -249,13 +253,13 @@ func expectedDepguardSelections(declared map[string]packageIdentity) map[string]
 				expected["shared-kernel"] = map[string]bool{}
 			}
 			expected["shared-kernel"][id] = true
-		case identity.Kind == architectureGeneric && id != "api" && id != "objreconcile" && !isCompositionRoot(id):
+		case identity.Kind == architectureGeneric && id != "api" && id != objreconcileContextID && !isCompositionRoot(id):
 			if expected["generic"] == nil {
 				expected["generic"] = map[string]bool{}
 			}
 			expected["generic"][id] = true
-		case id == "objreconcile":
-			expected["objreconcile"] = map[string]bool{id: true}
+		case id == objreconcileContextID:
+			expected[objreconcileContextID] = map[string]bool{id: true}
 		}
 	}
 	return expected
@@ -270,7 +274,7 @@ func selectedContexts(lintPath, rule string, selectors []string, pathIDs map[str
 		}
 		match := depguardSelectorPattern.FindStringSubmatch(selector)
 		if match == nil {
-			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q has unrecognised files selector %q", lintPath, rule, selector))
+			problems = append(problems, fmt.Sprintf("depguard-deny: %s rule %q has unrecognised %s selector %q", lintPath, rule, depguardFilesKey, selector))
 			continue
 		}
 		id, known := pathIDs[match[1]]
@@ -312,9 +316,9 @@ func depguardRules(lint string) map[string]map[string][]string {
 			continue
 		}
 		switch key {
-		case "files":
+		case depguardFilesKey:
 			if m := depguardFileItem.FindStringSubmatch(line); m != nil {
-				rules[rule]["files"] = append(rules[rule]["files"], m[1])
+				rules[rule][depguardFilesKey] = append(rules[rule][depguardFilesKey], m[1])
 			}
 		case "deny":
 			if m := depguardDenyPkg.FindStringSubmatch(line); m != nil {

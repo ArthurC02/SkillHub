@@ -27,7 +27,7 @@ func secondDataLayerProblems(root string) []string {
 	}
 
 	hitsByType := map[string][]sigHit{}
-	for _, base := range []string{"apps", "tools", "packages"} {
+	for _, base := range []string{rootApps, rootTools, rootPackages} {
 		dir := filepath.Join(root, base)
 		if _, err := os.Stat(dir); err != nil {
 			continue
@@ -111,7 +111,7 @@ func collectSecondDataLayerHits(path, relative string, genSigs map[string]string
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
-		return nil
+		return continuePastUnreadableEntry()
 	}
 	dir := filepath.ToSlash(filepath.Dir(relative))
 	for _, decl := range file.Decls {

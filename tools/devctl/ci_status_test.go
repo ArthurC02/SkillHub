@@ -31,6 +31,39 @@ func TestCIVerdictIsGreenOnlyWhenEveryRunFinishedWithoutFailing(t *testing.T) {
 	}
 }
 
+func TestParseCIStatusArgs(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		args     []string
+		wantRef  string
+		wantWait bool
+		wantErr  bool
+	}{
+		{"no arguments default to HEAD without waiting", nil, "HEAD", false, false},
+		{"a bare ref is used as given", []string{"abc123"}, "abc123", false, false},
+		{"--wait alone keeps the default ref", []string{"--wait"}, "HEAD", true, false},
+		{"a ref and --wait together", []string{"abc123", "--wait"}, "abc123", true, false},
+		{"an unknown flag is rejected", []string{"--bogus"}, "", false, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ref, wait, err := parseCIStatusArgs(tc.args)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseCIStatusArgs(%v) = nil error, want a usage error", tc.args)
+				}
+				return
+			}
+			if err != nil || ref != tc.wantRef || wait != tc.wantWait {
+				t.Fatalf("parseCIStatusArgs(%v) = %q, %v, %v; want %q, %v, nil",
+					tc.args, ref, wait, err, tc.wantRef, tc.wantWait)
+			}
+		})
+	}
+}
+
 func TestGitHubRepoIsReadFromTheOriginURL(t *testing.T) {
 	t.Parallel()
 	for remote, want := range map[string]string{

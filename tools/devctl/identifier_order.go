@@ -24,7 +24,7 @@ func identifierOrderProblems(root string) []string {
 	seen := 0
 	for _, base := range []string{
 		filepath.Join(root, "apps", "platform", "internal"),
-		filepath.Join(root, "apps", "platform", "cmd"),
+		filepath.Join(root, "apps", "platform", platformCmdDir),
 	} {
 		walkErr := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {

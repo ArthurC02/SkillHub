@@ -17,6 +17,14 @@ import (
 
 const generationLockMaxAge = 2 * time.Hour
 
+const generateScopeAll = "all"
+
+const (
+	cmdRun       = "run"
+	cmdBuild     = "build"
+	dockerFlagRm = "--rm"
+)
+
 type generationLock struct {
 	PID       int       `json:"pid"`
 	CreatedAt time.Time `json:"created_at"`
@@ -82,7 +90,7 @@ func generate(root string, args []string, out io.Writer) (err error) {
 }
 
 func parseGenerateArgs(args []string) (check bool, scope string, err error) {
-	scope = "all"
+	scope = generateScopeAll
 	for _, arg := range args {
 		switch arg {
 		case "--check":
@@ -92,7 +100,7 @@ func parseGenerateArgs(args []string) (check bool, scope string, err error) {
 		case "--scope=openapi":
 			scope = "openapi"
 		case "--scope=all":
-			scope = "all"
+			scope = generateScopeAll
 		default:
 			return false, "", fmt.Errorf("unknown gen option %q", arg)
 		}
@@ -106,7 +114,7 @@ func generateScope(root, scratch, scope string, toolchain map[string]string, out
 	if err != nil {
 		return nil, err
 	}
-	if scope == "all" || scope == "sql" {
+	if scope == generateScopeAll || scope == "sql" {
 		sqlOut, err := generateSQL(root, scratch, images["sqlc"], out)
 		if err != nil {
 			return nil, err
@@ -114,10 +122,10 @@ func generateScope(root, scratch, scope string, toolchain map[string]string, out
 		outputs = append(outputs, generationOutput{
 			label:  "sqlc",
 			source: sqlOut,
-			target: filepath.Join(root, "apps", "platform", "internal", "foundation", "persistence", "db", "gen"),
+			target: filepath.Join(root, "apps", "platform", "internal", "foundation", "persistence", "db", dirGen),
 		})
 	}
-	if scope == "all" || scope == "openapi" {
+	if scope == generateScopeAll || scope == "openapi" {
 		openAPIOutputs, err := generateOpenAPI(root, scratch, toolchain, images, out)
 		if err != nil {
 			return nil, err
@@ -228,7 +236,7 @@ sql:
 		return "", err
 	}
 	mount := root + ":/src"
-	args := []string{"run", "--rm"}
+	args := []string{cmdRun, dockerFlagRm}
 	args = append(args, dockerUserArgs()...)
 	args = append(args,
 		"-v", mount,
@@ -281,7 +289,7 @@ func hashTree(root string) (generatedTree, error) {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == "__pycache__" {
+			if entry.Name() == dirPycache {
 				return filepath.SkipDir
 			}
 			return nil

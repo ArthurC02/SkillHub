@@ -21,6 +21,14 @@ const (
 	ciNoRuns  = 4
 )
 
+const (
+	ciHTTPTimeout                 = 30 * time.Second
+	ciPollInterval                = 30 * time.Second
+	ciPollIntervalUnauthenticated = 90 * time.Second
+	ciStalledWait                 = 60 * time.Minute
+	ciNoRunsWait                  = 5 * time.Minute
+)
+
 type workflowRun struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
@@ -47,34 +55,72 @@ type githubClient struct {
 var githubRemote = regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$`)
 
 func ciStatus(root string, args []string, out io.Writer) (int, error) {
-	ref, wait := "HEAD", false
+	ref, wait, err := parseCIStatusArgs(args)
+	if err != nil {
+		return 2, err
+	}
+	sha, err := resolveCommitSHA(root, ref)
+	if err != nil {
+		return 2, err
+	}
+	client, err := newGithubClientForOrigin(root)
+	if err != nil {
+		return 2, err
+	}
+	if !wait {
+		return reportCIStatusOnce(client, sha, out)
+	}
+	return pollCIStatusUntilDecided(client, sha, out)
+}
+
+func parseCIStatusArgs(args []string) (ref string, wait bool, err error) {
+	ref = "HEAD"
 	for _, arg := range args {
 		switch {
 		case arg == "--wait":
 			wait = true
 		case strings.HasPrefix(arg, "-"):
-			return 2, errors.New("usage: devctl ci-status [ref] [--wait]")
+			return "", false, errors.New("usage: devctl ci-status [ref] [--wait]")
 		default:
 			ref = arg
 		}
 	}
+	return ref, wait, nil
+}
+
+func resolveCommitSHA(root, ref string) (string, error) {
 	sha, err := gitOutput(root, "rev-parse", "--verify", ref+"^{commit}")
 	if err != nil {
-		return 2, err
+		return "", err
 	}
-	sha = strings.TrimSpace(sha)
+	return strings.TrimSpace(sha), nil
+}
+
+func newGithubClientForOrigin(root string) (githubClient, error) {
 	remote, err := gitOutput(root, "remote", "get-url", "origin")
 	if err != nil {
-		return 2, err
+		return githubClient{}, err
 	}
 	repo, err := githubRepoFromRemote(strings.TrimSpace(remote))
 	if err != nil {
+		return githubClient{}, err
+	}
+	return githubClient{repo: repo, token: githubToken(root), http: &http.Client{Timeout: ciHTTPTimeout}}, nil
+}
+
+func reportCIStatusOnce(client githubClient, sha string, out io.Writer) (int, error) {
+	runs, err := client.runsFor(sha)
+	if err != nil {
 		return 2, err
 	}
-	client := githubClient{repo: repo, token: githubToken(root), http: &http.Client{Timeout: 30 * time.Second}}
-	interval := 30 * time.Second
+	code, verdict := ciVerdict(runs)
+	return code, client.report(out, sha, verdict, runs)
+}
+
+func pollCIStatusUntilDecided(client githubClient, sha string, out io.Writer) (int, error) {
+	interval := ciPollInterval
 	if client.token == "" {
-		interval = 90 * time.Second
+		interval = ciPollIntervalUnauthenticated
 	}
 
 	started := time.Now()
@@ -84,8 +130,8 @@ func ciStatus(root string, args []string, out io.Writer) (int, error) {
 			return 2, err
 		}
 		code, verdict := ciVerdict(runs)
-		waitedOut := time.Since(started) > 60*time.Minute || (code == ciNoRuns && time.Since(started) > 5*time.Minute)
-		if !wait || (code != ciPending && code != ciNoRuns) || waitedOut {
+		waitedOut := time.Since(started) > ciStalledWait || (code == ciNoRuns && time.Since(started) > ciNoRunsWait)
+		if (code != ciPending && code != ciNoRuns) || waitedOut {
 			return code, client.report(out, sha, verdict, runs)
 		}
 		time.Sleep(interval)

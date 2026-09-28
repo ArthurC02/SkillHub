@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const serviceTypeName = "Service"
+
 func serviceConstructionProblems(root string) []string {
 	identities, problems := architectureIdentities(root)
 	base := filepath.Join(root, "apps", "platform", "internal")
@@ -188,13 +190,13 @@ func foreignCompositeServiceTarget(expr ast.Expr, foreign map[string]string, dot
 func foreignServiceTarget(expr ast.Expr, foreign map[string]string, dotForeign string) string {
 	switch typ := unparen(expr).(type) {
 	case *ast.SelectorExpr:
-		if typ.Sel.Name == "Service" {
+		if typ.Sel.Name == serviceTypeName {
 			if pkg, ok := typ.X.(*ast.Ident); ok && pkg.Obj == nil {
 				return foreign[pkg.Name]
 			}
 		}
 	case *ast.Ident:
-		if typ.Name == "Service" && typ.Obj == nil {
+		if typ.Name == serviceTypeName && typ.Obj == nil {
 			return dotForeign
 		}
 	case *ast.ArrayType:
@@ -251,7 +253,7 @@ func returnsService(results *ast.FieldList) bool {
 		if pointer, ok := resultType.(*ast.StarExpr); ok {
 			resultType = unparen(pointer.X)
 		}
-		if name, ok := resultType.(*ast.Ident); ok && name.Name == "Service" {
+		if name, ok := resultType.(*ast.Ident); ok && name.Name == serviceTypeName {
 			return true
 		}
 	}

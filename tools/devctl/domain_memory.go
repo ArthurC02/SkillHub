@@ -9,7 +9,7 @@ import (
 )
 
 var domainMemoryTool = func(root string, args ...string) (string, error) {
-	command := exec.Command("uv", append([]string{"run", "--no-project", "python", filepath.Join(root, ".claude", "skills", "domain-memory", "scripts", "registry_tools.py")}, args...)...)
+	command := exec.Command("uv", append([]string{cmdRun, "--no-project", ecosystemPython, filepath.Join(root, ".claude", "skills", "domain-memory", "scripts", "registry_tools.py")}, args...)...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	return strings.TrimSpace(string(output)), err
@@ -23,11 +23,15 @@ func domainMemoryProblems(root string) []string {
 		return []string{fmt.Sprintf("Domain Memory: inspect registry: %v", err)}
 	}
 
+	const (
+		flagRepoRoot     = "--repo-root"
+		flagRegistryRoot = "--registry-root"
+	)
 	checks := [][]string{
-		{"validate", "--repo-root", root, "--registry-root", registryRoot},
-		{"verify-sources", "--repo-root", root, "--source-map", filepath.Join(registryRoot, "source-map.json"), "--policy", filepath.Join(registryRoot, "domain-memory-policy.json")},
-		{"verify-evidence", "--repo-root", root, "--registry-root", registryRoot},
-		{"verify-audit", "--registry-root", registryRoot},
+		{"validate", flagRepoRoot, root, flagRegistryRoot, registryRoot},
+		{"verify-sources", flagRepoRoot, root, "--source-map", filepath.Join(registryRoot, "source-map.json"), "--policy", filepath.Join(registryRoot, "domain-memory-policy.json")},
+		{"verify-evidence", flagRepoRoot, root, flagRegistryRoot, registryRoot},
+		{"verify-audit", flagRegistryRoot, registryRoot},
 	}
 	var problems []string
 	for _, args := range checks {

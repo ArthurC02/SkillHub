@@ -1,10 +1,23 @@
 package main
 
 import (
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestGenerateTypeScriptOpenAPIFailsFastWhenScratchIsUnusable(t *testing.T) {
+	root := t.TempDir()
+	scratch := filepath.Join(root, "scratch-is-a-file")
+	if err := os.WriteFile(scratch, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := generateTypeScriptOpenAPI(root, scratch, "example-image", io.Discard); err == nil {
+		t.Fatal("generateTypeScriptOpenAPI() = nil error, want a failure because scratch is not a directory")
+	}
+}
 
 func TestValidateGeneratedContentRejectsTheRepoAbsolutePath(t *testing.T) {
 	root := t.TempDir()

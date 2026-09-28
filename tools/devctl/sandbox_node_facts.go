@@ -63,13 +63,15 @@ var sandboxNodeFacts = []sandboxNodeFact{
 	},
 }
 
+const ipv4OctetCount = 4
+
 func subnetOfBIP(bip string) string {
 	address, mask, found := strings.Cut(bip, "/")
 	if !found {
 		return bip
 	}
 	octets := strings.Split(address, ".")
-	if len(octets) != 4 {
+	if len(octets) != ipv4OctetCount {
 		return bip
 	}
 	octets[3] = "0"

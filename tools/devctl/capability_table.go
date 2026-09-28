@@ -130,7 +130,7 @@ func declaredCapabilityVars(root string) (map[string]bool, error) {
 	if _, err := os.Stat(filepath.Join(platform, "go.mod")); err != nil {
 		return nil, fmt.Errorf("apps/platform is not here: %w", err)
 	}
-	cmd := exec.Command("go", "-C", platform, "run", "./cmd/api", "--capabilities")
+	cmd := exec.Command("go", "-C", platform, cmdRun, "./cmd/api", "--capabilities")
 	cmd.Env = append(os.Environ(), "GOFLAGS=")
 	done := time.AfterFunc(3*time.Minute, func() { _ = cmd.Process.Kill() })
 	defer done.Stop()

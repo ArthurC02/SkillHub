@@ -419,14 +419,16 @@ var domainVocabularies = []domainVocabulary{
 	},
 }
 
+const reasonNeverBranchesOnColumn = "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)"
+
 var unreconciledVocabularies = map[string]string{
 	"artifacts.kind":                           "Go never reads or writes it; every query spells the kind itself (platform-ddd-convergence.md §5.1)",
-	"analytics_events.event_name":              "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
-	"cost_events.ref_type":                     "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
-	"credit_entries.ref_type":                  "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
-	"creation_receipts.kind":                   "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
-	"evaluation_model_usage.operation":         "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
-	"object_reconcile_sightings.resource_kind": "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)",
+	"analytics_events.event_name":              reasonNeverBranchesOnColumn,
+	"cost_events.ref_type":                     reasonNeverBranchesOnColumn,
+	"credit_entries.ref_type":                  reasonNeverBranchesOnColumn,
+	"creation_receipts.kind":                   reasonNeverBranchesOnColumn,
+	"evaluation_model_usage.operation":         reasonNeverBranchesOnColumn,
+	"object_reconcile_sightings.resource_kind": reasonNeverBranchesOnColumn,
 	"outbox_events.event_type":                 "the outbox package's own tests reconcile it against the migration and the event catalogue",
 	"skill_runtime_compatibility.runtime":      "Go only displays it; nothing branches on its value (platform-ddd-convergence.md §5.6)",
 }

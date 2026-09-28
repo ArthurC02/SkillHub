@@ -11,11 +11,11 @@ import (
 )
 
 var docIdentifierScope = []string{
-	"AGENTS.md",
-	"docs/plans/01-goals-and-plan.md",
+	agentsMdFile,
+	goalsPlanDoc,
 	"docs/plans/02-specifications-and-acceptance-criteria.md",
-	"docs/plans/03-work-items.md",
-	"docs/plans/04-backlog-and-handoffs.md",
+	tallyOwner,
+	backlogDoc,
 	"docs/plans/05-pending-rulings.md",
 	"docs/design/system.md",
 	"docs/design/information-architecture.md",
@@ -25,7 +25,7 @@ var docIdentifierScope = []string{
 var docIdentifierTrees = []string{
 	"docs/adr",
 	"docs/development",
-	"contracts",
+	rootContracts,
 }
 
 var docIdentifierPattern = regexp.MustCompile(
@@ -96,7 +96,7 @@ var allowedDocWords = map[string]string{
 }
 
 var codeExtensions = map[string]bool{
-	".go": true, ".ts": true, ".tsx": true, ".py": true, ".sql": true, ".yaml": true, ".yml": true, ".json": true,
+	extGo: true, extTS: true, extTSX: true, extPy: true, extSQL: true, extYAML: true, extYML: true, ".json": true,
 	".tmpl": true,
 }
 
@@ -171,12 +171,12 @@ func docIdentifierProblems(root string) []string {
 func declaredCodeWords(root string) map[string]bool {
 	declared := map[string]bool{}
 	word := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
-	skip := map[string]bool{".git": true, "node_modules": true, ".venv": true, ".devctl": true, "dist": true, "__pycache__": true}
+	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true}
 	tracked := trackedFiles(root)
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		if d.IsDir() {
 			if skip[d.Name()] {
@@ -189,7 +189,7 @@ func declaredCodeWords(root string) map[string]bool {
 		}
 		body, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		for _, w := range word.FindAllString(string(body), -1) {
 			declared[w] = true

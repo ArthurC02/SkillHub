@@ -15,12 +15,12 @@ var docLinkPattern = regexp.MustCompile(`\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)`
 
 var docLinkSkippedDirs = map[string]string{
 
-	"packages": "generated API clients",
-	".devctl":  "codegen scratch output",
+	rootPackages:   "generated API clients",
+	dirDevctlCache: "codegen scratch output",
 
-	"node_modules": "dependencies",
-	"__pycache__":  "build output",
-	".git":         "git internals",
+	dirNodeModules: "dependencies",
+	dirPycache:     "build output",
+	dirGit:         "git internals",
 	"worktrees":    "other checkouts of this repository",
 }
 
@@ -35,7 +35,7 @@ func docLinkProblems(root string) []string {
 	var problems []string
 	_ = filepath.WalkDir(root, func(p string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		relative := filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(p, root), string(filepath.Separator)))
 		if entry.IsDir() {
@@ -49,7 +49,7 @@ func docLinkProblems(root string) []string {
 		}
 		body, readErr := os.ReadFile(p)
 		if readErr != nil {
-			return nil
+			return continuePastUnreadableEntry()
 		}
 		problems = append(problems, deadDocLinks(filepath.Dir(p), relative, string(body))...)
 		return nil
