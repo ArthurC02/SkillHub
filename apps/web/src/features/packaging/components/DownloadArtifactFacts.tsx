@@ -63,7 +63,13 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
               <ul>
                 {artifact.plugin.members.map((member) => (
                   <li key={member.skill_version_id}>
-                    <Link to="/skills/$skillId" params={{ skillId: member.skill_id }}>
+                    <Link
+                      to="/skills/$skillId/versions/$versionId"
+                      params={{
+                        skillId: member.skill_id,
+                        versionId: member.skill_version_id,
+                      }}
+                    >
                       {member.name}
                     </Link>
                     （v{member.version_number}）

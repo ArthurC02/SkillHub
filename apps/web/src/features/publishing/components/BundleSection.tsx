@@ -136,7 +136,9 @@ function BundleRow({
             下載 {exportBundle.data.file_name}
           </a>
           {" ｜ "}
-          <Link to="/workspace/downloads">到下載紀錄</Link>
+          <Link to="/workspace/downloads" search={{ artifact: exportBundle.data.artifact_id }}>
+            在交付紀錄查看這一份
+          </Link>
         </p>
       )}
 

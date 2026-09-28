@@ -71,7 +71,9 @@ function AcquireAction({ publisher, name }: { publisher: string; name: string })
         <p>
           <a href={`${API_BASE_URL}${acquire.data.content_url}`}>下載 {acquire.data.file_name}</a>
           {" ｜ "}
-          <Link to="/workspace/downloads">到下載紀錄</Link>
+          <Link to="/workspace/downloads" search={{ artifact: acquire.data.artifact_id }}>
+            在交付紀錄查看這一份
+          </Link>
         </p>
       )}
     </div>

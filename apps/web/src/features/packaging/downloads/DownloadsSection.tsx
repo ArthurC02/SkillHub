@@ -174,14 +174,24 @@ function DownloadActions({
       ) : (
         <span className="note">{artifact.serve_state.label}</span>
       )}
-      {artifact.skill_id && (
+      {artifact.skill_id && artifact.skill_version_id ? (
+        <>
+          {" ｜ "}
+          <Link
+            to="/skills/$skillId/versions/$versionId"
+            params={{ skillId: artifact.skill_id, versionId: artifact.skill_version_id }}
+          >
+            來源版本
+          </Link>
+        </>
+      ) : artifact.skill_id ? (
         <>
           {" ｜ "}
           <Link to="/skills/$skillId" params={{ skillId: artifact.skill_id }}>
             來源 Skill
           </Link>
         </>
-      )}
+      ) : null}
       {" ｜ "}
       <ConfirmDelete
         scopeId={`delete-scope-${artifact.artifact_id}`}

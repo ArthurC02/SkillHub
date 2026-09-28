@@ -12,9 +12,6 @@ import {
 
 export function PublisherSection() {
   const publisher = useOwnPublisher();
-  const register = useRegisterPublisher();
-  const [name, setName] = useState("");
-  const inputId = useId();
 
   const notRegistered = publisher.error instanceof ApiError && publisher.error.status === 404;
 
@@ -35,42 +32,48 @@ export function PublisherSection() {
           <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
         </>
       ) : notRegistered ? (
-        register.isSuccess ? (
-          <p role="status">已送出註冊，正在確認…</p>
-        ) : (
-          <>
-            <p className="note">這個帳號還沒有註冊發佈者名稱。</p>
-            <p className="note">{PUBLISHER_NAME_RULE}</p>
-            <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
-            <form
-              className="publisher-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                register.mutate(name.trim());
-              }}
-            >
-              <div className="field">
-                <label htmlFor={inputId}>發佈者名稱</label>
-                <input
-                  id={inputId}
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  maxLength={64}
-                  required
-                />
-              </div>
-              <button type="submit" disabled={register.isPending}>
-                {register.isPending ? "註冊中…" : "註冊"}
-              </button>
-            </form>
-            {register.isError && (
-              <p role="alert">
-                {refusalSentence(register.error) ?? "註冊沒有成功，可以再試一次。"}
-              </p>
-            )}
-          </>
-        )
+        <PublisherRegistration />
       ) : null}
     </section>
+  );
+}
+
+export function PublisherRegistration() {
+  const register = useRegisterPublisher();
+  const [name, setName] = useState("");
+  const inputId = useId();
+
+  if (register.isSuccess) return <p role="status">已送出註冊，正在確認…</p>;
+
+  return (
+    <>
+      <p className="note">這個帳號還沒有註冊發佈者名稱。</p>
+      <p className="note">{PUBLISHER_NAME_RULE}</p>
+      <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
+      <form
+        className="publisher-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          register.mutate(name.trim());
+        }}
+      >
+        <div className="field">
+          <label htmlFor={inputId}>發佈者名稱</label>
+          <input
+            id={inputId}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={64}
+            required
+          />
+        </div>
+        <button type="submit" disabled={register.isPending}>
+          {register.isPending ? "註冊中…" : "註冊"}
+        </button>
+      </form>
+      {register.isError && (
+        <p role="alert">{refusalSentence(register.error) ?? "註冊沒有成功，可以再試一次。"}</p>
+      )}
+    </>
   );
 }

@@ -278,7 +278,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
-| `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`） | 發佈與交付空間裡正在續接哪一筆保存紀錄。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication；兩者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。清單成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
+| `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`） | 發佈與交付空間裡正在續接哪一筆保存紀錄。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication；兩者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`，不得只把人送到泛用清單重新尋找。清單成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`、`version`（皆須為 UUID） | 「此 Skill／Version 的 Test Case」那條連結要的東西；`version` 會跟著進單筆 Test Case 與 preflight，不改變清單本身的 owner scope |

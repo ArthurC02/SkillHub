@@ -16,6 +16,7 @@ import {
 } from "../publishing.service";
 import { publishGateState, refusalSentence } from "../publishing.model";
 import { PublishForm } from "./PublishForm";
+import { PublisherRegistration } from "./PublisherSection";
 
 export function PublishPanel({
   skill,
@@ -55,7 +56,7 @@ export function PublishPanel({
 
   return (
     <section>
-      <h3>發佈</h3>
+      <h2>發佈</h2>
 
       {publisher.isPending && <Loading what="發佈者資訊" />}
       {publisher.error && !noPublisherYet && (
@@ -63,9 +64,13 @@ export function PublishPanel({
       )}
 
       {noPublisherYet ? (
-        <p className="note">
-          要先在<Link to="/workspace/account">帳號頁</Link>註冊一個發佈者名稱，才能發佈這個 Skill。
-        </p>
+        <>
+          <p className="note">
+            先在這裡註冊一個永久的發佈者名稱；確認後會回到這一版繼續建立 Publication。
+          </p>
+          <h3>發佈者名稱</h3>
+          <PublisherRegistration />
+        </>
       ) : publisher.data ? (
         <>
           {publication.isPending && <Loading what="發佈狀態" />}
@@ -141,6 +146,14 @@ function PublishedView({
           params={{ publisher: publication.publisher, name: publication.name }}
         >
           {publication.address}
+        </Link>
+      </p>
+      <p>
+        <Link
+          to="/workspace/downloads"
+          search={{ publication: `${publication.publisher}/${publication.name}` }}
+        >
+          在發佈與交付中查看這一筆
         </Link>
       </p>
       <p>

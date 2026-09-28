@@ -49,16 +49,21 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params,
+    search,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string | undefined>;
     children?: unknown;
-  }) => (
-    <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
-      {children as never}
-    </a>
-  ),
+  }) => {
+    const path = Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to);
+    const query = new URLSearchParams();
+    Object.entries(search ?? {}).forEach(([key, value]) => {
+      if (value !== undefined) query.set(key, value);
+    });
+    return <a href={`${path}${query.size ? `?${query}` : ""}`}>{children as never}</a>;
+  },
   useParams: () => ({ publisher: PUBLISHER, name: PUBLICATION }),
   useSearch: () => publishingSearch,
 }));
@@ -154,6 +159,63 @@ test("an empty Bundle collection keeps creation available without making the pag
   );
   expect(createBundle?.open).toBe(false);
   expect(createBundle?.querySelector("form.bundle-form")).not.toBeNull();
+});
+
+test("a Bundle export continues from the exact saved artifact", async () => {
+  const bundle = {
+    bundle: "pdf-toolkit",
+    version: "1.0.0",
+    description: "PDF tools",
+    content_hash: "sha256:bundle",
+    created_at: "2026-09-20T00:00:00Z",
+    members: [
+      {
+        skill_id: SKILL,
+        version_id: SKILL_VERSIONS.versions[0].version_id,
+        name: "PDF Summariser",
+        version_number: 2,
+        content_hash: "sha256:aa",
+      },
+    ],
+  };
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/bundles/pdf-toolkit/export" && init?.method === "POST") {
+      return json({
+        artifact_id: ARTIFACT,
+        file_name: "pdf-toolkit.zip",
+        size_bytes: 100,
+        content_hash: "sha256:artifact",
+        expires_at: "2099-01-01T00:00:00Z",
+        duplicate: false,
+        content_url: `/downloads/${ARTIFACT}/content`,
+      });
+    }
+    const routes: Record<string, { body: unknown; status?: number }> = {
+      "/me/publisher": { body: OWN_PUBLISHER },
+      "/me/publications": { body: { publications: [] } },
+      "/me/bundles": { body: { bundles: [bundle] } },
+      "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+      "/downloads": { body: { downloads: [] } },
+      "/me/bundles/pdf-toolkit/publication": {
+        body: { error: "not published" },
+        status: 404,
+      },
+    };
+    const hit = routes[path];
+    return json(hit?.body ?? { error: "not found" }, hit?.status ?? (hit ? 200 : 404));
+  });
+  await render(<PublishingWorkspace />, () => text().includes("PDF tools"));
+
+  await act(async () => button("匯出為 Plugin")?.click());
+  await waitFor(() => text().includes("pdf-toolkit.zip"));
+
+  const continuation = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("在交付紀錄查看這一份"),
+  );
+  expect(continuation?.getAttribute("href")).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
 });
 
 test("the publishing overview keeps public identity and the exact latest release connected", async () => {
@@ -456,13 +518,13 @@ test("PACK-006 acquisition.available=false 時不顯示下載按鈕，只顯示 
 test("PACK-006 acquisition.available=true 時顯示下載按鈕，按下後用 content_url 觸發下載", async () => {
   stubAcquire(() => ({
     body: {
-      artifact_id: "art-1",
+      artifact_id: ARTIFACT,
       file_name: "pdf-summariser-v2.zip",
       size_bytes: 100,
       content_hash: "sha256:zz",
       expires_at: "2099-01-01T00:00:00Z",
       duplicate: false,
-      content_url: "/downloads/art-1/content",
+      content_url: `/downloads/${ARTIFACT}/content`,
     },
   }));
   await render(<PublicPublication />, () => text().includes("PDF Summariser"));
@@ -474,7 +536,11 @@ test("PACK-006 acquisition.available=true 時顯示下載按鈕，按下後用 c
   const link = Array.from(container.querySelectorAll("a")).find((a) =>
     (a.textContent ?? "").includes("pdf-summariser-v2.zip"),
   );
-  expect(link?.getAttribute("href")).toBe("/downloads/art-1/content");
+  expect(link?.getAttribute("href")).toBe(`/downloads/${ARTIFACT}/content`);
+  const continuation = Array.from(container.querySelectorAll("a")).find((a) =>
+    (a.textContent ?? "").includes("在交付紀錄查看這一份"),
+  );
+  expect(continuation?.getAttribute("href")).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
 });
 
 test("PACK-006 401：未登入按下下載，交給既有登入元件說一次", async () => {
@@ -652,14 +718,14 @@ test("PublishPanel：不是擁有者時整塊不顯示", async () => {
   expect(text()).toBe("");
 });
 
-test("PublishPanel：還沒有發佈者時，指向帳號頁註冊", async () => {
+test("PublishPanel：還沒有發佈者時，在精確版本脈絡內提供註冊", async () => {
   stub({ "/me/publisher": { body: { error: "no publisher" }, status: 404 } });
   await render(<PublishPanel skill={detail()} isLoggedIn={true} isOwner={true} />, () =>
-    text().includes("註冊一個發佈者名稱"),
+    text().includes("確認後會回到這一版繼續建立 Publication"),
   );
 
-  const link = container.querySelector("a")!;
-  expect(link.getAttribute("href")).toBe("/workspace/account");
+  expect(container.querySelector("form.publisher-form")).not.toBeNull();
+  expect(container.querySelector('a[href="/workspace/account"]')).toBeNull();
 });
 
 test("PublishPanel：尚未發佈時，名稱欄預設為 Skill 名稱", async () => {
@@ -688,6 +754,11 @@ test("PublishPanel：已發佈時顯示公開位址、狀態與最新 Release", 
   expect(text()).toContain(`/p/${PUBLISHER}/${PUBLICATION}`);
   expect(text()).toContain("已發佈");
   expect(text()).toContain("v2");
+  expect(
+    Array.from(container.querySelectorAll("a"))
+      .find((link) => link.textContent?.includes("在發佈與交付中查看這一筆"))
+      ?.getAttribute("href"),
+  ).toBe(`/workspace/downloads?publication=${encodeURIComponent(`${PUBLISHER}/${PUBLICATION}`)}`);
   expect(button("發佈 v2")).toBeDefined();
   expect(button("撤回")).toBeDefined();
 });

@@ -138,7 +138,14 @@ export function Packaging() {
             onBuild={buildPackage}
           />
 
-          {built && <BuiltResultNotice built={built} onDownload={refreshDownloads} />}
+          {built && (
+            <BuiltResultNotice
+              built={built}
+              skillId={skillId}
+              versionId={versionId}
+              onDownload={refreshDownloads}
+            />
+          )}
         </>
       )}
     </section>

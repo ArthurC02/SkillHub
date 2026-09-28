@@ -3,6 +3,8 @@ import AxeBuilder from "@axe-core/playwright";
 import {
   ARTIFACT,
   OTHER_RUN,
+  PUBLICATION,
+  PUBLISHER,
   RUN,
   SKILL,
   SKILL_B,
@@ -72,6 +74,27 @@ test.describe("QA-008 real layout", () => {
     await expect(target).toBeFocused();
     await expect(target).toBeInViewport();
     await expect(target).toContainText("pdf-summariser-v2.zip");
+    await expect(target).toContainText("續接位置");
+  });
+
+  test("a version hands its exact Publication to the publishing workspace", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+
+    const continuation = page.getByRole("link", {
+      name: "在發佈與交付中查看這一筆",
+    });
+    await expect(continuation).toHaveAttribute(
+      "href",
+      `/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`,
+    );
+    await continuation.click();
+
+    const target = page.locator('[aria-current="location"]');
+    await expect(target).toBeFocused();
+    await expect(target).toBeInViewport();
+    await expect(target).toContainText(PUBLICATION);
     await expect(target).toContainText("續接位置");
   });
 

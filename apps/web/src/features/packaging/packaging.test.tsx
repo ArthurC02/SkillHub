@@ -63,16 +63,24 @@ vi.mock("@tanstack/react-router", async () => {
     Link: ({
       to,
       params,
+      search,
       children,
     }: {
       to: string;
       params?: Record<string, string>;
+      search?: Record<string, string | undefined>;
       children?: unknown;
-    }) => (
-      <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
-        {children as never}
-      </a>
-    ),
+    }) => {
+      const path = Object.entries(params ?? {}).reduce(
+        (acc, [k, v]) => acc.replace(`$${k}`, v),
+        to,
+      );
+      const query = new URLSearchParams();
+      Object.entries(search ?? {}).forEach(([key, value]) => {
+        if (value !== undefined) query.set(key, value);
+      });
+      return <a href={`${path}${query.size ? `?${query}` : ""}`}>{children as never}</a>;
+    },
     useParams: () => ({ skillId: SKILL }),
     useSearch: () =>
       useSyncExternalStore(
@@ -454,6 +462,21 @@ test("PACK-001 an identical package answers 已有相同套件 rather than prete
     .map((a) => a.getAttribute("href") ?? "")
     .find((h) => h.includes("/downloads/"));
   expect(href).toContain(`/downloads/${ARTIFACT}/content`);
+});
+
+test("a created package continues from the exact artifact and immutable version", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+  await act(async () => button("建立下載套件")?.click());
+  await waitFor(() => text().includes("套件已建立"));
+
+  const links = Array.from(container.querySelectorAll("a"));
+  expect(
+    links.find((link) => link.textContent?.includes("回到這一版，繼續發佈"))?.getAttribute("href"),
+  ).toBe(`/skills/${SKILL}/versions/${VERSION}`);
+  expect(
+    links.find((link) => link.textContent?.includes("在交付紀錄查看這一份"))?.getAttribute("href"),
+  ).toBe(`/workspace/downloads?artifact=${ARTIFACT}`);
 });
 
 test("DESIGN-012 the three compatibility axes are on the packaging page and stay apart", async () => {
@@ -860,8 +883,21 @@ test("PACK-018 a Plugin download row shows the plugin's name, version and member
   expect(text()).not.toContain("來源 Skill");
 
   const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-  expect(hrefs).toContain(`/skills/${SKILL}`);
-  expect(hrefs).toContain("/skills/skill-b");
+  expect(hrefs).toContain(`/skills/${SKILL}/versions/${VERSION}`);
+  expect(hrefs).toContain("/skills/skill-b/versions/version-b");
+});
+
+test.each([
+  [artifact, `/skills/${SKILL}/versions/${VERSION}`, "來源版本"],
+  [{ ...artifact, skill_version_id: undefined }, `/skills/${SKILL}`, "來源 Skill"],
+])("a saved artifact links to its most precise available source", async (saved, href, label) => {
+  vi.stubGlobal("fetch", () => json({ downloads: [saved] }));
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  const source = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes(label),
+  );
+  expect(source?.getAttribute("href")).toBe(href);
 });
 
 test("SEC-006 deleting states its scope first and then deletes", async () => {

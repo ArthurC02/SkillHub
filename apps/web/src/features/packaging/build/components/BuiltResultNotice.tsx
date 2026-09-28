@@ -4,9 +4,13 @@ import { DownloadArtifactFacts } from "../../components/DownloadArtifactFacts";
 
 export function BuiltResultNotice({
   built,
+  skillId,
+  versionId,
   onDownload,
 }: {
   built: CreatedDownloadArtifact;
+  skillId: string;
+  versionId: string;
   onDownload: () => void;
 }) {
   return (
@@ -27,7 +31,13 @@ export function BuiltResultNotice({
           下載 {built.file_name}
         </a>
         {" ｜ "}
-        <Link to="/workspace/downloads">到下載紀錄</Link>
+        <Link to="/skills/$skillId/versions/$versionId" params={{ skillId, versionId }}>
+          回到這一版，繼續發佈
+        </Link>
+        {" ｜ "}
+        <Link to="/workspace/downloads" search={{ artifact: built.artifact_id }}>
+          在交付紀錄查看這一份
+        </Link>
       </p>
     </div>
   );
