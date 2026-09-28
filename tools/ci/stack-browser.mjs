@@ -129,19 +129,20 @@ for (const { signedIn, context } of [
       problems.push("no .app-nav link: the app did not mount");
     }
 
-    if (problems.length > 0) {
-      failed = true;
-      console.error(
-        `FAIL ${route.name} (${signedIn ? "signed in" : "signed out"})  ${route.url}`,
-      );
-      for (const p of problems) console.error(`       ${p}`);
-    } else {
-      console.log(
-        `ok   ${route.name} (${signedIn ? "signed in" : "signed out"})`,
-      );
-    }
+    if (!reportRoute(route, signedIn, problems)) failed = true;
     await page.close();
   }
+
+function reportRoute(route, signedIn, problems) {
+  const session = signedIn ? "signed in" : "signed out";
+  if (problems.length === 0) {
+    console.log(`ok   ${route.name} (${session})`);
+    return true;
+  }
+  console.error(`FAIL ${route.name} (${session})  ${route.url}`);
+  for (const p of problems) console.error(`       ${p}`);
+  return false;
+}
 
 await browser.close();
 console.log(

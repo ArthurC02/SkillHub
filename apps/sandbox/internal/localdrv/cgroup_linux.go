@@ -16,7 +16,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const cgroupMount = "/sys/fs/cgroup"
+const (
+	cgroupMount   = "/sys/fs/cgroup"
+	cgroupDirMode = 0o755
+)
 
 var errNoCgroup = errors.New("no writable cgroup v2 subtree with the memory and pids controllers")
 
@@ -44,7 +47,7 @@ var runParent = sync.OnceValues(func() (string, error) {
 	}
 
 	leaf := filepath.Join(own, "supervisor")
-	if err := os.Mkdir(leaf, 0o755); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(leaf, cgroupDirMode); err != nil && !os.IsExist(err) {
 		return "", fmt.Errorf("carve a leaf for the supervisor: %w", err)
 	}
 	self := strconv.Itoa(os.Getpid())
@@ -117,7 +120,7 @@ func newCgroup(name string, lim treeLimits) (*cgroup, error) {
 		return nil, err
 	}
 	c := &cgroup{dir: filepath.Join(parent, name)}
-	if err := os.Mkdir(c.dir, 0o755); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(c.dir, cgroupDirMode); err != nil && !os.IsExist(err) {
 		return nil, fmt.Errorf("create cgroup %s: %w", name, err)
 	}
 	if lim.MemoryBytes > 0 {
