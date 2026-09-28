@@ -57,14 +57,33 @@ type Deps struct {
 }
 
 func NewRouter(d Deps) http.Handler {
-	auth := d.Auth
-
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /healthz", newGeneratedHealthHandler())
-
 	mux.HandleFunc("GET /readyz", readinessHandler(d))
-	auth.Mount(mux)
+	d.Auth.Mount(mux)
+
+	mountAdmissionRoutes(mux, d)
+	mountCreationRoutes(mux, d)
+	mountCatalogRoutes(mux, d)
+	mountLibraryRoutes(mux, d)
+	mountPublishingRoutes(mux, d)
+	mountOwnerGovernanceRoutes(mux, d)
+	mountOperatorRoutes(mux, d)
+	mountTestLabRoutes(mux, d)
+	mountRunRoutes(mux, d)
+	mountEvaluationRoutes(mux, d)
+	mountPackagingRoutes(mux, d)
+
+	mux.HandleFunc("POST /feedback", d.Auth.RequireSession(d.Analytics.Feedback))
+	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)
+	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
+
+	return d.Analytics.Svc.Sessions(httpx.SameOriginWrites(mux, d.AppURL))
+}
+
+func mountAdmissionRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /skills/import/limits", auth.RequireSession(d.Importer.Limits))
 	mux.HandleFunc("POST /skills/import/upload", limited(d, metrics.RouteImportUpload, auth.RequireSession(d.Importer.Upload)))
@@ -77,6 +96,10 @@ func NewRouter(d Deps) http.Handler {
 		mux.HandleFunc("GET /skills/generate/failures",
 			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
 	}
+}
+
+func mountCreationRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	if d.GenerateExposed && d.CreationExposed && d.Creation != nil {
 		mux.HandleFunc("GET /creation-sessions", auth.RequireSession(auth.RequireInvited(d.Creation.List)))
@@ -87,6 +110,10 @@ func NewRouter(d Deps) http.Handler {
 		mux.HandleFunc("POST /creation-sessions/{session_id}/actions", limited(d, metrics.RouteGenerate, auth.RequireSession(auth.RequireInvited(d.Creation.Act))))
 		mux.HandleFunc("GET /creation-sessions/limits", auth.RequireSession(auth.RequireInvited(d.Creation.Limits)))
 	}
+}
+
+func mountCatalogRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.PublicSearch))
 	mux.HandleFunc("POST /api/skills/search", limited(d, metrics.RoutePublicSearch, d.Search.CorrectedSearch))
@@ -97,6 +124,10 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(d.Search.SkillFiles))
 
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(d.Search.Search))
+}
+
+func mountLibraryRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /skills", auth.RequireSession(d.Registry.List))
 
@@ -106,6 +137,11 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /skills/{id}/versions", auth.RequireSession(d.Registry.Versions))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(d.Registry.Diff))
 	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(d.Registry.Delete))
+}
+
+func mountPublishingRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
+
 	mux.HandleFunc("GET /skills/{id}/publication", auth.RequireSession(d.Publishing.OwnPublication))
 	mux.HandleFunc("POST /skills/{id}/publication", auth.RequireSession(d.Publishing.Publish))
 	mux.HandleFunc("DELETE /skills/{id}/publication", auth.RequireSession(d.Publishing.Delist))
@@ -120,10 +156,18 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /publications/{publisher}/{name}", auth.OptionalSession(d.Publishing.PublicPublication))
 	mux.HandleFunc("POST /publications/{publisher}/{name}/acquisitions",
 		auth.RequireSession(publicationDownloadGate(d, d.Publishing.Acquire)))
+}
+
+func mountOwnerGovernanceRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
 
 	mux.HandleFunc("PUT /skills/{id}/category", auth.RequireSession(d.Registry.SetCategory))
+}
+
+func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
 	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
@@ -159,6 +203,10 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /admin/trends/runs", auth.RequireOperator(d.Trends.Runs))
 	mux.HandleFunc("GET /admin/trends/funnel", auth.RequireOperator(d.Trends.Funnel))
 	mux.HandleFunc("GET /admin/trends/operator-actions", auth.RequireOperator(d.Trends.OperatorActions))
+}
+
+func mountTestLabRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	lab := d.TestLab
 	mux.HandleFunc("GET /test-cases/limits", auth.RequireSession(lab.Limits))
@@ -175,6 +223,10 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /test-cases/{id}/datasets", auth.RequireSession(lab.UploadDataset))
 	mux.HandleFunc("GET /test-cases/{id}/datasets", auth.RequireSession(lab.ListDatasets))
 	mux.HandleFunc("DELETE /test-cases/{id}/datasets/{datasetId}", auth.RequireSession(lab.DeleteDataset))
+}
+
+func mountRunRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /skills/{id}/runs/preflight", auth.RequireSession(d.Runs.Preflight))
 	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(d.Runs.ConfirmPreflight))
@@ -196,6 +248,10 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /runs/{id}/artifacts", auth.RequireSession(d.Runs.Artifacts))
 	mux.HandleFunc("DELETE /runs/{id}/artifacts/{artifactId}",
 		auth.RequireSession(d.Runs.DeleteArtifact))
+}
+
+func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
 
@@ -210,6 +266,10 @@ func NewRouter(d Deps) http.Handler {
 		auth.RequireSession(d.Eval.ApplySuggestions))
 
 	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
+}
+
+func mountPackagingRoutes(mux *http.ServeMux, d Deps) {
+	auth := d.Auth
 
 	mux.HandleFunc("GET /packaging/targets", auth.RequireSession(d.Packaging.Targets))
 	mux.HandleFunc("GET /skills/{id}/versions/{versionId}/packaging/preview",
@@ -226,14 +286,6 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /downloads/{artifactId}/content",
 		auth.RequireSession(publicationDownloadGate(d, d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
-
-	mux.HandleFunc("POST /feedback", auth.RequireSession(d.Analytics.Feedback))
-
-	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)
-
-	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
-
-	return d.Analytics.Svc.Sessions(httpx.SameOriginWrites(mux, d.AppURL))
 }
 
 func limited(d Deps, route string, next http.HandlerFunc) http.HandlerFunc {
