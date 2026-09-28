@@ -8,7 +8,8 @@ const doc = readFileSync(
   "utf8",
 );
 const router = readFileSync(join(src, "app", "router.tsx"), "utf8");
-const ASSEMBLY = new Set(["main.tsx", "app/App.tsx", "app/router.tsx"]);
+const frame = readFileSync(join(src, "app", "RootLayout.tsx"), "utf8");
+const ASSEMBLY = new Set(["main.tsx", "app/App.tsx", "app/router.tsx", "app/RootLayout.tsx"]);
 
 function screenFiles(extension: RegExp): string[] {
   return readdirSync(src, { recursive: true })
@@ -48,7 +49,7 @@ test("IA §1: every route in router.tsx has a row, and every row is a route", ()
 });
 
 test("IA §2.1: the primary nav's targets are the ones the document lists", () => {
-  const nav = router.slice(router.indexOf('<nav className="app-nav"'), router.indexOf("</nav>"));
+  const nav = frame.slice(frame.indexOf('<nav className="app-nav"'), frame.indexOf("</nav>"));
   const actual = [...new Set([...nav.matchAll(/to="([^"]+)"/g)].map((m) => m[1]))].sort();
   expect(actual.length).toBeGreaterThanOrEqual(4);
 

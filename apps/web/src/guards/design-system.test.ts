@@ -258,7 +258,7 @@ test("every selector in a component stylesheet is scoped by a class only its fol
 });
 
 const APP_FRAME =
-  "the frame every page sits in: router.tsx draws it once, so its look is the project's";
+  "the frame every page sits in: RootLayout.tsx draws it once, so its look is the project's";
 const CONTROL_LAYER =
   "wears the base control rule beside `button`, so it has the same box as the button next to it";
 const EVALUATION_LIST = "shares the evaluation list recipe with .criterion-list and .finding-list";

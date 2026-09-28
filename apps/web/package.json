@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/check-bundle-origins.mjs",
     "typecheck": "tsc -b --noEmit",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",

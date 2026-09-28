@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatAt } from "./Timestamp.model";
 
 const RELATIVE = new Intl.RelativeTimeFormat("zh-TW", { numeric: "always" });
@@ -25,6 +26,7 @@ function ago(from: Date, now: number): string {
 }
 
 export function Timestamp({ at, relative = false }: { at: string; relative?: boolean }) {
+  const [now] = useState(() => Date.now());
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) {
     return <time dateTime={at}>{formatAt(at)}</time>;
@@ -33,7 +35,7 @@ export function Timestamp({ at, relative = false }: { at: string; relative?: boo
   return (
     <time dateTime={at}>
       {formatAt(at)}
-      {relative && `（${ago(date, Date.now())}）`}
+      {relative && `（${ago(date, now)}）`}
     </time>
   );
 }

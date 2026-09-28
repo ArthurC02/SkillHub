@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Timestamp } from "./Timestamp";
 import { formatAt } from "./Timestamp.model";
 
@@ -15,6 +15,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   box.remove();
+  vi.useRealTimers();
 });
 
 test("an unreadable timestamp is shown as it came, and says it could not be read", () => {
@@ -29,6 +30,35 @@ test("the component prints the same absolute time an <option> label gets", async
   expect(time.getAttribute("datetime")).toBe(at);
   expect(time.textContent).toBe(formatAt(at));
   expect(time.textContent).toMatch(/2026/);
+});
+
+async function relativeTextAfter(elapsedMs: number): Promise<string> {
+  const at = "2026-09-05T08:30:00Z";
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(at).getTime() + elapsedMs);
+  await act(async () => root.render(<Timestamp at={at} relative />));
+  return box.querySelector("time")!.textContent!.slice(formatAt(at).length);
+}
+
+test.each([
+  [-1_000, "（剛剛）"],
+  [0, "（0 秒前）"],
+  [59_000, "（59 秒前）"],
+  [60_000, "（1 分鐘前）"],
+  [3_599_000, "（59 分鐘前）"],
+  [3_600_000, "（1 小時前）"],
+  [86_400_000, "（1 天前）"],
+])("a timestamp %i ms old reads %s", async (elapsedMs, expected) => {
+  expect(await relativeTextAfter(elapsedMs)).toBe(expected);
+});
+
+test("the elapsed time stays the one read when the timestamp appeared", async () => {
+  expect(await relativeTextAfter(59_000)).toBe("（59 秒前）");
+
+  vi.setSystemTime(new Date("2026-09-05T09:30:00Z"));
+  await act(async () => root.render(<Timestamp at="2026-09-05T08:30:00Z" relative />));
+
+  expect(box.querySelector("time")!.textContent).toMatch(/（59 秒前）$/);
 });
 
 test("the component shows an unreadable timestamp the same way formatAt does", async () => {
