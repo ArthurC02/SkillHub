@@ -11,6 +11,7 @@ import { PromptForm } from "./components/PromptForm";
 import { CriteriaSection } from "./components/CriteriaSection";
 import { RubricSection } from "./components/RubricSection";
 import { DatasetSection } from "./components/DatasetSection";
+import { SkillWorkspaceNav } from "../../skill";
 
 export function TestCaseDetail() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId" });
@@ -51,6 +52,7 @@ export function TestCaseDetail() {
   return (
     <section key={testCaseId}>
       <h1>{testCase.data.name}</h1>
+      <SkillWorkspaceNav skillId={testCase.data.skill_id} versionId={lastVersion} />
       <p className="note">
         <Link to="/lab/test-cases" search={{ skill: testCase.data.skill_id }}>
           回到這個 Skill 的 Test Case 列表

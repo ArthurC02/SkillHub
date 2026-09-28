@@ -156,19 +156,22 @@ WorkspaceHome ──► /, /skills/$id, /runs/$id, /workspace/import,
                   /workspace/runs, /workspace/skills
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/package, /lab/test-cases
-SkillFiles ─────► /skills/$id
+SkillFiles ─────► /skills/$id, /lab/test-cases
 ImportSkill ────► /skills/$id
-Packaging ──────► /skills/$id, /workspace/downloads
+Packaging ──────► /skills/$id, /skills/$id/files, /lab/test-cases, /workspace/downloads
 Downloads ──────► /skills/$id, /workspace/skills
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
                   /workspace/account, /workspace, /policy
 WorkspaceRuns ──► /runs/$id, /lab/test-cases, /workspace
-TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id, /skills/$id
+TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id,
+                  /skills/$id, /skills/$id/files
 DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
-RunPreflight ───► /lab/test-cases, /runs/$id
-RunTrace ───────► /runs/$id/compare
-RunCompare ─────► /lab/run, /runs/$id
+RunPreflight ───► /lab/test-cases, /runs/$id, /skills/$id, /skills/$id/files
+RunTrace ───────► /runs/$id/compare, /lab/test-cases, /skills/$id,
+                  /skills/$id/files
+RunCompare ─────► /lab/run, /runs/$id, /lab/test-cases, /skills/$id,
+                  /skills/$id/files
 EvaluationPanel ► /lab/run, /skills/$id       （渲染在 /runs/$id 之內）
 WorkspaceAccount► /policy, /workspace/{skills,runs,downloads}
 DataPolicy ─────► /workspace/{skills,runs,downloads,account}
@@ -478,7 +481,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | --- | --- | --- |
 | 每條路由的標題階層不跳級 | [`a11y.test.tsx`](../../apps/web/src/guards/a11y.test.tsx)（axe `heading-order`） | 全部路由；新路由沒加案例會 FAIL |
 | 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/guards/__outlines__/) 快照 | **33** 個檔（後台七頁各一份）。**不判斷對錯，只讓變更變成必須核可的 diff** |
-| 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。`SkillDetail` 與 `SkillFiles` 各自帶一個未命名的 `<nav>`，主導覽因此必須具名 |
+| 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。平台導覽與 Skill 工作台局部導覽各自有名稱，頁面新增 `<nav>` 時不能借用既有名稱 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
 | 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（31 個位址；30 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
 | 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **10** 條 |

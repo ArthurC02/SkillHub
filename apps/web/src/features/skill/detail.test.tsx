@@ -285,8 +285,9 @@ test("同一份來源帶進來的其他 Skill 各自有連結，而且不含自�
   stubOwner({ source: PLUGIN_SOURCE });
   await render(<SkillDetail />, settledAsOwner);
 
-  expect(text()).toContain("同一個來源帶進來的其他 Skill（2）");
-  const links = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+  const heading = elementSaying("同一個來源帶進來的其他 Skill（2）");
+  const list = heading.nextElementSibling?.nextElementSibling;
+  const links = Array.from(list?.querySelectorAll("a") ?? []).map((a) => a.getAttribute("href"));
   expect(links, "一套進來的 Skill 之間走不過去，使用者就看不出它們是一套").toEqual(
     expect.arrayContaining(["/skills/s-2", "/skills/s-3"]),
   );

@@ -1932,7 +1932,11 @@ test("DISC-007: advanced mode shows SKILL.md in full and marks every script", as
   );
   expect(marked).toHaveLength(1);
   expect(marked[0].textContent).toContain("scripts/run.py");
-  expect(text).toContain("一般模式");
+  expect(
+    [...container.querySelectorAll('nav[aria-label="這個 Skill 的工作台"] a')]
+      .find((link) => link.textContent === "總覽")
+      ?.getAttribute("href"),
+  ).toBe(`/skills/${skillId}`);
 });
 
 test("DISC-007: an invisible character in an imported SKILL.md is marked, not swallowed", async () => {

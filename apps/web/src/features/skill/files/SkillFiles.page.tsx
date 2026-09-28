@@ -1,10 +1,11 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
 import { useSkillFiles } from "../skills.service";
 import type { SkillFileEntry } from "../../../core/api/types";
 import { Reveal } from "../../../shared/ui/Reveal";
+import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import "./SkillFiles.page.css";
 
 export function SkillFiles() {
@@ -14,13 +15,8 @@ export function SkillFiles() {
 
   return (
     <article>
-      <nav>
-        <Link to="/skills/$skillId" params={{ skillId }}>
-          ← 回到 Skill 詳情（一般模式）
-        </Link>
-      </nav>
-
       <h1>SKILL.md 與檔案樹</h1>
+      <SkillWorkspaceNav skillId={skillId} versionId={data?.version_id} canPackage={false} />
 
       {isLoading && <Loading what="套件檔案清單" />}
       {error instanceof ApiError && error.status === 410 && (

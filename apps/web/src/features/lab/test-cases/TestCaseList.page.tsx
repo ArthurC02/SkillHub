@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCreateTestCase, useTestCases } from "../testcases.service";
-import { useOwnSkills } from "../../skill";
+import { SkillWorkspaceNav, useOwnSkills } from "../../skill";
 import { ExistingTestCasesSection } from "./components/ExistingTestCasesSection";
 import { CreateTestCaseForm } from "./components/CreateTestCaseForm";
 
@@ -23,6 +23,7 @@ export function TestCaseList() {
   return (
     <section>
       <h1>Test Case</h1>
+      {filter && <SkillWorkspaceNav skillId={filter} />}
       <p className="note" data-role="teaching">
         Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。
       </p>

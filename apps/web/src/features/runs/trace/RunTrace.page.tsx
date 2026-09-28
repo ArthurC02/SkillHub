@@ -9,6 +9,7 @@ import { CANCELLABLE, CancelRunControl } from "./components/CancelRunControl";
 import { RunArtifacts } from "./components/RunArtifacts";
 import { GeneralMode } from "./components/GeneralMode";
 import { AdvancedMode } from "./components/AdvancedMode";
+import { SkillWorkspaceNav } from "../../skill";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
@@ -22,11 +23,7 @@ export function RunTrace() {
       <h1>Run 結果</h1>
       <ReadFailure error={run.error} what="這個 Run" />
       {run.data && (
-        <p className="note">
-          <Link to="/skills/$skillId" params={{ skillId: run.data.skill_id }}>
-            回到這個 Run 的 Skill
-          </Link>
-        </p>
+        <SkillWorkspaceNav skillId={run.data.skill_id} versionId={run.data.skill_version_id} />
       )}
 
       <EvaluationPanel runId={runId} runStatus={general.data?.status} />

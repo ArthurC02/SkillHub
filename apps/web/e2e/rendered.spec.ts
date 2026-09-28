@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { RUN, SKILL, SKILL_B, platformResponse } from "../src/testing/fixtures/platform";
+import {
+  OTHER_RUN,
+  RUN,
+  SKILL,
+  SKILL_B,
+  TEST_CASE,
+  VERSION,
+  platformResponse,
+} from "../src/testing/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
@@ -245,6 +253,39 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
   });
   expect(edges.overflows, "後台導覽沒有溢位，提示沒有用途").toBe(true);
   expect(Math.abs(edges.hintRight - edges.navRight), "後台提示沒有黏在右緣").toBeLessThanOrEqual(2);
+});
+
+test("the validation journey keeps the same Skill workbench in reach", async ({ page }) => {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 900 });
+
+  const urls = [
+    `/skills/${SKILL}`,
+    `/skills/${SKILL}/files`,
+    `/skills/${SKILL}/package?version=${VERSION}`,
+    `/lab/test-cases?skill=${SKILL}`,
+    `/lab/test-cases/${TEST_CASE}`,
+    `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`,
+    `/runs/${RUN}`,
+    `/runs/${RUN}/compare?against=${OTHER_RUN}`,
+  ];
+
+  for (const url of urls) {
+    await page.goto(url);
+    const nav = page.getByRole("navigation", { name: "這個 Skill 的工作台" });
+    await expect(nav, url).toBeVisible();
+    await expect(nav.locator("a, button"), url).toHaveCount(4);
+    await expect(nav.getByRole("link", { name: "總覽" }), url).toHaveAttribute(
+      "href",
+      `/skills/${SKILL}`,
+    );
+    if (url === `/skills/${SKILL}` || url.startsWith(`/skills/${SKILL}/package`)) {
+      await expect(nav.getByRole("link", { name: "打包" }), url).toBeVisible();
+    } else {
+      await expect(nav.getByRole("link", { name: "打包" }), url).toHaveCount(0);
+      await expect(nav.getByRole("button", { name: "打包" }), url).toBeDisabled();
+    }
+  }
 });
 
 test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
@@ -797,11 +838,11 @@ test.describe("the fourth disclosure: a Tip in a real engine", () => {
 
     // Document coordinates (+ scrollY), not viewport-relative: opening the
     // trigger scrolls it into view, which would shift every viewport-relative
-    // top. Skips <option>: Chromium reports it as zero-size until interacted with.
+    // top. Skip elements without a layout box because their top is always zero.
     const positions = () =>
       page.evaluate(() =>
         Array.from(document.querySelectorAll("main *"))
-          .filter((el) => !el.closest("[data-tip]") && el.tagName !== "OPTION")
+          .filter((el) => !el.closest("[data-tip]") && el.getClientRects().length > 0)
           .map((el) => Math.round(el.getBoundingClientRect().top + window.scrollY)),
       );
     const before = await positions();

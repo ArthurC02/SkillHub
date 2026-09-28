@@ -9,6 +9,7 @@ import { useRun, useRuns } from "../runs.service";
 import { ComparisonLead } from "./components/ComparisonLead";
 import { ComparisonTables } from "./components/ComparisonTables";
 import { CompareCandidatesPicker } from "./components/CompareCandidatesPicker";
+import { SkillWorkspaceNav } from "../../skill";
 
 export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
@@ -51,6 +52,9 @@ export function RunCompare() {
   return (
     <section>
       <h1>Run 比較</h1>
+      {self.data && (
+        <SkillWorkspaceNav skillId={self.data.skill_id} versionId={self.data.skill_version_id} />
+      )}
 
       {comparison.data && <ComparisonLead data={comparison.data} />}
 

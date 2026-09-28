@@ -123,6 +123,27 @@ test("the walk sees every zone and every role, so an empty scan cannot pass", ()
   ]);
 });
 
+test("the Skill workflow keeps its object navigation through every validation step", () => {
+  const hosts = [
+    "features/skill/detail/SkillDetail.page.tsx",
+    "features/skill/files/SkillFiles.page.tsx",
+    "features/packaging/build/Packaging.page.tsx",
+    "features/lab/test-cases/TestCaseList.page.tsx",
+    "features/lab/test-cases/TestCaseDetail.page.tsx",
+    "features/lab/preflight/components/PreflightShell.tsx",
+    "features/runs/trace/RunTrace.page.tsx",
+    "features/runs/compare/RunCompare.page.tsx",
+  ];
+
+  for (const path of hosts) {
+    const source = sources.find((candidate) => candidate.path === path);
+    expect(source, `${path} is missing from the architecture scan`).toBeDefined();
+    expect(source!.body, `${path} drops the reader out of the current Skill`).toContain(
+      "<SkillWorkspaceNav",
+    );
+  }
+});
+
 test("決策 1: core, shared, features and app import only in the directions allowed", () => {
   const violations = edges()
     .filter(({ source, target, typeOnly }) => !mayImport(source, target, typeOnly))

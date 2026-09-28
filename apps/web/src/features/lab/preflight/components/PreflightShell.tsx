@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { SkillVersionPicker } from "../../../skill";
+import { SkillVersionPicker, SkillWorkspaceNav } from "../../../skill";
 import type { useOwnSkills } from "../../../skill";
 import type { useTestCase } from "../../testcases.service";
 
@@ -26,6 +26,7 @@ export function PreflightShell({
   return (
     <section>
       <h1>執行前權限確認</h1>
+      <SkillWorkspaceNav skillId={skill} versionId={version || undefined} />
       <p>
         Skill：
         <strong>

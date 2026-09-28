@@ -11,7 +11,7 @@ import {
   type PackagingPreview,
   type PackagingTargetId,
 } from "../packaging.service";
-import { useEmbeddedSkillDetail } from "../../skill";
+import { SkillWorkspaceNav, useEmbeddedSkillDetail, useSkillVersions } from "../../skill";
 import { packagingGate } from "../packaging.model";
 import { matchingBuiltArtifact, resolveTarget } from "./build.model";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
@@ -58,6 +58,7 @@ export function Packaging() {
   const { skillId } = useParams({ from: "/skills/$skillId/package" });
   const { version } = useSearch({ strict: false }) as PackagingSearch;
   const skill = useEmbeddedSkillDetail(skillId);
+  const versions = useSkillVersions(skillId);
   const targets = usePackagingTargets();
   const refreshDownloads = useRefreshDownloads();
 
@@ -83,6 +84,8 @@ export function Packaging() {
   if (!skill.data) return <p role="alert">找不到這個 Skill。</p>;
 
   const gate = packagingGate(skill.data);
+  const canPackage =
+    !gate && versions.data?.versions.some((item) => item.version_id === versionId) === true;
   const deadReason = buildButtonReason({
     pending: build.isPending,
     target,
@@ -93,6 +96,11 @@ export function Packaging() {
   return (
     <section>
       <h1>Skill 套件</h1>
+      <SkillWorkspaceNav
+        skillId={skillId}
+        versionId={versionId || undefined}
+        canPackage={canPackage}
+      />
       <p>
         <Link to="/skills/$skillId" params={{ skillId }}>
           {skill.data.name}

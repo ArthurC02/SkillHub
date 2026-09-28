@@ -235,6 +235,7 @@ function stubPlatform(
       note: string;
     }[];
     skill?: typeof skill;
+    versions?: typeof VERSIONS;
   } = {},
 ) {
   const retention = options.retentionDays === "absent" ? undefined : (options.retentionDays ?? 23);
@@ -242,7 +243,7 @@ function stubPlatform(
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     calls.push(url);
-    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.endsWith("/versions")) return json(options.versions ?? VERSIONS);
     if (url.includes("/packaging/targets")) return json(targets);
     if (url.includes("/packaging/preview")) {
       return json(
@@ -359,6 +360,30 @@ test("every refusal the contract can send has a sentence on this page", () => {
     const label = PACKAGING_BLOCKED_LABEL[value as PackagingBlockedReason];
     expect(label, `no sentence for blocked_reason ${value}`).toBeTruthy();
   }
+});
+
+test("the workbench only links packaging when the selected version belongs to this workspace", async () => {
+  stubPlatform();
+  await render(<Packaging />, () =>
+    Boolean(
+      container.querySelector(
+        'nav[aria-label="這個 Skill 的工作台"] a[href*="/skills/11111111-1111-1111-1111-111111111111/package"]',
+      ),
+    ),
+  );
+
+  expect(
+    container.querySelector('nav[aria-label="這個 Skill 的工作台"] button[disabled]'),
+  ).toBeNull();
+});
+
+test("the workbench keeps packaging inert when the selected version is not workspace-owned", async () => {
+  stubPlatform({ versions: { versions: [] } });
+  await render(<Packaging />, () => text().includes("Skill 套件"));
+
+  const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]')!;
+  expect(nav.querySelector('a[href*="/package"]')).toBeNull();
+  expect(nav.querySelector("button[disabled]")?.textContent).toBe("打包");
 });
 
 test("PACK-002 the post-install check is on the page, not only inside the package", async () => {

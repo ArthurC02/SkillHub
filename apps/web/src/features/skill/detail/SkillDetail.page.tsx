@@ -5,6 +5,7 @@ import { ApiError } from "../../../core/api/client";
 import { useSkillDetail, useSkillVersions } from "../skills.service";
 import { useMe } from "../../../core/session/me.service";
 import { PublishPanel } from "../../publishing";
+import { packagingGate } from "../../packaging";
 import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { GeneratedNotice } from "../../creation";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
@@ -20,6 +21,7 @@ import { SkillProvenanceSection } from "./components/SkillProvenanceSection";
 import { SkillIdentifiers } from "./components/SkillIdentifiers";
 import { TrialEntry } from "./components/TrialEntry";
 import { ForkAction } from "./components/ForkAction";
+import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import "./SkillDetail.page.css";
 
 export function SkillDetail() {
@@ -47,6 +49,16 @@ export function SkillDetail() {
               <LabelledBadge kind="tier" value={skill.tier} />
               {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
             </div>
+            <SkillWorkspaceNav
+              skillId={skillId}
+              versionId={skill.version?.version_id}
+              canPackage={
+                !!me &&
+                (versions.data?.versions.length ?? 0) > 0 &&
+                !skill.access_restriction &&
+                !packagingGate(skill)
+              }
+            />
           </header>
 
           {skill.access_restriction && (

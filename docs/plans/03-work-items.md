@@ -71,7 +71,7 @@
 - [ ] DESIGN-004 設計 Skill 一般詳情與進階檔案檢視。（**不再追蹤**——落點：`DISC-006`／`DISC-007`／`DISC-008`）
 - [ ] DESIGN-005 設計 Skill 靜態比較介面。（**不再追蹤**——落點：`DISC-009`）
 - [ ] DESIGN-006 設計 Fork、個人工作區與版本差異流程。（**不再追蹤**——落點：`WS-001`／`WS-002`／`WS-003`／`WS-005`）
-- [ ] DESIGN-007 設計 Test Case、Dataset、MCP 與工具設定流程。（**不再追蹤**——落點：`TEST-012` 的 `apps/web/src/features/lab/test-cases/` 與 `/lab/datasets` 上傳頁。**兩項範圍註記**：①MCP 與工具設定屬後 MVP，本項那一半不會有落點；②**preflight 頁仍然沒有 Skill Version 選擇器**——`version` 只能從 URL query 進來，`EVAL-011` 也把它記在本項名下。本項收斂後該殘留不隨本節一起消失）
+- [ ] DESIGN-007 設計 Test Case、Dataset、MCP 與工具設定流程。（**不再追蹤**——落點：`TEST-012` 的 `apps/web/src/features/lab/test-cases/` 與 `/lab/datasets` 上傳頁。MCP 與工具設定屬後 MVP，本項那一半不會有落點。preflight 已列出工作區可見的 Skill Version；`version` query 只提供可重新選擇的預設值，選擇後仍會重新取得權限摘要）
 - [ ] DESIGN-008 設計執行前權限及成本摘要。（**不再追蹤**——落點：`TEST-008`／`TEST-009`／`TEST-011` 的 `RunPreflight`，含八項權限揭露、摘要 hash 重新確認與預估成本區間）
 - [ ] DESIGN-009 設計 Run 進度的一般模式與進階 Trace 模式。（**不再追蹤**——落點：`TRACE-006`／`TRACE-007` 的 `/runs/$runId`，含一般／進階切換與 `complete: false` 的誠實標示）
 - [ ] DESIGN-010 設計驗收條件、評估報告與改善建議流程。（**不再追蹤**——落點：`EVAL-003`～`EVAL-009` 的 `RunEvaluation.tsx`。**[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)待決策（兩列狀態的文案與版面）的實質內容已由這個畫面回答**：執行狀態與任務判定永遠兩列、任務判定排在前、沒有評估的一邊顯示「未評估（不是通過）」，具名測試在 `eval.test.tsx`。剩餘缺口是 ——UI 分不出「引用回驗失敗」與「模型自己說不知道」，由 M4 的 UI 批承接）
@@ -510,4 +510,3 @@ hello in-process s3
 - [x] PACK-017 取得：登入後下載發佈物、下載記在取得者工作區、未受邀者的部署設定（預設關）。（對應 `02:PACK-006`）
 - [x] PACK-018 Bundle：Bundle 與 Bundle Version 的資料表與不可變守衛、建立端點與驗證、Plugin zip 匯出（打包那一側）、信任取最壞；發佈 Bundle 與公開頁上的成員變更。（對應 `02:PACK-005`）
 - [x] DISC-013 曝光審核：審核紀錄、營運者的清單／快照／核准／撤銷端點與後台頁，搜尋、目錄瀏覽、分類數量納入曝光中的發佈物，公開讀取同一次核對資格。（對應 `02:DISC-007`）
-
