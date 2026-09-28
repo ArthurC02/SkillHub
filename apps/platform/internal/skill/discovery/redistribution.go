@@ -44,7 +44,7 @@ type redistributionChangeResponse struct {
 
 func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 	var body redistributionRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a value and a note")
 		return
 	}
@@ -181,7 +181,7 @@ func redistributionRefusal(refused registry.Refused, value string) error {
 }
 
 func redistributionMetadata(before, after, note string, verified registry.LicenseClaim) map[string]any {
-	m := map[string]any{"before": before, "after": after, "note": note}
+	m := map[string]any{auditBefore: before, auditAfter: after, auditNote: note}
 	if after == string(RedistributionAllowed) {
 		m["license_expression"] = verified.Expression
 		m["license_source"] = verified.Source

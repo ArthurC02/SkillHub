@@ -19,6 +19,12 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
+const (
+	auditKeyName        = "name"
+	auditKeyContentHash = "content_hash"
+	auditKeyReleaseID   = "release_id"
+)
+
 type SkillFacts struct {
 	ID               pgtype.UUID
 	Name             string
@@ -147,7 +153,7 @@ func (s *Service) RegisterPublisher(ctx context.Context, ws identity.Workspace, 
 	if err := audit.Log(ctx, tx, audit.Event{
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionPublisherRegister, ResourceType: audit.ResourcePublisher, ResourceID: row.ID,
-		Metadata: map[string]any{"name": row.Name},
+		Metadata: map[string]any{auditKeyName: row.Name},
 	}); err != nil {
 		return Publisher{}, err
 	}
@@ -181,9 +187,7 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	if _, err := q.LockPublisherByWorkspace(ctx, ws.ID); errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNoPublisher
-	} else if err != nil {
+	if err := lockPublisher(ctx, q, ws); err != nil {
 		return Publication{}, err
 	}
 	skill, found, err := s.LockSkillForRelease(ctx, tx, ws.ID, skillID)
@@ -213,12 +217,12 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionPublicationRelease, ResourceType: audit.ResourcePublication, ResourceID: publication.ID,
 		Metadata: map[string]any{
-			"name":            publication.Name,
-			"skill_id":        pgconv.UUIDString(skill.ID),
-			"version_id":      pgconv.UUIDString(version.ID),
-			"content_hash":    version.ContentHash,
-			"rights_attested": in.RightsAttested,
-			"release_id":      pgconv.UUIDString(release.ID),
+			auditKeyName:        publication.Name,
+			"skill_id":          pgconv.UUIDString(skill.ID),
+			"version_id":        pgconv.UUIDString(version.ID),
+			auditKeyContentHash: version.ContentHash,
+			"rights_attested":   in.RightsAttested,
+			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
 		},
 	}); err != nil {
 		return Publication{}, err
@@ -228,6 +232,15 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	}
 	own, _, err := s.OwnPublication(ctx, ws, skillID)
 	return own, err
+}
+
+func lockPublisher(ctx context.Context, q *gen.Queries, ws identity.Workspace) error {
+	if _, err := q.LockPublisherByWorkspace(ctx, ws.ID); errors.Is(err, pgx.ErrNoRows) {
+		return ErrNoPublisher
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) versionToRelease(ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID) (VersionFacts, error) {

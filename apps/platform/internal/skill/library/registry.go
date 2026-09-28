@@ -77,6 +77,34 @@ func (s *Service) catalogSkillIn(ctx context.Context, db gen.DBTX, skillID pgtyp
 	return gen.New(db).GetCatalogSkill(ctx, gen.GetCatalogSkillParams{ID: skillID, CatalogWorkspaceIds: catalogs})
 }
 
+func (s *Service) forkSource(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID) (gen.Skill, gen.SkillVersion, error) {
+	q := gen.New(tx)
+	src, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		src, err = s.catalogSkillIn(ctx, tx, skillID)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Skill{}, gen.SkillVersion{}, err
+	}
+
+	if src.TakedownAt.Valid {
+		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+	}
+	srcVer, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
+		SkillID: src.ID, WorkspaceID: src.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Skill{}, gen.SkillVersion{}, err
+	}
+	return src, srcVer, nil
+}
+
 func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID) (Skill, Version, error) {
 	if err := s.requireProjection(); err != nil {
 		return Skill{}, Version{}, err
@@ -86,28 +114,7 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		return Skill{}, Version{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-
-	src, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		src, err = s.catalogSkillIn(ctx, tx, skillID)
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Skill{}, Version{}, ErrNotFound
-	}
-	if err != nil {
-		return Skill{}, Version{}, err
-	}
-
-	if src.TakedownAt.Valid {
-		return Skill{}, Version{}, ErrNotFound
-	}
-	srcVer, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
-		SkillID: src.ID, WorkspaceID: src.WorkspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Skill{}, Version{}, ErrNotFound
-	}
+	src, srcVer, err := s.forkSource(ctx, tx, ws, skillID)
 	if err != nil {
 		return Skill{}, Version{}, err
 	}

@@ -130,7 +130,9 @@ type artifactResponse struct {
 	Duplicate bool `json:"duplicate"`
 }
 
-func retentionDays(d time.Duration) int { return int(d / (24 * time.Hour)) }
+const day = 24 * time.Hour
+
+func retentionDays(d time.Duration) int { return int(d / day) }
 
 type validationView struct {
 	Blocked  bool          `json:"blocked"`
@@ -213,6 +215,8 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+const maxPackageRequestBytes = 4096
+
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -229,7 +233,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Target           string `json:"target"`
 		IncludeTestCases bool   `json:"include_test_cases"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPackageRequestBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `target`")
 		return
 	}

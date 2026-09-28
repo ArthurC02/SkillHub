@@ -8,27 +8,32 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"path"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
-const MaxZipBytes = 10 << 20
+const mebibyte = 1 << 20
+
+const MaxZipBytes = 10 * mebibyte
 
 func HumanMB(n int64) string {
-	return strconv.FormatFloat(float64(n)/(1<<20), 'f', 1, 64) + " MB"
+	return strconv.FormatFloat(float64(n)/mebibyte, 'f', 1, 64) + " MB"
 }
 
-var maxUnpackedBytes = uint64(100 << 20)
+var maxUnpackedBytes = uint64(100 * mebibyte)
 
 var (
 	maxArchiveEntries = 2000 // one-number: maxSkillPackageEntries
 
-	maxEntryBytes = uint64(10 << 20)
+	maxEntryBytes = uint64(10 * mebibyte)
 
 	maxEntryDepth = 10
 )
+
+const maxEntryComponentBytes = 255
 
 type ArchiveLimits struct {
 	ZipBytes      int64
@@ -181,7 +186,7 @@ func (e archiveEntry) checkPortableName() error {
 		return badArchive(ArchiveUnsafeName, "archive entry has a non-canonical portable name %q", rawName)
 	}
 	for _, part := range strings.Split(strings.TrimSuffix(rawName, "/"), "/") {
-		if len(part) > 255 {
+		if len(part) > maxEntryComponentBytes {
 			return badArchive(ArchiveBeyondLimits, "archive entry component exceeds 255 bytes in %q", rawName)
 		}
 	}
@@ -261,29 +266,31 @@ func packageTree(zr *zip.Reader) fs.FS {
 	return zr
 }
 
-func validateZipEnvelope(data []byte) error {
-	const (
-		eocdSignature         = 0x06054b50
-		zip64LocatorSignature = 0x07064b50
-	)
-	if len(data) < 22 {
-		return badArchive(ArchiveNotZip, "not a zip archive")
-	}
-	// The end-of-central-directory record sits at the very end of the file but
-	// may be preceded by a comment of up to 65535 bytes, so scan backward for
-	// its signature instead of assuming a fixed offset.
-	min := len(data) - 22 - 65535
-	if min < 0 {
-		min = 0
-	}
-	eocd := -1
-	for i := len(data) - 22; i >= min; i-- {
+const (
+	eocdSignature         = 0x06054b50
+	zip64LocatorSignature = 0x07064b50
+	eocdMinSize           = 22
+)
+
+// The end-of-central-directory record sits at the very end of the file but
+// may be preceded by a comment of up to 65535 bytes, so scan backward for
+// its signature instead of assuming a fixed offset.
+func findEndOfCentralDirectory(data []byte) int {
+	lowest := max(len(data)-eocdMinSize-math.MaxUint16, 0)
+	for i := len(data) - eocdMinSize; i >= lowest; i-- {
 		if binary.LittleEndian.Uint32(data[i:i+4]) == eocdSignature &&
-			i+22+int(binary.LittleEndian.Uint16(data[i+20:i+22])) == len(data) {
-			eocd = i
-			break
+			i+eocdMinSize+int(binary.LittleEndian.Uint16(data[i+20:i+22])) == len(data) {
+			return i
 		}
 	}
+	return -1
+}
+
+func validateZipEnvelope(data []byte) error {
+	if len(data) < eocdMinSize {
+		return badArchive(ArchiveNotZip, "not a zip archive")
+	}
+	eocd := findEndOfCentralDirectory(data)
 	if eocd < 0 {
 		return badArchive(ArchiveCorrupt, "end of central directory not found")
 	}
@@ -309,19 +316,23 @@ func validateZipEnvelope(data []byte) error {
 // records, since a zip entry may carry several unrelated extra blocks
 // back to back.
 func hasZip64Extra(extra []byte) (bool, error) {
+	const (
+		extraHeaderSize = 4
+		zip64ExtraID    = 0x0001
+	)
 	for len(extra) > 0 {
-		if len(extra) < 4 {
+		if len(extra) < extraHeaderSize {
 			return false, errors.New("truncated extra-field header")
 		}
-		id := uint16(extra[0]) | uint16(extra[1])<<8
-		size := int(extra[2]) | int(extra[3])<<8
-		if id == 0x0001 {
+		id := binary.LittleEndian.Uint16(extra[0:2])
+		size := int(binary.LittleEndian.Uint16(extra[2:4]))
+		if id == zip64ExtraID {
 			return true, nil
 		}
-		if size > len(extra)-4 {
+		if size > len(extra)-extraHeaderSize {
 			return false, errors.New("extra-field payload exceeds its container")
 		}
-		extra = extra[4+size:]
+		extra = extra[extraHeaderSize+size:]
 	}
 	return false, nil
 }
@@ -352,8 +363,9 @@ func isCanonicalArchiveName(name string) bool {
 }
 
 func hasASCIIControl(s string) bool {
+	const firstPrintableASCII = 0x20
 	for _, r := range s {
-		if r < 0x20 {
+		if r < firstPrintableASCII {
 			return true
 		}
 	}

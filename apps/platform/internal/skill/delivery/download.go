@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -315,7 +316,11 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 	if row.PurgedAt.Valid || s.Store == nil {
 		return nil
 	}
+	s.purgeDeletedDownloadObject(ctx, conn, row)
+	return nil
+}
 
+func (s *Service) purgeDeletedDownloadObject(ctx context.Context, conn *pgxpool.Conn, row gen.SoftDeleteDownloadArtifactRow) {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
 	defer cancel()
 	live, err := gen.New(conn).CountArtifactsSharingObject(cleanupCtx, row.ObjectKey)
@@ -331,7 +336,6 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 		slog.Warn("download object not removed; cleanup will retry",
 			"object_key", row.ObjectKey, "error", err)
 	}
-	return nil
 }
 
 func (h *Handler) Downloads(w http.ResponseWriter, r *http.Request) {

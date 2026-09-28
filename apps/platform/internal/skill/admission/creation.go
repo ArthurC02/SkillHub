@@ -120,17 +120,9 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	if err != nil || !found || version.SkillID != skill.ID {
 		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
 	}
-	data, err := s.Store.Get(ctx, version.PackageObjectKey)
+	tree, md, err := s.openReferencePackage(ctx, version)
 	if err != nil {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
-	}
-	tree, err := skillpkg.SkillFS(data, version.SourcePath)
-	if err != nil {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
-	}
-	md, err := fs.ReadFile(tree, "SKILL.md")
-	if err != nil {
-		return FixedCreationReference{}, ReferenceSkill{}, ErrReferenceUnavailable
+		return FixedCreationReference{}, ReferenceSkill{}, err
 	}
 	text, truncated := cutRunes(strings.ToValidUTF8(string(md), ""), generateMaxReferenceChars-utf8.RuneCountInString(referenceTruncationMarker))
 	if truncated {
@@ -144,6 +136,22 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 		fixed.AllowedTools = strings.Join(report.Manifest.AllowedTools, " ")
 	}
 	return fixed, ReferenceSkill{Name: skill.Name, SkillMD: text}, nil
+}
+
+func (s *Service) openReferencePackage(ctx context.Context, version registry.Version) (fs.FS, []byte, error) {
+	data, err := s.Store.Get(ctx, version.PackageObjectKey)
+	if err != nil {
+		return nil, nil, ErrReferenceUnavailable
+	}
+	tree, err := skillpkg.SkillFS(data, version.SourcePath)
+	if err != nil {
+		return nil, nil, ErrReferenceUnavailable
+	}
+	md, err := fs.ReadFile(tree, "SKILL.md")
+	if err != nil {
+		return nil, nil, ErrReferenceUnavailable
+	}
+	return tree, md, nil
 }
 
 type CreationDraftCheck struct {

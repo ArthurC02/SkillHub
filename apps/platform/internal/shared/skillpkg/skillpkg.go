@@ -44,7 +44,16 @@ type Manifest struct {
 
 const SpecRevision = "agentskills.io, agentskills/agentskills@217be54 (2026-08-04)"
 
-var SpecFields = []string{"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+const (
+	fieldName          = "name"
+	fieldDescription   = "description"
+	fieldLicense       = "license"
+	fieldCompatibility = "compatibility"
+	fieldMetadata      = "metadata"
+	fieldAllowedTools  = "allowed-tools"
+)
+
+var SpecFields = []string{fieldName, fieldDescription, fieldLicense, fieldCompatibility, fieldMetadata, fieldAllowedTools}
 
 type Report struct {
 	Manifest *Manifest `json:"manifest"`
@@ -243,17 +252,17 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 	m := &Manifest{Extra: map[string]any{}}
 	for k, v := range fields {
 		switch k {
-		case "name":
+		case fieldName:
 			m.Name, _ = v.(string)
-		case "description":
+		case fieldDescription:
 			m.Description, _ = v.(string)
-		case "license":
+		case fieldLicense:
 			m.License, _ = v.(string)
-		case "compatibility":
+		case fieldCompatibility:
 			m.Compatibility, _ = v.(string)
-		case "allowed-tools":
+		case fieldAllowedTools:
 			m.AllowedTools = append(m.AllowedTools, r.decodeAllowedTools(v)...)
-		case "metadata":
+		case fieldMetadata:
 			m.Extra[k] = v
 			r.checkMetadataIsStringMap(v)
 		default:
@@ -393,16 +402,31 @@ func licensePointerTarget(license string) (string, bool) {
 	return name, true
 }
 
+const (
+	spdxApache2   = "Apache-2.0"
+	spdxMIT       = "MIT"
+	spdxISC       = "ISC"
+	spdxBSD2      = "BSD-2-Clause"
+	spdxBSD3      = "BSD-3-Clause"
+	spdxGPL2      = "GPL-2.0"
+	spdxGPL3      = "GPL-3.0"
+	spdxLGPL3     = "LGPL-3.0"
+	spdxAGPL3     = "AGPL-3.0"
+	spdxMPL2      = "MPL-2.0"
+	spdxUnlicense = "Unlicense"
+	spdxCC0       = "CC0-1.0"
+)
+
 var licenseSignatures = []struct{ marker, spdx string }{
-	{"apache license", "Apache-2.0"},
-	{"permission to use, copy, modify, and/or distribute this software", "ISC"},
-	{"permission is hereby granted, free of charge", "MIT"},
-	{"gnu affero general public license", "AGPL-3.0"},
-	{"gnu lesser general public license", "LGPL-3.0"},
-	{"gnu general public license", "GPL-3.0"},
-	{"mozilla public license version 2.0", "MPL-2.0"},
-	{"this is free and unencumbered software released into the public domain", "Unlicense"},
-	{"redistribution and use in source and binary forms", "BSD-3-Clause"},
+	{"apache license", spdxApache2},
+	{"permission to use, copy, modify, and/or distribute this software", spdxISC},
+	{"permission is hereby granted, free of charge", spdxMIT},
+	{"gnu affero general public license", spdxAGPL3},
+	{"gnu lesser general public license", spdxLGPL3},
+	{"gnu general public license", spdxGPL3},
+	{"mozilla public license version 2.0", spdxMPL2},
+	{"this is free and unencumbered software released into the public domain", spdxUnlicense},
+	{"redistribution and use in source and binary forms", spdxBSD3},
 }
 
 func (r *Report) resolveLicense(fsys fs.FS) {
@@ -481,19 +505,19 @@ func licenseCandidates(fsys fs.FS) []licenseCandidate {
 }
 
 var spdxIDs = []string{
-	"Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause",
-	"GPL-2.0", "GPL-3.0", "LGPL-3.0", "AGPL-3.0", "MPL-2.0",
-	"Unlicense", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0",
+	spdxApache2, spdxMIT, spdxISC, spdxBSD2, spdxBSD3,
+	spdxGPL2, spdxGPL3, spdxLGPL3, spdxAGPL3, spdxMPL2,
+	spdxUnlicense, spdxCC0, "CC-BY-4.0", "CC-BY-SA-4.0",
 }
 
 var spdxAliases = map[string]string{
-	"apache 2.0": "Apache-2.0", "apache-2": "Apache-2.0", "apache2": "Apache-2.0",
-	"apache license 2.0": "Apache-2.0", "mit license": "MIT",
-	"bsd-3": "BSD-3-Clause", "bsd 3-clause": "BSD-3-Clause",
-	"bsd-2": "BSD-2-Clause", "bsd 2-clause": "BSD-2-Clause",
-	"mpl 2.0": "MPL-2.0", "gpl-3": "GPL-3.0", "gplv3": "GPL-3.0",
-	"gpl-2": "GPL-2.0", "gplv2": "GPL-2.0", "agplv3": "AGPL-3.0",
-	"cc0": "CC0-1.0", "the unlicense": "Unlicense", "public domain": "Unlicense",
+	"apache 2.0": spdxApache2, "apache-2": spdxApache2, "apache2": spdxApache2,
+	"apache license 2.0": spdxApache2, "mit license": spdxMIT,
+	"bsd-3": spdxBSD3, "bsd 3-clause": spdxBSD3,
+	"bsd-2": spdxBSD2, "bsd 2-clause": spdxBSD2,
+	"mpl 2.0": spdxMPL2, "gpl-3": spdxGPL3, "gplv3": spdxGPL3,
+	"gpl-2": spdxGPL2, "gplv2": spdxGPL2, "agplv3": spdxAGPL3,
+	"cc0": spdxCC0, "the unlicense": spdxUnlicense, "public domain": spdxUnlicense,
 }
 
 func normalizeSPDX(s string) string {
@@ -510,28 +534,30 @@ func normalizeSPDX(s string) string {
 	return trimmed
 }
 
+const licenseSniffBytes = 4096
+
 func detectLicense(data []byte) string {
-	head := strings.ToLower(string(data[:min(len(data), 4096)]))
+	head := strings.ToLower(string(data[:min(len(data), licenseSniffBytes)]))
 	norm := strings.Join(strings.Fields(head), " ")
 	for _, sig := range licenseSignatures {
 		if !strings.Contains(norm, sig.marker) {
 			continue
 		}
 		switch sig.spdx {
-		case "Apache-2.0":
+		case spdxApache2:
 			if !strings.Contains(norm, "version 2.0") {
 				return ""
 			}
-		case "GPL-3.0":
+		case spdxGPL3:
 			if strings.Contains(norm, "version 2") {
-				return "GPL-2.0"
+				return spdxGPL2
 			}
 			if !strings.Contains(norm, "version 3") {
 				return ""
 			}
-		case "BSD-3-Clause":
+		case spdxBSD3:
 			if !strings.Contains(norm, "neither the name of") {
-				return "BSD-2-Clause"
+				return spdxBSD2
 			}
 		}
 		return sig.spdx
@@ -603,13 +629,22 @@ const (
 	maxEmbeddedTotalLines = 50
 )
 
+const (
+	langPython     = "python"
+	langBash       = "bash"
+	langJavaScript = "javascript"
+	langTypeScript = "typescript"
+	langRuby       = "ruby"
+	langPowerShell = "powershell"
+)
+
 var runnableFences = map[string]string{
-	"python": "python", "py": "python", "python3": "python",
-	"bash": "bash", "sh": "bash", "shell": "bash", "zsh": "bash", "console": "bash",
-	"javascript": "javascript", "js": "javascript", "node": "javascript",
-	"typescript": "typescript", "ts": "typescript",
-	"ruby": "ruby", "rb": "ruby", "perl": "perl", "php": "php",
-	"powershell": "powershell", "ps1": "powershell", "bat": "batch", "cmd": "batch",
+	langPython: langPython, "py": langPython, "python3": langPython,
+	langBash: langBash, "sh": langBash, "shell": langBash, "zsh": langBash, "console": langBash,
+	langJavaScript: langJavaScript, "js": langJavaScript, "node": langJavaScript,
+	langTypeScript: langTypeScript, "ts": langTypeScript,
+	langRuby: langRuby, "rb": langRuby, "perl": "perl", "php": "php",
+	langPowerShell: langPowerShell, "ps1": langPowerShell, "bat": "batch", "cmd": "batch",
 	"go": "go", "rust": "rust", "r": "r", "sql": "sql",
 }
 
@@ -908,8 +943,10 @@ func readCapped(fsys fs.FS, path string, limit int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, limit))
 }
 
+const BinarySniffBytes = 8000
+
 func isBinary(data []byte) bool {
-	n := min(len(data), 8000)
+	n := min(len(data), BinarySniffBytes)
 	for _, b := range data[:n] {
 		if b == 0 {
 			return true

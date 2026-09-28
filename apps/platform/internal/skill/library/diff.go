@@ -123,13 +123,15 @@ func listFiles(fsys fs.FS) (map[string]bool, error) {
 	return files, err
 }
 
+const diffContextLines = 3
+
 func textDiff(path string, a, b []byte) string {
 	if len(a) > maxDiffFileBytes || len(b) > maxDiffFileBytes || isBinary(a) || isBinary(b) {
 		return ""
 	}
 	text, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A: difflib.SplitLines(string(a)), B: difflib.SplitLines(string(b)),
-		FromFile: path, ToFile: path, Context: 3,
+		FromFile: path, ToFile: path, Context: diffContextLines,
 	})
 	if err != nil {
 		return ""
@@ -138,7 +140,7 @@ func textDiff(path string, a, b []byte) string {
 }
 
 func isBinary(data []byte) bool {
-	n := min(len(data), 8000)
+	n := min(len(data), skillpkg.BinarySniffBytes)
 	for _, c := range data[:n] {
 		if c == 0 {
 			return true

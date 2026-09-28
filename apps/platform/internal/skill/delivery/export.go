@@ -89,12 +89,7 @@ func travels(path string, d fs.DirEntry) (bool, string) {
 			return false, ReasonExcludedDir
 		}
 	}
-	name := lastSegment(lowerPath)
-	envTemplate := strings.HasSuffix(name, ".example") || strings.HasSuffix(name, ".sample") || strings.HasSuffix(name, ".template")
-	if name == ".env" || (strings.HasPrefix(name, ".env.") && !envTemplate) || excludedCredentialFiles[name] ||
-		hasPathSuffix(lowerPath, ".config/gcloud/credentials.db") ||
-		hasPathSuffix(lowerPath, ".config/gcloud/access_tokens.db") ||
-		hasPathSuffix(lowerPath, ".config/gh/hosts.yml") {
+	if isCredentialFile(lowerPath) {
 		return false, ReasonCredentialFile
 	}
 
@@ -102,6 +97,15 @@ func travels(path string, d fs.DirEntry) (bool, string) {
 		return false, ReasonNotRegularFile
 	}
 	return true, ""
+}
+
+func isCredentialFile(lowerPath string) bool {
+	name := lastSegment(lowerPath)
+	envTemplate := strings.HasSuffix(name, ".example") || strings.HasSuffix(name, ".sample") || strings.HasSuffix(name, ".template")
+	return name == ".env" || (strings.HasPrefix(name, ".env.") && !envTemplate) || excludedCredentialFiles[name] ||
+		hasPathSuffix(lowerPath, ".config/gcloud/credentials.db") ||
+		hasPathSuffix(lowerPath, ".config/gcloud/access_tokens.db") ||
+		hasPathSuffix(lowerPath, ".config/gh/hosts.yml")
 }
 
 func pathUsesExcludedDir(path string) bool {
@@ -171,6 +175,8 @@ func addFrontmatter(skillMD []byte, additions map[string]any) ([]byte, error) {
 
 var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 
+const zipEpochDOSDate = 33
+
 func writeZip(files []exportFile, prefix string) ([]byte, error) {
 	sorted := make([]exportFile, len(files))
 	copy(sorted, files)
@@ -190,7 +196,7 @@ func writeZip(files []exportFile, prefix string) ([]byte, error) {
 		// Modified would also write an extended-timestamp extra field, changing
 		// the archive bytes; ModifiedDate holds a fixed value without that.
 		//nolint:staticcheck // SA1019: Modified would change the bytes; see above.
-		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, ModifiedDate: 33}
+		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, ModifiedDate: zipEpochDOSDate}
 		w, err := zw.CreateHeader(h)
 		if err != nil {
 			return nil, err

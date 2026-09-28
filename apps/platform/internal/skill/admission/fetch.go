@@ -29,9 +29,12 @@ type URLFetcher struct {
 }
 
 const (
-	connectTimeout = 10 * time.Second
-	fetchTimeout   = 60 * time.Second
-	maxRedirects   = 3
+	connectTimeout        = 10 * time.Second
+	fetchTimeout          = 60 * time.Second
+	keepAlivePeriod       = 30 * time.Second
+	idleConnTimeout       = 90 * time.Second
+	maxRedirects          = 3
+	refusedBodyDrainBytes = 1 << 20
 )
 
 var (
@@ -68,7 +71,7 @@ func blockedStrict(ip netip.Addr) bool {
 func newClient(blocked func(netip.Addr) bool) *http.Client {
 	d := &net.Dialer{
 		Timeout:   connectTimeout,
-		KeepAlive: 30 * time.Second,
+		KeepAlive: keepAlivePeriod,
 		Control: func(_, address string, _ syscall.RawConn) error {
 			ap, err := netip.ParseAddrPort(address)
 			if err != nil || blocked(ap.Addr()) {
@@ -83,7 +86,7 @@ func newClient(blocked func(netip.Addr) bool) *http.Client {
 			DialContext:           d.DialContext,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConnsPerHost:   2,
-			IdleConnTimeout:       90 * time.Second,
+			IdleConnTimeout:       idleConnTimeout,
 			TLSHandshakeTimeout:   connectTimeout,
 			ExpectContinueTimeout: time.Second,
 		},
@@ -237,7 +240,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, refusedBodyDrainBytes))
 		return nil, fmt.Errorf("%w: 來源回應 HTTP %d，沒有取得檔案。", ErrFetch, resp.StatusCode)
 	}
 

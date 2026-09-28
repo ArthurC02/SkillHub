@@ -246,22 +246,9 @@ func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRe
 		return nil, err
 	}
 
-	skill, found, err := s.ReadSkill(ctx, ws.ID, req.SkillID)
-	if !found && err == nil {
-		return nil, ErrNotFound
-	}
+	skill, version, err := s.readRequestedVersion(ctx, ws, req)
 	if err != nil {
 		return nil, err
-	}
-	version, found, err := s.ReadVersion(ctx, ws.ID, req.VersionID)
-	if !found && err == nil {
-		return nil, ErrNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	if version.SkillID != skill.ID {
-		return nil, ErrNotFound
 	}
 	summaries, err := s.ReadVersionSummaries(ctx, []pgtype.UUID{version.ID})
 	if err != nil {
@@ -288,6 +275,27 @@ func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRe
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *Service) readRequestedVersion(ctx context.Context, ws identity.Workspace, req PackageRequest) (SkillFacts, VersionFacts, error) {
+	skill, found, err := s.ReadSkill(ctx, ws.ID, req.SkillID)
+	if !found && err == nil {
+		return SkillFacts{}, VersionFacts{}, ErrNotFound
+	}
+	if err != nil {
+		return SkillFacts{}, VersionFacts{}, err
+	}
+	version, found, err := s.ReadVersion(ctx, ws.ID, req.VersionID)
+	if !found && err == nil {
+		return SkillFacts{}, VersionFacts{}, ErrNotFound
+	}
+	if err != nil {
+		return SkillFacts{}, VersionFacts{}, err
+	}
+	if version.SkillID != skill.ID {
+		return SkillFacts{}, VersionFacts{}, ErrNotFound
+	}
+	return skill, version, nil
 }
 
 func gate(skill SkillFacts) (reason, message string) {

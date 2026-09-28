@@ -58,11 +58,11 @@ func (d *depScan) observe(p, content string) {
 		d.observeInstallLines(content)
 		forEachFence(content, func(lang, _, body string) {
 			switch lang {
-			case "python":
+			case langPython:
 				d.observePython(body)
-			case "javascript", "typescript":
+			case langJavaScript, langTypeScript:
 				d.observeJS(body)
-			case "bash":
+			case langBash:
 				d.observeInstallLines(body)
 			}
 		})
@@ -175,12 +175,14 @@ func (d *depScan) report(r *Report) {
 	})
 }
 
+const pywin32Dist = "pywin32"
+
 var importToDist = map[string]string{
 	"docx": "python-docx", "pptx": "python-pptx", "dateutil": "python-dateutil",
 	"PIL": "pillow", "fitz": "PyMuPDF", "yaml": "PyYAML", "bs4": "beautifulsoup4",
 	"sklearn": "scikit-learn", "cv2": "opencv-python", "stdnum": "python-stdnum",
-	"pdfminer": "pdfminer.six", "win32com": "pywin32", "pythoncom": "pywin32",
-	"pywintypes": "pywin32", "charset_normalizer": "charset-normalizer",
+	"pdfminer": "pdfminer.six", "win32com": pywin32Dist, "pythoncom": pywin32Dist,
+	"pywintypes": pywin32Dist, "charset_normalizer": "charset-normalizer",
 	"confusable_homoglyphs": "confusable-homoglyphs", "dotenv": "python-dotenv",
 	"magic": "python-magic", "attr": "attrs", "OpenSSL": "pyOpenSSL",
 }

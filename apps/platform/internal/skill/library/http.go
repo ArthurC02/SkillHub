@@ -155,6 +155,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 const deletionNote = "已從你的工作區、清單與搜尋移除；版本快照維持凍結，這次刪除不會移除它們；" +
 	"Fork 引用的共用套件物件不受影響"
 
+const maxJSONBodyBytes = 4096
+
 func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -168,7 +170,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Reason string `json:"reason"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
 		return
 	}
@@ -213,7 +215,7 @@ func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Category string `json:"category"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a category")
 		return
 	}

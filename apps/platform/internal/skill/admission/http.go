@@ -195,6 +195,8 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 	h.respond(w, res, err)
 }
 
+const maxImportURLBodyBytes = 4096
+
 func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 	user, ok := identity.SessionUser(r.Context())
 	if !ok {
@@ -210,7 +212,7 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		URL string `json:"url"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.URL == "" {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxImportURLBodyBytes)).Decode(&body); err != nil || body.URL == "" {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a non-empty url")
 		return
 	}
@@ -300,6 +302,17 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	in, ok := decodeGenerateInput(w, r)
+	if !ok {
+		return
+	}
+	res, err := h.Svc.GenerateSkill(r.Context(), ws, in)
+	writeGenerateOutcome(w, res, err)
+}
+
+const maxGenerateRequestBytes = 6 << 20
+
+func decodeGenerateInput(w http.ResponseWriter, r *http.Request) (GenerateInput, bool) {
 	var body struct {
 		TaskDescription string `json:"task_description"`
 		Diagram         *struct {
@@ -309,9 +322,9 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		ReferenceSkillIDs []string `json:"reference_skill_ids"`
 	}
 
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 6<<20)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxGenerateRequestBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a task_description, a diagram, or both")
-		return
+		return GenerateInput{}, false
 	}
 
 	in := GenerateInput{TaskDescription: body.TaskDescription}
@@ -320,12 +333,12 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		if len(body.Diagram.Data) > base64.StdEncoding.EncodedLen(generateMaxDiagramBytes)+4 {
 			httpx.WriteError(w, http.StatusBadRequest,
 				"diagram 超過 4 MB 上限，或不是合法的 base64。接受的格式：PNG、JPEG、WebP。")
-			return
+			return GenerateInput{}, false
 		}
 		decoded, err := base64.StdEncoding.DecodeString(body.Diagram.Data)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "diagram.data 不是合法的 base64。")
-			return
+			return GenerateInput{}, false
 		}
 		in.Diagram = &GenerateDiagram{MediaType: body.Diagram.MediaType, Data: decoded}
 	}
@@ -333,65 +346,19 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		var id pgtype.UUID
 		if err := id.Scan(raw); err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "reference_skill_ids 裡有不合法的 id。")
-			return
+			return GenerateInput{}, false
 		}
 		in.ReferenceSkillIDs = append(in.ReferenceSkillIDs, id)
 	}
+	return in, true
+}
 
-	res, err := h.Svc.GenerateSkill(r.Context(), ws, in)
+func writeGenerateOutcome(w http.ResponseWriter, res GenerateResult, err error) {
+	if status, message, refused := generateRefusal(err); refused {
+		httpx.WriteError(w, status, message)
+		return
+	}
 	switch {
-	case errors.Is(err, ErrGenerateBlank):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。")
-	case errors.Is(err, ErrGenerateNoInput):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。")
-	case errors.Is(err, ErrDiagramInvalid):
-
-		httpx.WriteError(w, http.StatusBadRequest,
-			"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。")
-	case errors.Is(err, ErrTooManyReferences):
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"參考的 Skill 最多三個，請減少後再試一次。")
-	case errors.Is(err, ErrReferenceUnavailable):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"其中一個參考的 Skill 無法使用，請換一個再試一次。")
-	case errors.Is(err, policy.ErrGenerateQuotaExceeded):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
-	case errors.Is(err, policy.ErrAllowanceUnavailable):
-
-		httpx.WriteError(w, http.StatusServiceUnavailable,
-			"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。")
-	case errors.Is(err, ErrGenerationTruncated):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。"+
-				"把任務拆小一點再試一次會有幫助。")
-	case errors.Is(err, ErrGenerateTooLong):
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。")
-	case errors.Is(err, ErrGenerateInFlight):
-
-		httpx.WriteError(w, http.StatusConflict,
-			"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。")
-	case errors.Is(err, ErrCreditThreshold):
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
-	case errors.Is(err, ErrGenerateNotForCatalogue):
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"公開目錄不生成 Skill。請切換到你自己的工作區再生成一次，"+
-				"做好之後可以從那裡發布到目錄。")
-	case errors.Is(err, ErrGeneratedNameCollision):
-
-		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這個工作區已經有一個同名的 Skill。"+
-				"請先刪除它（或改掉它的名字），再生成一次——"+
-				"生成永遠建立一個新的 Skill 的第一個版本，不會接在既有的 Skill 後面；"+
-				"同一段任務描述再生成一次通常會取到同一個名字，改寫描述也會讓模型換名字。")
 	case err != nil:
 		httpx.WriteError(w, http.StatusBadGateway, "模型服務這一次沒有給出可用的結果。沒有建立任何版本，可以再試一次。")
 	case res.Report.Blocked:
@@ -408,6 +375,64 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			PromptVersion: res.PromptVersion,
 		})
 	}
+}
+
+func generateRefusal(err error) (status int, message string, refused bool) {
+	switch {
+	case errors.Is(err, ErrGenerateBlank):
+
+		return http.StatusUnprocessableEntity,
+			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。", true
+	case errors.Is(err, ErrGenerateNoInput):
+
+		return http.StatusUnprocessableEntity,
+			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼；或上傳一張流程圖／示意圖。兩者至少要有一項。", true
+	case errors.Is(err, ErrDiagramInvalid):
+
+		return http.StatusBadRequest,
+			"diagram 不是可用的圖片。接受的格式：PNG、JPEG、WebP，解碼後大小不超過 4 MB。", true
+	case errors.Is(err, ErrTooManyReferences):
+		return http.StatusUnprocessableEntity,
+			"參考的 Skill 最多三個，請減少後再試一次。", true
+	case errors.Is(err, ErrReferenceUnavailable):
+
+		return http.StatusUnprocessableEntity,
+			"其中一個參考的 Skill 無法使用，請換一個再試一次。", true
+	case errors.Is(err, policy.ErrGenerateQuotaExceeded):
+
+		return http.StatusUnprocessableEntity, err.Error(), true
+	case errors.Is(err, policy.ErrAllowanceUnavailable):
+
+		return http.StatusServiceUnavailable,
+			"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。", true
+	case errors.Is(err, ErrGenerationTruncated):
+
+		return http.StatusUnprocessableEntity,
+			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。" +
+				"把任務拆小一點再試一次會有幫助。", true
+	case errors.Is(err, ErrGenerateTooLong):
+		return http.StatusUnprocessableEntity,
+			"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。", true
+	case errors.Is(err, ErrGenerateInFlight):
+
+		return http.StatusConflict,
+			"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。", true
+	case errors.Is(err, ErrCreditThreshold):
+		return http.StatusUnprocessableEntity,
+			"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。", true
+	case errors.Is(err, ErrGenerateNotForCatalogue):
+		return http.StatusUnprocessableEntity,
+			"公開目錄不生成 Skill。請切換到你自己的工作區再生成一次，" +
+				"做好之後可以從那裡發布到目錄。", true
+	case errors.Is(err, ErrGeneratedNameCollision):
+
+		return http.StatusUnprocessableEntity,
+			"這個工作區已經有一個同名的 Skill。" +
+				"請先刪除它（或改掉它的名字），再生成一次——" +
+				"生成永遠建立一個新的 Skill 的第一個版本，不會接在既有的 Skill 後面；" +
+				"同一段任務描述再生成一次通常會取到同一個名字，改寫描述也會讓模型換名字。", true
+	}
+	return 0, "", false
 }
 
 const generateFailureLimit = 20 // one-number: generateFailureLimit
@@ -450,7 +475,7 @@ func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
 
 func generateFailureFrom(rec audit.Record) GenerateFailure {
 	f := GenerateFailure{OccurredAt: rec.OccurredAt}
-	if s, ok := rec.Metadata["failure"].(string); ok {
+	if s, ok := rec.Metadata[failureMetadataKey].(string); ok {
 		f.Failure = s
 	}
 	if n, ok := rec.Metadata["attempts"].(float64); ok {

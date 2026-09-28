@@ -165,9 +165,9 @@ func (s *Service) changeRestriction(ctx context.Context, skillID, actor pgtype.U
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
 		Metadata: map[string]any{
-			"before": nullableString(before.AccessRestriction),
-			"after":  nullableString(reason),
-			"note":   note,
+			auditBefore: nullableString(before.AccessRestriction),
+			auditAfter:  nullableString(reason),
+			auditNote:   note,
 		},
 	}); err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func restrictionAuditAction(reason *string) string {
 
 func decodeRestrictionRequest(w http.ResponseWriter, r *http.Request) (restrictionRequest, bool) {
 	var body restrictionRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a note")
 		return restrictionRequest{}, false
 	}

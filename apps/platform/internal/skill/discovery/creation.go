@@ -76,18 +76,20 @@ func (w creationWordSearch) ids(ctx context.Context, op string, limit int32) ([]
 	return out, nil
 }
 
+const degradedKnowledgeLimit = 3
+
 func (w creationWordSearch) degradedIDs(ctx context.Context) ([]string, error) {
-	all, err := w.ids(ctx, "&", 3)
+	all, err := w.ids(ctx, "&", degradedKnowledgeLimit)
 	if err != nil {
 		return nil, err
 	}
-	if len(all) < 3 {
-		any, err := w.ids(ctx, "|", 3)
+	if len(all) < degradedKnowledgeLimit {
+		any, err := w.ids(ctx, "|", degradedKnowledgeLimit)
 		if err != nil {
 			return nil, err
 		}
 		for _, id := range any {
-			if !containsID(all, id) && len(all) < 3 {
+			if !containsID(all, id) && len(all) < degradedKnowledgeLimit {
 				all = append(all, id)
 			}
 		}

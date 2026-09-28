@@ -285,21 +285,10 @@ func (s *Service) ReviewExposure(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
-	publicationID, err := q.LockPublicationByAddress(ctx, gen.LockPublicationByAddressParams{PublisherName: publisher, Name: name})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ExposureCase{}, ErrNotFound
-	}
+	publicationID, state, err := lockCurrentExposure(ctx, q, publisher, name)
 	if err != nil {
 		return ExposureCase{}, err
 	}
-	states, err := exposureStates(ctx, q, publicationID)
-	if err != nil {
-		return ExposureCase{}, err
-	}
-	if len(states) == 0 {
-		return ExposureCase{}, ErrNotFound
-	}
-	state := states[0]
 	if state.ReleaseID != in.ReleaseID || state.Sequence != in.ExpectedSequence {
 		return ExposureCase{}, &ExposureError{ExposureStale}
 	}
@@ -319,9 +308,9 @@ func (s *Service) ReviewExposure(
 		Actor: reviewer.ID, Action: audit.ActionExposureReview,
 		ResourceType: audit.ResourcePublication, ResourceID: publicationID,
 		Metadata: map[string]any{
-			"publisher": publisher, "name": name, "decision": string(in.Decision), "reason": reason,
-			"sequence": review.Sequence, "release_id": pgconv.UUIDString(state.ReleaseID),
-			"content_hash": state.ContentHash, "snapshot_digest": digest,
+			"publisher": publisher, auditKeyName: name, "decision": string(in.Decision), "reason": reason,
+			"sequence": review.Sequence, auditKeyReleaseID: pgconv.UUIDString(state.ReleaseID),
+			auditKeyContentHash: state.ContentHash, "snapshot_digest": digest,
 		},
 	}); err != nil {
 		return ExposureCase{}, err
@@ -331,6 +320,24 @@ func (s *Service) ReviewExposure(
 	}
 	out, _, err := s.ExposureCase(ctx, publisher, name)
 	return out, err
+}
+
+func lockCurrentExposure(ctx context.Context, q *gen.Queries, publisher, name string) (pgtype.UUID, ExposureState, error) {
+	publicationID, err := q.LockPublicationByAddress(ctx, gen.LockPublicationByAddressParams{PublisherName: publisher, Name: name})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pgtype.UUID{}, ExposureState{}, ErrNotFound
+	}
+	if err != nil {
+		return pgtype.UUID{}, ExposureState{}, err
+	}
+	states, err := exposureStates(ctx, q, publicationID)
+	if err != nil {
+		return pgtype.UUID{}, ExposureState{}, err
+	}
+	if len(states) == 0 {
+		return pgtype.UUID{}, ExposureState{}, ErrNotFound
+	}
+	return publicationID, states[0], nil
 }
 
 func (s *Service) approvalDigest(ctx context.Context, state ExposureState, decision ExposureDecision) (string, error) {

@@ -173,7 +173,7 @@ func (s *Service) CreateBundleVersion(ctx context.Context, ws identity.Workspace
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionBundleVersionCreate, ResourceType: audit.ResourceBundle, ResourceID: bundle.ID,
 		Metadata: map[string]any{
-			"name": in.Name, "version": in.Version, "content_hash": out.ContentHash,
+			auditKeyName: in.Name, "version": in.Version, auditKeyContentHash: out.ContentHash,
 			"bundle_version_id": pgconv.UUIDString(row.ID), "members": len(members),
 		},
 	}); err != nil {
@@ -336,9 +336,7 @@ func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bund
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
-	if _, err := q.LockPublisherByWorkspace(ctx, ws.ID); errors.Is(err, pgx.ErrNoRows) {
-		return Publication{}, ErrNoPublisher
-	} else if err != nil {
+	if err := lockPublisher(ctx, q, ws); err != nil {
 		return Publication{}, err
 	}
 	bundle, err := q.LockBundle(ctx, gen.LockBundleParams{WorkspaceID: ws.ID, Name: bundleName})
@@ -370,13 +368,13 @@ func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bund
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionPublicationRelease, ResourceType: audit.ResourcePublication, ResourceID: publication.ID,
 		Metadata: map[string]any{
-			"name":              publication.Name,
+			auditKeyName:        publication.Name,
 			"bundle":            bundleName,
 			"bundle_version_id": pgconv.UUIDString(bundleVersion.ID),
 			"version":           bundleVersion.Version,
-			"content_hash":      bundleVersion.ContentHash,
+			auditKeyContentHash: bundleVersion.ContentHash,
 			"rights_attested":   in.RightsAttested,
-			"release_id":        pgconv.UUIDString(release.ID),
+			auditKeyReleaseID:   pgconv.UUIDString(release.ID),
 		},
 	}); err != nil {
 		return Publication{}, err

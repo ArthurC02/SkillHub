@@ -15,6 +15,14 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
+const (
+	auditBefore = "before"
+	auditAfter  = "after"
+	auditNote   = "note"
+)
+
+const maxJSONBodyBytes = 4096
+
 type curationRequest struct {
 	Value string `json:"value"`
 	Note  string `json:"note"`
@@ -29,7 +37,7 @@ type curationChangeResponse struct {
 
 func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 	var body curationRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a value and a note")
 		return
 	}
@@ -99,9 +107,9 @@ func (s *Service) SetCurationTier(
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
 		Metadata: map[string]any{
-			"before": string(change.Before), "before_version_id": optionalUUID(change.BeforeVersionID),
-			"after": string(change.After), "version_id": optionalUUID(change.VersionID),
-			"note": note,
+			auditBefore: string(change.Before), "before_version_id": optionalUUID(change.BeforeVersionID),
+			auditAfter: string(change.After), "version_id": optionalUUID(change.VersionID),
+			auditNote: note,
 		},
 	}); err != nil {
 		return registry.CurationChange{}, err

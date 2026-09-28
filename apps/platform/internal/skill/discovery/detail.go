@@ -119,9 +119,9 @@ type axisWords map[string][2]string
 
 var (
 	specWords = axisWords{
-		"passed":     {"通過", ""},
-		"failed":     {"未通過", "套件格式或引用有問題,匯入時已標記。"},
-		"unverified": {"未驗證", ""},
+		compatPassed:     {"通過", ""},
+		compatFailed:     {"未通過", "套件格式或引用有問題,匯入時已標記。"},
+		compatUnverified: {compatUnverifiedLabel, ""},
 	}
 	capabilityWords = axisWords{
 
@@ -131,19 +131,19 @@ var (
 		"not_activated": {"未被啟用",
 			"該次試跑完成了,Trace 顯示這個 Skill 被提供但用了別的。" +
 				"**不是從「沒有事件」推定的**——SDK 訊息流表達不了「可用但沒被叫」(TRACE-002)。"},
-		"unverified": {"未驗證", ""},
+		compatUnverified: {compatUnverifiedLabel, ""},
 	}
 	runtimeWords = axisWords{
 
-		"native": {"映像提供了它宣告的執行環境",
+		compatNative: {"映像提供了它宣告的執行環境",
 			"套件腳本宣告的 Runtime 這個映像有,所以腳本可以是真正執行的那個東西。" +
 				"**這是一條規則的結論,不是一次觀察**——平台沒有查那次 Run 裡腳本有沒有真的跑、跑成功沒有。"},
-		"transpiled": {"腳本未執行,由模型轉譯",
+		compatTranspiled: {"腳本未執行,由模型轉譯",
 			"套件宣告的 Runtime 這個映像沒有,所以那次 Run 的產出來自模型重寫程式碼、不是執行它。" +
 				"那次 Run 有產出,但做事的不是 Skill 自己的程式碼——這一格決定你拿到的是不是你以為的東西。" +
 				"**同樣是規則的結論**:判準是映像有沒有那個 Runtime,不是觀察到模型在改寫。"},
-		"failed":     {"腳本無法執行", "套件宣告的 Runtime 這個映像沒有,該次 Run 因此失敗。"},
-		"unverified": {"未驗證", ""},
+		compatFailed:     {"腳本無法執行", "套件宣告的 Runtime 這個映像沒有,該次 Run 因此失敗。"},
+		compatUnverified: {compatUnverifiedLabel, ""},
 	}
 )
 
@@ -160,9 +160,9 @@ func axis(w axisWords, value string) labelled {
 
 func unverifiedCompat() compatibility {
 	return compatibility{
-		SpecValidation: axis(specWords, "unverified"),
-		Capability:     axis(capabilityWords, "unverified"),
-		Runtime:        axis(runtimeWords, "unverified"),
+		SpecValidation: axis(specWords, compatUnverified),
+		Capability:     axis(capabilityWords, compatUnverified),
+		Runtime:        axis(runtimeWords, compatUnverified),
 		Note:           compatUnverifiedNote,
 	}
 }
@@ -290,7 +290,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 
 		Redistribution: redistributionLabel(skill.Redistribution),
 		Risk: riskSummary{
-			ScanStatus:  "unavailable",
+			ScanStatus:  scanStatusUnavailable,
 			InfoCounts:  map[string]int{},
 			Highlights:  []skillpkg.Finding{},
 			Disclosures: []disclosure{},
@@ -837,7 +837,7 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 
 func summarizeRisk(r skillpkg.Report) riskSummary {
 	out := riskSummary{
-		ScanStatus: "scanned",
+		ScanStatus: scanStatusScanned,
 		Highlights: []skillpkg.Finding{},
 		InfoCounts: map[string]int{},
 		Note:       riskNote,
@@ -863,9 +863,9 @@ func summarizeRisk(r skillpkg.Report) riskSummary {
 
 func specValidation(r skillpkg.Report) string {
 	if r.Blocked {
-		return "failed"
+		return compatFailed
 	}
-	return "passed"
+	return compatPassed
 }
 
 func fileTree(fsys fs.FS) []fileEntry {

@@ -214,6 +214,11 @@ func (s *Service) portableFiles(
 	return append(files, exportFile{path: testCasesDir + slug + "/case.json", data: append(body, '\n')}), nil
 }
 
+const (
+	testCaseSlugIDChars      = 8
+	maxTestCaseSlugNameChars = 40
+)
+
 func testCaseSlug(name, id string) string {
 	var b strings.Builder
 	lastHyphen := true
@@ -229,14 +234,14 @@ func testCaseSlug(name, id string) string {
 	}
 	slug := strings.Trim(b.String(), "-")
 	suffix := strings.ReplaceAll(id, "-", "")
-	if len(suffix) > 8 {
-		suffix = suffix[:8]
+	if len(suffix) > testCaseSlugIDChars {
+		suffix = suffix[:testCaseSlugIDChars]
 	}
 	if slug == "" {
 		return "test-case-" + suffix
 	}
-	if len(slug) > 40 {
-		slug = strings.Trim(slug[:40], "-")
+	if len(slug) > maxTestCaseSlugNameChars {
+		slug = strings.Trim(slug[:maxTestCaseSlugNameChars], "-")
 	}
 	return slug + "-" + suffix
 }

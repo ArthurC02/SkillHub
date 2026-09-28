@@ -35,12 +35,12 @@ func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "query must contain between 1 and 2000 characters")
 		return
 	}
-	interpretation := SearchInterpretation{Status: "corrected", Intent: body.Intent, Keywords: body.Keywords, Filters: body.Filters}
+	interpretation := SearchInterpretation{Status: interpretationCorrected, Intent: body.Intent, Keywords: body.Keywords, Filters: body.Filters}
 	if err := interpretation.validate(body.Query, correctedByUser); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	limit := int32(20)
+	limit := int32(defaultSearchLimit)
 	if body.Limit != nil {
 		if string(body.Limit) == "null" || json.Unmarshal(body.Limit, &limit) != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "limit must be an integer between 1 and 100")

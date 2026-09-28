@@ -41,7 +41,30 @@ const (
 	summarySourceModel   = "model"
 )
 
-const compatUnverified = "unverified"
+const (
+	compatPassed     = "passed"
+	compatFailed     = "failed"
+	compatUnverified = "unverified"
+	compatNative     = "native"
+	compatTranspiled = "transpiled"
+
+	compatUnverifiedLabel = "未驗證"
+)
+
+const (
+	scanStatusScanned     = "scanned"
+	scanStatusUnavailable = "unavailable"
+)
+
+const (
+	filterScript     = "script"
+	filterValidation = "validation"
+	filterAgent      = "agent"
+	filterTier       = "tier"
+	filterCategory   = "category"
+)
+
+const defaultSearchLimit = 20
 
 func summaryText(summary, enrichedSummary string) string {
 	if enrichedSummary == "" {
@@ -132,9 +155,9 @@ func resultFacets(r *searchResult, f facetColumns) {
 	r.Risk = riskHint(f.scanJSON)
 	r.VerifiedAt = timeString(f.verifiedAt)
 	r.Compat = f.compat
-	r.Compat.SpecValidation = axis(specWords, "unverified")
+	r.Compat.SpecValidation = axis(specWords, compatUnverified)
 	if f.verifiedAt.Valid {
-		r.Compat.SpecValidation = axis(specWords, "passed")
+		r.Compat.SpecValidation = axis(specWords, compatPassed)
 	}
 	r.Compat.Note = compatUnverifiedNote
 	if r.Compat.RuntimeImage != "" {
@@ -173,13 +196,13 @@ func riskHint(scanJSON []byte) searchRisk {
 	}
 	if len(scanJSON) == 0 || json.Unmarshal(scanJSON, &f) != nil {
 		return searchRisk{
-			ScanStatus:  "unavailable",
+			ScanStatus:  scanStatusUnavailable,
 			Level:       riskLevelUnknown,
 			Disclosures: []disclosure{},
 			Note:        searchRiskUnknown,
 		}
 	}
-	out := searchRisk{ScanStatus: "scanned", Warnings: f.Warnings, Note: searchRiskNote}
+	out := searchRisk{ScanStatus: scanStatusScanned, Warnings: f.Warnings, Note: searchRiskNote}
 	codes := map[string]bool{}
 	for _, code := range f.Codes {
 		codes[code] = true
@@ -214,7 +237,7 @@ func (f searchFilters) active() bool {
 }
 
 var agentRuntimeValues = map[string]bool{
-	"native": true, "transpiled": true, "failed": true, "unverified": true,
+	compatNative: true, compatTranspiled: true, compatFailed: true, compatUnverified: true,
 }
 
 var unavailableFilters = map[string]string{
@@ -224,7 +247,7 @@ var unavailableFilters = map[string]string{
 func parseLimit(r *http.Request) (int32, error) {
 	q := r.URL.Query()
 	if !q.Has("limit") {
-		return 20, nil
+		return defaultSearchLimit, nil
 	}
 	n, err := strconv.Atoi(q.Get("limit"))
 	if err != nil || n < 1 || n > 100 {
@@ -251,30 +274,30 @@ func parseFilterValues(q map[string]string) (searchFilters, error) {
 	}
 	var out searchFilters
 	var err error
-	for _, name := range []string{"script", "validation", "agent", "tier", "category"} {
+	for _, name := range []string{filterScript, filterValidation, filterAgent, filterTier, filterCategory} {
 		if value, exists := q[name]; exists && value == "" {
 			return searchFilters{}, errors.New(name + " must not be empty")
 		}
 	}
-	if out.HasScript, err = triState(q["script"], "yes", "no"); err != nil {
+	if out.HasScript, err = triState(q[filterScript], "yes", "no"); err != nil {
 		return searchFilters{}, errors.New(`script must be "yes" or "no"`)
 	}
-	if out.SpecValidated, err = triState(q["validation"], "passed", "unverified"); err != nil {
+	if out.SpecValidated, err = triState(q[filterValidation], compatPassed, compatUnverified); err != nil {
 		return searchFilters{}, errors.New(`validation must be "passed" or "unverified"`)
 	}
-	if v := q["agent"]; v != "" {
+	if v := q[filterAgent]; v != "" {
 		if !agentRuntimeValues[v] {
 			return searchFilters{}, errors.New(`agent must be "native", "transpiled", "failed" or "unverified"`)
 		}
 		out.AgentRuntime = &v
 	}
-	if v := q["tier"]; v != "" {
+	if v := q[filterTier]; v != "" {
 		if !slices.Contains(AllCurationTiers(), Tier(v)) {
 			return searchFilters{}, errors.New(`tier must be "curated" or "indexed"`)
 		}
 		out.CurationTier = &v
 	}
-	if v := q["category"]; v != "" {
+	if v := q[filterCategory]; v != "" {
 		if !slices.Contains(AllStoredCategories(), Category(v)) {
 			return searchFilters{}, errors.New(`category must be "documents", "writing" or "data"`)
 		}
@@ -356,7 +379,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 			h.Svc.Analytics.SearchPerformed(r.Context(), q, 0, filters.active())
 		}
 		httpx.WriteJSON(w, http.StatusOK, searchResponse{
-			Interpretation:  emptyInterpretation("skipped", filters),
+			Interpretation:  emptyInterpretation(interpretationSkipped, filters),
 			Query:           q,
 			Results:         []searchResult{},
 			NoResults:       true,
@@ -458,12 +481,18 @@ func overlapTerms(query, doc string) []string {
 			continue
 		}
 		out = append(out, t)
-		if len(out) == 5 {
+		if len(out) == maxMatchReasonTerms {
 			break
 		}
 	}
 	return out
 }
+
+const (
+	maxMatchReasonTerms  = 5
+	minLatinTokenRunes   = 3
+	asciiDeleteCharacter = 0x7f
+)
 
 var stopwords = map[string]bool{
 	"the": true, "and": true, "for": true, "with": true, "that": true,
@@ -475,7 +504,7 @@ func tokenize(s string) []string {
 	var out []string
 	var latin, cjk []rune
 	flushLatin := func() {
-		if len(latin) >= 3 {
+		if len(latin) >= minLatinTokenRunes {
 			out = append(out, string(latin))
 		}
 		latin = latin[:0]
@@ -545,7 +574,7 @@ func isComprehensible(q string) bool {
 		if r < 0x20 && r != '\t' && r != '\n' && r != '\r' {
 			return false
 		}
-		if r == 0x7f {
+		if r == asciiDeleteCharacter {
 			return false
 		}
 	}

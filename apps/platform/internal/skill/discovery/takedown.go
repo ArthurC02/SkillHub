@@ -25,7 +25,7 @@ type takedownResponse struct {
 
 func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	var body takedownRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
 		return
 	}

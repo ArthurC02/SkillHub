@@ -140,13 +140,15 @@ type acquisitionView struct {
 	ContentURL  string `json:"content_url"`
 }
 
+const noLongerOfferedLabel = "已不提供"
+
 var availabilityWords = map[Availability][2]string{
 	AvailabilityAvailable:        {"提供中", ""},
 	AvailabilityDelisted:         {"作者已撤回", "作者撤回了這個發佈物，這一頁不再提供它的內容。"},
-	AvailabilityWithdrawn:        {"已不提供", "這個發佈物指向的 Skill 已經被作者刪除。"},
-	AvailabilityTakenDown:        {"已不提供", "這個 Skill 已被平台下架。"},
-	AvailabilityHeld:             {"已不提供", "這個 Skill 的內容因授權問題被保留，釐清之前不提供。"},
-	AvailabilityNotRedistributed: {"已不提供", "這個 Skill 目前的授權判定不允許再散布。"},
+	AvailabilityWithdrawn:        {noLongerOfferedLabel, "這個發佈物指向的 Skill 已經被作者刪除。"},
+	AvailabilityTakenDown:        {noLongerOfferedLabel, "這個 Skill 已被平台下架。"},
+	AvailabilityHeld:             {noLongerOfferedLabel, "這個 Skill 的內容因授權問題被保留，釐清之前不提供。"},
+	AvailabilityNotRedistributed: {noLongerOfferedLabel, "這個 Skill 目前的授權判定不允許再散布。"},
 }
 
 func address(publisher, name string) string {

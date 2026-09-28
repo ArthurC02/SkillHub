@@ -117,6 +117,8 @@ var FailureVocabulary = []string{
 	FailureQuota, FailureUnavailable, FailureGateway, FailureUnpackageable, FailureRejected, FailureBlocked, FailureCredit,
 }
 
+const failureMetadataKey = "failure"
+
 type GenerateResult struct {
 	Result
 
@@ -233,8 +235,8 @@ func (s *Service) admitGeneration(ctx context.Context, job generation) error {
 			failure = FailureUnavailable
 		}
 		s.auditGenerateFailure(ctx, job, GenerateResult{}, map[string]any{
-			"failure": failure,
-			"reason":  reason,
+			failureMetadataKey: failure,
+			"reason":           reason,
 		})
 		return err
 	}
@@ -246,7 +248,7 @@ func (s *Service) admitGeneration(ctx context.Context, job generation) error {
 		return err
 	}
 	if !ok {
-		s.auditGenerateFailure(ctx, job, GenerateResult{}, map[string]any{"failure": FailureCredit})
+		s.auditGenerateFailure(ctx, job, GenerateResult{}, map[string]any{failureMetadataKey: FailureCredit})
 		return ErrCreditThreshold
 	}
 	return nil
@@ -279,8 +281,8 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 	if err != nil {
 		slog.Warn("generate: gateway call failed", "attempt", out.Attempts, "error", err)
 		s.auditGenerateFailure(ctx, job, *out, map[string]any{
-			"failure":   FailureGateway,
-			"truncated": errors.Is(err, ErrGenerationTruncated),
+			failureMetadataKey: FailureGateway,
+			"truncated":        errors.Is(err, ErrGenerationTruncated),
 		})
 		return true, err
 	}
@@ -289,15 +291,15 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 
 	data, err := buildGeneratedPackage(gen.Skill)
 	if err != nil {
-		s.auditGenerateFailure(ctx, job, *out, map[string]any{"failure": FailureUnpackageable})
+		s.auditGenerateFailure(ctx, job, *out, map[string]any{failureMetadataKey: FailureUnpackageable})
 		return true, err
 	}
 
 	res, err := s.importZip(ctx, job.ws, data, generatedSource(job, gen, *out))
 	if err != nil {
 		s.auditGenerateFailure(ctx, job, *out, map[string]any{
-			"failure":   FailureRejected,
-			"collision": errors.Is(err, ErrGeneratedNameCollision),
+			failureMetadataKey: FailureRejected,
+			"collision":        errors.Is(err, ErrGeneratedNameCollision),
 		})
 		return true, err
 	}
@@ -307,8 +309,8 @@ func (s *Service) generateAttempt(ctx context.Context, job generation, out *Gene
 	}
 	if !shouldRetry(out.Attempts, res.Report) {
 		s.auditGenerateFailure(ctx, job, *out, map[string]any{
-			"failure": FailureBlocked,
-			"codes":   blockingCodes(res.Report),
+			failureMetadataKey: FailureBlocked,
+			"codes":            blockingCodes(res.Report),
 		})
 		return true, nil
 	}

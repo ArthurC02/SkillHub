@@ -173,7 +173,7 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 	}
 	query := interpretation.retrievalQuery(original)
 	semanticQuery := original
-	if interpretation.Status == "corrected" {
+	if interpretation.Status == interpretationCorrected {
 		semanticQuery = query
 	}
 	queries := gen.New(s.Pool)
@@ -225,7 +225,7 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 
 	var reasons []MatchReason
 	reasonQuery := original
-	if interpretation.Status == "corrected" {
+	if interpretation.Status == interpretationCorrected {
 		reasonQuery = query
 	}
 	if len(out.Hits) > 0 && s.LLM != nil && purpose != searchForReference {

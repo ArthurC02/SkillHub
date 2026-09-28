@@ -41,10 +41,33 @@ type SearchInterpretation struct {
 	FallbackReason string             `json:"fallback_reason,omitempty"`
 }
 
+const (
+	interpretationSkipped   = "skipped"
+	interpretationFallback  = "fallback"
+	interpretationAnalyzed  = "analyzed"
+	interpretationCorrected = "corrected"
+)
+
+const (
+	fallbackUnavailable     = "unavailable"
+	fallbackTimeout         = "timeout"
+	fallbackInvalidResponse = "invalid_response"
+)
+
+const (
+	intentInput       = "input"
+	intentOutput      = "output"
+	intentTools       = "tools"
+	intentData        = "data"
+	intentEnvironment = "environment"
+)
+
+var intentFields = []string{intentInput, intentOutput, intentTools, intentData, intentEnvironment}
+
 func emptyInterpretation(status string, filters searchFilters) SearchInterpretation {
 	return SearchInterpretation{
 		Status:   status,
-		Intent:   map[string]*string{"input": nil, "output": nil, "tools": nil, "data": nil, "environment": nil},
+		Intent:   map[string]*string{intentInput: nil, intentOutput: nil, intentTools: nil, intentData: nil, intentEnvironment: nil},
 		Keywords: []string{}, Filters: filters.values(),
 	}
 }
@@ -58,30 +81,18 @@ const (
 
 func (i SearchInterpretation) validate(query string, source interpretationSource) error {
 	extracted := source == extractedByModel
-	if len(i.Intent) != 5 || i.Keywords == nil || i.Filters == nil {
+	if len(i.Intent) != len(intentFields) || i.Keywords == nil || i.Filters == nil {
 		return errors.New("intent, keywords and filters are required")
 	}
-	for _, field := range []string{"input", "output", "tools", "data", "environment"} {
-		value, exists := i.Intent[field]
-		if !exists {
-			return errors.New("all five intent fields are required")
-		}
-		if value != nil && (strings.TrimSpace(*value) == "" || utf8.RuneCountInString(*value) > maxQueryRunes ||
-			(extracted && !strings.Contains(query, *value))) {
-			return errors.New("invalid intent field")
-		}
+	if err := i.validateIntentFields(query, source); err != nil {
+		return err
 	}
-	if len(i.Keywords) > maxIntentKeywords {
-		return errors.New("too many search keywords")
-	}
-	for _, keyword := range i.Keywords {
-		if strings.TrimSpace(keyword) == "" || utf8.RuneCountInString(keyword) > maxIntentKeywordRunes {
-			return errors.New("invalid search keyword")
-		}
+	if err := i.validateKeywords(); err != nil {
+		return err
 	}
 	for key := range i.Filters {
 		switch key {
-		case "script", "validation", "agent", "tier", "category":
+		case filterScript, filterValidation, filterAgent, filterTier, filterCategory:
 		default:
 			return errors.New("unsupported search filter")
 		}
@@ -93,10 +104,36 @@ func (i SearchInterpretation) validate(query string, source interpretationSource
 	return err
 }
 
+func (i SearchInterpretation) validateIntentFields(query string, source interpretationSource) error {
+	for _, field := range intentFields {
+		value, exists := i.Intent[field]
+		if !exists {
+			return errors.New("all five intent fields are required")
+		}
+		if value != nil && (strings.TrimSpace(*value) == "" || utf8.RuneCountInString(*value) > maxQueryRunes ||
+			(source == extractedByModel && !strings.Contains(query, *value))) {
+			return errors.New("invalid intent field")
+		}
+	}
+	return nil
+}
+
+func (i SearchInterpretation) validateKeywords() error {
+	if len(i.Keywords) > maxIntentKeywords {
+		return errors.New("too many search keywords")
+	}
+	for _, keyword := range i.Keywords {
+		if strings.TrimSpace(keyword) == "" || utf8.RuneCountInString(keyword) > maxIntentKeywordRunes {
+			return errors.New("invalid search keyword")
+		}
+	}
+	return nil
+}
+
 func (i SearchInterpretation) retrievalQuery(original string) string {
 	var terms []string
-	if i.Status == "corrected" {
-		for _, field := range []string{"input", "output", "tools", "data", "environment"} {
+	if i.Status == interpretationCorrected {
+		for _, field := range intentFields {
 			if value := i.Intent[field]; value != nil && !slices.Contains(terms, *value) {
 				terms = append(terms, *value)
 			}
@@ -114,11 +151,11 @@ func (i SearchInterpretation) retrievalQuery(original string) string {
 }
 
 func (s *Service) interpret(ctx context.Context, query string, filters searchFilters, purpose searchPurpose) SearchInterpretation {
-	out := emptyInterpretation("skipped", filters)
+	out := emptyInterpretation(interpretationSkipped, filters)
 	if purpose == searchForReference {
 		return out
 	}
-	out.Status, out.FallbackReason = "fallback", "unavailable"
+	out.Status, out.FallbackReason = interpretationFallback, fallbackUnavailable
 	if s.IntentAnalyzer == nil {
 		return out
 	}
@@ -127,23 +164,23 @@ func (s *Service) interpret(ctx context.Context, query string, filters searchFil
 	analysis, err := s.IntentAnalyzer.AnalyzeIntent(analysisCtx, query, s.Budgets.Within(ctx, IntentBudget))
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(analysisCtx.Err(), context.DeadlineExceeded) {
-			out.FallbackReason = "timeout"
+			out.FallbackReason = fallbackTimeout
 		}
 		return out
 	}
 	if analysis == nil {
-		out.FallbackReason = "invalid_response"
+		out.FallbackReason = fallbackInvalidResponse
 		return out
 	}
 	out.Model, out.PromptVersion = analysis.Interpretation.Model, analysis.Interpretation.PromptVersion
 	s.recordVersionedCallCost(ctx, credit.KindSearchIntent, out.Model, out.PromptVersion, analysis.Usage)
 	if err := analysis.Interpretation.validate(query, extractedByModel); err != nil || !analysis.Valid ||
 		out.Model == "" || out.PromptVersion == "" {
-		out.FallbackReason = "invalid_response"
+		out.FallbackReason = fallbackInvalidResponse
 		return out
 	}
 	out = analysis.Interpretation
-	out.Status, out.FallbackReason = "analyzed", ""
+	out.Status, out.FallbackReason = interpretationAnalyzed, ""
 	for key, value := range filters.values() {
 		out.Filters[key] = value
 	}
@@ -153,18 +190,18 @@ func (s *Service) interpret(ctx context.Context, query string, filters searchFil
 func (f searchFilters) values() map[string]string {
 	values := make(map[string]string)
 	if f.HasScript != nil {
-		values["script"] = "no"
+		values[filterScript] = "no"
 		if *f.HasScript {
-			values["script"] = "yes"
+			values[filterScript] = "yes"
 		}
 	}
 	if f.SpecValidated != nil {
-		values["validation"] = "unverified"
+		values[filterValidation] = compatUnverified
 		if *f.SpecValidated {
-			values["validation"] = "passed"
+			values[filterValidation] = compatPassed
 		}
 	}
-	for key, value := range map[string]*string{"agent": f.AgentRuntime, "tier": f.CurationTier, "category": f.Category} {
+	for key, value := range map[string]*string{filterAgent: f.AgentRuntime, filterTier: f.CurationTier, filterCategory: f.Category} {
 		if value != nil {
 			values[key] = *value
 		}
