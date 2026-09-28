@@ -252,11 +252,8 @@ type liveEvidence struct {
 	finalOutput bool
 }
 
-func (s *Service) resolveEvidence(
-	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]EvidenceRef,
-) (liveEvidence, error) {
-	live := liveEvidence{traceEvents: map[string]bool{}, artifacts: map[string]bool{}}
-	var wantArtifacts, wantOutput bool
+func wantedEvidence(sets [][]EvidenceRef) (live liveEvidence, wantArtifacts, wantOutput bool) {
+	live = liveEvidence{traceEvents: map[string]bool{}, artifacts: map[string]bool{}}
 	for _, refs := range sets {
 		for _, ref := range refs {
 			switch {
@@ -269,36 +266,58 @@ func (s *Service) resolveEvidence(
 			}
 		}
 	}
+	return live, wantArtifacts, wantOutput
+}
 
-	if len(live.traceEvents) > 0 {
-		uuids := make([]pgtype.UUID, 0, len(live.traceEvents))
-		for id := range live.traceEvents {
-			var u pgtype.UUID
-			if u.Scan(id) == nil {
-				uuids = append(uuids, u)
-			}
+func (s *Service) confirmLiveTraceEvents(ctx context.Context, workspaceID, runID pgtype.UUID, traceEvents map[string]bool) error {
+	if len(traceEvents) == 0 {
+		return nil
+	}
+	uuids := make([]pgtype.UUID, 0, len(traceEvents))
+	for id := range traceEvents {
+		var u pgtype.UUID
+		if u.Scan(id) == nil {
+			uuids = append(uuids, u)
 		}
-		rows, err := s.Trace.LiveEvents(ctx, workspaceID, runID, uuids)
-		if err != nil {
-			return liveEvidence{}, err
-		}
-		for _, u := range rows {
-			live.traceEvents[pgconv.UUIDString(u)] = true
-		}
+	}
+	rows, err := s.Trace.LiveEvents(ctx, workspaceID, runID, uuids)
+	if err != nil {
+		return err
+	}
+	for _, u := range rows {
+		traceEvents[pgconv.UUIDString(u)] = true
+	}
+	return nil
+}
+
+func (s *Service) confirmLiveArtifacts(ctx context.Context, workspaceID, runID pgtype.UUID, artifacts map[string]bool) error {
+	if s.ReadEvaluationInput == nil {
+
+		return errRunReaderNotConfigured
+	}
+
+	input, _, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
+	if err != nil {
+		return err
+	}
+	for _, a := range input.Artifacts {
+		artifacts[a.FileName] = true
+	}
+	return nil
+}
+
+func (s *Service) resolveEvidence(
+	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]EvidenceRef,
+) (liveEvidence, error) {
+	live, wantArtifacts, wantOutput := wantedEvidence(sets)
+
+	if err := s.confirmLiveTraceEvents(ctx, workspaceID, runID, live.traceEvents); err != nil {
+		return liveEvidence{}, err
 	}
 
 	if wantArtifacts {
-		if s.ReadEvaluationInput == nil {
-
-			return liveEvidence{}, errRunReaderNotConfigured
-		}
-
-		input, _, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
-		if err != nil {
+		if err := s.confirmLiveArtifacts(ctx, workspaceID, runID, live.artifacts); err != nil {
 			return liveEvidence{}, err
-		}
-		for _, a := range input.Artifacts {
-			live.artifacts[a.FileName] = true
 		}
 	}
 

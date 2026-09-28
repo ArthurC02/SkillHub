@@ -300,7 +300,8 @@ func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T)
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			status, failureClass, _, message := classifyResult(tc.in)
+			ending, _ := classifyResult(tc.in)
+			status, failureClass, message := ending.to, ending.failure, ending.reason
 			if status != tc.wantStatus {
 				t.Errorf("status = %q, want %q", status, tc.wantStatus)
 			}
@@ -471,7 +472,7 @@ func TestAPoolThatMayRecoverIsToldApartFromOneThatCouldNeverRunTheRequest(t *tes
 				t.Fatalf("err = %v, want %v", err, tc.want)
 			}
 			other := ErrNoCompatibleProvider
-			if tc.want == ErrNoCompatibleProvider {
+			if errors.Is(tc.want, ErrNoCompatibleProvider) {
 				other = ErrNoSandboxAvailableYet
 			}
 			if errors.Is(err, other) {

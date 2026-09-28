@@ -155,7 +155,7 @@ func TestArtifactManifestLocksBeforeAnyWrite(t *testing.T) {
 	q := &manifestQueryRecorder{}
 	current := gen.Run{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
 	result := &RunResult{Artifacts: []RunArtifact{{FileName: "out.txt"}}}
-	if err := persistArtifactManifest(context.Background(), q, current, "runs/archive", result, true); err != nil {
+	if err := persistArtifactManifest(context.Background(), q, current, artifactManifest{archiveKey: "runs/archive", result: result, truncated: true}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"lock", "mark", "read-names", "insert", "retire-intent"}
@@ -170,7 +170,7 @@ func TestARedeliveredManifestRecordsOnlyNamesNotYetRecordedAndKeepsThemForTheRet
 	result := &RunResult{Artifacts: []RunArtifact{{FileName: "report.txt"}, {FileName: "chart.png"}}}
 	before := time.Now()
 
-	if err := persistArtifactManifest(context.Background(), q, current, "runs/archive", result, false); err != nil {
+	if err := persistArtifactManifest(context.Background(), q, current, artifactManifest{archiveKey: "runs/archive", result: result, truncated: false}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -194,7 +194,7 @@ func TestProviderRefusesAResponsePastItsReadLimit(t *testing.T) {
 
 	p := NewProvider("test", srv.URL, "").(*httpProvider)
 	var out map[string]any
-	if _, err := p.call(context.Background(), http.MethodGet, "/", nil, &out, http.StatusOK); err == nil {
+	if _, err := p.call(context.Background(), providerRequest{method: http.MethodGet, path: "/", body: nil, want: []int{http.StatusOK}}, &out); err == nil {
 		t.Fatal("provider accepted a response larger than its 4 MiB limit")
 	}
 }
@@ -212,7 +212,7 @@ func TestOversizedProviderErrorKeepsItsHTTPRetryClassification(t *testing.T) {
 			}))
 			defer srv.Close()
 			p := NewProvider("test", srv.URL, "").(*httpProvider)
-			_, err := p.call(context.Background(), http.MethodGet, "/", nil, nil, http.StatusOK)
+			_, err := p.call(context.Background(), providerRequest{method: http.MethodGet, path: "/", body: nil, want: []int{http.StatusOK}}, nil)
 			if err == nil || retryable(err) != tc.retryable {
 				t.Fatalf("error = %v, retryable = %v; want %v", err, retryable(err), tc.retryable)
 			}

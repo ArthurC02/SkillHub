@@ -1,0 +1,27 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-terminal-status-citation-follows-the-code",
+  "status": "draft",
+  "intent": "Keep the reviewed rule that a terminal Run status is final pointing at the code that establishes it after that code moved.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent loading the Run Context receives the finality rule with citations that verify, so it has no reason to treat the rule as out of date.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-follow-the-moved-lines",
+      "statement": "The rule cites the transition table, the terminality test and the transition guard at the lines they now occupy, and each cited excerpt hashes to what the rule was reviewed against."
+    },
+    {
+      "id": "the-rule-still-holds",
+      "statement": "A Run in a terminal status has no successor and a request to leave it is refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ]
+}

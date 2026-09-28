@@ -33,7 +33,7 @@ func blockedReport(codes ...string) skillpkg.Report {
 }
 
 func TestAPackageThatCouldNotBeScannedIsNotTreatedAsACleanOne(t *testing.T) {
-	reason, err := scanVerdict(skillpkg.Report{}, false)
+	reason, err := scanVerdict(packageScan{report: skillpkg.Report{}, scanned: false})
 	if reason != ReasonScanUnavailable {
 		t.Errorf("reason = %q, want %q", reason, ReasonScanUnavailable)
 	}
@@ -46,13 +46,13 @@ func TestAScannedPackageWithNothingBlockingRuns(t *testing.T) {
 	clean := skillpkg.Report{Findings: []skillpkg.Finding{
 		{Severity: skillpkg.SeverityWarning, Code: "PKG-W01"},
 	}}
-	if _, err := scanVerdict(clean, true); err != nil {
+	if _, err := scanVerdict(packageScan{report: clean, scanned: true}); err != nil {
 		t.Errorf("a scanned package the scanner did not block was refused: %v", err)
 	}
 }
 
 func TestABlockedPackageIsRefusedAndNamesWhatBlockedIt(t *testing.T) {
-	reason, err := scanVerdict(blockedReport("PKG-E02", "PKG-E01"), true)
+	reason, err := scanVerdict(packageScan{report: blockedReport("PKG-E02", "PKG-E01"), scanned: true})
 	if reason != ReasonScanBlocked {
 		t.Errorf("reason = %q, want %q", reason, ReasonScanBlocked)
 	}
@@ -66,7 +66,7 @@ func TestABlockingCodeIsNamedOnceHoweverManyFilesCarryIt(t *testing.T) {
 	report.Findings = append(report.Findings,
 		skillpkg.Finding{Severity: skillpkg.SeverityWarning, Code: "PKG-W09"})
 
-	_, err := scanVerdict(report, true)
+	_, err := scanVerdict(packageScan{report: report, scanned: true})
 	if got := strings.Count(err.Error(), "PKG-E01"); got != 1 {
 		t.Errorf("PKG-E01 is named %d times, want 1: %v", got, err)
 	}

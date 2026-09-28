@@ -109,16 +109,32 @@ func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAtte
 func (g *Gateway) Issue(
 	ctx context.Context, runID, runAttemptID string, ttl time.Duration, maxBudgetUSD float64,
 ) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, runAttemptID, ttl, maxBudgetUSD, g.model,
-		map[string]string{"run_id": runID, "run_attempt_id": runAttemptID})
+	return g.issue(ctx, virtualKeyTerms{
+		attemptID: runAttemptID, ttl: ttl, maxBudgetUSD: maxBudgetUSD, model: g.model,
+		metadata: map[string]string{"run_id": runID, "run_attempt_id": runAttemptID},
+	})
 }
 
 func (g *Gateway) IssueCreation(ctx context.Context, sessionID, attemptID string, ttl time.Duration) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, attemptID, ttl, 0, g.model, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
+	return g.issue(ctx, virtualKeyTerms{
+		attemptID: attemptID, ttl: ttl, maxBudgetUSD: 0, model: g.model,
+		metadata: map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID},
+	})
 }
 
 func (g *Gateway) IssueCreationForModel(ctx context.Context, sessionID, attemptID string, ttl time.Duration, budget float64, model string) (*ModelGatewayGrant, error) {
-	return g.issue(ctx, attemptID, ttl, budget, model, map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID})
+	return g.issue(ctx, virtualKeyTerms{
+		attemptID: attemptID, ttl: ttl, maxBudgetUSD: budget, model: model,
+		metadata: map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID},
+	})
+}
+
+type virtualKeyTerms struct {
+	attemptID    string
+	ttl          time.Duration
+	maxBudgetUSD float64
+	model        string
+	metadata     map[string]string
 }
 
 type keyGenerationRequest struct {
@@ -134,9 +150,8 @@ type keyDeletionRequest struct {
 	KeyAliases []string `json:"key_aliases"`
 }
 
-func (g *Gateway) issue(
-	ctx context.Context, runAttemptID string, ttl time.Duration, maxBudgetUSD float64, model string, metadata map[string]string,
-) (*ModelGatewayGrant, error) {
+func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatewayGrant, error) {
+	runAttemptID, ttl, maxBudgetUSD, model, metadata := terms.attemptID, terms.ttl, terms.maxBudgetUSD, terms.model, terms.metadata
 	if ttl <= 0 {
 		ttl = time.Hour
 	}
@@ -266,19 +281,26 @@ func (g *Gateway) post(ctx context.Context, path string, body, out any) error {
 		return err
 	}
 
-	return g.do(ctx, http.MethodPost, path, encoded, out, 1<<20)
+	return g.do(ctx, adminRequest{method: http.MethodPost, path: path, body: encoded, responseLimit: 1 << 20}, out)
 }
 
 func (g *Gateway) get(ctx context.Context, path string, out any) error {
-	return g.do(ctx, http.MethodGet, path, nil, out, usageResponseLimit)
+	return g.do(ctx, adminRequest{method: http.MethodGet, path: path, responseLimit: usageResponseLimit}, out)
 }
 
-func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out any, limit int64) error {
+type adminRequest struct {
+	method        string
+	path          string
+	body          []byte
+	responseLimit int64
+}
+
+func (g *Gateway) do(ctx context.Context, req adminRequest, out any) error {
 	status, raw, err := (httpx.Transport{
 		Client:        g.client,
 		Token:         g.adminKey,
-		ResponseLimit: limit,
-	}).Do(ctx, method, g.adminBaseURL+path, body)
+		ResponseLimit: req.responseLimit,
+	}).Do(ctx, req.method, g.adminBaseURL+req.path, req.body)
 	if err != nil {
 		return err
 	}

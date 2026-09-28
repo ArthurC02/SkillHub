@@ -436,7 +436,7 @@ func TestAnAttemptAndRunFinishTogether(t *testing.T) {
 	r := runIn(gen.RunStatusRunning, attemptWith(firstAttempt, ObjectGrantStateRecorded, false))
 	execution := string(errClassExecution)
 
-	r.FinishAttemptAndTransition(firstAttempt, errClassExecution, "failed", gen.RunStatusFailed, "failed", failureWorkload)
+	r.FinishAttemptAndTransition(firstAttempt, errClassExecution, "failed", runEnding{to: gen.RunStatusFailed, reason: "failed", failure: failureWorkload})
 
 	assertRunEvents(t, r,
 		AttemptFinished{AttemptID: firstAttempt, ErrorClass: &execution},

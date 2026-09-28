@@ -20,7 +20,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -39,11 +38,11 @@ func (s *Service) injectedSecretsFor(ctx context.Context, snap policySnapshot) [
 	if !snap.reachesAModel() {
 		return []string{}
 	}
-	_, capability, _, err := s.providers().Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
+	placement, err := s.providers().Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
 	if err != nil {
 		return []string{}
 	}
-	named := append([]string{}, capability.Injects...)
+	named := append([]string{}, placement.Capability.Injects...)
 	sort.Strings(named)
 	return named
 }
@@ -106,8 +105,7 @@ const blockedContentNotCurated = "content_not_curated"
 // blockingReason is what would refuse this pair right now, asked of the very
 // gates create() enforces so the two can never answer differently.
 func (s *Service) blockingReason(
-	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot,
-	report skillpkg.Report, scanned bool,
+	ctx context.Context, workspaceID pgtype.UUID, version VersionFacts, snap policySnapshot, scan packageScan,
 ) string {
 	if s.Registry != nil {
 		if skill, found, err := s.Registry.Skill(ctx, workspaceID, version.SkillID); err == nil && found {
@@ -119,7 +117,7 @@ func (s *Service) blockingReason(
 	if reason, err := s.schedulableRefusal(ctx, snap); err != nil {
 		return reason
 	}
-	if reason, err := scanVerdict(report, scanned); err != nil {
+	if reason, err := scanVerdict(scan); err != nil {
 		return reason
 	}
 	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); err != nil {
@@ -204,7 +202,9 @@ func (s *Service) PermissionSummaryFor(
 	if err := s.requireTestLab(); err != nil {
 		return PermissionSummary{}, err
 	}
-	return s.permissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID, nil)
+	return s.permissionSummaryFor(ctx, workspaceID, preflightTarget{
+		skillID: skillID, versionID: versionID, testCaseID: testCaseID,
+	}, nil)
 }
 
 // heldInputs carries rows a caller already read on its own transaction, so this
@@ -216,8 +216,9 @@ type heldInputs struct {
 }
 
 func (s *Service) permissionSummaryFor(
-	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID, held *heldInputs,
+	ctx context.Context, workspaceID pgtype.UUID, target preflightTarget, held *heldInputs,
 ) (PermissionSummary, error) {
+	skillID, versionID, testCaseID := target.skillID, target.versionID, target.testCaseID
 	var version VersionFacts
 	if held != nil {
 		version = held.version
@@ -259,7 +260,7 @@ func (s *Service) permissionSummaryFor(
 	}
 
 	snap := defaultPolicy(s.Deployment)
-	report, scanned := s.packageReport(ctx, version.stored())
+	scan := s.packageReport(ctx, version.stored())
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
@@ -267,7 +268,7 @@ func (s *Service) permissionSummaryFor(
 		TestCaseID:        pgconv.UUIDString(draft.TestCaseID),
 		Datasets:          draft.Datasets,
 		DatasetTotalBytes: draft.DatasetTotalBytes,
-		Scripts:           scriptSummaryOf(report, scanned),
+		Scripts:           scriptSummaryOf(scan),
 
 		Tools: []string{"sandbox filesystem (/work, /out)", "sandbox shell"},
 
@@ -286,7 +287,7 @@ func (s *Service) permissionSummaryFor(
 
 	blocked := ""
 	if held == nil {
-		blocked = s.blockingReason(ctx, workspaceID, version, snap, report, scanned)
+		blocked = s.blockingReason(ctx, workspaceID, version, snap, scan)
 	}
 
 	var quota *policy.QuotaView
@@ -334,7 +335,7 @@ func (s *Service) sandboxesUnavailableNow(ctx context.Context, snap policySnapsh
 	if len(registry.Providers) == 0 {
 		return false
 	}
-	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
+	_, err := registry.Select(ctx, requirementsFromPolicy(snap, s.Deployment.Model))
 	return errors.Is(err, ErrNoSandboxAvailableYet)
 }
 
@@ -353,12 +354,12 @@ var permissionSummaryNotes = []string{
 	"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
 }
 
-func scriptSummaryOf(report skillpkg.Report, ok bool) ScriptSummary {
-	if !ok {
+func scriptSummaryOf(scan packageScan) ScriptSummary {
+	if !scan.scanned {
 		return ScriptSummary{Status: "unavailable", Findings: []string{}}
 	}
 	findings := []string{}
-	for _, f := range report.Findings {
+	for _, f := range scan.report.Findings {
 		if f.Code == "script-file" || f.Code == "embedded-script" {
 			findings = append(findings, f.Code+": "+f.Path)
 		}
@@ -376,10 +377,11 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 	if len(registry.Providers) == 0 {
 		return ProviderSummary{Name: providerUnassigned}
 	}
-	p, capability, profile, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
+	placement, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
 	if err != nil {
 		return ProviderSummary{Name: providerUnassigned}
 	}
+	p, capability, profile := placement.Provider, placement.Capability, placement.Profile
 	return ProviderSummary{
 		Name:                       p.Name(),
 		IsolationStrength:          capability.Isolation.Strength,
@@ -448,7 +450,8 @@ func permissionConfirmation(row gen.RunPermissionConfirmation) PermissionConfirm
 }
 
 func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
-	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID,
+	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID,
+		preflightTarget{skillID: p.SkillID, versionID: p.VersionID, testCaseID: p.TestCaseID},
 		&heldInputs{draft: draft, version: version})
 	if err != nil {
 		return err
@@ -472,11 +475,11 @@ func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, versionID, testCaseID, ok := preflightIDs(w, r, r.URL.Query().Get("version_id"), r.URL.Query().Get("test_case_id"))
+	target, ok := preflightIDs(w, r, r.URL.Query().Get("version_id"), r.URL.Query().Get("test_case_id"))
 	if !ok {
 		return
 	}
-	summary, err := h.Svc.PermissionSummaryFor(r.Context(), ws.ID, skillID, versionID, testCaseID)
+	summary, err := h.Svc.PermissionSummaryFor(r.Context(), ws.ID, target.skillID, target.versionID, target.testCaseID)
 	if errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
 		return
@@ -503,11 +506,11 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 			"body must be JSON with version_id, test_case_id and summary_hash")
 		return
 	}
-	skillID, versionID, testCaseID, ok := preflightIDs(w, r, body.VersionID, body.TestCaseID)
+	target, ok := preflightIDs(w, r, body.VersionID, body.TestCaseID)
 	if !ok {
 		return
 	}
-	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, skillID, versionID, testCaseID, body.SummaryHash)
+	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, target.skillID, target.versionID, target.testCaseID, body.SummaryHash)
 	switch {
 	case errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound):
 		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))
@@ -526,14 +529,20 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (skillID, versionID, testCaseID pgtype.UUID, ok bool) {
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
+type preflightTarget struct {
+	skillID    pgtype.UUID
+	versionID  pgtype.UUID
+	testCaseID pgtype.UUID
+}
+
+func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (target preflightTarget, ok bool) {
+	if err := target.skillID.Scan(r.PathValue("id")); err != nil {
 		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
-		return skillID, versionID, testCaseID, false
+		return target, false
 	}
-	if versionID.Scan(version) != nil || testCaseID.Scan(testCase) != nil {
+	if target.versionID.Scan(version) != nil || target.testCaseID.Scan(testCase) != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "version_id and test_case_id must be UUIDs")
-		return skillID, versionID, testCaseID, false
+		return target, false
 	}
-	return skillID, versionID, testCaseID, true
+	return target, true
 }

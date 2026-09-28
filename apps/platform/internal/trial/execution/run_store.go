@@ -17,10 +17,12 @@ import (
 
 func (s *Service) captureWorkloadOutput(ctx context.Context, attempt gen.RunAttempt, output string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		return trace.RecordOrchestratorEvent(ctx, tx, attempt.WorkspaceID, attempt.RunID,
-			int(attempt.AttemptNumber), trace.TypeAgentOutput, "", map[string]any{
+		return trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
+			WorkspaceID: attempt.WorkspaceID, RunID: attempt.RunID,
+			Attempt: int(attempt.AttemptNumber), Type: trace.TypeAgentOutput, Payload: map[string]any{
 				"kind": "captured", "text": output, "truncated": false,
-			})
+			},
+		})
 	})
 }
 
@@ -52,7 +54,7 @@ func (s *Service) beginCleanup(ctx context.Context, current gen.Run) ([]gen.RunA
 	return s.attempts(ctx, current.WorkspaceID, current.ID)
 }
 
-func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, archiveKey string, result *RunResult, truncated bool) error {
+func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, manifest artifactManifest) error {
 	if s == nil || s.Pool == nil {
 		return errors.New("run artifact persistence is not configured")
 	}
@@ -61,7 +63,7 @@ func (s *Service) saveArtifactManifest(ctx context.Context, current gen.Run, arc
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := persistArtifactManifest(ctx, artifactManifestStore{gen.New(tx)}, current, archiveKey, result, truncated); err != nil {
+	if err := persistArtifactManifest(ctx, artifactManifestStore{gen.New(tx)}, current, manifest); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -107,97 +109,128 @@ func (s *Service) saveRun(ctx context.Context, tx pgx.Tx, r *Run, actor pgtype.U
 	if refused, ok := r.Refusal(); ok {
 		return refused.err()
 	}
-	q := s.queries().WithTx(tx)
+	w := runTx{tx: tx, q: s.queries().WithTx(tx), actor: actor}
 	for ; r.saved < len(r.events); r.saved++ {
-		if err := s.writeRunEvent(ctx, tx, q, r, r.saved, actor); err != nil {
+		if err := s.writeRunEvent(ctx, w, r, r.saved); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *Service) writeRunEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, r *Run, i int, actor pgtype.UUID) error {
+type runTx struct {
+	tx    pgx.Tx
+	q     *gen.Queries
+	actor pgtype.UUID
+}
+
+func (s *Service) writeRunEvent(ctx context.Context, w runTx, r *Run, i int) error {
 	switch event := r.events[i].(type) {
 	case StatusChanged:
 		if event.FromStatus == "" {
-			return s.writeCreated(ctx, tx, q, r, event, actor)
+			return s.writeCreated(ctx, w, r, event)
 		}
-		return s.writeTransition(ctx, tx, q, r, event, actor)
+		return s.writeTransition(ctx, w, r, event)
 	case CancelRequested:
-		row, err := q.RequestRunCancel(ctx, gen.RequestRunCancelParams{
-			CancelRequestedAt: r.row.CancelRequestedAt, ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrRunFinished
-		}
-		if err != nil {
-			return err
-		}
-		r.row = row
-		return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
+		return writeCancelRequested(ctx, w, r, event)
 	case ProviderAssigned:
-		row, err := q.SetRunProvider(ctx, gen.SetRunProviderParams{
-			Provider: r.row.Provider, RuntimeSnapshot: r.row.RuntimeSnapshot,
-			ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrRunFinished
-		}
-		if err != nil {
-			return err
-		}
-		r.row = row
-		return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
+		return writeProviderAssigned(ctx, w, r, event)
 	case AttemptStarted:
-		started := r.attempts[len(r.attempts)-1]
-		attempt, err := q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
-			RunID: started.RunID, WorkspaceID: started.WorkspaceID, AttemptNumber: started.AttemptNumber,
-			Provider: started.Provider, ObjectGrantsState: started.ObjectGrantsState,
-			ObjectGrantsExpireAt: started.ObjectGrantsExpireAt,
-		})
-		if err != nil {
-			return err
-		}
-		r.attempts[len(r.attempts)-1] = attempt
-		event.AttemptID = attempt.ID
-		r.events[i] = event
-		return publishRunEvent(ctx, tx, r, event, attempt.ID)
+		return writeAttemptStarted(ctx, w, r, i, event)
 	case AttemptDispatched:
-		a := r.attempt(event.AttemptID)
-		updated, err := q.SetAttemptProviderRunID(ctx, gen.SetAttemptProviderRunIDParams{
-			ProviderRunID: a.ProviderRunID, StartedAt: a.StartedAt, ID: a.ID, WorkspaceID: a.WorkspaceID,
-		})
-		if err != nil {
-			return err
-		}
-		*a = updated
-		return publishRunEvent(ctx, tx, r, event, a.ID)
+		return writeAttemptDispatched(ctx, w, r, event)
 	case AttemptFinished:
-		a := r.attempt(event.AttemptID)
-		updated, err := q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
-			FinishedAt: a.FinishedAt, ErrorClass: a.ErrorClass, ErrorMessage: a.ErrorMessage,
-			ObjectGrantsState: a.ObjectGrantsState, ObjectGrantsExpireAt: a.ObjectGrantsExpireAt,
-			ID: a.ID, WorkspaceID: a.WorkspaceID,
-		})
-		if err != nil {
-			return err
-		}
-		*a = updated
-		return publishRunEvent(ctx, tx, r, event, a.ID)
+		return writeAttemptFinished(ctx, w, r, event)
 	case ObjectGrantsRecorded:
-		a := r.attempt(event.AttemptID)
-		if err := writeObjectGrants(ctx, q, *a); err != nil {
-			return err
-		}
-		if err := q.RememberRunArtifactUploadIntent(ctx, artifactUploadIntent(*a)); err != nil {
-			return err
-		}
-		return publishRunEvent(ctx, tx, r, event, a.ID)
+		return writeObjectGrantsRecorded(ctx, w, r, event)
 	}
 	return fmt.Errorf("run event %T has nothing to write", r.events[i])
 }
 
-func (s *Service) writeCreated(ctx context.Context, tx pgx.Tx, q *gen.Queries, r *Run, event StatusChanged, actor pgtype.UUID) error {
+func writeCancelRequested(ctx context.Context, w runTx, r *Run, event CancelRequested) error {
+	row, err := w.q.RequestRunCancel(ctx, gen.RequestRunCancelParams{
+		CancelRequestedAt: r.row.CancelRequestedAt, ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRunFinished
+	}
+	if err != nil {
+		return err
+	}
+	r.row = row
+	return publishRunEvent(ctx, w.tx, r, event, pgtype.UUID{})
+}
+
+func writeProviderAssigned(ctx context.Context, w runTx, r *Run, event ProviderAssigned) error {
+	row, err := w.q.SetRunProvider(ctx, gen.SetRunProviderParams{
+		Provider: r.row.Provider, RuntimeSnapshot: r.row.RuntimeSnapshot,
+		ID: r.row.ID, WorkspaceID: r.row.WorkspaceID, Status: r.row.Status,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRunFinished
+	}
+	if err != nil {
+		return err
+	}
+	r.row = row
+	return publishRunEvent(ctx, w.tx, r, event, pgtype.UUID{})
+}
+
+func writeAttemptStarted(ctx context.Context, w runTx, r *Run, i int, event AttemptStarted) error {
+	started := r.attempts[len(r.attempts)-1]
+	attempt, err := w.q.CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
+		RunID: started.RunID, WorkspaceID: started.WorkspaceID, AttemptNumber: started.AttemptNumber,
+		Provider: started.Provider, ObjectGrantsState: started.ObjectGrantsState,
+		ObjectGrantsExpireAt: started.ObjectGrantsExpireAt,
+	})
+	if err != nil {
+		return err
+	}
+	r.attempts[len(r.attempts)-1] = attempt
+	event.AttemptID = attempt.ID
+	r.events[i] = event
+	return publishRunEvent(ctx, w.tx, r, event, attempt.ID)
+}
+
+func writeAttemptDispatched(ctx context.Context, w runTx, r *Run, event AttemptDispatched) error {
+	a := r.attempt(event.AttemptID)
+	updated, err := w.q.SetAttemptProviderRunID(ctx, gen.SetAttemptProviderRunIDParams{
+		ProviderRunID: a.ProviderRunID, StartedAt: a.StartedAt, ID: a.ID, WorkspaceID: a.WorkspaceID,
+	})
+	if err != nil {
+		return err
+	}
+	*a = updated
+	return publishRunEvent(ctx, w.tx, r, event, a.ID)
+}
+
+func writeAttemptFinished(ctx context.Context, w runTx, r *Run, event AttemptFinished) error {
+	a := r.attempt(event.AttemptID)
+	updated, err := w.q.FinishRunAttempt(ctx, gen.FinishRunAttemptParams{
+		FinishedAt: a.FinishedAt, ErrorClass: a.ErrorClass, ErrorMessage: a.ErrorMessage,
+		ObjectGrantsState: a.ObjectGrantsState, ObjectGrantsExpireAt: a.ObjectGrantsExpireAt,
+		ID: a.ID, WorkspaceID: a.WorkspaceID,
+	})
+	if err != nil {
+		return err
+	}
+	*a = updated
+	return publishRunEvent(ctx, w.tx, r, event, a.ID)
+}
+
+func writeObjectGrantsRecorded(ctx context.Context, w runTx, r *Run, event ObjectGrantsRecorded) error {
+	a := r.attempt(event.AttemptID)
+	if err := writeObjectGrants(ctx, w.q, *a); err != nil {
+		return err
+	}
+	if err := w.q.RememberRunArtifactUploadIntent(ctx, artifactUploadIntent(*a)); err != nil {
+		return err
+	}
+	return publishRunEvent(ctx, w.tx, r, event, a.ID)
+}
+
+func (s *Service) writeCreated(ctx context.Context, w runTx, r *Run, event StatusChanged) error {
+	q, tx := w.q, w.tx
 	row, err := q.CreateRun(ctx, gen.CreateRunParams{
 		WorkspaceID: r.row.WorkspaceID, SkillVersionID: r.row.SkillVersionID,
 		TestCaseSnapshotID: r.row.TestCaseSnapshotID, Provider: r.row.Provider,
@@ -207,13 +240,16 @@ func (s *Service) writeCreated(ctx context.Context, tx pgx.Tx, q *gen.Queries, r
 		return err
 	}
 	r.row = row
-	if err := s.recordTransition(ctx, q, tx, row, nil, pgtype.UUID{}, event.Reason, actor, audit.ActionRunCreate); err != nil {
+	if err := s.recordTransition(ctx, w, row, recordedTransition{
+		reason: event.Reason, action: audit.ActionRunCreate,
+	}); err != nil {
 		return err
 	}
 	return publishRunEvent(ctx, tx, r, event, pgtype.UUID{})
 }
 
-func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries, r *Run, event StatusChanged, actor pgtype.UUID) error {
+func (s *Service) writeTransition(ctx context.Context, w runTx, r *Run, event StatusChanged) error {
+	q, tx := w.q, w.tx
 	from := gen.RunStatus(event.FromStatus)
 	row, err := q.TransitionRun(ctx, gen.TransitionRunParams{
 		ToStatus: r.row.Status, Reason: nonEmpty(event.Reason), FailureClass: r.row.FailureClass,
@@ -227,13 +263,15 @@ func (s *Service) writeTransition(ctx context.Context, tx pgx.Tx, q *gen.Queries
 		return err
 	}
 	r.row = row
-	if err := s.recordTransition(ctx, q, tx, row, &from, event.attemptID, event.Reason, actor, audit.ActionRunTransition); err != nil {
+	if err := s.recordTransition(ctx, w, row, recordedTransition{
+		from: &from, attemptID: event.attemptID, reason: event.Reason, action: audit.ActionRunTransition,
+	}); err != nil {
 		return err
 	}
 	if err := publishRunEvent(ctx, tx, r, event, event.attemptID); err != nil {
 		return err
 	}
-	if err := s.recordFailureEvent(ctx, tx, q, row, event.failure, event.Reason); err != nil {
+	if err := s.recordFailureEvent(ctx, w, row, event.failure, event.Reason); err != nil {
 		return err
 	}
 	if !IsTerminal(row.Status) {

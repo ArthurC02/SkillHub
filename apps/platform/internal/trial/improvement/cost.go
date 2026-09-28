@@ -4,8 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
@@ -16,18 +14,18 @@ type CostRecorder interface {
 
 type CreditsForUSD = func(usd float64) (credits int64, ok bool)
 
-func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind credit.CostKind,
-	workspaceID, evaluationID, runID pgtype.UUID, model, promptVersion string, u *ModelUsage) {
+func (s *Service) recordEvalCost(ctx context.Context, tx credit.DBTX, kind credit.CostKind, ref evaluationRef, call modelCall) {
 	if s.Credit == nil {
 		return
 	}
+	evaluationID, u := ref.evaluationID, call.usage
 	e := credit.CostEvent{
 		Kind:           kind,
-		Model:          model,
-		PromptVersion:  promptVersion,
-		WorkspaceID:    workspaceID,
+		Model:          call.model,
+		PromptVersion:  call.promptVersion,
+		WorkspaceID:    ref.workspaceID,
 		RefType:        credit.RefRun,
-		RefID:          runID,
+		RefID:          ref.runID,
 		IdempotencyKey: string(kind) + ":" + pgconv.UUIDString(evaluationID),
 	}
 	if u != nil {

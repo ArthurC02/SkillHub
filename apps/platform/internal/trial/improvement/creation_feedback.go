@@ -56,18 +56,7 @@ func (s *Service) CreationFeedback(
 	return marshalCreationFeedback(view)
 }
 
-func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
-	summary, summaryTruncated := cut(withoutLinks(view.Summary), creationFeedbackMaxSummary)
-	criteria := append([]CriterionResult(nil), view.CriterionResults...)
-	if criteria == nil {
-		criteria = []CriterionResult{}
-	}
-	findings := append([]Finding(nil), view.DeterministicFindings...)
-	if findings == nil {
-		findings = []Finding{}
-	}
-
-	itemsTruncated := false
+func cutFeedbackItems(criteria []CriterionResult, findings []Finding) (itemsTruncated bool) {
 	for i := range criteria {
 		var t bool
 		if criteria[i].Text, t = cut(criteria[i].Text, creationFeedbackMaxItem); t {
@@ -85,6 +74,21 @@ func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
 			itemsTruncated = true
 		}
 	}
+	return itemsTruncated
+}
+
+func marshalCreationFeedback(view evaluationView) (json.RawMessage, error) {
+	summary, summaryTruncated := cut(withoutLinks(view.Summary), creationFeedbackMaxSummary)
+	criteria := append([]CriterionResult(nil), view.CriterionResults...)
+	if criteria == nil {
+		criteria = []CriterionResult{}
+	}
+	findings := append([]Finding(nil), view.DeterministicFindings...)
+	if findings == nil {
+		findings = []Finding{}
+	}
+
+	itemsTruncated := cutFeedbackItems(criteria, findings)
 
 	sort.SliceStable(criteria, func(i, j int) bool {
 		return criterionDropFirst(criteria[i]) < criterionDropFirst(criteria[j])

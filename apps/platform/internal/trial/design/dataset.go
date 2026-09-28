@@ -41,7 +41,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	if err != nil {
 		return Dataset{}, err
 	}
-	return s.writeDataset(ctx, conn, ws, testCaseID, file, locks.key, intentID)
+	return s.writeDataset(ctx, locks, testCaseID, file, intentID)
 }
 
 type datasetFile struct {
@@ -150,19 +150,19 @@ func (s *Service) reserveDatasetObject(ctx context.Context, locks *datasetObject
 }
 
 func (s *Service) writeDataset(
-	ctx context.Context, conn *pgxpool.Conn, ws identity.Workspace, testCaseID pgtype.UUID,
-	file datasetFile, key string, intentID pgtype.UUID,
+	ctx context.Context, locks *datasetObjectLocks, testCaseID pgtype.UUID, file datasetFile, intentID pgtype.UUID,
 ) (Dataset, error) {
+	conn, workspaceID, key := locks.conn, locks.workspaceID, locks.key
 	keepObject := false
 	defer func() {
 		if !keepObject {
-			s.compensateDatasetObject(ctx, conn, ws.ID, key, intentID)
+			s.compensateDatasetObject(ctx, conn, workspaceID, key, intentID)
 		}
 	}()
 	if err := s.Store.Put(ctx, key, file.data); err != nil {
 		return Dataset{}, err
 	}
-	ds, commitAttempted, err := recordDataset(ctx, conn, ws.ID, testCaseID, file, key, intentID)
+	ds, commitAttempted, err := recordDataset(ctx, locks, testCaseID, file, intentID)
 	keepObject = commitAttempted && !shouldCompensateCommit(err)
 	return datasetDTO(ds), err
 }
@@ -182,10 +182,10 @@ func (s *Service) compensateDatasetObject(ctx context.Context, conn *pgxpool.Con
 }
 
 func recordDataset(
-	ctx context.Context, conn *pgxpool.Conn, workspaceID, testCaseID pgtype.UUID,
-	file datasetFile, key string, intentID pgtype.UUID,
+	ctx context.Context, locks *datasetObjectLocks, testCaseID pgtype.UUID, file datasetFile, intentID pgtype.UUID,
 ) (row gen.Dataset, commitAttempted bool, err error) {
-	tx, err := conn.Begin(ctx)
+	workspaceID, key := locks.workspaceID, locks.key
+	tx, err := locks.conn.Begin(ctx)
 	if err != nil {
 		return gen.Dataset{}, false, err
 	}

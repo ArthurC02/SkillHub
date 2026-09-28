@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-terminal-status-citation-follows-the-code",
+  "proposal_id": "run-terminal-status-follows-its-lines",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-follow-the-moved-lines",
+      "expected_outcome": "The validator accepts the rule with its refreshed citations.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on the staged rule"
+    },
+    {
+      "id": "refreshed-citations-current",
+      "source_type": "rule",
+      "source_id": "run-terminal-status-is-final",
+      "expected_outcome": "Every citation in the staged Registry is current, including the three of this rule.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the staged rule"
+    },
+    {
+      "id": "old-line-numbers-no-longer-verify",
+      "source_type": "invariant",
+      "source_id": "citations-follow-the-moved-lines",
+      "expected_outcome": "The Registry as it stands reports the three citations of the state machine as stale.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the current Registry"
+    },
+    {
+      "id": "terminal-status-has-no-successor",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-rule-still-holds",
+      "expected_outcome": "A terminal status has no successor and the happy path from one is an error.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/trial/execution/ -run TestTerminalStatesAreDeadEnds|TestHappyPathFromATerminalStateIsAnError"
+    },
+    {
+      "id": "rule-reaches-its-context",
+      "source_type": "invariant",
+      "source_id": "citations-follow-the-moved-lines",
+      "expected_outcome": "get-context for run returns the Context with its rules attached.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry get-context"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "citations-follow-the-moved-lines",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    }
+  ]
+}

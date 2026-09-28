@@ -80,33 +80,10 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 
 	preserved := 0
 	for _, attempt := range attempts {
-
-		if s.Gateway != nil {
-			if err := s.Gateway.Revoke(ctx, pgconv.UUIDString(attempt.ID)); err != nil {
-
-				metrics.GatewayRevokeFailed.Inc()
-				failures = append(failures, fmt.Sprintf("model gateway key for attempt %d: %v", attempt.AttemptNumber, err))
-			}
-		}
-		if attempt.ProviderRunID == nil {
-
-			continue
-		}
-
-		if halts.incidentHeld(attempt.Provider) {
+		attemptFailures, held := s.releaseAttempt(ctx, attempt, halts)
+		failures = append(failures, attemptFailures...)
+		if held {
 			preserved++
-			continue
-		}
-		provider := s.providers().Lookup(attempt.Provider)
-		if provider == nil {
-
-			metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
-			failures = append(failures, "provider "+attempt.Provider+" is no longer configured")
-			continue
-		}
-		if err := provider.Destroy(ctx, *attempt.ProviderRunID); err != nil {
-			metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
-			failures = append(failures, fmt.Sprintf("%s: %v", attempt.Provider, err))
 		}
 	}
 
@@ -129,6 +106,35 @@ func (s *Service) cleanup(ctx context.Context, run gen.Run) error {
 		return fmt.Errorf("run cleanup incomplete: %s", strings.Join(failures, "; "))
 	}
 	return nil
+}
+
+func (s *Service) releaseAttempt(ctx context.Context, attempt gen.RunAttempt, halts haltState) (failures []string, held bool) {
+	if s.Gateway != nil {
+		if err := s.Gateway.Revoke(ctx, pgconv.UUIDString(attempt.ID)); err != nil {
+
+			metrics.GatewayRevokeFailed.Inc()
+			failures = append(failures, fmt.Sprintf("model gateway key for attempt %d: %v", attempt.AttemptNumber, err))
+		}
+	}
+	if attempt.ProviderRunID == nil {
+
+		return failures, false
+	}
+
+	if halts.incidentHeld(attempt.Provider) {
+		return failures, true
+	}
+	provider := s.providers().Lookup(attempt.Provider)
+	if provider == nil {
+
+		metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
+		return append(failures, "provider "+attempt.Provider+" is no longer configured"), false
+	}
+	if err := provider.Destroy(ctx, *attempt.ProviderRunID); err != nil {
+		metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
+		failures = append(failures, fmt.Sprintf("%s: %v", attempt.Provider, err))
+	}
+	return failures, false
 }
 
 func cleanupSettledAt(status gen.RunCleanupStatus) pgtype.Timestamptz {

@@ -79,19 +79,24 @@ func accessVerdict(skill SkillFacts) (string, error) {
 		fmt.Errorf("%w (%s)", ErrAccessRestricted, skill.AccessRestrictionReason)
 }
 
-func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) (skillpkg.Report, bool) {
+type packageScan struct {
+	report  skillpkg.Report
+	scanned bool
+}
+
+func (s *Service) packageReport(ctx context.Context, stored skillpkg.StoredSkill) packageScan {
 	if s.store() == nil {
-		return skillpkg.Report{}, false
+		return packageScan{}
 	}
 	data, err := s.store().Get(ctx, stored.ObjectKey)
 	if err != nil {
-		return skillpkg.Report{}, false
+		return packageScan{}
 	}
 	fsys, err := stored.Open(data)
 	if err != nil {
-		return skillpkg.Report{}, false
+		return packageScan{}
 	}
-	return skillpkg.Validate(fsys), true
+	return packageScan{report: skillpkg.Validate(fsys), scanned: true}
 }
 
 type scanRefusal struct {
@@ -116,14 +121,14 @@ func (s scanRefusal) inInterfaceLanguage() string {
 	return "擋下它的掃描項目：" + strings.Join(s.codes, "、") + "。"
 }
 
-func scanVerdict(report skillpkg.Report, scanned bool) (string, error) {
-	if !scanned {
+func scanVerdict(scan packageScan) (string, error) {
+	if !scan.scanned {
 		return ReasonScanUnavailable, scanRefusal{unscanned: true}
 	}
-	if !report.Blocked {
+	if !scan.report.Blocked {
 		return "", nil
 	}
-	return ReasonScanBlocked, scanRefusal{codes: blockingCodes(report)}
+	return ReasonScanBlocked, scanRefusal{codes: blockingCodes(scan.report)}
 }
 
 func blockingCodes(report skillpkg.Report) []string {
@@ -146,8 +151,7 @@ func (s *Service) requireScanNotBlocking(ctx context.Context, stored skillpkg.St
 }
 
 func (s *Service) scanRefusal(ctx context.Context, stored skillpkg.StoredSkill) (string, error) {
-	report, scanned := s.packageReport(ctx, stored)
-	return scanVerdict(report, scanned)
+	return scanVerdict(s.packageReport(ctx, stored))
 }
 
 func runSlotVerdict(active int64) error {

@@ -128,7 +128,8 @@ func TestEveryFailurePathSpeaksTheInterfaceLanguage(t *testing.T) {
 			withState(withStatus(silent, "failed"), ProviderStateCompleted)},
 		{"a provider failure it did not explain", withStatus(silent, "failed")},
 	} {
-		_, _, _, message := classifyResult(tc.run)
+		ending, _ := classifyResult(tc.run)
+		message := ending.reason
 		if !hasHan(string(message)) {
 			t.Errorf("%s: the reason the run carries is not in the interface language: %q", tc.name, message)
 		}

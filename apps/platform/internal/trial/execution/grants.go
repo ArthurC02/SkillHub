@@ -26,10 +26,15 @@ func artifactUploadIntent(a gen.RunAttempt) gen.RememberRunArtifactUploadIntentP
 	}
 }
 
+type runInputs struct {
+	version  VersionFacts
+	datasets []testlab.DatasetRef
+}
+
 func (s *Service) grantsFor(
-	ctx context.Context, run gen.Run, attempt gen.RunAttempt,
-	version VersionFacts, refs []testlab.DatasetRef, ttl time.Duration,
+	ctx context.Context, run gen.Run, attempt gen.RunAttempt, inputs runInputs, ttl time.Duration,
 ) (grants []ObjectGrant, datasetKeys []string, err error) {
+	version, refs := inputs.version, inputs.datasets
 	if err := s.requireTestLab(); err != nil {
 		return nil, nil, err
 	}

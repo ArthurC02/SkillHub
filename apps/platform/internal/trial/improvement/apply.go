@@ -311,33 +311,50 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	zw := zip.NewWriter(&buf)
 	written := map[string]bool{}
 	for _, f := range zr.File {
-		header := &zip.FileHeader{Name: f.Name, Method: zip.Deflate, Modified: f.Modified}
-		if strings.HasSuffix(f.Name, "/") {
-			header.Method = zip.Store
-		}
-		w, err := zw.CreateHeader(header)
+		patched, err := rewriteArchiveEntry(zw, f, root, patches)
 		if err != nil {
 			return nil, err
 		}
-		if content, replaced := patches[strings.TrimPrefix(f.Name, root)]; replaced &&
-			!strings.HasSuffix(f.Name, "/") {
+		if patched {
 			written[strings.TrimPrefix(f.Name, root)] = true
-			if _, err := io.WriteString(w, content); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			return nil, err
-		}
-		_, err = io.Copy(w, rc) //nolint:gosec // bounded by PackageFS's unpacked-size check
-		rc.Close()
-		if err != nil {
-			return nil, err
 		}
 	}
 
+	if err := addNewArchiveEntries(zw, root, patches, written); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func rewriteArchiveEntry(zw *zip.Writer, f *zip.File, root string, patches map[string]string) (patched bool, err error) {
+	header := &zip.FileHeader{Name: f.Name, Method: zip.Deflate, Modified: f.Modified}
+	if strings.HasSuffix(f.Name, "/") {
+		header.Method = zip.Store
+	}
+	w, err := zw.CreateHeader(header)
+	if err != nil {
+		return false, err
+	}
+	if content, replaced := patches[strings.TrimPrefix(f.Name, root)]; replaced &&
+		!strings.HasSuffix(f.Name, "/") {
+		if _, err := io.WriteString(w, content); err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+	rc, err := f.Open()
+	if err != nil {
+		return false, err
+	}
+	_, err = io.Copy(w, rc) //nolint:gosec // bounded by PackageFS's unpacked-size check
+	rc.Close()
+	return false, err
+}
+
+func addNewArchiveEntries(zw *zip.Writer, root string, patches map[string]string, written map[string]bool) error {
 	added := make([]string, 0, len(patches))
 	for p := range patches {
 		if !written[p] {
@@ -348,16 +365,13 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	for _, p := range added {
 		w, err := zw.Create(root + p)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if _, err := io.WriteString(w, patches[p]); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	if err := zw.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return nil
 }
 
 type ApplyResult struct {
@@ -398,7 +412,7 @@ func (s *Service) ApplySuggestions(
 		out.rejectApplied(blocked.Reason, blocked.Message)
 		return out, nil
 	}
-	return s.buildImprovedVersion(ctx, ws, skillID, evaluationID, base, plan, out)
+	return s.buildImprovedVersion(ctx, evaluatedSkillRef{ws: ws, skillID: skillID, evaluationID: evaluationID}, base, plan, out)
 }
 
 func (s *Service) evaluatedSkill(ctx context.Context, workspaceID, skillID, evaluationID pgtype.UUID) (suggestionCtx, error) {
@@ -510,10 +524,16 @@ func (r *ApplyResult) rejectApplied(reason, message string) {
 	r.Applied = nil
 }
 
+type evaluatedSkillRef struct {
+	ws           identity.Workspace
+	skillID      pgtype.UUID
+	evaluationID pgtype.UUID
+}
+
 func (s *Service) buildImprovedVersion(
-	ctx context.Context, ws identity.Workspace, skillID, evaluationID pgtype.UUID,
-	base suggestionCtx, plan patchPlan, out ApplyResult,
+	ctx context.Context, target evaluatedSkillRef, base suggestionCtx, plan patchPlan, out ApplyResult,
 ) (ApplyResult, error) {
+	ws, skillID, evaluationID := target.ws, target.skillID, target.evaluationID
 	patched, err := patchArchive(base.latestZip, plan.patches)
 	if err != nil {
 		return out, err

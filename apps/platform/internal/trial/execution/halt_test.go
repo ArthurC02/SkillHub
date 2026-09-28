@@ -41,7 +41,7 @@ func TestNodeAndPoolThresholds(t *testing.T) {
 
 		{"3 slots at 50% rounds up, and the floor of 1 cannot hide it", 3, 2},
 	} {
-		if got := haltThreshold(tc.slots, 1, 2, 1); got != tc.want {
+		if got := haltThreshold(tc.slots, 2, 1); got != tc.want {
 			t.Errorf("node threshold, %s: got %d, want %d", tc.what, got, tc.want)
 		}
 	}
@@ -56,7 +56,7 @@ func TestNodeAndPoolThresholds(t *testing.T) {
 		{"6 slots at 25% rounds up to a whole resource", 6, 2},
 		{"no slots declared anywhere", 0, 2},
 	} {
-		if got := haltThreshold(tc.slots, 1, 4, 2); got != tc.want {
+		if got := haltThreshold(tc.slots, 4, 2); got != tc.want {
 			t.Errorf("pool threshold, %s: got %d, want %d", tc.what, got, tc.want)
 		}
 	}

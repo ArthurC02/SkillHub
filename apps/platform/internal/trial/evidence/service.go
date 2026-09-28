@@ -174,13 +174,20 @@ func (s *Service) ingestOne(
 	return nil
 }
 
-func RecordOrchestratorEvent(
-	ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID,
-	attempt int, eventType, status string, payload any,
-) error {
+type OrchestratorEvent struct {
+	WorkspaceID pgtype.UUID
+	RunID       pgtype.UUID
+	Attempt     int
+	Type        string
+	Status      string
+	Payload     any
+}
+
+func RecordOrchestratorEvent(ctx context.Context, tx pgx.Tx, event OrchestratorEvent) error {
 	if tx == nil {
 		return errPersistenceNotConfigured
 	}
+	workspaceID, runID, attempt, eventType, status := event.WorkspaceID, event.RunID, event.Attempt, event.Type, event.Status
 	q := gen.New(tx)
 	if err := q.LockTraceIngestRun(ctx, runID); err != nil {
 		return err
@@ -191,7 +198,7 @@ func RecordOrchestratorEvent(
 	if err != nil {
 		return err
 	}
-	encoded, err := json.Marshal(payload)
+	encoded, err := json.Marshal(event.Payload)
 	if err != nil {
 		return err
 	}
@@ -507,21 +514,15 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 	if summary.Usage != nil {
 		summary.Usage.CostUSD = fold.costUSD
-		if c := summary.Usage.CostUSD; c != nil && s.Credits != nil {
-			if credits, ok := s.Credits(*c); ok {
-				summary.Usage.CostCredits = &credits
-			}
-		}
+		s.priceInCredits(summary.Usage)
 	}
 	summary.Truncated = summary.SkillsTotal > len(summary.Skills) || summary.ErrorsTotal > len(summary.Errors)
 	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
 	if err != nil {
 		return Summary{}, err
 	}
-	for _, stream := range health {
-		if stream.MissingCount > 0 {
-			summary.Complete = false
-		}
+	if anyStreamMissing(health) {
+		summary.Complete = false
 	}
 
 	if nothingWasCollected(run, health) {
@@ -532,14 +533,35 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		return Summary{}, err
 	}
 	for _, t := range transitions {
-		step := ProgressStep{Status: t.ToStatus}
-		if t.Reason != nil && *t.Reason != "" {
-			step.Reason = *t.Reason
-		}
-		summary.Steps = append(summary.Steps, step)
+		summary.Steps = append(summary.Steps, progressStepOf(t))
 	}
 
 	return summary, nil
+}
+
+func (s *Service) priceInCredits(usage *UsageSummary) {
+	if c := usage.CostUSD; c != nil && s.Credits != nil {
+		if credits, ok := s.Credits(*c); ok {
+			usage.CostCredits = &credits
+		}
+	}
+}
+
+func anyStreamMissing(health []StreamHealth) bool {
+	for _, stream := range health {
+		if stream.MissingCount > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func progressStepOf(t RunTransition) ProgressStep {
+	step := ProgressStep{Status: t.ToStatus}
+	if t.Reason != nil && *t.Reason != "" {
+		step.Reason = *t.Reason
+	}
+	return step
 }
 
 func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype.UUID) (generalFold, error) {

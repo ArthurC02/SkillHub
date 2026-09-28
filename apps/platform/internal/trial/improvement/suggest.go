@@ -62,15 +62,15 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 		return
 	}
-	if err := s.recordModelUsage(ctx, s.queries(), ev.WorkspaceID, ev.ID, "suggest",
-		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+	call := modelCall{model: resp.Model, promptVersion: resp.PromptVersion, usage: resp.Usage}
+	if err := s.recordModelUsage(ctx, s.queries(), ref, "suggest", call); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 
 	}
 
-	s.recordEvalCost(ctx, s.Pool, credit.KindSuggestion, ev.WorkspaceID, ev.ID, m.run.ID,
-		resp.Model, resp.PromptVersion, resp.Usage)
+	s.recordEvalCost(ctx, s.Pool, credit.KindSuggestion, ref, call)
 
 	q := s.queries()
 

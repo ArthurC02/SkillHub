@@ -219,7 +219,7 @@ func (s *Service) schedulableRefusal(ctx context.Context, policy policySnapshot)
 	if len(registry.Providers) == 0 {
 		return ReasonCapabilityMismatch, ErrNoProvider
 	}
-	_, _, _, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
+	_, err := registry.Select(ctx, requirementsFromPolicy(policy, s.Deployment.Model))
 	if errors.Is(err, ErrNoCompatibleProvider) {
 		return ReasonCapabilityMismatch, err
 	}
@@ -301,22 +301,41 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			fmt.Sprintf("%s reports itself unhealthy", name),
 			fmt.Sprintf("%s 回報自己不健康", name))
 	}
+	if err := matchIsolation(name, c, req); err != nil {
+		return RuntimeProfile{}, err
+	}
+	if err := matchEnforcement(name, c, req); err != nil {
+		return RuntimeProfile{}, err
+	}
+	profile, err := matchRuntime(name, c, req)
+	if err != nil {
+		return RuntimeProfile{}, err
+	}
+	if err := matchResourceCeilings(name, c, req); err != nil {
+		return RuntimeProfile{}, err
+	}
+	return profile, nil
+}
 
+func matchIsolation(name string, c ProviderCapability, req Requirements) error {
 	if !c.Isolation.Strength.meets(req.MinimumIsolation) {
-		return RuntimeProfile{}, cannotRun(
+		return cannotRun(
 			fmt.Sprintf("%s isolates workloads %q, and this deployment runs nothing weaker than %q",
 				name, c.Isolation.Strength, req.MinimumIsolation),
 			fmt.Sprintf("%s 的隔離強度是 %q，這個部署不跑比 %q 更弱的",
 				name, c.Isolation.Strength, req.MinimumIsolation))
 	}
 	if !c.Isolation.Rootless {
-		return RuntimeProfile{}, cannotRun(
+		return cannotRun(
 			fmt.Sprintf("%s does not run workloads unprivileged", name),
 			fmt.Sprintf("%s 不是以非特權身分執行工作負載", name))
 	}
+	return nil
+}
 
+func matchEnforcement(name string, c ProviderCapability, req Requirements) error {
 	if len(c.MaxResourcesUnenforced) > 0 && !req.AcceptUnenforced {
-		return RuntimeProfile{}, cannotRun(
+		return cannotRun(
 			fmt.Sprintf("%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
 				name, strings.Join(c.MaxResourcesUnenforced, ", ")),
 			fmt.Sprintf("%s 宣告了自己不強制的資源上限（%s），這個部署不接受",
@@ -324,21 +343,24 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	}
 
 	if c.Network.EgressUnenforced && !req.AcceptUnenforced {
-		return RuntimeProfile{}, cannotRun(
+		return cannotRun(
 			fmt.Sprintf("%s declares egress modes it does not enforce, which this deployment does not accept", name),
 			fmt.Sprintf("%s 宣告了自己不強制的網路出口模式，這個部署不接受", name))
 	}
 	if !egressSatisfied(c.Network.EgressModes, req) {
 		if req.EgressAllowed > 0 {
-			return RuntimeProfile{}, cannotRun(
+			return cannotRun(
 				fmt.Sprintf("%s cannot enforce %s network egress with an allow list", name, req.EgressMode),
 				fmt.Sprintf("%s 沒辦法在帶允許清單的情況下強制 %s 網路出口", name, req.EgressMode))
 		}
-		return RuntimeProfile{}, cannotRun(
+		return cannotRun(
 			fmt.Sprintf("%s cannot enforce %s network egress", name, req.EgressMode),
 			fmt.Sprintf("%s 沒辦法強制 %s 網路出口", name, req.EgressMode))
 	}
+	return nil
+}
 
+func matchRuntime(name string, c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	profile := RuntimeProfile{
 		Runtime:          req.Runtime,
 		AgentIntegration: req.AgentIntegration,
@@ -364,7 +386,10 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			fmt.Sprintf("%s does not support the %s runtime", name, req.Runtime),
 			fmt.Sprintf("%s 不支援 %s 這個執行環境", name, req.Runtime))
 	}
+	return profile, nil
+}
 
+func matchResourceCeilings(name string, c ProviderCapability, req Requirements) error {
 	for _, check := range []struct {
 		what, inWords   string
 		needed, offered float64
@@ -382,17 +407,17 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		{"output tokens", "輸出 Token", float64(req.Limits.TokenBudget.MaxOutputTokens), float64(c.MaxResources.TokenBudget.MaxOutputTokens)},
 	} {
 		if check.offered <= 0 {
-			return RuntimeProfile{}, cannotRun(
+			return cannotRun(
 				fmt.Sprintf("%s does not declare a %s ceiling", name, check.what),
 				fmt.Sprintf("%s 沒有宣告 %s 的上限", name, check.inWords))
 		}
 		if check.needed > check.offered {
-			return RuntimeProfile{}, cannotRun(
+			return cannotRun(
 				fmt.Sprintf("%s caps %s below what this run needs", name, check.what),
 				fmt.Sprintf("%s 的 %s 上限低於這次試跑需要的", name, check.inWords))
 		}
 	}
-	return profile, nil
+	return nil
 }
 
 type Placement struct {
@@ -403,12 +428,12 @@ type Placement struct {
 
 func (p Placement) freeSlots() int { return p.Capability.Availability.ConcurrentRunSlots }
 
-func (r *Registry) Select(ctx context.Context, req Requirements) (SandboxProvider, ProviderCapability, RuntimeProfile, error) {
+func (r *Registry) Select(ctx context.Context, req Requirements) (Placement, error) {
 	compatible, err := r.compatible(ctx, req, nil)
 	if err != nil {
-		return nil, ProviderCapability{}, RuntimeProfile{}, err
+		return Placement{}, err
 	}
-	return compatible[0].Provider, compatible[0].Capability, compatible[0].Profile, nil
+	return compatible[0], nil
 }
 
 func (r *Registry) Place(ctx context.Context, req Requirements, setAside map[string]SetAsideProvider) ([]Placement, error) {
@@ -477,10 +502,14 @@ func packageRefFor(version VersionFacts) PackageRef {
 	}
 }
 
-func (s *Service) buildRunRequest(
-	ctx context.Context, run gen.Run, attempt gen.RunAttempt, profile RuntimeProfile,
-	policy policySnapshot, budgetUSD float64,
-) (RunRequest, error) {
+type attemptTerms struct {
+	profile   RuntimeProfile
+	policy    policySnapshot
+	budgetUSD float64
+}
+
+func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.RunAttempt, terms attemptTerms) (RunRequest, error) {
+	profile, policy, budgetUSD := terms.profile, terms.policy, terms.budgetUSD
 	if s.Registry == nil {
 		return RunRequest{}, errRegistryReadNotConfigured
 	}
@@ -504,7 +533,7 @@ func (s *Service) buildRunRequest(
 	}
 
 	ttl := time.Duration(policy.ResourceLimits.WallClockHardSeconds)*time.Second + grantSlack
-	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, version, refs, ttl)
+	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, runInputs{version: version, datasets: refs}, ttl)
 	if err != nil {
 		return RunRequest{}, err
 	}

@@ -426,7 +426,7 @@ func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "請求至少要帶 text 或 confirmed 其中一個")
 		return
 	}
-	tc, err := h.Svc.UpdateCriterion(r.Context(), ws, id, r.PathValue("criterionId"), body.Text, body.Confirmed)
+	tc, err := h.Svc.UpdateCriterion(r.Context(), ws, id, r.PathValue("criterionId"), CriterionEdit{Text: body.Text, Confirmed: body.Confirmed})
 	if err != nil {
 		fail(w, err, "更新驗收條件失敗")
 		return

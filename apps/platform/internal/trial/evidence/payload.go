@@ -143,6 +143,24 @@ func valueAccepted(got string, accepted []string) bool {
 	return false
 }
 
+func validatePayloadField(eventType, name string, spec payloadField, value json.RawMessage) error {
+	kind := jsonKind(value)
+	if len(spec.kinds) > 0 && !kindAccepted(kind, spec.kinds) {
+		return fmt.Errorf("%w: %s.%s is %s, want %v", ErrInvalid, eventType, name, kind, spec.kinds)
+	}
+	if len(spec.enum) == 0 || kind != "string" {
+		return nil
+	}
+	var got string
+	if err := json.Unmarshal(value, &got); err != nil {
+		return fmt.Errorf("%w: %s.%s is not readable", ErrInvalid, eventType, name)
+	}
+	if !valueAccepted(got, spec.enum) {
+		return fmt.Errorf("%w: %s.%s is %q, want one of %v", ErrInvalid, eventType, name, got, spec.enum)
+	}
+	return nil
+}
+
 func validatePayload(eventType string, raw json.RawMessage) error {
 	rule, known := payloadRules[eventType]
 	if !known {
@@ -160,18 +178,8 @@ func validatePayload(eventType string, raw json.RawMessage) error {
 			}
 			return fmt.Errorf("%w: %s carries no field %q", ErrInvalid, eventType, name)
 		}
-		kind := jsonKind(value)
-		if len(spec.kinds) > 0 && !kindAccepted(kind, spec.kinds) {
-			return fmt.Errorf("%w: %s.%s is %s, want %v", ErrInvalid, eventType, name, kind, spec.kinds)
-		}
-		if len(spec.enum) > 0 && kind == "string" {
-			var got string
-			if err := json.Unmarshal(value, &got); err != nil {
-				return fmt.Errorf("%w: %s.%s is not readable", ErrInvalid, eventType, name)
-			}
-			if !valueAccepted(got, spec.enum) {
-				return fmt.Errorf("%w: %s.%s is %q, want one of %v", ErrInvalid, eventType, name, got, spec.enum)
-			}
+		if err := validatePayloadField(eventType, name, spec, value); err != nil {
+			return err
 		}
 	}
 	for name, spec := range rule.fields {

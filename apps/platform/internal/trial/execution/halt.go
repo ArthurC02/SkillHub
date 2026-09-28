@@ -261,9 +261,9 @@ func haltTarget(provider string) string {
 	return provider
 }
 
-func haltThreshold(slots int, numerator, denominator, floor int64) int64 {
+func haltThreshold(slots int, denominator, floor int64) int64 {
 	// Ceiling division: rounds a fractional threshold up to the next integer.
-	threshold := (int64(slots)*numerator + denominator - 1) / denominator
+	threshold := (int64(slots) + denominator - 1) / denominator
 	if threshold < floor {
 		return floor
 	}
@@ -289,33 +289,53 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 		poolOrphans += persistent
 		poolSlots += int64(slots)
 
-		threshold := haltThreshold(slots, 1, 2, 1)
-		s.reconcileThresholdHalt(ctx, provider.Name(), persistent >= threshold, fmt.Sprintf(
-			"X-04: %d leaked sandboxes on %s have survived two reconciler rounds, at or above the %d that drains a node with %d declared slots",
-			persistent, provider.Name(), threshold, slots))
+		threshold := haltThreshold(slots, 2, 1)
+		s.reconcileThresholdHalt(ctx, provider.Name(), orphanCount{
+			persistent: persistent, threshold: threshold,
+			reason: fmt.Sprintf(
+				"X-04: %d leaked sandboxes on %s have survived two reconciler rounds, at or above the %d that drains a node with %d declared slots",
+				persistent, provider.Name(), threshold, slots),
+		})
 	}
 
 	if len(registry.Providers) > 0 {
-		threshold := haltThreshold(int(poolSlots), 1, 4, 2)
-		s.reconcileThresholdHalt(ctx, haltPool, poolOrphans >= threshold, fmt.Sprintf(
-			"X-04: %d leaked sandboxes fleet-wide have survived two reconciler rounds, at or above the %d that suspends dispatch across %d declared slots",
-			poolOrphans, threshold, poolSlots))
+		threshold := haltThreshold(int(poolSlots), 4, 2)
+		s.reconcileThresholdHalt(ctx, haltPool, orphanCount{
+			persistent: poolOrphans, threshold: threshold,
+			reason: fmt.Sprintf(
+				"X-04: %d leaked sandboxes fleet-wide have survived two reconciler rounds, at or above the %d that suspends dispatch across %d declared slots",
+				poolOrphans, threshold, poolSlots),
+		})
 	}
 	s.publishHaltMetrics(ctx)
 }
 
-func (s *Service) reconcileThresholdHalt(ctx context.Context, provider string, breached bool, reason string) {
-	if breached {
+type orphanCount struct {
+	persistent int64
+	threshold  int64
+	reason     string
+}
 
-		if _, err := s.DeclareHalt(ctx, provider, HaltSourceOrphanThreshold, reason, pgtype.UUID{}); err != nil {
-			slog.Error("could not halt dispatch on the X-04 threshold",
-				"target", haltTarget(provider), "error", err)
-			return
-		}
-		slog.Warn("dispatch halted by the X-04 threshold", "target", haltTarget(provider), "reason", reason)
+func (c orphanCount) breached() bool { return c.persistent >= c.threshold }
+
+func (s *Service) reconcileThresholdHalt(ctx context.Context, provider string, count orphanCount) {
+	if count.breached() {
+		s.declareThresholdHalt(ctx, provider, count.reason)
 		return
 	}
+	s.countThresholdClearRound(ctx, provider)
+}
 
+func (s *Service) declareThresholdHalt(ctx context.Context, provider, reason string) {
+	if _, err := s.DeclareHalt(ctx, provider, HaltSourceOrphanThreshold, reason, pgtype.UUID{}); err != nil {
+		slog.Error("could not halt dispatch on the X-04 threshold",
+			"target", haltTarget(provider), "error", err)
+		return
+	}
+	slog.Warn("dispatch halted by the X-04 threshold", "target", haltTarget(provider), "reason", reason)
+}
+
+func (s *Service) countThresholdClearRound(ctx context.Context, provider string) {
 	rounds, err := s.queries().SetDispatchHaltClearRounds(ctx, gen.SetDispatchHaltClearRoundsParams{
 		Provider: provider, Sources: sourceValues(automaticallyRecoveringSources()),
 	})

@@ -566,7 +566,13 @@ func (s *Service) AddCriterion(
 	})
 }
 
-func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string, text *string, confirmed *bool) (TestCase, error) {
+type CriterionEdit struct {
+	Text      *string
+	Confirmed *bool
+}
+
+func (s *Service) UpdateCriterion(ctx context.Context, ws identity.Workspace, id pgtype.UUID, criterionID string, edit CriterionEdit) (TestCase, error) {
+	text, confirmed := edit.Text, edit.Confirmed
 	var newText string
 	if text != nil {
 		var err error

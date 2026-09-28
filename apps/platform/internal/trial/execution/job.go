@@ -265,7 +265,9 @@ func (d *driver) tryPlacement(ctx context.Context, round *dispatchRound) (attemp
 	attempt := started.LatestAttempt()
 	round.lastAttemptID = attempt.ID
 
-	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, placement.Profile, round.policy, round.budget)
+	request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, attemptTerms{
+		profile: placement.Profile, policy: round.policy, budgetUSD: round.budget,
+	})
 	if err != nil {
 		return attemptSettled, d.abandonUnbuiltAttempt(ctx, attempt, err)
 	}
@@ -281,7 +283,7 @@ func (d *driver) abandonUnbuiltAttempt(ctx context.Context, attempt gen.RunAttem
 		slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
 	}
 	reason := d.reasonFor(failurePlatform, err)
-	return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failurePlatform, reason)
+	return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), runEnding{to: gen.RunStatusFailed, failure: failurePlatform, reason: reason})
 }
 
 func (d *driver) startRefused(
@@ -373,7 +375,7 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		return d.providerLost(ctx, attempt, "執行沙箱 "+statusReason(provider.Name())+" 已經不認得這次嘗試")
 	case !retryable(err):
 		reason := d.reasonFor(failureProvider, err)
-		return d.finishAttemptAndRun(ctx, attempt, errClassExecution, string(reason), gen.RunStatusFailed, failureProvider, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassExecution, string(reason), runEnding{to: gen.RunStatusFailed, failure: failureProvider, reason: reason})
 	default:
 		silentSince, markErr := d.providerSilentSince(ctx, attempt)
 		if markErr != nil {
@@ -390,6 +392,11 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 	}
 
+	return d.stopOrPollAgain(ctx, provider, attempts, attempt)
+}
+
+func (d *driver) stopOrPollAgain(ctx context.Context, provider SandboxProvider, attempts []gen.RunAttempt, attempt gen.RunAttempt) error {
+	handle := *attempt.ProviderRunID
 	cancelled, err := d.cancelRequested(ctx)
 	if err != nil {
 		return err
@@ -404,14 +411,16 @@ func (d *driver) follow(ctx context.Context, attempts []gen.RunAttempt, attempt 
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		return d.finishAttemptAndRun(ctx, attempt, errClassTimeout, string(d.timeoutReason()), gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
+		return d.finishAttemptAndRun(ctx, attempt, errClassTimeout, string(d.timeoutReason()),
+			runEnding{to: gen.RunStatusTimedOut, failure: failureTimeout, reason: d.timeoutReason()})
 	}
 
 	if reason := d.tokenCeilingBreach(ctx, attempts); reason != "" {
 		if _, err := provider.Cancel(ctx, handle); err != nil {
 			slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
-		return d.finishAttemptAndRun(ctx, attempt, errClassBudgetExhausted, string(reason), gen.RunStatusFailed, failureWorkload, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassBudgetExhausted, string(reason),
+			runEnding{to: gen.RunStatusFailed, failure: failureWorkload, reason: reason})
 	}
 
 	return tryAgainIn(d.svc.pollInterval())
@@ -438,16 +447,16 @@ func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr Provid
 }
 
 func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
-	status, failureClass, errClass, message := classifyResult(pr)
+	ending, errClass := classifyResult(pr)
 	if err := d.recordArtifacts(ctx, attempt, pr); err != nil {
 		reason := d.reasonFor(failureProvider, err)
-		return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), gen.RunStatusFailed, failureProvider, reason)
+		return d.finishAttemptAndRun(ctx, attempt, errClassProvision, string(reason), runEnding{to: gen.RunStatusFailed, failure: failureProvider, reason: reason})
 	}
-	if status != gen.RunStatusSucceeded {
+	if ending.to != gen.RunStatusSucceeded {
 		d.keepWorkloadOutput(ctx, attempt, pr)
-		return d.finishAttemptAndRun(ctx, attempt, errClass, string(message), status, failureClass, message)
+		return d.finishAttemptAndRun(ctx, attempt, errClass, string(ending.reason), ending)
 	}
-	if err := d.finishAttempt(ctx, attempt, errClass, string(message)); err != nil {
+	if err := d.finishAttempt(ctx, attempt, errClass, string(ending.reason)); err != nil {
 		return err
 	}
 
@@ -492,33 +501,37 @@ func successReason(to gen.RunStatus) statusReason {
 	}
 }
 
-func classifyResult(pr ProviderRun) (
-	status gen.RunStatus, failureClass FailureClass, errClass string, message statusReason,
-) {
+type runEnding struct {
+	to      gen.RunStatus
+	failure FailureClass
+	reason  statusReason
+}
+
+func classifyResult(pr ProviderRun) (ending runEnding, errClass string) {
 	if pr.Result == nil {
-		return gen.RunStatusFailed, failureProvider, errClassProvision,
-			"執行沙箱回報這次嘗試已經結束,卻沒有附上結果"
+		return runEnding{gen.RunStatusFailed, failureProvider, "執行沙箱回報這次嘗試已經結束,卻沒有附上結果"},
+			errClassProvision
 	}
-	errClass, message = "", relayed(truncate(pr.StateReason))
+	message := relayed(truncate(pr.StateReason))
 	if pr.Result.Error != nil {
 		errClass, message = pr.Result.Error.Class, relayed(truncate(pr.Result.Error.Message))
 	}
 
 	switch {
 	case pr.State == ProviderStateCancelled || pr.Result.Status == "cancelled":
-		return gen.RunStatusCancelled, failureCancelled,
-			orDefault(errClass, errClassCancelled), orDefault(message, "是使用者要求停止的")
+		return runEnding{gen.RunStatusCancelled, failureCancelled, orDefault(message, "是使用者要求停止的")},
+			orDefault(errClass, errClassCancelled)
 	case pr.Result.Status == "timed_out":
-		return gen.RunStatusTimedOut, failureTimeout,
-			orDefault(errClass, errClassTimeout), orDefault(message, "執行沙箱在它自己的時間上限把工作負載停掉了")
+		return runEnding{gen.RunStatusTimedOut, failureTimeout, orDefault(message, "執行沙箱在它自己的時間上限把工作負載停掉了")},
+			orDefault(errClass, errClassTimeout)
 	case pr.State == ProviderStateCompleted && pr.Result.Status == "succeeded":
-		return gen.RunStatusSucceeded, "", "", ""
+		return runEnding{gen.RunStatusSucceeded, "", ""}, ""
 	case pr.State == ProviderStateCompleted:
-		return gen.RunStatusFailed, failureWorkload,
-			orDefault(errClass, errClassExecution), orDefault(message, "工作負載跑起來了,而且自己回報失敗")
+		return runEnding{gen.RunStatusFailed, failureWorkload, orDefault(message, "工作負載跑起來了,而且自己回報失敗")},
+			orDefault(errClass, errClassExecution)
 	default:
-		return gen.RunStatusFailed, failureProvider,
-			orDefault(errClass, errClassProvision), orDefault(message, "執行沙箱沒能承載這次嘗試")
+		return runEnding{gen.RunStatusFailed, failureProvider, orDefault(message, "執行沙箱沒能承載這次嘗試")},
+			orDefault(errClass, errClassProvision)
 	}
 }
 
@@ -622,9 +635,16 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 	if len(pr.Result.Artifacts) > 1000 {
 		return errors.New("provider returned too many artifact manifest entries")
 	}
-	seen := make(map[string]struct{}, len(pr.Result.Artifacts))
+	if err := validateArtifactEntries(pr.Result.Artifacts, archiveKey, limits); err != nil {
+		return err
+	}
+	return d.svc.saveArtifactManifest(ctx, d.cur, artifactManifest{archiveKey: archiveKey, result: pr.Result, truncated: truncated})
+}
+
+func validateArtifactEntries(artifacts []RunArtifact, archiveKey string, limits ResourceLimits) error {
+	seen := make(map[string]struct{}, len(artifacts))
 	var total int64
-	for _, artifact := range pr.Result.Artifacts {
+	for _, artifact := range artifacts {
 		if artifact.ObjectKey != "" && artifact.ObjectKey != archiveKey {
 			return errors.New("provider returned an artifact object key outside its write grant")
 		}
@@ -641,20 +661,28 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 			return fmt.Errorf("provider returned an invalid artifact size for %q", artifact.FileName)
 		}
 		total += artifact.SizeBytes
-		decoded, err := hex.DecodeString(artifact.ContentHash)
-		if err != nil || len(decoded) != 32 {
-			return fmt.Errorf("provider returned an invalid artifact hash for %q", artifact.FileName)
-		}
-		if artifact.ContentType != "" {
-			if len(artifact.ContentType) > 255 {
-				return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
-			}
-			if _, _, err := mime.ParseMediaType(artifact.ContentType); err != nil {
-				return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
-			}
+		if err := validateArtifactContent(artifact); err != nil {
+			return err
 		}
 	}
-	return d.svc.saveArtifactManifest(ctx, d.cur, archiveKey, pr.Result, truncated)
+	return nil
+}
+
+func validateArtifactContent(artifact RunArtifact) error {
+	decoded, err := hex.DecodeString(artifact.ContentHash)
+	if err != nil || len(decoded) != 32 {
+		return fmt.Errorf("provider returned an invalid artifact hash for %q", artifact.FileName)
+	}
+	if artifact.ContentType == "" {
+		return nil
+	}
+	if len(artifact.ContentType) > 255 {
+		return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
+	}
+	if _, _, err := mime.ParseMediaType(artifact.ContentType); err != nil {
+		return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
+	}
+	return nil
 }
 
 const runArtifactRetention = 90 * 24 * time.Hour
@@ -687,14 +715,18 @@ func (s artifactManifestStore) retireIntent(ctx context.Context, key string) err
 	return s.q.DeleteRunArtifactUploadIntentByObjectKey(ctx, key)
 }
 
-func persistArtifactManifest(
-	ctx context.Context, q artifactManifestQueries, current gen.Run, archiveKey string,
-	result *RunResult, truncated bool,
-) error {
+type artifactManifest struct {
+	archiveKey string
+	result     *RunResult
+	truncated  bool
+}
+
+func persistArtifactManifest(ctx context.Context, q artifactManifestQueries, current gen.Run, manifest artifactManifest) error {
+	archiveKey, result := manifest.archiveKey, manifest.result
 	if err := q.lock(ctx, current.ID); err != nil {
 		return fmt.Errorf("lock artifact manifest: %w", err)
 	}
-	if truncated {
+	if manifest.truncated {
 		if _, err := q.markTruncated(ctx, gen.MarkRunArtifactsTruncatedParams{
 			ID: current.ID, WorkspaceID: current.WorkspaceID,
 		}); err != nil {
@@ -786,12 +818,13 @@ func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errC
 }
 
 func (d *driver) finishAttemptAndRun(
-	ctx context.Context, attempt gen.RunAttempt, errClass, message string,
-	to gen.RunStatus, failureClass FailureClass, reason statusReason,
+	ctx context.Context, attempt gen.RunAttempt, errClass, message string, ending runEnding,
 ) error {
+	to, failureClass, reason := ending.to, ending.failure, ending.reason
 	from := d.cur.Status
 	r, err := d.svc.commandRun(ctx, attempt.WorkspaceID, attempt.RunID, pgtype.UUID{}, func(r *Run) error {
-		r.FinishAttemptAndTransition(attempt.ID, errClass, truncate(message), to, truncate(reason), failureClass)
+		r.FinishAttemptAndTransition(attempt.ID, errClass, truncate(message),
+			runEnding{to: to, failure: failureClass, reason: truncate(reason)})
 		return nil
 	})
 	if errors.Is(err, ErrConflict) {

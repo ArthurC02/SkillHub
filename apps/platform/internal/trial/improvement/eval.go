@@ -240,20 +240,32 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 	return err == nil, err
 }
 
+type evaluationRef struct {
+	workspaceID  pgtype.UUID
+	evaluationID pgtype.UUID
+	runID        pgtype.UUID
+}
+
+type modelCall struct {
+	model         string
+	promptVersion string
+	usage         *ModelUsage
+}
+
 func (s *Service) recordModelUsage(
-	ctx context.Context, q *gen.Queries, workspaceID, evaluationID pgtype.UUID, operation string,
-	model, promptVersion string, usage *ModelUsage,
+	ctx context.Context, q *gen.Queries, ref evaluationRef, operation string, call modelCall,
 ) error {
+	usage := call.usage
 	if usage == nil {
 		return nil
 	}
 	cost := usage.ReportedCostUSD()
 	return q.RecordEvaluationModelUsage(ctx, gen.RecordEvaluationModelUsageParams{
-		EvaluationID:     evaluationID,
-		WorkspaceID:      workspaceID,
+		EvaluationID:     ref.evaluationID,
+		WorkspaceID:      ref.workspaceID,
 		Operation:        operation,
-		Model:            orUnknown(model),
-		PromptVersion:    orUnknown(promptVersion),
+		Model:            orUnknown(call.model),
+		PromptVersion:    orUnknown(call.promptVersion),
 		PromptTokens:     usage.PromptTokens,
 		CompletionTokens: usage.CompletionTokens,
 		CostUsd:          numeric(cost),
@@ -347,7 +359,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	v, err := s.judge(ctx, m, ev)
 	if err != nil {
 
-		return s.fail(ctx, m, ev, findings, evidenceComplete, err)
+		return s.fail(ctx, m, ev, gatheredEvidence{findings: findings, complete: evidenceComplete}, err)
 	}
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
@@ -393,7 +405,7 @@ func (s *Service) recoverEvaluation(
 		return err
 	}
 	findings := s.deterministicFindings(m)
-	return s.fail(ctx, m, current, findings, m.advanced.Complete,
+	return s.fail(ctx, m, current, gatheredEvidence{findings: findings, complete: m.advanced.Complete},
 		errors.New("the previous evaluation attempt was interrupted before its verdict committed"))
 }
 
@@ -515,14 +527,16 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 		return gen.Evaluation{}, err
 	}
 	ev := next.row
-	if err := trace.RecordOrchestratorEvent(ctx, tx, m.run.WorkspaceID, m.run.ID, m.attempt,
-		trace.TypeEvaluationStarted, "ok", map[string]any{
+	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
+		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		Type: trace.TypeEvaluationStarted, Status: "ok", Payload: map[string]any{
 			"evaluation_id":        pgconv.UUIDString(ev.ID),
 			"judge_model":          s.judgeModel(),
 			"judge_prompt_version": s.judgePromptVersion(),
 
 			"rubric_version": rubricVersion(m.rubric),
-		}); err != nil {
+		},
+	}); err != nil {
 		return gen.Evaluation{}, err
 	}
 	return ev, tx.Commit(ctx)
@@ -540,17 +554,18 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		return err
 	}
 
-	if err := s.recordModelUsage(ctx, q, ev.WorkspaceID, ev.ID, "judge",
-		v.model, v.promptVersion, v.usage); err != nil {
+	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.run.ID}
+	call := modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage}
+	if err := s.recordModelUsage(ctx, q, ref, "judge", call); err != nil {
 		return err
 	}
 
-	s.recordEvalCost(ctx, tx, credit.KindReview, ev.WorkspaceID, ev.ID, m.run.ID,
-		v.model, v.promptVersion, v.usage)
+	s.recordEvalCost(ctx, tx, credit.KindReview, ref, call)
 
 	passed, failed, undetermined := tally(v.results)
-	if err := trace.RecordOrchestratorEvent(ctx, tx, m.run.WorkspaceID, m.run.ID, m.attempt,
-		trace.TypeEvaluationCompleted, "ok", map[string]any{
+	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
+		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		Type: trace.TypeEvaluationCompleted, Status: "ok", Payload: map[string]any{
 			"evaluation_id":         pgconv.UUIDString(ev.ID),
 			"overall":               v.overall,
 			"criteria_total":        len(v.results),
@@ -560,16 +575,20 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 			"evidence_complete":     v.evidenceComplete,
 			"cost_usd":              v.costUSD,
 			"failure_reason":        nil,
-		}); err != nil {
+		},
+	}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-func (s *Service) fail(
-	ctx context.Context, m material, ev gen.Evaluation,
-	findings []Finding, evidenceComplete bool, cause error,
-) error {
+type gatheredEvidence struct {
+	findings []Finding
+	complete bool
+}
+
+func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathered gatheredEvidence, cause error) error {
+	findings, evidenceComplete := gathered.findings, gathered.complete
 
 	const summary = "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
 	reason := fmt.Sprintf("the task-effect judgement could not be produced: %v", cause)
@@ -589,8 +608,9 @@ func (s *Service) fail(
 		return err
 	}
 
-	if err := trace.RecordOrchestratorEvent(ctx, tx, m.run.WorkspaceID, m.run.ID, m.attempt,
-		trace.TypeEvaluationCompleted, "error", map[string]any{
+	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
+		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
+		Type: trace.TypeEvaluationCompleted, Status: "error", Payload: map[string]any{
 			"evaluation_id":         pgconv.UUIDString(ev.ID),
 			"overall":               OverallUndetermined,
 			"criteria_total":        len(m.criteria),
@@ -600,7 +620,8 @@ func (s *Service) fail(
 			"evidence_complete":     evidenceComplete,
 			"cost_usd":              nil,
 			"failure_reason":        reason,
-		}); err != nil {
+		},
+	}); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

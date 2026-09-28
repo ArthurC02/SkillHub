@@ -138,6 +138,26 @@ func (s *Service) Comparison(
 	return view, nil
 }
 
+func (s *Service) describeFromTrace(side *comparisonSide, summary trace.Summary) {
+	side.FinalOutput = summary.FinalOutput
+	if len(summary.Errors) > 0 {
+		side.Errors = summary.Errors
+	}
+	if summary.Usage != nil && summary.Usage.CostUSD != nil && s.Credits != nil {
+		if c, ok := s.Credits(*summary.Usage.CostUSD); ok {
+			side.Cost.Credits = &c
+		}
+	}
+}
+
+func durationMS(run RunFacts) *int64 {
+	if run.StartedAt == nil || run.FinishedAt == nil {
+		return nil
+	}
+	ms := run.FinishedAt.Sub(*run.StartedAt).Milliseconds()
+	return &ms
+}
+
 func (s *Service) comparisonSide(
 	ctx context.Context, workspaceID, runID pgtype.UUID,
 ) (comparisonSide, sideDetail, error) {
@@ -188,19 +208,8 @@ func (s *Service) comparisonSide(
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
-	side.FinalOutput = summary.FinalOutput
-	if len(summary.Errors) > 0 {
-		side.Errors = summary.Errors
-	}
-	if summary.Usage != nil && summary.Usage.CostUSD != nil && s.Credits != nil {
-		if c, ok := s.Credits(*summary.Usage.CostUSD); ok {
-			side.Cost.Credits = &c
-		}
-	}
-	if run.StartedAt != nil && run.FinishedAt != nil {
-		ms := run.FinishedAt.Sub(*run.StartedAt).Milliseconds()
-		side.DurationMS = &ms
-	}
+	s.describeFromTrace(&side, summary)
+	side.DurationMS = durationMS(run)
 
 	ev, err := s.Current(ctx, workspaceID, runID)
 	switch {

@@ -41,7 +41,7 @@ func TestRunReadersFailClosedAndHideMissingRuns(t *testing.T) {
 
 func TestPublishedPersistenceFacesFailClosed(t *testing.T) {
 	ctx := context.Background()
-	if err := RecordOrchestratorEvent(ctx, nil, pgtype.UUID{}, pgtype.UUID{}, 1, TypeError, "error", nil); !errors.Is(err, errPersistenceNotConfigured) {
+	if err := RecordOrchestratorEvent(ctx, nil, OrchestratorEvent{Attempt: 1, Type: TypeError, Status: "error"}); !errors.Is(err, errPersistenceNotConfigured) {
 		t.Errorf("RecordOrchestratorEvent without transaction: %v", err)
 	}
 	if _, err := (&Service{}).MaskingActivity(ctx, time.Now(), time.Now()); !errors.Is(err, errPersistenceNotConfigured) {
@@ -88,7 +88,7 @@ func TestIngestionTokenRejectsTampering(t *testing.T) {
 	if _, err := (&Signer{Secret: []byte("other")}).Verify(token, now); err == nil {
 		t.Error("a token signed with another secret was accepted")
 	}
-	if _, err := signer.Verify(token, now.Add(DefaultTTL+time.Minute)); err != ErrTokenExpired {
+	if _, err := signer.Verify(token, now.Add(DefaultTTL+time.Minute)); !errors.Is(err, ErrTokenExpired) {
 		t.Error("an expired token was not reported as expired")
 	}
 }

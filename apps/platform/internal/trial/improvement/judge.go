@@ -31,7 +31,8 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		return verdict{}, fmt.Errorf("no judge service is configured for this deployment")
 	}
 
-	req, digest, truncation, dropped, trimmedEvents := s.buildRequest(m, ev)
+	req, sent := s.buildRequest(m, ev)
+	digest, truncation, dropped, trimmedEvents := sent.digest, sent.truncation, sent.dropped, sent.trimmedEvents
 	req.Within = s.Budgets.Within(ctx, JudgeBudget)
 
 	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
@@ -81,9 +82,14 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	return v, nil
 }
 
-func (s *Service) buildRequest(
-	m material, ev gen.Evaluation,
-) (JudgeRequest, map[string]trace.EventView, []string, []string, map[string]bool) {
+type sentForJudgement struct {
+	digest        map[string]trace.EventView
+	truncation    []string
+	dropped       []string
+	trimmedEvents map[string]bool
+}
+
+func (s *Service) buildRequest(m material, ev gen.Evaluation) (JudgeRequest, sentForJudgement) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.summary.FinalOutput, maxFinalOutput)
@@ -146,7 +152,7 @@ func (s *Service) buildRequest(
 	}
 	rubric, dropped := rubricFor(m.rubric, criteria)
 	req.Rubric = rubric
-	return req, digest, truncation, dropped, cuts.TrimmedEvents
+	return req, sentForJudgement{digest: digest, truncation: truncation, dropped: dropped, trimmedEvents: cuts.TrimmedEvents}
 }
 
 func rubricFor(r *testlab.Rubric, criteria []JudgeCriterion) (*JudgeRubric, []string) {
@@ -273,29 +279,7 @@ func (s *Service) merge(
 			continue
 		}
 
-		result.Result = normaliseResult(cv.Result)
-		result.Reason = cv.Reason
-
-		var unverifiable []string
-		for _, ref := range cv.Citations {
-			verified, why := verify(ref, m, digest)
-			if why != "" {
-				unverifiable = append(unverifiable, why)
-				continue
-			}
-			result.Evidence = append(result.Evidence, verified)
-		}
-
-		if len(unverifiable) > 0 && result.Result != ResultUndetermined {
-			result.Result = ResultUndetermined
-			result.Reason = "evidence_unverifiable: " + strings.Join(unverifiable, "; ") +
-				". The judge's own reasoning was: " + cv.Reason
-		}
-		if result.Result != ResultUndetermined && len(result.Evidence) == 0 {
-			result.Result = ResultUndetermined
-			result.Reason = "the judge returned no verifiable evidence for this verdict. " +
-				"The judge's own reasoning was: " + cv.Reason
-		}
+		result = withVerifiedEvidence(result, cv, m, digest)
 
 		if evidenceRequired[c.ID] && result.Result != ResultUndetermined && !hasVerifiedQuote(result.Evidence) {
 			result.Result = ResultUndetermined
@@ -313,6 +297,35 @@ func (s *Service) merge(
 		out = append(out, result)
 	}
 	return out
+}
+
+func withVerifiedEvidence(
+	result CriterionResult, cv CriterionVerdict, m material, digest map[string]trace.EventView,
+) CriterionResult {
+	result.Result = normaliseResult(cv.Result)
+	result.Reason = cv.Reason
+
+	var unverifiable []string
+	for _, ref := range cv.Citations {
+		verified, why := verify(ref, m, digest)
+		if why != "" {
+			unverifiable = append(unverifiable, why)
+			continue
+		}
+		result.Evidence = append(result.Evidence, verified)
+	}
+
+	if len(unverifiable) > 0 && result.Result != ResultUndetermined {
+		result.Result = ResultUndetermined
+		result.Reason = "evidence_unverifiable: " + strings.Join(unverifiable, "; ") +
+			". The judge's own reasoning was: " + cv.Reason
+	}
+	if result.Result != ResultUndetermined && len(result.Evidence) == 0 {
+		result.Result = ResultUndetermined
+		result.Reason = "the judge returned no verifiable evidence for this verdict. " +
+			"The judge's own reasoning was: " + cv.Reason
+	}
+	return result
 }
 
 func hasVerifiedQuote(refs []EvidenceRef) bool {
@@ -333,78 +346,112 @@ func normaliseResult(r string) string {
 	}
 }
 
+type citationCheck struct {
+	ref     EvidenceRef
+	why     string
+	settled bool
+}
+
+func settledCitation(ref EvidenceRef, why string) citationCheck {
+	return citationCheck{ref: ref, why: why, settled: true}
+}
+
+func unsettledCitation(namedFailure string) citationCheck {
+	return citationCheck{why: namedFailure}
+}
+
 func verify(
 	ref Citation, m material, digest map[string]trace.EventView,
 ) (EvidenceRef, string) {
-
-	var namedFailure string
-
-	switch ref.Kind {
-	case KindTraceEvent:
-		id := derefString(ref.TraceEventID)
-		event, inDigest := digest[id]
-		switch {
-		case !inDigest:
-			if ref.Quote == "" {
-
-				return EvidenceRef{}, fmt.Sprintf("cited trace event %q was not in the digest", id)
-			}
-			namedFailure = fmt.Sprintf("cited trace event %q was not in the digest", id)
-		case ref.Quote == "":
-
-			out := traceRef(event, event.Type)
-			out.Match = MatchExact
-			return out, ""
-		default:
-			if match, _, ok := locate(traceSearchText(event.Payload), ref.Quote); ok {
-				return traceQuoteRef(event, ref.Quote, match), ""
-			}
-			namedFailure = fmt.Sprintf("the quote cited from trace event %q is not in it", id)
-		}
-
-	case KindAgentOutput:
-		if ref.Quote == "" {
-			return EvidenceRef{}, "an agent output reference was cited with no quote to locate"
-		}
-		if match, idx, ok := locate(m.summary.FinalOutput, ref.Quote); ok {
-			return outputRef(m.summary.FinalOutput, ref.Quote, idx, match), ""
-		}
-		namedFailure = "the quote cited from the agent's final output is not in it"
-
-	case KindArtifact:
-
-		namedFailure = "an artifact citation's quote is verified against nothing"
-
-	default:
-		return EvidenceRef{}, fmt.Sprintf("reference kind %q is not one this platform can resolve", ref.Kind)
+	check := checkWhereCited(ref, m, digest)
+	if check.settled {
+		return check.ref, check.why
 	}
 
 	if ref.Quote != "" {
-		if src, idx, match, ok := findQuote(ref.Quote, verifiableSources(m, digest)); ok {
-			var out EvidenceRef
-			if src.kind == KindTraceEvent {
-				out = traceQuoteRef(src.event, ref.Quote, match)
-			} else {
-				out = outputRef(src.text, ref.Quote, idx, match)
-			}
-			out.ReattributedFrom = ref.Kind
+		if out, ok := reattributedQuote(ref, m, digest); ok {
 			return out, ""
 		}
 	}
 
 	if ref.Kind == KindArtifact {
-		path := derefString(ref.ArtifactPath)
-		for _, a := range m.artifacts {
-			if a.FileName == path {
-
-				out := artifactRef(a)
-				out.Match = MatchNotChecked
-				return out, ""
-			}
-		}
-		return EvidenceRef{}, fmt.Sprintf("cited artifact %q is not in this run's manifest", path)
+		return artifactInManifest(ref, m)
 	}
-	return EvidenceRef{}, namedFailure + ", and it is in no other verifiable source of this run"
+	return EvidenceRef{}, check.why + ", and it is in no other verifiable source of this run"
+}
+
+func checkWhereCited(ref Citation, m material, digest map[string]trace.EventView) citationCheck {
+	switch ref.Kind {
+	case KindTraceEvent:
+		return checkTraceEventCitation(ref, digest)
+
+	case KindAgentOutput:
+		if ref.Quote == "" {
+			return settledCitation(EvidenceRef{}, "an agent output reference was cited with no quote to locate")
+		}
+		if match, idx, ok := locate(m.summary.FinalOutput, ref.Quote); ok {
+			return settledCitation(outputRef(m.summary.FinalOutput, ref.Quote, idx, match), "")
+		}
+		return unsettledCitation("the quote cited from the agent's final output is not in it")
+
+	case KindArtifact:
+
+		return unsettledCitation("an artifact citation's quote is verified against nothing")
+
+	default:
+		return settledCitation(EvidenceRef{}, fmt.Sprintf("reference kind %q is not one this platform can resolve", ref.Kind))
+	}
+}
+
+func checkTraceEventCitation(ref Citation, digest map[string]trace.EventView) citationCheck {
+	id := derefString(ref.TraceEventID)
+	event, inDigest := digest[id]
+	switch {
+	case !inDigest:
+		if ref.Quote == "" {
+
+			return settledCitation(EvidenceRef{}, fmt.Sprintf("cited trace event %q was not in the digest", id))
+		}
+		return unsettledCitation(fmt.Sprintf("cited trace event %q was not in the digest", id))
+	case ref.Quote == "":
+
+		out := traceRef(event, event.Type)
+		out.Match = MatchExact
+		return settledCitation(out, "")
+	default:
+		if match, _, ok := locate(traceSearchText(event.Payload), ref.Quote); ok {
+			return settledCitation(traceQuoteRef(event, ref.Quote, match), "")
+		}
+		return unsettledCitation(fmt.Sprintf("the quote cited from trace event %q is not in it", id))
+	}
+}
+
+func reattributedQuote(ref Citation, m material, digest map[string]trace.EventView) (EvidenceRef, bool) {
+	found, ok := findQuote(ref.Quote, verifiableSources(m, digest))
+	if !ok {
+		return EvidenceRef{}, false
+	}
+	var out EvidenceRef
+	if found.src.kind == KindTraceEvent {
+		out = traceQuoteRef(found.src.event, ref.Quote, found.match)
+	} else {
+		out = outputRef(found.src.text, ref.Quote, found.idx, found.match)
+	}
+	out.ReattributedFrom = ref.Kind
+	return out, true
+}
+
+func artifactInManifest(ref Citation, m material) (EvidenceRef, string) {
+	path := derefString(ref.ArtifactPath)
+	for _, a := range m.artifacts {
+		if a.FileName == path {
+
+			out := artifactRef(a)
+			out.Match = MatchNotChecked
+			return out, ""
+		}
+	}
+	return EvidenceRef{}, fmt.Sprintf("cited artifact %q is not in this run's manifest", path)
 }
 
 type source struct {
@@ -426,22 +473,28 @@ func verifiableSources(m material, digest map[string]trace.EventView) []source {
 	return out
 }
 
-func findQuote(quote string, sources []source) (source, int, string, bool) {
+type foundQuote struct {
+	src   source
+	idx   int
+	match string
+}
+
+func findQuote(quote string, sources []source) (foundQuote, bool) {
 	for _, s := range sources {
 		if i := strings.Index(s.text, quote); i >= 0 {
-			return s, i, MatchExact, true
+			return foundQuote{src: s, idx: i, match: MatchExact}, true
 		}
 	}
 	nq := normalizeQuote(quote)
 	if utf8.RuneCountInString(nq) < minNormalizedQuote {
-		return source{}, -1, "", false
+		return foundQuote{idx: -1}, false
 	}
 	for _, s := range sources {
 		if strings.Contains(normalizeQuote(s.text), nq) {
-			return s, -1, MatchNormalized, true
+			return foundQuote{src: s, idx: -1, match: MatchNormalized}, true
 		}
 	}
-	return source{}, -1, "", false
+	return foundQuote{idx: -1}, false
 }
 
 // traceSearchText appends every decoded string leaf of the payload, joined by

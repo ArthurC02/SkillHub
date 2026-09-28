@@ -1,0 +1,29 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "run-preflight-facts-citation-follows-the-code",
+  "status": "draft",
+  "intent": "Keep the reviewed interaction in which Run reads Registry-owned facts at preflight pointing at the code that performs it after that code was reshaped.",
+  "actor": "coding-agent",
+  "observable_outcome": "An Agent asking how Run and Registry collaborate receives the interaction with a citation that verifies.",
+  "acceptance_criteria": [
+    {
+      "id": "citation-follows-the-reshaped-code",
+      "statement": "The interaction cites the preflight path that reads Version facts through the injected Registry reader, at the lines it now occupies."
+    },
+    {
+      "id": "the-interaction-still-holds",
+      "statement": "Preflight reads Version facts only through the Registry reader and refuses to answer when no reader was injected."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [
+    "cross_context"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/trial/execution/preflight.go"
+  ]
+}

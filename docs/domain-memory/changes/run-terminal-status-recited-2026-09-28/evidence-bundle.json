@@ -1,0 +1,84 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-terminal-status-citation-follows-the-code",
+  "proposal_id": "run-terminal-status-follows-its-lines",
+  "registry_revision": {
+    "observed_commit": "c7eb87de42e566799522dd490dabbb8d42ae668f",
+    "registry_digest": "sha256:a3679ed4c6154b442fab8c0dc8e886074a97a5e3d24f423ad60c8c32a5df0854"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "old-line-numbers-no-longer-verify",
+    "mutated_protection": "the line numbers a citation of the state machine carries",
+    "failure_evidence": "With the citations left at lines 59-80, 103-106 and 178-180, verify-evidence exited 1 and reported all three as stale; with them moved to 58-79, 102-105 and 177-179 on a staged copy it reported 51 current and 0 stale. The staged copy was discarded and the tracked Registry is unchanged until this proposal applies.",
+    "restored": true
+  },
+  "sources": [
+    "apps/platform/internal/trial/execution/statemachine.go"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "registry-structurally-valid",
+      "status": "passed",
+      "evidence": "registry_tools.py validate on a staged copy holding the refreshed rule reported the Registry valid",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb9efcdfd94e49e427f5da2056f49c54431bbdfe62005f100e94dd7971087a05",
+      "finished_at": "2026-09-28T00:00:00Z"
+    },
+    {
+      "obligation_id": "refreshed-citations-current",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence on that staged copy reported 51 of 51 citations current and none stale",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:5674518c881d1915407cae9095eb86c53fda4945ce57826242eaac281fa53980",
+      "finished_at": "2026-09-28T00:00:00Z"
+    },
+    {
+      "obligation_id": "old-line-numbers-no-longer-verify",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-evidence on the current Registry exited 1 and reported the three state machine citations stale",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:aec678396f6e80fed5f8c576ee1d7d8012f25fa8e9407b6e9837cd404af2009e",
+      "finished_at": "2026-09-28T00:00:00Z"
+    },
+    {
+      "obligation_id": "terminal-status-has-no-successor",
+      "status": "passed",
+      "evidence": "go test ./internal/trial/execution/ -count=1 -run TestTerminalStatesAreDeadEnds|TestHappyPathFromATerminalStateIsAnError -v",
+      "command_profile": "go-test",
+      "exit_code": 0,
+      "output_sha256": "sha256:b22335729ff16188fecb0b1630256022b9e6ddf92c4dc64050bbd846f93d622f",
+      "finished_at": "2026-09-28T00:00:00Z"
+    },
+    {
+      "obligation_id": "rule-reaches-its-context",
+      "status": "passed",
+      "evidence": "registry_tools.py get-context --id run returned the Run Context with its rules, aggregates and contracts",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:ae1267da74820be416b4bc7c6f285b68718ef1e40ad05b79395197649e2880c7",
+      "finished_at": "2026-09-28T00:00:00Z"
+    },
+    {
+      "obligation_id": "audit-chain-intact",
+      "status": "passed",
+      "evidence": "registry_tools.py verify-audit reported status valid over 58 events",
+      "command_profile": "registry",
+      "exit_code": 0,
+      "output_sha256": "sha256:a2a023d52e81694cef0b2911d521037f3a0fdaa298f790dde87c0bea8ceee03b",
+      "finished_at": "2026-09-28T00:00:00Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "The rule is evidenced by the transition table and two unit tests rather than by a test that drives a stored Run out of a terminal status.",
+    "A citation is line-addressed, so the next edit above these lines moves them again and needs the same correction."
+  ]
+}

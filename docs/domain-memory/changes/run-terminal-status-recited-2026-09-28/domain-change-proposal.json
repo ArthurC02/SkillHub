@@ -1,0 +1,131 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-terminal-status-follows-its-lines",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-terminal-status-citation-follows-the-code",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-09-28T01:57:46.688312Z",
+  "verified_at": "2026-09-28T01:57:47.289126Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c7eb87de42e566799522dd490dabbb8d42ae668f",
+    "registry_digest": "sha256:a3679ed4c6154b442fab8c0dc8e886074a97a5e3d24f423ad60c8c32a5df0854"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "run-terminal-status-is-final"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "A Run that has reached a terminal status never transitions again.",
+    "evidence": [
+      "apps/platform/internal/trial/execution/statemachine.go:58-79"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "None. The constraint holds inside the Run Context and crosses no boundary.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/trial/execution/statemachine.go:177-179"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Two helpers in the state machine stopped taking a database transaction directly, which removed one import and moved every line below it up by one.",
+      "The three cited excerpts are byte-identical to what was reviewed; only their line numbers changed, so the rule itself is not in question."
+    ],
+    "decision": "Re-cite the same three excerpts at their new lines and leave the statement and examples as reviewed.",
+    "invariants_preserved": [
+      "A Run that has reached a terminal status never transitions again."
+    ],
+    "rejected_alternatives": [
+      "Pad the file so the cited lines keep their numbers: the citation would then depend on a blank line nobody can explain.",
+      "Leave the citations stale until the next change to the rule: a stale reviewed record reads as a rule that may no longer hold."
+    ],
+    "proof_obligations": [
+      "registry-structurally-valid",
+      "refreshed-citations-current",
+      "old-line-numbers-no-longer-verify",
+      "terminal-status-has-no-successor",
+      "rule-reaches-its-context",
+      "audit-chain-intact"
+    ],
+    "counterfactual_check": "old-line-numbers-no-longer-verify"
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "run-terminal-status-is-final",
+        "contexts": [
+          "run"
+        ],
+        "statement": "A Run that has reached a terminal status never transitions again. succeeded, failed, cancelled and timed_out have no successors, and a command asking a Run to leave one of them is refused as an illegal transition.",
+        "examples": [
+          "A cancel arriving after the Run already succeeded is refused, not applied.",
+          "A late provider callback reporting failure on a Run that already timed out is refused, so the recorded outcome does not change after the fact.",
+          "A Run in evaluating may still move to succeeded, failed, cancelled or timed_out, because evaluating is not terminal."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 58,
+              "end": 79
+            },
+            "content_sha256": "sha256:2199b6204890716d593af88e9023e42994a5c4b9c0ff08fa39780bd18379c4a9",
+            "excerpt_sha256": "sha256:2b24d1bfc40e17508f9b41163d986c73853f889a335b9e2b5a679853382d0504",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 102,
+              "end": 105
+            },
+            "content_sha256": "sha256:2199b6204890716d593af88e9023e42994a5c4b9c0ff08fa39780bd18379c4a9",
+            "excerpt_sha256": "sha256:6dd7b2e7a94fc3753f72114d807cf544fd975da385086d33b97fd39ed6f2d5cf",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/statemachine.go",
+            "lines": {
+              "start": 177,
+              "end": 179
+            },
+            "content_sha256": "sha256:2199b6204890716d593af88e9023e42994a5c4b9c0ff08fa39780bd18379c4a9",
+            "excerpt_sha256": "sha256:403523b7886f9a7fe5d0410a2c5d1fd06e6ef99d834e335ca5ff384f6bcab486",
+            "source_kind": "implementation"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "supersedes": "run-terminal-status-is-final",
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-28T01:57:46.977718Z",
+      "scope": "The three citations of run-terminal-status-is-final, moved one line up with the state machine; the statement and examples are unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c7eb87de42e566799522dd490dabbb8d42ae668f",
+        "registry_digest": "sha256:a3679ed4c6154b442fab8c0dc8e886074a97a5e3d24f423ad60c8c32a5df0854"
+      }
+    }
+  ]
+}

@@ -297,18 +297,35 @@ func retryable(err error) bool {
 	return errors.Is(err, ErrProviderUnavailable) || errors.Is(err, ErrProviderFull)
 }
 
-func (p *httpProvider) do(ctx context.Context, method, operation, path string, body, out any, want ...int) (int, error) {
+type providerRequest struct {
+	method    string
+	operation string
+	path      string
+	body      any
+	want      []int
+}
+
+func (r providerRequest) wanted(status int) bool {
+	for _, code := range r.want {
+		if status == code {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *httpProvider) do(ctx context.Context, req providerRequest, out any) (int, error) {
 	start := time.Now()
-	status, err := p.call(ctx, method, path, body, out, want...)
-	metrics.ProviderRequest.WithLabelValues(p.name, operation, metrics.StatusClass(status)).Inc()
-	metrics.ObserveSince(metrics.ProviderRequestDuration.WithLabelValues(p.name, operation), start)
+	status, err := p.call(ctx, req, out)
+	metrics.ProviderRequest.WithLabelValues(p.name, req.operation, metrics.StatusClass(status)).Inc()
+	metrics.ObserveSince(metrics.ProviderRequestDuration.WithLabelValues(p.name, req.operation), start)
 	return status, err
 }
 
-func (p *httpProvider) call(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
+func (p *httpProvider) call(ctx context.Context, req providerRequest, out any) (int, error) {
 	var payload []byte
-	if body != nil {
-		encoded, err := json.Marshal(body)
+	if req.body != nil {
+		encoded, err := json.Marshal(req.body)
 		if err != nil {
 			return 0, err
 		}
@@ -318,32 +335,35 @@ func (p *httpProvider) call(ctx context.Context, method, path string, body, out 
 		Client:        p.HTTP,
 		Token:         p.token,
 		ResponseLimit: 4 << 20,
-	}).Do(ctx, method, strings.TrimSuffix(p.baseURL, "/")+path, payload)
+	}).Do(ctx, req.method, strings.TrimSuffix(p.baseURL, "/")+req.path, payload)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return 0, err
-		}
-		if status != 0 {
-			for _, code := range want {
-				if status == code {
-					return status, err
-				}
-			}
-			return status, &providerError{Status: status, Message: err.Error()}
-		}
-		return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+		return transportFailure(req, status, err)
 	}
-	for _, code := range want {
-		if status == code {
-			if out != nil && len(raw) > 0 {
-				if err := json.Unmarshal(raw, out); err != nil {
-					return status, fmt.Errorf("decode %s %s: %w", method, path, err)
-				}
+	if req.wanted(status) {
+		if out != nil && len(raw) > 0 {
+			if err := json.Unmarshal(raw, out); err != nil {
+				return status, fmt.Errorf("decode %s %s: %w", req.method, req.path, err)
 			}
-			return status, nil
 		}
+		return status, nil
 	}
+	return status, refusalFrom(status, raw)
+}
 
+func transportFailure(req providerRequest, status int, err error) (int, error) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return 0, err
+	}
+	if status != 0 {
+		if req.wanted(status) {
+			return status, err
+		}
+		return status, &providerError{Status: status, Message: err.Error()}
+	}
+	return 0, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+}
+
+func refusalFrom(status int, raw []byte) error {
 	var errBody struct {
 		Error   string `json:"error"`
 		Class   string `json:"class"`
@@ -357,41 +377,57 @@ func (p *httpProvider) call(ctx context.Context, method, path string, body, out 
 	if message == "" {
 		message = http.StatusText(status)
 	}
-	return status, &providerError{Status: status, Class: errBody.Class, Message: message}
+	return &providerError{Status: status, Class: errBody.Class, Message: message}
 }
 
 func (p *httpProvider) Capability(ctx context.Context) (ProviderCapability, error) {
 	var c ProviderCapability
-	_, err := p.do(ctx, http.MethodGet, "capability", "/capability", nil, &c, http.StatusOK)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodGet, operation: "capability", path: "/capability", want: []int{http.StatusOK},
+	}, &c)
 	return c, err
 }
 
 func (p *httpProvider) Start(ctx context.Context, req RunRequest) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodPost, "create_run", "/runs", req, &pr, http.StatusCreated, http.StatusOK)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodPost, operation: "create_run", path: "/runs", body: req,
+		want: []int{http.StatusCreated, http.StatusOK},
+	}, &pr)
 	return pr, err
 }
 
 func (p *httpProvider) Observe(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodGet, "get_run", "/runs/"+url.PathEscape(providerRunID), nil, &pr, http.StatusOK)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodGet, operation: "get_run", path: "/runs/" + url.PathEscape(providerRunID),
+		want: []int{http.StatusOK},
+	}, &pr)
 	return pr, err
 }
 
 func (p *httpProvider) Cancel(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodPost, "cancel_run", "/runs/"+url.PathEscape(providerRunID)+"/cancel", nil, &pr, http.StatusAccepted)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodPost, operation: "cancel_run", path: "/runs/" + url.PathEscape(providerRunID) + "/cancel",
+		want: []int{http.StatusAccepted},
+	}, &pr)
 	return pr, err
 }
 
 func (p *httpProvider) Destroy(ctx context.Context, providerRunID string) error {
-	_, err := p.do(ctx, http.MethodDelete, "destroy_run", "/runs/"+url.PathEscape(providerRunID), nil, nil, http.StatusNoContent)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodDelete, operation: "destroy_run", path: "/runs/" + url.PathEscape(providerRunID),
+		want: []int{http.StatusNoContent},
+	}, nil)
 	return err
 }
 
 func (p *httpProvider) ListActive(ctx context.Context) (ProviderRunList, error) {
 	var list ProviderRunList
-	_, err := p.do(ctx, http.MethodGet, "list_active", "/runs?active=true", nil, &list, http.StatusOK)
+	_, err := p.do(ctx, providerRequest{
+		method: http.MethodGet, operation: "list_active", path: "/runs?active=true", want: []int{http.StatusOK},
+	}, &list)
 	return list, err
 }
 

@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "run-preflight-facts-citation-follows-the-code",
+  "proposal_id": "run-preflight-facts-follow-their-lines",
+  "obligations": [
+    {
+      "id": "registry-structurally-valid",
+      "source_type": "acceptance-criterion",
+      "source_id": "citation-follows-the-reshaped-code",
+      "expected_outcome": "The validator accepts the interaction with its refreshed citation.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry validate on the staged interaction"
+    },
+    {
+      "id": "refreshed-citation-current",
+      "source_type": "invariant",
+      "source_id": "citation-follows-the-reshaped-code",
+      "expected_outcome": "Every citation in the staged Registry is current, including this interaction's.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the staged interaction"
+    },
+    {
+      "id": "old-citation-no-longer-verifies",
+      "source_type": "invariant",
+      "source_id": "citation-follows-the-reshaped-code",
+      "expected_outcome": "The Registry as it stands reports the preflight citation as stale.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry verify-evidence on the current Registry"
+    },
+    {
+      "id": "fact-reader-contract-holds",
+      "source_type": "contract",
+      "source_id": "registry-run-facts-v1",
+      "expected_outcome": "The contract resolves from the boundary query with its producer, consumer and synchronous delivery intact.",
+      "level": "architecture",
+      "status": "executed",
+      "check": "registry analyze-boundary"
+    },
+    {
+      "id": "preflight-refuses-without-a-reader",
+      "source_type": "acceptance-criterion",
+      "source_id": "the-interaction-still-holds",
+      "expected_outcome": "A permission summary is refused when no Registry reader was injected.",
+      "level": "unit",
+      "status": "executed",
+      "check": "go test ./internal/trial/execution/ -run TestPermissionSummaryRefusesWithoutRegistryRead"
+    },
+    {
+      "id": "audit-chain-intact",
+      "source_type": "invariant",
+      "source_id": "citation-follows-the-reshaped-code",
+      "expected_outcome": "The audit chain validates from its recorded head.",
+      "level": "security",
+      "status": "executed",
+      "check": "registry verify-audit"
+    }
+  ]
+}

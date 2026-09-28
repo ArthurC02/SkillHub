@@ -68,7 +68,7 @@ func TestGatewayRefusesAResponsePastItsReadLimit(t *testing.T) {
 
 	g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
 	var out map[string]any
-	if err := g.do(context.Background(), http.MethodGet, "/", nil, &out, limit); err == nil {
+	if err := g.do(context.Background(), adminRequest{method: http.MethodGet, path: "/", body: nil, responseLimit: limit}, &out); err == nil {
 		t.Fatal("gateway accepted a response larger than its configured limit")
 	}
 }

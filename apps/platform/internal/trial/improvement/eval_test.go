@@ -525,7 +525,8 @@ func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 	}
 	s := &Service{}
 
-	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
+	req, sent := s.buildRequest(m, gen.Evaluation{})
+	dropped := sent.dropped
 	if req.Rubric == nil {
 		t.Fatal("the snapshot's rubric has to reach the judge")
 	}
@@ -546,7 +547,8 @@ func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
 func TestARunWithNoRubricSendsNoneAndRecordsNoVersion(t *testing.T) {
 	m, _ := fixtureMaterial(true)
 	s := &Service{}
-	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
+	req, sent := s.buildRequest(m, gen.Evaluation{})
+	dropped := sent.dropped
 	if req.Rubric != nil {
 		t.Errorf("no rubric means no rubric field, got %+v", req.Rubric)
 	}
@@ -568,7 +570,8 @@ func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
 		Items:   []testlab.RubricItem{{ID: "nobody", Text: "x"}},
 	}
 	s := &Service{}
-	req, _, _, dropped, _ := s.buildRequest(m, gen.Evaluation{})
+	req, sent := s.buildRequest(m, gen.Evaluation{})
+	dropped := sent.dropped
 	if req.Rubric != nil {
 		t.Errorf("nothing was left to send, got %+v", req.Rubric)
 	}
@@ -872,7 +875,8 @@ func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
 	m, digest := fixtureMaterial(true)
 	m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 1}
 
-	req, _, truncation, _, _ := s.buildRequest(m, gen.Evaluation{})
+	req, sent := s.buildRequest(m, gen.Evaluation{})
+	truncation := sent.truncation
 	if !strings.Contains(strings.Join(req.Truncation, " "), "artifacts.unreadable") {
 		t.Fatalf("the judge got an empty artifact list with nothing said about it: %v", req.Truncation)
 	}

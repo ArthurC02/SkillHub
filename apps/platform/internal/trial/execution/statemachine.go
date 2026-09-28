@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -203,7 +202,7 @@ func (s *Service) Transition(ctx context.Context, command TransitionCommand) (Ru
 	return runView(row), nil
 }
 
-func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Queries, run gen.Run, failure FailureClass, reason string) error {
+func (s *Service) recordFailureEvent(ctx context.Context, w runTx, run gen.Run, failure FailureClass, reason string) error {
 	if run.Status != gen.RunStatusFailed && run.Status != gen.RunStatusTimedOut {
 		return nil
 	}
@@ -211,15 +210,17 @@ func (s *Service) recordFailureEvent(ctx context.Context, tx pgx.Tx, q *gen.Quer
 	if code == "" {
 		code = "unclassified"
 	}
-	return trace.RecordOrchestratorEvent(ctx, tx, run.WorkspaceID, run.ID,
-		attemptNumber(ctx, q, run), trace.TypeError, "error", map[string]any{
+	return trace.RecordOrchestratorEvent(ctx, w.tx, trace.OrchestratorEvent{
+		WorkspaceID: run.WorkspaceID, RunID: run.ID,
+		Attempt: attemptNumber(ctx, w.q, run), Type: trace.TypeError, Status: "error", Payload: map[string]any{
 
 			"category": failure.category(),
 			"code":     code,
 			"message":  reason,
 
 			"retryable": failure.retryable(),
-		})
+		},
+	})
 }
 
 func (c FailureClass) category() string {
@@ -263,16 +264,21 @@ func observeTransition(run gen.Run, p transitionParams) {
 	}
 }
 
-func (s *Service) recordTransition(
-	ctx context.Context, q *gen.Queries, tx pgx.Tx, run gen.Run,
-	from *gen.RunStatus, attemptID pgtype.UUID, reason string, actor pgtype.UUID, action string,
-) error {
+type recordedTransition struct {
+	from      *gen.RunStatus
+	attemptID pgtype.UUID
+	reason    string
+	action    string
+}
+
+func (s *Service) recordTransition(ctx context.Context, w runTx, run gen.Run, t recordedTransition) error {
+	from, reason := t.from, t.reason
 	reasonPtr := &reason
 	if reason == "" {
 		reasonPtr = nil
 	}
-	if err := q.InsertRunStatusTransition(ctx, gen.InsertRunStatusTransitionParams{
-		RunID: run.ID, WorkspaceID: run.WorkspaceID, RunAttemptID: attemptID,
+	if err := w.q.InsertRunStatusTransition(ctx, gen.InsertRunStatusTransitionParams{
+		RunID: run.ID, WorkspaceID: run.WorkspaceID, RunAttemptID: t.attemptID,
 		FromStatus: from, ToStatus: run.Status, Reason: reasonPtr,
 	}); err != nil {
 		return err
@@ -285,8 +291,8 @@ func (s *Service) recordTransition(
 	if reason != "" {
 		meta["reason"] = reason
 	}
-	return audit.Log(ctx, tx, audit.Event{
-		Actor: actor, Workspace: run.WorkspaceID, Action: action,
+	return audit.Log(ctx, w.tx, audit.Event{
+		Actor: w.actor, Workspace: run.WorkspaceID, Action: t.action,
 		ResourceType: audit.ResourceRun, ResourceID: run.ID, Metadata: meta,
 	})
 }

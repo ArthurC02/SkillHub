@@ -586,7 +586,7 @@ func TestAFailedVerdictIsFrozenLikeASettledOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	if err := s.fail(ctx, m, ev, nil, false, errors.New("the judge was unreachable")); err != nil {
+	if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 	before := frozen(reload(t, s, m, ev.ID))
@@ -627,7 +627,7 @@ func TestARevisionSettlesOnce(t *testing.T) {
 		ev := beginAndComplete(t, s, m, aVerdict("a real verdict", OverallMet))
 		before := frozen(reload(t, s, m, ev.ID))
 
-		if err := s.fail(ctx, m, ev, nil, false, errors.New("recovery sweep was late")); err != nil {
+		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("recovery sweep was late")); err != nil {
 			t.Fatalf("fail on a completed revision: %v", err)
 		}
 		if got := frozen(reload(t, s, m, ev.ID)); got != before {
@@ -641,7 +641,7 @@ func TestARevisionSettlesOnce(t *testing.T) {
 		if err != nil {
 			t.Fatalf("begin: %v", err)
 		}
-		if err := s.fail(ctx, m, ev, nil, false, errors.New("the judge was unreachable")); err != nil {
+		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 		if err := s.complete(ctx, m, ev, aVerdict("late arrival", OverallMet)); !errors.Is(err, errEvaluationSettled) {
@@ -785,7 +785,7 @@ func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 		if err != nil {
 			t.Fatalf("begin: %v", err)
 		}
-		if err := s.fail(ctx, m, ev, nil, false, errors.New("the judge was unreachable")); err != nil {
+		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 		got := reload(t, s, m, ev.ID)
