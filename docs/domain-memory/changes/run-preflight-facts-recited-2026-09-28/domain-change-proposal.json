@@ -3,12 +3,12 @@
   "proposal_id": "run-preflight-facts-follow-their-lines",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-preflight-facts-citation-follows-the-code",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-09-28T01:58:48.124631Z",
   "verified_at": "2026-09-28T01:58:48.734452Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-09-28T01:59:03.035616Z",
+  "applied_at": "2026-09-28T01:59:03.518801Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
@@ -108,5 +108,9 @@
         "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "701fc587f098ecc064021c2ecb3768b40fc1f2f6",
+    "registry_digest": "sha256:9fb2cf89d1dab47e3999989f41c567d844e53aeebe1a683bdd10ef3e40cf8909"
+  }
 }

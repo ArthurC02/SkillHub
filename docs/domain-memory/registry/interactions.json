@@ -13,27 +13,28 @@
         {
           "path": "apps/platform/internal/trial/execution/preflight.go",
           "lines": {
-            "start": 199,
-            "end": 240
+            "start": 196,
+            "end": 242
           },
-          "content_sha256": "sha256:971c8d3e6dd9d01f11c6f41d341bb37c73b64d10fba8284efc4a2cffa117a996",
-          "excerpt_sha256": "sha256:d83b4da11631a3d911e05eb650ac97dd3cbf7ebbe1fd608b5a1f895219caea43"
+          "content_sha256": "sha256:79b6fb00b206a94a8852f9cc05488ca2e560eed4c4327d80c61678a1ef07df14",
+          "excerpt_sha256": "sha256:6c12e5701b5402dda739cc0d2c4ef588d366a2cb4ebd931086f83344e85b93f2",
+          "source_kind": "implementation"
         }
       ],
       "review": {
-        "proposal_id": "run-registry-reviewed-facts-signed",
+        "proposal_id": "run-preflight-facts-follow-their-lines",
         "proposal_revision": 1,
         "approvals": [
           {
             "role": "developer",
             "reviewer": "ArthurC",
             "decision": "approved",
-            "approved_at": "2026-09-22T07:46:22.726462Z",
-            "scope": "Run and Registry slice: two Contexts, one Aggregate, one contract and its interaction",
+            "approved_at": "2026-09-28T01:58:48.396739Z",
+            "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now reads Registry-owned Version facts; the interaction itself is unchanged",
             "proposal_revision": 1,
             "base_registry_revision": {
-              "observed_commit": "a41f72677bc0db476f2391ac00d1721fed0373d4",
-              "registry_digest": "sha256:531337f9d180de7cadf1885ffac92cc712c509ae4a2590349a778a05aff82f66"
+              "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
+              "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
             }
           }
         ]
