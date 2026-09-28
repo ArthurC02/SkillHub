@@ -7045,6 +7045,7 @@ func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listExposureQueueRes()               {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundlesRes()                  {}
+func (*Error) listOwnPublicationsRes()             {}
 func (*Error) listSkillVersionsRes()               {}
 func (*Error) listSkillsRes()                      {}
 func (*Error) publicSearchSkillsRes()              {}
@@ -11845,6 +11846,22 @@ func (s *ListOwnBundlesOK) SetBundles(val []BundleVersion) {
 
 func (*ListOwnBundlesOK) listOwnBundlesRes() {}
 
+type ListOwnPublicationsOK struct {
+	Publications []OwnerPublicationSummary `json:"publications"`
+}
+
+// GetPublications returns the value of Publications.
+func (s *ListOwnPublicationsOK) GetPublications() []OwnerPublicationSummary {
+	return s.Publications
+}
+
+// SetPublications sets the value of Publications.
+func (s *ListOwnPublicationsOK) SetPublications(val []OwnerPublicationSummary) {
+	s.Publications = val
+}
+
+func (*ListOwnPublicationsOK) listOwnPublicationsRes() {}
+
 type ListPackagingTargetsOK struct {
 	Targets []PackagingTarget `json:"targets"`
 }
@@ -14788,6 +14805,52 @@ func (o OptNilString) Or(d string) string {
 	return d
 }
 
+// NewOptOwnerPublicationRelease returns new OptOwnerPublicationRelease with value set to v.
+func NewOptOwnerPublicationRelease(v OwnerPublicationRelease) OptOwnerPublicationRelease {
+	return OptOwnerPublicationRelease{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOwnerPublicationRelease is optional OwnerPublicationRelease.
+type OptOwnerPublicationRelease struct {
+	Value OwnerPublicationRelease
+	Set   bool
+}
+
+// IsSet returns true if OptOwnerPublicationRelease was set.
+func (o OptOwnerPublicationRelease) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOwnerPublicationRelease) Reset() {
+	var v OwnerPublicationRelease
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOwnerPublicationRelease) SetTo(v OwnerPublicationRelease) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOwnerPublicationRelease) Get() (v OwnerPublicationRelease, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOwnerPublicationRelease) Or(d OwnerPublicationRelease) OwnerPublicationRelease {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptPackageValidation returns new OptPackageValidation with value set to v.
 func NewOptPackageValidation(v PackageValidation) OptPackageValidation {
 	return OptPackageValidation{
@@ -16859,6 +16922,168 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case OwnSkillRedistributionGenerated:
 		*s = OwnSkillRedistributionGenerated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// The newest immutable Skill release in an owner's publication overview.
+// Ref: #/components/schemas/OwnerPublicationRelease
+type OwnerPublicationRelease struct {
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	ReleasedAt    time.Time `json:"released_at"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *OwnerPublicationRelease) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *OwnerPublicationRelease) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetReleasedAt returns the value of ReleasedAt.
+func (s *OwnerPublicationRelease) GetReleasedAt() time.Time {
+	return s.ReleasedAt
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *OwnerPublicationRelease) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *OwnerPublicationRelease) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetReleasedAt sets the value of ReleasedAt.
+func (s *OwnerPublicationRelease) SetReleasedAt(val time.Time) {
+	s.ReleasedAt = val
+}
+
+// A Workspace-scoped management projection for one Skill publication.
+// Ref: #/components/schemas/OwnerPublicationSummary
+type OwnerPublicationSummary struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	Publisher string    `json:"publisher"`
+	Name      string    `json:"name"`
+	// The public page path, /p/{publisher}/{name}.
+	Address         string                        `json:"address"`
+	Status          OwnerPublicationSummaryStatus `json:"status"`
+	StatusChangedAt time.Time                     `json:"status_changed_at"`
+	LatestRelease   OptOwnerPublicationRelease    `json:"latest_release"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *OwnerPublicationSummary) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetPublisher returns the value of Publisher.
+func (s *OwnerPublicationSummary) GetPublisher() string {
+	return s.Publisher
+}
+
+// GetName returns the value of Name.
+func (s *OwnerPublicationSummary) GetName() string {
+	return s.Name
+}
+
+// GetAddress returns the value of Address.
+func (s *OwnerPublicationSummary) GetAddress() string {
+	return s.Address
+}
+
+// GetStatus returns the value of Status.
+func (s *OwnerPublicationSummary) GetStatus() OwnerPublicationSummaryStatus {
+	return s.Status
+}
+
+// GetStatusChangedAt returns the value of StatusChangedAt.
+func (s *OwnerPublicationSummary) GetStatusChangedAt() time.Time {
+	return s.StatusChangedAt
+}
+
+// GetLatestRelease returns the value of LatestRelease.
+func (s *OwnerPublicationSummary) GetLatestRelease() OptOwnerPublicationRelease {
+	return s.LatestRelease
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *OwnerPublicationSummary) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetPublisher sets the value of Publisher.
+func (s *OwnerPublicationSummary) SetPublisher(val string) {
+	s.Publisher = val
+}
+
+// SetName sets the value of Name.
+func (s *OwnerPublicationSummary) SetName(val string) {
+	s.Name = val
+}
+
+// SetAddress sets the value of Address.
+func (s *OwnerPublicationSummary) SetAddress(val string) {
+	s.Address = val
+}
+
+// SetStatus sets the value of Status.
+func (s *OwnerPublicationSummary) SetStatus(val OwnerPublicationSummaryStatus) {
+	s.Status = val
+}
+
+// SetStatusChangedAt sets the value of StatusChangedAt.
+func (s *OwnerPublicationSummary) SetStatusChangedAt(val time.Time) {
+	s.StatusChangedAt = val
+}
+
+// SetLatestRelease sets the value of LatestRelease.
+func (s *OwnerPublicationSummary) SetLatestRelease(val OptOwnerPublicationRelease) {
+	s.LatestRelease = val
+}
+
+type OwnerPublicationSummaryStatus string
+
+const (
+	OwnerPublicationSummaryStatusPublished OwnerPublicationSummaryStatus = "published"
+	OwnerPublicationSummaryStatusDelisted  OwnerPublicationSummaryStatus = "delisted"
+)
+
+// AllValues returns all OwnerPublicationSummaryStatus values.
+func (OwnerPublicationSummaryStatus) AllValues() []OwnerPublicationSummaryStatus {
+	return []OwnerPublicationSummaryStatus{
+		OwnerPublicationSummaryStatusPublished,
+		OwnerPublicationSummaryStatusDelisted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OwnerPublicationSummaryStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case OwnerPublicationSummaryStatusPublished:
+		return []byte(s), nil
+	case OwnerPublicationSummaryStatusDelisted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OwnerPublicationSummaryStatus) UnmarshalText(data []byte) error {
+	switch OwnerPublicationSummaryStatus(data) {
+	case OwnerPublicationSummaryStatusPublished:
+		*s = OwnerPublicationSummaryStatusPublished
+		return nil
+	case OwnerPublicationSummaryStatusDelisted:
+		*s = OwnerPublicationSummaryStatusDelisted
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

@@ -384,6 +384,11 @@ import {
     ListOwnBundles200ResponseToJSON,
 } from '../models/ListOwnBundles200Response';
 import {
+    type ListOwnPublications200Response,
+    ListOwnPublications200ResponseFromJSON,
+    ListOwnPublications200ResponseToJSON,
+} from '../models/ListOwnPublications200Response';
+import {
     type ListPackagingTargets200Response,
     ListPackagingTargets200ResponseFromJSON,
     ListPackagingTargets200ResponseToJSON,
@@ -3580,6 +3585,27 @@ export interface DefaultApiInterface {
      * Every Bundle Version in the caller\'s workspace, newest first (PACK-018)
      */
     listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response>;
+
+    /**
+     * Creates request options for listOwnPublications without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnPublicationsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @summary Every Skill publication in the caller\'s workspace with its latest release (PACK-004)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listOwnPublicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnPublications200Response>>;
+
+    /**
+     * Every Skill publication in the caller\'s workspace with its latest release (PACK-004)
+     */
+    listOwnPublications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnPublications200Response>;
 
     /**
      * Creates request options for listPackagingTargets without sending the request
@@ -8333,6 +8359,43 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listOwnBundles(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnBundles200Response> {
         const response = await this.listOwnBundlesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listOwnPublications without sending the request
+     */
+    async listOwnPublicationsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/me/publications`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every Skill publication in the caller\'s workspace with its latest release (PACK-004)
+     */
+    async listOwnPublicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOwnPublications200Response>> {
+        const requestOptions = await this.listOwnPublicationsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ListOwnPublications200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every Skill publication in the caller\'s workspace with its latest release (PACK-004)
+     */
+    async listOwnPublications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOwnPublications200Response> {
+        const response = await this.listOwnPublicationsRaw(initOverrides);
         return await response.value();
     }
 

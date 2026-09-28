@@ -97,6 +97,21 @@ type Publication struct {
 	Releases        []Release
 }
 
+type PublicationSummary struct {
+	SkillID         pgtype.UUID
+	Publisher       string
+	Name            string
+	Status          Status
+	StatusChangedAt time.Time
+	LatestRelease   *ReleaseSummary
+}
+
+type ReleaseSummary struct {
+	VersionID     pgtype.UUID
+	VersionNumber int32
+	ReleasedAt    time.Time
+}
+
 type PublicPublication struct {
 	Publication
 	OwnerWorkspaceID  pgtype.UUID
@@ -388,6 +403,28 @@ func (s *Service) OwnPublication(ctx context.Context, ws identity.Workspace, ski
 		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
 	}, true, nil
+}
+
+func (s *Service) OwnPublications(ctx context.Context, ws identity.Workspace) ([]PublicationSummary, error) {
+	rows, err := gen.New(s.Pool).ListWorkspaceSkillPublications(ctx, ws.ID)
+	if err != nil {
+		return nil, err
+	}
+	publications := make([]PublicationSummary, 0, len(rows))
+	for _, row := range rows {
+		publication := PublicationSummary{
+			SkillID: row.SkillID, Publisher: row.PublisherName, Name: row.Name,
+			Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time,
+		}
+		if row.LatestVersionID.Valid && row.LatestVersionNumber != nil && row.LatestReleasedAt.Valid {
+			publication.LatestRelease = &ReleaseSummary{
+				VersionID: row.LatestVersionID, VersionNumber: *row.LatestVersionNumber,
+				ReleasedAt: row.LatestReleasedAt.Time,
+			}
+		}
+		publications = append(publications, publication)
+	}
+	return publications, nil
 }
 
 func (s *Service) PublicPublication(ctx context.Context, publisherName, name string) (PublicPublication, bool, error) {

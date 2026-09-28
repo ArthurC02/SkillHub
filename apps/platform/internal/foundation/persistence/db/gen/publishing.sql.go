@@ -860,6 +860,67 @@ func (q *Queries) ListWorkspaceBundleVersions(ctx context.Context, workspaceID p
 	return items, nil
 }
 
+const listWorkspaceSkillPublications = `-- name: ListWorkspaceSkillPublications :many
+SELECT p.id, p.skill_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name,
+       latest.skill_version_id AS latest_version_id,
+       latest.version_number AS latest_version_number,
+       latest.released_at AS latest_released_at
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+LEFT JOIN LATERAL (
+    SELECT pr.skill_version_id, pr.version_number, pr.released_at
+    FROM publication_releases pr
+    WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC
+    LIMIT 1
+) latest ON true
+WHERE pb.workspace_id = $1 AND p.skill_id IS NOT NULL
+ORDER BY p.name, p.id
+`
+
+type ListWorkspaceSkillPublicationsRow struct {
+	ID                  pgtype.UUID
+	SkillID             pgtype.UUID
+	Name                string
+	Status              string
+	StatusChangedAt     pgtype.Timestamptz
+	PublisherName       string
+	LatestVersionID     pgtype.UUID
+	LatestVersionNumber *int32
+	LatestReleasedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListWorkspaceSkillPublications(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspaceSkillPublicationsRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceSkillPublications, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceSkillPublicationsRow
+	for rows.Next() {
+		var i ListWorkspaceSkillPublicationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SkillID,
+			&i.Name,
+			&i.Status,
+			&i.StatusChangedAt,
+			&i.PublisherName,
+			&i.LatestVersionID,
+			&i.LatestVersionNumber,
+			&i.LatestReleasedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBundle = `-- name: LockBundle :one
 SELECT id, workspace_id, name, created_at FROM bundles WHERE workspace_id = $1 AND name = $2 FOR UPDATE
 `

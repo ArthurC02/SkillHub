@@ -14,6 +14,7 @@ import {
 } from "./publishing.model";
 import {
   OWN_PUBLICATION,
+  OWN_PUBLICATIONS,
   OWN_PUBLISHER,
   PUBLIC_BUNDLE_PUBLICATION,
   PUBLIC_PUBLICATION,
@@ -111,6 +112,7 @@ const PUB_ADDRESS = `/publications/${PUBLISHER}/${PUBLICATION}`;
 test("the publishing space brings identity, Bundles, and delivery records into one lifecycle", async () => {
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
     "/me/bundles": { body: { bundles: [] } },
     "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
     "/downloads": { body: { downloads: [] } },
@@ -123,7 +125,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
     (heading) => heading.textContent,
   );
   expect(sections).toEqual(
-    expect.arrayContaining(["Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
+    expect.arrayContaining(["Skill 發佈", "Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
   );
   expect(text()).toContain("公開位址不等於 Catalog 曝光");
   expect(container.querySelector('a[href="/workspace/skills"]')?.textContent).toContain(
@@ -134,6 +136,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
 test("an empty Bundle collection keeps creation available without making the page a form", async () => {
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
     "/me/bundles": { body: { bundles: [] } },
     "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
     "/downloads": { body: { downloads: [] } },
@@ -145,6 +148,45 @@ test("an empty Bundle collection keeps creation available without making the pag
   );
   expect(createBundle?.open).toBe(false);
   expect(createBundle?.querySelector("form.bundle-form")).not.toBeNull();
+});
+
+test("the publishing overview keeps public identity and the exact latest release connected", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: OWN_PUBLICATIONS },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("最新 Release"));
+
+  expect(container.querySelector(`a[href="/p/${PUBLISHER}/${PUBLICATION}"]`)).not.toBeNull();
+  expect(
+    container.querySelector(
+      `a[href="/skills/${SKILL}/versions/${SKILL_VERSIONS.versions[0].version_id}"]`,
+    )?.textContent,
+  ).toBe("v2");
+  expect(text()).toContain("Catalog 是否曝光仍由營運者另行審核");
+  expect(text()).toContain("已發佈");
+});
+
+test("the publishing overview reports a failed read instead of claiming the collection is empty", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { error: "database unavailable" }, status: 500 },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => container.querySelector('[role="alert"]') !== null);
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+    "暫時無法讀取Skill 發佈清單",
+  );
+  expect(text()).not.toContain("還沒有任何 Skill Publication");
+  expect(text()).not.toContain("database unavailable");
 });
 
 test("PACK-004 available 公開頁：每一個允收欄位都出現", async () => {

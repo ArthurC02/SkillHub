@@ -30,6 +30,20 @@ export interface Publication {
   releases: PublicationRelease[];
 }
 
+export interface OwnerPublicationSummary {
+  skill_id: string;
+  publisher: string;
+  name: string;
+  address: string;
+  status: "published" | "delisted";
+  status_changed_at: string;
+  latest_release?: {
+    version_id: string;
+    version_number: number;
+    released_at: string;
+  };
+}
+
 export interface BundleMemberChange {
   name: string;
   change: "added" | "removed" | "changed";
@@ -123,6 +137,13 @@ export function useOwnPublisher(enabled = true) {
   });
 }
 
+export function useOwnPublications() {
+  return useQuery({
+    queryKey: queryKeys.publishing.publications,
+    queryFn: () => apiFetch<{ publications: OwnerPublicationSummary[] }>("/me/publications"),
+  });
+}
+
 export function useRegisterPublisher() {
   const client = useQueryClient();
   return useMutation({
@@ -159,8 +180,10 @@ export function usePublish(skillId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, version_id: versionId, rights_attested: rightsAttested }),
       }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+    },
   });
 }
 
@@ -168,8 +191,10 @@ export function useDelist(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<Publication>(`/skills/${skillId}/publication`, { method: "DELETE" }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.ownPublication(skillId) });
+      void client.invalidateQueries({ queryKey: queryKeys.publishing.publications });
+    },
   });
 }
 

@@ -24,6 +24,7 @@ import type {
 } from "../../core/api/types";
 import type {
   BundleVersion,
+  OwnerPublicationSummary,
   Publication,
   Publisher,
   PublicPublication,
@@ -765,6 +766,24 @@ export const OWN_PUBLICATION = {
   ],
 } satisfies Publication;
 
+export const OWN_PUBLICATIONS = {
+  publications: [
+    {
+      skill_id: SKILL,
+      publisher: PUBLISHER,
+      name: PUBLICATION,
+      address: `/p/${PUBLISHER}/${PUBLICATION}`,
+      status: "published",
+      status_changed_at: "2026-08-10T00:00:00Z",
+      latest_release: {
+        version_id: VERSION,
+        version_number: 2,
+        released_at: "2026-08-10T00:00:00Z",
+      },
+    },
+  ],
+} satisfies { publications: OwnerPublicationSummary[] };
+
 const DOWNLOAD_NOTE =
   "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
@@ -1211,6 +1230,7 @@ const ROUTES: RouteMatcher[] = [
       ? ok({ entries: [], note: "目前沒有點數進出紀錄。" })
       : undefined,
   (path) => (path === "/me/bundles" ? ok({ bundles: [] }) : undefined),
+  (path) => (path === "/me/publications" ? ok(OWN_PUBLICATIONS) : undefined),
   (path) => (path === "/me/publisher" ? ok(OWN_PUBLISHER) : undefined),
   (path) => (path === `/skills/${SKILL}/publication` ? ok(OWN_PUBLICATION) : undefined),
   (path) =>

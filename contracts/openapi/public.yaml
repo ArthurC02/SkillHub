@@ -1524,6 +1524,27 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PublishingRefusal" }
+  /me/publications:
+    get:
+      operationId: listOwnPublications
+      summary: Every Skill publication in the caller's workspace with its latest release (PACK-004)
+      responses:
+        "200":
+          description: The owner publication overview, ordered by publication name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publications]
+                properties:
+                  publications:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnerPublicationSummary" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /me/bundles:
     get:
       operationId: listOwnBundles
@@ -7217,6 +7238,28 @@ components:
         releases:
           type: array
           items: { $ref: "#/components/schemas/PublicationRelease" }
+    OwnerPublicationRelease:
+      type: object
+      description: The newest immutable Skill release in an owner's publication overview.
+      required: [version_id, version_number, released_at]
+      properties:
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        released_at: { type: string, format: date-time }
+    OwnerPublicationSummary:
+      type: object
+      description: A Workspace-scoped management projection for one Skill publication.
+      required: [skill_id, publisher, name, address, status, status_changed_at]
+      properties:
+        skill_id: { type: string, format: uuid }
+        publisher: { type: string }
+        name: { type: string }
+        address:
+          type: string
+          description: The public page path, /p/{publisher}/{name}.
+        status: { type: string, enum: [published, delisted] }
+        status_changed_at: { type: string, format: date-time }
+        latest_release: { $ref: "#/components/schemas/OwnerPublicationRelease" }
     ExposureDecision:
       type: string
       enum: [approved, revoked]

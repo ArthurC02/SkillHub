@@ -126,6 +126,109 @@ func TestPublishingNeedsAPublisherAndTheAuthorsStatementForTheirOwnContent(t *te
 	}
 }
 
+func TestOwnPublicationOverviewIsEmptyWithoutAPublisher(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("overview-empty"))
+
+	var body map[string]any
+	if code := getJSON(t, alice.Client, alice.base+"/me/publications", &body); code != http.StatusOK {
+		t.Fatalf("GET /me/publications: %d %v, want 200", code, body)
+	}
+	if publications := objects(t, body["publications"]); len(publications) != 0 {
+		t.Fatalf("publications = %v, want an empty collection", publications)
+	}
+}
+
+func TestOwnPublicationOverviewStaysInTheWorkspaceAndLinksTheLatestRelease(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, freshName("overview-alice"))
+	bob := a.login(t, freshName("overview-bob"))
+	alicePublisher := freshName("overview-alice-publisher")
+	registerPublisher(t, alice, alicePublisher)
+	registerPublisher(t, bob, freshName("overview-bob-publisher"))
+
+	firstName := freshName("a-overview")
+	firstID, wantRelease := skillWithTwoReleases(t, alice, firstName)
+	secondName := freshName("b-overview")
+	secondID := delistedSkillPublication(t, alice, secondName)
+	publishOneSkill(t, bob, freshName("private-to-bob"), "Bob only.")
+
+	publications := ownPublications(t, alice)
+	assertOwnPublicationOverview(t, publications, alicePublisher, firstID, firstName, secondID, secondName, wantRelease)
+}
+
+func skillWithTwoReleases(t *testing.T, owner *client, name string) (string, map[string]any) {
+	t.Helper()
+	skillID := uploadedSkill(t, owner, name, "First release.")
+	if code, body := publish(t, owner, skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("first release: %d %v", code, body)
+	}
+	if again := uploadedSkill(t, owner, name, "Second release."); again != skillID {
+		t.Fatalf("the second upload became skill %s, want a new version of %s", again, skillID)
+	}
+	code, latest := publish(t, owner, skillID, `{"rights_attested":true}`)
+	if code != http.StatusOK {
+		t.Fatalf("latest release: %d %v", code, latest)
+	}
+	return skillID, objects(t, latest["releases"])[0]
+}
+
+func delistedSkillPublication(t *testing.T, owner *client, name string) string {
+	t.Helper()
+	skillID := uploadedSkill(t, owner, name, "Withdraw this one.")
+	if code, body := publish(t, owner, skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("publication: %d %v", code, body)
+	}
+	if code, body := deleteJSON(t, owner, "/skills/"+skillID+"/publication"); code != http.StatusOK {
+		t.Fatalf("delist publication: %d %v", code, body)
+	}
+	return skillID
+}
+
+func publishOneSkill(t *testing.T, owner *client, name, content string) {
+	t.Helper()
+	skillID := uploadedSkill(t, owner, name, content)
+	if code, body := publish(t, owner, skillID, `{"rights_attested":true}`); code != http.StatusOK {
+		t.Fatalf("publication: %d %v", code, body)
+	}
+}
+
+func ownPublications(t *testing.T, owner *client) []map[string]any {
+	t.Helper()
+	var body map[string]any
+	if code := getJSON(t, owner.Client, owner.base+"/me/publications", &body); code != http.StatusOK {
+		t.Fatalf("GET /me/publications: %d %v, want 200", code, body)
+	}
+	return objects(t, body["publications"])
+}
+
+func assertOwnPublicationOverview(
+	t *testing.T,
+	publications []map[string]any,
+	publisher, firstID, firstName, secondID, secondName string,
+	wantRelease map[string]any,
+) {
+	t.Helper()
+	if len(publications) != 2 {
+		t.Fatalf("publications = %v, want alice's two publications only", publications)
+	}
+	if publications[0]["skill_id"] != firstID || publications[0]["name"] != firstName || publications[0]["status"] != "published" {
+		t.Errorf("first publication = %v, want alice's published %s", publications[0], firstName)
+	}
+	if publications[0]["address"] != "/p/"+publisher+"/"+firstName {
+		t.Errorf("first publication address = %v", publications[0]["address"])
+	}
+	release, _ := publications[0]["latest_release"].(map[string]any)
+	if release == nil || release["version_id"] != wantRelease["version_id"] || release["version_number"] != float64(2) {
+		t.Errorf("latest release = %v, want exact version %v", release, wantRelease)
+	}
+	if publications[1]["skill_id"] != secondID || publications[1]["name"] != secondName || publications[1]["status"] != "delisted" {
+		t.Errorf("second publication = %v, want alice's delisted %s", publications[1], secondName)
+	}
+}
+
 func TestTheReleaseGateRefusesAHoldABlockedAndAnUnknownLicence(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

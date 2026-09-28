@@ -309,6 +309,10 @@ type ListOwnBundlesRes interface {
 	listOwnBundlesRes()
 }
 
+type ListOwnPublicationsRes interface {
+	listOwnPublicationsRes()
+}
+
 type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }

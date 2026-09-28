@@ -15,6 +15,24 @@ FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = @workspace_id AND p.skill_id = @skill_id;
 
+-- name: ListWorkspaceSkillPublications :many
+SELECT p.id, p.skill_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name,
+       latest.skill_version_id AS latest_version_id,
+       latest.version_number AS latest_version_number,
+       latest.released_at AS latest_released_at
+FROM publications p
+JOIN publishers pb ON pb.id = p.publisher_id
+LEFT JOIN LATERAL (
+    SELECT pr.skill_version_id, pr.version_number, pr.released_at
+    FROM publication_releases pr
+    WHERE pr.publication_id = p.id
+    ORDER BY pr.released_at DESC, pr.id DESC
+    LIMIT 1
+) latest ON true
+WHERE pb.workspace_id = @workspace_id AND p.skill_id IS NOT NULL
+ORDER BY p.name, p.id;
+
 -- name: LockPublicationForSkill :one
 SELECT p.*
 FROM publications p

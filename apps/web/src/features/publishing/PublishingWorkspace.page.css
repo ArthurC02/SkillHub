@@ -65,10 +65,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .publishing-workspace-rail {
-    grid-row: 1;
-  }
-
   .publishing-workspace-main > section,
   .publishing-workspace-rail > section {
     padding: 16px;

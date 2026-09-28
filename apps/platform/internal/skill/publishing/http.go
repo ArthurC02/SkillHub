@@ -55,6 +55,26 @@ type publicationView struct {
 	Releases        []releaseView `json:"releases"`
 }
 
+type ownerPublicationReleaseView struct {
+	VersionID     string `json:"version_id"`
+	VersionNumber int32  `json:"version_number"`
+	ReleasedAt    string `json:"released_at"`
+}
+
+type ownerPublicationSummaryView struct {
+	SkillID         string                       `json:"skill_id"`
+	Publisher       string                       `json:"publisher"`
+	Name            string                       `json:"name"`
+	Address         string                       `json:"address"`
+	Status          string                       `json:"status"`
+	StatusChangedAt string                       `json:"status_changed_at"`
+	LatestRelease   *ownerPublicationReleaseView `json:"latest_release,omitempty"`
+}
+
+type ownerPublicationsView struct {
+	Publications []ownerPublicationSummaryView `json:"publications"`
+}
+
 type publicReleaseView struct {
 	VersionNumber int32              `json:"version_number,omitempty"`
 	Version       string             `json:"version,omitempty"`
@@ -275,6 +295,23 @@ func (h *Handler) OwnPublication(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
 }
 
+func (h *Handler) OwnPublications(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	publications, err := h.Svc.OwnPublications(r.Context(), ws)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "publication overview lookup failed")
+		return
+	}
+	items := make([]ownerPublicationSummaryView, 0, len(publications))
+	for _, publication := range publications {
+		items = append(items, ownerSummaryView(publication))
+	}
+	httpx.WriteJSON(w, http.StatusOK, ownerPublicationsView{Publications: items})
+}
+
 func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -413,6 +450,22 @@ func ownView(p Publication) publicationView {
 		Kind: kindOf(p), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
 		Status: string(p.Status), StatusChangedAt: timestamp(p.StatusChangedAt), Releases: releases,
 	}
+}
+
+func ownerSummaryView(publication PublicationSummary) ownerPublicationSummaryView {
+	view := ownerPublicationSummaryView{
+		SkillID: pgconv.UUIDString(publication.SkillID), Publisher: publication.Publisher,
+		Name: publication.Name, Address: address(publication.Publisher, publication.Name),
+		Status: string(publication.Status), StatusChangedAt: timestamp(publication.StatusChangedAt),
+	}
+	if publication.LatestRelease != nil {
+		view.LatestRelease = &ownerPublicationReleaseView{
+			VersionID:     pgconv.UUIDString(publication.LatestRelease.VersionID),
+			VersionNumber: publication.LatestRelease.VersionNumber,
+			ReleasedAt:    timestamp(publication.LatestRelease.ReleasedAt),
+		}
+	}
+	return view
 }
 
 func (h *Handler) publicView(p PublicPublication) publicPublicationView {
