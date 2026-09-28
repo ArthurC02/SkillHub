@@ -13,6 +13,7 @@ import (
 var docProseSkipDirs = map[string]bool{
 	".git": true, "node_modules": true, ".venv": true, ".devctl": true,
 	"dist": true, "__pycache__": true, ".agents": true, ".codex": true,
+	"worktrees": true,
 }
 
 var docProseSkipTrees = []string{

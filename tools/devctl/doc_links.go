@@ -21,6 +21,7 @@ var docLinkSkippedDirs = map[string]string{
 	"node_modules": "dependencies",
 	"__pycache__":  "build output",
 	".git":         "git internals",
+	"worktrees":    "other checkouts of this repository",
 }
 
 const docLinkFrozenCorpus = "tools/goldenset/corpus"

@@ -114,6 +114,16 @@ func TestDocProseReportsEveryShapeOnOneLine(t *testing.T) {
 	}
 }
 
+func TestDocProseLeavesAnotherCheckoutOfTheRepositoryAlone(t *testing.T) {
+	t.Parallel()
+	root := writeProse(t, map[string]string{
+		".claude/worktrees/agent-1/docs/AGENTS.md": "而那正是  修好的那個形狀。\n",
+	})
+	if problems := docProseProblems(root); len(problems) != 0 {
+		t.Fatalf("a second checkout under worktrees was read as this checkout's prose: %v", problems)
+	}
+}
+
 func TestDocProseCarriesTheOffendingTextIntoTheMessage(t *testing.T) {
 	t.Parallel()
 	root := writeProse(t, map[string]string{
