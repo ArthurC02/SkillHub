@@ -545,10 +545,7 @@ try {
           `/test-cases/${createdTestCase.test_case_id}/datasets` &&
         response.request().method() === "POST",
     ),
-    page
-      .locator("#dataset-file")
-      .locator("xpath=following-sibling::button")
-      .click(),
+    page.getByRole("button", { name: "上傳", exact: true }).click(),
   ]).then(([response]) => response);
   const uploadedDataset = await datasetResponse.json().catch(() => ({}));
   const datasetsReadBack =
