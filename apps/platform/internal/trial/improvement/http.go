@@ -146,6 +146,11 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, revisionListResponse{Revisions: out})
 }
 
+const (
+	maxFeedbackBodyBytes    = 8192
+	maxFeedbackCommentRunes = 2000
+)
+
 func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -160,7 +165,7 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 		Helpful *bool  `json:"helpful"`
 		Comment string `json:"comment"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxFeedbackBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a boolean `helpful`")
 		return
 	}
@@ -168,7 +173,7 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "`helpful` is required")
 		return
 	}
-	if len([]rune(body.Comment)) > 2000 {
+	if len([]rune(body.Comment)) > maxFeedbackCommentRunes {
 		httpx.WriteError(w, http.StatusBadRequest, "`comment` is limited to 2000 characters")
 		return
 	}

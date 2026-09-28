@@ -266,21 +266,35 @@ type ResourceLimits struct {
 	} `json:"token_budget"`
 }
 
+const (
+	defaultVCPU                 = 2
+	defaultMemoryBytes          = 4 << 30
+	defaultDiskBytes            = 8 << 30
+	defaultMaxPIDs              = 256
+	defaultMaxOpenFiles         = 1024
+	defaultWallClockSoftSeconds = 600
+	defaultWallClockHardSeconds = 900
+	defaultArtifactTotalBytes   = 100 << 20
+	defaultArtifactFileBytes    = 25 << 20
+	defaultMaxInputTokens       = 300_000
+	defaultMaxOutputTokens      = 60_000
+)
+
 func DefaultResourceLimits() ResourceLimits {
 	l := ResourceLimits{
-		VCPU:                 2,
-		MemoryBytes:          4 << 30,
-		DiskBytes:            8 << 30,
-		MaxPIDs:              256,
-		MaxOpenFiles:         1024,
-		WallClockSoftSeconds: 600,
-		WallClockHardSeconds: 900,
-		ArtifactTotalBytes:   100 << 20,
-		ArtifactFileBytes:    25 << 20,
+		VCPU:                 defaultVCPU,
+		MemoryBytes:          defaultMemoryBytes,
+		DiskBytes:            defaultDiskBytes,
+		MaxPIDs:              defaultMaxPIDs,
+		MaxOpenFiles:         defaultMaxOpenFiles,
+		WallClockSoftSeconds: defaultWallClockSoftSeconds,
+		WallClockHardSeconds: defaultWallClockHardSeconds,
+		ArtifactTotalBytes:   defaultArtifactTotalBytes,
+		ArtifactFileBytes:    defaultArtifactFileBytes,
 	}
 
-	l.TokenBudget.MaxInputTokens = 300_000
-	l.TokenBudget.MaxOutputTokens = 60_000
+	l.TokenBudget.MaxInputTokens = defaultMaxInputTokens
+	l.TokenBudget.MaxOutputTokens = defaultMaxOutputTokens
 	return l
 }
 

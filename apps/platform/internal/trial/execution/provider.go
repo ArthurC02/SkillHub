@@ -267,6 +267,11 @@ func (p *httpProvider) Name() string { return p.name }
 
 func (p *httpProvider) Authenticated() bool { return p.token != "" }
 
+const (
+	providerResponseLimit  = 4 << 20
+	providerRequestTimeout = 30 * time.Second
+)
+
 type providerError struct {
 	Status  int
 	Class   string
@@ -279,7 +284,7 @@ func (e *providerError) Unwrap() error {
 		return ErrProviderFull
 	case e.Status == http.StatusNotFound:
 		return ErrAttemptUnknown
-	case e.Status >= 500:
+	case e.Status >= http.StatusInternalServerError:
 		return ErrProviderUnavailable
 	default:
 		return ErrProviderRefused
@@ -334,7 +339,7 @@ func (p *httpProvider) call(ctx context.Context, req providerRequest, out any) (
 	status, raw, err := (httpx.Transport{
 		Client:        p.HTTP,
 		Token:         p.token,
-		ResponseLimit: 4 << 20,
+		ResponseLimit: providerResponseLimit,
 	}).Do(ctx, req.method, strings.TrimSuffix(p.baseURL, "/")+req.path, payload)
 	if err != nil {
 		return transportFailure(req, status, err)
@@ -482,7 +487,7 @@ func NewProvider(name, baseURL, token string) SandboxProvider {
 
 func NewProviderWithClient(name, baseURL, token string, client *http.Client) SandboxProvider {
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = &http.Client{Timeout: providerRequestTimeout}
 	}
 	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: client}
 }

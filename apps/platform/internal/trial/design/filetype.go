@@ -88,9 +88,7 @@ func inspectZip(data []byte) error {
 			ooxml = true
 		}
 
-		if path.IsAbs(name) || strings.HasPrefix(name, "/") || strings.Contains(name, `\`) ||
-			name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/../") ||
-			strings.HasSuffix(name, "/..") {
+		if escapesArchiveRoot(name) {
 			return ErrUnsupportedType
 		}
 		if f.Mode()&fs.ModeSymlink != 0 {
@@ -112,4 +110,10 @@ func inspectZip(data []byte) error {
 		return fmt.Errorf("%w: 壓縮檔解開後超過 %s", ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 	return nil
+}
+
+func escapesArchiveRoot(name string) bool {
+	return path.IsAbs(name) || strings.HasPrefix(name, "/") || strings.Contains(name, `\`) ||
+		name == ".." || strings.HasPrefix(name, "../") || strings.Contains(name, "/../") ||
+		strings.HasSuffix(name, "/..")
 }

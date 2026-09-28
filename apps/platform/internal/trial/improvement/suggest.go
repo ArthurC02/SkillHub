@@ -72,19 +72,23 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 
 	s.recordEvalCost(ctx, s.Pool, credit.KindSuggestion, ref, call)
 
+	s.storeProposals(ctx, ev, resp.Proposals, refs)
+}
+
+func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []ImprovementProposal, refs []EvidenceRef) {
 	q := s.queries()
 
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
-	for _, p := range resp.Proposals {
+	for _, p := range proposals {
 		if stored == maxSuggestionsStore {
-			overCap = len(resp.Proposals) - stored - noEvidence - unstorable - writeFailed
+			overCap = len(proposals) - stored - noEvidence - unstorable - writeFailed
 			break
 		}
 		evidence, err := suggestionEvidence(p, refs)
 		if err != nil || len(evidence) == 0 {
 
 			quote := strings.TrimSpace(p.Evidence)
-			head, _ := cut(quote, 80)
+			head, _ := cut(quote, loggedQuoteHeadRunes)
 			slog.Warn("improvement proposal has no matching verified evidence",
 				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category,
 				"quote_runes", utf8.RuneCountInString(quote), "candidate_refs", len(refs),
@@ -120,7 +124,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 
 	slog.Info("improvement proposals",
 		"evaluation_id", pgconv.UUIDString(ev.ID),
-		"proposed", len(resp.Proposals),
+		"proposed", len(proposals),
 		"stored", stored,
 		"dropped_no_evidence", noEvidence,
 		"dropped_unstorable", unstorable,
@@ -209,6 +213,13 @@ func evidenceQuotes(evidence string) []string {
 	return out
 }
 
+const (
+	loggedQuoteHeadRunes     = 80
+	digestExcerptRunes       = 400
+	digestCriterionTextRunes = 500
+	digestExplanationRunes   = 800
+)
+
 func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 	var b strings.Builder
 	refs := make([]EvidenceRef, 0, maxDigestEvidence)
@@ -219,7 +230,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 			}
 			refs = append(refs, r)
 			if b.Len() < maxDigestChars {
-				excerpt, _ := cut(r.Excerpt, 400)
+				excerpt, _ := cut(r.Excerpt, digestExcerptRunes)
 
 				fmt.Fprintf(&b, "    evidence (%s):\n      %s\n", r.Kind, excerpt)
 			}
@@ -241,7 +252,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 		}
 		unmet++
 		fmt.Fprintf(&b, "  [%s] %s -> %s: %s\n",
-			r.CriterionID, firstChars(r.Text, 500), r.Result, firstChars(r.Reason, 800))
+			r.CriterionID, firstChars(r.Text, digestCriterionTextRunes), r.Result, firstChars(r.Reason, digestExplanationRunes))
 		addRefs(r.Evidence)
 	}
 	if unmet == 0 {
@@ -253,7 +264,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 		if f.Severity == SeverityInfo {
 			continue
 		}
-		fmt.Fprintf(&b, "  [%s/%s] %s\n", f.Category, f.Severity, firstChars(f.Message, 800))
+		fmt.Fprintf(&b, "  [%s/%s] %s\n", f.Category, f.Severity, firstChars(f.Message, digestExplanationRunes))
 		addRefs(f.Evidence)
 	}
 
@@ -281,6 +292,21 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []Tar
 	})
 	sort.Strings(tree)
 
+	files := make([]TargetFile, 0, maxTargetFiles)
+	for _, p := range skillEntryFirst(tree) {
+		if len(files) == maxTargetFiles {
+			break
+		}
+		content, err := readTarget(fsys, p)
+		if err != nil || content == "" || len([]rune(content)) > maxTargetFileChars {
+			continue
+		}
+		files = append(files, TargetFile{Path: p, Content: content})
+	}
+	return tree, files
+}
+
+func skillEntryFirst(tree []string) []string {
 	ordered := make([]string, 0, len(tree))
 	for _, p := range tree {
 		if p == "SKILL.md" {
@@ -292,19 +318,7 @@ func (s *Service) packageFiles(ctx context.Context, m material) ([]string, []Tar
 			ordered = append(ordered, p)
 		}
 	}
-
-	files := make([]TargetFile, 0, maxTargetFiles)
-	for _, p := range ordered {
-		if len(files) == maxTargetFiles {
-			break
-		}
-		content, err := readTarget(fsys, p)
-		if err != nil || content == "" || len([]rune(content)) > maxTargetFileChars {
-			continue
-		}
-		files = append(files, TargetFile{Path: p, Content: content})
-	}
-	return tree, files
+	return ordered
 }
 
 func firstChars(s string, limit int) string {

@@ -29,7 +29,7 @@ type target struct {
 
 func newTarget(t *testing.T) target {
 	t.Helper()
-	tg := target{provider: providertest.New("contract_fake", "test-token").Provider()}
+	var tg target
 	if url := os.Getenv(contractURLEnv); url != "" {
 		token := os.Getenv(contractTokenEnv)
 		t.Logf("running the contract suite against %s", url)

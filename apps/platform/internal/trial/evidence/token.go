@@ -61,6 +61,8 @@ func (s *Signer) IngestionURL(base string, runID pgtype.UUID, attempt int, now t
 
 const IngestPath = "/internal/trace/"
 
+const tokenBodyFields = 3
+
 func (s *Signer) Verify(token string, now time.Time) (Grant, error) {
 	if !s.Enabled() {
 		return Grant{}, ErrBadToken
@@ -77,7 +79,7 @@ func (s *Signer) Verify(token string, now time.Time) (Grant, error) {
 	}
 
 	parts := strings.Split(body, ".")
-	if len(parts) != 3 {
+	if len(parts) != tokenBodyFields {
 		return Grant{}, ErrBadToken
 	}
 	var runID pgtype.UUID

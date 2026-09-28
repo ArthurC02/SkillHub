@@ -33,6 +33,11 @@ const (
 
 const maxTargetFileBytes = 1 << 20
 
+const (
+	diffContextLines = 3
+	binaryProbeBytes = 8000
+)
+
 type Blocked struct {
 	SuggestionID string `json:"suggestion_id"`
 	Reason       string `json:"blocked_reason"`
@@ -95,12 +100,10 @@ func (s *Service) loadVersions(
 	if err != nil {
 		return sc, err
 	}
-	var found bool
-	if sc.origin, found, err = s.ReadVersion(ctx, workspaceID, run.SkillVersionID); !found && err == nil {
-		return sc, ErrNotFound
-	} else if err != nil {
+	if sc.origin, err = s.existingVersion(ctx, workspaceID, run.SkillVersionID); err != nil {
 		return sc, err
 	}
+	var found bool
 	if sc.skill, found, err = s.ReadSkill(ctx, workspaceID, sc.origin.SkillID); !found && err == nil {
 		return sc, ErrNotFound
 	} else if err != nil {
@@ -113,7 +116,7 @@ func (s *Service) loadVersions(
 		return sc, err
 	}
 
-	originData := []byte(nil)
+	var originData []byte
 	if sc.originFS, originData, err = s.readPackage(ctx, sc.origin.stored()); err != nil {
 		return sc, err
 	}
@@ -124,6 +127,14 @@ func (s *Service) loadVersions(
 	}
 	sc.latestFS, sc.latestZip, err = s.readPackage(ctx, sc.latest.stored())
 	return sc, err
+}
+
+func (s *Service) existingVersion(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, error) {
+	version, found, err := s.ReadVersion(ctx, workspaceID, versionID)
+	if !found && err == nil {
+		return version, ErrNotFound
+	}
+	return version, err
 }
 
 func (s *Service) store() ObjectStore { return s.Store }
@@ -186,7 +197,7 @@ func check(sc suggestionCtx) (string, *Blocked) {
 
 	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A: difflib.SplitLines(origin), B: difflib.SplitLines(sug.ProposedContent),
-		FromFile: target, ToFile: target, Context: 3,
+		FromFile: target, ToFile: target, Context: diffContextLines,
 	})
 	if err != nil || diff == "" {
 		return block(BlockedDiffUnavailable,
@@ -207,7 +218,7 @@ func readTarget(fsys fs.FS, target string) (string, error) {
 	if len(data) > maxTargetFileBytes {
 		return "", fmt.Errorf("it is larger than the %d byte limit for a reviewable diff", maxTargetFileBytes)
 	}
-	if bytes.IndexByte(data[:min(len(data), 8000)], 0) >= 0 {
+	if bytes.IndexByte(data[:min(len(data), binaryProbeBytes)], 0) >= 0 {
 		return "", errors.New("it is not text, so there is no diff a user could approve")
 	}
 	return string(data), nil

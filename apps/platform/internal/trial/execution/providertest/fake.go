@@ -138,7 +138,7 @@ func (f *Fake) routes() http.Handler {
 func (f *Fake) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if f.Token != "" && r.Header.Get("Authorization") != "Bearer "+f.Token {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing or invalid provider token"})
+			writeError(w, http.StatusUnauthorized, "missing or invalid provider token")
 			return
 		}
 		next(w, r)
@@ -175,11 +175,11 @@ func (f *Fake) SetFreeSlots(free int) {
 func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 	var req run.RunRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "malformed body"})
+		writeError(w, http.StatusBadRequest, "malformed body")
 		return
 	}
 	if req.RunID == "" || req.Attempt < 1 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "run_id and attempt are required"})
+		writeError(w, http.StatusBadRequest, "run_id and attempt are required")
 		return
 	}
 
@@ -191,9 +191,7 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 
 	if existing, ok := f.byKey[key]; ok {
 		if f.bodies[key] != string(canonical) {
-			writeJSON(w, http.StatusConflict, map[string]string{
-				"error": "this (run_id, attempt) was dispatched with different content",
-			})
+			writeError(w, http.StatusConflict, "this (run_id, attempt) was dispatched with different content")
 			return
 		}
 		writeJSON(w, http.StatusOK, f.view(f.runs[existing]))
@@ -206,14 +204,14 @@ func (f *Fake) createRun(w http.ResponseWriter, r *http.Request) {
 		if f.OnDispatch != nil {
 			f.OnDispatch(req.RunID, req.Attempt)
 		}
-		if status >= 400 {
+		if status >= http.StatusBadRequest {
 			if status == http.StatusUnprocessableEntity {
 				writeJSON(w, status, run.RunError{
 					Class: "capability_mismatch", Message: "this provider cannot enforce the requested limits",
 				})
 				return
 			}
-			writeJSON(w, status, map[string]string{"error": http.StatusText(status)})
+			writeError(w, status, http.StatusText(status))
 			return
 		}
 	}
@@ -240,13 +238,13 @@ func (f *Fake) create(runID, attemptID string, attempt int, createdAt time.Time)
 func (f *Fake) getRun(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.pollStatus >= 400 {
-		writeJSON(w, f.pollStatus, map[string]string{"error": "this provider is not answering"})
+	if f.pollStatus >= http.StatusBadRequest {
+		writeError(w, f.pollStatus, "this provider is not answering")
 		return
 	}
 	fr, ok := f.runs[r.PathValue("id")]
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no run with this handle"})
+		writeError(w, http.StatusNotFound, "no run with this handle")
 		return
 	}
 	fr.polls++
@@ -256,7 +254,7 @@ func (f *Fake) getRun(w http.ResponseWriter, r *http.Request) {
 func (f *Fake) listRuns(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("active") == "false" {
 
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "only active=true is served"})
+		writeError(w, http.StatusBadRequest, "only active=true is served")
 		return
 	}
 	f.mu.Lock()
@@ -275,7 +273,7 @@ func (f *Fake) cancelRun(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	fr, ok := f.runs[r.PathValue("id")]
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no run with this handle"})
+		writeError(w, http.StatusNotFound, "no run with this handle")
 		return
 	}
 
@@ -288,7 +286,7 @@ func (f *Fake) destroyRun(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	f.destroys++
 
-	if f.DestroyStatus >= 400 {
+	if f.DestroyStatus >= http.StatusBadRequest {
 		w.WriteHeader(f.DestroyStatus)
 		return
 	}
@@ -351,6 +349,10 @@ func (f *Fake) stateOf(fr *fakeRun) (run.ProviderRunState, string) {
 		status = "succeeded"
 	}
 	return state, status
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

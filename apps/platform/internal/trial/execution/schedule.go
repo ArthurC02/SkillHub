@@ -37,10 +37,10 @@ const (
 
 type IsolationStrength string
 
-var isolationRank = map[IsolationStrength]int{noIsolation: 1, weakIsolation: 2, strongIsolation: 3}
+var isolationWeakestFirst = []IsolationStrength{noIsolation, weakIsolation, strongIsolation}
 
 func (s IsolationStrength) meets(minimum IsolationStrength) bool {
-	return isolationRank[s] >= isolationRank[minimum]
+	return slices.Index(isolationWeakestFirst, s) >= slices.Index(isolationWeakestFirst, minimum)
 }
 
 type curationTier string

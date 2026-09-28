@@ -6,6 +6,21 @@ import (
 	"fmt"
 )
 
+const (
+	kindNull    = "null"
+	kindObject  = "object"
+	kindArray   = "array"
+	kindString  = "string"
+	kindBoolean = "boolean"
+	kindNumber  = "number"
+	kindInteger = "integer"
+)
+
+const (
+	PayloadEvaluationID = "evaluation_id"
+	payloadTruncated    = "truncated"
+)
+
 type payloadField struct {
 	required bool
 	kinds    []string
@@ -19,111 +34,111 @@ type payloadRule struct {
 
 var payloadRules = map[string]payloadRule{
 	"skill_activation": {open: false, fields: map[string]payloadField{
-		"decision":         {required: true, kinds: []string{"string"}, enum: []string{"activated", "skipped"}},
-		"reason":           {kinds: []string{"null", "string"}},
-		"skill_id":         {kinds: []string{"string"}},
-		"skill_name":       {kinds: []string{"string"}},
-		"skill_version_id": {required: true, kinds: []string{"string"}},
+		"decision":         {required: true, kinds: []string{kindString}, enum: []string{"activated", "skipped"}},
+		"reason":           {kinds: []string{kindNull, kindString}},
+		"skill_id":         {kinds: []string{kindString}},
+		"skill_name":       {kinds: []string{kindString}},
+		"skill_version_id": {required: true, kinds: []string{kindString}},
 	}},
 	"resource_read": {open: false, fields: map[string]payloadField{
-		"bytes_read":       {kinds: []string{"integer", "null"}},
-		"outcome":          {required: true, kinds: []string{"string"}, enum: []string{"denied", "not_found", "read"}},
-		"resource_path":    {required: true, kinds: []string{"string"}},
-		"skill_version_id": {kinds: []string{"string"}},
-		"truncated":        {kinds: []string{"boolean"}},
+		"bytes_read":       {kinds: []string{kindInteger, kindNull}},
+		"outcome":          {required: true, kinds: []string{kindString}, enum: []string{"denied", "not_found", "read"}},
+		"resource_path":    {required: true, kinds: []string{kindString}},
+		"skill_version_id": {kinds: []string{kindString}},
+		payloadTruncated:   {kinds: []string{kindBoolean}},
 	}},
 	"tool_call": {open: false, fields: map[string]payloadField{
-		"arguments":      {kinds: []string{"null", "object"}},
-		"duration_ms":    {required: true, kinds: []string{"integer"}},
-		"invocation_id":  {kinds: []string{"null", "string"}},
-		"outcome":        {required: true, kinds: []string{"string"}, enum: []string{"denied", "failed", "succeeded", "timed_out"}},
-		"result_summary": {kinds: []string{"null", "string"}},
-		"tool_name":      {required: true, kinds: []string{"string"}},
-		"truncated":      {kinds: []string{"boolean"}},
+		"arguments":      {kinds: []string{kindNull, kindObject}},
+		"duration_ms":    {required: true, kinds: []string{kindInteger}},
+		"invocation_id":  {kinds: []string{kindNull, kindString}},
+		"outcome":        {required: true, kinds: []string{kindString}, enum: []string{"denied", "failed", "succeeded", outcomeTimedOut}},
+		"result_summary": {kinds: []string{kindNull, kindString}},
+		"tool_name":      {required: true, kinds: []string{kindString}},
+		payloadTruncated: {kinds: []string{kindBoolean}},
 	}},
 	"mcp_call": {open: true, fields: map[string]payloadField{
-		"server":    {kinds: []string{"string"}},
-		"tool_name": {kinds: []string{"string"}},
+		"server":    {kinds: []string{kindString}},
+		"tool_name": {kinds: []string{kindString}},
 	}},
 	"script_log": {open: false, fields: map[string]payloadField{
-		"dropped_bytes": {kinds: []string{"integer", "null"}},
-		"message":       {required: true, kinds: []string{"string"}},
-		"script_path":   {kinds: []string{"null", "string"}},
-		"stream":        {required: true, kinds: []string{"string"}, enum: []string{"stderr", "stdout"}},
-		"truncated":     {required: true, kinds: []string{"boolean"}},
+		"dropped_bytes":  {kinds: []string{kindInteger, kindNull}},
+		"message":        {required: true, kinds: []string{kindString}},
+		"script_path":    {kinds: []string{kindNull, kindString}},
+		"stream":         {required: true, kinds: []string{kindString}, enum: []string{"stderr", "stdout"}},
+		payloadTruncated: {required: true, kinds: []string{kindBoolean}},
 	}},
 	"agent_output": {open: false, fields: map[string]payloadField{
-		"kind":      {required: true, kinds: []string{"string"}, enum: []string{"captured", "final", "intermediate"}},
-		"text":      {required: true, kinds: []string{"string"}},
-		"truncated": {required: true, kinds: []string{"boolean"}},
+		"kind":           {required: true, kinds: []string{kindString}, enum: []string{"captured", "final", "intermediate"}},
+		"text":           {required: true, kinds: []string{kindString}},
+		payloadTruncated: {required: true, kinds: []string{kindBoolean}},
 	}},
 	"error": {open: false, fields: map[string]payloadField{
-		"category":             {required: true, kinds: []string{"string"}, enum: []string{"artifact_upload", "cleanup", "evaluation", "event_delivery", "execution", "provision"}},
-		"code":                 {required: true, kinds: []string{"string"}},
-		"message":              {required: true, kinds: []string{"string"}},
-		"provider_diagnostics": {kinds: []string{"null", "object"}},
-		"retryable":            {required: true, kinds: []string{"boolean"}},
+		"category":             {required: true, kinds: []string{kindString}, enum: []string{"artifact_upload", "cleanup", "evaluation", "event_delivery", "execution", "provision"}},
+		"code":                 {required: true, kinds: []string{kindString}},
+		"message":              {required: true, kinds: []string{kindString}},
+		"provider_diagnostics": {kinds: []string{kindNull, kindObject}},
+		"retryable":            {required: true, kinds: []string{kindBoolean}},
 	}},
 	"usage": {open: false, fields: map[string]payloadField{
-		"cache_read_input_tokens":  {kinds: []string{"integer", "null"}},
-		"cache_write_input_tokens": {kinds: []string{"integer", "null"}},
-		"cost_source":              {kinds: []string{"null", "string"}, enum: []string{"estimated", "gateway"}},
-		"cost_usd":                 {kinds: []string{"null", "number"}},
-		"duration_ms":              {kinds: []string{"integer", "null"}},
-		"input_tokens":             {required: true, kinds: []string{"integer"}},
-		"model":                    {required: true, kinds: []string{"string"}},
-		"output_tokens":            {required: true, kinds: []string{"integer"}},
-		"scope":                    {kinds: []string{"string"}, enum: []string{"call", "run_total"}},
-		"token_source":             {kinds: []string{"null", "string"}, enum: []string{"accumulated", "result"}},
+		"cache_read_input_tokens":  {kinds: []string{kindInteger, kindNull}},
+		"cache_write_input_tokens": {kinds: []string{kindInteger, kindNull}},
+		"cost_source":              {kinds: []string{kindNull, kindString}, enum: []string{"estimated", "gateway"}},
+		"cost_usd":                 {kinds: []string{kindNull, kindNumber}},
+		"duration_ms":              {kinds: []string{kindInteger, kindNull}},
+		"input_tokens":             {required: true, kinds: []string{kindInteger}},
+		"model":                    {required: true, kinds: []string{kindString}},
+		"output_tokens":            {required: true, kinds: []string{kindInteger}},
+		"scope":                    {kinds: []string{kindString}, enum: []string{"call", "run_total"}},
+		"token_source":             {kinds: []string{kindNull, kindString}, enum: []string{"accumulated", "result"}},
 	}},
 	"run_lifecycle": {open: false, fields: map[string]payloadField{
-		"from_status": {kinds: []string{"null", "string"}},
-		"reason":      {kinds: []string{"null", "string"}},
-		"to_status":   {required: true, kinds: []string{"string"}, enum: []string{"cancelled", "evaluating", "failed", "preparing", "provisioning", "queued", "running", "succeeded", "timed_out"}},
+		"from_status": {kinds: []string{kindNull, kindString}},
+		"reason":      {kinds: []string{kindNull, kindString}},
+		"to_status":   {required: true, kinds: []string{kindString}, enum: []string{"cancelled", "evaluating", "failed", "preparing", "provisioning", "queued", "running", "succeeded", "timed_out"}},
 	}},
 	"evaluation_started": {open: false, fields: map[string]payloadField{
-		"evaluation_id":        {required: true, kinds: []string{"string"}},
-		"judge_model":          {required: true, kinds: []string{"string"}},
-		"judge_prompt_version": {required: true, kinds: []string{"string"}},
-		"rubric_version":       {kinds: []string{"null", "string"}},
+		PayloadEvaluationID:    {required: true, kinds: []string{kindString}},
+		"judge_model":          {required: true, kinds: []string{kindString}},
+		"judge_prompt_version": {required: true, kinds: []string{kindString}},
+		"rubric_version":       {kinds: []string{kindNull, kindString}},
 	}},
 	"evaluation_completed": {open: false, fields: map[string]payloadField{
-		"cost_usd":              {kinds: []string{"null", "number"}},
-		"criteria_failed":       {required: true, kinds: []string{"integer"}},
-		"criteria_passed":       {required: true, kinds: []string{"integer"}},
-		"criteria_total":        {required: true, kinds: []string{"integer"}},
-		"criteria_undetermined": {required: true, kinds: []string{"integer"}},
-		"evaluation_id":         {required: true, kinds: []string{"string"}},
-		"evidence_complete":     {required: true, kinds: []string{"boolean"}},
-		"failure_reason":        {kinds: []string{"null", "string"}},
-		"overall":               {required: true, kinds: []string{"string"}, enum: []string{"met", "not_met", "partially_met", "undetermined"}},
+		"cost_usd":              {kinds: []string{kindNull, kindNumber}},
+		"criteria_failed":       {required: true, kinds: []string{kindInteger}},
+		"criteria_passed":       {required: true, kinds: []string{kindInteger}},
+		"criteria_total":        {required: true, kinds: []string{kindInteger}},
+		"criteria_undetermined": {required: true, kinds: []string{kindInteger}},
+		PayloadEvaluationID:     {required: true, kinds: []string{kindString}},
+		"evidence_complete":     {required: true, kinds: []string{kindBoolean}},
+		"failure_reason":        {kinds: []string{kindNull, kindString}},
+		"overall":               {required: true, kinds: []string{kindString}, enum: []string{"met", "not_met", "partially_met", "undetermined"}},
 	}},
 }
 
 func jsonKind(raw json.RawMessage) string {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
-		return "null"
+		return kindNull
 	}
 	switch trimmed[0] {
 	case '{':
-		return "object"
+		return kindObject
 	case '[':
-		return "array"
+		return kindArray
 	case '"':
-		return "string"
+		return kindString
 	case 't', 'f':
-		return "boolean"
+		return kindBoolean
 	case 'n':
-		return "null"
+		return kindNull
 	}
 	if bytes.ContainsAny(trimmed, ".eE") {
-		return "number"
+		return kindNumber
 	}
-	return "integer"
+	return kindInteger
 }
 
-func numeric(kind string) bool { return kind == "integer" || kind == "number" }
+func numeric(kind string) bool { return kind == kindInteger || kind == kindNumber }
 
 func kindAccepted(kind string, accepted []string) bool {
 	for _, want := range accepted {
@@ -148,7 +163,7 @@ func validatePayloadField(eventType, name string, spec payloadField, value json.
 	if len(spec.kinds) > 0 && !kindAccepted(kind, spec.kinds) {
 		return fmt.Errorf("%w: %s.%s is %s, want %v", ErrInvalid, eventType, name, kind, spec.kinds)
 	}
-	if len(spec.enum) == 0 || kind != "string" {
+	if len(spec.enum) == 0 || kind != kindString {
 		return nil
 	}
 	var got string

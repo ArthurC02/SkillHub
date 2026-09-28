@@ -261,6 +261,13 @@ func haltTarget(provider string) string {
 	return provider
 }
 
+const (
+	nodeDrainSlotDivisor   = 2
+	nodeDrainFloor         = 1
+	poolSuspendSlotDivisor = 4
+	poolSuspendFloor       = 2
+)
+
 func haltThreshold(slots int, denominator, floor int64) int64 {
 	// Ceiling division: rounds a fractional threshold up to the next integer.
 	threshold := (int64(slots) + denominator - 1) / denominator
@@ -289,7 +296,7 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 		poolOrphans += persistent
 		poolSlots += int64(slots)
 
-		threshold := haltThreshold(slots, 2, 1)
+		threshold := haltThreshold(slots, nodeDrainSlotDivisor, nodeDrainFloor)
 		s.reconcileThresholdHalt(ctx, provider.Name(), orphanCount{
 			persistent: persistent, threshold: threshold,
 			reason: fmt.Sprintf(
@@ -299,7 +306,7 @@ func (s *Service) EvaluateOrphanThresholds(ctx context.Context) {
 	}
 
 	if len(registry.Providers) > 0 {
-		threshold := haltThreshold(int(poolSlots), 4, 2)
+		threshold := haltThreshold(int(poolSlots), poolSuspendSlotDivisor, poolSuspendFloor)
 		s.reconcileThresholdHalt(ctx, haltPool, orphanCount{
 			persistent: poolOrphans, threshold: threshold,
 			reason: fmt.Sprintf(
@@ -473,7 +480,7 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) decodeHaltRequest(w http.ResponseWriter, r *http.Request) (haltRequest, bool) {
 	var body haltRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a note")
 		return haltRequest{}, false
 	}

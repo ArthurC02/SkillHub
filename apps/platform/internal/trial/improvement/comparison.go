@@ -225,16 +225,24 @@ func (s *Service) comparisonSide(
 		Overall:      ev.Overall,
 		Cost:         costViewOf(ev, s.Credits),
 	}
-	var results []CriterionResult
-	if len(ev.CriterionResults) > 0 {
-		if err := json.Unmarshal(ev.CriterionResults, &results); err != nil {
-			return comparisonSide{}, sideDetail{}, err
-		}
-	}
-	for _, r := range results {
-		detail.results[r.CriterionID] = r
+	if detail.results, err = criterionResultsByID(ev.CriterionResults); err != nil {
+		return comparisonSide{}, sideDetail{}, err
 	}
 	return side, detail, nil
+}
+
+func criterionResultsByID(raw []byte) (map[string]CriterionResult, error) {
+	var results []CriterionResult
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &results); err != nil {
+			return nil, err
+		}
+	}
+	byID := make(map[string]CriterionResult, len(results))
+	for _, r := range results {
+		byID[r.CriterionID] = r
+	}
+	return byID, nil
 }
 
 func criterionMatrix(left, right sideDetail) []criterionRow {

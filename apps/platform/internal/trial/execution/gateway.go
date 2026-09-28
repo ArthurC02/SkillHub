@@ -99,7 +99,7 @@ func NewGateway(c GatewayConfig) *Gateway {
 		c.TPMLimit = defaultKeyTPMLimit
 	}
 	if c.HTTP == nil {
-		c.HTTP = &http.Client{Timeout: 20 * time.Second}
+		c.HTTP = &http.Client{Timeout: gatewayRequestTimeout}
 	}
 	return &Gateway{adminBaseURL: c.AdminBaseURL, adminKey: c.AdminKey, sandboxBaseURL: c.SandboxBaseURL, model: c.Model, maxBudgetUSD: c.MaxBudgetUSD, tpmLimit: c.TPMLimit, client: c.HTTP}
 }
@@ -218,6 +218,10 @@ const (
 
 	usageResponseLimit = 8 << 20
 
+	adminResponseLimit = 1 << 20
+
+	gatewayRequestTimeout = 20 * time.Second
+
 	usageDateFormat = "2006-01-02 15:04:05"
 )
 
@@ -287,7 +291,7 @@ func (g *Gateway) post(ctx context.Context, path string, body, out any) error {
 		return err
 	}
 
-	return g.do(ctx, adminRequest{method: http.MethodPost, path: path, body: encoded, responseLimit: 1 << 20}, out)
+	return g.do(ctx, adminRequest{method: http.MethodPost, path: path, body: encoded, responseLimit: adminResponseLimit}, out)
 }
 
 func (g *Gateway) get(ctx context.Context, path string, out any) error {

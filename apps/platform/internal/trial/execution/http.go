@@ -19,6 +19,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
+const maxRequestBodyBytes = 4096
+
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
@@ -292,7 +294,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 		ConfirmedSummaryHash string `json:"confirmed_summary_hash"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with version_id and test_case_id")
 		return
 	}

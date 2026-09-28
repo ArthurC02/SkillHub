@@ -101,6 +101,11 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+const (
+	maxDecisionBodyBytes = 4096
+	maxApplyBodyBytes    = 16384
+)
+
 func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -114,7 +119,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Decision Decision `json:"decision"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxDecisionBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a `decision`")
 		return
 	}
@@ -184,7 +189,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		EvaluationID  string   `json:"evaluation_id"`
 		SuggestionIDs []string `json:"suggestion_ids"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16384)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxApplyBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest,
 			"body must be JSON with `evaluation_id` and `suggestion_ids`")
 		return

@@ -51,7 +51,9 @@ var eventTypes = map[string]bool{
 
 var sources = map[string]bool{SourceSandbox: true, SourceOrchestr: true, SourceLLMService: true}
 
-var statuses = map[string]bool{"ok": true, "error": true, "skipped": true, "cancelled": true, "timed_out": true}
+const outcomeTimedOut = "timed_out"
+
+var statuses = map[string]bool{"ok": true, "error": true, "skipped": true, "cancelled": true, outcomeTimedOut: true}
 
 type Event struct {
 	SchemaVersion string          `json:"schema_version"`
@@ -80,6 +82,19 @@ const (
 )
 
 func (e *Event) Validate() error {
+	if err := e.validateEnvelope(); err != nil {
+		return err
+	}
+	if err := e.validateOrigin(); err != nil {
+		return err
+	}
+	if err := e.validatePayloadShape(); err != nil {
+		return err
+	}
+	return validatePayload(e.Type, e.Payload)
+}
+
+func (e *Event) validateEnvelope() error {
 	switch {
 	case e.SchemaVersion == "":
 		return fmt.Errorf("%w: schema_version is required", ErrInvalid)
@@ -97,6 +112,12 @@ func (e *Event) Validate() error {
 		return fmt.Errorf("%w: seq must not exceed %d", ErrInvalid, maxTraceSeq)
 	case e.OccurredAt.IsZero():
 		return fmt.Errorf("%w: occurred_at is required", ErrInvalid)
+	}
+	return nil
+}
+
+func (e *Event) validateOrigin() error {
+	switch {
 	case !sources[e.EmittedBy]:
 		return fmt.Errorf("%w: emitted_by %q is not a known producer", ErrInvalid, e.EmittedBy)
 	case !eventTypes[e.Type]:
@@ -107,6 +128,12 @@ func (e *Event) Validate() error {
 		return fmt.Errorf("%w: %s may only be emitted by the orchestrator", ErrInvalid, e.Type)
 	case e.Status != nil && !statuses[*e.Status]:
 		return fmt.Errorf("%w: status %q is not a known outcome", ErrInvalid, *e.Status)
+	}
+	return nil
+}
+
+func (e *Event) validatePayloadShape() error {
+	switch {
 	case len(e.Payload) == 0:
 		return fmt.Errorf("%w: payload is required", ErrInvalid)
 	case len(e.Payload) > maxPayloadBytes:
@@ -114,7 +141,7 @@ func (e *Event) Validate() error {
 	case len(bytes.TrimSpace(e.Payload)) == 0 || bytes.TrimSpace(e.Payload)[0] != '{':
 		return fmt.Errorf("%w: payload must be a JSON object", ErrInvalid)
 	}
-	return validatePayload(e.Type, e.Payload)
+	return nil
 }
 
 func compatibleVersion(v string) bool {

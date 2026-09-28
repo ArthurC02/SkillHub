@@ -2,7 +2,6 @@ package trace
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -623,17 +623,7 @@ func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgty
 	return out, nil
 }
 
-func newUUID() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-
-		panic("crypto/rand: " + err.Error())
-	}
-	// Set the RFC 4122 version (4) and variant bits.
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
-	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
-}
+func newUUID() string { return uuid.NewString() }
 
 func sourceLabel(source string) string {
 	if sources[source] {

@@ -241,22 +241,9 @@ func (s *Service) permissionSummaryFor(
 		return PermissionSummary{}, ErrNotFound
 	}
 
-	var draft testlab.Draft
-	if held != nil {
-		draft = held.draft
-	} else {
-		var err error
-		draft, err = s.TestLab.ReadDraft(ctx, workspaceID, testCaseID)
-		if errors.Is(err, testlab.ErrNotFound) {
-
-			return PermissionSummary{}, ErrPreflightTargetNotFound
-		}
-		if err != nil {
-			return PermissionSummary{}, err
-		}
-	}
-	if skillID.Valid && draft.SkillID != skillID {
-		return PermissionSummary{}, ErrNotFound
+	draft, err := s.testCaseDraftFor(ctx, workspaceID, skillID, testCaseID, held)
+	if err != nil {
+		return PermissionSummary{}, err
 	}
 
 	snap := defaultPolicy(s.Deployment)
@@ -286,20 +273,12 @@ func (s *Service) permissionSummaryFor(
 	sum := sha256.Sum256(body)
 
 	blocked := ""
+	var quota *policy.QuotaView
+	// Skipped here: a second pool read would deadlock a caller already
+	// inside a transaction on a single-connection pool.
 	if held == nil {
 		blocked = s.blockingReason(ctx, workspaceID, version, snap, scan)
-	}
-
-	var quota *policy.QuotaView
-	if held != nil {
-		// Skipped here: a second pool read would deadlock a caller already
-		// inside a transaction on a single-connection pool.
-		quota = nil
-	} else if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
-		slog.Warn("quota unavailable for the pre-run summary", "error", err)
-	} else if enforced {
-		view := state.View()
-		quota = &view
+		quota = s.enforcedQuotaView(ctx, workspaceID)
 	}
 
 	if s.Ledger == nil {
@@ -318,6 +297,41 @@ func (s *Service) permissionSummaryFor(
 		Blocked:       blocked,
 		Notes:         s.summaryNotes(ctx, snap),
 	}, nil
+}
+
+func (s *Service) testCaseDraftFor(
+	ctx context.Context, workspaceID, skillID, testCaseID pgtype.UUID, held *heldInputs,
+) (testlab.Draft, error) {
+	var draft testlab.Draft
+	if held != nil {
+		draft = held.draft
+	} else {
+		var err error
+		draft, err = s.TestLab.ReadDraft(ctx, workspaceID, testCaseID)
+		if errors.Is(err, testlab.ErrNotFound) {
+			return testlab.Draft{}, ErrPreflightTargetNotFound
+		}
+		if err != nil {
+			return testlab.Draft{}, err
+		}
+	}
+	if skillID.Valid && draft.SkillID != skillID {
+		return testlab.Draft{}, ErrNotFound
+	}
+	return draft, nil
+}
+
+func (s *Service) enforcedQuotaView(ctx context.Context, workspaceID pgtype.UUID) *policy.QuotaView {
+	state, enforced, err := s.QuotaFor(ctx, workspaceID)
+	if err != nil {
+		slog.Warn("quota unavailable for the pre-run summary", "error", err)
+		return nil
+	}
+	if !enforced {
+		return nil
+	}
+	view := state.View()
+	return &view
 }
 
 func (s *Service) summaryNotes(ctx context.Context, snap policySnapshot) []string {
@@ -510,7 +524,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 		TestCaseID  string `json:"test_case_id"`
 		SummaryHash string `json:"summary_hash"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest,
 			"body must be JSON with version_id, test_case_id and summary_hash")
 		return

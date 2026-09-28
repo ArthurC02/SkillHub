@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mime"
+	"net/http"
 	"path"
 	"slices"
 	"strings"
@@ -579,7 +580,7 @@ func dispatchErrorClass(err error) string {
 		if pe.Class != "" {
 			return pe.Class
 		}
-		if pe.Status == 422 {
+		if pe.Status == http.StatusUnprocessableEntity {
 			return errClassCapabilityMismatch
 		}
 	}
@@ -676,7 +677,7 @@ func validateArtifactContent(artifact RunArtifact) error {
 	if artifact.ContentType == "" {
 		return nil
 	}
-	if len(artifact.ContentType) > 255 {
+	if len(artifact.ContentType) > maxArtifactContentTypeBytes {
 		return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
 	}
 	if _, _, err := mime.ParseMediaType(artifact.ContentType); err != nil {
@@ -686,6 +687,13 @@ func validateArtifactContent(artifact RunArtifact) error {
 }
 
 const runArtifactRetention = 90 * 24 * time.Hour
+
+const (
+	maxArtifactContentTypeBytes = 255
+	maxArtifactFileNameBytes    = 1024
+	firstPrintableRune          = 0x20
+	numberedDeviceNameLen       = 4
+)
 
 func artifactNameKey(fileName string) string { return strings.ToLower(fileName) }
 
@@ -783,27 +791,35 @@ func artifactCollectionTruncated(result *RunResult) bool {
 }
 
 func validArtifactFileName(name string) bool {
-	if name == "" || len(name) > 1024 || !utf8.ValidString(name) || strings.Contains(name, `\`) ||
+	if name == "" || len(name) > maxArtifactFileNameBytes || !utf8.ValidString(name) || strings.Contains(name, `\`) ||
 		strings.HasPrefix(name, "/") || strings.HasPrefix(name, "-") || path.Clean(name) != name {
 		return false
 	}
 	for _, part := range strings.Split(name, "/") {
-		if part == "" || part == "." || part == ".." || strings.TrimRight(part, " .") != part ||
-			strings.ContainsAny(part, `<>:"|?*`) {
-			return false
-		}
-		for _, r := range part {
-			if r < 0x20 {
-				return false
-			}
-		}
-		base := strings.ToLower(strings.SplitN(part, ".", 2)[0])
-		if base == "con" || base == "prn" || base == "aux" || base == "nul" ||
-			(len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9') {
+		if !validArtifactPathSegment(part) {
 			return false
 		}
 	}
 	return true
+}
+
+func validArtifactPathSegment(part string) bool {
+	if part == "" || part == "." || part == ".." || strings.TrimRight(part, " .") != part ||
+		strings.ContainsAny(part, `<>:"|?*`) {
+		return false
+	}
+	for _, r := range part {
+		if r < firstPrintableRune {
+			return false
+		}
+	}
+	return !reservedDeviceName(part)
+}
+
+func reservedDeviceName(part string) bool {
+	base := strings.ToLower(strings.SplitN(part, ".", 2)[0])
+	return base == "con" || base == "prn" || base == "aux" || base == "nul" ||
+		(len(base) == numberedDeviceNameLen && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9')
 }
 
 func (d *driver) finishAttempt(ctx context.Context, attempt gen.RunAttempt, errClass, message string) error {

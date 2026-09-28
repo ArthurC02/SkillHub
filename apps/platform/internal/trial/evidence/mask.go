@@ -102,7 +102,7 @@ func (m *Masker) walk(node any, pointer string, fields *[]string) any {
 func (m *Masker) redact(s string) string {
 	for _, known := range m.Known {
 
-		if len(known) < 16 {
+		if len(known) < minKnownSecretBytes {
 			continue
 		}
 		s = strings.ReplaceAll(s, known, Placeholder)
@@ -122,19 +122,31 @@ func escapePointer(key string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(key, "~", "~0"), "/", "~1")
 }
 
-var canaryShapes = []struct{ name, sample string }{
-	{"openai style key", "sk-" + "proj-" + strings.Repeat("A", 28)},
-	{"aws access key id", "AKIA" + strings.Repeat("Q", 16)},
-	{"github token", "gh" + "p_" + strings.Repeat("0", 36)},
-	{"slack token", "xox" + "b-" + strings.Repeat("0", 10) + "-notarealslacktoken"},
-	{"google api key", "AI" + "za" + strings.Repeat("0", 35)},
-	{"authorization header", "Bearer " + strings.Repeat("0", 32)},
-	{"credential assignment", "OPENAI_API_KEY=" + strings.Repeat("0", 32)},
-	{"credential query parameter", "https://example.invalid/o?X-Amz-Signature=" + strings.Repeat("0", 32)},
-	{"private key block", "-----BEGIN " + "RSA PRIVATE KEY-----"},
-	{"json web token", "ey" + "J" + strings.Repeat("A", 12) + "." + strings.Repeat("B", 12) + "." + strings.Repeat("C", 12)},
+const (
+	minKnownSecretBytes = 16
 
-	{"credential in a url authority", "postgres://" + strings.Repeat("u", 8) + ":" + strings.Repeat("p", 8) + "@example.invalid:5432/db"},
+	openAIKeySampleBodyLen = 28
+	awsKeyIDBodyLen        = 16
+	githubTokenBodyLen     = 36
+	googleAPIKeyBodyLen    = 35
+	opaqueSecretSampleLen  = 32
+	jwtSampleSegmentLen    = 12
+	urlCredentialSampleLen = 8
+)
+
+var canaryShapes = []struct{ name, sample string }{
+	{"openai style key", "sk-" + "proj-" + strings.Repeat("A", openAIKeySampleBodyLen)},
+	{"aws access key id", "AKIA" + strings.Repeat("Q", awsKeyIDBodyLen)},
+	{"github token", "gh" + "p_" + strings.Repeat("0", githubTokenBodyLen)},
+	{"slack token", "xox" + "b-" + strings.Repeat("0", 10) + "-notarealslacktoken"},
+	{"google api key", "AI" + "za" + strings.Repeat("0", googleAPIKeyBodyLen)},
+	{"authorization header", "Bearer " + strings.Repeat("0", opaqueSecretSampleLen)},
+	{"credential assignment", "OPENAI_API_KEY=" + strings.Repeat("0", opaqueSecretSampleLen)},
+	{"credential query parameter", "https://example.invalid/o?X-Amz-Signature=" + strings.Repeat("0", opaqueSecretSampleLen)},
+	{"private key block", "-----BEGIN " + "RSA PRIVATE KEY-----"},
+	{"json web token", "ey" + "J" + strings.Repeat("A", jwtSampleSegmentLen) + "." + strings.Repeat("B", jwtSampleSegmentLen) + "." + strings.Repeat("C", jwtSampleSegmentLen)},
+
+	{"credential in a url authority", "postgres://" + strings.Repeat("u", urlCredentialSampleLen) + ":" + strings.Repeat("p", urlCredentialSampleLen) + "@example.invalid:5432/db"},
 }
 
 const canaryKnownName = "platform-issued value"

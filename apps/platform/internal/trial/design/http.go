@@ -190,10 +190,12 @@ type testCaseListItem struct {
 	HasRubric         bool   `json:"has_rubric"`
 }
 
+const defaultListLimit = 51
+
 func parseListLimit(r *http.Request) (int32, error) {
 	q := r.URL.Query()
 	if !q.Has("limit") {
-		return 51, nil
+		return defaultListLimit, nil
 	}
 
 	n, err := strconv.Atoi(q.Get("limit"))
@@ -456,7 +458,7 @@ func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 		MaxFileBytes:        int64(MaxFileBytes),
 		MaxTestCaseBytes:    int64(MaxTestCaseBytes),
 		MaxFilesPerTestCase: MaxFilesPerTestCase,
-		RetentionDays:       int(DatasetRetention / (24 * time.Hour)),
+		RetentionDays:       int(DatasetRetention / day),
 		AllowedKinds:        allowedKindsWire,
 		Note:                limitsNote,
 	})
@@ -472,6 +474,13 @@ var allowedKindsWire = []string{
 const limitsNote = "檔案類型看內容判斷，不看副檔名；" +
 	"上傳的檔案只有這個 Test Case 的 Run 讀得到，到保存期限或你刪除時就會刪掉。"
 
+const (
+	day = 24 * time.Hour
+
+	uploadEnvelopeBytes   = 1 << megabyteShift
+	uploadFormMemoryBytes = 4 << megabyteShift
+)
+
 const deleteDatasetNote = "檔案已移除；過去 Run 的快照仍保留它的檔名與內容雜湊，那些 Run 仍可追溯。"
 
 func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
@@ -484,8 +493,8 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxFileBytes+(1<<20))
-	if err := r.ParseMultipartForm(4 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, MaxFileBytes+uploadEnvelopeBytes)
+	if err := r.ParseMultipartForm(uploadFormMemoryBytes); err != nil {
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge,
 			"檔案超過 "+humanMB(MaxFileBytes)+"，或上傳內容不完整")
 		return

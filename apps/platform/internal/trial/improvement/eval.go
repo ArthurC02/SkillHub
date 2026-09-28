@@ -441,10 +441,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	if s.ReadVersion == nil || s.ReadSkill == nil || s.ReadRuntimeCompatibility == nil {
 		return m, errRegistryReadNotConfigured
 	}
-	input, found, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
-	if !found && err == nil {
-		return m, ErrNotFound
-	}
+	input, err := s.existingEvaluationInput(ctx, workspaceID, runID)
 	if err != nil {
 		return m, err
 	}
@@ -454,25 +451,13 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, errRunStillGoing
 	}
 
-	if m.version, found, err = s.ReadVersion(ctx, workspaceID, m.run.SkillVersionID); !found && err == nil {
-		return m, ErrNotFound
-	} else if err != nil {
+	if m.version, err = s.existingVersion(ctx, workspaceID, m.run.SkillVersionID); err != nil {
 		return m, err
 	}
 	if m.skill, _, err = s.ReadSkill(ctx, workspaceID, m.version.SkillID); err != nil {
 		return m, err
 	}
-	if err := s.requireTestLab(); err != nil {
-		return m, err
-	}
-	if m.snapshot, err = s.TestLab.ReadSnapshot(ctx, workspaceID, m.run.TestCaseSnapshotID); err != nil {
-		return m, err
-	}
-
-	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
-		return m, err
-	}
-	if m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric); err != nil {
+	if err := s.gatherTestCase(ctx, workspaceID, &m); err != nil {
 		return m, err
 	}
 
@@ -483,14 +468,39 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, err
 	}
 	compat, found, err := s.ReadRuntimeCompatibility(ctx, m.run.SkillVersionID)
-	if err == nil && found {
-		m.compat = &compat
-	} else if err != nil {
+	if err != nil {
 		return m, err
+	}
+	if found {
+		m.compat = &compat
 	}
 
 	m.report, m.reportOK = s.packageReport(ctx, m.version.stored())
 	return m, nil
+}
+
+func (s *Service) existingEvaluationInput(ctx context.Context, workspaceID, runID pgtype.UUID) (EvaluationInput, error) {
+	input, found, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
+	if !found && err == nil {
+		return input, ErrNotFound
+	}
+	return input, err
+}
+
+func (s *Service) gatherTestCase(ctx context.Context, workspaceID pgtype.UUID, m *material) error {
+	if err := s.requireTestLab(); err != nil {
+		return err
+	}
+	var err error
+	if m.snapshot, err = s.TestLab.ReadSnapshot(ctx, workspaceID, m.run.TestCaseSnapshotID); err != nil {
+		return err
+	}
+
+	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
+		return err
+	}
+	m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric)
+	return err
 }
 
 func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error) {
@@ -527,9 +537,9 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
 		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
 		Type: trace.TypeEvaluationStarted, Status: "ok", Payload: map[string]any{
-			"evaluation_id":        pgconv.UUIDString(ev.ID),
-			"judge_model":          s.judgeModel(),
-			"judge_prompt_version": s.judgePromptVersion(),
+			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
+			"judge_model":             s.judgeModel(),
+			"judge_prompt_version":    s.judgePromptVersion(),
 
 			"rubric_version": rubricVersion(m.rubric),
 		},
@@ -563,15 +573,15 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
 		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "ok", Payload: map[string]any{
-			"evaluation_id":         pgconv.UUIDString(ev.ID),
-			"overall":               v.overall,
-			"criteria_total":        len(v.results),
-			"criteria_passed":       passed,
-			"criteria_failed":       failed,
-			"criteria_undetermined": undetermined,
-			"evidence_complete":     v.evidenceComplete,
-			"cost_usd":              v.costUSD,
-			"failure_reason":        nil,
+			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
+			"overall":                 v.overall,
+			"criteria_total":          len(v.results),
+			"criteria_passed":         passed,
+			"criteria_failed":         failed,
+			"criteria_undetermined":   undetermined,
+			"evidence_complete":       v.evidenceComplete,
+			"cost_usd":                v.costUSD,
+			"failure_reason":          nil,
 		},
 	}); err != nil {
 		return err
@@ -608,15 +618,15 @@ func (s *Service) fail(ctx context.Context, m material, ev gen.Evaluation, gathe
 	if err := trace.RecordOrchestratorEvent(ctx, tx, trace.OrchestratorEvent{
 		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID, Attempt: m.attempt,
 		Type: trace.TypeEvaluationCompleted, Status: "error", Payload: map[string]any{
-			"evaluation_id":         pgconv.UUIDString(ev.ID),
-			"overall":               OverallUndetermined,
-			"criteria_total":        len(m.criteria),
-			"criteria_passed":       0,
-			"criteria_failed":       0,
-			"criteria_undetermined": len(m.criteria),
-			"evidence_complete":     evidenceComplete,
-			"cost_usd":              nil,
-			"failure_reason":        reason,
+			trace.PayloadEvaluationID: pgconv.UUIDString(ev.ID),
+			"overall":                 OverallUndetermined,
+			"criteria_total":          len(m.criteria),
+			"criteria_passed":         0,
+			"criteria_failed":         0,
+			"criteria_undetermined":   len(m.criteria),
+			"evidence_complete":       evidenceComplete,
+			"cost_usd":                nil,
+			"failure_reason":          reason,
 		},
 	}); err != nil {
 		return err

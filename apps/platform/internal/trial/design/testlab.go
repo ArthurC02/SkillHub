@@ -721,4 +721,6 @@ func indexOfCriterion(list []Criterion, id string) int {
 
 func newCriterionID() string { return pgconv.UUIDString(newUUID()) }
 
-func humanMB(n int64) string { return fmt.Sprintf("%d MB", n>>20) }
+const megabyteShift = 20
+
+func humanMB(n int64) string { return fmt.Sprintf("%d MB", n>>megabyteShift) }
