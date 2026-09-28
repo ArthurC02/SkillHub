@@ -38,6 +38,8 @@ const (
 	grantFetchTimeout = 2 * time.Minute
 
 	artifactReadLimit = 128 << 20
+
+	execStreamDrainLimit = 1 << 20
 )
 
 var errGone = errors.New("sandbox is no longer running")
@@ -72,7 +74,7 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 
 			return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
 		}
-		if err := d.exec(ctx, id, []string{"/bin/dd", "of=" + target, "status=none"}, body); err != nil {
+		if err := d.exec(ctx, id, writeFileCommand(target), body); err != nil {
 			if errors.Is(err, errGone) {
 				return nil
 			}
@@ -80,12 +82,16 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 		}
 	}
 
-	if err := d.exec(ctx, id, []string{"/bin/dd", "of=" + ReadyPath, "status=none"}, []byte("ready\n")); err != nil {
+	if err := d.exec(ctx, id, writeFileCommand(ReadyPath), []byte("ready\n")); err != nil {
 
 		slog.Warn("could not signal the sandbox that its inputs are ready",
 			"provider_run_id", id, "err", err)
 	}
 	return nil
+}
+
+func writeFileCommand(target string) []string {
+	return []string{"/bin/dd", "of=" + target, "status=none"}
 }
 
 func datasetNames(req sandbox.RunRequest) map[string]string {
@@ -122,7 +128,7 @@ func (d *Driver) WorkloadDone(ctx context.Context, id string) (bool, error) {
 }
 
 func (d *Driver) ReleaseWorkload(ctx context.Context, id string) error {
-	err := d.exec(ctx, id, []string{"/bin/dd", "of=" + CollectedPath, "status=none"}, []byte("collected\n"))
+	err := d.exec(ctx, id, writeFileCommand(CollectedPath), []byte("collected\n"))
 	if errors.Is(err, errGone) {
 		return nil
 	}
@@ -204,7 +210,7 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 		}
 	}
 
-	if _, err := stdcopy.StdCopy(io.Discard, io.Discard, io.LimitReader(attached.Reader, 1<<20)); err != nil {
+	if _, err := stdcopy.StdCopy(io.Discard, io.Discard, io.LimitReader(attached.Reader, execStreamDrainLimit)); err != nil {
 		return err
 	}
 	inspect, err := d.cli.ExecInspect(ctx, created.ID, client.ExecInspectOptions{})

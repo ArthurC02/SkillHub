@@ -475,7 +475,7 @@ func TestListServesOnlyActiveTrue(t *testing.T) {
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/runs?active=true", nil)
+	req := httptest.NewRequest(http.MethodGet, "/runs?active=true", nil)
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	h.ServeHTTP(rec, req)
 	var list sandbox.ProviderRunList
@@ -490,7 +490,7 @@ func TestListServesOnlyActiveTrue(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest("GET", "/runs?active=false", nil)
+	req = httptest.NewRequest(http.MethodGet, "/runs?active=false", nil)
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
@@ -512,7 +512,7 @@ func TestResultAppearsOnlyOnTerminalSingleReads(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/runs", nil)
+	req := httptest.NewRequest(http.MethodGet, "/runs", nil)
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	h.ServeHTTP(rec, req)
 	var list sandbox.ProviderRunList
@@ -684,7 +684,7 @@ func TestAdoptedRunWithholdsOutputItCannotMask(t *testing.T) {
 
 func TestCreateRejectsMalformedBody(t *testing.T) {
 	_, h := newServer(t)
-	req := httptest.NewRequest("POST", "/runs", bytes.NewReader([]byte("{not json")))
+	req := httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader([]byte("{not json")))
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -696,7 +696,7 @@ func TestCreateRejectsMalformedBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req = httptest.NewRequest("POST", "/runs", bytes.NewReader(append(valid, []byte(` {}`)...)))
+	req = httptest.NewRequest(http.MethodPost, "/runs", bytes.NewReader(append(valid, []byte(` {}`)...)))
 	req.Header.Set("Authorization", "Bearer "+testToken)
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

@@ -22,6 +22,10 @@ const (
 	artifactCollectTimeout = 5 * time.Minute
 
 	artifactMaxEntries = 1000
+
+	artifactFileMode = 0o600
+
+	uploadResponseDrainLimit = 1 << 20
 )
 
 func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
@@ -195,7 +199,7 @@ func markTruncated(manifest []Artifact) {
 func writeArtifact(writer *tar.Writer, name string, modTime time.Time, body []byte) (Artifact, error) {
 	sum := sha256.Sum256(body)
 	if err := writer.WriteHeader(&tar.Header{
-		Name: name, Mode: 0o600, Size: int64(len(body)),
+		Name: name, Mode: artifactFileMode, Size: int64(len(body)),
 		ModTime: modTime, Typeflag: tar.TypeReg,
 	}); err != nil {
 		return Artifact{}, err
@@ -223,21 +227,30 @@ func artifactName(raw string) string {
 		return ""
 	}
 	for _, part := range strings.Split(name, "/") {
-		if strings.TrimRight(part, " .") != part || strings.ContainsAny(part, `<>:"|?*`) {
-			return ""
-		}
-		for _, r := range part {
-			if r < 0x20 {
-				return ""
-			}
-		}
-		base := strings.ToLower(strings.SplitN(part, ".", 2)[0])
-		if base == "con" || base == "prn" || base == "aux" || base == "nul" ||
-			(len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9') {
+		if !acceptablePathPart(part) {
 			return ""
 		}
 	}
 	return name
+}
+
+const firstPrintableASCII = 0x20
+
+func acceptablePathPart(part string) bool {
+	if strings.TrimRight(part, " .") != part || strings.ContainsAny(part, `<>:"|?*`) {
+		return false
+	}
+	for _, r := range part {
+		if r < firstPrintableASCII {
+			return false
+		}
+	}
+	return !reservedDeviceName(strings.ToLower(strings.SplitN(part, ".", 2)[0]))
+}
+
+func reservedDeviceName(base string) bool {
+	return base == "con" || base == "prn" || base == "aux" || base == "nul" ||
+		(len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9')
 }
 
 func upload(ctx context.Context, url string, body []byte) error {
@@ -254,7 +267,7 @@ func upload(ctx context.Context, url string, body []byte) error {
 		return errors.New("object storage could not be reached")
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, uploadResponseDrainLimit))
 	if !successfulUploadStatus(resp.StatusCode) {
 		return fmt.Errorf("object storage answered %d", resp.StatusCode)
 	}

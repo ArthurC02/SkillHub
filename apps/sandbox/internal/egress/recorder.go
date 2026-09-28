@@ -70,27 +70,41 @@ func parseConnection(line string) (flow, bool) {
 			continue
 		}
 		counted[key]++
-		switch {
-		case key == "src" && counted[key] == 1:
-			f.Source = value
-		case key == "dst" && counted[key] == 1:
-			f.Destination = value
-		case key == "dport" && counted[key] == 1:
-			f.DestinationPort = int(number(value))
-		case key == "packets" && counted[key] == 1:
-			f.PacketsOut = number(value)
-		case key == "bytes" && counted[key] == 1:
-			f.BytesOut = number(value)
-		case key == "packets" && counted[key] == 2:
-			f.PacketsIn = number(value)
-		case key == "bytes" && counted[key] == 2:
-			f.BytesIn = number(value)
+		switch counted[key] {
+		case 1:
+			f.readOriginalDirection(key, value)
+		case 2:
+			f.readReplyDirection(key, value)
 		}
 	}
 	if f.Source == "" || f.Destination == "" {
 		return flow{}, false
 	}
 	return f, true
+}
+
+func (f *flow) readOriginalDirection(key, value string) {
+	switch key {
+	case "src":
+		f.Source = value
+	case "dst":
+		f.Destination = value
+	case "dport":
+		f.DestinationPort = int(number(value))
+	case "packets":
+		f.PacketsOut = number(value)
+	case "bytes":
+		f.BytesOut = number(value)
+	}
+}
+
+func (f *flow) readReplyDirection(key, value string) {
+	switch key {
+	case "packets":
+		f.PacketsIn = number(value)
+	case "bytes":
+		f.BytesIn = number(value)
+	}
 }
 
 func parseKernelEntry(line string) (flow, bool) {
@@ -145,10 +159,13 @@ func parseDrop(message string, at time.Time) (flow, bool) {
 	return f, true
 }
 
-const otherProtocol = "other"
+const (
+	otherProtocol = "other"
+	icmpProtocol  = "icmp"
+)
 
 var protocols = map[string]string{
-	"tcp": "tcp", "udp": "udp", "icmp": "icmp", "icmpv6": "icmp", "ipv6-icmp": "icmp",
+	"tcp": "tcp", "udp": "udp", "icmp": icmpProtocol, "icmpv6": icmpProtocol, "ipv6-icmp": icmpProtocol,
 }
 
 func observedAt(line string) (time.Time, bool) {

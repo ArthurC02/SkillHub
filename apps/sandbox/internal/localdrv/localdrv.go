@@ -390,11 +390,13 @@ func optionalRunEnv(req sandbox.RunRequest) []envVar {
 		}
 	}
 
-	if mb := req.ResourceLimits.MemoryBytes / (1 << 20); mb > 0 {
+	if mb := req.ResourceLimits.MemoryBytes / bytesPerMebibyte; mb > 0 {
 		pairs = append(pairs, envVar{"NODE_OPTIONS", fmt.Sprintf("--max-old-space-size=%d", mb)})
 	}
 	return pairs
 }
+
+const bytesPerMebibyte = 1 << 20
 
 func inheritedHostEnv(pairs []envVar) []string {
 	set := make(map[string]bool, len(pairs))

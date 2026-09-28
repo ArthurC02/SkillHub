@@ -137,8 +137,7 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 		return nil, nil
 	}
 	dir := artifactDir(r.outDir)
-	info, err := os.Stat(dir)
-	if err != nil || !info.IsDir() {
+	if !existingDirectory(dir) {
 		return nil, nil
 	}
 
@@ -160,6 +159,11 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 		return nil, nil
 	}
 	return buf.Bytes(), nil
+}
+
+func existingDirectory(dir string) bool {
+	info, err := os.Stat(dir)
+	return err == nil && info.IsDir()
 }
 
 func archiveEntry(tw *tar.Writer, dir, path string, de fs.DirEntry) error {

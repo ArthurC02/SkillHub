@@ -15,6 +15,10 @@ const (
 	traceBatch = 200
 
 	traceBatchBytes = 3 << 20
+
+	traceSinkTimeout = 15 * time.Second
+
+	traceResponseDrainLimit = 1 << 20
 )
 
 type TraceSink interface {
@@ -27,7 +31,7 @@ func (s *HTTPTraceSink) client() *http.Client {
 	if s.Client != nil {
 		return s.Client
 	}
-	return &http.Client{Timeout: 15 * time.Second}
+	return &http.Client{Timeout: traceSinkTimeout}
 }
 
 func (s *HTTPTraceSink) Push(ctx context.Context, url string, events []json.RawMessage) error {
@@ -48,7 +52,7 @@ func (s *HTTPTraceSink) Push(ctx context.Context, url string, events []json.RawM
 		return err
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, traceResponseDrainLimit))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return &RunError{Class: ClassExecution, Message: "trace ingestion returned " + resp.Status}
 	}

@@ -356,7 +356,10 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	if err := m.drv.Start(startCtx, id, req); err != nil {
 		return m.startFailed(id, err)
 	}
+	return m.enterRunning(id, req.ResourceLimits)
+}
 
+func (m *Manager) enterRunning(id string, limits ResourceLimits) (ProviderRun, bool, error) {
 	if refusal := m.p02Refusal(); refusal != nil {
 		_ = m.destroyBounded(id)
 		return ProviderRun{}, false, refusal
@@ -381,8 +384,8 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 		}
 	}
 
-	soft := time.Duration(req.ResourceLimits.WallClockSoftSeconds) * time.Second
-	hard := time.Duration(req.ResourceLimits.WallClockHardSeconds) * time.Second
+	soft := time.Duration(limits.WallClockSoftSeconds) * time.Second
+	hard := time.Duration(limits.WallClockHardSeconds) * time.Second
 	m.watch(id, soft, hard)
 	if cancelled {
 		m.stopCancelledStart(id)
@@ -802,11 +805,11 @@ func (c Config) acceptTokenBudget(requested *TokenBudget) *RunError {
 
 func (c Config) acceptEgressMode(egress EgressPolicy) *RunError {
 	switch {
-	case egress.Mode != "default_deny" && egress.Mode != "none":
+	case egress.Mode != EgressModeDefaultDeny && egress.Mode != EgressModeNone:
 		return capabilityMismatch("egress mode %q is not supported", egress.Mode)
-	case egress.Mode == "none" && len(egress.Allow) > 0:
+	case egress.Mode == EgressModeNone && len(egress.Allow) > 0:
 		return capabilityMismatch("egress mode none cannot carry an allow list")
-	case len(egress.Allow) > 0 && !slices.Contains(c.EgressModes, "default_deny"):
+	case len(egress.Allow) > 0 && !slices.Contains(c.EgressModes, EgressModeDefaultDeny):
 		return capabilityMismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(egress.Allow))
 	}
 	return nil

@@ -45,6 +45,10 @@ const (
 	TracePath = OutDir + "/trace/events.jsonl"
 
 	traceReadLimit = 8 << 20
+
+	tmpScratchBytes = 64 << 20
+
+	nanoCPUsPerCPU = 1e9
 )
 
 type Config struct {
@@ -89,7 +93,7 @@ func New(cfg Config) (*Driver, error) {
 		return nil, errors.New("a pinned runtime image is required (baseline I-01)")
 	}
 	if cfg.Network == "" {
-		cfg.Network = "none"
+		cfg.Network = networktypes.NetworkNone
 	}
 	return &Driver{cli: cli, cfg: cfg}, nil
 }
@@ -118,7 +122,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 
 		Tty:             false,
 		OpenStdin:       false,
-		NetworkDisabled: network == "none",
+		NetworkDisabled: network == networktypes.NetworkNone,
 	}
 	if cmd, ok := devCmd(req); ok && d.cfg.AllowDevCmd {
 		cfg.Cmd = cmd
@@ -132,7 +136,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 			WorkDir: mount(workBytes, ""),
 			OutDir:  mount(outBytes, ""),
 
-			"/tmp": mount(64<<20, ",noexec"),
+			"/tmp": mount(tmpScratchBytes, ",noexec"),
 		},
 
 		CapDrop:     []string{"ALL"},
@@ -143,7 +147,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		Runtime:     d.cfg.Runtime,
 		AutoRemove:  false,
 		Resources: container.Resources{
-			NanoCPUs:   int64(lim.VCPU * 1e9),
+			NanoCPUs:   int64(lim.VCPU * nanoCPUsPerCPU),
 			Memory:     lim.MemoryBytes,
 			MemorySwap: lim.MemoryBytes,
 			PidsLimit:  &pids,
@@ -177,7 +181,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 }
 
 func (d *Driver) recordAddressAssigned(ctx context.Context, containerID, id, network string, req sandbox.RunRequest) {
-	if d.cfg.Log == nil || network == "none" {
+	if d.cfg.Log == nil || network == networktypes.NetworkNone {
 		return
 	}
 	insp, err := d.cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
@@ -205,14 +209,14 @@ func (d *Driver) recordAddressReleased(id string) {
 }
 
 func (d *Driver) networkFor(req sandbox.RunRequest) string {
-	if d.cfg.Network == "" || d.cfg.Network == "none" {
-		return "none"
+	if d.cfg.Network == "" || d.cfg.Network == networktypes.NetworkNone {
+		return networktypes.NetworkNone
 	}
 
 	if len(req.Egress.Allow) > 0 {
 		return d.cfg.Network
 	}
-	return "none"
+	return networktypes.NetworkNone
 }
 
 func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
@@ -436,12 +440,12 @@ func devCmd(req sandbox.RunRequest) ([]string, bool) {
 	return cmd, len(cmd) > 0
 }
 
-const userSpaceKernelRuntime = "runsc"
+const UserSpaceKernelRuntime = "runsc"
 
 func (d *Driver) Rootless() bool { return d.cfg.UID != 0 && d.cfg.GID != 0 }
 
 func (d *Driver) Isolation() sandbox.IsolationStrength {
-	if d.cfg.Runtime == userSpaceKernelRuntime {
+	if d.cfg.Runtime == UserSpaceKernelRuntime {
 		return sandbox.IsolationStrong
 	}
 	return sandbox.IsolationWeak

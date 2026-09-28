@@ -80,9 +80,14 @@ func hostPort(raw string) (string, int, bool) {
 	return host, port, true
 }
 
+const (
+	EgressModeDefaultDeny = "default_deny"
+	EgressModeNone        = "none"
+)
+
 func EgressModesFor(network string, rendered []EgressDestination) []string {
 	if network == "" || network == "none" || len(rendered) == 0 {
-		return []string{"none"}
+		return []string{EgressModeNone}
 	}
-	return []string{"default_deny", "none"}
+	return []string{EgressModeDefaultDeny, EgressModeNone}
 }

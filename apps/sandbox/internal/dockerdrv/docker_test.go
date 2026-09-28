@@ -185,7 +185,7 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 	if hc.Privileged {
 		t.Error("Privileged is on (C-03)")
 	}
-	if !slices.Contains([]string(hc.CapDrop), "ALL") {
+	if !slices.Contains(hc.CapDrop, "ALL") {
 		t.Errorf("CapDrop = %v, want ALL (C-08)", hc.CapDrop)
 	}
 	if !slices.Contains(hc.SecurityOpt, "no-new-privileges:true") {

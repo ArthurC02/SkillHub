@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	networktypes "github.com/moby/moby/api/types/network"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
@@ -63,57 +64,18 @@ func main() {
 	node := openDriver(kind, mxcBin, dockerdrv.Config{
 		Image:        image,
 		Runtime:      runtime,
-		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
-		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
-		GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
+		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", networktypes.NetworkNone),
+		UID:          envInt("SKILLHUB_SANDBOX_UID", defaultWorkloadUserID),
+		GID:          envInt("SKILLHUB_SANDBOX_GID", defaultWorkloadUserID),
 		StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
 		AllowDevCmd:  allowDevCmd,
 		Log:          log,
 	}, log)
 	drv := node.drv
 
-	network := os.Getenv("SKILLHUB_SANDBOX_NETWORK")
-	egressAllow := egressAllowFor(network, log)
-	modes := sandbox.EgressModesFor(network, egressAllow)
-	if kind == driverMXC {
-		modes = []string{"none"}
-	}
-	if len(egressAllow) == 0 && network != "" && network != "none" {
+	m := newRunManager(node, kind, cleanMode, log)
 
-		log.Warn("no egress destination is rendered, so this node declares no egress route",
-			"network", network, "modes", modes)
-	}
-
-	egressUnenforced := false
-	if cleanMode {
-		egressUnenforced = true
-		modes = []string{"default_deny", "none"}
-		log.Warn("clean mode: egress modes are declared so runs can be scheduled, but this driver enforces none of them; " +
-			"the workload reaches whatever this host reaches, and the run's allow list is what the user agreed to, not a boundary")
-	}
-
-	m := sandbox.NewManager(drv, sandbox.Config{
-		Provider: envOr("SKILLHUB_SANDBOX_PROVIDER", "self_hosted"),
-		Runtimes: []sandbox.RuntimeCapability{{
-			Runtime:          "claude_agent_sdk",
-			Versions:         []string{envOr("SKILLHUB_SANDBOX_RUNTIME_VERSION", "0.3.233")},
-			AgentIntegration: []string{"in_sandbox_sdk"},
-		}},
-		MaxResources:             node.maxResources,
-		MaxResourcesUnenforced:   node.unenforced,
-		ReapsDetachedDescendants: node.reapsDetached,
-		EgressModes:              modes,
-		EgressAllow:              egressAllow,
-		EgressUnenforced:         egressUnenforced,
-		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
-		ResultRetention:          time.Duration(envInt("SKILLHUB_SANDBOX_RESULT_RETENTION_SECONDS", 0)) * time.Second,
-	}, log)
-
-	probe := sandbox.NewP02Probe(
-		splitList(os.Getenv("SKILLHUB_SANDBOX_P02_TARGETS")),
-		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", 300))*time.Second,
-		time.Duration(envInt("SKILLHUB_SANDBOX_P02_TIMEOUT_SECONDS", 30))*time.Second,
-	)
+	probe := residentP02Probe()
 	if err := refuseUnprobedProduction(runtime, probe); err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
@@ -137,6 +99,70 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	serveUntilSignalled(srv, drv, log)
+	stopProbe()
+	_ = node.closer()
+}
+
+const (
+	defaultWorkloadUserID     = 65532
+	defaultP02IntervalSeconds = 300
+	defaultP02TimeoutSeconds  = 30
+)
+
+func newRunManager(node openedDriver, kind string, cleanMode cleanNode, log *slog.Logger) *sandbox.Manager {
+	modes, egressAllow, egressUnenforced := declaredEgress(kind, cleanMode, log)
+
+	return sandbox.NewManager(node.drv, sandbox.Config{
+		Provider: envOr("SKILLHUB_SANDBOX_PROVIDER", "self_hosted"),
+		Runtimes: []sandbox.RuntimeCapability{{
+			Runtime:          "claude_agent_sdk",
+			Versions:         []string{envOr("SKILLHUB_SANDBOX_RUNTIME_VERSION", "0.3.233")},
+			AgentIntegration: []string{"in_sandbox_sdk"},
+		}},
+		MaxResources:             node.maxResources,
+		MaxResourcesUnenforced:   node.unenforced,
+		ReapsDetachedDescendants: node.reapsDetached,
+		EgressModes:              modes,
+		EgressAllow:              egressAllow,
+		EgressUnenforced:         egressUnenforced,
+		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
+		ResultRetention:          time.Duration(envInt("SKILLHUB_SANDBOX_RESULT_RETENTION_SECONDS", 0)) * time.Second,
+	}, log)
+}
+
+func residentP02Probe() *sandbox.P02Probe {
+	return sandbox.NewP02Probe(
+		splitList(os.Getenv("SKILLHUB_SANDBOX_P02_TARGETS")),
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", defaultP02IntervalSeconds))*time.Second,
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_TIMEOUT_SECONDS", defaultP02TimeoutSeconds))*time.Second,
+	)
+}
+
+func declaredEgress(kind string, cleanMode cleanNode, log *slog.Logger) ([]string, []sandbox.EgressDestination, bool) {
+	network := os.Getenv("SKILLHUB_SANDBOX_NETWORK")
+	egressAllow := egressAllowFor(network, log)
+	modes := sandbox.EgressModesFor(network, egressAllow)
+	if kind == driverMXC {
+		modes = []string{sandbox.EgressModeNone}
+	}
+	if len(egressAllow) == 0 && network != "" && network != networktypes.NetworkNone {
+
+		log.Warn("no egress destination is rendered, so this node declares no egress route",
+			"network", network, "modes", modes)
+	}
+
+	egressUnenforced := false
+	if cleanMode {
+		egressUnenforced = true
+		modes = []string{sandbox.EgressModeDefaultDeny, sandbox.EgressModeNone}
+		log.Warn("clean mode: egress modes are declared so runs can be scheduled, but this driver enforces none of them; " +
+			"the workload reaches whatever this host reaches, and the run's allow list is what the user agreed to, not a boundary")
+	}
+	return modes, egressAllow, egressUnenforced
+}
+
+func serveUntilSignalled(srv *http.Server, drv sandbox.Driver, log *slog.Logger) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ctx.Done()
@@ -152,8 +178,6 @@ func main() {
 		os.Exit(1)
 	}
 	stop()
-	stopProbe()
-	_ = node.closer()
 }
 
 type openedDriver struct {
@@ -203,7 +227,7 @@ func localDriver(log *slog.Logger) *localdrv.Driver {
 }
 
 func egressAllowFor(network string, log *slog.Logger) []sandbox.EgressDestination {
-	if network == "" || network == "none" {
+	if network == "" || network == networktypes.NetworkNone {
 		return nil
 	}
 	path := os.Getenv("SKILLHUB_SANDBOX_EGRESS_ALLOW")
@@ -232,7 +256,7 @@ func adoptBeforeProtection(adopt func() error, protect func()) error {
 type cleanNode bool
 
 func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error {
-	if runtime != "runsc" {
+	if runtime != dockerdrv.UserSpaceKernelRuntime {
 		return nil
 	}
 	switch {
@@ -249,7 +273,7 @@ func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error
 }
 
 func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
-	if runtime != "runsc" || probe.Configured() {
+	if runtime != dockerdrv.UserSpaceKernelRuntime || probe.Configured() {
 		return nil
 	}
 	return errors.New("SKILLHUB_SANDBOX_P02_TARGETS must name the addresses a sandbox must not reach " +
@@ -299,7 +323,7 @@ func selectDriver(requested, runtime, mxcBin string, cleanMode cleanNode) (strin
 
 func refuseMXCSettings(runtime, mxcBin string, cleanMode bool) error {
 	switch {
-	case runtime == "runsc":
+	case runtime == dockerdrv.UserSpaceKernelRuntime:
 		return errors.New("SKILLHUB_SANDBOX_DRIVER=mxc cannot run with SKILLHUB_SANDBOX_RUNTIME=runsc: " +
 			"runsc is the docker driver's container runtime, and an mxc node would run without gVisor while its settings still name it; " +
 			"unset SKILLHUB_SANDBOX_RUNTIME, or set SKILLHUB_SANDBOX_DRIVER=docker")

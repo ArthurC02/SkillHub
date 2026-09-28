@@ -12,6 +12,7 @@ import (
 
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
+	networktypes "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
@@ -23,9 +24,9 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 	}
 	network := d.cfg.Network
 	if network == "" {
-		network = "none"
+		network = networktypes.NetworkNone
 	}
-	if network == "none" {
+	if network == networktypes.NetworkNone {
 
 		return nil, nil
 	}
@@ -57,8 +58,8 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		Runtime:        d.cfg.Runtime,
 		AutoRemove:     false,
 		Resources: container.Resources{
-			Memory:    64 << 20,
-			PidsLimit: ptr(int64(32)),
+			Memory:    probeMemoryBytes,
+			PidsLimit: ptr(int64(probeMaxPIDs)),
 		},
 		LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "1m", "max-file": "1"}},
 	}
@@ -104,7 +105,7 @@ func (d *Driver) probeLogs(ctx context.Context, id string) (string, error) {
 	}
 	defer rc.Close()
 	var buf bytes.Buffer
-	if _, err := stdcopy.StdCopy(&buf, &buf, io.LimitReader(rc, 64<<10)); err != nil && buf.Len() == 0 {
+	if _, err := stdcopy.StdCopy(&buf, &buf, io.LimitReader(rc, probeLogLimit)); err != nil && buf.Len() == 0 {
 		return "", err
 	}
 	return buf.String(), nil
@@ -138,6 +139,12 @@ func probeScript(targets []string) (string, error) {
 }
 
 const probeDialTimeoutMS = 2000
+
+const (
+	probeMemoryBytes = 64 << 20
+	probeMaxPIDs     = 32
+	probeLogLimit    = 64 << 10
+)
 
 const probeSource = `
 const net = require("node:net");

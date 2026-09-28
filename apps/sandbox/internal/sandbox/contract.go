@@ -105,18 +105,30 @@ type ResourceLimits struct {
 	TokenBudget          *TokenBudget `json:"token_budget,omitempty"`
 }
 
+const (
+	defaultMemoryBytes          = 4 << 30
+	defaultDiskBytes            = 8 << 30
+	defaultMaxPIDs              = 256
+	defaultWallClockSoftSeconds = 600
+	defaultWallClockHardSeconds = 900
+	defaultArtifactTotalBytes   = 100 << 20
+	defaultArtifactFileBytes    = 25 << 20
+	defaultMaxInputTokens       = 300_000
+	defaultMaxOutputTokens      = 60_000
+)
+
 var DefaultLimits = ResourceLimits{
 	VCPU:                 2,
-	MemoryBytes:          4 << 30,
-	DiskBytes:            8 << 30,
-	MaxPIDs:              256,
+	MemoryBytes:          defaultMemoryBytes,
+	DiskBytes:            defaultDiskBytes,
+	MaxPIDs:              defaultMaxPIDs,
 	MaxOpenFiles:         1024,
-	WallClockSoftSeconds: 600,
-	WallClockHardSeconds: 900,
-	ArtifactTotalBytes:   100 << 20,
-	ArtifactFileBytes:    25 << 20,
+	WallClockSoftSeconds: defaultWallClockSoftSeconds,
+	WallClockHardSeconds: defaultWallClockHardSeconds,
+	ArtifactTotalBytes:   defaultArtifactTotalBytes,
+	ArtifactFileBytes:    defaultArtifactFileBytes,
 
-	TokenBudget: &TokenBudget{MaxInputTokens: 300_000, MaxOutputTokens: 60_000},
+	TokenBudget: &TokenBudget{MaxInputTokens: defaultMaxInputTokens, MaxOutputTokens: defaultMaxOutputTokens},
 }
 
 type TokenBudget struct {
