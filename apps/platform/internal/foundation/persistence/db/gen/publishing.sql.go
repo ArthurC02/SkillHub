@@ -861,34 +861,52 @@ func (q *Queries) ListWorkspaceBundleVersions(ctx context.Context, workspaceID p
 }
 
 const listWorkspaceSkillPublications = `-- name: ListWorkspaceSkillPublications :many
-SELECT p.id, p.skill_id, p.name, p.status, p.status_changed_at,
-       pb.name AS publisher_name,
+SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
+       latest.id AS latest_release_id,
        latest.skill_version_id AS latest_version_id,
        latest.version_number AS latest_version_number,
-       latest.released_at AS latest_released_at
+       latest.released_at AS latest_released_at,
+       coalesce(review.sequence, 0)::integer AS exposure_sequence,
+       review.release_id AS reviewed_release_id,
+       coalesce(review.decision, '')::text AS exposure_decision,
+       coalesce(review.snapshot_digest, '')::text AS reviewed_snapshot_digest
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 LEFT JOIN LATERAL (
-    SELECT pr.skill_version_id, pr.version_number, pr.released_at
+    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at
     FROM publication_releases pr
     WHERE pr.publication_id = p.id
     ORDER BY pr.released_at DESC, pr.id DESC
     LIMIT 1
 ) latest ON true
+LEFT JOIN LATERAL (
+    SELECT er.sequence, er.release_id, er.decision, er.snapshot_digest
+    FROM exposure_reviews er
+    WHERE er.publication_id = p.id
+    ORDER BY er.sequence DESC
+    LIMIT 1
+) review ON true
 WHERE pb.workspace_id = $1 AND p.skill_id IS NOT NULL
 ORDER BY p.name, p.id
 `
 
 type ListWorkspaceSkillPublicationsRow struct {
-	ID                  pgtype.UUID
-	SkillID             pgtype.UUID
-	Name                string
-	Status              string
-	StatusChangedAt     pgtype.Timestamptz
-	PublisherName       string
-	LatestVersionID     pgtype.UUID
-	LatestVersionNumber *int32
-	LatestReleasedAt    pgtype.Timestamptz
+	PublicationID          pgtype.UUID
+	SkillID                pgtype.UUID
+	Name                   string
+	Status                 string
+	StatusChangedAt        pgtype.Timestamptz
+	PublisherName          string
+	PublisherWorkspaceID   pgtype.UUID
+	LatestReleaseID        pgtype.UUID
+	LatestVersionID        pgtype.UUID
+	LatestVersionNumber    *int32
+	LatestReleasedAt       pgtype.Timestamptz
+	ExposureSequence       int32
+	ReviewedReleaseID      pgtype.UUID
+	ExposureDecision       string
+	ReviewedSnapshotDigest string
 }
 
 func (q *Queries) ListWorkspaceSkillPublications(ctx context.Context, workspaceID pgtype.UUID) ([]ListWorkspaceSkillPublicationsRow, error) {
@@ -901,15 +919,21 @@ func (q *Queries) ListWorkspaceSkillPublications(ctx context.Context, workspaceI
 	for rows.Next() {
 		var i ListWorkspaceSkillPublicationsRow
 		if err := rows.Scan(
-			&i.ID,
+			&i.PublicationID,
 			&i.SkillID,
 			&i.Name,
 			&i.Status,
 			&i.StatusChangedAt,
 			&i.PublisherName,
+			&i.PublisherWorkspaceID,
+			&i.LatestReleaseID,
 			&i.LatestVersionID,
 			&i.LatestVersionNumber,
 			&i.LatestReleasedAt,
+			&i.ExposureSequence,
+			&i.ReviewedReleaseID,
+			&i.ExposureDecision,
+			&i.ReviewedSnapshotDigest,
 		); err != nil {
 			return nil, err
 		}

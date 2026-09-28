@@ -5347,6 +5347,50 @@ func (s OwnSkillRedistribution) Validate() error {
 	}
 }
 
+func (s *OwnerCatalogExposure) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.State.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "state",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s OwnerCatalogExposureState) Validate() error {
+	switch s {
+	case "listed":
+		return nil
+	case "awaiting_review":
+		return nil
+	case "revoked":
+		return nil
+	case "review_outdated":
+		return nil
+	case "not_eligible":
+		return nil
+	case "search_not_ready":
+		return nil
+	case "unreleased":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *OwnerPublicationSummary) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -5361,6 +5405,17 @@ func (s *OwnerPublicationSummary) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "status",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.CatalogExposure.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "catalog_exposure",
 			Error: err,
 		})
 	}

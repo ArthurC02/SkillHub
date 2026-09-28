@@ -143,6 +143,7 @@ export * from './ModelCallBudget';
 export * from './ModelError';
 export * from './OperatorAuditEvent';
 export * from './OwnSkill';
+export * from './OwnerCatalogExposure';
 export * from './OwnerPublicationRelease';
 export * from './OwnerPublicationSummary';
 export * from './PackageValidation';

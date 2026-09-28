@@ -128,6 +128,7 @@ test("the publishing space brings identity, Bundles, and delivery records into o
     expect.arrayContaining(["Skill 發佈", "Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
   );
   expect(text()).toContain("公開位址不等於 Catalog 曝光");
+  expect(text()).toContain("取得者身分與下載次數尚未提供");
   expect(container.querySelector('a[href="/workspace/skills"]')?.textContent).toContain(
     "選擇要發佈的 Skill",
   );
@@ -171,6 +172,35 @@ test("the publishing overview keeps public identity and the exact latest release
   expect(text()).toContain("已發佈");
 });
 
+test.each([
+  ["listed", "已列入 Catalog", "任何人都能從搜尋與 Catalog 找到這個 Release"],
+  ["awaiting_review", "等待 Catalog 審核", "這個 Release 還不會出現在搜尋與 Catalog"],
+  ["revoked", "Catalog 曝光已撤銷", "公開位址仍可使用"],
+  ["review_outdated", "需要重新審核", "Catalog 收錄所依據的搜尋內容已變更"],
+  ["not_eligible", "目前不符合曝光條件", "可用性或散布條件不允許曝光"],
+  ["search_not_ready", "搜尋內容尚未就緒", "搜尋內容尚未可列出"],
+  ["unreleased", "尚無 Release", "建立第一個不可變 Release"],
+] as const)("the publishing overview explains the %s Catalog state", async (state, label, note) => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": {
+      body: {
+        publications: OWN_PUBLICATIONS.publications.map((publication) => ({
+          ...publication,
+          catalog_exposure: { state },
+        })),
+      },
+    },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes(label));
+
+  expect(text()).toContain(note);
+});
+
 test("the publishing overview reports a failed read instead of claiming the collection is empty", async () => {
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },
@@ -201,7 +231,7 @@ test("PACK-004 available 公開頁：每一個允收欄位都出現", async () =
   expect(text()).toContain("靜態掃描");
   expect(text()).toContain("MIT");
   expect(text()).toContain("可再散布");
-  expect(text()).toContain("這個發佈物還沒有經過目錄審核");
+  expect(text()).toContain("這個發佈物目前不在搜尋與目錄裡");
   expect(text()).toContain("登入後可以下載這一版的標準 Agent Skill 套件");
 });
 

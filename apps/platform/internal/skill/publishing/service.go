@@ -104,6 +104,7 @@ type PublicationSummary struct {
 	Status          Status
 	StatusChangedAt time.Time
 	LatestRelease   *ReleaseSummary
+	CatalogExposure CatalogExposure
 }
 
 type ReleaseSummary struct {
@@ -420,6 +421,13 @@ func (s *Service) OwnPublications(ctx context.Context, ws identity.Workspace) ([
 			publication.LatestRelease = &ReleaseSummary{
 				VersionID: row.LatestVersionID, VersionNumber: *row.LatestVersionNumber,
 				ReleasedAt: row.LatestReleasedAt.Time,
+			}
+		}
+		publication.CatalogExposure = CatalogExposure{State: CatalogUnreleased}
+		if publication.LatestRelease != nil {
+			publication.CatalogExposure, err = s.catalogExposure(ctx, ownerExposureStateOf(row))
+			if err != nil {
+				return nil, err
 			}
 		}
 		publications = append(publications, publication)

@@ -6,7 +6,44 @@ import { Timestamp } from "../../shared/ui/Timestamp";
 import { BundleSection } from "./components/BundleSection";
 import { PublisherSection } from "./components/PublisherSection";
 import { useOwnPublications } from "./publishing.service";
+import type { OwnerPublicationSummary } from "./publishing.service";
 import "./PublishingWorkspace.page.css";
+
+const catalogExposureCopy: Record<
+  OwnerPublicationSummary["catalog_exposure"]["state"],
+  { label: string; note: string; caution?: boolean }
+> = {
+  listed: {
+    label: "已列入 Catalog",
+    note: "任何人都能從搜尋與 Catalog 找到這個 Release。",
+  },
+  awaiting_review: {
+    label: "等待 Catalog 審核",
+    note: "公開位址可使用；這個 Release 還不會出現在搜尋與 Catalog。",
+  },
+  revoked: {
+    label: "Catalog 曝光已撤銷",
+    note: "公開位址仍可使用，但這個 Release 不再出現在搜尋與 Catalog。",
+    caution: true,
+  },
+  review_outdated: {
+    label: "需要重新審核",
+    note: "Catalog 收錄所依據的搜尋內容已變更；目前不會曝光。",
+  },
+  not_eligible: {
+    label: "目前不符合曝光條件",
+    note: "Publication 已撤回，或 Skill 的可用性或散布條件不允許曝光。",
+    caution: true,
+  },
+  search_not_ready: {
+    label: "搜尋內容尚未就緒",
+    note: "Release 已通過審核，但 Catalog 的搜尋內容尚未可列出。",
+  },
+  unreleased: {
+    label: "尚無 Release",
+    note: "建立第一個不可變 Release 後才能進入 Catalog 審核。",
+  },
+};
 
 export function PublishingWorkspace() {
   return (
@@ -53,6 +90,7 @@ function PublicationOverview() {
       <h2 id="publication-overview-title">Skill 發佈</h2>
       <p className="note">
         每筆 Publication 都指向一個不可變 Release；Catalog 是否曝光仍由營運者另行審核。
+        公開頁會說明目前誰有資格取得；取得者身分與下載次數尚未提供。
       </p>
 
       {overview.isPending && <Loading what="Skill 發佈清單" />}
@@ -102,6 +140,7 @@ function PublicationOverview() {
                 ) : (
                   <p className="note">這筆 Publication 尚未建立 Release。</p>
                 )}
+                <CatalogExposure publication={publication} />
                 <p className="note">
                   發佈狀態更新於 <Timestamp at={publication.status_changed_at} />
                 </p>
@@ -110,5 +149,17 @@ function PublicationOverview() {
           </ul>
         ))}
     </section>
+  );
+}
+
+function CatalogExposure({ publication }: { publication: OwnerPublicationSummary }) {
+  const copy = catalogExposureCopy[publication.catalog_exposure.state];
+  return (
+    <div className="publication-exposure">
+      <p>
+        <span className={copy.caution ? "badge badge-danger" : "badge"}>{copy.label}</span>
+      </p>
+      <p className="note">{copy.note}</p>
+    </div>
   );
 }

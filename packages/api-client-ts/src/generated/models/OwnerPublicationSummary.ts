@@ -13,6 +13,13 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { OwnerCatalogExposure } from './OwnerCatalogExposure';
+import {
+    OwnerCatalogExposureFromJSON,
+    OwnerCatalogExposureFromJSONTyped,
+    OwnerCatalogExposureToJSON,
+    OwnerCatalogExposureToJSONTyped,
+} from './OwnerCatalogExposure';
 import type { OwnerPublicationRelease } from './OwnerPublicationRelease';
 import {
     OwnerPublicationReleaseFromJSON,
@@ -55,6 +62,10 @@ export interface OwnerPublicationSummary {
      * 
      */
     latestRelease?: OwnerPublicationRelease;
+    /**
+     * 
+     */
+    catalogExposure: OwnerCatalogExposure;
 }
 
 
@@ -78,6 +89,7 @@ export function instanceOfOwnerPublicationSummary(value: object): value is Owner
     if (!('address' in value) || value['address'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if ((!('statusChangedAt' in (value as Record<string, any>)) && !('status_changed_at' in (value as Record<string, any>))) || ((value as Record<string, any>)['statusChangedAt'] === undefined && (value as Record<string, any>)['status_changed_at'] === undefined)) return false;
+    if ((!('catalogExposure' in (value as Record<string, any>)) && !('catalog_exposure' in (value as Record<string, any>))) || ((value as Record<string, any>)['catalogExposure'] === undefined && (value as Record<string, any>)['catalog_exposure'] === undefined)) return false;
     return true;
 }
 
@@ -98,6 +110,7 @@ export function OwnerPublicationSummaryFromJSONTyped(json: any, ignoreDiscrimina
         'status': json['status'],
         'statusChangedAt': (json['status_changed_at'] == null ? json['status_changed_at'] : parseDateTime(json['status_changed_at'])),
         'latestRelease': json['latest_release'] == null ? undefined : OwnerPublicationReleaseFromJSON(json['latest_release']),
+        'catalogExposure': OwnerCatalogExposureFromJSON(json['catalog_exposure']),
     };
 }
 
@@ -119,6 +132,7 @@ export function OwnerPublicationSummaryToJSONTyped(value?: OwnerPublicationSumma
         'status': value['status'],
         'status_changed_at': value['statusChangedAt'] == null ? value['statusChangedAt'] : serializeDateTime(value['statusChangedAt']),
         'latest_release': OwnerPublicationReleaseToJSON(value['latestRelease']),
+        'catalog_exposure': OwnerCatalogExposureToJSON(value['catalogExposure']),
     };
 }
 

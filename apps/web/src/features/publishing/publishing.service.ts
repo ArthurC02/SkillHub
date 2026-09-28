@@ -37,6 +37,16 @@ export interface OwnerPublicationSummary {
   address: string;
   status: "published" | "delisted";
   status_changed_at: string;
+  catalog_exposure: {
+    state:
+      | "listed"
+      | "awaiting_review"
+      | "revoked"
+      | "review_outdated"
+      | "not_eligible"
+      | "search_not_ready"
+      | "unreleased";
+  };
   latest_release?: {
     version_id: string;
     version_number: number;

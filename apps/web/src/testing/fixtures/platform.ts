@@ -775,6 +775,7 @@ export const OWN_PUBLICATIONS = {
       address: `/p/${PUBLISHER}/${PUBLICATION}`,
       status: "published",
       status_changed_at: "2026-08-10T00:00:00Z",
+      catalog_exposure: { state: "listed" },
       latest_release: {
         version_id: VERSION,
         version_number: 2,
@@ -808,7 +809,7 @@ export const PUBLIC_PUBLICATION = {
   releases: [{ version_number: 2, content_hash: "sha256:aa", released_at: "2026-08-10T00:00:00Z" }],
   exposure: {
     available: false,
-    note: "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。",
+    note: "這個發佈物目前不在搜尋與目錄裡；只有拿到這個連結的人看得到。",
   },
   acquisition: { available: true, note: DOWNLOAD_NOTE },
 } satisfies PublicPublication;
@@ -851,7 +852,7 @@ export const PUBLIC_BUNDLE_PUBLICATION = {
   ],
   exposure: {
     available: false,
-    note: "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。",
+    note: "這個發佈物目前不在搜尋與目錄裡；只有拿到這個連結的人看得到。",
   },
   acquisition: { available: true, note: BUNDLE_DOWNLOAD_NOTE },
 } satisfies PublicPublication;

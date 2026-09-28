@@ -18,9 +18,21 @@ import (
 
 type ExposureDecision string
 
+type CatalogExposureState string
+
 const (
 	ExposureApproved ExposureDecision = "approved"
 	ExposureRevoked  ExposureDecision = "revoked"
+)
+
+const (
+	CatalogListed         CatalogExposureState = "listed"
+	CatalogAwaitingReview CatalogExposureState = "awaiting_review"
+	CatalogRevoked        CatalogExposureState = "revoked"
+	CatalogReviewOutdated CatalogExposureState = "review_outdated"
+	CatalogNotEligible    CatalogExposureState = "not_eligible"
+	CatalogSearchNotReady CatalogExposureState = "search_not_ready"
+	CatalogUnreleased     CatalogExposureState = "unreleased"
 )
 
 func AllExposureDecisions() []ExposureDecision {
@@ -63,6 +75,10 @@ type Exposure struct {
 	VersionID        pgtype.UUID
 	SnapshotDigest   string
 	OwnerWorkspaceID pgtype.UUID
+}
+
+type CatalogExposure struct {
+	State CatalogExposureState
 }
 
 type ExposureReview struct {
@@ -138,6 +154,23 @@ func exposureStateOf(row gen.ListExposureStatesRow) ExposureState {
 	}
 }
 
+func ownerExposureStateOf(row gen.ListWorkspaceSkillPublicationsRow) ExposureState {
+	concluded := row.ReviewedReleaseID.Valid && row.ReviewedReleaseID == row.LatestReleaseID
+	var version int32
+	if row.LatestVersionNumber != nil {
+		version = *row.LatestVersionNumber
+	}
+	return ExposureState{
+		PublicationID: row.PublicationID, Publisher: row.PublisherName, Name: row.Name,
+		Status: Status(row.Status), SkillID: row.SkillID, OwnerWorkspaceID: row.PublisherWorkspaceID,
+		ReleaseID: row.LatestReleaseID, VersionID: row.LatestVersionID, VersionNumber: version,
+		ReleasedAt: row.LatestReleasedAt.Time,
+		Sequence:   row.ExposureSequence, Concluded: concluded,
+		Approved:       concluded && ExposureDecision(row.ExposureDecision) == ExposureApproved,
+		ReviewedDigest: row.ReviewedSnapshotDigest,
+	}
+}
+
 func exposureStates(ctx context.Context, q *gen.Queries, publicationID pgtype.UUID) ([]ExposureState, error) {
 	rows, err := q.ListExposureStates(ctx, publicationID)
 	if err != nil {
@@ -157,8 +190,8 @@ func (s *Service) requireSnapshotRead() error {
 	return nil
 }
 
-func (s *Service) eligible(ctx context.Context, state ExposureState) (bool, error) {
-	if state.Status != StatusPublished || !state.Approved {
+func (s *Service) exposureEligible(ctx context.Context, state ExposureState) (bool, error) {
+	if state.Status != StatusPublished {
 		return false, nil
 	}
 	skill, found, err := s.ReadSkill(ctx, state.OwnerWorkspaceID, state.SkillID)
@@ -166,6 +199,46 @@ func (s *Service) eligible(ctx context.Context, state ExposureState) (bool, erro
 		return false, err
 	}
 	return availabilityOf(state.Status, skill, found) == AvailabilityAvailable && skill.Redistribution == redistributionAllowed, nil
+}
+
+func (s *Service) eligible(ctx context.Context, state ExposureState) (bool, error) {
+	if !state.Approved {
+		return false, nil
+	}
+	return s.exposureEligible(ctx, state)
+}
+
+func (s *Service) catalogExposure(ctx context.Context, state ExposureState) (CatalogExposure, error) {
+	eligible, err := s.exposureEligible(ctx, state)
+	if err != nil {
+		return CatalogExposure{}, err
+	}
+	if !eligible {
+		return CatalogExposure{State: CatalogNotEligible}, nil
+	}
+	if !state.Concluded {
+		return CatalogExposure{State: CatalogAwaitingReview}, nil
+	}
+	if !state.Approved {
+		return CatalogExposure{State: CatalogRevoked}, nil
+	}
+	if err := s.requireSnapshotRead(); err != nil {
+		return CatalogExposure{}, err
+	}
+	snapshot, found, err := s.ReadSearchSnapshot(ctx, state.SkillID)
+	if err != nil {
+		return CatalogExposure{}, err
+	}
+	if !found {
+		return CatalogExposure{State: CatalogSearchNotReady}, nil
+	}
+	if snapshot.VersionID != state.VersionID || snapshot.Digest != state.ReviewedDigest {
+		return CatalogExposure{State: CatalogReviewOutdated}, nil
+	}
+	if !snapshot.Listable {
+		return CatalogExposure{State: CatalogSearchNotReady}, nil
+	}
+	return CatalogExposure{State: CatalogListed}, nil
 }
 
 func (s *Service) ExposedSkills(ctx context.Context) ([]Exposure, error) {
@@ -201,7 +274,7 @@ func (s *Service) exposedNow(ctx context.Context, state ExposureState) (bool, *S
 	if err != nil {
 		return false, nil, err
 	}
-	current := snapshot.VersionID == state.VersionID && snapshot.Digest == state.ReviewedDigest
+	current := snapshot.Listable && snapshot.VersionID == state.VersionID && snapshot.Digest == state.ReviewedDigest
 	return ok && current, &snapshot, nil
 }
 

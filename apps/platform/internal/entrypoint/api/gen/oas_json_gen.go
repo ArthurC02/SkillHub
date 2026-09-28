@@ -35201,6 +35201,150 @@ func (s *OwnSkillRedistribution) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *OwnerCatalogExposure) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *OwnerCatalogExposure) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("state")
+		s.State.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfOwnerCatalogExposure = [1]string{
+	0: "state",
+}
+
+// Decode decodes OwnerCatalogExposure from json.
+func (s *OwnerCatalogExposure) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnerCatalogExposure to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "state":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.State.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"state\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode OwnerCatalogExposure")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfOwnerCatalogExposure) {
+					name = jsonFieldsNameOfOwnerCatalogExposure[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *OwnerCatalogExposure) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnerCatalogExposure) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes OwnerCatalogExposureState as json.
+func (s OwnerCatalogExposureState) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes OwnerCatalogExposureState from json.
+func (s *OwnerCatalogExposureState) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnerCatalogExposureState to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch OwnerCatalogExposureState(v) {
+	case OwnerCatalogExposureStateListed:
+		*s = OwnerCatalogExposureStateListed
+	case OwnerCatalogExposureStateAwaitingReview:
+		*s = OwnerCatalogExposureStateAwaitingReview
+	case OwnerCatalogExposureStateRevoked:
+		*s = OwnerCatalogExposureStateRevoked
+	case OwnerCatalogExposureStateReviewOutdated:
+		*s = OwnerCatalogExposureStateReviewOutdated
+	case OwnerCatalogExposureStateNotEligible:
+		*s = OwnerCatalogExposureStateNotEligible
+	case OwnerCatalogExposureStateSearchNotReady:
+		*s = OwnerCatalogExposureStateSearchNotReady
+	case OwnerCatalogExposureStateUnreleased:
+		*s = OwnerCatalogExposureStateUnreleased
+	default:
+		*s = OwnerCatalogExposureState(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OwnerCatalogExposureState) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnerCatalogExposureState) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *OwnerPublicationRelease) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -35369,9 +35513,13 @@ func (s *OwnerPublicationSummary) encodeFields(e *jx.Encoder) {
 			s.LatestRelease.Encode(e)
 		}
 	}
+	{
+		e.FieldStart("catalog_exposure")
+		s.CatalogExposure.Encode(e)
+	}
 }
 
-var jsonFieldsNameOfOwnerPublicationSummary = [7]string{
+var jsonFieldsNameOfOwnerPublicationSummary = [8]string{
 	0: "skill_id",
 	1: "publisher",
 	2: "name",
@@ -35379,6 +35527,7 @@ var jsonFieldsNameOfOwnerPublicationSummary = [7]string{
 	4: "status",
 	5: "status_changed_at",
 	6: "latest_release",
+	7: "catalog_exposure",
 }
 
 // Decode decodes OwnerPublicationSummary from json.
@@ -35470,6 +35619,16 @@ func (s *OwnerPublicationSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"latest_release\"")
 			}
+		case "catalog_exposure":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				if err := s.CatalogExposure.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"catalog_exposure\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -35480,7 +35639,7 @@ func (s *OwnerPublicationSummary) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00111111,
+		0b10111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

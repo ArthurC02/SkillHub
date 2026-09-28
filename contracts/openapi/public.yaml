@@ -7249,7 +7249,8 @@ components:
     OwnerPublicationSummary:
       type: object
       description: A Workspace-scoped management projection for one Skill publication.
-      required: [skill_id, publisher, name, address, status, status_changed_at]
+      required:
+        [skill_id, publisher, name, address, status, status_changed_at, catalog_exposure]
       properties:
         skill_id: { type: string, format: uuid }
         publisher: { type: string }
@@ -7260,6 +7261,22 @@ components:
         status: { type: string, enum: [published, delisted] }
         status_changed_at: { type: string, format: date-time }
         latest_release: { $ref: "#/components/schemas/OwnerPublicationRelease" }
+        catalog_exposure: { $ref: "#/components/schemas/OwnerCatalogExposure" }
+    OwnerCatalogExposure:
+      type: object
+      description: The effective Catalog state of the latest immutable Release, not merely its review decision.
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum:
+            - listed
+            - awaiting_review
+            - revoked
+            - review_outdated
+            - not_eligible
+            - search_not_ready
+            - unreleased
     ExposureDecision:
       type: string
       enum: [approved, revoked]

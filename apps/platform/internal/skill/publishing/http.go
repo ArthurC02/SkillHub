@@ -69,6 +69,11 @@ type ownerPublicationSummaryView struct {
 	Status          string                       `json:"status"`
 	StatusChangedAt string                       `json:"status_changed_at"`
 	LatestRelease   *ownerPublicationReleaseView `json:"latest_release,omitempty"`
+	CatalogExposure ownerCatalogExposureView     `json:"catalog_exposure"`
+}
+
+type ownerCatalogExposureView struct {
+	State string `json:"state"`
 }
 
 type ownerPublicationsView struct {
@@ -140,7 +145,7 @@ type publicPublicationView struct {
 
 const (
 	exposedNote           = "這個發佈物的這一版已經過目錄審核：它會出現在搜尋與目錄裡。"
-	notListedNote         = "這個發佈物還沒有經過目錄審核：它不會出現在搜尋與目錄裡，只有拿到這個連結的人看得到。"
+	notListedNote         = "這個發佈物目前不在搜尋與目錄裡；只有拿到這個連結的人看得到。"
 	notOfferedNote        = "這個發佈物目前不提供下載，原因見上方。"
 	downloadNote          = "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
 	bundleDownloadNote    = "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
@@ -457,6 +462,7 @@ func ownerSummaryView(publication PublicationSummary) ownerPublicationSummaryVie
 		SkillID: pgconv.UUIDString(publication.SkillID), Publisher: publication.Publisher,
 		Name: publication.Name, Address: address(publication.Publisher, publication.Name),
 		Status: string(publication.Status), StatusChangedAt: timestamp(publication.StatusChangedAt),
+		CatalogExposure: ownerCatalogExposureView{State: string(publication.CatalogExposure.State)},
 	}
 	if publication.LatestRelease != nil {
 		view.LatestRelease = &ownerPublicationReleaseView{

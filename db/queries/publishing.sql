@@ -16,20 +16,32 @@ JOIN publishers pb ON pb.id = p.publisher_id
 WHERE pb.workspace_id = @workspace_id AND p.skill_id = @skill_id;
 
 -- name: ListWorkspaceSkillPublications :many
-SELECT p.id, p.skill_id, p.name, p.status, p.status_changed_at,
-       pb.name AS publisher_name,
+SELECT p.id AS publication_id, p.skill_id, p.name, p.status, p.status_changed_at,
+       pb.name AS publisher_name, pb.workspace_id AS publisher_workspace_id,
+       latest.id AS latest_release_id,
        latest.skill_version_id AS latest_version_id,
        latest.version_number AS latest_version_number,
-       latest.released_at AS latest_released_at
+       latest.released_at AS latest_released_at,
+       coalesce(review.sequence, 0)::integer AS exposure_sequence,
+       review.release_id AS reviewed_release_id,
+       coalesce(review.decision, '')::text AS exposure_decision,
+       coalesce(review.snapshot_digest, '')::text AS reviewed_snapshot_digest
 FROM publications p
 JOIN publishers pb ON pb.id = p.publisher_id
 LEFT JOIN LATERAL (
-    SELECT pr.skill_version_id, pr.version_number, pr.released_at
+    SELECT pr.id, pr.skill_version_id, pr.version_number, pr.released_at
     FROM publication_releases pr
     WHERE pr.publication_id = p.id
     ORDER BY pr.released_at DESC, pr.id DESC
     LIMIT 1
 ) latest ON true
+LEFT JOIN LATERAL (
+    SELECT er.sequence, er.release_id, er.decision, er.snapshot_digest
+    FROM exposure_reviews er
+    WHERE er.publication_id = p.id
+    ORDER BY er.sequence DESC
+    LIMIT 1
+) review ON true
 WHERE pb.workspace_id = @workspace_id AND p.skill_id IS NOT NULL
 ORDER BY p.name, p.id;
 

@@ -16928,6 +16928,98 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 	}
 }
 
+// The effective Catalog state of the latest immutable Release, not merely its review decision.
+// Ref: #/components/schemas/OwnerCatalogExposure
+type OwnerCatalogExposure struct {
+	State OwnerCatalogExposureState `json:"state"`
+}
+
+// GetState returns the value of State.
+func (s *OwnerCatalogExposure) GetState() OwnerCatalogExposureState {
+	return s.State
+}
+
+// SetState sets the value of State.
+func (s *OwnerCatalogExposure) SetState(val OwnerCatalogExposureState) {
+	s.State = val
+}
+
+type OwnerCatalogExposureState string
+
+const (
+	OwnerCatalogExposureStateListed         OwnerCatalogExposureState = "listed"
+	OwnerCatalogExposureStateAwaitingReview OwnerCatalogExposureState = "awaiting_review"
+	OwnerCatalogExposureStateRevoked        OwnerCatalogExposureState = "revoked"
+	OwnerCatalogExposureStateReviewOutdated OwnerCatalogExposureState = "review_outdated"
+	OwnerCatalogExposureStateNotEligible    OwnerCatalogExposureState = "not_eligible"
+	OwnerCatalogExposureStateSearchNotReady OwnerCatalogExposureState = "search_not_ready"
+	OwnerCatalogExposureStateUnreleased     OwnerCatalogExposureState = "unreleased"
+)
+
+// AllValues returns all OwnerCatalogExposureState values.
+func (OwnerCatalogExposureState) AllValues() []OwnerCatalogExposureState {
+	return []OwnerCatalogExposureState{
+		OwnerCatalogExposureStateListed,
+		OwnerCatalogExposureStateAwaitingReview,
+		OwnerCatalogExposureStateRevoked,
+		OwnerCatalogExposureStateReviewOutdated,
+		OwnerCatalogExposureStateNotEligible,
+		OwnerCatalogExposureStateSearchNotReady,
+		OwnerCatalogExposureStateUnreleased,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OwnerCatalogExposureState) MarshalText() ([]byte, error) {
+	switch s {
+	case OwnerCatalogExposureStateListed:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateAwaitingReview:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateRevoked:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateReviewOutdated:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateNotEligible:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateSearchNotReady:
+		return []byte(s), nil
+	case OwnerCatalogExposureStateUnreleased:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OwnerCatalogExposureState) UnmarshalText(data []byte) error {
+	switch OwnerCatalogExposureState(data) {
+	case OwnerCatalogExposureStateListed:
+		*s = OwnerCatalogExposureStateListed
+		return nil
+	case OwnerCatalogExposureStateAwaitingReview:
+		*s = OwnerCatalogExposureStateAwaitingReview
+		return nil
+	case OwnerCatalogExposureStateRevoked:
+		*s = OwnerCatalogExposureStateRevoked
+		return nil
+	case OwnerCatalogExposureStateReviewOutdated:
+		*s = OwnerCatalogExposureStateReviewOutdated
+		return nil
+	case OwnerCatalogExposureStateNotEligible:
+		*s = OwnerCatalogExposureStateNotEligible
+		return nil
+	case OwnerCatalogExposureStateSearchNotReady:
+		*s = OwnerCatalogExposureStateSearchNotReady
+		return nil
+	case OwnerCatalogExposureStateUnreleased:
+		*s = OwnerCatalogExposureStateUnreleased
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // The newest immutable Skill release in an owner's publication overview.
 // Ref: #/components/schemas/OwnerPublicationRelease
 type OwnerPublicationRelease struct {
@@ -16977,6 +17069,7 @@ type OwnerPublicationSummary struct {
 	Status          OwnerPublicationSummaryStatus `json:"status"`
 	StatusChangedAt time.Time                     `json:"status_changed_at"`
 	LatestRelease   OptOwnerPublicationRelease    `json:"latest_release"`
+	CatalogExposure OwnerCatalogExposure          `json:"catalog_exposure"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -17014,6 +17107,11 @@ func (s *OwnerPublicationSummary) GetLatestRelease() OptOwnerPublicationRelease 
 	return s.LatestRelease
 }
 
+// GetCatalogExposure returns the value of CatalogExposure.
+func (s *OwnerPublicationSummary) GetCatalogExposure() OwnerCatalogExposure {
+	return s.CatalogExposure
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *OwnerPublicationSummary) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -17047,6 +17145,11 @@ func (s *OwnerPublicationSummary) SetStatusChangedAt(val time.Time) {
 // SetLatestRelease sets the value of LatestRelease.
 func (s *OwnerPublicationSummary) SetLatestRelease(val OptOwnerPublicationRelease) {
 	s.LatestRelease = val
+}
+
+// SetCatalogExposure sets the value of CatalogExposure.
+func (s *OwnerPublicationSummary) SetCatalogExposure(val OwnerCatalogExposure) {
+	s.CatalogExposure = val
 }
 
 type OwnerPublicationSummaryStatus string

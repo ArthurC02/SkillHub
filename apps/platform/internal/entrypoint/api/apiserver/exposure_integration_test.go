@@ -107,6 +107,20 @@ func (w exposureWorld) publicExposure(t *testing.T) map[string]any {
 	return exposure
 }
 
+func (w exposureWorld) ownerExposureState(t *testing.T) string {
+	t.Helper()
+	publications := ownPublications(t, w.author)
+	if len(publications) != 1 {
+		t.Fatalf("owner publications = %v, want one", publications)
+	}
+	exposure, _ := publications[0]["catalog_exposure"].(map[string]any)
+	state, _ := exposure["state"].(string)
+	if state == "" {
+		t.Fatalf("owner exposure = %v, want a named state", exposure)
+	}
+	return state
+}
+
 func (w exposureWorld) waitingForReview(t *testing.T) bool {
 	t.Helper()
 	_, body := getAdmin(t, w.operator, "/admin/exposure-reviews")
@@ -168,6 +182,56 @@ func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
 	}
 	if history := objects(t, body["history"]); len(history) != 2 || history[0]["decision"] != "revoked" || history[1]["decision"] != "approved" {
 		t.Errorf("history = %v, want the revocation on top of the approval, both kept", history)
+	}
+}
+
+func TestOwnerCatalogExposureTracksTheReleaseAndSearchProjection(t *testing.T) {
+	w := newExposureWorld(t, "owner-exposure")
+	w.allowRedistribution(t)
+	if got := w.ownerExposureState(t); got != "awaiting_review" {
+		t.Fatalf("unreviewed owner exposure = %q, want awaiting_review", got)
+	}
+	if code, body := w.reviewCurrent(t, "approved", "current release and text checked"); code != http.StatusOK {
+		t.Fatalf("approving: %d %v", code, body)
+	}
+	if got := w.ownerExposureState(t); got != "listed" {
+		t.Fatalf("approved owner exposure = %q, want listed", got)
+	}
+
+	if _, err := w.pool.Exec(context.Background(),
+		"UPDATE search_documents SET listable = false WHERE skill_id = $1", mustUUID(t, w.skillID)); err != nil {
+		t.Fatal(err)
+	}
+	if w.searchFinds(t) {
+		t.Fatal("a non-listable search document is still exposed")
+	}
+	if exposure := w.publicExposure(t); exposure["available"] != false {
+		t.Fatalf("public exposure = %v, want unavailable while search is not listable", exposure)
+	}
+	if c := w.exposureCase(t); c["exposed"] != false {
+		t.Fatalf("operator case = %v, want exposed false while search is not listable", c)
+	}
+	if got := w.ownerExposureState(t); got != "search_not_ready" {
+		t.Fatalf("non-listable owner exposure = %q, want search_not_ready", got)
+	}
+
+	w.enrich(t)
+	if _, err := w.pool.Exec(context.Background(),
+		"UPDATE search_documents SET enriched_summary = 'changed after the review' WHERE skill_id = $1", mustUUID(t, w.skillID)); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.ownerExposureState(t); got != "review_outdated" {
+		t.Fatalf("changed search text owner exposure = %q, want review_outdated", got)
+	}
+	if code, body := w.reviewCurrent(t, "revoked", "the current text must not be listed"); code != http.StatusOK {
+		t.Fatalf("revoking: %d %v", code, body)
+	}
+	if got := w.ownerExposureState(t); got != "revoked" {
+		t.Fatalf("revoked owner exposure = %q, want revoked", got)
+	}
+	setSkill(t, w.pool, w.skillID, "redistribution = 'self_supplied'")
+	if got := w.ownerExposureState(t); got != "not_eligible" {
+		t.Fatalf("ineligible owner exposure = %q, want not_eligible", got)
 	}
 }
 
