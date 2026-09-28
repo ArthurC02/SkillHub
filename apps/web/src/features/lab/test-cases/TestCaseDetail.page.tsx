@@ -54,7 +54,11 @@ export function TestCaseDetail() {
   return (
     <section key={testCaseId}>
       <h1>{testCase.data.name}</h1>
-      <SkillWorkspaceNav skillId={testCase.data.skill_id} versionId={selectedVersion} />
+      <SkillWorkspaceNav
+        skillId={testCase.data.skill_id}
+        versionId={selectedVersion}
+        testCaseId={testCaseId}
+      />
       <p className="note">
         <Link
           to="/lab/test-cases"

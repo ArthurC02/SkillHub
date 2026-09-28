@@ -187,6 +187,7 @@ Catalog 是否進全域導覽是平台化後的新方向；落地時必須正式
 - 使用者從小工具工作台開始，因此不再重新挑選 Skill。
 - Preflight 是工作台內的決策步驟，不是一個需要自行組裝三個 query param 的孤立頁面。
 - 執行狀態與驗收判定並列呈現；「執行完成、部分符合」是合法組合。
+- 比較兩次 Run 時，左右兩側各自連回自己的 Run 與不可變 Skill Version；不同 Skill 的證據不能因為並排呈現而共用一邊的脈絡。
 - 改善建議建立新草稿或版本，不改寫歷史結果。
 
 ### 4.4 發佈與帶走
@@ -196,6 +197,7 @@ Catalog 是否進全域導覽是平台化後的新方向；落地時必須正式
 ```
 
 - 打包目標、測試題是否隨附與相容性都留在同一個版本脈絡。
+- Bundle 的每個成員都保留 owner 回傳的精確 Skill 與 Version 身分；成員名稱不是不可變來源的替代品。
 - 建立公開網址不等於進 Catalog；曝光審核仍針對精確 Release。
 - 下載紀錄是發佈與交付活動的結果，不是一個主要產品空間。
 
@@ -260,7 +262,7 @@ Operator 使用獨立的營運殼層處理帳號、成本、派送、稽核與�
 
 右側脈絡區只放當前分頁的下一步、限制或摘要；不能再堆成另一張完整管理表單。窄螢幕時它移到主內容之後，判斷與必要安全資訊的優先序仍遵守 system.md。
 
-現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；Skill 詳情的驗證入口會帶入 owner-scoped 最新版本，preflight 改選版本也同步寫回包含 Skill、Version 與 Test Case 的網址。發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把創作修訂或單一 Skill 的 Activity 搬進同一頁，也不把這組導覽當成階段二已完成。
+現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。當 owner facts 已提供 Test Case 身分時，「驗證」會回到精確 Test Case 並保留當次 Version；歷史資料沒有 `test_case_id` 時才退回該 Skill／Version 的 Test Case 清單，不拿 snapshot ID 冒充可開啟的草稿。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；Skill 詳情的驗證入口會帶入 owner-scoped 最新版本，preflight 改選版本也同步寫回包含 Skill、Version 與 Test Case 的網址。Run 比較的每一側分別回到自己的 Run 與不可變 Version，不因比較畫面共用目前 Skill 的脈絡。發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把創作修訂或單一 Skill 的 Activity 搬進同一頁，也不把這組導覽當成階段二已完成。
 
 ### 5.4 Activity
 
@@ -302,6 +304,8 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 外部產品模式只作結構參考：GitHub Projects 的同一物件多視圖、VS Code 的穩定容器與脈絡操作、Linear 的保存檢視、Carbon 與 Atlassian 的全域殼層／產品內導覽分工。Skill Hub 不複製它們的視覺語言，也不因此引入它們的套件。
 
+不可變證據的續接另參考 GitHub Actions：workflow run 以自己的識別與 ref／SHA 保留執行脈絡，artifact 也明確連到產生它的 workflow run，而不是只顯示檔名後讓人猜來源（[Workflow runs API](https://docs.github.com/en/rest/actions/workflow-runs)、[Workflow artifacts](https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts)）。Skill Hub 對應只使用各 owner 已回傳的 Run、Skill、Version、Test Case 與 Bundle member 識別來建立導覽，不由前端推測缺席關係。
+
 長工作續作另參考 Backstage Software Templates：每次執行都有 task ID，工作清單以該 ID 連到單一 task，完成畫面再提供產物連結；恢復機制則從已完成 checkpoint 繼續，而不是把前端暫存當真相（[工作清單程式碼](https://github.com/backstage/backstage/blob/master/plugins/scaffolder/src/components/ListTasksPage/ListTasksPage.tsx)、[Task Recovery](https://backstage.io/docs/next/features/software-templates/configuration/#task-recovery)）。Skill Hub 對應採既有 session ID 與伺服器 revision 恢復可變工作，再以既有 version ID 交接不可變產物，不複製它的表單流程。
 
 ---
@@ -341,11 +345,11 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱、Catalog 搜尋入口與首頁的真實續作來源；現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
 
-**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；精確版本頁也已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
+**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
-**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，首次使用也在該版本脈絡內完成 Publisher 註冊，不再離開工作回到無關的帳號設定。管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；打包、公開取得與 Bundle 匯出都把 owner API 回傳的 Artifact UUID 帶到保存列，版本內的 Publication 操作也用 `publisher/name` 續接到精確項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。保存列能以既有 owner facts 回到精確 Skill Version；這只是導覽脈絡，不宣稱 Artifact 與 Release 已有跨 Context 的領域關係。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 也還沒有同等的 owner 摘要可供定位。下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
+**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，首次使用也在該版本脈絡內完成 Publisher 註冊，不再離開工作回到無關的帳號設定。管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；Bundle 成員可由 owner facts 回到各自被釘選的 Skill Version，而不是只留下名稱與版本號。打包、公開取得與 Bundle 匯出都把 owner API 回傳的 Artifact UUID 帶到保存列，版本內的 Publication 操作也用 `publisher/name` 續接到精確項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。保存列能以既有 owner facts 回到精確 Skill Version；這些都是導覽脈絡，不宣稱 Artifact、Release 與 Bundle 成員之間已新增跨 Context 的領域關係。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 也還沒有同等的 owner 摘要可供定位。下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 
 **階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 

@@ -53,7 +53,11 @@ export function RunCompare() {
     <section>
       <h1>Run 比較</h1>
       {self.data && (
-        <SkillWorkspaceNav skillId={self.data.skill_id} versionId={self.data.skill_version_id} />
+        <SkillWorkspaceNav
+          skillId={self.data.skill_id}
+          versionId={self.data.skill_version_id}
+          testCaseId={self.data.test_case_id}
+        />
       )}
 
       {comparison.data && <ComparisonLead data={comparison.data} />}

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { ComparisonSide } from "../../evaluation.service";
 import { runStatusLabel } from "../../runs.model";
 import { verdictCell } from "./ComparisonLead.model";
@@ -11,7 +12,9 @@ function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {
         <th scope="col">項目</th>
         {sides.map((side, index) => (
           <th key={side.run_id} scope="col">
-            {SIDE_LABEL[index]}
+            <Link to="/runs/$runId" params={{ runId: side.run_id }}>
+              {SIDE_LABEL[index]} Run
+            </Link>
           </th>
         ))}
       </tr>
@@ -51,6 +54,12 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
             <th scope="row">Skill 版本</th>
             {sides.map((s) => (
               <td key={s.run_id}>
+                <Link
+                  to="/skills/$skillId/versions/$versionId"
+                  params={{ skillId: s.skill_id, versionId: s.skill_version_id }}
+                >
+                  查看這個版本
+                </Link>
                 <details>
                   <summary>版本 ID</summary>
                   <code>{s.skill_version_id}</code>

@@ -2,7 +2,15 @@ import { Link } from "@tanstack/react-router";
 import { useId } from "react";
 import { NavScrollCue } from "../../../shared/ui/NavScrollCue";
 
-export function SkillWorkspaceNav({ skillId, versionId }: { skillId: string; versionId?: string }) {
+export function SkillWorkspaceNav({
+  skillId,
+  versionId,
+  testCaseId,
+}: {
+  skillId: string;
+  versionId?: string;
+  testCaseId?: string;
+}) {
   const versionUnavailableReasonId = useId();
 
   return (
@@ -18,9 +26,20 @@ export function SkillWorkspaceNav({ skillId, versionId }: { skillId: string; ver
       <Link to="/skills/$skillId/files" params={{ skillId }} className="chip">
         檔案
       </Link>
-      <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }} className="chip">
-        驗證
-      </Link>
+      {testCaseId ? (
+        <Link
+          to="/lab/test-cases/$testCaseId"
+          params={{ testCaseId }}
+          search={{ version: versionId }}
+          className="chip"
+        >
+          驗證
+        </Link>
+      ) : (
+        <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }} className="chip">
+          驗證
+        </Link>
+      )}
       {versionId ? (
         <Link
           to="/skills/$skillId/versions/$versionId"

@@ -111,7 +111,17 @@ function BundleRow({
       </p>
       <p className="note">
         成員：
-        {bundle.members.map((m) => `${m.name} v${m.version_number}`).join("、")}
+        {bundle.members.map((member, index) => (
+          <span key={member.version_id}>
+            {index > 0 && "、"}
+            <Link
+              to="/skills/$skillId/versions/$versionId"
+              params={{ skillId: member.skill_id, versionId: member.version_id }}
+            >
+              {member.name} v{member.version_number}
+            </Link>
+          </span>
+        ))}
       </p>
       <p className="note">{PLUGIN_SCOPE_NOTE}</p>
       <p>

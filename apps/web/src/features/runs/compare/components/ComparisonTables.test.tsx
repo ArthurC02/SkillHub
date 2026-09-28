@@ -1,6 +1,6 @@
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { COMPARISON, comparisonSide } from "../../../../testing/fixtures/platform";
 import type { ComparisonSide, RunComparison } from "../../evaluation.service";
 import { CriterionMatrixTable } from "./CriterionMatrixTable";
@@ -13,6 +13,24 @@ const CRITERION_MATRIX =
 
 let container: HTMLDivElement;
 let root: Root;
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children?: unknown;
+  }) => {
+    const href = Object.entries(params ?? {}).reduce(
+      (path, [key, value]) => path.replace(`$${key}`, value),
+      to,
+    );
+    return <a href={href}>{children as never}</a>;
+  },
+}));
 
 beforeEach(() => {
   container = document.createElement("div");
@@ -64,6 +82,23 @@ test("RunStatusTable prints a note per side when the sides cite different source
     el.textContent?.includes("權威來源"),
   );
   expect(notes).toHaveLength(2);
+});
+
+test("RunStatusTable keeps each side connected to its own Run and immutable version", async () => {
+  const sides = [
+    { ...sideWithoutRerunLink("run-a", true), skill_id: "skill-a", skill_version_id: "version-a" },
+    { ...sideWithoutRerunLink("run-b", false), skill_id: "skill-b", skill_version_id: "version-b" },
+  ];
+  await mount(<RunStatusTable sides={sides} />);
+
+  expect(
+    Array.from(container.querySelectorAll("a")).map((link) => link.getAttribute("href")),
+  ).toEqual([
+    "/runs/run-a",
+    "/runs/run-b",
+    "/skills/skill-a/versions/version-a",
+    "/skills/skill-b/versions/version-b",
+  ]);
 });
 
 test("CriterionMatrixTable says there is nothing to compare when the matrix is empty", async () => {

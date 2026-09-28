@@ -26,7 +26,11 @@ export function PreflightShell({
   return (
     <section>
       <h1>執行前權限確認</h1>
-      <SkillWorkspaceNav skillId={skill} versionId={version || undefined} />
+      <SkillWorkspaceNav
+        skillId={skill}
+        versionId={version || undefined}
+        testCaseId={testCaseInfo.data?.test_case_id}
+      />
       <p>
         Skill：
         <strong>

@@ -66,6 +66,18 @@ test("the workbench keeps every stable view on the same Skill and exact version"
   ]);
 });
 
+test("the workbench returns to the exact Test Case when its owner id is known", async () => {
+  await act(async () => {
+    root = createRoot(container);
+    root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" testCaseId="case-3" />);
+  });
+
+  const validation = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "驗證",
+  );
+  expect(validation?.getAttribute("href")).toBe("/lab/test-cases/case-3?version=version-2");
+});
+
 test("the workbench keeps version context visible but inert until a version is known", async () => {
   await act(async () => {
     root = createRoot(container);

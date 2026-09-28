@@ -393,6 +393,22 @@ test("04 丙-14 the version comes from a picker, and a ?version= link is what it
   expect(versionSelect().value).toBe(OLDER_VERSION);
 });
 
+test("the preflight workbench returns to the exact Test Case and selected version", async () => {
+  stubPlatform();
+  await renderLab();
+  const expected = `/lab/test-cases/${TEST_CASE}?version=${encodeURIComponent(VERSION)}`;
+  await waitFor(() =>
+    Array.from(container.querySelectorAll("a")).some(
+      (link) => link.textContent === "驗證" && link.getAttribute("href") === expected,
+    ),
+  );
+
+  const validation = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "驗證",
+  );
+  expect(validation?.getAttribute("href")).toBe(expected);
+});
+
 test("changing the preflight version persists the complete run context in the URL", async () => {
   stubPlatform();
   await renderLab();

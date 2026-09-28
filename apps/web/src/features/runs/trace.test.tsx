@@ -49,7 +49,28 @@ vi.mock("@tanstack/react-router", async () => {
       setSearch({ ...next });
       return Promise.resolve();
     },
-    Link: ({ children }: { children?: unknown }) => children,
+    Link: ({
+      to,
+      params,
+      search: linkSearch,
+      children,
+    }: {
+      to: string;
+      params?: Record<string, string>;
+      search?: Record<string, string | undefined>;
+      children?: unknown;
+    }) => {
+      const path = Object.entries(params ?? {}).reduce(
+        (value, [key, id]) => value.replace(`$${key}`, id),
+        to,
+      );
+      const query = new URLSearchParams(
+        Object.entries(linkSearch ?? {}).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      );
+      return <a href={`${path}${query.size ? `?${query}` : ""}`}>{children as never}</a>;
+    },
   };
 });
 
@@ -193,6 +214,22 @@ test("the general mode says the trace is incomplete and never shows an unreporte
   expect(text).toContain("未測量");
   expect(text).not.toContain("0 點");
   expect(text).toContain("failed");
+});
+
+test("a Run with an owner Test Case returns to that exact case and version", async () => {
+  stubTrace(summary, advanced, {
+    run_id: summary.run_id,
+    skill_id: "skill-1",
+    skill_version_id: "version-2",
+    test_case_snapshot_id: "snapshot-3",
+    test_case_id: "case-4",
+  });
+  await render();
+
+  const validation = Array.from(container.querySelectorAll("a")).find(
+    (link) => link.textContent === "驗證",
+  );
+  expect(validation?.getAttribute("href")).toBe("/lab/test-cases/case-4?version=version-2");
 });
 
 test("the advanced mode names the missing sequence numbers and renders payloads inert", async () => {

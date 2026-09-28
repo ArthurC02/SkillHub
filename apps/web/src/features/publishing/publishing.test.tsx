@@ -209,6 +209,12 @@ test("a Bundle export continues from the exact saved artifact", async () => {
   });
   await render(<PublishingWorkspace />, () => text().includes("PDF tools"));
 
+  expect(
+    container.querySelector(
+      `a[href="/skills/${SKILL}/versions/${SKILL_VERSIONS.versions[0].version_id}"]`,
+    )?.textContent,
+  ).toBe("PDF Summariser v2");
+
   await act(async () => button("匯出為 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit.zip"));
 

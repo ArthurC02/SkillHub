@@ -23,7 +23,11 @@ export function RunTrace() {
       <h1>Run 結果</h1>
       <ReadFailure error={run.error} what="這個 Run" />
       {run.data && (
-        <SkillWorkspaceNav skillId={run.data.skill_id} versionId={run.data.skill_version_id} />
+        <SkillWorkspaceNav
+          skillId={run.data.skill_id}
+          versionId={run.data.skill_version_id}
+          testCaseId={run.data.test_case_id}
+        />
       )}
 
       <EvaluationPanel runId={runId} runStatus={general.data?.status} />
