@@ -6,7 +6,7 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { SignInAction } from "../../../shared/ui/SignIn";
 import { ApiError } from "../../../core/api/client";
-import type { SkillDetail as SkillDetailModel } from "../../../core/api/types";
+import type { SkillDetail as SkillDetailModel, SkillVersionSummary } from "../../../core/api/types";
 import {
   useOwnPublisher,
   useOwnPublication,
@@ -19,10 +19,12 @@ import { PublishForm } from "./PublishForm";
 
 export function PublishPanel({
   skill,
+  version = skill.version,
   isLoggedIn,
   isOwner,
 }: {
   skill: SkillDetailModel;
+  version?: SkillVersionSummary;
   isLoggedIn: boolean;
   isOwner: boolean;
 }) {
@@ -44,6 +46,7 @@ export function PublishPanel({
     );
   }
   if (!isOwner) return null;
+  if (!version) return <p role="status">這個 Skill 還沒有可發佈的版本。</p>;
 
   const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
   const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;
@@ -80,6 +83,7 @@ export function PublishPanel({
               cannotSubmit={cannotSubmit}
               publish={publish}
               delist={delist}
+              version={version}
             />
           ) : notPublishedYet ? (
             <PublishForm
@@ -92,6 +96,8 @@ export function PublishPanel({
               disabledReason={disabledReason}
               cannotSubmit={cannotSubmit}
               publish={publish}
+              versionId={version.version_id}
+              versionNumber={version.version_number}
             />
           ) : null}
         </>
@@ -109,6 +115,7 @@ function PublishedView({
   cannotSubmit,
   publish,
   delist,
+  version,
 }: {
   publication: Publication;
   needsAttestation: boolean;
@@ -118,8 +125,12 @@ function PublishedView({
   cannotSubmit: boolean;
   publish: ReturnType<typeof usePublish>;
   delist: ReturnType<typeof useDelist>;
+  version: SkillVersionSummary;
 }) {
   const latest = publication.releases[0];
+  const selectedRelease = publication.releases.find(
+    (release) => release.version_id === version.version_id,
+  );
 
   return (
     <>
@@ -141,6 +152,17 @@ function PublishedView({
           最新 Release：v{latest.version_number}，發佈於 <Timestamp at={latest.released_at} />
         </p>
       )}
+      <p className="note">
+        v{version.version_number}
+        {selectedRelease ? (
+          <>
+            {" "}
+            已有 Release，建立於 <Timestamp at={selectedRelease.released_at} />。
+          </>
+        ) : (
+          " 還沒有 Release。"
+        )}
+      </p>
 
       {needsAttestation && (
         <p>
@@ -159,9 +181,11 @@ function PublishedView({
           type="button"
           disabled={publish.isPending || cannotSubmit}
           aria-describedby={disabledReason ? "publish-disabled-reason" : undefined}
-          onClick={() => publish.mutate({ rightsAttested: attested })}
+          onClick={() =>
+            publish.mutate({ versionId: version.version_id, rightsAttested: attested })
+          }
         >
-          {publish.isPending ? "送出中…" : "發佈目前的版本"}
+          {publish.isPending ? "送出中…" : `發佈 v${version.version_number}`}
         </button>
       </p>
       {disabledReason && (

@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { VersionUpload } from "./detail/components/VersionUpload";
+import { VersionUpload } from "./version/components/VersionUpload";
 import { SKILL_VERSIONS } from "../../testing/fixtures/platform";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";

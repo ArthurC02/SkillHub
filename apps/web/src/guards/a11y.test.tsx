@@ -306,6 +306,7 @@ const SCANNED_ROUTES = [
   "/skills/$skillId",
   "/skills/$skillId/files",
   "/skills/$skillId/package",
+  "/skills/$skillId/versions/$versionId",
   "/p/$publisher/$name",
   "/lab/run",
   "/lab/datasets",
@@ -458,6 +459,19 @@ test("QA-009: Skill 詳情", async () => {
   });
   await waitFor(has("可散布性與打包"));
   await scan("/skills/$skillId");
+}, 30000);
+
+test("QA-009: Skill 精確版本", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/skills/$skillId/versions/$versionId",
+      params: { skillId: SKILL, versionId: VERSION },
+    });
+  });
+  await waitFor(has("PDF Summariser v2"));
+  await scan("/skills/$skillId/versions/$versionId");
 }, 30000);
 
 test("QA-009: 公開發佈頁", async () => {

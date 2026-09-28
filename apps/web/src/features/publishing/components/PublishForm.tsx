@@ -11,6 +11,8 @@ export function PublishForm({
   disabledReason,
   cannotSubmit,
   publish,
+  versionId,
+  versionNumber,
 }: {
   nameInputId: string;
   name: string;
@@ -21,12 +23,14 @@ export function PublishForm({
   disabledReason: string | undefined;
   cannotSubmit: boolean;
   publish: ReturnType<typeof usePublish>;
+  versionId: string;
+  versionNumber: number;
 }) {
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        publish.mutate({ name: name.trim(), rightsAttested: attested });
+        publish.mutate({ name: name.trim(), versionId, rightsAttested: attested });
       }}
     >
       <p>
@@ -57,7 +61,7 @@ export function PublishForm({
         disabled={publish.isPending || cannotSubmit}
         aria-describedby={disabledReason ? "publish-disabled-reason" : undefined}
       >
-        {publish.isPending ? "送出中…" : "發佈"}
+        {publish.isPending ? "送出中…" : `發佈 v${versionNumber}`}
       </button>
       {disabledReason && (
         <p className="note" id="publish-disabled-reason">

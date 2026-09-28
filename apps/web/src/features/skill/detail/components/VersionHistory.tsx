@@ -4,6 +4,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { VersionDiff } from "../../../runs";
 import { useSkillVersions, skillDiffUrl } from "../../skills.service";
+import { Link } from "@tanstack/react-router";
 
 export function VersionHistory({ skillId }: { skillId: string }) {
   const versions = useSkillVersions(skillId);
@@ -38,7 +39,14 @@ export function VersionHistory({ skillId }: { skillId: string }) {
                   return (
                     <li key={version.version_id} className="search-result">
                       <p>
-                        <strong>v{version.version_number}</strong>{" "}
+                        <strong>
+                          <Link
+                            to="/skills/$skillId/versions/$versionId"
+                            params={{ skillId, versionId: version.version_id }}
+                          >
+                            v{version.version_number}
+                          </Link>
+                        </strong>{" "}
                         <span className="note">
                           建立時間：
                           <Timestamp at={version.created_at} />

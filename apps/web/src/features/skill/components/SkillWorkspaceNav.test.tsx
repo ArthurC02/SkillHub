@@ -48,7 +48,7 @@ afterEach(async () => {
 test("the workbench keeps every stable view on the same Skill and exact version", async () => {
   await act(async () => {
     root = createRoot(container);
-    root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" canPackage />);
+    root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" />);
   });
 
   const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]');
@@ -62,20 +62,20 @@ test("the workbench keeps every stable view on the same Skill and exact version"
     ["總覽", "/skills/skill-1"],
     ["檔案", "/skills/skill-1/files"],
     ["驗證", "/lab/test-cases?skill=skill-1"],
-    ["打包", "/skills/skill-1/package?version=version-2"],
+    ["版本與發佈", "/skills/skill-1/versions/version-2"],
   ]);
 });
 
-test("the workbench keeps packaging visible but inert when the current context cannot package", async () => {
+test("the workbench keeps version context visible but inert until a version is known", async () => {
   await act(async () => {
     root = createRoot(container);
-    root.render(<SkillWorkspaceNav skillId="skill-1" versionId="version-2" />);
+    root.render(<SkillWorkspaceNav skillId="skill-1" />);
   });
 
   const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]')!;
-  expect(nav.querySelector('a[href*="/package"]')).toBeNull();
+  expect(nav.querySelector('a[href*="/versions/"]')).toBeNull();
   const disabled = nav.querySelector("button[disabled]");
   const reasonId = disabled?.getAttribute("aria-describedby");
   expect(reasonId).toBeTruthy();
-  expect(document.getElementById(reasonId!)?.textContent).toContain("只有自己工作區裡");
+  expect(document.getElementById(reasonId!)?.textContent).toContain("先選定一個版本");
 });

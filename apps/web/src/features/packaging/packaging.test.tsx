@@ -362,12 +362,12 @@ test("every refusal the contract can send has a sentence on this page", () => {
   }
 });
 
-test("the workbench only links packaging when the selected version belongs to this workspace", async () => {
+test("the workbench links back to the exact version context", async () => {
   stubPlatform();
   await render(<Packaging />, () =>
     Boolean(
       container.querySelector(
-        'nav[aria-label="這個 Skill 的工作台"] a[href*="/skills/11111111-1111-1111-1111-111111111111/package"]',
+        'nav[aria-label="這個 Skill 的工作台"] a[href*="/skills/11111111-1111-1111-1111-111111111111/versions/22222222-2222-2222-2222-222222222222"]',
       ),
     ),
   );
@@ -377,13 +377,13 @@ test("the workbench only links packaging when the selected version belongs to th
   ).toBeNull();
 });
 
-test("the workbench keeps packaging inert when the selected version is not workspace-owned", async () => {
+test("the package screen never turns its version context back into a package tab", async () => {
   stubPlatform({ versions: { versions: [] } });
   await render(<Packaging />, () => text().includes("Skill 套件"));
 
   const nav = container.querySelector('nav[aria-label="這個 Skill 的工作台"]')!;
   expect(nav.querySelector('a[href*="/package"]')).toBeNull();
-  expect(nav.querySelector("button[disabled]")?.textContent).toBe("打包");
+  expect(nav.querySelector('a[href*="/versions/"]')?.textContent).toBe("版本與發佈");
 });
 
 test("PACK-002 the post-install check is on the page, not only inside the package", async () => {

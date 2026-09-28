@@ -16,6 +16,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["policy", "/policy"],
   ["skill-detail", `/skills/${SKILL}`],
   ["skill-files", `/skills/${SKILL}/files`],
+  ["skill-version", `/skills/${SKILL}/versions/${VERSION}`],
   ["packaging", `/skills/${SKILL}/package?version=${VERSION}`],
   ["public-publication", `/p/${PUBLISHER}/${PUBLICATION}`],
   ["lab-run", `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`],

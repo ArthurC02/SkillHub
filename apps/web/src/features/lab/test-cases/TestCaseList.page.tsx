@@ -7,7 +7,7 @@ import { CreateTestCaseForm } from "./components/CreateTestCaseForm";
 
 export function TestCaseList() {
   const navigate = useNavigate();
-  const { skill: filter } = useSearch({ from: "/lab/test-cases" });
+  const { skill: filter, version } = useSearch({ from: "/lab/test-cases" });
   const testCases = useTestCases(filter);
   const skills = useOwnSkills();
   const [skillId, setSkillId] = useState("");
@@ -23,7 +23,7 @@ export function TestCaseList() {
   return (
     <section>
       <h1>Test Case</h1>
-      {filter && <SkillWorkspaceNav skillId={filter} />}
+      {filter && <SkillWorkspaceNav skillId={filter} versionId={version} />}
       <p className="note" data-role="teaching">
         Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。
       </p>
@@ -31,6 +31,7 @@ export function TestCaseList() {
       <h2>既有的 Test Case</h2>
       <ExistingTestCasesSection
         filter={filter}
+        version={version}
         ownedSkillName={ownedSkill?.name}
         notMine={notMine}
         isPending={testCases.isPending}
@@ -53,7 +54,11 @@ export function TestCaseList() {
         onPromptChange={setPrompt}
         create={create}
         onCreated={(testCaseId) =>
-          navigate({ to: "/lab/test-cases/$testCaseId", params: { testCaseId } })
+          navigate({
+            to: "/lab/test-cases/$testCaseId",
+            params: { testCaseId },
+            search: { version },
+          })
         }
       />
     </section>

@@ -6,6 +6,7 @@ import type { TestCaseListItem } from "../../testcases.service";
 
 export function ExistingTestCasesSection({
   filter,
+  version,
   ownedSkillName,
   notMine,
   isPending,
@@ -16,6 +17,7 @@ export function ExistingTestCasesSection({
   onFetchNextPage,
 }: {
   filter: string | undefined;
+  version: string | undefined;
   ownedSkillName: string | undefined;
   notMine: boolean;
   isPending: boolean;
@@ -31,7 +33,7 @@ export function ExistingTestCasesSection({
         <p className="note" role="status">
           只顯示 <strong>{rows[0]?.skill_name || ownedSkillName || "某一個 Skill"}</strong> 的 Test
           Case。{" "}
-          <Link to="/lab/test-cases" search={{ skill: undefined }}>
+          <Link to="/lab/test-cases" search={{ skill: undefined, version: undefined }}>
             顯示全部
           </Link>
         </p>
@@ -58,7 +60,11 @@ export function ExistingTestCasesSection({
           <ul className="search-results" data-role="evidence">
             {rows.map((tc) => (
               <li key={tc.test_case_id} className="search-result">
-                <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: tc.test_case_id }}>
+                <Link
+                  to="/lab/test-cases/$testCaseId"
+                  params={{ testCaseId: tc.test_case_id }}
+                  search={{ version }}
+                >
                   {tc.name}
                 </Link>
                 <p className="note">

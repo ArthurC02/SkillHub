@@ -1,7 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
 import { useTestCase } from "../testcases.service";
 import { useRuns } from "../../runs";
@@ -15,6 +15,7 @@ import { SkillWorkspaceNav } from "../../skill";
 
 export function TestCaseDetail() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId" });
+  const { version } = useSearch({ from: "/lab/test-cases/$testCaseId" });
   const testCase = useTestCase(testCaseId);
   const runs = useRuns(testCaseId);
   const [deleted, setDeleted] = useState<{ datasets_deleted: number } | null>(null);
@@ -48,13 +49,17 @@ export function TestCaseDetail() {
 
   const history = runs.data?.pages.flatMap((page) => page.runs) ?? [];
   const lastVersion = history[0]?.skill_version_id;
+  const selectedVersion = version ?? lastVersion;
 
   return (
     <section key={testCaseId}>
       <h1>{testCase.data.name}</h1>
-      <SkillWorkspaceNav skillId={testCase.data.skill_id} versionId={lastVersion} />
+      <SkillWorkspaceNav skillId={testCase.data.skill_id} versionId={selectedVersion} />
       <p className="note">
-        <Link to="/lab/test-cases" search={{ skill: testCase.data.skill_id }}>
+        <Link
+          to="/lab/test-cases"
+          search={{ skill: testCase.data.skill_id, version: selectedVersion }}
+        >
           回到這個 Skill 的 Test Case 列表
         </Link>
       </p>
@@ -67,7 +72,11 @@ export function TestCaseDetail() {
         <Link
           className="action"
           to="/lab/run"
-          search={{ skill: testCase.data.skill_id, test_case: testCaseId, version: lastVersion }}
+          search={{
+            skill: testCase.data.skill_id,
+            test_case: testCaseId,
+            version: selectedVersion,
+          }}
         >
           前往執行前權限確認
         </Link>

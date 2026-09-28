@@ -19,6 +19,7 @@ import {
   PUBLICATION,
   PUBLISHER,
   SKILL,
+  SKILL_VERSIONS,
   skillDetail,
 } from "../../testing/fixtures/platform";
 import type { SkillDetail } from "../../core/api/types";
@@ -456,8 +457,43 @@ test("PublishPanel：已發佈時顯示公開位址、狀態與最新 Release", 
   expect(text()).toContain(`/p/${PUBLISHER}/${PUBLICATION}`);
   expect(text()).toContain("已發佈");
   expect(text()).toContain("v2");
-  expect(button("發佈目前的版本")).toBeDefined();
+  expect(button("發佈 v2")).toBeDefined();
   expect(button("撤回")).toBeDefined();
+});
+
+test("PublishPanel：發佈明確送出畫面上的版本，不讓伺服器另選最新版本", async () => {
+  let posted: Record<string, unknown> | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/publisher") return json(OWN_PUBLISHER);
+    if (path === `/skills/${SKILL}/publication` && init?.method === "POST") {
+      posted = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return json(OWN_PUBLICATION);
+    }
+    if (path === `/skills/${SKILL}/publication`) {
+      return json({ error: "not published" }, 404);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  const skill = detail();
+  const selected = SKILL_VERSIONS.versions[1];
+  await render(<PublishPanel skill={skill} version={selected} isLoggedIn isOwner />, () =>
+    Boolean(container.querySelector("form")),
+  );
+  await act(async () =>
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  await waitFor(() => posted !== undefined);
+
+  expect(posted).toMatchObject({
+    version_id: selected.version_id,
+    name: "PDF Summariser",
+  });
 });
 
 describe("PublishPanel：勾選框只在 self_supplied／generated 出現", () => {

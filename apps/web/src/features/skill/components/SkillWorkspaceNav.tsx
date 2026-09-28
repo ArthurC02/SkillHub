@@ -2,16 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { useId } from "react";
 import { NavScrollCue } from "../../../shared/ui/NavScrollCue";
 
-export function SkillWorkspaceNav({
-  skillId,
-  versionId,
-  canPackage = false,
-}: {
-  skillId: string;
-  versionId?: string;
-  canPackage?: boolean;
-}) {
-  const packageUnavailableReasonId = useId();
+export function SkillWorkspaceNav({ skillId, versionId }: { skillId: string; versionId?: string }) {
+  const versionUnavailableReasonId = useId();
 
   return (
     <nav aria-label="這個 Skill 的工作台" className="category-nav">
@@ -29,14 +21,13 @@ export function SkillWorkspaceNav({
       <Link to="/lab/test-cases" search={{ skill: skillId }} className="chip">
         驗證
       </Link>
-      {canPackage ? (
+      {versionId ? (
         <Link
-          to="/skills/$skillId/package"
-          params={{ skillId }}
-          search={{ version: versionId }}
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId, versionId }}
           className="chip"
         >
-          打包
+          版本與發佈
         </Link>
       ) : (
         <>
@@ -44,12 +35,12 @@ export function SkillWorkspaceNav({
             type="button"
             className="chip"
             disabled
-            aria-describedby={packageUnavailableReasonId}
+            aria-describedby={versionUnavailableReasonId}
           >
-            打包
+            版本與發佈
           </button>
-          <span id={packageUnavailableReasonId} hidden>
-            只有自己工作區裡、通過可散布檢查的版本才可打包。
+          <span id={versionUnavailableReasonId} hidden>
+            先選定一個版本，才能查看這一版的驗證、打包與發佈脈絡。
           </span>
         </>
       )}

@@ -377,11 +377,10 @@ test("r4 B2: Fork 那顆按鈕說得出它產生什麼", async () => {
   expect(fork?.textContent).toBe("以這個 Skill 為起點建立我自己的");
 });
 
-test("r4 B1: 上傳新版本的表單只給擁有者，而且打在契約寫的那條路徑上", async () => {
+test("the overview sends version work to the exact immutable version context", async () => {
   stubVisitor();
   await render(<SkillDetail />, settledAsVisitor);
   expect(container.querySelector("#skill-version-file")).toBeNull();
-  expect(text()).not.toContain("上傳成新版本");
 
   vi.unstubAllGlobals();
   queryClient.clear();
@@ -390,25 +389,15 @@ test("r4 B1: 上傳新版本的表單只給擁有者，而且打在契約寫的�
   container = document.createElement("div");
   document.body.appendChild(container);
 
-  const calls = stubOwner();
+  stubOwner();
   await render(<SkillDetail />, settledAsOwner);
 
-  const input = container.querySelector<HTMLInputElement>("#skill-version-file");
-  expect(input, "擁有者看不到上傳表單").not.toBeNull();
-  expect(text()).toContain("把你改過的套件上傳成這個 Skill 的新版本；舊版本原封不動留著");
-
-  const file = new File(["zip"], "skill.zip", { type: "application/zip" });
-  Object.defineProperty(input!, "files", { value: [file] });
-  await act(async () => input!.dispatchEvent(new Event("change", { bubbles: true })));
-  await act(async () =>
-    container
-      .querySelector("form.version-upload")!
-      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
-  );
-  await waitFor(() => text().includes("已存成 v3。"));
-
-  expect(calls).toContainEqual({ url: `/skills/${SKILL}/versions`, method: "POST" });
-  expect(container.querySelector('[role="status"]')?.textContent).toBe("已存成 v3。");
+  expect(container.querySelector("#skill-version-file")).toBeNull();
+  expect(
+    container.querySelector(
+      `a[href="/skills/${SKILL}/versions/22222222-2222-2222-2222-222222222222"]`,
+    ),
+  ).not.toBeNull();
 });
 
 function selectValue(select: HTMLSelectElement, value: string) {

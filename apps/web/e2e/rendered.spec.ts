@@ -114,12 +114,12 @@ test.describe("QA-008 real layout", () => {
     });
   }
 
-  test("a wider native file widget does not push the page sideways: skill-detail", async ({
+  test("a wider native file widget does not push the page sideways: skill-version", async ({
     page,
   }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(`/skills/${SKILL}`);
+    await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
     await page.waitForSelector('.version-upload input[type="file"]');
     await page.addStyleTag({
       content: '.version-upload input[type="file"] { font-size: 20px }',
@@ -262,9 +262,10 @@ test("the validation journey keeps the same Skill workbench in reach", async ({ 
   const urls = [
     `/skills/${SKILL}`,
     `/skills/${SKILL}/files`,
+    `/skills/${SKILL}/versions/${VERSION}`,
     `/skills/${SKILL}/package?version=${VERSION}`,
-    `/lab/test-cases?skill=${SKILL}`,
-    `/lab/test-cases/${TEST_CASE}`,
+    `/lab/test-cases?skill=${SKILL}&version=${VERSION}`,
+    `/lab/test-cases/${TEST_CASE}?version=${VERSION}`,
     `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`,
     `/runs/${RUN}`,
     `/runs/${RUN}/compare?against=${OTHER_RUN}`,
@@ -279,12 +280,7 @@ test("the validation journey keeps the same Skill workbench in reach", async ({ 
       "href",
       `/skills/${SKILL}`,
     );
-    if (url === `/skills/${SKILL}` || url.startsWith(`/skills/${SKILL}/package`)) {
-      await expect(nav.getByRole("link", { name: "打包" }), url).toBeVisible();
-    } else {
-      await expect(nav.getByRole("link", { name: "打包" }), url).toHaveCount(0);
-      await expect(nav.getByRole("button", { name: "打包" }), url).toBeDisabled();
-    }
+    await expect(nav.getByRole("link", { name: "版本與發佈" }), url).toBeVisible();
   }
 });
 
@@ -714,6 +710,7 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
   const TEACHING_FLAT: Record<string, number> = {
     policy: 95,
     "skill-detail": 78,
+    "skill-version": 32,
     packaging: 61,
     "lab-run": 84,
     "lab-datasets": 16,

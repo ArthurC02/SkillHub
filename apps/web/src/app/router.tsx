@@ -67,6 +67,15 @@ const skillFilesRoute = createRoute({
   ),
 });
 
+const skillVersionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/skills/$skillId/versions/$versionId",
+  component: lazyRouteComponent(
+    () => import("../features/skill/version/SkillVersion.page"),
+    "SkillVersion",
+  ),
+});
+
 const packagingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/skills/$skillId/package",
@@ -234,8 +243,10 @@ const testCaseListRoute = createRoute({
     () => import("../features/lab/test-cases/TestCaseList.page"),
     "TestCaseList",
   ),
-  validateSearch: (search: Record<string, unknown>): { skill?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { skill?: string; version?: string } => ({
     skill: typeof search.skill === "string" && UUID.test(search.skill) ? search.skill : undefined,
+    version:
+      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
   }),
 });
 
@@ -246,6 +257,10 @@ const testCaseDetailRoute = createRoute({
     () => import("../features/lab/test-cases/TestCaseDetail.page"),
     "TestCaseDetail",
   ),
+  validateSearch: (search: Record<string, unknown>): { version?: string } => ({
+    version:
+      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+  }),
 });
 
 const adminHomeRoute = createRoute({
@@ -354,6 +369,7 @@ const routeTree = rootRoute.addChildren([
   runCompareRoute,
   skillDetailRoute,
   skillFilesRoute,
+  skillVersionRoute,
   packagingRoute,
   publicPublicationRoute,
   downloadsRoute,

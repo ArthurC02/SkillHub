@@ -2,15 +2,12 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
-import { useSkillDetail, useSkillVersions } from "../skills.service";
+import { useSkillDetail } from "../skills.service";
 import { useMe } from "../../../core/session/me.service";
-import { PublishPanel } from "../../publishing";
-import { packagingGate } from "../../packaging";
 import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { GeneratedNotice } from "../../creation";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
-import { VersionUpload } from "./components/VersionUpload";
 import { VersionHistory } from "./components/VersionHistory";
 import { CategoryEditor } from "./components/CategoryEditor";
 import { Redistribution } from "./components/Redistribution";
@@ -28,7 +25,6 @@ export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
   const { data: skill, isLoading, error } = useSkillDetail(skillId);
   const { data: me } = useMe();
-  const versions = useSkillVersions(skillId);
 
   if (isLoading) return <Loading what="這個 Skill" />;
   if (error instanceof ApiError && error.status === 410) {
@@ -49,16 +45,7 @@ export function SkillDetail() {
               <LabelledBadge kind="tier" value={skill.tier} />
               {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
             </div>
-            <SkillWorkspaceNav
-              skillId={skillId}
-              versionId={skill.version?.version_id}
-              canPackage={
-                !!me &&
-                (versions.data?.versions.length ?? 0) > 0 &&
-                !skill.access_restriction &&
-                !packagingGate(skill)
-              }
-            />
+            <SkillWorkspaceNav skillId={skillId} versionId={skill.version?.version_id} />
           </header>
 
           {skill.access_restriction && (
@@ -126,15 +113,7 @@ export function SkillDetail() {
             </nav>
           )}
 
-          <VersionUpload skillId={skillId} />
-
           <CategoryEditor skillId={skillId} category={skill.category} />
-
-          <PublishPanel
-            skill={skill}
-            isLoggedIn={!!me}
-            isOwner={(versions.data?.versions.length ?? 0) > 0}
-          />
         </aside>
       </div>
     </article>
