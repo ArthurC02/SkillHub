@@ -23,6 +23,7 @@ import { AnalyticsEventsSection } from "./policy/components/AnalyticsEventsSecti
 import type { DataRetentionPolicy } from "../../core/api/types";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
+const TEST_CASE = "55555555-5555-5555-5555-555555555555";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這個 Run 會維持目前的狀態。";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
@@ -139,6 +140,34 @@ test("WS-004 an activity row words `succeeded` as execution, never as a pass", a
   expect(text()).toContain("任務判定：符合");
   expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));
   expect(text()).not.toContain("成功");
+});
+
+test("an activity row returns directly to its owner-backed Skill, Version and Test Case", async () => {
+  vi.stubGlobal("fetch", () => json({ runs: [{ ...RUN_ROW, test_case_id: TEST_CASE }] }));
+  await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
+
+  const row = container.querySelector(".download-item")!;
+  expect(row.querySelector(`a[href="/skills/${SKILL}"]`)?.textContent).toContain("CSV 清理");
+  expect(
+    row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`)
+      ?.textContent,
+  ).toBe("這次的版本");
+  expect(row.querySelector(`a[href="/lab/test-cases/${TEST_CASE}"]`)?.textContent).toBe(
+    "Test Case",
+  );
+  expect(row.querySelector(`a[href="/runs/${RUN}"]`)?.textContent).toBe("查看結果");
+});
+
+test("a historic activity row without a Test Case id does not invent a Test Case link", async () => {
+  vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
+  await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
+
+  const row = container.querySelector(".download-item")!;
+  expect(row.textContent).not.toContain("Test Case");
+  expect(row.querySelector(`a[href="/skills/${SKILL}"]`)).not.toBeNull();
+  expect(
+    row.querySelector(`a[href="/skills/${SKILL}/versions/${RUN_ROW.skill_version_id}"]`),
+  ).not.toBeNull();
 });
 
 test("WS-004 activity groups every run by the decision its server facts support", async () => {

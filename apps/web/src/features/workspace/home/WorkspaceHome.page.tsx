@@ -7,6 +7,7 @@ import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useOwnSkills } from "../../skill";
 import {
   RunVerdict,
+  RunSourceLinks,
   runActivityGroup,
   runStatusLabel,
   useRuns,
@@ -143,7 +144,7 @@ function RunItem({ run, action }: { run: RunListItem; action: string }) {
   return (
     <li>
       <div>
-        <strong>{run.skill_name}</strong>
+        <RunSourceLinks run={run} />
         <p className="note">執行狀態：{runStatusLabel(run.status)}</p>
         <RunVerdict verdict={run.evaluation} />
       </div>

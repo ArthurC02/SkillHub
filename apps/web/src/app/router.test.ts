@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { legacyRunDestination, validatePublishingWorkspaceSearch } from "./router";
+import {
+  legacyDatasetDestination,
+  legacyRunDestination,
+  validatePublishingWorkspaceSearch,
+} from "./router";
 
 describe("publishing workspace search", () => {
   test.each([
@@ -72,5 +76,22 @@ describe("legacy Run preflight links", () => {
     ],
   ])("sends %s to the nearest durable context", (_name, search, expected) => {
     expect(legacyRunDestination(search)).toEqual(expected);
+  });
+});
+
+describe("legacy Dataset links", () => {
+  test.each([
+    [
+      "a Test Case and version",
+      { test_case: "test-case-1", version: "version-1" },
+      {
+        to: "/lab/test-cases/$testCaseId/datasets",
+        params: { testCaseId: "test-case-1" },
+        search: { version: "version-1" },
+      },
+    ],
+    ["no Test Case", {}, { to: "/lab/test-cases", search: {} }],
+  ])("sends %s to the nearest durable context", (_name, search, expected) => {
+    expect(legacyDatasetDestination(search)).toEqual(expected);
   });
 });

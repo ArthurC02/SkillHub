@@ -39,7 +39,21 @@ vi.mock("@tanstack/react-router", () => ({
     return Promise.resolve();
   },
   useSearch: () => listSearch,
-  Link: ({ children }: { children?: unknown }) => children,
+  Link: ({
+    children,
+    to,
+    params,
+    search,
+  }: {
+    children?: ReactNode;
+    to: string;
+    params?: unknown;
+    search?: unknown;
+  }) => (
+    <a data-to={to} data-params={JSON.stringify(params)} data-search={JSON.stringify(search)}>
+      {children}
+    </a>
+  ),
 }));
 
 const draft: TestCase = {
@@ -193,6 +207,16 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
   }
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
 }
+
+test("the Test Case Dataset entry preserves the exact Test Case and Version", async () => {
+  listSearch = { version: VERSION };
+  stubPlatform();
+  await render();
+
+  const link = container.querySelector('[data-to="/lab/test-cases/$testCaseId/datasets"]');
+  expect(link?.getAttribute("data-params")).toBe(JSON.stringify({ testCaseId: TEST_CASE }));
+  expect(link?.getAttribute("data-search")).toBe(JSON.stringify({ version: VERSION }));
+});
 
 async function submitNewTestCase(skillId: string) {
   await act(async () =>

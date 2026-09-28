@@ -266,14 +266,41 @@ const legacyRunPreflightRoute = createRoute({
 
 const datasetUploadRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/lab/datasets",
+  path: "/lab/test-cases/$testCaseId/datasets",
   component: lazyRouteComponent(
     () => import("../features/lab/dataset-upload/DatasetUpload.page"),
     "DatasetUpload",
   ),
   validateSearch: (search: Record<string, unknown>) => ({
-    test_case: typeof search.test_case === "string" ? search.test_case : undefined,
+    version:
+      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
   }),
+});
+
+type LegacyDatasetSearch = { test_case?: string; version?: string };
+
+export function legacyDatasetDestination(search: LegacyDatasetSearch) {
+  if (search.test_case) {
+    return {
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: search.test_case },
+      search: { version: search.version },
+    } as const;
+  }
+  return { to: "/lab/test-cases", search: {} } as const;
+}
+
+const legacyDatasetUploadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/datasets",
+  validateSearch: (search: Record<string, unknown>) => ({
+    test_case: typeof search.test_case === "string" ? search.test_case : undefined,
+    version:
+      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+  }),
+  beforeLoad: ({ search }) => {
+    throw redirect(legacyDatasetDestination(search));
+  },
 });
 
 export type RunSearch = { evaluation?: string; events?: string };
@@ -450,6 +477,7 @@ const routeTree = rootRoute.addChildren([
   runPreflightRoute,
   legacyRunPreflightRoute,
   datasetUploadRoute,
+  legacyDatasetUploadRoute,
   testCaseListRoute,
   testCaseDetailRoute,
   adminHomeRoute,

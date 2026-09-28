@@ -313,6 +313,7 @@ const SCANNED_ROUTES = [
   "/lab/datasets",
   "/lab/test-cases",
   "/lab/test-cases/$testCaseId",
+  "/lab/test-cases/$testCaseId/datasets",
   "/runs/$runId",
   "/runs/$runId/compare",
   "/workspace",
@@ -558,10 +559,14 @@ test("QA-009: Dataset 上傳", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
-    await router.navigate({ to: "/lab/datasets", search: { test_case: TEST_CASE } });
+    await router.navigate({
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: TEST_CASE },
+      search: { version: VERSION },
+    });
   });
   await waitFor(has("上傳前請先確認"));
-  await scan("/lab/datasets");
+  await scan("/lab/test-cases/$testCaseId/datasets");
 }, 30000);
 
 test("QA-009: Run 結果（一般與進階模式）", async () => {
@@ -758,7 +763,11 @@ test("NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼",
   stubPlatform();
   await mount();
   await act(async () => {
-    await router.navigate({ to: "/lab/datasets", search: { test_case: TEST_CASE } });
+    await router.navigate({
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: TEST_CASE },
+      search: { version: VERSION },
+    });
   });
   await waitFor(has("上傳前請先確認"));
 

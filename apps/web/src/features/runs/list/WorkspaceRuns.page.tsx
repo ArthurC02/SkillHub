@@ -10,6 +10,7 @@ import {
   type RunActivityGroup,
 } from "../runs.model";
 import { RunVerdict } from "../components/RunVerdict";
+import { RunSourceLinks } from "../components/RunSourceLinks";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
 
@@ -117,7 +118,7 @@ function RunRow({ run, action }: { run: RunListItem; action: string }) {
   return (
     <li className="download-item">
       <p>
-        <strong>{run.skill_name}</strong>｜
+        <RunSourceLinks run={run} />｜
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
           {action}
         </Link>

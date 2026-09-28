@@ -274,7 +274,7 @@ Activity 先依使用者能否採取行動分組，再依時間排序：
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
 
-現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意，並回到單一 Run 查看證據。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
+現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意。每列除了回到單一 Run 查看證據，也使用同一筆 owner facts 直接回到 Skill、該次不可變 Version，以及存在 `test_case_id` 時的精確 Test Case；歷史列沒有 Test Case 識別時就不發明連結。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
 
 ### 5.5 微觀互動契約
 
@@ -302,7 +302,9 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 - **動效**：只表達空間或狀態轉移，不用循環動畫製造忙碌感；尊重 reduced motion。
 - **可及性**：所有主要路徑可由鍵盤完成，動態結果有狀態宣告，手機觸控目標與文字尺度遵守既有規格。
 
-外部產品模式只作結構參考：GitHub Projects 的同一物件多視圖、VS Code 的穩定容器與脈絡操作、Linear 的保存檢視、Carbon 與 Atlassian 的全域殼層／產品內導覽分工。Skill Hub 不複製它們的視覺語言，也不因此引入它們的套件。
+外部產品模式只作結構參考：GitHub Projects 的同一物件多視圖、VS Code 的穩定容器與脈絡操作、Linear 的保存檢視，以及設計系統對全域殼層與物件內導覽的分工。Primer 的導覽模式把 parent-detail 導覽留在受影響內容旁，分頁緊貼同層內容；Carbon 的 UI shell 在次級項目多且需要頻繁切換時採左側區域，但避免三層導覽；PatternFly 的 Page 也把 masthead、sidebar 與 main 定義成一個可聚焦的頁面骨架（[Primer Navigation](https://primer.style/product/ui-patterns/navigation/)、[Carbon UI shell left panel](https://carbondesignsystem.com/components/UI-shell-left-panel/usage/)、[PatternFly Page](https://www.patternfly.org/components/page/)）。這些原則落在 Skill 工作台、Test Case 內的 Dataset 與 Activity 來源連結；Skill Hub 不複製它們的視覺語言，也不因此引入套件。
+
+空狀態則遵守 Carbon 的結構原則：答案留在資料原本會出現的位置，說明原因與下一步，並避免同一個空狀態堆多個主要行動；同層切換參考 Material UI Tabs 對相關、同階檢視與鍵盤焦點的要求（[Carbon Empty states](https://carbondesignsystem.com/patterns/empty-states-pattern/)、[Material UI Tabs](https://mui.com/material-ui/react-tabs/)）。這裡採用的是資訊層級與互動契約，不是元件實作。
 
 不可變證據的續接另參考 GitHub Actions：workflow run 以自己的識別與 ref／SHA 保留執行脈絡，artifact 也明確連到產生它的 workflow run，而不是只顯示檔名後讓人猜來源（[Workflow runs API](https://docs.github.com/en/rest/actions/workflow-runs)、[Workflow artifacts](https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts)）。Skill Hub 對應只使用各 owner 已回傳的 Run、Skill、Version、Test Case 與 Bundle member 識別來建立導覽，不由前端推測缺席關係。
 
@@ -332,7 +334,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 | `/workspace/skills` | Library | 先換全域名稱與殼層，再保留舊網址作相容入口 |
 | `/workspace/import` | Library 的新增／匯入流程 | 先讓舊頁接受並保留返回脈絡，再收進 Library |
 | `/workspace/creations` | Studio 與 Skill 工作台的建構分頁 | 保留旗標；會話列表在 Studio，單一會話回到 Skill 脈絡 |
-| `/lab/test-cases`、`/lab/datasets` | Skill 工作台的驗證分頁 | 先把 Skill 脈絡固定，再移除重複選擇 |
+| `/lab/test-cases`、`/lab/test-cases/$testCaseId/datasets` | Skill 工作台的驗證分頁 | Test Case 已固定在 canonical 路徑，Dataset 保留同一個 Skill／Version／Test Case 工作脈絡；舊 `/lab/datasets` 只作相容導向 |
 | `/lab/run` | 驗證分頁內的 preflight | 已收進 `/skills/$skillId/test-cases/$testCaseId/runs/new`；原 preflight 服務與同意流程不變，舊網址只作相容導向 |
 | `/workspace/runs` | Activity 的試跑保存檢視 | 全域活動先整合列表；完整內容仍由 `/runs/$runId` 提供 |
 | `/runs/$runId` | 工作台驗證脈絡中的精確 Run | URL 保留，增加返回 Skill／Version／Test Case 的持續脈絡 |
@@ -345,9 +347,9 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱、Catalog 搜尋入口與首頁的真實續作來源；現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
 
-**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；preflight 的 canonical URL 現在把 Skill 與 Test Case 固定在路徑，只讓可替換的 Version 留在 query，舊 `/lab/run` 只負責改寫舊深連結。已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
+**階段二：Skill 工作台。** 詳情、檔案、Test Case、Dataset、preflight、Run 證據與打包已共享同一個 Skill 導覽；preflight 的 canonical URL 把 Skill 與 Test Case 固定在路徑，只讓可替換的 Version 留在 query，舊 `/lab/run` 只負責改寫舊深連結。Dataset 也已從假全域頁搬到 `/lab/test-cases/$testCaseId/datasets`，先讀 Test Case owner facts 再顯示內容，並保留精確 Version；舊 `/lab/datasets` 只作相容導向。已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 
-**階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
+**階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成。每列現在可沿 owner facts 回到來源 Run、Skill、不可變 Version 與可用時的 Test Case，不再只有結果入口。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
 **階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，首次使用也在該版本脈絡內完成 Publisher 註冊，不再離開工作回到無關的帳號設定。管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；Bundle 成員可由 owner facts 回到各自被釘選的 Skill Version，而不是只留下名稱與版本號。打包、公開取得與 Bundle 匯出都把 owner API 回傳的 Artifact UUID 帶到保存列，版本內的 Publication 操作也用 `publisher/name` 續接到精確項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。保存列能以既有 owner facts 回到精確 Skill Version；這些都是導覽脈絡，不宣稱 Artifact、Release 與 Bundle 成員之間已新增跨 Context 的領域關係。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 也還沒有同等的 owner 摘要可供定位。下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 

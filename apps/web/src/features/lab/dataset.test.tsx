@@ -21,6 +21,21 @@ afterEach(async () => {
 });
 
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
+const OTHER = "44444444-4444-4444-4444-444444444444";
+const SKILL = "11111111-1111-1111-1111-111111111111";
+const VERSION = "22222222-2222-2222-2222-222222222222";
+
+function testCase(id = TEST_CASE) {
+  return {
+    test_case_id: id,
+    skill_id: SKILL,
+    name: id === TEST_CASE ? "去重複列" : "另一個情境",
+    user_prompt: "整理這份資料",
+    acceptance_criteria: [],
+    created_at: "2026-08-01T00:00:00Z",
+    updated_at: "2026-08-01T00:00:00Z",
+  };
+}
 
 const LIMITS = {
   max_file_bytes: 25 << 20,
@@ -55,13 +70,21 @@ function stubPlatform(limitsStatus = 200) {
         }),
       );
     }
+    if (url.endsWith(`/test-cases/${TEST_CASE}`)) {
+      return Promise.resolve(
+        new Response(JSON.stringify(testCase()), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
     return Promise.resolve(new Response(`{"error":"not found"}`, { status: 404 }));
   });
   return calls;
 }
 
 async function renderUpload() {
-  window.history.pushState({}, "", `/lab/datasets?test_case=${TEST_CASE}`);
+  window.history.pushState({}, "", `/lab/test-cases/${TEST_CASE}/datasets?version=${VERSION}`);
   await act(async () => {
     root = createRoot(container);
     root.render(
@@ -71,7 +94,11 @@ async function renderUpload() {
     );
   });
   await act(async () => {
-    await router.navigate({ to: "/lab/datasets", search: { test_case: TEST_CASE } });
+    await router.navigate({
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: TEST_CASE },
+      search: { version: VERSION },
+    });
   });
   await waitFor(
     () =>
@@ -79,6 +106,23 @@ async function renderUpload() {
       container.querySelector("[data-loading]") === null,
   );
 }
+
+test("the Dataset workspace keeps its Test Case, Skill and immutable Version context", async () => {
+  stubPlatform();
+  await renderUpload();
+
+  expect(container.querySelector("h1")?.textContent).toBe("去重複列 的 Dataset");
+  expect(container.querySelector(`a[href="/skills/${SKILL}"]`)?.textContent).toContain("總覽");
+  expect(
+    container.querySelector(`a[href="/skills/${SKILL}/versions/${VERSION}"]`)?.textContent,
+  ).toContain("版本與發佈");
+  expect(
+    Array.from(
+      container.querySelectorAll(`a[href="/lab/test-cases/${TEST_CASE}?version=${VERSION}"]`),
+      (link) => link.textContent,
+    ),
+  ).toContain("回到這個 Test Case");
+});
 
 test("02:TEST-002 the upload rules are on screen before anything is uploaded", async () => {
   const calls = stubPlatform();
@@ -112,11 +156,27 @@ test("02:TEST-002 without the rules there is no upload control at all", async ()
 });
 
 test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence", async () => {
-  vi.stubGlobal("fetch", (input: string) => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(JSON.stringify(LIMITS), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.endsWith(`/test-cases/${TEST_CASE}`)) {
+      return Promise.resolve(
+        new Response(JSON.stringify(testCase()), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes(`/test-cases/${TEST_CASE}/datasets`) && init?.method !== "POST") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ datasets: [], total_bytes: 0 }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -141,11 +201,27 @@ test("丙-150(e) a 415 upload failure prints the server's own Chinese sentence",
 });
 
 test("丙-150(e) a 500 upload failure falls back to the generic retry sentence", async () => {
-  vi.stubGlobal("fetch", (input: string) => {
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/test-cases/limits")) {
       return Promise.resolve(
         new Response(JSON.stringify(LIMITS), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.endsWith(`/test-cases/${TEST_CASE}`)) {
+      return Promise.resolve(
+        new Response(JSON.stringify(testCase()), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes(`/test-cases/${TEST_CASE}/datasets`) && init?.method !== "POST") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ datasets: [], total_bytes: 0 }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -170,7 +246,6 @@ test("丙-150(e) a 500 upload failure falls back to the generic retry sentence",
 });
 
 test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
-  const OTHER = "44444444-4444-4444-4444-444444444444";
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/test-cases/limits")) {
@@ -185,6 +260,23 @@ test("02:TEST-002 changing the Test Case clears what was uploaded to the previou
       return Promise.resolve(
         new Response(JSON.stringify({ dataset_id: "d-1", file_name: "a.csv", size_bytes: 10 }), {
           status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    const match = url.match(/\/test-cases\/([^/?]+)$/);
+    if (match) {
+      return Promise.resolve(
+        new Response(JSON.stringify(testCase(match[1])), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (url.includes("/datasets")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ datasets: [], total_bytes: 0 }), {
+          status: 200,
           headers: { "Content-Type": "application/json" },
         }),
       );
@@ -205,7 +297,11 @@ test("02:TEST-002 changing the Test Case clears what was uploaded to the previou
   expect(container.textContent).toContain("已上傳 a.csv");
 
   await act(async () => {
-    await router.navigate({ to: "/lab/datasets", search: { test_case: OTHER } });
+    await router.navigate({
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: OTHER },
+      search: { version: VERSION },
+    });
   });
 
   expect(container.textContent).not.toContain("已上傳 a.csv");

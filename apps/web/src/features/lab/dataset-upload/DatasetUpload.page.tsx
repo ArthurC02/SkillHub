@@ -1,29 +1,38 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { Link, useSearch } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { ApiError } from "../../../core/api/client";
 import { useDatasetLimits, useUploadDataset, type Dataset } from "../lab.service";
-import { useTestCaseDatasets } from "../testcases.service";
+import { useTestCase, useTestCaseDatasets, type TestCase } from "../testcases.service";
 import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
 import { UploadRulesFacts } from "./components/UploadRulesFacts";
+import { SkillWorkspaceNav } from "../../skill";
 import "./DatasetUpload.page.css";
 
-type UploadSearch = { test_case?: string };
+type UploadSearch = { version?: string };
 
 export function DatasetUpload() {
-  const { test_case: testCase = "" } = useSearch({ strict: false }) as UploadSearch;
-  // `test_case` is a search param, so the route does not remount; the key does.
-  return <DatasetUploadForm key={testCase} testCase={testCase} />;
+  const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId/datasets" });
+  const { version } = useSearch({ strict: false }) as UploadSearch;
+  const testCase = useTestCase(testCaseId);
+
+  if (testCase.isPending) return <Loading what="Test Case" />;
+  if (testCase.error instanceof ApiError && testCase.error.status === 404) {
+    return <p role="alert">找不到這個 Test Case。</p>;
+  }
+  if (testCase.error) return <ReadFailure error={testCase.error} what="Test Case" />;
+
+  return <DatasetUploadForm key={testCaseId} testCase={testCase.data} version={version} />;
 }
 
-function DatasetUploadForm({ testCase }: { testCase: string }) {
+function DatasetUploadForm({ testCase, version }: { testCase: TestCase; version?: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
   const limits = useDatasetLimits();
-  const stored = useTestCaseDatasets(testCase);
-  const upload = useUploadDataset(testCase);
+  const stored = useTestCaseDatasets(testCase.test_case_id);
+  const upload = useUploadDataset(testCase.test_case_id);
   const uploadError = upload.error;
   const used: TestCaseUsage | undefined = stored.data && {
     fileCount: stored.data.datasets.length,
@@ -32,7 +41,21 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
 
   return (
     <section className="dataset-upload-page">
-      <h1>Dataset</h1>
+      <h1>{testCase.name} 的 Dataset</h1>
+      <SkillWorkspaceNav
+        skillId={testCase.skill_id}
+        versionId={version}
+        testCaseId={testCase.test_case_id}
+      />
+      <p className="note">
+        <Link
+          to="/lab/test-cases/$testCaseId"
+          params={{ testCaseId: testCase.test_case_id }}
+          search={{ version }}
+        >
+          回到這個 Test Case
+        </Link>
+      </p>
 
       {limits.isPending && <Loading what="上傳規則" />}
       <ReadFailure error={limits.error} what="上傳規則">
@@ -43,49 +66,42 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
         <>
           <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
             <h2 id="dataset-guide-heading">上傳前請先確認</h2>
-            <UploadRulesFacts limits={limits.data} used={used} testCase={testCase} />
+            <UploadRulesFacts limits={limits.data} used={used} testCase={testCase.test_case_id} />
           </section>
 
-          {testCase === "" ? (
-            <p className="notice">
-              這個頁面需要 <code>?test_case=</code>。請到{" "}
-              <Link to="/lab/test-cases">Test Case 頁</Link> 建立或選一個 Test Case,再從那裡連過來。
-            </p>
-          ) : (
-            <div className="dataset-upload-picker">
-              <div className="field">
-                <label htmlFor="dataset-file">選擇檔案</label>
-                <input id="dataset-file" type="file" ref={fileInput} />
-              </div>
-              <button
-                type="button"
-                disabled={upload.isPending}
-                onClick={() => {
-                  const file = fileInput.current?.files?.[0];
-                  if (!file) {
-                    setMessage("請先選擇一個檔案。");
+          <div className="dataset-upload-picker">
+            <div className="field">
+              <label htmlFor="dataset-file">選擇檔案</label>
+              <input id="dataset-file" type="file" ref={fileInput} />
+            </div>
+            <button
+              type="button"
+              disabled={upload.isPending}
+              onClick={() => {
+                const file = fileInput.current?.files?.[0];
+                if (!file) {
+                  setMessage("請先選擇一個檔案。");
+                  return;
+                }
+                if (used) {
+                  const refusal = uploadRefusal(file, limits.data, used);
+                  if (refusal !== "") {
+                    setMessage(refusal);
                     return;
                   }
-                  if (used) {
-                    const refusal = uploadRefusal(file, limits.data, used);
-                    if (refusal !== "") {
-                      setMessage(refusal);
-                      return;
-                    }
-                  }
-                  upload.mutate(file, {
-                    onSuccess: (d) => {
-                      setUploaded((prev) => [...prev, d]);
-                      setMessage("");
-                      if (fileInput.current) fileInput.current.value = "";
-                    },
-                  });
-                }}
-              >
-                {upload.isPending ? "上傳中…" : "上傳"}
-              </button>
-            </div>
-          )}
+                }
+                upload.mutate(file, {
+                  onSuccess: (d) => {
+                    setUploaded((prev) => [...prev, d]);
+                    setMessage("");
+                    if (fileInput.current) fileInput.current.value = "";
+                  },
+                });
+              }}
+            >
+              {upload.isPending ? "上傳中…" : "上傳"}
+            </button>
+          </div>
         </>
       )}
 

@@ -8,7 +8,13 @@ import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { bytes } from "../../../../shared/format";
 import { MutationError } from "./MutationError";
 
-export function DatasetSection({ testCaseId }: { testCaseId: string }) {
+export function DatasetSection({
+  testCaseId,
+  versionId,
+}: {
+  testCaseId: string;
+  versionId?: string;
+}) {
   const datasets = useTestCaseDatasets(testCaseId);
   const [message, setMessage] = useState("");
   const remove = useDeleteDataset(testCaseId);
@@ -17,7 +23,11 @@ export function DatasetSection({ testCaseId }: { testCaseId: string }) {
     <>
       <h2>測試資料</h2>
       <p>
-        <Link to="/lab/datasets" search={{ test_case: testCaseId }}>
+        <Link
+          to="/lab/test-cases/$testCaseId/datasets"
+          params={{ testCaseId }}
+          search={{ version: versionId }}
+        >
           上傳檔案
         </Link>
       </p>

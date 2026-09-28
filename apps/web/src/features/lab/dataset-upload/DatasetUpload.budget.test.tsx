@@ -6,6 +6,8 @@ import { queryClient } from "../../../core/api/queryClient";
 import { DatasetUpload } from "./DatasetUpload.page";
 
 const TEST_CASE = "11111111-1111-4111-8111-111111111111";
+const SKILL = "22222222-2222-4222-8222-222222222222";
+const VERSION = "33333333-3333-4333-8333-333333333333";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -28,7 +30,8 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children }: { to: string; children?: unknown }) => (
     <a href={to}>{children as never}</a>
   ),
-  useSearch: () => ({ test_case: TEST_CASE }),
+  useParams: () => ({ testCaseId: TEST_CASE }),
+  useSearch: () => ({ version: VERSION }),
 }));
 
 function platform(totalBytes: number, fileCount: number) {
@@ -43,6 +46,17 @@ function platform(totalBytes: number, fileCount: number) {
         retention_days: 7,
         allowed_kinds: ["csv"],
         note: "",
+      });
+    }
+    if (path === `/test-cases/${TEST_CASE}`) {
+      return json({
+        test_case_id: TEST_CASE,
+        skill_id: SKILL,
+        name: "預算邊界",
+        user_prompt: "處理資料",
+        acceptance_criteria: [],
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-01T00:00:00Z",
       });
     }
     if (path === `/test-cases/${TEST_CASE}/datasets`) {

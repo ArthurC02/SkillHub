@@ -70,7 +70,7 @@ export function TestCaseDetail() {
       <PromptForm testCase={testCase.data} />
       <CriteriaSection testCase={testCase.data} />
       <RubricSection testCase={testCase.data} />
-      <DatasetSection testCaseId={testCaseId} />
+      <DatasetSection testCaseId={testCaseId} versionId={selectedVersion} />
       <h2>開始試跑</h2>
       <p>
         <Link
