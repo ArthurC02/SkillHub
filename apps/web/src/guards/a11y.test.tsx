@@ -617,7 +617,7 @@ test("QA-009: Test Case 詳情", async () => {
   await scan("/lab/test-cases/$testCaseId");
 }, 30000);
 
-test("QA-009: Run 歷史", async () => {
+test("QA-009: 活動", async () => {
   stubPlatform();
   await mount();
   await act(async () => {
@@ -791,7 +791,7 @@ test("QA-009: 執行前權限確認（載入中）", async () => {
   await scan("/lab/run loading");
 }, 30000);
 
-test("QA-009: Run 歷史（空的）", async () => {
+test("QA-009: 活動（空的）", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     if (
       String(input)

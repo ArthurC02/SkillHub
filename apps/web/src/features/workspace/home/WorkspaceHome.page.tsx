@@ -5,15 +5,13 @@ import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useOwnSkills } from "../../skill";
 import {
-  IN_FLIGHT_RUN_STATUSES,
   RunVerdict,
+  runActivityGroup,
   runStatusLabel,
   useRuns,
   type RunListItem,
 } from "../../runs";
 import "./WorkspaceHome.page.css";
-
-const NEEDS_DECISION = new Set(["not_met", "partially_met"]);
 
 export function WorkspaceHome() {
   const me = useMe();
@@ -31,9 +29,11 @@ function WorkspaceHomeContent({ name }: { name: string }) {
   const runs = useRuns();
   const runRows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
   const attention = runRows.filter(
-    (run) => !IN_FLIGHT_RUN_STATUSES.has(run.status) && NEEDS_DECISION.has(run.evaluation.value),
+    (run) => runActivityGroup(run.status, run.evaluation.value) === "needs_decision",
   );
-  const active = runRows.filter((run) => IN_FLIGHT_RUN_STATUSES.has(run.status));
+  const active = runRows.filter(
+    (run) => runActivityGroup(run.status, run.evaluation.value) === "in_flight",
+  );
   const owned = skills.data?.skills.slice(0, 4) ?? [];
 
   return (

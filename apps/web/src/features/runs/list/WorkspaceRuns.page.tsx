@@ -3,7 +3,12 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../runs.service";
-import { CLEANUP_BADGE, runStatusLabel } from "../runs.model";
+import {
+  CLEANUP_BADGE,
+  runActivityGroup,
+  runStatusLabel,
+  type RunActivityGroup,
+} from "../runs.model";
 import { RunVerdict } from "../components/RunVerdict";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
@@ -14,13 +19,13 @@ export function WorkspaceRuns() {
 
   return (
     <section>
-      <h1>Run 歷史</h1>
+      <h1>活動</h1>
       <p className="note" data-role="teaching">
-        這個工作區跑過的 Run，新的在上面。
+        目前只收錄試跑；其他工作仍在原處。
       </p>
 
-      {runs.isPending && <Loading what=" Run 歷史" />}
-      <ReadFailure error={runs.error} what=" Run 歷史" />
+      {runs.isPending && <Loading what="活動" />}
+      <ReadFailure error={runs.error} what="活動" />
       {runs.data && (
         <ListFreshness
           inFlight={rows.some((run) => IN_FLIGHT_RUN_STATUSES.has(run.status))}
@@ -37,11 +42,28 @@ export function WorkspaceRuns() {
             <Link to="/lab/test-cases">Test Case</Link> 建立一個再試跑。
           </p>
         ) : (
-          <ul className="download-list" data-role="evidence">
-            {rows.map((run) => (
-              <RunRow key={run.run_id} run={run} />
-            ))}
-          </ul>
+          <>
+            {ACTIVITY_GROUPS.map((group) => {
+              const groupRows = rows.filter(
+                (run) => runActivityGroup(run.status, run.evaluation.value) === group.key,
+              );
+              return (
+                <section key={group.key}>
+                  <h2>{group.title}</h2>
+                  <p className="note">{group.note}</p>
+                  {groupRows.length === 0 ? (
+                    <p>{group.empty}</p>
+                  ) : (
+                    <ul className="download-list" data-role="evidence">
+                      {groupRows.map((run) => (
+                        <RunRow key={run.run_id} run={run} action={group.action} />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
+          </>
         ))}
       {runs.hasNextPage && (
         <button
@@ -61,13 +83,44 @@ export function WorkspaceRuns() {
 
 const REASON_EXPECTED = new Set(["failed", "cancelled", "timed_out"]);
 
-function RunRow({ run }: { run: RunListItem }) {
+const ACTIVITY_GROUPS: Array<{
+  key: RunActivityGroup;
+  title: string;
+  note: string;
+  empty: string;
+  action: string;
+}> = [
+  {
+    key: "needs_decision",
+    title: "需要你的決定",
+    note: "試跑已結束，但成果是不符合或部分符合。",
+    empty: "目前沒有等待你判斷的試跑結果。",
+    action: "檢視證據",
+  },
+  {
+    key: "in_flight",
+    title: "執行中",
+    note: "平台仍在處理；離開後可以從這裡回來。",
+    empty: "目前沒有正在執行的試跑。",
+    action: "查看進度",
+  },
+  {
+    key: "recent",
+    title: "最近完成",
+    note: "其他已結束的試跑，新的在上面。",
+    empty: "目前沒有其他已結束的試跑。",
+    action: "查看結果",
+  },
+];
+
+function RunRow({ run, action }: { run: RunListItem; action: string }) {
   return (
     <li className="download-item">
       <p>
+        <strong>{run.skill_name}</strong>｜
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
-          <strong>{run.skill_name}</strong>
-        </Link>{" "}
+          {action}
+        </Link>
       </p>
       <p className="badge-row">
         <RunVerdict verdict={run.evaluation} />

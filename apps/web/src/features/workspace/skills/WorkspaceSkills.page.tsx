@@ -281,7 +281,7 @@ export function WorkspaceSkills() {
             <Link to="/workspace/downloads">下載紀錄</Link>
           </li>
           <li>
-            <Link to="/workspace/runs">Run 歷史</Link>
+            <Link to="/workspace/runs">活動</Link>
           </li>
           <li>
             <Link to="/workspace/account">帳號</Link>

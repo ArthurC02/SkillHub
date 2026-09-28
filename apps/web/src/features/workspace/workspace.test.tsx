@@ -131,7 +131,7 @@ const RUN_ROW = {
   finished_at: "2026-08-17T00:04:00Z",
 };
 
-test("WS-004 a run history row words `succeeded` as execution, never as a pass", async () => {
+test("WS-004 an activity row words `succeeded` as execution, never as a pass", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 
@@ -139,6 +139,44 @@ test("WS-004 a run history row words `succeeded` as execution, never as a pass",
   expect(text()).toContain("任務判定：符合");
   expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));
   expect(text()).not.toContain("成功");
+});
+
+test("WS-004 activity groups every run by the decision its server facts support", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      runs: [
+        {
+          ...RUN_ROW,
+          run_id: "run-decision",
+          skill_name: "需要判斷的 Skill",
+          evaluation: { value: "partially_met", label: "部分符合", note: "仍需判斷。" },
+        },
+        {
+          ...RUN_ROW,
+          run_id: "run-active",
+          skill_name: "執行中的 Skill",
+          status: "running",
+          finished_at: undefined,
+          evaluation: { value: "not_evaluated", label: "未評估", note: "還在跑。" },
+        },
+        { ...RUN_ROW, run_id: "run-recent", skill_name: "最近完成的 Skill" },
+      ],
+    }),
+  );
+  await render(<WorkspaceRuns />, () => text().includes("最近完成的 Skill"));
+
+  const sectionText = (heading: string) =>
+    Array.from(container.querySelectorAll("h2"))
+      .find((node) => node.textContent === heading)
+      ?.closest("section")?.textContent ?? "";
+
+  expect(sectionText("需要你的決定")).toContain("需要判斷的 Skill");
+  expect(sectionText("需要你的決定")).toContain("檢視證據");
+  expect(sectionText("執行中")).toContain("執行中的 Skill");
+  expect(sectionText("執行中")).toContain("查看進度");
+  expect(sectionText("最近完成")).toContain("最近完成的 Skill");
+  expect(sectionText("最近完成")).toContain("查看結果");
+  expect(container.querySelectorAll(".download-item")).toHaveLength(3);
 });
 
 test("O11Y-004 the policy event table keeps its accessible columns in mobile cards", async () => {
@@ -297,7 +335,7 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
   }
 });
 
-test("WS-002 an empty run history says nothing ran, not that records were cleared", async () => {
+test("WS-002 empty activity says nothing ran, not that records were cleared", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [] }));
   await render(<WorkspaceRuns />, () => text().includes("還沒有跑過任何 Run"));
 
@@ -1325,7 +1363,7 @@ test("丙-116 the one action that does work is a named section, not a bare butto
   expect(button("以這個 Skill 為起點建立我自己的")).not.toBeUndefined();
 });
 
-test("§2.12 第 6 條 a run history with a run still going says how old it is and can be refreshed", async () => {
+test("§2.12 第 6 條 activity with a run still going says how old it is and can be refreshed", async () => {
   const fetchSpy = vi.fn(() =>
     json({
       runs: [
@@ -1353,7 +1391,7 @@ test("§2.12 第 6 條 a run history with a run still going says how old it is a
   await waitFor(() => fetchSpy.mock.calls.length > before);
 });
 
-test("§2.12 第 6 條 a run history with nothing running carries no refresh control", async () => {
+test("§2.12 第 6 條 activity with nothing running carries no refresh control", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [RUN_ROW] }));
   await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
 

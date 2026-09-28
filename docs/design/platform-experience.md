@@ -260,7 +260,7 @@ Operator 使用獨立的營運殼層處理帳號、成本、派送、稽核與�
 
 右側脈絡區只放當前分頁的下一步、限制或摘要；不能再堆成另一張完整管理表單。窄螢幕時它移到主內容之後，判斷與必要安全資訊的優先序仍遵守 system.md。
 
-現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；Skill 詳情的驗證入口會帶入 owner-scoped 最新版本，preflight 改選版本也同步寫回包含 Skill、Version 與 Test Case 的網址。發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把 Activity 或創作修訂搬進同一頁，也不把這組導覽當成階段二已完成。
+現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；Skill 詳情的驗證入口會帶入 owner-scoped 最新版本，preflight 改選版本也同步寫回包含 Skill、Version 與 Test Case 的網址。發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把創作修訂或單一 Skill 的 Activity 搬進同一頁，也不把這組導覽當成階段二已完成。
 
 ### 5.4 Activity
 
@@ -271,6 +271,8 @@ Activity 先依使用者能否採取行動分組，再依時間排序：
 - 最近完成：可回到來源物件的結果。
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
+
+現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意，並回到單一 Run 查看證據。畫面明示目前只收錄試跑；在 Run 尚無列級最後更新、Publication 尚無跨 Skill 清單、其他工作時間語意尚未統一以前，不把前端扇出結果稱為完整 Activity。
 
 ### 5.5 微觀互動契約
 
@@ -341,7 +343,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；精確版本頁也已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 
-**階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；下一步是補齊背景工作與待決策事項的同一能力。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
+**階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
 **階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、Bundle 與下載紀錄從帳號設定收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，並明示公開位址不等於 Catalog 曝光。下一步是補上跨 Skill 的 Publication／Release 清單與真實狀態投影，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 

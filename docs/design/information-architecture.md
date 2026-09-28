@@ -100,7 +100,7 @@
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
-| `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 試跑與改善／Skill 試跑執行 |
+| `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
 | `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、Bundle 與下載紀錄共用一個平台空間〕 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
 | `/policy` | `DataPolicy` | 02:O11Y-004 | 產品營運／創作者使用權益與資料生命週期 |
@@ -243,7 +243,8 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 
 | 概念 | 受控中文名 | UI 用什麼 | 合規 |
 | --- | --- | --- | --- |
-| 一次 Run | 試跑 | `Run 歷史`／`Run 結果`／`Run 比較` | ✅ `Run` 是保留術語，三個標題都說出了自己回答什麼 |
+| 一次 Run | 試跑 | `Run 結果`／`Run 比較` | ✅ `Run` 是保留術語，兩個標題都說出了自己回答什麼 |
+| 跨物件工作投影 | 活動 | `活動` | ✅ 目前只收錄 owner 回傳的 Run，畫面明示範圍，不自行推演其他事件 |
 | Trace | 執行證據 | `執行紀錄`（`/runs/$id` 的 h2） | ✅ 是那一頁的一個區塊，不是一個位址 |
 | Evaluation | 成果判定 | `任務判定`（同頁 h2，排在最前） | ✅ 同上 |
 | 不可變內容快照 | Skill 版本 | 版本選單、`?version=` | ✅ |

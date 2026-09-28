@@ -1,4 +1,8 @@
-import type { RunStatus } from "./trace.service";
+import { IN_FLIGHT_RUN_STATUSES, type RunStatus } from "./trace.service";
+
+export type RunActivityGroup = "needs_decision" | "in_flight" | "recent";
+
+const RUN_VERDICTS_NEEDING_DECISION = new Set(["not_met", "partially_met"]);
 
 export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   queued: "排隊中",
@@ -14,6 +18,12 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
 
 export function runStatusLabel(status: string): string {
   return RUN_STATUS_LABEL[status as RunStatus] ?? status;
+}
+
+export function runActivityGroup(status: string, verdict: string): RunActivityGroup {
+  if (IN_FLIGHT_RUN_STATUSES.has(status)) return "in_flight";
+  if (RUN_VERDICTS_NEEDING_DECISION.has(verdict)) return "needs_decision";
+  return "recent";
 }
 
 export const CLEANUP_BADGE: Record<string, string> = {
