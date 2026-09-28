@@ -3,14 +3,17 @@
   "proposal_id": "run-preflight-facts-follow-their-lines",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-preflight-facts-citation-follows-the-code",
-  "status": "draft",
+  "status": "verified",
   "change_classification": "material",
-  "submitted_at": null,
-  "verified_at": null,
+  "submitted_at": "2026-09-28T01:58:48.124631Z",
+  "verified_at": "2026-09-28T01:58:48.734452Z",
   "finalized_at": null,
   "applied_at": null,
   "proposal_revision": 1,
-  "base_registry_revision": null,
+  "base_registry_revision": {
+    "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
+    "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
+  },
   "affected_contexts": [
     "registry",
     "run"
@@ -92,5 +95,18 @@
   ],
   "open_questions": [],
   "supersedes": "run-registry-reviewed-facts-signed",
-  "approvals": []
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-09-28T01:58:48.396739Z",
+      "scope": "The citation of the interaction registry-run-preflight-facts, moved to the lines where preflight now reads Registry-owned Version facts; the interaction itself is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
+        "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
+      }
+    }
+  ]
 }

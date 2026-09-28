@@ -2,7 +2,10 @@
   "format": "domain-evidence-bundle/v1",
   "requirement_id": "run-preflight-facts-citation-follows-the-code",
   "proposal_id": "run-preflight-facts-follow-their-lines",
-  "registry_revision": null,
+  "registry_revision": {
+    "observed_commit": "2d30c5ff8750ac085af83f0c22678cdb5dacce88",
+    "registry_digest": "sha256:ab33e10f330bd8481455437a66edd2a549c98875344d37c8ad713aea91e4bc77"
+  },
   "approvals": [],
   "scm_attestation": null,
   "counterfactual_check": {
@@ -40,7 +43,7 @@
       "evidence": "registry_tools.py verify-evidence on the current Registry exited 1 and reported the preflight citation stale",
       "command_profile": "registry",
       "exit_code": 0,
-      "output_sha256": "sha256:aec678396f6e80fed5f8c576ee1d7d8012f25fa8e9407b6e9837cd404af2009e",
+      "output_sha256": "sha256:933ab09c8e5102f2e1a6466d6732ec6aebd873a40800e26af8f4a66f34f46e0c",
       "finished_at": "2026-09-28T00:00:00Z"
     },
     {
@@ -64,10 +67,10 @@
     {
       "obligation_id": "audit-chain-intact",
       "status": "passed",
-      "evidence": "registry_tools.py verify-audit reported status valid over 58 events",
+      "evidence": "registry_tools.py verify-audit reported status valid over 59 events",
       "command_profile": "registry",
       "exit_code": 0,
-      "output_sha256": "sha256:a2a023d52e81694cef0b2911d521037f3a0fdaa298f790dde87c0bea8ceee03b",
+      "output_sha256": "sha256:2a8dd7597e02c9f3633fa4af9fae9de2ac16511c26c68c154fcf34504b305d59",
       "finished_at": "2026-09-28T00:00:00Z"
     }
   ],
