@@ -81,45 +81,72 @@ type Overrides = {
   create?: { status: number; error: string };
 };
 
-function stubPlatform(over: Overrides = {}) {
-  const calls: { url: string; method: string; body?: string }[] = [];
-  let removed = false;
-  const json = (body: unknown, status = 200) =>
-    Promise.resolve(
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+function json(body: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
 
-  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
-    const path = url.split("?")[0];
-    calls.push({ url, method: init?.method ?? "GET", body: init?.body as string | undefined });
-    if (url.includes("/criteria/suggest")) {
+type PlatformRequest = { url: string; path: string; method: string };
+
+function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
+  return [
+    (req: PlatformRequest) => {
+      if (!req.url.includes("/criteria/suggest")) return undefined;
       if (over.suggestResponse) return over.suggestResponse;
       const s = over.suggest ?? { suggestions: [] };
       return "status" in s ? json({ error: s.error }, s.status) : json(s);
-    }
-    if (url.includes("/datasets")) return json({ datasets: over.datasets ?? [], total_bytes: 0 });
-    if (path === "/runs") return json({ runs: over.runs ?? [] });
-    if (path === "/skills")
-      return json({ skills: [{ skill_id: SKILL, name: "去重複工具", summary: "" }] });
-    if (init?.method === "POST" && path === "/test-cases") {
+    },
+    (req: PlatformRequest) =>
+      req.url.includes("/datasets")
+        ? json({ datasets: over.datasets ?? [], total_bytes: 0 })
+        : undefined,
+    (req: PlatformRequest) => (req.path === "/runs" ? json({ runs: over.runs ?? [] }) : undefined),
+    (req: PlatformRequest) =>
+      req.path === "/skills"
+        ? json({ skills: [{ skill_id: SKILL, name: "去重複工具", summary: "" }] })
+        : undefined,
+    (req: PlatformRequest) => {
+      if (req.method !== "POST" || req.path !== "/test-cases") return undefined;
       if (over.create) return json({ error: over.create.error }, over.create.status);
       return json(draft, 201);
-    }
-    if (path === "/test-cases") return json({ test_cases: over.testCases ?? [] });
-    if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`) {
-      removed = true;
+    },
+    (req: PlatformRequest) =>
+      req.path === "/test-cases" ? json({ test_cases: over.testCases ?? [] }) : undefined,
+    (req: PlatformRequest) => {
+      if (req.method !== "DELETE" || req.path !== `/test-cases/${TEST_CASE}`) return undefined;
+      removedRef.removed = true;
       return json({
         deleted: true,
         datasets_deleted: 2,
         note: "Test Case 與它上傳的檔案已移除，檔案本身也刪了；過去 Run 的快照仍保留 Prompt、驗收條件，以及每個檔案的檔名與內容雜湊。",
       });
+    },
+    (req: PlatformRequest) =>
+      removedRef.removed && req.path === `/test-cases/${TEST_CASE}`
+        ? json({ error: "找不到這個 Test Case" }, 404)
+        : undefined,
+  ];
+}
+
+function stubPlatform(over: Overrides = {}) {
+  const calls: { url: string; method: string; body?: string }[] = [];
+  const removedRef = { removed: false };
+  const handlers = platformHandlers(over, removedRef);
+
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    const path = url.split("?")[0];
+    const method = init?.method ?? "GET";
+    calls.push({ url, method, body: init?.body as string | undefined });
+    const req: PlatformRequest = { url, path, method };
+    for (const handle of handlers) {
+      const result = handle(req);
+      if (result) return result;
     }
-    if (removed && path === `/test-cases/${TEST_CASE}`)
-      return json({ error: "找不到這個 Test Case" }, 404);
     return json(over.testCase ?? draft);
   });
 

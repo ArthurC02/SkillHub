@@ -1150,147 +1150,178 @@ export const ADMIN_COST_STATISTICS = {
   ],
 } satisfies { statistics: CostStatisticsWindow[] };
 
-function ok(body: unknown, status = 200) {
+type RouteResult = { body: unknown; status: number };
+
+function ok(body: unknown, status = 200): RouteResult {
   return { body, status };
 }
 
-export function platformResponse(input: string): { body: unknown; status: number } {
-  const url = String(input).replace(/^https?:\/\/[^/]+/, "");
-  const path = url.split("?")[0];
+type RouteMatcher = (path: string, url: string) => RouteResult | undefined;
 
-  if (path === "/admin/accounts") return ok(ADMIN_ACCOUNT);
-  if (path.startsWith("/admin/credits/") && !path.endsWith("/grants")) return ok(ADMIN_LEDGER);
-  if (path === "/admin/skills") return ok(ADMIN_SKILLS);
-  if (path === "/admin/dispatch") return ok(ADMIN_DISPATCH);
-  if (path === "/admin/rosters") return ok(ADMIN_ROSTERS);
-  if (path === "/admin/audit-log") return ok(ADMIN_AUDIT_LOG);
-  if (path === "/admin/cost-statistics") return ok(ADMIN_COST_STATISTICS);
-  if (path === "/admin/model-budgets") return ok(ADMIN_MODEL_BUDGETS);
-  if (path === "/admin/exposure-reviews") return ok(ADMIN_EXPOSURE_QUEUE);
-  if (path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`)
-    return ok(ADMIN_EXPOSURE_CASE);
-  if (path === "/admin/trends/cost") return ok(ADMIN_TREND_COST);
-  if (path === "/admin/trends/credits") return ok(ADMIN_TREND_CREDITS);
-  if (path === "/admin/trends/runs") return ok(ADMIN_TREND_RUNS);
-  if (path === "/admin/trends/operator-actions") return ok(ADMIN_TREND_ACTIONS);
-  if (path === "/admin/trends/funnel") return ok(ADMIN_TREND_FUNNEL);
-  if (path.startsWith("/api/skills/search")) return ok(SEARCH);
-  if (path.startsWith("/api/skills/catalog")) {
+const ROUTES: RouteMatcher[] = [
+  (path) => (path === "/admin/accounts" ? ok(ADMIN_ACCOUNT) : undefined),
+  (path) =>
+    path.startsWith("/admin/credits/") && !path.endsWith("/grants") ? ok(ADMIN_LEDGER) : undefined,
+  (path) => (path === "/admin/skills" ? ok(ADMIN_SKILLS) : undefined),
+  (path) => (path === "/admin/dispatch" ? ok(ADMIN_DISPATCH) : undefined),
+  (path) => (path === "/admin/rosters" ? ok(ADMIN_ROSTERS) : undefined),
+  (path) => (path === "/admin/audit-log" ? ok(ADMIN_AUDIT_LOG) : undefined),
+  (path) => (path === "/admin/cost-statistics" ? ok(ADMIN_COST_STATISTICS) : undefined),
+  (path) => (path === "/admin/model-budgets" ? ok(ADMIN_MODEL_BUDGETS) : undefined),
+  (path) => (path === "/admin/exposure-reviews" ? ok(ADMIN_EXPOSURE_QUEUE) : undefined),
+  (path) =>
+    path === `/admin/publications/${PUBLISHER}/${PUBLICATION}/exposure`
+      ? ok(ADMIN_EXPOSURE_CASE)
+      : undefined,
+  (path) => (path === "/admin/trends/cost" ? ok(ADMIN_TREND_COST) : undefined),
+  (path) => (path === "/admin/trends/credits" ? ok(ADMIN_TREND_CREDITS) : undefined),
+  (path) => (path === "/admin/trends/runs" ? ok(ADMIN_TREND_RUNS) : undefined),
+  (path) => (path === "/admin/trends/operator-actions" ? ok(ADMIN_TREND_ACTIONS) : undefined),
+  (path) => (path === "/admin/trends/funnel" ? ok(ADMIN_TREND_FUNNEL) : undefined),
+  (path) => (path.startsWith("/api/skills/search") ? ok(SEARCH) : undefined),
+  (path, url) => {
+    if (!path.startsWith("/api/skills/catalog")) return undefined;
     const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
     if (!category) return ok(CATALOG);
     const results = CATALOG.results.filter((row) => row.category.value === category);
     return ok({ ...CATALOG, results, total: results.length });
-  }
-  if (path.endsWith("/files")) return ok(FILES);
-  if (path.startsWith("/api/skills/"))
-    return ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"));
-
-  if (path === "/me")
-    return ok({
-      user_id: "u-1",
-      email: "tester@example.com",
-      display_name: "tester",
-      workspace_id: "ws-1",
-      operator: false,
-      deletion_requested_at: "2026-08-17T00:00:00Z",
-      purge_after: "2026-09-16T00:00:00Z",
-      deletion_scope:
-        "帳號、Skill、版本、Run、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
-    } satisfies Me);
-  if (path === "/me/credits") return ok({ balance_credits: 120 });
-  if (path === "/me/credits/entries") return ok({ entries: [], note: "目前沒有點數進出紀錄。" });
-  if (path === "/me/bundles") return ok({ bundles: [] });
-  if (path === "/me/publisher") return ok(OWN_PUBLISHER);
-  if (path === `/skills/${SKILL}/publication`) return ok(OWN_PUBLICATION);
-  if (path === `/publications/${PUBLISHER}/${PUBLICATION}`) return ok(PUBLIC_PUBLICATION);
-  if (path === "/policy/data-retention") return ok(RETENTION_POLICY);
-  if (path === "/packaging/targets") return ok(TARGETS);
-  if (path.endsWith("/packaging/preview")) return ok(PREVIEW);
-  if (path === "/downloads") return ok(DOWNLOADS);
-  if (path === `/downloads/${ARTIFACT}/records`)
-    return ok({ records: [{ downloaded_at: "2026-08-17T09:00:00Z", actor: "tester" }] });
-  if (path === "/runs") return ok(RUNS);
-  if (path.endsWith("/artifacts")) return ok(RUN_ARTIFACTS);
-
-  if (path === "/test-cases/limits") return ok(LIMITS);
-  if (path.endsWith("/datasets"))
-    return ok({
-      datasets: [
-        {
-          dataset_id: "d0",
-          file_name: "rows.csv",
-          content_type: "text/csv",
-          size_bytes: 1024,
-          content_hash: "sha256:d0",
-          expires_at: "2026-11-15T00:00:00Z",
-        },
-      ],
-      total_bytes: 1024,
-    });
-  if (path === "/test-cases")
-    return ok({
-      test_cases: [
-        {
-          ...TEST_CASE_DRAFT,
-          skill_name: "PDF Summariser",
-          criteria_confirmed: 1,
-          criteria_total: 2,
-          has_rubric: true,
-        },
-      ],
-    });
-  if (path.startsWith("/test-cases/")) return ok(TEST_CASE_DRAFT);
-  if (path === "/skills")
-    return ok({
-      skills: [
-        {
-          skill_id: SKILL,
-          name: "PDF Summariser",
-          summary: "摘要",
-          redistribution: "unknown",
-          access_restriction: null,
-          risk: {
-            scan_status: "scanned",
-            level: "disclosed",
-            warnings: 0,
-            disclosures: [
-              {
-                code: "script-file",
-                label: "含可執行 Script 檔案",
-                note: "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+  },
+  (path) => (path.endsWith("/files") ? ok(FILES) : undefined),
+  (path) =>
+    path.startsWith("/api/skills/")
+      ? ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"))
+      : undefined,
+  (path) =>
+    path === "/me"
+      ? ok({
+          user_id: "u-1",
+          email: "tester@example.com",
+          display_name: "tester",
+          workspace_id: "ws-1",
+          operator: false,
+          deletion_requested_at: "2026-08-17T00:00:00Z",
+          purge_after: "2026-09-16T00:00:00Z",
+          deletion_scope:
+            "帳號、Skill、版本、Run、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
+        } satisfies Me)
+      : undefined,
+  (path) => (path === "/me/credits" ? ok({ balance_credits: 120 }) : undefined),
+  (path) =>
+    path === "/me/credits/entries"
+      ? ok({ entries: [], note: "目前沒有點數進出紀錄。" })
+      : undefined,
+  (path) => (path === "/me/bundles" ? ok({ bundles: [] }) : undefined),
+  (path) => (path === "/me/publisher" ? ok(OWN_PUBLISHER) : undefined),
+  (path) => (path === `/skills/${SKILL}/publication` ? ok(OWN_PUBLICATION) : undefined),
+  (path) =>
+    path === `/publications/${PUBLISHER}/${PUBLICATION}` ? ok(PUBLIC_PUBLICATION) : undefined,
+  (path) => (path === "/policy/data-retention" ? ok(RETENTION_POLICY) : undefined),
+  (path) => (path === "/packaging/targets" ? ok(TARGETS) : undefined),
+  (path) => (path.endsWith("/packaging/preview") ? ok(PREVIEW) : undefined),
+  (path) => (path === "/downloads" ? ok(DOWNLOADS) : undefined),
+  (path) =>
+    path === `/downloads/${ARTIFACT}/records`
+      ? ok({ records: [{ downloaded_at: "2026-08-17T09:00:00Z", actor: "tester" }] })
+      : undefined,
+  (path) => (path === "/runs" ? ok(RUNS) : undefined),
+  (path) => (path.endsWith("/artifacts") ? ok(RUN_ARTIFACTS) : undefined),
+  (path) => (path === "/test-cases/limits" ? ok(LIMITS) : undefined),
+  (path) =>
+    path.endsWith("/datasets")
+      ? ok({
+          datasets: [
+            {
+              dataset_id: "d0",
+              file_name: "rows.csv",
+              content_type: "text/csv",
+              size_bytes: 1024,
+              content_hash: "sha256:d0",
+              expires_at: "2026-11-15T00:00:00Z",
+            },
+          ],
+          total_bytes: 1024,
+        })
+      : undefined,
+  (path) =>
+    path === "/test-cases"
+      ? ok({
+          test_cases: [
+            {
+              ...TEST_CASE_DRAFT,
+              skill_name: "PDF Summariser",
+              criteria_confirmed: 1,
+              criteria_total: 2,
+              has_rubric: true,
+            },
+          ],
+        })
+      : undefined,
+  (path) => (path.startsWith("/test-cases/") ? ok(TEST_CASE_DRAFT) : undefined),
+  (path) =>
+    path === "/skills"
+      ? ok({
+          skills: [
+            {
+              skill_id: SKILL,
+              name: "PDF Summariser",
+              summary: "摘要",
+              redistribution: "unknown",
+              access_restriction: null,
+              risk: {
+                scan_status: "scanned",
+                level: "disclosed",
+                warnings: 0,
+                disclosures: [
+                  {
+                    code: "script-file",
+                    label: "含可執行 Script 檔案",
+                    note: "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+                  },
+                ],
+                note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
               },
-            ],
-            note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
-          },
-          verification: {
-            value: "scanned",
-            label: "已掃描",
-            note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
-            scanned_at: "2026-08-01T10:00:00Z",
-          },
-        },
-      ],
-      limit: 100,
-      truncated: false,
-    });
-  if (path.includes("/versions/diff")) return ok(VERSION_DIFF);
-  if (path.endsWith("/diff")) return ok(VERSION_DIFF);
-  if (path.endsWith("/versions")) return ok(SKILL_VERSIONS);
-  if (path.endsWith("/runs/preflight")) return ok(PREFLIGHT);
+              verification: {
+                value: "scanned",
+                label: "已掃描",
+                note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+                scanned_at: "2026-08-01T10:00:00Z",
+              },
+            },
+          ],
+          limit: 100,
+          truncated: false,
+        })
+      : undefined,
+  (path) => (path.includes("/versions/diff") ? ok(VERSION_DIFF) : undefined),
+  (path) => (path.endsWith("/diff") ? ok(VERSION_DIFF) : undefined),
+  (path) => (path.endsWith("/versions") ? ok(SKILL_VERSIONS) : undefined),
+  (path) => (path.endsWith("/runs/preflight") ? ok(PREFLIGHT) : undefined),
+  (path, url) =>
+    path.endsWith("/trace")
+      ? ok(url.includes("advanced") ? TRACE_ADVANCED : TRACE_GENERAL)
+      : undefined,
+  (path) => (path.endsWith("/evaluation/revisions") ? ok(REVISIONS) : undefined),
+  (path) => (path.endsWith("/evaluation") ? ok(EVALUATION) : undefined),
+  (path) => (path.endsWith("/suggestions") ? ok(SUGGESTIONS) : undefined),
+  (path) => (path.endsWith("/comparison") ? ok(COMPARISON) : undefined),
+  (path) =>
+    path.startsWith("/runs/")
+      ? ok({
+          run_id: RUN,
+          skill_id: SKILL,
+          skill_version_id: VERSION,
+          test_case_snapshot_id: "snap-1",
+          test_case_id: TEST_CASE,
+        })
+      : undefined,
+];
 
-  if (path.endsWith("/trace")) return ok(url.includes("advanced") ? TRACE_ADVANCED : TRACE_GENERAL);
-  if (path.endsWith("/evaluation/revisions")) return ok(REVISIONS);
-  if (path.endsWith("/evaluation")) return ok(EVALUATION);
-  if (path.endsWith("/suggestions")) return ok(SUGGESTIONS);
-  if (path.endsWith("/comparison")) return ok(COMPARISON);
-  if (path.startsWith("/runs/"))
-    return ok({
-      run_id: RUN,
-      skill_id: SKILL,
-      skill_version_id: VERSION,
-      test_case_snapshot_id: "snap-1",
-      test_case_id: TEST_CASE,
-    });
-
+export function platformResponse(input: string): RouteResult {
+  const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+  const path = url.split("?")[0];
+  for (const route of ROUTES) {
+    const hit = route(path, url);
+    if (hit) return hit;
+  }
   return ok({ error: "not found" }, 404);
 }

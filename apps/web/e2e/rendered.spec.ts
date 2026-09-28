@@ -63,24 +63,39 @@ test.describe("QA-008 real layout", () => {
 
       const doc = await page.evaluate(() => {
         const limit = document.documentElement.clientWidth;
-        const over = Array.from(document.querySelectorAll("*")).filter(
-          (el) =>
-            el.getBoundingClientRect().right > limit + 0.5 || el.scrollWidth > el.clientWidth + 0.5,
-        );
+
+        function overflowsViewport(el: Element) {
+          return (
+            el.getBoundingClientRect().right > limit + 0.5 || el.scrollWidth > el.clientWidth + 0.5
+          );
+        }
+
+        const over = Array.from(document.querySelectorAll("*")).filter(overflowsViewport);
+
+        function isAncestorOfAnother(el: Element) {
+          function contains(other: Element) {
+            return other !== el && el.contains(other);
+          }
+          return over.some(contains);
+        }
+
+        function isDeepest(el: Element) {
+          return !isAncestorOfAnother(el);
+        }
+
+        function describeCulprit(el: Element) {
+          const box = el.getBoundingClientRect();
+          const cls = typeof el.className === "string" ? el.className.trim() : "";
+          const at = `${el.tagName.toLowerCase()}${cls ? "." + cls.split(/\s+/).join(".") : ""}`;
+          return `${at} w=${Math.round(box.width)} right=${Math.round(box.right)} scrollWidth=${el.scrollWidth}`;
+        }
+
         return {
           scrollWidth: document.documentElement.scrollWidth,
           clientWidth: limit,
           // Deepest only: an ancestor of an overflowing element overflows too,
           // and a list led by html/body would name nothing useful.
-          culprits: over
-            .filter((el) => !over.some((other) => other !== el && el.contains(other)))
-            .slice(0, 5)
-            .map((el) => {
-              const box = el.getBoundingClientRect();
-              const cls = typeof el.className === "string" ? el.className.trim() : "";
-              const at = `${el.tagName.toLowerCase()}${cls ? "." + cls.split(/\s+/).join(".") : ""}`;
-              return `${at} w=${Math.round(box.width)} right=${Math.round(box.right)} scrollWidth=${el.scrollWidth}`;
-            }),
+          culprits: over.filter(isDeepest).slice(0, 5).map(describeCulprit),
         };
       });
       expect(
@@ -121,9 +136,15 @@ test.describe("QA-008 real layout", () => {
     await expect(page.locator(".app-nav a").first()).toBeVisible();
     await page.evaluate(
       () =>
-        new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        ),
+        new Promise<void>((resolve) => {
+          let frames = 0;
+          function tick() {
+            frames++;
+            if (frames < 2) requestAnimationFrame(tick);
+            else resolve();
+          }
+          requestAnimationFrame(tick);
+        }),
     );
 
     const header = await page.evaluate(() => {
@@ -156,7 +177,9 @@ test.describe("QA-008 real layout", () => {
       `手機導覽的最小點按高度只有 ${Math.min(...header.navHeights)}px`,
     ).toBeGreaterThanOrEqual(40);
   });
+});
 
+test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
   for (const width of [1440, 1280]) {
     test(`頁首橫貫視窗，標題與 h1 同一條左緣：${width}px（設計 §4.5）`, async ({ page }) => {
       await stubPlatform(page);
@@ -236,7 +259,9 @@ test.describe("QA-008 real layout", () => {
       expect(l.height, `「${l.text}」的命中區只有 ${l.height}px`).toBeGreaterThanOrEqual(40);
     }
   });
+});
 
+test.describe("QA-008 real layout: 表格與段落寬度", () => {
   test("a comparison table scrolls inside its own container", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
@@ -334,7 +359,9 @@ test.describe("QA-008 real layout", () => {
       expect(b.border, `「${b.text}」 has no box`).not.toBe("0px");
     }
   });
+});
 
+test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
   for (const [name, url, label] of [
     ["catalog category", "/?category=documents", "文件（"],
     ["admin section", "/admin/accounts", "帳號與點數"],
@@ -431,7 +458,9 @@ test.describe("QA-008 real layout", () => {
     });
     expect(same, `fact and qualifier share a colour: ${same.join(" / ")}`).toEqual([]);
   });
+});
 
+test.describe("QA-008 real layout: 全站唯一主要動作", () => {
   test("at most one filled primary action per page, and only on a.action/button.action", async ({
     page,
   }) => {
@@ -631,7 +660,9 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
 
     expect(bad, `§2.13 D＋F ≤ A＋B＋C: ${bad.join(" / ")}`).toEqual([]);
   });
+});
 
+test.describe("the fourth disclosure: a Tip in a real engine", () => {
   test("a Tip opens without moving a neighbour, and Escape closes it", async ({ page }) => {
     await stubPlatform(page);
     await page.route(`**/runs/${RUN}/trace`, (route) => {

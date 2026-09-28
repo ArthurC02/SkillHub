@@ -51,15 +51,34 @@ const NO_RESULTS = {
   query_suggestion: "試著說出你手上的檔案格式。",
 };
 
-function stubSession(
-  features?: Record<string, boolean>,
-  failures?: unknown[],
-  generateResult?: unknown,
-  generateRejection?: unknown,
-  referenceSearch?: { query: string; result: unknown; ownSkills?: unknown },
-  generateError?: { status: number; error: string },
-  historyError?: { status: number; error: string },
-) {
+interface StubSessionOptions {
+  features?: Record<string, boolean>;
+  failures?: unknown[];
+  generateResult?: unknown;
+  generateRejection?: unknown;
+  referenceSearch?: { query: string; result: unknown; ownSkills?: unknown };
+  generateError?: { status: number; error: string };
+  historyError?: { status: number; error: string };
+}
+
+function postResult(path: string, options: StubSessionOptions): Response {
+  const { generateResult, generateRejection, generateError } = options;
+  if (path === "/skills/generate" && generateResult) {
+    return new Response(JSON.stringify(generateResult), { status: 201 });
+  }
+  if (path === "/skills/generate" && generateRejection) {
+    return new Response(JSON.stringify(generateRejection), { status: 422 });
+  }
+  if (path === "/skills/generate" && generateError) {
+    return new Response(JSON.stringify({ error: generateError.error }), {
+      status: generateError.status,
+    });
+  }
+  return new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 });
+}
+
+function stubSession(options: StubSessionOptions = {}) {
+  const { features, failures, referenceSearch, historyError } = options;
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -67,22 +86,7 @@ function stubSession(
     const path = url.pathname;
     if (init?.method === "POST") {
       posted.push({ path, body: String(init.body ?? "") });
-      if (path === "/skills/generate" && generateResult) {
-        return Promise.resolve(new Response(JSON.stringify(generateResult), { status: 201 }));
-      }
-      if (path === "/skills/generate" && generateRejection) {
-        return Promise.resolve(new Response(JSON.stringify(generateRejection), { status: 422 }));
-      }
-      if (path === "/skills/generate" && generateError) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ error: generateError.error }), {
-            status: generateError.status,
-          }),
-        );
-      }
-      return Promise.resolve(
-        new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
-      );
+      return Promise.resolve(postResult(path, options));
     }
     if (path === "/skills/generate/failures") {
       if (historyError) {
@@ -177,7 +181,7 @@ test("GEN-008: the generate entry point is absent until /me says the flag is on"
 });
 
 test("GEN-008: with the flag on, the entry point appears in the no-results state", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -189,9 +193,9 @@ test("GEN-008: with the flag on, the entry point appears in the no-results state
 });
 
 test("GEN-008: a session that expires while generating says 需要登入, not the server error", async () => {
-  const { posted } = stubSession({ generate_skill: true }, [], undefined, undefined, undefined, {
-    status: 401,
-    error: "not authenticated",
+  const { posted } = stubSession({
+    features: { generate_skill: true },
+    generateError: { status: 401, error: "not authenticated" },
   });
   await render();
   await act(async () => {
@@ -215,9 +219,9 @@ test("GEN-008: a session that expires while generating says 需要登入, not th
 });
 
 test("GEN-008: an expired session while reading failures says 需要登入, not the server error", async () => {
-  stubSession({ generate_skill: true }, [], undefined, undefined, undefined, undefined, {
-    status: 401,
-    error: "not authenticated",
+  stubSession({
+    features: { generate_skill: true },
+    historyError: { status: 401, error: "not authenticated" },
   });
   await render();
   await act(async () => {
@@ -243,15 +247,18 @@ test("GEN-002/GEN-004: a generated skill's source is stated, and its two absence
 });
 
 test("GEN-003: past failures are readable, and the task description is not among them", async () => {
-  stubSession({ generate_skill: true }, [
-    {
-      occurred_at: "2026-08-23T10:00:00Z",
-      failure: "blocked",
-      attempts: 2,
-      codes: ["name-invalid"],
-    },
-    { occurred_at: "2026-08-23T09:00:00Z", failure: "quota", attempts: 0 },
-  ]);
+  stubSession({
+    features: { generate_skill: true },
+    failures: [
+      {
+        occurred_at: "2026-08-23T10:00:00Z",
+        failure: "blocked",
+        attempts: 2,
+        codes: ["name-invalid"],
+      },
+      { occurred_at: "2026-08-23T09:00:00Z", failure: "quota", attempts: 0 },
+    ],
+  });
   await render();
   await submitSearch("沒有人做過的事");
   await waitFor(() => (container.textContent ?? "").includes("最近沒有成功的生成"));
@@ -264,7 +271,7 @@ test("GEN-003: past failures are readable, and the task description is not among
 });
 
 test("GEN-003: a workspace with no failures is shown no history section", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -273,7 +280,7 @@ test("GEN-003: a workspace with no failures is shown no history section", async 
 });
 
 test("GEN-008: the bounds the server enforces are stated before the button, and the cost is a sourced estimate", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -296,7 +303,7 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
 });
 
 test("GEN-001: the description counter counts what the server counts (runes, not UTF-16 units)", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -318,7 +325,7 @@ test("GEN-001: the description counter counts what the server counts (runes, not
 });
 
 test("GEN-005: the diagram's accepted types and size ceiling are stated before the picker, not after a refusal", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -340,12 +347,16 @@ test("GEN-003: every failure value in the contract has a sentence", async () => 
 });
 
 test("GEN-008: a successful generation does not re-run the search behind it", async () => {
-  const { searchGets } = stubSession({ generate_skill: true }, [], {
-    skill_id: "sk-1",
-    version_number: 1,
-    attempts: 1,
-    generator_model: "stub",
-    generator_prompt_version: "stub/v1",
+  const { searchGets } = stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    generateResult: {
+      skill_id: "sk-1",
+      version_number: 1,
+      attempts: 1,
+      generator_model: "stub",
+      generator_prompt_version: "stub/v1",
+    },
   });
   await render();
   await submitSearch("沒有人做過的事");
@@ -362,11 +373,15 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
 });
 
 test("設計 §3 第 9 條：生成失敗底下的發現分組是它的內容，不是它的兄弟", async () => {
-  stubSession({ generate_skill: true }, [], undefined, {
-    attempts: 1,
-    errors: [{ code: "skill-md-missing", message: "SKILL.md not found at package root" }],
-    warnings: [],
-    infos: [],
+  stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    generateRejection: {
+      attempts: 1,
+      errors: [{ code: "skill-md-missing", message: "SKILL.md not found at package root" }],
+      warnings: [],
+      infos: [],
+    },
   });
   await render();
   await submitSearch("沒有人做過的事");
@@ -406,7 +421,7 @@ test("GEN-003: the collision sentence does not claim the neighbour is not genera
 });
 
 test("GEN-005: a diagram file with no text enables submit and posts the diagram, not task_description", async () => {
-  const { posted } = stubSession({ generate_skill: true });
+  const { posted } = stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -443,7 +458,7 @@ test("GEN-005: a diagram file with no text enables submit and posts the diagram,
 });
 
 test("GEN-005: an oversized file is refused client-side with an alert, and nothing is posted", async () => {
-  const { posted } = stubSession({ generate_skill: true });
+  const { posted } = stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -460,7 +475,7 @@ test("GEN-005: an oversized file is refused client-side with an alert, and nothi
 });
 
 test("GEN-005: a diagram file at exactly the size ceiling is accepted", async () => {
-  const { posted } = stubSession({ generate_skill: true });
+  const { posted } = stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -485,7 +500,7 @@ test("GEN-005: a diagram file at exactly the size ceiling is accepted", async ()
 });
 
 test("GEN-005: a diagram file with an unsupported MIME type is refused with its own message", async () => {
-  const { posted } = stubSession({ generate_skill: true });
+  const { posted } = stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -502,7 +517,7 @@ test("GEN-005: a diagram file with an unsupported MIME type is refused with its 
 });
 
 test("GEN-001: typing past the rune ceiling warns that the server will enforce it, without disabling submit", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -530,17 +545,21 @@ const REFERENCE_HIT = (n: number) => ({
 });
 
 test("GEN-006: searching lists a result, and ticking it sends reference_skill_ids with the task text", async () => {
-  const { posted } = stubSession({ generate_skill: true }, [], undefined, undefined, {
-    query: "分析報表",
-    result: {
+  const { posted } = stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    referenceSearch: {
       query: "分析報表",
-      results: [REFERENCE_HIT(1)],
-      limit: 20,
-      truncated: false,
-      degraded: false,
-      partial_index: false,
-      filtered_out: false,
-      no_results: false,
+      result: {
+        query: "分析報表",
+        results: [REFERENCE_HIT(1)],
+        limit: 20,
+        truncated: false,
+        degraded: false,
+        partial_index: false,
+        filtered_out: false,
+        no_results: false,
+      },
     },
   });
   await render();
@@ -582,17 +601,21 @@ test("GEN-006: searching lists a result, and ticking it sends reference_skill_id
 });
 
 test("GEN-006: a fourth reference selection is not possible", async () => {
-  stubSession({ generate_skill: true }, [], undefined, undefined, {
-    query: "分析報表",
-    result: {
+  stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    referenceSearch: {
       query: "分析報表",
-      results: [REFERENCE_HIT(1), REFERENCE_HIT(2), REFERENCE_HIT(3), REFERENCE_HIT(4)],
-      limit: 20,
-      truncated: false,
-      degraded: false,
-      partial_index: false,
-      filtered_out: false,
-      no_results: false,
+      result: {
+        query: "分析報表",
+        results: [REFERENCE_HIT(1), REFERENCE_HIT(2), REFERENCE_HIT(3), REFERENCE_HIT(4)],
+        limit: 20,
+        truncated: false,
+        degraded: false,
+        partial_index: false,
+        filtered_out: false,
+        no_results: false,
+      },
     },
   });
   await render();
@@ -627,7 +650,7 @@ test("GEN-006: a fourth reference selection is not possible", async () => {
 });
 
 test("GEN-005: a FileReader error is shown as an alert and nothing is posted while reading", async () => {
-  const { posted } = stubSession({ generate_skill: true });
+  const { posted } = stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -666,7 +689,7 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
 });
 
 test("GEN-005: removing a diagram then re-selecting the same file shows it again", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -695,7 +718,7 @@ test("GEN-005: removing a diagram then re-selecting the same file shows it again
 });
 
 test("a removed diagram leaves no selected line and no remove button behind", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 
@@ -719,12 +742,11 @@ test("a removed diagram leaves no selected line and no remove button behind", as
 });
 
 test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected chips", async () => {
-  stubSession(
-    { generate_skill: true },
-    [],
-    undefined,
-    { error: "其中一個參考的 Skill 無法使用，請換一個再試一次。" },
-    {
+  stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    generateRejection: { error: "其中一個參考的 Skill 無法使用，請換一個再試一次。" },
+    referenceSearch: {
       query: "分析報表",
       result: {
         query: "分析報表",
@@ -737,7 +759,7 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
         no_results: false,
       },
     },
-  );
+  });
 
   await render();
   await submitSearch("沒有人做過的事");
@@ -770,17 +792,21 @@ test("GEN-006: a reference-unusable 422 renders verbatim and keeps the selected 
 });
 
 test("GEN-006: the reference picker's search carries purpose=reference, Home's does not", async () => {
-  const { searchGets } = stubSession({ generate_skill: true }, [], undefined, undefined, {
-    query: "分析報表",
-    result: {
+  const { searchGets } = stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    referenceSearch: {
       query: "分析報表",
-      results: [REFERENCE_HIT(1)],
-      limit: 20,
-      truncated: false,
-      degraded: false,
-      partial_index: false,
-      filtered_out: false,
-      no_results: false,
+      result: {
+        query: "分析報表",
+        results: [REFERENCE_HIT(1)],
+        limit: 20,
+        truncated: false,
+        degraded: false,
+        partial_index: false,
+        filtered_out: false,
+        no_results: false,
+      },
     },
   });
   await render();
@@ -802,17 +828,21 @@ test("GEN-006: the reference picker's search carries purpose=reference, Home's d
 });
 
 test("GEN-006: a reference tick with no text and no diagram keeps submit disabled", async () => {
-  stubSession({ generate_skill: true }, [], undefined, undefined, {
-    query: "分析報表",
-    result: {
+  stubSession({
+    features: { generate_skill: true },
+    failures: [],
+    referenceSearch: {
       query: "分析報表",
-      results: [REFERENCE_HIT(1)],
-      limit: 20,
-      truncated: false,
-      degraded: false,
-      partial_index: false,
-      filtered_out: false,
-      no_results: false,
+      result: {
+        query: "分析報表",
+        results: [REFERENCE_HIT(1)],
+        limit: 20,
+        truncated: false,
+        degraded: false,
+        partial_index: false,
+        filtered_out: false,
+        no_results: false,
+      },
     },
   });
   await render();
@@ -852,7 +882,7 @@ test("GEN-006: a reference tick with no text and no diagram keeps submit disable
 });
 
 test("GEN-008: the cost basis names the diagram and reference measurements", async () => {
-  stubSession({ generate_skill: true });
+  stubSession({ features: { generate_skill: true } });
   await render();
   await submitSearch("沒有人做過的事");
 

@@ -224,7 +224,32 @@ test("IA §6: every route in router.tsx is swept at 375px", () => {
   ).toEqual([...new Set(swept)].sort());
 });
 
-test("IA §4: every route's search params are the ones the document lists", () => {
+function braceBody(text: string, openIndex: number): string {
+  let depth = 0;
+  let end = openIndex;
+  while (end < text.length) {
+    if (text[end] === "{") depth++;
+    else if (text[end] === "}" && --depth === 0) break;
+    end++;
+  }
+  return text.slice(openIndex + 1, end);
+}
+
+function topLevelKeys(body: string): string[] {
+  const keys: string[] = [];
+  let nest = 0;
+  for (const line of body.split("\n")) {
+    const key = /^\s*(\w+):/.exec(line);
+    if (nest === 0 && key) keys.push(key[1]);
+    for (const ch of line) {
+      if (ch === "{" || ch === "[" || ch === "(") nest++;
+      else if (ch === "}" || ch === "]" || ch === ")") nest--;
+    }
+  }
+  return keys;
+}
+
+function routeSearchParams(): Map<string, string[]> {
   const actual = new Map<string, string[]>();
   for (const block of router.split("createRoute({").slice(1)) {
     const path = /^\s*(?:getParentRoute:[^\n]*\n)?\s*path: "([^"]+)"/m.exec(block);
@@ -233,27 +258,14 @@ test("IA §4: every route's search params are the ones the document lists", () =
     if (at === -1) continue;
 
     const open = block.indexOf("({", at) + 1;
-    let depth = 0;
-    let end = open;
-    while (end < block.length) {
-      if (block[end] === "{") depth++;
-      else if (block[end] === "}" && --depth === 0) break;
-      end++;
-    }
-    const body = block.slice(open + 1, end);
-
-    const keys: string[] = [];
-    let nest = 0;
-    for (const line of body.split("\n")) {
-      const key = /^\s*(\w+):/.exec(line);
-      if (nest === 0 && key) keys.push(key[1]);
-      for (const ch of line) {
-        if (ch === "{" || ch === "[" || ch === "(") nest++;
-        else if (ch === "}" || ch === "]" || ch === ")") nest--;
-      }
-    }
+    const keys = topLevelKeys(braceBody(block, open));
     actual.set(shapePath(path[1]), keys.sort());
   }
+  return actual;
+}
+
+test("IA §4: every route's search params are the ones the document lists", () => {
+  const actual = routeSearchParams();
 
   expect(actual.size, "no validateSearch parsed — the scan broke").toBeGreaterThanOrEqual(7);
 

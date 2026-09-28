@@ -147,6 +147,12 @@ const namesIn = (selector: string) =>
     ([whole]) => whole,
   );
 
+function addToken(byToken: Map<string, Set<string>>, token: string, file: string): void {
+  if (!token) return;
+  if (!byToken.has(token)) byToken.set(token, new Set());
+  byToken.get(token)!.add(file);
+}
+
 function classUsers(): (name: string) => Set<string> {
   const byToken = new Map<string, Set<string>>();
   const prefixes: Array<[string, string]> = [];
@@ -159,9 +165,7 @@ function classUsers(): (name: string) => Set<string> {
     for (const [, prefix] of body.matchAll(/([a-zA-Z][\w-]*-)\$\{/g)) prefixes.push([prefix, file]);
     for (const [, a, b, c] of body.matchAll(/"([^"\\\n]*)"|'([^'\\\n]*)'|`([^`]*)`/g)) {
       for (const token of (a ?? b ?? c).replace(/\$\{[^}]*\}/g, " ").split(/\s+/)) {
-        if (!token) continue;
-        if (!byToken.has(token)) byToken.set(token, new Set());
-        byToken.get(token)!.add(file);
+        addToken(byToken, token, file);
       }
     }
   }
@@ -291,16 +295,25 @@ const GLOBAL_BY_RECIPE: Record<string, string> = {
   "skill-mono": DOOR_CARD,
 };
 
-test("a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
+function classesNamedIn(sheet: string): string[] {
+  return selectorsBySheet
+    .get(sheet)!
+    .flatMap((selector) => namesIn(selector).filter((n) => n.startsWith(".")));
+}
+
+function singleFolderClasses(): Set<string> {
   const single = new Set<string>();
   for (const sheet of GLOBAL_LAYERS) {
-    for (const selector of selectorsBySheet.get(sheet)!) {
-      for (const name of namesIn(selector).filter((n) => n.startsWith("."))) {
-        const folders = new Set([...usersOf(name)].map((u) => posix.dirname(u)));
-        if (folders.size === 1) single.add(name.slice(1));
-      }
+    for (const name of classesNamedIn(sheet)) {
+      const folders = new Set([...usersOf(name)].map((u) => posix.dirname(u)));
+      if (folders.size === 1) single.add(name.slice(1));
     }
   }
+  return single;
+}
+
+test("a class only one folder uses lives beside that folder's component, unless it shares a global recipe", () => {
+  const single = singleFolderClasses();
   expect(
     [...single].filter((c) => !(c in GLOBAL_BY_RECIPE)).sort(),
     "a global stylesheet holding a class that only one folder uses — move its rules to the " +
@@ -337,6 +350,29 @@ const UNSTYLED: Record<string, string> = {
 
 const INTERPOLATION_MARK = "\u0000";
 
+function braceExpr(body: string, start: number): string {
+  let depth = 0;
+  let end = start;
+  while (end < body.length) {
+    if (body[end] === "{") depth++;
+    else if (body[end] === "}" && --depth === 0) break;
+    end++;
+  }
+  return body.slice(start, end + 1);
+}
+
+function recordClassName(used: Map<string, string[]>, expr: string, file: string): void {
+  for (const lit of expr.matchAll(/"([^"]*)"|'([^']*)'|`([^`]*)`/g)) {
+    if (/[=!]==?\s*$/.test(expr.slice(0, lit.index))) continue;
+    const raw = (lit[1] ?? lit[2] ?? lit[3]).replace(/\$\{[^}]*\}/g, INTERPOLATION_MARK);
+    for (const token of raw.split(/\s+/)) {
+      if (!token || token.includes(INTERPOLATION_MARK)) continue;
+      if (!used.has(token)) used.set(token, []);
+      if (!used.get(token)!.includes(file)) used.get(token)!.push(file);
+    }
+  }
+}
+
 function classesInMarkup(): Map<string, string[]> {
   const used = new Map<string, string[]>();
   for (const entry of readdirSync(src, { recursive: true })) {
@@ -350,27 +386,12 @@ function classesInMarkup(): Map<string, string[]> {
       if (body[start] === '"') {
         expr = body.slice(start, body.indexOf('"', start + 1) + 1);
       } else if (body[start] === "{") {
-        let depth = 0;
-        let end = start;
-        while (end < body.length) {
-          if (body[end] === "{") depth++;
-          else if (body[end] === "}" && --depth === 0) break;
-          end++;
-        }
-        expr = body.slice(start, end + 1);
+        expr = braceExpr(body, start);
       } else {
         continue;
       }
 
-      for (const lit of expr.matchAll(/"([^"]*)"|'([^']*)'|`([^`]*)`/g)) {
-        if (/[=!]==?\s*$/.test(expr.slice(0, lit.index))) continue;
-        const raw = (lit[1] ?? lit[2] ?? lit[3]).replace(/\$\{[^}]*\}/g, INTERPOLATION_MARK);
-        for (const token of raw.split(/\s+/)) {
-          if (!token || token.includes(INTERPOLATION_MARK)) continue;
-          if (!used.has(token)) used.set(token, []);
-          if (!used.get(token)!.includes(file)) used.get(token)!.push(file);
-        }
-      }
+      recordClassName(used, expr, file);
     }
   }
   return used;

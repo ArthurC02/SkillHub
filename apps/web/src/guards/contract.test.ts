@@ -60,7 +60,10 @@ function handWritten(name: string, types: string): Fields | null {
   const merged: Fields = new Map(own);
   for (const parent of ext[1].split(",").map((p) => p.trim())) {
     const inherited = handWritten(parent, types);
-    if (inherited) for (const [k, v] of inherited) if (!merged.has(k)) merged.set(k, v);
+    if (!inherited) continue;
+    for (const [k, v] of inherited) {
+      if (!merged.has(k)) merged.set(k, v);
+    }
   }
   return merged;
 }

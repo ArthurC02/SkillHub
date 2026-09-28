@@ -1353,7 +1353,7 @@ test("§2.12 第 6 條 a run history with nothing running carries no refresh con
   expect(text()).not.toContain("上次取得於");
 });
 
-function stubBundleRoutes(opts: {
+type BundleRouteOpts = {
   ownSkills?: Array<{ skill_id: string; embedded: unknown }>;
   bundles?: unknown[];
   onCreate?: (body: Record<string, unknown>) => { body: unknown; status?: number };
@@ -1361,8 +1361,87 @@ function stubBundleRoutes(opts: {
   onExport?: (name: string) => { body: unknown; status?: number };
   onPublish?: (name: string, body: Record<string, unknown>) => { body: unknown; status?: number };
   onDelist?: (name: string) => { body: unknown; status?: number };
-}) {
-  const calls: Array<{ path: string; method: string; body?: Record<string, unknown> }> = [];
+};
+
+type BundleRequest = { path: string; method: string; body?: Record<string, unknown> };
+
+function bundleRouteHandlers(opts: BundleRouteOpts) {
+  return [
+    (req: BundleRequest) =>
+      req.path === "/skills" && req.method === "GET"
+        ? json({
+            skills: (opts.ownSkills ?? []).map((s) => ({
+              skill_id: s.skill_id,
+              name: "",
+              summary: "",
+              redistribution: "allowed",
+              access_restriction: null,
+            })),
+            limit: 100,
+            truncated: false,
+            total: (opts.ownSkills ?? []).length,
+          })
+        : undefined,
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/api\/skills\/([^/]+)$/);
+      if (!match || req.method !== "GET") return undefined;
+      const found = (opts.ownSkills ?? []).find((s) => s.skill_id === match[1]);
+      return found ? json(found.embedded) : json({ error: "not found" }, 404);
+    },
+    (req: BundleRequest) =>
+      req.path === "/me/bundles" && req.method === "GET"
+        ? json({ bundles: opts.bundles ?? [] })
+        : undefined,
+    (req: BundleRequest) => {
+      if (req.path !== "/me/bundles" || req.method !== "POST") return undefined;
+      const result = opts.onCreate?.(req.body ?? {}) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 201);
+    },
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/me\/bundles\/([^/]+)\/export$/);
+      if (!match || req.method !== "POST") return undefined;
+      const result = opts.onExport?.(match[1]) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 201);
+    },
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/me\/bundles\/([^/]+)\/publication$/);
+      if (!match || req.method !== "GET") return undefined;
+      const result = opts.publication?.(match[1]) ?? {
+        body: { error: "not published" },
+        status: 404,
+      };
+      return json(result.body, result.status ?? 200);
+    },
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/me\/bundles\/([^/]+)\/publication$/);
+      if (!match || req.method !== "POST") return undefined;
+      const result = opts.onPublish?.(match[1], req.body ?? {}) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 200);
+    },
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/me\/bundles\/([^/]+)\/publication$/);
+      if (!match || req.method !== "DELETE") return undefined;
+      const result = opts.onDelist?.(match[1]) ?? {
+        body: { error: "not configured" },
+        status: 500,
+      };
+      return json(result.body, result.status ?? 200);
+    },
+  ];
+}
+
+function stubBundleRoutes(opts: BundleRouteOpts) {
+  const calls: BundleRequest[] = [];
+  const handlers = bundleRouteHandlers(opts);
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = new URL(String(input), "http://localhost");
     const path = url.pathname;
@@ -1370,64 +1449,12 @@ function stubBundleRoutes(opts: {
     const body = init?.body
       ? (JSON.parse(String(init.body)) as Record<string, unknown>)
       : undefined;
-    calls.push({ path, method, body });
+    const req: BundleRequest = { path, method, body };
+    calls.push(req);
 
-    if (path === "/skills" && method === "GET") {
-      return json({
-        skills: (opts.ownSkills ?? []).map((s) => ({
-          skill_id: s.skill_id,
-          name: "",
-          summary: "",
-          redistribution: "allowed",
-          access_restriction: null,
-        })),
-        limit: 100,
-        truncated: false,
-        total: (opts.ownSkills ?? []).length,
-      });
-    }
-    const embeddedMatch = path.match(/^\/api\/skills\/([^/]+)$/);
-    if (embeddedMatch && method === "GET") {
-      const found = (opts.ownSkills ?? []).find((s) => s.skill_id === embeddedMatch[1]);
-      return found ? json(found.embedded) : json({ error: "not found" }, 404);
-    }
-    if (path === "/me/bundles" && method === "GET") return json({ bundles: opts.bundles ?? [] });
-    if (path === "/me/bundles" && method === "POST") {
-      const result = opts.onCreate?.(body ?? {}) ?? {
-        body: { error: "not configured" },
-        status: 500,
-      };
-      return json(result.body, result.status ?? 201);
-    }
-    const exportMatch = path.match(/^\/me\/bundles\/([^/]+)\/export$/);
-    if (exportMatch && method === "POST") {
-      const result = opts.onExport?.(exportMatch[1]) ?? {
-        body: { error: "not configured" },
-        status: 500,
-      };
-      return json(result.body, result.status ?? 201);
-    }
-    const pubMatch = path.match(/^\/me\/bundles\/([^/]+)\/publication$/);
-    if (pubMatch && method === "GET") {
-      const result = opts.publication?.(pubMatch[1]) ?? {
-        body: { error: "not published" },
-        status: 404,
-      };
-      return json(result.body, result.status ?? 200);
-    }
-    if (pubMatch && method === "POST") {
-      const result = opts.onPublish?.(pubMatch[1], body ?? {}) ?? {
-        body: { error: "not configured" },
-        status: 500,
-      };
-      return json(result.body, result.status ?? 200);
-    }
-    if (pubMatch && method === "DELETE") {
-      const result = opts.onDelist?.(pubMatch[1]) ?? {
-        body: { error: "not configured" },
-        status: 500,
-      };
-      return json(result.body, result.status ?? 200);
+    for (const handle of handlers) {
+      const result = handle(req);
+      if (result) return result;
     }
     return json({ error: "not found" }, 404);
   });

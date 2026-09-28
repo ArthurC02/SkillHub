@@ -18,11 +18,7 @@
     {
       "files": ["**/*.test.ts", "**/*.test.tsx", "src/testing/**", "src/guards/**", "e2e/**"],
       "rules": {
-        "eslint/complexity": "off",
-        "eslint/max-depth": "off",
-        "eslint/max-params": "off",
-        "eslint/max-lines-per-function": "off",
-        "eslint/max-nested-callbacks": "off"
+        "eslint/max-nested-callbacks": ["error", { "max": 4 }]
       }
     }
   ]

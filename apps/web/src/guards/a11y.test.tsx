@@ -73,7 +73,7 @@ const has = (needle: string) => () => (container.textContent ?? "").includes(nee
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
-async function scan(where: string) {
+async function checkAxeViolations(where: string) {
   const results = await axe.run(container, {
     runOnly: { type: "tag", values: TAGS },
     resultTypes: ["violations"],
@@ -85,7 +85,9 @@ async function scan(where: string) {
         .join("\n    ")}`,
   );
   expect(report, `${where} has accessibility violations:\n  ${report.join("\n  ")}`).toEqual([]);
+}
 
+function checkDetailsHaveSummary(where: string) {
   const details = container.querySelectorAll("details");
   for (const node of details) {
     expect(
@@ -93,11 +95,18 @@ async function scan(where: string) {
       `${where}: <details> without <summary>`,
     ).not.toBeNull();
   }
+}
+
+function checkNoPositiveTabindex(where: string) {
   expect(
     container.querySelectorAll('[tabindex]:not([tabindex="0"]):not([tabindex="-1"])'),
     `${where}: positive tabindex breaks focus order`,
   ).toHaveLength(0);
+}
 
+const SELF_EXPLAINING = ["送出中…", "已送出，無法取消", "打包中…", "載入中…", "重新整理中…"];
+
+function checkDisabledReasonsExplained(where: string) {
   for (const el of container.querySelectorAll("[disabled][title]")) {
     expect(
       el.getAttribute("aria-describedby"),
@@ -105,7 +114,6 @@ async function scan(where: string) {
     ).not.toBeNull();
   }
 
-  const SELF_EXPLAINING = ["送出中…", "已送出，無法取消", "打包中…", "載入中…", "重新整理中…"];
   for (const el of container.querySelectorAll("button[disabled], select[disabled]")) {
     const label = (el.textContent ?? "").trim();
     if (SELF_EXPLAINING.includes(label)) continue;
@@ -115,20 +123,25 @@ async function scan(where: string) {
         `wire the sentence beside it with aria-describedby, or state the cause in the label (§2.4)`,
     ).not.toBeNull();
   }
+}
 
+function checkBadgesHaveText(where: string) {
   for (const badge of container.querySelectorAll(".badge")) {
     expect(
       badge.textContent?.trim(),
       `${where}: a badge with no word — colour is carrying the state alone`,
     ).not.toBe("");
   }
+}
 
+const NOT_AN_ANCHOR = ["?", "？", "詳情", "說明", "更多", "為什麼", "說明？", "為什麼？"];
+
+function checkTips(where: string) {
   const tips = container.querySelectorAll("[data-tip]");
   expect(
     tips.length,
     `${where}: ${tips.length} Tips on one page — 一頁至多三個 (§2.13 第 5 條)：十個問號和沒有問號一樣沒有指向`,
   ).toBeLessThanOrEqual(3);
-  const NOT_AN_ANCHOR = ["?", "？", "詳情", "說明", "更多", "為什麼", "說明？", "為什麼？"];
   for (const tip of tips) {
     const trigger = tip.querySelector(":scope > button.tip-trigger");
     expect(trigger, `${where}: a [data-tip] without its own button`).not.toBeNull();
@@ -159,7 +172,9 @@ async function scan(where: string) {
       `${where}: a qualifier, a claim or live text inside a Tip — A／B／C／G never go in (§2.13 第 1 條)`,
     ).toBeNull();
   }
+}
 
+function checkIconsAreLabeled(where: string) {
   for (const svg of container.querySelectorAll("svg[aria-hidden='true']")) {
     const beside = (svg.parentElement?.textContent ?? "").replace(/\s+/g, "");
     expect(beside, `${where}: an icon with no visible word beside it (§4.7)`).not.toBe("");
@@ -168,7 +183,9 @@ async function scan(where: string) {
     container.querySelectorAll("svg:not([aria-hidden='true'])"),
     `${where}: an <svg> that is not aria-hidden — §4.7 icons never carry meaning on their own`,
   ).toHaveLength(0);
+}
 
+function checkLiveRegionsAreChinese(where: string) {
   for (const region of container.querySelectorAll("[role=alert], [role=status]")) {
     const text = (region.textContent ?? "").replace(/[\s\d\p{P}\p{S}]/gu, "");
     if (text === "") continue;
@@ -177,8 +194,11 @@ async function scan(where: string) {
       `${where}: a live region with no Chinese in it — the server's English reached the screen: 「${(region.textContent ?? "").trim()}」`,
     ).toBe(true);
   }
+}
 
-  const REPEATED_QUALIFIER: string[] = [];
+const REPEATED_QUALIFIER: string[] = [];
+
+function checkNoRepeatedQualifier(where: string) {
   const qualifiers = new Map<string, number>();
   for (const note of container.querySelectorAll(".note")) {
     if (note.closest("li, td, th")) continue;
@@ -193,24 +213,33 @@ async function scan(where: string) {
     saidTwice,
     `${where}: the same qualifier stated more than once on one screen (§3 第 14 條)`,
   ).toEqual([]);
+}
 
-  const LIST_NOTE_REPEATS: string[] = [
-    "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
-    "版本：v2（最新）",
-  ];
+const LIST_NOTE_REPEATS: string[] = [
+  "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+  "版本：v2（最新）",
+];
+
+function noteTextsInRow(item: Element, list: Element): Set<string> {
+  const inThisRow = new Set<string>();
+  for (const note of item.querySelectorAll(".note")) {
+    if (note.closest("ul, ol") !== list) continue;
+    if (note.tagName === "LABEL") continue;
+    const text = (note.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (text.length < 8) continue;
+    inThisRow.add(text);
+  }
+  return inThisRow;
+}
+
+function checkNoListNoteRepeats(where: string) {
   const listRepeats: string[] = [];
   for (const list of container.querySelectorAll("ul, ol")) {
     const perList = new Map<string, number>();
     for (const item of list.querySelectorAll(":scope > li")) {
-      const inThisRow = new Set<string>();
-      for (const note of item.querySelectorAll(".note")) {
-        if (note.closest("ul, ol") !== list) continue;
-        if (note.tagName === "LABEL") continue;
-        const text = (note.textContent ?? "").replace(/\s+/g, " ").trim();
-        if (text.length < 8) continue;
-        inThisRow.add(text);
+      for (const text of noteTextsInRow(item, list)) {
+        perList.set(text, (perList.get(text) ?? 0) + 1);
       }
-      for (const text of inThisRow) perList.set(text, (perList.get(text) ?? 0) + 1);
     }
     for (const [text, n] of perList) {
       if (n > 1 && !LIST_NOTE_REPEATS.includes(text)) {
@@ -224,13 +253,29 @@ async function scan(where: string) {
       `Print it once above the list — but only if every row still wears a word ` +
       `that maps back to it; otherwise add it to LIST_NOTE_REPEATS with the reason`,
   ).toBe("");
+}
 
+async function checkHeadingOutlineSnapshot(where: string) {
   const outline = Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
     .map((h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 60)}`)
     .join("\n");
   await expect(outline).toMatchFileSnapshot(
     `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "") || "index"}.txt`,
   );
+}
+
+async function scan(where: string) {
+  await checkAxeViolations(where);
+  checkDetailsHaveSummary(where);
+  checkNoPositiveTabindex(where);
+  checkDisabledReasonsExplained(where);
+  checkBadgesHaveText(where);
+  checkTips(where);
+  checkIconsAreLabeled(where);
+  checkLiveRegionsAreChinese(where);
+  checkNoRepeatedQualifier(where);
+  checkNoListNoteRepeats(where);
+  await checkHeadingOutlineSnapshot(where);
 }
 
 const FOCUSABLE =

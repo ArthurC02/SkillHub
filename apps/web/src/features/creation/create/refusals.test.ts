@@ -5,15 +5,40 @@ const EMPTY = "還沒有要送出的內容：寫一句話，或附上流程圖�
 const BOTH =
   "流程圖和參考 Skill 一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
 
+type CompositionCase = [
+  string,
+  { note: string; hasFile: boolean; referenceCount: number; expected: string | undefined },
+];
+
+const COMPOSITION_CASES: CompositionCase[] = [
+  [
+    "no sentence, no diagram, no reference is refused as empty",
+    { note: "", hasFile: false, referenceCount: 0, expected: EMPTY },
+  ],
+  [
+    "a sentence alone is accepted",
+    { note: "整理會議", hasFile: false, referenceCount: 0, expected: undefined },
+  ],
+  [
+    "a diagram alone is accepted",
+    { note: "", hasFile: true, referenceCount: 0, expected: undefined },
+  ],
+  [
+    "a reference alone is accepted",
+    { note: "", hasFile: false, referenceCount: 1, expected: undefined },
+  ],
+  [
+    "a diagram and a reference together are refused",
+    { note: "", hasFile: true, referenceCount: 1, expected: BOTH },
+  ],
+  [
+    "a diagram and a reference are refused even with a sentence",
+    { note: "整理", hasFile: true, referenceCount: 2, expected: BOTH },
+  ],
+];
+
 describe("compositionProblem", () => {
-  test.each([
-    ["no sentence, no diagram, no reference is refused as empty", "", false, 0, EMPTY],
-    ["a sentence alone is accepted", "整理會議", false, 0, undefined],
-    ["a diagram alone is accepted", "", true, 0, undefined],
-    ["a reference alone is accepted", "", false, 1, undefined],
-    ["a diagram and a reference together are refused", "", true, 1, BOTH],
-    ["a diagram and a reference are refused even with a sentence", "整理", true, 2, BOTH],
-  ])("%s", (_name, note, hasFile, referenceCount, expected) => {
+  test.each(COMPOSITION_CASES)("%s", (_name, { note, hasFile, referenceCount, expected }) => {
     expect(compositionProblem(note, hasFile, referenceCount)).toBe(expected);
   });
 
