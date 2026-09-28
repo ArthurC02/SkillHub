@@ -1,6 +1,7 @@
 # Shared in-container preparation for the sandbox test scripts in this
 # directory. Not executable on its own: callers cat it in front of their own
 # body and hand the whole thing to bash inside a privileged container.
+# shellcheck shell=bash
 set -e
 
 # `</dev/null` on every apt-get: the callers pipe this whole script into
@@ -28,10 +29,12 @@ fi
 # it, which is where a container's root cgroup starts.
 if [ ! -d /sys/fs/cgroup/init ]; then
   mkdir -p /sys/fs/cgroup/init
-  for p in $(cat /sys/fs/cgroup/cgroup.procs); do
+  mapfile -t root_cgroup_procs < /sys/fs/cgroup/cgroup.procs
+  for p in "${root_cgroup_procs[@]}"; do
     echo "$p" > /sys/fs/cgroup/init/cgroup.procs 2>/dev/null || true
   done
   echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control
 fi
 
+# shellcheck disable=SC2034 # read by the body each caller appends
 RUNSC="runsc --platform=systrap --network=none do"

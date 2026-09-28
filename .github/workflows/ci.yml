@@ -538,6 +538,9 @@ jobs:
           pip install ruff==0.16.7
           ruff check tools --config tools/ruff.toml
 
+      - name: Shell scripts
+        run: bash tools/ci/shell-lint.sh
+
       - name: Tools scripts — characterisation tests
         run: |
           pip install PyYAML==6.0.2

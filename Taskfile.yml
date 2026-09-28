@@ -151,6 +151,10 @@ tasks:
     dir: apps/web
     cmd: npm run lint
 
+  lint:shell:
+    desc: Lint every tracked shell script (needs Docker)
+    cmd: bash tools/ci/shell-lint.sh
+
   vet:platform:
     desc: Run Go static analysis on the platform module
     dir: apps/platform

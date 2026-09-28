@@ -20,7 +20,7 @@ if [ "${#missing_commands[@]}" -gt 0 ]; then
 fi
 
 if command -v sudo >/dev/null 2>&1 && ! pgrep dockerd >/dev/null 2>&1; then
-  sudo nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &
+  sudo sh -c 'nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &'
 fi
 i=0
 until docker info >/dev/null 2>&1; do
@@ -107,7 +107,7 @@ for key in "${required_env_keys[@]}"; do
     printf "unresolved placeholder in .env key: %s\n" "${key}" >&2
     exit 1
   fi
-  if [ -z "${value}"; then
+  if [ -z "${value}" ]; then
     printf "missing or empty required .env key: %s\n" "${key}" >&2
     exit 1
   fi

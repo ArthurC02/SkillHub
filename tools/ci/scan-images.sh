@@ -50,7 +50,7 @@ scan() {
       verdict="fixable High, reported"
     fi
   fi
-  printf '| `%s` | %s | %s |\n' "$name" "$tier" "$verdict" >>"$summary"
+  printf "| \`%s\` | %s | %s |\n" "$name" "$tier" "$verdict" >>"$summary"
   printf '%s: %s\n' "$name" "$verdict" >&2
 }
 
