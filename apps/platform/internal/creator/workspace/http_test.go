@@ -35,7 +35,7 @@ func TestDevLoginRejectsOverlongNameInChinese(t *testing.T) {
 	h := &Handler{DevLogin: true}
 	body := strings.NewReader(`{"user":"` + strings.Repeat("a", 65) + `"}`)
 	w := httptest.NewRecorder()
-	h.devLogin(w, httptest.NewRequest("POST", "/auth/dev/login", body))
+	h.devLogin(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", body))
 
 	if w.Code != 400 {
 		t.Fatalf("status = %d, want 400", w.Code)
@@ -59,7 +59,7 @@ func TestDevLoginLetsANameAtTheBoundaryThroughToLogin(t *testing.T) {
 	body := strings.NewReader(`{"user":"` + strings.Repeat("a", 64) + `"}`)
 	w := httptest.NewRecorder()
 
-	h.devLogin(w, httptest.NewRequest("POST", "/auth/dev/login", body))
+	h.devLogin(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", body))
 
 	if w.Code != 500 || !strings.Contains(w.Body.String(), "login failed") {
 		t.Fatalf("status = %d body = %q, want 500 \"login failed\" from the unreachable store: a 64-character name must clear the length gate", w.Code, w.Body.String())
@@ -67,7 +67,7 @@ func TestDevLoginLetsANameAtTheBoundaryThroughToLogin(t *testing.T) {
 }
 
 func TestNotInvitedAnswersABrowserWithAChinesePage(t *testing.T) {
-	browser := httptest.NewRequest("GET", "/downloads/x/content", nil)
+	browser := httptest.NewRequest(http.MethodGet, "/downloads/x/content", nil)
 	browser.Header.Set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
 	w := httptest.NewRecorder()
 	writeNotInvited(w, browser)
@@ -82,7 +82,7 @@ func TestNotInvitedAnswersABrowserWithAChinesePage(t *testing.T) {
 	}
 
 	w = httptest.NewRecorder()
-	writeNotInvited(w, httptest.NewRequest("GET", "/downloads/x/content", nil))
+	writeNotInvited(w, httptest.NewRequest(http.MethodGet, "/downloads/x/content", nil))
 	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		t.Errorf("Content-Type = %q, want JSON for an API caller", ct)
 	}
@@ -107,7 +107,7 @@ func TestTheLoginRoutesRefuseCleanlyWhenNoProviderIsConfigured(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			tc.serve(w, httptest.NewRequest("GET", tc.target, nil))
+			tc.serve(w, httptest.NewRequest(http.MethodGet, tc.target, nil))
 
 			if w.Code != http.StatusServiceUnavailable {
 				t.Fatalf("status = %d, want 503 when no identity provider is configured", w.Code)

@@ -354,7 +354,7 @@ func TestCreationExposureAndAnonymousAuth(t *testing.T) {
 			t.Fatal(err)
 		}
 		res.Body.Close()
-		if res.StatusCode != 401 {
+		if res.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("%s anonymous = %d", path, res.StatusCode)
 		}
 	}
@@ -364,7 +364,7 @@ func TestCreationExposureAndAnonymousAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 	res.Body.Close()
-	if res.StatusCode != 404 {
+	if res.StatusCode != http.StatusNotFound {
 		t.Fatal("disabled creation exposed")
 	}
 }
@@ -617,7 +617,7 @@ func TestCreationLimitsEndpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		t.Fatalf("limits: got %d", res.StatusCode)
 	}
 	var out struct {

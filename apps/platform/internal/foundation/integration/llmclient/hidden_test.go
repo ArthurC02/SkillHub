@@ -13,7 +13,7 @@ import (
 func tagged(ascii string) string {
 	var b strings.Builder
 	for _, r := range ascii {
-		b.WriteRune(rune(0xE0000 + r))
+		b.WriteRune(0xE0000 + r)
 	}
 	return b.String()
 }

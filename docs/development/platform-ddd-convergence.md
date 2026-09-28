@@ -129,7 +129,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；是否放行同�
 
 C1 至今成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除或放寬。
 
-**認知複雜度上限是 20**（`apps/platform/.golangci.yml` 的 `gocognit`），沒有任何生產函式被逐一排除：超標就拆，不登記例外；`complexity-exemptions` 擋下任何以函式名排除的規則，也擋下調高上限。同一份設定另外啟用 `nestif`、`errorlint`、`gocritic`、`unparam`、`dupl` 與 `revive` 的三條規則：參數最多 5 個、回傳值最多 3 個、不收控制旗標。一起出現的值收成以領域詞彙命名的型別；布林開關拆成兩個名字說得出差別的函式，或改成有具名值的列舉。用查表或包一層型別把布林藏起來不算修好。`_test.go` 不受 `gocognit`、`dupl`、`revive`、`unparam` 約束。
+**認知複雜度上限是 20**（`apps/platform/.golangci.yml` 的 `gocognit`），沒有任何生產函式被逐一排除：超標就拆，不登記例外；`complexity-exemptions` 擋下任何以函式名排除的規則，也擋下調高上限。同一份設定另外啟用 `nestif`、`errorlint`、`gocritic`、`unparam`、`dupl` 與 `revive` 的三條規則：參數最多 5 個、回傳值最多 3 個、不收控制旗標。一起出現的值收成以領域詞彙命名的型別；布林開關拆成兩個名字說得出差別的函式，或改成有具名值的列舉。用查表或包一層型別把布林藏起來不算修好。函式另有長度與分支上限：`funlen` 是 80 行、50 個敘述，`cyclop` 是 15。重複出現的字串與有意義的數字要有名字（`goconst`、`mnd`）：名字說的是它代表什麼，不是它的值；兩個概念拼法相同時各自命名，不共用一個常數。標準函式庫已有名字的用它的（`usestdlibvars`）。`_test.go` 不受 `gocognit`、`dupl`、`revive`、`unparam`、`funlen`、`cyclop`、`goconst`、`mnd` 約束。
 
 ### 4.1 識別碼的三道守衛
 

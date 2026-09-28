@@ -48,6 +48,9 @@ const (
 
 	tmpScratchBytes = 64 << 20
 
+	workDirDiskShares = 3
+	totalDiskShares   = 4
+
 	nanoCPUsPerCPU = 1e9
 )
 
@@ -105,7 +108,7 @@ func name(providerRunID string) string { return "skillhub-run-" + providerRunID 
 func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) error {
 	lim := req.ResourceLimits
 
-	workBytes := lim.DiskBytes * 3 / 4
+	workBytes := lim.DiskBytes * workDirDiskShares / totalDiskShares
 	outBytes := lim.DiskBytes - workBytes
 	mount := func(size int64, extra string) string {
 		return fmt.Sprintf("rw,nosuid,nodev,size=%d,uid=%d,gid=%d,mode=0700%s", size, d.cfg.UID, d.cfg.GID, extra)

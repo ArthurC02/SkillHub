@@ -31,7 +31,7 @@ func readSSE(t *testing.T, c *client, sessionID, lastEventID string) (<-chan sse
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		res.Body.Close()
 		t.Fatalf("GET events: %d", res.StatusCode)
 	}

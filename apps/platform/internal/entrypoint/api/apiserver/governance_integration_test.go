@@ -1544,7 +1544,7 @@ func TestADeletionSweepIsNotHeldUpByOlderSkillsThatStayReferenced(t *testing.T) 
 		t.Errorf("a one-skill sweep purged %d skills, want 1", sweep.Purged)
 	}
 	for id, want := range map[string]int{forked: 1, tested: 1, free: 0, next: 1} {
-		if got := int(countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, id))); got != want {
+		if got := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, id)); got != want {
 			t.Errorf("skill %s: %d rows left, want %d", id, got, want)
 		}
 	}

@@ -80,7 +80,7 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 		}
 		if req.Draft == nil || req.DraftValidation == nil || req.DraftValidation.ContentHash != oldHash {
 			t.Error("missing prior draft and its validation")
-			http.Error(w, "missing draft", 500)
+			http.Error(w, "missing draft", http.StatusInternalServerError)
 			return
 		}
 		draft := *req.Draft

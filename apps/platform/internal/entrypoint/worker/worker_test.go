@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -288,7 +289,7 @@ var backlogSample = regexp.MustCompile(`(?m)^skillhub_backlog_oldest_seconds\{ba
 func publishedBacklogAges(t *testing.T) map[string]float64 {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	ages := map[string]float64{}
 	for _, m := range backlogSample.FindAllStringSubmatch(rec.Body.String(), -1) {
 		v, err := strconv.ParseFloat(m[2], 64)

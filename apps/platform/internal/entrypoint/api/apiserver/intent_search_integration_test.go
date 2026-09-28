@@ -124,7 +124,7 @@ func TestAnalyzedSearchPreservesExactNamesAndUserTokenCoverage(t *testing.T) {
 			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			if res.StatusCode != 200 || body.Interpretation.Status != "analyzed" || len(body.Results) != len(tc.want) {
+			if res.StatusCode != http.StatusOK || body.Interpretation.Status != "analyzed" || len(body.Results) != len(tc.want) {
 				t.Fatalf("status=%d body=%+v want=%v", res.StatusCode, body, tc.want)
 			}
 			for i, id := range tc.want {
@@ -188,7 +188,7 @@ func TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority(t *testin
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != 200 || body.Degraded || body.Interpretation.Status != "analyzed" || embeddings.Load() != 1 || len(body.Results) != 1 || body.Results[0].ID != near {
+	if res.StatusCode != http.StatusOK || body.Degraded || body.Interpretation.Status != "analyzed" || embeddings.Load() != 1 || len(body.Results) != 1 || body.Results[0].ID != near {
 		t.Fatalf("status=%d embeddings=%d body=%+v", res.StatusCode, embeddings.Load(), body)
 	}
 	if len(body.Interpretation.Keywords) != 1 || body.Interpretation.Keywords[0] != "spreadsheet" {
@@ -244,7 +244,7 @@ func TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput(t *test
 			if !tc.valid {
 				status = "fallback"
 			}
-			if err != nil || response.StatusCode != 200 || body.Interpretation.Status != status || analyses.Load() != 1 {
+			if err != nil || response.StatusCode != http.StatusOK || body.Interpretation.Status != status || analyses.Load() != 1 {
 				t.Fatalf("status=%d interpretation=%+v calls=%d err=%v", response.StatusCode, body.Interpretation, analyses.Load(), err)
 			}
 			var count int
@@ -274,7 +274,7 @@ func TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput(t *test
 					t.Fatal(err)
 				}
 				res.Body.Close()
-				if res.StatusCode != 429 || res.Header.Get("Retry-After") == "" || analyses.Load() != 1 {
+				if res.StatusCode != http.StatusTooManyRequests || res.Header.Get("Retry-After") == "" || analyses.Load() != 1 {
 					t.Fatalf("%s rate limit status=%d calls=%d", method, res.StatusCode, analyses.Load())
 				}
 			}
@@ -398,7 +398,7 @@ func TestAlwaysFailingRewriterStillRetrievesNonemptyVectorResults(t *testing.T) 
 			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			if res.StatusCode != 200 || analyses.Load() != 1 || embeddings.Load() != 1 || body.Query != query || body.Interpretation.Status != "fallback" {
+			if res.StatusCode != http.StatusOK || analyses.Load() != 1 || embeddings.Load() != 1 || body.Query != query || body.Interpretation.Status != "fallback" {
 				t.Fatalf("status=%d analyses=%d embeddings=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), body)
 			}
 			if body.Degraded != embeddingFails {
@@ -429,7 +429,7 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
 		analyses.Add(1)
-		http.Error(w, "must not rewrite correction", 500)
+		http.Error(w, "must not rewrite correction", http.StatusInternalServerError)
 	})
 	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
 		embeddings.Add(1)
@@ -479,7 +479,7 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != 200 || body.Query != "原本的請求" || body.Interpretation.Status != "corrected" || analyses.Load() != 0 || embeddings.Load() != 1 || reasons.Load() != 1 || len(body.Results) != 1 || body.Results[0].SkillID != id {
+	if res.StatusCode != http.StatusOK || body.Query != "原本的請求" || body.Interpretation.Status != "corrected" || analyses.Load() != 0 || embeddings.Load() != 1 || reasons.Load() != 1 || len(body.Results) != 1 || body.Results[0].SkillID != id {
 		t.Fatalf("status=%d analyses=%d embeddings=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), body)
 	}
 }

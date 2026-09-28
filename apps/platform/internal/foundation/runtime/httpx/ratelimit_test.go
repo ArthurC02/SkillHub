@@ -64,7 +64,7 @@ func TestTheRefusalCarriesRetryAfterAndASentence(t *testing.T) {
 	l, _ := testLimiter(60, 1)
 	h := l.Limit("public_search", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 
-	req := httptest.NewRequest("GET", "/api/skills/search?q=x", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil)
 	req.RemoteAddr = "9.9.9.9:1234"
 	first := httptest.NewRecorder()
 	h(first, req)
@@ -133,7 +133,7 @@ func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
 
 	l, _ := testLimiter(60, 1)
 	h := l.Limit(route, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-	req := httptest.NewRequest("GET", "/api/skills/search?q=x", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=x", nil)
 	req.RemoteAddr = "9.9.9.9:1234"
 
 	h(httptest.NewRecorder(), req)
@@ -149,7 +149,7 @@ func TestARefusalIsCountedOnTheMetricsSurface(t *testing.T) {
 func scrape(t *testing.T, route string) string {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	promhttp.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	for _, line := range strings.Split(rec.Body.String(), "\n") {
 		if strings.HasPrefix(line, "skillhub_rate_limited_total{") && strings.Contains(line, `"`+route+`"`) {
 			return strings.TrimSpace(line)
@@ -194,7 +194,7 @@ func TestTheBucketBehindTrustedProxiesIsTheNearestUntrustedHop(t *testing.T) {
 			remoteAddr: "172.30.0.4:4000", forwarded: []string{"172.30.0.2, 172.30.0.3"}, want: "172.30.0.2"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+			req := httptest.NewRequest(http.MethodGet, "/skills/search?q=x", nil)
 			req.RemoteAddr = tc.remoteAddr
 			for _, value := range tc.forwarded {
 				req.Header.Add("X-Forwarded-For", value)
@@ -207,7 +207,7 @@ func TestTheBucketBehindTrustedProxiesIsTheNearestUntrustedHop(t *testing.T) {
 }
 
 func TestWithoutTrustedProxiesTheHeaderIsNeverRead(t *testing.T) {
-	req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+	req := httptest.NewRequest(http.MethodGet, "/skills/search?q=x", nil)
 	req.RemoteAddr = "172.30.0.4:4000"
 	req.Header.Set("X-Forwarded-For", "198.51.100.1")
 	if got := NewRateLimiter(60, 1).clientAddress(req); got != "172.30.0.4" {
@@ -224,7 +224,7 @@ func TestTwoClientsBehindOneProxyDoNotShareABucket(t *testing.T) {
 	l.TrustProxies(trusted)
 	h := l.Limit("public_search", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	request := func(client string) int {
-		req := httptest.NewRequest("GET", "/skills/search?q=x", nil)
+		req := httptest.NewRequest(http.MethodGet, "/skills/search?q=x", nil)
 		req.RemoteAddr = "172.30.0.4:4000"
 		req.Header.Set("X-Forwarded-For", client)
 		rec := httptest.NewRecorder()

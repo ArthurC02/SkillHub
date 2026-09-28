@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -145,7 +146,7 @@ func (c *client) foldedUsage(t *testing.T, runID string) *foldUsage {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("general trace: got %d, want 200", resp.StatusCode)
 	}
 	var out struct {

@@ -9,6 +9,13 @@ linters:
     - unparam
     - dupl
     - revive
+    - funlen
+    - cyclop
+    - goconst
+    - mnd
+    - usestdlibvars
+    - unconvert
+    - wastedassign
 
   exclusions:
     presets:
@@ -16,11 +23,28 @@ linters:
     warn-unused: true
     rules:
       - path: _test\.go
-        linters: [gocognit, dupl, revive, unparam]
+        linters: [gocognit, dupl, revive, unparam, funlen, cyclop, goconst, mnd]
 
   settings:
     gocognit:
       min-complexity: 20
+    funlen:
+      lines: 80
+      statements: 50
+    cyclop:
+      max-complexity: 15
+    goconst:
+      min-occurrences: 3
+      min-len: 3
+    mnd:
+      ignored-numbers: ["0", "1", "2", "10", "100", "1000", "1024"]
+      ignored-functions:
+        - '^strconv\.'
+        - '^make$'
+        - '^time\.'
+        - '^strings\.SplitN$'
+        - '^os\.(WriteFile|MkdirAll|OpenFile|Chmod)$'
+        - '^context\.WithTimeout$'
     revive:
       rules:
         - name: argument-limit

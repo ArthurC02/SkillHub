@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
@@ -16,7 +17,7 @@ func TestDataRetentionIsHonestWhenNothingIsCollected(t *testing.T) {
 		"retention set but no pool": {Svc: &Service{Retention: 180 * 24 * time.Hour}},
 	} {
 		w := httptest.NewRecorder()
-		h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+		h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 		var body struct {
 			Collecting    bool `json:"collecting"`
@@ -43,7 +44,7 @@ func TestDataRetentionIsHonestWhenNothingIsCollected(t *testing.T) {
 func TestTheDisclosureNamesWhatIsStoredAndNothingElse(t *testing.T) {
 	h := &Handler{Svc: &Service{Retention: 365 * 24 * time.Hour}}
 	w := httptest.NewRecorder()
-	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+	h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 	var body struct {
 		Events []struct {
@@ -87,7 +88,7 @@ func TestTheDisclosureNamesWhatIsStoredAndNothingElse(t *testing.T) {
 func TestARetentionWindowShorterThanADayIsNotReportedAsZero(t *testing.T) {
 	h := &Handler{Svc: &Service{Retention: 12 * time.Hour}}
 	w := httptest.NewRecorder()
-	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+	h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 	var body struct {
 		RetentionDays int `json:"retention_days"`
@@ -103,7 +104,7 @@ func TestARetentionWindowShorterThanADayIsNotReportedAsZero(t *testing.T) {
 func TestDataRetentionReportsTheConfiguredWindow(t *testing.T) {
 	h := &Handler{Svc: &Service{Retention: 180 * 24 * time.Hour}}
 	w := httptest.NewRecorder()
-	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+	h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 	var body struct {
 		RetentionDays int `json:"retention_days"`
@@ -119,7 +120,7 @@ func TestDataRetentionReportsTheConfiguredWindow(t *testing.T) {
 func TestDataRetentionDisclosesTheFeedbackClass(t *testing.T) {
 	h := &Handler{Svc: &Service{Retention: 180 * 24 * time.Hour}, FeedbackRetention: 90 * 24 * time.Hour}
 	w := httptest.NewRecorder()
-	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+	h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 	var body struct {
 		Feedback struct {
@@ -157,7 +158,7 @@ func TestDataRetentionDisclosesTheFeedbackClass(t *testing.T) {
 func TestDataRetentionSaysSoWhenFeedbackHasNoWindow(t *testing.T) {
 	h := &Handler{Svc: &Service{Retention: time.Hour}}
 	w := httptest.NewRecorder()
-	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+	h.DataRetention(w, httptest.NewRequest(http.MethodGet, "/policy/data-retention", nil))
 
 	var body struct {
 		Feedback map[string]any `json:"feedback"`

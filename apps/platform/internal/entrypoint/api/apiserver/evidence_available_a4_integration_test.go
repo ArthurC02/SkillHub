@@ -82,7 +82,7 @@ func TestArtifactEvidenceIsReAnsweredAtReadTime(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
+		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("GET evaluation: %d", resp.StatusCode)
 		}
 		var body struct {
