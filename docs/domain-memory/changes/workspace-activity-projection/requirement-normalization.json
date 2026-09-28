@@ -1,0 +1,72 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "workspace-activity-is-owner-backed",
+  "status": "draft",
+  "intent": "讓創作者離開平台工作後再回來時，能從一個誠實且可續作的 Workspace Activity 看見哪些長工作需要決定、仍在執行或最近完成，而不用自行巡查多個功能頁。",
+  "actor": "Returning workspace creator",
+  "observable_outcome": "創作者從 Activity 看見 Run、Creation、Packaging 與 Publishing 各自擁有的最新工作事實，能辨認資料是否完整，並回到精確來源物件採取下一步。",
+  "acceptance_criteria": [
+    {
+      "id": "workspace-scoped",
+      "statement": "Activity 的 Workspace 只由已驗證 Session 解析；任一來源 ID 即使存在於其他 Workspace，也不會被回傳或洩漏其存在。"
+    },
+    {
+      "id": "owner-facts-only",
+      "statement": "每個 Activity item 的來源狀態、可行動分類、下一步與最後更新時間都由擁有該生命週期的 Context 提供；組裝層不查跨 Context 的表，也不重新解讀 owner 狀態。"
+    },
+    {
+      "id": "actionable-minimum",
+      "statement": "每個 item 至少具有穩定 kind 與來源 ID、使用者可辨識的物件、工作種類、分類、原始狀態、可辯護的最後更新時間，以及回到精確來源脈絡的一個續作動作；不複製 Snapshot、Trace、評估全文或套件內容。"
+    },
+    {
+      "id": "stable-global-pagination",
+      "statement": "在資料集不變時，跨來源 Activity 以 last_updated_at、kind 與 source_id 的全域 keyset 順序續讀，不重複也不遺漏 item；游標不以單一來源的 offset 冒充全域位置。"
+    },
+    {
+      "id": "incomplete-is-visible",
+      "statement": "任一已納入契約的來源無法讀取時，回應明確標示整體資料不完整及缺少的來源；前端不得把部分結果或空清單呈現成完整 Activity。"
+    },
+    {
+      "id": "openapi-first-compatible",
+      "statement": "Workspace Activity 先以加法式 OpenAPI 契約定義 discriminator、游標、來源完整性與未知 kind 的相容行為，再產生下游型別與實作；既有 Run 清單契約維持相容。"
+    },
+    {
+      "id": "all-long-work-sources",
+      "statement": "在 UI 移除『目前只收錄試跑』的範圍揭露前，Run、Creation、Packaging 與 Publishing 四種長工作都必須有 owner-backed reader、權威時間語意與可續作入口。"
+    }
+  ],
+  "candidate_terms": [
+    "Workspace Activity item",
+    "Activity source coverage",
+    "authoritative last update",
+    "continuation target"
+  ],
+  "open_questions": [
+    "Run 的 authoritative last update 應由哪一個既有狀態轉移或評估事實導出，是否需要新的 owner 欄位？",
+    "Packaging 掃描狀態缺少狀態變更時間；owner 應增加哪個權威時間事實？",
+    "Publishing 的第一版應投影 Publication 狀態、最新 Release，還是兩者各自成為 item？",
+    "即時 keyset 續讀只保證資料集不變時不重複不遺漏；是否有真實需求必須提供跨請求快照？"
+  ],
+  "risk_flags": [
+    "cross_context",
+    "public_contract"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "docs/design/platform-experience.md",
+    "docs/design/information-architecture.md",
+    "docs/development/platform-ddd-practices.md",
+    "apps/platform/internal/creator/workspace/doc.go",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/creator/creation/doc.go",
+    "apps/platform/internal/skill/delivery/doc.go",
+    "apps/platform/internal/skill/publishing/doc.go",
+    "contracts/openapi/public.yaml",
+    "db/queries/runs.sql",
+    "db/queries/creation.sql",
+    "db/queries/packaging.sql",
+    "db/queries/publishing.sql"
+  ]
+}

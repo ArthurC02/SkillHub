@@ -1,0 +1,112 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "workspace-activity-owner-facts",
+  "proposer": "codex",
+  "requirement_id": "workspace-activity-is-owner-backed",
+  "status": "draft",
+  "change_classification": "material",
+  "submitted_at": null,
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": null,
+  "affected_contexts": [
+    "identity",
+    "run",
+    "creation",
+    "packaging",
+    "publishing"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "none-new-context",
+    "invariant": "Identity only resolves the authenticated Session's Workspace scope and does not own Activity or lifecycle facts. Run, Creation, Packaging and Publishing each own their source facts; the HTTP composition layer may merge but never reinterpret those facts.",
+    "evidence": [
+      "apps/platform/internal/creator/workspace/doc.go:1-3",
+      "apps/platform/internal/trial/execution/doc.go:1-3",
+      "apps/platform/internal/creator/creation/doc.go:1-3",
+      "apps/platform/internal/skill/delivery/doc.go:1-4",
+      "apps/platform/internal/skill/publishing/doc.go:1-4"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Each lifecycle owner exposes a narrow Workspace-scoped Activity facts reader. The HTTP composition layer receives those readers through apiserver.NewApp, queries them with the Session-derived Workspace, merges their already-classified facts, applies the public cursor, and maps them to the OpenAPI response without importing owner packages into one another.",
+    "consistency": "Synchronous live reads with explicit per-source coverage; pagination is stable for an unchanged dataset and does not claim a cross-request snapshot.",
+    "prohibited_dependencies": [
+      "browser fan-out across lifecycle endpoints",
+      "entrypoint-owned interpretation of lifecycle statuses",
+      "cross-context SQL or generated query row sharing",
+      "one lifecycle context importing another to build Activity",
+      "analytics events used as domain truth",
+      "silent omission of an unavailable source"
+    ],
+    "evidence": [
+      "docs/development/platform-ddd-practices.md:40-57",
+      "docs/development/platform-ddd-practices.md:74",
+      "docs/development/platform-ddd-practices.md:90",
+      "docs/design/platform-experience.md:267-275",
+      "docs/design/platform-experience.md:346"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Activity must help a returning creator decide what to do next without becoming a second state machine or hiding the exact source object.",
+      "Run, Creation, Packaging and Publishing use different state machines and timestamp semantics, so a generic handler cannot safely infer actionability or recency from raw status strings.",
+      "A useful cross-source feed must degrade visibly when a source fails and must paginate the union rather than paginate each existing list independently.",
+      "The current Run-only UI is honest and should remain the visible scope until every contracted owner source is implemented."
+    ],
+    "decision": "Use no new Aggregate, event stream or persisted Activity context. Each owner provides a minimal read DTO containing its own classification, original status, authoritative last_updated_at, stable source identity and typed continuation target. The API composition layer performs only Workspace-scoped fan-in, deterministic keyset merge, source-coverage reporting and transport mapping. Apply Jesse James Garrett's five planes in order: the return-and-resume outcome fixes Strategy; the four long-work sources and exclusions fix Scope; owner facts and composition fix Structure; grouping, ordering and one continuation action fix Skeleton; the existing design system fixes Surface.",
+    "invariants_preserved": [
+      "Workspace scope comes from the authenticated Session and is applied by every owner reader.",
+      "Each lifecycle context remains authoritative for its statuses, transitions and actionable meaning.",
+      "Activity remains a read projection and never changes or repairs source state.",
+      "Run execution success, evaluation outcome, package status, publication status and Catalog exposure remain distinct facts.",
+      "Unknown, unavailable and empty remain distinguishable in both API and UI."
+    ],
+    "rejected_alternatives": [
+      "A new persisted Activity context: current evidence requires a query projection, not another state source with replay and consistency obligations.",
+      "Identity owning lifecycle classification: Identity may resolve Workspace scope but must not absorb Run, Creation, Packaging or Publishing rules.",
+      "Browser-side composition: it cannot provide one authorization boundary, global cursor or truthful source coverage.",
+      "Entrypoint status mapping: it would move product rules into the composition root and break when an owner adds a state.",
+      "A single cross-context SQL query: it bypasses owner Services and hard-codes unrelated schemas into one read path.",
+      "Analytics-backed Activity: measurement data is intentionally not a second source of domain truth."
+    ],
+    "proof_obligations": [
+      "workspace-isolation",
+      "owner-classification",
+      "minimal-item-contract",
+      "global-cursor",
+      "source-failure-visible",
+      "openapi-additive",
+      "source-coverage-gate",
+      "no-cross-context-import"
+    ],
+    "counterfactual_check": "source-failure-visible"
+  },
+  "event_change": null,
+  "contract_change": {
+    "kind": "additive-public-http-read",
+    "producer": "platform-api",
+    "consumers": [
+      "web"
+    ],
+    "description": "Add a Session-authenticated Workspace Activity endpoint with a discriminated item union, deterministic keyset cursor and explicit source coverage. Existing lifecycle list endpoints remain unchanged.",
+    "compatibility": "Additive. Unknown item kinds and owner statuses remain displayable through stable summary fields; clients must not infer actionability from raw status.",
+    "data_classification": "Workspace-scoped metadata only; excludes full snapshots, prompts, trace payloads, evaluation text, package contents and review findings.",
+    "retry_behavior": "Read-only and idempotent. A failed source is named in coverage and never silently converted to an empty source."
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "cross_context",
+    "public_contract"
+  ],
+  "open_questions": [
+    "Should the public route be /activity or /me/activity while the UI keeps the compatible /workspace/runs address during migration?",
+    "Should an unavailable source return HTTP 200 with complete=false and source errors, or should any unavailable owner fail the whole endpoint with 503? The proposal requires visible incompleteness either way; product and operational review must choose the transport behavior before implementation.",
+    "Which owner states map to requires_action, in_progress and recent, and which continuation target is valid for each state?",
+    "Does a mutable source update between Activity pages need snapshot isolation, or is the documented live-feed behavior sufficient?"
+  ],
+  "approvals": []
+}

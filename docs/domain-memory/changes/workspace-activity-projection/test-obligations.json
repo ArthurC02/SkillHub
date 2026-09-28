@@ -1,0 +1,79 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "workspace-activity-is-owner-backed",
+  "proposal_id": "workspace-activity-owner-facts",
+  "obligations": [
+    {
+      "id": "workspace-isolation",
+      "source_type": "acceptance-criterion",
+      "source_id": "workspace-scoped",
+      "expected_outcome": "A Session can list only Activity facts from its resolved Workspace; foreign source IDs produce neither items nor existence leaks.",
+      "level": "integration",
+      "status": "planned",
+      "check": "platform Activity integration test with two Workspaces and one item of every source kind"
+    },
+    {
+      "id": "owner-classification",
+      "source_type": "acceptance-criterion",
+      "source_id": "owner-facts-only",
+      "expected_outcome": "Each owner maps every supported lifecycle state to an Activity classification and continuation target; the composition layer contains no owner status switch.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "owner table tests plus depguard and composition-source inspection"
+    },
+    {
+      "id": "minimal-item-contract",
+      "source_type": "acceptance-criterion",
+      "source_id": "actionable-minimum",
+      "expected_outcome": "Every response item carries the required stable identity, summary, classification, original status, authoritative time and continuation while sensitive or bulky source content is absent.",
+      "level": "contract",
+      "status": "planned",
+      "check": "OpenAPI schema test and representative response serialization tests"
+    },
+    {
+      "id": "global-cursor",
+      "source_type": "acceptance-criterion",
+      "source_id": "stable-global-pagination",
+      "expected_outcome": "Equal timestamps across all source kinds and page boundaries preserve total order and return every unchanged item exactly once.",
+      "level": "integration",
+      "status": "planned",
+      "check": "multi-source keyset boundary-value integration test"
+    },
+    {
+      "id": "source-failure-visible",
+      "source_type": "acceptance-criterion",
+      "source_id": "incomplete-is-visible",
+      "expected_outcome": "Fault injection for each owner reader makes incompleteness and the unavailable source observable, and never produces a normal complete empty state.",
+      "level": "integration",
+      "status": "planned",
+      "check": "owner-reader failure decision table integration test"
+    },
+    {
+      "id": "openapi-additive",
+      "source_type": "acceptance-criterion",
+      "source_id": "openapi-first-compatible",
+      "expected_outcome": "OpenAPI generation and compatibility checks accept the additive Activity contract, generated types match it and existing Run list clients remain valid.",
+      "level": "contract",
+      "status": "planned",
+      "check": "task gen:check and public contract compatibility gate"
+    },
+    {
+      "id": "source-coverage-gate",
+      "source_type": "acceptance-criterion",
+      "source_id": "all-long-work-sources",
+      "expected_outcome": "The UI keeps the Run-only disclosure until contract fixtures prove Run, Creation, Packaging and Publishing coverage with authoritative timestamps and continuations.",
+      "level": "system",
+      "status": "planned",
+      "check": "web route and rendered Activity coverage tests"
+    },
+    {
+      "id": "no-cross-context-import",
+      "source_type": "invariant",
+      "source_id": "owners-remain-authoritative",
+      "expected_outcome": "Lifecycle contexts do not import one another and the Activity handler consumes only injected narrow readers.",
+      "level": "architecture",
+      "status": "planned",
+      "check": "platform depguard, query ownership and architecture identity checks"
+    }
+  ]
+}

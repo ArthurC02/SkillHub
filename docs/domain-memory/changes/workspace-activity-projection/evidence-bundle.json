@@ -1,0 +1,37 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "workspace-activity-is-owner-backed",
+  "proposal_id": "workspace-activity-owner-facts",
+  "registry_revision": null,
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [
+    "docs/design/platform-experience.md",
+    "docs/design/information-architecture.md",
+    "docs/development/platform-ddd-practices.md",
+    "docs/domain-memory/registry/contexts.json",
+    "apps/platform/internal/creator/workspace/doc.go",
+    "apps/platform/internal/trial/execution/doc.go",
+    "apps/platform/internal/creator/creation/doc.go",
+    "apps/platform/internal/skill/delivery/doc.go",
+    "apps/platform/internal/skill/publishing/doc.go",
+    "contracts/openapi/public.yaml",
+    "db/queries/runs.sql",
+    "db/queries/creation.sql",
+    "db/queries/packaging.sql",
+    "db/queries/publishing.sql"
+  ],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "Run 尚無通用列級 updated_at；以 created_at 代替會造成錯誤排序。",
+    "Packaging 的掃描狀態尚無可直接使用的狀態變更時間。",
+    "Creation、Packaging 與 Publishing 現有清單的分頁形狀不足以直接組成全域 keyset feed。",
+    "Publication 尚無 Workspace 跨 Skill 清單；現有查詢以單一 Skill 或 Bundle 為主。",
+    "部分失敗的 HTTP status 與 response body 形狀尚待產品與維運共同裁定。",
+    "本包是未送審草案，沒有核准、實作、測試通過或 Registry 更新。"
+  ]
+}
