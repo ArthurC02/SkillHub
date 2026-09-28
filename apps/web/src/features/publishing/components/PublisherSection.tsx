@@ -43,19 +43,22 @@ export function PublisherSection() {
             <p className="note">{PUBLISHER_NAME_RULE}</p>
             <p className="note">{PUBLISHER_NAME_PERMANENT}</p>
             <form
+              className="publisher-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 register.mutate(name.trim());
               }}
             >
-              <label htmlFor={inputId}>發佈者名稱</label>{" "}
-              <input
-                id={inputId}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                maxLength={64}
-                required
-              />{" "}
+              <div className="field">
+                <label htmlFor={inputId}>發佈者名稱</label>
+                <input
+                  id={inputId}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  maxLength={64}
+                  required
+                />
+              </div>
               <button type="submit" disabled={register.isPending}>
                 {register.isPending ? "註冊中…" : "註冊"}
               </button>

@@ -204,12 +204,16 @@ main {
   .app-header > .app-nav {
     grid-area: nav;
     margin-right: 0;
-    gap: 4px 12px;
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 
   .app-nav a {
-    min-height: 0;
-    padding: 0 8px;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 4px;
   }
 }
 

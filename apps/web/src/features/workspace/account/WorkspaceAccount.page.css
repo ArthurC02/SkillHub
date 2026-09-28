@@ -1,0 +1,102 @@
+.account-page {
+  min-width: 0;
+}
+
+.account-profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-rest);
+}
+
+.account-profile > p {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-profile > p strong {
+  color: var(--text-h);
+  font-size: 20px;
+}
+
+.account-profile details {
+  margin-left: auto;
+}
+
+.account-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.account-panel,
+.account-settings-grid > section {
+  min-width: 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-rest);
+}
+
+.account-settings-grid > section:last-child {
+  grid-column: 1 / -1;
+}
+
+.account-panel > h2:first-child,
+.account-settings-grid > section > h2:first-child {
+  margin-top: 0;
+}
+
+.account-danger-zone {
+  margin-top: 16px;
+  border-color: var(--danger);
+}
+
+.account-page .publisher-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+
+.account-page .publisher-form .field {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.account-page .bundle-form .field {
+  max-width: 560px;
+}
+
+@media (max-width: 720px) {
+  .account-profile {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .account-profile details {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .account-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-settings-grid > section:last-child {
+    grid-column: auto;
+  }
+
+  .account-panel,
+  .account-settings-grid > section {
+    padding: 16px;
+  }
+}

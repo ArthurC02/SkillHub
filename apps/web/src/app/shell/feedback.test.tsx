@@ -151,8 +151,12 @@ test("NFR-007 a blank report is refused with a sentence, not with a dead button"
 
   expect(calls).toHaveLength(0);
   const alert = container.querySelector('[role="alert"]');
+  const message = container.querySelector("textarea") as HTMLTextAreaElement;
   expect(alert?.textContent).toContain("內容不能空白");
-  expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("   ");
+  expect(message.value).toBe("   ");
+  expect(message).toBe(document.activeElement);
+  expect(message.getAttribute("aria-invalid")).toBe("true");
+  expect(message.getAttribute("aria-describedby")?.split(" ")).toContain(alert?.id);
 });
 
 test("BETA-003 an over-long report says how long it is instead of being cut in half", async () => {

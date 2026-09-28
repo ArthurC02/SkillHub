@@ -1,4 +1,10 @@
 .chart-frame {
   position: relative;
-  height: 160px;
+  height: 220px;
+}
+
+@media (max-width: 640px) {
+  .chart-frame {
+    height: 190px;
+  }
 }

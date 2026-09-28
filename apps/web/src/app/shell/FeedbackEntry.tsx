@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { LoginRequired, ReadFailure } from "../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { useMe } from "../../core/session/me.service";
@@ -14,11 +14,72 @@ import { KIND_LABEL, KIND_NOTE } from "./FeedbackEntry.model";
 
 const runes = (s: string) => [...s].length;
 
+function FeedbackMessageField({
+  message,
+  invalid,
+  inputRef,
+  pagePath,
+  runID,
+  onChange,
+}: {
+  message: string;
+  invalid: string;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
+  pagePath: string;
+  runID: string | undefined;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <>
+      <p>
+        <label htmlFor="feedback-message">發生了什麼事</label>
+        <br />
+        <textarea
+          ref={inputRef}
+          id="feedback-message"
+          rows={4}
+          cols={60}
+          aria-invalid={invalid ? true : undefined}
+          aria-describedby={
+            invalid ? "feedback-context feedback-message-error" : "feedback-context"
+          }
+          value={message}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <br />
+        <span className="note">
+          {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
+        </span>
+      </p>
+
+      <p className="note" id="feedback-context">
+        會跟著送出的只有這些：目前頁面 <code>{pagePath}</code>
+        {runID ? (
+          <>
+            、你正在看的 Run <code>{runID}</code>
+          </>
+        ) : (
+          ""
+        )}
+        {BUILD_ID ? (
+          <>
+            、這一頁的 Build 識別碼 <code>{BUILD_ID}</code>
+          </>
+        ) : (
+          ""
+        )}
+        。除此之外不會擷取任何東西——沒有截圖、沒有 console、沒有自動蒐集畫面內容。
+      </p>
+    </>
+  );
+}
+
 export function FeedbackEntry({ pathname }: { pathname: string }) {
   const me = useMe();
   const [kind, setKind] = useState<FeedbackKind>("blocking_issue");
   const [message, setMessage] = useState("");
   const [invalid, setInvalid] = useState("");
+  const messageInput = useRef<HTMLTextAreaElement>(null);
 
   const pagePath = feedbackPagePath(pathname);
   const runID = feedbackRunID(pathname);
@@ -29,6 +90,7 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
     const trimmed = message.trim();
     if (trimmed === "") {
       setInvalid("請先寫下發生了什麼事。內容不能空白——只有這一段是你的話，其餘欄位都只是位置。");
+      messageInput.current?.focus();
       return;
     }
     if (runes(trimmed) > FEEDBACK_MAX_MESSAGE) {
@@ -36,6 +98,7 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
         `內容最多 ${FEEDBACK_MAX_MESSAGE} 字，目前 ${runes(trimmed)} 字。` +
           "請刪掉一些再送出，這樣才不會有一半被丟掉。",
       );
+      messageInput.current?.focus();
       return;
     }
     setInvalid("");
@@ -76,44 +139,17 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
             ))}
           </fieldset>
 
-          <p>
-            <label htmlFor="feedback-message">發生了什麼事</label>
-            <br />
-            <textarea
-              id="feedback-message"
-              rows={4}
-              cols={60}
-              aria-describedby="feedback-context"
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                setInvalid("");
-              }}
-            />
-            <br />
-            <span className="note">
-              {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
-            </span>
-          </p>
-
-          <p className="note" id="feedback-context">
-            會跟著送出的只有這些：目前頁面 <code>{pagePath}</code>
-            {runID ? (
-              <>
-                、你正在看的 Run <code>{runID}</code>
-              </>
-            ) : (
-              ""
-            )}
-            {BUILD_ID ? (
-              <>
-                、這一頁的 Build 識別碼 <code>{BUILD_ID}</code>
-              </>
-            ) : (
-              ""
-            )}
-            。除此之外不會擷取任何東西——沒有截圖、沒有 console、沒有自動蒐集畫面內容。
-          </p>
+          <FeedbackMessageField
+            message={message}
+            invalid={invalid}
+            inputRef={messageInput}
+            pagePath={pagePath}
+            runID={runID}
+            onChange={(value) => {
+              setMessage(value);
+              setInvalid("");
+            }}
+          />
 
           <p>
             <button type="submit" disabled={send.isPending}>
@@ -123,7 +159,11 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
         </form>
       )}
 
-      {invalid && <p role="alert">{invalid}</p>}
+      {invalid && (
+        <p role="alert" id="feedback-message-error">
+          {invalid}
+        </p>
+      )}
       {send.error && (
         <ReadFailure error={send.error} what="回報">
           <p role="alert">

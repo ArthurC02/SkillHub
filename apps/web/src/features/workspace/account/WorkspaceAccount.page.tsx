@@ -12,6 +12,7 @@ import {
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { CreditStatement } from "./CreditStatement";
 import { BundleSection, PublisherSection } from "../../publishing";
+import "./WorkspaceAccount.page.css";
 
 function deletionFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409) return "刪除已經不可逆，無法再變更。";
@@ -25,7 +26,7 @@ export function WorkspaceAccount() {
   const cancel = useCancelAccountDeletion();
 
   return (
-    <section>
+    <section className="account-page">
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}
@@ -44,60 +45,69 @@ export function WorkspaceAccount() {
 
       {me.data && (
         <>
-          <p className="note">
-            {me.data.display_name}（{me.data.email}）
-          </p>
-          <details>
-            <summary>工作區識別碼</summary>
-            <code>{me.data.workspace_id}</code>
-          </details>
+          <div className="account-profile">
+            <p>
+              <strong>{me.data.display_name}</strong>
+              <span>{me.data.email}</span>
+            </p>
+            <details>
+              <summary>工作區識別碼</summary>
+              <code>{me.data.workspace_id}</code>
+            </details>
+          </div>
 
-          <h2>點數與花費</h2>
-          <CreditStatement />
+          <div className="account-settings-grid">
+            <section className="account-panel">
+              <h2>點數與花費</h2>
+              <CreditStatement />
+            </section>
 
-          <PublisherSection />
-          <BundleSection />
+            <PublisherSection />
+            <BundleSection />
+          </div>
 
-          <h2>刪除帳號</h2>
-          {me.data.deletion_requested_at ? (
-            <PendingDeletion
-              requestedAt={me.data.deletion_requested_at}
-              purgeAfter={me.data.purge_after}
-              scope={me.data.deletion_scope}
-              pending={cancel.isPending}
-              onCancel={() =>
-                cancel.mutate(undefined, {
-                  onSuccess: () => setMessage("已取消。帳號不會被刪除，資料照舊。"),
-                })
-              }
-            />
-          ) : (
-            <p data-role="reason">
-              <ConfirmDelete
-                scopeId="account-delete-scope"
-                label="刪除我的帳號"
-                confirmLabel="確認開始刪除"
-                pending={request.isPending}
-                onAsk={() => setMessage("")}
-                onConfirm={() =>
-                  request.mutate(undefined, {
-                    onSuccess: (result) => setMessage(result.scope),
+          <section className="account-panel account-danger-zone">
+            <h2>刪除帳號</h2>
+            {me.data.deletion_requested_at ? (
+              <PendingDeletion
+                requestedAt={me.data.deletion_requested_at}
+                purgeAfter={me.data.purge_after}
+                scope={me.data.deletion_scope}
+                pending={cancel.isPending}
+                onCancel={() =>
+                  cancel.mutate(undefined, {
+                    onSuccess: () => setMessage("已取消。帳號不會被刪除，資料照舊。"),
                   })
                 }
-                scope={
-                  <>
-                    這一步<strong>不會立刻刪掉任何東西</strong>
-                    ：它開始一段寬限期，期間帳號照常可以用，隨時可以取消。
-                    按下之後伺服器會回覆「哪些會刪、哪些會保留但去掉你的身分」的完整說明，
-                    以及寬限期結束的日期；在那之前都還來得及反悔。
-                  </>
-                }
               />
+            ) : (
+              <p data-role="reason">
+                <ConfirmDelete
+                  scopeId="account-delete-scope"
+                  label="刪除我的帳號"
+                  confirmLabel="確認開始刪除"
+                  pending={request.isPending}
+                  onAsk={() => setMessage("")}
+                  onConfirm={() =>
+                    request.mutate(undefined, {
+                      onSuccess: (result) => setMessage(result.scope),
+                    })
+                  }
+                  scope={
+                    <>
+                      這一步<strong>不會立刻刪掉任何東西</strong>
+                      ：它開始一段寬限期，期間帳號照常可以用，隨時可以取消。
+                      按下之後伺服器會回覆「哪些會刪、哪些會保留但去掉你的身分」的完整說明，
+                      以及寬限期結束的日期；在那之前都還來得及反悔。
+                    </>
+                  }
+                />
+              </p>
+            )}
+            <p>
+              <Link to="/policy">個別資料的保存與刪除政策</Link>
             </p>
-          )}
-          <p>
-            <Link to="/policy">個別資料的保存與刪除政策</Link>
-          </p>
+          </section>
         </>
       )}
     </section>

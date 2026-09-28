@@ -136,6 +136,9 @@ test.describe("QA-008 real layout", () => {
         height: Math.round(el.getBoundingClientRect().height),
         title: box(el.querySelector(".app-title")!),
         auth: box(el.lastElementChild!),
+        navHeights: Array.from(el.querySelectorAll(".app-nav a"), (link) =>
+          Math.round(link.getBoundingClientRect().height),
+        ),
       };
     });
 
@@ -148,6 +151,10 @@ test.describe("QA-008 real layout", () => {
         `標題 ${Math.round(header.title.top)}–${Math.round(header.title.bottom)}、` +
         `身分 ${Math.round(header.auth.top)}–${Math.round(header.auth.bottom)}（頁首高 ${header.height}px）`,
     ).toBe(true);
+    expect(
+      Math.min(...header.navHeights),
+      `手機導覽的最小點按高度只有 ${Math.min(...header.navHeights)}px`,
+    ).toBeGreaterThanOrEqual(40);
   });
 
   for (const width of [1440, 1280]) {

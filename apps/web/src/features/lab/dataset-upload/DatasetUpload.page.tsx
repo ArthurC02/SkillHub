@@ -7,6 +7,7 @@ import { useDatasetLimits, useUploadDataset, type Dataset } from "../lab.service
 import { useTestCaseDatasets } from "../testcases.service";
 import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
 import { UploadRulesFacts } from "./components/UploadRulesFacts";
+import "./DatasetUpload.page.css";
 
 type UploadSearch = { test_case?: string };
 
@@ -30,7 +31,7 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
   };
 
   return (
-    <section>
+    <section className="dataset-upload-page">
       <h1>Dataset</h1>
 
       {limits.isPending && <Loading what="上傳規則" />}
@@ -40,18 +41,22 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
 
       {limits.data && (
         <>
-          <h2>上傳前請先確認</h2>
-          <UploadRulesFacts limits={limits.data} used={used} testCase={testCase} />
+          <section className="dataset-upload-guide" aria-labelledby="dataset-guide-heading">
+            <h2 id="dataset-guide-heading">上傳前請先確認</h2>
+            <UploadRulesFacts limits={limits.data} used={used} testCase={testCase} />
+          </section>
 
           {testCase === "" ? (
-            <p>
+            <p className="notice">
               這個頁面需要 <code>?test_case=</code>。請到{" "}
               <Link to="/lab/test-cases">Test Case 頁</Link> 建立或選一個 Test Case,再從那裡連過來。
             </p>
           ) : (
-            <>
-              <label htmlFor="dataset-file">選擇檔案</label>{" "}
-              <input id="dataset-file" type="file" ref={fileInput} />{" "}
+            <div className="dataset-upload-picker">
+              <div className="field">
+                <label htmlFor="dataset-file">選擇檔案</label>
+                <input id="dataset-file" type="file" ref={fileInput} />
+              </div>
               <button
                 type="button"
                 disabled={upload.isPending}
@@ -79,7 +84,7 @@ function DatasetUploadForm({ testCase }: { testCase: string }) {
               >
                 {upload.isPending ? "上傳中…" : "上傳"}
               </button>
-            </>
+            </div>
           )}
         </>
       )}

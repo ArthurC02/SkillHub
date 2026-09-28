@@ -22,8 +22,14 @@ export function SearchHeroForm({
           onChange={(event) => onDraftChange(event.target.value)}
           placeholder="在目錄裡找一個 Skill，例如：把這份 PDF 整理成摘要"
           aria-label="任務描述"
+          aria-invalid={queryError ? true : undefined}
+          aria-describedby={queryError ? "search-query-error" : undefined}
         />
-        {queryError && <p role="alert">{queryError}</p>}
+        {queryError && (
+          <p role="alert" id="search-query-error">
+            {queryError}
+          </p>
+        )}
         <button type="submit" className="action">
           搜尋
         </button>

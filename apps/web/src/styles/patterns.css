@@ -246,6 +246,26 @@ code,
   align-self: flex-start;
 }
 
+.risk-list > :is(.badge-risk, .badge-risk-flag) {
+  align-items: flex-start;
+  width: min(100%, 40em);
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding-block: 8px;
+}
+
+.risk-list > .badge-risk > span:last-child {
+  flex-basis: 100%;
+  padding-left: 24px;
+  color: var(--text-h);
+}
+
+.risk-list > .badge-risk-flag > .note {
+  flex-basis: 100%;
+  margin-left: 0;
+  padding-left: 24px;
+}
+
 .search-results {
   gap: 16px;
 }
@@ -640,6 +660,19 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   flex-wrap: wrap;
   gap: 8px;
   margin: 12px 0;
+}
+
+@media (max-width: 640px) {
+  .category-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding-bottom: 4px;
+  }
+
+  .category-nav .chip {
+    flex: 0 0 auto;
+  }
 }
 
 .chip {

@@ -343,6 +343,7 @@ function CreateBundleForm({
 
   return (
     <form
+      className="bundle-form"
       onSubmit={(event) => {
         event.preventDefault();
         const memberVersionIds = choices
@@ -367,31 +368,28 @@ function CreateBundleForm({
       }}
     >
       <h3>建立 Bundle Version</h3>
-      <p>
+      <div className="field">
         <label htmlFor={nameId}>名稱</label>
-        <br />
         <input id={nameId} value={name} onChange={(e) => setName(e.target.value)} required />
-      </p>
-      <p>
+      </div>
+      <div className="field">
         <label htmlFor={versionId}>版本（semver，例如 1.0.0）</label>
-        <br />
         <input
           id={versionId}
           value={version}
           onChange={(e) => setVersion(e.target.value)}
           required
         />
-      </p>
-      <p>
+      </div>
+      <div className="field">
         <label htmlFor={descriptionId}>說明</label>
-        <br />
         <textarea
           id={descriptionId}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           required
         />
-      </p>
+      </div>
       <fieldset>
         <legend>成員（各取最新版本）</legend>
         {choicesPending && <Loading what="你的 Skill 清單" />}
