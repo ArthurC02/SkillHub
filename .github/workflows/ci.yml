@@ -549,6 +549,11 @@ jobs:
             python "$test"
           done
 
+      - name: Domain Memory plugin tests
+        run: >-
+          bash tools/ci/report-failure.sh 'Domain Memory plugin tests'
+          python -m unittest discover -s .claude/skills/domain-memory/scripts -p 'test_*.py'
+
   qa002:
     needs: changes
     if: needs.changes.outputs.qa002 == 'true'
