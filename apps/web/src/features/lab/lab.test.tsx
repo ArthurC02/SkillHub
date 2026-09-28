@@ -186,21 +186,12 @@ test("TEST-009 沒有驗收條件的 Run 會白跑，而這件事要在按下去
   expect(text()).toContain("不會產生逐條判定");
 });
 
-async function renderLab(
-  search: {
-    skill: string | undefined;
-    version: string | undefined;
-    test_case: string | undefined;
-  } = {
-    skill: SKILL,
-    version: VERSION,
-    test_case: TEST_CASE,
-  },
-) {
+async function renderLab(search: { version: string | undefined } = { version: VERSION }) {
   const params = new URLSearchParams(
     Object.entries(search).filter(([, v]) => v !== undefined) as [string, string][],
   );
-  window.history.pushState({}, "", `/lab/run?${params.toString()}`);
+  const path = `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?${params.toString()}`;
+  window.history.pushState({}, "", path);
   await act(async () => {
     root = createRoot(container);
     root.render(
@@ -210,7 +201,11 @@ async function renderLab(
     );
   });
   await act(async () => {
-    await router.navigate({ to: "/lab/run", search });
+    await router.navigate({
+      to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
+      params: { skillId: SKILL, testCaseId: TEST_CASE },
+      search,
+    });
   });
 }
 
@@ -421,16 +416,13 @@ test("changing the preflight version persists the complete run context in the UR
 
   await pickVersion(OLDER_VERSION);
   await waitFor(() => router.state.location.search.version === OLDER_VERSION);
-  expect(router.state.location.search).toMatchObject({
-    skill: SKILL,
-    version: OLDER_VERSION,
-    test_case: TEST_CASE,
-  });
+  expect(router.state.location.pathname).toBe(`/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new`);
+  expect(router.state.location.search).toEqual({ version: OLDER_VERSION });
 });
 
 test("04 丙-14 with no version in the URL the page asks for one instead of demanding an id", async () => {
   const platform = stubPlatform();
-  await renderLab({ skill: SKILL, version: undefined, test_case: TEST_CASE });
+  await renderLab({ version: undefined });
 
   await waitFor(() => (container.textContent ?? "").includes("請先在上面選一個 Skill Version"));
   expect(platform.calls.some((c) => c.url.includes("version_id=&"))).toBe(false);
@@ -438,6 +430,34 @@ test("04 丙-14 with no version in the URL the page asks for one instead of dema
   await pickVersion(VERSION);
   await waitFor(() => (container.textContent ?? "").includes("資源上限"));
   expect(container.textContent).toContain("rows.csv");
+});
+
+test("the legacy run address preserves its object context in the canonical preflight URL", async () => {
+  stubPlatform();
+  window.history.pushState(
+    {},
+    "",
+    `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`,
+  );
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  });
+  await act(async () => {
+    await router.navigate({
+      to: "/lab/run",
+      search: { skill: SKILL, version: VERSION, test_case: TEST_CASE },
+    });
+  });
+
+  await waitFor(
+    () => router.state.location.pathname === `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new`,
+  );
+  expect(router.state.location.search).toEqual({ version: VERSION });
 });
 
 test("SEC-002 gate B: an exhausted allowance is not reported as a permission change", async () => {

@@ -302,7 +302,7 @@ test("the validation journey keeps the same Skill workbench in reach", async ({ 
     `/skills/${SKILL}/package?version=${VERSION}`,
     `/lab/test-cases?skill=${SKILL}&version=${VERSION}`,
     `/lab/test-cases/${TEST_CASE}?version=${VERSION}`,
-    `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`,
+    `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=${VERSION}`,
     `/runs/${RUN}`,
     `/runs/${RUN}/compare?against=${OTHER_RUN}`,
   ];
@@ -748,7 +748,8 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
     "skill-detail": 78,
     "skill-version": 32,
     packaging: 61,
-    "lab-run": 84,
+    "run-preflight": 84,
+    "lab-run-redirect": 84,
     "lab-datasets": 16,
     "lab-test-cases": 37,
     "lab-test-case-detail": 319,

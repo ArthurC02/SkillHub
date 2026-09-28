@@ -12,12 +12,9 @@ export function RerunCell({ side }: { side: ComparisonSide }) {
     <>
       仍在。{" "}
       <Link
-        to="/lab/run"
-        search={{
-          skill: side.skill_id,
-          version: side.skill_version_id,
-          test_case: side.test_case_id,
-        }}
+        to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+        params={{ skillId: side.skill_id, testCaseId: side.test_case_id }}
+        search={{ version: side.skill_version_id }}
       >
         以相同的 Test Case 與版本重新試跑
       </Link>

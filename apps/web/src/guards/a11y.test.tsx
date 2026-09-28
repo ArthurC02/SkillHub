@@ -306,6 +306,7 @@ const SCANNED_ROUTES = [
   "/skills/$skillId",
   "/skills/$skillId/files",
   "/skills/$skillId/package",
+  "/skills/$skillId/test-cases/$testCaseId/runs/new",
   "/skills/$skillId/versions/$versionId",
   "/p/$publisher/$name",
   "/lab/run",
@@ -544,12 +545,13 @@ test("QA-009: 執行前權限確認", async () => {
   await mount();
   await act(async () => {
     await router.navigate({
-      to: "/lab/run",
-      search: { skill: SKILL, version: VERSION, test_case: TEST_CASE },
+      to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
+      params: { skillId: SKILL, testCaseId: TEST_CASE },
+      search: { version: VERSION },
     });
   });
   await waitFor(has("資源上限"));
-  await scan("/lab/run");
+  await scan("/skills/$skillId/test-cases/$testCaseId/runs/new");
 }, 30000);
 
 test("QA-009: Dataset 上傳", async () => {
@@ -782,13 +784,14 @@ test("QA-009: 執行前權限確認（載入中）", async () => {
   await mount();
   await act(async () => {
     await router.navigate({
-      to: "/lab/run",
-      search: { skill: SKILL, version: undefined, test_case: TEST_CASE },
+      to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
+      params: { skillId: SKILL, testCaseId: TEST_CASE },
+      search: { version: undefined },
     });
   });
   await waitFor(() => container.querySelector("[data-loading]") !== null);
 
-  await scan("/lab/run loading");
+  await scan("/skills/$skillId/test-cases/$testCaseId/runs/new loading");
 }, 30000);
 
 test("QA-009: 活動（空的）", async () => {

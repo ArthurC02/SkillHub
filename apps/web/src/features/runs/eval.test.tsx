@@ -332,7 +332,7 @@ async function applyAccepted() {
 
 function rerunLink(): HTMLAnchorElement | undefined {
   return Array.from(container.querySelectorAll("a")).find((a) =>
-    a.getAttribute("href")?.startsWith("/lab/run"),
+    a.getAttribute("href")?.startsWith(`/skills/${SKILL}/test-cases/`),
   );
 }
 
@@ -524,15 +524,14 @@ test("EVAL-002 the apply action is offered on a run reached without a skill in i
   expect(container.textContent).not.toContain("?skill=");
 });
 
-test("EVAL-011 the new version's id is handed to the preflight screen, not to the address bar", async () => {
+test("EVAL-011 the rerun link keeps object context in the path and the new version in search", async () => {
   stubPlatform({ evaluated: true, accepted: true });
   await applyAccepted();
 
   const href = rerunLink()?.getAttribute("href") ?? "";
   const params = new URLSearchParams(href.slice(href.indexOf("?")));
-  expect(params.get("skill")).toBe(SKILL);
+  expect(href.split("?")[0]).toBe(`/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new`);
   expect(params.get("version")).toBe(NEW_VERSION);
-  expect(params.get("test_case")).toBe(TEST_CASE);
   const versionLink = container.querySelector(`a[href="/skills/${SKILL}/versions/${NEW_VERSION}"]`);
   expect(versionLink).not.toBeNull();
   expect(versionLink?.textContent).toContain("開啟剛建立的版本");

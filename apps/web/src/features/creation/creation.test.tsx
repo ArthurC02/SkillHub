@@ -1699,9 +1699,8 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   const link = [...box.querySelectorAll("a")].find(
     (a) => a.textContent === "檢查權限與費用後試跑此版本",
   );
-  expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toMatchObject({
-    test_case: "tc-1",
-  });
+  expect(link?.getAttribute("href")).toBe("/skills/sk-1/test-cases/tc-1/runs/new");
+  expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toEqual({ version: "v1" });
 });
 test("a saved session opens the exact immutable version instead of the Skill overview", async () => {
   const v = sample({ state: "saved" });

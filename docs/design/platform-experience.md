@@ -333,7 +333,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 | `/workspace/import` | Library 的新增／匯入流程 | 先讓舊頁接受並保留返回脈絡，再收進 Library |
 | `/workspace/creations` | Studio 與 Skill 工作台的建構分頁 | 保留旗標；會話列表在 Studio，單一會話回到 Skill 脈絡 |
 | `/lab/test-cases`、`/lab/datasets` | Skill 工作台的驗證分頁 | 先把 Skill 脈絡固定，再移除重複選擇 |
-| `/lab/run` | 驗證分頁內的 preflight | 保留原 preflight 服務與同意流程，只改呈現和進入方式 |
+| `/lab/run` | 驗證分頁內的 preflight | 已收進 `/skills/$skillId/test-cases/$testCaseId/runs/new`；原 preflight 服務與同意流程不變，舊網址只作相容導向 |
 | `/workspace/runs` | Activity 的試跑保存檢視 | 全域活動先整合列表；完整內容仍由 `/runs/$runId` 提供 |
 | `/runs/$runId` | 工作台驗證脈絡中的精確 Run | URL 保留，增加返回 Skill／Version／Test Case 的持續脈絡 |
 | `/skills/$skillId/files` | 工作台建構分頁 | URL 可作進階檔案檢視的深連結 |
@@ -345,7 +345,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱、Catalog 搜尋入口與首頁的真實續作來源；現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
 
-**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
+**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；preflight 的 canonical URL 現在把 Skill 與 Test Case 固定在路徑，只讓可替換的 Version 留在 query，舊 `/lab/run` 只負責改寫舊深連結。已知 `test_case_id` 的頁面會回到精確 Test Case，Run 比較的兩側也各自回到自己的 Run 與不可變 Version。精確版本頁已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成，且每列回到來源 Run。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 

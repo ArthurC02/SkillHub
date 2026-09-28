@@ -119,11 +119,11 @@ test("comparison aligns distinct outputs, verdicts, costs and version links", as
   const links = table.getByRole("link", { name: "以相同的 Test Case 與版本重新試跑" });
   await expect(links.nth(0)).toHaveAttribute(
     "href",
-    `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`,
+    `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=${VERSION}`,
   );
   await expect(links.nth(1)).toHaveAttribute(
     "href",
-    `/lab/run?skill=${SKILL}&version=second-version&test_case=${TEST_CASE}`,
+    `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=second-version`,
   );
 });
 

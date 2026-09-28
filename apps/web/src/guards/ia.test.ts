@@ -34,6 +34,17 @@ function paths(markdown: string): string[] {
   return [...new Set([...markdown.matchAll(/`(\/[^`]*)`/g)].map((m) => m[1]))].sort();
 }
 
+function pageRoutes(): string[] {
+  return router
+    .split("createRoute({")
+    .slice(1)
+    .filter((block) => !block.includes("beforeLoad:"))
+    .flatMap((block) => {
+      const path = /^\s*(?:getParentRoute:[^\n]*\n)?\s*path: "([^"]+)"/m.exec(block);
+      return path ? [path[1]] : [];
+    });
+}
+
 test("IA §1: every route in router.tsx has a row, and every row is a route", () => {
   const actual = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => m[1]).sort();
   expect(actual.length).toBeGreaterThanOrEqual(17);
@@ -59,7 +70,11 @@ test("IA §2.1: the primary nav's targets are the ones the document lists", () =
   expect(row, "§2.1 has no 主要導覽 row").toBeTruthy();
   expect(paths(row!)).toEqual(actual);
 
-  const actionOnly = new Set(["/workspace/import", "/lab/test-cases", "/lab/run"]);
+  const actionOnly = new Set([
+    "/workspace/import",
+    "/lab/test-cases",
+    "/skills/$skillId/test-cases/$testCaseId/runs/new",
+  ]);
   expect(
     actual.filter((target) => actionOnly.has(target)),
     "§0.1 R7: an action-only route is in the platform navigation",
@@ -91,7 +106,7 @@ function reachabilityRow(n: string): string[] {
 }
 
 test("IA §0.1 R3 / §2.3: the pages with 0 and with 1 way in are the ones the document names", () => {
-  const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => m[1]);
+  const routes = pageRoutes();
   const inbound = inboundByRoute();
   const withCount = (n: number) => routes.filter((r) => (inbound.get(r) ?? 0) === n).sort();
 
@@ -100,7 +115,7 @@ test("IA §0.1 R3 / §2.3: the pages with 0 and with 1 way in are the ones the d
 });
 
 test("IA §0.1 R2: every route the rule can judge either follows it or is in the ledger", () => {
-  const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => m[1]);
+  const routes = pageRoutes();
   const owned = (p: string) =>
     p.startsWith("/workspace/") || p.startsWith("/lab/") || p.startsWith("/admin/");
 

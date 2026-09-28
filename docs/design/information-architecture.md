@@ -77,15 +77,14 @@
 | --- | --- | --- |
 | `/lab/test-cases/$testCaseId` | R2（單筆掛在清單的前綴底下，而不是 `/test-cases/$id`） | **保留**。Test Case 沒有跨工作區的存在——它不像 Skill 或 Run 會被別人以 id 指涉，所以「單筆位址與擁有者無關」這個理由在它身上不成立。R2 的推導前提不適用，不是 R2 被打破 |
 | `/runs/$runId/compare` | R2（跨物件操作卻不在根層，`/compare` 在） | **保留**。它比較的是**這一次 Run 與另一次**，主詞是路徑上那個 run；`/compare` 比較的是兩個彼此無關的 Skill。兩者形狀不同不是不一致 |
-| `/lab/run` | R2（動詞當清單位址） | **待修，成本低**。它是「發動一次試跑」的準備畫面，不是清單。正確形狀應該是 Run 的建立位址；改名會動 `03:TEST-008/009` 的三個 search param 與 `__outlines__/` 的鍵，所以自成一批 |
 
-**這張表現在有三列。它只能變短。** 新增一列要在同一批 commit 裡寫下理由，並且理由必須是「R 的推導前提在這裡不成立」，不能是「這樣比較方便」。
+**這張表現在有兩列。它只能變短。** 新增一列要在同一批 commit 裡寫下理由，並且理由必須是「R 的推導前提在這裡不成立」，不能是「這樣比較方便」。舊 `/lab/run` 只保留為相容導向，不再是畫面；R2／R3 的頁面檢查排除只有 `beforeLoad` 導向、沒有元件的路由。
 
 ---
 
 ## 1. 現況：路由清單
 
-`__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`lab-run-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
+`__outlines__/` 的快照份數多於位址數，而這不是矛盾（份數以 §6 為準）：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`skills-skillId-test-cases-testCaseId-runs-new-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
 
 | 位址 | 頁面元件 | 需求 ID（見表下說明） | 價值流／產品領域 |
 | --- | --- | --- | --- |
@@ -107,7 +106,8 @@
 | `/lab/test-cases` | `TestCaseList` | 03:TEST-012 | 試跑與改善／**試跑情境設計** |
 | `/lab/test-cases/$testCaseId` | `TestCaseDetail` | TEST | 試跑與改善／試跑情境設計 |
 | `/lab/datasets` | `DatasetUpload` | 02:TEST-002／03:TEST-004 | 試跑與改善／試跑情境設計 |
-| `/lab/run` | `RunPreflight` | 03:TEST-008／009（＋02:TEST-005 的同意綁定） | 試跑與改善／Skill 試跑執行 |
+| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `RunPreflight` | 03:TEST-008／009（＋02:TEST-005 的同意綁定） | 試跑與改善／**指定 Skill 與 Test Case 的 Run 建立前確認** |
+| `/lab/run` | 相容導向 | 03:TEST-008／009 | 舊連結帶齊 Skill 與 Test Case 時導向上列；缺 Test Case 時回到情境清單，缺 Skill 時若有 Test Case 則回單筆，不渲染另一份 preflight |
 | `/runs/$runId` | `RunTrace` | 03:TRACE-006／007 **＋ EVAL-001／002** | 試跑與改善／**執行證據＋成果判定（兩個）** |
 | `/runs/$runId/compare` | `RunCompare` | 02:EVAL-003 | 試跑與改善／成果判定與改善 |
 | `/admin` | `AdminHome` | 02:OPS-001 | 產品營運／**營運後台** |
@@ -129,7 +129,7 @@
 
 **沒有位址的區塊一個**：[`EvaluationPanel.tsx`](../../apps/web/src/features/runs/evaluation/EvaluationPanel.tsx)（全 app 最大的幾個檔案之一）。它長在 `/runs/$runId` 裡；沒有位址就不是頁面，所以它不是 `*.page.tsx`，而是 runs 這個 feature 裡的元件（[前端架構與樣式分層](../adr/README.md#前端架構與樣式分層)）。它原本兼供的 `RUN_STATUS_LABEL` 搬到了 `features/runs/runs.model.ts`。詳見 §5 IA-3。
 
-**深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
+**最深的工作脈絡是** `/skills/$skillId/test-cases/$testCaseId/runs/new`：它把這次建立 Run 所屬的 Skill 與 Test Case 固定在路徑，最多仍只記住兩個 id；可替換的 Version 留在 query，不把三個識別都塞進 search params。
 
 ---
 
@@ -168,21 +168,23 @@ WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
                   /workspace/account, /workspace, /policy
 WorkspaceRuns ──► /runs/$id, /lab/test-cases, /workspace
-TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id,
+TestCases ──────► /lab/test-cases/$id, /lab/datasets, /skills/$id/test-cases/$id/runs/new, /runs/$id,
                   /skills/$id, /skills/$id/files
 DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
 RunPreflight ───► /lab/test-cases, /runs/$id, /skills/$id, /skills/$id/files
 RunTrace ───────► /runs/$id/compare, /lab/test-cases, /skills/$id,
                   /skills/$id/files
-RunCompare ─────► /lab/run, /runs/$id, /lab/test-cases, /skills/$id,
+RunCompare ─────► /skills/$id/test-cases/$id/runs/new, /runs/$id, /lab/test-cases, /skills/$id,
                   /skills/$id/files
-EvaluationPanel ► /lab/run, /skills/$id       （渲染在 /runs/$id 之內）
+EvaluationPanel ► /skills/$id/test-cases/$id/runs/new, /skills/$id
+                                              （渲染在 /runs/$id 之內）
 WorkspaceAccount► /policy, /workspace/{skills,runs,downloads}
 DataPolicy ─────► /workspace/{skills,runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）
-GeneratedNotice ► /lab/run                    （同上）
+GeneratedNotice ► /lab/test-cases             （同上；尚無 Test Case 時先建立情境）
 CreateHub ──────► /, /workspace/import        （渲染在 /workspace/skills 之內）
-CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /workspace/skills
+CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/$id,
+                  /skills/$id/versions/$versionId, /workspace/skills
                                               （渲染在 /workspace/creations 之內）
 ```
 
@@ -222,11 +224,11 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
 | 2 | `/p/$publisher/$name`、`/workspace`、`/policy`、`/lab/test-cases/$testCaseId`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/cost-statistics` | ✅ |
 | 3 | `/skills/$skillId/files`、`/skills/$skillId/versions/$versionId`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
-| 4 | `/workspace/import` | ✅ |
-| 5 | `/workspace/downloads`、`/lab/run` | ✅ |
+| 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
+| 5 | `/workspace/downloads` | ✅ |
 | 6 | `/workspace/skills` | ✅ |
 | 7 | `/`、`/runs/$runId` | ✅ |
-| 9 | `/lab/test-cases` | ✅ |
+| 11 | `/lab/test-cases` | ✅ |
 | 18 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
 
 > **「導覽列不算一條入邊」不是計數細節，是這張表的用途。** 外部審查要求刪掉 `features/workspace/skills/WorkspaceSkills.page.tsx` 頁尾的「這個工作區的其他清單」，理由是那四條連結與導覽列 100% 重複——**那是事實**。擋下它的正是這條計數規則：整塊刪掉會讓 `/workspace/runs`、`/workspace/account`、`/policy` 各從 2 掉到 1 條頁內入邊，一次生出三個只從導覽列進得去的頁。
@@ -279,7 +281,8 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
 | `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`） | 發佈與交付空間裡正在續接哪一筆保存紀錄。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication；兩者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`，不得只把人送到泛用清單重新尋找。清單成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
-| `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |
+| `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇 |
+| `/lab/run` | `skill`、`version`、`test_case` | 舊深連結的相容輸入；帶齊 Skill 與 Test Case 後改寫成上列 canonical URL，沒有足夠脈絡時回到 Test Case 清單或單筆，不渲染第二份 preflight |
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`、`version`（皆須為 UUID） | 「此 Skill／Version 的 Test Case」那條連結要的東西；`version` 會跟著進單筆 Test Case 與 preflight，不改變清單本身的 owner scope |
 | `/lab/test-cases/$testCaseId` | `version`（須為 UUID） | 從精確版本進來時保留不可變版本脈絡，讓「用這一題試跑」送往同一版 preflight |
@@ -289,7 +292,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘十七條路由沒有 `validateSearch`**（31 條路由減去上表的 14 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十七條路由沒有 `validateSearch`**（32 條路由減去上表的 15 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -363,7 +366,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 
 ### IA-6 ✅ 已裁定：登出狀態不由 router 守衛，由 401 這個具名狀態自己說
 
-`router.tsx` 的 `beforeLoad` 與 `redirect` 各 **0 處**（可自行 `grep -c` 複驗）。所有 `/workspace/*` 與 `/lab/*` 在未登入時仍然可到達，導覽列也不隨登入狀態改變。`/policy` 是**唯一**明文決定「不放在 `/workspace` 底下、也不放在 session 後面」的頁——理由：平台記錄了訪客什麼，是登入之前就會被問的問題。
+驗證身分仍不使用 router 守衛：所有 `/workspace/*` 與需要登入的工作頁在未登入時由頁面誠實說明，導覽列也不隨登入狀態改變。`router.tsx` 現在只有一個 `beforeLoad`／`redirect`，用途是把舊 `/lab/run` 改寫成保留 Skill、Test Case 與 Version 脈絡的 canonical URL，不讀 session、不改授權結果。`/policy` 是**唯一**明文決定「不放在 `/workspace` 底下、也不放在 session 後面」的頁——理由：平台記錄了訪客什麼，是登入之前就會被問的問題。
 
 **查核做了，逐路由一列。** 這一項之所以懸了那麼久，是因為它被當成「要先畫出登出狀態的導覽列」；查完之後它不是那個問題。
 
@@ -453,7 +456,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 
 **落地**：`/workspace/creations`（`features/creation/create/CreateSkill.page.tsx`）。「建立一個 Skill」第三張卡不再就地展開工作台，而是與左邊兩張同型的一扇門。
 
-**位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「對話紀錄」選單就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`features/creation/components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——**那句話是對的，而它擋的是另一個位址**：動詞當清單位址正是 §0.2 裡 `/lab/run` 那一列記著「待修」的同一個毛病。換成名詞之後那個理由不成立。
+**位址的形狀是查出來的不是選出來的**：§0.1 R2 要清單位址掛在提問者的位置、而且是名詞的複數。`/workspace/creations` 兩條都合——它就是「我的創作會話」那份清單（元件自己的「對話紀錄」選單就是那份清單），所以 `ia.test.ts` 的 R2 檢查判它合規，**§0.2 那份只能縮短的偏離帳一列都沒有多**。`features/creation/components/CreateHub.tsx` 的檔案註解曾經寫著「新增 `/create` 會是清單位置上的一個動詞」——那句話曾同時描述 `/lab/run` 的毛病；preflight 收回指定 Skill／Test Case 的 Run 建立位址後，該偏離已移除，舊網址只作相容導向。
 
 **為什麼它只有一條入邊，而這一次不是欠**：R3 的兩支是「補第二條」與「具名」。這一頁走第二支，理由比前三個（IA-7 的那三頁）更硬——**第二條入邊不是還沒畫，是畫了就違反一條更高順位的規則**：⛔ [`01` §10](../plans/01-goals-and-plan.md) 邊界 1 逐字要求 M5 的生成入口「不得對封測使用者出現，也不得變得更顯眼」，而多一條頁內入邊的定義就是讓它更顯眼。
 
@@ -495,8 +498,8 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /works
 | 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/guards/__outlines__/) 快照 | **33** 個檔（後台七頁各一份）。**不判斷對錯，只讓變更變成必須核可的 diff** |
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。平台導覽與 Skill 工作台局部導覽各自有名稱，頁面新增 `<nav>` 時不能借用既有名稱 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
-| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（32 個位址；31 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
-| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **13** 條 |
+| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（33 個位址；32 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
+| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **15** 條 |
 | §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { validatePublishingWorkspaceSearch } from "./router";
+import { legacyRunDestination, validatePublishingWorkspaceSearch } from "./router";
 
 describe("publishing workspace search", () => {
   test.each([
@@ -39,5 +39,38 @@ describe("publishing workspace search", () => {
     ],
   ])("keeps %s according to its identity shape", (_name, search, expected) => {
     expect(validatePublishingWorkspaceSearch(search)).toEqual(expected);
+  });
+});
+
+describe("legacy Run preflight links", () => {
+  test.each([
+    [
+      "complete object context",
+      { skill: "skill-1", version: "version-1", test_case: "test-case-1" },
+      {
+        to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
+        params: { skillId: "skill-1", testCaseId: "test-case-1" },
+        search: { version: "version-1" },
+      },
+    ],
+    [
+      "a Test Case without its Skill",
+      { version: "version-1", test_case: "test-case-1" },
+      {
+        to: "/lab/test-cases/$testCaseId",
+        params: { testCaseId: "test-case-1" },
+        search: { version: "version-1" },
+      },
+    ],
+    [
+      "no Test Case",
+      { skill: "skill-1", version: "version-1" },
+      {
+        to: "/lab/test-cases",
+        search: { skill: "skill-1", version: "version-1" },
+      },
+    ],
+  ])("sends %s to the nearest durable context", (_name, search, expected) => {
+    expect(legacyRunDestination(search)).toEqual(expected);
   });
 });

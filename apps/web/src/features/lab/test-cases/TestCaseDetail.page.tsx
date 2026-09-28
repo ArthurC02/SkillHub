@@ -75,12 +75,9 @@ export function TestCaseDetail() {
       <p>
         <Link
           className="action"
-          to="/lab/run"
-          search={{
-            skill: testCase.data.skill_id,
-            test_case: testCaseId,
-            version: selectedVersion,
-          }}
+          to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+          params={{ skillId: testCase.data.skill_id, testCaseId }}
+          search={{ version: selectedVersion }}
         >
           前往執行前權限確認
         </Link>

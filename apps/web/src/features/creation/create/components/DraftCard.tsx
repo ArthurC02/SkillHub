@@ -118,16 +118,22 @@ function DraftCandidate({
     <>
       {adopted && <p>已直接採用現有 Skill；這個候選版本是它的複本，沒有生成任何內容。</p>}
       <p>
-        <Link
-          to="/lab/run"
-          search={{
-            skill: candidate.skill_id,
-            version: candidate.version_id,
-            test_case: candidate.test_case_id,
-          }}
-        >
-          檢查權限與費用後試跑此版本
-        </Link>
+        {candidate.test_case_id ? (
+          <Link
+            to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+            params={{ skillId: candidate.skill_id, testCaseId: candidate.test_case_id }}
+            search={{ version: candidate.version_id }}
+          >
+            檢查權限與費用後試跑此版本
+          </Link>
+        ) : (
+          <Link
+            to="/lab/test-cases"
+            search={{ skill: candidate.skill_id, version: candidate.version_id }}
+          >
+            先建立 Test Case 再試跑此版本
+          </Link>
+        )}
       </p>
       {candidate.test_case_id && <p>已依確認的驗收條件建立 Test Case</p>}
       {candidate.run_id ? (

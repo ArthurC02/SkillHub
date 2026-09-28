@@ -34,12 +34,9 @@ export function AppliedResult({
       {testCaseId ? (
         <p>
           <Link
-            to="/lab/run"
-            search={{
-              skill: result.skill_id,
-              version: result.version_id,
-              test_case: testCaseId,
-            }}
+            to="/skills/$skillId/test-cases/$testCaseId/runs/new"
+            params={{ skillId: result.skill_id, testCaseId }}
+            search={{ version: result.version_id }}
           >
             以新版本重跑這個 Test Case
           </Link>

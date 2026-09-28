@@ -3,6 +3,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  redirect,
 } from "@tanstack/react-router";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
@@ -217,16 +218,50 @@ const compareRoute = createRoute({
 
 const runPreflightRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/lab/run",
+  path: "/skills/$skillId/test-cases/$testCaseId/runs/new",
   component: lazyRouteComponent(
     () => import("../features/lab/preflight/RunPreflight.page"),
     "RunPreflight",
   ),
   validateSearch: (search: Record<string, unknown>) => ({
+    version: typeof search.version === "string" ? search.version : undefined,
+  }),
+});
+
+type LegacyRunSearch = { skill?: string; version?: string; test_case?: string };
+
+export function legacyRunDestination(search: LegacyRunSearch) {
+  if (search.skill && search.test_case) {
+    return {
+      to: "/skills/$skillId/test-cases/$testCaseId/runs/new",
+      params: { skillId: search.skill, testCaseId: search.test_case },
+      search: { version: search.version },
+    } as const;
+  }
+  if (search.test_case) {
+    return {
+      to: "/lab/test-cases/$testCaseId",
+      params: { testCaseId: search.test_case },
+      search: { version: search.version },
+    } as const;
+  }
+  return {
+    to: "/lab/test-cases",
+    search: { skill: search.skill, version: search.version },
+  } as const;
+}
+
+const legacyRunPreflightRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/run",
+  validateSearch: (search: Record<string, unknown>) => ({
     skill: typeof search.skill === "string" ? search.skill : undefined,
     version: typeof search.version === "string" ? search.version : undefined,
     test_case: typeof search.test_case === "string" ? search.test_case : undefined,
   }),
+  beforeLoad: ({ search }) => {
+    throw redirect(legacyRunDestination(search));
+  },
 });
 
 const datasetUploadRoute = createRoute({
@@ -413,6 +448,7 @@ const routeTree = rootRoute.addChildren([
   workspaceAccountRoute,
   dataPolicyRoute,
   runPreflightRoute,
+  legacyRunPreflightRoute,
   datasetUploadRoute,
   testCaseListRoute,
   testCaseDetailRoute,

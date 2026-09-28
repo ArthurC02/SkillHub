@@ -207,7 +207,7 @@ test("IA-6 /runs/$runId/compare says it before an id is typed in", async () => {
   assertHonestArrival();
 });
 
-test("IA-6 /lab/run stops sending a logged-out visitor to hunt for query parameters", async () => {
+test("IA-6 the Run preflight asks a logged-out visitor to sign in before loading context", async () => {
   loggedOutPlatform();
   await render(<RunPreflight />, () =>
     settled(() => text().includes("兩個 ID") || text().includes("需要登入")),
