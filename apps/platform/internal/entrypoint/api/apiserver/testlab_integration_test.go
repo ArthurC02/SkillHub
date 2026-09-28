@@ -128,24 +128,7 @@ func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 		t.Fatalf("draft is bound to the wrong skill: %v", body["skill_id"])
 	}
 
-	for _, prompt := range []string{"", "   ", "\n\t "} {
-		code, _ := alice.doJSON(t, http.MethodPost, "/test-cases",
-			fmt.Sprintf(`{"skill_id":%q,"name":"blank","user_prompt":%q}`, skillID, prompt))
-		if code != http.StatusBadRequest {
-			t.Errorf("create with prompt %q: got %d, want 400", prompt, code)
-		}
-		code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
-			fmt.Sprintf(`{"user_prompt":%q}`, prompt))
-		if code != http.StatusBadRequest {
-			t.Errorf("patch with prompt %q: got %d, want 400", prompt, code)
-		}
-	}
-
-	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
-		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes+1)))
-	if code != http.StatusRequestEntityTooLarge && code != http.StatusBadRequest {
-		t.Errorf("patch with an over-long prompt: got %d, want 400", code)
-	}
+	assertBlankAndOverLongPromptsRefused(t, alice, skillID, id)
 
 	code, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"user_prompt":"Extract the totals."}`)
 	if code != http.StatusOK {
@@ -163,7 +146,34 @@ func TestTestCaseCRUDAndPromptValidation(t *testing.T) {
 		t.Fatalf("list returned %d drafts, want 1", len(list))
 	}
 
-	code, body = alice.doJSON(t, http.MethodDelete, "/test-cases/"+id, "")
+	deleteTestCaseAndAssertItIsGone(t, alice, id)
+}
+
+func assertBlankAndOverLongPromptsRefused(t *testing.T, alice *client, skillID, id string) {
+	t.Helper()
+	for _, prompt := range []string{"", "   ", "\n\t "} {
+		code, _ := alice.doJSON(t, http.MethodPost, "/test-cases",
+			fmt.Sprintf(`{"skill_id":%q,"name":"blank","user_prompt":%q}`, skillID, prompt))
+		if code != http.StatusBadRequest {
+			t.Errorf("create with prompt %q: got %d, want 400", prompt, code)
+		}
+		code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+			fmt.Sprintf(`{"user_prompt":%q}`, prompt))
+		if code != http.StatusBadRequest {
+			t.Errorf("patch with prompt %q: got %d, want 400", prompt, code)
+		}
+	}
+
+	code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+		fmt.Sprintf(`{"user_prompt":%q}`, strings.Repeat("x", testlab.MaxPromptBytes+1)))
+	if code != http.StatusRequestEntityTooLarge && code != http.StatusBadRequest {
+		t.Errorf("patch with an over-long prompt: got %d, want 400", code)
+	}
+}
+
+func deleteTestCaseAndAssertItIsGone(t *testing.T, alice *client, id string) {
+	t.Helper()
+	code, body := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id, "")
 	if code != http.StatusOK || body["deleted"] != true {
 		t.Fatalf("DELETE /test-cases/{id}: got %d, body %v", code, body)
 	}
@@ -599,26 +609,7 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 	}
 
 	snap := takeSnapshot(t, pool, wsID, tcID)
-	if snap.UserPrompt != "Summarise the attached rows." {
-		t.Fatalf("snapshot prompt: %q", snap.UserPrompt)
-	}
-	criteria, err := testlab.DecodeCriteria(snap.AcceptanceCriteria)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(criteria) != 1 || criteria[0].ConfirmedAt == nil {
-		t.Fatalf("snapshot lost the confirmed criterion: %+v", criteria)
-	}
-	refs, err := testlab.DecodeDatasetRefs(snap.DatasetRefs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(refs) != 1 || refs[0].DatasetID != datasetID || refs[0].ContentHash != fileHash {
-		t.Fatalf("snapshot dataset refs: %+v", refs)
-	}
-	if snap.ContentHash == "" {
-		t.Fatal("snapshot has no content hash")
-	}
+	assertSnapshotCarriesTheDraft(t, snap, datasetID, fileHash)
 
 	again := takeSnapshot(t, pool, wsID, tcID)
 	if again.ContentHash != snap.ContentHash {
@@ -648,12 +639,36 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 	if code, _ := alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/datasets/"+datasetID, ""); code != http.StatusOK {
 		t.Fatal("dataset delete failed")
 	}
-	refs, err = testlab.DecodeDatasetRefs(readSnapshot(t, pool, snap.ID, wsID).DatasetRefs)
+	refs, err := testlab.DecodeDatasetRefs(readSnapshot(t, pool, snap.ID, wsID).DatasetRefs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(refs) != 1 || refs[0].ContentHash != fileHash || refs[0].FileName != "rows.csv" {
 		t.Fatalf("snapshot lost the deleted file's identity: %+v", refs)
+	}
+}
+
+func assertSnapshotCarriesTheDraft(t *testing.T, snap testlab.Snapshot, datasetID, fileHash string) {
+	t.Helper()
+	if snap.UserPrompt != "Summarise the attached rows." {
+		t.Fatalf("snapshot prompt: %q", snap.UserPrompt)
+	}
+	criteria, err := testlab.DecodeCriteria(snap.AcceptanceCriteria)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(criteria) != 1 || criteria[0].ConfirmedAt == nil {
+		t.Fatalf("snapshot lost the confirmed criterion: %+v", criteria)
+	}
+	refs, err := testlab.DecodeDatasetRefs(snap.DatasetRefs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 1 || refs[0].DatasetID != datasetID || refs[0].ContentHash != fileHash {
+		t.Fatalf("snapshot dataset refs: %+v", refs)
+	}
+	if snap.ContentHash == "" {
+		t.Fatal("snapshot has no content hash")
 	}
 }
 
@@ -687,16 +702,7 @@ func TestSnapshotFreezesTheRubric(t *testing.T) {
 	}
 
 	snap := takeSnapshot(t, pool, wsID, tcID)
-	frozen, err := testlab.DecodeRubric(snap.Rubric)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if frozen == nil || frozen.Version != "content-007/writing/v1" || len(frozen.Items) != 1 {
-		t.Fatalf("snapshot did not freeze the rubric: %+v", frozen)
-	}
-	if frozen.Items[0].ID != cid || !frozen.Items[0].EvidenceRequired {
-		t.Fatalf("frozen rubric item: %+v", frozen.Items[0])
-	}
+	assertSnapshotFrozeTheRubric(t, snap, cid)
 	if snap.ContentHash == noRubric.ContentHash {
 		t.Fatal("two runs judged against different rubrics did not execute the same input")
 	}
@@ -713,6 +719,20 @@ func TestSnapshotFreezesTheRubric(t *testing.T) {
 	}
 	if after := takeSnapshot(t, pool, wsID, tcID); after.ContentHash != noRubric.ContentHash {
 		t.Error("removing the rubric returns the snapshot to the shape it had without one")
+	}
+}
+
+func assertSnapshotFrozeTheRubric(t *testing.T, snap testlab.Snapshot, cid string) {
+	t.Helper()
+	frozen, err := testlab.DecodeRubric(snap.Rubric)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frozen == nil || frozen.Version != "content-007/writing/v1" || len(frozen.Items) != 1 {
+		t.Fatalf("snapshot did not freeze the rubric: %+v", frozen)
+	}
+	if frozen.Items[0].ID != cid || !frozen.Items[0].EvidenceRequired {
+		t.Fatalf("frozen rubric item: %+v", frozen.Items[0])
 	}
 }
 
@@ -848,15 +868,7 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 	if len(onA) != 2 {
 		t.Fatalf("list for skill A = %d drafts, want 2: %v", len(onA), onA)
 	}
-	for _, row := range onA {
-		if row["skill_id"] != skillA {
-			t.Errorf("the skill filter returned a draft of another skill: %v", row)
-		}
-
-		if row["skill_name"] != "filter-a-skill" {
-			t.Errorf("skill_name = %v, want the seeded skill's name", row["skill_name"])
-		}
-	}
+	assertEveryRowIsOfSkillA(t, onA, skillA)
 
 	if onA[0]["name"] != "filter-a-second" {
 		t.Errorf("filtered list is not newest first: %v", onA)
@@ -870,13 +882,32 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 		row["has_rubric"] != false {
 		t.Fatalf("a fresh draft's aggregates are not zeroed: %v", row)
 	}
+	addTwoCriteriaConfirmOneAndSetARubric(t, alice, first)
+	assertFirstCaseAggregatesOneOfTwoWithRubric(t, alice.listTestCases(t, skillA), first)
+}
+
+func assertEveryRowIsOfSkillA(t *testing.T, onA []map[string]any, skillA string) {
+	t.Helper()
+	for _, row := range onA {
+		if row["skill_id"] != skillA {
+			t.Errorf("the skill filter returned a draft of another skill: %v", row)
+		}
+
+		if row["skill_name"] != "filter-a-skill" {
+			t.Errorf("skill_name = %v, want the seeded skill's name", row["skill_name"])
+		}
+	}
+}
+
+func addTwoCriteriaConfirmOneAndSetARubric(t *testing.T, alice *client, first string) {
+	t.Helper()
 	for _, text := range []string{"first condition", "second condition"} {
 		if code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+first+"/criteria",
 			fmt.Sprintf(`{"text":%q}`, text)); code != http.StatusCreated {
 			t.Fatalf("add criterion: got %d, body %v", code, body)
 		}
 	}
-	_, body = alice.doJSON(t, http.MethodGet, "/test-cases/"+first, "")
+	_, body := alice.doJSON(t, http.MethodGet, "/test-cases/"+first, "")
 	criteria := criteriaOf(t, body)
 	cid := criteria[0]["id"].(string)
 	if code, body := alice.doJSON(t, http.MethodPatch, "/test-cases/"+first+"/criteria/"+cid,
@@ -888,8 +919,11 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 	); code != http.StatusOK {
 		t.Fatalf("set rubric: got %d, body %v", code, body)
 	}
+}
 
-	for _, row := range alice.listTestCases(t, skillA) {
+func assertFirstCaseAggregatesOneOfTwoWithRubric(t *testing.T, rows []map[string]any, first string) {
+	t.Helper()
+	for _, row := range rows {
 		if row["test_case_id"] != first {
 			continue
 		}

@@ -104,17 +104,9 @@ func TestAccountLookupAuditsAHitAndNothingElse(t *testing.T) {
 	operator := a.login(t, "bo-lookup-operator")
 	a.auth.Operators = map[string]bool{operator.userID: true}
 
-	emailOf := func(c *client) string {
-		_, me := getAdmin(t, c, "/me")
-		email, _ := me["email"].(string)
-		if email == "" {
-			t.Fatalf("GET /me gave no email: %v", me)
-		}
-		return email
-	}
-	email := emailOf(member)
-	departedEmail := emailOf(departed)
-	if stored := emailOf(a.login(t, "BO-Lookup-Mixed-Case")); stored != "bo-lookup-mixed-case@dev.local" {
+	email := meEmail(t, member)
+	departedEmail := meEmail(t, departed)
+	if stored := meEmail(t, a.login(t, "BO-Lookup-Mixed-Case")); stored != "bo-lookup-mixed-case@dev.local" {
 		t.Errorf("a mixed-case sign-up email was stored as %q, want its lower-case form", stored)
 	}
 	lookups := func() int {
@@ -146,16 +138,7 @@ func TestAccountLookupAuditsAHitAndNothingElse(t *testing.T) {
 		"UPDATE users SET deleted_at = now() WHERE id = $1", mustUUID(t, departed.userID)); err != nil {
 		t.Fatal(err)
 	}
-	for _, miss := range []string{"nobody-" + email, departedEmail} {
-		if code, out := lookup(miss); code != http.StatusNotFound {
-			t.Errorf("lookup of %q: got %d (%v), want 404", miss, code, out)
-		}
-	}
-	for _, blank := range []string{"", "   "} {
-		if code, _ := lookup(blank); code != http.StatusBadRequest {
-			t.Errorf("lookup of %q: got %d, want 400", blank, code)
-		}
-	}
+	assertLookupRefusesMissesAndBlanks(t, lookup, "nobody-"+email, departedEmail)
 	if n := lookups(); n != 1 {
 		t.Fatalf("after misses and blanks the operator has %d lookup events, want still 1", n)
 	}
@@ -172,6 +155,39 @@ func TestAccountLookupAuditsAHitAndNothingElse(t *testing.T) {
 	a.auth.Invited = map[string]bool{"someone-else": true, provider: true}
 	if _, out := lookup(email); out["in_beta_allowlist"] != true {
 		t.Errorf("an account on the allowlist: in_beta_allowlist %v, want true", out["in_beta_allowlist"])
+	}
+}
+
+func meEmail(t *testing.T, c *client) string {
+	t.Helper()
+	_, me := getAdmin(t, c, "/me")
+	email, _ := me["email"].(string)
+	if email == "" {
+		t.Fatalf("GET /me gave no email: %v", me)
+	}
+	return email
+}
+
+func assertLookupRefusesMissesAndBlanks(t *testing.T, lookup func(string) (int, map[string]any), misses ...string) {
+	t.Helper()
+	for _, miss := range misses {
+		if code, out := lookup(miss); code != http.StatusNotFound {
+			t.Errorf("lookup of %q: got %d (%v), want 404", miss, code, out)
+		}
+	}
+	for _, blank := range []string{"", "   "} {
+		if code, _ := lookup(blank); code != http.StatusBadRequest {
+			t.Errorf("lookup of %q: got %d, want 400", blank, code)
+		}
+	}
+}
+
+func assertAdminNotFound(t *testing.T, operator *client, paths ...string) {
+	t.Helper()
+	for _, missing := range paths {
+		if code, _ := getAdmin(t, operator, missing); code != http.StatusNotFound {
+			t.Errorf("GET %s: got %d, want 404", missing, code)
+		}
 	}
 }
 
@@ -217,11 +233,7 @@ func TestCreditLedgerShowsTheGrantAndAuditsEveryRead(t *testing.T) {
 		t.Fatalf("audit events after two ledger reads: %d, want 2", n)
 	}
 
-	for _, missing := range []string{"/admin/credits/00000000-0000-4000-8000-000000000000", "/admin/credits/not-a-uuid"} {
-		if code, _ := getAdmin(t, operator, missing); code != http.StatusNotFound {
-			t.Errorf("GET %s: got %d, want 404", missing, code)
-		}
-	}
+	assertAdminNotFound(t, operator, "/admin/credits/00000000-0000-4000-8000-000000000000", "/admin/credits/not-a-uuid")
 	if n := countRow(t, pool, `SELECT count(*) FROM audit_events
 		WHERE action = 'credit.lookup' AND actor_user_id = $1`, mustUUID(t, operator.userID)); n != 2 {
 		t.Errorf("reads of missing workspaces were audited: %d lookup events, want 2", n)
@@ -246,39 +258,83 @@ func TestGovernanceLookupReachesPrivateAndTakenDownSkillsButNotDeleted(t *testin
 		t.Fatalf("owner delete: got %d (%v)", code, out)
 	}
 
-	find := func(q string) map[string]map[string]any {
-		t.Helper()
-		code, out := getAdmin(t, operator, "/admin/skills?q="+url.QueryEscape(q))
-		if code != http.StatusOK {
-			t.Fatalf("GET /admin/skills?q=%s: got %d (%v)", q, code, out)
-		}
-		byID := map[string]map[string]any{}
-		for _, s := range objects(t, out["skills"]) {
-			id, _ := s["skill_id"].(string)
-			byID[id] = s
-		}
-		return byID
-	}
-
-	byName := find("BANDERSNATCH")
+	byName := adminSkillsByID(t, operator, "BANDERSNATCH")
 	if len(byName) != 2 || byName[private] == nil || byName[down] == nil {
 		t.Fatalf("name search found %v, want exactly the private and the taken-down skill", byName)
 	}
-	if s := byName[private]; s["workspace_id"] != owner.workspaceID || s["name"] != "bandersnatch-private-gov" ||
-		s["access_restriction"] != nil || s["takedown_at"] != nil || s["redistribution"] == "" {
-		t.Errorf("private skill governance: %v", s)
-	}
+	assertPrivateSkillGovernance(t, byName[private], owner.workspaceID)
 	if s := byName[down]; s["takedown_at"] == nil || s["takedown_reason"] != "DMCA governance" {
 		t.Errorf("taken-down skill governance: %v", s)
 	}
-	if byID := find(private); len(byID) != 1 || byID[private] == nil {
+	if byID := adminSkillsByID(t, operator, private); len(byID) != 1 || byID[private] == nil {
 		t.Errorf("id search found %v, want only %s", byID, private)
 	}
-	if byID := find(gone); len(byID) != 0 {
+	if byID := adminSkillsByID(t, operator, gone); len(byID) != 0 {
 		t.Errorf("a deleted skill is still found by id: %v", byID)
 	}
 	if code, _ := getAdmin(t, operator, "/admin/skills?q=%20"); code != http.StatusBadRequest {
 		t.Errorf("blank q: got %d, want 400", code)
+	}
+}
+
+func adminSkillsByID(t *testing.T, operator *client, q string) map[string]map[string]any {
+	t.Helper()
+	code, out := getAdmin(t, operator, "/admin/skills?q="+url.QueryEscape(q))
+	if code != http.StatusOK {
+		t.Fatalf("GET /admin/skills?q=%s: got %d (%v)", q, code, out)
+	}
+	byID := map[string]map[string]any{}
+	for _, s := range objects(t, out["skills"]) {
+		id, _ := s["skill_id"].(string)
+		byID[id] = s
+	}
+	return byID
+}
+
+func assertPrivateSkillGovernance(t *testing.T, s map[string]any, ownerWorkspaceID string) {
+	t.Helper()
+	if s["workspace_id"] != ownerWorkspaceID || s["name"] != "bandersnatch-private-gov" ||
+		s["access_restriction"] != nil || s["takedown_at"] != nil || s["redistribution"] == "" {
+		t.Errorf("private skill governance: %v", s)
+	}
+}
+
+func allAuditEvents(t *testing.T, operator *client) []map[string]any {
+	t.Helper()
+	var events []map[string]any
+	for offset := 0; ; offset += 100 {
+		code, out := getAdmin(t, operator, "/admin/audit-log?limit=100&offset="+strconv.Itoa(offset))
+		if code != http.StatusOK {
+			t.Fatalf("audit log page at %d: got %d (%v)", offset, code, out)
+		}
+		page := objects(t, out["events"])
+		events = append(events, page...)
+		if len(page) < 100 {
+			return events
+		}
+	}
+}
+
+func assertOnlyOperatorEventsWithObjectMetadata(t *testing.T, events []map[string]any, selfDown string) {
+	t.Helper()
+	for _, e := range events {
+		if e["resource_id"] == selfDown || e["action"] == "skill.import" {
+			t.Errorf("a non-operator action is in the operator log: %v", e)
+		}
+		if _, isObject := e["metadata"].(map[string]any); !isObject {
+			t.Errorf("event metadata is %T, want an object: %v", e["metadata"], e)
+		}
+	}
+}
+
+func assertAuditLogNewestFirst(t *testing.T, events []map[string]any) {
+	t.Helper()
+	for i := 1; i < len(events); i++ {
+		prev, _ := time.Parse(time.RFC3339, events[i-1]["occurred_at"].(string))
+		cur, _ := time.Parse(time.RFC3339, events[i]["occurred_at"].(string))
+		if cur.After(prev) {
+			t.Fatalf("event %d at %v is newer than event %d at %v; the log must be newest first", i, cur, i-1, prev)
+		}
 	}
 }
 
@@ -313,18 +369,7 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var events []map[string]any
-	for offset := 0; ; offset += 100 {
-		code, out := getAdmin(t, operator, "/admin/audit-log?limit=100&offset="+strconv.Itoa(offset))
-		if code != http.StatusOK {
-			t.Fatalf("audit log page at %d: got %d (%v)", offset, code, out)
-		}
-		page := objects(t, out["events"])
-		events = append(events, page...)
-		if len(page) < 100 {
-			break
-		}
-	}
+	events := allAuditEvents(t, operator)
 	has := func(action, resource string) bool {
 		return slices.ContainsFunc(events, func(e map[string]any) bool {
 			return e["action"] == action && e["resource_id"] == resource && e["actor_user_id"] == operator.userID
@@ -333,22 +378,8 @@ func TestOperatorAuditLogListsOnlyOperatorActions(t *testing.T) {
 	if !has("skill.takedown", operatorDown) || !has("skill.access_restrict", held) || !has("credit.lookup", owner.userID) {
 		t.Errorf("the log misses an operator action; got %d events", len(events))
 	}
-	for _, e := range events {
-		if e["resource_id"] == selfDown || e["action"] == "skill.import" {
-			t.Errorf("a non-operator action is in the operator log: %v", e)
-		}
-		if _, isObject := e["metadata"].(map[string]any); !isObject {
-			t.Errorf("event metadata is %T, want an object: %v", e["metadata"], e)
-		}
-	}
-
-	for i := 1; i < len(events); i++ {
-		prev, _ := time.Parse(time.RFC3339, events[i-1]["occurred_at"].(string))
-		cur, _ := time.Parse(time.RFC3339, events[i]["occurred_at"].(string))
-		if cur.After(prev) {
-			t.Fatalf("event %d at %v is newer than event %d at %v; the log must be newest first", i, cur, i-1, prev)
-		}
-	}
+	assertOnlyOperatorEventsWithObjectMetadata(t, events, selfDown)
+	assertAuditLogNewestFirst(t, events)
 	_, first := getAdmin(t, operator, "/admin/audit-log?limit=1")
 	_, second := getAdmin(t, operator, "/admin/audit-log?limit=1&offset=1")
 	if a1, a2 := objects(t, first["events"]), objects(t, second["events"]); len(a1) != 1 || len(a2) != 1 {

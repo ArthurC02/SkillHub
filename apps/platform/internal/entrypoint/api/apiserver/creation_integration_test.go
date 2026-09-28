@@ -30,54 +30,7 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 	t.Helper()
 	pool := requireDB(t)
 	count := &atomic.Int32{}
-	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/creation/step" || r.Header.Get("X-Creation-Gateway-Key") != "test-attempt-key" || r.Header.Get("Authorization") != "Bearer test-service" {
-			t.Error("wrong provider boundary")
-		}
-		count.Add(1)
-		var in llmclient.CreationStepRequest
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			t.Error(err)
-			return
-		}
-		cost := .01
-		out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}}
-		if in.Diagram != nil {
-			out.Outcome = "confirm_diagram_description"
-			out.DiagramDescription = "先整理輸入，再輸出摘要。"
-			out.Brief = ""
-		}
-		if in.DiagramDescriptionConfirmed && in.DiagramInterpretation == nil {
-			out.Outcome = "confirm_diagram_interpretation"
-			out.DiagramInterpretation = &llmclient.DiagramDecomposition{Nodes: []string{"整理輸入", "輸出摘要"}, Uncertainties: []string{"摘要要幾句？", "輸入缺欄位時怎麼辦？"}}
-			out.Brief = ""
-		}
-		if in.BriefConfirmed {
-			out.Outcome = "draft"
-			out.Message = "草稿已準備好。"
-			out.Brief = in.Brief
-			out.Draft = &llmclient.GeneratedSkill{Name: "creation-summary", Description: "Summarize user input in the requested format.", Body: "# Task\nRead the user input and summarize the important points.\nAsk for the desired output format when missing.\n", Files: []llmclient.GeneratedFile{}}
-			for _, m := range in.Messages {
-
-				if m.Role == "user" && strings.Contains(m.Content, "路徑穿越") {
-					out.Draft.Files = []llmclient.GeneratedFile{{Path: "../escape.txt", Content: "x"}}
-				}
-
-				if m.Role == "tool" && strings.Contains(m.Content, "請只改名稱") {
-					out.Draft.Name = "creation-summary-renamed"
-				}
-			}
-		}
-
-		out.AcceptanceCriteria = in.AcceptanceCriteria
-		out.SampleInput = in.SampleInput
-		if out.Outcome == "confirm_brief" && len(out.AcceptanceCriteria) == 0 {
-			out.AcceptanceCriteria = []string{"輸出摘要含所有輸入重點"}
-			out.SampleInput = "會議紀錄：一、預算案通過。二、下週三交付報告。"
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(out)
-	}))
+	model := httptest.NewServer(creationModelStub(t, count))
 	t.Cleanup(model.Close)
 	set, err := worker.BuildWorkers(pool, worker.Deps{CreationLimits: limits, LLM: &llmclient.Client{BaseURL: model.URL, Token: "test-service"}})
 	if err != nil {
@@ -103,6 +56,66 @@ func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *cre
 		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
 		creditPool: pool, startingCredits: 100_000,
 	}, set.Creation, count
+}
+
+func creationModelStub(t *testing.T, count *atomic.Int32) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/creation/step" || r.Header.Get("X-Creation-Gateway-Key") != "test-attempt-key" || r.Header.Get("Authorization") != "Bearer test-service" {
+			t.Error("wrong provider boundary")
+		}
+		count.Add(1)
+		var in llmclient.CreationStepRequest
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			t.Error(err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(creationModelAnswer(in))
+	}
+}
+
+func creationModelAnswer(in llmclient.CreationStepRequest) llmclient.CreationStepResponse {
+	cost := .01
+	out := llmclient.CreationStepResponse{Outcome: "confirm_brief", Message: "請確認任務與成功條件。", Brief: "整理輸入資料，依指定格式輸出摘要。", DiagramUnderstanding: in.DiagramUnderstanding, Model: "fixture-model", PromptVersion: "creation-test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}}
+	if in.Diagram != nil {
+		out.Outcome = "confirm_diagram_description"
+		out.DiagramDescription = "先整理輸入，再輸出摘要。"
+		out.Brief = ""
+	}
+	if in.DiagramDescriptionConfirmed && in.DiagramInterpretation == nil {
+		out.Outcome = "confirm_diagram_interpretation"
+		out.DiagramInterpretation = &llmclient.DiagramDecomposition{Nodes: []string{"整理輸入", "輸出摘要"}, Uncertainties: []string{"摘要要幾句？", "輸入缺欄位時怎麼辦？"}}
+		out.Brief = ""
+	}
+	if in.BriefConfirmed {
+		out.Outcome = "draft"
+		out.Message = "草稿已準備好。"
+		out.Brief = in.Brief
+		out.Draft = creationFixtureDraft(in.Messages)
+	}
+
+	out.AcceptanceCriteria = in.AcceptanceCriteria
+	out.SampleInput = in.SampleInput
+	if out.Outcome == "confirm_brief" && len(out.AcceptanceCriteria) == 0 {
+		out.AcceptanceCriteria = []string{"輸出摘要含所有輸入重點"}
+		out.SampleInput = "會議紀錄：一、預算案通過。二、下週三交付報告。"
+	}
+	return out
+}
+
+func creationFixtureDraft(messages []llmclient.CreationMessage) *llmclient.GeneratedSkill {
+	draft := &llmclient.GeneratedSkill{Name: "creation-summary", Description: "Summarize user input in the requested format.", Body: "# Task\nRead the user input and summarize the important points.\nAsk for the desired output format when missing.\n", Files: []llmclient.GeneratedFile{}}
+	for _, m := range messages {
+
+		if m.Role == "user" && strings.Contains(m.Content, "路徑穿越") {
+			draft.Files = []llmclient.GeneratedFile{{Path: "../escape.txt", Content: "x"}}
+		}
+
+		if m.Role == "tool" && strings.Contains(m.Content, "請只改名稱") {
+			draft.Name = "creation-summary-renamed"
+		}
+	}
+	return draft
 }
 func creationID(t *testing.T) pgtype.UUID {
 	t.Helper()

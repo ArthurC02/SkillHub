@@ -247,19 +247,7 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 		t.Fatalf("re-push: got %d %+v, want 202 with 0 stored and 1 duplicate", code, report)
 	}
 
-	var shifted map[string]any
-	if err := json.Unmarshal([]byte(toolCall), &shifted); err != nil {
-		t.Fatal(err)
-	}
-	shifted["occurred_at"] = time.Now().UTC().Add(time.Minute).Format(time.RFC3339Nano)
-	shiftedJSON, err := json.Marshal(shifted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	code, report = a.ingest(t, runID, 1, string(shiftedJSON))
-	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 1 {
-		t.Fatalf("same event id with shifted time: got %d %+v, want one duplicate", code, report)
-	}
+	assertAShiftedResendIsADuplicate(t, a, runID, toolCall)
 
 	status, view := owner.advancedTrace(t, runID)
 	if status != http.StatusOK {
@@ -274,16 +262,7 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 	if code, delta := owner.advancedTraceAfter(t, runID, view.NextAfter); code != http.StatusOK || len(delta.Events) != 0 || delta.NextAfter != view.NextAfter {
 		t.Fatalf("empty delta: code=%d view=%+v", code, delta)
 	}
-	stored := string(view.Events[0].Payload)
-	if strings.Contains(stored, "sk-TESTKEY") {
-		t.Errorf("the key reached storage in plaintext: %s", stored)
-	}
-	if !strings.Contains(stored, trace.Placeholder) {
-		t.Errorf("nothing was redacted: %s", stored)
-	}
-	if len(view.Events[0].MaskedFields) == 0 {
-		t.Error("masked_fields is empty although a value was redacted")
-	}
+	assertServedPayloadRedacted(t, string(view.Events[0].Payload), view.Events[0].MaskedFields)
 
 	var raw string
 	if err := pool.QueryRow(context.Background(),
@@ -295,6 +274,54 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 	}
 
 	dumpStoredEvents(t, pool, runID)
+}
+
+func assertAShiftedResendIsADuplicate(t *testing.T, a *api, runID, toolCall string) {
+	t.Helper()
+	var shifted map[string]any
+	if err := json.Unmarshal([]byte(toolCall), &shifted); err != nil {
+		t.Fatal(err)
+	}
+	shifted["occurred_at"] = time.Now().UTC().Add(time.Minute).Format(time.RFC3339Nano)
+	shiftedJSON, err := json.Marshal(shifted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, report := a.ingest(t, runID, 1, string(shiftedJSON))
+	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 1 {
+		t.Fatalf("same event id with shifted time: got %d %+v, want one duplicate", code, report)
+	}
+}
+
+func assertServedPayloadRedacted(t *testing.T, stored string, maskedFields []string) {
+	t.Helper()
+	if strings.Contains(stored, "sk-TESTKEY") {
+		t.Errorf("the key reached storage in plaintext: %s", stored)
+	}
+	if !strings.Contains(stored, trace.Placeholder) {
+		t.Errorf("nothing was redacted: %s", stored)
+	}
+	if len(maskedFields) == 0 {
+		t.Error("masked_fields is empty although a value was redacted")
+	}
+}
+
+func waitUntilTheSecondInsertWaitsOnALock(t *testing.T, pool *pgxpool.Pool, pid uint32) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	waiting := false
+	for !waiting && time.Now().Before(deadline) {
+		if err := pool.QueryRow(context.Background(), `SELECT COALESCE((SELECT wait_event_type = 'Lock'
+			FROM pg_stat_activity WHERE pid=$1), false)`, pid).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if !waiting {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	if !waiting {
+		t.Fatal("second insert did not wait on the first transaction's advisory lock")
+	}
 }
 
 func TestConcurrentTraceDeliveryClaimsAnEventIDOnce(t *testing.T) {
@@ -348,20 +375,7 @@ func TestConcurrentTraceDeliveryClaimsAnEventIDOnce(t *testing.T) {
 		out <- outcome{tag.RowsAffected(), err}
 	}()
 
-	deadline := time.Now().Add(2 * time.Second)
-	waiting := false
-	for !waiting && time.Now().Before(deadline) {
-		if err := pool.QueryRow(ctx, `SELECT COALESCE((SELECT wait_event_type = 'Lock'
-			FROM pg_stat_activity WHERE pid=$1), false)`, conn2.Conn().PgConn().PID()).Scan(&waiting); err != nil {
-			t.Fatal(err)
-		}
-		if !waiting {
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-	if !waiting {
-		t.Fatal("second insert did not wait on the first transaction's advisory lock")
-	}
+	waitUntilTheSecondInsertWaitsOnALock(t, pool, conn2.Conn().PgConn().PID())
 	if err := tx1.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -649,36 +663,37 @@ func TestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.
 		t.Errorf("report does not name the refused event %s: %+v", collidingID, report.Reasons)
 	}
 
-	assertCollisionTrace := func(stage string) {
-		t.Helper()
-		status, view := owner.advancedTrace(t, runID)
-		if status != http.StatusOK || len(view.Events) != 3 {
-			t.Fatalf("%s: got %d with %d events, want 200 with seq 1, 2 and 3", stage, status, len(view.Events))
-		}
-
-		bySeq := map[int64]json.RawMessage{}
-		for _, ev := range view.Events {
-			bySeq[ev.Seq] = ev.Payload
-		}
-		for _, seq := range []int64{1, 2, 3} {
-			if _, ok := bySeq[seq]; !ok {
-				t.Fatalf("%s: seq %d never landed; stored %d events", stage, seq, len(view.Events))
-			}
-		}
-		if !strings.Contains(string(bySeq[2]), "the original seq 2") {
-			t.Errorf("%s: seq 2 was overwritten by the colliding event: %s", stage, bySeq[2])
-		}
-		if !view.Complete {
-			t.Errorf("%s: stream reports a gap although seq 1..3 are all stored", stage)
-		}
-	}
-	assertCollisionTrace("after the colliding batch")
+	assertCollisionTrace(t, owner, runID, "after the colliding batch")
 
 	code, report = a.ingest(t, runID, 1, batch...)
 	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 2 || report.Rejected != 1 {
 		t.Fatalf("resend: got %d %+v, want 202 with 0 stored, 2 duplicate and 1 rejected", code, report)
 	}
-	assertCollisionTrace("after the resend")
+	assertCollisionTrace(t, owner, runID, "after the resend")
+}
+
+func assertCollisionTrace(t *testing.T, owner *client, runID, stage string) {
+	t.Helper()
+	status, view := owner.advancedTrace(t, runID)
+	if status != http.StatusOK || len(view.Events) != 3 {
+		t.Fatalf("%s: got %d with %d events, want 200 with seq 1, 2 and 3", stage, status, len(view.Events))
+	}
+
+	bySeq := map[int64]json.RawMessage{}
+	for _, ev := range view.Events {
+		bySeq[ev.Seq] = ev.Payload
+	}
+	for _, seq := range []int64{1, 2, 3} {
+		if _, ok := bySeq[seq]; !ok {
+			t.Fatalf("%s: seq %d never landed; stored %d events", stage, seq, len(view.Events))
+		}
+	}
+	if !strings.Contains(string(bySeq[2]), "the original seq 2") {
+		t.Errorf("%s: seq 2 was overwritten by the colliding event: %s", stage, bySeq[2])
+	}
+	if !view.Complete {
+		t.Errorf("%s: stream reports a gap although seq 1..3 are all stored", stage)
+	}
 }
 
 func TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete(t *testing.T) {
@@ -796,30 +811,7 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("GET trace: got %d", status)
 	}
-	if view.Status != string(gen.RunStatusQueued) {
-		t.Errorf("status = %q, want the runs table's own %q", view.Status, gen.RunStatusQueued)
-	}
-	if !view.Complete {
-		t.Error("a gapless trace was reported incomplete")
-	}
-	if len(view.Skills) != 1 || view.Skills[0].Name != "excel-deduplicate" {
-		t.Errorf("skills = %+v", view.Skills)
-	}
-	if view.SkillsTotal != 1 || view.ErrorsTotal != 0 || view.Truncated {
-		t.Errorf("summary bounds = skills %d, errors %d, truncated %v", view.SkillsTotal, view.ErrorsTotal, view.Truncated)
-	}
-	if view.ResourceRead != 1 {
-		t.Errorf("resources_read = %d, want 1", view.ResourceRead)
-	}
-	if view.ToolCalls.Total != 14 || view.ToolCalls.Succeeded != 13 || view.ToolCalls.Failed != 1 {
-		t.Errorf("tool call summary = %+v", view.ToolCalls)
-	}
-	if view.ToolCalls.TotalMS != int64(1<<63-1) {
-		t.Errorf("total tool duration = %d, want saturated int64", view.ToolCalls.TotalMS)
-	}
-	if view.FinalOutput != "Removed 17 duplicate rows." {
-		t.Errorf("final output = %q", view.FinalOutput)
-	}
+	assertGeneralSummaryCounts(t, view)
 	var lastEventAt time.Time
 	if err := pool.QueryRow(context.Background(),
 		"SELECT max(occurred_at) FROM trace_events WHERE run_id = $1", mustUUID(t, runID)).Scan(&lastEventAt); err != nil {
@@ -843,6 +835,34 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 		if st.Status == "" {
 			t.Errorf("progress step %d carries no status: %+v", i, st)
 		}
+	}
+}
+
+func assertGeneralSummaryCounts(t *testing.T, view generalView) {
+	t.Helper()
+	if view.Status != string(gen.RunStatusQueued) {
+		t.Errorf("status = %q, want the runs table's own %q", view.Status, gen.RunStatusQueued)
+	}
+	if !view.Complete {
+		t.Error("a gapless trace was reported incomplete")
+	}
+	if len(view.Skills) != 1 || view.Skills[0].Name != "excel-deduplicate" {
+		t.Errorf("skills = %+v", view.Skills)
+	}
+	if view.SkillsTotal != 1 || view.ErrorsTotal != 0 || view.Truncated {
+		t.Errorf("summary bounds = skills %d, errors %d, truncated %v", view.SkillsTotal, view.ErrorsTotal, view.Truncated)
+	}
+	if view.ResourceRead != 1 {
+		t.Errorf("resources_read = %d, want 1", view.ResourceRead)
+	}
+	if view.ToolCalls.Total != 14 || view.ToolCalls.Succeeded != 13 || view.ToolCalls.Failed != 1 {
+		t.Errorf("tool call summary = %+v", view.ToolCalls)
+	}
+	if view.ToolCalls.TotalMS != int64(1<<63-1) {
+		t.Errorf("total tool duration = %d, want saturated int64", view.ToolCalls.TotalMS)
+	}
+	if view.FinalOutput != "Removed 17 duplicate rows." {
+		t.Errorf("final output = %q", view.FinalOutput)
 	}
 }
 

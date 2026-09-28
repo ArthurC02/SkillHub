@@ -107,33 +107,19 @@ func (w exposureWorld) publicExposure(t *testing.T) map[string]any {
 	return exposure
 }
 
-func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
-	w := newExposureWorld(t, "exposed")
-	if w.searchFinds(t) || w.anonymousDetail(t) != http.StatusNotFound {
-		t.Fatal("an unreviewed publication is already searchable or readable by anyone; the rest proves nothing")
-	}
-	queue := func() []map[string]any {
-		_, body := getAdmin(t, w.operator, "/admin/exposure-reviews")
-		return objects(t, body["publications"])
-	}
-	inQueue := func() bool {
-		for _, entry := range queue() {
-			if entry["address"] == w.address {
-				return true
-			}
+func (w exposureWorld) waitingForReview(t *testing.T) bool {
+	t.Helper()
+	_, body := getAdmin(t, w.operator, "/admin/exposure-reviews")
+	for _, entry := range objects(t, body["publications"]) {
+		if entry["address"] == w.address {
+			return true
 		}
-		return false
 	}
-	if !inQueue() {
-		t.Errorf("a published release with no conclusion is missing from the review queue")
-	}
-	c := w.exposureCase(t)
-	snapshot, _ := c["snapshot"].(map[string]any)
-	if snapshot == nil || snapshot["name"] != w.name || snapshot["current"] != true || c["sequence"] != float64(0) {
-		t.Fatalf("the case = %v, want the exact searchable text of this release at sequence 0", c)
-	}
+	return false
+}
 
-	w.allowRedistribution(t)
+func (w exposureWorld) approveAndAssertExposedToAnyone(t *testing.T) {
+	t.Helper()
 	code, body := w.reviewCurrent(t, "approved", "checked the licence and the text")
 	if code != http.StatusOK || body["exposed"] != true || body["sequence"] != float64(1) {
 		t.Fatalf("approving: %d %v, want exposed at sequence 1", code, body)
@@ -147,15 +133,33 @@ func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
 	if exposure := w.publicExposure(t); exposure["available"] != true {
 		t.Errorf("the public address still says it is not listed: %v", exposure)
 	}
-	if inQueue() {
+	if w.waitingForReview(t) {
 		t.Errorf("an approved, current release is still waiting in the queue")
 	}
 	if n := countRow(t, w.pool, `SELECT count(*) FROM audit_events WHERE action = 'publication.exposure.review' AND resource_id = (SELECT id FROM publications WHERE skill_id = $1)`,
 		mustUUID(t, w.skillID)); n != 1 {
 		t.Errorf("the review wrote %d audit events, want 1", n)
 	}
+}
 
-	code, body = w.reviewCurrent(t, "revoked", "a reader reported a problem")
+func TestAnApprovedReleaseEntersSearchAndTheDetailPageForAnyone(t *testing.T) {
+	w := newExposureWorld(t, "exposed")
+	if w.searchFinds(t) || w.anonymousDetail(t) != http.StatusNotFound {
+		t.Fatal("an unreviewed publication is already searchable or readable by anyone; the rest proves nothing")
+	}
+	if !w.waitingForReview(t) {
+		t.Errorf("a published release with no conclusion is missing from the review queue")
+	}
+	c := w.exposureCase(t)
+	snapshot, _ := c["snapshot"].(map[string]any)
+	if snapshot == nil || snapshot["name"] != w.name || snapshot["current"] != true || c["sequence"] != float64(0) {
+		t.Fatalf("the case = %v, want the exact searchable text of this release at sequence 0", c)
+	}
+
+	w.allowRedistribution(t)
+	w.approveAndAssertExposedToAnyone(t)
+
+	code, body := w.reviewCurrent(t, "revoked", "a reader reported a problem")
 	if code != http.StatusOK || body["exposed"] != false {
 		t.Fatalf("revoking: %d %v", code, body)
 	}

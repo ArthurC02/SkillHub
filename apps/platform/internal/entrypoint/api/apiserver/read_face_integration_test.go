@@ -62,41 +62,70 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 	a := newAPI(t, pool)
 	owner := a.login(t, "read-face-owner")
 	stranger := a.login(t, "read-face-stranger")
+
+	f := &readFaceWorld{
+		pool: pool, svc: &testlab.Service{Pool: pool},
+		ws: mustUUID(t, owner.workspaceID), foreign: mustUUID(t, stranger.workspaceID),
+		skillID: seedSkill(t, pool, owner.workspaceID, "read-face-skill"),
+	}
+	f.testCaseID = mustUUID(t, seedTestCase(t, pool, owner.workspaceID, f.skillID))
+	f.datasetID = f.seedDatasetAndPackage(t)
+	f.snapshotID = f.createSnapshot(t)
+	f.seedRunWithOutput(t, seedSkillVersion(t, pool, owner.workspaceID, f.skillID))
+
+	t.Run("ReadSnapshot", f.readSnapshot)
+	t.Run("ReadDataset", f.readDataset)
+	t.Run("CasesForSkill", f.casesForSkill)
+	t.Run("CaseDatasets", f.caseDatasets)
+	t.Run("WorkspaceObjectKeys", f.workspaceObjectKeys)
+}
+
+const (
+	readFaceDatasetKey     = "datasets/read-face.csv"
+	readFaceArtifactKey    = "artifacts/read-face.zip"
+	readFaceRunArtifactKey = "run-artifacts/x/y/artifacts.tar"
+)
+
+type readFaceWorld struct {
+	pool                              *pgxpool.Pool
+	svc                               *testlab.Service
+	ws, foreign                       pgtype.UUID
+	skillID                           string
+	testCaseID, datasetID, snapshotID pgtype.UUID
+}
+
+func (f *readFaceWorld) seedDatasetAndPackage(t *testing.T) pgtype.UUID {
+	t.Helper()
 	ctx := context.Background()
-	testlabSvc := &testlab.Service{Pool: pool}
-
-	ws := mustUUID(t, owner.workspaceID)
-	foreign := mustUUID(t, stranger.workspaceID)
-	skillID := seedSkill(t, pool, owner.workspaceID, "read-face-skill")
-	testCaseID := mustUUID(t, seedTestCase(t, pool, owner.workspaceID, skillID))
-
-	const datasetKey = "datasets/read-face.csv"
-	const artifactKey = "artifacts/read-face.zip"
-	const runArtifactKey = "run-artifacts/x/y/artifacts.tar"
 	var datasetID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
+	if err := f.pool.QueryRow(ctx, `
 		INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type,
 		                      size_bytes, content_hash, object_key, expires_at)
 		VALUES ($1, $2, 'input.csv', 'text/csv', 10, 'sha256:read-face', $3,
 		        now() + interval '90 days')
 		RETURNING id`,
-		ws, testCaseID, datasetKey).Scan(&datasetID); err != nil {
+		f.ws, f.testCaseID, readFaceDatasetKey).Scan(&datasetID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `
+	if _, err := f.pool.Exec(ctx, `
 		INSERT INTO artifacts (workspace_id, kind, file_name, content_type,
 		                       size_bytes, content_hash, object_key, expires_at)
 		VALUES ($1, 'download_package', 'pkg.zip', 'application/zip', 10,
 		        'sha256:read-face-pkg', $2, now() + interval '30 days')`,
-		ws, artifactKey); err != nil {
+		f.ws, readFaceArtifactKey); err != nil {
 		t.Fatal(err)
 	}
+	return datasetID
+}
 
-	tx, err := pool.Begin(ctx)
+func (f *readFaceWorld) createSnapshot(t *testing.T) pgtype.UUID {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := f.pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := testlabSvc.CreateSnapshot(ctx, tx, ws, testCaseID)
+	snapshot, err := f.svc.CreateSnapshot(ctx, tx, f.ws, f.testCaseID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		t.Fatalf("create snapshot: %v", err)
@@ -104,129 +133,143 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	versionID := seedSkillVersion(t, pool, owner.workspaceID, skillID)
+	return snapshot.ID
+}
+
+func (f *readFaceWorld) seedRunWithOutput(t *testing.T, versionID string) {
+	t.Helper()
+	ctx := context.Background()
 	var runID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
+	if err := f.pool.QueryRow(ctx, `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
 		VALUES ($1, $2, $3, 'read-face') RETURNING id`,
-		ws, mustUUID(t, versionID), snapshot.ID).Scan(&runID); err != nil {
+		f.ws, mustUUID(t, versionID), f.snapshotID).Scan(&runID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `
+	if _, err := f.pool.Exec(ctx, `
 		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
 		                       size_bytes, content_hash, object_key, expires_at)
 		VALUES ($1, $2, 'run_output', 'result.zip', 'application/zip', 10,
 		        'sha256:read-face-run', $3, now() + interval '30 days')`,
-		ws, runID, runArtifactKey); err != nil {
+		f.ws, runID, readFaceRunArtifactKey); err != nil {
 		t.Fatal(err)
 	}
+}
 
-	t.Run("ReadSnapshot", func(t *testing.T) {
-		got, err := testlabSvc.ReadSnapshot(ctx, ws, snapshot.ID)
-		if err != nil {
-			t.Fatalf("owner cannot read the snapshot its own run points at: %v", err)
-		}
-		if got.TestCaseID != testCaseID {
-			t.Errorf("snapshot names test case %v, want %v", got.TestCaseID, testCaseID)
-		}
-		if len(got.AcceptanceCriteria) == 0 {
-			t.Error("the frozen criteria came back empty; eval judges against these")
-		}
-		if _, err := testlabSvc.ReadSnapshot(ctx, foreign, snapshot.ID); !errors.Is(err, testlab.ErrNotFound) {
-			t.Errorf("another workspace reading the snapshot got %v, want ErrNotFound", err)
-		}
-	})
+func (f *readFaceWorld) readSnapshot(t *testing.T) {
+	ctx := context.Background()
+	got, err := f.svc.ReadSnapshot(ctx, f.ws, f.snapshotID)
+	if err != nil {
+		t.Fatalf("owner cannot read the snapshot its own run points at: %v", err)
+	}
+	if got.TestCaseID != f.testCaseID {
+		t.Errorf("snapshot names test case %v, want %v", got.TestCaseID, f.testCaseID)
+	}
+	if len(got.AcceptanceCriteria) == 0 {
+		t.Error("the frozen criteria came back empty; eval judges against these")
+	}
+	if _, err := f.svc.ReadSnapshot(ctx, f.foreign, f.snapshotID); !errors.Is(err, testlab.ErrNotFound) {
+		t.Errorf("another workspace reading the snapshot got %v, want ErrNotFound", err)
+	}
+}
 
-	t.Run("ReadDataset", func(t *testing.T) {
-		got, err := testlabSvc.ReadDataset(ctx, ws, datasetID)
-		if err != nil {
-			t.Fatalf("owner cannot read its own dataset: %v", err)
-		}
-		if got.ObjectKey != datasetKey {
-			t.Errorf("object_key = %q, want %q; run mints the read grant from this", got.ObjectKey, datasetKey)
-		}
-		if _, err := testlabSvc.ReadDataset(ctx, foreign, datasetID); !errors.Is(err, testlab.ErrNotFound) {
-			t.Errorf("another workspace reading the dataset got %v, want ErrNotFound", err)
-		}
+func (f *readFaceWorld) readDataset(t *testing.T) {
+	ctx := context.Background()
+	got, err := f.svc.ReadDataset(ctx, f.ws, f.datasetID)
+	if err != nil {
+		t.Fatalf("owner cannot read its own dataset: %v", err)
+	}
+	if got.ObjectKey != readFaceDatasetKey {
+		t.Errorf("object_key = %q, want %q; run mints the read grant from this", got.ObjectKey, readFaceDatasetKey)
+	}
+	if _, err := f.svc.ReadDataset(ctx, f.foreign, f.datasetID); !errors.Is(err, testlab.ErrNotFound) {
+		t.Errorf("another workspace reading the dataset got %v, want ErrNotFound", err)
+	}
 
-		if _, err := pool.Exec(ctx,
-			"UPDATE datasets SET deleted_at = now() WHERE id = $1", datasetID); err != nil {
+	if _, err := f.pool.Exec(ctx,
+		"UPDATE datasets SET deleted_at = now() WHERE id = $1", f.datasetID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := f.pool.Exec(context.Background(),
+			"UPDATE datasets SET deleted_at = NULL WHERE id = $1", f.datasetID); err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() {
-			if _, err := pool.Exec(context.Background(),
-				"UPDATE datasets SET deleted_at = NULL WHERE id = $1", datasetID); err != nil {
-				t.Fatal(err)
-			}
+	})
+	if _, err := f.svc.ReadDataset(ctx, f.ws, f.datasetID); !errors.Is(err, testlab.ErrNotFound) {
+		t.Errorf("a deleted dataset read as %v, want ErrNotFound", err)
+	}
+}
+
+func (f *readFaceWorld) casesForSkill(t *testing.T) {
+	ctx := context.Background()
+	rows, err := f.svc.CasesForSkill(ctx, f.ws, mustUUID(t, f.skillID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].ID != f.testCaseID {
+		t.Fatalf("owner sees %d cases for its own skill, want exactly the seeded one", len(rows))
+	}
+
+	other, err := f.svc.CasesForSkill(ctx, f.foreign, mustUUID(t, f.skillID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(other) != 0 {
+		t.Errorf("another workspace sees %d of the owner's test cases, want 0", len(other))
+	}
+}
+
+func (f *readFaceWorld) caseDatasets(t *testing.T) {
+	ctx := context.Background()
+	rows, err := f.svc.CaseDatasets(ctx, f.ws, f.testCaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].ObjectKey != readFaceDatasetKey {
+		t.Fatalf("owner sees %d files on its own case, want the seeded one", len(rows))
+	}
+	other, err := f.svc.CaseDatasets(ctx, f.foreign, f.testCaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(other) != 0 {
+		t.Errorf("another workspace sees %d of the owner's files, want 0", len(other))
+	}
+}
+
+func (f *readFaceWorld) workspaceObjectKeys(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		list identity.WorkspaceObjectKeys
+		want string
+	}{
+		{"testlab", testlab.WorkspaceObjectKeys, readFaceDatasetKey},
+		{"run", run.WorkspaceObjectKeys, readFaceRunArtifactKey},
+		{"packaging", packaging.WorkspaceObjectKeys, readFaceArtifactKey},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f.assertOnlyOwnerSeesTheKey(t, tc.list, tc.want)
 		})
-		if _, err := testlabSvc.ReadDataset(ctx, ws, datasetID); !errors.Is(err, testlab.ErrNotFound) {
-			t.Errorf("a deleted dataset read as %v, want ErrNotFound", err)
-		}
-	})
+	}
+}
 
-	t.Run("CasesForSkill", func(t *testing.T) {
-		rows, err := testlabSvc.CasesForSkill(ctx, ws, mustUUID(t, skillID))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rows) != 1 || rows[0].ID != testCaseID {
-			t.Fatalf("owner sees %d cases for its own skill, want exactly the seeded one", len(rows))
-		}
-
-		other, err := testlabSvc.CasesForSkill(ctx, foreign, mustUUID(t, skillID))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(other) != 0 {
-			t.Errorf("another workspace sees %d of the owner's test cases, want 0", len(other))
-		}
-	})
-
-	t.Run("CaseDatasets", func(t *testing.T) {
-		rows, err := testlabSvc.CaseDatasets(ctx, ws, testCaseID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rows) != 1 || rows[0].ObjectKey != datasetKey {
-			t.Fatalf("owner sees %d files on its own case, want the seeded one", len(rows))
-		}
-		other, err := testlabSvc.CaseDatasets(ctx, foreign, testCaseID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(other) != 0 {
-			t.Errorf("another workspace sees %d of the owner's files, want 0", len(other))
-		}
-	})
-
-	t.Run("WorkspaceObjectKeys", func(t *testing.T) {
-		for _, tc := range []struct {
-			name string
-			list identity.WorkspaceObjectKeys
-			want string
-		}{
-			{"testlab", testlab.WorkspaceObjectKeys, datasetKey},
-			{"run", run.WorkspaceObjectKeys, runArtifactKey},
-			{"packaging", packaging.WorkspaceObjectKeys, artifactKey},
-		} {
-			t.Run(tc.name, func(t *testing.T) {
-				keys, err := tc.list(ctx, pool, ws)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if len(keys) != 1 || keys[0] != tc.want {
-					t.Fatalf("object keys = %v, want only %q", keys, tc.want)
-				}
-				strangerKeys, err := tc.list(ctx, pool, foreign)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if len(strangerKeys) != 0 {
-					t.Fatalf("another workspace sees object keys %v", strangerKeys)
-				}
-			})
-		}
-	})
+func (f *readFaceWorld) assertOnlyOwnerSeesTheKey(t *testing.T, list identity.WorkspaceObjectKeys, want string) {
+	ctx := context.Background()
+	keys, err := list(ctx, f.pool, f.ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(keys) != 1 || keys[0] != want {
+		t.Fatalf("object keys = %v, want only %q", keys, want)
+	}
+	strangerKeys, err := list(ctx, f.pool, f.foreign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(strangerKeys) != 0 {
+		t.Fatalf("another workspace sees object keys %v", strangerKeys)
+	}
 }
 
 func TestTraceLiveEventsIsScopedToOneRunInOneWorkspace(t *testing.T) {

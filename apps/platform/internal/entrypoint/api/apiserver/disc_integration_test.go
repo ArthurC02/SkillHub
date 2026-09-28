@@ -183,33 +183,10 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 	privateID := importPackage(t, pool, a.packages, private, uniqueWorklistLabel("catalog-hidden"), true)
 	versionedName := uniqueWorklistLabel("catalog-version-order")
 	versionedID := importPackage(t, pool, a.packages, curator, versionedName, true)
-	var latestVersion pgtype.UUID
-	if err := pool.QueryRow(t.Context(), `
-		INSERT INTO skill_versions
-			(workspace_id, skill_id, version_number, content_hash, package_object_key,
-			 manifest, license_expression, license_source, created_at)
-		SELECT workspace_id, skill_id, version_number + 1, content_hash || '-v2',
-		       package_object_key, manifest, license_expression, license_source,
-		       '2000-01-01'::timestamptz
-		FROM skill_versions WHERE skill_id = $1
-		RETURNING id`, mustUUID(t, versionedID)).Scan(&latestVersion); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
-		(skill_version_id, runtime_image, capability, runtime)
-		VALUES ($1, 'ghcr.io/example/runtime@sha256:2222', 'activated', 'native')`, latestVersion); err != nil {
-		t.Fatal(err)
-	}
+	seedANativeVersionWithAnOlderTimestamp(t, pool, versionedID)
 	curatedVersion := newestVersion(t, pool, curatedID)
 	curate(t, pool, curatedID, curatedVersion)
-	for skillID, runtime := range map[string]string{curatedID: "native", otherRuntimeID: "transpiled"} {
-		versionID := newestVersion(t, pool, skillID)
-		if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
-			(skill_version_id, runtime_image, capability, runtime)
-			VALUES ($1, 'ghcr.io/example/runtime@sha256:1111', 'activated', $2)`, mustUUID(t, versionID), runtime); err != nil {
-			t.Fatal(err)
-		}
-	}
+	seedNewestVersionRuntimes(t, pool, map[string]string{curatedID: "native", otherRuntimeID: "transpiled"})
 	for _, skillID := range []string{versionedID, curatedID, otherRuntimeID} {
 		refreshListing(t, pool, skillID)
 	}
@@ -219,24 +196,10 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 	if page.Total < 5 || len(page.Results) < 5 {
 		t.Fatalf("catalog page = total %d rows %d, want at least this test's five rows", page.Total, len(page.Results))
 	}
-	positions := map[string]int{}
-	for i, row := range page.Results {
-		positions[row.SkillID] = i
-		if row.SkillID == privateID {
-			t.Fatal("private workspace row leaked into public catalog")
-		}
-	}
-	curatedPos, ok := positions[curatedID]
-	if !ok || curatedPos >= positions[plainID] || curatedPos >= positions[otherRuntimeID] || curatedPos >= positions[noVersionID] {
-		t.Fatalf("curated row was not ahead of this test's indexed rows: positions=%v", positions)
-	}
-	curatedRow := page.Results[curatedPos]
-	if curatedRow.Tier.Value != "curated" || page.Results[positions[plainID]].Tier.Value != "indexed" {
-		t.Fatalf("catalog tiers: curated row %q, plain row %q", curatedRow.Tier.Value, page.Results[positions[plainID]].Tier.Value)
-	}
-	if curatedRow.Rank != nil || curatedRow.RankNote == "" {
-		t.Fatalf("catalog rank shape = %+v", curatedRow)
-	}
+	positions := catalogPositionsWithout(t, page, privateID)
+	assertCuratedRowLeadsTheIndexedRows(t, page, positions, catalogueRows{
+		curated: curatedID, plain: plainID, otherRuntime: otherRuntimeID, noVersion: noVersionID,
+	})
 	versionedPos, ok := positions[versionedID]
 	if !ok {
 		t.Fatalf("catalog omitted version-order fixture: positions=%v", positions)
@@ -251,19 +214,7 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 	}
 	assertOwnFilter := func(query, want string, reject ...string) {
 		t.Helper()
-		body := anon.search(t, "/api/skills/catalog?limit=100&"+query)
-		found := map[string]bool{}
-		for _, row := range body.Results {
-			found[row.SkillID] = true
-		}
-		if !found[want] {
-			t.Fatalf("catalog filter %q omitted %s: %+v", query, want, body.Results)
-		}
-		for _, id := range reject {
-			if found[id] {
-				t.Fatalf("catalog filter %q retained rejected test row %s", query, id)
-			}
-		}
+		assertCatalogFilterKeepsOnly(t, anon, query, want, reject...)
 	}
 	assertOwnFilter("script=no", plainID, curatedID, otherRuntimeID)
 	assertOwnFilter("validation=unverified", noVersionID, curatedID, plainID, otherRuntimeID)
@@ -271,6 +222,87 @@ func TestBrowseCatalogScopeOrderFiltersShapeAndNoModelCall(t *testing.T) {
 	assertOwnFilter("tier=curated", curatedID, plainID, otherRuntimeID, noVersionID)
 	if got := modelCalls.Load(); got != 0 {
 		t.Fatalf("browse made %d model calls", got)
+	}
+}
+
+type catalogueRows struct {
+	curated, plain, otherRuntime, noVersion string
+}
+
+func assertCuratedRowLeadsTheIndexedRows(t *testing.T, page searchBody, positions map[string]int, ids catalogueRows) {
+	t.Helper()
+	curatedPos, ok := positions[ids.curated]
+	if !ok || curatedPos >= positions[ids.plain] || curatedPos >= positions[ids.otherRuntime] || curatedPos >= positions[ids.noVersion] {
+		t.Fatalf("curated row was not ahead of this test's indexed rows: positions=%v", positions)
+	}
+	curatedRow := page.Results[curatedPos]
+	if curatedRow.Tier.Value != "curated" || page.Results[positions[ids.plain]].Tier.Value != "indexed" {
+		t.Fatalf("catalog tiers: curated row %q, plain row %q", curatedRow.Tier.Value, page.Results[positions[ids.plain]].Tier.Value)
+	}
+	if curatedRow.Rank != nil || curatedRow.RankNote == "" {
+		t.Fatalf("catalog rank shape = %+v", curatedRow)
+	}
+}
+
+func seedANativeVersionWithAnOlderTimestamp(t *testing.T, pool *pgxpool.Pool, skillID string) {
+	t.Helper()
+	var latestVersion pgtype.UUID
+	if err := pool.QueryRow(t.Context(), `
+		INSERT INTO skill_versions
+			(workspace_id, skill_id, version_number, content_hash, package_object_key,
+			 manifest, license_expression, license_source, created_at)
+		SELECT workspace_id, skill_id, version_number + 1, content_hash || '-v2',
+		       package_object_key, manifest, license_expression, license_source,
+		       '2000-01-01'::timestamptz
+		FROM skill_versions WHERE skill_id = $1
+		RETURNING id`, mustUUID(t, skillID)).Scan(&latestVersion); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
+		(skill_version_id, runtime_image, capability, runtime)
+		VALUES ($1, 'ghcr.io/example/runtime@sha256:2222', 'activated', 'native')`, latestVersion); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func seedNewestVersionRuntimes(t *testing.T, pool *pgxpool.Pool, runtimes map[string]string) {
+	t.Helper()
+	for skillID, runtime := range runtimes {
+		versionID := newestVersion(t, pool, skillID)
+		if _, err := pool.Exec(t.Context(), `INSERT INTO skill_runtime_compatibility
+			(skill_version_id, runtime_image, capability, runtime)
+			VALUES ($1, 'ghcr.io/example/runtime@sha256:1111', 'activated', $2)`, mustUUID(t, versionID), runtime); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func catalogPositionsWithout(t *testing.T, page searchBody, privateID string) map[string]int {
+	t.Helper()
+	positions := map[string]int{}
+	for i, row := range page.Results {
+		positions[row.SkillID] = i
+		if row.SkillID == privateID {
+			t.Fatal("private workspace row leaked into public catalog")
+		}
+	}
+	return positions
+}
+
+func assertCatalogFilterKeepsOnly(t *testing.T, anon *client, query, want string, reject ...string) {
+	t.Helper()
+	body := anon.search(t, "/api/skills/catalog?limit=100&"+query)
+	found := map[string]bool{}
+	for _, row := range body.Results {
+		found[row.SkillID] = true
+	}
+	if !found[want] {
+		t.Fatalf("catalog filter %q omitted %s: %+v", query, want, body.Results)
+	}
+	for _, id := range reject {
+		if found[id] {
+			t.Fatalf("catalog filter %q retained rejected test row %s", query, id)
+		}
 	}
 }
 
@@ -924,21 +956,26 @@ func TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			body := anon.search(t, "/api/skills/search?q=uffish"+tc.path)
-			for _, want := range tc.want {
-				if !contains(body.ids(), want) {
-					t.Errorf("filter dropped a matching skill %s: %v", want, body.ids())
-				}
-			}
-			for _, unwanted := range tc.notIn {
-				if contains(body.ids(), unwanted) {
-					t.Errorf("filter kept a non-matching skill %s: %v", unwanted, body.ids())
-				}
-			}
-
-			if body.NoResults || body.FilteredOut {
-				t.Errorf("a page with results reported an empty state: %+v", body)
-			}
+			assertFilteredPageKeepsAndDrops(t, body, tc.want, tc.notIn)
 		})
+	}
+}
+
+func assertFilteredPageKeepsAndDrops(t *testing.T, body searchBody, want, notIn []string) {
+	t.Helper()
+	for _, w := range want {
+		if !contains(body.ids(), w) {
+			t.Errorf("filter dropped a matching skill %s: %v", w, body.ids())
+		}
+	}
+	for _, unwanted := range notIn {
+		if contains(body.ids(), unwanted) {
+			t.Errorf("filter kept a non-matching skill %s: %v", unwanted, body.ids())
+		}
+	}
+
+	if body.NoResults || body.FilteredOut {
+		t.Errorf("a page with results reported an empty state: %+v", body)
 	}
 }
 
@@ -1077,45 +1114,8 @@ func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
-	for _, path := range []string{
-		"/api/skills/search?q=borogove&category=data",
-		"/api/skills/catalog?category=data",
-	} {
-		got := anon.search(t, path)
-		if ids := got.ids(); len(ids) != 1 || ids[0] != shelved {
-			t.Fatalf("%s returned %v, want just the data-shelved skill %s", path, ids, shelved)
-		}
-		if c := got.Results[0].Category; c.Value != "data" || c.Label != "資料" {
-			t.Fatalf("%s: the shelf did not survive the read: %+v", path, c)
-		}
-	}
-
-	for _, path := range []string{
-		"/api/skills/search?q=borogove&category=writing",
-		"/api/skills/catalog?category=writing",
-	} {
-		if ids := anon.search(t, path).ids(); len(ids) != 0 {
-			t.Fatalf("%s returned %v; nothing on this catalogue is shelved as writing", path, ids)
-		}
-	}
-
-	all := anon.search(t, "/api/skills/catalog")
-	var found bool
-	for _, r := range all.Results {
-		if r.SkillID != unclassified {
-			continue
-		}
-		found = true
-		if r.Category.Value != "unassigned" || r.Category.Label != "尚未定值" {
-			t.Errorf("an unclassified row rendered as %+v, want unassigned/尚未定值 (設計 §2.9)", r.Category)
-		}
-		if r.Category.Note == "" {
-			t.Error("the absence was rendered without saying why it is absent (05 R-19)")
-		}
-	}
-	if !found {
-		t.Fatalf("the unclassified skill fell out of the unfiltered catalogue: %v", all.ids())
-	}
+	assertOnlyTheDataShelfIsFilled(t, anon, shelved)
+	assertUnclassifiedRowNamesItsAbsence(t, anon.search(t, "/api/skills/catalog"), unclassified)
 
 	var shelvedDetail, plainDetail detail
 	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+shelved, &shelvedDetail); code != http.StatusOK {
@@ -1141,6 +1141,51 @@ func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
 		if ids := anon.search(t, path).ids(); len(ids) != 1 || ids[0] != unclassified {
 			t.Errorf("%s returned %v after its owner shelved it as writing, want just %s", path, ids, unclassified)
 		}
+	}
+}
+
+func assertOnlyTheDataShelfIsFilled(t *testing.T, anon *client, shelved string) {
+	t.Helper()
+	for _, path := range []string{
+		"/api/skills/search?q=borogove&category=data",
+		"/api/skills/catalog?category=data",
+	} {
+		got := anon.search(t, path)
+		if ids := got.ids(); len(ids) != 1 || ids[0] != shelved {
+			t.Fatalf("%s returned %v, want just the data-shelved skill %s", path, ids, shelved)
+		}
+		if c := got.Results[0].Category; c.Value != "data" || c.Label != "資料" {
+			t.Fatalf("%s: the shelf did not survive the read: %+v", path, c)
+		}
+	}
+
+	for _, path := range []string{
+		"/api/skills/search?q=borogove&category=writing",
+		"/api/skills/catalog?category=writing",
+	} {
+		if ids := anon.search(t, path).ids(); len(ids) != 0 {
+			t.Fatalf("%s returned %v; nothing on this catalogue is shelved as writing", path, ids)
+		}
+	}
+}
+
+func assertUnclassifiedRowNamesItsAbsence(t *testing.T, all searchBody, unclassified string) {
+	t.Helper()
+	var found bool
+	for _, r := range all.Results {
+		if r.SkillID != unclassified {
+			continue
+		}
+		found = true
+		if r.Category.Value != "unassigned" || r.Category.Label != "尚未定值" {
+			t.Errorf("an unclassified row rendered as %+v, want unassigned/尚未定值 (設計 §2.9)", r.Category)
+		}
+		if r.Category.Note == "" {
+			t.Error("the absence was rendered without saying why it is absent (05 R-19)")
+		}
+	}
+	if !found {
+		t.Fatalf("the unclassified skill fell out of the unfiltered catalogue: %v", all.ids())
 	}
 }
 

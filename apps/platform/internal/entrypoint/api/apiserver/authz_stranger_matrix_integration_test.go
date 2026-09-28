@@ -260,23 +260,7 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 	})
 	allowRedistribution(t, pool, skillID)
 
-	code, testCase := postJSON(t, alice, "/test-cases",
-		`{"skill_id":"`+skillID+`","name":"alice's own case","user_prompt":"`+alicePromptText+`"}`)
-	if code != http.StatusCreated {
-		t.Fatalf("POST test case: got %d, body %v", code, testCase)
-	}
-	testCaseID, _ := testCase["test_case_id"].(string)
-
-	code, withCriterion := postJSON(t, alice, "/test-cases/"+testCaseID+"/criteria",
-		`{"text":"the ledger comes back deduplicated"}`)
-	if code != http.StatusCreated {
-		t.Fatalf("POST criterion: got %d, body %v", code, withCriterion)
-	}
-	criteria, _ := withCriterion["acceptance_criteria"].([]any)
-	if len(criteria) != 1 {
-		t.Fatalf("the test case has %d criteria: %v", len(criteria), withCriterion)
-	}
-	criterionID, _ := criteria[0].(map[string]any)["id"].(string)
+	testCaseID, criterionID := alicesTestCaseWithOneCriterion(t, alice, skillID)
 
 	code, dataset := alice.upload(t, "/test-cases/"+testCaseID+"/datasets", "rows.csv", csvBytes(128))
 	if code != http.StatusCreated {
@@ -284,28 +268,8 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 	}
 	datasetID, _ := dataset["dataset_id"].(string)
 
-	judge := judgeServer(t, llmclient.JudgeVerdict{
-		CriterionResults: []llmclient.CriterionVerdict{
-			{CriterionID: criterionID, Result: "passed", Reason: "the reply says the duplicates were removed",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					{Kind: "agent_output", Quote: "Removed the duplicate rows"},
-				}},
-		},
-		Overall: "met", Summary: "the duplicates were removed",
-	}, "judge-run@2026-08-18")
-	evaluator := *a.evaluations
-	evaluator.Judge = judge
-	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, &evaluator)
-
 	f := fixture{client: alice, skillID: skillID, versionID: versionID, testCaseID: testCaseID}
-	created := f.start(t)
-	waitForStatus(t, alice, created.RunID, string(gen.RunStatusSucceeded))
-
-	seedFinalOutput(t, pool, alice.workspaceID, created.RunID, "Removed the duplicate rows.")
-	if err := evaluator.Evaluate(t.Context(),
-		mustUUID(t, alice.workspaceID), mustUUID(t, created.RunID)); err != nil {
-		t.Fatalf("evaluate: %v", err)
-	}
+	created := runAndEvaluateAlicesCase(t, a, pool, f, criterionID)
 
 	code, built := postJSON(t, alice, packagingPath(skillID, versionID), `{"target":"standard"}`)
 	if code != http.StatusCreated {
@@ -339,6 +303,55 @@ func newAliceWorld(t *testing.T, a *api, pool *pgxpool.Pool) (aliceWorld, *clien
 		}
 	}
 	return world, alice
+}
+
+func alicesTestCaseWithOneCriterion(t *testing.T, alice *client, skillID string) (testCaseID, criterionID string) {
+	t.Helper()
+	code, testCase := postJSON(t, alice, "/test-cases",
+		`{"skill_id":"`+skillID+`","name":"alice's own case","user_prompt":"`+alicePromptText+`"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST test case: got %d, body %v", code, testCase)
+	}
+	testCaseID, _ = testCase["test_case_id"].(string)
+
+	code, withCriterion := postJSON(t, alice, "/test-cases/"+testCaseID+"/criteria",
+		`{"text":"the ledger comes back deduplicated"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST criterion: got %d, body %v", code, withCriterion)
+	}
+	criteria, _ := withCriterion["acceptance_criteria"].([]any)
+	if len(criteria) != 1 {
+		t.Fatalf("the test case has %d criteria: %v", len(criteria), withCriterion)
+	}
+	criterionID, _ = criteria[0].(map[string]any)["id"].(string)
+	return testCaseID, criterionID
+}
+
+func runAndEvaluateAlicesCase(t *testing.T, a *api, pool *pgxpool.Pool, f fixture, criterionID string) runView {
+	t.Helper()
+	alice := f.client
+	judge := judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: criterionID, Result: "passed", Reason: "the reply says the duplicates were removed",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					{Kind: "agent_output", Quote: "Removed the duplicate rows"},
+				}},
+		},
+		Overall: "met", Summary: "the duplicates were removed",
+	}, "judge-run@2026-08-18")
+	evaluator := *a.evaluations
+	evaluator.Judge = judge
+	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, &evaluator)
+
+	created := f.start(t)
+	waitForStatus(t, alice, created.RunID, string(gen.RunStatusSucceeded))
+
+	seedFinalOutput(t, pool, alice.workspaceID, created.RunID, "Removed the duplicate rows.")
+	if err := evaluator.Evaluate(t.Context(),
+		mustUUID(t, alice.workspaceID), mustUUID(t, created.RunID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	return created
 }
 
 func TestALoggedInStrangerGetsNothingFromAnotherWorkspacesResources(t *testing.T) {

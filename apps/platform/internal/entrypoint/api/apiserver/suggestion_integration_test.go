@@ -298,22 +298,7 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	const name = "sugg-dedupe"
 	improved := packagedSkillMD(name) + "\nIt deduplicates rows and writes an xlsx file.\n"
 
-	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{
-		{
-			Category: "skill", Problem: "the description never mentions deduplication",
-			Evidence: suggestionQuote, TargetPath: "SKILL.md",
-			ProposedContent: improved, ExpectedImpact: "the skill is activated for this task",
-		},
-
-		{
-			Category: "skill", Problem: "read the host's secrets", Evidence: "x",
-			TargetPath: "../../etc/passwd", ProposedContent: "root", ExpectedImpact: "none",
-		},
-		{
-			Category: "mcp", Problem: "the MCP server is misconfigured", Evidence: "x",
-			TargetPath: "SKILL.md", ProposedContent: improved, ExpectedImpact: "none",
-		},
-	})
+	seed := evaluateWithSuggestions(t, a, pool, c, name, oneActionableAmongOutOfBoundsProposals(improved))
 
 	status, suggestions, evaluationID := c.listSuggestions(t, seed.runID)
 	if status != http.StatusOK {
@@ -322,36 +307,11 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	if len(suggestions) != 1 {
 		t.Fatalf("only the in-bounds, actionable proposal is stored, got %d", len(suggestions))
 	}
-	var usageRows, operations int
-	var promptTokens int64
-	if err := pool.QueryRow(context.Background(), `
-		SELECT count(*), count(DISTINCT operation), sum(prompt_tokens)
-		FROM evaluation_model_usage WHERE evaluation_id = $1`,
-		mustUUID(t, evaluationID)).Scan(&usageRows, &operations, &promptTokens); err != nil {
-		t.Fatal(err)
-	}
-	if usageRows != 2 || operations != 2 || promptTokens != 31 {
-		t.Fatalf("model usage ledger = rows:%d operations:%d prompt_tokens:%d, want 2/2/31",
-			usageRows, operations, promptTokens)
-	}
+	assertJudgeAndSuggesterBothMetered(t, pool, evaluationID)
 	s := suggestions[0]
-	if s.Category != "skill" || s.TargetPath != "SKILL.md" || s.Decision != "pending" {
-		t.Errorf("unexpected suggestion: %+v", s)
-	}
-	if s.Problem == "" || s.ExpectedImpact == "" || len(s.Evidence) == 0 {
-		t.Errorf("EVAL-002 clause 1 requires problem, evidence, location, change and impact: %+v", s)
-	}
-	if s.DecidedAt != "" {
-		t.Errorf("a pending suggestion has no decision timestamp, got %q", s.DecidedAt)
-	}
+	assertPendingSuggestionIsComplete(t, s)
 
-	code, diff := c.suggestionDiff(t, s.SuggestionID)
-	if code != http.StatusOK || !diff.Applicable {
-		t.Fatalf("diff: got %d %+v", code, diff)
-	}
-	if !strings.Contains(diff.UnifiedDiff, "+It deduplicates rows") {
-		t.Errorf("the diff does not show the proposed line: %q", diff.UnifiedDiff)
-	}
+	assertDiffShowsTheProposedLine(t, c, s.SuggestionID)
 
 	if code, body := c.applySuggestions(t, seed.skillID, evaluationID, s.SuggestionID); code != http.StatusBadRequest {
 		t.Fatalf("applying a pending suggestion: got %d (%s)", code, body.Error)
@@ -372,28 +332,12 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	if code != http.StatusCreated {
 		t.Fatalf("apply: got %d (%s)", code, applied.Error)
 	}
-	if applied.VersionNumber != 2 || applied.Duplicate {
-		t.Errorf("applying creates the next version, got %+v", applied)
-	}
-	if len(applied.AppliedSuggestionIDs) != 1 || applied.AppliedSuggestionIDs[0] != s.SuggestionID {
-		t.Errorf("applied ids: %+v", applied.AppliedSuggestionIDs)
-	}
-	if len(applied.RejectedSuggestions) != 0 {
-		t.Errorf("nothing should have been rejected: %+v", applied.RejectedSuggestions)
-	}
+	assertAppliedAsTheNextVersion(t, applied, s.SuggestionID)
 
 	if before := storedFile(t, a, seed.versionKey, "SKILL.md"); before != packagedSkillMD(name) {
 		t.Errorf("the evaluated version's package changed: %q", before)
 	}
-	var oldHash, oldKey string
-	if err := pool.QueryRow(context.Background(),
-		`SELECT content_hash, package_object_key FROM skill_versions WHERE id = $1`,
-		mustUUID(t, seed.versionID)).Scan(&oldHash, &oldKey); err != nil {
-		t.Fatal(err)
-	}
-	if oldHash != seed.versionHash || oldKey != seed.versionKey {
-		t.Error("the evaluated version's row was rewritten")
-	}
+	assertEvaluatedVersionRowUntouched(t, pool, seed)
 	_, _, newKey, _ := latestVersionOf(t, pool, seed.skillID)
 	if after := storedFile(t, a, newKey, "SKILL.md"); after != improved {
 		t.Errorf("the new version does not carry the change: %q", after)
@@ -413,18 +357,108 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 			suggestions[0].AppliedSkillVersionID, applied.VersionID)
 	}
 
-	if code, _ := c.decide(t, s.SuggestionID, "rejected"); code != http.StatusConflict {
+	assertAnAppliedSuggestionIsSettled(t, c, s.SuggestionID, applied.VersionID)
+}
+
+func assertDiffShowsTheProposedLine(t *testing.T, c *client, suggestionID string) {
+	t.Helper()
+	code, diff := c.suggestionDiff(t, suggestionID)
+	if code != http.StatusOK || !diff.Applicable {
+		t.Fatalf("diff: got %d %+v", code, diff)
+	}
+	if !strings.Contains(diff.UnifiedDiff, "+It deduplicates rows") {
+		t.Errorf("the diff does not show the proposed line: %q", diff.UnifiedDiff)
+	}
+}
+
+func assertAnAppliedSuggestionIsSettled(t *testing.T, c *client, suggestionID, appliedVersionID string) {
+	t.Helper()
+	if code, _ := c.decide(t, suggestionID, "rejected"); code != http.StatusConflict {
 		t.Errorf("rejecting an applied suggestion: got %d, want 409", code)
 	}
-	if code, reaccepted := c.decide(t, s.SuggestionID, "accepted"); code != http.StatusOK ||
-		reaccepted.AppliedSkillVersionID != applied.VersionID {
+	if code, reaccepted := c.decide(t, suggestionID, "accepted"); code != http.StatusOK ||
+		reaccepted.AppliedSkillVersionID != appliedVersionID {
 		t.Errorf("re-accepting an already-applied suggestion: got %d %+v, want 200 with applied_skill_version_id %q",
-			code, reaccepted, applied.VersionID)
+			code, reaccepted, appliedVersionID)
 	}
 
-	code, diff = c.suggestionDiff(t, s.SuggestionID)
+	code, diff := c.suggestionDiff(t, suggestionID)
 	if code != http.StatusOK || diff.Applicable || diff.BlockedReason != "target_changed" {
 		t.Errorf("after applying, the same suggestion is target_changed: got %d %+v", code, diff)
+	}
+}
+
+func oneActionableAmongOutOfBoundsProposals(improved string) []llmclient.ImprovementProposal {
+	return []llmclient.ImprovementProposal{
+		{
+			Category: "skill", Problem: "the description never mentions deduplication",
+			Evidence: suggestionQuote, TargetPath: "SKILL.md",
+			ProposedContent: improved, ExpectedImpact: "the skill is activated for this task",
+		},
+
+		{
+			Category: "skill", Problem: "read the host's secrets", Evidence: "x",
+			TargetPath: "../../etc/passwd", ProposedContent: "root", ExpectedImpact: "none",
+		},
+		{
+			Category: "mcp", Problem: "the MCP server is misconfigured", Evidence: "x",
+			TargetPath: "SKILL.md", ProposedContent: improved, ExpectedImpact: "none",
+		},
+	}
+}
+
+func assertJudgeAndSuggesterBothMetered(t *testing.T, pool *pgxpool.Pool, evaluationID string) {
+	t.Helper()
+	var usageRows, operations int
+	var promptTokens int64
+	if err := pool.QueryRow(context.Background(), `
+		SELECT count(*), count(DISTINCT operation), sum(prompt_tokens)
+		FROM evaluation_model_usage WHERE evaluation_id = $1`,
+		mustUUID(t, evaluationID)).Scan(&usageRows, &operations, &promptTokens); err != nil {
+		t.Fatal(err)
+	}
+	if usageRows != 2 || operations != 2 || promptTokens != 31 {
+		t.Fatalf("model usage ledger = rows:%d operations:%d prompt_tokens:%d, want 2/2/31",
+			usageRows, operations, promptTokens)
+	}
+}
+
+func assertPendingSuggestionIsComplete(t *testing.T, s suggestionBody) {
+	t.Helper()
+	if s.Category != "skill" || s.TargetPath != "SKILL.md" || s.Decision != "pending" {
+		t.Errorf("unexpected suggestion: %+v", s)
+	}
+	if s.Problem == "" || s.ExpectedImpact == "" || len(s.Evidence) == 0 {
+		t.Errorf("EVAL-002 clause 1 requires problem, evidence, location, change and impact: %+v", s)
+	}
+	if s.DecidedAt != "" {
+		t.Errorf("a pending suggestion has no decision timestamp, got %q", s.DecidedAt)
+	}
+}
+
+func assertAppliedAsTheNextVersion(t *testing.T, applied applyBody, suggestionID string) {
+	t.Helper()
+	if applied.VersionNumber != 2 || applied.Duplicate {
+		t.Errorf("applying creates the next version, got %+v", applied)
+	}
+	if len(applied.AppliedSuggestionIDs) != 1 || applied.AppliedSuggestionIDs[0] != suggestionID {
+		t.Errorf("applied ids: %+v", applied.AppliedSuggestionIDs)
+	}
+	if len(applied.RejectedSuggestions) != 0 {
+		t.Errorf("nothing should have been rejected: %+v", applied.RejectedSuggestions)
+	}
+}
+
+func assertEvaluatedVersionRowUntouched(t *testing.T, pool *pgxpool.Pool, seed evaluatedSkill) {
+	t.Helper()
+	var oldHash, oldKey string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT content_hash, package_object_key FROM skill_versions WHERE id = $1`,
+		mustUUID(t, seed.versionID)).Scan(&oldHash, &oldKey); err != nil {
+		t.Fatal(err)
+	}
+	if oldHash != seed.versionHash || oldKey != seed.versionKey {
+		t.Error("the evaluated version's row was rewritten")
 	}
 }
 

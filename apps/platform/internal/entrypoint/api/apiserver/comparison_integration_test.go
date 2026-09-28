@@ -137,16 +137,46 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 		t.Fatalf("a comparison has two sides, got %d", len(body.Runs))
 	}
 
-	if body.Runs[0].RunID != before || body.Runs[1].RunID != after {
+	assertComparisonSidesNameTheirRuns(t, body, comparedSides{
+		before: before, after: after, beforeVersion: beforeVersion, afterVersion: afterVersion, skillID: skillID,
+	})
+	assertComparisonSidesJudged(t, body, "not_met", "met")
+	assertComparisonSidesKeepTheirCostsApart(t, body)
+	assertCriterionMatrixFailedLeftPassedRight(t, body)
+
+	if body.VersionDiffURL == "" {
+		t.Error("two different versions of one skill have a diff to link (WS-003)")
+	}
+
+	for i, side := range body.Runs {
+		if side.InputsAvailable == nil || !*side.InputsAvailable {
+			t.Errorf("side %d reports its inputs as gone while they are still stored", i)
+		}
+	}
+
+	for _, id := range []string{before, after} {
+		if _, run := c.getRun(t, id); run.Status != "succeeded" {
+			t.Errorf("run %s changed to %q by being compared", id, run.Status)
+		}
+	}
+}
+
+type comparedSides struct {
+	before, after, beforeVersion, afterVersion, skillID string
+}
+
+func assertComparisonSidesNameTheirRuns(t *testing.T, body comparisonBody, want comparedSides) {
+	t.Helper()
+	if body.Runs[0].RunID != want.before || body.Runs[1].RunID != want.after {
 		t.Fatalf("sides are out of order: %s / %s", body.Runs[0].RunID, body.Runs[1].RunID)
 	}
-	if body.Runs[0].SkillVersionID != beforeVersion || body.Runs[1].SkillVersionID != afterVersion {
+	if body.Runs[0].SkillVersionID != want.beforeVersion || body.Runs[1].SkillVersionID != want.afterVersion {
 		t.Error("each side reports the version it actually ran")
 	}
 
 	for i, side := range body.Runs {
-		if side.SkillID != skillID {
-			t.Errorf("side %d skill_id = %q, want %q", i, side.SkillID, skillID)
+		if side.SkillID != want.skillID {
+			t.Errorf("side %d skill_id = %q, want %q", i, side.SkillID, want.skillID)
 		}
 		if side.TestCaseID == "" {
 			t.Errorf("side %d carries no test_case_id, so no re-run could be addressed", i)
@@ -155,8 +185,11 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	if body.Runs[0].TestCaseID == body.Runs[1].TestCaseID {
 		t.Error("each side reports its own test case, not the other's")
 	}
+}
 
-	for i, want := range []string{"not_met", "met"} {
+func assertComparisonSidesJudged(t *testing.T, body comparisonBody, wantOverall ...string) {
+	t.Helper()
+	for i, want := range wantOverall {
 		side := body.Runs[i]
 		if side.Status != "succeeded" {
 			t.Errorf("side %d execution status = %q, want succeeded", i, side.Status)
@@ -171,7 +204,10 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	if body.Runs[0].FinalOutput == "" || body.Runs[0].FinalOutput == body.Runs[1].FinalOutput {
 		t.Error("each side shows its own final output (02:EVAL-003 第 2 條)")
 	}
+}
 
+func assertComparisonSidesKeepTheirCostsApart(t *testing.T, body comparisonBody) {
+	t.Helper()
 	for i, side := range body.Runs {
 		if side.Cost.Credits == nil {
 			t.Errorf("side %d lost the run cost", i)
@@ -191,7 +227,10 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	if got := *body.Runs[0].Cost.Credits; got != 18 {
 		t.Errorf("run cost = %v credits, want 18 (the trace total $0.0134 converted)", got)
 	}
+}
 
+func assertCriterionMatrixFailedLeftPassedRight(t *testing.T, body comparisonBody) {
+	t.Helper()
 	if len(body.CriterionMatrix) != 2 {
 		t.Fatalf("one row per acceptance criterion, got %d", len(body.CriterionMatrix))
 	}
@@ -211,22 +250,6 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 
 		if row.Results[0].Source != "model" {
 			t.Errorf("criterion %s loses its judgement source in the matrix", row.CriterionID)
-		}
-	}
-
-	if body.VersionDiffURL == "" {
-		t.Error("two different versions of one skill have a diff to link (WS-003)")
-	}
-
-	for i, side := range body.Runs {
-		if side.InputsAvailable == nil || !*side.InputsAvailable {
-			t.Errorf("side %d reports its inputs as gone while they are still stored", i)
-		}
-	}
-
-	for _, id := range []string{before, after} {
-		if _, run := c.getRun(t, id); run.Status != "succeeded" {
-			t.Errorf("run %s changed to %q by being compared", id, run.Status)
 		}
 	}
 }
@@ -415,7 +438,6 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "cmp-inputs")
 	skillID := seedSkill(t, pool, c.workspaceID, "cmp-inputs-skill")
-	ctx := context.Background()
 
 	withData, datasetID := seedRunWithDataset(t, pool, c.workspaceID, skillID,
 		cmpVersion(t, pool, c.workspaceID, skillID, "inputs-1"))
@@ -427,10 +449,7 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Fatalf("the dataset is still stored, so the inputs are available: %+v", body.Runs[0])
 	}
 
-	if _, err := pool.Exec(ctx,
-		`UPDATE datasets SET deleted_at = now() WHERE id = $1`, mustUUID(t, datasetID)); err != nil {
-		t.Fatal(err)
-	}
+	mustExec(t, pool, `UPDATE datasets SET deleted_at = now() WHERE id = $1`, mustUUID(t, datasetID))
 	status, body := c.compare(t, withData, other)
 	if status != http.StatusOK {
 		t.Fatalf("a deleted input must not break the comparison: got %d (%s)", status, body.Error)
@@ -442,28 +461,22 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		t.Error("the other side's inputs were untouched")
 	}
 
-	if _, err := pool.Exec(ctx,
+	mustExec(t, pool,
 		`UPDATE datasets SET deleted_at = NULL, expires_at = now() - interval '1 day' WHERE id = $1`,
-		mustUUID(t, datasetID)); err != nil {
-		t.Fatal(err)
-	}
+		mustUUID(t, datasetID))
 	if _, body := c.compare(t, withData, other); body.Runs[0].InputsAvailable == nil ||
 		*body.Runs[0].InputsAvailable {
 		t.Error("an expired dataset is not a re-runnable input either")
 	}
 
-	if _, err := pool.Exec(ctx,
+	mustExec(t, pool,
 		`UPDATE datasets SET expires_at = now() + interval '30 days' WHERE id = $1`,
-		mustUUID(t, datasetID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
+		mustUUID(t, datasetID))
+	mustExec(t, pool, `
 		UPDATE test_cases SET deleted_at = now()
 		WHERE id = (SELECT test_case_id FROM test_case_snapshots
 		            WHERE id = (SELECT test_case_snapshot_id FROM runs WHERE id = $1))`,
-		mustUUID(t, withData)); err != nil {
-		t.Fatal(err)
-	}
+		mustUUID(t, withData))
 	_, body = c.compare(t, withData, other)
 	if body.Runs[0].InputsAvailable == nil || *body.Runs[0].InputsAvailable {
 		t.Error("a deleted test case cannot be re-run either")

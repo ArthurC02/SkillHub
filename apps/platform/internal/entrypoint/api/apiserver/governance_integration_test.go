@@ -386,7 +386,63 @@ func TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes(t *testing
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, uniqueWorklistLabel("purge-run-readiness"))
 
-	var snapshotID, runID, attemptID string
+	runID, attemptID := seedRunningRunWithOneAttempt(t, pool, f)
+	if status, _ := deleteJSON(t, f.client, "/me"); status != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", status)
+	}
+	mustExec(t, pool, `UPDATE users SET deletion_requested_at = '1000-01-01', purge_attempted_at = NULL
+		WHERE id = $1`, mustUUID(t, f.userID))
+
+	store := &recordingStore{}
+	assertActiveRunDefersThePurge(t, pool, a.auth.Service, store, f.userID)
+
+	mustExec(t, pool, `UPDATE runs SET status = 'evaluating' WHERE id = $1`, mustUUID(t, runID))
+	mustExec(t, pool, `UPDATE runs SET status = 'succeeded', finished_at = now()
+		WHERE id = $1`, mustUUID(t, runID))
+	allowAnotherPurgeAttempt(t, pool, f.userID)
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+		t.Fatalf("uncleaned terminal run purge = %d, %v; want a quiet deferral", n, err)
+	}
+
+	mustExec(t, pool, `UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
+		WHERE id = $1`, mustUUID(t, runID))
+	mustExec(t, pool, `UPDATE run_attempts SET object_grants_expire_at = now() + interval '5 minutes',
+		object_grants_state = 'recorded'
+		WHERE id = $1`, mustUUID(t, attemptID))
+	allowAnotherPurgeAttempt(t, pool, f.userID)
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+		t.Fatalf("live object grant purge = %d, %v; want a quiet deferral", n, err)
+	}
+	mustExec(t, pool, `UPDATE run_attempts SET object_grants_expire_at = now() - interval '2 minutes',
+		object_grants_state = 'legacy_unknown'
+		WHERE id = $1`, mustUUID(t, attemptID))
+	allowAnotherPurgeAttempt(t, pool, f.userID)
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+		t.Fatalf("expired legacy-unknown grant purge = %d, %v; want fail-closed deferral", n, err)
+	}
+	mustExec(t, pool, `UPDATE run_attempts SET object_grants_state = 'closed',
+		object_grants_expire_at = now() - interval '30 seconds'
+		WHERE id = $1`, mustUUID(t, attemptID))
+	allowAnotherPurgeAttempt(t, pool, f.userID)
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+		t.Fatalf("a grant closed within the clock tolerance purge = %d, %v; want a deferral", n, err)
+	}
+	mustExec(t, pool, `UPDATE run_attempts SET object_grants_expire_at = now() - interval '2 minutes'
+		WHERE id = $1`, mustUUID(t, attemptID))
+	allowAnotherPurgeAttempt(t, pool, f.userID)
+	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 1 {
+		t.Fatalf("expired object grant purge = %d, %v; want completion", n, err)
+	}
+	wantKey := "run-artifacts/" + runID + "/" + attemptID + "/artifacts.tar"
+	if !slices.Contains(store.removed, wantKey) {
+		t.Fatalf("purge missed attempt-derived bytes without a manifest row: removed %v, want %s", store.removed, wantKey)
+	}
+}
+
+func seedRunningRunWithOneAttempt(t *testing.T, pool *pgxpool.Pool, f fixture) (runID, attemptID string) {
+	t.Helper()
+	ctx := context.Background()
+	var snapshotID string
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO test_case_snapshots
 			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
@@ -406,16 +462,13 @@ func TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes(t *testing
 		mustUUID(t, runID), mustUUID(t, f.workspaceID)).Scan(&attemptID); err != nil {
 		t.Fatal(err)
 	}
-	if status, _ := deleteJSON(t, f.client, "/me"); status != http.StatusOK {
-		t.Fatalf("DELETE /me: got %d", status)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET deletion_requested_at = '1000-01-01', purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
+	return runID, attemptID
+}
 
-	store := &recordingStore{}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
+func assertActiveRunDefersThePurge(t *testing.T, pool *pgxpool.Pool, svc *identity.Service, store *recordingStore, userID string) {
+	t.Helper()
+	ctx := context.Background()
+	if n, err := svc.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
 		t.Fatalf("active run purge = %d, %v; want a quiet deferral", n, err)
 	}
 	if len(store.removed) != 0 {
@@ -423,83 +476,18 @@ func TestAccountPurgeWaitsForRunCleanupAndFindsUnreportedAttemptBytes(t *testing
 	}
 	var started bool
 	if err := pool.QueryRow(ctx, "SELECT purge_started_at IS NOT NULL FROM users WHERE id = $1",
-		mustUUID(t, f.userID)).Scan(&started); err != nil {
+		mustUUID(t, userID)).Scan(&started); err != nil {
 		t.Fatal(err)
 	}
 	if started {
 		t.Fatal("purge became irreversible while a run was active")
 	}
+}
 
-	if _, err := pool.Exec(ctx, `UPDATE runs SET status = 'evaluating' WHERE id = $1`, mustUUID(t, runID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE runs SET status = 'succeeded', finished_at = now()
-		WHERE id = $1`, mustUUID(t, runID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
-		t.Fatalf("uncleaned terminal run purge = %d, %v; want a quiet deferral", n, err)
-	}
-
-	if _, err := pool.Exec(ctx, `UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
-		WHERE id = $1`, mustUUID(t, runID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_expire_at = now() + interval '5 minutes',
-		object_grants_state = 'recorded'
-		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
-		t.Fatalf("live object grant purge = %d, %v; want a quiet deferral", n, err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_expire_at = now() - interval '2 minutes',
-		object_grants_state = 'legacy_unknown'
-		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
-		t.Fatalf("expired legacy-unknown grant purge = %d, %v; want fail-closed deferral", n, err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_state = 'closed',
-		object_grants_expire_at = now() - interval '30 seconds'
-		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 0 {
-		t.Fatalf("a grant closed within the clock tolerance purge = %d, %v; want a deferral", n, err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE run_attempts SET object_grants_expire_at = now() - interval '2 minutes'
-		WHERE id = $1`, mustUUID(t, attemptID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET purge_attempted_at = NULL
-		WHERE id = $1`, mustUUID(t, f.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := a.auth.Service.PurgeExpiredAccounts(ctx, store, 0, 1); err != nil || n != 1 {
-		t.Fatalf("expired object grant purge = %d, %v; want completion", n, err)
-	}
-	wantKey := "run-artifacts/" + runID + "/" + attemptID + "/artifacts.tar"
-	if !slices.Contains(store.removed, wantKey) {
-		t.Fatalf("purge missed attempt-derived bytes without a manifest row: removed %v, want %s", store.removed, wantKey)
-	}
+func allowAnotherPurgeAttempt(t *testing.T, pool *pgxpool.Pool, userID string) {
+	t.Helper()
+	mustExec(t, pool, `UPDATE users SET purge_attempted_at = NULL
+		WHERE id = $1`, mustUUID(t, userID))
 }
 
 func TestAccountPurgeWaitsForAnInflightWorkspaceWrite(t *testing.T) {
@@ -626,133 +614,10 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 
 	makeCatalog(t, pool, alice.workspaceID)
 
-	private := seedSkill(t, pool, alice.workspaceID, "alice-private")
-
-	var sourceID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
-		VALUES ($1, 'git', 'https://example.invalid/alice.git', 'hash-private', now(), false) RETURNING id`,
-		mustUUID(t, alice.workspaceID)).Scan(&sourceID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
-		WorkspaceID:      mustUUID(t, alice.workspaceID),
-		SkillID:          mustUUID(t, private),
-		VersionNumber:    nextVersionNumber(t, pool, private),
-		SourceID:         sourceID,
-		ContentHash:      "hash-private",
-		PackageObjectKey: "packages/hash-private.zip",
-		Manifest:         []byte(`{}`),
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
-		VALUES ($1, $2, 'tc-private', 'goes in the same purge')`,
-		mustUUID(t, alice.workspaceID), mustUUID(t, private)); err != nil {
-		t.Fatal(err)
-	}
-	shared := seedSkill(t, pool, alice.workspaceID, "alice-shared")
-	sharedVer := seedVersion(t, pool, alice.workspaceID, shared, "hash-shared")
-
-	if status, _ := postJSON(t, bob, "/skills/"+shared+"/fork", "{}"); status != http.StatusCreated {
-		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
-	}
-	var keptSourceID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
-		VALUES ($1, 'git', 'https://example.invalid/alice-shared.git', 'hash-shared-v2', now(), false) RETURNING id`,
-		mustUUID(t, alice.workspaceID)).Scan(&keptSourceID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
-		WorkspaceID:      mustUUID(t, alice.workspaceID),
-		SkillID:          mustUUID(t, shared),
-		VersionNumber:    nextVersionNumber(t, pool, shared),
-		SourceID:         keptSourceID,
-		ContentHash:      "hash-shared-v2",
-		PackageObjectKey: "packages/hash-shared-v2.zip",
-		Manifest:         []byte(`{}`),
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	var testCaseID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
-		VALUES ($1, $2, 'tc', 'do the thing') RETURNING id`,
-		mustUUID(t, alice.workspaceID), mustUUID(t, shared)).Scan(&testCaseID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type,
-		                      size_bytes, content_hash, object_key, expires_at)
-		VALUES ($1, $2, 'input.csv', 'text/csv', 10, 'h1', 'datasets/alice.csv', now() + interval '90 days')`,
-		mustUUID(t, alice.workspaceID), testCaseID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key, not_before)
-		VALUES ($1, 'datasets/alice-interrupted-upload', now() + interval '1 hour')`, mustUUID(t, alice.workspaceID)); err != nil {
-		t.Fatal(err)
-	}
-
-	var unreferencedCaseID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
-		VALUES ($1, $2, 'tc-never-run', 'my own words, never run') RETURNING id`,
-		mustUUID(t, alice.workspaceID), mustUUID(t, shared)).Scan(&unreferencedCaseID); err != nil {
-		t.Fatal(err)
-	}
-	var snapshotID, runID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_case_snapshots
-			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
-		VALUES ($1, $2, 'purge me', '[]'::jsonb, 'purge-snapshot') RETURNING id`,
-		mustUUID(t, alice.workspaceID), testCaseID).Scan(&snapshotID); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
-		                  status, cleanup_status, finished_at)
-		VALUES ($1, $2, $3, 'purge-test', 'succeeded', 'cleaned', now()) RETURNING id`,
-		mustUUID(t, alice.workspaceID), sharedVer.ID, snapshotID).Scan(&runID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
-		                       size_bytes, content_hash, object_key, expires_at)
-		VALUES ($1, NULL, 'download_package', 'pkg.zip', 'application/zip', 10, 'h2',
-		        'artifacts/alice.zip', now() + interval '30 days'),
-		       ($1, $2, 'run_output', 'run.zip', 'application/zip', 10, 'h3',
-		        'artifacts/alice.zip', now() + interval '30 days')`,
-		mustUUID(t, alice.workspaceID), runID); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
-		                                profile_version, packager_version, manifest_hash,
-		                                includes_test_cases)
-		SELECT id, workspace_id, $2, 'standard', '1', 'pkg-test', 'sha256-manifest', false
-		FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package'`,
-		mustUUID(t, alice.workspaceID), sharedVer.ID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
-		SELECT workspace_id, artifact_id, $2 FROM download_artifacts WHERE workspace_id = $1`,
-		mustUUID(t, alice.workspaceID), mustUUID(t, alice.userID)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO object_reconcile_sightings (resource_kind, resource_id, object_key, rounds)
-		SELECT 'dataset', id, object_key, 2 FROM datasets WHERE workspace_id = $1
-		UNION ALL
-		SELECT 'artifact', id, object_key, 2 FROM artifacts WHERE workspace_id = $1`,
-		mustUUID(t, alice.workspaceID)); err != nil {
-		t.Fatal(err)
-	}
+	w := purgeWorld{}
+	w.private, w.sourceID = seedPurgeablePrivateSkill(t, pool, alice.workspaceID)
+	w.shared, w.sharedVer, w.keptSourceID = seedSharedSkillForkedBy(t, pool, alice.workspaceID, bob)
+	w.testCaseID, w.unreferencedCaseID = seedSharedSkillRunAndStoredBytes(t, pool, alice, w)
 
 	if status, _ := deleteJSON(t, alice, "/me"); status != http.StatusOK {
 		t.Fatalf("DELETE /me: got %d", status)
@@ -767,36 +632,191 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		t.Fatalf("purged %d accounts, want 1", n)
 	}
 
-	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, private)); c != 0 {
+	assertPrivateContentHardDeleted(t, pool, w, alice.workspaceID)
+	assertEveryWorkspaceObjectRemoved(t, store)
+	assertReferencedRowsSurvivedThePurge(t, pool, w, bob)
+	assertAccountDeIdentified(t, pool, alice)
+
+	if again, err := svc.PurgeExpiredAccounts(ctx, store, 0, 100); err != nil || again != 0 {
+		t.Fatalf("second purge run: purged %d, err %v", again, err)
+	}
+}
+
+type purgeWorld struct {
+	private, shared                string
+	sharedVer                      gen.SkillVersion
+	sourceID, keptSourceID         pgtype.UUID
+	testCaseID, unreferencedCaseID pgtype.UUID
+}
+
+func seedPurgeablePrivateSkill(t *testing.T, pool *pgxpool.Pool, workspaceID string) (private string, sourceID pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	private = seedSkill(t, pool, workspaceID, "alice-private")
+
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.invalid/alice.git', 'hash-private', now(), false) RETURNING id`,
+		mustUUID(t, workspaceID)).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, workspaceID),
+		SkillID:          mustUUID(t, private),
+		VersionNumber:    nextVersionNumber(t, pool, private),
+		SourceID:         sourceID,
+		ContentHash:      "hash-private",
+		PackageObjectKey: "packages/hash-private.zip",
+		Manifest:         []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc-private', 'goes in the same purge')`,
+		mustUUID(t, workspaceID), mustUUID(t, private))
+	return private, sourceID
+}
+
+func seedSharedSkillForkedBy(t *testing.T, pool *pgxpool.Pool, workspaceID string, forker *client) (string, gen.SkillVersion, pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	shared := seedSkill(t, pool, workspaceID, "alice-shared")
+	sharedVer := seedVersion(t, pool, workspaceID, shared, "hash-shared")
+
+	if status, _ := postJSON(t, forker, "/skills/"+shared+"/fork", "{}"); status != http.StatusCreated {
+		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
+	}
+	var keptSourceID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', 'https://example.invalid/alice-shared.git', 'hash-shared-v2', now(), false) RETURNING id`,
+		mustUUID(t, workspaceID)).Scan(&keptSourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, workspaceID),
+		SkillID:          mustUUID(t, shared),
+		VersionNumber:    nextVersionNumber(t, pool, shared),
+		SourceID:         keptSourceID,
+		ContentHash:      "hash-shared-v2",
+		PackageObjectKey: "packages/hash-shared-v2.zip",
+		Manifest:         []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return shared, sharedVer, keptSourceID
+}
+
+func seedSharedSkillRunAndStoredBytes(t *testing.T, pool *pgxpool.Pool, owner *client, w purgeWorld) (testCaseID, unreferencedCaseID pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc', 'do the thing') RETURNING id`,
+		mustUUID(t, owner.workspaceID), mustUUID(t, w.shared)).Scan(&testCaseID); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `
+		INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type,
+		                      size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, $2, 'input.csv', 'text/csv', 10, 'h1', 'datasets/alice.csv', now() + interval '90 days')`,
+		mustUUID(t, owner.workspaceID), testCaseID)
+	mustExec(t, pool, `
+		INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key, not_before)
+		VALUES ($1, 'datasets/alice-interrupted-upload', now() + interval '1 hour')`, mustUUID(t, owner.workspaceID))
+
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc-never-run', 'my own words, never run') RETURNING id`,
+		mustUUID(t, owner.workspaceID), mustUUID(t, w.shared)).Scan(&unreferencedCaseID); err != nil {
+		t.Fatal(err)
+	}
+	seedPurgedRunWithStoredArtifacts(t, pool, owner, w.sharedVer, testCaseID)
+	return testCaseID, unreferencedCaseID
+}
+
+func seedPurgedRunWithStoredArtifacts(t *testing.T, pool *pgxpool.Pool, owner *client, sharedVer gen.SkillVersion, testCaseID pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	var snapshotID, runID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots
+			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		VALUES ($1, $2, 'purge me', '[]'::jsonb, 'purge-snapshot') RETURNING id`,
+		mustUUID(t, owner.workspaceID), testCaseID).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+		                  status, cleanup_status, finished_at)
+		VALUES ($1, $2, $3, 'purge-test', 'succeeded', 'cleaned', now()) RETURNING id`,
+		mustUUID(t, owner.workspaceID), sharedVer.ID, snapshotID).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `
+		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
+		                       size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, NULL, 'download_package', 'pkg.zip', 'application/zip', 10, 'h2',
+		        'artifacts/alice.zip', now() + interval '30 days'),
+		       ($1, $2, 'run_output', 'run.zip', 'application/zip', 10, 'h3',
+		        'artifacts/alice.zip', now() + interval '30 days')`,
+		mustUUID(t, owner.workspaceID), runID)
+
+	mustExec(t, pool, `
+		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+		                                profile_version, packager_version, manifest_hash,
+		                                includes_test_cases)
+		SELECT id, workspace_id, $2, 'standard', '1', 'pkg-test', 'sha256-manifest', false
+		FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package'`,
+		mustUUID(t, owner.workspaceID), sharedVer.ID)
+	mustExec(t, pool, `
+		INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
+		SELECT workspace_id, artifact_id, $2 FROM download_artifacts WHERE workspace_id = $1`,
+		mustUUID(t, owner.workspaceID), mustUUID(t, owner.userID))
+	mustExec(t, pool, `
+		INSERT INTO object_reconcile_sightings (resource_kind, resource_id, object_key, rounds)
+		SELECT 'dataset', id, object_key, 2 FROM datasets WHERE workspace_id = $1
+		UNION ALL
+		SELECT 'artifact', id, object_key, 2 FROM artifacts WHERE workspace_id = $1`,
+		mustUUID(t, owner.workspaceID))
+}
+
+func assertPrivateContentHardDeleted(t *testing.T, pool *pgxpool.Pool, w purgeWorld, workspaceID string) {
+	t.Helper()
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, w.private)); c != 0 {
 		t.Fatal("unreferenced private skill survived the purge")
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE content_hash = 'hash-private'"); c != 0 {
 		t.Fatal("unreferenced private version survived the purge")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, private)); c != 0 {
+	if c := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, w.private)); c != 0 {
 		t.Fatal("search document of a purged skill survived")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", sourceID); c != 0 {
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", w.sourceID); c != 0 {
 		t.Fatal("import source of a purged version survived; the purge steps ran out of order")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", keptSourceID); c != 1 {
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", w.keptSourceID); c != 1 {
 		t.Fatal("the import source of a version the purge kept was deleted")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM datasets WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
+	if c := countRow(t, pool, "SELECT count(*) FROM datasets WHERE workspace_id = $1", mustUUID(t, workspaceID)); c != 0 {
 		t.Fatal("dataset rows survived the purge")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM dataset_object_cleanup_intents WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
+	if c := countRow(t, pool, "SELECT count(*) FROM dataset_object_cleanup_intents WHERE workspace_id = $1", mustUUID(t, workspaceID)); c != 0 {
 		t.Fatal("dataset cleanup intents survived the purge")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
+	if c := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE workspace_id = $1", mustUUID(t, workspaceID)); c != 0 {
 		t.Fatal("artifact rows survived the purge")
 	}
 	if c := countRow(t, pool, `SELECT count(*) FROM object_reconcile_sightings
 		WHERE object_key IN ('datasets/alice.csv', 'artifacts/alice.zip')`); c != 0 {
 		t.Fatal("object-reconcile sightings survived after their workspace resources were purged")
 	}
-	assertPurgedWorkspaceIsGone(t, pool, mustUUID(t, alice.workspaceID))
+	assertPurgedWorkspaceIsGone(t, pool, mustUUID(t, workspaceID))
+}
 
+func assertEveryWorkspaceObjectRemoved(t *testing.T, store *recordingStore) {
+	t.Helper()
 	removed := map[string]bool{}
 	for _, k := range store.removed {
 		removed[k] = true
@@ -809,23 +829,29 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if len(store.removed) != 3 {
 		t.Fatalf("object storage keys removed: %v, want the dataset, interrupted upload and artifact", store.removed)
 	}
+}
 
-	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", unreferencedCaseID); c != 0 {
+func assertReferencedRowsSurvivedThePurge(t *testing.T, pool *pgxpool.Pool, w purgeWorld, forker *client) {
+	t.Helper()
+	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", w.unreferencedCaseID); c != 0 {
 		t.Fatal("a test case no snapshot references survived the purge; the user's own prompt is still on disk (05 R-29)")
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", testCaseID); c != 1 {
+	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", w.testCaseID); c != 1 {
 		t.Fatal("the test case a retained run's snapshot points at was deleted; that run's record of its own input now dangles (iron rule 4)")
 	}
 
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", sharedVer.ID); c != 1 {
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", w.sharedVer.ID); c != 1 {
 		t.Fatal("a version another user forked was deleted; that breaks their provenance chain")
 	}
-	if ids := bob.skillIDs(t, "/skills"); len(ids) == 0 {
+	if ids := forker.skillIDs(t, "/skills"); len(ids) == 0 {
 		t.Fatal("bob's fork disappeared with alice's account")
 	}
+}
 
+func assertAccountDeIdentified(t *testing.T, pool *pgxpool.Pool, alice *client) {
+	t.Helper()
 	var email, name string
-	if err := pool.QueryRow(ctx, "SELECT email, display_name FROM users WHERE id = $1",
+	if err := pool.QueryRow(context.Background(), "SELECT email, display_name FROM users WHERE id = $1",
 		mustUUID(t, alice.userID)).Scan(&email, &name); err != nil {
 		t.Fatal(err)
 	}
@@ -849,10 +875,6 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		"SELECT count(*) FROM audit_events WHERE actor_user_id = $1 AND action = 'account.purged'",
 		mustUUID(t, alice.userID)); c != 1 {
 		t.Fatal("the purge left no audit event")
-	}
-
-	if again, err := svc.PurgeExpiredAccounts(ctx, store, 0, 100); err != nil || again != 0 {
-		t.Fatalf("second purge run: purged %d, err %v", again, err)
 	}
 }
 
@@ -1093,67 +1115,15 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	if status, _ := postJSON(t, bob, "/skills/"+forked+"/fork", "{}"); status != http.StatusCreated {
 		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
 	}
-	var packagedArtifact pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
-		                       size_bytes, content_hash, object_key, expires_at)
-		VALUES ($1, NULL, 'download_package', 'grace.zip', 'application/zip', 10, 'grace-h',
-		        'artifacts/grace.zip', now() + interval '90 days') RETURNING id`,
-		mustUUID(t, alice.workspaceID)).Scan(&packagedArtifact); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
-		                                profile_version, packager_version, manifest_hash,
-		                                includes_test_cases)
-		VALUES ($1, $2, $3, 'standard', '1', 'pkg-grace', 'sha256-grace', false)`,
-		packagedArtifact, mustUUID(t, alice.workspaceID), packagedVer.ID); err != nil {
-		t.Fatal(err)
-	}
+	seedGracePackageDownload(t, pool, alice.workspaceID, packagedVer.ID)
+	runID := seedGraceRunOnAVersionOfAnotherSkill(t, pool, alice.workspaceID, tested, usedVer.ID)
 
-	var testCaseID, snapshotID, runID pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
-		VALUES ($1, $2, 'grace-tc', 'do the thing') RETURNING id`,
-		mustUUID(t, alice.workspaceID), mustUUID(t, tested)).Scan(&testCaseID); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_case_snapshots
-			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
-		VALUES ($1, $2, 'do the thing', '[]'::jsonb, 'grace-snapshot') RETURNING id`,
-		mustUUID(t, alice.workspaceID), testCaseID).Scan(&snapshotID); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
-		VALUES ($1, $2, $3, 'grace-test') RETURNING id`,
-		mustUUID(t, alice.workspaceID), usedVer.ID, snapshotID).Scan(&runID); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, id := range []string{past, recent, forked, used, tested, packaged} {
-		if status, _ := deleteJSON(t, alice, "/skills/"+id); status != http.StatusOK {
-			t.Fatalf("DELETE /skills/%s: got %d", id, status)
-		}
-	}
-
-	for _, id := range []string{past, forked, used, tested, packaged} {
-		if _, err := pool.Exec(ctx,
-			"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
-			mustUUID(t, id)); err != nil {
-			t.Fatal(err)
-		}
-	}
+	deleteSkillsThroughTheAPI(t, alice, past, recent, forked, used, tested, packaged)
+	ageSkillDeletionsPastGrace(t, pool, past, forked, used, tested, packaged)
 
 	svc := registryPurger(pool)
 
-	if _, err := svc.PurgeDeletedSkills(ctx, 0, 100); err == nil {
-		t.Fatal("a zero grace period was accepted; every deletion would be purged instantly")
-	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, recent)); c != 1 {
-		t.Fatal("the refused zero-grace sweep deleted rows anyway")
-	}
+	assertZeroGraceSweepRefused(t, pool, svc, recent)
 
 	sweep, err := svc.PurgeDeletedSkills(ctx, 30*24*time.Hour, 100)
 	if err != nil {
@@ -1163,29 +1133,15 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	if sweep.Purged != 1 {
 		t.Errorf("purged %d skills, want exactly the one past grace with nothing depending on it", sweep.Purged)
 	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, past)); c != 0 {
-		t.Error("a skill deleted long past the grace period survived the sweep")
-	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, past)); c != 0 {
-		t.Error("the versions of a purged skill survived; the 0013 purge flag did not reach skill_versions")
-	}
+	assertSkillAndItsVersionsPurged(t, pool, past)
 
-	for _, keep := range []struct {
-		id, why string
-	}{
+	assertSkillsKeptWithTheirVersions(t, pool, []keptSkill{
 		{recent, "deleted inside the grace period"},
 		{forked, "another workspace forked it"},
 		{used, "a run used one of its versions"},
 		{tested, "it still holds test cases"},
 		{packaged, "somebody packaged one of its versions for download"},
-	} {
-		if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, keep.id)); c != 1 {
-			t.Errorf("skill was purged although %s", keep.why)
-		}
-		if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, keep.id)); c != 1 {
-			t.Errorf("frozen versions were purged although %s", keep.why)
-		}
-	}
+	})
 	if c := countRow(t, pool, "SELECT count(*) FROM runs WHERE id = $1", runID); c != 1 {
 		t.Error("the run whose version the sweep had to spare is gone")
 	}
@@ -1206,6 +1162,105 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", usedVer.ID); c != 1 {
 		t.Error("the version a run points at was taken by the second sweep")
+	}
+}
+
+func assertZeroGraceSweepRefused(t *testing.T, pool *pgxpool.Pool, svc *registry.Service, recentlyDeleted string) {
+	t.Helper()
+	if _, err := svc.PurgeDeletedSkills(context.Background(), 0, 100); err == nil {
+		t.Fatal("a zero grace period was accepted; every deletion would be purged instantly")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, recentlyDeleted)); c != 1 {
+		t.Fatal("the refused zero-grace sweep deleted rows anyway")
+	}
+}
+
+func assertSkillAndItsVersionsPurged(t *testing.T, pool *pgxpool.Pool, skillID string) {
+	t.Helper()
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, skillID)); c != 0 {
+		t.Error("a skill deleted long past the grace period survived the sweep")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, skillID)); c != 0 {
+		t.Error("the versions of a purged skill survived; the 0013 purge flag did not reach skill_versions")
+	}
+}
+
+func seedGracePackageDownload(t *testing.T, pool *pgxpool.Pool, workspaceID string, versionID pgtype.UUID) {
+	t.Helper()
+	var packagedArtifact pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
+		                       size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, NULL, 'download_package', 'grace.zip', 'application/zip', 10, 'grace-h',
+		        'artifacts/grace.zip', now() + interval '90 days') RETURNING id`,
+		mustUUID(t, workspaceID)).Scan(&packagedArtifact); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, pool, `
+		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+		                                profile_version, packager_version, manifest_hash,
+		                                includes_test_cases)
+		VALUES ($1, $2, $3, 'standard', '1', 'pkg-grace', 'sha256-grace', false)`,
+		packagedArtifact, mustUUID(t, workspaceID), versionID)
+}
+
+func seedGraceRunOnAVersionOfAnotherSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, testedSkill string, usedVersionID pgtype.UUID) pgtype.UUID {
+	t.Helper()
+	ctx := context.Background()
+	var testCaseID, snapshotID, runID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'grace-tc', 'do the thing') RETURNING id`,
+		mustUUID(t, workspaceID), mustUUID(t, testedSkill)).Scan(&testCaseID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots
+			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		VALUES ($1, $2, 'do the thing', '[]'::jsonb, 'grace-snapshot') RETURNING id`,
+		mustUUID(t, workspaceID), testCaseID).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
+		VALUES ($1, $2, $3, 'grace-test') RETURNING id`,
+		mustUUID(t, workspaceID), usedVersionID, snapshotID).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	return runID
+}
+
+func deleteSkillsThroughTheAPI(t *testing.T, owner *client, skillIDs ...string) {
+	t.Helper()
+	for _, id := range skillIDs {
+		if status, _ := deleteJSON(t, owner, "/skills/"+id); status != http.StatusOK {
+			t.Fatalf("DELETE /skills/%s: got %d", id, status)
+		}
+	}
+}
+
+func ageSkillDeletionsPastGrace(t *testing.T, pool *pgxpool.Pool, skillIDs ...string) {
+	t.Helper()
+	for _, id := range skillIDs {
+		mustExec(t, pool,
+			"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
+			mustUUID(t, id))
+	}
+}
+
+type keptSkill struct {
+	id, why string
+}
+
+func assertSkillsKeptWithTheirVersions(t *testing.T, pool *pgxpool.Pool, keeps []keptSkill) {
+	t.Helper()
+	for _, keep := range keeps {
+		if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, keep.id)); c != 1 {
+			t.Errorf("skill was purged although %s", keep.why)
+		}
+		if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, keep.id)); c != 1 {
+			t.Errorf("frozen versions were purged although %s", keep.why)
+		}
 	}
 }
 
@@ -1254,26 +1309,7 @@ func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
 
 	enqueueObjectKeys(t, pool, sharedVer.PackageObjectKey, returnedKey)
 
-	if status, _ := deleteJSON(t, alice, "/skills/"+orphan); status != http.StatusOK {
-		t.Fatalf("DELETE /skills/%s: got %d", orphan, status)
-	}
-	if _, err := pool.Exec(ctx,
-		"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
-		mustUUID(t, orphan)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := registryPurger(pool).PurgeDeletedSkills(ctx, 30*24*time.Hour, 100); err != nil {
-		t.Fatal(err)
-	}
-	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
-		orphanVer.PackageObjectKey); c != 0 {
-		t.Fatalf("the grace purge left the orphan's version rows; nothing below is testing collection")
-	}
-
-	if queuedObjectKeys(t, pool, orphanVer.PackageObjectKey) != 1 {
-		t.Fatalf("the grace purge deleted the last rows holding %q without remembering the key; "+
-			"those bytes are paid for and now unreachable", orphanVer.PackageObjectKey)
-	}
+	purgeSkillPastGraceAndRememberItsObject(t, pool, alice, orphan, orphanVer.PackageObjectKey)
 	seedVersion(t, pool, alice.workspaceID, returned, "collect-returned-hash")
 
 	store := &recordingStore{}
@@ -1289,18 +1325,10 @@ func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
 		t.Error("a collected object kept its worklist entry; the next pass will try to remove it again forever")
 	}
 
-	for _, spared := range []struct{ key, why string }{
+	assertSparedObjectsLeftTheWorklist(t, pool, store, []sparedObject{
 		{sharedVer.PackageObjectKey, "a fork's version still references it"},
 		{returnedKey, "a new version brought the same content-addressed key back"},
-	} {
-		if slices.Contains(store.removed, spared.key) {
-			t.Errorf("the sweep removed a package object although %s", spared.why)
-		}
-		if queuedObjectKeys(t, pool, spared.key) != 0 {
-			t.Errorf("the entry stayed on the worklist although %s; a queue that never shrinks "+
-				"is indistinguishable from a sweep that has stopped", spared.why)
-		}
-	}
+	})
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
 		sharedVer.PackageObjectKey); c != 2 {
 		t.Error("the shared object's version rows changed; this sweep must not touch skill_versions at all")
@@ -1321,6 +1349,62 @@ func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
 	if again.Collected != 0 || len(store.removed) != before {
 		t.Errorf("the second pass removed %d more objects; it is taking things the first one spared",
 			len(store.removed)-before)
+	}
+}
+
+func purgeSkillPastGraceAndRememberItsObject(t *testing.T, pool *pgxpool.Pool, owner *client, skillID, objectKey string) {
+	t.Helper()
+	if status, _ := deleteJSON(t, owner, "/skills/"+skillID); status != http.StatusOK {
+		t.Fatalf("DELETE /skills/%s: got %d", skillID, status)
+	}
+	ageSkillDeletionsPastGrace(t, pool, skillID)
+	if _, err := registryPurger(pool).PurgeDeletedSkills(context.Background(), 30*24*time.Hour, 100); err != nil {
+		t.Fatal(err)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
+		objectKey); c != 0 {
+		t.Fatalf("the grace purge left the orphan's version rows; nothing below is testing collection")
+	}
+
+	if queuedObjectKeys(t, pool, objectKey) != 1 {
+		t.Fatalf("the grace purge deleted the last rows holding %q without remembering the key; "+
+			"those bytes are paid for and now unreachable", objectKey)
+	}
+}
+
+type sparedObject struct{ key, why string }
+
+func assertSparedObjectsLeftTheWorklist(t *testing.T, pool *pgxpool.Pool, store *recordingStore, spared []sparedObject) {
+	t.Helper()
+	for _, s := range spared {
+		if slices.Contains(store.removed, s.key) {
+			t.Errorf("the sweep removed a package object although %s", s.why)
+		}
+		if queuedObjectKeys(t, pool, s.key) != 0 {
+			t.Errorf("the entry stayed on the worklist although %s; a queue that never shrinks "+
+				"is indistinguishable from a sweep that has stopped", s.why)
+		}
+	}
+}
+
+func waitUntilALockWaiterIsBlockedBy(t *testing.T, pool *pgxpool.Pool, blockerPID uint32) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var waiting bool
+		if err := pool.QueryRow(context.Background(), `SELECT EXISTS (
+			SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
+			  AND $1 = ANY (pg_blocking_pids(pid))
+		)`, blockerPID).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("collector never waited for the uploader's package-object lock")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -1384,24 +1468,7 @@ func TestOrphanCollectorRechecksAfterAnUploaderWinsThePackageLock(t *testing.T) 
 		done <- result{collection: collection, err: err}
 	}()
 
-	uploaderPID := uploader.Conn().PgConn().PID()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		var waiting bool
-		if err := pool.QueryRow(ctx, `SELECT EXISTS (
-			SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted
-			  AND $1 = ANY (pg_blocking_pids(pid))
-		)`, uploaderPID).Scan(&waiting); err != nil {
-			t.Fatal(err)
-		}
-		if waiting {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("collector never waited for the uploader's package-object lock")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitUntilALockWaiterIsBlockedBy(t, pool, uploader.Conn().PgConn().PID())
 
 	_, err = gen.New(uploader).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:      mustUUID(t, alice.workspaceID),

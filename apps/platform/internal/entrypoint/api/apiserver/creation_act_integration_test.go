@@ -669,53 +669,37 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		return creation.Draft{Revision: 1, ContentHash: hash, Skill: creation.GeneratedSkill{Name: "n", Description: "d"}, Blocked: blocked}
 	}
 
+	s := actScene{pool: pool, ws: ws, svc: svc}
+	invalid := materializeRefusal{hash: "h1", want: creation.ErrInvalidCommand, wantName: "ErrInvalidCommand"}
+	unavailable := materializeRefusal{hash: "h1", want: creation.ErrUnavailable, wantName: "ErrUnavailable"}
+
 	t.Run("no draft", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrInvalidCommand) {
-			t.Fatalf("got %v, want ErrInvalidCommand", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, invalid)
 	})
 	t.Run("draft blocked", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", true))
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrInvalidCommand) {
-			t.Fatalf("got %v, want ErrInvalidCommand", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, invalid)
 	})
 	t.Run("empty content hash", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("", false))
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: ""})
-		if !errors.Is(err, creation.ErrInvalidCommand) {
-			t.Fatalf("got %v, want ErrInvalidCommand", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, materializeRefusal{hash: "", want: creation.ErrInvalidCommand, wantName: "ErrInvalidCommand"})
 	})
 	t.Run("content hash mismatch", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h2"})
-		if !errors.Is(err, creation.ErrInvalidCommand) {
-			t.Fatalf("got %v, want ErrInvalidCommand", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, materializeRefusal{hash: "h2", want: creation.ErrInvalidCommand, wantName: "ErrInvalidCommand"})
 	})
 	t.Run("not confirmed", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrInvalidCommand) {
-			t.Fatalf("got %v, want ErrInvalidCommand", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, invalid)
 	})
 	t.Run("references present without a ResolveReference capability", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
@@ -723,11 +707,7 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
 		setCreationSnapshotField(t, pool, id, "references", []creation.Reference{{SkillID: "r1", Confirmed: true, Available: true}})
 		svc.ResolveReference = nil
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrUnavailable) {
-			t.Fatalf("got %v, want ErrUnavailable", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, unavailable)
 	})
 	t.Run("ResolveReference errors", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
@@ -737,23 +717,36 @@ func TestActMaterializeGroupPreconditions(t *testing.T) {
 		svc.ResolveReference = func(context.Context, identity.Workspace, string, string) (creation.Reference, creation.ReferenceSkill, error) {
 			return creation.Reference{}, creation.ReferenceSkill{}, errors.New("resolve boom")
 		}
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrNotFound) {
-			t.Fatalf("got %v, want ErrNotFound", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, materializeRefusal{hash: "h1", want: creation.ErrNotFound, wantName: "ErrNotFound"})
 	})
 	t.Run("no materialize capability and no existing candidate", func(t *testing.T) {
 		v, id := newActSession(t, svc, ws)
 		confirmedBase(t, id)
 		setCreationSnapshotField(t, pool, id, "draft", draft("h1", false))
 		svc.ResolveReference = nil
-		_, _, err := svc.Act(context.Background(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: "h1"})
-		if !errors.Is(err, creation.ErrUnavailable) {
-			t.Fatalf("got %v, want ErrUnavailable", err)
-		}
-		assertRevisionUnchanged(t, pool, id, v.Revision)
+		s.assertMaterializeRefused(t, v, id, unavailable)
 	})
+}
+
+type actScene struct {
+	pool *pgxpool.Pool
+	ws   identity.Workspace
+	svc  *creation.Service
+}
+
+type materializeRefusal struct {
+	hash     string
+	want     error
+	wantName string
+}
+
+func (s actScene) assertMaterializeRefused(t *testing.T, v creation.View, id pgtype.UUID, r materializeRefusal) {
+	t.Helper()
+	_, _, err := s.svc.Act(context.Background(), s.ws, id, creation.Command{ID: creationID(t), ExpectedRevision: v.Revision, Kind: "materialize", ContentHash: r.hash})
+	if !errors.Is(err, r.want) {
+		t.Fatalf("got %v, want %s", err, r.wantName)
+	}
+	assertRevisionUnchanged(t, s.pool, id, v.Revision)
 }
 
 func TestActUnknownKindIsInvalidCommand(t *testing.T) {

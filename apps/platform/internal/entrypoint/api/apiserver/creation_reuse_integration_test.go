@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
@@ -38,7 +39,41 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 		return creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "幫我整理輸入資料並輸出摘要", "budget_credits": 650}, 200)
 	}
 
+	scene := reuseScene{s: s, c: c, existing: existing, calls: calls, stepsBefore: stepsBefore}
+
 	v := start()
+	assertHeldForTheCatalogueHit(t, scene, v, checked)
+
+	d := creationAct(t, c, v, "decline_references")
+	last := d.Snapshot.Messages[len(d.Snapshot.Messages)-1]
+	if d.State != "queued" || len(d.Snapshot.References) != 0 || last.Role != "tool" || !strings.Contains(last.Content, "不採用") {
+		t.Fatalf("decline: %+v", d.Snapshot)
+	}
+
+	v = start()
+	ad := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
+	assertAdoptionForkedWithoutAModelCall(t, scene, ad)
+
+	v = start()
+	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{"11111111-1111-4111-8111-111111111111"}}, 422)
+
+	k := creationAct(t, c, v, "confirm_references")
+	if k.State != "queued" || len(k.Snapshot.References) != 1 || !k.Snapshot.References[0].Confirmed {
+		t.Fatalf("keep as references: %+v", k.Snapshot)
+	}
+}
+
+type reuseScene struct {
+	s           *creation.Service
+	c           *client
+	existing    creation.Candidate
+	calls       *atomic.Int32
+	stepsBefore int32
+}
+
+func assertHeldForTheCatalogueHit(t *testing.T, scene reuseScene, v creation.View, checked []string) {
+	t.Helper()
+	s, c, existing, calls, stepsBefore := scene.s, scene.c, scene.existing, scene.calls, scene.stepsBefore
 	if v.State != "waiting_confirmation" || v.Snapshot.PendingAction != "confirm_references" || !v.Snapshot.CatalogChecked ||
 		len(v.Snapshot.References) != 1 || v.Snapshot.References[0].SkillID != existing.SkillID || v.Snapshot.References[0].Confirmed ||
 		creationDomain(t, s, c, v).Snapshot.SpentUSD == nil || *creationDomain(t, s, c, v).Snapshot.SpentUSD != 0.00001 || calls.Load() != stepsBefore {
@@ -54,15 +89,11 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 	if jobs != 0 {
 		t.Fatalf("a held session must not have a step queued: %d", jobs)
 	}
+}
 
-	d := creationAct(t, c, v, "decline_references")
-	last := d.Snapshot.Messages[len(d.Snapshot.Messages)-1]
-	if d.State != "queued" || len(d.Snapshot.References) != 0 || last.Role != "tool" || !strings.Contains(last.Content, "不採用") {
-		t.Fatalf("decline: %+v", d.Snapshot)
-	}
-
-	v = start()
-	ad := creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
+func assertAdoptionForkedWithoutAModelCall(t *testing.T, scene reuseScene, ad creation.View) {
+	t.Helper()
+	existing, calls, stepsBefore := scene.existing, scene.calls, scene.stepsBefore
 	if ad.State != "saved" || !ad.Snapshot.Adopted || ad.Snapshot.Candidate == nil || ad.Snapshot.Candidate.SkillID == existing.SkillID || ad.Snapshot.PendingAction != "" {
 		t.Fatalf("adopt: %+v", ad.Snapshot)
 	}
@@ -73,45 +104,12 @@ func TestCreationFirstMessageCatalogueCheckOffersAdoptKeepOrDecline(t *testing.T
 	if calls.Load() != stepsBefore {
 		t.Fatalf("adoption must cost no model call: %d", calls.Load()-stepsBefore)
 	}
-
-	v = start()
-	creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{"11111111-1111-4111-8111-111111111111"}}, 422)
-
-	k := creationAct(t, c, v, "confirm_references")
-	if k.State != "queued" || len(k.Snapshot.References) != 1 || !k.Snapshot.References[0].Confirmed {
-		t.Fatalf("keep as references: %+v", k.Snapshot)
-	}
 }
 
-func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing.T) {
-	a, s, _ := creationFixture(t)
-	c := a.login(t, "creation-reuse-dup")
-	existing := seedExistingSkill(t, a, s, a.login(t, "creation-reuse-dup-owner"))
-
-	a.app.CreationSvc.CatalogCheck = func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
-		return nil, 0, nil
-	}
-	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
-		if strings.Contains(query, "Summarize user input") {
-			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary-existing", Available: true}}, 0.00002, nil
-		}
-		return nil, 0, nil
-	}
-	drafted := func(c *client) creation.View {
-		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "再做一個摘要 Skill", "budget_credits": 650}, 200)
-		if v.State != "queued" || v.Snapshot.PendingAction != "" {
-			t.Fatalf("the first message must not be held: %+v", v.Snapshot)
-		}
-		v = creationStep(t, s, v)
-		v = creationAct(t, c, v, "confirm_brief")
-		v = creationStep(t, s, v)
-		if v.Snapshot.Draft == nil {
-			t.Fatalf("no draft: %+v", v.Snapshot)
-		}
-		return v
-	}
-
-	v := drafted(c)
+func materializeHeldForADuplicateThenConfirmed(t *testing.T, scene reuseScene) {
+	t.Helper()
+	s, c, existing := scene.s, scene.c, scene.existing
+	v := draftedWithoutAHold(t, s, c)
 	spentBefore := *v.Snapshot.SpentUSD
 	held := creationAct(t, c, v, "materialize")
 	if held.State != "waiting_confirmation" || held.Snapshot.PendingAction != "confirm_duplicate" || held.Snapshot.PendingMaterialize != "materialize" ||
@@ -127,24 +125,13 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	}
 
 	creationPost(t, c, "/creation-sessions/"+done.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": done.Revision, "kind": "confirm_duplicate", "content_hash": done.Snapshot.Draft.ContentHash}, 422)
+}
 
-	v = drafted(c)
-	held = creationAct(t, c, v, "materialize")
-	ad := creationPost(t, c, "/creation-sessions/"+held.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": held.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
-	if ad.State != "saved" || !ad.Snapshot.Adopted || ad.Snapshot.Candidate == nil || ad.Snapshot.Candidate.SkillID == existing.SkillID {
-		t.Fatalf("adopt from the duplicate list: %+v", ad.Snapshot)
-	}
-
-	c4 := a.login(t, "creation-reuse-dup-rename")
-	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
-		if strings.Contains(query, "Summarize user input") {
-			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary", Available: true}}, 0.00002, nil
-		}
-		return nil, 0, nil
-	}
-	v = drafted(c4)
-	held = creationAct(t, c4, v, "materialize")
-	renaming := creationAct(t, c4, held, "confirm_duplicate")
+func collidingNameGoesBackToTheModelThenSaves(t *testing.T, s *creation.Service, c *client) {
+	t.Helper()
+	v := draftedWithoutAHold(t, s, c)
+	held := creationAct(t, c, v, "materialize")
+	renaming := creationAct(t, c, held, "confirm_duplicate")
 	if renaming.State != "queued" || renaming.Snapshot.Candidate != nil || !strings.Contains(renaming.Snapshot.Messages[len(renaming.Snapshot.Messages)-1].Content, "請只改名稱") {
 		t.Fatalf("a colliding name must go back to the model: %+v", renaming.Snapshot)
 	}
@@ -152,18 +139,61 @@ func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing
 	if renamed.Snapshot.Draft == nil || renamed.Snapshot.Draft.Skill.Name != "creation-summary-renamed" || !renamed.Snapshot.DuplicateAcknowledged {
 		t.Fatalf("renamed draft: %+v", renamed.Snapshot)
 	}
-	if saved := creationAct(t, c4, renamed, "materialize"); saved.State != "candidate_ready" || saved.Snapshot.Candidate == nil {
+	if saved := creationAct(t, c, renamed, "materialize"); saved.State != "candidate_ready" || saved.Snapshot.Candidate == nil {
 		t.Fatalf("the renamed draft saves without a second duplicate hold: %+v", saved.Snapshot)
 	}
+}
 
-	a.app.CreationSvc.DuplicateCheck = func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
+func duplicateCheckFinding(existing creation.Candidate, name string) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
+	return func(_ context.Context, _ identity.Workspace, query string) ([]creation.Reference, float64, error) {
 		if strings.Contains(query, "Summarize user input") {
-			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: "creation-summary-existing", Available: true}}, 0.00002, nil
+			return []creation.Reference{{SkillID: existing.SkillID, VersionID: existing.VersionID, Name: name, Available: true}}, 0.00002, nil
 		}
 		return nil, 0, nil
 	}
+}
+
+func draftedWithoutAHold(t *testing.T, s *creation.Service, c *client) creation.View {
+	t.Helper()
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "再做一個摘要 Skill", "budget_credits": 650}, 200)
+	if v.State != "queued" || v.Snapshot.PendingAction != "" {
+		t.Fatalf("the first message must not be held: %+v", v.Snapshot)
+	}
+	v = creationStep(t, s, v)
+	v = creationAct(t, c, v, "confirm_brief")
+	v = creationStep(t, s, v)
+	if v.Snapshot.Draft == nil {
+		t.Fatalf("no draft: %+v", v.Snapshot)
+	}
+	return v
+}
+
+func TestCreationMaterializeHoldsForADuplicateUntilAdoptedOrConfirmed(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	c := a.login(t, "creation-reuse-dup")
+	existing := seedExistingSkill(t, a, s, a.login(t, "creation-reuse-dup-owner"))
+
+	a.app.CreationSvc.CatalogCheck = func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
+		return nil, 0, nil
+	}
+	a.app.CreationSvc.DuplicateCheck = duplicateCheckFinding(existing, "creation-summary-existing")
+
+	materializeHeldForADuplicateThenConfirmed(t, reuseScene{s: s, c: c, existing: existing})
+
+	v := draftedWithoutAHold(t, s, c)
+	held := creationAct(t, c, v, "materialize")
+	ad := creationPost(t, c, "/creation-sessions/"+held.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": held.Revision, "kind": "adopt_reference", "reference_skill_ids": []string{existing.SkillID}}, 200)
+	if ad.State != "saved" || !ad.Snapshot.Adopted || ad.Snapshot.Candidate == nil || ad.Snapshot.Candidate.SkillID == existing.SkillID {
+		t.Fatalf("adopt from the duplicate list: %+v", ad.Snapshot)
+	}
+
+	c4 := a.login(t, "creation-reuse-dup-rename")
+	a.app.CreationSvc.DuplicateCheck = duplicateCheckFinding(existing, "creation-summary")
+	collidingNameGoesBackToTheModelThenSaves(t, s, c4)
+
+	a.app.CreationSvc.DuplicateCheck = duplicateCheckFinding(existing, "creation-summary-existing")
 	c3 := a.login(t, "creation-reuse-dup-finalize")
-	v = drafted(c3)
+	v = draftedWithoutAHold(t, s, c3)
 	held = creationAct(t, c3, v, "finalize")
 	if held.Snapshot.PendingMaterialize != "finalize" {
 		t.Fatalf("finalize must be the held command: %+v", held.Snapshot)

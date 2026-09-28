@@ -108,6 +108,30 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		t.Fatalf("NewApp: %v", err)
 	}
 
+	assertEveryHandlerIsWiredWithItsServices(t, app)
+	assertRoutesServeTheAppsOwnInstances(t, app)
+
+	if app.Versions.LLM != nil {
+		t.Error("no model service configured, yet the importer holds one; every `LLM == nil` guard in " +
+			"enrichment and generation now passes and the first call panics")
+	}
+
+	if app.EvalSvc.Judge != nil || app.EvalSvc.Suggester != nil {
+		t.Error("the API's evaluation service holds a judge or suggester; producing a verdict belongs to cmd/worker")
+	}
+
+	assertCatalogAndPackagingOwnerReadsWired(t, app)
+	assertRunTestLabAndTraceOwnerReadsWired(t, app)
+	assertEvaluationOwnerReadsWired(t, app)
+	assertAccountPurgeStepsWiredAndFailClosed(t, app)
+
+	if llm := app.Deps.TestLab.Svc.LLM; llm != nil {
+		t.Errorf("no LLM service was configured, yet the test lab holds a suggester (%T)", llm)
+	}
+}
+
+func assertEveryHandlerIsWiredWithItsServices(t *testing.T, app *App) {
+	t.Helper()
 	deps := reflect.ValueOf(app.Deps)
 	checked := 0
 	for i := range deps.NumField() {
@@ -126,18 +150,26 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 			t.Errorf("Deps.%s is nil: its routes are mounted on nothing", name)
 			continue
 		}
-		for _, dep := range []string{"Svc", "Service", "Identity"} {
-			f := handler.Elem().FieldByName(dep)
-			if f.IsValid() && f.Kind() == reflect.Pointer && f.IsNil() {
-				t.Errorf("Deps.%s was wired without %s", name, dep)
-			}
-		}
+		assertHandlerServicesSet(t, name, handler)
 	}
 
 	if checked < 8 {
 		t.Errorf("the handler sweep checked %d fields; it is skipping things it should not", checked)
 	}
+}
 
+func assertHandlerServicesSet(t *testing.T, name string, handler reflect.Value) {
+	t.Helper()
+	for _, dep := range []string{"Svc", "Service", "Identity"} {
+		f := handler.Elem().FieldByName(dep)
+		if f.IsValid() && f.Kind() == reflect.Pointer && f.IsNil() {
+			t.Errorf("Deps.%s was wired without %s", name, dep)
+		}
+	}
+}
+
+func assertRoutesServeTheAppsOwnInstances(t *testing.T, app *App) {
+	t.Helper()
 	for _, pair := range []struct {
 		name       string
 		route, own any
@@ -153,16 +185,10 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 			t.Errorf("Deps.%s serves a different instance than the App handle of the same name", pair.name)
 		}
 	}
+}
 
-	if app.Versions.LLM != nil {
-		t.Error("no model service configured, yet the importer holds one; every `LLM == nil` guard in " +
-			"enrichment and generation now passes and the first call panics")
-	}
-
-	if app.EvalSvc.Judge != nil || app.EvalSvc.Suggester != nil {
-		t.Error("the API's evaluation service holds a judge or suggester; producing a verdict belongs to cmd/worker")
-	}
-
+func assertCatalogAndPackagingOwnerReadsWired(t *testing.T, app *App) {
+	t.Helper()
 	if app.Versions.IndexSkill == nil {
 		t.Error("the import path is missing catalog's search projection write")
 	}
@@ -179,6 +205,11 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		search.ReadLiveListingFacts == nil || search.ReadLiveSkills == nil || search.ReadLiveSkillIDs == nil {
 		t.Error("the catalog service is missing owner-scoped Registry or source reads")
 	}
+	assertPackagingOwnerReadsWired(t, app)
+}
+
+func assertPackagingOwnerReadsWired(t *testing.T, app *App) {
+	t.Helper()
 	if app.PackagingSvc.AppliedSuggestions == nil || app.PackagingSvc.SourceLineage == nil {
 		t.Error("the packaging service is missing manifest provenance owner reads")
 	}
@@ -188,6 +219,10 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		app.PackagingSvc.ReadVersionSummaries == nil || app.PackagingSvc.ReadDisplayNames == nil {
 		t.Error("the packaging service is missing Registry owner reads")
 	}
+}
+
+func assertRunTestLabAndTraceOwnerReadsWired(t *testing.T, app *App) {
+	t.Helper()
 	if app.RunSvc.ActiveArtifactReferences == nil {
 		t.Error("the run service is missing packaging's artifact reference counter")
 	}
@@ -204,6 +239,11 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if app.RunSvc.Ledger == nil {
 		t.Error("the run service is missing its Credit ledger")
 	}
+	assertTestLabAnalyticsAndTraceOwnerReadsWired(t, app)
+}
+
+func assertTestLabAnalyticsAndTraceOwnerReadsWired(t *testing.T, app *App) {
+	t.Helper()
 	if app.Deps.TestLab.Svc.ReadSkill == nil || app.Deps.TestLab.Svc.LockLiveSkillForCreate == nil {
 		t.Error("the test lab service is missing Registry's skill readers")
 	}
@@ -221,6 +261,10 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if app.RunSvc.Trace != app.TraceSvc {
 		t.Error("the run service is missing the shared Trace owner service")
 	}
+}
+
+func assertEvaluationOwnerReadsWired(t *testing.T, app *App) {
+	t.Helper()
 	if app.EvalSvc.ReadRunFacts == nil || app.EvalSvc.ReadEvaluationInput == nil {
 		t.Error("the evaluation service is missing Run-owned fact readers")
 	}
@@ -228,7 +272,10 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		app.EvalSvc.ReadSkill == nil || app.EvalSvc.ReadRuntimeCompatibility == nil {
 		t.Error("the evaluation service is missing Registry-owned fact readers")
 	}
+}
 
+func assertAccountPurgeStepsWiredAndFailClosed(t *testing.T, app *App) {
+	t.Helper()
 	purgeSteps := reflect.ValueOf(*app.Auth.Service)
 	for i := range purgeSteps.NumField() {
 		field := purgeSteps.Field(i)
@@ -242,9 +289,5 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if _, err := app.Auth.Service.PurgeExpiredAccounts(context.Background(), nil, 0, 1); err == nil ||
 		!strings.Contains(err.Error(), "packaging (object keys)") {
 		t.Errorf("missing packaging object-key reader did not fail closed: %v", err)
-	}
-
-	if llm := app.Deps.TestLab.Svc.LLM; llm != nil {
-		t.Errorf("no LLM service was configured, yet the test lab holds a suggester (%T)", llm)
 	}
 }

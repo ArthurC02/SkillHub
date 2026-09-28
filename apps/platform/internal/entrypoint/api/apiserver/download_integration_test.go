@@ -375,24 +375,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	c := a.login(t, "downloader")
 	art := buildDownload(t, a, pool, c, "served-skill")
 
-	resp, data := c.fetchContent(t, art.ArtifactID)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("GET content: got %d", resp.StatusCode)
-	}
-	if got := resp.Header.Get("Content-Type"); got != "application/zip" {
-		t.Errorf("Content-Type: got %q", got)
-	}
-
-	if got := resp.Header.Get("Content-Disposition"); got != `attachment; filename="`+art.FileName+`"` {
-		t.Errorf("Content-Disposition: got %q, want the artifact's own file name %q", got, art.FileName)
-	}
-	if int64(len(data)) != art.SizeBytes {
-		t.Errorf("served %d bytes, artifact says %d", len(data), art.SizeBytes)
-	}
-
-	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
-		t.Error("the served bytes are not the stored object")
-	}
+	assertServesTheStoredZipUnderItsOwnName(t, a, c, art)
 
 	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 1 {
 		t.Errorf("download_records: got %d rows, want 1", n)
@@ -419,6 +402,28 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 	if list := c.listDownloads(t); len(list) != 1 || list[0].ArtifactID != art.ArtifactID {
 		t.Errorf("GET /downloads: got %+v", list)
+	}
+}
+
+func assertServesTheStoredZipUnderItsOwnName(t *testing.T, a *api, c *client, art downloadView) {
+	t.Helper()
+	resp, data := c.fetchContent(t, art.ArtifactID)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET content: got %d", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "application/zip" {
+		t.Errorf("Content-Type: got %q", got)
+	}
+
+	if got := resp.Header.Get("Content-Disposition"); got != `attachment; filename="`+art.FileName+`"` {
+		t.Errorf("Content-Disposition: got %q, want the artifact's own file name %q", got, art.FileName)
+	}
+	if int64(len(data)) != art.SizeBytes {
+		t.Errorf("served %d bytes, artifact says %d", len(data), art.SizeBytes)
+	}
+
+	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
+		t.Error("the served bytes are not the stored object")
 	}
 }
 

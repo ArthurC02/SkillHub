@@ -267,6 +267,29 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 	if body.Status != "completed" || body.Overall != "met" {
 		t.Errorf("expected a completed, met verdict, got status=%q overall=%q", body.Status, body.Overall)
 	}
+	assertTwoModelJudgedCriteriaWithEvidence(t, body)
+	if body.JudgeModel != "gpt-6-sol" || body.JudgePromptVersion != "judge-run@2026-08-17" {
+		t.Errorf("the row records what actually judged, got %q / %q", body.JudgeModel, body.JudgePromptVersion)
+	}
+	if body.Cost.EvaluationCredits != nil {
+		t.Error("this judge reported no spend, and an unreported cost is not a number")
+	}
+	if !strings.Contains(body.Cost.Note, "per-key 實付") {
+		t.Errorf("the cost note has to name the authoritative source, got %q", body.Cost.Note)
+	}
+
+	assertDeterministicFindingsCoverEveryClass(t, body)
+
+	_, runBody := c.getRun(t, runID)
+	if runBody.Status != "succeeded" || runBody.FailureClass.Value != "" {
+		t.Errorf("an evaluation must not write back to the run, got %+v", runBody)
+	}
+
+	assertEvaluationTraceEvents(t, pool, runID, "ok")
+}
+
+func assertTwoModelJudgedCriteriaWithEvidence(t *testing.T, body evaluationBody) {
+	t.Helper()
 	if len(body.CriterionResults) != 2 {
 		t.Fatalf("one entry per snapshot criterion, got %d", len(body.CriterionResults))
 	}
@@ -281,16 +304,10 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 			t.Errorf("criterion %s passed with no evidence stored", r.CriterionID)
 		}
 	}
-	if body.JudgeModel != "gpt-6-sol" || body.JudgePromptVersion != "judge-run@2026-08-17" {
-		t.Errorf("the row records what actually judged, got %q / %q", body.JudgeModel, body.JudgePromptVersion)
-	}
-	if body.Cost.EvaluationCredits != nil {
-		t.Error("this judge reported no spend, and an unreported cost is not a number")
-	}
-	if !strings.Contains(body.Cost.Note, "per-key 實付") {
-		t.Errorf("the cost note has to name the authoritative source, got %q", body.Cost.Note)
-	}
+}
 
+func assertDeterministicFindingsCoverEveryClass(t *testing.T, body evaluationBody) {
+	t.Helper()
 	seen := map[string]bool{}
 	for _, f := range body.DeterministicFindings {
 		seen[f.Category] = true
@@ -300,13 +317,6 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 			t.Errorf("no deterministic finding for the %q class", want)
 		}
 	}
-
-	_, runBody := c.getRun(t, runID)
-	if runBody.Status != "succeeded" || runBody.FailureClass.Value != "" {
-		t.Errorf("an evaluation must not write back to the run, got %+v", runBody)
-	}
-
-	assertEvaluationTraceEvents(t, pool, runID, "ok")
 }
 
 func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
@@ -600,6 +610,27 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 	}
 
 	_, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	excerpts := availableTraceCitationExcerpts(t, body)
+
+	// TRUNCATE, not DELETE: the immutability trigger fires per row on
+	// UPDATE OR DELETE and never fires on TRUNCATE.
+	if _, err := pool.Exec(context.Background(), `TRUNCATE trace_events`); err != nil {
+		t.Fatal(err)
+	}
+
+	_, after := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if len(after.CriterionResults) != 2 {
+		t.Fatalf("the report itself must survive its evidence, got %d criteria", len(after.CriterionResults))
+	}
+	assertStaleTraceCitationsKeepTheirExcerpts(t, after, excerpts)
+
+	if after.Overall != body.Overall {
+		t.Errorf("overall changed from %q to %q when evidence expired", body.Overall, after.Overall)
+	}
+}
+
+func availableTraceCitationExcerpts(t *testing.T, body evaluationBody) map[string]string {
+	t.Helper()
 	excerpts := map[string]string{}
 	for _, r := range body.CriterionResults {
 		var cited bool
@@ -617,17 +648,11 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 			t.Fatalf("criterion %s kept no trace_event citation, so this test proves nothing", r.CriterionID)
 		}
 	}
+	return excerpts
+}
 
-	// TRUNCATE, not DELETE: the immutability trigger fires per row on
-	// UPDATE OR DELETE and never fires on TRUNCATE.
-	if _, err := pool.Exec(context.Background(), `TRUNCATE trace_events`); err != nil {
-		t.Fatal(err)
-	}
-
-	_, after := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
-	if len(after.CriterionResults) != 2 {
-		t.Fatalf("the report itself must survive its evidence, got %d criteria", len(after.CriterionResults))
-	}
+func assertStaleTraceCitationsKeepTheirExcerpts(t *testing.T, after evaluationBody, excerpts map[string]string) {
+	t.Helper()
 	for _, r := range after.CriterionResults {
 		for _, e := range r.Evidence {
 			if e.Kind != "trace_event" {
@@ -641,10 +666,6 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 					r.CriterionID, e.Excerpt)
 			}
 		}
-	}
-
-	if after.Overall != body.Overall {
-		t.Errorf("overall changed from %q to %q when evidence expired", body.Overall, after.Overall)
 	}
 }
 
@@ -792,6 +813,11 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 			old.JudgePromptVersion)
 	}
 
+	assertRevisionHistoryNewestFirstWithOneStanding(t, c, runID, current.EvaluationID)
+}
+
+func assertRevisionHistoryNewestFirstWithOneStanding(t *testing.T, c *client, runID, currentEvaluationID string) {
+	t.Helper()
 	resp, err := c.Get(c.base + "/runs/" + runID + "/evaluation/revisions")
 	if err != nil {
 		t.Fatal(err)
@@ -811,7 +837,7 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	if len(list.Revisions) != 2 {
 		t.Fatalf("both judgements are in the history, got %d", len(list.Revisions))
 	}
-	if list.Revisions[0].EvaluationID != current.EvaluationID {
+	if list.Revisions[0].EvaluationID != currentEvaluationID {
 		t.Error("the history is newest first")
 	}
 	standing := 0

@@ -46,20 +46,26 @@ func creationHistoryRows(t *testing.T, pool *pgxpool.Pool, workspaceID, id pgtyp
 	return events, receipts
 }
 
-func TestMaterializeRollsBackCandidateAndSessionWhenAcceptanceTestCaseFails(t *testing.T) {
-	a, s, _ := creationFixture(t)
-	alice := a.login(t, "creation-materialize-rollback")
-	ws := workspaceOf(t, testPool, alice)
-	v := creationPost(t, alice, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
+func draftReadyWithAcceptanceCriteria(t *testing.T, s *creation.Service, c *client) creation.View {
+	t.Helper()
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
 	v = creationStep(t, s, v)
 	if v.Snapshot.PendingAction != "confirm_brief" || len(v.Snapshot.AcceptanceCriteria) == 0 {
 		t.Fatalf("brief proposal = %+v, want pending confirmation with acceptance criteria", v.Snapshot)
 	}
-	v = creationAct(t, alice, v, "confirm_brief")
+	v = creationAct(t, c, v, "confirm_brief")
 	v = creationStep(t, s, v)
 	if v.State != "draft_ready" || v.Snapshot.Draft == nil {
 		t.Fatalf("draft after confirmation = %+v, want draft_ready", v)
 	}
+	return v
+}
+
+func TestMaterializeRollsBackCandidateAndSessionWhenAcceptanceTestCaseFails(t *testing.T) {
+	a, s, _ := creationFixture(t)
+	alice := a.login(t, "creation-materialize-rollback")
+	ws := workspaceOf(t, testPool, alice)
+	v := draftReadyWithAcceptanceCriteria(t, s, alice)
 
 	id := mustUUID(t, v.ID)
 	beforeState, beforeRevision, beforeSnapshot := creationSessionRow(t, testPool, ws.ID, id)

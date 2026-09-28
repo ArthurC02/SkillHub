@@ -103,6 +103,18 @@ func TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage(t *testi
 		t.Fatalf("the reply carries %d skills, want 2; a client reading only the first would drop half the plugin: %v",
 			len(skills), body)
 	}
+	assertEachSkillDistinctAndStoredInOnePackage(t, pool, skills)
+
+	excluded := pathsOf(t, body, "excluded_components")
+	for _, want := range []string{"mcp.json", "com.example.client/"} {
+		if !contains(excluded, want) {
+			t.Errorf("excluded_components = %v, want it to disclose %q", excluded, want)
+		}
+	}
+}
+
+func assertEachSkillDistinctAndStoredInOnePackage(t *testing.T, pool *pgxpool.Pool, skills []map[string]any) {
+	t.Helper()
 	seenPath, seenHash, keys := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, one := range skills {
 		path := fmt.Sprint(one["path"])
@@ -133,13 +145,6 @@ func TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage(t *testi
 	}
 	if len(keys) != 1 {
 		t.Errorf("the plugin was stored as %d objects, want 1: %v", len(keys), keys)
-	}
-
-	excluded := pathsOf(t, body, "excluded_components")
-	for _, want := range []string{"mcp.json", "com.example.client/"} {
-		if !contains(excluded, want) {
-			t.Errorf("excluded_components = %v, want it to disclose %q", excluded, want)
-		}
 	}
 }
 

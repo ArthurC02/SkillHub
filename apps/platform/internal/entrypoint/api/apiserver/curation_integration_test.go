@@ -143,12 +143,7 @@ func TestAnOperatorCuratesTheNewestCatalogueVersionAndCanWithdrawIt(t *testing.T
 
 	stored := func(id string) (tier string, version *string) {
 		t.Helper()
-		if err := pool.QueryRow(context.Background(),
-			"SELECT curation_tier, curated_version_id::text FROM skills WHERE id = $1", mustUUID(t, id),
-		).Scan(&tier, &version); err != nil {
-			t.Fatal(err)
-		}
-		return tier, version
+		return storedCurationTier(t, pool, id)
 	}
 	shown := func() string {
 		t.Helper()
@@ -156,21 +151,10 @@ func TestAnOperatorCuratesTheNewestCatalogueVersionAndCanWithdrawIt(t *testing.T
 	}
 	put := func(id, body string) (int, map[string]any) {
 		t.Helper()
-		return operatorCall(t, operator, http.MethodPut, "/admin/skills/"+id+"/tier", body)
+		return putSkillTier(t, operator, id, body)
 	}
 
-	if code, body := put(userSkill, `{"value":"curated","note":"looks fine"}`); code != http.StatusBadRequest {
-		t.Fatalf("curating a user's own import: got %d (%v), want 400", code, body)
-	}
-	if tier, _ := stored(userSkill); tier != "indexed" {
-		t.Fatalf("a refused curation still wrote tier %q", tier)
-	}
-	if code, _ := put(skillID, `{"value":"curated","note":"  "}`); code != http.StatusBadRequest {
-		t.Fatalf("curating without a note: got %d, want 400", code)
-	}
-	if code, _ := put("00000000-0000-0000-0000-000000000001", `{"value":"indexed","note":"n"}`); code != http.StatusNotFound {
-		t.Fatalf("curating a missing skill: got %d, want 404", code)
-	}
+	assertInvalidTierChangesAreRefused(t, pool, operator, userSkill, skillID)
 
 	reviewed := newestVersion(t, pool, skillID)
 	code, body := put(skillID, `{"value":"curated","note":"passed the nine curation checks"}`)
@@ -183,16 +167,7 @@ func TestAnOperatorCuratesTheNewestCatalogueVersionAndCanWithdrawIt(t *testing.T
 	if got := shown(); got != "curated" {
 		t.Fatalf("catalogue shows tier %q right after curation, want curated", got)
 	}
-	before, after, note, count := auditNote(t, operator, "skill.curation_set", skillID)
-	if count != 1 || deref(before) != "indexed" || deref(after) != "curated" || deref(note) != "passed the nine curation checks" {
-		t.Fatalf("audit = %d events, %s -> %s (%q)", count, deref(before), deref(after), deref(note))
-	}
-	var events int
-	if err := pool.QueryRow(context.Background(),
-		"SELECT count(*) FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'skill.curation_set'",
-		mustUUID(t, skillID)).Scan(&events); err != nil || events != 1 {
-		t.Fatalf("curation events = %d (%v), want 1", events, err)
-	}
+	assertCurationAuditedAndPublishedOnce(t, pool, operator, skillID)
 
 	if code, body := put(skillID, `{"value":"indexed","note":"source rewritten in place"}`); code != http.StatusOK || body["curated_version_id"] != nil {
 		t.Fatalf("withdrawal: got %d %v, want 200 with no reviewed version", code, body)
@@ -202,5 +177,50 @@ func TestAnOperatorCuratesTheNewestCatalogueVersionAndCanWithdrawIt(t *testing.T
 	}
 	if got := shown(); got != "indexed" {
 		t.Fatalf("catalogue shows tier %q after withdrawal, want indexed", got)
+	}
+}
+
+func storedCurationTier(t *testing.T, pool *pgxpool.Pool, id string) (tier string, version *string) {
+	t.Helper()
+	if err := pool.QueryRow(context.Background(),
+		"SELECT curation_tier, curated_version_id::text FROM skills WHERE id = $1", mustUUID(t, id),
+	).Scan(&tier, &version); err != nil {
+		t.Fatal(err)
+	}
+	return tier, version
+}
+
+func putSkillTier(t *testing.T, operator *client, id, body string) (int, map[string]any) {
+	t.Helper()
+	return operatorCall(t, operator, http.MethodPut, "/admin/skills/"+id+"/tier", body)
+}
+
+func assertInvalidTierChangesAreRefused(t *testing.T, pool *pgxpool.Pool, operator *client, userSkill, catalogueSkill string) {
+	t.Helper()
+	if code, body := putSkillTier(t, operator, userSkill, `{"value":"curated","note":"looks fine"}`); code != http.StatusBadRequest {
+		t.Fatalf("curating a user's own import: got %d (%v), want 400", code, body)
+	}
+	if tier, _ := storedCurationTier(t, pool, userSkill); tier != "indexed" {
+		t.Fatalf("a refused curation still wrote tier %q", tier)
+	}
+	if code, _ := putSkillTier(t, operator, catalogueSkill, `{"value":"curated","note":"  "}`); code != http.StatusBadRequest {
+		t.Fatalf("curating without a note: got %d, want 400", code)
+	}
+	if code, _ := putSkillTier(t, operator, "00000000-0000-0000-0000-000000000001", `{"value":"indexed","note":"n"}`); code != http.StatusNotFound {
+		t.Fatalf("curating a missing skill: got %d, want 404", code)
+	}
+}
+
+func assertCurationAuditedAndPublishedOnce(t *testing.T, pool *pgxpool.Pool, operator *client, skillID string) {
+	t.Helper()
+	before, after, note, count := auditNote(t, operator, "skill.curation_set", skillID)
+	if count != 1 || deref(before) != "indexed" || deref(after) != "curated" || deref(note) != "passed the nine curation checks" {
+		t.Fatalf("audit = %d events, %s -> %s (%q)", count, deref(before), deref(after), deref(note))
+	}
+	var events int
+	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'skill.curation_set'",
+		mustUUID(t, skillID)).Scan(&events); err != nil || events != 1 {
+		t.Fatalf("curation events = %d (%v), want 1", events, err)
 	}
 }

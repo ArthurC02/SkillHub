@@ -60,35 +60,12 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	creationPost(t, c, path, action(runningID), 404)
-	var seen atomic.Bool
-	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var req llmclient.CreationStepRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			t.Error(err)
-			return
-		}
-		for _, message := range req.Messages {
-			if message.Role != "tool" || !strings.Contains(message.Content, runID) {
-				continue
-			}
-			seen.Store(true)
-			for _, want := range []string{reason, excerpt, `"evaluation_available":true`, `"available":true`, `"result":"failed"`, candidate.VersionID} {
-				if !strings.Contains(message.Content, want) {
-					t.Errorf("observation missing %q: %s", want, message.Content)
-				}
-			}
-		}
-		if req.Draft == nil || req.DraftValidation == nil || req.DraftValidation.ContentHash != oldHash {
-			t.Error("missing prior draft and its validation")
-			http.Error(w, "missing draft", http.StatusInternalServerError)
-			return
-		}
-		draft := *req.Draft
-		draft.Body += "\nVerify that duplicate rows were removed; report missing artifacts honestly.\n"
-		cost := .01
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
-	}))
+	evidence := &revisionEvidence{
+		runID: runID, priorHash: oldHash,
+		mustMention: []string{reason, excerpt, `"evaluation_available":true`, `"available":true`, `"result":"failed"`, candidate.VersionID},
+	}
+	seen := &evidence.seen
+	model := httptest.NewServer(evidence.revisingModel(t))
 	t.Cleanup(model.Close)
 	service.LLM = creation.ModelOrNone(&llmclient.Client{BaseURL: model.URL})
 	v = creationPost(t, c, path, action(runID), 200)
@@ -104,5 +81,46 @@ func TestCreationRevisionReceivesVerifiedRunEvidence(t *testing.T) {
 	var immutableVersion string
 	if err := testPool.QueryRow(ctx, "SELECT id::text FROM skill_versions WHERE id=$1", mustUUID(t, candidate.VersionID)).Scan(&immutableVersion); err != nil || immutableVersion != candidate.VersionID {
 		t.Fatalf("prior candidate changed: %v", err)
+	}
+}
+
+type revisionEvidence struct {
+	runID, priorHash string
+	mustMention      []string
+	seen             atomic.Bool
+}
+
+func (e *revisionEvidence) assertObservationsMentionTheRun(t *testing.T, messages []llmclient.CreationMessage) {
+	for _, message := range messages {
+		if message.Role != "tool" || !strings.Contains(message.Content, e.runID) {
+			continue
+		}
+		e.seen.Store(true)
+		for _, want := range e.mustMention {
+			if !strings.Contains(message.Content, want) {
+				t.Errorf("observation missing %q: %s", want, message.Content)
+			}
+		}
+	}
+}
+
+func (e *revisionEvidence) revisingModel(t *testing.T) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req llmclient.CreationStepRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Error(err)
+			return
+		}
+		e.assertObservationsMentionTheRun(t, req.Messages)
+		if req.Draft == nil || req.DraftValidation == nil || req.DraftValidation.ContentHash != e.priorHash {
+			t.Error("missing prior draft and its validation")
+			http.Error(w, "missing draft", http.StatusInternalServerError)
+			return
+		}
+		draft := *req.Draft
+		draft.Body += "\nVerify that duplicate rows were removed; report missing artifacts honestly.\n"
+		cost := .01
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
 	}
 }

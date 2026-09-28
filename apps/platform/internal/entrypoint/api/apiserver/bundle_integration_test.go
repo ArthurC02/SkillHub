@@ -89,17 +89,7 @@ func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 		t.Errorf("export = %v, want a new %s-1.0.0.zip", body, bundle)
 	}
 
-	downloads := rawDownloads(t, alice)
-	if len(downloads) != 1 {
-		t.Fatalf("alice's downloads = %v, want the one plugin", downloads)
-	}
-	plugin, _ := downloads[0]["plugin"].(map[string]any)
-	if plugin == nil || plugin["name"] != bundle || plugin["version"] != "1.0.0" || downloads[0]["skill_id"] != nil {
-		t.Errorf("the download row = %v, want a plugin %s 1.0.0 and no single skill", downloads[0], bundle)
-	}
-	if members := objects(t, plugin["members"]); strings.Join(namesOf(members, "name"), ",") != strings.Join(sorted(skillNames), ",") {
-		t.Errorf("plugin members = %v, want %v", members, skillNames)
-	}
+	assertOnePluginDownloadOfTheBundle(t, alice, bundle, skillNames)
 
 	resp, data := alice.fetchContent(t, artifactID)
 	if resp.StatusCode != http.StatusOK {
@@ -119,6 +109,21 @@ func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 
 	if code, again := postJSON(t, alice, "/me/bundles/"+bundle+"/export", `{}`); code != http.StatusCreated || again["artifact_id"] != artifactID || again["duplicate"] != true {
 		t.Errorf("exporting the same version again: %d %v, want the kept artifact %s", code, again, artifactID)
+	}
+}
+
+func assertOnePluginDownloadOfTheBundle(t *testing.T, c *client, bundle string, skillNames []string) {
+	t.Helper()
+	downloads := rawDownloads(t, c)
+	if len(downloads) != 1 {
+		t.Fatalf("alice's downloads = %v, want the one plugin", downloads)
+	}
+	plugin, _ := downloads[0]["plugin"].(map[string]any)
+	if plugin == nil || plugin["name"] != bundle || plugin["version"] != "1.0.0" || downloads[0]["skill_id"] != nil {
+		t.Errorf("the download row = %v, want a plugin %s 1.0.0 and no single skill", downloads[0], bundle)
+	}
+	if members := objects(t, plugin["members"]); strings.Join(namesOf(members, "name"), ",") != strings.Join(sorted(skillNames), ",") {
+		t.Errorf("plugin members = %v, want %v", members, skillNames)
 	}
 }
 
@@ -200,21 +205,7 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 	registerPublisher(t, alice, freshName("pubbundle"))
 	bundle, skillIDs, skillNames := bundleOfTwo(t, alice, "pubbundle")
 
-	code, own := postJSON(t, alice, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`)
-	if code != http.StatusOK || own["kind"] != "bundle" {
-		t.Fatalf("publishing %s: %d %v", bundle, code, own)
-	}
-	address, _ := own["address"].(string)
-	_, public := publicRead(t, a, address)
-	if acquisition, _ := public["acquisition"].(map[string]any); !strings.Contains(fmt.Sprint(acquisition["note"]), "不含 MCP 設定或宿主專屬元件") {
-		t.Errorf("the address offers the plugin without saying it carries only Agent Skills: %v", acquisition)
-	}
-	if code, body := publish(t, alice, skillIDs[1], `{"name":"`+bundle+`","rights_attested":true}`); code != http.StatusConflict || body["reason"] != "name_taken" {
-		t.Errorf("publishing a Skill under the bundle's name: %d %v, want 409 name_taken; Skills and Bundles share one namespace", code, body)
-	}
-	if releases := objects(t, own["releases"]); len(releases) != 1 || releases[0]["bundle_version"] != "1.0.0" {
-		t.Errorf("own releases = %v, want 1.0.0", releases)
-	}
+	address := publishTheFirstBundleRelease(t, a, alice, bundle, skillIDs[1])
 
 	uploadedSkill(t, alice, skillNames[0], "A better way.")
 	third := freshName("pubbundle-third")
@@ -226,7 +217,7 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 		t.Fatalf("publishing 1.1.0: %d %v", code, body)
 	}
 
-	code, public = publicRead(t, a, address)
+	code, public := publicRead(t, a, address)
 	if code != http.StatusOK || public["kind"] != "bundle" {
 		t.Fatalf("anonymous GET %s: %d %v", address, code, public)
 	}
@@ -234,6 +225,45 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 	if current == nil || current["version"] != "1.1.0" || len(objects(t, current["members"])) != 2 {
 		t.Errorf("the public bundle = %v, want 1.1.0 with two members", current)
 	}
+	assertReleaseChangesSinceTheFirst(t, public, skillNames, third)
+
+	code, acquired := acquire(t, bob, address)
+	if code != http.StatusCreated || acquired["file_name"] != bundle+"-1.1.0.zip" {
+		t.Fatalf("bob acquiring the bundle: %d %v", code, acquired)
+	}
+	if downloads := rawDownloads(t, bob); len(downloads) != 1 || downloads[0]["plugin"] == nil {
+		t.Errorf("bob's downloads = %v, want the plugin", downloads)
+	}
+
+	setSkill(t, pool, thirdID, "takedown_at = now(), takedown_reason = 'fixture'")
+	assertTakenDownMemberIsNamedAndRefused(t, a, bob, address, third)
+	if code, body := postJSON(t, alice, "/me/bundles/"+bundle+"/publication", `{"version":"1.1.0","rights_attested":true}`); code != http.StatusUnprocessableEntity || body["reason"] != "member_withdrawn" {
+		t.Errorf("republishing with a member taken down: %d %v, want 422 member_withdrawn", code, body)
+	}
+}
+
+func publishTheFirstBundleRelease(t *testing.T, a *api, author *client, bundle, memberSkillID string) (address string) {
+	t.Helper()
+	code, own := postJSON(t, author, "/me/bundles/"+bundle+"/publication", `{"rights_attested":true}`)
+	if code != http.StatusOK || own["kind"] != "bundle" {
+		t.Fatalf("publishing %s: %d %v", bundle, code, own)
+	}
+	address, _ = own["address"].(string)
+	_, public := publicRead(t, a, address)
+	if acquisition, _ := public["acquisition"].(map[string]any); !strings.Contains(fmt.Sprint(acquisition["note"]), "不含 MCP 設定或宿主專屬元件") {
+		t.Errorf("the address offers the plugin without saying it carries only Agent Skills: %v", acquisition)
+	}
+	if code, body := publish(t, author, memberSkillID, `{"name":"`+bundle+`","rights_attested":true}`); code != http.StatusConflict || body["reason"] != "name_taken" {
+		t.Errorf("publishing a Skill under the bundle's name: %d %v, want 409 name_taken; Skills and Bundles share one namespace", code, body)
+	}
+	if releases := objects(t, own["releases"]); len(releases) != 1 || releases[0]["bundle_version"] != "1.0.0" {
+		t.Errorf("own releases = %v, want 1.0.0", releases)
+	}
+	return address
+}
+
+func assertReleaseChangesSinceTheFirst(t *testing.T, public map[string]any, skillNames []string, third string) {
+	t.Helper()
 	releases := objects(t, public["releases"])
 	if len(releases) != 2 || releases[1]["changes"] != nil {
 		t.Fatalf("public releases = %v, want two, the first with no changes", releases)
@@ -247,27 +277,18 @@ func TestAPublishedBundleShowsItsMembersAndWhatChangedSinceTheLastRelease(t *tes
 		changes[third]["change"] != "added" || changes[skillNames[1]]["change"] != "removed" {
 		t.Errorf("1.1.0 changes = %v, want %s changed 1→2, %s added, %s removed", changes, skillNames[0], third, skillNames[1])
 	}
+}
 
-	code, acquired := acquire(t, bob, address)
-	if code != http.StatusCreated || acquired["file_name"] != bundle+"-1.1.0.zip" {
-		t.Fatalf("bob acquiring the bundle: %d %v", code, acquired)
-	}
-	if downloads := rawDownloads(t, bob); len(downloads) != 1 || downloads[0]["plugin"] == nil {
-		t.Errorf("bob's downloads = %v, want the plugin", downloads)
-	}
-
-	setSkill(t, pool, thirdID, "takedown_at = now(), takedown_reason = 'fixture'")
-	_, public = publicRead(t, a, address)
+func assertTakenDownMemberIsNamedAndRefused(t *testing.T, a *api, acquirer *client, address, member string) {
+	t.Helper()
+	_, public := publicRead(t, a, address)
 	availability, _ := public["availability"].(map[string]any)
 	note, _ := availability["note"].(string)
-	if availability["value"] != "taken_down" || !strings.HasPrefix(note, "成員 "+third+"：") || public["bundle"] != nil {
-		t.Errorf("with a member taken down the address says %v and carries %v, want taken_down naming %s and no content", availability, public["bundle"], third)
+	if availability["value"] != "taken_down" || !strings.HasPrefix(note, "成員 "+member+"：") || public["bundle"] != nil {
+		t.Errorf("with a member taken down the address says %v and carries %v, want taken_down naming %s and no content", availability, public["bundle"], member)
 	}
-	if code, body := acquire(t, bob, address); code != http.StatusConflict || body["reason"] != "taken_down" || body["error"] != note {
+	if code, body := acquire(t, acquirer, address); code != http.StatusConflict || body["reason"] != "taken_down" || body["error"] != note {
 		t.Errorf("acquiring with a member taken down: %d %v, want 409 saying what the address says", code, body)
-	}
-	if code, body := postJSON(t, alice, "/me/bundles/"+bundle+"/publication", `{"version":"1.1.0","rights_attested":true}`); code != http.StatusUnprocessableEntity || body["reason"] != "member_withdrawn" {
-		t.Errorf("republishing with a member taken down: %d %v, want 422 member_withdrawn", code, body)
 	}
 }
 

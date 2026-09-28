@@ -200,6 +200,18 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 		t.Errorf("source = %+v, want workspace-scoped git provenance", got.Source)
 	}
 
+	assertDeclaredMITDoesNotReleaseTheSkill(t, got)
+
+	if got.Risk.ScanStatus != "scanned" || !hasDisclosureCode(got.Risk.Disclosures, "script-file") {
+		t.Errorf("risk = %+v, want a scan that found scripts/run.py", got.Risk)
+	}
+
+	assertUncuratedCompatibilityAndTier(t, got)
+	assertLimitationsCameFromTheScan(t, got)
+}
+
+func assertDeclaredMITDoesNotReleaseTheSkill(t *testing.T, got detail) {
+	t.Helper()
 	if got.License.Expression != "MIT" || got.License.Source != "repo-license-file" {
 		t.Errorf("license = %+v, want MIT/repo-license-file", got.License)
 	}
@@ -210,11 +222,10 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	if got.Redistribution.Value != "unknown" {
 		t.Errorf("redistribution = %+v; a declared MIT must not release a skill on its own", got.Redistribution)
 	}
+}
 
-	if got.Risk.ScanStatus != "scanned" || !hasDisclosureCode(got.Risk.Disclosures, "script-file") {
-		t.Errorf("risk = %+v, want a scan that found scripts/run.py", got.Risk)
-	}
-
+func assertUncuratedCompatibilityAndTier(t *testing.T, got detail) {
+	t.Helper()
 	if got.Compatibility.SpecValidation.Value != "passed" {
 		t.Errorf("spec_validation = %q, want passed", got.Compatibility.SpecValidation.Value)
 	}
@@ -224,7 +235,10 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	if got.Tier.Value != "indexed" || got.Tier.Label == "" {
 		t.Errorf("tier = %+v, want the indexed badge (curation is not recorded anywhere yet)", got.Tier)
 	}
+}
 
+func assertLimitationsCameFromTheScan(t *testing.T, got detail) {
+	t.Helper()
 	if len(got.Limitations) == 0 {
 		t.Error("DISC-003: no limitations for a package that ships a script")
 	}
@@ -411,32 +425,11 @@ func TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt(t *testing.T) {
 	if got.Source == nil {
 		t.Fatal("the detail carries no source at all")
 	}
-	if got.Source.Plugin == nil {
-		t.Fatal("the source records a plugin and the detail does not report it; the reader cannot tell this Skill arrived as part of a set")
-	}
-	if got.Source.Plugin.Name != "desk-tools" || got.Source.Plugin.Version != "1.4.0" {
-		t.Errorf("plugin = %+v, want desk-tools 1.4.0 as the manifest declared", got.Source.Plugin)
-	}
-	if got.Source.Plugin.Repository != "https://example.invalid/desk-tools" {
-		t.Errorf("plugin repository = %q, want the manifest's own url", got.Source.Plugin.Repository)
-	}
-	if got.Source.Plugin.Note == "" {
-		t.Error("the plugin fact arrived without saying what it means for installation or download")
-	}
+	assertDeskToolsPluginFacts(t, got)
 	if got.Source.Path != "skills/tidy" {
 		t.Errorf("path = %q, want skills/tidy; without it the reader cannot find this skill upstream", got.Source.Path)
 	}
-
-	names := map[string]string{}
-	for _, sibling := range got.Source.Siblings {
-		if sibling.SkillID == uuidText(tidy.Skill.ID) {
-			t.Error("the skill is listed as its own sibling")
-		}
-		names[sibling.Name] = sibling.Path
-	}
-	if len(names) != 2 || names["split-csv"] != "skills/split" || names["tag-inbox"] != "skills/tag" {
-		t.Errorf("siblings = %+v, want split-csv at skills/split and tag-inbox at skills/tag", got.Source.Siblings)
-	}
+	assertTidySiblingsAreSplitAndTag(t, got, uuidText(tidy.Skill.ID))
 
 	taken := importedAt(t, res, "skills/tag")
 	if _, err := pool.Exec(context.Background(),
@@ -450,6 +443,36 @@ func TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt(t *testing.T) {
 	if len(after.Source.Siblings) != 1 || after.Source.Siblings[0].Name != "split-csv" {
 		t.Errorf("siblings after a takedown = %+v, want split-csv alone; a link to a taken-down skill leads nowhere",
 			after.Source.Siblings)
+	}
+}
+
+func assertDeskToolsPluginFacts(t *testing.T, got detail) {
+	t.Helper()
+	if got.Source.Plugin == nil {
+		t.Fatal("the source records a plugin and the detail does not report it; the reader cannot tell this Skill arrived as part of a set")
+	}
+	if got.Source.Plugin.Name != "desk-tools" || got.Source.Plugin.Version != "1.4.0" {
+		t.Errorf("plugin = %+v, want desk-tools 1.4.0 as the manifest declared", got.Source.Plugin)
+	}
+	if got.Source.Plugin.Repository != "https://example.invalid/desk-tools" {
+		t.Errorf("plugin repository = %q, want the manifest's own url", got.Source.Plugin.Repository)
+	}
+	if got.Source.Plugin.Note == "" {
+		t.Error("the plugin fact arrived without saying what it means for installation or download")
+	}
+}
+
+func assertTidySiblingsAreSplitAndTag(t *testing.T, got detail, tidyID string) {
+	t.Helper()
+	names := map[string]string{}
+	for _, sibling := range got.Source.Siblings {
+		if sibling.SkillID == tidyID {
+			t.Error("the skill is listed as its own sibling")
+		}
+		names[sibling.Name] = sibling.Path
+	}
+	if len(names) != 2 || names["split-csv"] != "skills/split" || names["tag-inbox"] != "skills/tag" {
+		t.Errorf("siblings = %+v, want split-csv at skills/split and tag-inbox at skills/tag", got.Source.Siblings)
 	}
 }
 

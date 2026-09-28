@@ -88,43 +88,53 @@ func psqlRender(t *testing.T, raw string, vars map[string]string) string {
 		set[name] = value
 	}
 	var body []string
-	inIf, skipping := false, false
+	meta := &psqlMetaCommands{set: set}
 	for _, line := range strings.Split(raw, "\n") {
 		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) == 0 || !strings.HasPrefix(fields[0], `\`) {
-			if !skipping {
+			if !meta.skipping {
 				body = append(body, line)
 			}
 			continue
 		}
-		switch fields[0] {
-		case `\if`:
-			if inIf {
-				t.Fatalf("nested \\if is not interpreted here: %q", line)
-			}
-			name, ok := strings.CutPrefix(fields[1], `:{?`)
-			if !ok || !strings.HasSuffix(name, "}") {
-				t.Fatalf("only \\if :{?var} is interpreted here: %q", line)
-			}
-			_, defined := set[strings.TrimSuffix(name, "}")]
-			inIf, skipping = true, !defined
-		case `\else`:
-			skipping = !skipping
-		case `\endif`:
-			inIf, skipping = false, false
-		case `\set`:
-			if !skipping && len(fields) == 3 {
-				set[fields[1]] = psqlValue(fields[2])
-			}
-		default:
-			t.Fatalf("funnel.sql uses a meta-command this test cannot interpret: %q", line)
-		}
+		meta.apply(t, line, fields)
 	}
 	var replacements []string
 	for name, value := range set {
 		replacements = append(replacements, ":"+name, value)
 	}
 	return strings.NewReplacer(replacements...).Replace(strings.Join(body, "\n"))
+}
+
+type psqlMetaCommands struct {
+	set            map[string]string
+	inIf, skipping bool
+}
+
+func (m *psqlMetaCommands) apply(t *testing.T, line string, fields []string) {
+	t.Helper()
+	switch fields[0] {
+	case `\if`:
+		if m.inIf {
+			t.Fatalf("nested \\if is not interpreted here: %q", line)
+		}
+		name, ok := strings.CutPrefix(fields[1], `:{?`)
+		if !ok || !strings.HasSuffix(name, "}") {
+			t.Fatalf("only \\if :{?var} is interpreted here: %q", line)
+		}
+		_, defined := m.set[strings.TrimSuffix(name, "}")]
+		m.inIf, m.skipping = true, !defined
+	case `\else`:
+		m.skipping = !m.skipping
+	case `\endif`:
+		m.inIf, m.skipping = false, false
+	case `\set`:
+		if !m.skipping && len(fields) == 3 {
+			m.set[fields[1]] = psqlValue(fields[2])
+		}
+	default:
+		t.Fatalf("funnel.sql uses a meta-command this test cannot interpret: %q", line)
+	}
 }
 
 func psqlValue(s string) string {
@@ -681,6 +691,47 @@ func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListV
 	return out.Runs
 }
 
+func assertFilteredHistoryIsMyRun(t *testing.T, f fixture, mineRunID, otherRunID string) {
+	t.Helper()
+	rows := f.listRunsForTestCase(t, f.testCaseID)
+	if len(rows) != 1 {
+		t.Fatalf("filtered history = %d runs, want 1: %+v", len(rows), rows)
+	}
+	if rows[0].RunID != mineRunID {
+		t.Errorf("filtered history returned run %s, want %s", rows[0].RunID, mineRunID)
+	}
+	if rows[0].RunID == otherRunID {
+		t.Errorf("the other test case's run %s is in this filtered history", otherRunID)
+	}
+	if rows[0].TestCaseID != f.testCaseID {
+		t.Errorf("test_case_id = %q, want %q", rows[0].TestCaseID, f.testCaseID)
+	}
+}
+
+func snapshotIDOfRun(t *testing.T, pool *pgxpool.Pool, runID string) string {
+	t.Helper()
+	var snapshotID string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, runID),
+	).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	return snapshotID
+}
+
+func seedFiveHundredRunsOnTheSnapshotOf(t *testing.T, pool *pgxpool.Pool, f fixture, runID string) {
+	t.Helper()
+	otherSnapshotID := snapshotIDOfRun(t, pool, runID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
+		SELECT $1, $2, $3, 'test', clock_timestamp() + make_interval(secs => n)
+		FROM generate_series(1, 500) AS n`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, otherSnapshotID),
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -701,19 +752,7 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows := f.listRunsForTestCase(t, f.testCaseID)
-	if len(rows) != 1 {
-		t.Fatalf("filtered history = %d runs, want 1: %+v", len(rows), rows)
-	}
-	if rows[0].RunID != mineRunID {
-		t.Errorf("filtered history returned run %s, want %s", rows[0].RunID, mineRunID)
-	}
-	if rows[0].RunID == otherRunID {
-		t.Errorf("the other test case's run %s is in this filtered history", otherRunID)
-	}
-	if rows[0].TestCaseID != f.testCaseID {
-		t.Errorf("test_case_id = %q, want %q", rows[0].TestCaseID, f.testCaseID)
-	}
+	assertFilteredHistoryIsMyRun(t, f, mineRunID, otherRunID)
 
 	if len(f.listRuns(t)) != 2 {
 		t.Errorf("unfiltered history lost a run: %+v", f.listRuns(t))
@@ -727,31 +766,13 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 		t.Errorf("an unparseable test_case_id fell back to the whole history: %+v", rows)
 	}
 
-	var otherSnapshotID string
-	if err := pool.QueryRow(context.Background(),
-		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, otherRunID),
-	).Scan(&otherSnapshotID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(context.Background(), `
-		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
-		SELECT $1, $2, $3, 'test', clock_timestamp() + make_interval(secs => n)
-		FROM generate_series(1, 500) AS n`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, otherSnapshotID),
-	); err != nil {
-		t.Fatal(err)
-	}
-	rows = f.listRunsForTestCase(t, f.testCaseID)
+	seedFiveHundredRunsOnTheSnapshotOf(t, pool, f, otherRunID)
+	rows := f.listRunsForTestCase(t, f.testCaseID)
 	if len(rows) != 1 || rows[0].RunID != mineRunID {
 		t.Fatalf("filtered history lost a matching run older than 500 unrelated rows: %+v", rows)
 	}
 
-	var mineSnapshotID string
-	if err := pool.QueryRow(context.Background(),
-		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, mineRunID),
-	).Scan(&mineSnapshotID); err != nil {
-		t.Fatal(err)
-	}
+	mineSnapshotID := snapshotIDOfRun(t, pool, mineRunID)
 	var newerMatchingID string
 	if err := pool.QueryRow(context.Background(), `
 		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)

@@ -117,267 +117,297 @@ func TestBoundedMaintenanceWorklistsRotateClaimedRows(t *testing.T) {
 	shelveExistingWorklists(t, pool)
 	a := newAPI(t, pool)
 	tag := uniqueWorklistLabel("fair-worklists")
-	f := newFixture(t, a, pool, tag)
-	ctx := context.Background()
-	q := gen.New(pool)
+	w := &rotationWorld{pool: pool, q: gen.New(pool), f: newFixture(t, a, pool, tag), tag: tag}
+	w.now = time.Now().UTC()
+	w.base = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	insertArtifact := func(key string, expires, created time.Time) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `
+	w.artifactReconciliationRotatesOldestFirst(t)
+	w.artifactRetentionRotatesOldestFirst(t)
+	w.snapshotID = w.seedSnapshot(t)
+	w.activeRunSupervisionRotates(t)
+	oldFailedRun, untriedRun := w.runCleanupRotates(t)
+	w.runOutputRetentionRotates(t, oldFailedRun, untriedRun)
+	w.datasetWorklistsRotate(t)
+	w.uploadCleanupRotatesOldestFirst(t)
+	w.accountPurgeRotates(t, a)
+	w.enrichmentRotates(t)
+}
+
+type rotationWorld struct {
+	pool       *pgxpool.Pool
+	q          *gen.Queries
+	f          fixture
+	tag        string
+	now, base  time.Time
+	snapshotID string
+}
+
+func claimTwice[T any](t *testing.T, name string, claim func() ([]T, error)) (first, second T) {
+	t.Helper()
+	firstRows, err := claim()
+	if err != nil || len(firstRows) != 1 {
+		t.Fatalf("first %s: rows=%v err=%v", name, firstRows, err)
+	}
+	secondRows, err := claim()
+	if err != nil || len(secondRows) != 1 {
+		t.Fatalf("second %s: rows=%v err=%v", name, secondRows, err)
+	}
+	return firstRows[0], secondRows[0]
+}
+
+func assertClaimsRotate(t *testing.T, name string, first, second string) {
+	t.Helper()
+	if first == second {
+		t.Fatalf("%s returned the same claimed row twice: %s", name, first)
+	}
+}
+
+func sweepClaim() pgtype.Interval { return pgconv.Interval(queue.SweepClaimLease) }
+
+func (w *rotationWorld) insertArtifact(t *testing.T, key string, expires, created time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `
 			INSERT INTO artifacts
 			(workspace_id, kind, file_name, content_type, size_bytes, content_hash,
 			 object_key, scan_status, expires_at, created_at)
 			VALUES ($1, 'download_package', $2, 'application/zip', 1, $2, $2,
 			        'available', $3, $4) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), key, expires, created).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), key, expires, created).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
-	assertRotates := func(name string, first, second string) {
-		t.Helper()
-		if first == second {
-			t.Fatalf("%s returned the same claimed row twice: %s", name, first)
-		}
-	}
+	return id
+}
 
-	now := time.Now().UTC()
-	base := time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
-	claimOld := insertArtifact(tag+"-claim-old", now.Add(time.Hour), base)
-	claimNew := insertArtifact(tag+"-claim-new", now.Add(time.Hour), base.Add(time.Minute))
-	firstArtifacts, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(firstArtifacts) != 1 {
-		t.Fatalf("first artifact claim: rows=%v err=%v", firstArtifacts, err)
+func (w *rotationWorld) artifactReconciliationRotatesOldestFirst(t *testing.T) {
+	claimOld := w.insertArtifact(t, w.tag+"-claim-old", w.now.Add(time.Hour), w.base)
+	claimNew := w.insertArtifact(t, w.tag+"-claim-new", w.now.Add(time.Hour), w.base.Add(time.Minute))
+	first, second := claimTwice(t, "artifact claim", func() ([]gen.ListArtifactsClaimingObjectRow, error) {
+		return w.q.ListArtifactsClaimingObject(context.Background(), gen.ListArtifactsClaimingObjectParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "artifact reconciliation", uuidText(first.ID), uuidText(second.ID))
+	if uuidText(first.ID) != claimOld || uuidText(second.ID) != claimNew {
+		t.Fatalf("artifact reconciliation claimed %s then %s, want %s then %s", uuidText(first.ID), uuidText(second.ID), claimOld, claimNew)
 	}
-	secondArtifacts, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(secondArtifacts) != 1 {
-		t.Fatalf("second artifact claim: rows=%v err=%v", secondArtifacts, err)
-	}
-	assertRotates("artifact reconciliation", uuidText(firstArtifacts[0].ID), uuidText(secondArtifacts[0].ID))
-	if uuidText(firstArtifacts[0].ID) != claimOld || uuidText(secondArtifacts[0].ID) != claimNew {
-		t.Fatalf("artifact reconciliation claimed %s then %s, want %s then %s", uuidText(firstArtifacts[0].ID), uuidText(secondArtifacts[0].ID), claimOld, claimNew)
-	}
+}
 
-	expireOld := insertArtifact(tag+"-expire-old", base, base)
-	expireNew := insertArtifact(tag+"-expire-new", base.Add(time.Minute), base.Add(time.Minute))
-	firstExpired, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(firstExpired) != 1 {
-		t.Fatalf("first artifact retention claim: rows=%v err=%v", firstExpired, err)
+func (w *rotationWorld) artifactRetentionRotatesOldestFirst(t *testing.T) {
+	expireOld := w.insertArtifact(t, w.tag+"-expire-old", w.base, w.base)
+	expireNew := w.insertArtifact(t, w.tag+"-expire-new", w.base.Add(time.Minute), w.base.Add(time.Minute))
+	first, second := claimTwice(t, "artifact retention claim", func() ([]gen.ListArtifactsPastRetentionRow, error) {
+		return w.q.ListArtifactsPastRetention(context.Background(), gen.ListArtifactsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "artifact retention", uuidText(first.ID), uuidText(second.ID))
+	if uuidText(first.ID) != expireOld || uuidText(second.ID) != expireNew {
+		t.Fatalf("artifact retention claimed %s then %s, want %s then %s", uuidText(first.ID), uuidText(second.ID), expireOld, expireNew)
 	}
-	secondExpired, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(secondExpired) != 1 {
-		t.Fatalf("second artifact retention claim: rows=%v err=%v", secondExpired, err)
-	}
-	assertRotates("artifact retention", uuidText(firstExpired[0].ID), uuidText(secondExpired[0].ID))
-	if uuidText(firstExpired[0].ID) != expireOld || uuidText(secondExpired[0].ID) != expireNew {
-		t.Fatalf("artifact retention claimed %s then %s, want %s then %s", uuidText(firstExpired[0].ID), uuidText(secondExpired[0].ID), expireOld, expireNew)
-	}
+}
 
+func (w *rotationWorld) seedSnapshot(t *testing.T) string {
+	t.Helper()
 	var snapshotID string
-	if err := pool.QueryRow(ctx, `
+	if err := w.pool.QueryRow(context.Background(), `
 		INSERT INTO test_case_snapshots
 		(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
 		VALUES ($1, $2, 'fairness', '[]', 'fairness-snapshot') RETURNING id::text`,
-		mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.testCaseID)).Scan(&snapshotID); err != nil {
 		t.Fatal(err)
 	}
-	insertActiveRun := func(checkedAt *time.Time, created time.Time) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `
+	return snapshotID
+}
+
+func (w *rotationWorld) insertActiveRun(t *testing.T, checkedAt *time.Time, created time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `
 			INSERT INTO runs
 			(workspace_id, skill_version_id, test_case_snapshot_id, provider,
 			 supervision_checked_at, created_at)
 			VALUES ($1, $2, $3, 'test', $4, $5) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID),
-			checkedAt, created).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.versionID), mustUUID(t, w.snapshotID),
+		checkedAt, created).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
-	recentSupervision := now.Add(-time.Hour)
-	oldCheckedRun := insertActiveRun(&recentSupervision, base)
-	untriedActiveRun := insertActiveRun(nil, base)
-	activeRows, err := q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
+	return id
+}
+
+func (w *rotationWorld) activeRunSupervisionRotates(t *testing.T) {
+	ctx := context.Background()
+	recentSupervision := w.now.Add(-time.Hour)
+	oldCheckedRun := w.insertActiveRun(t, &recentSupervision, w.base)
+	untriedActiveRun := w.insertActiveRun(t, nil, w.base)
+	activeRows, err := w.q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
 	if err != nil || len(activeRows) != 1 {
 		t.Fatalf("active-run worklist: rows=%v err=%v", activeRows, err)
 	}
 	if got := uuidText(activeRows[0].ID); got != untriedActiveRun || got == oldCheckedRun {
 		t.Fatalf("supervisor selected %s, want untried run %s before recently checked %s", got, untriedActiveRun, oldCheckedRun)
 	}
-	activeRows, err = q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
+	activeRows, err = w.q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
 	if err != nil || len(activeRows) != 1 {
 		t.Fatalf("second active-run worklist claim: rows=%v err=%v", activeRows, err)
 	}
 	if got := uuidText(activeRows[0].ID); got != oldCheckedRun {
 		t.Fatalf("supervisor selected %s twice instead of rotating to %s", got, oldCheckedRun)
 	}
-	insertRun := func(cleanupStatus string, cleanupAt *time.Time, finished time.Time) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `
+}
+
+func (w *rotationWorld) insertFailedRun(t *testing.T, cleanupStatus string, cleanupAt *time.Time, finished time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `
 			INSERT INTO runs
 			(workspace_id, skill_version_id, test_case_snapshot_id, status, provider,
 			 cleanup_status, cleanup_at, finished_at)
 			VALUES ($1, $2, $3, 'failed', 'test', $4, $5, $6) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID),
-			cleanupStatus, cleanupAt, finished).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.versionID), mustUUID(t, w.snapshotID),
+		cleanupStatus, cleanupAt, finished).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
-	recentAttempt := now.Add(-time.Hour)
-	oldFailedRun := insertRun("failed", &recentAttempt, base)
-	untriedRun := insertRun("pending", nil, base)
-	if _, err := pool.Exec(ctx, `UPDATE runs SET cleanup_attempted_at = $2 WHERE id = $1`,
+	return id
+}
+
+func (w *rotationWorld) runCleanupRotates(t *testing.T) (oldFailedRun, untriedRun string) {
+	ctx := context.Background()
+	recentAttempt := w.now.Add(-time.Hour)
+	oldFailedRun = w.insertFailedRun(t, "failed", &recentAttempt, w.base)
+	untriedRun = w.insertFailedRun(t, "pending", nil, w.base)
+	if _, err := w.pool.Exec(ctx, `UPDATE runs SET cleanup_attempted_at = $2 WHERE id = $1`,
 		mustUUID(t, oldFailedRun), recentAttempt); err != nil {
 		t.Fatal(err)
 	}
-	cleanupRows, err := q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
+	cleanupRows, err := w.q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
 	if err != nil || len(cleanupRows) != 1 {
 		t.Fatalf("cleanup worklist: rows=%v err=%v", cleanupRows, err)
 	}
 	if got := uuidText(cleanupRows[0].ID); got != untriedRun || got == oldFailedRun {
 		t.Fatalf("cleanup selected %s, want untried run %s before recently retried %s", got, untriedRun, oldFailedRun)
 	}
-	cleanupRows, err = q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
+	cleanupRows, err = w.q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
 	if err != nil || len(cleanupRows) != 1 {
 		t.Fatalf("second cleanup worklist claim: rows=%v err=%v", cleanupRows, err)
 	}
 	if got := uuidText(cleanupRows[0].ID); got != oldFailedRun {
 		t.Fatalf("cleanup selected %s twice instead of rotating to %s", got, oldFailedRun)
 	}
+	return oldFailedRun, untriedRun
+}
 
-	insertRunOutput := func(runID, key string, created time.Time) {
-		t.Helper()
-		if _, err := pool.Exec(ctx, `
+func (w *rotationWorld) insertRunOutput(t *testing.T, runID, key string, created time.Time) {
+	t.Helper()
+	if _, err := w.pool.Exec(context.Background(), `
 			INSERT INTO artifacts
 			(workspace_id, run_id, kind, file_name, content_type, size_bytes,
 			 content_hash, object_key, scan_status, expires_at, created_at)
 			VALUES ($1, $2, 'run_output', $3, 'application/octet-stream', 1,
 			        $3, $3, 'available', $4, $5)`,
-			mustUUID(t, f.workspaceID), mustUUID(t, runID), key, created, created); err != nil {
-			t.Fatal(err)
-		}
+		mustUUID(t, w.f.workspaceID), mustUUID(t, runID), key, created, created); err != nil {
+		t.Fatal(err)
 	}
-	insertRunOutput(oldFailedRun, tag+"-run-output-old", base)
-	insertRunOutput(untriedRun, tag+"-run-output-new", base.Add(time.Minute))
-	runOutput1, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(runOutput1) != 1 {
-		t.Fatalf("first run-output retention claim: rows=%v err=%v", runOutput1, err)
-	}
-	runOutput2, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(runOutput2) != 1 {
-		t.Fatalf("second run-output retention claim: rows=%v err=%v", runOutput2, err)
-	}
-	assertRotates("run-output retention", uuidText(runOutput1[0].ID), uuidText(runOutput2[0].ID))
+}
 
-	insertDataset := func(key string, expires, created time.Time) {
-		t.Helper()
-		if _, err := pool.Exec(ctx, `
+func (w *rotationWorld) runOutputRetentionRotates(t *testing.T, oldFailedRun, untriedRun string) {
+	w.insertRunOutput(t, oldFailedRun, w.tag+"-run-output-old", w.base)
+	w.insertRunOutput(t, untriedRun, w.tag+"-run-output-new", w.base.Add(time.Minute))
+	first, second := claimTwice(t, "run-output retention claim", func() ([]gen.ListRunOutputsPastRetentionRow, error) {
+		return w.q.ListRunOutputsPastRetention(context.Background(), gen.ListRunOutputsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "run-output retention", uuidText(first.ID), uuidText(second.ID))
+}
+
+func (w *rotationWorld) insertDataset(t *testing.T, key string, expires, created time.Time) {
+	t.Helper()
+	if _, err := w.pool.Exec(context.Background(), `
 			INSERT INTO datasets
 			(workspace_id, test_case_id, file_name, content_type, size_bytes,
 			 content_hash, object_key, expires_at, created_at)
 			VALUES ($1, $2, $3, 'text/plain', 1, $3, $3, $4, $5)`,
-			mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID), key, expires, created); err != nil {
-			t.Fatal(err)
-		}
-	}
-	insertDataset(tag+"-dataset-claim-old", now.Add(time.Hour), base)
-	insertDataset(tag+"-dataset-claim-new", now.Add(time.Hour), base.Add(time.Minute))
-	datasetClaim1, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(datasetClaim1) != 1 {
-		t.Fatalf("first dataset claim: rows=%v err=%v", datasetClaim1, err)
-	}
-	datasetClaim2, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(datasetClaim2) != 1 {
-		t.Fatalf("second dataset claim: rows=%v err=%v", datasetClaim2, err)
-	}
-	assertRotates("dataset reconciliation", uuidText(datasetClaim1[0].ID), uuidText(datasetClaim2[0].ID))
-
-	insertDataset(tag+"-dataset-expire-old", base, base)
-	insertDataset(tag+"-dataset-expire-new", base.Add(time.Minute), base.Add(time.Minute))
-	datasetExpiry1, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(datasetExpiry1) != 1 {
-		t.Fatalf("first dataset retention claim: rows=%v err=%v", datasetExpiry1, err)
-	}
-	datasetExpiry2, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(datasetExpiry2) != 1 {
-		t.Fatalf("second dataset retention claim: rows=%v err=%v", datasetExpiry2, err)
-	}
-	assertRotates("dataset retention", uuidText(datasetExpiry1[0].ID), uuidText(datasetExpiry2[0].ID))
-
-	var intentOld, intentNew string
-	if err := pool.QueryRow(ctx, `INSERT INTO dataset_object_cleanup_intents
-		(workspace_id, object_key, not_before) VALUES ($1, $2, $3) RETURNING id::text`,
-		mustUUID(t, f.workspaceID), tag+"-intent-old", base).Scan(&intentOld); err != nil {
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.testCaseID), key, expires, created); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx, `INSERT INTO dataset_object_cleanup_intents
+}
+
+func (w *rotationWorld) datasetWorklistsRotate(t *testing.T) {
+	w.insertDataset(t, w.tag+"-dataset-claim-old", w.now.Add(time.Hour), w.base)
+	w.insertDataset(t, w.tag+"-dataset-claim-new", w.now.Add(time.Hour), w.base.Add(time.Minute))
+	claim1, claim2 := claimTwice(t, "dataset claim", func() ([]gen.ListDatasetsClaimingObjectRow, error) {
+		return w.q.ListDatasetsClaimingObject(context.Background(), gen.ListDatasetsClaimingObjectParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "dataset reconciliation", uuidText(claim1.ID), uuidText(claim2.ID))
+
+	w.insertDataset(t, w.tag+"-dataset-expire-old", w.base, w.base)
+	w.insertDataset(t, w.tag+"-dataset-expire-new", w.base.Add(time.Minute), w.base.Add(time.Minute))
+	expiry1, expiry2 := claimTwice(t, "dataset retention claim", func() ([]gen.ListDatasetsPastRetentionRow, error) {
+		return w.q.ListDatasetsPastRetention(context.Background(), gen.ListDatasetsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "dataset retention", uuidText(expiry1.ID), uuidText(expiry2.ID))
+}
+
+func (w *rotationWorld) insertCleanupIntent(t *testing.T, key string, notBefore time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `INSERT INTO dataset_object_cleanup_intents
 		(workspace_id, object_key, not_before) VALUES ($1, $2, $3) RETURNING id::text`,
-		mustUUID(t, f.workspaceID), tag+"-intent-new", base.Add(time.Minute)).Scan(&intentNew); err != nil {
+		mustUUID(t, w.f.workspaceID), key, notBefore).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
-	intent1, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(intent1) != 1 {
-		t.Fatalf("first upload-cleanup claim: rows=%v err=%v", intent1, err)
-	}
-	intent2, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(intent2) != 1 {
-		t.Fatalf("second upload-cleanup claim: rows=%v err=%v", intent2, err)
-	}
-	if uuidText(intent1[0].ID) != intentOld || uuidText(intent2[0].ID) != intentNew {
-		t.Fatalf("upload-cleanup claimed %s then %s, want %s then %s", uuidText(intent1[0].ID), uuidText(intent2[0].ID), intentOld, intentNew)
-	}
+	return id
+}
 
-	older := a.login(t, tag+"-purge-old")
-	newer := a.login(t, tag+"-purge-new")
-	if _, err := pool.Exec(ctx, `UPDATE users SET deletion_requested_at = CASE id
+func (w *rotationWorld) uploadCleanupRotatesOldestFirst(t *testing.T) {
+	intentOld := w.insertCleanupIntent(t, w.tag+"-intent-old", w.base)
+	intentNew := w.insertCleanupIntent(t, w.tag+"-intent-new", w.base.Add(time.Minute))
+	intent1, intent2 := claimTwice(t, "upload-cleanup claim", func() ([]gen.ListDatasetCleanupIntentsRow, error) {
+		return w.q.ListDatasetCleanupIntents(context.Background(), gen.ListDatasetCleanupIntentsParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	if uuidText(intent1.ID) != intentOld || uuidText(intent2.ID) != intentNew {
+		t.Fatalf("upload-cleanup claimed %s then %s, want %s then %s", uuidText(intent1.ID), uuidText(intent2.ID), intentOld, intentNew)
+	}
+}
+
+func (w *rotationWorld) accountPurgeRotates(t *testing.T, a *api) {
+	older := a.login(t, w.tag+"-purge-old")
+	newer := a.login(t, w.tag+"-purge-new")
+	if _, err := w.pool.Exec(context.Background(), `UPDATE users SET deletion_requested_at = CASE id
 		WHEN $1 THEN $3::timestamptz ELSE $4::timestamptz END WHERE id IN ($1, $2)`,
-		mustUUID(t, older.userID), mustUUID(t, newer.userID), base, base.Add(time.Minute)); err != nil {
+		mustUUID(t, older.userID), mustUUID(t, newer.userID), w.base, w.base.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	account1, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Cutoff: pgconv.Timestamptz(now), ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1,
+	account1, account2 := claimTwice(t, "account purge claim", func() ([]pgtype.UUID, error) {
+		return w.q.ListAccountsPastGrace(context.Background(), gen.ListAccountsPastGraceParams{
+			Cutoff: pgconv.Timestamptz(w.now), ClaimLease: sweepClaim(), BatchSize: 1,
+		})
 	})
-	if err != nil || len(account1) != 1 {
-		t.Fatalf("first account purge claim: rows=%v err=%v", account1, err)
-	}
-	account2, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Cutoff: pgconv.Timestamptz(now), ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1,
-	})
-	if err != nil || len(account2) != 1 {
-		t.Fatalf("second account purge claim: rows=%v err=%v", account2, err)
-	}
-	assertRotates("account purge", uuidText(account1[0]), uuidText(account2[0]))
+	assertClaimsRotate(t, "account purge", uuidText(account1), uuidText(account2))
+}
 
-	secondSkill := seedSkill(t, pool, f.workspaceID, tag+"-second-skill")
-	seedVersion(t, pool, f.workspaceID, secondSkill, tag+"-second-version")
-	if _, err := pool.Exec(ctx, `UPDATE search_documents
+func (w *rotationWorld) enrichmentRotates(t *testing.T) {
+	secondSkill := seedSkill(t, w.pool, w.f.workspaceID, w.tag+"-second-skill")
+	seedVersion(t, w.pool, w.f.workspaceID, secondSkill, w.tag+"-second-version")
+	if _, err := w.pool.Exec(context.Background(), `UPDATE search_documents
 		SET enrichment_status = 'pending', enrichment_attempted_at = NULL,
 		    updated_at = CASE skill_id WHEN $1 THEN $3::timestamptz ELSE $4::timestamptz END
-		WHERE skill_id IN ($1, $2)`, mustUUID(t, f.skillID), mustUUID(t, secondSkill), base, base.Add(time.Minute)); err != nil {
+		WHERE skill_id IN ($1, $2)`, mustUUID(t, w.f.skillID), mustUUID(t, secondSkill), w.base, w.base.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	enrichment1, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(enrichment1) != 1 {
-		t.Fatalf("first enrichment claim: rows=%v err=%v", enrichment1, err)
-	}
-	enrichment2, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-	if err != nil || len(enrichment2) != 1 {
-		t.Fatalf("second enrichment claim: rows=%v err=%v", enrichment2, err)
-	}
-	assertRotates("enrichment", uuidText(enrichment1[0].SkillID), uuidText(enrichment2[0].SkillID))
+	enrichment1, enrichment2 := claimTwice(t, "enrichment claim", func() ([]gen.ListPendingEnrichmentRow, error) {
+		return w.q.ListPendingEnrichment(context.Background(), gen.ListPendingEnrichmentParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	})
+	assertClaimsRotate(t, "enrichment", uuidText(enrichment1.SkillID), uuidText(enrichment2.SkillID))
 }
 
 func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {
 	pool := requireDB(t)
 	shelveExistingWorklists(t, pool)
 	a := newAPI(t, pool)
-	ctx := context.Background()
-	q := gen.New(pool)
 
+	assertDeletionAttemptResetsOnlyOnAFreshRequest(t, a, pool)
+	assertNewPendingEnrichmentDropsThePreviousAttempt(t, a, pool)
+}
+
+func assertDeletionAttemptResetsOnlyOnAFreshRequest(t *testing.T, a *api, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
 	account := a.login(t, uniqueWorklistLabel("attempt-reset-account"))
 	user := identity.User{ID: mustUUID(t, account.userID)}
 	type deletionState struct{ requestedAt, attemptedAt pgtype.Timestamptz }
@@ -407,7 +437,12 @@ func TestWorklistAttemptsResetOnlyWhenWorkBecomesFreshAgain(t *testing.T) {
 	if fresh := change("fresh request", a.auth.Service.RequestAccountDeletion); !fresh.requestedAt.Valid || fresh.attemptedAt.Valid {
 		t.Fatalf("fresh deletion request inherited an old attempt or was not stamped: %+v", fresh)
 	}
+}
 
+func assertNewPendingEnrichmentDropsThePreviousAttempt(t *testing.T, a *api, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	q := gen.New(pool)
 	tag := uniqueWorklistLabel("attempt-reset-enrichment")
 	f := newFixture(t, a, pool, tag)
 	if _, err := pool.Exec(ctx, `UPDATE search_documents
@@ -466,227 +501,270 @@ func TestAutocommitWorklistClaimsLeaseRowsAcrossExternalWork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assertConcurrentClaims := func(name string, want map[string]bool, claim func(context.Context, *gen.Queries) (string, error)) {
-		t.Helper()
-		// Each claim runs its own statement against the pool rather than a shared
-		// transaction, so the row lock releases as soon as it returns.
-		first, err := claim(ctx, gen.New(pool))
-		if err != nil {
-			t.Fatalf("%s first claim: %v", name, err)
-		}
-		secondCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
-		second, err := claim(secondCtx, gen.New(pool))
-		if err != nil {
-			t.Fatalf("%s second claim blocked instead of skipping: %v", name, err)
-		}
-		if first == second || !want[first] || !want[second] {
-			t.Fatalf("%s claims = %s then %s, want the two fixture rows", name, first, second)
-		}
-		if third, err := claim(ctx, gen.New(pool)); err == nil || !strings.Contains(err.Error(), "rows=[]") {
-			t.Fatalf("%s immediately reclaimed leased row %s (third=%s err=%v)", name, first, third, err)
-		}
+	w := &leaseWorld{pool: pool, f: f, tag: tag, base: base, snapshotID: snapshotID, outputHost: outputHost}
+
+	w.artifactWorklistsLease(t)
+	w.datasetWorklistsLease(t)
+	w.uploadCleanupLeases(t)
+	w.accountPurgeLeases(t, a)
+	w.enrichmentLeases(t)
+	w.activeRunSupervisionLeasesAndReopens(t)
+	w.runCleanupLeasesReopensAndWaitsForTheRescueWindow(t)
+}
+
+type leaseWorld struct {
+	pool       *pgxpool.Pool
+	f          fixture
+	tag        string
+	base       time.Time
+	snapshotID pgtype.UUID
+	outputHost pgtype.UUID
+}
+
+type worklistClaim func(context.Context, *gen.Queries) (string, error)
+
+func assertConcurrentClaims(t *testing.T, pool *pgxpool.Pool, name string, want map[string]bool, claim worklistClaim) {
+	t.Helper()
+	ctx := context.Background()
+	// Each claim runs its own statement against the pool rather than a shared
+	// transaction, so the row lock releases as soon as it returns.
+	first, err := claim(ctx, gen.New(pool))
+	if err != nil {
+		t.Fatalf("%s first claim: %v", name, err)
 	}
-	insertArtifact := func(kind, key string, expires time.Time, runID *pgtype.UUID) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `INSERT INTO artifacts
+	secondCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	second, err := claim(secondCtx, gen.New(pool))
+	if err != nil {
+		t.Fatalf("%s second claim blocked instead of skipping: %v", name, err)
+	}
+	if first == second || !want[first] || !want[second] {
+		t.Fatalf("%s claims = %s then %s, want the two fixture rows", name, first, second)
+	}
+	if third, err := claim(ctx, gen.New(pool)); err == nil || !strings.Contains(err.Error(), "rows=[]") {
+		t.Fatalf("%s immediately reclaimed leased row %s (third=%s err=%v)", name, first, third, err)
+	}
+}
+
+func onlyClaimed[T any](rows []T, err error, id func(T) pgtype.UUID) (string, error) {
+	if err != nil || len(rows) != 1 {
+		return "", fmt.Errorf("rows=%v: %w", rows, err)
+	}
+	return uuidText(id(rows[0])), nil
+}
+
+func claimArtifactPastRetention(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListArtifactsPastRetentionRow) pgtype.UUID { return r.ID })
+}
+
+func claimRunOutputPastRetention(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListRunOutputsPastRetentionRow) pgtype.UUID { return r.ID })
+}
+
+func claimArtifactObject(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListArtifactsClaimingObjectRow) pgtype.UUID { return r.ID })
+}
+
+func claimDatasetPastRetention(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListDatasetsPastRetentionRow) pgtype.UUID { return r.ID })
+}
+
+func claimDatasetObject(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListDatasetsClaimingObjectRow) pgtype.UUID { return r.ID })
+}
+
+func claimUploadCleanupIntent(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListDatasetCleanupIntentsRow) pgtype.UUID { return r.ID })
+}
+
+func claimAccountPastGrace(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{ClaimLease: sweepClaim(), BatchSize: 1, Cutoff: pgconv.Timestamptz(time.Now())})
+	return onlyClaimed(rows, err, func(id pgtype.UUID) pgtype.UUID { return id })
+}
+
+func claimPendingEnrichment(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: sweepClaim(), BatchSize: 1})
+	return onlyClaimed(rows, err, func(r gen.ListPendingEnrichmentRow) pgtype.UUID { return r.SkillID })
+}
+
+func claimActiveRun(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
+	return onlyClaimed(rows, err, func(r gen.Run) pgtype.UUID { return r.ID })
+}
+
+func claimRunNeedingCleanup(ctx context.Context, q *gen.Queries) (string, error) {
+	rows, err := q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
+	return onlyClaimed(rows, err, func(r gen.Run) pgtype.UUID { return r.ID })
+}
+
+func (w *leaseWorld) insertArtifact(t *testing.T, kind, key string, expires time.Time, runID *pgtype.UUID) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `INSERT INTO artifacts
 			(workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
 			 object_key, scan_status, expires_at, created_at)
 			VALUES ($1, $2, $3, $4, 'application/octet-stream', 1, $4, $4,
 			        'available', $5, $6) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), runID, kind, key, expires, base).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), runID, kind, key, expires, w.base).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
+	return id
+}
 
+func (w *leaseWorld) minutesAfterBase(i int) time.Time {
+	return w.base.Add(time.Duration(i) * time.Minute)
+}
+
+func (w *leaseWorld) artifactWorklistsLease(t *testing.T) {
 	artifactRetention := map[string]bool{}
 	for i := 0; i < 2; i++ {
-		id := insertArtifact("download_package", fmt.Sprintf("%s-artifact-expired-%d", tag, i), base.Add(time.Duration(i)*time.Minute), nil)
+		id := w.insertArtifact(t, "download_package", fmt.Sprintf("%s-artifact-expired-%d", w.tag, i), w.minutesAfterBase(i), nil)
 		artifactRetention[id] = true
 	}
-	assertConcurrentClaims("artifact retention", artifactRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListArtifactsPastRetention(ctx, gen.ListArtifactsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "artifact retention", artifactRetention, claimArtifactPastRetention)
 
 	runOutputRetention := map[string]bool{}
 	for i := 0; i < 2; i++ {
-		id := insertArtifact("run_output", fmt.Sprintf("%s-run-output-%d", tag, i), base.Add(time.Duration(i)*time.Minute), &outputHost)
+		id := w.insertArtifact(t, "run_output", fmt.Sprintf("%s-run-output-%d", w.tag, i), w.minutesAfterBase(i), &w.outputHost)
 		runOutputRetention[id] = true
 	}
-	assertConcurrentClaims("run-output retention", runOutputRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListRunOutputsPastRetention(ctx, gen.ListRunOutputsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "run-output retention", runOutputRetention, claimRunOutputPastRetention)
 
 	artifactReconcile := map[string]bool{}
 	for i := 0; i < 2; i++ {
-		id := insertArtifact("download_package", fmt.Sprintf("%s-artifact-live-%d", tag, i), time.Now().Add(time.Hour), nil)
+		id := w.insertArtifact(t, "download_package", fmt.Sprintf("%s-artifact-live-%d", w.tag, i), time.Now().Add(time.Hour), nil)
 		artifactReconcile[id] = true
 	}
-	assertConcurrentClaims("artifact reconciliation", artifactReconcile, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListArtifactsClaimingObject(ctx, gen.ListArtifactsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "artifact reconciliation", artifactReconcile, claimArtifactObject)
+}
 
-	insertDataset := func(key string, expires time.Time) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `INSERT INTO datasets
+func (w *leaseWorld) insertDataset(t *testing.T, key string, expires time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `INSERT INTO datasets
 			(workspace_id, test_case_id, file_name, content_type, size_bytes,
 			 content_hash, object_key, expires_at, created_at)
 			VALUES ($1, $2, $3, 'text/plain', 1, $3, $3, $4, $5) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID), key, expires, base).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.testCaseID), key, expires, w.base).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
+	return id
+}
+
+func (w *leaseWorld) datasetWorklistsLease(t *testing.T) {
 	datasetRetention := map[string]bool{}
 	datasetReconcile := map[string]bool{}
 	for i := 0; i < 2; i++ {
-		datasetRetention[insertDataset(fmt.Sprintf("%s-dataset-expired-%d", tag, i), base.Add(time.Duration(i)*time.Minute))] = true
-		datasetReconcile[insertDataset(fmt.Sprintf("%s-dataset-live-%d", tag, i), time.Now().Add(time.Hour))] = true
+		datasetRetention[w.insertDataset(t, fmt.Sprintf("%s-dataset-expired-%d", w.tag, i), w.minutesAfterBase(i))] = true
+		datasetReconcile[w.insertDataset(t, fmt.Sprintf("%s-dataset-live-%d", w.tag, i), time.Now().Add(time.Hour))] = true
 	}
-	assertConcurrentClaims("dataset retention", datasetRetention, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetsPastRetention(ctx, gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
-	assertConcurrentClaims("dataset reconciliation", datasetReconcile, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetsClaimingObject(ctx, gen.ListDatasetsClaimingObjectParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "dataset retention", datasetRetention, claimDatasetPastRetention)
+	assertConcurrentClaims(t, w.pool, "dataset reconciliation", datasetReconcile, claimDatasetObject)
+}
 
+func (w *leaseWorld) uploadCleanupLeases(t *testing.T) {
 	cleanupIntents := map[string]bool{}
 	for i := 0; i < 2; i++ {
 		var id string
-		if err := pool.QueryRow(ctx, `INSERT INTO dataset_object_cleanup_intents
+		if err := w.pool.QueryRow(context.Background(), `INSERT INTO dataset_object_cleanup_intents
 			(workspace_id, object_key, not_before) VALUES ($1, $2, $3) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), fmt.Sprintf("%s-intent-%d", tag, i), base.Add(time.Duration(i)*time.Minute)).Scan(&id); err != nil {
+			mustUUID(t, w.f.workspaceID), fmt.Sprintf("%s-intent-%d", w.tag, i), w.minutesAfterBase(i)).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 		cleanupIntents[id] = true
 	}
-	assertConcurrentClaims("upload cleanup", cleanupIntents, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListDatasetCleanupIntents(ctx, gen.ListDatasetCleanupIntentsParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "upload cleanup", cleanupIntents, claimUploadCleanupIntent)
+}
 
+func (w *leaseWorld) accountPurgeLeases(t *testing.T, a *api) {
 	accounts := map[string]bool{}
 	for i := 0; i < 2; i++ {
-		account := a.login(t, fmt.Sprintf("%s-account-%d", tag, i))
+		account := a.login(t, fmt.Sprintf("%s-account-%d", w.tag, i))
 		accounts[account.userID] = true
-		if _, err := pool.Exec(ctx, `UPDATE users SET deletion_requested_at = $2,
+		if _, err := w.pool.Exec(context.Background(), `UPDATE users SET deletion_requested_at = $2,
 			purge_attempted_at = NULL, purge_started_at = NULL WHERE id = $1`,
-			mustUUID(t, account.userID), base.Add(time.Duration(i)*time.Minute)); err != nil {
+			mustUUID(t, account.userID), w.minutesAfterBase(i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	assertConcurrentClaims("account purge", accounts, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1, Cutoff: pgconv.Timestamptz(time.Now())})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0]), nil
-	})
+	assertConcurrentClaims(t, w.pool, "account purge", accounts, claimAccountPastGrace)
+}
 
-	secondSkill := seedSkill(t, pool, f.workspaceID, tag+"-second-skill")
-	seedVersion(t, pool, f.workspaceID, secondSkill, tag+"-second-version")
-	enrichment := map[string]bool{f.skillID: true, secondSkill: true}
-	if _, err := pool.Exec(ctx, `UPDATE search_documents SET enrichment_status = 'pending',
+func (w *leaseWorld) enrichmentLeases(t *testing.T) {
+	secondSkill := seedSkill(t, w.pool, w.f.workspaceID, w.tag+"-second-skill")
+	seedVersion(t, w.pool, w.f.workspaceID, secondSkill, w.tag+"-second-version")
+	enrichment := map[string]bool{w.f.skillID: true, secondSkill: true}
+	if _, err := w.pool.Exec(context.Background(), `UPDATE search_documents SET enrichment_status = 'pending',
 		enrichment_attempted_at = NULL, updated_at = CASE skill_id WHEN $1 THEN $3::timestamptz ELSE $4::timestamptz END
-		WHERE skill_id IN ($1, $2)`, mustUUID(t, f.skillID), mustUUID(t, secondSkill), base, base.Add(time.Minute)); err != nil {
+		WHERE skill_id IN ($1, $2)`, mustUUID(t, w.f.skillID), mustUUID(t, secondSkill), w.base, w.base.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	assertConcurrentClaims("enrichment", enrichment, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListPendingEnrichment(ctx, gen.ListPendingEnrichmentParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 1})
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].SkillID), nil
-	})
+	assertConcurrentClaims(t, w.pool, "enrichment", enrichment, claimPendingEnrichment)
+}
 
-	insertRun := func(status string, finished *time.Time) string {
-		t.Helper()
-		var id string
-		if err := pool.QueryRow(ctx, `INSERT INTO runs
+func (w *leaseWorld) insertRun(t *testing.T, status string, finished *time.Time) string {
+	t.Helper()
+	var id string
+	if err := w.pool.QueryRow(context.Background(), `INSERT INTO runs
 			(workspace_id, skill_version_id, test_case_snapshot_id, status, provider,
 			 finished_at, cleanup_status, created_at)
 			VALUES ($1, $2, $3, $4, 'test', $5, 'pending', $6) RETURNING id::text`,
-			mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), snapshotID, status, finished, base).Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		return id
+		mustUUID(t, w.f.workspaceID), mustUUID(t, w.f.versionID), w.snapshotID, status, finished, w.base).Scan(&id); err != nil {
+		t.Fatal(err)
 	}
-	activeFirst := insertRun("queued", nil)
-	activeSecond := insertRun("queued", nil)
+	return id
+}
+
+func (w *leaseWorld) activeRunSupervisionLeasesAndReopens(t *testing.T) {
+	ctx := context.Background()
+	activeFirst := w.insertRun(t, "queued", nil)
+	activeSecond := w.insertRun(t, "queued", nil)
 	active := map[string]bool{activeFirst: true, activeSecond: true}
-	if _, err := pool.Exec(ctx, `UPDATE runs SET supervision_checked_at = '-infinity', created_at = '-infinity'
+	if _, err := w.pool.Exec(ctx, `UPDATE runs SET supervision_checked_at = '-infinity', created_at = '-infinity'
 		WHERE id IN ($1, $2)`, mustUUID(t, activeFirst), mustUUID(t, activeSecond)); err != nil {
 		t.Fatal(err)
 	}
-	assertConcurrentClaims("active-run supervision", active, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListActiveRuns(ctx, run.ActiveRunClaim(1))
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
-	if _, err := pool.Exec(ctx, `UPDATE runs SET supervision_checked_at = now() - interval '31 seconds'
+	assertConcurrentClaims(t, w.pool, "active-run supervision", active, claimActiveRun)
+	if _, err := w.pool.Exec(ctx, `UPDATE runs SET supervision_checked_at = now() - interval '31 seconds'
 		WHERE id = $1`, mustUUID(t, activeFirst)); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := gen.New(pool).ListActiveRuns(ctx, run.ActiveRunClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != activeFirst {
+	if rows, err := gen.New(w.pool).ListActiveRuns(ctx, run.ActiveRunClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != activeFirst {
 		t.Fatalf("active-run lease did not reopen after one supervisor interval: rows=%v err=%v", rows, err)
 	}
-	finished := base
-	cleanup := map[string]bool{insertRun("failed", &finished): true, insertRun("failed", &finished): true}
-	assertConcurrentClaims("run cleanup", cleanup, func(ctx context.Context, q *gen.Queries) (string, error) {
-		rows, err := q.ListRunsNeedingCleanup(ctx, run.CleanupClaim(1))
-		if err != nil || len(rows) != 1 {
-			return "", fmt.Errorf("rows=%v: %w", rows, err)
-		}
-		return uuidText(rows[0].ID), nil
-	})
+}
+
+func (w *leaseWorld) runCleanupLeasesReopensAndWaitsForTheRescueWindow(t *testing.T) {
+	ctx := context.Background()
+	finished := w.base
+	cleanup := map[string]bool{w.insertRun(t, "failed", &finished): true, w.insertRun(t, "failed", &finished): true}
+	assertConcurrentClaims(t, w.pool, "run cleanup", cleanup, claimRunNeedingCleanup)
 	var cleanupID string
 	for id := range cleanup {
 		cleanupID = id
 		break
 	}
-	if _, err := pool.Exec(ctx, `UPDATE runs SET cleanup_attempted_at = now() - interval '31 seconds'
+	if _, err := w.pool.Exec(ctx, `UPDATE runs SET cleanup_attempted_at = now() - interval '31 seconds'
 		WHERE id = $1`, mustUUID(t, cleanupID)); err != nil {
 		t.Fatal(err)
 	}
-	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != cleanupID {
+	if rows, err := gen.New(w.pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != cleanupID {
 		t.Fatalf("cleanup lease did not reopen after one supervisor interval: rows=%v err=%v", rows, err)
 	}
 	justFinished := time.Now()
-	insertRun("failed", &justFinished)
-	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 0 {
+	w.insertRun(t, "failed", &justFinished)
+	if rows, err := gen.New(w.pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 0 {
 		t.Fatalf("a run that finished a moment ago was rescued before its own cleanup could run: rows=%v err=%v", rows, err)
 	}
 	pastRescue := time.Now().Add(-65 * time.Second)
-	settled := insertRun("failed", &pastRescue)
-	if rows, err := gen.New(pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != settled {
+	settled := w.insertRun(t, "failed", &pastRescue)
+	if rows, err := gen.New(w.pool).ListRunsNeedingCleanup(ctx, run.CleanupClaim(1)); err != nil || len(rows) != 1 || uuidText(rows[0].ID) != settled {
 		t.Fatalf("a run finished past the rescue window was not rescued: rows=%v err=%v", rows, err)
 	}
 }

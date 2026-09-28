@@ -299,32 +299,10 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 				t.Fatalf("POST packaging: got %d, body %v", code, body)
 			}
 			hash, _ := body["content_hash"].(string)
-			var produced []byte
-			for key, candidate := range a.packages {
-				if strings.HasPrefix(key, "downloads/") && strings.HasSuffix(key, "/"+hash+".zip") {
-					produced = candidate
-					break
-				}
-			}
-
-			fsys, err := skillpkg.PackageFS(produced)
-			if err != nil {
-				t.Fatalf("the produced package could not be opened the way import opens one: %v", err)
-			}
-			report := skillpkg.Validate(fsys)
-			if report.Blocked {
-				t.Fatalf("the platform would refuse its own package: %+v", report.Findings)
-			}
-			if report.Manifest == nil || report.Manifest.Name != "round-trip-skill" {
-				t.Fatalf("the round-tripped package is not the same skill: %+v", report.Manifest)
-			}
+			assertThePlatformWouldImportItBack(t, storedDownloadWithHash(a, hash), "round-trip-skill")
 
 			entries := zipEntries(t, a, hash)
-			for name := range entries {
-				if !fs.ValidPath(name) || strings.Contains(name, "..") || strings.ContainsAny(name, `\`) {
-					t.Errorf("entry %q would escape on extraction", name)
-				}
-			}
+			assertNoEntryEscapesOnExtraction(t, entries)
 
 			if _, ok := entries[entryPath(t, target, "round-trip-skill", "skillhub-manifest.json")]; !ok {
 				t.Error("no manifest")
@@ -340,6 +318,39 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func storedDownloadWithHash(a *api, hash string) []byte {
+	for key, candidate := range a.packages {
+		if strings.HasPrefix(key, "downloads/") && strings.HasSuffix(key, "/"+hash+".zip") {
+			return candidate
+		}
+	}
+	return nil
+}
+
+func assertThePlatformWouldImportItBack(t *testing.T, produced []byte, name string) {
+	t.Helper()
+	fsys, err := skillpkg.PackageFS(produced)
+	if err != nil {
+		t.Fatalf("the produced package could not be opened the way import opens one: %v", err)
+	}
+	report := skillpkg.Validate(fsys)
+	if report.Blocked {
+		t.Fatalf("the platform would refuse its own package: %+v", report.Findings)
+	}
+	if report.Manifest == nil || report.Manifest.Name != name {
+		t.Fatalf("the round-tripped package is not the same skill: %+v", report.Manifest)
+	}
+}
+
+func assertNoEntryEscapesOnExtraction(t *testing.T, entries map[string][]byte) {
+	t.Helper()
+	for name := range entries {
+		if !fs.ValidPath(name) || strings.Contains(name, "..") || strings.ContainsAny(name, `\`) {
+			t.Errorf("entry %q would escape on extraction", name)
+		}
 	}
 }
 
@@ -919,6 +930,27 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 	if n := len(preview["included_test_cases"].([]any)); n != 0 {
 		t.Errorf("%d test cases of a user's own workspace were packaged; only curated content travels", n)
 	}
+	assertUncuratedCasesExcludedWithTheirReasons(t, preview, withFile)
+
+	curator := a.login(t, "content-curator")
+	makeCatalog(t, pool, curator.workspaceID)
+	curatedSkill, curatedVersion := packagedSkill(t, a, pool, curator, "curated-skill")
+	seedTestCase(t, pool, curator.workspaceID, curatedSkill)
+
+	code, body := postJSON(t, curator, packagingPath(curatedSkill, curatedVersion),
+		`{"target":"standard","include_test_cases":true}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d, body %v", code, body)
+	}
+	if body["includes_test_cases"] != true {
+		t.Errorf("includes_test_cases = %v", body["includes_test_cases"])
+	}
+	hash, _ := body["content_hash"].(string)
+	assertACuratedPortableCaseWithoutRunData(t, zipEntries(t, a, hash))
+}
+
+func assertUncuratedCasesExcludedWithTheirReasons(t *testing.T, preview map[string]any, withFile string) {
+	t.Helper()
 	excluded, _ := preview["excluded_test_cases"].([]any)
 	if len(excluded) != 2 {
 		t.Fatalf("both excluded test cases were not reported: %v", preview)
@@ -936,22 +968,10 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 			t.Errorf("exclusion reason for the case with no file = %q, want not_curated", reason)
 		}
 	}
+}
 
-	curator := a.login(t, "content-curator")
-	makeCatalog(t, pool, curator.workspaceID)
-	curatedSkill, curatedVersion := packagedSkill(t, a, pool, curator, "curated-skill")
-	seedTestCase(t, pool, curator.workspaceID, curatedSkill)
-
-	code, body := postJSON(t, curator, packagingPath(curatedSkill, curatedVersion),
-		`{"target":"standard","include_test_cases":true}`)
-	if code != http.StatusCreated {
-		t.Fatalf("POST packaging: got %d, body %v", code, body)
-	}
-	if body["includes_test_cases"] != true {
-		t.Errorf("includes_test_cases = %v", body["includes_test_cases"])
-	}
-	hash, _ := body["content_hash"].(string)
-	entries := zipEntries(t, a, hash)
+func assertACuratedPortableCaseWithoutRunData(t *testing.T, entries map[string][]byte) {
+	t.Helper()
 	var caseJSON []byte
 	for name, content := range entries {
 		if strings.HasPrefix(name, "test-cases/") && strings.HasSuffix(name, "/case.json") {
@@ -1004,25 +1024,7 @@ func TestAForksCuratedTestCasesTravelAndItsOwnStillDoNot(t *testing.T) {
 	}
 
 	hash, _ := body["content_hash"].(string)
-	entries := zipEntries(t, a, hash)
-	var carried []string
-	for name, content := range entries {
-		if !strings.HasPrefix(name, "test-cases/") || !strings.HasSuffix(name, "/case.json") {
-			continue
-		}
-		carried = append(carried, name)
-		var portable map[string]any
-		if err := json.Unmarshal(content, &portable); err != nil {
-			t.Fatal(err)
-		}
-		if portable["origin"] != "curated" {
-			t.Errorf("%s origin = %v, want curated", name, portable["origin"])
-		}
-	}
-	if len(carried) != 1 {
-		t.Fatalf("%d portable test cases in the fork's package, want exactly the curated one: %v",
-			len(carried), keysOf(entries))
-	}
+	assertExactlyOneCuratedPortableCase(t, zipEntries(t, a, hash))
 
 	var preview map[string]any
 	if code := getJSON(t, forker.Client,
@@ -1047,6 +1049,28 @@ func TestAForksCuratedTestCasesTravelAndItsOwnStillDoNot(t *testing.T) {
 	}
 	if row["reason"] != "not_curated" {
 		t.Errorf("exclusion reason = %v, want not_curated", row["reason"])
+	}
+}
+
+func assertExactlyOneCuratedPortableCase(t *testing.T, entries map[string][]byte) {
+	t.Helper()
+	var carried []string
+	for name, content := range entries {
+		if !strings.HasPrefix(name, "test-cases/") || !strings.HasSuffix(name, "/case.json") {
+			continue
+		}
+		carried = append(carried, name)
+		var portable map[string]any
+		if err := json.Unmarshal(content, &portable); err != nil {
+			t.Fatal(err)
+		}
+		if portable["origin"] != "curated" {
+			t.Errorf("%s origin = %v, want curated", name, portable["origin"])
+		}
+	}
+	if len(carried) != 1 {
+		t.Fatalf("%d portable test cases in the fork's package, want exactly the curated one: %v",
+			len(carried), keysOf(entries))
 	}
 }
 
@@ -1087,17 +1111,7 @@ func TestTheLicenceAuthorAndProvenanceFilesTravelInEveryTargetsPackage(t *testin
 				t.Fatalf("POST packaging: got %d, body %v", code, body)
 			}
 			entries := zipEntries(t, a, body["content_hash"].(string))
-
-			for _, name := range []string{"LICENSE", "LICENSE.repo", "LICENSE.repo.provenance.json"} {
-				got, ok := entries[entryPath(t, target, "attributed-skill", name)]
-				if !ok {
-					t.Errorf("%s is not in the package; the licence did not travel with the bytes it licenses", name)
-					continue
-				}
-				if string(got) != source[name] {
-					t.Errorf("%s was rewritten:\ngot  %q\nwant %q", name, got, source[name])
-				}
-			}
+			assertLicenceFilesCopiedVerbatim(t, entries, target, source)
 
 			if !bytes.Contains(entries[entryPath(t, target, "attributed-skill", "LICENSE")], []byte("A. Author <author@example.test>")) {
 				t.Error("the copyright holder did not survive the copy")
@@ -1113,6 +1127,20 @@ func TestTheLicenceAuthorAndProvenanceFilesTravelInEveryTargetsPackage(t *testin
 				t.Errorf("licence = %v; the package states MIT in a root LICENSE file", lic)
 			}
 		})
+	}
+}
+
+func assertLicenceFilesCopiedVerbatim(t *testing.T, entries map[string][]byte, target string, source map[string]string) {
+	t.Helper()
+	for _, name := range []string{"LICENSE", "LICENSE.repo", "LICENSE.repo.provenance.json"} {
+		got, ok := entries[entryPath(t, target, "attributed-skill", name)]
+		if !ok {
+			t.Errorf("%s is not in the package; the licence did not travel with the bytes it licenses", name)
+			continue
+		}
+		if string(got) != source[name] {
+			t.Errorf("%s was rewritten:\ngot  %q\nwant %q", name, got, source[name])
+		}
 	}
 }
 
@@ -1306,39 +1334,15 @@ func TestTheManifestKeepsTheBoundariesItsContractDraws(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, required := range []string{
-		"schema_version", "packaged_at", "packager_version", "profile_id", "profile_version",
-		"source", "license", "validation", "compatibility",
-		"included_test_cases", "excluded_test_cases", "manifest_hash",
-	} {
-		if _, ok := m[required]; !ok {
-			t.Errorf("manifest has no %q", required)
-		}
-	}
+	assertManifestCarriesEveryRequiredField(t, m)
 
 	validation := m["validation"].(map[string]any)
 	if validation["blocked"] != false || len(validation["errors"].([]any)) != 0 {
 		t.Errorf("validation = %v", validation)
 	}
 
-	lic := m["license"].(map[string]any)
-	if (lic["expression"] == nil) != (lic["source_tier"] == nil) {
-		t.Errorf("licence expression and tier came apart: %v", lic)
-	}
-	if lic["expression"] == "NOASSERTION" || lic["expression"] == "NONE" {
-		t.Errorf("licence expression carries a status word: %v", lic["expression"])
-	}
-
-	compat := m["compatibility"].(map[string]any)
-	if compat["capability"] != "unverified" || compat["behaviour"] != "unverified" {
-		if _, ok := compat["runtime_image"]; !ok {
-			t.Errorf("a measured axis with no runtime image: %v", compat)
-		}
-	}
-	if _, ok := compat["runtime_image"]; ok &&
-		compat["capability"] == "unverified" && compat["behaviour"] == "unverified" {
-		t.Errorf("an unmeasured version names a runtime image: %v", compat)
-	}
+	assertManifestLicenceKeepsExpressionAndTierTogether(t, m["license"].(map[string]any))
+	assertRuntimeImageNamedOnlyForAMeasuredAxis(t, m["compatibility"].(map[string]any))
 
 	hashValue, _ := m["manifest_hash"].(string)
 	if len(hashValue) != 64 {
@@ -1361,27 +1365,49 @@ func TestTheManifestKeepsTheBoundariesItsContractDraws(t *testing.T) {
 	}
 }
 
+func assertManifestCarriesEveryRequiredField(t *testing.T, m map[string]any) {
+	t.Helper()
+	for _, required := range []string{
+		"schema_version", "packaged_at", "packager_version", "profile_id", "profile_version",
+		"source", "license", "validation", "compatibility",
+		"included_test_cases", "excluded_test_cases", "manifest_hash",
+	} {
+		if _, ok := m[required]; !ok {
+			t.Errorf("manifest has no %q", required)
+		}
+	}
+}
+
+func assertManifestLicenceKeepsExpressionAndTierTogether(t *testing.T, lic map[string]any) {
+	t.Helper()
+	if (lic["expression"] == nil) != (lic["source_tier"] == nil) {
+		t.Errorf("licence expression and tier came apart: %v", lic)
+	}
+	if lic["expression"] == "NOASSERTION" || lic["expression"] == "NONE" {
+		t.Errorf("licence expression carries a status word: %v", lic["expression"])
+	}
+}
+
+func assertRuntimeImageNamedOnlyForAMeasuredAxis(t *testing.T, compat map[string]any) {
+	t.Helper()
+	if compat["capability"] != "unverified" || compat["behaviour"] != "unverified" {
+		if _, ok := compat["runtime_image"]; !ok {
+			t.Errorf("a measured axis with no runtime image: %v", compat)
+		}
+	}
+	if _, ok := compat["runtime_image"]; ok &&
+		compat["capability"] == "unverified" && compat["behaviour"] == "unverified" {
+		t.Errorf("an unmeasured version names a runtime image: %v", compat)
+	}
+}
+
 func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "browser")
 
 	var out struct {
-		Targets []struct {
-			ID                 string   `json:"id"`
-			Kind               string   `json:"kind"`
-			Version            string   `json:"version"`
-			SupportStatus      string   `json:"support_status"`
-			InstallLocation    string   `json:"install_location"`
-			VerificationPrompt string   `json:"verification_prompt"`
-			VerificationSteps  []string `json:"verification_steps"`
-			EnvVars            []struct {
-				Name     string `json:"name"`
-				Required bool   `json:"required"`
-				Example  string `json:"example"`
-			} `json:"env_vars"`
-			Notes []string `json:"notes"`
-		} `json:"targets"`
+		Targets []packagingTargetView `json:"targets"`
 	}
 	if code := getJSON(t, c.Client, c.base+"/packaging/targets", &out); code != http.StatusOK {
 		t.Fatalf("GET /packaging/targets: got %d", code)
@@ -1390,27 +1416,8 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 		t.Fatalf("got %d targets, want the standard package plus two profiles (PDM-008)", len(out.Targets))
 	}
 
-	if out.Targets[0].ID != "standard" || out.Targets[0].Kind != "standard_package" {
-		t.Errorf("first target = %+v", out.Targets[0])
-	}
-	if out.Targets[0].InstallLocation != "" {
-		t.Errorf("the standard package claims an install location: %q", out.Targets[0].InstallLocation)
-	}
-	for _, target := range out.Targets[1:] {
-		if target.Kind != "profile" || target.InstallLocation == "" {
-			t.Errorf("profile %s = %+v", target.ID, target)
-		}
-	}
-
-	for _, target := range out.Targets {
-		if target.VerificationPrompt == "" && len(target.VerificationSteps) == 0 {
-			t.Errorf("target %s offers no way to check the install worked", target.ID)
-		}
-	}
-	if out.Targets[0].VerificationPrompt != "" {
-		t.Errorf("the standard package carries a verification prompt, but it names no agent to run it against: %q",
-			out.Targets[0].VerificationPrompt)
-	}
+	assertStandardTargetThenInstallableProfiles(t, out.Targets)
+	assertEveryTargetOffersAnInstallCheck(t, out.Targets)
 
 	if len(out.Targets[0].EnvVars) != 0 {
 		t.Errorf("the standard package names an environment variable: %+v", out.Targets[0].EnvVars)
@@ -1426,6 +1433,50 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 	a.packaging.Profiles = packaging.Profiles{}
 	if code := getJSON(t, c.Client, c.base+"/packaging/targets", &out); code != http.StatusServiceUnavailable {
 		t.Errorf("with no profiles configured, GET /packaging/targets answered %d", code)
+	}
+}
+
+type packagingTargetView struct {
+	ID                 string   `json:"id"`
+	Kind               string   `json:"kind"`
+	Version            string   `json:"version"`
+	SupportStatus      string   `json:"support_status"`
+	InstallLocation    string   `json:"install_location"`
+	VerificationPrompt string   `json:"verification_prompt"`
+	VerificationSteps  []string `json:"verification_steps"`
+	EnvVars            []struct {
+		Name     string `json:"name"`
+		Required bool   `json:"required"`
+		Example  string `json:"example"`
+	} `json:"env_vars"`
+	Notes []string `json:"notes"`
+}
+
+func assertStandardTargetThenInstallableProfiles(t *testing.T, targets []packagingTargetView) {
+	t.Helper()
+	if targets[0].ID != "standard" || targets[0].Kind != "standard_package" {
+		t.Errorf("first target = %+v", targets[0])
+	}
+	if targets[0].InstallLocation != "" {
+		t.Errorf("the standard package claims an install location: %q", targets[0].InstallLocation)
+	}
+	for _, target := range targets[1:] {
+		if target.Kind != "profile" || target.InstallLocation == "" {
+			t.Errorf("profile %s = %+v", target.ID, target)
+		}
+	}
+}
+
+func assertEveryTargetOffersAnInstallCheck(t *testing.T, targets []packagingTargetView) {
+	t.Helper()
+	for _, target := range targets {
+		if target.VerificationPrompt == "" && len(target.VerificationSteps) == 0 {
+			t.Errorf("target %s offers no way to check the install worked", target.ID)
+		}
+	}
+	if targets[0].VerificationPrompt != "" {
+		t.Errorf("the standard package carries a verification prompt, but it names no agent to run it against: %q",
+			targets[0].VerificationPrompt)
 	}
 }
 

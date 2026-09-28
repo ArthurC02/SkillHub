@@ -380,97 +380,102 @@ func newAPIExposingGenerate(t *testing.T, pool *pgxpool.Pool, llmBaseURL ...stri
 func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 	pool := requireDB(t)
 
-	t.Run("generating onto an uploaded skill", func(t *testing.T) {
-		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
-		a := newAPIWithLLM(t, pool, stub.URL)
-		c := a.login(t, "gen-collide-a")
-		importFiles(t, a, pool, c, map[string]string{
-			"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
-		})
+	t.Run("generating onto an uploaded skill", func(t *testing.T) { generatingOntoAnUploadedSkillCollides(t, pool) })
+	t.Run("uploading onto a generated skill", func(t *testing.T) { uploadingOntoAGeneratedSkillCollides(t, pool) })
+	t.Run("generating onto a generated skill", func(t *testing.T) { generatingOntoAGeneratedSkillCollides(t, pool) })
+	t.Run("saving a version onto a generated skill", func(t *testing.T) { savingAVersionOntoAGeneratedSkillCollides(t, pool) })
+}
 
-		_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
-		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
-			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
-		}
+func generatingOntoAnUploadedSkillCollides(t *testing.T, pool *pgxpool.Pool) {
+	stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-collide-a")
+	importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
 	})
 
-	t.Run("uploading onto a generated skill", func(t *testing.T) {
-		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
-		a := newAPIWithLLM(t, pool, stub.URL)
-		c := a.login(t, "gen-collide-b")
-		if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
-			t.Fatalf("GenerateSkill: %v", err)
-		}
+	_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
+	if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+		t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
+	}
+}
 
-		ws := workspaceOf(t, pool, c)
-		_, err := a.versions.UploadZip(context.Background(), ws, zipOf(t, map[string]string{
-			"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
-		}))
-		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
-			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
-		}
-	})
+func uploadingOntoAGeneratedSkillCollides(t *testing.T, pool *pgxpool.Pool) {
+	stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-collide-b")
+	if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
+		t.Fatalf("GenerateSkill: %v", err)
+	}
 
-	t.Run("generating onto a generated skill", func(t *testing.T) {
-		same := generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n")
-		stub := newGenerateStub(t, same, same)
-		a := newAPIWithLLM(t, pool, stub.URL)
-		c := a.login(t, "gen-collide-c")
-		ws := workspaceOf(t, pool, c)
-		if _, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
-			t.Fatalf("first GenerateSkill: %v", err)
-		}
-		_, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
-		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
-			t.Fatalf("second generation of the same name: err = %v, want ErrGeneratedNameCollision", err)
-		}
+	ws := workspaceOf(t, pool, c)
+	_, err := a.versions.UploadZip(context.Background(), ws, zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
+	}))
+	if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+		t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
+	}
+}
 
-		var used int64
-		if err := pool.QueryRow(context.Background(),
-			`SELECT count(*) FROM skill_sources WHERE workspace_id = $1 AND source_type = 'generated'`, ws.ID,
-		).Scan(&used); err != nil {
-			t.Fatal(err)
-		}
-		if used != 1 {
-			t.Errorf("skill_sources counts %d generated rows, want 1", used)
-		}
-	})
+func generatingOntoAGeneratedSkillCollides(t *testing.T, pool *pgxpool.Pool) {
+	same := generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n")
+	stub := newGenerateStub(t, same, same)
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-collide-c")
+	ws := workspaceOf(t, pool, c)
+	if _, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"}); err != nil {
+		t.Fatalf("first GenerateSkill: %v", err)
+	}
+	_, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
+	if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+		t.Fatalf("second generation of the same name: err = %v, want ErrGeneratedNameCollision", err)
+	}
 
-	t.Run("saving a version onto a generated skill", func(t *testing.T) {
-		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
-		a := newAPIWithLLM(t, pool, stub.URL)
-		c := a.login(t, "gen-collide-d")
-		ws := workspaceOf(t, pool, c)
-		res, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
-		if err != nil {
-			t.Fatalf("GenerateSkill: %v", err)
-		}
+	var used int64
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skill_sources WHERE workspace_id = $1 AND source_type = 'generated'`, ws.ID,
+	).Scan(&used); err != nil {
+		t.Fatal(err)
+	}
+	if used != 1 {
+		t.Errorf("skill_sources counts %d generated rows, want 1", used)
+	}
+}
 
-		_, err = a.versions.SaveVersion(context.Background(), ws, res.Skill.ID, zipOf(t, map[string]string{
-			"SKILL.md": "---\nname: pdf-extract\ndescription: My own second version.\n---\n\nI wrote this.\n",
-		}))
-		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
-			t.Fatalf("SaveVersion onto a generated skill: err = %v, want ErrGeneratedNameCollision", err)
-		}
+func savingAVersionOntoAGeneratedSkillCollides(t *testing.T, pool *pgxpool.Pool) {
+	stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+	a := newAPIWithLLM(t, pool, stub.URL)
+	c := a.login(t, "gen-collide-d")
+	ws := workspaceOf(t, pool, c)
+	res, err := a.versions.GenerateSkill(context.Background(), ws, ingest.GenerateInput{TaskDescription: "抽出 PDF 文字。"})
+	if err != nil {
+		t.Fatalf("GenerateSkill: %v", err)
+	}
 
-		var sources, versions int64
-		if err := pool.QueryRow(context.Background(),
-			`SELECT count(*) FROM skill_sources WHERE workspace_id = $1`, ws.ID,
-		).Scan(&sources); err != nil {
-			t.Fatal(err)
-		}
-		if sources != 1 {
-			t.Errorf("skill_sources counts %d rows in the workspace, want 1 — the refused upload wrote one", sources)
-		}
-		if err := pool.QueryRow(context.Background(),
-			`SELECT count(*) FROM skill_versions WHERE skill_id = $1`, res.Skill.ID,
-		).Scan(&versions); err != nil {
-			t.Fatal(err)
-		}
-		if versions != 1 {
-			t.Errorf("the generated skill has %d versions, want 1", versions)
-		}
-	})
+	_, err = a.versions.SaveVersion(context.Background(), ws, res.Skill.ID, zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: pdf-extract\ndescription: My own second version.\n---\n\nI wrote this.\n",
+	}))
+	if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+		t.Fatalf("SaveVersion onto a generated skill: err = %v, want ErrGeneratedNameCollision", err)
+	}
+
+	var sources, versions int64
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skill_sources WHERE workspace_id = $1`, ws.ID,
+	).Scan(&sources); err != nil {
+		t.Fatal(err)
+	}
+	if sources != 1 {
+		t.Errorf("skill_sources counts %d rows in the workspace, want 1 — the refused upload wrote one", sources)
+	}
+	if err := pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM skill_versions WHERE skill_id = $1`, res.Skill.ID,
+	).Scan(&versions); err != nil {
+		t.Fatal(err)
+	}
+	if versions != 1 {
+		t.Errorf("the generated skill has %d versions, want 1", versions)
+	}
 }
 
 func TestAnUncountableAllowanceIsA503NotAnExhaustedOne(t *testing.T) {
@@ -747,6 +752,29 @@ func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
 	}
 
 	versionID, _ := resp["version_id"].(string)
+	assertStoredDiagramDigestWithoutItsBytes(t, pool, versionID, diagram)
+	sum := sha256.Sum256(diagram)
+
+	skillID, _ := resp["skill_id"].(string)
+	detailInputs := detailGenerationInputs(t, c, skillID)
+	var gotViaAPI struct {
+		Diagram struct {
+			MediaType string `json:"media_type"`
+			SHA256    string `json:"sha256"`
+			Bytes     int    `json:"bytes"`
+		} `json:"diagram"`
+	}
+	if err := json.Unmarshal(detailInputs, &gotViaAPI); err != nil {
+		t.Fatalf("the detail response's generation_inputs did not decode: %v", err)
+	}
+	if gotViaAPI.Diagram.MediaType != "image/png" || gotViaAPI.Diagram.Bytes != len(diagram) ||
+		gotViaAPI.Diagram.SHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("detail response generation_inputs.diagram = %+v, want the sent image's digest", gotViaAPI.Diagram)
+	}
+}
+
+func assertStoredDiagramDigestWithoutItsBytes(t *testing.T, pool *pgxpool.Pool, versionID string, diagram []byte) {
+	t.Helper()
 	var taskDescription string
 	var generationInputs []byte
 	if err := pool.QueryRow(context.Background(), `
@@ -777,8 +805,10 @@ func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
 	if strings.Contains(string(generationInputs), base64.StdEncoding.EncodeToString(diagram)) {
 		t.Error("the image bytes themselves leaked into generation_inputs")
 	}
+}
 
-	skillID, _ := resp["skill_id"].(string)
+func detailGenerationInputs(t *testing.T, c *client, skillID string) json.RawMessage {
+	t.Helper()
 	var viaAPI struct {
 		Source *struct {
 			GenerationInputs json.RawMessage `json:"generation_inputs"`
@@ -790,20 +820,7 @@ func TestADiagramOnlyGenerationIsCreated(t *testing.T) {
 	if viaAPI.Source == nil || len(viaAPI.Source.GenerationInputs) == 0 {
 		t.Fatalf("source.generation_inputs is absent from the detail response: %+v", viaAPI)
 	}
-	var gotViaAPI struct {
-		Diagram struct {
-			MediaType string `json:"media_type"`
-			SHA256    string `json:"sha256"`
-			Bytes     int    `json:"bytes"`
-		} `json:"diagram"`
-	}
-	if err := json.Unmarshal(viaAPI.Source.GenerationInputs, &gotViaAPI); err != nil {
-		t.Fatalf("the detail response's generation_inputs did not decode: %v", err)
-	}
-	if gotViaAPI.Diagram.MediaType != "image/png" || gotViaAPI.Diagram.Bytes != len(diagram) ||
-		gotViaAPI.Diagram.SHA256 != hex.EncodeToString(sum[:]) {
-		t.Errorf("detail response generation_inputs.diagram = %+v, want the sent image's digest", gotViaAPI.Diagram)
-	}
+	return viaAPI.Source.GenerationInputs
 }
 
 func TestAReferenceFromTheCallersOwnWorkspaceIsUsed(t *testing.T) {
@@ -846,17 +863,7 @@ func TestAReferenceFromTheCallersOwnWorkspaceIsUsed(t *testing.T) {
 	}
 
 	skillID, _ := resp["skill_id"].(string)
-	var viaAPI struct {
-		Source *struct {
-			GenerationInputs json.RawMessage `json:"generation_inputs"`
-		} `json:"source"`
-	}
-	if code := getJSON(t, c.Client, c.base+"/api/skills/"+skillID, &viaAPI); code != http.StatusOK {
-		t.Fatalf("GET /api/skills/%s: %d", skillID, code)
-	}
-	if viaAPI.Source == nil || len(viaAPI.Source.GenerationInputs) == 0 {
-		t.Fatalf("source.generation_inputs is absent from the detail response: %+v", viaAPI)
-	}
+	detailInputs := detailGenerationInputs(t, c, skillID)
 	var gotViaAPI struct {
 		References []struct {
 			SkillID   string `json:"skill_id"`
@@ -864,7 +871,7 @@ func TestAReferenceFromTheCallersOwnWorkspaceIsUsed(t *testing.T) {
 			Name      string `json:"name"`
 		} `json:"references"`
 	}
-	if err := json.Unmarshal(viaAPI.Source.GenerationInputs, &gotViaAPI); err != nil {
+	if err := json.Unmarshal(detailInputs, &gotViaAPI); err != nil {
 		t.Fatalf("the detail response's generation_inputs did not decode: %v", err)
 	}
 	if len(gotViaAPI.References) != 1 || gotViaAPI.References[0].SkillID != refSkillID ||

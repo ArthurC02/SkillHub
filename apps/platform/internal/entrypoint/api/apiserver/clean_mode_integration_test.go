@@ -96,6 +96,24 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 		t.Fatalf("seed outbox event: %v", err)
 	}
 
+	enqueued := evaluationJobsOnceEnqueuedWhileHealthy(t, seed, srv, runID)
+	if enqueued == 0 {
+		var published, dead int
+		_ = seed.QueryRow(ctx, `
+			SELECT count(*) FILTER (WHERE published_at IS NOT NULL),
+			       count(*) FILTER (WHERE dead_lettered_at IS NOT NULL)
+			FROM outbox_events WHERE aggregate_id = $1::uuid`, runID).Scan(&published, &dead)
+		t.Fatalf(
+			"the run's evaluation was never enqueued within 10s (outbox row published=%d dead_lettered=%d). "+
+				"A finished run in clean mode gets no verdict: the publisher holds the pool's only "+
+				"connection across delivery, and the consumer's first act is to ask the same pool for one",
+			published, dead)
+	}
+}
+
+func evaluationJobsOnceEnqueuedWhileHealthy(t *testing.T, seed *pgxpool.Pool, srv *httptest.Server, runID string) int {
+	t.Helper()
+	ctx := context.Background()
 	deadline := time.Now().Add(10 * time.Second)
 	var enqueued int
 	for time.Now().Before(deadline) {
@@ -118,18 +136,7 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	if enqueued == 0 {
-		var published, dead int
-		_ = seed.QueryRow(ctx, `
-			SELECT count(*) FILTER (WHERE published_at IS NOT NULL),
-			       count(*) FILTER (WHERE dead_lettered_at IS NOT NULL)
-			FROM outbox_events WHERE aggregate_id = $1::uuid`, runID).Scan(&published, &dead)
-		t.Fatalf(
-			"the run's evaluation was never enqueued within 10s (outbox row published=%d dead_lettered=%d). "+
-				"A finished run in clean mode gets no verdict: the publisher holds the pool's only "+
-				"connection across delivery, and the consumer's first act is to ask the same pool for one",
-			published, dead)
-	}
+	return enqueued
 }
 
 func TestCleanModeCanStartARunOnOneConnection(t *testing.T) {

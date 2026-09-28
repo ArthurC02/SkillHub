@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
@@ -27,36 +28,16 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	private := newFixture(t, a, pool, uniqueWorklistLabel("hybrid-private"))
 	markCatalog(t, pool, near.workspaceID)
 	markCatalog(t, pool, far.workspaceID)
-	unit := func(axis int) pgvector.Vector {
-		v := make([]float32, 1536)
-		v[axis] = 1
-		return pgvector.NewVector(v)
-	}
-	q := gen.New(pool)
-	for _, doc := range []struct {
-		f      fixture
-		name   string
-		axis   int
-		bigram string
-	}{
+	seedHybridDocuments(t, pool, []hybridDocument{
 		{near, "excel-deduplicate", 0, catalog.LexicalIndexText("excel-deduplicate", "remove duplicate rows 去除重複列")},
 		{far, "pii-flag", 1, catalog.LexicalIndexText("pii-flag", "flag personal data 標記個資")},
 		{private, "pii-flag-private", 2, catalog.LexicalIndexText("pii-flag", "flag personal data 標記個資")},
-	} {
-		emb := unit(doc.axis)
-		if err := q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
-			SkillID: mustUUID(t, doc.f.skillID), WorkspaceID: mustUUID(t, doc.f.workspaceID),
-			Name: doc.name, Summary: doc.name, EnrichedSummary: doc.name, TaskExamples: "[]", Tags: []byte(`[]`),
-			Limitations: "[]", Scan: []byte(`{}`), Embedding: &emb, EnrichmentStatus: "enriched", BigramText: doc.bigram, Listable: true,
-		}); err != nil {
-			t.Fatal(err)
-		}
-	}
+	})
 
 	embed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cost := 0.00001
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unit(0).Slice()}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
+		_ = json.NewEncoder(w).Encode(llmclient.EmbedResponse{Embeddings: [][]float32{unitVector(0)}, Model: "stub", Dimensions: 1536, Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
 	}))
 	t.Cleanup(embed.Close)
 	svc := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(&llmclient.Client{BaseURL: embed.URL}), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
@@ -82,10 +63,37 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		t.Fatalf("duplicate cut-off: %v err=%v", ids, err)
 	}
 
+	assertLexicalOnlyAnswerIsDegradedAndFree(t, pool, far.skillID)
+}
+
+type hybridDocument struct {
+	f      fixture
+	name   string
+	axis   int
+	bigram string
+}
+
+func seedHybridDocuments(t *testing.T, pool *pgxpool.Pool, docs []hybridDocument) {
+	t.Helper()
+	q := gen.New(pool)
+	for _, doc := range docs {
+		emb := pgvector.NewVector(unitVector(doc.axis))
+		if err := q.UpsertSearchDocumentEnriched(context.Background(), gen.UpsertSearchDocumentEnrichedParams{
+			SkillID: mustUUID(t, doc.f.skillID), WorkspaceID: mustUUID(t, doc.f.workspaceID),
+			Name: doc.name, Summary: doc.name, EnrichedSummary: doc.name, TaskExamples: "[]", Tags: []byte(`[]`),
+			Limitations: "[]", Scan: []byte(`{}`), Embedding: &emb, EnrichmentStatus: "enriched", BigramText: doc.bigram, Listable: true,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func assertLexicalOnlyAnswerIsDegradedAndFree(t *testing.T, pool *pgxpool.Pool, farSkillID string) {
+	t.Helper()
 	lexOnly := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	knowledge, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
-	ids, cost, degraded = knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
-	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != far.skillID {
+	knowledge, err := lexOnly.CreationKnowledgeIDs(context.Background(), "pii-flag", catalog.CreationMaxDistance)
+	ids, cost, degraded := knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
+	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != farSkillID {
 		t.Fatalf("degraded answer: ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}
 }

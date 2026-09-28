@@ -14,6 +14,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func failSearchReferences(t *testing.T) func(context.Context, identity.Workspace, string) ([]creation.Reference, error) {
@@ -231,9 +232,7 @@ func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	job := rec.calls[0]
-	if _, err := pool.Exec(context.Background(), `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url); err != nil {
-		t.Fatal(err)
-	}
+	mustExec(t, pool, `UPDATE creation_sessions SET snapshot = jsonb_set(snapshot, '{snapshot,pending_fetch_url}', to_jsonb($2::text)) WHERE id=$1`, id, url)
 	if err := svc.Step(context.Background(), job, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -250,15 +249,18 @@ func TestStepFetchesThePendingURLBeforeCallingTheModel(t *testing.T) {
 	if len(v.Snapshot.Fetches) != 1 || v.Snapshot.Fetches[0].URL != url || v.Snapshot.Fetches[0].Status != "ok" {
 		t.Fatalf("fetches = %+v, want one ok record for %s", v.Snapshot.Fetches, url)
 	}
-	found := false
-	for _, m := range captured.Messages {
-		if m.Role == "tool" && strings.Contains(m.Content, url) && strings.Contains(m.Content, "已讀取") {
-			found = true
-		}
-	}
-	if !found {
+	if !hasToolMessageReading(captured.Messages, url) {
 		t.Fatalf("request messages = %+v, want a tool message built from the fetch record", captured.Messages)
 	}
+}
+
+func hasToolMessageReading(messages []creation.Message, url string) bool {
+	for _, m := range messages {
+		if m.Role == "tool" && strings.Contains(m.Content, url) && strings.Contains(m.Content, "已讀取") {
+			return true
+		}
+	}
+	return false
 }
 
 func TestStepCreditReserveFailureSkipsTheModelCallAndFails(t *testing.T) {
@@ -419,9 +421,24 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	if after.Revision != before.Revision+1 {
 		t.Fatalf("session revision moved to %d, want unchanged from step's own advance (%d)", after.Revision, before.Revision+1)
 	}
+	assertReceiptFinishedWithCost(t, pool, job.ReceiptID, cost)
+	if len(settles) != 1 {
+		t.Fatalf("CreditSettle calls = %d, want 1", len(settles))
+	}
+	if settles[0].costUSD == nil || *settles[0].costUSD != cost {
+		t.Fatalf("settled cost = %v, want %v", settles[0].costUSD, cost)
+	}
+	wantReserved := creationLimits().MaxCallCostUSD
+	if settles[0].reservedUSD != wantReserved {
+		t.Fatalf("reserved = %v, want %v (MaxCallCostUSD)", settles[0].reservedUSD, wantReserved)
+	}
+}
+
+func assertReceiptFinishedWithCost(t *testing.T, pool *pgxpool.Pool, receiptID pgtype.UUID, cost float64) {
+	t.Helper()
 	var status string
 	var usage []byte
-	if err := pool.QueryRow(context.Background(), "SELECT status, usage FROM creation_receipts WHERE id=$1", job.ReceiptID).Scan(&status, &usage); err != nil {
+	if err := pool.QueryRow(context.Background(), "SELECT status, usage FROM creation_receipts WHERE id=$1", receiptID).Scan(&status, &usage); err != nil {
 		t.Fatal(err)
 	}
 	if status != "finished" {
@@ -433,16 +450,6 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	}
 	if storedUsage.CostUSD == nil || *storedUsage.CostUSD != cost {
 		t.Fatalf("stored usage = %+v, want cost %v", storedUsage, cost)
-	}
-	if len(settles) != 1 {
-		t.Fatalf("CreditSettle calls = %d, want 1", len(settles))
-	}
-	if settles[0].costUSD == nil || *settles[0].costUSD != cost {
-		t.Fatalf("settled cost = %v, want %v", settles[0].costUSD, cost)
-	}
-	wantReserved := creationLimits().MaxCallCostUSD
-	if settles[0].reservedUSD != wantReserved {
-		t.Fatalf("reserved = %v, want %v (MaxCallCostUSD)", settles[0].reservedUSD, wantReserved)
 	}
 }
 

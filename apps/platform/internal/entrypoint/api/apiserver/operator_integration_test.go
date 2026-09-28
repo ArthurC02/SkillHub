@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func operatorCall(t *testing.T, c *client, method, path, body string) (int, map[string]any) {
@@ -117,15 +119,7 @@ func TestOperatorSetsAndLiftsTheLicensingHold(t *testing.T) {
 		t.Fatalf("precondition: /files answered %d before the hold, want 200", code)
 	}
 
-	for _, body := range []string{
-		`{"reason":"license-review"}`,
-		`{"reason":"","note":"n"}`,
-		`{"reason":"licence-revue","note":"n"}`,
-	} {
-		if code, _ := operatorCall(t, operator, http.MethodPut, path, body); code != http.StatusBadRequest {
-			t.Errorf("PUT %s: got %d, want 400", body, code)
-		}
-	}
+	assertMalformedHoldsRefused(t, operator, path)
 
 	const note = "anthropics/skills source-available terms under review with legal"
 	code, out := operatorCall(t, operator, http.MethodPut, path,
@@ -141,36 +135,9 @@ func TestOperatorSetsAndLiftsTheLicensingHold(t *testing.T) {
 		t.Errorf("previous_reason = %v, want null for a skill that was not held", out["previous_reason"])
 	}
 
-	if code := anon.status(t, http.MethodGet, "/api/skills/"+held+"/files"); code != http.StatusForbidden {
-		t.Fatalf("/files after the hold: got %d, want 403", code)
-	}
-	var detail map[string]any
-	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+held, &detail); code != http.StatusOK {
-		t.Fatalf("detail after the hold: got %d, want 200 — a hold is not a takedown", code)
-	}
-	if d, _ := detail["access_restriction"].(map[string]any); d == nil || d["reason"] != "license-review" {
-		t.Fatalf("detail did not disclose the hold: %v", detail["access_restriction"])
-	}
-
-	before, after, gotNote, n := auditNote(t, operator, "skill.access_restrict", held)
-	if n != 1 {
-		t.Fatalf("audit events for the hold: %d, want 1", n)
-	}
-	if before != nil || deref(after) != "license-review" {
-		t.Errorf("audit transition = %s -> %s, want <null> -> license-review", deref(before), deref(after))
-	}
-	if deref(gotNote) != note {
-		t.Errorf("audit note = %q, want the operator's stated reason", deref(gotNote))
-	}
-
-	member := a.login(t, "member-operator-scope")
-	private := seedSkill(t, pool, member.workspaceID, "member-private-thing")
-	if code := getJSON(t, operator.Client, a.URL+"/api/skills/"+private, nil); code != http.StatusNotFound {
-		t.Errorf("operator read of a private skill: got %d, want 404", code)
-	}
-	if ids := operator.skillIDs(t, "/skills"); contains(ids, private) || contains(ids, held) {
-		t.Error("operator's own skill list carries somebody else's content")
-	}
+	assertHoldClosesFilesButKeepsTheDetail(t, a, anon, held)
+	assertHoldAuditedWithItsNote(t, operator, held, note)
+	assertOperatorSeesNoPrivateContent(t, a, pool, operator, held)
 
 	code, out = operatorCall(t, operator, http.MethodPut, path,
 		`{"reason":"license-review","note":"still open, re-recording"}`)
@@ -184,23 +151,7 @@ func TestOperatorSetsAndLiftsTheLicensingHold(t *testing.T) {
 		t.Errorf("audit events after the repeat: %d, want 2 — a repeated action is still an action", n)
 	}
 
-	if code, out := operatorCall(t, operator, http.MethodDelete, path,
-		`{"note":"legal cleared it"}`); code != http.StatusNoContent {
-		t.Fatalf("operator DELETE: got %d (%v), want 204", code, out)
-	}
-	if code := anon.status(t, http.MethodGet, "/api/skills/"+held+"/files"); code != http.StatusOK {
-		t.Fatalf("/files after lifting the hold: got %d, want 200", code)
-	}
-
-	var lifted map[string]any
-	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+held, &lifted); code != http.StatusOK ||
-		lifted["access_restriction"] != nil {
-		t.Fatalf("detail still reports a lifted hold: %v", lifted["access_restriction"])
-	}
-	before, after, _, n = auditNote(t, operator, "skill.access_unrestrict", held)
-	if n != 1 || deref(before) != "license-review" || after != nil {
-		t.Errorf("lift audit = %s -> %s (%d events), want license-review -> <null>, 1", deref(before), deref(after), n)
-	}
+	liftHoldAndAssertItReopens(t, a, anon, operator, held)
 
 	if code, _ := operatorCall(t, operator, http.MethodDelete, path, `{"note":"double check"}`); code != http.StatusNoContent {
 		t.Errorf("repeat DELETE: got %d, want 204", code)
@@ -216,6 +167,81 @@ func TestOperatorSetsAndLiftsTheLicensingHold(t *testing.T) {
 	if code, _ := operatorCall(t, operator, http.MethodDelete,
 		"/admin/skills/00000000-0000-0000-0000-000000000001/restriction", `{"note":"n"}`); code != http.StatusNotFound {
 		t.Errorf("DELETE on an unknown skill: got %d, want 404", code)
+	}
+}
+
+func assertMalformedHoldsRefused(t *testing.T, operator *client, path string) {
+	t.Helper()
+	for _, body := range []string{
+		`{"reason":"license-review"}`,
+		`{"reason":"","note":"n"}`,
+		`{"reason":"licence-revue","note":"n"}`,
+	} {
+		if code, _ := operatorCall(t, operator, http.MethodPut, path, body); code != http.StatusBadRequest {
+			t.Errorf("PUT %s: got %d, want 400", body, code)
+		}
+	}
+}
+
+func assertHoldClosesFilesButKeepsTheDetail(t *testing.T, a *api, anon *client, held string) {
+	t.Helper()
+	if code := anon.status(t, http.MethodGet, "/api/skills/"+held+"/files"); code != http.StatusForbidden {
+		t.Fatalf("/files after the hold: got %d, want 403", code)
+	}
+	var detail map[string]any
+	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+held, &detail); code != http.StatusOK {
+		t.Fatalf("detail after the hold: got %d, want 200 — a hold is not a takedown", code)
+	}
+	if d, _ := detail["access_restriction"].(map[string]any); d == nil || d["reason"] != "license-review" {
+		t.Fatalf("detail did not disclose the hold: %v", detail["access_restriction"])
+	}
+}
+
+func assertHoldAuditedWithItsNote(t *testing.T, operator *client, held, note string) {
+	t.Helper()
+	before, after, gotNote, n := auditNote(t, operator, "skill.access_restrict", held)
+	if n != 1 {
+		t.Fatalf("audit events for the hold: %d, want 1", n)
+	}
+	if before != nil || deref(after) != "license-review" {
+		t.Errorf("audit transition = %s -> %s, want <null> -> license-review", deref(before), deref(after))
+	}
+	if deref(gotNote) != note {
+		t.Errorf("audit note = %q, want the operator's stated reason", deref(gotNote))
+	}
+}
+
+func assertOperatorSeesNoPrivateContent(t *testing.T, a *api, pool *pgxpool.Pool, operator *client, held string) {
+	t.Helper()
+	member := a.login(t, "member-operator-scope")
+	private := seedSkill(t, pool, member.workspaceID, "member-private-thing")
+	if code := getJSON(t, operator.Client, a.URL+"/api/skills/"+private, nil); code != http.StatusNotFound {
+		t.Errorf("operator read of a private skill: got %d, want 404", code)
+	}
+	if ids := operator.skillIDs(t, "/skills"); contains(ids, private) || contains(ids, held) {
+		t.Error("operator's own skill list carries somebody else's content")
+	}
+}
+
+func liftHoldAndAssertItReopens(t *testing.T, a *api, anon, operator *client, held string) {
+	t.Helper()
+	path := "/admin/skills/" + held + "/restriction"
+	if code, out := operatorCall(t, operator, http.MethodDelete, path,
+		`{"note":"legal cleared it"}`); code != http.StatusNoContent {
+		t.Fatalf("operator DELETE: got %d (%v), want 204", code, out)
+	}
+	if code := anon.status(t, http.MethodGet, "/api/skills/"+held+"/files"); code != http.StatusOK {
+		t.Fatalf("/files after lifting the hold: got %d, want 200", code)
+	}
+
+	var lifted map[string]any
+	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+held, &lifted); code != http.StatusOK ||
+		lifted["access_restriction"] != nil {
+		t.Fatalf("detail still reports a lifted hold: %v", lifted["access_restriction"])
+	}
+	before, after, _, n := auditNote(t, operator, "skill.access_unrestrict", held)
+	if n != 1 || deref(before) != "license-review" || after != nil {
+		t.Errorf("lift audit = %s -> %s (%d events), want license-review -> <null>, 1", deref(before), deref(after), n)
 	}
 }
 
@@ -252,12 +278,7 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 
 	current := func() string {
 		t.Helper()
-		var v string
-		if err := pool.QueryRow(context.Background(),
-			"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID)).Scan(&v); err != nil {
-			t.Fatal(err)
-		}
-		return v
+		return redistributionOf(t, pool, skillID)
 	}
 	was := current()
 
@@ -287,6 +308,46 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	if got := current(); got != "blocked" {
 		t.Fatalf("redistribution = %q, want blocked", got)
 	}
+	assertBlockedVerdictAudited(t, operator, skillID, was)
+	assertUngroundedVerdictsLeaveItBlocked(t, pool, operator, skillID)
+
+	code, body = operatorCall(t, operator, http.MethodPut, path,
+		`{"value":"allowed","note":"MIT in the frontmatter, package carries no other licence",`+
+			`"license_expression":"mit","license_source":"MANIFEST"}`)
+	if code != http.StatusOK {
+		t.Fatalf("release with the recorded evidence: got %d, want 200 (%v)", code, body)
+	}
+	if got := current(); got != "allowed" {
+		t.Fatalf("redistribution = %q, want allowed", got)
+	}
+
+	var releasedOn *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT metadata->>'license_source' FROM audit_events
+		 WHERE action = 'skill.redistribution_set' AND resource_id = $1
+		   AND metadata->>'after' = 'allowed'`, mustUUID(t, skillID)).Scan(&releasedOn); err != nil {
+		t.Fatal(err)
+	}
+	if deref(releasedOn) != "manifest" {
+		t.Errorf("audit license_source = %q, want manifest", deref(releasedOn))
+	}
+
+	bare := importPackage(t, pool, a.packages, curator, "manxome-redist-unlicensed", false)
+	assertUnlicensedSkillCanBeBlockedButNotReleased(t, pool, operator, bare)
+}
+
+func redistributionOf(t *testing.T, pool *pgxpool.Pool, skillID string) string {
+	t.Helper()
+	var v string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID)).Scan(&v); err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+func assertBlockedVerdictAudited(t *testing.T, operator *client, skillID, was string) {
+	t.Helper()
 	before, after, note, count := auditNote(t, operator, "skill.redistribution_set", skillID)
 	if count != 1 {
 		t.Fatalf("audit events = %d, want 1", count)
@@ -297,8 +358,16 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	if !strings.Contains(deref(note), "source-available") {
 		t.Errorf("audit note = %q; the operator's reason has to survive into the trail", deref(note))
 	}
+}
 
-	code, body = operatorCall(t, operator, http.MethodPut, path,
+func assertUngroundedVerdictsLeaveItBlocked(t *testing.T, pool *pgxpool.Pool, operator *client, skillID string) {
+	t.Helper()
+	path := "/admin/skills/" + skillID + "/redistribution"
+	current := func() string {
+		t.Helper()
+		return redistributionOf(t, pool, skillID)
+	}
+	code, body := operatorCall(t, operator, http.MethodPut, path,
 		`{"value":"self_supplied","note":"trying it on"}`)
 	if code != http.StatusBadRequest {
 		t.Errorf("PUT self_supplied: got %d, want 400 (%v)", code, body)
@@ -323,7 +392,11 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	if got := current(); got != "blocked" {
 		t.Fatalf("an unexplained verdict changed the row anyway: %q", got)
 	}
+	assertReleasesWithoutMatchingEvidenceRefused(t, operator, path, current)
+}
 
+func assertReleasesWithoutMatchingEvidenceRefused(t *testing.T, operator *client, path string, current func() string) {
+	t.Helper()
 	for _, tc := range []struct {
 		name string
 		body string
@@ -336,7 +409,7 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 		{"the right expression from the wrong tier",
 			`{"value":"allowed","note":"reviewed","license_expression":"MIT","license_source":"repo-license-file"}`},
 	} {
-		code, body = operatorCall(t, operator, http.MethodPut, path, tc.body)
+		code, body := operatorCall(t, operator, http.MethodPut, path, tc.body)
 		if code != http.StatusBadRequest {
 			t.Errorf("release with %s: got %d, want 400 (%v)", tc.name, code, body)
 		}
@@ -344,40 +417,19 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 			t.Fatalf("a release refused for %s changed the row anyway: %q", tc.name, got)
 		}
 	}
+}
 
-	code, body = operatorCall(t, operator, http.MethodPut, path,
-		`{"value":"allowed","note":"MIT in the frontmatter, package carries no other licence",`+
-			`"license_expression":"mit","license_source":"MANIFEST"}`)
-	if code != http.StatusOK {
-		t.Fatalf("release with the recorded evidence: got %d, want 200 (%v)", code, body)
-	}
-	if got := current(); got != "allowed" {
-		t.Fatalf("redistribution = %q, want allowed", got)
-	}
-
-	var releasedOn *string
-	if err := pool.QueryRow(context.Background(),
-		`SELECT metadata->>'license_source' FROM audit_events
-		 WHERE action = 'skill.redistribution_set' AND resource_id = $1
-		   AND metadata->>'after' = 'allowed'`, mustUUID(t, skillID)).Scan(&releasedOn); err != nil {
-		t.Fatal(err)
-	}
-	if deref(releasedOn) != "manifest" {
-		t.Errorf("audit license_source = %q, want manifest", deref(releasedOn))
-	}
-
-	bare := importPackage(t, pool, a.packages, curator, "manxome-redist-unlicensed", false)
-	if _, err := pool.Exec(context.Background(),
+func assertUnlicensedSkillCanBeBlockedButNotReleased(t *testing.T, pool *pgxpool.Pool, operator *client, bare string) {
+	t.Helper()
+	mustExec(t, pool,
 		`INSERT INTO skill_versions
 		     (workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest)
 		 SELECT workspace_id, skill_id, source_id, version_number + 1, content_hash || '-unlicensed',
 		        package_object_key, manifest
 		 FROM skill_versions WHERE skill_id = $1
 		 ORDER BY version_number DESC LIMIT 1`,
-		mustUUID(t, bare)); err != nil {
-		t.Fatal(err)
-	}
-	code, body = operatorCall(t, operator, http.MethodPut, "/admin/skills/"+bare+"/redistribution",
+		mustUUID(t, bare))
+	code, body := operatorCall(t, operator, http.MethodPut, "/admin/skills/"+bare+"/redistribution",
 		`{"value":"allowed","note":"looks fine to me","license_expression":"MIT","license_source":"manifest"}`)
 	if code != http.StatusBadRequest {
 		t.Errorf("release of a skill with no recorded licence: got %d, want 400 (%v)", code, body)

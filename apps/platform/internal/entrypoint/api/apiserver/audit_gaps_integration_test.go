@@ -266,14 +266,7 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 	}))
 	t.Cleanup(upstream.Close)
 	host := mustHost(t, upstream.URL)
-
-	var sourceID pgtype.UUID
-	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
-		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
-		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
-		t.Fatal(err)
-	}
+	sourceID := seedUnchangedGitSource(t, pool, c.workspaceID, upstream.URL)
 
 	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
 		Allowed: map[string]bool{host: true}, AllowInsecure: true,
@@ -335,6 +328,18 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 	}
 }
 
+func seedUnchangedGitSource(t *testing.T, pool *pgxpool.Pool, workspaceID, sourceURL string) pgtype.UUID {
+	t.Helper()
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
+		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
+		mustUUID(t, workspaceID), sourceURL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	return sourceID
+}
+
 func mustHost(t *testing.T, rawURL string) string {
 	t.Helper()
 	u, err := url.Parse(rawURL)
@@ -363,14 +368,7 @@ func TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange(t *testing.T) {
 	}))
 	t.Cleanup(upstream.Close)
 	host := mustHost(t, upstream.URL)
-
-	var sourceID pgtype.UUID
-	if err := pool.QueryRow(context.Background(), `
-		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at, counts_toward_generate_quota)
-		VALUES ($1, 'git', $2, $3, now(), false) RETURNING id`,
-		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
-		t.Fatal(err)
-	}
+	sourceID := seedUnchangedGitSource(t, pool, c.workspaceID, upstream.URL)
 
 	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
 		Allowed: map[string]bool{host: true}, AllowInsecure: true,
@@ -427,14 +425,19 @@ func TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange(t *testing.T) {
 		t.Errorf("content_changed_at moved from %v to %v; it records when it FIRST stopped matching", first, at)
 	}
 
+	assertSourceChangeAuditedByThePlatform(t, pool, sourceID, c.workspaceID)
+}
+
+func assertSourceChangeAuditedByThePlatform(t *testing.T, pool *pgxpool.Pool, sourceID pgtype.UUID, workspaceID string) {
+	t.Helper()
 	var ws, actor string
 	if err := pool.QueryRow(context.Background(), `
 		SELECT workspace_id::text, coalesce(actor_user_id::text, '') FROM audit_events
 		WHERE action = 'import_source.changed' AND resource_id = $1`, sourceID).Scan(&ws, &actor); err != nil {
 		t.Fatal(err)
 	}
-	if ws != c.workspaceID {
-		t.Errorf("event workspace = %s, want %s", ws, c.workspaceID)
+	if ws != workspaceID {
+		t.Errorf("event workspace = %s, want %s", ws, workspaceID)
 	}
 	if actor != "" {
 		t.Errorf("event names actor %s; the source sweep is platform-initiated", actor)

@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
@@ -96,9 +98,7 @@ func TestAnalyzedSearchPreservesExactNamesAndUserTokenCoverage(t *testing.T) {
 	covered := seedSkill(t, pool, owner.workspaceID, uniqueWorklistLabel("masker"))
 	seedBlendedEmbedding(t, pool, covered, 1488, 1489, 0.8)
 	for _, id := range []string{exact, covered} {
-		if _, err := pool.Exec(context.Background(), `UPDATE search_documents SET bigram = to_tsvector('simple', $2) WHERE skill_id = $1`, mustUUID(t, id), catalog.LexicalIndexText(exactName+" "+coveredTerm)); err != nil {
-			t.Fatal(err)
-		}
+		mustExec(t, pool, `UPDATE search_documents SET bigram = to_tsvector('simple', $2) WHERE skill_id = $1`, mustUUID(t, id), catalog.LexicalIndexText(exactName+" "+coveredTerm))
 	}
 	for _, tc := range []struct {
 		name  string
@@ -110,29 +110,47 @@ func TestAnalyzedSearchPreservesExactNamesAndUserTokenCoverage(t *testing.T) {
 		{"partial coverage", exactName + " 不存在", []string{near, covered}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := http.Get(a.URL + "/api/skills/search?q=" + url.QueryEscape(tc.query))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer res.Body.Close()
-			var body struct {
-				Interpretation catalog.SearchInterpretation `json:"interpretation"`
-				Results        []struct {
-					ID string `json:"skill_id"`
-				} `json:"results"`
-			}
-			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-				t.Fatal(err)
-			}
-			if res.StatusCode != http.StatusOK || body.Interpretation.Status != "analyzed" || len(body.Results) != len(tc.want) {
-				t.Fatalf("status=%d body=%+v want=%v", res.StatusCode, body, tc.want)
-			}
-			for i, id := range tc.want {
-				if body.Results[i].ID != id {
-					t.Fatalf("result[%d]=%s want %s", i, body.Results[i].ID, id)
-				}
-			}
+			assertAnalyzedSearchReturnsInOrder(t, a.URL, tc.query, tc.want)
 		})
+	}
+}
+
+func assertAnalyzedSearchReturnsInOrder(t *testing.T, baseURL, query string, want []string) {
+	t.Helper()
+	res, err := http.Get(baseURL + "/api/skills/search?q=" + url.QueryEscape(query))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var body struct {
+		Interpretation catalog.SearchInterpretation `json:"interpretation"`
+		Results        []struct {
+			ID string `json:"skill_id"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK || body.Interpretation.Status != "analyzed" || len(body.Results) != len(want) {
+		t.Fatalf("status=%d body=%+v want=%v", res.StatusCode, body, want)
+	}
+	for i, id := range want {
+		if body.Results[i].ID != id {
+			t.Fatalf("result[%d]=%s want %s", i, body.Results[i].ID, id)
+		}
+	}
+}
+
+func assertEmbeddingTextIs(t *testing.T, r *http.Request, want, mismatchFormat string) {
+	t.Helper()
+	var body struct {
+		Texts []string `json:"texts"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		t.Error(err)
+	}
+	if len(body.Texts) != 1 || body.Texts[0] != want {
+		t.Errorf(mismatchFormat, body.Texts)
 	}
 }
 
@@ -150,15 +168,7 @@ func TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority(t *testin
 	})
 	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
 		embeddings.Add(1)
-		var body struct {
-			Texts []string `json:"texts"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Error(err)
-		}
-		if len(body.Texts) != 1 || body.Texts[0] != query {
-			t.Errorf("embedding input=%v want original task", body.Texts)
-		}
+		assertEmbeddingTextIs(t, r, query, "embedding input=%v want original task")
 		writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1490)}, "model": "test-embedding", "dimensions": embedDims})
 	})
 	model := httptest.NewServer(mux)
@@ -198,11 +208,7 @@ func TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority(t *testin
 
 func TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput(t *testing.T) {
 	pool := requireDB(t)
-	for _, tc := range []struct {
-		name  string
-		valid bool
-		usage bool
-	}{
+	for _, tc := range []intentCostCase{
 		{"valid", true, true},
 		{"invalid output", false, true},
 		{"missing usage", true, false},
@@ -210,23 +216,7 @@ func TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput(t *test
 		t.Run(tc.name, func(t *testing.T) {
 			modelName := uniqueWorklistLabel("intent-cost")
 			var analyses atomic.Int32
-			mux := http.NewServeMux()
-			mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
-				analyses.Add(1)
-				body := map[string]any{
-					"valid": tc.valid, "model": modelName, "prompt_version": "search-intent/v1",
-					"intent":   map[string]any{"input": "CSV", "output": nil, "tools": nil, "data": nil, "environment": nil},
-					"keywords": []string{"CSV"}, "filters": map[string]string{},
-				}
-				if tc.usage {
-					body["usage"] = map[string]any{"prompt_tokens": 100, "completion_tokens": 50, "cost_usd": 0.001, "cost_source": "gateway"}
-				}
-				writeJSON(w, body)
-			})
-			mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1494)}, "model": "test-embedding", "dimensions": embedDims})
-			})
-			model := httptest.NewServer(mux)
+			model := httptest.NewServer(tc.intentModel(modelName, &analyses))
 			t.Cleanup(model.Close)
 			a := newAPITuned(t, pool, model.URL, func(d *apiserver.Deps) {
 				d.Limits = httpx.NewRateLimiter(1, 1)
@@ -240,45 +230,84 @@ func TestAnonymousIntentAnalysisRecordsVersionedCostEvenForInvalidOutput(t *test
 			}
 			err = json.NewDecoder(response.Body).Decode(&body)
 			response.Body.Close()
-			status := "analyzed"
-			if !tc.valid {
-				status = "fallback"
-			}
-			if err != nil || response.StatusCode != http.StatusOK || body.Interpretation.Status != status || analyses.Load() != 1 {
+			if err != nil || response.StatusCode != http.StatusOK || body.Interpretation.Status != tc.wantStatus() || analyses.Load() != 1 {
 				t.Fatalf("status=%d interpretation=%+v calls=%d err=%v", response.StatusCode, body.Interpretation, analyses.Load(), err)
 			}
-			var count int
-			if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM cost_events WHERE model = $1 AND kind = 'search_intent'`, modelName).Scan(&count); err != nil || count != 1 {
-				t.Fatalf("cost rows=%d err=%v", count, err)
-			}
-			var version, source string
-			var promptTokens, completionTokens, micros int64
-			var anonymous bool
-			if err := pool.QueryRow(context.Background(), `SELECT prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id IS NULL AND user_id IS NULL FROM cost_events WHERE model = $1 AND kind = 'search_intent'`, modelName).Scan(&version, &promptTokens, &completionTokens, &micros, &source, &anonymous); err != nil {
-				t.Fatal(err)
-			}
-			wantMicros, wantPrompt, wantCompletion, wantSource := int64(1000), int64(100), int64(50), "gateway"
-			if !tc.usage {
-				wantMicros, wantPrompt, wantCompletion, wantSource = 0, 0, 0, "estimated"
-			}
-			if version != "search-intent/v1" || !anonymous || micros != wantMicros || promptTokens != wantPrompt || completionTokens != wantCompletion || source != wantSource {
-				t.Fatalf("cost=%s %d/%d tokens %d micros source=%s anonymous=%v", version, promptTokens, completionTokens, micros, source, anonymous)
-			}
-			for _, method := range []string{http.MethodGet, http.MethodPost} {
-				req, err := http.NewRequest(method, a.URL+"/api/skills/search?q=CSV", strings.NewReader(`{}`))
-				if err != nil {
-					t.Fatal(err)
-				}
-				res, err := http.DefaultClient.Do(req)
-				if err != nil {
-					t.Fatal(err)
-				}
-				res.Body.Close()
-				if res.StatusCode != http.StatusTooManyRequests || res.Header.Get("Retry-After") == "" || analyses.Load() != 1 {
-					t.Fatalf("%s rate limit status=%d calls=%d", method, res.StatusCode, analyses.Load())
-				}
-			}
+			tc.assertOneAnonymousCostRow(t, pool, modelName)
+			assertSearchRateLimitedWithoutAnotherAnalysis(t, a.URL, &analyses)
 		})
+	}
+}
+
+type intentCostCase struct {
+	name  string
+	valid bool
+	usage bool
+}
+
+func (tc intentCostCase) intentModel(modelName string, analyses *atomic.Int32) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
+		analyses.Add(1)
+		body := map[string]any{
+			"valid": tc.valid, "model": modelName, "prompt_version": "search-intent/v1",
+			"intent":   map[string]any{"input": "CSV", "output": nil, "tools": nil, "data": nil, "environment": nil},
+			"keywords": []string{"CSV"}, "filters": map[string]string{},
+		}
+		if tc.usage {
+			body["usage"] = map[string]any{"prompt_tokens": 100, "completion_tokens": 50, "cost_usd": 0.001, "cost_source": "gateway"}
+		}
+		writeJSON(w, body)
+	})
+	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1494)}, "model": "test-embedding", "dimensions": embedDims})
+	})
+	return mux
+}
+
+func (tc intentCostCase) wantStatus() string {
+	if !tc.valid {
+		return "fallback"
+	}
+	return "analyzed"
+}
+
+func (tc intentCostCase) assertOneAnonymousCostRow(t *testing.T, pool *pgxpool.Pool, modelName string) {
+	t.Helper()
+	var count int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM cost_events WHERE model = $1 AND kind = 'search_intent'`, modelName).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("cost rows=%d err=%v", count, err)
+	}
+	var version, source string
+	var promptTokens, completionTokens, micros int64
+	var anonymous bool
+	if err := pool.QueryRow(context.Background(), `SELECT prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id IS NULL AND user_id IS NULL FROM cost_events WHERE model = $1 AND kind = 'search_intent'`, modelName).Scan(&version, &promptTokens, &completionTokens, &micros, &source, &anonymous); err != nil {
+		t.Fatal(err)
+	}
+	wantMicros, wantPrompt, wantCompletion, wantSource := int64(1000), int64(100), int64(50), "gateway"
+	if !tc.usage {
+		wantMicros, wantPrompt, wantCompletion, wantSource = 0, 0, 0, "estimated"
+	}
+	if version != "search-intent/v1" || !anonymous || micros != wantMicros || promptTokens != wantPrompt || completionTokens != wantCompletion || source != wantSource {
+		t.Fatalf("cost=%s %d/%d tokens %d micros source=%s anonymous=%v", version, promptTokens, completionTokens, micros, source, anonymous)
+	}
+}
+
+func assertSearchRateLimitedWithoutAnotherAnalysis(t *testing.T, baseURL string, analyses *atomic.Int32) {
+	t.Helper()
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		req, err := http.NewRequest(method, baseURL+"/api/skills/search?q=CSV", strings.NewReader(`{}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusTooManyRequests || res.Header.Get("Retry-After") == "" || analyses.Load() != 1 {
+			t.Fatalf("%s rate limit status=%d calls=%d", method, res.StatusCode, analyses.Load())
+		}
 	}
 }
 
@@ -343,83 +372,97 @@ func TestCorrectedSearchRequestBoundariesPrecedeModelCalls(t *testing.T) {
 
 func TestAlwaysFailingRewriterStillRetrievesNonemptyVectorResults(t *testing.T) {
 	pool := requireDB(t)
-	for _, embeddingFails := range []bool{false, true} {
-		name := "vector available"
-		if embeddingFails {
-			name = "vector also unavailable"
-		}
-		t.Run(name, func(t *testing.T) {
-			var analyses, embeddings atomic.Int32
-			const query = "請幫我分析收支資料"
-			mux := http.NewServeMux()
-			mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
-				analyses.Add(1)
-				http.Error(w, "always failing rewriter", http.StatusBadGateway)
-			})
-			mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
-				embeddings.Add(1)
-				var body struct {
-					Texts []string `json:"texts"`
-				}
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Error(err)
-				}
-				if len(body.Texts) != 1 || body.Texts[0] != query {
-					t.Errorf("embedding input=%v", body.Texts)
-				}
-				if embeddingFails {
-					http.Error(w, "embedding unavailable", http.StatusBadGateway)
-					return
-				}
-				writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1497)}, "model": "test-embedding", "dimensions": embedDims})
-			})
-			model := httptest.NewServer(mux)
-			t.Cleanup(model.Close)
-			a := newAPIWithLLM(t, pool, model.URL)
-			curator := a.login(t, uniqueWorklistLabel("intent-fallback"))
-			markCatalog(t, pool, curator.workspaceID)
-			id := seedSkill(t, pool, curator.workspaceID, uniqueWorklistLabel("ledger-transformation"))
-			seedEmbedding(t, pool, id, 1497)
-			res, err := http.Get(a.URL + "/api/skills/search?q=" + url.QueryEscape(query))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer res.Body.Close()
-			var body struct {
-				Query          string                       `json:"query"`
-				Degraded       bool                         `json:"degraded"`
-				DegradedReason string                       `json:"degraded_reason"`
-				NoResults      bool                         `json:"no_results"`
-				Interpretation catalog.SearchInterpretation `json:"interpretation"`
-				Results        []struct {
-					SkillID string `json:"skill_id"`
-				} `json:"results"`
-			}
-			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-				t.Fatal(err)
-			}
-			if res.StatusCode != http.StatusOK || analyses.Load() != 1 || embeddings.Load() != 1 || body.Query != query || body.Interpretation.Status != "fallback" {
-				t.Fatalf("status=%d analyses=%d embeddings=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), body)
-			}
-			if body.Degraded != embeddingFails {
-				t.Fatalf("degraded=%v", body.Degraded)
-			}
-			if embeddingFails {
-				if !body.NoResults || body.DegradedReason == "" || len(body.Results) != 0 {
-					t.Fatalf("dishonest outage response=%+v", body)
-				}
-				return
-			}
-			found := false
-			for _, result := range body.Results {
-				if result.SkillID == id {
-					found = true
-				}
-			}
-			if !found || body.NoResults {
-				t.Fatalf("vector-only match %s absent: %+v", id, body)
-			}
+	for _, outage := range []rewriterOutage{
+		{name: "vector available", embeddingFails: false},
+		{name: "vector also unavailable", embeddingFails: true},
+	} {
+		t.Run(outage.name, func(t *testing.T) {
+			outage.assertSearchStillAnswersHonestly(t, pool)
 		})
+	}
+}
+
+const rewriterOutageQuery = "請幫我分析收支資料"
+
+type rewriterOutage struct {
+	name           string
+	embeddingFails bool
+}
+
+type fallbackSearchBody struct {
+	Query          string                       `json:"query"`
+	Degraded       bool                         `json:"degraded"`
+	DegradedReason string                       `json:"degraded_reason"`
+	NoResults      bool                         `json:"no_results"`
+	Interpretation catalog.SearchInterpretation `json:"interpretation"`
+	Results        []struct {
+		SkillID string `json:"skill_id"`
+	} `json:"results"`
+}
+
+func (o rewriterOutage) model(t *testing.T, analyses, embeddings *atomic.Int32) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v1/analyze-intent", func(w http.ResponseWriter, r *http.Request) {
+		analyses.Add(1)
+		http.Error(w, "always failing rewriter", http.StatusBadGateway)
+	})
+	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
+		embeddings.Add(1)
+		assertEmbeddingTextIs(t, r, rewriterOutageQuery, "embedding input=%v")
+		if o.embeddingFails {
+			http.Error(w, "embedding unavailable", http.StatusBadGateway)
+			return
+		}
+		writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1497)}, "model": "test-embedding", "dimensions": embedDims})
+	})
+	return mux
+}
+
+func (o rewriterOutage) assertSearchStillAnswersHonestly(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	var analyses, embeddings atomic.Int32
+	const query = rewriterOutageQuery
+	model := httptest.NewServer(o.model(t, &analyses, &embeddings))
+	t.Cleanup(model.Close)
+	a := newAPIWithLLM(t, pool, model.URL)
+	curator := a.login(t, uniqueWorklistLabel("intent-fallback"))
+	markCatalog(t, pool, curator.workspaceID)
+	id := seedSkill(t, pool, curator.workspaceID, uniqueWorklistLabel("ledger-transformation"))
+	seedEmbedding(t, pool, id, 1497)
+	res, err := http.Get(a.URL + "/api/skills/search?q=" + url.QueryEscape(query))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var body fallbackSearchBody
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK || analyses.Load() != 1 || embeddings.Load() != 1 || body.Query != query || body.Interpretation.Status != "fallback" {
+		t.Fatalf("status=%d analyses=%d embeddings=%d response=%+v", res.StatusCode, analyses.Load(), embeddings.Load(), body)
+	}
+	if body.Degraded != o.embeddingFails {
+		t.Fatalf("degraded=%v", body.Degraded)
+	}
+	if o.embeddingFails {
+		if !body.NoResults || body.DegradedReason == "" || len(body.Results) != 0 {
+			t.Fatalf("dishonest outage response=%+v", body)
+		}
+		return
+	}
+	assertVectorOnlyMatchPresent(t, body, id)
+}
+
+func assertVectorOnlyMatchPresent(t *testing.T, body fallbackSearchBody, id string) {
+	t.Helper()
+	found := false
+	for _, result := range body.Results {
+		if result.SkillID == id {
+			found = true
+		}
+	}
+	if !found || body.NoResults {
+		t.Fatalf("vector-only match %s absent: %+v", id, body)
 	}
 }
 
@@ -433,15 +476,7 @@ func TestCorrectedPublicSearchUsesUserFieldsWithoutCallingRewriter(t *testing.T)
 	})
 	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
 		embeddings.Add(1)
-		var body struct {
-			Texts []string `json:"texts"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Error(err)
-		}
-		if len(body.Texts) != 1 || body.Texts[0] != "invoice CSV" {
-			t.Errorf("correction ignored: %v", body.Texts)
-		}
+		assertEmbeddingTextIs(t, r, "invoice CSV", "correction ignored: %v")
 		writeJSON(w, map[string]any{"embeddings": [][]float32{unitVector(1496)}, "model": "test-embedding", "dimensions": embedDims})
 	})
 	mux.HandleFunc("POST /match-reasons", func(w http.ResponseWriter, r *http.Request) {

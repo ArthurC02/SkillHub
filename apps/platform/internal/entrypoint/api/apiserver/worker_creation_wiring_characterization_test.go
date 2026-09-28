@@ -137,8 +137,13 @@ func TestWorkerReferenceOfAScannedCatalogSkillCarriesItsFacts(t *testing.T) {
 	if ref, _, err = svc.ResolveReference(context.Background(), shelf.ws, shelf.skills[1], ""); err == nil || ref.Available {
 		t.Errorf("missing package: available=%v err=%v, want unavailable with an error", ref.Available, err)
 	}
+	assertMalformedReferenceIDsRefused(t, svc, shelf)
+}
+
+func assertMalformedReferenceIDsRefused(t *testing.T, svc *creation.Service, shelf referenceShelf) {
+	t.Helper()
 	for _, ids := range [][2]string{{"not-a-uuid", ""}, {shelf.skills[0], "not-a-uuid"}} {
-		if ref, _, err = svc.ResolveReference(context.Background(), shelf.ws, ids[0], ids[1]); !errors.Is(err, creation.ErrInvalidCommand) || ref != (creation.Reference{}) {
+		if ref, _, err := svc.ResolveReference(context.Background(), shelf.ws, ids[0], ids[1]); !errors.Is(err, creation.ErrInvalidCommand) || ref != (creation.Reference{}) {
 			t.Errorf("malformed %v: ref=%+v err=%v, want the zero reference and ErrInvalidCommand", ids, ref, err)
 		}
 	}

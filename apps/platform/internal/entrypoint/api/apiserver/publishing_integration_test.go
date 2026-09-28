@@ -219,7 +219,12 @@ func TestRepublishingAddsAReleaseAndThePublicationKeepsItsName(t *testing.T) {
 		t.Errorf("renaming through a publish: %d %v, want 409 name_is_permanent", code, body)
 	}
 
-	code, body = deleteJSON(t, alice, "/skills/"+skillID+"/publication")
+	delistAndRepublish(t, a, alice, skillID)
+}
+
+func delistAndRepublish(t *testing.T, a *api, alice *client, skillID string) {
+	t.Helper()
+	code, body := deleteJSON(t, alice, "/skills/"+skillID+"/publication")
 	if code != http.StatusOK || body["status"] != "delisted" {
 		t.Fatalf("delist: %d %v, want 200 delisted", code, body)
 	}
@@ -340,11 +345,7 @@ func TestAcquiringAPublicationRecordsADownloadInTheAcquirersOwnWorkspace(t *test
 	if downloads := alice.listDownloads(t); len(downloads) != 0 {
 		t.Errorf("the author's downloads gained %d rows from someone else's acquisition", len(downloads))
 	}
-	downloads := bob.listDownloads(t)
-	if len(downloads) != 1 || downloads[0].ArtifactID != artifactID || downloads[0].IncludesTestCases ||
-		downloads[0].FileName != skillName+"-v1-standard.zip" {
-		t.Fatalf("bob's downloads = %+v, want the author's version 1 as a standard package without test cases", downloads)
-	}
+	assertOnlyDownloadIsTheStandardPackage(t, bob, artifactID, skillName)
 
 	resp, data := bob.fetchContent(t, artifactID)
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(string(data), "PK") {
@@ -356,6 +357,15 @@ func TestAcquiringAPublicationRecordsADownloadInTheAcquirersOwnWorkspace(t *test
 
 	if code, again := acquire(t, bob, address); code != http.StatusCreated || again["artifact_id"] != artifactID || again["duplicate"] != true {
 		t.Errorf("acquiring the same release again: %d %v, want the kept artifact %s", code, again, artifactID)
+	}
+}
+
+func assertOnlyDownloadIsTheStandardPackage(t *testing.T, bob *client, artifactID, skillName string) {
+	t.Helper()
+	downloads := bob.listDownloads(t)
+	if len(downloads) != 1 || downloads[0].ArtifactID != artifactID || downloads[0].IncludesTestCases ||
+		downloads[0].FileName != skillName+"-v1-standard.zip" {
+		t.Fatalf("bob's downloads = %+v, want the author's version 1 as a standard package without test cases", downloads)
 	}
 }
 

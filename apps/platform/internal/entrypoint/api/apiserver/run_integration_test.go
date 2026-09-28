@@ -267,6 +267,18 @@ func TestASandboxThatDisappearsAfterQueueingFailsTheRunWithNothingDispatched(t *
 		t.Errorf("failure_class = %q, want capability_mismatch", final.FailureClass.Value)
 	}
 
+	assertReasonedPathFromCreationToFailed(t, final)
+
+	if len(final.Attempts) != 0 {
+		t.Errorf("attempts = %d, want 0: nothing was ever dispatched", len(final.Attempts))
+	}
+
+	waitForCleanup(t, f.client, created.RunID)
+	assertOutboxQueuedFailedCleanedOnTheRunID(t, pool, created.RunID)
+}
+
+func assertReasonedPathFromCreationToFailed(t *testing.T, final runView) {
+	t.Helper()
 	var path []string
 	for _, tr := range final.Transitions {
 		path = append(path, tr.To)
@@ -281,18 +293,16 @@ func TestASandboxThatDisappearsAfterQueueingFailsTheRunWithNothingDispatched(t *
 	if from := final.Transitions[0].From; from != "" {
 		t.Errorf("first transition came from %q, want the run's creation (empty)", from)
 	}
+}
 
-	if len(final.Attempts) != 0 {
-		t.Errorf("attempts = %d, want 0: nothing was ever dispatched", len(final.Attempts))
-	}
-
-	waitForCleanup(t, f.client, created.RunID)
-	events := outboxFor(t, pool, created.RunID)
+func assertOutboxQueuedFailedCleanedOnTheRunID(t *testing.T, pool *pgxpool.Pool, runID string) {
+	t.Helper()
+	events := outboxFor(t, pool, runID)
 	var types []string
 	for _, e := range events {
 		types = append(types, e.EventType)
-		if got := uuidText(e.CorrelationID); got != created.RunID {
-			t.Errorf("event %s correlates on %q, want the platform run_id %q", e.EventType, got, created.RunID)
+		if got := uuidText(e.CorrelationID); got != runID {
+			t.Errorf("event %s correlates on %q, want the platform run_id %q", e.EventType, got, runID)
 		}
 	}
 

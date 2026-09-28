@@ -141,27 +141,7 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 		t.Fatalf("GET preflight: got %d (%s)", code, view.Error)
 	}
 	s := view.Summary
-
-	if len(s.Datasets) != 1 || s.Datasets[0].FileName != "rows.csv" || s.Datasets[0].SizeBytes != 512 {
-		t.Errorf("dataset disclosure = %+v", s.Datasets)
-	}
-	if s.DatasetTotalBytes != 512 {
-		t.Errorf("dataset_total_bytes = %d, want 512", s.DatasetTotalBytes)
-	}
-
-	if s.Scripts.Status != "none" {
-		t.Errorf("script status for a clean package = %q, want none", s.Scripts.Status)
-	}
-	if len(s.Tools) == 0 {
-		t.Error("no tool disclosure at all")
-	}
-
-	if s.MCPServers == nil || len(s.MCPServers) != 0 {
-		t.Errorf("mcp_servers = %v, want an empty list", s.MCPServers)
-	}
-	if s.Network.Mode != "default_deny" || len(s.Network.Allow) != 0 {
-		t.Errorf("network = %+v, want default_deny with an empty allow list", s.Network)
-	}
+	assertDatasetsScriptsAndNetworkDisclosed(t, view)
 
 	if len(s.InjectedSecrets) != 0 {
 		t.Errorf("no gateway grant, so nothing is injected, but the summary names %v", s.InjectedSecrets)
@@ -191,6 +171,36 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 		t.Error("the summary has no hash to confirm")
 	}
 
+	assertCostEstimatedAsACreditRange(t, view)
+}
+
+func assertDatasetsScriptsAndNetworkDisclosed(t *testing.T, view preflightView) {
+	t.Helper()
+	s := view.Summary
+	if len(s.Datasets) != 1 || s.Datasets[0].FileName != "rows.csv" || s.Datasets[0].SizeBytes != 512 {
+		t.Errorf("dataset disclosure = %+v", s.Datasets)
+	}
+	if s.DatasetTotalBytes != 512 {
+		t.Errorf("dataset_total_bytes = %d, want 512", s.DatasetTotalBytes)
+	}
+
+	if s.Scripts.Status != "none" {
+		t.Errorf("script status for a clean package = %q, want none", s.Scripts.Status)
+	}
+	if len(s.Tools) == 0 {
+		t.Error("no tool disclosure at all")
+	}
+
+	if s.MCPServers == nil || len(s.MCPServers) != 0 {
+		t.Errorf("mcp_servers = %v, want an empty list", s.MCPServers)
+	}
+	if s.Network.Mode != "default_deny" || len(s.Network.Allow) != 0 {
+		t.Errorf("network = %+v, want default_deny with an empty allow list", s.Network)
+	}
+}
+
+func assertCostEstimatedAsACreditRange(t *testing.T, view preflightView) {
+	t.Helper()
 	if view.EstimatedCost.LowCredits <= 0 || view.EstimatedCost.HighCredits <= view.EstimatedCost.LowCredits {
 		t.Errorf("estimated cost = %+v, want a non-degenerate credit range", view.EstimatedCost)
 	}

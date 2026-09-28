@@ -426,31 +426,7 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		t.Errorf("session_started events for this visitor: %d, want 1", n)
 	}
 
-	if code := f.status(t, http.MethodGet, "/api/skills/search?q=summarise+a+csv+file"); code != http.StatusOK {
-		t.Fatalf("public search: got %d", code)
-	}
-	var length int
-	var language string
-	var hasResults bool
-	err := pool.QueryRow(context.Background(), `
-		SELECT query_length, query_language, has_results FROM analytics_events
-		WHERE event_name = 'search_performed' AND session_id = $1`, session,
-	).Scan(&length, &language, &hasResults)
-	if err != nil {
-		t.Fatalf("no search_performed event: %v", err)
-	}
-	if want := len("summarise a csv file"); length != want {
-		t.Errorf("query_length is %d, want %d", length, want)
-	}
-	if language != "latin" {
-		t.Errorf("query_language is %q, want latin", language)
-	}
-
-	if n := betaCount(t, pool,
-		`SELECT count(*) FROM analytics_events WHERE event_name = 'search_performed' AND session_id = $1`,
-		session); n != 1 {
-		t.Errorf("search_performed events for one search: %d, want 1", n)
-	}
+	assertOneSearchPerformedEvent(t, pool, f, session)
 
 	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID); code != http.StatusOK {
 		t.Fatalf("skill detail: got %d", code)
@@ -493,6 +469,35 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		WHERE table_name = 'analytics_events' AND column_name IN ('query', 'query_text', 'message', 'payload')`,
 	); n != 0 {
 		t.Error("analytics_events has grown a column that can hold free text")
+	}
+}
+
+func assertOneSearchPerformedEvent(t *testing.T, pool *pgxpool.Pool, f fixture, session string) {
+	t.Helper()
+	if code := f.status(t, http.MethodGet, "/api/skills/search?q=summarise+a+csv+file"); code != http.StatusOK {
+		t.Fatalf("public search: got %d", code)
+	}
+	var length int
+	var language string
+	var hasResults bool
+	err := pool.QueryRow(context.Background(), `
+		SELECT query_length, query_language, has_results FROM analytics_events
+		WHERE event_name = 'search_performed' AND session_id = $1`, session,
+	).Scan(&length, &language, &hasResults)
+	if err != nil {
+		t.Fatalf("no search_performed event: %v", err)
+	}
+	if want := len("summarise a csv file"); length != want {
+		t.Errorf("query_length is %d, want %d", length, want)
+	}
+	if language != "latin" {
+		t.Errorf("query_language is %q, want latin", language)
+	}
+
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM analytics_events WHERE event_name = 'search_performed' AND session_id = $1`,
+		session); n != 1 {
+		t.Errorf("search_performed events for one search: %d, want 1", n)
 	}
 }
 

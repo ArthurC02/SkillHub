@@ -23,40 +23,14 @@ func purgeWorkspaceRows(t *testing.T, pool *pgxpool.Pool, workspaceID, userID st
 		t.Errorf("cleanup: %v", err)
 		return
 	}
-	rows, err := tx.Query(ctx, `SELECT table_name, column_name FROM information_schema.columns
-		WHERE table_schema = 'public' AND column_name IN ('workspace_id', 'user_id', 'actor_user_id', 'owner_user_id')`)
-	if err != nil {
-		t.Errorf("cleanup: %v", err)
+	targets, ok := ownerColumns(t, tx)
+	if !ok {
 		return
 	}
-	var targets [][2]string
-	for rows.Next() {
-		var table, column string
-		if err := rows.Scan(&table, &column); err != nil {
-			t.Errorf("cleanup: %v", err)
+	for pass := 0; len(targets) > 0 && pass < len(targets)+1; pass++ {
+		if targets, ok = deleteOwnedRowsOnce(t, tx, targets, purgeOwner{workspaceID: workspaceID, userID: userID}); !ok {
 			return
 		}
-		targets = append(targets, [2]string{table, column})
-	}
-	rows.Close()
-	for pass := 0; len(targets) > 0 && pass < len(targets)+1; pass++ {
-		var blocked [][2]string
-		for _, target := range targets {
-			id := workspaceID
-			if target[1] != "workspace_id" {
-				id = userID
-			}
-			stmt := fmt.Sprintf(`DELETE FROM %s WHERE %s = $1`, pgx.Identifier{target[0]}.Sanitize(), pgx.Identifier{target[1]}.Sanitize())
-			if _, err := tx.Exec(ctx, "SAVEPOINT purge_step"); err != nil {
-				t.Errorf("cleanup: %v", err)
-				return
-			}
-			if _, err := tx.Exec(ctx, stmt, id); err != nil {
-				blocked = append(blocked, target)
-				_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT purge_step")
-			}
-		}
-		targets = blocked
 	}
 	for _, stmt := range []string{`DELETE FROM workspaces WHERE id = $1`, `DELETE FROM users WHERE id = $1`} {
 		id := workspaceID
@@ -71,6 +45,51 @@ func purgeWorkspaceRows(t *testing.T, pool *pgxpool.Pool, workspaceID, userID st
 	if err := tx.Commit(ctx); err != nil {
 		t.Errorf("cleanup: %v", err)
 	}
+}
+
+type purgeOwner struct {
+	workspaceID, userID string
+}
+
+func ownerColumns(t *testing.T, tx pgx.Tx) ([][2]string, bool) {
+	rows, err := tx.Query(context.Background(), `SELECT table_name, column_name FROM information_schema.columns
+		WHERE table_schema = 'public' AND column_name IN ('workspace_id', 'user_id', 'actor_user_id', 'owner_user_id')`)
+	if err != nil {
+		t.Errorf("cleanup: %v", err)
+		return nil, false
+	}
+	var targets [][2]string
+	for rows.Next() {
+		var table, column string
+		if err := rows.Scan(&table, &column); err != nil {
+			t.Errorf("cleanup: %v", err)
+			return nil, false
+		}
+		targets = append(targets, [2]string{table, column})
+	}
+	rows.Close()
+	return targets, true
+}
+
+func deleteOwnedRowsOnce(t *testing.T, tx pgx.Tx, targets [][2]string, owner purgeOwner) ([][2]string, bool) {
+	ctx := context.Background()
+	var blocked [][2]string
+	for _, target := range targets {
+		id := owner.workspaceID
+		if target[1] != "workspace_id" {
+			id = owner.userID
+		}
+		stmt := fmt.Sprintf(`DELETE FROM %s WHERE %s = $1`, pgx.Identifier{target[0]}.Sanitize(), pgx.Identifier{target[1]}.Sanitize())
+		if _, err := tx.Exec(ctx, "SAVEPOINT purge_step"); err != nil {
+			t.Errorf("cleanup: %v", err)
+			return blocked, false
+		}
+		if _, err := tx.Exec(ctx, stmt, id); err != nil {
+			blocked = append(blocked, target)
+			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT purge_step")
+		}
+	}
+	return blocked, true
 }
 
 func TestABundleOfTheAuthorsOwnSkillsIsNotPublishedWithoutTheirStatement(t *testing.T) {

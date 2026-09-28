@@ -48,13 +48,7 @@ func TestASettledCreationStepIsBookedUnderItsSessionAndRevision(t *testing.T) {
 	wiring.WireCreationCredit(target, svc, pool)
 
 	measured := .003
-	for _, tc := range []struct {
-		name       string
-		cost       *float64
-		wantMicros int64
-		wantSource string
-		wantDebits int
-	}{
+	for _, tc := range []settlementCase{
 		{"a step whose cost the gateway reported", &measured, 3000, "gateway", 1},
 		{"a step whose cost is unknown books the reservation", nil, 100000, "estimated", 0},
 	} {
@@ -75,19 +69,32 @@ func TestASettledCreationStepIsBookedUnderItsSessionAndRevision(t *testing.T) {
 			}
 
 			got := settledStep(t, tx, fmt.Sprintf("creation:%s:7", uuid.UUID(sessionID.Bytes).String()))
-			if got.kind != "creation_step" || got.refType != "creation_session" || got.refID != sessionID {
-				t.Errorf("booked as %s against %s %v, want creation_step against creation_session %v",
-					got.kind, got.refType, got.refID, sessionID)
-			}
-			if got.workspaceID != workspaceID {
-				t.Errorf("booked to workspace %v, want %v", got.workspaceID, workspaceID)
-			}
-			if got.usdMicros != tc.wantMicros || got.costSource != tc.wantSource {
-				t.Errorf("usd_micros=%d cost_source=%s, want %d %s", got.usdMicros, got.costSource, tc.wantMicros, tc.wantSource)
-			}
-			if got.debits != tc.wantDebits {
-				t.Errorf("debit entries = %d, want %d", got.debits, tc.wantDebits)
-			}
+			tc.assertBookedUnderTheSession(t, got, sessionID, workspaceID)
 		})
+	}
+}
+
+type settlementCase struct {
+	name       string
+	cost       *float64
+	wantMicros int64
+	wantSource string
+	wantDebits int
+}
+
+func (tc settlementCase) assertBookedUnderTheSession(t *testing.T, got settledStepRow, sessionID, workspaceID pgtype.UUID) {
+	t.Helper()
+	if got.kind != "creation_step" || got.refType != "creation_session" || got.refID != sessionID {
+		t.Errorf("booked as %s against %s %v, want creation_step against creation_session %v",
+			got.kind, got.refType, got.refID, sessionID)
+	}
+	if got.workspaceID != workspaceID {
+		t.Errorf("booked to workspace %v, want %v", got.workspaceID, workspaceID)
+	}
+	if got.usdMicros != tc.wantMicros || got.costSource != tc.wantSource {
+		t.Errorf("usd_micros=%d cost_source=%s, want %d %s", got.usdMicros, got.costSource, tc.wantMicros, tc.wantSource)
+	}
+	if got.debits != tc.wantDebits {
+		t.Errorf("debit entries = %d, want %d", got.debits, tc.wantDebits)
 	}
 }

@@ -77,34 +77,7 @@ func TestArtifactEvidenceIsReAnsweredAtReadTime(t *testing.T) {
 
 	available := func() (found, live bool) {
 		t.Helper()
-		resp, err := c.Get(c.base + "/runs/" + runID + "/evaluation")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("GET evaluation: %d", resp.StatusCode)
-		}
-		var body struct {
-			DeterministicFindings []struct {
-				Evidence []struct {
-					Kind      string `json:"kind"`
-					Excerpt   string `json:"excerpt"`
-					Available bool   `json:"available"`
-				} `json:"evidence"`
-			} `json:"deterministic_findings"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-			t.Fatal(err)
-		}
-		for _, f := range body.DeterministicFindings {
-			for _, e := range f.Evidence {
-				if e.Kind == "artifact" && strings.Contains(e.Excerpt, "deduplicated.csv") {
-					return true, e.Available
-				}
-			}
-		}
-		return false, false
+		return artifactCitationIn(t, c, runID, "deduplicated.csv")
 	}
 
 	found, live := available()
@@ -127,6 +100,38 @@ func TestArtifactEvidenceIsReAnsweredAtReadTime(t *testing.T) {
 	if live {
 		t.Error("the artifact citation still claims to be available after the file was deleted")
 	}
+}
+
+func artifactCitationIn(t *testing.T, c *client, runID, fileName string) (found, live bool) {
+	t.Helper()
+	resp, err := c.Get(c.base + "/runs/" + runID + "/evaluation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET evaluation: %d", resp.StatusCode)
+	}
+	var body struct {
+		DeterministicFindings []struct {
+			Evidence []struct {
+				Kind      string `json:"kind"`
+				Excerpt   string `json:"excerpt"`
+				Available bool   `json:"available"`
+			} `json:"evidence"`
+		} `json:"deterministic_findings"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range body.DeterministicFindings {
+		for _, e := range f.Evidence {
+			if e.Kind == "artifact" && strings.Contains(e.Excerpt, fileName) {
+				return true, e.Available
+			}
+		}
+	}
+	return false, false
 }
 
 // dropTraceEvents deletes past the immutability trigger by disabling triggers
