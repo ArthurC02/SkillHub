@@ -37,6 +37,8 @@ Use [tactical design reasoning](references/tactical-reasoning.md) when guiding i
 
 For a material change, pass the compact [implementation handoff](references/implementation-handoff.md) from Read or Design to the coding Agent. It carries facts and proof obligations, not code shape.
 
+When the change reaches an external system, settle the boundary with [ports and adapters](references/ports-and-adapters.md). For how the code states the reviewed facts, how a refactoring proves it preserved behavior, and why this Plugin carries no numeric limit, use [code expression](references/code-expression.md).
+
 Verify any claimed tactical Pattern with [pattern verification](references/pattern-verification.md), including a counterfactual test when the change is material.
 
 Supporting references: [evidence rules](references/evidence-rules.md), [Registry authoring](references/registry-authoring.md), [Registry schema](references/registry-schema.md), [proposal lifecycle](references/proposal-lifecycle.md), and [reliability target architecture](references/reliability-architecture.md).

@@ -34,9 +34,13 @@ The lifecycle adapter should wire these command groups to its own events:
 | Dead or unusable Registry | Router / Review | Stop, report the readiness block, and recover or reconfirm sources before relying on facts |
 | Before a material domain change | Design | `init-change-package`, package validation, and the seven-step workflow |
 | While implementing a code change | Implementation hygiene | No Registry command; read the implementation handoff, then route a changed owner, invariant, contract, event, or consistency rule to Design |
+| Before dispatching a code change | Implementation hygiene | `quality-gates --repo-root <repo>`; pass its result to the coding Agent with the handoff |
+| Before accepting a code change | Implementation hygiene | `counterfactual` on each rule the change added or moved; a `survived` verdict returns the change to its author |
 | Before implementation handoff | Review | Registry, source, evidence, audit, and Change Package validation |
 | After implementation or source drift | Maintain | `verify-sources`, `verify-evidence`, `verify-audit`, then candidate or Change Package preparation |
 | Before relying on the result | Review | Registry, source, evidence, audit, and Change Package validation |
+
+The two checks on a code change are the host's to run. An Agent told that a command exists seldom runs it unprompted, and the weaker the model the less often, so a host that leaves them to the coding Agent has the instruction without the check.
 
 The adapter must report a missing Registry in an empty or greenfield repository as a routing state, and an invalid or stale Registry as a blocking handoff state. It must not silently skip the lifecycle because a host cannot delegate or because a command has no result.
 

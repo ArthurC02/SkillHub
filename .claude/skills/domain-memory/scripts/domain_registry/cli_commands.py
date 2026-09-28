@@ -11,6 +11,8 @@ from .audit import verify as verify_audit
 from .changes import init_change_package, validate_change_package
 from .common import load_json
 from .contracts import validate_schema
+from .counterfactual import Mutation, counterfactual
+from .gates import quality_gates
 from .evidence import citation, classified, source_map_for
 from .hitl import (
     finalize_proposal,
@@ -597,7 +599,28 @@ def handle_coverage(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_quality_gates(args: argparse.Namespace) -> int:
+    print(json.dumps(quality_gates(args.repo_root), indent=2, ensure_ascii=False))
+    return 0
+
+
+COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2}
+
+
+def handle_counterfactual(args: argparse.Namespace) -> int:
+    result = counterfactual(
+        args.repo_root,
+        Mutation(args.file, args.find, args.replace),
+        args.test_command,
+        args.timeout,
+    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return COUNTERFACTUAL_EXIT_CODES[result["verdict"]]
+
+
 HANDLERS = {
+    "quality-gates": handle_quality_gates,
+    "counterfactual": handle_counterfactual,
     "init": handle_init,
     "init-change-package": handle_init_change_package,
     "validate": handle_validate,

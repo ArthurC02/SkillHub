@@ -99,6 +99,15 @@ def boundary_files(root: Path) -> list[str]:
     return without_ignored(root, sorted(files))
 
 
+def is_test_file(name: str) -> bool:
+    return (
+        name.endswith(("_test.go", "_test.py"))
+        or ".test." in name
+        or ".spec." in name
+        or (name.startswith("test_") and name.endswith(".py"))
+    )
+
+
 def test_locations(root: Path) -> list[str]:
     locations = set()
     candidates = [root]
@@ -121,11 +130,7 @@ def test_locations(root: Path) -> list[str]:
         for path in directory.rglob("*"):
             if any(part in EXCLUDED_DIRECTORIES for part in path.parts):
                 continue
-            if path.is_file() and (
-                path.name.endswith("_test.go")
-                or ".test." in path.name
-                or ".spec." in path.name
-            ):
+            if path.is_file() and is_test_file(path.name):
                 locations.add(relative(root, path))
     return without_ignored(root, sorted(locations))
 

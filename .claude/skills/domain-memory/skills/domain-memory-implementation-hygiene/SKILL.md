@@ -1,13 +1,13 @@
 ---
 name: domain-memory-implementation-hygiene
-description: Check that a code change expresses reviewed Domain Memory boundaries without turning generic style rules into Registry facts.
+description: Check that a code change expresses reviewed Domain Memory boundaries without turning generic style rules into Registry facts. Use while writing or refactoring code from a handoff, when an external system is added or replaced, and before handing the change to review.
 ---
 
 # Domain Memory implementation hygiene
 
 Use this after Domain Memory Read or Design and before handing off an implementation or review. It checks whether the change makes reviewed ownership, invariants, and collaborations visible in code. It is a companion to the lifecycle Skills, not another Registry lifecycle.
 
-Do not use it for generic formatting, naming, line counts, or broad style review. Existing repository automation owns those concerns.
+Do not use it for generic formatting, line counts, or broad style review. Existing repository automation owns those concerns, and so does every numeric limit. Naming is checked here only where the reviewed vocabulary supplies the name.
 
 ## Inputs
 
@@ -24,6 +24,19 @@ For each changed area, name its role before recommending code:
 - Persistence and generated mappings stay behind the owning Context's established boundary; do not add a one-implementation Repository interface merely to satisfy a pattern name.
 
 Check only concerns that can violate those roles: a technical adapter deciding domain policy, an application or domain operation returning a transport view, a foreign Context bypassing its owner, a provider detail crossing its adapter, or a fixed public payload left structurally anonymous when a named model would clarify the contract. Keep genuinely dynamic metadata and conditional payloads dynamic.
+
+When the change adds, replaces, or reaches an external system, decide the boundary with [ports and adapters](../../references/ports-and-adapters.md) before writing it.
+
+## Check the expression
+
+A boundary can hold while the code still hides the reviewed facts from the next reader. Work through [code expression](../../references/code-expression.md) for the parts that apply:
+
+- Find the repository's own checks first; they define done. When it has none, report that, and claim no standard the repository does not enforce.
+- Search for what already exists before writing it again.
+- Take identifiers, and the names of business numbers, from the reviewed vocabulary.
+- For a refactoring, keep the proof that behaviour was preserved in the repository as tests, and report each rule that had no test before the change.
+
+Keep the effort proportionate. A mechanical change inside a reviewed boundary gets the change, the tests, and a short report.
 
 ## Decide the smallest response
 

@@ -17,6 +17,8 @@ Answer these from reviewed records and the requirement:
 
 7. Is a tactical pattern needed here, or would one add indirection without protecting a domain rule?
 
+8. Does the change reach a system outside the process? Settle that boundary with [ports and adapters](ports-and-adapters.md).
+
 The answers may lead to an Aggregate, Entity, Value Object, Domain Service, Repository port, Domain Event, Policy, or another design. They may also justify no tactical pattern. Name a pattern only when it clarifies the decision; the name is not proof that the implementation is correct.
 
 ## Decision ladder

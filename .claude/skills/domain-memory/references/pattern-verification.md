@@ -28,7 +28,7 @@ Use the smallest evidence that can falsify the design:
 | Failure behavior is correct | A controlled failure leaves the documented state and recovery path. |
 | Complexity is justified | Removing the essential protection makes one of the above tests fail. |
 
-The last row is the counterfactual check. It must mutate the essential protection, run the focused test, observe a failure, and restore the implementation. A passing test without this check proves only that the test exists.
+The last row is the counterfactual check. It must mutate the essential protection, run the focused test, observe a failure, and restore the implementation. A passing test without this check proves only that the test exists. The `counterfactual` command performs the check and guarantees the restoration, which is the step done by hand that goes wrong.
 
 Derive the expected value from something other than the artifact under test. A check that compares a record with the reasoning that produced it passes whatever that reasoning got wrong, and reports the mistake as evidence. Where the claim is that two representations of a rule agree, compute one of them from the enforcing mechanism — the compiled guard, the schema, the migration — and compare it with the recorded one. A check that cannot fail while the artifact is wrong is not evidence, however many of them pass.
 

@@ -36,6 +36,20 @@ class BuildStandaloneTest(unittest.TestCase):
             for link in links:
                 self.assertTrue((output / link).is_file(), link)
 
+    def test_every_capability_bundle_carries_what_its_page_links_to(self) -> None:
+        plugin = Path(__file__).parents[1]
+        capabilities = sorted(p.name for p in (plugin / "skills").iterdir())
+        self.assertIn("domain-memory-implementation-hygiene", capabilities)
+        for capability in capabilities:
+            with self.subTest(capability), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / capability
+                build(plugin, capability, output)
+                page = (output / "SKILL.md").read_text(encoding="utf-8")
+                links = re.findall(r"\]\(([^)#]+)\)", page)
+                self.assertTrue(links)
+                for link in links:
+                    self.assertTrue((output / link).is_file(), link)
+
     def test_unknown_skill_does_not_create_output(self) -> None:
         plugin = Path(__file__).parents[1]
         with tempfile.TemporaryDirectory() as temporary:

@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from .common import ASSET_KEYS
+from .counterfactual import DEFAULT_TIMEOUT_SECONDS
 from .policy import AMENDABLE_FIELDS
 
 
@@ -203,6 +204,17 @@ def build_parser() -> argparse.ArgumentParser:
     finalize_parser.add_argument("--registry-root", type=Path)
     finalize_parser.add_argument("--repo-root", type=Path)
     finalize_parser.add_argument("--verification-token-env", default="GITHUB_TOKEN")
+    gates_parser = commands.add_parser("quality-gates")
+    gates_parser.add_argument("--repo-root", required=True, type=Path)
+    counterfactual_parser = commands.add_parser("counterfactual")
+    counterfactual_parser.add_argument("--repo-root", required=True, type=Path)
+    counterfactual_parser.add_argument("--file", required=True, type=Path)
+    counterfactual_parser.add_argument("--find", required=True)
+    counterfactual_parser.add_argument("--replace", required=True)
+    counterfactual_parser.add_argument("--test-command", required=True)
+    counterfactual_parser.add_argument(
+        "--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS
+    )
     package_validate_parser = commands.add_parser("validate-change-package")
     package_validate_parser.add_argument("--package-root", required=True, type=Path)
     package_validate_parser.add_argument("--registry-root", type=Path)

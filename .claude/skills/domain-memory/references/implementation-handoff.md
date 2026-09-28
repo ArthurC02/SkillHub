@@ -16,6 +16,9 @@ Forces:
 Decision:
 - the smallest design that protects those facts, including "no tactical pattern" when appropriate
 
+External systems:
+- each system outside the process the change reaches, what the domain wants from it in domain terms, and the outcomes the domain must tell apart; omit the section when there is none
+
 Unknowns:
 - unresolved facts that block implementation or require an explicit assumption
 
@@ -32,7 +35,7 @@ Do not fill a missing fact with a likely value. Mark it unknown and stop only wh
 
 - **Read** produces the reviewed facts, gaps, and tactical questions before coding.
 - **Design** adds the forces, decision, alternatives, and proof obligations for a material change.
-- **Coding Agent** chooses the language-native implementation after inspecting nearby code and tests. It must preserve the handoff's behavior, not copy a pattern name.
+- **Coding Agent** chooses the language-native implementation after inspecting nearby code and tests. It must preserve the handoff's behavior, not copy a pattern name. [Ports and adapters](ports-and-adapters.md) settles a boundary with an external system, and [code expression](code-expression.md) settles whether the reviewed facts can be found in the result.
 - **Maintain** compares the resulting behavior with the handoff and turns any changed fact into a candidate or new Change Package.
 - **Review** checks that every proof obligation has observable evidence and that the implementation did not silently replace an unknown with an assumption.
 

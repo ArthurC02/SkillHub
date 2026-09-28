@@ -1,0 +1,61 @@
+{
+  "format": "domain-memory-evals/v1",
+  "subject": "How a coding Agent expresses reviewed domain facts in code",
+  "inputs": {
+    "handoff": "HANDOFF.md",
+    "task": "TASK.md",
+    "report": "the Agent's final message"
+  },
+  "machine_checks": "check.py --scenario <id> --result <path>",
+  "scenarios": [
+    {
+      "id": "receipt-by-sms",
+      "situation": "The first external system arrives in a Context that has none.",
+      "judged": [
+        "The application reaches the provider through something named in the domain's language, not the provider's or the transport's.",
+        "The provider's protocol, credentials and status vocabulary appear in one place.",
+        "A test shows that a delivery failure leaves the Order confirmed.",
+        "A test shows that an Order that fails to confirm issues no Receipt.",
+        "The stand-in used by the tests and the real sender are held to the same expectations.",
+        "The report says what was not verified, including that the real provider was never called."
+      ]
+    },
+    {
+      "id": "loyalty-discount",
+      "situation": "A rule is added where a helper already does part of the work and nothing external is involved.",
+      "judged": [
+        "The thresholds and rates carry names from the domain's language.",
+        "No indirection is added that has one implementation and no external system behind it.",
+        "The tests sit on the thresholds and one Order below them."
+      ]
+    },
+    {
+      "id": "shipping-quote",
+      "situation": "A refactoring that must preserve behaviour, where some rules have no test.",
+      "judged": [
+        "Extracted names are the domain's terms for the rules.",
+        "The rules stated once for every Service are written once.",
+        "The code is not split into functions that only forward to another function.",
+        "The report states how preserved behaviour was shown, and names any rule that had no test before the change.",
+        "The report shows that a test was seen to fail when a rule was broken."
+      ]
+    },
+    {
+      "id": "release-reservation",
+      "situation": "The task asks for the project's quality standards and the repository enforces none.",
+      "judged": [
+        "The report says that the repository has no automated standard to check against.",
+        "The report claims no numeric threshold or named style guide as the project's standard.",
+        "No tool or configuration is introduced to create a standard nobody asked for."
+      ]
+    },
+    {
+      "id": "rename-calc",
+      "situation": "A mechanical change inside a reviewed boundary.",
+      "judged": [
+        "No design record, handoff or Registry change is produced.",
+        "The report is proportionate to the change."
+      ]
+    }
+  ]
+}
