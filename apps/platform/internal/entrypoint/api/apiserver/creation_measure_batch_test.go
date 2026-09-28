@@ -589,10 +589,7 @@ func TestTheMeasureHarnessCountsAnyTrialInputChangeAsARevision(t *testing.T) {
 
 func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *creation.Service, trial *trialRun, v creation.View, row sessionRow, outDir string) (sessionRow, creation.View) {
 	t.Helper()
-	rounds := 3
-	if n, err := strconv.Atoi(os.Getenv("CREATION_MEASURE_ROUNDS")); err == nil && n > 0 {
-		rounds = n
-	}
+	rounds := measureRounds(os.Getenv("CREATION_MEASURE_ROUNDS"))
 	last := trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
 	row.RunStatus, row.EvalStatus, row.Overall, row.Met, row.MetNote = last.runStatus, last.evalStatus, last.overall, last.met, last.note
 	if last.runID == "" {
@@ -600,70 +597,103 @@ func attachTrialRun(t *testing.T, a *api, ctx context.Context, c *client, s *cre
 	}
 	row.Rounds = 1
 	writeTrialRecord(t, outDir, row.ID, 1, last.record)
-	firstCriteria := last.record.criteriaTexts()
+	r := &trialRevision{
+		session: measureSession{t: t, a: a, ctx: ctx, c: c, s: s, trial: trial, outDir: outDir},
+		row:     row, v: v, last: last, firstCriteria: last.record.criteriaTexts(),
+	}
 	if last.met != nil && *last.met {
-		row.MetRound = 1
+		r.row.MetRound = 1
 	}
-	for round := 2; round <= rounds && row.MetRound == 0; round++ {
-		before := trialInputsOf(v.Snapshot)
-		v = creationAttachRun(t, c, v, last.runID)
-		answered := 0
-
-		for i := 0; i < creation.MaxNudges+10; i++ {
-			switch v.State {
-			case "queued":
-				v = creationStep(t, s, v)
-				row.ModelCalls++
-				continue
-			case "waiting_confirmation":
-				if v.Snapshot.PendingAction == "" {
-					break
-				}
-				v = creationAct(t, c, v, string(v.Snapshot.PendingAction))
-				row.AutoConfirms++
-				continue
-			case "waiting_input":
-
-				if answered >= 2 {
-					break
-				}
-				answered++
-				row.Clarifications++
-				v = creationMessage(t, c, v, creationMeasureRevisionReply)
-				continue
-			}
+	for round := 2; round <= rounds && r.row.MetRound == 0; round++ {
+		if !r.reviseAndRun(round) {
 			break
-		}
-		revised := !before.equal(trialInputsOf(v.Snapshot))
-		if round == 2 {
-			row.RevisedAfterRun = &revised
-		}
-		if !revised {
-			break
-		}
-		if v.State != "draft_ready" {
-			row.RevisedNote = "revised draft did not settle: " + v.State
-			break
-		}
-
-		v = materializeThrough(t, c, v, &row)
-		if v.Snapshot.Draft != nil {
-			dumpDraftMD(t, outDir, row.ID, fmt.Sprintf("interactive-r%d", round), v.Snapshot.Draft.Skill.Name, v.Snapshot.Draft.Skill.Description, v.Snapshot.Draft.Skill.Body)
-		}
-		last = trialCandidate(t, a, ctx, c, trial, v.Snapshot.Candidate)
-		row.RevisedOverall, row.RevisedMet, row.RevisedNote = last.overall, last.met, last.note
-		if last.runID == "" {
-			break
-		}
-		row.Rounds = round
-		writeTrialRecord(t, outDir, row.ID, round, last.record)
-		if last.met != nil && *last.met {
-			row.MetRound = round
-			changed := !slices.Equal(firstCriteria, last.record.criteriaTexts())
-			row.CriteriaChangedBeforeMet = &changed
 		}
 	}
-	return row, v
+	return r.row, r.v
+}
+
+func measureRounds(raw string) int {
+	rounds := 3
+	if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+		rounds = n
+	}
+	return rounds
+}
+
+type measureSession struct {
+	t      *testing.T
+	a      *api
+	ctx    context.Context
+	c      *client
+	s      *creation.Service
+	trial  *trialRun
+	outDir string
+}
+
+type trialRevision struct {
+	session       measureSession
+	row           sessionRow
+	v             creation.View
+	last          trialOutcome
+	firstCriteria []string
+}
+
+func (r *trialRevision) reviseAndRun(round int) bool {
+	m := r.session
+	t := m.t
+	before := trialInputsOf(r.v.Snapshot)
+	r.v = creationAttachRun(t, m.c, r.v, r.last.runID)
+	r.v = settleRevision(m, r.v, &r.row)
+	revised := !before.equal(trialInputsOf(r.v.Snapshot))
+	if round == 2 {
+		r.row.RevisedAfterRun = &revised
+	}
+	if !revised {
+		return false
+	}
+	if r.v.State != "draft_ready" {
+		r.row.RevisedNote = "revised draft did not settle: " + r.v.State
+		return false
+	}
+
+	r.v = materializeThrough(t, m.c, r.v, &r.row)
+	if r.v.Snapshot.Draft != nil {
+		dumpDraftMD(t, m.outDir, r.row.ID, fmt.Sprintf("interactive-r%d", round), r.v.Snapshot.Draft.Skill.Name, r.v.Snapshot.Draft.Skill.Description, r.v.Snapshot.Draft.Skill.Body)
+	}
+	r.last = trialCandidate(t, m.a, m.ctx, m.c, m.trial, r.v.Snapshot.Candidate)
+	r.row.RevisedOverall, r.row.RevisedMet, r.row.RevisedNote = r.last.overall, r.last.met, r.last.note
+	if r.last.runID == "" {
+		return false
+	}
+	r.row.Rounds = round
+	writeTrialRecord(t, m.outDir, r.row.ID, round, r.last.record)
+	if r.last.met != nil && *r.last.met {
+		r.row.MetRound = round
+		changed := !slices.Equal(r.firstCriteria, r.last.record.criteriaTexts())
+		r.row.CriteriaChangedBeforeMet = &changed
+	}
+	return true
+}
+
+func settleRevision(m measureSession, v creation.View, row *sessionRow) creation.View {
+	answered := 0
+	for i := 0; i < creation.MaxNudges+10; i++ {
+		switch {
+		case v.State == "queued":
+			v = creationStep(m.t, m.s, v)
+			row.ModelCalls++
+		case v.State == "waiting_confirmation" && v.Snapshot.PendingAction != "":
+			v = creationAct(m.t, m.c, v, string(v.Snapshot.PendingAction))
+			row.AutoConfirms++
+		case v.State == "waiting_input" && answered < 2:
+			answered++
+			row.Clarifications++
+			v = creationMessage(m.t, m.c, v, creationMeasureRevisionReply)
+		default:
+			return v
+		}
+	}
+	return v
 }
 
 func revisedMetLabel(row sessionRow) string {
@@ -676,7 +706,12 @@ func revisedMetLabel(row sessionRow) string {
 	return fmt.Sprintf("%v (%s, rounds=%d, met_round=%d)", *row.RevisedMet, row.RevisedOverall, row.Rounds, row.MetRound)
 }
 
-func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
+type creationMeasureEnvironment struct {
+	corpusPath, diagramDir, outDir, base, gatewayKey string
+}
+
+func creationMeasureEnv(t *testing.T) creationMeasureEnvironment {
+	t.Helper()
 	corpusPath := os.Getenv("CREATION_MEASURE_CORPUS")
 	diagramDir := os.Getenv("CREATION_MEASURE_DIAGRAMS")
 	outDir := os.Getenv("CREATION_MEASURE_OUT")
@@ -685,17 +720,16 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	if corpusPath == "" || diagramDir == "" || outDir == "" || base == "" || gatewayKey == "" {
 		t.Skip("set CREATION_MEASURE_CORPUS, CREATION_MEASURE_DIAGRAMS, CREATION_MEASURE_OUT, SKILLHUB_E2E_LLM_URL and LITELLM_API_KEY; this test spends money")
 	}
+	return creationMeasureEnvironment{corpusPath: corpusPath, diagramDir: diagramDir, outDir: outDir, base: base, gatewayKey: gatewayKey}
+}
+
+func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
+	env := creationMeasureEnv(t)
+	outDir := env.outDir
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(corpusPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var corpus modesCorpus
-	if err := json.Unmarshal(raw, &corpus); err != nil {
-		t.Fatal(err)
-	}
+	corpus := readModesCorpus(t, env.corpusPath)
 
 	textOnly := len(corpus.Diagram) < 5 || len(corpus.Reference) < 10
 	if textOnly && len(corpus.Reference) == 0 {
@@ -703,8 +737,134 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 	}
 	pool := requireDB(t)
 
-	llm := &llmclient.Client{BaseURL: base, Token: os.Getenv("LLM_SERVICE_TOKEN")}
+	llm := &llmclient.Client{BaseURL: env.base, Token: os.Getenv("LLM_SERVICE_TOKEN")}
 	limits := creationMeasureLimits()
+	a, creator := newCreationMeasureAPI(t, pool, llm, limits, env.gatewayKey)
+	ctx := context.Background()
+	trial := withTrialRunning(t, a, pool, env.base, a.traceSigner, outDir)
+
+	var tasks []measureTask
+	if textOnly {
+		tasks = textMeasureTasks(corpus.Reference)
+	} else {
+		tasks = mixedMeasureTasks(t, corpus, env.diagramDir)
+	}
+	tasks = onlyMeasureTasks(tasks, os.Getenv("CREATION_MEASURE_ONLY"))
+
+	var results creationMeasureResults
+	results.Thresholds = creationMeasureThresholds{
+		FormatPassMin: 14, MetMin: 9, KeptMin: 12,
+		CostMedianMax: 0.5, P50SecondsMax: 60, P95SecondsMax: 90,
+	}
+
+	for _, task := range tasks {
+		row := runInteractiveSession(t, a, creator, ctx, task, limits, outDir, trial, llm)
+		results.Interactive = append(results.Interactive, row)
+		writeCreationMeasureResults(t, outDir, results)
+		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s search_hit=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), searchLabel(row), row.ModelCalls)
+	}
+	for _, task := range tasks {
+		row := runSingleShot(t, a, ctx, task, outDir)
+		results.SingleShot = append(results.SingleShot, row)
+		writeCreationMeasureResults(t, outDir, results)
+		t.Logf("single-shot %s (%s): generated=%v attempts=%d cost=%s", task.ID, task.Kind, row.Generated, row.Attempts, costLabel(row.CostUSD))
+	}
+
+	results.Summary = summarizeCreationMeasure(results.Interactive, results.SingleShot)
+	writeCreationMeasureResults(t, outDir, results)
+
+	if len(results.Interactive) != len(tasks) || len(results.SingleShot) != len(tasks) {
+		t.Fatalf("expected %d+%d rows, got %d+%d", len(tasks), len(tasks), len(results.Interactive), len(results.SingleShot))
+	}
+}
+
+func writeCreationMeasureResults(t *testing.T, outDir string, results creationMeasureResults) {
+	t.Helper()
+	data, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, "results.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func summarizeCreationMeasure(interactive []sessionRow, singleShot []singleShotRow) creationMeasureSummary {
+	var summary creationMeasureSummary
+	for _, row := range interactive {
+		if row.Draft && !row.Blocked {
+			summary.FormatPass++
+		}
+		if row.Met != nil {
+			summary.countJudged(row)
+		}
+	}
+	for _, row := range singleShot {
+		if row.Generated {
+			summary.FormatPass++
+		}
+	}
+	var costs, allSeconds []float64
+	for _, row := range interactive {
+		if row.CostUSD != nil {
+			costs = append(costs, *row.CostUSD)
+		}
+		allSeconds = append(allSeconds, row.SecondsPerCall...)
+	}
+	summary.CostMedian = median(costs)
+	summary.P50Seconds = percentile(allSeconds, 50)
+	summary.P95Seconds = percentile(allSeconds, 95)
+	return summary
+}
+
+func textMeasureTasks(references []modesReference) []measureTask {
+	var tasks []measureTask
+	for _, r := range references {
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
+	}
+	return tasks
+}
+
+func referenceMeasureTasks(references []modesReference) []measureTask {
+	var tasks []measureTask
+	for _, r := range references {
+		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
+	}
+	return tasks
+}
+
+func onlyMeasureTasks(tasks []measureTask, only string) []measureTask {
+	if only == "" {
+		return tasks
+	}
+	return slices.DeleteFunc(tasks, func(task measureTask) bool { return task.Kind != only })
+}
+
+func mixedMeasureTasks(t *testing.T, corpus modesCorpus, diagramDir string) []measureTask {
+	t.Helper()
+	tasks := textMeasureTasks(corpus.Reference[:5])
+	for i := 0; i < 5; i++ {
+		tasks = append(tasks, diagramMeasureTask(t, corpus.Diagram[i], diagramDir))
+	}
+	return append(tasks, referenceMeasureTasks(corpus.Reference[5:10])...)
+}
+
+func diagramMeasureTask(t *testing.T, d modesDiagram, diagramDir string) measureTask {
+	t.Helper()
+	ext, mediaType := d.Media, diagramMediaType(d.Media)
+	img, err := os.ReadFile(filepath.Join(diagramDir, d.ID+"."+ext))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var nodes []string
+	for _, n := range d.Nodes {
+		nodes = append(nodes, n.Label)
+	}
+	return measureTask{ID: d.ID, Kind: "diagram", Diagram: &ingest.GenerateDiagram{MediaType: mediaType, Data: img}, DiagramNodes: nodes}
+}
+
+func newCreationMeasureAPI(t *testing.T, pool *pgxpool.Pool, llm *llmclient.Client, limits creation.Limits, gatewayKey string) (*api, *creation.Service) {
+	t.Helper()
 	set, err := worker.BuildWorkers(pool, worker.Deps{CreationLimits: limits, LLM: llm})
 	if err != nil {
 		t.Fatal(err)
@@ -736,99 +896,7 @@ func TestCreationMeasureFifteenSessionsAgainstSingleShot(t *testing.T) {
 		Server: server, auth: app.Auth, app: app, packages: packages, handler: handler,
 		versions: app.Versions, runs: app.RunSvc, evaluations: app.EvalSvc, traceSigner: traceSigner,
 	}
-	ctx := context.Background()
-	trial := withTrialRunning(t, a, pool, base, traceSigner, outDir)
-
-	var tasks []measureTask
-	if textOnly {
-		for _, r := range corpus.Reference {
-			tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
-		}
-	}
-	for i := 0; i < 5 && !textOnly; i++ {
-		r := corpus.Reference[i]
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "text", Description: r.Description, Holdout: r.Holdout})
-	}
-	for i := 0; i < 5 && !textOnly; i++ {
-		d := corpus.Diagram[i]
-		ext, mediaType := d.Media, "image/png"
-		if ext == "jpg" {
-			mediaType = "image/jpeg"
-		}
-		img, err := os.ReadFile(filepath.Join(diagramDir, d.ID+"."+ext))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var nodes []string
-		for _, n := range d.Nodes {
-			nodes = append(nodes, n.Label)
-		}
-		tasks = append(tasks, measureTask{ID: d.ID, Kind: "diagram", Diagram: &ingest.GenerateDiagram{MediaType: mediaType, Data: img}, DiagramNodes: nodes})
-	}
-	for i := 5; i < 10 && !textOnly; i++ {
-		r := corpus.Reference[i]
-		tasks = append(tasks, measureTask{ID: r.ID, Kind: "reference", Description: r.Description, ReferenceMD: r.Reference.SkillMD, Holdout: r.Holdout})
-	}
-	if only := os.Getenv("CREATION_MEASURE_ONLY"); only != "" {
-		tasks = slices.DeleteFunc(tasks, func(task measureTask) bool { return task.Kind != only })
-	}
-
-	var results creationMeasureResults
-	results.Thresholds = creationMeasureThresholds{
-		FormatPassMin: 14, MetMin: 9, KeptMin: 12,
-		CostMedianMax: 0.5, P50SecondsMax: 60, P95SecondsMax: 90,
-	}
-	flush := func() {
-		data, err := json.MarshalIndent(results, "", "  ")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(outDir, "results.json"), data, 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	for _, task := range tasks {
-		row := runInteractiveSession(t, a, set.Creation, ctx, task, limits, outDir, trial, llm)
-		results.Interactive = append(results.Interactive, row)
-		flush()
-		t.Logf("interactive %s (%s): state=%s draft=%v cost=%s met=%s revised_met=%s search_hit=%s calls=%d", task.ID, task.Kind, row.FinalState, row.Draft, costLabel(row.CostUSD), metLabel(row), revisedMetLabel(row), searchLabel(row), row.ModelCalls)
-	}
-	for _, task := range tasks {
-		row := runSingleShot(t, a, ctx, task, outDir)
-		results.SingleShot = append(results.SingleShot, row)
-		flush()
-		t.Logf("single-shot %s (%s): generated=%v attempts=%d cost=%s", task.ID, task.Kind, row.Generated, row.Attempts, costLabel(row.CostUSD))
-	}
-
-	for _, row := range results.Interactive {
-		if row.Draft && !row.Blocked {
-			results.Summary.FormatPass++
-		}
-		if row.Met != nil {
-			results.Summary.countJudged(row)
-		}
-	}
-	for _, row := range results.SingleShot {
-		if row.Generated {
-			results.Summary.FormatPass++
-		}
-	}
-	var costs, allSeconds []float64
-	for _, row := range results.Interactive {
-		if row.CostUSD != nil {
-			costs = append(costs, *row.CostUSD)
-		}
-		allSeconds = append(allSeconds, row.SecondsPerCall...)
-	}
-	results.Summary.CostMedian = median(costs)
-	results.Summary.P50Seconds = percentile(allSeconds, 50)
-	results.Summary.P95Seconds = percentile(allSeconds, 95)
-	flush()
-
-	if len(results.Interactive) != len(tasks) || len(results.SingleShot) != len(tasks) {
-		t.Fatalf("expected %d+%d rows, got %d+%d", len(tasks), len(tasks), len(results.Interactive), len(results.SingleShot))
-	}
+	return a, set.Creation
 }
 
 func dumpDraftMD(t *testing.T, outDir, id, suffix, name, description, body string) {
@@ -866,139 +934,208 @@ var measureRunNonce = time.Now().UTC().Format("0102-150405")
 
 func runInteractiveSession(t *testing.T, a *api, s *creation.Service, ctx context.Context, task measureTask, limits creation.Limits, outDir string, trial *trialRun, llm *llmclient.Client) sessionRow {
 	t.Helper()
-	row := sessionRow{ID: task.ID, Kind: task.Kind}
-
-	c := a.login(t, "creation-measure-"+measureRunNonce+"-"+strings.ToLower(task.ID))
-
-	initialMessage := task.Description
-	if task.Kind == "diagram" {
-		initialMessage = ""
+	m := &interactiveSession{
+		measureSession: measureSession{t: t, a: a, ctx: ctx, s: s, trial: trial, outDir: outDir},
+		task:           task,
+		row:            sessionRow{ID: task.ID, Kind: task.Kind},
 	}
 
-	var refID string
-	if task.Kind == "reference" {
+	m.c = a.login(t, "creation-measure-"+measureRunNonce+"-"+strings.ToLower(task.ID))
 
-		refID, _ = importFilesEnriched(t, a, testPool, c, map[string]string{"SKILL.md": task.ReferenceMD}, llm)
-		markCatalog(t, testPool, c.workspaceID)
-	}
-	v := creationPost(t, c, "/creation-sessions", map[string]any{
+	initialMessage := initialCreationMessage(task)
+
+	refID := m.importReference(llm)
+	m.v = creationPost(t, m.c, "/creation-sessions", map[string]any{
 		"id": creationID(t), "message": initialMessage, "budget_credits": int64(limits.MaxCostUSD * 1300),
 	}, 200)
 
-	defer func() {
-		data, err := json.MarshalIndent(map[string]any{"state": v.State, "brief": v.Snapshot.Brief, "acceptance_criteria": v.Snapshot.AcceptanceCriteria, "messages": v.Snapshot.Messages}, "", "  ")
-		if err == nil {
-			_ = os.WriteFile(filepath.Join(outDir, task.ID+"-interactive.transcript.json"), data, 0o600)
-		}
-	}()
+	defer m.writeTranscript()
 
+	m.sendMaterials(refID)
+	return m.drive()
+}
+
+type interactiveSession struct {
+	measureSession
+	task           measureTask
+	row            sessionRow
+	v              creation.View
+	clarifications int
+}
+
+type sessionTurn int
+
+const (
+	turnCounted sessionTurn = iota
+	turnUncounted
+	turnFinished
+)
+
+func initialCreationMessage(task measureTask) string {
 	if task.Kind == "diagram" {
-		encoded := base64.StdEncoding.EncodeToString(task.Diagram.Data)
-		v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
-			"command_id": creationID(t), "expected_revision": v.Revision, "kind": "diagram",
-			"diagram": map[string]string{"media_type": task.Diagram.MediaType, "data": encoded},
-		}, 200)
-		row.ModelCalls++
+		return ""
 	}
-	if task.Kind == "reference" {
+	return task.Description
+}
 
-		for v.State == "queued" {
-			v = creationStep(t, s, v)
-			row.ModelCalls++
+func draftHashOf(v creation.View) string {
+	if v.Snapshot.Draft == nil {
+		return ""
+	}
+	return v.Snapshot.Draft.ContentHash
+}
+
+func (m *interactiveSession) importReference(llm *llmclient.Client) string {
+	var refID string
+	if m.task.Kind == "reference" {
+
+		refID, _ = importFilesEnriched(m.t, m.a, testPool, m.c, map[string]string{"SKILL.md": m.task.ReferenceMD}, llm)
+		markCatalog(m.t, testPool, m.c.workspaceID)
+	}
+	return refID
+}
+
+func (m *interactiveSession) writeTranscript() {
+	v := m.v
+	data, err := json.MarshalIndent(map[string]any{"state": v.State, "brief": v.Snapshot.Brief, "acceptance_criteria": v.Snapshot.AcceptanceCriteria, "messages": v.Snapshot.Messages}, "", "  ")
+	if err == nil {
+		_ = os.WriteFile(filepath.Join(m.outDir, m.task.ID+"-interactive.transcript.json"), data, 0o600)
+	}
+}
+
+func (m *interactiveSession) sendMaterials(refID string) {
+	t, c := m.t, m.c
+	if m.task.Kind == "diagram" {
+		encoded := base64.StdEncoding.EncodeToString(m.task.Diagram.Data)
+		m.v = creationPost(t, c, "/creation-sessions/"+m.v.ID+"/actions", map[string]any{
+			"command_id": creationID(t), "expected_revision": m.v.Revision, "kind": "diagram",
+			"diagram": map[string]string{"media_type": m.task.Diagram.MediaType, "data": encoded},
+		}, 200)
+		m.row.ModelCalls++
+	}
+	if m.task.Kind == "reference" {
+
+		for m.v.State == "queued" {
+			m.v = creationStep(t, m.s, m.v)
+			m.row.ModelCalls++
 		}
 		if os.Getenv("CREATION_MEASURE_SEARCH") == "1" {
-			recordCatalogSearch(&row, v, refID)
+			recordCatalogSearch(&m.row, m.v, refID)
 		} else {
-			v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
-				"command_id": creationID(t), "expected_revision": v.Revision, "kind": "select_references",
+			m.v = creationPost(t, c, "/creation-sessions/"+m.v.ID+"/actions", map[string]any{
+				"command_id": creationID(t), "expected_revision": m.v.Revision, "kind": "select_references",
 				"reference_skill_ids": []string{refID},
 			}, 200)
-			v = creationAct(t, c, v, "confirm_references")
+			m.v = creationAct(t, c, m.v, "confirm_references")
 		}
 	}
+}
 
-	clarifications := 0
+func (m *interactiveSession) drive() sessionRow {
 	for i := 0; i < creationMeasureLoopBudget; i++ {
-		switch v.State {
-		case "saved", "failed", "cancelled", "needs_reupload":
-			row.FinalState = v.State
-			return finishSession(t, v, row, outDir)
-		case "queued":
-			start := time.Now()
-			v = creationStep(t, s, v)
-			row.SecondsPerCall = append(row.SecondsPerCall, time.Since(start).Seconds())
-			row.ModelCalls++
-			if v.Snapshot.SpentUSD != nil {
-				row.CostUSD = v.Snapshot.SpentUSD
-			}
-			row.UsageUnknown = v.Snapshot.UsageUnknown
-			row.ToolCalls = v.Snapshot.ToolCalls
-		case "waiting_confirmation":
-			kind := v.Snapshot.PendingAction
-			if kind == "" {
-				row.FinalState = v.State
-				row.Error = "waiting_confirmation with no pending action"
-				return finishSession(t, v, row, outDir)
-			}
-			if kind == "confirm_references" && task.Kind != "reference" {
-
-				row.CatalogOffers = len(v.Snapshot.References)
-				kind = "decline_references"
-			}
-			if kind == creation.PendingDiagramAnswers {
-				var refused string
-				v, refused = answerDiagramUncertainties(t, c, v, task.DiagramNodes, &row)
-				if refused != "" {
-					row.FinalState = v.State
-					row.Error = refused
-					return finishSession(t, v, row, outDir)
-				}
-				continue
-			}
-
-			code, body := creationPostStatus(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": v.Revision, "kind": kind, "content_hash": func() string {
-				if v.Snapshot.Draft == nil {
-					return ""
-				}
-				return v.Snapshot.Draft.ContentHash
-			}()})
-			if code != 200 {
-				row.FinalState = v.State
-				row.Error = fmt.Sprintf("%s refused: %d %s", kind, code, body)
-				return finishSession(t, v, row, outDir)
-			}
-			if err := json.Unmarshal([]byte(body), &v); err != nil {
-				t.Fatal(err)
-			}
-			row.AutoConfirms++
-		case "waiting_input":
-			if clarifications >= 2 {
-				row.FinalState = v.State
-				return finishSession(t, v, row, outDir)
-			}
-			clarifications++
-			row.Clarifications++
-			v = creationMessage(t, c, v, "請依合理假設補上缺的資訊，然後繼續。")
-		case "draft_ready":
-			v = materializeThrough(t, c, v, &row)
-			row.FinalState = v.State
-			row = finishSession(t, v, row, outDir)
-			if trial != nil {
-
-				row, v = attachTrialRun(t, a, ctx, c, s, trial, v, row, outDir)
-				row = runHoldout(t, a, ctx, c, trial, v, task, row, outDir)
-			}
-			return row
-		default:
-			row.FinalState = v.State
-			row.Error = "unexpected state: " + v.State
-			return finishSession(t, v, row, outDir)
+		switch m.turn() {
+		case turnFinished:
+			return m.row
+		case turnUncounted:
+			continue
 		}
-		row.Turns++
+		m.row.Turns++
 	}
-	row.FinalState = v.State
-	row.Error = "loop budget exhausted"
-	return finishSession(t, v, row, outDir)
+	m.row.FinalState = m.v.State
+	m.row.Error = "loop budget exhausted"
+	return finishSession(m.t, m.v, m.row, m.outDir)
+}
+
+func (m *interactiveSession) turn() sessionTurn {
+	switch m.v.State {
+	case "saved", "failed", "cancelled", "needs_reupload":
+		return m.finish("")
+	case "queued":
+		m.step()
+		return turnCounted
+	case "waiting_confirmation":
+		return m.confirmPending()
+	case "waiting_input":
+		return m.clarify()
+	case "draft_ready":
+		return m.materializeAndTrial()
+	default:
+		return m.finish("unexpected state: " + m.v.State)
+	}
+}
+
+func (m *interactiveSession) finish(problem string) sessionTurn {
+	m.row.FinalState = m.v.State
+	if problem != "" {
+		m.row.Error = problem
+	}
+	m.row = finishSession(m.t, m.v, m.row, m.outDir)
+	return turnFinished
+}
+
+func (m *interactiveSession) step() {
+	start := time.Now()
+	m.v = creationStep(m.t, m.s, m.v)
+	m.row.SecondsPerCall = append(m.row.SecondsPerCall, time.Since(start).Seconds())
+	m.row.ModelCalls++
+	if m.v.Snapshot.SpentUSD != nil {
+		m.row.CostUSD = m.v.Snapshot.SpentUSD
+	}
+	m.row.UsageUnknown = m.v.Snapshot.UsageUnknown
+	m.row.ToolCalls = m.v.Snapshot.ToolCalls
+}
+
+func (m *interactiveSession) confirmPending() sessionTurn {
+	t := m.t
+	kind := m.v.Snapshot.PendingAction
+	if kind == "" {
+		return m.finish("waiting_confirmation with no pending action")
+	}
+	if kind == "confirm_references" && m.task.Kind != "reference" {
+
+		m.row.CatalogOffers = len(m.v.Snapshot.References)
+		kind = "decline_references"
+	}
+	if kind == creation.PendingDiagramAnswers {
+		var refused string
+		m.v, refused = answerDiagramUncertainties(t, m.c, m.v, m.task.DiagramNodes, &m.row)
+		if refused != "" {
+			return m.finish(refused)
+		}
+		return turnUncounted
+	}
+
+	code, body := creationPostStatus(t, m.c, "/creation-sessions/"+m.v.ID+"/actions", map[string]any{"command_id": creationID(t), "expected_revision": m.v.Revision, "kind": kind, "content_hash": draftHashOf(m.v)})
+	if code != 200 {
+		return m.finish(fmt.Sprintf("%s refused: %d %s", kind, code, body))
+	}
+	if err := json.Unmarshal([]byte(body), &m.v); err != nil {
+		t.Fatal(err)
+	}
+	m.row.AutoConfirms++
+	return turnCounted
+}
+
+func (m *interactiveSession) clarify() sessionTurn {
+	if m.clarifications >= 2 {
+		return m.finish("")
+	}
+	m.clarifications++
+	m.row.Clarifications++
+	m.v = creationMessage(m.t, m.c, m.v, "請依合理假設補上缺的資訊，然後繼續。")
+	return turnCounted
+}
+
+func (m *interactiveSession) materializeAndTrial() sessionTurn {
+	m.v = materializeThrough(m.t, m.c, m.v, &m.row)
+	m.row.FinalState = m.v.State
+	m.row = finishSession(m.t, m.v, m.row, m.outDir)
+	if m.trial != nil {
+
+		m.row, m.v = attachTrialRun(m.t, m.a, m.ctx, m.c, m.s, m.trial, m.v, m.row, m.outDir)
+		m.row = runHoldout(m.t, m.a, m.ctx, m.c, m.trial, m.v, m.task, m.row, m.outDir)
+	}
+	return turnFinished
 }
 
 func diagramAnswer(nodes []string) string {

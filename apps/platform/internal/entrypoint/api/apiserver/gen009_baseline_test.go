@@ -14,9 +14,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
@@ -67,7 +69,45 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	if gatewayURL == "" {
 		t.Fatal("SKILLHUB_E2E_GATEWAY_URL is required so generated runs use the sandbox-routable gateway")
 	}
-	raw, err := os.ReadFile(corpusPath)
+	corpus := readGen009Corpus(t, corpusPath)
+
+	pool := requireDB(t)
+	ctx := context.Background()
+
+	store := ensuredObjectStore(t, ctx)
+
+	a := newAPIWithLLM(t, pool, llmURL)
+	configureGen009Runs(t, a, store, sandboxURL, gatewayURL)
+
+	public, port := startRoutableServer(t, a.handler)
+	defer public.Close()
+	a.runs.TraceSigner = a.traceSigner
+	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
+		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), port)
+
+	judging := *a.evaluations
+	judging.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")})
+	startWorkerWith(t, a.runs, &judging)
+
+	c := a.login(t, "gen009-baseline")
+	trial := gen009Trial{a: a, store: store, pool: pool, ctx: ctx, c: c, ws: workspaceOf(t, pool, c)}
+
+	rows := make([]gen009Row, 0, len(corpus))
+	for i, tc := range corpus {
+		row := gen009Row{ID: tc.ID, Group: tc.Group}
+		t.Run(tc.ID, func(t *testing.T) {
+			trial.run(t, tc, &row)
+		})
+		rows = append(rows, row)
+		writeGen009(t, rows)
+		t.Logf("--- %d/%d done", i+1, len(corpus))
+	}
+	writeGen009(t, rows)
+}
+
+func readGen009Corpus(t *testing.T, path string) []gen009Case {
+	t.Helper()
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,10 +118,11 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	if len(corpus) == 0 {
 		t.Fatal("the corpus is empty; a census over nothing is a zero, not a pass")
 	}
+	return corpus
+}
 
-	pool := requireDB(t)
-	ctx := context.Background()
-
+func ensuredObjectStore(t *testing.T, ctx context.Context) *objstore.Client {
+	t.Helper()
 	store, err := objstore.New(
 		os.Getenv("OBJSTORE_ENDPOINT"), os.Getenv("OBJSTORE_ACCESS_KEY"),
 		os.Getenv("OBJSTORE_SECRET_KEY"), objstoreBucket(), false,
@@ -92,8 +133,11 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	if err := store.EnsureBucket(ctx); err != nil {
 		t.Fatal(err)
 	}
+	return store
+}
 
-	a := newAPIWithLLM(t, pool, llmURL)
+func configureGen009Runs(t *testing.T, a *api, store *objstore.Client, sandboxURL, gatewayURL string) {
+	t.Helper()
 	a.runs.Store = store
 	a.runs.Providers = run.NewRegistry(run.NewProvider(
 		"self_hosted", sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
@@ -105,91 +149,99 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 	a.runs.Deployment.Model = os.Getenv("SKILLHUB_RUN_MODEL")
 	a.runs.PollInterval = time.Second
 	a.runs.MaxAttempts = 1
+}
 
-	public := httptest.NewUnstartedServer(a.handler)
+func startRoutableServer(t *testing.T, handler http.Handler) (*httptest.Server, int) {
+	t.Helper()
+	public := httptest.NewUnstartedServer(handler)
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	public.Listener = listener
 	public.Start()
-	defer public.Close()
-	a.runs.TraceSigner = a.traceSigner
-	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
-		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
+	return public, listener.Addr().(*net.TCPAddr).Port
+}
 
-	judging := *a.evaluations
-	judging.Judge = eval.JudgeOrNone(&llmclient.Client{BaseURL: llmURL, Token: os.Getenv("LLM_SERVICE_TOKEN")})
-	startWorkerWith(t, a.runs, &judging)
+type gen009Trial struct {
+	a     *api
+	store *objstore.Client
+	pool  *pgxpool.Pool
+	ctx   context.Context
+	c     *client
+	ws    identity.Workspace
+}
 
-	c := a.login(t, "gen009-baseline")
-	ws := workspaceOf(t, pool, c)
-
-	rows := make([]gen009Row, 0, len(corpus))
-	for i, tc := range corpus {
-		row := gen009Row{ID: tc.ID, Group: tc.Group}
-		t.Run(tc.ID, func(t *testing.T) {
-			res, err := a.versions.GenerateSkill(ctx, ws, ingest.GenerateInput{TaskDescription: tc.Description})
-			if err != nil {
-				row.Note = "generate: " + err.Error()
-				t.Logf("%s generate failed: %v", tc.ID, err)
-				return
-			}
-			row.Attempts = res.Attempts
-			if res.Report.Blocked {
-				row.Blocked = true
-				for _, f := range res.Report.Findings {
-					row.Findings = append(row.Findings, f.Code)
-				}
-				t.Logf("%s blocked: %v", tc.ID, row.Findings)
-				return
-			}
-			row.Generated = true
-			row.SkillName = res.Skill.Name
-
-			key := res.Version.PackageObjectKey
-			pkg, ok := a.packages[key]
-			if !ok {
-				row.Note = "the generated package is not in the API's store under " + key
-				return
-			}
-			if err := store.Put(ctx, key, pkg); err != nil {
-				row.Note = "put package: " + err.Error()
-				return
-			}
-
-			skillID := uuidText(res.Skill.ID)
-			f := fixture{
-				client:    c,
-				skillID:   skillID,
-				versionID: uuidText(res.Version.ID),
-				testCaseID: seedGen009TestCase(t, pool, c.workspaceID, skillID,
-					res.Skill.Name, tc.Description),
-			}
-
-			code, view := f.startNoFatal(t)
-			if code != http.StatusCreated && code != http.StatusOK {
-				row.Note = fmt.Sprintf("POST run: %d %s", code, view.Error)
-				return
-			}
-			final := waitForTerminalSoft(t, f.client, view.RunID, 8*time.Minute)
-			row.RunStatus = final.Status
-			row.FailureClass = final.FailureClass.Value
-
-			ev := waitForEvaluation(t, f.client, view.RunID, 4*time.Minute)
-			row.EvalStatus = ev.Status
-			row.Overall = ev.Overall
-			row.Criteria = map[string]string{}
-			for _, r := range ev.CriterionResults {
-				row.Criteria[r.Text] = r.Result
-			}
-			t.Logf("%s: run=%s eval=%s overall=%s", tc.ID, row.RunStatus, row.EvalStatus, row.Overall)
-		})
-		rows = append(rows, row)
-		writeGen009(t, rows)
-		t.Logf("--- %d/%d done", i+1, len(corpus))
+func (g gen009Trial) run(t *testing.T, tc gen009Case, row *gen009Row) {
+	res, err := g.a.versions.GenerateSkill(g.ctx, g.ws, ingest.GenerateInput{TaskDescription: tc.Description})
+	if err != nil {
+		row.Note = "generate: " + err.Error()
+		t.Logf("%s generate failed: %v", tc.ID, err)
+		return
 	}
-	writeGen009(t, rows)
+	row.Attempts = res.Attempts
+	if res.Report.Blocked {
+		row.Blocked = true
+		row.Findings = findingCodes(res.Report.Findings)
+		t.Logf("%s blocked: %v", tc.ID, row.Findings)
+		return
+	}
+	row.Generated = true
+	row.SkillName = res.Skill.Name
+
+	key := res.Version.PackageObjectKey
+	pkg, ok := g.a.packages[key]
+	if !ok {
+		row.Note = "the generated package is not in the API's store under " + key
+		return
+	}
+	if err := g.store.Put(g.ctx, key, pkg); err != nil {
+		row.Note = "put package: " + err.Error()
+		return
+	}
+
+	skillID := uuidText(res.Skill.ID)
+	f := fixture{
+		client:    g.c,
+		skillID:   skillID,
+		versionID: uuidText(res.Version.ID),
+		testCaseID: seedGen009TestCase(t, g.pool, g.c.workspaceID, skillID,
+			res.Skill.Name, tc.Description),
+	}
+	runAndJudgeGen009(t, f, tc, row)
+}
+
+func runAndJudgeGen009(t *testing.T, f fixture, tc gen009Case, row *gen009Row) {
+	code, view := f.startNoFatal(t)
+	if code != http.StatusCreated && code != http.StatusOK {
+		row.Note = fmt.Sprintf("POST run: %d %s", code, view.Error)
+		return
+	}
+	final := waitForTerminalSoft(t, f.client, view.RunID, 8*time.Minute)
+	row.RunStatus = final.Status
+	row.FailureClass = final.FailureClass.Value
+
+	ev := waitForEvaluation(t, f.client, view.RunID, 4*time.Minute)
+	row.EvalStatus = ev.Status
+	row.Overall = ev.Overall
+	row.Criteria = criteriaByText(ev)
+	t.Logf("%s: run=%s eval=%s overall=%s", tc.ID, row.RunStatus, row.EvalStatus, row.Overall)
+}
+
+func findingCodes(findings []skillpkg.Finding) []string {
+	var codes []string
+	for _, f := range findings {
+		codes = append(codes, f.Code)
+	}
+	return codes
+}
+
+func criteriaByText(ev evaluationBody) map[string]string {
+	criteria := map[string]string{}
+	for _, r := range ev.CriterionResults {
+		criteria[r.Text] = r.Result
+	}
+	return criteria
 }
 
 func seedGen009TestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, skillName, task string) string {

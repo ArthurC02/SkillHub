@@ -6,13 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -75,7 +75,11 @@ type realGatewayRunSpec struct {
 	prompt     string
 }
 
-func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
+type realGatewayEnvironment struct {
+	sandboxURL, gatewayURL, adminGatewayURL, model string
+}
+
+func realGatewayEnv(t *testing.T) realGatewayEnvironment {
 	t.Helper()
 	sandboxURL := os.Getenv("SKILLHUB_E2E_SANDBOX_URL")
 	if sandboxURL == "" {
@@ -96,66 +100,47 @@ func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
 	if model == "" {
 		t.Fatal("SKILLHUB_RUN_MODEL is required so the run uses the virtual key's allowed model")
 	}
-	pool := requireDB(t)
-	ctx := context.Background()
+	return realGatewayEnvironment{sandboxURL: sandboxURL, gatewayURL: gatewayURL, adminGatewayURL: adminGatewayURL, model: model}
+}
 
-	store, err := objstore.New(
-		os.Getenv("OBJSTORE_ENDPOINT"), os.Getenv("OBJSTORE_ACCESS_KEY"),
-		os.Getenv("OBJSTORE_SECRET_KEY"), objstoreBucket(), false,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.EnsureBucket(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	a := newAPI(t, pool)
-
+func configureRealGatewayRuns(t *testing.T, a *api, store *objstore.Client, env realGatewayEnvironment) {
+	t.Helper()
 	a.runs.Store = store
 	a.runs.Providers = run.NewRegistry(run.NewProvider(
-		"self_hosted", sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
+		"self_hosted", env.sandboxURL, os.Getenv("SKILLHUB_E2E_SANDBOX_TOKEN")))
 	a.runs.Gateway = run.NewGateway(run.GatewayConfig{
-		AdminBaseURL:   adminGatewayURL,
+		AdminBaseURL:   env.adminGatewayURL,
 		AdminKey:       os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY"),
-		SandboxBaseURL: gatewayURL,
-		Model:          model,
+		SandboxBaseURL: env.gatewayURL,
+		Model:          env.model,
 	})
-	a.runs.Deployment.Model = model
-	a.runs.Deployment.GatewayURL = gatewayURL
+	a.runs.Deployment.Model = env.model
+	a.runs.Deployment.GatewayURL = env.gatewayURL
 	if a.runs.Gateway == nil {
 		t.Fatal("SKILLHUB_MODEL_GATEWAY_URL / _KEY are required for this test")
 	}
 	a.runs.PollInterval = time.Second
 
 	a.runs.MaxAttempts = 1
+}
 
-	// httptest binds 127.0.0.1, unreachable from the sandbox container that
-	// pushes trace events back, so the route table is served again on an
-	// address that is.
-	public := httptest.NewUnstartedServer(a.handler)
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	public.Listener = listener
-	public.Start()
-	defer public.Close()
-	a.runs.TraceSigner = a.traceSigner
-	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
-		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), listener.Addr().(*net.TCPAddr).Port)
+type realGatewayRig struct {
+	ctx   context.Context
+	pool  *pgxpool.Pool
+	store *objstore.Client
+}
 
-	f := newFixture(t, a, pool, spec.user)
-
-	if err := store.Put(ctx, "packages/hash-"+spec.user+".zip", spec.pkg); err != nil {
+func (r realGatewayRig) stagePackage(t *testing.T, f *fixture, spec realGatewayRunSpec) {
+	t.Helper()
+	if err := r.store.Put(r.ctx, "packages/hash-"+spec.user+".zip", spec.pkg); err != nil {
 		t.Fatal(err)
 	}
 
 	if spec.sourcePath != "" {
-		version, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		version, err := gen.New(r.pool).CreateSkillVersion(r.ctx, gen.CreateSkillVersionParams{
 			WorkspaceID:      mustUUID(t, f.workspaceID),
 			SkillID:          mustUUID(t, f.skillID),
-			VersionNumber:    nextVersionNumber(t, pool, f.skillID),
+			VersionNumber:    nextVersionNumber(t, r.pool, f.skillID),
 			ContentHash:      "hash-" + spec.user + "-at-" + spec.sourcePath,
 			PackageObjectKey: "packages/hash-" + spec.user + ".zip",
 			SourcePath:       spec.sourcePath,
@@ -164,16 +149,57 @@ func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		refreshListing(t, pool, f.skillID)
+		refreshListing(t, r.pool, f.skillID)
 		f.versionID = uuidText(version.ID)
 	}
 
-	if _, err := pool.Exec(ctx,
+	if _, err := r.pool.Exec(r.ctx,
 		`UPDATE test_cases SET user_prompt = $2 WHERE id = $1`,
 		mustUUID(t, f.testCaseID), spec.prompt,
 	); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func gatewayUsageFindings(usage map[string]any) (float64, []string) {
+	var problems []string
+	if usage["cost_source"] != "gateway" {
+		problems = append(problems, fmt.Sprintf("cost_source = %v, want gateway (a local estimate is not a cost)", usage["cost_source"]))
+	}
+	cost, ok := usage["cost_usd"].(float64)
+	if !ok || cost <= 0 {
+		problems = append(problems, fmt.Sprintf("cost_usd = %v, want a positive number reported by the gateway", usage["cost_usd"]))
+	}
+	if tokens, ok := usage["input_tokens"].(float64); !ok || tokens <= 0 {
+		problems = append(problems, fmt.Sprintf("input_tokens = %v, want the SDK's own count", usage["input_tokens"]))
+	}
+	return cost, problems
+}
+
+func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
+	t.Helper()
+	env := realGatewayEnv(t)
+	pool := requireDB(t)
+	ctx := context.Background()
+
+	store := ensuredObjectStore(t, ctx)
+
+	a := newAPI(t, pool)
+
+	configureRealGatewayRuns(t, a, store, env)
+
+	// httptest binds 127.0.0.1, unreachable from the sandbox container that
+	// pushes trace events back, so the route table is served again on an
+	// address that is.
+	public, port := startRoutableServer(t, a.handler)
+	defer public.Close()
+	a.runs.TraceSigner = a.traceSigner
+	a.runs.TraceIngestBaseURL = fmt.Sprintf("http://%s:%d",
+		os.Getenv("SKILLHUB_E2E_PUBLIC_HOST"), port)
+
+	f := newFixture(t, a, pool, spec.user)
+
+	realGatewayRig{ctx: ctx, pool: pool, store: store}.stagePackage(t, &f, spec)
 
 	startWorkerWith(t, a.runs, a.evaluations)
 	view := f.start(t)
@@ -183,15 +209,9 @@ func realGatewayRun(t *testing.T, spec realGatewayRunSpec) string {
 	}
 
 	usage := traceUsageEvent(t, f.client, view.RunID)
-	if usage["cost_source"] != "gateway" {
-		t.Errorf("cost_source = %v, want gateway (a local estimate is not a cost)", usage["cost_source"])
-	}
-	cost, ok := usage["cost_usd"].(float64)
-	if !ok || cost <= 0 {
-		t.Errorf("cost_usd = %v, want a positive number reported by the gateway", usage["cost_usd"])
-	}
-	if tokens, ok := usage["input_tokens"].(float64); !ok || tokens <= 0 {
-		t.Errorf("input_tokens = %v, want the SDK's own count", usage["input_tokens"])
+	cost, problems := gatewayUsageFindings(usage)
+	for _, problem := range problems {
+		t.Error(problem)
 	}
 	t.Logf("gateway-reported cost for this run: $%.6f", cost)
 

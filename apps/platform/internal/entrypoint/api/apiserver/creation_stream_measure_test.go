@@ -22,72 +22,93 @@ func TestCreationStreamMeasureDeliveryLag(t *testing.T) {
 
 	gains := make([]float64, 0, rounds)
 	for i := 0; i < rounds; i++ {
-		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
-
-		events, stop := readSSE(t, c, v.ID, fmt.Sprint(v.Revision))
-		target := v.Revision + 1
-
-		streamAt := make(chan time.Time, 1)
-		go func() {
-			for e := range events {
-				if e.View.Revision >= target {
-					streamAt <- time.Now()
-					return
-				}
-			}
-		}()
-
-		pollAt := make(chan time.Time, 1)
-		donePoll := make(chan struct{})
-		phase := time.Duration(rand.Int63n(int64(time.Second)))
-		go func() {
-			tick := time.NewTicker(time.Second)
-			defer tick.Stop()
-			for {
-				select {
-				case <-donePoll:
-					return
-				case <-tick.C:
-					res, err := c.Get(c.base + "/creation-sessions/" + v.ID)
-					if err != nil {
-						return
-					}
-					var got creation.View
-					err = json.NewDecoder(res.Body).Decode(&got)
-					res.Body.Close()
-					if err == nil && got.Revision >= target {
-						pollAt <- time.Now()
-						return
-					}
-				}
-			}
-		}()
-
-		time.Sleep(phase)
-		creationStep(t, s, v)
-
-		var sAt, pAt time.Time
-		select {
-		case sAt = <-streamAt:
-		case <-time.After(20 * time.Second):
-			t.Fatal("the stream never delivered the settled step")
-		}
-		select {
-		case pAt = <-pollAt:
-		case <-time.After(20 * time.Second):
-			t.Fatal("the poller never saw the settled step")
-		}
-		close(donePoll)
-		stop()
-		gains = append(gains, pAt.Sub(sAt).Seconds())
+		gains = append(gains, measureDeliveryGain(t, c, s))
 	}
 
 	sort.Float64s(gains)
-	at := func(p float64) float64 { return gains[int(float64(len(gains)-1)*p)] }
+	at := func(p float64) float64 { return deliveryLagAt(gains, p) }
 	t.Logf("interactive creation delivery lag removed, %d rounds: p50 %.3fs  p90 %.3fs  min %.3fs  max %.3fs",
 		len(gains), at(0.5), at(0.9), gains[0], gains[len(gains)-1])
 
 	if at(0.5) <= 0 {
 		t.Errorf("the stream was not ahead of the poll at the median: %.3fs", at(0.5))
 	}
+}
+
+func deliveryLagAt(sorted []float64, p float64) float64 {
+	return sorted[int(float64(len(sorted)-1)*p)]
+}
+
+func measureDeliveryGain(t *testing.T, c *client, s *creation.Service) float64 {
+	t.Helper()
+	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "請建立資料摘要 Skill。", "budget_credits": 650}, 200)
+
+	events, stop := readSSE(t, c, v.ID, fmt.Sprint(v.Revision))
+	target := v.Revision + 1
+
+	streamAt := firstStreamedRevision(events, target)
+
+	donePoll := make(chan struct{})
+	phase := time.Duration(rand.Int63n(int64(time.Second)))
+	pollAt := firstPolledRevision(c, v.ID, target, donePoll)
+
+	time.Sleep(phase)
+	creationStep(t, s, v)
+
+	sAt := awaitDelivery(t, streamAt, "the stream never delivered the settled step")
+	pAt := awaitDelivery(t, pollAt, "the poller never saw the settled step")
+	close(donePoll)
+	stop()
+	return pAt.Sub(sAt).Seconds()
+}
+
+func firstStreamedRevision(events <-chan sseEvent, target int64) <-chan time.Time {
+	streamAt := make(chan time.Time, 1)
+	go func() {
+		for e := range events {
+			if e.View.Revision >= target {
+				streamAt <- time.Now()
+				return
+			}
+		}
+	}()
+	return streamAt
+}
+
+func firstPolledRevision(c *client, sessionID string, target int64, done <-chan struct{}) <-chan time.Time {
+	pollAt := make(chan time.Time, 1)
+	go func() {
+		tick := time.NewTicker(time.Second)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-tick.C:
+				res, err := c.Get(c.base + "/creation-sessions/" + sessionID)
+				if err != nil {
+					return
+				}
+				var got creation.View
+				err = json.NewDecoder(res.Body).Decode(&got)
+				res.Body.Close()
+				if err == nil && got.Revision >= target {
+					pollAt <- time.Now()
+					return
+				}
+			}
+		}
+	}()
+	return pollAt
+}
+
+func awaitDelivery(t *testing.T, delivered <-chan time.Time, never string) time.Time {
+	t.Helper()
+	var at time.Time
+	select {
+	case at = <-delivered:
+	case <-time.After(20 * time.Second):
+		t.Fatal(never)
+	}
+	return at
 }

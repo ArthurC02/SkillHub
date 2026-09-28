@@ -3,14 +3,13 @@ package apiserver_test
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
@@ -28,44 +27,7 @@ func TestARealGatewayGeneratesFromADiagramAndFromAReference(t *testing.T) {
 	c := a.login(t, "gen-real-modes")
 	ws := workspaceOf(t, pool, c)
 	ctx := context.Background()
-
-	inspect := func(label string, res ingest.GenerateResult) {
-		t.Helper()
-		if res.Report.Blocked {
-			t.Logf("%s: blocked after %d attempt(s): %+v", label, res.Attempts, res.Report.Findings)
-			return
-		}
-		data, err := a.packages.Get(ctx, res.Version.PackageObjectKey)
-		if err != nil {
-			t.Fatalf("%s: stored package unreadable: %v", label, err)
-		}
-		fsys, err := skillpkg.PackageFS(data)
-		if err != nil {
-			t.Fatalf("%s: %v", label, err)
-		}
-		md, err := fs.ReadFile(fsys, "SKILL.md")
-		if err != nil {
-			t.Fatalf("%s: %v", label, err)
-		}
-		if err := os.WriteFile(filepath.Join(outDir, label+".SKILL.md"), md, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		var inputs []byte
-		if err := pool.QueryRow(ctx, `
-			SELECT s.generation_inputs FROM skill_sources s JOIN skill_versions v ON v.source_id = s.id
-			WHERE v.id = $1`, res.Version.ID).Scan(&inputs); err != nil {
-			t.Fatal(err)
-		}
-		if len(inputs) == 0 {
-			t.Errorf("%s: generation_inputs is NULL; every non-text input must leave a record", label)
-		}
-		cost := "unpriced"
-		if res.CostUSD != nil {
-			cost = fmt.Sprintf("US$%.6f", *res.CostUSD)
-		}
-		t.Logf("%s: version %d, attempts=%d, model=%s, prompt=%s, %s, generation_inputs=%s",
-			label, res.Version.VersionNumber, res.Attempts, res.Model, res.PromptVersion, cost, inputs)
-	}
+	inspect := generatedInspection{a: a, pool: pool, ctx: ctx, outDir: outDir}
 
 	res, err := a.versions.GenerateSkill(ctx, ws, ingest.GenerateInput{
 		Diagram: &ingest.GenerateDiagram{MediaType: "image/png", Data: png},
@@ -73,7 +35,7 @@ func TestARealGatewayGeneratesFromADiagramAndFromAReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("diagram-only generation against a real gateway: %v", err)
 	}
-	inspect("diagram-only", res)
+	inspect.inspect(t, "diagram-only", res)
 
 	refSkillID, _ := importFiles(t, a, pool, c, map[string]string{
 		"SKILL.md": "---\nname: weekly-status-digest\ndescription: Turn a week of chat messages into a status digest. Use when asked for a weekly summary.\n---\n\n" +
@@ -86,5 +48,37 @@ func TestARealGatewayGeneratesFromADiagramAndFromAReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reference generation against a real gateway: %v", err)
 	}
-	inspect("with-reference", res)
+	inspect.inspect(t, "with-reference", res)
+}
+
+type generatedInspection struct {
+	a      *api
+	pool   *pgxpool.Pool
+	ctx    context.Context
+	outDir string
+}
+
+func (g generatedInspection) inspect(t *testing.T, label string, res ingest.GenerateResult) {
+	t.Helper()
+	if res.Report.Blocked {
+		t.Logf("%s: blocked after %d attempt(s): %+v", label, res.Attempts, res.Report.Findings)
+		return
+	}
+	md := readStoredSkillMD(t, g.a, g.ctx, res.Version.PackageObjectKey, label)
+	if err := os.WriteFile(filepath.Join(g.outDir, label+".SKILL.md"), md, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	inputs := generationInputsOf(t, g.ctx, g.pool, res.Version.ID)
+	if len(inputs) == 0 {
+		t.Errorf("%s: generation_inputs is NULL; every non-text input must leave a record", label)
+	}
+	t.Logf("%s: version %d, attempts=%d, model=%s, prompt=%s, %s, generation_inputs=%s",
+		label, res.Version.VersionNumber, res.Attempts, res.Model, res.PromptVersion, generationCostText(res.CostUSD), inputs)
+}
+
+func generationCostText(cost *float64) string {
+	if cost == nil {
+		return "unpriced"
+	}
+	return fmt.Sprintf("US$%.6f", *cost)
 }

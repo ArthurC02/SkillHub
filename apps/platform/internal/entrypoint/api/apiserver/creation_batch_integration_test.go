@@ -233,19 +233,7 @@ func TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation(t *testing.T) {
 		"message": said,
 		"diagram": map[string]any{"media_type": "image/png", "data": "cG5n"},
 	}, 200)
-	if len(v.Snapshot.Attachments) != 1 {
-		t.Fatalf("the first picture was not recorded: %+v", v.Snapshot.Attachments)
-	}
-	first := v.Snapshot.Attachments[0]
-	if first.MediaType != "image/png" || first.Bytes != 3 || first.SHA256 != v.Snapshot.DiagramFingerprint {
-		t.Fatalf("attachment does not describe what was sent: %+v", first)
-	}
-	if first.MessageIndex < 0 || first.MessageIndex >= len(v.Snapshot.Messages) {
-		t.Fatalf("attachment points outside the history: %+v of %d", first, len(v.Snapshot.Messages))
-	}
-	if m := v.Snapshot.Messages[first.MessageIndex]; m.Role != "user" || m.Content != said {
-		t.Fatalf("the picture is not on the turn it was sent with: %+v", m)
-	}
+	first := assertFirstPictureOnItsTurn(t, v, said)
 
 	before := len(v.Snapshot.Messages)
 	v = creationPost(t, c, "/creation-sessions/"+v.ID+"/actions", map[string]any{
@@ -269,6 +257,24 @@ func TestCreationBatchEveryPictureKeepsItsPlaceInTheConversation(t *testing.T) {
 	if v.Snapshot.DiagramFingerprint != second.SHA256 || v.Snapshot.DiagramMediaType != "image/webp" {
 		t.Fatalf("the newest-picture fields did not follow the newest picture: %+v", v.Snapshot)
 	}
+}
+
+func assertFirstPictureOnItsTurn(t *testing.T, v creation.View, said string) creation.Attachment {
+	t.Helper()
+	if len(v.Snapshot.Attachments) != 1 {
+		t.Fatalf("the first picture was not recorded: %+v", v.Snapshot.Attachments)
+	}
+	first := v.Snapshot.Attachments[0]
+	if first.MediaType != "image/png" || first.Bytes != 3 || first.SHA256 != v.Snapshot.DiagramFingerprint {
+		t.Fatalf("attachment does not describe what was sent: %+v", first)
+	}
+	if first.MessageIndex < 0 || first.MessageIndex >= len(v.Snapshot.Messages) {
+		t.Fatalf("attachment points outside the history: %+v of %d", first, len(v.Snapshot.Messages))
+	}
+	if m := v.Snapshot.Messages[first.MessageIndex]; m.Role != "user" || m.Content != said {
+		t.Fatalf("the picture is not on the turn it was sent with: %+v", m)
+	}
+	return first
 }
 
 func TestCreationBatchStopEndsTheStepNotTheSession(t *testing.T) {

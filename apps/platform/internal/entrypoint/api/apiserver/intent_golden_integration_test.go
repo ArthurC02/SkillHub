@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 	"gopkg.in/yaml.v3"
 
@@ -45,6 +46,25 @@ func TestRecordedIntentAnalysisUsesProductionValidationAndHybridSearch(t *testin
 	measureGoldenSearch(t, true)
 }
 
+type goldenQuery struct {
+	ID         string   `json:"id"`
+	Query      string   `json:"query"`
+	Lang       string   `json:"lang"`
+	Primary    []string `json:"gold_primary"`
+	Acceptable []string `json:"gold_acceptable"`
+}
+
+type goldenSearch struct {
+	pool    *pgxpool.Pool
+	ctx     context.Context
+	root    string
+	mode    string
+	hybrid  bool
+	vectors *goldenVectorReplay
+	queries []goldenQuery
+	replay  goldenIntentReplay
+}
+
 func measureGoldenSearch(t *testing.T, hybrid bool) {
 	t.Helper()
 	pool := requireDB(t)
@@ -55,275 +75,398 @@ func measureGoldenSearch(t *testing.T, hybrid bool) {
 	vectors := &goldenVectorReplay{t: t}
 	if hybrid {
 		mode = "HYBRID"
-		readGoldenJSON(t, filepath.Join(root, "embeddings_cache.json"), &vectors.cache)
-		var additional struct {
-			Model   string               `json:"model"`
-			Vectors map[string][]float32 `json:"vectors"`
-		}
-		readGoldenJSON(t, filepath.Join(root, "intent_embeddings_v2.json"), &additional)
-		if additional.Model != "text-embedding-3-small" || len(additional.Vectors) != 94 {
-			t.Fatal("incomplete additional embedding snapshot")
-		}
-		for key, vector := range additional.Vectors {
-			if _, exists := vectors.cache[key]; exists {
-				t.Fatalf("additional snapshot overwrites historical vector: %s", key)
-			}
-			vectors.cache[key] = vector
-		}
+		loadGoldenVectors(t, root, vectors)
 	}
+	requireHistoricalEnglishBaseline(t, root)
+	queries := readGoldenQueries(t, root)
+	g := goldenSearch{
+		pool: pool, ctx: ctx, root: root, mode: mode, hybrid: hybrid,
+		vectors: vectors, queries: queries, replay: readGoldenIntentReplay(t, queries),
+	}
+	for _, corpus := range corpora {
+		t.Run(corpus, func(t *testing.T) {
+			g.measureCorpus(t, corpus)
+		})
+	}
+}
+
+func loadGoldenVectors(t *testing.T, root string, vectors *goldenVectorReplay) {
+	t.Helper()
+	readGoldenJSON(t, filepath.Join(root, "embeddings_cache.json"), &vectors.cache)
+	var additional struct {
+		Model   string               `json:"model"`
+		Vectors map[string][]float32 `json:"vectors"`
+	}
+	readGoldenJSON(t, filepath.Join(root, "intent_embeddings_v2.json"), &additional)
+	if additional.Model != "text-embedding-3-small" || len(additional.Vectors) != 94 {
+		t.Fatal("incomplete additional embedding snapshot")
+	}
+	for key, vector := range additional.Vectors {
+		if _, exists := vectors.cache[key]; exists {
+			t.Fatalf("additional snapshot overwrites historical vector: %s", key)
+		}
+		vectors.cache[key] = vector
+	}
+}
+
+func requireHistoricalEnglishBaseline(t *testing.T, root string) {
+	t.Helper()
 	historicalResults, err := os.ReadFile(filepath.Join(root, "results.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, historicalEnglish, found := strings.Cut(string(historicalResults), "### 語言 en")
-	if !found || !strings.Contains(strings.SplitN(historicalEnglish, "###", 2)[0], "| BM25 | 14/18 (78%) |") {
+	if !historicalEnglishBaselinePresent(string(historicalResults)) {
 		t.Fatal("historical English BM25 Top-1 baseline is missing or changed")
 	}
+}
+
+func historicalEnglishBaselinePresent(results string) bool {
+	_, historicalEnglish, found := strings.Cut(results, "### 語言 en")
+	return found && strings.Contains(strings.SplitN(historicalEnglish, "###", 2)[0], "| BM25 | 14/18 (78%) |")
+}
+
+func readGoldenQueries(t *testing.T, root string) []goldenQuery {
+	t.Helper()
 	var queries struct {
-		Queries []struct {
-			ID         string   `json:"id"`
-			Query      string   `json:"query"`
-			Lang       string   `json:"lang"`
-			Primary    []string `json:"gold_primary"`
-			Acceptable []string `json:"gold_acceptable"`
-		} `json:"queries"`
+		Queries []goldenQuery `json:"queries"`
 	}
 	readGoldenJSON(t, filepath.Join(root, "queries.json"), &queries)
 	if len(queries.Queries) != 60 {
 		t.Fatalf("queries=%d, want 60", len(queries.Queries))
 	}
+	return queries.Queries
+}
+
+func readGoldenIntentReplay(t *testing.T, queries []goldenQuery) goldenIntentReplay {
+	t.Helper()
 	var replay goldenIntentReplay
-	if path := os.Getenv("SKILLHUB_INTENT_SNAPSHOT"); path != "" {
-		readGoldenJSON(t, path, &replay.Rows)
-		if len(replay.Rows) != len(queries.Queries) {
-			t.Fatalf("snapshot rows=%d, want %d", len(replay.Rows), len(queries.Queries))
+	path := os.Getenv("SKILLHUB_INTENT_SNAPSHOT")
+	if path == "" {
+		return replay
+	}
+	readGoldenJSON(t, path, &replay.Rows)
+	if len(replay.Rows) != len(queries) {
+		t.Fatalf("snapshot rows=%d, want %d", len(replay.Rows), len(queries))
+	}
+	for _, query := range queries {
+		if matches := replay.matches(query.Query); matches != 1 {
+			t.Fatalf("query %s has %d snapshot matches", query.ID, matches)
 		}
-		for _, query := range queries.Queries {
-			matches := 0
-			for _, row := range replay.Rows {
-				if row.Query == query.Query {
-					matches++
-				}
-			}
-			if matches != 1 {
-				t.Fatalf("query %s has %d snapshot matches", query.ID, matches)
+	}
+	return replay
+}
+
+type goldenCorpus struct {
+	goldenSearch
+	name        string
+	owner       string
+	workspaceID pgtype.UUID
+	svc         *catalog.Service
+	purpose     string
+	poison      map[string]string
+	ids         map[string]string
+	versions    map[string]int
+}
+
+func (g goldenSearch) measureCorpus(t *testing.T, corpus string) {
+	a := newAPI(t, g.pool)
+	owner := a.login(t, uniqueWorklistLabel("golden-lexical"))
+	c := &goldenCorpus{
+		goldenSearch: g, name: corpus, owner: owner.workspaceID, workspaceID: mustUUID(t, owner.workspaceID),
+		ids: map[string]string{}, versions: map[string]int{},
+	}
+	c.wireCatalogService()
+	files := c.corpusFiles(t)
+	for _, file := range files {
+		c.indexFile(t, file)
+	}
+	indexed := c.requireIndexed(t, len(files))
+	t.Logf("%s_INPUT corpus=%s indexed=%d poison=%d versions=%v", g.mode, corpus, indexed, len(c.poison), c.versions)
+	counts := map[string]*intentGoldenTally{"zh": {}, "en": {}}
+	handler := &catalog.Handler{Svc: c.svc}
+	for _, query := range g.queries {
+		c.scoreQuery(t, handler, query, counts)
+	}
+	for _, lang := range []string{"zh", "en"} {
+		t.Logf("%s_BASELINE corpus=%s language=%s counts=%+v", g.mode, corpus, lang, *counts[lang])
+		count := counts[lang]
+		total := float64(count.Queries + count.Distractors)
+		t.Logf("%s_QUALITY corpus=%s language=%s f1_at_gold=%.4f recall_at_gold=%.4f poison_top3=%d", g.mode, corpus, lang, count.F1/total, count.Recall/total, count.PoisonTop3)
+	}
+	zh, en := counts["zh"], counts["en"]
+	if zh.Queries == 0 || en.Queries == 0 {
+		t.Fatal("empty language stratum")
+	}
+	if !g.hybrid {
+		t.Logf("LEXICAL_FLOOR corpus=%s measured_only=true metric=top1 observed=%d/%d historical_english=14/18 passes_floor=%v", corpus, zh.Top1, zh.Queries, historicalLexicalFloorMet(zh.Top1, zh.Queries))
+	}
+}
+
+func (c *goldenCorpus) wireCatalogService() {
+	svc := wiring.NewCatalogService(c.pool)
+	if c.hybrid {
+		svc.LLM = c.vectors
+	}
+	purpose := "reference"
+	if len(c.replay.Rows) > 0 {
+		svc.IntentAnalyzer = c.replay
+		purpose = ""
+	}
+	workspaceID := c.workspaceID
+	svc.CatalogWorkspaces = func(context.Context, gen.DBTX) ([]pgtype.UUID, error) {
+		return []pgtype.UUID{workspaceID}, nil
+	}
+	c.svc, c.purpose = svc, purpose
+}
+
+func (c *goldenCorpus) corpusFiles(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(c.root, c.name, "*", "*.json"))
+	if err != nil || len(files) != 31 {
+		t.Fatalf("corpus files=%d err=%v", len(files), err)
+	}
+	c.poison = map[string]string{}
+	if os.Getenv("SKILLHUB_INTENT_POISON") == "1" {
+		c.poison = map[string]string{
+			"everything-office-helper":    "documents",
+			"universal-writing-assistant": "writing",
+			"all-data-tasks":              "data",
+		}
+		poison, err := filepath.Glob(filepath.Join(c.root, "..", "..", "docs", "plans", "mvp", "m5", "creation-measure", "injection", "poison-enriched", "*.json"))
+		if err != nil || len(poison) != len(c.poison) {
+			t.Fatalf("poison files=%d err=%v", len(poison), err)
+		}
+		files = append(files, poison...)
+	}
+	return files
+}
+
+type goldenTaskExample struct {
+	Zh string `json:"zh_hant"`
+	En string `json:"en"`
+}
+
+type goldenEnrichedSkill struct {
+	Summary  string              `json:"summary"`
+	Model    string              `json:"model"`
+	Version  string              `json:"prompt_version"`
+	Tags     json.RawMessage     `json:"tags"`
+	Examples []goldenTaskExample `json:"task_examples"`
+}
+
+type goldenFrontmatter struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+}
+
+func (c *goldenCorpus) indexFile(t *testing.T, file string) {
+	t.Helper()
+	var enriched goldenEnrichedSkill
+	readGoldenJSON(t, file, &enriched)
+	c.versions[enriched.Model+"/"+enriched.Version]++
+	stem, category, source := goldenSource(c.root, file, c.poison)
+	front := readGoldenFrontmatter(t, source, stem)
+	if front.Name == "" || front.Description == "" || enriched.Summary == "" {
+		t.Fatalf("incomplete corpus row: %s", stem)
+	}
+	id := seedSkill(t, c.pool, c.owner, front.Name)
+	seedSkillVersion(t, c.pool, c.owner, id)
+	setCategory(t, c.pool, id, category)
+	c.ids[id] = stem
+	examples := goldenTaskExamples(enriched.Examples)
+	tx, err := c.pool.Begin(c.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection := catalog.EnrichedSkillProjection{
+		SkillID: mustUUID(t, id), WorkspaceID: c.workspaceID, Name: front.Name,
+		Summary: front.Description, EnrichedSummary: enriched.Summary,
+		TaskExamples: strings.Join(examples, "\n"), Tags: enriched.Tags, Scan: []byte(`{}`),
+		EnrichmentStatus: "enriched", EnrichmentModel: &enriched.Model, EnrichmentPromptVersion: &enriched.Version,
+	}
+	if c.hybrid {
+		var tags map[string][]string
+		if err := json.Unmarshal(enriched.Tags, &tags); err != nil {
+			t.Fatal(err)
+		}
+		vector := pgvector.NewVector(c.vectors.lookup(goldenEmbeddingText(front.Name, enriched.Summary, examples, tags)))
+		projection.Embedding = &vector
+	}
+	err = c.svc.IndexSkillEnriched(c.ctx, tx, projection)
+	if err != nil {
+		_ = tx.Rollback(c.ctx)
+		t.Fatal(err)
+	}
+	if err := tx.Commit(c.ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func goldenSource(root, file string, poison map[string]string) (stem, category, source string) {
+	stem = strings.TrimSuffix(filepath.Base(file), ".json")
+	category = filepath.Base(filepath.Dir(file))
+	source = filepath.Join(root, "corpus", category, stem+".md")
+	if poisonCategory, ok := poison[stem]; ok {
+		category = poisonCategory
+		source = filepath.Join(filepath.Dir(file), "..", "poison", stem+".md")
+	}
+	return stem, category, source
+}
+
+func readGoldenFrontmatter(t *testing.T, source, stem string) goldenFrontmatter {
+	t.Helper()
+	raw, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, ok := goldenFrontmatterBlock(string(raw))
+	if !ok {
+		t.Fatalf("missing frontmatter: %s", stem)
+	}
+	var front goldenFrontmatter
+	if err := yaml.Unmarshal([]byte(head), &front); err != nil {
+		t.Fatal(err)
+	}
+	return front
+}
+
+func goldenFrontmatterBlock(raw string) (string, bool) {
+	parts := strings.SplitN(strings.ReplaceAll(raw, "\r\n", "\n"), "\n---", 2)
+	if len(parts) != 2 {
+		return "", false
+	}
+	return parts[0], true
+}
+
+func goldenTaskExamples(examples []goldenTaskExample) []string {
+	var texts []string
+	for _, example := range examples {
+		for _, text := range []string{example.Zh, example.En} {
+			if text = strings.TrimSpace(text); text != "" {
+				texts = append(texts, text)
 			}
 		}
 	}
-	for _, corpus := range corpora {
-		t.Run(corpus, func(t *testing.T) {
-			a := newAPI(t, pool)
-			owner := a.login(t, uniqueWorklistLabel("golden-lexical"))
-			workspaceID := mustUUID(t, owner.workspaceID)
-			svc := wiring.NewCatalogService(pool)
-			if hybrid {
-				svc.LLM = vectors
-			}
-			purpose := "reference"
-			if len(replay.Rows) > 0 {
-				svc.IntentAnalyzer = replay
-				purpose = ""
-			}
-			svc.CatalogWorkspaces = func(context.Context, gen.DBTX) ([]pgtype.UUID, error) {
-				return []pgtype.UUID{workspaceID}, nil
-			}
-			files, err := filepath.Glob(filepath.Join(root, corpus, "*", "*.json"))
-			if err != nil || len(files) != 31 {
-				t.Fatalf("corpus files=%d err=%v", len(files), err)
-			}
-			poisonCategories := map[string]string{}
-			if os.Getenv("SKILLHUB_INTENT_POISON") == "1" {
-				poisonCategories = map[string]string{
-					"everything-office-helper":    "documents",
-					"universal-writing-assistant": "writing",
-					"all-data-tasks":              "data",
-				}
-				poison, err := filepath.Glob(filepath.Join(root, "..", "..", "docs", "plans", "mvp", "m5", "creation-measure", "injection", "poison-enriched", "*.json"))
-				if err != nil || len(poison) != len(poisonCategories) {
-					t.Fatalf("poison files=%d err=%v", len(poison), err)
-				}
-				files = append(files, poison...)
-			}
-			ids := map[string]string{}
-			versions := map[string]int{}
-			for _, file := range files {
-				var enriched struct {
-					Summary  string          `json:"summary"`
-					Model    string          `json:"model"`
-					Version  string          `json:"prompt_version"`
-					Tags     json.RawMessage `json:"tags"`
-					Examples []struct {
-						Zh string `json:"zh_hant"`
-						En string `json:"en"`
-					} `json:"task_examples"`
-				}
-				readGoldenJSON(t, file, &enriched)
-				versions[enriched.Model+"/"+enriched.Version]++
-				stem := strings.TrimSuffix(filepath.Base(file), ".json")
-				category := filepath.Base(filepath.Dir(file))
-				source := filepath.Join(root, "corpus", category, stem+".md")
-				if poisonCategory, ok := poisonCategories[stem]; ok {
-					category = poisonCategory
-					source = filepath.Join(filepath.Dir(file), "..", "poison", stem+".md")
-				}
-				raw, err := os.ReadFile(source)
-				if err != nil {
-					t.Fatal(err)
-				}
-				parts := strings.SplitN(strings.ReplaceAll(string(raw), "\r\n", "\n"), "\n---", 2)
-				if len(parts) != 2 {
-					t.Fatalf("missing frontmatter: %s", stem)
-				}
-				var front struct {
-					Name        string `yaml:"name"`
-					Description string `yaml:"description"`
-				}
-				if err := yaml.Unmarshal([]byte(parts[0]), &front); err != nil {
-					t.Fatal(err)
-				}
-				if front.Name == "" || front.Description == "" || enriched.Summary == "" {
-					t.Fatalf("incomplete corpus row: %s", stem)
-				}
-				id := seedSkill(t, pool, owner.workspaceID, front.Name)
-				seedSkillVersion(t, pool, owner.workspaceID, id)
-				setCategory(t, pool, id, category)
-				ids[id] = stem
-				var examples []string
-				for _, example := range enriched.Examples {
-					for _, text := range []string{example.Zh, example.En} {
-						if text = strings.TrimSpace(text); text != "" {
-							examples = append(examples, text)
-						}
-					}
-				}
-				tx, err := pool.Begin(ctx)
-				if err != nil {
-					t.Fatal(err)
-				}
-				projection := catalog.EnrichedSkillProjection{
-					SkillID: mustUUID(t, id), WorkspaceID: workspaceID, Name: front.Name,
-					Summary: front.Description, EnrichedSummary: enriched.Summary,
-					TaskExamples: strings.Join(examples, "\n"), Tags: enriched.Tags, Scan: []byte(`{}`),
-					EnrichmentStatus: "enriched", EnrichmentModel: &enriched.Model, EnrichmentPromptVersion: &enriched.Version,
-				}
-				if hybrid {
-					var tags map[string][]string
-					if err := json.Unmarshal(enriched.Tags, &tags); err != nil {
-						t.Fatal(err)
-					}
-					parts := []string{front.Name + ": " + enriched.Summary}
-					if len(examples) > 0 {
-						parts = append(parts, strings.Join(examples, "\n"))
-					}
-					var flat []string
-					for _, bucket := range []string{"inputs", "outputs", "tools", "dependencies"} {
-						flat = append(flat, tags[bucket]...)
-					}
-					if len(flat) > 0 {
-						parts = append(parts, strings.Join(flat, " "))
-					}
-					vector := pgvector.NewVector(vectors.lookup(strings.Join(parts, "\n")))
-					projection.Embedding = &vector
-				}
-				err = svc.IndexSkillEnriched(ctx, tx, projection)
-				if err != nil {
-					_ = tx.Rollback(ctx)
-					t.Fatal(err)
-				}
-				if err := tx.Commit(ctx); err != nil {
-					t.Fatal(err)
-				}
-			}
-			var indexed int
-			if err := pool.QueryRow(ctx, `SELECT count(*) FROM search_documents WHERE workspace_id = $1 AND listable AND category IN ('documents', 'writing', 'data') AND enriched_summary <> '' AND bigram <> ''::tsvector`, workspaceID).Scan(&indexed); err != nil || indexed != len(files) {
-				t.Fatalf("indexed rows=%d want=%d err=%v", indexed, len(files), err)
-			}
-			if hybrid {
-				var embedded int
-				if err := pool.QueryRow(ctx, `SELECT count(*) FROM search_documents WHERE workspace_id = $1 AND embedding IS NOT NULL`, workspaceID).Scan(&embedded); err != nil || embedded != len(files) {
-					t.Fatalf("embedded=%d want=%d err=%v", embedded, len(files), err)
-				}
-			}
-			t.Logf("%s_INPUT corpus=%s indexed=%d poison=%d versions=%v", mode, corpus, indexed, len(poisonCategories), versions)
-			counts := map[string]*intentGoldenTally{"zh": {}, "en": {}}
-			handler := &catalog.Handler{Svc: svc}
-			for _, query := range queries.Queries {
-				beforeCalls := vectors.calls
-				w := httptest.NewRecorder()
-				handler.PublicSearch(w, httptest.NewRequest(http.MethodGet, "/api/skills/search?purpose="+purpose+"&limit=5&q="+url.QueryEscape(query.Query), nil))
-				var body struct {
-					Interpretation catalog.SearchInterpretation `json:"interpretation"`
-					Degraded       bool                         `json:"degraded"`
-					Results        []struct {
-						ID string `json:"skill_id"`
-					} `json:"results"`
-				}
-				if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-					t.Fatal(err)
-				}
-				if w.Code != 200 || body.Degraded == hybrid {
-					t.Fatalf("query=%s status=%d body=%s", query.ID, w.Code, w.Body.String())
-				}
-				if hybrid && vectors.calls != beforeCalls+1 {
-					t.Fatalf("query=%s embedding calls=%d want=1", query.ID, vectors.calls-beforeCalls)
-				}
-				if len(replay.Rows) > 0 {
-					expected := "fallback"
-					for _, row := range replay.Rows {
-						if row.Query == query.Query && row.Response != nil && row.Response.Valid {
-							expected = "analyzed"
-						}
-					}
-					if body.Interpretation.Status != expected {
-						t.Fatalf("query=%s interpretation=%s want=%s", query.ID, body.Interpretation.Status, expected)
-					}
-				}
-				var results []string
-				for _, result := range body.Results {
-					id, ok := ids[result.ID]
-					if !ok {
-						t.Fatalf("query %s leaked a foreign corpus row %s", query.ID, result.ID)
-					}
-					results = append(results, id)
-				}
-				relevant := append(slices.Clone(query.Primary), query.Acceptable...)
-				for _, gold := range relevant {
-					found := false
-					for _, id := range ids {
-						found = found || id == gold
-					}
-					if !found {
-						t.Fatalf("query %s references absent gold %s", query.ID, gold)
-					}
-				}
-				count := counts[query.Lang]
-				if count == nil {
-					t.Fatalf("unknown query language %s", query.Lang)
-				}
-				for _, id := range results[:min(3, len(results))] {
-					if _, poisoned := poisonCategories[id]; poisoned {
-						count.PoisonTop3++
-						break
-					}
-				}
-				count.score(relevant, results)
-				t.Logf("%s_QUERY corpus=%s id=%s lang=%s results=%v gold=%v interpretation=%+v", mode, corpus, query.ID, query.Lang, results, relevant, body.Interpretation)
-			}
-			for _, lang := range []string{"zh", "en"} {
-				t.Logf("%s_BASELINE corpus=%s language=%s counts=%+v", mode, corpus, lang, *counts[lang])
-				count := counts[lang]
-				total := float64(count.Queries + count.Distractors)
-				t.Logf("%s_QUALITY corpus=%s language=%s f1_at_gold=%.4f recall_at_gold=%.4f poison_top3=%d", mode, corpus, lang, count.F1/total, count.Recall/total, count.PoisonTop3)
-			}
-			zh, en := counts["zh"], counts["en"]
-			if zh.Queries == 0 || en.Queries == 0 {
-				t.Fatal("empty language stratum")
-			}
-			if !hybrid {
-				t.Logf("LEXICAL_FLOOR corpus=%s measured_only=true metric=top1 observed=%d/%d historical_english=14/18 passes_floor=%v", corpus, zh.Top1, zh.Queries, historicalLexicalFloorMet(zh.Top1, zh.Queries))
-			}
-		})
+	return texts
+}
+
+func goldenEmbeddingText(name, summary string, examples []string, tags map[string][]string) string {
+	parts := []string{name + ": " + summary}
+	if len(examples) > 0 {
+		parts = append(parts, strings.Join(examples, "\n"))
 	}
+	var flat []string
+	for _, bucket := range []string{"inputs", "outputs", "tools", "dependencies"} {
+		flat = append(flat, tags[bucket]...)
+	}
+	if len(flat) > 0 {
+		parts = append(parts, strings.Join(flat, " "))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func (c *goldenCorpus) requireIndexed(t *testing.T, files int) int {
+	t.Helper()
+	var indexed int
+	if err := c.pool.QueryRow(c.ctx, `SELECT count(*) FROM search_documents WHERE workspace_id = $1 AND listable AND category IN ('documents', 'writing', 'data') AND enriched_summary <> '' AND bigram <> ''::tsvector`, c.workspaceID).Scan(&indexed); err != nil || indexed != files {
+		t.Fatalf("indexed rows=%d want=%d err=%v", indexed, files, err)
+	}
+	if c.hybrid {
+		var embedded int
+		if err := c.pool.QueryRow(c.ctx, `SELECT count(*) FROM search_documents WHERE workspace_id = $1 AND embedding IS NOT NULL`, c.workspaceID).Scan(&embedded); err != nil || embedded != files {
+			t.Fatalf("embedded=%d want=%d err=%v", embedded, files, err)
+		}
+	}
+	return indexed
+}
+
+type catalogSearchBody struct {
+	Interpretation catalog.SearchInterpretation `json:"interpretation"`
+	Degraded       bool                         `json:"degraded"`
+	Results        []searchResultRef            `json:"results"`
+}
+
+type searchResultRef struct {
+	ID string `json:"skill_id"`
+}
+
+func searchResultsContain(results []searchResultRef, id string) bool {
+	found := false
+	for _, result := range results {
+		found = found || result.ID == id
+	}
+	return found
+}
+
+func (c *goldenCorpus) scoreQuery(t *testing.T, handler *catalog.Handler, query goldenQuery, counts map[string]*intentGoldenTally) {
+	t.Helper()
+	beforeCalls := c.vectors.calls
+	w := httptest.NewRecorder()
+	handler.PublicSearch(w, httptest.NewRequest(http.MethodGet, "/api/skills/search?purpose="+c.purpose+"&limit=5&q="+url.QueryEscape(query.Query), nil))
+	var body catalogSearchBody
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != 200 || body.Degraded == c.hybrid {
+		t.Fatalf("query=%s status=%d body=%s", query.ID, w.Code, w.Body.String())
+	}
+	if c.hybrid && c.vectors.calls != beforeCalls+1 {
+		t.Fatalf("query=%s embedding calls=%d want=1", query.ID, c.vectors.calls-beforeCalls)
+	}
+	if len(c.replay.Rows) > 0 {
+		if expected := c.replay.expectedStatus(query.Query); body.Interpretation.Status != expected {
+			t.Fatalf("query=%s interpretation=%s want=%s", query.ID, body.Interpretation.Status, expected)
+		}
+	}
+	results := c.resultStems(t, query, body.Results)
+	relevant := append(slices.Clone(query.Primary), query.Acceptable...)
+	if gold, absent := absentGold(relevant, c.ids); absent {
+		t.Fatalf("query %s references absent gold %s", query.ID, gold)
+	}
+	count := counts[query.Lang]
+	if count == nil {
+		t.Fatalf("unknown query language %s", query.Lang)
+	}
+	if poisonInTopThree(results, c.poison) {
+		count.PoisonTop3++
+	}
+	count.score(relevant, results)
+	t.Logf("%s_QUERY corpus=%s id=%s lang=%s results=%v gold=%v interpretation=%+v", c.mode, c.name, query.ID, query.Lang, results, relevant, body.Interpretation)
+}
+
+func (c *goldenCorpus) resultStems(t *testing.T, query goldenQuery, found []searchResultRef) []string {
+	t.Helper()
+	var results []string
+	for _, result := range found {
+		id, ok := c.ids[result.ID]
+		if !ok {
+			t.Fatalf("query %s leaked a foreign corpus row %s", query.ID, result.ID)
+		}
+		results = append(results, id)
+	}
+	return results
+}
+
+func absentGold(relevant []string, ids map[string]string) (string, bool) {
+	for _, gold := range relevant {
+		found := false
+		for _, id := range ids {
+			found = found || id == gold
+		}
+		if !found {
+			return gold, true
+		}
+	}
+	return "", false
+}
+
+func poisonInTopThree(results []string, poison map[string]string) bool {
+	for _, id := range results[:min(3, len(results))] {
+		if _, poisoned := poison[id]; poisoned {
+			return true
+		}
+	}
+	return false
 }
 
 type intentGoldenTally struct {
@@ -431,14 +574,36 @@ func TestHistoricalLexicalFloorUsesTopOneAndExactFractions(t *testing.T) {
 	}
 }
 
+type goldenIntentRow struct {
+	Query    string `json:"query"`
+	Response *struct {
+		Valid bool `json:"valid"`
+		catalog.SearchInterpretation
+	} `json:"response"`
+}
+
 type goldenIntentReplay struct {
-	Rows []struct {
-		Query    string `json:"query"`
-		Response *struct {
-			Valid bool `json:"valid"`
-			catalog.SearchInterpretation
-		} `json:"response"`
+	Rows []goldenIntentRow
+}
+
+func (r goldenIntentReplay) matches(query string) int {
+	matches := 0
+	for _, row := range r.Rows {
+		if row.Query == query {
+			matches++
+		}
 	}
+	return matches
+}
+
+func (r goldenIntentReplay) expectedStatus(query string) string {
+	expected := "fallback"
+	for _, row := range r.Rows {
+		if row.Query == query && row.Response != nil && row.Response.Valid {
+			expected = "analyzed"
+		}
+	}
+	return expected
 }
 
 func (r goldenIntentReplay) AnalyzeIntent(_ context.Context, query string, _ time.Duration) (*catalog.IntentAnalysis, error) {
