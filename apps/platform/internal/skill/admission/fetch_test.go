@@ -161,14 +161,14 @@ func TestGitHubURLNormalization(t *testing.T) {
 		return u
 	}
 
-	cands, _ := f.candidates(parse("https://github.com/anthropics/skills"))
+	cands := f.candidates(parse("https://github.com/anthropics/skills"))
 	if len(cands) != 2 ||
 		cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/main" ||
 		cands[0].ref != "main" || cands[1].ref != "master" {
 		t.Fatalf("repo URL candidates wrong: %+v", cands)
 	}
 
-	cands, _ = f.candidates(parse("https://github.com/anthropics/skills/tree/dev"))
+	cands = f.candidates(parse("https://github.com/anthropics/skills/tree/dev"))
 	if len(cands) != 1 ||
 		cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/dev" ||
 		cands[0].ref != "dev" {
@@ -177,7 +177,7 @@ func TestGitHubURLNormalization(t *testing.T) {
 
 	sha := "0123456789abcdef0123456789abcdef01234567"
 	for _, path := range []string{"tree", "commit"} {
-		cands, _ = f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
+		cands = f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
 		if len(cands) != 1 ||
 			cands[0].url != "https://codeload.github.com/anthropics/skills/zip/"+sha ||
 			cands[0].ref != sha {
@@ -185,12 +185,12 @@ func TestGitHubURLNormalization(t *testing.T) {
 		}
 	}
 
-	cands, _ = f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
+	cands = f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/0123456" {
 		t.Fatalf("abbreviated sha must stay on the branch path: %+v", cands)
 	}
 
-	cands, _ = f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
+	cands = f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/o/r/zip/refs/heads/main" {
 		t.Fatalf("non-repo URL must pass through: %+v", cands)
 	}
@@ -233,10 +233,10 @@ func TestBlockedAddrByFamily(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tc.addr, err)
 		}
-		if got := blockedAddr(ip, false); got != tc.strict {
+		if got := blockedStrict(ip); got != tc.strict {
 			t.Errorf("blockedAddr(%s, strict) = %v, want %v", tc.addr, got, tc.strict)
 		}
-		if got := blockedAddr(ip, true); got != tc.dev {
+		if got := blockedInDev(ip); got != tc.dev {
 			t.Errorf("blockedAddr(%s, dev) = %v, want %v", tc.addr, got, tc.dev)
 		}
 	}

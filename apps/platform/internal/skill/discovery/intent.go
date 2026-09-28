@@ -49,39 +49,48 @@ func emptyInterpretation(status string, filters searchFilters) SearchInterpretat
 	}
 }
 
-func (i SearchInterpretation) validate(query string, extracted bool) (searchFilters, error) {
+type interpretationSource int
+
+const (
+	extractedByModel interpretationSource = iota
+	correctedByUser
+)
+
+func (i SearchInterpretation) validate(query string, source interpretationSource) error {
+	extracted := source == extractedByModel
 	if len(i.Intent) != 5 || i.Keywords == nil || i.Filters == nil {
-		return searchFilters{}, errors.New("intent, keywords and filters are required")
+		return errors.New("intent, keywords and filters are required")
 	}
 	for _, field := range []string{"input", "output", "tools", "data", "environment"} {
 		value, exists := i.Intent[field]
 		if !exists {
-			return searchFilters{}, errors.New("all five intent fields are required")
+			return errors.New("all five intent fields are required")
 		}
 		if value != nil && (strings.TrimSpace(*value) == "" || utf8.RuneCountInString(*value) > maxQueryRunes ||
 			(extracted && !strings.Contains(query, *value))) {
-			return searchFilters{}, errors.New("invalid intent field")
+			return errors.New("invalid intent field")
 		}
 	}
 	if len(i.Keywords) > maxIntentKeywords {
-		return searchFilters{}, errors.New("too many search keywords")
+		return errors.New("too many search keywords")
 	}
 	for _, keyword := range i.Keywords {
 		if strings.TrimSpace(keyword) == "" || utf8.RuneCountInString(keyword) > maxIntentKeywordRunes {
-			return searchFilters{}, errors.New("invalid search keyword")
+			return errors.New("invalid search keyword")
 		}
 	}
 	for key := range i.Filters {
 		switch key {
 		case "script", "validation", "agent", "tier", "category":
 		default:
-			return searchFilters{}, errors.New("unsupported search filter")
+			return errors.New("unsupported search filter")
 		}
 	}
 	if !extracted && utf8.RuneCountInString(i.retrievalQuery(query)) > maxQueryRunes {
-		return searchFilters{}, errors.New("combined intent and keywords must not exceed 2000 characters")
+		return errors.New("combined intent and keywords must not exceed 2000 characters")
 	}
-	return parseFilterValues(i.Filters)
+	_, err := parseFilterValues(i.Filters)
+	return err
 }
 
 func (i SearchInterpretation) retrievalQuery(original string) string {
@@ -104,9 +113,9 @@ func (i SearchInterpretation) retrievalQuery(original string) string {
 	return strings.Join(terms, " ")
 }
 
-func (s *Service) interpret(ctx context.Context, query string, filters searchFilters, silent bool) SearchInterpretation {
+func (s *Service) interpret(ctx context.Context, query string, filters searchFilters, purpose searchPurpose) SearchInterpretation {
 	out := emptyInterpretation("skipped", filters)
-	if silent {
+	if purpose == searchForReference {
 		return out
 	}
 	out.Status, out.FallbackReason = "fallback", "unavailable"
@@ -128,7 +137,7 @@ func (s *Service) interpret(ctx context.Context, query string, filters searchFil
 	}
 	out.Model, out.PromptVersion = analysis.Interpretation.Model, analysis.Interpretation.PromptVersion
 	s.recordVersionedCallCost(ctx, credit.KindSearchIntent, out.Model, out.PromptVersion, analysis.Usage)
-	if _, err := analysis.Interpretation.validate(query, true); err != nil || !analysis.Valid ||
+	if err := analysis.Interpretation.validate(query, extractedByModel); err != nil || !analysis.Valid ||
 		out.Model == "" || out.PromptVersion == "" {
 		out.FallbackReason = "invalid_response"
 		return out

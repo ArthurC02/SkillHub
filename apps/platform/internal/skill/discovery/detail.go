@@ -303,15 +303,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	}
 	out.Restriction = restrictionOf(skill)
 
-	if e, err := q.GetSkillEnrichment(ctx, gen.GetSkillEnrichmentParams{
-		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
-	}); err == nil {
-		out.Enrichment = enrichmentFrom(e)
-		out.Limitations = modelLimitations(e.Limitations)
-		if out.Summary == "" {
-			out.Summary = e.Summary
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
+	if err := attachEnrichment(ctx, q, skill, &out); err != nil {
 		return skillDetail{}, err
 	}
 
@@ -335,35 +327,11 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 	out.License = licenseFrom(ver)
 	out.Tier = tierLabel(curationTier(skill, ver.ID))
 
-	if s.ReadRuntimeCompatibility == nil {
-		return skillDetail{}, errOwnerReadNotConfigured
-	}
-	if c, found, err := s.ReadRuntimeCompatibility(ctx, ver.ID); err == nil && found {
-		out.Compat.Capability = axis(capabilityWords, c.Capability)
-		out.Compat.Runtime = axis(runtimeWords, c.Runtime)
-		out.Compat.RuntimeImage = c.RuntimeImage
-		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
-		out.Compat.Note = compatMeasuredNote
-	} else if err != nil {
+	if err := s.attachMeasuredCompat(ctx, ver, &out); err != nil {
 		return skillDetail{}, err
 	}
-
-	if ver.SourceID.Valid {
-		if s.SourceByID == nil {
-			return skillDetail{}, errOwnerReadNotConfigured
-		}
-		src, found, err := s.SourceByID(ctx, ver.WorkspaceID, ver.SourceID)
-		if err == nil && found {
-			out.Source = sourceFrom(src)
-			out.Source.Path = ver.SourcePath
-			siblings, err := s.sourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
-			if err != nil {
-				return skillDetail{}, err
-			}
-			out.Source.Siblings = siblings
-		} else if err != nil {
-			return skillDetail{}, err
-		}
+	if err := s.attachSource(ctx, skill, ver, &out); err != nil {
+		return skillDetail{}, err
 	}
 
 	if report, ok := s.scanPackage(ctx, storedSkill(ver)); ok {
@@ -375,6 +343,66 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts) (skillDetai
 		}
 	}
 	return out, nil
+}
+
+func attachEnrichment(ctx context.Context, q *gen.Queries, skill SkillFacts, out *skillDetail) error {
+	e, err := q.GetSkillEnrichment(ctx, gen.GetSkillEnrichmentParams{
+		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	out.Enrichment = enrichmentFrom(e)
+	out.Limitations = modelLimitations(e.Limitations)
+	if out.Summary == "" {
+		out.Summary = e.Summary
+	}
+	return nil
+}
+
+func (s *Service) attachMeasuredCompat(ctx context.Context, ver VersionFacts, out *skillDetail) error {
+	if s.ReadRuntimeCompatibility == nil {
+		return errOwnerReadNotConfigured
+	}
+	c, found, err := s.ReadRuntimeCompatibility(ctx, ver.ID)
+	if err != nil {
+		return err
+	}
+	if found {
+		out.Compat.Capability = axis(capabilityWords, c.Capability)
+		out.Compat.Runtime = axis(runtimeWords, c.Runtime)
+		out.Compat.RuntimeImage = c.RuntimeImage
+		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
+		out.Compat.Note = compatMeasuredNote
+	}
+	return nil
+}
+
+func (s *Service) attachSource(ctx context.Context, skill SkillFacts, ver VersionFacts, out *skillDetail) error {
+	if !ver.SourceID.Valid {
+		return nil
+	}
+	if s.SourceByID == nil {
+		return errOwnerReadNotConfigured
+	}
+	src, found, err := s.SourceByID(ctx, ver.WorkspaceID, ver.SourceID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	out.Source = sourceFrom(src)
+	out.Source.Path = ver.SourcePath
+	siblings, err := s.sourceSiblings(ctx, ver.WorkspaceID, ver.PackageObjectKey, skill.ID)
+	if err != nil {
+		return err
+	}
+	out.Source.Siblings = siblings
+	return nil
 }
 
 func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
@@ -626,14 +654,16 @@ func trustLabel(t SourceTrust) labelled {
 }
 
 func derivation(s SkillFacts) derivationInfo {
-	isFork := s.ForkedFromSkillID.Valid
-	b := Derivation(isFork)
-	out := derivationInfo{IsFork: isFork, Label: b.Label, Note: b.Note}
-	if isFork {
-		out.ForkedFromSkillID = pgconv.UUIDString(s.ForkedFromSkillID)
-		out.ForkedFromVersionID = pgconv.UUIDString(s.ForkedFromVersionID)
+	if !s.ForkedFromSkillID.Valid {
+		b := OriginalDerivation()
+		return derivationInfo{IsFork: false, Label: b.Label, Note: b.Note}
 	}
-	return out
+	b := ForkDerivation()
+	return derivationInfo{
+		IsFork: true, Label: b.Label, Note: b.Note,
+		ForkedFromSkillID:   pgconv.UUIDString(s.ForkedFromSkillID),
+		ForkedFromVersionID: pgconv.UUIDString(s.ForkedFromVersionID),
+	}
 }
 
 func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {

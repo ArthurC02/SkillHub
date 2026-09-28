@@ -109,18 +109,16 @@ func (s *Service) CheckSources(ctx context.Context, limit int32) (checked, unava
 		return 0, 0, 0, err
 	}
 	for _, row := range rows {
-		available, contentChanged := true, false
+		probe := sourceUnchanged
 		if err := s.Fetcher.Probe(ctx, *row.SourceUrl); err != nil {
 			slog.Info("import source unavailable", "url", *row.SourceUrl, "error", err)
-			available = false
+			probe = sourceUnavailable
 			unavailable++
-		} else {
-			contentChanged = s.contentDiffers(ctx, row)
-			if contentChanged {
-				changed++
-			}
+		} else if s.contentDiffers(ctx, row) {
+			probe = sourceContentChanged
+			changed++
 		}
-		if err := s.markChecked(ctx, q, row, available, contentChanged); err != nil {
+		if err := s.markChecked(ctx, q, row, probe); err != nil {
 			return checked, unavailable, changed, err
 		}
 		checked++
@@ -146,29 +144,36 @@ func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheck
 	return hex.EncodeToString(sum[:]) != row.ContentHash
 }
 
-func checkedSource(row gen.ListSourcesToCheckRow, available, contentChanged bool, now time.Time) gen.MarkSourceCheckedParams {
+type sourceProbe int
+
+const (
+	sourceUnchanged sourceProbe = iota
+	sourceUnavailable
+	sourceContentChanged
+)
+
+func checkedSource(row gen.ListSourcesToCheckRow, probe sourceProbe, now time.Time) gen.MarkSourceCheckedParams {
 	checked := gen.MarkSourceCheckedParams{
 		ID: row.ID, UnavailableSince: row.UnavailableSince, ContentChangedAt: row.ContentChangedAt,
 	}
 	switch {
-	case available:
+	case probe != sourceUnavailable:
 		checked.UnavailableSince = pgtype.Timestamptz{}
 	case !row.UnavailableSince.Valid:
 		checked.UnavailableSince = pgtype.Timestamptz{Time: now, Valid: true}
 	}
-	if contentChanged && !row.ContentChangedAt.Valid {
+	if probe == sourceContentChanged && !row.ContentChangedAt.Valid {
 		checked.ContentChangedAt = pgtype.Timestamptz{Time: now, Valid: true}
 	}
 	return checked
 }
 
-func (s *Service) markChecked(
-	ctx context.Context, q *gen.Queries, row gen.ListSourcesToCheckRow, available, contentChanged bool,
-) error {
+func (s *Service) markChecked(ctx context.Context, q *gen.Queries, row gen.ListSourcesToCheckRow, probe sourceProbe) error {
+	available, contentChanged := probe != sourceUnavailable, probe == sourceContentChanged
 	wasUnavailable := row.UnavailableSince.Valid
 	if wasUnavailable == !available && !contentChanged {
 
-		return q.MarkSourceChecked(ctx, checkedSource(row, available, false, time.Now()))
+		return q.MarkSourceChecked(ctx, checkedSource(row, probe, time.Now()))
 	}
 
 	tx, err := s.Pool.Begin(ctx)
@@ -177,7 +182,7 @@ func (s *Service) markChecked(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := q.WithTx(tx)
-	if err := qtx.MarkSourceChecked(ctx, checkedSource(row, available, contentChanged, time.Now())); err != nil {
+	if err := qtx.MarkSourceChecked(ctx, checkedSource(row, probe, time.Now())); err != nil {
 		return err
 	}
 

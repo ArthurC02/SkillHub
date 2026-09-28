@@ -365,8 +365,8 @@ func unavailableNote(availability Availability, member string) string {
 	return "成員 " + member + "：" + note
 }
 
-func exposureNote(exposed bool) noteView {
-	if exposed {
+func exposureNote(p PublicPublication) noteView {
+	if p.Exposed {
 		return noteView{Available: true, Note: exposedNote}
 	}
 	return noteView{Available: false, Note: notListedNote}
@@ -419,7 +419,7 @@ func (h *Handler) publicView(p PublicPublication) publicPublicationView {
 		Kind: kindOf(p.Publication), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
 		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: unavailableNote(p.Availability, p.UnavailableMember)},
 		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
-		Exposure:     exposureNote(p.Exposed),
+		Exposure:     exposureNote(p),
 		Acquisition:  h.acquisitionNote(p.Availability, kindOf(p.Publication)),
 	}
 	if p.Status == StatusDelisted {

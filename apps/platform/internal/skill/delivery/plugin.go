@@ -90,41 +90,14 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 	}
 	files := []exportFile{{path: pluginManifestFile, data: append(manifest, '\n')}}
 	for _, member := range spec.Members {
-		skill, found, err := s.ReadSkill(ctx, source.ID, member.SkillID)
+		memberFiles, err := s.exportPluginMember(ctx, source, member, p)
 		if err != nil {
 			return nil, err
 		}
-		if !found {
-			return nil, ErrNotFound
+		if p.BlockedReason != "" {
+			return p, nil
 		}
-		version, found, err := s.ReadVersion(ctx, source.ID, member.VersionID)
-		if err != nil {
-			return nil, err
-		}
-		if !found || version.SkillID != skill.ID {
-			return nil, ErrNotFound
-		}
-		if reason, message := gate(skill); reason != "" {
-			return p.blockedBy(skill.Name, reason, message), nil
-		}
-		src, err := s.readSource(ctx, version)
-		if err != nil {
-			return nil, err
-		}
-		if src.blockedReason != "" {
-			return p.blockedBy(skill.Name, src.blockedReason, src.blockedMessage), nil
-		}
-		name := skill.Name
-		if src.report.Manifest != nil && src.report.Manifest.Name != "" {
-			name = src.report.Manifest.Name
-		}
-		for _, f := range src.files {
-			files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data})
-		}
-		p.Members = append(p.Members, PluginMemberView{
-			SkillID: pgconv.UUIDString(skill.ID), SkillVersionID: pgconv.UUIDString(version.ID),
-			Name: name, VersionNumber: version.VersionNumber,
-		})
+		files = append(files, memberFiles...)
 	}
 
 	zipped, err := writeZip(files, "")
@@ -151,10 +124,53 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 	return p, nil
 }
 
-func (p *PluginPlan) blockedBy(member, reason, message string) *PluginPlan {
+func (s *Service) exportPluginMember(
+	ctx context.Context, source identity.Workspace, member PluginMember, p *PluginPlan,
+) ([]exportFile, error) {
+	skill, found, err := s.ReadSkill(ctx, source.ID, member.SkillID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, ErrNotFound
+	}
+	version, found, err := s.ReadVersion(ctx, source.ID, member.VersionID)
+	if err != nil {
+		return nil, err
+	}
+	if !found || version.SkillID != skill.ID {
+		return nil, ErrNotFound
+	}
+	if reason, message := gate(skill); reason != "" {
+		p.blockedBy(skill.Name, reason, message)
+		return nil, nil
+	}
+	src, err := s.readSource(ctx, version)
+	if err != nil {
+		return nil, err
+	}
+	if src.blockedReason != "" {
+		p.blockedBy(skill.Name, src.blockedReason, src.blockedMessage)
+		return nil, nil
+	}
+	name := skill.Name
+	if src.report.Manifest != nil && src.report.Manifest.Name != "" {
+		name = src.report.Manifest.Name
+	}
+	files := make([]exportFile, 0, len(src.files))
+	for _, f := range src.files {
+		files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data})
+	}
+	p.Members = append(p.Members, PluginMemberView{
+		SkillID: pgconv.UUIDString(skill.ID), SkillVersionID: pgconv.UUIDString(version.ID),
+		Name: name, VersionNumber: version.VersionNumber,
+	})
+	return files, nil
+}
+
+func (p *PluginPlan) blockedBy(member, reason, message string) {
 	p.BlockedMember, p.BlockedReason = member, reason
 	p.BlockedMessage = "成員 " + member + "：" + message
-	return p
 }
 
 func (s *Service) CreatePluginForRecipient(

@@ -32,7 +32,7 @@ func TestASourceCheckKeepsWhenItFirstWentAwayAndWhenItFirstChanged(t *testing.T)
 		t.Run(tc.name, func(t *testing.T) {
 			row := gen.ListSourcesToCheckRow{UnavailableSince: tc.unavailableSince, ContentChangedAt: tc.changedAt}
 
-			got := checkedSource(row, tc.available, tc.changed, now)
+			got := checkedSource(row, probeOf(tc.available, tc.changed), now)
 
 			if got.UnavailableSince != tc.wantUnavailable || got.ContentChangedAt != tc.wantChg {
 				t.Fatalf("unavailable since %v changed at %v, want %v and %v",

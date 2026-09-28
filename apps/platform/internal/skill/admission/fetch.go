@@ -45,7 +45,7 @@ var alwaysBlocked = []netip.Prefix{
 	netip.MustParsePrefix("255.255.255.255/32"),
 }
 
-func blockedAddr(ip netip.Addr, dev bool) bool {
+func blockedInDev(ip netip.Addr) bool {
 	ip = ip.Unmap()
 	if !ip.IsValid() || ip.IsUnspecified() ||
 		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
@@ -57,19 +57,21 @@ func blockedAddr(ip netip.Addr, dev bool) bool {
 			return true
 		}
 	}
-	if dev {
-		return false
-	}
-	return ip.IsLoopback() || ip.IsPrivate()
+	return false
 }
 
-func newClient(dev bool) *http.Client {
+func blockedStrict(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return blockedInDev(ip) || ip.IsLoopback() || ip.IsPrivate()
+}
+
+func newClient(blocked func(netip.Addr) bool) *http.Client {
 	d := &net.Dialer{
 		Timeout:   connectTimeout,
 		KeepAlive: 30 * time.Second,
 		Control: func(_, address string, _ syscall.RawConn) error {
 			ap, err := netip.ParseAddrPort(address)
-			if err != nil || blockedAddr(ap.Addr(), dev) {
+			if err != nil || blocked(ap.Addr()) {
 				return errBlockedDestination
 			}
 			return nil
@@ -89,8 +91,8 @@ func newClient(dev bool) *http.Client {
 }
 
 var (
-	strictClient = newClient(false)
-	devClient    = newClient(true)
+	strictClient = newClient(blockedStrict)
+	devClient    = newClient(blockedInDev)
 )
 
 func (f *URLFetcher) AllowedHosts() []string {
@@ -172,7 +174,7 @@ func (f *URLFetcher) Fetch(ctx context.Context, rawURL string) (data []byte, ref
 	}
 	u, _ := url.Parse(normalized)
 
-	candidates, ref := f.candidates(u)
+	candidates := f.candidates(u)
 	var lastErr error
 	for _, c := range candidates {
 		data, err := f.download(ctx, c.url)
@@ -191,9 +193,9 @@ type candidate struct{ url, ref string }
 
 var commitSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 
-func (f *URLFetcher) candidates(u *url.URL) ([]candidate, string) {
+func (f *URLFetcher) candidates(u *url.URL) []candidate {
 	if strings.ToLower(u.Host) != "github.com" {
-		return []candidate{{url: u.String()}}, ""
+		return []candidate{{url: u.String()}}
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
 	zipAt := func(owner, repo, ref string) string {
@@ -207,16 +209,16 @@ func (f *URLFetcher) candidates(u *url.URL) ([]candidate, string) {
 		return []candidate{
 			{archive(parts[0], parts[1], "heads", "main"), "main"},
 			{archive(parts[0], parts[1], "heads", "master"), "master"},
-		}, ""
+		}
 
 	case len(parts) >= 4 && (parts[2] == "tree" || parts[2] == "commit"):
 		ref := strings.Join(parts[3:], "/")
 		if commitSHA.MatchString(ref) {
-			return []candidate{{zipAt(parts[0], parts[1], ref), ref}}, ""
+			return []candidate{{zipAt(parts[0], parts[1], ref), ref}}
 		}
-		return []candidate{{archive(parts[0], parts[1], "heads", ref), ref}}, ""
+		return []candidate{{archive(parts[0], parts[1], "heads", ref), ref}}
 	default:
-		return []candidate{{url: u.String()}}, ""
+		return []candidate{{url: u.String()}}
 	}
 }
 

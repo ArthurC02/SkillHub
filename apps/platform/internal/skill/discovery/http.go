@@ -108,15 +108,25 @@ const (
 	rankNoteCatalog     = "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。"
 )
 
-func resultFacets(r *searchResult, tier Tier, category, categorySource *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
-	r.Tier = tierLabel(tier)
-	r.Category = categoryLabel(category, categorySource)
-	r.Dependencies = dependencyTags(tagsJSON)
-	r.Risk = riskHint(scanJSON)
-	r.VerifiedAt = timeString(verifiedAt)
-	r.Compat = compat
+type facetColumns struct {
+	tier           Tier
+	category       *string
+	categorySource *string
+	tagsJSON       []byte
+	scanJSON       []byte
+	verifiedAt     pgtype.Timestamptz
+	compat         compatibility
+}
+
+func resultFacets(r *searchResult, f facetColumns) {
+	r.Tier = tierLabel(f.tier)
+	r.Category = categoryLabel(f.category, f.categorySource)
+	r.Dependencies = dependencyTags(f.tagsJSON)
+	r.Risk = riskHint(f.scanJSON)
+	r.VerifiedAt = timeString(f.verifiedAt)
+	r.Compat = f.compat
 	r.Compat.SpecValidation = axis(specWords, "unverified")
-	if verifiedAt.Valid {
+	if f.verifiedAt.Valid {
 		r.Compat.SpecValidation = axis(specWords, "passed")
 	}
 	r.Compat.Note = compatUnverifiedNote
@@ -350,7 +360,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.Svc.Search(r.Context(), q, limit, filters, silent)
+	out, err := h.Svc.Search(r.Context(), q, limit, filters, searchPurpose(purpose))
 	h.writeSearchResult(w, q, limit, out, err)
 }
 

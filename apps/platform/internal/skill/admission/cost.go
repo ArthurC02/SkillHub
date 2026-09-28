@@ -14,19 +14,24 @@ type CostRecorder interface {
 	RecordCost(ctx context.Context, tx credit.DBTX, e credit.CostEvent) (id string, existed bool, err error)
 }
 
-func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspaceID pgtype.UUID,
-	model, promptVersion string, u *ModelUsage) {
+type modelCall struct {
+	model         string
+	promptVersion string
+	usage         *ModelUsage
+}
+
+func (s *Service) recordCost(ctx context.Context, kind credit.CostKind, workspaceID pgtype.UUID, call modelCall) {
 	if s.Credit == nil {
 		return
 	}
 	e := credit.CostEvent{
 		Kind:           kind,
-		Model:          model,
-		PromptVersion:  promptVersion,
+		Model:          call.model,
+		PromptVersion:  call.promptVersion,
 		WorkspaceID:    workspaceID,
 		IdempotencyKey: string(kind) + ":" + uuid.NewString(),
 	}
-	if u != nil {
+	if u := call.usage; u != nil {
 		e.PromptTokens, e.CompletionTokens = u.PromptTokens, u.CompletionTokens
 		e.UsdMicros, e.Estimated = credit.UsageCost(u.ReportedCostUSD())
 	} else {

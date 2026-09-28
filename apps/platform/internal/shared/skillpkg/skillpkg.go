@@ -407,19 +407,7 @@ var licenseSignatures = []struct{ marker, spdx string }{
 
 func (r *Report) resolveLicense(fsys fs.FS) {
 	if r.Manifest.License != "" {
-
-		if name, ok := licensePointerTarget(r.Manifest.License); ok {
-			if data, err := fs.ReadFile(fsys, name); err == nil {
-				if spdx := detectLicense(data); spdx != "" {
-					r.LicenseExpression, r.LicenseSource = spdx, LicenseSourceManifestRef
-					r.add(SeverityInfo, "license-from-manifest-reference", name, fmt.Sprintf(
-						"frontmatter 的 license 欄位指向 %s 而非直接宣告授權；該檔案標明的授權是 %s",
-						name, spdx))
-					return
-				}
-			}
-		}
-		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), LicenseSourceManifest
+		r.resolveDeclaredLicense(fsys)
 		return
 	}
 
@@ -447,6 +435,30 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		return
 	}
 	r.add(SeverityWarning, "license-unknown", "SKILL.md", "未宣告授權；視為未知授權")
+}
+
+func (r *Report) resolveDeclaredLicense(fsys fs.FS) {
+	if name, spdx, ok := pointedLicense(fsys, r.Manifest.License); ok {
+		r.LicenseExpression, r.LicenseSource = spdx, LicenseSourceManifestRef
+		r.add(SeverityInfo, "license-from-manifest-reference", name, fmt.Sprintf(
+			"frontmatter 的 license 欄位指向 %s 而非直接宣告授權；該檔案標明的授權是 %s",
+			name, spdx))
+		return
+	}
+	r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), LicenseSourceManifest
+}
+
+func pointedLicense(fsys fs.FS, license string) (name, spdx string, ok bool) {
+	name, ok = licensePointerTarget(license)
+	if !ok {
+		return "", "", false
+	}
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return "", "", false
+	}
+	spdx = detectLicense(data)
+	return name, spdx, spdx != ""
 }
 
 type licenseCandidate struct {
@@ -742,61 +754,75 @@ func (r *Report) scanTree(fsys fs.FS) {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
 
-		if info.Mode()&fs.ModeSymlink != 0 {
-			r.add(SeverityError, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
-			return nil
-		}
-		if info.Mode().Type() != 0 {
-			r.add(SeverityError, CodeUnsupportedEntryType, path,
-				fmt.Sprintf("套件項目不是一般檔案或目錄（mode %s）；Runtime 無法將它具現化", info.Mode()))
+		if !r.admitEntryType(fsys, path, info) {
 			return nil
 		}
 		deps.note(path)
-		lower := strings.ToLower(path)
-		ext := ""
-		if i := strings.LastIndex(lower, "."); i >= 0 {
-			ext = lower[i:]
-		}
-		base := lower
-		if i := strings.LastIndex(lower, "/"); i >= 0 {
-			base = lower[i+1:]
-		}
-
-		switch {
-		case scriptExts[ext]:
-			r.add(SeverityInfo, CodeScriptFile, path, "套件包含一個 Script；匯入或掃描期間不會執行它")
-		case binaryExts[ext]:
-			r.add(SeverityWarning, CodeBinaryFile, path, "套件包含一個已編譯的二進位檔；內容無法以文字方式檢視")
-		case dependencyFiles[base]:
-			r.add(SeverityInfo, CodeDependencyFile, path, "套件宣告了外部依賴套件")
-		}
+		r.discloseFileKind(path)
 
 		data, err := readCapped(fsys, path, maxScanBytes)
 		if err != nil {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
-		if info.Size() > maxScanBytes {
-			r.add(SeverityInfo, CodeFileNotScanned, path, fmt.Sprintf(
-				"檔案超過內容掃描上限 %d bytes；只掃描了前 %d bytes",
-				maxScanBytes, len(data)))
-		}
-		if isBinary(data) {
-
-			r.scanSecrets(path, data)
-			return nil
-		}
-		content := string(data)
-		deps.observe(path, content)
-
-		for _, u := range dedupe(urlPattern.FindAllString(content, -1)) {
-			h := urlHost(u)
-			urlsByHost[h] = append(urlsByHost[h], path+": "+u)
-		}
-		r.scanSecrets(path, data)
+		r.scanContent(path, info.Size(), data, deps, urlsByHost)
 		return nil
 	})
 	deps.report(r)
 	r.addURLDisclosures(urlsByHost)
+}
+
+func (r *Report) admitEntryType(fsys fs.FS, path string, info fs.FileInfo) bool {
+	if info.Mode()&fs.ModeSymlink != 0 {
+		r.add(SeverityError, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
+		return false
+	}
+	if info.Mode().Type() != 0 {
+		r.add(SeverityError, CodeUnsupportedEntryType, path,
+			fmt.Sprintf("套件項目不是一般檔案或目錄（mode %s）；Runtime 無法將它具現化", info.Mode()))
+		return false
+	}
+	return true
+}
+
+func (r *Report) discloseFileKind(path string) {
+	lower := strings.ToLower(path)
+	ext := ""
+	if i := strings.LastIndex(lower, "."); i >= 0 {
+		ext = lower[i:]
+	}
+	base := lower
+	if i := strings.LastIndex(lower, "/"); i >= 0 {
+		base = lower[i+1:]
+	}
+
+	switch {
+	case scriptExts[ext]:
+		r.add(SeverityInfo, CodeScriptFile, path, "套件包含一個 Script；匯入或掃描期間不會執行它")
+	case binaryExts[ext]:
+		r.add(SeverityWarning, CodeBinaryFile, path, "套件包含一個已編譯的二進位檔；內容無法以文字方式檢視")
+	case dependencyFiles[base]:
+		r.add(SeverityInfo, CodeDependencyFile, path, "套件宣告了外部依賴套件")
+	}
+}
+
+func (r *Report) scanContent(path string, size int64, data []byte, deps *depScan, urlsByHost map[string][]string) {
+	if size > maxScanBytes {
+		r.add(SeverityInfo, CodeFileNotScanned, path, fmt.Sprintf(
+			"檔案超過內容掃描上限 %d bytes；只掃描了前 %d bytes",
+			maxScanBytes, len(data)))
+	}
+	if isBinary(data) {
+		r.scanSecrets(path, data)
+		return
+	}
+	content := string(data)
+	deps.observe(path, content)
+
+	for _, u := range dedupe(urlPattern.FindAllString(content, -1)) {
+		h := urlHost(u)
+		urlsByHost[h] = append(urlsByHost[h], path+": "+u)
+	}
+	r.scanSecrets(path, data)
 }
 
 const maxLinkTarget = 512

@@ -248,7 +248,6 @@ func (s *Service) Plan(
 	if err := s.requireOwnerReads(); err != nil {
 		return nil, err
 	}
-	q := gen.New(s.Pool)
 
 	skill, found, err := s.ReadSkill(ctx, ws.ID, skillID)
 	if !found && err == nil {
@@ -288,21 +287,21 @@ func (s *Service) Plan(
 		p.BlockedReason, p.BlockedMessage = reason, msg
 		return p, nil
 	}
-	if err := s.build(ctx, q, ws, p); err != nil {
+	if err := s.build(ctx, ws, p); err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
 func gate(skill SkillFacts) (reason, message string) {
-	return gateFlags(skill.AccessRestricted, Redistribution(skill.Redistribution))
-}
-
-func gateFlags(accessRestricted bool, redistribution Redistribution) (reason, message string) {
-	if accessRestricted {
+	if skill.AccessRestricted {
 		return BlockedLicenseHold,
 			"這個 Skill 的內容因授權問題尚未釐清而被保留，所以無法從中產出套件"
 	}
+	return redistributionGate(Redistribution(skill.Redistribution))
+}
+
+func redistributionGate(redistribution Redistribution) (reason, message string) {
 	switch redistribution {
 	case RedistributionAllowed:
 		return "", ""
@@ -322,7 +321,7 @@ func gateFlags(accessRestricted bool, redistribution Redistribution) (reason, me
 	}
 }
 
-func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspace, p *Plan) error {
+func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) error {
 	source, err := s.readSource(ctx, p.Version)
 	if err != nil {
 		return err
@@ -348,12 +347,12 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 		files[i].data = patched
 	}
 
-	included, excluded, caseFiles, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
+	cases, err := s.selectTestCases(ctx, ws, p.Skill, p.IncludeTestCases)
 	if err != nil {
 		return err
 	}
-	p.Included, p.Excluded = included, excluded
-	files = append(files, caseFiles...)
+	p.Included, p.Excluded = cases.included, cases.excluded
+	files = append(files, cases.files...)
 
 	report := validate(files)
 	p.Dependencies = dependencyNotes(report)
@@ -591,19 +590,28 @@ func (s *Service) Create(
 	ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID,
 	target string, includeTestCases bool,
 ) (Result, error) {
-	return s.create(ctx, ws, ws, skillID, versionID, target, includeTestCases)
+	return s.create(ctx, ws, ws, packageRequest{
+		skillID: skillID, versionID: versionID, target: target, includeTestCases: includeTestCases,
+	})
 }
 
 func (s *Service) CreateForRecipient(
 	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
 ) (Result, error) {
-	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, skillID, versionID, StandardTargetID, false)
+	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, packageRequest{
+		skillID: skillID, versionID: versionID, target: StandardTargetID,
+	})
 }
 
-func (s *Service) create(
-	ctx context.Context, source, recipient identity.Workspace, skillID, versionID pgtype.UUID,
-	target string, includeTestCases bool,
-) (Result, error) {
+type packageRequest struct {
+	skillID          pgtype.UUID
+	versionID        pgtype.UUID
+	target           string
+	includeTestCases bool
+}
+
+func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req packageRequest) (Result, error) {
+	skillID, versionID, target, includeTestCases := req.skillID, req.versionID, req.target, req.includeTestCases
 	retention, err := s.Retention.Period()
 	if err != nil {
 		return Result{}, err
@@ -730,7 +738,7 @@ func (s *Service) store(
 	if existing, ok, err := pkg.reuse(gen.New(conn)); err != nil || ok {
 		return existing, ok, err
 	}
-	artifact, err := s.putDownloadPackage(ctx, conn, locks.workspaceID, locks.objectKey, retention, pkg)
+	artifact, err := s.putDownloadPackage(ctx, locks, retention, pkg)
 	return artifact, false, err
 }
 
@@ -789,9 +797,9 @@ func (l *downloadObjectLocks) release() {
 }
 
 func (s *Service) putDownloadPackage(
-	ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, objectKey string,
-	retention time.Duration, pkg storedPackage,
+	ctx context.Context, held *downloadObjectLocks, retention time.Duration, pkg storedPackage,
 ) (Artifact, error) {
+	conn, workspaceID, objectKey := held.conn, held.workspaceID, held.objectKey
 	exists, err := s.Store.Exists(ctx, objectKey)
 	if err != nil {
 		return Artifact{}, err
@@ -811,7 +819,7 @@ func (s *Service) putDownloadPackage(
 		return Artifact{}, err
 	}
 	var row gen.Artifact
-	row, commitAttempted, err = recordDownloadPackage(ctx, conn, workspaceID, objectKey, retention, pkg)
+	row, commitAttempted, err = recordDownloadPackage(ctx, held, retention, pkg)
 	if err != nil {
 		return Artifact{}, err
 	}
@@ -833,10 +841,10 @@ func (s *Service) compensateDownloadObject(ctx context.Context, conn *pgxpool.Co
 }
 
 func recordDownloadPackage(
-	ctx context.Context, conn *pgxpool.Conn, workspaceID pgtype.UUID, objectKey string,
-	retention time.Duration, pkg storedPackage,
+	ctx context.Context, held *downloadObjectLocks, retention time.Duration, pkg storedPackage,
 ) (row gen.Artifact, commitAttempted bool, err error) {
-	tx, err := conn.Begin(ctx)
+	workspaceID, objectKey := held.workspaceID, held.objectKey
+	tx, err := held.conn.Begin(ctx)
 	if err != nil {
 		return gen.Artifact{}, false, err
 	}

@@ -38,7 +38,7 @@ const skillMD = "---\nname: pdf-tools\ndescription: Work with PDFs.\nlicense: MI
 func TestImportPathsRefuseWithoutProjectionDependencies(t *testing.T) {
 	ctx := context.Background()
 	if _, _, err := (&Service{}).persistVersion(ctx, nil, identity.Workspace{}, &registry.SkillRoot{},
-		preparedPackage{}, sourceMeta{Type: "upload"}, enrichment{}); err == nil {
+		incomingVersion{preparedPackage{}, sourceMeta{Type: "upload"}, enrichment{}}); err == nil {
 		t.Error("persistVersion succeeded without the search projection write injected")
 	}
 
@@ -59,7 +59,7 @@ func TestAVersionIsNotPersistedFromASourceWithoutItsProvenance(t *testing.T) {
 	s := &Service{IndexSkill: func(context.Context, pgx.Tx, SkillProjection) error { return nil }}
 
 	_, _, err := s.persistVersion(context.Background(), nil, identity.Workspace{}, &registry.SkillRoot{},
-		preparedPackage{}, sourceMeta{Type: SourceGenerated}, enrichment{})
+		incomingVersion{preparedPackage{}, sourceMeta{Type: SourceGenerated}, enrichment{}})
 
 	if !errors.Is(err, ErrIncompleteProvenance) {
 		t.Fatalf("err = %v, want ErrIncompleteProvenance", err)

@@ -16,8 +16,9 @@ func LoadSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID)
 	return loadSkill(ctx, gen.New(tx), workspaceID, skillID)
 }
 
-func LockCurrentPackage(ctx context.Context, tx pgx.Tx, workspaceID, skillID, versionID pgtype.UUID, packageObjectKey string) (bool, error) {
-	if !versionID.Valid || packageObjectKey == "" {
+func LockCurrentPackage(ctx context.Context, tx pgx.Tx, seen Version) (bool, error) {
+	workspaceID, skillID := seen.WorkspaceID, seen.SkillID
+	if !seen.ID.Valid || seen.PackageObjectKey == "" {
 		return false, nil
 	}
 	q := gen.New(tx)
@@ -38,7 +39,7 @@ func LockCurrentPackage(ctx context.Context, tx pgx.Tx, workspaceID, skillID, ve
 	if err != nil {
 		return false, err
 	}
-	return version.ID == versionID && version.PackageObjectKey == packageObjectKey, nil
+	return version.ID == seen.ID && version.PackageObjectKey == seen.PackageObjectKey, nil
 }
 
 func LoadSkillNamed(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, name string) (*SkillRoot, bool, error) {

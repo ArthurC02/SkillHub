@@ -224,7 +224,7 @@ func (s *Service) importSource(ctx context.Context, ws identity.Workspace, data 
 			out.Refused = append(out.Refused, Refusal{Path: planned.pkg.sourcePath, Report: report})
 			continue
 		}
-		res, err := s.importOne(ctx, tx, ws, planned.pkg, src, enriched[i])
+		res, err := s.importOne(ctx, tx, ws, incomingVersion{pkg: planned.pkg, source: src, enrichment: enriched[i]})
 		if err != nil {
 			return SourceResult{}, err
 		}
@@ -300,10 +300,8 @@ func sourceLevelReport(plan importPlan) skillpkg.Report {
 	return skillpkg.Report{Blocked: true}
 }
 
-func (s *Service) importOne(
-	ctx context.Context, tx pgx.Tx, ws identity.Workspace,
-	p preparedPackage, src sourceMeta, e enrichment,
-) (Result, error) {
+func (s *Service) importOne(ctx context.Context, tx pgx.Tx, ws identity.Workspace, in incomingVersion) (Result, error) {
+	p, src := in.pkg, in.source
 	res := Result{Report: p.report}
 	root, found, err := registry.LoadSkillNamed(ctx, tx, ws.ID, p.report.Manifest.Name)
 	if err != nil {
@@ -322,13 +320,13 @@ func (s *Service) importOne(
 	}
 	res.Skill = root.Skill()
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, in)
 	if err != nil {
 		return Result{}, err
 	}
 	importMeta := map[string]any{"source_type": string(src.Type)}
 	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
-	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
+	if err := auditVersion(ctx, tx, ws, res, versionAudit{audit.ActionSkillImport, importMeta}); err != nil {
 		return Result{}, err
 	}
 	return res, nil

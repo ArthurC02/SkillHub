@@ -44,20 +44,20 @@ func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
 			return err
 		}, "note is too long"},
 		{"blank redistribution", func() error {
-			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, "  ", "reviewed", registry.LicenseClaim{})
+			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "  ", Note: "reviewed", Claim: registry.LicenseClaim{}})
 			return err
 		}, "value is required"},
 		{"provenance redistribution", func() error {
-			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, "self_supplied", "reviewed", registry.LicenseClaim{})
+			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "self_supplied", Note: "reviewed", Claim: registry.LicenseClaim{}})
 			return err
 		}, "only the import path can establish that"},
 		{"unknown redistribution is named before the note", func() error {
-			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, "shared", "  ", registry.LicenseClaim{})
+			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "shared", Note: "  ", Claim: registry.LicenseClaim{}})
 			return err
 		}, "unknown redistribution value"},
 		{"release without licence evidence", func() error {
-			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, "allowed", "reviewed",
-				registry.LicenseClaim{Expression: "MIT"})
+			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "allowed", Note: "reviewed",
+				Claim: registry.LicenseClaim{Expression: "MIT"}})
 			return err
 		}, "requires the licence evidence"},
 	}

@@ -252,7 +252,7 @@ func (s *Service) forkName(
 	ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, sourceName string,
 ) (string, error) {
 	base := strings.TrimSuffix(sourceName, "-fork")
-	if trimmed, _, ok := cutForkOrdinal(base); ok {
+	if trimmed, ok := cutForkOrdinal(base); ok {
 		base = trimmed
 	}
 	for i := 1; i <= maxForkAttempts; i++ {
@@ -269,14 +269,14 @@ func (s *Service) forkName(
 	return "", ErrNameTaken
 }
 
-func cutForkOrdinal(name string) (string, int, bool) {
+func cutForkOrdinal(name string) (string, bool) {
 	base, ordinal, found := strings.Cut(name, "-fork-")
 	if !found || base == "" {
-		return name, 0, false
+		return name, false
 	}
 	n, err := strconv.Atoi(ordinal)
 	if err != nil || n < 2 {
-		return name, 0, false
+		return name, false
 	}
-	return base, n, true
+	return base, true
 }

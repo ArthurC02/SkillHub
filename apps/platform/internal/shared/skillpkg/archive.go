@@ -108,15 +108,14 @@ func PackageFS(data []byte) (fs.FS, error) {
 	seen := make(map[string]bool, len(zr.File))
 	requiredDirs := make(map[string]struct{}, len(zr.File))
 	for _, f := range zr.File {
-		nameIsDir := strings.HasSuffix(f.Name, "/")
-		if err := checkExtractableHeader(f, nameIsDir); err != nil {
+		if err := checkExtractableHeader(f); err != nil {
 			return nil, err
 		}
-		escapeFinding, escapes := ArchiveEntryFinding(f.Name)
-		if err := checkPortableName(f.Name, escapes); err != nil {
+		entry := classifyArchiveEntry(f.Name)
+		if err := entry.checkPortableName(); err != nil {
 			return nil, err
 		}
-		if err := claimUniquePath(seen, requiredDirs, f.Name, nameIsDir); err != nil {
+		if err := entry.claimUniquePath(seen, requiredDirs); err != nil {
 			return nil, err
 		}
 		if err := checkEntryCeilings(f); err != nil {
@@ -126,7 +125,7 @@ func PackageFS(data []byte) (fs.FS, error) {
 		if unpacked > maxUnpackedBytes {
 			return nil, badArchive(ArchiveBeyondLimits, "uncompressed content exceeds %d bytes", maxUnpackedBytes)
 		}
-		findings = append(findings, entryDisclosures(f.Name, nameIsDir, escapeFinding, escapes)...)
+		findings = append(findings, entry.disclosures()...)
 		if err := verifyEntryIntegrity(f); err != nil {
 			return nil, err
 		}
@@ -134,10 +133,11 @@ func PackageFS(data []byte) (fs.FS, error) {
 	return packageFS{FS: packageTree(zr), findings: findings}, nil
 }
 
-func checkExtractableHeader(f *zip.File, nameIsDir bool) error {
+func checkExtractableHeader(f *zip.File) error {
 	if f.Name == "" || strings.ContainsRune(f.Name, 0) || !utf8.ValidString(f.Name) {
 		return badArchive(ArchiveUnsafeName, "archive has an empty or invalid UTF-8 entry name")
 	}
+	nameIsDir := strings.HasSuffix(f.Name, "/")
 	mode := f.Mode()
 	if mode.IsDir() != nameIsDir || (nameIsDir && mode&fs.ModeSymlink != 0) {
 		return badArchive(ArchiveUnsafeName, "archive entry type disagrees with its name for %q", f.Name)
@@ -158,8 +158,26 @@ func checkExtractableHeader(f *zip.File, nameIsDir bool) error {
 	return nil
 }
 
-func checkPortableName(rawName string, escapes bool) error {
-	if !escapes && !isCanonicalArchiveName(rawName) {
+type archiveEntry struct {
+	rawName       string
+	isDir         bool
+	escapeFinding Finding
+	escapes       bool
+}
+
+func classifyArchiveEntry(rawName string) archiveEntry {
+	escapeFinding, escapes := ArchiveEntryFinding(rawName)
+	return archiveEntry{
+		rawName:       rawName,
+		isDir:         strings.HasSuffix(rawName, "/"),
+		escapeFinding: escapeFinding,
+		escapes:       escapes,
+	}
+}
+
+func (e archiveEntry) checkPortableName() error {
+	rawName := e.rawName
+	if !e.escapes && !isCanonicalArchiveName(rawName) {
 		return badArchive(ArchiveUnsafeName, "archive entry has a non-canonical portable name %q", rawName)
 	}
 	for _, part := range strings.Split(strings.TrimSuffix(rawName, "/"), "/") {
@@ -170,7 +188,8 @@ func checkPortableName(rawName string, escapes bool) error {
 	return nil
 }
 
-func claimUniquePath(seen map[string]bool, requiredDirs map[string]struct{}, rawName string, nameIsDir bool) error {
+func (e archiveEntry) claimUniquePath(seen map[string]bool, requiredDirs map[string]struct{}) error {
+	rawName, nameIsDir := e.rawName, e.isDir
 	name := canonicalArchiveName(rawName)
 	if _, duplicate := seen[name]; duplicate {
 		return badArchive(ArchiveUnsafeName, "duplicate archive entry %q", rawName)
@@ -205,14 +224,14 @@ func checkEntryCeilings(f *zip.File) error {
 	return nil
 }
 
-func entryDisclosures(rawName string, nameIsDir bool, escapeFinding Finding, escapes bool) []Finding {
+func (e archiveEntry) disclosures() []Finding {
 	var disclosed []Finding
-	if !nameIsDir && LooksLikeArchive(rawName) {
-		disclosed = append(disclosed, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: rawName,
+	if !e.isDir && LooksLikeArchive(e.rawName) {
+		disclosed = append(disclosed, Finding{Severity: SeverityInfo, Code: CodeNestedArchive, Path: e.rawName,
 			Message: "這個套件裡有一個壓縮檔，平台沒有打開它——上面的解壓上限管的是平台自己解開的內容，不涵蓋它。解壓縮這個套件的人要自己決定要不要打開。"})
 	}
-	if escapes {
-		disclosed = append(disclosed, escapeFinding)
+	if e.escapes {
+		disclosed = append(disclosed, e.escapeFinding)
 	}
 	return disclosed
 }

@@ -35,7 +35,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 		return s.importZipWithCommit(ctx, ws, data, src, after)
 	}
 
-	prepared, err := s.prepare(ctx, data)
+	prepared, err := s.prepare(data)
 	if err != nil || prepared.report.Blocked {
 		return Result{Report: prepared.report}, err
 	}
@@ -55,14 +55,14 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 	if err != nil {
 		return Result{}, err
 	}
-	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, prepared, src, enriched)
+	version, duplicate, err := s.persistVersion(ctx, tx, ws, existing, incomingVersion{pkg: prepared, source: src, enrichment: enriched})
 	if err != nil {
 		return Result{}, err
 	}
 
 	res := Result{Report: prepared.report, Skill: existing.Skill(), Version: version, Duplicate: duplicate}
 	if !duplicate {
-		if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{"source_type": string(SourceGenerated)}); err != nil {
+		if err := auditVersion(ctx, tx, ws, res, versionAudit{audit.ActionSkillImport, map[string]any{"source_type": string(SourceGenerated)}}); err != nil {
 			return Result{}, err
 		}
 	}
@@ -152,7 +152,7 @@ func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkil
 
 		return "", fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), true, nil
 	}
-	prepared, err := s.prepare(ctx, data)
+	prepared, err := s.prepare(data)
 	if err != nil {
 		return "", "", true, err
 	}

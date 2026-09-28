@@ -554,7 +554,7 @@ func namedQuery(sql, name string) (string, bool) {
 }
 
 func TestGeneratedReleasesThePackagingGate(t *testing.T) {
-	reason, message := gateFlags(false, RedistributionGenerated)
+	reason, message := redistributionGate(RedistributionGenerated)
 	if reason != "" || message != "" {
 		t.Fatalf("generated must release the gate, got reason=%q message=%q", reason, message)
 	}
@@ -575,7 +575,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 		{"a value nobody has written yet refuses", "value-added-next-year", BlockedLicenseUnknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			reason, message := gateFlags(false, tc.redistribution)
+			reason, message := redistributionGate(tc.redistribution)
 			if reason != tc.wantReason {
 				t.Errorf("gateFlags(false, %q) reason = %q, want %q", tc.redistribution, reason, tc.wantReason)
 			}
@@ -585,7 +585,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 					tc.redistribution, reason, message)
 			}
 
-			if reason, _ := gateFlags(true, tc.redistribution); reason != BlockedLicenseHold {
+			if reason, _ := gate(SkillFacts{AccessRestricted: true, Redistribution: string(tc.redistribution)}); reason != BlockedLicenseHold {
 				t.Errorf("a hold over %q gave %q, want %q", tc.redistribution, reason, BlockedLicenseHold)
 			}
 		})
@@ -593,7 +593,7 @@ func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
 }
 
 func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
-	reason, _ := gateFlags(true, RedistributionGenerated)
+	reason, _ := gate(SkillFacts{AccessRestricted: true, Redistribution: string(RedistributionGenerated)})
 	if reason != BlockedLicenseHold {
 		t.Fatalf("a hold must outrank generated, got %q", reason)
 	}

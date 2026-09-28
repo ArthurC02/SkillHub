@@ -61,7 +61,7 @@ func TestForkOrdinalParsingKeepsTheSeriesFlat(t *testing.T) {
 		{"tidy-csv-fork-x", "tidy-csv-fork-x", false},
 		{"-fork-2", "-fork-2", false},
 	} {
-		base, _, ok := cutForkOrdinal(tc.in)
+		base, ok := cutForkOrdinal(tc.in)
 		if base != tc.wantBase || ok != tc.wantOK {
 			t.Errorf("cutForkOrdinal(%q) = (%q, %v), want (%q, %v)", tc.in, base, ok, tc.wantBase, tc.wantOK)
 		}

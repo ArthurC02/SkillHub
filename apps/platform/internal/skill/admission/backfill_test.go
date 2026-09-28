@@ -26,7 +26,7 @@ func TestBackfillDiscardsPackagesThatAreNoLongerCurrent(t *testing.T) {
 				t.Fatal(err)
 			}
 			archive := zipBytes(t, map[string]string{"SKILL.md": skillMD})
-			pkg, err := (&Service{}).prepare(ctx, archive)
+			pkg, err := (&Service{}).prepare(archive)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,7 +93,7 @@ func TestBackfillDiscardsAnUnidentifiedSkill(t *testing.T) {
 	ctx := context.Background()
 	ws := seedCreationWorkspace(t, pool, "backfill-read-error")
 	archive := zipBytes(t, map[string]string{"SKILL.md": skillMD})
-	pkg, err := (&Service{}).prepare(ctx, archive)
+	pkg, err := (&Service{}).prepare(archive)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -141,7 +141,7 @@ func TestPackageFSRejectsCanonicallyDuplicateEntryNames(t *testing.T) {
 		{"SKILL.md": archiveSkillMD, "./SKILL.md": "replacement"},
 		{"SKILL.md": archiveSkillMD, "dir/x": "one", `dir\x`: "two"},
 		{"SKILL.md": archiveSkillMD, "skill.md": "replacement"},
-		{"SKILL.md": archiveSkillMD, "dir/x": "one", "dir/x. ": "two"},
+		{"SKILL.md": archiveSkillMD, "dir/x": "one", "dir/x.\x20": "two"},
 	} {
 		if _, err := PackageFS(zipBytes(t, files)); !errors.Is(err, ErrBadArchive) {
 			t.Fatalf("canonical duplicate: err = %v, want ErrBadArchive", err)

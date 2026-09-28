@@ -24,7 +24,7 @@ func TestCurrentPackageRemainsLockedUntilProjectionTransactionEnds(t *testing.T)
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	current, err := LockCurrentPackage(ctx, tx, ws.ID, skillID, first.ID, "packages/first")
+	current, err := LockCurrentPackage(ctx, tx, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"})
 	if err != nil || !current {
 		t.Fatalf("current=%v err=%v, want true/nil", current, err)
 	}
@@ -55,11 +55,11 @@ func TestCurrentPackageRemainsLockedUntilProjectionTransactionEnds(t *testing.T)
 		t.Fatal(err)
 	}
 	defer func() { _ = check.Rollback(ctx) }()
-	current, err = LockCurrentPackage(ctx, check, ws.ID, skillID, first.ID, "packages/first")
+	current, err = LockCurrentPackage(ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"})
 	if err != nil || current {
 		t.Fatalf("superseded package: current=%v err=%v, want false/nil", current, err)
 	}
-	current, err = LockCurrentPackage(ctx, check, ws.ID, skillID, second.ID, "packages/second")
+	current, err = LockCurrentPackage(ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: second.ID, PackageObjectKey: "packages/second"})
 	if err != nil || !current {
 		t.Fatalf("replacement package: current=%v err=%v, want true/nil", current, err)
 	}
@@ -76,7 +76,7 @@ func TestCurrentPackageReadFailureIsNotAContentDecision(t *testing.T) {
 	if err := tx.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
-	current, err := LockCurrentPackage(ctx, tx, ws.ID, skillID, skillID, "packages/unknown")
+	current, err := LockCurrentPackage(ctx, tx, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: skillID, PackageObjectKey: "packages/unknown"})
 	if current || !errors.Is(err, pgx.ErrTxClosed) {
 		t.Fatalf("current=%v err=%v, want false/ErrTxClosed", current, err)
 	}

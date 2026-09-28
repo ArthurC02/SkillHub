@@ -54,6 +54,13 @@ type BundlePublishInput struct {
 	RightsAttested bool
 }
 
+func (in BundlePublishInput) attestation() rightsAttestation {
+	if in.RightsAttested {
+		return rightsAttested
+	}
+	return rightsNotAttested
+}
+
 type PluginRequest struct {
 	Name        string
 	Version     string
@@ -341,7 +348,7 @@ func (s *Service) PublishBundle(ctx context.Context, ws identity.Workspace, bund
 	if err != nil {
 		return Publication{}, err
 	}
-	if refused, err := s.memberGate(ctx, tx, ws, bundleVersion.Members, in.RightsAttested); err != nil || refused != nil {
+	if refused, err := s.memberGate(ctx, tx, ws, bundleVersion.Members, in.attestation()); err != nil || refused != nil {
 		if refused != nil {
 			return Publication{}, refused
 		}
@@ -411,7 +418,7 @@ func (s *Service) scanMembers(ctx context.Context, ws identity.Workspace, member
 	return all, nil
 }
 
-func (s *Service) memberGate(ctx context.Context, tx pgx.Tx, ws identity.Workspace, members []BundleMember, rightsAttested bool) (*RefusedError, error) {
+func (s *Service) memberGate(ctx context.Context, tx pgx.Tx, ws identity.Workspace, members []BundleMember, attestation rightsAttestation) (*RefusedError, error) {
 	ordered := slices.Clone(members)
 	slices.SortFunc(ordered, func(a, b BundleMember) int {
 		return strings.Compare(pgconv.UUIDString(a.SkillID), pgconv.UUIDString(b.SkillID))
@@ -426,7 +433,7 @@ func (s *Service) memberGate(ctx context.Context, tx pgx.Tx, ws identity.Workspa
 			refusals[m.SkillID] = memberWithdrawn(m.Name)
 			continue
 		}
-		if refused := releaseGate(skill, rightsAttested); refused != nil {
+		if refused := releaseGate(skill, attestation); refused != nil {
 			refusals[m.SkillID] = &RefusedError{refused.Reason, "成員 " + m.Name + "：" + refused.Message}
 		}
 	}

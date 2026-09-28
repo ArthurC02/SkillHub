@@ -33,13 +33,19 @@ func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDis
 	}
 	words := creationWordSearch{queries: gen.New(s.Pool), scope: scope, query: query}
 	if s.LLM == nil {
-		return words.degradedAnswer(ctx)
+		ids, err := words.degradedIDs(ctx)
+		return ids, 0, true, err
 	}
 	embedding, costUSD, ok := s.embedCreationQuery(ctx, query)
 	if !ok {
-		return words.degradedAnswer(ctx)
+		ids, err := words.degradedIDs(ctx)
+		return ids, 0, true, err
 	}
-	return s.rankedCreationIDs(ctx, words.queries, query, embedding, maxDistance, costUSD)
+	ids, err = s.rankedCreationIDs(ctx, words.queries, query, embedding, maxDistance)
+	if err != nil {
+		return nil, costUSD, false, err
+	}
+	return ids, costUSD, false, nil
 }
 
 type creationWordSearch struct {
@@ -64,15 +70,15 @@ func (w creationWordSearch) ids(ctx context.Context, op string, limit int32) ([]
 	return out, nil
 }
 
-func (w creationWordSearch) degradedAnswer(ctx context.Context) ([]string, float64, bool, error) {
+func (w creationWordSearch) degradedIDs(ctx context.Context) ([]string, error) {
 	all, err := w.ids(ctx, "&", 3)
 	if err != nil {
-		return nil, 0, true, err
+		return nil, err
 	}
 	if len(all) < 3 {
 		any, err := w.ids(ctx, "|", 3)
 		if err != nil {
-			return nil, 0, true, err
+			return nil, err
 		}
 		for _, id := range any {
 			if !containsID(all, id) && len(all) < 3 {
@@ -80,7 +86,7 @@ func (w creationWordSearch) degradedAnswer(ctx context.Context) ([]string, float
 			}
 		}
 	}
-	return all, 0, true, nil
+	return all, nil
 }
 
 func (s *Service) embedCreationQuery(ctx context.Context, query string) (pgvector.Vector, float64, bool) {
@@ -97,10 +103,12 @@ func (s *Service) embedCreationQuery(ctx context.Context, query string) (pgvecto
 	return pgvector.NewVector(embedResp.Vectors[0]), costUSD, true
 }
 
-func (s *Service) rankedCreationIDs(ctx context.Context, queries *gen.Queries, query string, embedding pgvector.Vector, maxDistance, costUSD float64) ([]string, float64, bool, error) {
-	rows, _, err := s.hybridSearch(ctx, queries, query, &embedding, 10, searchFilters{}, maxDistance)
+func (s *Service) rankedCreationIDs(ctx context.Context, queries *gen.Queries, query string, embedding pgvector.Vector, maxDistance float64) ([]string, error) {
+	rows, _, err := s.hybridSearch(ctx, queries, hybridRequest{
+		query: query, keywords: query, embedding: &embedding, limit: 10, maxDistance: maxDistance,
+	})
 	if err != nil {
-		return nil, costUSD, false, err
+		return nil, err
 	}
 	var ids []string
 	for _, r := range rows {
@@ -109,7 +117,7 @@ func (s *Service) rankedCreationIDs(ctx context.Context, queries *gen.Queries, q
 		}
 		ids = append(ids, r.SkillID)
 	}
-	return ids, costUSD, false, nil
+	return ids, nil
 }
 
 func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID string) (tier, scanStatus string, warnings int, err error) {

@@ -78,15 +78,17 @@ func (d *Discovery) add(sev Severity, code, p, msg string) {
 
 func Discover(fsys fs.FS) Discovery {
 	d := Discovery{Shape: ShapeTree}
-	if facts, ok := d.readPluginManifest(fsys); ok {
+	facts, ok := d.readPluginManifest(fsys)
+	switch {
+	case ok:
 		d.Shape, d.Plugin = ShapePlugin, facts
 		d.collectPluginSkills(fsys)
 		d.collectPluginComponents(fsys)
-	} else if d.Blocked {
+	case d.Blocked:
 		return d
-	} else if hasSkillFile(fsys, ".") {
+	case hasSkillFile(fsys, "."):
 		d.Shape, d.Skills = ShapeSkill, []string{"."}
-	} else {
+	default:
 		d.collectTreeSkills(fsys)
 	}
 	if len(d.Skills) == 0 && !d.Blocked {

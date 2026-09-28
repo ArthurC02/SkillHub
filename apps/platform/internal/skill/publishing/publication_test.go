@@ -64,7 +64,7 @@ func TestTheReleaseGateAnswersEveryRedistributionValueAndTheHold(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			refused := releaseGate(tc.skill, tc.rightsAttested)
+			refused := releaseGate(tc.skill, PublishInput{RightsAttested: tc.rightsAttested}.attestation())
 			var got Refusal
 			if refused != nil {
 				got = refused.Reason

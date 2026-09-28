@@ -100,7 +100,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 		return e
 	}
 
-	s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, resp.Model, resp.PromptVersion, resp.Usage)
+	s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, modelCall{resp.Model, resp.PromptVersion, resp.Usage})
 	e.enrichedSummary = resp.Summary
 	e.taskExamples = joinTaskExamples(resp.TaskExamples)
 	e.tags = marshalTags(resp.Tags)
@@ -117,7 +117,7 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage, workspac
 	defer cancelEmbed()
 	emb, err := s.LLM.Embed(embedCtx, []string{embeddingText(p.report.Manifest.Name, e)})
 	if emb != nil {
-		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, emb.Model, "", emb.Usage)
+		s.recordCost(ctx, credit.KindIndexEnrich, workspaceID, modelCall{model: emb.Model, usage: emb.Usage})
 	}
 	if err != nil || len(emb.Vectors) == 0 {
 

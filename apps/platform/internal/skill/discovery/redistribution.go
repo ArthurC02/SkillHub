@@ -59,8 +59,10 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previous, err := h.Svc.SetRedistribution(r.Context(), skillID, user.ID, body.Value, body.Note,
-		registry.LicenseClaim{Expression: body.LicenseExpression, Source: body.LicenseSource})
+	previous, err := h.Svc.SetRedistribution(r.Context(), skillID, user.ID, RedistributionChange{
+		Value: body.Value, Note: body.Note,
+		Claim: registry.LicenseClaim{Expression: body.LicenseExpression, Source: body.LicenseSource},
+	})
 	var inputErr restrictionInputError
 	if errors.As(err, &inputErr) {
 		httpx.WriteError(w, http.StatusBadRequest, inputErr.Error())
@@ -86,10 +88,17 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type RedistributionChange struct {
+	Value string
+	Note  string
+	Claim registry.LicenseClaim
+}
+
 func (s *Service) SetRedistribution(
-	ctx context.Context, skillID, actor pgtype.UUID, value, note string, claim registry.LicenseClaim,
+	ctx context.Context, skillID, actor pgtype.UUID, change RedistributionChange,
 ) (string, error) {
-	value = strings.TrimSpace(value)
+	note, claim := change.Note, change.Claim
+	value := strings.TrimSpace(change.Value)
 	if value == "" {
 		return "", restrictionInputError("value is required")
 	}

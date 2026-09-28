@@ -184,6 +184,21 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 		"ceiling, not the specification's, and it changes nothing about installing the package.\n\n",
 		skillpkg.HumanMB(skillpkg.MaxZipBytes))
 
+	writeInstallLocations(&b, p)
+	writeDependencies(&b, deps)
+	writeEnvVars(&b, p)
+
+	if p.Snippet != "" {
+		b.WriteString("## Minimal working example\n\n```\n" + p.Snippet + "\n```\n\n")
+	}
+
+	writeVerification(&b, p)
+	writeLimitationsAndNotes(&b, p)
+
+	return substituteName(b.String(), skillName)
+}
+
+func writeInstallLocations(b *strings.Builder, p Profile) {
 	b.WriteString("## Where it goes\n\n")
 	if len(p.Install.Locations) == 0 {
 		b.WriteString("This is the standard Agent Skills package. It names no install location, " +
@@ -191,63 +206,66 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 			"Consult your Agent's documentation for the Agent Skills directory.\n\n")
 	}
 	for _, loc := range p.Install.Locations {
-		fmt.Fprintf(&b, "- `%s` (%s) — %s\n", loc.Path, loc.Scope, loc.Description)
+		fmt.Fprintf(b, "- `%s` (%s) — %s\n", loc.Path, loc.Scope, loc.Description)
 	}
 	if len(p.Install.Locations) > 0 {
 		b.WriteString("\nUnzip the package and place its contents at that path.\n\n")
 	}
+}
 
-	if len(deps) > 0 {
+func writeDependencies(b *strings.Builder, deps []string) {
+	if len(deps) == 0 {
+		return
+	}
+	b.WriteString("## Dependencies\n\n")
+	for _, d := range deps {
+		fmt.Fprintf(b, "- %s\n", d)
+	}
+	b.WriteString("\nSkill Hub does not install these for you, and it does not execute anything " +
+		"in this package. Read them before you run it.\n\n")
+}
 
-		b.WriteString("## Dependencies\n\n")
-		for _, d := range deps {
-			fmt.Fprintf(&b, "- %s\n", d)
+func writeEnvVars(b *strings.Builder, p Profile) {
+	if len(p.EnvVars) == 0 {
+		return
+	}
+	b.WriteString("## Environment variables\n\n")
+	for _, v := range p.EnvVars {
+		req := "optional"
+		if v.Required {
+			req = "required"
 		}
-		b.WriteString("\nSkill Hub does not install these for you, and it does not execute anything " +
-			"in this package. Read them before you run it.\n\n")
-	}
-
-	if len(p.EnvVars) > 0 {
-		b.WriteString("## Environment variables\n\n")
-		for _, v := range p.EnvVars {
-			req := "optional"
-			if v.Required {
-				req = "required"
-			}
-			fmt.Fprintf(&b, "- `%s` (%s) — %s", v.Name, req, v.Description)
-			if v.Example != "" {
-				fmt.Fprintf(&b, " Example: `%s`", v.Example)
-			}
-			b.WriteString("\n")
+		fmt.Fprintf(b, "- `%s` (%s) — %s", v.Name, req, v.Description)
+		if v.Example != "" {
+			fmt.Fprintf(b, " Example: `%s`", v.Example)
 		}
-		b.WriteString("\nSet these in your own environment. No package Skill Hub produces contains a key.\n\n")
+		b.WriteString("\n")
 	}
+	b.WriteString("\nSet these in your own environment. No package Skill Hub produces contains a key.\n\n")
+}
 
-	if p.Snippet != "" {
-		b.WriteString("## Minimal working example\n\n```\n" + p.Snippet + "\n```\n\n")
-	}
-
+func writeVerification(b *strings.Builder, p Profile) {
 	b.WriteString("## Check that it worked\n\n")
 	if p.VerificationPrompt != "" {
-		fmt.Fprintf(&b, "Run this prompt against your Agent:\n\n> %s\n\n", p.VerificationPrompt)
+		fmt.Fprintf(b, "Run this prompt against your Agent:\n\n> %s\n\n", p.VerificationPrompt)
 	}
 	for _, step := range p.VerificationSteps {
-		fmt.Fprintf(&b, "1. %s\n", step)
+		fmt.Fprintf(b, "1. %s\n", step)
 	}
 	if len(p.VerificationSteps) > 0 {
 		b.WriteString("\n")
 	}
+}
 
+func writeLimitationsAndNotes(b *strings.Builder, p Profile) {
 	if len(p.KnownLimitations) > 0 {
 		b.WriteString("## Known limitations\n\n")
 		for _, l := range p.KnownLimitations {
-			fmt.Fprintf(&b, "- %s\n", l)
+			fmt.Fprintf(b, "- %s\n", l)
 		}
 		b.WriteString("\n")
 	}
 	for _, n := range p.Notes {
-		fmt.Fprintf(&b, "> %s\n", n)
+		fmt.Fprintf(b, "> %s\n", n)
 	}
-
-	return substituteName(b.String(), skillName)
 }

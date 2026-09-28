@@ -107,6 +107,13 @@ type PublishInput struct {
 	RightsAttested bool
 }
 
+func (in PublishInput) attestation() rightsAttestation {
+	if in.RightsAttested {
+		return rightsAttested
+	}
+	return rightsNotAttested
+}
+
 func (s *Service) Publisher(ctx context.Context, ws identity.Workspace) (Publisher, bool, error) {
 	row, err := gen.New(s.Pool).GetPublisherByWorkspace(ctx, ws.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -186,7 +193,7 @@ func (s *Service) Publish(ctx context.Context, ws identity.Workspace, skillID pg
 	if !found || skill.TakenDown {
 		return Publication{}, ErrNotFound
 	}
-	if refused := releaseGate(skill, in.RightsAttested); refused != nil {
+	if refused := releaseGate(skill, in.attestation()); refused != nil {
 		return Publication{}, refused
 	}
 

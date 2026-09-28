@@ -52,7 +52,7 @@ func TestIntentValidationRejectsIncompleteInventedAndOversizedProposals(t *testi
 		t.Run(tc.name, func(t *testing.T) {
 			i := validInterpretation()
 			tc.change(&i)
-			if _, err := i.validate("CSV", true); err == nil {
+			if err := i.validate("CSV", extractedByModel); err == nil {
 				t.Fatal("invalid proposal was accepted")
 			}
 		})
@@ -67,10 +67,10 @@ func TestIntentLimitsAcceptTheBoundaryAndUserCorrectionsNeedNotQuoteOriginal(t *
 	for n := range i.Keywords {
 		i.Keywords[n] = strings.Repeat("文", 128)
 	}
-	if _, err := i.validate(text, true); err != nil {
+	if err := i.validate(text, extractedByModel); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := i.validate("different original query", false); err != nil {
+	if err := i.validate("different original query", correctedByUser); err != nil {
 		t.Fatal(err)
 	}
 	i.Keywords = []string{}
@@ -109,7 +109,7 @@ func TestCorrectedIntentCombinedTextLimit(t *testing.T) {
 			value := strings.Repeat("文", size-2)
 			i.Intent["input"] = &value
 			i.Keywords = []string{"字"}
-			_, err := i.validate("original", false)
+			err := i.validate("original", correctedByUser)
 			if (err != nil) != (size > 2000) {
 				t.Fatalf("combined size=%d err=%v", size, err)
 			}
@@ -133,7 +133,7 @@ func TestInterpretationUsesOneBoundedCallAndExplicitFiltersWin(t *testing.T) {
 		return &IntentAnalysis{Valid: true, Interpretation: i}, nil
 	})}
 	category := "writing"
-	got := s.interpret(context.Background(), "CSV", searchFilters{Category: &category}, false)
+	got := s.interpret(context.Background(), "CSV", searchFilters{Category: &category}, searchByPerson)
 	if got.Status != "analyzed" || got.Filters["category"] != "writing" || got.Filters["script"] != "yes" || calls != 1 {
 		t.Fatalf("interpretation=%+v calls=%d", got, calls)
 	}
@@ -157,7 +157,7 @@ func TestInterpretationFailuresPreserveOriginalRetrievalAndUserFilters(t *testin
 		t.Run(tc.name, func(t *testing.T) {
 			s := &Service{IntentAnalyzer: intentAnalyzerFunc(func(context.Context, string, time.Duration) (*IntentAnalysis, error) { return tc.result, tc.err })}
 			category := "documents"
-			got := s.interpret(context.Background(), "CSV", searchFilters{Category: &category}, false)
+			got := s.interpret(context.Background(), "CSV", searchFilters{Category: &category}, searchByPerson)
 			if got.Status != "fallback" || got.FallbackReason != tc.reason || got.retrievalQuery("CSV") != "CSV" || !reflect.DeepEqual(got.Filters, map[string]string{"category": "documents"}) {
 				t.Fatalf("fallback=%+v", got)
 			}
@@ -170,7 +170,7 @@ func TestReferencePickerDoesNotAnalyzeIntent(t *testing.T) {
 		t.Fatal("reference picker called analyzer")
 		return nil, nil
 	})}
-	got := s.interpret(context.Background(), "CSV", searchFilters{}, true)
+	got := s.interpret(context.Background(), "CSV", searchFilters{}, searchForReference)
 	if got.Status != "skipped" || got.retrievalQuery("CSV") != "CSV" {
 		t.Fatalf("interpretation=%+v", got)
 	}

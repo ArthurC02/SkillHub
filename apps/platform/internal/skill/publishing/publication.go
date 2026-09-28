@@ -78,7 +78,14 @@ const (
 	redistributionGenerated    = "generated"
 )
 
-func releaseGate(skill SkillFacts, rightsAttested bool) *RefusedError {
+type rightsAttestation int
+
+const (
+	rightsNotAttested rightsAttestation = iota
+	rightsAttested
+)
+
+func releaseGate(skill SkillFacts, attestation rightsAttestation) *RefusedError {
 	if skill.AccessRestricted {
 		return &RefusedError{RefusedLicenseHold, "這個 Skill 的內容因授權問題尚未釐清而被保留，所以不能發佈"}
 	}
@@ -86,7 +93,7 @@ func releaseGate(skill SkillFacts, rightsAttested bool) *RefusedError {
 	case redistributionAllowed:
 		return nil
 	case redistributionSelfSupplied, redistributionGenerated:
-		if !rightsAttested {
+		if attestation != rightsAttested {
 			return &RefusedError{RefusedRightsNotAttested,
 				"這份內容是你自己帶進來的，或是平台依你的描述寫出來的；發佈之前要先聲明你有權散布它"}
 		}
@@ -108,7 +115,7 @@ func availabilityOf(status Status, skill SkillFacts, skillFound bool) Availabili
 		return AvailabilityTakenDown
 	case skill.AccessRestricted:
 		return AvailabilityHeld
-	case releaseGate(skill, true) != nil:
+	case releaseGate(skill, rightsAttested) != nil:
 		return AvailabilityNotRedistributed
 	}
 	return AvailabilityAvailable

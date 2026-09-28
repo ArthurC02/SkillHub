@@ -154,12 +154,19 @@ type searchOutcome struct {
 	Total int64
 }
 
-func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters, silent bool) (searchOutcome, error) {
-	interpretation := s.interpret(ctx, query, filters, silent)
-	return s.searchInterpreted(ctx, query, limit, interpretation, silent)
+type searchPurpose string
+
+const (
+	searchByPerson     searchPurpose = ""
+	searchForReference searchPurpose = "reference"
+)
+
+func (s *Service) Search(ctx context.Context, query string, limit int32, filters searchFilters, purpose searchPurpose) (searchOutcome, error) {
+	interpretation := s.interpret(ctx, query, filters, purpose)
+	return s.searchInterpreted(ctx, query, limit, interpretation, purpose)
 }
 
-func (s *Service) searchInterpreted(ctx context.Context, original string, limit int32, interpretation SearchInterpretation, silent bool) (searchOutcome, error) {
+func (s *Service) searchInterpreted(ctx context.Context, original string, limit int32, interpretation SearchInterpretation, purpose searchPurpose) (searchOutcome, error) {
 	filters, err := parseFilterValues(interpretation.Filters)
 	if err != nil {
 		return searchOutcome{}, err
@@ -171,11 +178,7 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 	}
 	queries := gen.New(s.Pool)
 
-	var (
-		out searchOutcome
-
-		embedding *pgvector.Vector
-	)
+	var out searchOutcome
 	out.Interpretation = interpretation
 
 	searchStart := time.Now()
@@ -184,19 +187,9 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 		metrics.ObserveSince(metrics.SearchDuration.WithLabelValues(searchMode), searchStart)
 	}()
 
-	if s.LLM == nil {
-		out.DegradedReason = "embedding service not configured; lexical search only"
-	} else if vec, err := s.embedQuery(ctx, semanticQuery); err != nil {
-		slog.Warn("query embedding failed, falling back to FTS", "error", err)
-		out.DegradedReason = "embedding unavailable; lexical search only"
-	} else if hybridHits, total, err := s.hybridSearchWithKeywords(ctx, queries, semanticQuery, query, vec, limit+1, filters, MaxCosineDistance); err != nil {
-		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
-		out.DegradedReason = "hybrid search unavailable; lexical search only"
-	} else {
-		embedding = vec
-		out.Hits = hybridHits
-		out.Total = total
-	}
+	embedding := s.searchHybridFirst(ctx, queries, hybridRequest{
+		query: semanticQuery, keywords: query, limit: limit + 1, filters: filters, maxDistance: MaxCosineDistance,
+	}, &out)
 
 	if out.DegradedReason != "" {
 		searchMode = "fts"
@@ -220,21 +213,14 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 	}
 
 	if len(out.Hits) == 0 && filters.active() {
-		var (
-			unfiltered []searchResult
-			err        error
-		)
-
-		if embedding != nil {
-			unfiltered, _, err = s.hybridSearchWithKeywords(ctx, queries, semanticQuery, query, embedding, limit, searchFilters{}, MaxCosineDistance)
-		} else {
-			unfiltered, _, err = s.ftsOnlySearch(ctx, queries, query, limit, searchFilters{})
-		}
+		filteredOut, err := s.matchesWithoutFilters(ctx, queries, hybridRequest{
+			query: semanticQuery, keywords: query, embedding: embedding, limit: limit, maxDistance: MaxCosineDistance,
+		})
 		if err != nil {
 			slog.Error("unfiltered search probe failed", "error", err)
 			return searchOutcome{}, err
 		}
-		out.FilteredOut = len(unfiltered) > 0
+		out.FilteredOut = filteredOut
 	}
 
 	var reasons []MatchReason
@@ -242,15 +228,54 @@ func (s *Service) searchInterpreted(ctx context.Context, original string, limit 
 	if interpretation.Status == "corrected" {
 		reasonQuery = query
 	}
-	if len(out.Hits) > 0 && s.LLM != nil && !silent {
+	if len(out.Hits) > 0 && s.LLM != nil && purpose != searchForReference {
 		reasons = s.matchReasons(ctx, reasonQuery, out.Hits)
 	}
 	applyMatchReasons(out.Hits, reasonQuery, reasons)
 
-	if !silent {
+	if purpose != searchForReference {
 		s.Analytics.SearchPerformed(ctx, original, len(out.Hits), filters.active())
 	}
 	return out, nil
+}
+
+func (s *Service) searchHybridFirst(ctx context.Context, queries *gen.Queries, req hybridRequest, out *searchOutcome) *pgvector.Vector {
+	if s.LLM == nil {
+		out.DegradedReason = "embedding service not configured; lexical search only"
+		return nil
+	}
+	vec, err := s.embedQuery(ctx, req.query)
+	if err != nil {
+		slog.Warn("query embedding failed, falling back to FTS", "error", err)
+		out.DegradedReason = "embedding unavailable; lexical search only"
+		return nil
+	}
+	req.embedding = vec
+	hybridHits, total, err := s.hybridSearch(ctx, queries, req)
+	if err != nil {
+		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
+		out.DegradedReason = "hybrid search unavailable; lexical search only"
+		return nil
+	}
+	out.Hits = hybridHits
+	out.Total = total
+	return vec
+}
+
+func (s *Service) matchesWithoutFilters(ctx context.Context, queries *gen.Queries, req hybridRequest) (bool, error) {
+	var (
+		unfiltered []searchResult
+		err        error
+	)
+	if req.embedding != nil {
+		unfiltered, _, err = s.hybridSearch(ctx, queries, req)
+	} else {
+		unfiltered, _, err = s.ftsOnlySearch(ctx, queries, req.keywords, req.limit, searchFilters{})
+	}
+	if err != nil {
+		return false, err
+	}
+	return len(unfiltered) > 0, nil
 }
 
 func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vector, error) {
@@ -286,11 +311,17 @@ const (
 	lexicalCandidates  = int32(5)
 )
 
-func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
-	return s.hybridSearchWithKeywords(ctx, queries, query, query, embedding, limit, filters, maxDistance)
+type hybridRequest struct {
+	query       string
+	keywords    string
+	embedding   *pgvector.Vector
+	limit       int32
+	filters     searchFilters
+	maxDistance float64
 }
 
-func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Queries, query, keywords string, embedding *pgvector.Vector, limit int32, filters searchFilters, maxDistance float64) ([]searchResult, int64, error) {
+func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, req hybridRequest) ([]searchResult, int64, error) {
+	query, keywords, embedding, limit, filters, maxDistance := req.query, req.keywords, req.embedding, req.limit, req.filters, req.maxDistance
 	scope, err := s.publicScope(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -346,8 +377,11 @@ func (s *Service) hybridSearchWithKeywords(ctx context.Context, queries *gen.Que
 		} else {
 			hit.RankNote = rankNotePendingItem
 		}
-		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
-			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
+		resultFacets(&hit, facetColumns{
+			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
+			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
+		})
 		hits = append(hits, hit)
 	}
 	return hits, total, nil
@@ -388,8 +422,11 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 
 			RankNote: rankNoteCatalog,
 		}
-		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
-			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
+		resultFacets(&hit, facetColumns{
+			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
+			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
+		})
 		hits = append(hits, hit)
 	}
 	return hits, total, nil
@@ -430,8 +467,11 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			SummarySource: summarySource(row.EnrichedSummary),
 			RankNote:      rankNoteDegraded,
 		}
-		resultFacets(&hit, tierOf(row.Curated), row.Category, row.CategorySource, row.Tags, row.Scan, row.VerifiedAt,
-			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
+		resultFacets(&hit, facetColumns{
+			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
+			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
+		})
 		hits = append(hits, hit)
 	}
 	return hits, total, nil

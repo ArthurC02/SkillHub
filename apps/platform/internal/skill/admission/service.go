@@ -258,7 +258,7 @@ func readPackage(data []byte, sourcePath string) (preparedPackage, error) {
 	return p, nil
 }
 
-func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
+func (s *Service) prepare(data []byte) (preparedPackage, error) {
 	p, err := readPackage(data, "")
 	if err != nil || p.report.Blocked {
 		return p, err
@@ -329,7 +329,7 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 }
 
 func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta, after func(context.Context, pgx.Tx, Result) error) (Result, error) {
-	p, err := s.prepare(ctx, data)
+	p, err := s.prepare(data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}
@@ -340,7 +340,7 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 		return Result{}, err
 	}
 	defer release()
-	res, err := s.importOne(ctx, tx, ws, p, src, e)
+	res, err := s.importOne(ctx, tx, ws, incomingVersion{pkg: p, source: src, enrichment: e})
 	if err != nil {
 		return Result{}, err
 	}
@@ -352,14 +352,20 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	return res, tx.Commit(ctx)
 }
 
-func auditVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, action string, res Result, meta map[string]any) error {
+type versionAudit struct {
+	action string
+	meta   map[string]any
+}
+
+func auditVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, res Result, entry versionAudit) error {
+	meta := entry.meta
 	meta["skill_id"] = pgconv.UUIDString(res.Skill.ID)
 	meta["duplicate"] = res.Duplicate
 	meta["content_hash"] = res.Version.ContentHash
 	return audit.Log(ctx, tx, audit.Event{
 		Actor:        ws.OwnerUserID,
 		Workspace:    ws.ID,
-		Action:       action,
+		Action:       entry.action,
 		ResourceType: audit.ResourceVersion,
 		ResourceID:   res.Version.ID,
 		Metadata:     meta,
@@ -382,7 +388,7 @@ func (s *Service) SaveImprovedVersion(
 }
 
 func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, src sourceMeta) (Result, error) {
-	p, err := s.prepare(ctx, data)
+	p, err := s.prepare(data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}
@@ -404,7 +410,7 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	}
 	res.Skill = root.Skill()
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, p, src, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, root, incomingVersion{pkg: p, source: src, enrichment: e})
 	if err != nil {
 		return Result{}, err
 	}
@@ -414,16 +420,22 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 			return Result{}, err
 		}
 	}
-	if err := auditVersion(ctx, tx, ws, audit.ActionSkillVersionCreate, res, map[string]any{
+	if err := auditVersion(ctx, tx, ws, res, versionAudit{audit.ActionSkillVersionCreate, map[string]any{
 		"version_number": res.Version.VersionNumber,
-	}); err != nil {
+	}}); err != nil {
 		return Result{}, err
 	}
 	return res, tx.Commit(ctx)
 }
 
-func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, root *registry.SkillRoot, p preparedPackage, src sourceMeta, e enrichment) (registry.Version, bool, error) {
+type incomingVersion struct {
+	pkg        preparedPackage
+	source     sourceMeta
+	enrichment enrichment
+}
 
+func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Workspace, root *registry.SkillRoot, in incomingVersion) (registry.Version, bool, error) {
+	p, src, e := in.pkg, in.source, in.enrichment
 	if err := s.requireProjection(); err != nil {
 		return registry.Version{}, false, err
 	}
@@ -484,14 +496,14 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, err
 	}
 
-	if err := s.upsertProjection(ctx, tx, ws.ID, skill.ID, skill.Name, e); err != nil {
+	if err := s.IndexSkill(ctx, tx, e.projection(ws.ID, skill.ID, skill.Name)); err != nil {
 		return registry.Version{}, false, err
 	}
 	return root.AddedVersion(), false, nil
 }
 
-func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, name string, e enrichment) error {
-	return s.IndexSkill(ctx, tx, SkillProjection{
+func (e enrichment) projection(workspaceID, skillID pgtype.UUID, name string) SkillProjection {
+	return SkillProjection{
 		SkillID:                 skillID,
 		WorkspaceID:             workspaceID,
 		Name:                    name,
@@ -505,7 +517,7 @@ func (s *Service) upsertProjection(ctx context.Context, tx pgx.Tx, workspaceID, 
 		EnrichmentStatus:        string(e.status),
 		EnrichmentModel:         e.model,
 		EnrichmentPromptVersion: e.promptVersion,
-	})
+	}
 }
 
 func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed int, err error) {
@@ -524,44 +536,55 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 		return 0, 0, err
 	}
 	for _, row := range rows {
-		data, err := s.Store.Get(ctx, row.PackageObjectKey)
-		if err != nil {
-			slog.Warn("backfill: package unreadable", "skill", row.Name, "error", err)
-			failed++
-			continue
-		}
-		p, err := readPackage(data, row.SourcePath)
-		if err != nil || p.report.Blocked {
-			slog.Warn("backfill: stored package no longer parses", "skill", row.Name, "error", err)
-			failed++
-			continue
-		}
-		e := s.enrichPackage(ctx, p, row.WorkspaceID)
-		if e.status != enrichmentEnriched {
-			failed++
-			continue
-		}
-		tx, err := s.Pool.Begin(ctx)
+		indexed, err := s.reindexOne(ctx, row)
 		if err != nil {
 			return done, failed, err
 		}
-		current, err := registry.LockCurrentPackage(ctx, tx, row.WorkspaceID, row.SkillID, row.VersionID, row.PackageObjectKey)
-		if err != nil || !current {
-			_ = tx.Rollback(ctx)
-			if err != nil {
-				return done, failed, err
-			}
+		if !indexed {
 			failed++
 			continue
-		}
-		if err := s.upsertProjection(ctx, tx, row.WorkspaceID, row.SkillID, row.Name, e); err != nil {
-			_ = tx.Rollback(ctx)
-			return done, failed, err
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return done, failed, err
 		}
 		done++
 	}
 	return done, failed, nil
+}
+
+func (s *Service) reindexOne(ctx context.Context, row PendingEnrichment) (bool, error) {
+	data, err := s.Store.Get(ctx, row.PackageObjectKey)
+	if err != nil {
+		slog.Warn("backfill: package unreadable", "skill", row.Name, "error", err)
+		return false, nil
+	}
+	p, err := readPackage(data, row.SourcePath)
+	if err != nil || p.report.Blocked {
+		slog.Warn("backfill: stored package no longer parses", "skill", row.Name, "error", err)
+		return false, nil
+	}
+	e := s.enrichPackage(ctx, p, row.WorkspaceID)
+	if e.status != enrichmentEnriched {
+		return false, nil
+	}
+	return s.storeReindexedProjection(ctx, row, e)
+}
+
+func (s *Service) storeReindexedProjection(ctx context.Context, row PendingEnrichment, e enrichment) (bool, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	current, err := registry.LockCurrentPackage(ctx, tx, registry.Version{
+		ID: row.VersionID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, PackageObjectKey: row.PackageObjectKey,
+	})
+	if err != nil || !current {
+		_ = tx.Rollback(ctx)
+		return false, err
+	}
+	if err := s.IndexSkill(ctx, tx, e.projection(row.WorkspaceID, row.SkillID, row.Name)); err != nil {
+		_ = tx.Rollback(ctx)
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return true, nil
 }

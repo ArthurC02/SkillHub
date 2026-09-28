@@ -88,16 +88,22 @@ type caseSource struct {
 	curated     bool
 }
 
+type testCaseSelection struct {
+	included []IncludedTestCase
+	excluded []ExcludedTestCase
+	files    []exportFile
+}
+
 func (s *Service) selectTestCases(
 	ctx context.Context, ws identity.Workspace, skill SkillFacts, include bool,
-) (included []IncludedTestCase, excluded []ExcludedTestCase, files []exportFile, err error) {
-	included, excluded, files = []IncludedTestCase{}, []ExcludedTestCase{}, nil
+) (testCaseSelection, error) {
+	included, excluded, files := []IncludedTestCase{}, []ExcludedTestCase{}, []exportFile(nil)
 
 	sources := []caseSource{{workspaceID: ws.ID, skillID: skill.ID, curated: ws.IsCatalog}}
 	if skill.ForkedFromSkillID.Valid {
 		src, found, err := s.CuratedSource(ctx, skill.ForkedFromSkillID)
 		if err != nil {
-			return nil, nil, nil, err
+			return testCaseSelection{}, err
 		}
 
 		if found {
@@ -110,12 +116,12 @@ func (s *Service) selectTestCases(
 	for _, src := range sources {
 		rows, err := s.TestLab.CasesForSkill(ctx, src.workspaceID, src.skillID)
 		if err != nil {
-			return nil, nil, nil, err
+			return testCaseSelection{}, err
 		}
 		for _, tc := range rows {
 			datasets, err := s.TestLab.CaseDatasets(ctx, src.workspaceID, tc.ID)
 			if err != nil {
-				return nil, nil, nil, err
+				return testCaseSelection{}, err
 			}
 			switch {
 			case !include:
@@ -145,7 +151,7 @@ func (s *Service) selectTestCases(
 			slug := testCaseSlug(tc.Name, pgconv.UUIDString(tc.ID))
 			caseFiles, err := s.portableFiles(ctx, tc, datasets, slug)
 			if err != nil {
-				return nil, nil, nil, err
+				return testCaseSelection{}, err
 			}
 			files = append(files, caseFiles...)
 			included = append(included, IncludedTestCase{
@@ -153,7 +159,7 @@ func (s *Service) selectTestCases(
 			})
 		}
 	}
-	return included, excluded, files, nil
+	return testCaseSelection{included: included, excluded: excluded, files: files}, nil
 }
 
 func (s *Service) portableFiles(

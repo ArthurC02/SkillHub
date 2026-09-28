@@ -36,8 +36,8 @@ func TestLicenseStatusDisplayDistinct(t *testing.T) {
 }
 
 func TestDerivationBadgeDiffersByForkStatus(t *testing.T) {
-	fork := Derivation(true)
-	original := Derivation(false)
+	fork := ForkDerivation()
+	original := OriginalDerivation()
 	if fork.Label == original.Label {
 		t.Fatalf("forked and original skills must show different badges, both got %q", fork.Label)
 	}

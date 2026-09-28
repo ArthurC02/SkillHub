@@ -85,12 +85,13 @@ type DerivationBadge struct {
 	Note  string
 }
 
-func Derivation(isFork bool) DerivationBadge {
-	if isFork {
-		return DerivationBadge{
-			Label: "衍生自其他 Skill",
-			Note:  "顯示原始 Skill 與分岔當下的版本;原始版本之後的變更不會自動同步。",
-		}
+func ForkDerivation() DerivationBadge {
+	return DerivationBadge{
+		Label: "衍生自其他 Skill",
+		Note:  "顯示原始 Skill 與分岔當下的版本;原始版本之後的變更不會自動同步。",
 	}
+}
+
+func OriginalDerivation() DerivationBadge {
 	return DerivationBadge{Label: "原始 Skill", Note: "非任何既有 Skill 的分岔。"}
 }

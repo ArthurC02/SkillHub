@@ -66,7 +66,7 @@ func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 			t.Logf("%s: embedding failed (%v); lexical=%v", task.ID, err, names(lex))
 			continue
 		}
-		sem, _, err := s.hybridSearch(ctx, gen.New(s.Pool), task.Description, embedding, 3, searchFilters{}, MaxCosineDistance)
+		sem, _, err := s.hybridSearch(ctx, gen.New(s.Pool), hybridRequest{query: task.Description, keywords: task.Description, embedding: embedding, limit: 3, maxDistance: MaxCosineDistance})
 		if err != nil {
 			t.Fatal(err)
 		}
