@@ -64,10 +64,14 @@ type SuggestionsAppliedArgs struct {
 
 func (SuggestionsAppliedArgs) Kind() string { return "record_suggestions_applied" }
 
-func (s *Service) ConsumeSuggestionsApplied(ctx context.Context, a SuggestionsAppliedArgs, lastTry bool) error {
-	err := s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
-	if err == nil || !lastTry {
-		return err
+func (s *Service) ConsumeSuggestionsApplied(ctx context.Context, a SuggestionsAppliedArgs) error {
+	return s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
+}
+
+func (s *Service) ConsumeSuggestionsAppliedOnLastTry(ctx context.Context, a SuggestionsAppliedArgs) error {
+	err := s.ConsumeSuggestionsApplied(ctx, a)
+	if err == nil {
+		return nil
 	}
 	if auditErr := s.auditLostProvenance(ctx, a); auditErr != nil {
 		slog.Error("lost suggestion provenance could not be audited",

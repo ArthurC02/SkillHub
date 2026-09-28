@@ -101,7 +101,7 @@ func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation
 }
 
 func wireCreationFetch(s *creation.Service) {
-	s.Fetch = creation.NewFetcher(false).Fetch
+	s.Fetch = creation.NewFetcher().Fetch
 }
 
 func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
@@ -109,7 +109,9 @@ func wireCreationGateway(s *creation.Service, gateway *run.Gateway) {
 		return
 	}
 	s.IssueKey = func(ctx context.Context, sessionID, receiptID string, budget float64, ttl time.Duration) (string, error) {
-		grant, err := gateway.IssueCreationForModel(ctx, sessionID, receiptID, ttl, budget, creationModel())
+		grant, err := gateway.IssueCreationForModel(ctx, sessionID, receiptID, run.CreationKeyTerms{
+			TTL: ttl, BudgetUSD: budget, Model: creationModel(),
+		})
 		if err != nil {
 			return "", err
 		}

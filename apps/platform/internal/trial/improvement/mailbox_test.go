@@ -37,14 +37,14 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 		EvaluationID: unknown, SuggestionIDs: []pgtype.UUID{suggestion.ID},
 	}
 
-	if err := s.ConsumeSuggestionsApplied(ctx, lost, false); err == nil {
+	if err := s.ConsumeSuggestionsApplied(ctx, lost); err == nil {
 		t.Fatal("an unknown evaluation was consumed without an error; the delivery would never be retried")
 	}
 	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 0 {
 		t.Fatalf("%d provenance losses audited after a try that can still be repeated, want 0", got)
 	}
 
-	if err := s.ConsumeSuggestionsApplied(ctx, lost, true); err == nil {
+	if err := s.ConsumeSuggestionsAppliedOnLastTry(ctx, lost); err == nil {
 		t.Fatal("the last try reported success although the evaluation is unknown")
 	}
 	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
@@ -53,7 +53,7 @@ func TestLostSuggestionProvenanceIsAuditedOnlyWhenTheLastTryStillFails(t *testin
 
 	applied := lost
 	applied.EvaluationID = evaluation.ID
-	if err := s.ConsumeSuggestionsApplied(ctx, applied, true); err != nil {
+	if err := s.ConsumeSuggestionsAppliedOnLastTry(ctx, applied); err != nil {
 		t.Fatalf("recording the applied suggestions on the last try: %v", err)
 	}
 	if got := auditedProvenanceLosses(t, s, m.run.WorkspaceID); got != 1 {
@@ -76,7 +76,11 @@ func TestTheAuditOnlyWaitsUntilTheDeliveryHasNoTryLeft(t *testing.T) {
 	}
 	work := func(attempt int) {
 		t.Helper()
-		if err := s.ConsumeSuggestionsApplied(ctx, args, attempt >= SuggestionsAppliedAttempts); err == nil {
+		consume := s.ConsumeSuggestionsApplied
+		if attempt >= SuggestionsAppliedAttempts {
+			consume = s.ConsumeSuggestionsAppliedOnLastTry
+		}
+		if err := consume(ctx, args); err == nil {
 			t.Fatalf("attempt %d reported success although the evaluation is unknown", attempt)
 		}
 	}

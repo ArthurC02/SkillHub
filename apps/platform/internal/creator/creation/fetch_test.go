@@ -43,7 +43,7 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	f := NewFetcher(true)
+	f := newLoopbackFetcher()
 	ctx := context.Background()
 
 	rec, text := f.Fetch(ctx, srv.URL+"/page")
@@ -66,7 +66,7 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 		t.Fatalf("missing: %+v", rec)
 	}
 
-	if rec, _ := NewFetcher(false).Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
+	if rec, _ := NewFetcher().Fetch(ctx, srv.URL+"/page"); rec.Status != "blocked" {
 		t.Fatalf("loopback must be blocked outside tests: %+v", rec)
 	}
 }

@@ -334,7 +334,7 @@ func TestFinishWhenTheReceiptWasAlreadyMarkedFailedIsANoop(t *testing.T) {
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *float64, float64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
 			settleCalls++
 			return nil
 		}},
@@ -388,8 +388,8 @@ func TestFinishWhenTheReceiptWasRecoveredAsUnknownStillSettlesTheKnownCost(t *te
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-		Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, costUSD *float64, reservedUSD float64) error {
-			settles = append(settles, settleCall{costUSD, reservedUSD})
+		Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, step creation.StepSettlement) error {
+			settles = append(settles, settleCall{step.CostUSD, step.ReservedUSD})
 			return nil
 		}},
 	}
@@ -466,9 +466,9 @@ func TestFinishNormalPathRecordsCreditSettleCostFromUsage(t *testing.T) {
 			svc := &creation.Service{
 				Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 				IssueKey: okIssueKey, RevokeKey: okRevokeKey,
-				Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, _, _ pgtype.UUID, _ int64, costUSD *float64, _ float64) error {
+				Billing: creation.BillingHooks{SettleFunc: func(_ context.Context, _ pgx.Tx, step creation.StepSettlement) error {
 					settleCalls++
-					got = costUSD
+					got = step.CostUSD
 					return nil
 				}},
 			}
@@ -504,7 +504,7 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
 		}),
-		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, int64, *float64, float64) error {
+		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
 			return settleErr
 		}},
 	}

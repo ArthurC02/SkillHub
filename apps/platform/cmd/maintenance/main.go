@@ -84,8 +84,8 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
-	n, err := objreconcile.PurgeExpired(ctx, pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -96,9 +96,10 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		},
-		svc.MarkDatasetPurged, nil, batch())
-	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		Mark: svc.MarkDatasetPurged,
+	}, batch())
+	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.DatasetCleanupIntentCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -109,7 +110,8 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		},
-		svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, batch())
+		Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
+	}, batch())
 
 	slog.Info("dataset purge complete", "datasets_purged", n, "upload_intents_purged", intentN)
 	return errors.Join(err, intentErr)
@@ -159,8 +161,8 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	svc := &run.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	n, err := objreconcile.PurgeExpired(ctx, pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -171,9 +173,10 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		},
-		svc.MarkRunOutputPurged, svc.GuardArtifactUploadIntentRemoval, batch())
-	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
+	}, batch())
+	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ArtifactUploadIntentCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -183,7 +186,9 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
 			}
 			return out, nil
-		}, svc.MarkArtifactUploadIntentPurged, svc.GuardArtifactUploadIntentRemoval, batch())
+		},
+		Mark: svc.MarkArtifactUploadIntentPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
+	}, batch())
 
 	slog.Info("run artifact purge complete", "artifacts_purged", n, "upload_intents_purged", intentN)
 	return errors.Join(err, intentErr)

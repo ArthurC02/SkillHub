@@ -68,7 +68,8 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.Ledger.Settle(ctx, tx, run.WorkspaceID, run.ID, costUSD, s.Deployment.Budget()); err != nil {
+	settlement := RunSettlement{WorkspaceID: run.WorkspaceID, RunID: run.ID, CostUSD: costUSD, ReservedUSD: s.Deployment.Budget()}
+	if err := s.Ledger.Settle(ctx, tx, settlement); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

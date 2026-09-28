@@ -22,5 +22,8 @@ func (w *EvaluationExecuteWorker) Work(ctx context.Context, job *river.Job[eval.
 	if err := workspaceID.Scan(job.Args.WorkspaceID); err != nil {
 		return err
 	}
-	return w.Svc.DeliverEvaluation(ctx, workspaceID, runID, job.Attempt > 1)
+	if job.Attempt > 1 {
+		return w.Svc.RedeliverEvaluation(ctx, workspaceID, runID)
+	}
+	return w.Svc.Evaluate(ctx, workspaceID, runID)
 }

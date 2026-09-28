@@ -89,9 +89,10 @@ func TestRetentionCachesASharedRemovalFailureWithoutMarkingRows(t *testing.T) {
 	store := &countingObjectStore{removeErr: errors.New("store unavailable")}
 	candidates := []objreconcile.Candidate{{ObjectKey: "shared-failure"}, {ObjectKey: "shared-failure"}}
 	marks := 0
-	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
-		func(context.Context, int32) ([]objreconcile.Candidate, error) { return candidates, nil },
-		func(context.Context, pgx.Tx, pgtype.UUID) error { marks++; return nil }, nil, 10)
+	n, err := objreconcile.PurgeExpired(context.Background(), pool, store, objreconcile.RetentionOwner{
+		List: func(context.Context, int32) ([]objreconcile.Candidate, error) { return candidates, nil },
+		Mark: func(context.Context, pgx.Tx, pgtype.UUID) error { marks++; return nil },
+	}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -714,10 +715,11 @@ func TestRetentionRemovesASharedObjectOnlyOncePerBatch(t *testing.T) {
 
 	store := &countingObjectStore{}
 	svc := &packaging.Service{Pool: pool, ClearSightings: objreconcile.ClearArtifactSightings}
-	n, err := objreconcile.PurgeExpired(ctx, pool, store,
-		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(ctx, pool, store, objreconcile.RetentionOwner{
+		List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return candidates, nil
-		}, svc.MarkArtifactPurged, nil, 10)
+		}, Mark: svc.MarkArtifactPurged,
+	}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -774,10 +776,11 @@ func TestDownloadRetentionKeepsBytesNeededByANewerArtifact(t *testing.T) {
 	defer single.Close()
 	store := &countingObjectStore{}
 	svc := &packaging.Service{Pool: single, ClearSightings: objreconcile.ClearArtifactSightings}
-	n, err := objreconcile.PurgeExpired(ctx, single, store,
-		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(ctx, single, store, objreconcile.RetentionOwner{
+		List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return []objreconcile.Candidate{expired}, nil
-		}, svc.MarkArtifactPurged, svc.GuardArtifactRemoval, 1)
+		}, Mark: svc.MarkArtifactPurged, Guard: svc.GuardArtifactRemoval,
+	}, 1)
 	if err != nil || n != 1 {
 		t.Fatalf("retention = %d, %v; want one expired row completed", n, err)
 	}

@@ -342,12 +342,13 @@ func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
 
 	store.err = nil
 	candidate := objreconcile.Candidate{ID: ds.ID, WorkspaceID: ds.WorkspaceID, ObjectKey: ds.ObjectKey}
-	n, err := objreconcile.PurgeExpired(t.Context(), pool, store,
-		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(t.Context(), pool, store, objreconcile.RetentionOwner{
+		List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return []objreconcile.Candidate{candidate}, nil
-		}, func(ctx context.Context, tx pgx.Tx, id pgtype.UUID) error {
+		}, Mark: func(ctx context.Context, tx pgx.Tx, id pgtype.UUID) error {
 			return gen.New(tx).MarkDatasetPurged(ctx, id)
-		}, nil, 1)
+		},
+	}, 1)
 	if err != nil || n != 1 {
 		t.Fatalf("retry purge = %d, %v; want one completed row", n, err)
 	}
@@ -512,10 +513,11 @@ func TestFailedUploadCompensationLeavesADurableCleanupIntent(t *testing.T) {
 		t.Fatal("due upload cleanup intent was absent from the maintenance worklist")
 	}
 	store.err = nil
-	n, err := objreconcile.PurgeExpired(t.Context(), pool, store,
-		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(t.Context(), pool, store, objreconcile.RetentionOwner{
+		List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
 			return []objreconcile.Candidate{{ID: candidate.ID, WorkspaceID: candidate.WorkspaceID, ObjectKey: candidate.ObjectKey}}, nil
-		}, svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, 1)
+		}, Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
+	}, 1)
 	if err != nil || n != 1 {
 		t.Fatalf("intent retry purge = %d, %v", n, err)
 	}
@@ -550,10 +552,11 @@ func TestCleanupIntentCannotOvertakeALiveDatasetUpload(t *testing.T) {
 	cleanupStore := &retryRemovalStore{}
 	cleanupDone := make(chan error, 1)
 	go func() {
-		_, err := objreconcile.PurgeExpired(t.Context(), pool, cleanupStore,
-			func(context.Context, int32) ([]objreconcile.Candidate, error) {
+		_, err := objreconcile.PurgeExpired(t.Context(), pool, cleanupStore, objreconcile.RetentionOwner{
+			List: func(context.Context, int32) ([]objreconcile.Candidate, error) {
 				return []objreconcile.Candidate{{ID: candidate.ID, WorkspaceID: candidate.WorkspaceID, ObjectKey: candidate.ObjectKey}}, nil
-			}, svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, 1)
+			}, Mark: svc.MarkDatasetCleanupIntentPurged, Guard: svc.GuardDatasetObjectRemoval,
+		}, 1)
 		cleanupDone <- err
 	}()
 	select {

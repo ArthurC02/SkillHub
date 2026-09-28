@@ -407,10 +407,19 @@ type confirmedPreflightResponse struct {
 	ConfirmedAt string `json:"confirmed_at"`
 }
 
+type ConfirmPermissionsParams struct {
+	Actor       pgtype.UUID
+	SkillID     pgtype.UUID
+	VersionID   pgtype.UUID
+	TestCaseID  pgtype.UUID
+	SummaryHash string
+}
+
 func (s *Service) ConfirmPermissions(
-	ctx context.Context, workspaceID, actor, skillID, versionID, testCaseID pgtype.UUID, hash string,
+	ctx context.Context, workspaceID pgtype.UUID, p ConfirmPermissionsParams,
 ) (PermissionConfirmation, error) {
-	summary, err := s.PermissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID)
+	actor, versionID, testCaseID, hash := p.Actor, p.VersionID, p.TestCaseID, p.SummaryHash
+	summary, err := s.PermissionSummaryFor(ctx, workspaceID, p.SkillID, versionID, testCaseID)
 	if err != nil {
 		return PermissionConfirmation{}, err
 	}
@@ -510,7 +519,10 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, target.skillID, target.versionID, target.testCaseID, body.SummaryHash)
+	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, ConfirmPermissionsParams{
+		Actor: user.ID, SkillID: target.skillID, VersionID: target.versionID, TestCaseID: target.testCaseID,
+		SummaryHash: body.SummaryHash,
+	})
 	switch {
 	case errors.Is(err, ErrNotFound) || errors.Is(err, ErrPreflightTargetNotFound):
 		httpx.WriteError(w, http.StatusNotFound, notFoundMessage(err))

@@ -154,7 +154,7 @@ func wireCreationTestCases(s *creation.Service, lab *testlab.Service) {
 		if err != nil {
 			return "", err
 		}
-		tc, err := lab.CreateTestCaseWithCriteria(ctx, tx, ws, id, name, prompt, criteria)
+		tc, err := lab.CreateTestCaseWithCriteria(ctx, tx, ws, id, testlab.ConfirmedTestCase{Name: name, Prompt: prompt, Criteria: criteria})
 		if err != nil {
 			return "", err
 		}

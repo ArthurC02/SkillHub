@@ -52,7 +52,7 @@ func (s *Service) RecoverLostSuggestionProvenance(ctx context.Context) (recovere
 		if len(recorded) > 0 {
 			continue
 		}
-		if err := s.ConsumeSuggestionsApplied(ctx, args, false); err != nil {
+		if err := s.ConsumeSuggestionsApplied(ctx, args); err != nil {
 			errs = append(errs, err)
 			continue
 		}

@@ -127,8 +127,9 @@ func TestCreateTestCaseWithCriteriaMintsConfirmedUserCriteria(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback(t.Context()) }()
 
-	tc, err := svc.CreateTestCaseWithCriteria(t.Context(), tx, ws, skillID,
-		"acceptance test", "run the thing", []string{"輸出摘要含所有輸入重點"})
+	tc, err := svc.CreateTestCaseWithCriteria(t.Context(), tx, ws, skillID, ConfirmedTestCase{
+		Name: "acceptance test", Prompt: "run the thing", Criteria: []string{"輸出摘要含所有輸入重點"},
+	})
 	if err != nil {
 		t.Fatalf("CreateTestCaseWithCriteria: %v", err)
 	}
@@ -164,7 +165,7 @@ func TestCreateTestCaseWithCriteriaRejectsTooManyOrBlank(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer func() { _ = tx.Rollback(ctx) }()
-		_, err = svc.CreateTestCaseWithCriteria(ctx, tx, ws, skillID, "n", "p", criteria)
+		_, err = svc.CreateTestCaseWithCriteria(ctx, tx, ws, skillID, ConfirmedTestCase{Name: "n", Prompt: "p", Criteria: criteria})
 		return err
 	}
 

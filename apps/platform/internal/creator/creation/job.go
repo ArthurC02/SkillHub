@@ -453,7 +453,13 @@ func (s *Service) settleCredit(ctx context.Context, tx pgx.Tx, a JobArgs, l Limi
 	if s.Billing == nil {
 		return nil
 	}
-	return s.Billing.Settle(ctx, tx, a.WorkspaceID, a.SessionID, a.Revision, knownCostUSD(usage), l.MaxCallCostUSD)
+	return s.Billing.Settle(ctx, tx, StepSettlement{
+		WorkspaceID: a.WorkspaceID,
+		SessionID:   a.SessionID,
+		Revision:    a.Revision,
+		CostUSD:     knownCostUSD(usage),
+		ReservedUSD: l.MaxCallCostUSD,
+	})
 }
 
 func (s *Service) concludeAttempt(ctx context.Context, a JobArgs, row gen.CreationSession, e *envelope, call stepCall) (State, bool) {

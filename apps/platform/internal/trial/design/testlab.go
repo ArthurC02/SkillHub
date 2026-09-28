@@ -263,19 +263,25 @@ func (s *Service) CreateTestCase(ctx context.Context, ws identity.Workspace, ski
 	return testCaseOf(row), nil
 }
 
+type ConfirmedTestCase struct {
+	Name     string
+	Prompt   string
+	Criteria []string
+}
+
 func (s *Service) CreateTestCaseWithCriteria(
-	ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID, name, prompt string, criteria []string,
+	ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID, confirmed ConfirmedTestCase,
 ) (TestCase, error) {
-	name, prompt, err := validateDraft(name, prompt)
+	name, prompt, err := validateDraft(confirmed.Name, confirmed.Prompt)
 	if err != nil {
 		return TestCase{}, err
 	}
-	if len(criteria) > maxConfirmedCreationCriteria {
+	if len(confirmed.Criteria) > maxConfirmedCreationCriteria {
 		return TestCase{}, fmt.Errorf("%w: 一個 Test Case 最多 %d 條驗收條件", ErrLimitExceeded, maxConfirmedCreationCriteria)
 	}
-	list := make([]Criterion, len(criteria))
+	list := make([]Criterion, len(confirmed.Criteria))
 	now := time.Now().UTC()
-	for i, text := range criteria {
+	for i, text := range confirmed.Criteria {
 		text, err = validateCriterion(text)
 		if err != nil {
 			return TestCase{}, err

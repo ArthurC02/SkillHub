@@ -83,7 +83,8 @@ func TestCreationGrantUsesSessionAttribution(t *testing.T) {
 	}))
 	defer srv.Close()
 	g := &Gateway{adminBaseURL: srv.URL, client: srv.Client()}
-	if _, err := g.IssueCreationForModel(context.Background(), "session-1", "receipt-1", 30*time.Second, .1, "gpt-5.4-mini"); err != nil {
+	terms := CreationKeyTerms{TTL: 30 * time.Second, BudgetUSD: .1, Model: "gpt-5.4-mini"}
+	if _, err := g.IssueCreationForModel(context.Background(), "session-1", "receipt-1", terms); err != nil {
 		t.Fatal(err)
 	}
 	metadata, _ := got["metadata"].(map[string]any)

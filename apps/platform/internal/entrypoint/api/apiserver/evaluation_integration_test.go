@@ -168,7 +168,7 @@ func TestEvaluationRetryDoesNotRepeatACompletedJudgeCall(t *testing.T) {
 	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
 		t.Fatal(err)
 	}
-	err := a.evaluations.DeliverEvaluation(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID), true)
+	err := a.evaluations.RedeliverEvaluation(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID))
 	if err != nil {
 		t.Fatal(err)
 	}

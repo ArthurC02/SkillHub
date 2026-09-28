@@ -241,19 +241,19 @@ func TestApplyCleanModePoolLeavesProductionAlone(t *testing.T) {
 	}
 	before := cfg.MaxConns
 
-	applyCleanModePool(cfg, false)
+	applyCleanModePool(cfg, productionDeployment)
 	if cfg.MaxConns != before {
 		t.Errorf("clean=false changed MaxConns from %d to %d; the flag being unset must not touch the pool config", before, cfg.MaxConns)
 	}
 
-	applyCleanModePool(cfg, true)
+	applyCleanModePool(cfg, cleanModeDeployment)
 	if cfg.MaxConns != 1 {
 		t.Errorf("clean=true left MaxConns at %d, want 1 (a single PGlite-backed connection)", cfg.MaxConns)
 	}
 }
 
 func TestNewStoreTakesFromEnvPathWhenNotClean(t *testing.T) {
-	store, stopFn, err := newStore(false)
+	store, stopFn, err := newStore(productionDeployment)
 	if err != nil {
 		t.Fatalf("newStore(false): %v", err)
 	}
@@ -266,7 +266,7 @@ func TestNewStoreTakesFromEnvPathWhenNotClean(t *testing.T) {
 }
 
 func TestNewStoreTakesInProcessPathWhenClean(t *testing.T) {
-	store, stopFn, err := newStore(true)
+	store, stopFn, err := newStore(cleanModeDeployment)
 	if err != nil {
 		t.Fatalf("newStore(true): %v", err)
 	}
@@ -402,7 +402,7 @@ func TestCleanModeHandlerLeavesProductionAlone(t *testing.T) {
 	api := http.NewServeMux()
 	static := http.NewServeMux()
 
-	got := cleanModeHandler(api, false, static)
+	got := cleanModeHandler(api, productionDeployment, static)
 	if got != http.Handler(api) {
 		t.Error("cleanModeHandler(api, false, static) did not return api unchanged; the flag being unset must not touch the handler")
 	}
@@ -419,7 +419,7 @@ func TestCleanModeHandlerRoutesStaticOnlyWhenClean(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := cleanModeHandler(api, true, static)
+	handler := cleanModeHandler(api, cleanModeDeployment, static)
 	for _, path := range []string{"/", "/assets/app.js", "/skills/abc-123", "/me"} {
 		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
 	}
@@ -524,7 +524,7 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte("<html>index for " + r.URL.Path + "</html>"))
 	})
-	handler := cleanModeHandler(api, true, static)
+	handler := cleanModeHandler(api, cleanModeDeployment, static)
 
 	for _, tc := range []struct {
 		name, method, path, accept string
@@ -633,11 +633,11 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pgxpool.ParseConfig: %v", err)
 	}
-	applyCleanModePool(cfg, false)
+	applyCleanModePool(cfg, productionDeployment)
 	if cfg.AfterConnect != nil {
 		t.Fatal("clean=false installed an AfterConnect hook; the flag being unset must not touch the pool config (02:PORT-005)")
 	}
-	applyCleanModePool(cfg, true)
+	applyCleanModePool(cfg, cleanModeDeployment)
 	if cfg.AfterConnect == nil {
 		t.Fatal("clean=true left AfterConnect nil, so a retired connection's prepared statements survive into the next one and wedge the carrier")
 	}
@@ -688,7 +688,7 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pgxpool.ParseConfig: %v", err)
 	}
-	applyCleanModePool(cfg, true)
+	applyCleanModePool(cfg, cleanModeDeployment)
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		t.Fatalf("pgxpool.NewWithConfig: %v", err)

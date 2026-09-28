@@ -13,8 +13,8 @@ import (
 func purgeDatasets(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
 	t.Helper()
 	svc := &testlab.Service{Pool: pool, ClearSightings: objreconcile.ClearDatasetSightings}
-	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(context.Background(), pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -25,7 +25,8 @@ func purgeDatasets(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectSt
 			}
 			return out, nil
 		},
-		svc.MarkDatasetPurged, svc.GuardDatasetObjectRemoval, 100)
+		Mark: svc.MarkDatasetPurged, Guard: svc.GuardDatasetObjectRemoval,
+	}, 100)
 	if err != nil {
 		t.Fatal(err)
 	}

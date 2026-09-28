@@ -42,6 +42,20 @@ func cleanModeFromEnv() bool {
 	return os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
 }
 
+type deployment int
+
+const (
+	productionDeployment deployment = iota
+	cleanModeDeployment
+)
+
+func deploymentFromEnv() deployment {
+	if cleanModeFromEnv() {
+		return cleanModeDeployment
+	}
+	return productionDeployment
+}
+
 var cleanModeFlagPlaceholder = []byte("<!--SKILLHUB_CLEAN_MODE_FLAG-->")
 
 const cleanModeFlagJS = `window.__SKILLHUB_CLEAN_MODE__=true;`
@@ -75,8 +89,8 @@ func contentSecurityPolicy(inlineScripts ...string) string {
 		"; ")
 }
 
-func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
-	if !clean {
+func applyCleanModePool(cfg *pgxpool.Config, d deployment) {
+	if d != cleanModeDeployment {
 		return
 	}
 	cfg.MaxConns = 1
@@ -94,8 +108,8 @@ func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
 	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
 }
 
-func newStore(clean bool) (*objstore.Client, func(), error) {
-	if !clean {
+func newStore(d deployment) (*objstore.Client, func(), error) {
+	if d != cleanModeDeployment {
 		store, err := wiring.ObjectStoreFromEnv()
 		return store, nil, err
 	}
@@ -156,8 +170,8 @@ func webStaticHandlerUnder(distDir string, posture envx.Posture) (http.Handler, 
 	return mux, nil
 }
 
-func cleanModeHandler(api http.Handler, clean bool, static http.Handler) http.Handler {
-	if !clean {
+func cleanModeHandler(api http.Handler, d deployment, static http.Handler) http.Handler {
+	if d != cleanModeDeployment {
 		return api
 	}
 	mux := http.NewServeMux()
@@ -244,16 +258,17 @@ func runAPI() (failed bool) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	clean := cleanModeFromEnv()
+	mode := deploymentFromEnv()
+	clean := mode == cleanModeDeployment
 
 	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
 	exitOn(err, "database pool: DATABASE_URL is not a valid connection string")
-	applyCleanModePool(poolCfg, clean)
+	applyCleanModePool(poolCfg, mode)
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	exitOn(err, "database pool")
 	defer pool.Close()
 
-	store, stopStore, err := newStore(clean)
+	store, stopStore, err := newStore(mode)
 	exitOn(err, "object store")
 	if stopStore != nil {
 		defer stopStore()
@@ -348,7 +363,7 @@ func runAPI() (failed bool) {
 
 	handler := app.Handler()
 	if clean {
-		handler = cleanModeServing(handler, clean, posture)
+		handler = cleanModeServing(handler, mode, posture)
 	}
 
 	srv := &http.Server{
@@ -453,11 +468,11 @@ func startCleanWorker(ctx context.Context, pool *pgxpool.Pool, deps func() worke
 	return set
 }
 
-func cleanModeServing(handler http.Handler, clean bool, posture envx.Posture) http.Handler {
+func cleanModeServing(handler http.Handler, mode deployment, posture envx.Posture) http.Handler {
 	static, err := cleanModeStaticHandler(posture)
 	exitOn(err, "clean mode: web assets")
 	slog.Info("clean mode: serving the web build with the 02:PORT-003 disclosure flag injected")
-	return cleanModeHandler(handler, clean, static)
+	return cleanModeHandler(handler, mode, static)
 }
 
 func serveUntilStopped(ctx context.Context, srv *http.Server) (failed bool) {

@@ -112,21 +112,21 @@ func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 			}
 			return svc.CanAffordStep(ctx, userID, billable(reservedUSD))
 		},
-		SettleFunc: func(ctx context.Context, tx pgx.Tx, workspaceID, sessionID pgtype.UUID, revision int64, costUSD *float64, reservedUSD float64) error {
-			userID, err := ids.WorkspaceOwnerIn(ctx, tx, workspaceID)
+		SettleFunc: func(ctx context.Context, tx pgx.Tx, step creation.StepSettlement) error {
+			userID, err := ids.WorkspaceOwnerIn(ctx, tx, step.WorkspaceID)
 			if err != nil {
 				return err
 			}
 
 			_, err = svc.Charge(ctx, tx, credit.ChargeInput{
 				Kind:              credit.KindCreationStep,
-				UsdMicros:         billableOrNil(costUSD),
-				ReservedUsdMicros: billable(reservedUSD),
+				UsdMicros:         billableOrNil(step.CostUSD),
+				ReservedUsdMicros: billable(step.ReservedUSD),
 				UserID:            userID,
-				WorkspaceID:       workspaceID,
+				WorkspaceID:       step.WorkspaceID,
 				RefType:           credit.RefCreationSession,
-				RefID:             sessionID,
-				IdempotencyKey:    fmt.Sprintf("creation:%s:%d", pgconv.UUIDString(sessionID), revision),
+				RefID:             step.SessionID,
+				IdempotencyKey:    fmt.Sprintf("creation:%s:%d", pgconv.UUIDString(step.SessionID), step.Revision),
 			})
 			return err
 		},
@@ -161,33 +161,33 @@ func (l runCreditLedger) Reserve(ctx context.Context, tx pgx.Tx, workspaceID pgt
 
 func runCostKey(runID pgtype.UUID) string { return "run:" + pgconv.UUIDString(runID) }
 
-func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error {
-	userID, err := l.identities.WorkspaceOwnerIn(ctx, tx, workspaceID)
+func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, r run.RunSettlement) error {
+	userID, err := l.identities.WorkspaceOwnerIn(ctx, tx, r.WorkspaceID)
 	if err != nil {
 		return err
 	}
-	key := runCostKey(runID)
-	if costUSD == nil {
+	key := runCostKey(r.RunID)
+	if r.CostUSD == nil {
 
 		_, _, err := l.credits.RecordCost(ctx, tx, credit.CostEvent{
 			Kind:           credit.KindRun,
 			Estimated:      true,
-			WorkspaceID:    workspaceID,
+			WorkspaceID:    r.WorkspaceID,
 			UserID:         userID,
 			RefType:        credit.RefRun,
-			RefID:          runID,
+			RefID:          r.RunID,
 			IdempotencyKey: key + ":unreadable",
 		})
 		return err
 	}
 	_, err = l.credits.Charge(ctx, tx, credit.ChargeInput{
 		Kind:              credit.KindRun,
-		UsdMicros:         billableOrNil(costUSD),
-		ReservedUsdMicros: billable(reservedUSD),
+		UsdMicros:         billableOrNil(r.CostUSD),
+		ReservedUsdMicros: billable(r.ReservedUSD),
 		UserID:            userID,
-		WorkspaceID:       workspaceID,
+		WorkspaceID:       r.WorkspaceID,
 		RefType:           credit.RefRun,
-		RefID:             runID,
+		RefID:             r.RunID,
 
 		IdempotencyKey: key,
 	})

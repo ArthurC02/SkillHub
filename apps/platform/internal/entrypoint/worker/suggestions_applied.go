@@ -14,5 +14,8 @@ type SuggestionsAppliedWorker struct {
 }
 
 func (w *SuggestionsAppliedWorker) Work(ctx context.Context, job *river.Job[eval.SuggestionsAppliedArgs]) error {
-	return w.Svc.ConsumeSuggestionsApplied(ctx, job.Args, job.Attempt >= job.MaxAttempts)
+	if lastTry := job.Attempt >= job.MaxAttempts; lastTry {
+		return w.Svc.ConsumeSuggestionsAppliedOnLastTry(ctx, job.Args)
+	}
+	return w.Svc.ConsumeSuggestionsApplied(ctx, job.Args)
 }

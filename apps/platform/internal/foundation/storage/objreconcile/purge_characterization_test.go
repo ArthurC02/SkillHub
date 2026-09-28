@@ -65,10 +65,18 @@ func unreachablePool(t *testing.T) *pgxpool.Pool {
 func TestPurgeExpiredRefusesWithoutItsCollaborators(t *testing.T) {
 	pool, store, list := unreachablePool(t), &purgeLedger{}, listing(candidate(1, "a"))
 	for name, call := range map[string]func() (int, error){
-		"no pool":  func() (int, error) { return PurgeExpired(context.Background(), nil, store, list, noMark, nil, 1) },
-		"no store": func() (int, error) { return PurgeExpired(context.Background(), pool, nil, list, noMark, nil, 1) },
-		"no list":  func() (int, error) { return PurgeExpired(context.Background(), pool, store, nil, noMark, nil, 1) },
-		"no mark":  func() (int, error) { return PurgeExpired(context.Background(), pool, store, list, nil, nil, 1) },
+		"no pool": func() (int, error) {
+			return PurgeExpired(context.Background(), nil, store, RetentionOwner{List: list, Mark: noMark}, 1)
+		},
+		"no store": func() (int, error) {
+			return PurgeExpired(context.Background(), pool, nil, RetentionOwner{List: list, Mark: noMark}, 1)
+		},
+		"no list": func() (int, error) {
+			return PurgeExpired(context.Background(), pool, store, RetentionOwner{Mark: noMark}, 1)
+		},
+		"no mark": func() (int, error) {
+			return PurgeExpired(context.Background(), pool, store, RetentionOwner{List: list}, 1)
+		},
 	} {
 		if n, err := call(); err == nil || n != 0 {
 			t.Errorf("%s: purged=%d err=%v, want a refusal", name, n, err)
@@ -82,8 +90,9 @@ func TestPurgeExpiredRefusesWithoutItsCollaborators(t *testing.T) {
 func TestPurgeExpiredReportsAWorklistItCouldNotRead(t *testing.T) {
 	want := errors.New("worklist unreadable")
 	store := &purgeLedger{}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		func(context.Context, int32) ([]Candidate, error) { return nil, want }, noMark, store.guard, 1)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: func(context.Context, int32) ([]Candidate, error) { return nil, want }, Mark: noMark, Guard: store.guard,
+	}, 1)
 	if !errors.Is(err, want) || n != 0 || len(store.steps) != 0 {
 		t.Errorf("purged=%d err=%v steps=%v, want the read error and nothing done", n, err, store.steps)
 	}
@@ -91,8 +100,9 @@ func TestPurgeExpiredReportsAWorklistItCouldNotRead(t *testing.T) {
 
 func TestPurgeExpiredPassesItsLimitToTheWorklist(t *testing.T) {
 	var asked int32
-	_, err := PurgeExpired(context.Background(), unreachablePool(t), &purgeLedger{},
-		func(_ context.Context, limit int32) ([]Candidate, error) { asked = limit; return nil, nil }, noMark, nil, 37)
+	_, err := PurgeExpired(context.Background(), unreachablePool(t), &purgeLedger{}, RetentionOwner{
+		List: func(_ context.Context, limit int32) ([]Candidate, error) { asked = limit; return nil, nil }, Mark: noMark,
+	}, 37)
 	if err != nil || asked != 37 {
 		t.Errorf("limit asked=%d err=%v, want 37", asked, err)
 	}
@@ -100,8 +110,9 @@ func TestPurgeExpiredPassesItsLimitToTheWorklist(t *testing.T) {
 
 func TestPurgeExpiredRemovesEachSharedObjectOnceBeforeMarkingEveryRowOnIt(t *testing.T) {
 	store := &purgeLedger{}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		listing(candidate(1, "a"), candidate(2, "b"), candidate(3, "a")), store.mark, store.guard, 10)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: listing(candidate(1, "a"), candidate(2, "b"), candidate(3, "a")), Mark: store.mark, Guard: store.guard,
+	}, 10)
 	if err != nil || n != 3 {
 		t.Fatalf("purged=%d err=%v, want 3", n, err)
 	}
@@ -118,8 +129,9 @@ func TestPurgeExpiredRemovesEachSharedObjectOnceBeforeMarkingEveryRowOnIt(t *tes
 
 func TestPurgeExpiredMarksARetainedObjectWithoutRemovingIt(t *testing.T) {
 	store := &purgeLedger{retain: map[string]bool{"kept": true}}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		listing(candidate(1, "kept"), candidate(2, "gone")), store.mark, store.guard, 10)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: listing(candidate(1, "kept"), candidate(2, "gone")), Mark: store.mark, Guard: store.guard,
+	}, 10)
 	want := []string{"guard kept", "mark 1", "guard gone", "remove gone", "mark 2"}
 	if err != nil || n != 2 || !slices.Equal(store.steps, want) {
 		t.Errorf("purged=%d err=%v steps=%v, want %v", n, err, store.steps, want)
@@ -128,8 +140,9 @@ func TestPurgeExpiredMarksARetainedObjectWithoutRemovingIt(t *testing.T) {
 
 func TestPurgeExpiredLeavesRowsUnmarkedWhenTheirObjectCouldNotBeRemovedAndMovesOn(t *testing.T) {
 	store := &purgeLedger{removeErr: map[string]error{"stuck": errors.New("storage unavailable")}}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		listing(candidate(1, "stuck"), candidate(2, "stuck"), candidate(3, "free")), store.mark, store.guard, 10)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: listing(candidate(1, "stuck"), candidate(2, "stuck"), candidate(3, "free")), Mark: store.mark, Guard: store.guard,
+	}, 10)
 	if err != nil || n != 1 || !slices.Equal(store.marked, []byte{3}) {
 		t.Errorf("purged=%d err=%v marked=%v, want only the row on the removed object", n, err, store.marked)
 	}
@@ -138,8 +151,9 @@ func TestPurgeExpiredLeavesRowsUnmarkedWhenTheirObjectCouldNotBeRemovedAndMovesO
 func TestPurgeExpiredStopsAtAMarkItCouldNotWriteAndCountsWhatItDid(t *testing.T) {
 	want := errors.New("mark failed")
 	store := &purgeLedger{markErr: map[byte]error{2: want}}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		listing(candidate(1, "a"), candidate(2, "b"), candidate(3, "c")), store.mark, store.guard, 10)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: listing(candidate(1, "a"), candidate(2, "b"), candidate(3, "c")), Mark: store.mark, Guard: store.guard,
+	}, 10)
 	if !errors.Is(err, want) || n != 1 || slices.Contains(store.steps, "guard c") {
 		t.Errorf("purged=%d err=%v steps=%v, want the mark error after one row and no later object touched", n, err, store.steps)
 	}
@@ -148,9 +162,10 @@ func TestPurgeExpiredStopsAtAMarkItCouldNotWriteAndCountsWhatItDid(t *testing.T)
 func TestPurgeExpiredReportsAGuardThatRefusedToRun(t *testing.T) {
 	want := errors.New("lock unavailable")
 	store := &purgeLedger{}
-	n, err := PurgeExpired(context.Background(), unreachablePool(t), store,
-		listing(candidate(1, "a"), candidate(2, "b")), store.mark,
-		func(context.Context, string, func(bool, pgx.Tx) error) error { return want }, 10)
+	n, err := PurgeExpired(context.Background(), unreachablePool(t), store, RetentionOwner{
+		List: listing(candidate(1, "a"), candidate(2, "b")), Mark: store.mark,
+		Guard: func(context.Context, string, func(bool, pgx.Tx) error) error { return want },
+	}, 10)
 	if !errors.Is(err, want) || n != 0 || len(store.steps) != 0 {
 		t.Errorf("purged=%d err=%v steps=%v, want the guard's error and nothing touched", n, err, store.steps)
 	}

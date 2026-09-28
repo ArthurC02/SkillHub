@@ -45,6 +45,12 @@ type ListFunc func(ctx context.Context, limit int32) ([]Candidate, error)
 
 type RetentionGuard func(ctx context.Context, key string, action func(retain bool, tx pgx.Tx) error) error
 
+type RetentionOwner struct {
+	List  ListFunc
+	Mark  MarkFunc
+	Guard RetentionGuard
+}
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
@@ -98,10 +104,12 @@ func (s *Service) Sweep(ctx context.Context) error {
 }
 
 func (s *Service) purgeExpired(ctx context.Context) error {
-	_, artifactErr := PurgeExpired(ctx, s.Pool, s.Store, s.ListExpiredArtifacts,
-		s.RecordArtifactPurged, s.GuardArtifactRemoval, batch)
-	_, intentErr := PurgeExpired(ctx, s.Pool, s.Store, s.ListDownloadIntents,
-		s.RecordDownloadIntentPurged, s.GuardArtifactRemoval, batch)
+	_, artifactErr := PurgeExpired(ctx, s.Pool, s.Store, RetentionOwner{
+		List: s.ListExpiredArtifacts, Mark: s.RecordArtifactPurged, Guard: s.GuardArtifactRemoval,
+	}, batch)
+	_, intentErr := PurgeExpired(ctx, s.Pool, s.Store, RetentionOwner{
+		List: s.ListDownloadIntents, Mark: s.RecordDownloadIntentPurged, Guard: s.GuardArtifactRemoval,
+	}, batch)
 	return errors.Join(artifactErr, intentErr)
 }
 
@@ -109,18 +117,17 @@ func (s *Service) purgeExpired(ctx context.Context) error {
 // over bytes still in storage is a lie nothing corrects, while bytes removed
 // under an unmarked row are simply retried and removed again next pass.
 func PurgeExpired(
-	ctx context.Context, pool *pgxpool.Pool, store ObjectStore,
-	list ListFunc, mark MarkFunc, guard RetentionGuard, limit int32,
+	ctx context.Context, pool *pgxpool.Pool, store ObjectStore, owner RetentionOwner, limit int32,
 ) (int, error) {
-	if pool == nil || store == nil || list == nil || mark == nil {
+	if pool == nil || store == nil || owner.List == nil || owner.Mark == nil {
 		return 0, errors.New("objreconcile: retention sweep is missing its pool, store or owner functions")
 	}
-	rows, err := list(ctx, limit)
+	rows, err := owner.List(ctx, limit)
 	if err != nil {
 		return 0, err
 	}
 	keys, byKey := groupByObjectKey(rows)
-	purge := expiredObjectPurge{pool: pool, store: store, mark: mark, guard: guard}
+	purge := expiredObjectPurge{pool: pool, store: store, mark: owner.Mark, guard: owner.Guard}
 	purged := 0
 	for _, key := range keys {
 		n, err := purge.object(ctx, key, byKey[key])

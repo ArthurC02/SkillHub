@@ -137,10 +137,17 @@ type RegistryReader interface {
 	ContentSource(ctx context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error)
 }
 
+type RunSettlement struct {
+	WorkspaceID pgtype.UUID
+	RunID       pgtype.UUID
+	CostUSD     *float64
+	ReservedUSD float64
+}
+
 type CreditLedger interface {
 	CreditsForUSD(float64) (int64, bool)
 	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
-	Settle(ctx context.Context, tx pgx.Tx, workspaceID, runID pgtype.UUID, costUSD *float64, reservedUSD float64) error
+	Settle(ctx context.Context, tx pgx.Tx, run RunSettlement) error
 	FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error)
 }
 

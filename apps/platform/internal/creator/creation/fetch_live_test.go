@@ -14,7 +14,7 @@ func TestFetcherAgainstTheLiveInternet(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	f := NewFetcher(false)
+	f := NewFetcher()
 	for _, tc := range []struct{ url, want, contains string }{
 		{"https://example.com/", "ok", "Example Domain"},
 		{"https://www.rfc-editor.org/rfc/rfc2119.txt", "ok", "MUST"},

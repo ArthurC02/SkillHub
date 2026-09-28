@@ -858,7 +858,9 @@ func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := orphanedSvc.ConfirmPermissions(context.Background(), ws, actor, skill, version, testCase, summary.Hash); err != nil {
+	if _, err := orphanedSvc.ConfirmPermissions(context.Background(), ws, run.ConfirmPermissionsParams{
+		Actor: actor, SkillID: skill, VersionID: version, TestCaseID: testCase, SummaryHash: summary.Hash,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	created, err := orphanedSvc.Create(context.Background(), run.CreateParams{
@@ -1749,7 +1751,7 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 	svc.Store = a.packages
 	svc.PollInterval = 20 * time.Millisecond
 	settled := 0
-	svc.Ledger = runCreditLedger{settle: func(context.Context, pgx.Tx, pgtype.UUID, pgtype.UUID, *float64, float64) error {
+	svc.Ledger = runCreditLedger{settle: func(context.Context, pgx.Tx, run.RunSettlement) error {
 		settled++
 		if settled == 1 {
 			return errors.New("the ledger is not answering")

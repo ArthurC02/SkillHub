@@ -852,8 +852,8 @@ type labelledJSON struct {
 func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
 	t.Helper()
 	svc := &run.Service{Pool: pool, Gateway: providertest.NewGateway(), ClearSightings: objreconcile.ClearArtifactSightings}
-	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
-		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+	n, err := objreconcile.PurgeExpired(context.Background(), pool, store, objreconcile.RetentionOwner{
+		List: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
 			if err != nil {
 				return nil, err
@@ -864,7 +864,8 @@ func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.Object
 			}
 			return out, nil
 		},
-		svc.MarkRunOutputPurged, svc.GuardArtifactUploadIntentRemoval, 100)
+		Mark: svc.MarkRunOutputPurged, Guard: svc.GuardArtifactUploadIntentRemoval,
+	}, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
