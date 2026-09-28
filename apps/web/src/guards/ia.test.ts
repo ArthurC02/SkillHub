@@ -59,14 +59,13 @@ test("IA §2.1: the primary nav's targets are the ones the document lists", () =
   expect(row, "§2.1 has no 主要導覽 row").toBeTruthy();
   expect(paths(row!)).toEqual(actual);
 
-  for (const target of actual) {
-    expect(
-      target.startsWith("/workspace/") || target.startsWith("/lab/"),
-      `${target} is in the primary nav but is not one of the owner's own lists. ` +
-        `A product capability in the nav reads as one option among the others ` +
-        `(§0.1 R7). If this is deliberate, R7 is what has to change first.`,
-    ).toBe(true);
-  }
+  const actionOnly = new Set(["/workspace/import", "/lab/test-cases", "/lab/run"]);
+  expect(
+    actual.filter((target) => actionOnly.has(target)),
+    "§0.1 R7: an action-only route is in the platform navigation",
+  ).toEqual([]);
+  expect(actual, "§0.1 R7: the shell lost the workspace home").toContain("/workspace");
+  expect(actual, "§0.1 R7: the shell lost Catalog").toContain("/");
 });
 
 function inboundByRoute(): Map<string, number> {
@@ -150,6 +149,8 @@ test("IA §2.4: every feature-flagged entry point is documented", () => {
 });
 
 const FLAG_OFF_ASSERTED: Record<string, string> = {
+  "app/RootLayout.tsx":
+    "app/RootLayout.test.tsx — 「the platform shell hides Studio until generate_skill is enabled」",
   "features/catalog/home/Home.page.tsx":
     "generate.test.tsx — 「the generate entry point is absent until /me says the flag is on」",
   "features/workspace/skills/WorkspaceSkills.page.tsx":
@@ -179,7 +180,7 @@ test("IA §2.4: every flagged mount is on the roster of ones tested with the fla
     "no flag hook found in any *.service.ts — the parse broke, and this file would then pass on any mount at all",
   ).toBeGreaterThan(0);
 
-  const sites = screenFiles(/\.tsx$/).filter((file) => {
+  const sites = [...screenFiles(/\.tsx$/), "app/RootLayout.tsx"].filter((file) => {
     const body = readFileSync(join(src, file), "utf8");
     return [...hooks].some((h) => body.includes(`${h}()`));
   });
@@ -202,7 +203,7 @@ test("IA §2.4: every flagged mount is on the roster of ones tested with the fla
   expect(
     Object.keys(FLAG_OFF_ASSERTED).length,
     "the roster may only get shorter",
-  ).toBeLessThanOrEqual(4);
+  ).toBeLessThanOrEqual(5);
 });
 
 test("IA §6: every route in router.tsx is swept at 375px", () => {

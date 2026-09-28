@@ -97,6 +97,15 @@ const downloadsRoute = createRoute({
   ),
 });
 
+const workspaceHomeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace",
+  component: lazyRouteComponent(
+    () => import("../features/workspace/home/WorkspaceHome.page"),
+    "WorkspaceHome",
+  ),
+});
+
 const workspaceSkillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workspace/skills",
@@ -348,6 +357,7 @@ const routeTree = rootRoute.addChildren([
   packagingRoute,
   publicPublicationRoute,
   downloadsRoute,
+  workspaceHomeRoute,
   workspaceSkillsRoute,
   importSkillRoute,
   createSkillRoute,

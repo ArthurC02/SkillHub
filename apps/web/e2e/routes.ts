@@ -24,6 +24,7 @@ export const ROUTES: [name: string, url: string][] = [
   ["lab-test-case-detail", `/lab/test-cases/${TEST_CASE}`],
   ["run-trace", `/runs/${RUN}`],
   ["run-compare", `/runs/${RUN}/compare?against=${OTHER_RUN}`],
+  ["workspace-home", "/workspace"],
   ["workspace-account", "/workspace/account"],
   ["workspace-downloads", "/workspace/downloads"],
   ["workspace-creations", "/workspace/creations"],

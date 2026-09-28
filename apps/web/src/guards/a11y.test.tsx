@@ -313,6 +313,7 @@ const SCANNED_ROUTES = [
   "/lab/test-cases/$testCaseId",
   "/runs/$runId",
   "/runs/$runId/compare",
+  "/workspace",
   "/workspace/account",
   "/workspace/creations",
   "/workspace/downloads",
@@ -620,6 +621,16 @@ test("QA-009: 我的 Skill", async () => {
   });
   await waitFor(has("我的 Skill"));
   await scan("/workspace/skills");
+}, 30000);
+
+test("QA-009: Workspace 首頁", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace" });
+  });
+  await waitFor(has("繼續推進你的工作"));
+  await scan("/workspace");
 }, 30000);
 
 test("QA-009: 帳號與刪除", async () => {

@@ -130,7 +130,7 @@ test.describe("QA-008 real layout", () => {
   });
 });
 
-test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5）", async ({ page }) => {
+test("手機平台框架維持兩列頁首與單列導覽（設計 §4.5）", async ({ page }) => {
   await stubPlatform(page);
   await page.route("**/me", async (route) => {
     const { body, status } = platformResponse(route.request().url());
@@ -159,45 +159,51 @@ test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5�
       }),
   );
 
-  const header = await page.evaluate(() => {
-    const el = document.querySelector(".app-header")!;
+  const chrome = await page.evaluate(() => {
+    const header = document.querySelector(".app-header")!;
+    const nav = document.querySelector(".app-sidebar .app-nav")!;
     const box = (node: Element) => {
       const r = node.getBoundingClientRect();
       return { top: r.top, bottom: r.bottom };
     };
     return {
-      height: Math.round(el.getBoundingClientRect().height),
-      title: box(el.querySelector(".app-title")!),
-      auth: box(el.querySelector("[data-auth-controls]")!),
-      navWidth: Math.round(el.querySelector(".app-nav")!.getBoundingClientRect().width),
+      headerHeight: Math.round(header.getBoundingClientRect().height),
+      title: box(header.querySelector(".app-title")!),
+      auth: box(header.querySelector("[data-auth-controls]")!),
+      navWidth: Math.round(nav.getBoundingClientRect().width),
       viewportWidth: document.documentElement.clientWidth,
       documentWidth: document.documentElement.scrollWidth,
-      navHeights: Array.from(el.querySelectorAll(".app-nav a"), (link) =>
+      navHeights: Array.from(nav.querySelectorAll("a"), (link) =>
         Math.round(link.getBoundingClientRect().height),
+      ),
+      navTops: Array.from(nav.querySelectorAll("a"), (link) =>
+        Math.round(link.getBoundingClientRect().top),
       ),
     };
   });
 
-  expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
-    130,
-  );
   expect(
-    header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
+    chrome.headerHeight,
+    `375px 下頁首高 ${chrome.headerHeight}px：品牌列與搜尋列之外又多了一列`,
+  ).toBeLessThanOrEqual(130);
+  expect(
+    chrome.title.bottom > chrome.auth.top && chrome.auth.bottom > chrome.title.top,
     `標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了：` +
-      `標題 ${Math.round(header.title.top)}–${Math.round(header.title.bottom)}、` +
-      `身分 ${Math.round(header.auth.top)}–${Math.round(header.auth.bottom)}（頁首高 ${header.height}px）`,
+      `標題 ${Math.round(chrome.title.top)}–${Math.round(chrome.title.bottom)}、` +
+      `身分 ${Math.round(chrome.auth.top)}–${Math.round(chrome.auth.bottom)}（頁首高 ${chrome.headerHeight}px）`,
   ).toBe(true);
   expect(
-    header.navWidth,
-    `長帳號名稱把主要導覽壓到只剩 ${header.navWidth}px`,
+    chrome.navWidth,
+    `長帳號名稱把主要導覽壓到只剩 ${chrome.navWidth}px`,
   ).toBeGreaterThanOrEqual(350);
-  expect(header.documentWidth, "長帳號名稱把頁面撐出視窗").toBeLessThanOrEqual(
-    header.viewportWidth,
+  expect(chrome.documentWidth, "長帳號名稱把頁面撐出視窗").toBeLessThanOrEqual(
+    chrome.viewportWidth,
   );
   expect(
-    Math.min(...header.navHeights),
-    `手機導覽的最小點按高度只有 ${Math.min(...header.navHeights)}px`,
+    Math.min(...chrome.navHeights),
+    `手機導覽的最小點按高度只有 ${Math.min(...chrome.navHeights)}px`,
   ).toBeGreaterThanOrEqual(40);
+  expect(new Set(chrome.navTops).size, "主要導覽不再是單列橫向 rail").toBe(1);
 });
 
 test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => {
@@ -243,7 +249,7 @@ test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => 
 
 test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
   for (const width of [1440, 1280]) {
-    test(`頁首橫貫視窗，標題與 h1 同一條左緣：${width}px（設計 §4.5）`, async ({ page }) => {
+    test(`頁首橫貫視窗，品牌對齊側欄、搜尋對齊內容：${width}px（設計 §4.5）`, async ({ page }) => {
       await stubPlatform(page);
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/workspace/skills");
@@ -258,6 +264,8 @@ test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
           ),
           viewport: document.documentElement.clientWidth,
           title: x(".app-title"),
+          nav: x(".app-sidebar-label"),
+          search: x(".app-search"),
           h1: x("main h1"),
         };
       });
@@ -266,7 +274,8 @@ test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
         m.headerWidth,
         `頁首只有 ${m.headerWidth}px 而視窗是 ${m.viewport}px：它又縮回欄寬裡了`,
       ).toBe(m.viewport);
-      expect(m.title, `標題左緣 ${m.title} 對不上 h1 的 ${m.h1}`).toBe(m.h1);
+      expect(m.title, `品牌左緣 ${m.title} 對不上側欄導覽的 ${m.nav}`).toBe(m.nav);
+      expect(m.search, `搜尋左緣 ${m.search} 對不上內容的 ${m.h1}`).toBe(m.h1);
     });
   }
 
@@ -618,20 +627,21 @@ test.describe("QA-008 the real Tab key", () => {
     expect(seen, `focus jumped backwards: ${seen.join(" → ")}`).toEqual(sorted);
   });
 
-  test("mobile header focus follows its visual rows", async ({ page, browserName }) => {
+  test("mobile platform chrome focus follows its visual rows", async ({ page, browserName }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/");
+    await page.goto("/workspace/skills");
     await expect(page.locator(".app-nav a").first()).toBeVisible();
 
     const title = page.locator(".app-title");
     await title.focus();
     const tops = [Math.round((await title.boundingBox())!.y)];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 12; i++) {
       await page.keyboard.press("Tab");
       const top = await page.evaluate(() => {
         const active = document.activeElement;
-        if (!(active instanceof HTMLElement) || !active.closest(".app-header")) return null;
+        if (!(active instanceof HTMLElement) || !active.closest(".app-header, .app-sidebar"))
+          return null;
         return active.getBoundingClientRect().top;
       });
       if (top === null) break;
@@ -639,9 +649,9 @@ test.describe("QA-008 the real Tab key", () => {
     }
 
     const domTops = await page
-      .locator(".app-header a, .app-header button")
+      .locator(".app-header a, .app-header input, .app-header button, .app-sidebar .app-nav a")
       .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
-    expect(domTops.length, "the header DOM has too few focus stops").toBeGreaterThan(3);
+    expect(domTops.length, "the platform chrome has too few focus stops").toBeGreaterThan(7);
     expect(domTops, `DOM focus order jumps rows: ${domTops.join(" → ")}`).toEqual(
       [...domTops].sort((a, b) => a - b),
     );
@@ -651,7 +661,7 @@ test.describe("QA-008 the real Tab key", () => {
     }
     expect(
       tops.length,
-      "the header exposed too few focus stops to prove row order",
+      "the platform chrome exposed too few focus stops to prove row order",
     ).toBeGreaterThan(3);
     expect(tops, `focus jumped to an earlier visual row: ${tops.join(" → ")}`).toEqual(
       [...tops].sort((a, b) => a - b),

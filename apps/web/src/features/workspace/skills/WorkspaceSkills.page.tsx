@@ -275,6 +275,9 @@ export function WorkspaceSkills() {
         <h2>這個工作區的其他頁</h2>
         <ul className="chip-row">
           <li>
+            <Link to="/workspace">工作區首頁</Link>
+          </li>
+          <li>
             <Link to="/workspace/downloads">下載紀錄</Link>
           </li>
           <li>

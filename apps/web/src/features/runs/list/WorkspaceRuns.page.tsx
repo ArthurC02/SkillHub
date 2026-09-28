@@ -52,6 +52,9 @@ export function WorkspaceRuns() {
           {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
       )}
+      <p className="note">
+        <Link to="/workspace">回到工作區首頁</Link>
+      </p>
     </section>
   );
 }

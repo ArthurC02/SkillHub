@@ -275,7 +275,6 @@ const GLOBAL_BY_RECIPE: Record<string, string> = {
   "app-title": APP_FRAME,
   "app-footer": APP_FRAME,
   "app-shell": APP_FRAME,
-  "action-secondary": CONTROL_LAYER,
   "composer-attach": CONTROL_LAYER,
   "license-badge":
     "one rule with .match-reason, and the badge-then-note spacing rule excludes both beside .badge-row",

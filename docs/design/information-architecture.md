@@ -64,11 +64,10 @@
 **旗標後面的入口不新增路由、也可能不新增任何連結**，所以純看網址的檢查抓不到它——這是本檔學費最貴的一課（§7）。
 機器：**有**（每一個 `features?.<name>` 的使用點都要在 §2.4 出現）。
 
-**R7. 導覽列只放「我的東西」，產品能力不進導覽列。**
-出處：**產品負責人裁定「探索不進導覽列」**（IA-1）＋ [從描述生成 Skill](../adr/README.md#從描述生成-skill)（生成入口不與搜尋等重）。兩個各自獨立的決定指向同一個判準，所以它是規則不是個案。
-判準：**導覽列的每一項都必須是 R2 意義下的清單位址**（`/workspace/` 或 `/lab/` 底下）。探索與生成不是「一個你去的地方」，是**產品本身在做的事**——把它們放成六選一，等於說它們是六個並列的選項。
-推論（不是新提案，是這條規則的直接結果）：**`/` 的入口就是產品標題**，而那一頁本來就只有搜尋（`h1 用一句話描述你的任務` ＋ 表單 ＋ 結果）。點產品名回到產品的核心動作，是這個形狀該有的樣子。
-機器：**有**（`ia.test.ts` 比對導覽列每一項的前綴）。
+**R7. 導覽列只放穩定的平台空間，不放一次性動作。**
+出處：[平台體驗模型](./platform-experience.md) §2.1～§2.2 ＋ [從描述生成 Skill](../adr/README.md#從描述生成-skill)（生成入口仍不與搜尋等重）。
+判準：導覽項目必須能承接多個物件與多次工作階段，並且離開再回來仍是同一個地方。首頁、Catalog、資產庫、Studio、活動與發佈符合；匯入 Skill、建立 Test Case、開始 Run 與打包是脈絡內動作，不符合。Studio 仍受 `generate_skill` 控制，規則是「旗標開啟時它是不是一個穩定空間」，不是「旗標能不能被導覽繞過」。
+機器：**有**（`ia.test.ts` 雙向比對導覽目標與 §2.1，並拒絕已知的動作型入口）。
 
 ### 0.2 偏離帳
 
@@ -96,6 +95,7 @@
 | `/skills/$skillId/files` | `SkillFiles` | SKILL | Skill 生命週期／Skill 資產與版本歷史 |
 | `/skills/$skillId/package` | `Packaging` | 02:PACK-001／002 | Skill 生命週期／**Skill 交付與安裝** |
 | `/p/$publisher/$name` | `PublicPublication` | 02:PACK-004 | Skill 生命週期／**Skill 發佈**〔不需登入；單筆的 id 是「發佈者／名稱」這一對，所以是兩段〕 |
+| `/workspace` | `WorkspaceHome` | 02:WS-002／WS-004 | 創作者空間／**續作與跨物件注意事項** |
 | `/workspace/import` | `ImportSkill` | SKILL、SEC | Skill 生命週期／**Skill 接納與信任** |
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
@@ -132,14 +132,15 @@
 
 ---
 
-## 2. 導覽：三層，而且第一層只服務一種人
+## 2. 導覽：三層，第一層是穩定平台空間
 
 ### 2.1 全域（`RootLayout`，每一頁都有）
 
 | 位置 | 項目 | 到哪裡 |
 | --- | --- | --- |
-| 標題 | `Skill Hub` | `/` |
-| 主要導覽（`<nav aria-label="主要導覽">`） | 我的 Skill、Run 歷史、匯入 Skill、Test Case、下載紀錄 | `/workspace/skills`、`/workspace/runs`、`/workspace/import`、`/lab/test-cases`、`/workspace/downloads` |
+| 標題 | `Skill Hub` | 已登入到 `/workspace`；匿名到 `/` |
+| 全域搜尋 | 離開 Catalog 後顯示「搜尋小工具或描述任務」；`/` 由 Catalog 頁自己的完整搜尋取代，不重複兩份表單 | `/` 加 `q` |
+| 主要導覽（`<nav aria-label="主要導覽">`） | 首頁、Catalog、資產庫、Studio（旗標）、活動、發佈 | `/workspace`、`/`、`/workspace/skills`、`/workspace/creations`、`/workspace/runs`、`/workspace/downloads` |
 | 頁尾 | 回報問題（面板，非路由）、資料保存政策、帳號與刪除、**Build 識別碼**（`<details>`，非路由；IA-11） | `/policy`、`/workspace/account` |
 | 右上 | `AuthControls`（未登入時是「使用 GitHub 登入」）；**`GET /me` 的 `operator` 為真時多一個「後台」**（`02:OPS-001`） | 外部 `/auth/github/login`；`/admin` |
 
@@ -151,6 +152,8 @@
 
 ```
 Home ───────────► /compare, /skills/$id, /workspace/import, /workspace/skills#create
+WorkspaceHome ──► /, /skills/$id, /runs/$id, /workspace/import,
+                  /workspace/runs, /workspace/skills
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/package, /lab/test-cases
 SkillFiles ─────► /skills/$id
@@ -159,8 +162,8 @@ Packaging ──────► /skills/$id, /workspace/downloads
 Downloads ──────► /skills/$id, /workspace/skills
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
-                  /workspace/account, /policy
-WorkspaceRuns ──► /runs/$id, /lab/test-cases
+                  /workspace/account, /workspace, /policy
+WorkspaceRuns ──► /runs/$id, /lab/test-cases, /workspace
 TestCases ──────► /lab/test-cases/$id, /lab/datasets, /lab/run, /runs/$id, /skills/$id
 DatasetUpload ──► /lab/test-cases, /lab/test-cases/$id
 RunPreflight ───► /lab/test-cases, /runs/$id
@@ -180,7 +183,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 >
 > **掛載位置由清單空不空決定**：清單空的時候它排在最前面——那時它就是這一頁的答案；清單有東西的時候排在清單**之後**，因為 [system.md](system.md) §3 checklist 第 1 條不准「一整排控制項排在答案前面」。用兩個掛載點而不是 CSS `order`，因為 `order` 只改視覺順序、不改 DOM 順序。空狀態只留 §2.9 的缺席型別詞，不再用另一種措辭把同樣兩條路再講一次。
 >
-> **旗標讀在 `features/workspace/skills/WorkspaceSkills.page.tsx`、以 prop 傳進元件**：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫 `useGenerateEntryPoint` 的檔案為鍵，且只能變短。
+> **旗標由入口所在畫面透過既有 hook 讀取**：`RootLayout` 只在 `generate_skill` 開啟時顯示 Studio；`WorkspaceSkills` 以 prop 把兩個創作旗標傳進建立區。`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊以呼叫旗標 hook 的檔案為鍵。
 
 > **這張圖是本節唯一沒有機器守的一格**（§6 上它一列都沒有，而 §2.1、§2.3、§2.4 都有），所以它會無聲過期。它要連 `components/` 的元件一起畫——§2.3 的反向連結數就是這樣數的（`ia.test.ts` 掃 `pages/` 與 `components/` 兩個目錄），只畫 `pages/` 會重現不出那些數字。
 
@@ -190,7 +193,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
-| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——[從描述生成 Skill](../adr/README.md#從描述生成-skill) 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
+| `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/features/creation/generate.service.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 建立區、全域 Studio 空間 | **搜尋框旁邊的等重動作**——Catalog 仍先搜尋；Studio 是登入後工作空間，不是把生成按鈕塞回搜尋表單 |
 | `creation_skill` | `GET /me` 的 `features`；`WorkspaceSkills` 讀取 | `/workspace/skills#create` 內的互動創作，仍須 `generate_skill` 同時開啟；三種素材共用會話 | 首頁、未啟用部署與封測曝光限制中的使用者；預設關閉 |
 | `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/core/session/me.service.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/app/shell/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（[淨測試模式](../adr/README.md#淨測試模式) 待決策 1 待敲定） |
 
@@ -210,11 +213,11 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare`、`/workspace/creations` | ✅ 四項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/admin` 與 `/admin/*` 十頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace/account`、`/workspace/import`、`/workspace/runs` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`） |
-| 3 | `/workspace/downloads` | ✅ |
-| 5 | `/`、`/lab/run`、`/runs/$runId`、`/workspace/skills` | ✅ |
-| 6 | `/lab/test-cases` | ✅ |
-| 13 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
+| 2 | `/admin` 與 `/admin/*` 十頁、`/lab/test-cases/$testCaseId`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/workspace`、`/workspace/account` | ✅ 後台每一頁的兩條來自 `features/admin/components/AdminNav.tsx` 與 `features/admin/home/AdminHome.page.tsx`（`/admin` 本身是 `AdminNav.tsx` 與 `app/shell/AuthControls.tsx`）；Workspace 首頁的兩條來自資產庫與活動 |
+| 3 | `/workspace/downloads`、`/workspace/import`、`/workspace/runs` | ✅ |
+| 5 | `/lab/run` | ✅ |
+| 6 | `/`、`/lab/test-cases`、`/runs/$runId`、`/workspace/skills` | ✅ |
+| 14 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
 
 > **「導覽列不算一條入邊」不是計數細節，是這張表的用途。** 外部審查要求刪掉 `features/workspace/skills/WorkspaceSkills.page.tsx` 頁尾的「這個工作區的其他清單」，理由是那四條連結與導覽列 100% 重複——**那是事實**。擋下它的正是這條計數規則：整塊刪掉會讓 `/workspace/runs`、`/workspace/account`、`/policy` 各從 2 掉到 1 條頁內入邊，一次生出三個只從導覽列進得去的頁。
 >
@@ -271,7 +274,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘十六條路由沒有 `validateSearch`**（26 條路由減去上表的 10 條）（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十九條路由沒有 `validateSearch`**（30 條路由減去上表的 11 條）（`/skills/$id`、`/skills/$id/files`、七條 `/workspace` 與 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -477,7 +480,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/guards/__outlines__/) 快照 | **33** 個檔（後台七頁各一份）。**不判斷對錯，只讓變更變成必須核可的 diff** |
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。`SkillDetail` 與 `SkillFiles` 各自帶一個未命名的 `<nav>`，主導覽因此必須具名 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
-| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（27 個位址，後台七頁各一）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
+| 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（31 個位址；30 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
 | 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **10** 條 |
 | §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |

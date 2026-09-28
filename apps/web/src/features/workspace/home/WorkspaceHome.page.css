@@ -1,0 +1,141 @@
+.workspace-home {
+  display: grid;
+  gap: 32px;
+}
+
+.workspace-home .workspace-home-hero {
+  max-width: 760px;
+}
+
+.workspace-home .workspace-home-hero > p:last-child {
+  color: var(--text);
+}
+
+.workspace-home .workspace-home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.workspace-home .workspace-home-section {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.workspace-home .workspace-home-attention {
+  border-left: 4px solid var(--accent);
+}
+
+.workspace-home .workspace-home-section > header:first-child {
+  margin-bottom: 16px;
+}
+
+.workspace-home .workspace-home-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workspace-home .workspace-home-list,
+.workspace-home .workspace-home-assets {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.workspace-home .workspace-home-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-home .workspace-home-list p {
+  margin: 4px 0 8px;
+}
+
+.workspace-home .workspace-home-more {
+  margin: 16px 0 0;
+}
+
+.workspace-home .workspace-home-assets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workspace-home .workspace-home-assets a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 72px;
+  padding: 16px;
+  color: var(--text-h);
+  text-decoration: none;
+  background: var(--code-bg);
+  border-radius: 8px;
+}
+
+.workspace-home .workspace-home-assets a:hover {
+  background: var(--surface-hover);
+}
+
+.workspace-home .workspace-home-assets strong,
+.workspace-home .workspace-home-assets .note {
+  display: block;
+}
+
+.workspace-home .workspace-home-assets .note {
+  margin-top: 4px;
+}
+
+.workspace-home .workspace-home-monogram {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  color: var(--on-tile);
+  background: var(--tile-violet-deep);
+  border-radius: 8px;
+  place-items: center;
+}
+
+.workspace-home .workspace-home-empty {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-home .workspace-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .workspace-home .workspace-home-grid,
+  .workspace-home .workspace-home-assets {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .workspace-home .workspace-home-section {
+    padding: 16px;
+  }
+
+  .workspace-home .workspace-home-section-heading {
+    display: grid;
+  }
+
+  .workspace-home .workspace-home-list > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-home .workspace-home-list .action-secondary {
+    justify-self: start;
+  }
+}
