@@ -16,10 +16,10 @@ def fake_embed(texts, allow_api=True):
     return {t: [b / 255 - 0.5 for b in hashlib.sha256(t.encode()).digest()[:8]] for t in texts}
 
 
-def report(fn, *args, embed=fake_embed):
+def report(fn, *, embed=fake_embed, **kwargs):
     out = io.StringIO()
     with mock.patch.object(evaluate, "embed", embed), contextlib.redirect_stdout(out):
-        fn(*args)
+        fn(**kwargs)
     return out.getvalue()
 
 
@@ -28,19 +28,19 @@ def digest(text):
 
 
 def test_the_frontmatter_report_is_unchanged():
-    text = report(evaluate.main, False, "frontmatter")
+    text = report(evaluate.main, allow_api=False, index_mode="frontmatter")
     assert text.startswith("corpus: "), text[:200]
     assert digest(text) == FRONTMATTER, text
 
 
 def test_the_enriched_report_is_unchanged():
-    text = report(evaluate.main, False, "enriched")
+    text = report(evaluate.main, allow_api=False, index_mode="enriched")
     assert "### v1 兩條 miss 在增強索引下的名次" in text
     assert digest(text) == ENRICHED, text
 
 
 def test_the_lookup_report_is_unchanged():
-    text = report(evaluate.lookup_main, False)
+    text = report(evaluate.lookup_main, allow_api=False)
     assert "紅線（不擋 CI，只供人判讀）" in text
     assert digest(text) == LOOKUP, text
 
@@ -48,10 +48,17 @@ def test_the_lookup_report_is_unchanged():
 def test_the_lookup_report_without_vectors_lists_only_the_query_sets():
     def refuse(texts, allow_api=True):
         raise SystemExit("--no-api but 3 texts are not cached")
-    text = report(evaluate.lookup_main, False, embed=refuse)
+    text = report(evaluate.lookup_main, allow_api=False, embed=refuse)
     assert text.splitlines()[2] == "無法取得向量，只列出查詢集：--no-api but 3 texts are not cached", text
     assert "== " not in text
     assert digest(text) == LOOKUP_OFFLINE, text
+
+
+def test_the_selfcheck_passes_offline():
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        evaluate._selfcheck()
+    assert out.getvalue() == "selfcheck ok\n", out.getvalue()
 
 
 def test_a_red_line_passes_exactly_at_its_threshold_and_fails_just_below():

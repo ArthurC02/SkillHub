@@ -32,6 +32,19 @@ TARGET_DISTRACTOR_REJECT = 0.75
 TARGET_RECALL_LOSS = 0.05
 MAX_REPO_SHARE = 0.20
 
+PUBLIC_RULE_MAX_DISTANCE = 0.75
+CREATION_RULE_MAX_DISTANCE = 0.55
+
+COSINE_TOLERANCE = 1e-9
+GOLDEN_QUERY_COUNT = 60
+QUERIES_PER_CATEGORY = 20
+ZH_QUERIES_PER_CATEGORY = 12
+MIN_DISTRACTORS_PER_CATEGORY = 4
+RECALL_AT_K = 5
+
+CURVE_TABLE_MIN_SIMILARITY = 0.15
+CURVE_TABLE_MAX_SIMILARITY = 0.55
+
 CJK_RE = re.compile(r"[一-鿿]+")
 WORD_RE = re.compile(r"[a-z0-9][a-z0-9+.#_-]*")
 
@@ -110,7 +123,7 @@ def enriched_index_text(name: str, payload: dict) -> str:
     return "\n".join(parts)
 
 
-def load_corpus(require_enriched: bool = False) -> tuple[list[dict], dict]:
+def load_corpus(*, require_enriched: bool = False) -> tuple[list[dict], dict]:
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
     docs = []
     for entry in manifest["documents"]:
@@ -143,7 +156,7 @@ def api_key() -> str:
     return key
 
 
-def embed(texts: list[str], allow_api: bool = True) -> dict[str, list[float]]:
+def embed(texts: list[str], *, allow_api: bool = True) -> dict[str, list[float]]:
     """Cached embeddings. The cache holds text hashes and vectors only."""
     cache = json.loads(CACHE_PATH.read_text(encoding="utf-8")) if CACHE_PATH.exists() else {}
     keys = {t: hashlib.sha256(f"{EMBED_MODEL}\n{t}".encode()).hexdigest() for t in texts}
@@ -170,7 +183,7 @@ def embed(texts: list[str], allow_api: bool = True) -> dict[str, list[float]]:
 def cosine(a: list[float], b: list[float]) -> float:
     na = math.sqrt(sum(x * x for x in a)) or 1.0
     nb = math.sqrt(sum(x * x for x in b)) or 1.0
-    return sum(x * y for x, y in zip(a, b)) / (na * nb)
+    return sum(x * y for x, y in zip(a, b, strict=True)) / (na * nb)
 
 
 
@@ -235,7 +248,7 @@ def run(docs: list[dict], queries: list[dict], vectors: dict, grain: str) -> lis
         # contributing its alphabetical tie-break ranking.
         legs = [r for r, sc in ((bm_rank, bm_scores), (emb_rank, sims)) if any(s > 0 for s in sc)]
         relevant = set(q["gold_primary"]) | set(q["gold_acceptable"])
-        sim_of = dict(zip(ids, sims))
+        sim_of = dict(zip(ids, sims, strict=True))
         rows.append(
             {
                 **{k: q[k] for k in ("id", "category", "lang", "kind")},
@@ -286,7 +299,7 @@ def sweep(rows: list[dict]) -> list[dict]:
     the real-query recall loss from dropping results scoring below it."""
     distractors = [r for r in rows if not r["relevant"]]
     hits = [r for r in rows if r["relevant"] and r["gold_sim"] is not None]
-    cuts = sorted({round(x / 200, 3) for x in range(0, 200)})
+    cuts = sorted({round(x / 200, 3) for x in range(200)})
     out = []
     for t in cuts:
         rejected = sum(r["top_sim"] < t for r in distractors)
@@ -358,7 +371,7 @@ def lookup_sets(docs: list[dict]) -> tuple[list[dict], list[dict]]:
     return names, tokens[:25]
 
 
-def lookup_main(allow_api: bool) -> None:
+def lookup_main(*, allow_api: bool) -> None:
     """Score list-ranking against the golden set plus the names/tokens sets:
     does someone who only remembers a name or a keyword find it?"""
     docs, _ = load_corpus(require_enriched=True)
@@ -395,7 +408,7 @@ def lookup_main(allow_api: bool) -> None:
 
     def public_rule(qq: str) -> list[str]:
         r = dist_rank[qq]
-        kept = [i for i, dist in r if dist <= 0.75]
+        kept = [i for i, dist in r if dist <= PUBLIC_RULE_MAX_DISTANCE]
         q_tokens = set(tokenize(qq))
         covered = [i for i, _ in r if q_tokens and q_tokens <= doc_tokens[i]]
         page = covered + [i for i in kept if i not in covered]
@@ -405,7 +418,7 @@ def lookup_main(allow_api: bool) -> None:
 
     def creation_rule(qq: str) -> list[str]:
         r = dist_rank[qq]
-        kept = [i for i, dist in r if dist <= 0.55]
+        kept = [i for i, dist in r if dist <= CREATION_RULE_MAX_DISTANCE]
         q_tokens = set(tokenize(qq))
         covered = [i for i, _ in r if q_tokens and q_tokens <= doc_tokens[i] and i not in kept]
         return kept + covered[:1]
@@ -470,9 +483,11 @@ def _selfcheck() -> None:
     assert rank(bm.score("merge pdf pages"), ids)[0] == "a"
     assert rrf(["a", "b"], ["a", "b"])[0] == "a"
     assert tokenize("合併檔案") == ["合併", "併檔", "檔案"]
-    assert abs(cosine([3.0, 0.0], [5.0, 0.0]) - 1.0) < 1e-9
-    assert abs(cosine([1.0, 0.0], [0.0, 2.0])) < 1e-9
-    assert first_hit(["x", "y", "a"], {"a"}) == 3 and first_hit(["x"], {"a"}) is None
+    assert abs(cosine([3.0, 0.0], [5.0, 0.0]) - 1.0) < COSINE_TOLERANCE
+    assert abs(cosine([1.0, 0.0], [0.0, 2.0])) < COSINE_TOLERANCE
+    hit_comes_last = ["x", "y", "a"]
+    assert first_hit(hit_comes_last, {"a"}) == len(hit_comes_last)
+    assert first_hit(["x"], {"a"}) is None
 
     fake = [
         {"relevant": set(), "top_sim": 0.30, "gold_sim": None},
@@ -482,7 +497,10 @@ def _selfcheck() -> None:
     curve = {c["t"]: c for c in sweep(fake)}
     assert curve[0.25]["reject"] == 0.0 and curve[0.25]["loss"] == 0.0
     assert curve[0.40]["reject"] == 1.0 and curve[0.40]["loss"] == 0.0
-    assert curve[0.525]["loss"] == 0.5, "a cut above one gold must be charged as recall loss"
+    answerable = [q for q in fake if q["relevant"]]
+    assert curve[0.525]["loss"] == 1 / len(answerable), (
+        "a cut above one gold must be charged as recall loss"
+    )
     best = recommend(sweep(fake))
     assert best["reject"] == 1.0 and best["loss"] == 0.0
 
@@ -502,7 +520,7 @@ def _selfcheck() -> None:
     docs_real, _ = load_corpus()
     known = {d["id"] for d in docs_real}
     qs = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
-    assert len(qs) == 60, len(qs)
+    assert len(qs) == GOLDEN_QUERY_COUNT, len(qs)
     seen = set()
     for q in qs:
         assert q["id"] not in seen
@@ -512,15 +530,15 @@ def _selfcheck() -> None:
         assert (q["kind"] == "distractor") == (not q["gold_primary"]), q["id"]
     for cat in ("documents", "writing", "data"):
         sub = [q for q in qs if q["category"] == cat]
-        assert len(sub) == 20, cat
-        assert sum(q["lang"] == "zh" for q in sub) == 12, cat
-        assert sum(q["kind"] == "distractor" for q in sub) >= 4, cat
+        assert len(sub) == QUERIES_PER_CATEGORY, cat
+        assert sum(q["lang"] == "zh" for q in sub) == ZH_QUERIES_PER_CATEGORY, cat
+        assert sum(q["kind"] == "distractor" for q in sub) >= MIN_DISTRACTORS_PER_CATEGORY, cat
     assert not [l for l in check_repo_share(docs_real, qs) if "超標" in l]
     print("selfcheck ok")
 
 
 
-def main(allow_api: bool, index_mode: str) -> None:
+def main(*, allow_api: bool, index_mode: str) -> None:
     enriched_mode = index_mode == "enriched"
     docs, manifest = load_corpus(require_enriched=enriched_mode)
     queries = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
@@ -552,7 +570,7 @@ def main(allow_api: bool, index_mode: str) -> None:
     _print_similarity(rows)
     _print_threshold_curve(rows)
     _print_repo_share(docs, queries)
-    _print_misses(results, grains, enriched_mode)
+    _print_misses(results, grains, enriched_mode=enriched_mode)
 
 
 def _print_hit_rates(label: str, rows: list[dict], results: dict, grains: list[str]) -> None:
@@ -598,7 +616,9 @@ def _print_threshold_curve(rows: list[dict]) -> None:
     curve = sweep(rows)
     print("| 餘弦相似度門檻 | 餘弦距離門檻 | 干擾查詢正確回「無結果」 | 正常查詢召回損失 |")
     print("| --- | --- | --- | --- |")
-    shown = {c["t"] for c in curve if 0.15 <= c["t"] <= 0.55 and abs(c["t"] * 100 - round(c["t"] * 100)) < 1e-9}
+    shown = {c["t"] for c in curve
+             if CURVE_TABLE_MIN_SIMILARITY <= c["t"] <= CURVE_TABLE_MAX_SIMILARITY
+             and abs(c["t"] * 100 - round(c["t"] * 100)) < COSINE_TOLERANCE}
     for c in curve:
         if c["t"] in shown and round(c["t"] * 100) % 2 == 0:
             print(
@@ -632,12 +652,12 @@ def _print_repo_share(docs: list[dict], queries: list[dict]) -> None:
         print(line)
 
 
-def _print_misses(results: dict, grains: list[str], enriched_mode: bool) -> None:
+def _print_misses(results: dict, grains: list[str], *, enriched_mode: bool) -> None:
     print("\n## 5. 未命中的查詢（向量腿 recall@5 miss）\n")
     for g in grains:
         if g == "fulltext":
             continue
-        misses = [r for r in results[g] if r["relevant"] and (r["emb"] is None or r["emb"] > 5)]
+        misses = [r for r in results[g] if r["relevant"] and (r["emb"] is None or r["emb"] > RECALL_AT_K)]
         print(f"索引欄位 {g}：" + ("（無）" if not misses else ""))
         for r in misses:
             print(

@@ -3,12 +3,14 @@
 and /proc replaced by fakes: no command runs and no real process is read."""
 
 import builtins
+import contextlib
 import importlib.util
 import io
 import json
 import os
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -158,6 +160,49 @@ def test_every_credential_shape_is_found_by_location_and_never_by_value():
                       f"and for postgres:// URLs (values deliberately not printed) -- 5 hit(s): "
                       + "; ".join(hits)), detail
     assert "hunter2" not in detail
+
+
+def test_the_offline_self_check_passes_every_grading_case():
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = probe.self_check()
+    assert code == 0
+    assert "BAD" not in out.getvalue(), out.getvalue()
+    assert out.getvalue().splitlines()[-1] == "self-check: all grading cases behave"
+
+
+def test_grade_gvisor_reports_the_early_verdict_when_the_baseline_is_unusable():
+    assert probe.grade_gvisor("runsc 1.2.3 abcdef", None)[0] == probe.UNKNOWN
+    assert probe.grade_gvisor("runsc 1.2.3 abcdef", "unset")[0] == probe.FAIL
+    assert probe.grade_gvisor("runsc 1.2.3 abcdef", "")[0] == probe.UNKNOWN
+
+
+def test_grade_gvisor_passes_when_the_node_is_at_or_above_baseline():
+    status, detail = probe.grade_gvisor(
+        "runsc version release-20260201.0 (go1.22)", "release-20260101.0"
+    )
+    assert status == probe.PASS, detail
+
+
+def test_grade_gvisor_fails_when_the_node_is_below_baseline():
+    status, detail = probe.grade_gvisor(
+        "runsc version release-20260101.0 (go1.22)", "release-20260201.0"
+    )
+    assert status == probe.FAIL, detail
+    assert "BELOW BASELINE" in detail
+
+
+def test_grade_node_age_reports_the_precondition_before_parsing_a_timestamp():
+    now = datetime(2026, 8, 27, tzinfo=timezone.utc)
+    assert probe.grade_node_age(None, now)[0] == probe.UNKNOWN
+    assert probe.grade_node_age("2026-08-20T00:00:00Z", now, "provision")[0] == probe.UNKNOWN
+
+
+def test_grade_node_age_passes_for_a_fresh_serving_node():
+    now = datetime(2026, 8, 27, tzinfo=timezone.utc)
+    created = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    status, _ = probe.grade_node_age(created, now, probe.BUILD_PHASE_SERVING)
+    assert status == probe.PASS
 
 
 if __name__ == "__main__":

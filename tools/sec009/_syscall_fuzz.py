@@ -5,6 +5,7 @@ by a parent that respawns short-lived children and sums their counters.
 
 Usage: _syscall_fuzz.py <seconds> <worker-index>. Prints one JSON object."""
 
+import contextlib
 import ctypes
 import json
 import os
@@ -12,12 +13,15 @@ import random
 import signal
 import sys
 import time
+from dataclasses import dataclass
 
 MAX_SYSCALL = 452
 
 SLICE_SECONDS = 1.0
 
 SLICE_GRACE_SECONDS = 5.0
+
+SELF_CHECK_EXIT_CODE = 7
 
 DENY = {
     56, 57, 58, 435,
@@ -94,51 +98,58 @@ def reap(pid, budget):
     """Collect one slice, never waiting past its own budget: SIGKILLs the
     child if it hasn't been reaped by the deadline, since a fuzzed syscall
     can disable the SIGALRM that would otherwise bound a hung child."""
-    if _wait_until(pid, time.time() + budget) is not None:
-        return _last_status
-    try:
+    reaped = _wait_until(pid, time.time() + budget)
+    if reaped is not None:
+        return reaped[1]
+    with contextlib.suppress(OSError):
         os.kill(pid, signal.SIGKILL)
-    except OSError:
-        pass
     _wait_until(pid, time.time() + SLICE_GRACE_SECONDS)
     return None
 
 
-_last_status = 0
-
-
 def _wait_until(pid, deadline):
-    """Poll for pid until deadline. Returns pid on reap, None on timeout."""
-    global _last_status
+    """Poll for pid until deadline. Returns (pid, status) on reap, None on timeout."""
     while True:
         done, status = os.waitpid(pid, os.WNOHANG)
         if done == pid:
-            _last_status = status
-            return pid
+            return pid, status
         if time.time() >= deadline:
             return None
         time.sleep(0.01)
 
 
-def report(worker, calls, errnos, slices, crashes, killed,
-           uid_before, gid_before, uid_after, gid_after):
+@dataclass
+class WorkerProgress:
+    worker: int
+    calls: int
+    errnos: set
+    slices: int
+    crashes: int
+    killed: int
+    uid_before: int
+    gid_before: int
+    uid_after: int
+    gid_after: int
+
+
+def report(progress: WorkerProgress):
     """The one shape a worker reports in, mid-run or at the end."""
     return {
-        "worker": worker,
-        "calls": calls,
-        "distinct_errnos": len(errnos),
-        "errnos": sorted(errnos),
-        "slices": slices,
-        "child_crashes": crashes,
-        "child_killed": killed,
-        "uid_before": uid_before,
-        "gid_before": gid_before,
-        "uid_after": uid_after,
-        "gid_after": gid_after,
+        "worker": progress.worker,
+        "calls": progress.calls,
+        "distinct_errnos": len(progress.errnos),
+        "errnos": sorted(progress.errnos),
+        "slices": progress.slices,
+        "child_crashes": progress.crashes,
+        "child_killed": progress.killed,
+        "uid_before": progress.uid_before,
+        "gid_before": progress.gid_before,
+        "uid_after": progress.uid_after,
+        "gid_after": progress.gid_after,
     }
 
 
-def emit(payload, progress=False):
+def emit(payload, *, progress=False):
     """Write one record as a single line, in one os.write, so this worker's
     line can't interleave with another's on shared stdout."""
     payload = dict(payload, progress=progress)
@@ -168,9 +179,10 @@ def self_check():
 
     pid = os.fork()
     if pid == 0:
-        os._exit(7)
+        os._exit(SELF_CHECK_EXIT_CODE)
     status = reap(pid, budget)
-    exited7 = status is not None and os.WIFEXITED(status) and os.WEXITSTATUS(status) == 7
+    exited7 = (status is not None and os.WIFEXITED(status)
+               and os.WEXITSTATUS(status) == SELF_CHECK_EXIT_CODE)
     print("  %-44s %s (status %r)"
           % ("a child that exits normally is reaped, not killed",
              "ok" if exited7 else "FAIL", status))
@@ -188,15 +200,13 @@ def main():
     slices = crashes = killed = 0
     uid_after, gid_after = uid_before, gid_before
 
-    emit(report(worker, 0, set(), 0, 0, 0, uid_before, gid_before, uid_after, gid_after),
-         progress=True)
+    emit(report(WorkerProgress(worker, 0, set(), 0, 0, 0, uid_before, gid_before,
+                               uid_after, gid_after)), progress=True)
 
     deadline = time.time() + seconds
     while time.time() < deadline:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(result_path)
-        except OSError:
-            pass
 
         remaining = min(SLICE_SECONDS, deadline - time.time())
         if remaining <= 0:
@@ -226,11 +236,12 @@ def main():
             pass
 
         if slices % 30 == 0:
-            emit(report(worker, calls, errnos, slices, crashes, killed,
-                        uid_before, gid_before, uid_after, gid_after), progress=True)
+            emit(report(WorkerProgress(worker, calls, errnos, slices, crashes, killed,
+                                       uid_before, gid_before, uid_after, gid_after)),
+                 progress=True)
 
-    emit(report(worker, calls, errnos, slices, crashes, killed,
-                uid_before, gid_before, uid_after, gid_after))
+    emit(report(WorkerProgress(worker, calls, errnos, slices, crashes, killed,
+                               uid_before, gid_before, uid_after, gid_after)))
 
 
 if __name__ == "__main__":

@@ -553,7 +553,7 @@ def test_embed_success():
     assert response.status_code == 200
     body = response.json()
     assert body["model"] == "text-embedding-3-small"
-    assert body["dimensions"] == 1536
+    assert body["dimensions"] == 1536  # one-number: embeddingDimensions
     assert len(body["embeddings"]) == 2
 
 

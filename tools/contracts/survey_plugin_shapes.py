@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import http
 import json
 import sys
 import time
@@ -30,24 +31,33 @@ PROBES = ["plugin.json", ".claude-plugin/plugin.json", ".claude-plugin/marketpla
 HEADERS = {"User-Agent": "skillhub-plugin-shape-survey"}
 
 
-def _get(url: str, accept_json: bool):
+def _get_bytes(url: str) -> tuple[int, bytes | None]:
     request = urllib.request.Request(url, headers=dict(HEADERS, Accept="application/vnd.github+json"))
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            body = response.read(200_000)
-        return 200, (json.loads(body) if accept_json else body.decode("utf-8", "replace"))
+            return 200, response.read(200_000)
     except urllib.error.HTTPError as e:
         return e.code, None
     except Exception:
         return 0, None
 
 
+def _get_json(url: str) -> tuple[int, dict | None]:
+    status, body = _get_bytes(url)
+    return status, (json.loads(body) if body is not None else None)
+
+
+def _get_text(url: str) -> tuple[int, str | None]:
+    status, body = _get_bytes(url)
+    return status, (body.decode("utf-8", "replace") if body is not None else None)
+
+
 def discover() -> dict[str, dict]:
     repos: dict[str, dict] = {}
     for topic in TOPICS:
-        status, page = _get(
-            f"https://api.github.com/search/repositories?q=topic:{topic}&sort=stars&per_page=40", True)
-        if status != 200:
+        status, page = _get_json(
+            f"https://api.github.com/search/repositories?q=topic:{topic}&sort=stars&per_page=40")
+        if status != http.HTTPStatus.OK:
             print(f"topic {topic}: HTTP {status}", file=sys.stderr)
             continue
         for item in page.get("items", []):
@@ -61,9 +71,9 @@ def probe(repos: dict[str, dict]) -> dict[str, dict]:
     for name, row in repos.items():
         row["found"] = []
         for path in PROBES:
-            status, body = _get(
-                f"https://raw.githubusercontent.com/{name}/{row['default_branch']}/{path}", False)
-            if status != 200:
+            status, body = _get_text(
+                f"https://raw.githubusercontent.com/{name}/{row['default_branch']}/{path}")
+            if status != http.HTTPStatus.OK:
                 continue
             row["found"].append(path)
             if path == "plugin.json":

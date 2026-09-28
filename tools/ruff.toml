@@ -1,7 +1,10 @@
 line-length = 100
 
 [lint]
-select = ["C901", "PLR0912", "PLR0915"]
+select = ["C90", "PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE"]
+
+[lint.per-file-ignores]
+"test_*.py" = ["PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE"]
 
 [lint.mccabe]
 max-complexity = 10

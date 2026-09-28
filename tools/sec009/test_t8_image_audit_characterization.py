@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import sys
+import tempfile
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
@@ -162,6 +163,56 @@ def test_an_expired_scan_fails_and_keeps_its_negative_expiry():
                             bundle=statement(finished="2026-07-01T00:00:00Z", summary={})))
     assert rows[3] == ("I-04", audit.FAIL, "scanned 2026-07-01T00:00:00Z, 53 day(s) old, expires "
                        "2026-07-31 -- EXPIRED", -23), rows
+
+
+def test_first_value_skips_comments_and_blank_lines():
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "value.txt"
+        path.write_text("# a comment\n\n  \n1.2.3\nignored-second-line\n", encoding="utf-8")
+        assert audit.first_value(str(path)) == "1.2.3"
+
+
+def test_first_value_of_an_all_comment_file_is_empty():
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "value.txt"
+        path.write_text("# only comments\n# more\n", encoding="utf-8")
+        assert audit.first_value(str(path)) == ""
+
+
+def test_dockerfile_version_wraps_a_missing_file_and_keeps_its_cause():
+    with mock.patch.object(audit, "DOCKERFILE", "/no/such/dockerfile"):
+        try:
+            audit.dockerfile_version()
+        except audit.SetupError as exc:
+            assert "cannot read" in str(exc), exc
+            assert isinstance(exc.__cause__, OSError)
+        else:
+            raise AssertionError("a missing Dockerfile must raise SetupError")
+
+
+def test_pinned_ip_wraps_a_missing_allowlist_and_keeps_its_cause():
+    with mock.patch.object(audit, "ALLOWLIST_FILE", "/no/such/allowlist.yaml"):
+        try:
+            audit.pinned_ip()
+        except audit.SetupError as exc:
+            assert "cannot read" in str(exc), exc
+            assert isinstance(exc.__cause__, OSError)
+        else:
+            raise AssertionError("a missing allow-list must raise SetupError")
+
+
+def test_token_wraps_a_network_failure_and_keeps_its_cause():
+    with mock.patch.object(
+        audit.urllib.request, "urlopen",
+        side_effect=urllib.error.URLError("no route to host"),
+    ):
+        try:
+            audit._token()
+        except audit.SetupError as exc:
+            assert "could not get an anonymous pull token" in str(exc), exc
+            assert isinstance(exc.__cause__, urllib.error.URLError)
+        else:
+            raise AssertionError("a network failure must raise SetupError")
 
 
 if __name__ == "__main__":

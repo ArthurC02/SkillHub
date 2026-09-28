@@ -7,6 +7,7 @@ own vocabulary, never from model output or package content.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -129,26 +130,28 @@ def _english_example_findings(examples: list[str]) -> list[Finding]:
     ]
 
 
-def check_enrichment(
-    *,
-    skill_md: str,
-    file_tree: list[str],
-    summary: str,
-    limitations: list[str],
-    task_examples_en: list[str],
-    tags_flat: list[str],
-) -> list[Finding]:
+@dataclass
+class EnrichmentDocument:
+    skill_md: str
+    file_tree: list[str]
+    summary: str
+    limitations: list[str]
+    task_examples_en: list[str]
+    tags_flat: list[str]
+
+
+def check_enrichment(document: EnrichmentDocument) -> list[Finding]:
     """Every deterministic finding for one enrichment, in rule order.
 
     `source` is the document AND its file list: a script's file extension
     also counts as evidence the Skill needs that runtime.
     """
-    source = skill_md + "\n" + "\n".join(file_tree)
-    appraisal_fields = [("summary", summary)]
-    appraisal_fields += [(f"limitations[{i}]", t) for i, t in enumerate(limitations)]
-    appraisal_fields += [(f"tags[{i}]", t) for i, t in enumerate(tags_flat)]
+    source = document.skill_md + "\n" + "\n".join(document.file_tree)
+    appraisal_fields = [("summary", document.summary)]
+    appraisal_fields += [(f"limitations[{i}]", t) for i, t in enumerate(document.limitations)]
+    appraisal_fields += [(f"tags[{i}]", t) for i, t in enumerate(document.tags_flat)]
     return (
-        _runtime_findings(source, limitations)
+        _runtime_findings(source, document.limitations)
         + _appraisal_findings(source, appraisal_fields)
-        + _english_example_findings(task_examples_en)
+        + _english_example_findings(document.task_examples_en)
     )

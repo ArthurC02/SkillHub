@@ -25,7 +25,7 @@ from skillhub_llm.gateway import (
 )
 from skillhub_llm.untrusted import scrub
 
-from .enrich_checks import Finding, check_enrichment
+from .enrich_checks import EnrichmentDocument, Finding, check_enrichment
 
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
@@ -215,17 +215,19 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
     return EnrichSkillResponse(
         **enrichment.model_dump(),
         checks=check_enrichment(
-            skill_md=req.skill_md,
-            file_tree=req.file_tree,
-            summary=enrichment.summary,
-            limitations=enrichment.limitations,
-            task_examples_en=[e.en for e in enrichment.task_examples],
-            tags_flat=(
-                enrichment.tags.inputs
-                + enrichment.tags.outputs
-                + enrichment.tags.tools
-                + enrichment.tags.dependencies
-            ),
+            EnrichmentDocument(
+                skill_md=req.skill_md,
+                file_tree=req.file_tree,
+                summary=enrichment.summary,
+                limitations=enrichment.limitations,
+                task_examples_en=[e.en for e in enrichment.task_examples],
+                tags_flat=(
+                    enrichment.tags.inputs
+                    + enrichment.tags.outputs
+                    + enrichment.tags.tools
+                    + enrichment.tags.dependencies
+                ),
+            )
         ),
         model=served_model(completion, raw.headers, ENRICH_MODEL),
         prompt_version=PROMPT_VERSION,

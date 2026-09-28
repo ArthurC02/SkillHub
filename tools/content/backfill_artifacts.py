@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import tarfile
+from dataclasses import dataclass
 
 PG_CONTAINER = os.getenv("PG_CONTAINER", "skillhub-postgres-1")
 PG_USER = os.getenv("PG_USER", "skillhub")
@@ -53,7 +54,15 @@ def manifest(path):
     return rows
 
 
-def statement(run_id, workspace_id, created_at, key, name, size, digest):
+@dataclass
+class ArtifactManifestEntry:
+    key: str
+    name: str
+    size: int
+    digest: str
+
+
+def statement(run_id, workspace_id, created_at, entry):
     """One idempotent INSERT, the same shape as InsertRunArtifact's.
 
     `WHERE NOT EXISTS` rather than `ON CONFLICT`: there is no unique key to
@@ -63,12 +72,12 @@ def statement(run_id, workspace_id, created_at, key, name, size, digest):
         "INSERT INTO artifacts (workspace_id, run_id, kind, file_name, "
         "content_type, size_bytes, content_hash, object_key, expires_at)\n"
         "SELECT " + quote(workspace_id) + "::uuid, " + quote(run_id) + "::uuid, "
-        "'run_output', " + quote(name) + ", 'application/octet-stream', "
-        + str(size) + ", " + quote(digest) + ", " + quote(key) + ", "
+        "'run_output', " + quote(entry.name) + ", 'application/octet-stream', "
+        + str(entry.size) + ", " + quote(entry.digest) + ", " + quote(entry.key) + ", "
         + quote(created_at) + "::timestamptz + interval '30 days'\n"
         "WHERE NOT EXISTS (SELECT 1 FROM artifacts WHERE run_id = "
         + quote(run_id) + "::uuid AND kind = 'run_output' AND file_name = "
-        + quote(name) + ");"
+        + quote(entry.name) + ");"
     )
 
 
@@ -92,8 +101,8 @@ def scan_archives(tar_dir, runs):
         for name, size, digest in manifest(os.path.join(root, "artifacts.tar")):
             total_rows += 1
             per_run[run_id] += 1
-            stmts.append(statement(run_id, run["workspace_id"], run["created_at"],
-                                   key, name, size, digest))
+            entry = ArtifactManifestEntry(key, name, size, digest)
+            stmts.append(statement(run_id, run["workspace_id"], run["created_at"], entry))
     return stmts, orphan_archives, already, total_rows, per_run
 
 
@@ -140,7 +149,7 @@ def main():
     proc = subprocess.run(
         ["docker", "exec", "-i", PG_CONTAINER, "psql", "-U", PG_USER, "-d", PG_DB,
          "-q", "-v", "ON_ERROR_STOP=1", "-1"],
-        input=sql, capture_output=True, text=True, encoding="utf-8",
+        input=sql, capture_output=True, text=True, encoding="utf-8", check=False,
     )
     sys.stderr.write(proc.stdout + proc.stderr)
     if proc.returncode != 0:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import http
 import ipaddress
 import json
 import pathlib
@@ -57,9 +58,12 @@ class RenderError(Exception):
     pass
 
 
+IPV4_VERSION = 4
+
+
 def is_ipv4(value):
     try:
-        return ipaddress.ip_address(value).version == 4
+        return ipaddress.ip_address(value).version == IPV4_VERSION
     except ValueError:
         return False
 
@@ -73,8 +77,8 @@ SHAPES = {
 
 def read_settings(text):
     settings = {}
-    for number, line in enumerate(text.splitlines(), 1):
-        line = line.strip()
+    for number, raw_line in enumerate(text.splitlines(), 1):
+        line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         key, sep, value = line.partition("=")
@@ -97,7 +101,7 @@ def ghcr_digest(repository, tag):
         with urllib.request.urlopen(request, timeout=30) as response:
             return response.headers.get("Docker-Content-Digest", "")
     except urllib.error.HTTPError as error:
-        if error.code == 404:
+        if error.code == http.HTTPStatus.NOT_FOUND:
             return ""
         raise
 

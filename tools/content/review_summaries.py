@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import datetime as dt
+import http
 import json
 import math
 import os
@@ -44,6 +45,8 @@ PRICE = {"in": 2.00, "out": 12.00, "embed": 0.02}
 FAITHFULNESS_MAX_UNSUPPORTED = 0
 COMPREHENSION_REQUIRED = 3
 DRIFT_MIN_COSINE = 0.90
+SEED_SKILL_COUNT = 45
+COSINE_TOLERANCE = 1e-9
 
 # Simplified-only characters: a hit is proof, a miss is not proof of absence.
 # Characters valid in both scripts are excluded on purpose to avoid false positives.
@@ -187,15 +190,22 @@ def provider(path: str, body: dict, key: str, timeout: int = 300) -> dict:
     )
     last = ""
     for attempt in range(3):
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.load(resp)
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            last = e.read().decode("utf-8", "replace")[:300] if hasattr(e, "read") else str(e)
-            if getattr(e, "code", 0) in (400, 401, 403, 404):
-                break
-            time.sleep(2 * (attempt + 1))
+        answer, failure = _ask_once(req, timeout)
+        if failure is None:
+            return answer
+        last = failure.read().decode("utf-8", "replace")[:300] if hasattr(failure, "read") else str(failure)
+        if getattr(failure, "code", 0) in (400, 401, 403, 404):
+            break
+        time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"provider call failed: {last}")
+
+
+def _ask_once(req: urllib.request.Request, timeout: int) -> tuple[dict | None, OSError | None]:
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.load(resp), None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        return None, e
 
 
 USAGE = {"in": 0, "out": 0, "embed": 0, "calls": 0}
@@ -231,7 +241,7 @@ def embed(texts: list[str], key: str) -> list[list[float]]:
 
 
 def cosine(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return dot / (na * nb) if na and nb else 0.0
@@ -389,7 +399,7 @@ def fetch_online(api: str) -> dict[str, dict]:
     opener = make_opener()
     dev_login(opener, api)
     status, body = request(opener, f"{api}/skills")
-    if status != 200:
+    if status != http.HTTPStatus.OK:
         raise SystemExit(f"GET /skills failed ({status})")
     out = {}
     for row in json.loads(body)["skills"]:
@@ -409,7 +419,7 @@ def fetch_online(api: str) -> dict[str, dict]:
 
 
 
-def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict:
+def review_one(row: dict, online: dict, key: str, *, mechanical_only: bool) -> dict:
     enr = online["enrichment"]
     if enr.get("status") != "enriched":
         return {
@@ -527,7 +537,9 @@ def _review_rows(rows: list[dict], online: dict, key: str, args) -> list[dict]:
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         futs = {
-            pool.submit(review_one, r, online[r["skill"]], key, args.mechanical_only): r
+            pool.submit(
+                review_one, r, online[r["skill"]], key, mechanical_only=args.mechanical_only
+            ): r
             for r in rows
         }
         for i, fut in enumerate(concurrent.futures.as_completed(futs), 1):
@@ -556,8 +568,8 @@ def _measure_drift(results: list[dict], rows: list[dict], recorded: list[dict],
     names = [r["skill"] for r in rows]
     on_vecs = embed([online[n]["enrichment"].get("summary", "") for n in names], key)
     rec_vecs = embed([by_id[r["id"]]["summary"] for r in rows], key)
-    on_map = dict(zip(names, on_vecs))
-    vec_of = dict(zip(names, zip(on_vecs, rec_vecs)))
+    on_map = dict(zip(names, on_vecs, strict=True))
+    vec_of = dict(zip(names, zip(on_vecs, rec_vecs, strict=True), strict=True))
     for res in results:
         ov, rv = vec_of[res["skill"]]
         c = round(cosine(ov, rv), 4)
@@ -675,12 +687,12 @@ def selftest() -> int:
     assert term_density("此技能使用 pandas（一種資料處理工具）。") == 0.0
 
     a = [1.0, 0.0, 0.0]
-    assert abs(cosine(a, a) - 1.0) < 1e-9
-    assert abs(cosine(a, [0.0, 1.0, 0.0])) < 1e-9
+    assert abs(cosine(a, a) - 1.0) < COSINE_TOLERANCE
+    assert abs(cosine(a, [0.0, 1.0, 0.0])) < COSINE_TOLERANCE
 
     rows = json.loads(SUMMARIES.read_text(encoding="utf-8"))["summaries"]
-    assert len(rows) == 45, len(rows)
-    assert JUDGE_MODEL != rows[0]["model"], "judge model must differ from the generating model"
+    assert len(rows) == SEED_SKILL_COUNT, len(rows)
+    assert rows[0]["model"] != JUDGE_MODEL, "judge model must differ from the generating model"
     print("selftest ok")
     return 0
 

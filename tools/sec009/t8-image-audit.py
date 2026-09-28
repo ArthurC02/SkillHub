@@ -59,7 +59,7 @@ def _token() -> str:
         with urllib.request.urlopen(url, timeout=30) as resp:
             return json.load(resp)["token"]
     except (urllib.error.URLError, KeyError, ValueError) as exc:
-        raise SetupError("could not get an anonymous pull token: %s" % exc)
+        raise SetupError("could not get an anonymous pull token: %s" % exc) from exc
 
 
 def _get(path: str, token: str, accept: str | None = None):
@@ -88,7 +88,7 @@ def dockerfile_version() -> str:
         with open(DOCKERFILE, encoding="utf-8") as fh:
             text = fh.read()
     except OSError as exc:
-        raise SetupError("cannot read %s: %s" % (DOCKERFILE, exc))
+        raise SetupError("cannot read %s: %s" % (DOCKERFILE, exc)) from exc
     m = re.search(r"^ARG IMAGE_VERSION=(.+)$", text, re.M)
     if not m:
         raise SetupError("ARG IMAGE_VERSION not found in the Dockerfile")
@@ -110,8 +110,8 @@ def dockerfile_base_is_pinned() -> tuple[bool, str]:
 def first_value(path: str) -> str:
     """First non-comment, non-blank line of a file."""
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for raw_line in fh:
+            line = raw_line.strip()
             if line and not line.startswith("#"):
                 return line
     return ""
@@ -125,7 +125,7 @@ def pinned_ip() -> str:
         with open(ALLOWLIST_FILE, encoding="utf-8") as fh:
             text = fh.read()
     except OSError as exc:
-        raise SetupError("cannot read %s: %s" % (ALLOWLIST_FILE, exc))
+        raise SetupError("cannot read %s: %s" % (ALLOWLIST_FILE, exc)) from exc
     m = re.search(r"^\s*pinned_ip:\s*(\S+)\s*$", text, re.M)
     return m.group(1) if m else ""
 

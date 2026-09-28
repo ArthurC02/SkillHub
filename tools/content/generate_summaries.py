@@ -36,6 +36,7 @@ OUT = HERE / "summaries.json"
 GOLDENSET = HERE.parent / "goldenset"
 DEFAULT_URL = "http://127.0.0.1:8099"
 TIMEOUT = 180
+SEED_SKILL_COUNT = 45
 
 
 
@@ -199,7 +200,7 @@ def selftest() -> int:
     seed = json.loads(SEED.read_text(encoding="utf-8"))
     manifest = json.loads((GOLDENSET / "manifest.json").read_text(encoding="utf-8"))
 
-    assert len(seed["skills"]) == 45, len(seed["skills"])
+    assert len(seed["skills"]) == SEED_SKILL_COUNT, len(seed["skills"])
 
     reuse = reusable(seed, manifest)
     bent = json.loads(json.dumps(seed))

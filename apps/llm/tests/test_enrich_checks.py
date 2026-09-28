@@ -8,6 +8,7 @@ made the claim itself.
 from __future__ import annotations
 
 from skillhub_llm.enrich_checks import (
+    EnrichmentDocument,
     check_enrichment,
 )
 
@@ -21,7 +22,7 @@ def run(**kw):
         "task_examples_en": [],
         "tags_flat": [],
     }
-    return check_enrichment(**{**base, **kw})
+    return check_enrichment(EnrichmentDocument(**{**base, **kw}))
 
 
 def rules(findings):

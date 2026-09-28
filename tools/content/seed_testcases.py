@@ -23,6 +23,7 @@ import os
 import pathlib
 import sys
 import uuid
+from dataclasses import dataclass
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -33,6 +34,10 @@ RUBRICS = REPO / "tools" / "eval-regression" / "rubric-content-007-writing-v1.js
 DEFAULT_API = os.environ.get("SKILLHUB_API", "http://localhost:8080")
 
 SLUG_PREFIX = "content-007/"
+
+CURATED_TEST_CASE_COUNT = 15
+WRITING_SKILL_COUNT = 5
+CURATED_RUBRIC_ITEM_COUNT = 22
 
 PROMPT_TEMPLATE = """請使用「{name}」這個 Skill 完成以下任務：{task}
 
@@ -135,6 +140,12 @@ def multipart(field: str, filename: str, data: bytes) -> tuple[bytes, str]:
     return body, f"multipart/form-data; boundary={boundary}"
 
 
+@dataclass
+class RawBody:
+    data: bytes
+    content_type: str
+
+
 class Client:
     """Thin wrapper over import_seed's opener so failures read as one line."""
 
@@ -142,15 +153,16 @@ class Client:
         self.mod, self.api = mod, api
         self.opener = mod.make_opener()
 
-    def call(self, method: str, path: str, *, json_body=None, raw=None, ctype=None, want=(200, 201)):
+    def call(self, method: str, path: str, *, json_body=None, raw: RawBody | None = None,
+             want=(200, 201)):
         import urllib.request
 
         url = self.api + path
-        data = None
+        data, ctype = None, None
         if json_body is not None:
             data, ctype = json.dumps(json_body).encode(), "application/json"
         elif raw is not None:
-            data = raw
+            data, ctype = raw.data, raw.content_type
         req = urllib.request.Request(url, data=data, method=method)
         if ctype:
             req.add_header("Content-Type", ctype)
@@ -162,7 +174,7 @@ class Client:
         except urllib.error.HTTPError as e:
             status, body = e.code, e.read()
         except urllib.error.URLError as e:
-            raise SystemExit(f"{method} {path}: {e.reason}")
+            raise SystemExit(f"{method} {path}: {e.reason}") from e
         if status not in want:
             raise SystemExit(f"{method} {path} -> {status}: {body[:300].decode('utf-8', 'replace')}")
         return json.loads(body) if body else {}
@@ -179,7 +191,7 @@ def seed_one(client: Client, entry: dict, skill_id: str, files: dict[str, bytes]
 
     for filename, data in files.items():
         body, ctype = multipart("file", filename, data)
-        client.call("POST", f"/test-cases/{tcid}/datasets", raw=body, ctype=ctype)
+        client.call("POST", f"/test-cases/{tcid}/datasets", raw=RawBody(body, ctype))
 
     for text in entry["criteria"]:
         tc = client.call("POST", f"/test-cases/{tcid}/criteria", json_body={"text": text})
@@ -260,11 +272,11 @@ def run(args) -> int:
 
 def selftest() -> int:
     plan = curated_plan()
-    assert len(plan) == 15, len(plan)
+    assert len(plan) == CURATED_TEST_CASE_COUNT, len(plan)
 
     with_rubric = [e for e in plan if e["rubric"]]
-    assert len(with_rubric) == 5, [e["skill_name"] for e in with_rubric]
-    assert sum(len(e["rubric"]["items"]) for e in with_rubric) == 22
+    assert len(with_rubric) == WRITING_SKILL_COUNT, [e["skill_name"] for e in with_rubric]
+    assert sum(len(e["rubric"]["items"]) for e in with_rubric) == CURATED_RUBRIC_ITEM_COUNT
 
     for e in plan:
         assert e["test_case_name"] == SLUG_PREFIX + e["skill_name"]

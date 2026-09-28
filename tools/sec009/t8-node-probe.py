@@ -41,6 +41,8 @@ SANDBOX_LABEL = "skillhub.sandbox.managed"
 PROBE_LABEL = "skillhub.sandbox.probe"
 PLATFORM_CONTAINER_RE = re.compile(r"sandboxd", re.I)
 
+DOCKER_PS_FIELD_COUNT = 4
+
 CRED_NAMES = ("SKILLHUB_DATABASE_URL", "DATABASE_URL", "PGPASSWORD", "SKILLHUB_SECRETS_TOKEN")
 CRED_VALUE_RE = re.compile(rb"postgres(?:ql)?://[^\s\"']+")
 CRED_PATHS = ("/etc/skillhub", "/etc/environment", "/etc/default", "/run/secrets", "/opt/skillhub")
@@ -75,7 +77,7 @@ def sh(*cmd: str) -> tuple[int, str]:
     """Run a command. Returns (-1, reason) when it is not installed, as
     distinct from a real non-zero exit code (an answer, not "unknown")."""
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
     except FileNotFoundError:
         return -1, "%s is not installed on this node" % cmd[0]
     except (subprocess.SubprocessError, OSError) as exc:
@@ -87,8 +89,8 @@ def first_value(path: str) -> str | None:
     """First non-comment, non-blank line of a file; None if unreadable."""
     try:
         with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
+            for raw_line in fh:
+                line = raw_line.strip()
                 if line and not line.startswith("#"):
                     return line
     except OSError:
@@ -121,8 +123,8 @@ def parse_gvisor(text: str | None) -> tuple[int, int] | None:
     return int(m.group(1)), int(m.group(2) or 0)
 
 
-def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, str]:
-    """P-04. Node's runsc vs the IaC-rendered baseline. Blocking."""
+def _gvisor_baseline_problem(baseline: str | None) -> tuple[str, str] | None:
+    """Any reason `baseline` itself cannot be graded against; None if usable."""
     if baseline is None:
         return UNKNOWN, ("cannot read %s -- IaC rendered no baseline onto this node, so "
                          "there is nothing to compare `runsc --version` against" % BASELINE_FILE)
@@ -133,7 +135,15 @@ def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, s
             "baseline admits no node, and that is fail-closed, not a probe defect")
     if not baseline:
         return UNKNOWN, "baseline file has no value line"
+    return None
 
+
+def _gvisor_facts(node_version: str | None, baseline: str | None):
+    """The parsed (baseline, node) release pair, or an early verdict when
+    either side cannot be parsed."""
+    problem = _gvisor_baseline_problem(baseline)
+    if problem is not None:
+        return problem
     want = parse_gvisor(baseline)
     if want is None:
         return UNKNOWN, "baseline %r carries no release date, so it cannot be ranked" % baseline
@@ -143,7 +153,15 @@ def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, s
     if got is None:
         return UNKNOWN, "`runsc --version` said %r, which carries no release date" % (
             node_version.splitlines()[0] if node_version else node_version)
+    return want, got
 
+
+def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, str]:
+    """P-04. Node's runsc vs the IaC-rendered baseline. Blocking."""
+    facts = _gvisor_facts(node_version, baseline)
+    if isinstance(facts[0], str):
+        return facts
+    want, got = facts
     shown = "node runsc %s vs baseline %s (compared as (date, patch))" % (
         "%d.%d" % got, "%d.%d" % want)
     if got >= want:
@@ -151,9 +169,8 @@ def grade_gvisor(node_version: str | None, baseline: str | None) -> tuple[str, s
     return FAIL, shown + " -- BELOW BASELINE, node must not join the pool"
 
 
-def grade_node_age(created_at: str | None, now: datetime,
-                   build_phase: str | None = None) -> tuple[str, str]:
-    """P-03. Age of the cloud-init build timestamp against the 7-day cycle."""
+def _node_age_precondition(created_at: str | None, build_phase: str | None) -> tuple[str, str] | None:
+    """Any reason the facts themselves cannot be aged; None if usable."""
     if not created_at:
         return UNKNOWN, "node facts carry no `node_created_at`, so the node's age is unknown"
     if not build_phase:
@@ -172,12 +189,29 @@ def grade_node_age(created_at: str | None, now: datetime,
             "`build_phase` is %r, which is neither %r nor %r -- the facts file does not "
             "follow the contract this gate reads" % (
                 build_phase, BUILD_PHASE_PROVISION, BUILD_PHASE_SERVING))
+    return None
+
+
+def _parsed_build_time(created_at: str) -> datetime | tuple[str, str]:
+    """`created_at` as a tz-aware datetime, or an early verdict if unparseable."""
     try:
         built = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return UNKNOWN, "`node_created_at` is not a timestamp: %r" % created_at
     if built.tzinfo is None:
         built = built.replace(tzinfo=timezone.utc)
+    return built
+
+
+def grade_node_age(created_at: str | None, now: datetime,
+                   build_phase: str | None = None) -> tuple[str, str]:
+    """P-03. Age of the cloud-init build timestamp against the 7-day cycle."""
+    precondition = _node_age_precondition(created_at, build_phase)
+    if precondition is not None:
+        return precondition
+    built = _parsed_build_time(created_at)
+    if isinstance(built, tuple):
+        return built
 
     age = now - built
     if age < timedelta(seconds=0):
@@ -225,7 +259,7 @@ def check_p01(rep: Report, facts: dict | None, facts_why: str) -> None:
     strangers, counted = [], 0
     for line in out.splitlines():
         parts = line.split("|", 3)
-        if len(parts) < 4:
+        if len(parts) < DOCKER_PS_FIELD_COUNT:
             continue
         counted += 1
         _, name, image, labels = parts
@@ -344,9 +378,11 @@ def writable_binds(inspect_output: str) -> list[str]:
             mounts = json.loads(raw) or []
         except ValueError:
             continue
-        for m in mounts:
-            if m.get("Type") == "bind" and m.get("RW"):
-                bad.append("%s:%s(rw)" % (name.lstrip("/"), m.get("Source")))
+        bad.extend(
+            "%s:%s(rw)" % (name.lstrip("/"), m.get("Source"))
+            for m in mounts
+            if m.get("Type") == "bind" and m.get("RW")
+        )
     return bad
 
 
@@ -451,24 +487,24 @@ def self_check() -> int:
 
     print("P-03 -- node age:")
     now = datetime(2026, 8, 27, 12, 0, 0, tzinfo=timezone.utc)
-    SERVING = BUILD_PHASE_SERVING
+    serving = BUILD_PHASE_SERVING
 
     def at(days: float) -> str:
         return (now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    want("one day old", grade_node_age(at(1), now, SERVING), PASS)
-    want("6.9 days -- inside the cycle", grade_node_age(at(6.9), now, SERVING), PASS)
-    want("7.1 days -- past the cycle", grade_node_age(at(7.1), now, SERVING), FAIL)
-    want("15 days names the drain", grade_node_age(at(15), now, SERVING), FAIL, "drain")
+    want("one day old", grade_node_age(at(1), now, serving), PASS)
+    want("6.9 days -- inside the cycle", grade_node_age(at(6.9), now, serving), PASS)
+    want("7.1 days -- past the cycle", grade_node_age(at(7.1), now, serving), FAIL)
+    want("15 days names the drain", grade_node_age(at(15), now, serving), FAIL, "drain")
     want("no timestamp", grade_node_age(None, now), UNKNOWN)
-    want("unparseable timestamp", grade_node_age("last tuesday", now, SERVING), UNKNOWN)
-    want("timestamp in the future", grade_node_age(at(-1), now, SERVING), UNKNOWN)
+    want("unparseable timestamp", grade_node_age("last tuesday", now, serving), UNKNOWN)
+    want("timestamp in the future", grade_node_age(at(-1), now, serving), UNKNOWN)
     want("no build_phase at all", grade_node_age(at(1), now, None), UNKNOWN,
          "predates 05 R-17c")
     want("still provisioning", grade_node_age(at(1), now, "provision"), UNKNOWN,
          "has not finished being built")
     want("phase off contract", grade_node_age(at(1), now, "ready"), UNKNOWN, "contract")
-    want("serving, fresh off the build", grade_node_age(at(0), now, SERVING), PASS)
+    want("serving, fresh off the build", grade_node_age(at(0), now, serving), PASS)
 
     print("P-01b -- which containers belong on a sandbox node:")
     for label, container, expect in [

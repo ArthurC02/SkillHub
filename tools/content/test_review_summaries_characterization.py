@@ -4,6 +4,7 @@ import io
 import json
 import sys
 import tempfile
+import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -134,6 +135,70 @@ def test_a_skill_missing_online_stops_before_reviewing_anything():
             assert not (Path(folder) / "review-results.json").exists()
         else:
             raise AssertionError("a missing skill was reviewed anyway")
+
+
+def test_the_offline_selftest_passes_and_says_so_once():
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = review.selftest()
+    assert code == 0
+    assert out.getvalue() == "selftest ok\n", out.getvalue()
+
+
+def call_provider(outcomes):
+    pending, waits = list(outcomes), []
+
+    def urlopen(req, timeout):
+        outcome = pending.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return io.BytesIO(json.dumps(outcome).encode())
+
+    with mock.patch.object(review.urllib.request, "urlopen", urlopen), \
+            mock.patch.object(review.time, "sleep", waits.append):
+        try:
+            answer = review.provider("chat", {}, "k")
+        except RuntimeError as exc:
+            answer = exc
+    return answer, waits, pending
+
+
+def http_error(code, body):
+    return urllib.error.HTTPError("http://provider", code, "refused", {}, io.BytesIO(body))
+
+
+def test_a_provider_that_answers_at_once_is_not_made_to_wait():
+    answer, waits, _ = call_provider([{"ok": 1}])
+    assert answer == {"ok": 1}, answer
+    assert waits == [], waits
+
+
+def test_a_provider_that_fails_once_is_asked_again_after_two_seconds():
+    for failure in (urllib.error.URLError("reset"), TimeoutError("slow"), http_error(500, b"oops")):
+        answer, waits, _ = call_provider([failure, {"ok": 2}])
+        assert answer == {"ok": 2}, (failure, answer)
+        assert waits == [2], (failure, waits)
+
+
+def test_a_provider_is_given_up_after_the_third_failure_with_the_last_reason():
+    failures = [OSError("first"), OSError("second"), OSError("third"), {"never": "asked"}]
+    answer, waits, unasked = call_provider(failures)
+    assert isinstance(answer, RuntimeError) and str(answer) == "provider call failed: third", answer
+    assert waits == [2, 4, 6], waits
+    assert unasked == [{"never": "asked"}], unasked
+
+
+def test_a_refusal_the_provider_will_repeat_is_not_retried():
+    for code in (400, 401, 403, 404):
+        answer, waits, unasked = call_provider([http_error(code, b"denied"), {"never": "asked"}])
+        assert str(answer) == "provider call failed: denied", (code, answer)
+        assert waits == [], (code, waits)
+        assert unasked == [{"never": "asked"}], (code, unasked)
+
+
+def test_the_reason_kept_from_a_refusal_is_cut_at_three_hundred_characters():
+    answer, _, _ = call_provider([http_error(403, b"x" * 301)])
+    assert str(answer) == "provider call failed: " + "x" * 300, answer
 
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ import unicodedata
 import urllib.parse
 import urllib.request
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 PG_CONTAINER = "skillhub-postgres-1"
@@ -529,12 +530,12 @@ def store(verdict, request, digest, artifacts, final_output):
             else:
                 evidence.append({**stored, "rejected": None})
         downgrade = None
-        if unverifiable and result != "undetermined":
-            result, downgrade = "undetermined", "evidence_unverifiable"
-        elif not evidence and result != "undetermined":
-            result, downgrade = "undetermined", "evidence_unverifiable"
-        elif (evidence_required.get(c["id"]) and result != "undetermined"
-              and not any(verified_quote(e["match"]) for e in evidence)):
+        if result != "undetermined" and (
+            unverifiable
+            or not evidence
+            or (evidence_required.get(c["id"])
+                and not any(verified_quote(e["match"]) for e in evidence))
+        ):
             result, downgrade = "undetermined", "evidence_unverifiable"
         elif result == "passed" and (incomplete or any(
             e.get("kind") == "trace_event" and e.get("trace_event_id") in trimmed_events
@@ -602,7 +603,7 @@ def parse_args():
     return ap.parse_args()
 
 
-def narrow_to_rubric(rows, rubrics, explicit: bool):
+def narrow_to_rubric(rows, rubrics, *, explicit: bool):
     """The rows a rubric covers. Explicitly chosen Runs must all be covered;
     baseline Runs outside it are dropped, and uncovered rubric Skills named."""
     if explicit:
@@ -629,7 +630,7 @@ def main() -> None:
     selection = "explicit_run_ids" if args.run_id else "m2_latest_compatibility"
     rows = explicit_run_set(args.run_id) if args.run_id else regression_set()
     if rubrics:
-        rows = narrow_to_rubric(rows, rubrics, bool(args.run_id))
+        rows = narrow_to_rubric(rows, rubrics, explicit=bool(args.run_id))
     if args.limit:
         rows = rows[: args.limit]
     version = rubrics["version"] if rubrics else None
@@ -637,7 +638,8 @@ def main() -> None:
         raise SystemExit("selection produced zero Runs")
     print(f"regression {regression_id}: {len(rows)} runs, selection={selection}, rubric_version={version}")
 
-    total_cost, unreported, lines = replay(rows, args, rubrics, regression_id, started, selection, version)
+    run = RegressionRun(regression_id, started, args.note, selection, version)
+    total_cost, unreported, lines = replay(rows, args, rubrics, run)
 
     if lines:
         # newline="\n" keeps this file LF-only; text mode would append CRLF
@@ -656,7 +658,23 @@ def print_criteria(line) -> None:
         print(f"    {r['kind']:<12} want={r['expected'] or '-':<12} got={r['result']:<12} {mark}")
 
 
-def replay(rows, args, rubrics, regression_id, started, selection, version):
+@dataclass
+class RegressionRun:
+    regression_id: str
+    started: str
+    note: str
+    selection: str
+    rubric_version: str | None = None
+
+
+@dataclass
+class JudgeOutcome:
+    results: list
+    response: dict
+    usage: dict
+
+
+def replay(rows, args, rubrics, run: RegressionRun):
     """(total cost, calls with no reported cost, result rows) for one pass over rows."""
     total_cost, unreported, lines = 0.0, 0, []
     for i, row in enumerate(rows, 1):
@@ -677,6 +695,7 @@ def replay(rows, args, rubrics, regression_id, started, selection, version):
         response = judge(request, args.judge_url)
         results = store(response["verdict"], request, digest, artifacts, final_output)
         usage = response.get("usage") or {}
+        judged = JudgeOutcome(results, response, usage)
         cost = usage.get("cost_usd")
         if cost is None:
             unreported += 1
@@ -684,12 +703,10 @@ def replay(rows, args, rubrics, regression_id, started, selection, version):
             total_cost += cost
             if cost > COST_ALARM_USD:
                 print(f"    !! ${cost:.4f} for one call, over the ${COST_ALARM_USD} alarm - stopping")
-                lines.append(record(regression_id, started, args.note, selection, row, request, want,
-                                    results, response, usage, version))
+                lines.append(record(run, row, request, want, judged))
                 break
 
-        line = record(regression_id, started, args.note, selection, row, request, want, results, response,
-                      usage, version)
+        line = record(run, row, request, want, judged)
         lines.append(line)
         print_criteria(line)
         print(f"    ${cost if cost is not None else float('nan'):.4f}  "
@@ -697,9 +714,8 @@ def replay(rows, args, rubrics, regression_id, started, selection, version):
     return total_cost, unreported, lines
 
 
-def record(regression_id, started, note, run_selection, row, request, want, results, response, usage,
-           rubric_version=None):
-    by_id = {r["criterion_id"]: r for r in results}
+def record(run: RegressionRun, row, request, want, judged: JudgeOutcome):
+    by_id = {r["criterion_id"]: r for r in judged.results}
     rubric_ids = {i["id"] for i in (request.get("rubric") or {}).get("items", [])}
     criteria = []
     for c in request["criteria"]:
@@ -718,22 +734,23 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
             outcome = "mismatch"
         criteria.append({**got, "kind": kind, "expected": exp, "outcome": outcome})
 
+    response = judged.response
     return {
-        "regression_id": regression_id,
-        "started_at": started,
-        "note": note,
+        "regression_id": run.regression_id,
+        "started_at": run.started,
+        "note": run.note,
         "judge_model": response["model"],
         "judge_prompt_version": response["prompt_version"],
         "temperature_requested": response.get("temperature"),
         "seed_requested": response.get("seed"),
-        "rubric_version": rubric_version,
+        "rubric_version": run.rubric_version,
         "truncation_budget": {
             "final_output": MAX_FINAL_OUTPUT, "criteria": MAX_CRITERIA,
             "digest_entry": MAX_DIGEST_ENTRY, "digest_count": MAX_DIGEST_COUNT,
             "artifact_rows": MAX_ARTIFACT_ROWS,
         },
         "skill_name": row["skill_name"],
-        "run_selection": run_selection,
+        "run_selection": run.selection,
         "runtime_image": row["runtime_image"],
         "run_id": row["run_id"],
         "run_status": row["run_status"],
@@ -743,7 +760,7 @@ def record(regression_id, started, note, run_selection, row, request, want, resu
         "artifact_count": len(request["artifacts"]),
         "overall_model": response["verdict"]["overall"],
         "summary": response["verdict"]["summary"],
-        "usage": usage,
+        "usage": judged.usage,
         "criteria": criteria,
     }
 

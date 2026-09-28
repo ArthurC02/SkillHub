@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import contextlib
 import hashlib
+import io
 import sys
 
 import render
@@ -40,6 +42,39 @@ def test_the_chains_appear_in_their_load_bearing_order():
     )]
     assert order == sorted(order), order
     assert lines[-1] == "}", lines[-1]
+
+
+def test_the_self_check_passes_offline():
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        code = render.self_check()
+    assert code == 0
+    lines = out.getvalue().splitlines()
+    assert lines[-1].startswith("self-check: "), lines[-1]
+    assert "FAIL" not in out.getvalue(), out.getvalue()
+
+
+def test_addr_rejects_an_ipv6_address():
+    try:
+        render._addr("2001:db8::1", "--resolver")
+    except SystemExit as exc:
+        assert str(exc) == "--resolver must be IPv4: this allow list is IPv4-only by decision (N-08)", exc
+    else:
+        raise AssertionError("an IPv6 address must be refused")
+
+
+def test_addr_rejects_a_malformed_value_and_keeps_its_cause():
+    try:
+        render._addr("not-an-ip", "--resolver")
+    except SystemExit as exc:
+        assert str(exc) == "--resolver must be a single IPv4 host address, got 'not-an-ip'", exc
+        assert isinstance(exc.__cause__, ValueError)
+    else:
+        raise AssertionError("a malformed address must be refused")
+
+
+def test_addr_treats_an_empty_value_as_absent():
+    assert render._addr("", "--resolver") == ""
 
 
 if __name__ == "__main__":

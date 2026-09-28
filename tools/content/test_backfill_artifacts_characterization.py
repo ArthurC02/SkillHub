@@ -60,10 +60,10 @@ def run_main(argv, runs=RUNS, apply_result=None):
 def expected_sql():
     key = "run-artifacts/" + FRESH + "/a1/artifacts.tar"
     return "\n".join([
-        backfill.statement(FRESH, WORKSPACE, CREATED, key, "report.md", 8,
-                           hashlib.sha256(b"# report").hexdigest()),
-        backfill.statement(FRESH, WORKSPACE, CREATED, key, "data.csv", 4,
-                           hashlib.sha256(b"a,b\n").hexdigest()),
+        backfill.statement(FRESH, WORKSPACE, CREATED, backfill.ArtifactManifestEntry(
+            key, "report.md", 8, hashlib.sha256(b"# report").hexdigest())),
+        backfill.statement(FRESH, WORKSPACE, CREATED, backfill.ArtifactManifestEntry(
+            key, "data.csv", 4, hashlib.sha256(b"a,b\n").hexdigest())),
     ])
 
 

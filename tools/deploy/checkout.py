@@ -48,11 +48,13 @@ def gaps(role, files, read):
     problems = ["checkout-paths entry %r selects no file" % pattern
                 for pattern in patterns if not any(selects(pattern, path) for path in files)]
     node = staged(patterns, files)
-    scanned = sorted(path for path in node if path.startswith(HERE) or path.startswith("infra/compose/"))
+    scanned = sorted(path for path in node if path.startswith((HERE, "infra/compose/")))
     for source in [TEMPLATE] + scanned:
-        for reference in sorted(references(read(source), role)):
-            if not covered(reference, node):
-                problems.append("%s names %s, which the %s checkout does not carry" % (source, reference, role))
+        problems.extend(
+            "%s names %s, which the %s checkout does not carry" % (source, reference, role)
+            for reference in sorted(references(read(source), role))
+            if not covered(reference, node)
+        )
     return problems, node
 
 

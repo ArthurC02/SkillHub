@@ -283,25 +283,31 @@ def load_entries(path):
     return entries
 
 
+IPV4_VERSION = 4
+
+
 def _addr(value, what):
     if not value:
         return ""
     try:
         addr = ipaddress.ip_address(value)
-    except ValueError:
-        raise SystemExit(what + " must be a single IPv4 host address, got " + repr(value))
-    if addr.version != 4:
+    except ValueError as e:
+        raise SystemExit(what + " must be a single IPv4 host address, got " + repr(value)) from e
+    if addr.version != IPV4_VERSION:
         raise SystemExit(what + " must be IPv4: this allow list is IPv4-only by decision (N-08)")
     return str(addr)
+
+
+PINNED_TEST_PORT = 4000
 
 
 def self_check():
     """Assert renderer invariants (rule ordering, IPv4-only filtering) using a
     synthetic pinned entry, since today's real allow-list has none."""
     pinned = [{"name": "model_gateway", "tier": "sandbox", "fqdn": "gw.internal",
-               "pinned_ip": "10.9.9.9", "port": 4000, "protocol": "tcp"}]
+               "pinned_ip": "10.9.9.9", "port": PINNED_TEST_PORT, "protocol": "tcp"}]
     unset = [{"name": "model_gateway", "tier": "sandbox", "fqdn": "gw.internal",
-              "pinned_ip": "unset", "port": 4000, "protocol": "tcp"}]
+              "pinned_ip": "unset", "port": PINNED_TEST_PORT, "protocol": "tcp"}]
     out = []
 
     def case(name, ok, detail=""):
@@ -337,7 +343,7 @@ def self_check():
          idx("10.0.0.53 udp dport 53 counter accept") >= 0
          and idx("skillhub-drop-dns") > idx("10.0.0.53 udp dport 53 counter accept"))
     case("every rule counts what it drops (N-06)",
-         all("counter" in l for l in lines if l.startswith("iifname") or l.startswith("ip saddr")))
+         all("counter" in l for l in lines if l.startswith(("iifname", "ip saddr"))))
     case("the ip6 table carries no accept rule at all (N-08)",
          "accept" not in nft.split("table ip6 skillhub {", 1)[1])
     case("the ruleset replaces its own tables and leaves dockerd's alone",
@@ -351,7 +357,7 @@ def self_check():
     case("an unset pin is absent from the admission list, not present-and-dead",
          json.loads(render_admission(unset))["destinations"] == [])
     case("a pinned destination reaches the admission list",
-         json.loads(render_admission(pinned))["destinations"][0]["port"] == 4000)
+         json.loads(render_admission(pinned))["destinations"][0]["port"] == PINNED_TEST_PORT)
 
     nft_bare = render_nftables(pinned, "sbx0", "", "")
     case("no resolver configured renders no DNS accept",

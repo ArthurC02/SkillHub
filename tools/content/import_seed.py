@@ -57,7 +57,7 @@ def dev_login(opener, api: str, user: str = "seed-importer") -> None:
     status, body = request(
         opener, f"{api}/auth/dev/login", data=json.dumps({"user": user}).encode(), ctype="application/json"
     )
-    if status != 204:
+    if status != http.HTTPStatus.NO_CONTENT:
         raise SystemExit(f"dev login failed ({status}): {body[:200]!r} — is DEV_LOGIN=1 set?")
 
 
@@ -158,9 +158,9 @@ def only_skill(payload) -> dict:
 
 def classify(status: int, payload) -> str:
     """Map an import response to a report bucket."""
-    if status == 201:
+    if status == http.HTTPStatus.CREATED:
         return "duplicate" if only_skill(payload).get("duplicate") else "imported"
-    if status == 422:
+    if status == http.HTTPStatus.UNPROCESSABLE_ENTITY:
         return "rejected_validation"
     return f"error_http_{status}"
 
@@ -371,8 +371,8 @@ def load_manifest() -> dict[str, str]:
     if not MANIFEST.exists():
         return {}
     out = {}
-    for line in MANIFEST.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in MANIFEST.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         digest, _, name = line.partition("  ")

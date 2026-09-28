@@ -55,7 +55,7 @@ def fetch(url: str) -> bytes:
             return resp.read()
     except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
         print(f"unreachable: {url} ({e})", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 def main() -> int:

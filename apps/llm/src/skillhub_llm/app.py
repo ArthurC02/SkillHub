@@ -81,6 +81,7 @@ async def request_validation_error(
 
 
 EMBED_MODEL = "text-embedding-3-small"
+EMBEDDING_DIMENSIONS = 1536  # one-number: embeddingDimensions
 MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL") or "skillhub-match-reason"
 SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL") or "skillhub-suggest-criteria"
 
@@ -156,8 +157,7 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     try:
         vectors = [item.embedding for item in response.data]
         valid = len(vectors) == len(req.texts) and all(
-            isinstance(vector, list) and len(vector) == 1536  # one-number: embeddingDimensions
-            for vector in vectors
+            isinstance(vector, list) and len(vector) == EMBEDDING_DIMENSIONS for vector in vectors
         )
     except AttributeError, KeyError, TypeError:
         valid = False
@@ -165,11 +165,10 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     if not valid:
         logger.warning("embedding provider returned a malformed envelope")
         raise HTTPException(status_code=502, detail="embedding provider returned malformed output")
-    dims = 1536  # one-number: embeddingDimensions
     return EmbedResponse(
         embeddings=vectors,
         model=EMBED_MODEL,
-        dimensions=dims,
+        dimensions=EMBEDDING_DIMENSIONS,
         usage=_embedding_usage(response, raw.headers),
     )
 

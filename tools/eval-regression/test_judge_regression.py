@@ -10,11 +10,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from judge_regression import (  # noqa: E402
+    JudgeOutcome,
     MATCH_EXACT,
     MATCH_NORMALIZED,
     MATCH_NOT_CHECKED,
     MAX_DIGEST_ENTRY,
     MIN_NORMALIZED_QUOTE,
+    RegressionRun,
     record,
     store,
     verify,
@@ -178,8 +180,8 @@ def test_model_uncertainty_is_not_scored_as_a_wrong_answer():
     response = dict(model="judge", prompt_version="v1", temperature=0, seed=123,
                     verdict=dict(overall="undetermined", summary="insufficient evidence"))
     results = store(verdict_of("c1", "undetermined", []), request, {}, [], "")
-    line = record("regression", "start", "", "explicit_run_ids", row, request,
-                  {"activation": "passed"}, results, response, {})
+    run = RegressionRun("regression", "start", "", "explicit_run_ids")
+    line = record(run, row, request, {"activation": "passed"}, JudgeOutcome(results, response, {}))
     assert line["criteria"][0]["outcome"] == "undetermined", line
     assert line["temperature_requested"] == 0, line
     assert line["seed_requested"] == 123, line

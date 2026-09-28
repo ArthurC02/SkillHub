@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -160,6 +161,8 @@ class ConfirmedDiagramInterpretation(BaseModel):
     uncertainties: list[DiagramUncertainty] = Field(..., max_length=64)
 
 
+DIAGRAM_ITEM_MAX_CHARS = 2000
+
 JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 FENCED_JSON_OBJECT = re.compile(r"(?:```\w*\s*)?\{.*\}(?:\s*```)?", re.DOTALL)
 
@@ -182,7 +185,7 @@ def _diagram_text(value: str) -> str:
     try:
         interpretation = DiagramInterpretation.model_validate_json(value)
         if not interpretation.nodes or any(
-            not item.strip() or len(item) > 2000
+            not item.strip() or len(item) > DIAGRAM_ITEM_MAX_CHARS
             for items in interpretation.model_dump().values()
             for item in items
         ):
@@ -619,36 +622,36 @@ def _user_content(req: CreationStepRequest, prompt: str) -> str | list[dict]:
     ]
 
 
-async def _ask_model(
-    req: CreationStepRequest,
-    gateway_key: str,
-    *,
-    system: str,
-    user: str | list[dict],
-    max_tokens: int,
-    schema: type[BaseModel],
-    schema_name: str,
-    operation: str,
-):
+@dataclass
+class _ModelCallSpec:
+    system: str
+    user: str | list[dict]
+    max_tokens: int
+    schema: type[BaseModel]
+    schema_name: str
+    operation: str
+
+
+async def _ask_model(req: CreationStepRequest, gateway_key: str, call: _ModelCallSpec):
     return await (
         client(req.timeout_seconds)
         .with_options(api_key=gateway_key)
         .chat.completions.with_raw_response.create(
             model=MODEL,
             messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
+                {"role": "system", "content": call.system},
+                {"role": "user", "content": call.user},
             ],
-            max_tokens=max_tokens,
+            max_tokens=call.max_tokens,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
-                    "name": schema_name,
+                    "name": call.schema_name,
                     "strict": True,
-                    "schema": schema.model_json_schema(),
+                    "schema": call.schema.model_json_schema(),
                 },
             },
-            extra_body=_metadata(operation=operation, session_id=req.session_id),
+            extra_body=_metadata(operation=call.operation, session_id=req.session_id),
         )
     )
 
@@ -690,12 +693,14 @@ async def _diagnose(
     raw = await _ask_model(
         req,
         gateway_key,
-        system=DIAGNOSIS_INSTRUCTIONS + "\n\n" + system,
-        user=content,
-        max_tokens=min(req.max_output_tokens, DIAGNOSIS_MAX_TOKENS),
-        schema=ReviewDiagnosis,
-        schema_name="review_diagnosis",
-        operation="creation-review-diagnosis",
+        _ModelCallSpec(
+            system=DIAGNOSIS_INSTRUCTIONS + "\n\n" + system,
+            user=content,
+            max_tokens=min(req.max_output_tokens, DIAGNOSIS_MAX_TOKENS),
+            schema=ReviewDiagnosis,
+            schema_name="review_diagnosis",
+            operation="creation-review-diagnosis",
+        ),
     )
     completion = raw.parse()
     diagnosis = ReviewDiagnosis.model_validate_json(completion.choices[0].message.content or "")
@@ -729,17 +734,19 @@ async def _rewrite(
     raw = await _ask_model(
         req,
         gateway_key,
-        system=REWRITE_INSTRUCTIONS,
-        user="Current body:\n\n"
-        + (req.draft.body if req.draft else "")
-        + "\n\nCurrent files:\n\n"
-        + files_text
-        + "\n\nEdits:\n"
-        + edits_text,
-        max_tokens=req.max_output_tokens,
-        schema=ReviewRewrite,
-        schema_name="review_rewrite",
-        operation="creation-review-rewrite",
+        _ModelCallSpec(
+            system=REWRITE_INSTRUCTIONS,
+            user="Current body:\n\n"
+            + (req.draft.body if req.draft else "")
+            + "\n\nCurrent files:\n\n"
+            + files_text
+            + "\n\nEdits:\n"
+            + edits_text,
+            max_tokens=req.max_output_tokens,
+            schema=ReviewRewrite,
+            schema_name="review_rewrite",
+            operation="creation-review-rewrite",
+        ),
     )
     rewrite = raw.parse()
     revision.usage = _add_usage(revision.usage, _usage(rewrite, raw.headers))
@@ -842,10 +849,8 @@ def _settle_diagram_fields(
         if not req.diagram_understanding and not req.diagram_description:
             _drop_invented_diagram_fields(decision)
     if decision.diagram_understanding:
-        try:
+        with contextlib.suppress(HTTPException):
             decision.diagram_understanding = _diagram_text(decision.diagram_understanding)
-        except HTTPException:
-            pass
     return decision
 
 
@@ -907,12 +912,14 @@ async def _decide(
         raw = await _ask_model(
             req,
             gateway_key,
-            system=system,
-            user=content,
-            max_tokens=req.max_output_tokens,
-            schema=CreationDecision,
-            schema_name="creation_decision",
-            operation="creation-step",
+            _ModelCallSpec(
+                system=system,
+                user=content,
+                max_tokens=req.max_output_tokens,
+                schema=CreationDecision,
+                schema_name="creation_decision",
+                operation="creation-step",
+            ),
         )
         completion = raw.parse()
         decision = _settle_diagram_fields(req, _decision_from(req, completion))

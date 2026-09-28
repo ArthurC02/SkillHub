@@ -18,12 +18,15 @@ PROVIDER_DOMAINS = (
     "azure.com", "mistral.ai", "cohere.com", "bedrock", "x.ai",
 )
 
+MAX_PORT = 65535
+IPV4_VERSION = 4
+
 
 def _port_error(e):
     """The accept rule's unit is IP:port, not IP (T5-7). A missing port is a rule
     nobody can render, and a bool is an int in Python — reject it explicitly."""
     port = e.get("port")
-    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= MAX_PORT:
         return (
             f"{e.get('name')}: port must be an integer 1-65535, got {port!r}. The "
             f"sandbox rule accepts to pinned_ip:port — without a port there is no "
@@ -47,7 +50,7 @@ def _pin_errors(e, pin):
             f"says today (the sandbox tier pins IP:port precisely because "
             f"the destination is platform-owned)"
         ]
-    if addr.version != 4:
+    if addr.version != IPV4_VERSION:
         return [
             f"{name}: pinned_ip {pin} is IPv6. This allow list is IPv4-only by "
             f"decision — the renderer keeps the `ip6` table at policy drop with no "
@@ -70,13 +73,13 @@ def _tier_and_provider_errors(e):
     if e.get("tier") not in ("sandbox", "node"):
         errors.append(f"{e.get('name')}: tier must be 'sandbox' or 'node'")
     fqdn = str(e.get("fqdn", "")).lower()
-    for bad in PROVIDER_DOMAINS:
-        if bad in fqdn:
-            errors.append(
-                f"{e.get('name')}: {fqdn} is a model provider domain. N-07 has no "
-                f"exception path — add the provider inside the LiteLLM gateway "
-                f"instead (iron rule 8)."
-            )
+    errors.extend(
+        f"{e.get('name')}: {fqdn} is a model provider domain. N-07 has no "
+        f"exception path — add the provider inside the LiteLLM gateway "
+        f"instead (iron rule 8)."
+        for bad in PROVIDER_DOMAINS
+        if bad in fqdn
+    )
     return errors
 
 

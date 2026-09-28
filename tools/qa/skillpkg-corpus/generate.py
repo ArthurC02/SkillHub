@@ -18,6 +18,7 @@ import io
 import json
 import os
 import pathlib
+import stat
 import sys
 import tempfile
 import zipfile
@@ -86,9 +87,8 @@ def write_zip(entries, *, symlinks=()) -> bytes:
 def edit(entries, name, fn):
     """Return entries with `name`'s text content replaced by fn(text)."""
     out = []
-    for n, data in entries:
-        if n == name:
-            data = fn(data.decode("utf-8")).encode("utf-8")
+    for n, raw_data in entries:
+        data = fn(raw_data.decode("utf-8")).encode("utf-8") if n == name else raw_data
         out.append((n, data))
     return out
 
@@ -277,17 +277,17 @@ def selftest() -> int:
         assert data != write_zip(base), f"{vid} did not change anything"
 
     assert "SKILL.md" not in zipfile.ZipFile(io.BytesIO(
-        apply_mutation(dict((m[0], m[3]) for m in MUTATIONS)["skill-md-missing"], base)
+        apply_mutation({m[0]: m[3] for m in MUTATIONS}["skill-md-missing"], base)
     )).namelist()
 
     traversal = zipfile.ZipFile(io.BytesIO(apply_mutation(
-        dict((m[0], m[3]) for m in MUTATIONS)["zip-path-traversal"], base)))
+        {m[0]: m[3] for m in MUTATIONS}["zip-path-traversal"], base)))
     assert "../../evil.sh" in traversal.namelist(), traversal.namelist()
 
     symlinked = zipfile.ZipFile(io.BytesIO(apply_mutation(
-        dict((m[0], m[3]) for m in MUTATIONS)["zip-symlink-escape"], base)))
+        {m[0]: m[3] for m in MUTATIONS}["zip-symlink-escape"], base)))
     info = symlinked.getinfo("reference/host-passwd")
-    assert (info.external_attr >> 16) & 0o170000 == 0o120000, oct(info.external_attr)
+    assert (info.external_attr >> 16) & 0o170000 == stat.S_IFLNK, oct(info.external_attr)
 
     md = base[0][1].decode()
     assert "name:" not in set_field(md, "name", None)

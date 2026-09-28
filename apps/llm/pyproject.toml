@@ -36,7 +36,13 @@ build-backend = "uv_build"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "C901", "PLR0912", "PLR0915"]
+select = [
+    "E", "F", "I", "UP",
+    "C90", "PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR", "SIM", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
