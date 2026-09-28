@@ -6,15 +6,20 @@ import (
 	"strings"
 )
 
+const (
+	maxQuotedCriterionRunes = 200
+	maxQuotedReasonRunes    = 300
+)
+
 func trialQuestions(observation string) string {
 	var o struct {
 		Evaluation struct {
 			Available bool             `json:"evaluation_available"`
 			Status    evaluationStatus `json:"status"`
 			Results   []struct {
-				Text   string `json:"text"`
-				Result string `json:"result"`
-				Reason string `json:"reason"`
+				Text   string          `json:"text"`
+				Result criterionResult `json:"result"`
+				Reason string          `json:"reason"`
 			} `json:"criterion_results"`
 		} `json:"evaluation"`
 	}
@@ -23,16 +28,16 @@ func trialQuestions(observation string) string {
 	}
 	var lines []string
 	for _, r := range o.Evaluation.Results {
-		if r.Result != "failed" && r.Result != "undetermined" {
+		if r.Result != criterionFailed && r.Result != criterionUndetermined {
 			continue
 		}
 		label := "沒過"
-		if r.Result == "undetermined" {
+		if r.Result == criterionUndetermined {
 			label = "尚無法判定"
 		}
-		line := fmt.Sprintf("- 「%s」：%s", truncateRunes(r.Text, 200), label)
+		line := fmt.Sprintf("- 「%s」：%s", truncateRunes(r.Text, maxQuotedCriterionRunes), label)
 		if r.Reason != "" {
-			line += "——" + truncateRunes(r.Reason, 300)
+			line += "——" + truncateRunes(r.Reason, maxQuotedReasonRunes)
 		}
 		lines = append(lines, line)
 	}

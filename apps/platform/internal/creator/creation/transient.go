@@ -37,6 +37,8 @@ func diagramMatches(p Snapshot, d *Diagram) bool {
 	return hex.EncodeToString(h[:]) == p.DiagramFingerprint && d.MediaType == p.DiagramMediaType && len(b) == p.DiagramBytes
 }
 
+const maxTransientRequestBytes = 8 << 20
+
 func (s *Service) TransientHandler(token string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := sha256.Sum256([]byte("Bearer " + token))
@@ -45,12 +47,12 @@ func (s *Service) TransientHandler(token string) http.Handler {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		if r.Method != "POST" || r.URL.Path != "/v1/creation/transient-step" {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/creation/transient-step" {
 			http.NotFound(w, r)
 			return
 		}
 		var in TransientRequest
-		d := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<20))
+		d := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxTransientRequestBytes))
 		d.DisallowUnknownFields()
 		if err := d.Decode(&in); err != nil {
 			http.Error(w, "invalid request", http.StatusBadRequest)
@@ -98,7 +100,7 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 		}
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/v1/creation/transient-step", bytes.NewReader(b))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/v1/creation/transient-step", bytes.NewReader(b))
 		if err != nil {
 			return err
 		}
@@ -110,7 +112,7 @@ func TransientClientWithHTTP(baseURL, token string, timeout time.Duration, clien
 		}
 		defer res.Body.Close()
 		_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 1024))
-		if res.StatusCode != 200 {
+		if res.StatusCode != http.StatusOK {
 			return ErrUnavailable
 		}
 		return nil
@@ -155,10 +157,10 @@ func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, spared func(Sta
 	if err != nil {
 		return err
 	}
-	status := "failed"
-	if receipt.Status == "running" {
+	status := receiptFailed
+	if receipt.Status == receiptRunning {
 		e.Snapshot.UsageUnknown = true
-		status = "unknown"
+		status = receiptUnknown
 	}
 	state := abandonedState(e.Snapshot)
 	e.ActiveReceipt = pgtype.UUID{}

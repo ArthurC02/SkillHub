@@ -164,9 +164,9 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	switch {
 	case resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone:
 		return fetchEndedWith("not_found")
-	case resp.StatusCode >= 500:
+	case resp.StatusCode >= http.StatusInternalServerError:
 		return fetchWorthRetrying()
-	case resp.StatusCode >= 400:
+	case resp.StatusCode >= http.StatusBadRequest:
 		return fetchEndedWith("blocked")
 	}
 	ct := strings.ToLower(resp.Header.Get("Content-Type"))

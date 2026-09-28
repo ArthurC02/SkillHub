@@ -96,14 +96,19 @@ func (s *Service) holdFetch(p *Snapshot, query string) (State, bool, error) {
 	if s.Fetch == nil {
 		return "", false, ErrUnavailable
 	}
-	clean, err := validateFetchURL(query)
-	if err != nil {
+	clean, allowed := fetchableURL(query)
+	if !allowed {
 		p.appendMessage("tool", "這個網址不符合規則（只接受公開的 http／https 網址，不含帳號密碼）；這次沒有連網。")
 		return StateQueued, true, nil
 	}
 	p.PendingFetchURL = clean
 	p.PendingAction = PendingFetchPermission
 	return StateWaitingConfirmation, false, nil
+}
+
+func fetchableURL(requested string) (string, bool) {
+	clean, err := validateFetchURL(requested)
+	return clean, err == nil
 }
 
 func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
@@ -119,10 +124,7 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 	if p.Draft != nil && p.Draft.ContentHash != hash {
 		e.PreviousDraft = p.Draft
 	}
-	if p.Draft == nil || p.Draft.ContentHash != hash {
-		p.Candidate = nil
-		p.RunUnmet = false
-	}
+	forgetTrialOfReplacedDraft(p, hash)
 	if p.Draft != nil && p.Draft.ContentHash == hash && !p.Draft.Blocked && !blocked {
 		p.PendingAction = NothingPending
 		p.appendMessage("tool", "這份草稿已通過同一次驗證；試跑由人從候選啟動，模型不能自己跑。草稿就緒。")

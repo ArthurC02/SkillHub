@@ -11,8 +11,8 @@ func feedbackDays(retention time.Duration) int {
 	if retention <= 0 {
 		return -1
 	}
-	days := int(retention / (24 * time.Hour))
-	if retention%(24*time.Hour) != 0 {
+	days := int(retention / day)
+	if retention%day != 0 {
 		days++
 	}
 	return days

@@ -189,18 +189,7 @@ func markerLike(token string) []string {
 	compound := len(segments) > 1
 	var found []string
 	for _, seg := range segments {
-		letters, digits := 0, 0
-		ascii := true
-		for _, r := range seg {
-			switch {
-			case r >= '0' && r <= '9':
-				digits++
-			case r >= 'a' && r <= 'z':
-				letters++
-			default:
-				ascii = false
-			}
-		}
+		letters, digits, ascii := asciiLettersAndDigits(seg)
 		if !ascii || letters < 1 || digits < 1 || len(seg) < 4 {
 			continue
 		}
@@ -209,4 +198,19 @@ func markerLike(token string) []string {
 		}
 	}
 	return found
+}
+
+func asciiLettersAndDigits(segment string) (letters, digits int, ascii bool) {
+	ascii = true
+	for _, r := range segment {
+		switch {
+		case r >= '0' && r <= '9':
+			digits++
+		case r >= 'a' && r <= 'z':
+			letters++
+		default:
+			ascii = false
+		}
+	}
+	return letters, digits, ascii
 }

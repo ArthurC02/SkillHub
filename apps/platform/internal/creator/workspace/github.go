@@ -42,8 +42,10 @@ func (g *GitHubOAuth) client() *http.Client {
 	if g.Client != nil {
 		return g.Client
 	}
-	return &http.Client{Timeout: 15 * time.Second}
+	return &http.Client{Timeout: githubRequestTimeout}
 }
+
+const githubRequestTimeout = 15 * time.Second
 
 func (g *GitHubOAuth) AuthURL(state string) string {
 	q := url.Values{

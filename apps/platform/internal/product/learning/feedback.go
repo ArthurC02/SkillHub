@@ -16,7 +16,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
-const maxFeedbackMessage = 2000
+const (
+	maxFeedbackMessage   = 2000
+	maxFeedbackBodyBytes = 8192
+)
 
 type FeedbackKind string
 
@@ -95,7 +98,7 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		RunID    string       `json:"run_id"`
 		BuildID  string       `json:"build_id"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxFeedbackBodyBytes)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "內容必須是 JSON，且包含 kind 與 message")
 		return
 	}
@@ -114,15 +117,8 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		UserID:      user.ID,
 		Kind:        body.Kind,
 		Message:     message,
-	}
-
-	if path := strings.TrimSpace(body.PagePath); strings.HasPrefix(path, "/") &&
-		!strings.ContainsAny(path, "?#") && len(path) <= 512 {
-		p.PagePath = &path
-	}
-
-	if build := strings.TrimSpace(body.BuildID); build != "" && len(build) <= 64 {
-		p.BuildID = &build
+		PagePath:    reportedPagePath(body.PagePath),
+		BuildID:     reportedBuildID(body.BuildID),
 	}
 
 	var runID pgtype.UUID
@@ -142,6 +138,21 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func reportedPagePath(raw string) *string {
+	if path := strings.TrimSpace(raw); strings.HasPrefix(path, "/") &&
+		!strings.ContainsAny(path, "?#") && len(path) <= 512 {
+		return &path
+	}
+	return nil
+}
+
+func reportedBuildID(raw string) *string {
+	if build := strings.TrimSpace(raw); build != "" && len(build) <= 64 {
+		return &build
+	}
+	return nil
 }
 
 func (s *Service) RecordFeedback(ctx context.Context, report FeedbackReport) error {

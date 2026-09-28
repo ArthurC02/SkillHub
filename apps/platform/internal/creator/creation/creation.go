@@ -29,13 +29,51 @@ type Command struct {
 	BudgetUSD float64 `json:"budget_usd,omitempty"`
 }
 
+const (
+	commandCancel                       = "cancel"
+	commandStopStep                     = "stop_step"
+	commandMessage                      = "message"
+	commandConfirmBrief                 = "confirm_brief"
+	commandConfirmDiagram               = "confirm_diagram"
+	commandAnswerDiagramUncertainty     = "answer_diagram_uncertainty"
+	commandConfirmDiagramInterpretation = "confirm_diagram_interpretation"
+	commandSelectReferences             = "select_references"
+	commandAdoptReference               = "adopt_reference"
+	commandDeclineReferences            = "decline_references"
+	commandConfirmReferences            = "confirm_references"
+	commandDiagram                      = "diagram"
+	commandAttachRun                    = "attach_run"
+	commandConfirmFetch                 = "confirm_fetch"
+	commandDeclineFetch                 = "decline_fetch"
+	commandRaiseBudget                  = "raise_budget"
+	commandMaterialize                  = "materialize"
+	commandFinalize                     = "finalize"
+	commandConfirmDuplicate             = "confirm_duplicate"
+)
+
+const (
+	receiptQueued    = "queued"
+	receiptRunning   = "running"
+	receiptUnknown   = "unknown"
+	receiptFinished  = "finished"
+	receiptFailed    = "failed"
+	receiptCancelled = "cancelled"
+)
+
 const maxPersonMessageRunes = 4000
+
+const (
+	uuidVersionMask    = 0x0f
+	uuidVersion4       = 0x40
+	uuidVariantMask    = 0x3f
+	uuidVariantRFC4122 = 0x80
+)
 
 func newID() pgtype.UUID {
 	var b [16]byte
 	_, _ = rand.Read(b[:])
-	b[6] = (b[6] & 15) | 64
-	b[8] = (b[8] & 63) | 128
+	b[6] = (b[6] & uuidVersionMask) | uuidVersion4
+	b[8] = (b[8] & uuidVariantMask) | uuidVariantRFC4122
 	return pgtype.UUID{Bytes: b, Valid: true}
 }
 func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) error {
@@ -52,7 +90,7 @@ func (s *Service) enqueue(ctx context.Context, tx pgx.Tx, row gen.CreationSessio
 func openAttemptReceipt(ctx context.Context, tx pgx.Tx, row gen.CreationSession, e *envelope) (JobArgs, error) {
 	id := newID()
 	a := JobArgs{SessionID: row.ID, WorkspaceID: row.WorkspaceID, Revision: row.Revision, ReceiptID: id}
-	_, err := gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: id, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Kind: "attempt", Status: "queued", ExpectedRevision: row.Revision, RequestHash: digest(a), Result: []byte("{}")})
+	_, err := gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: id, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Kind: "attempt", Status: receiptQueued, ExpectedRevision: row.Revision, RequestHash: digest(a), Result: []byte("{}")})
 	if err != nil {
 		return a, err
 	}
@@ -106,7 +144,7 @@ func record(ctx context.Context, tx pgx.Tx, session gen.CreationSession, c Comma
 	if err != nil {
 		return err
 	}
-	_, err = gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: c.ID, SessionID: session.ID, WorkspaceID: session.WorkspaceID, Kind: "command", Status: "finished", ExpectedRevision: c.ExpectedRevision, RequestHash: digest(c), Result: b})
+	_, err = gen.New(tx).InsertCreationReceipt(ctx, gen.InsertCreationReceiptParams{ID: c.ID, SessionID: session.ID, WorkspaceID: session.WorkspaceID, Kind: "command", Status: receiptFinished, ExpectedRevision: c.ExpectedRevision, RequestHash: digest(c), Result: b})
 	return err
 }
 func confirmed(p Snapshot) bool {
@@ -193,10 +231,7 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		return View{}, nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: id, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
-		return View{}, nil, ErrNotFound
-	}
+	row, err := lockLiveSession(ctx, tx, ws, id)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -208,13 +243,13 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 		return View{}, nil, err
 	}
 	admitted := admittedCommand{command: c, envelope: e}
-	if c.Kind == "materialize" || c.Kind == "finalize" || c.Kind == "confirm_duplicate" {
+	if savesTheDraft(c.Kind) {
 		if err := tx.Rollback(ctx); err != nil {
 			return View{}, nil, err
 		}
 		return s.saveCommand(ctx, ws, row, admitted)
 	}
-	if c.Kind == "select_references" || c.Kind == "confirm_references" || c.Kind == "attach_run" {
+	if readsOutsideTheSessionLock(c.Kind) {
 		if err := tx.Rollback(ctx); err != nil {
 			return View{}, nil, err
 		}
@@ -231,6 +266,22 @@ func (s *Service) Act(ctx context.Context, ws identity.Workspace, id pgtype.UUID
 	return s.commitCommand(ctx, tx, row, admitted, outcome)
 }
 
+func lockLiveSession(ctx context.Context, tx pgx.Tx, ws identity.Workspace, id pgtype.UUID) (gen.CreationSession, error) {
+	row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
+		return row, ErrNotFound
+	}
+	return row, err
+}
+
+func savesTheDraft(kind string) bool {
+	return kind == commandMaterialize || kind == commandFinalize || kind == commandConfirmDuplicate
+}
+
+func readsOutsideTheSessionLock(kind string) bool {
+	return kind == commandSelectReferences || kind == commandConfirmReferences || kind == commandAttachRun
+}
+
 func admitCommand(row gen.CreationSession, c Command) (envelope, error) {
 	if row.Revision != c.ExpectedRevision {
 		return envelope{}, ErrConflict
@@ -243,10 +294,10 @@ func admitCommand(row gen.CreationSession, c Command) (envelope, error) {
 	if err != nil {
 		return envelope{}, err
 	}
-	if c.Kind != "cancel" && !e.Deadline.After(time.Now()) {
+	if c.Kind != commandCancel && !e.Deadline.After(time.Now()) {
 		return envelope{}, ErrDeadline
 	}
-	if current.AwaitsTheModel() && c.Kind != "cancel" && c.Kind != "stop_step" {
+	if current.AwaitsTheModel() && c.Kind != commandCancel && c.Kind != commandStopStep {
 		return envelope{}, ErrConflict
 	}
 	if e.Snapshot.Draft != nil {
@@ -260,40 +311,48 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 	c, e := admitted.command, &admitted.envelope
 	p := &e.Snapshot
 	switch c.Kind {
-	case "cancel":
+	case commandCancel:
 		return cancelSession(ctx, tx, row, e)
-	case "stop_step":
+	case commandStopStep:
 		return stopStep(ctx, tx, row, e)
-	case "message":
+	case commandMessage:
 		return s.acceptMessage(p, c.Message)
-	case "confirm_brief":
+	case commandConfirmBrief:
 		return confirmBrief(p)
-	case "confirm_diagram":
-		return confirmDiagramDescription(p)
-	case "answer_diagram_uncertainty":
-		return answerDiagramUncertainty(p, c.DiagramUncertaintyID, c.DiagramAnswer)
-	case "confirm_diagram_interpretation":
-		return confirmDiagramInterpretation(p)
-	case "select_references":
+	case commandDiagram, commandConfirmDiagram, commandAnswerDiagramUncertainty, commandConfirmDiagramInterpretation:
+		return s.applyDiagramCommand(p, c)
+	case commandSelectReferences:
 		return s.selectReferences(ctx, ws, p, c)
-	case "adopt_reference":
+	case commandAdoptReference:
 		return s.adoptReference(ctx, ws, e, c.ReferenceSkillIDs)
-	case "decline_references":
+	case commandDeclineReferences:
 		return declineReferences(p)
-	case "confirm_references":
+	case commandConfirmReferences:
 		return s.confirmReferences(ctx, ws, p)
-	case "diagram":
-		return s.attachDiagram(p, c)
-	case "attach_run":
+	case commandAttachRun:
 		return s.attachRun(ctx, ws, p, c.RunID)
-	case "confirm_fetch":
+	case commandConfirmFetch:
 		return confirmFetch(p)
-	case "decline_fetch":
+	case commandDeclineFetch:
 		return declineFetch(p)
-	case "raise_budget":
+	case commandRaiseBudget:
 		return raiseBudget(p, e.Limits, State(row.State), c.BudgetUSD)
-	case "materialize", "finalize", "confirm_duplicate":
+	case commandMaterialize, commandFinalize, commandConfirmDuplicate:
 		return s.save(ctx, ws, p, c)
+	}
+	return commandOutcome{}, ErrInvalidCommand
+}
+
+func (s *Service) applyDiagramCommand(p *Snapshot, c Command) (commandOutcome, error) {
+	switch c.Kind {
+	case commandDiagram:
+		return s.attachDiagram(p, c)
+	case commandConfirmDiagram:
+		return confirmDiagramDescription(p)
+	case commandAnswerDiagramUncertainty:
+		return answerDiagramUncertainty(p, c.DiagramUncertaintyID, c.DiagramAnswer)
+	case commandConfirmDiagramInterpretation:
+		return confirmDiagramInterpretation(p)
 	}
 	return commandOutcome{}, ErrInvalidCommand
 }
@@ -337,10 +396,10 @@ func withdrawAttempt(ctx context.Context, tx pgx.Tx, row gen.CreationSession, re
 	if err != nil {
 		return withdrawnAfterSending, err
 	}
-	if a.Status != "queued" {
+	if a.Status != receiptQueued {
 		return withdrawnAfterSending, nil
 	}
-	_, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ID, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Status: "cancelled", Result: []byte("{}"), Usage: []byte("{}")})
+	_, err = q.FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ID, SessionID: row.ID, WorkspaceID: row.WorkspaceID, Status: receiptCancelled, Result: []byte("{}"), Usage: []byte("{}")})
 	return withdrawnBeforeSending, err
 }
 

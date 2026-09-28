@@ -53,6 +53,11 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	}
 }
 
+const (
+	maxDevLoginNameBytes    = 64
+	loginStateMaxAgeSeconds = 600
+)
+
 func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		User string `json:"user"`
@@ -62,7 +67,7 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "dev"
 	}
-	if len(name) > 64 {
+	if len(name) > maxDevLoginNameBytes {
 		httpx.WriteError(w, http.StatusBadRequest, "使用者名稱最多 64 個字元")
 		return
 	}
@@ -98,7 +103,7 @@ func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 	state := hex.EncodeToString(raw)
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: state, Path: "/auth/github",
-		MaxAge: 600, HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
+		MaxAge: loginStateMaxAgeSeconds, HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
 	})
 	http.Redirect(w, r, h.Service.OAuth.AuthURL(state), http.StatusFound)
 }

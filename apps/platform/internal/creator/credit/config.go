@@ -23,7 +23,7 @@ func NewConfig(usdPerCredit float64, markupBps, floor, fallback int64) (Config, 
 	if usdPerCredit <= 0 {
 		return Config{}, errors.New("credit: CREDIT_USD_PER_CREDIT must be > 0")
 	}
-	microsPerCredit := int64(math.Round(usdPerCredit * 1_000_000))
+	microsPerCredit := int64(math.Round(usdPerCredit * microsPerUSD))
 	if microsPerCredit <= 0 {
 		return Config{}, errors.New("credit: CREDIT_USD_PER_CREDIT is too small to represent in micro-dollars")
 	}

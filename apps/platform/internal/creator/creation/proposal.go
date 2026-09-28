@@ -74,34 +74,52 @@ func (s *Service) proposal(ctx context.Context, ws identity.Workspace, revision 
 	}
 	recordReply(p, r)
 	if r.DiagramDescription != "" {
-		if r.Outcome != "confirm_diagram_description" || r.DiagramInterpretation != nil || r.Draft != nil || p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
-			return "", false, ErrInvalidCommand
-		}
-		return describeDiagram(p, r.DiagramDescription), false, nil
+		return acceptDiagramDescription(p, r)
 	}
 	if r.DiagramInterpretation != nil {
-		if r.Outcome != "confirm_diagram_interpretation" || r.Draft != nil || !p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
-			return "", false, ErrInvalidCommand
-		}
-		return interpretDiagram(p, r.DiagramInterpretation), false, nil
+		return acceptDiagramInterpretation(p, r)
 	}
 	if change := briefChangeIn(*p, r); change.any() {
 		return reviseBrief(p, r, change), false, nil
 	}
 	switch r.Outcome {
-	case "clarification":
+	case outcomeClarification:
 		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
-	case "confirm_brief":
+	case outcomeConfirmBrief:
 		return askToConfirmBrief(p)
-	case "confirm_diagram", "confirm_diagram_description", "confirm_diagram_interpretation":
+	case outcomeConfirmDiagram, outcomeConfirmDiagramDescription, outcomeConfirmDiagramInterpretation:
 		return "", false, ErrInvalidCommand
-	case "draft":
+	case outcomeDraft:
 		return s.acceptDraft(ctx, revision, e, r)
-	case "tool_intent":
+	case outcomeToolIntent:
 		return s.useTool(ctx, ws, revision, e, r)
 	}
 	return "", false, ErrUnknownOutcome
+}
+
+const (
+	outcomeClarification                = "clarification"
+	outcomeConfirmBrief                 = "confirm_brief"
+	outcomeConfirmDiagram               = "confirm_diagram"
+	outcomeConfirmDiagramDescription    = "confirm_diagram_description"
+	outcomeConfirmDiagramInterpretation = "confirm_diagram_interpretation"
+	outcomeDraft                        = "draft"
+	outcomeToolIntent                   = "tool_intent"
+)
+
+func acceptDiagramDescription(p *Snapshot, r *StepResult) (State, bool, error) {
+	if r.Outcome != outcomeConfirmDiagramDescription || r.DiagramInterpretation != nil || r.Draft != nil || p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+		return "", false, ErrInvalidCommand
+	}
+	return describeDiagram(p, r.DiagramDescription), false, nil
+}
+
+func acceptDiagramInterpretation(p *Snapshot, r *StepResult) (State, bool, error) {
+	if r.Outcome != outcomeConfirmDiagramInterpretation || r.Draft != nil || !p.DiagramDescriptionConfirmed || p.DiagramInterpretation != nil {
+		return "", false, ErrInvalidCommand
+	}
+	return interpretDiagram(p, r.DiagramInterpretation), false, nil
 }
 
 func missingOutputRetries(e *envelope, reason string) *int {
@@ -266,10 +284,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 		p.appendMessage("assistant", note)
 	}
 	p.PreviousDraft = e.PreviousDraft
-	if p.Draft == nil || p.Draft.ContentHash != hash {
-		p.Candidate = nil
-		p.RunUnmet = false
-	}
+	forgetTrialOfReplacedDraft(p, hash)
 	repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
 	if repeated {
@@ -291,6 +306,13 @@ func storeDraft(p *Snapshot, d *Draft) {
 		clearDuplicateCheck(p)
 	}
 	p.PendingAction = NothingPending
+}
+
+func forgetTrialOfReplacedDraft(p *Snapshot, hash string) {
+	if p.Draft == nil || p.Draft.ContentHash != hash {
+		p.Candidate = nil
+		p.RunUnmet = false
+	}
 }
 
 type draftObjection struct {

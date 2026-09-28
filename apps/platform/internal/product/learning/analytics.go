@@ -106,8 +106,10 @@ func newVisit(r *http.Request, now time.Time) bool {
 	return err != nil || c.Value != now.UTC().Format("2006-01-02")
 }
 
+const day = 24 * time.Hour
+
 func visitLifetimeSeconds(now time.Time, retention time.Duration) int {
-	seconds := int(now.UTC().Truncate(24*time.Hour).Add(24*time.Hour).Sub(now.UTC()) / time.Second)
+	seconds := int(now.UTC().Truncate(day).Add(day).Sub(now.UTC()) / time.Second)
 	if sessionSeconds := int(retention / time.Second); seconds > sessionSeconds {
 		seconds = sessionSeconds
 	}

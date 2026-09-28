@@ -20,6 +20,11 @@ const MaxBillableMicros = 1_000_000_000
 
 const MaxMarkupBps = 1_000_000
 
+const (
+	microsPerUSD       = 1_000_000
+	basisPointsPerUnit = 10000
+)
+
 var ErrAmountOutOfRange = errors.New("credit: amount is outside the billable range")
 
 func BilledMicros(usdMicros, markupBps int64) (int64, error) {
@@ -29,7 +34,7 @@ func BilledMicros(usdMicros, markupBps int64) (int64, error) {
 	if markupBps < 0 || markupBps > MaxMarkupBps {
 		return 0, fmt.Errorf("%w: markup %d bps", ErrAmountOutOfRange, markupBps)
 	}
-	return ceilDiv(usdMicros*markupBps, 10000), nil
+	return ceilDiv(usdMicros*markupBps, basisPointsPerUnit), nil
 }
 
 func CreditsForMicros(billedMicros, microsPerCredit int64) int64 {
@@ -42,7 +47,7 @@ func BillableMicros(usd float64) (usdMicros int64, exact bool) {
 	}
 	// Compared before the conversion: converting a float past int64's range
 	// is implementation-defined and can land back inside the billable range.
-	scaled := usd * 1_000_000
+	scaled := usd * microsPerUSD
 	if scaled > float64(MaxBillableMicros) {
 		return MaxBillableMicros, false
 	}

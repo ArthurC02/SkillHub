@@ -63,8 +63,10 @@ func allowedTools(toolCalls, maxToolCalls int, available toolAvailability) []str
 	return tools
 }
 
+const callDeadlineMarginSeconds = 5
+
 func callTimeoutSeconds(left time.Duration) (int, error) {
-	remaining := int(math.Ceil(left.Seconds())) - 5
+	remaining := int(math.Ceil(left.Seconds())) - callDeadlineMarginSeconds
 	if remaining < 1 {
 		return 0, ErrUnavailable
 	}
@@ -152,14 +154,14 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 	if err != nil {
 		return nil, err
 	}
-	if State(row.State) != StateQueued || e.ActiveReceipt != a.ReceiptID || !live(row) {
+	if !sessionAwaitsAttempt(row, e, a) {
 		return nil, staleAttempt(diagram)
 	}
 	r, err := q.GetCreationReceipt(ctx, gen.GetCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID})
 	if err != nil {
 		return nil, err
 	}
-	if r.Status != "queued" || r.ExpectedRevision != a.Revision {
+	if !receiptAwaitsAttempt(r, a) {
 		return nil, staleAttempt(diagram)
 	}
 	if diagram != nil && !diagramMatches(e.Snapshot, diagram) {
@@ -182,6 +184,14 @@ func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram)
 		return nil, err
 	}
 	return &attempt{e: e, revision: row.Revision}, nil
+}
+
+func sessionAwaitsAttempt(row gen.CreationSession, e envelope, a JobArgs) bool {
+	return State(row.State) == StateQueued && e.ActiveReceipt == a.ReceiptID && live(row)
+}
+
+func receiptAwaitsAttempt(r gen.CreationReceipt, a JobArgs) bool {
+	return r.Status == receiptQueued && r.ExpectedRevision == a.Revision
 }
 
 func staleAttempt(transientDiagram *Diagram) error {
@@ -375,7 +385,7 @@ func (s *Service) failQueued(ctx context.Context, tx pgx.Tx, row gen.CreationSes
 	if _, err := s.advance(ctx, tx, row, transition{abandonedState(e.Snapshot), "attempt_refused"}, e); err != nil {
 		return err
 	}
-	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "failed", Result: []byte("{}"), Usage: []byte("{}")})
+	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: receiptFailed, Result: []byte("{}"), Usage: []byte("{}")})
 	if err != nil {
 		return err
 	}
@@ -400,14 +410,14 @@ func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 	if err != nil {
 		return err
 	}
-	if receipt.Status != "running" && receipt.Status != "unknown" {
+	if !awaitsSettlement(receipt.Status) {
 		return nil
 	}
 	e, err := decode(row)
 	if err != nil {
 		return err
 	}
-	if receipt.Status == "unknown" {
+	if receipt.Status == receiptUnknown {
 		return s.settleAbandonedAttempt(ctx, tx, a, e.Limits, usage)
 	}
 	settleCost(&e.Snapshot, e.Limits.MaxCallCostUSD, usage)
@@ -415,7 +425,7 @@ func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 		return err
 	}
 	state, next := State(row.State), false
-	if state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == "running" {
+	if attemptStillCurrent(state, e, a, receipt) {
 		e.ActiveReceipt = pgtype.UUID{}
 		state, next = s.concludeAttempt(ctx, a, row, &e, call)
 	}
@@ -433,6 +443,14 @@ func (s *Service) finish(ctx context.Context, a JobArgs, call stepCall) error {
 	return tx.Commit(ctx)
 }
 
+func awaitsSettlement(receiptStatus string) bool {
+	return receiptStatus == receiptRunning || receiptStatus == receiptUnknown
+}
+
+func attemptStillCurrent(state State, e envelope, a JobArgs, receipt gen.CreationReceipt) bool {
+	return state == StateWorking && e.ActiveReceipt == a.ReceiptID && receipt.Status == receiptRunning
+}
+
 func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobArgs, l Limits, usage *ModelUsage) error {
 	if err := finishAttemptReceipt(ctx, tx, a, usage); err != nil {
 		return err
@@ -445,7 +463,7 @@ func (s *Service) settleAbandonedAttempt(ctx context.Context, tx pgx.Tx, a JobAr
 
 func finishAttemptReceipt(ctx context.Context, tx pgx.Tx, a JobArgs, usage *ModelUsage) error {
 	u, _ := json.Marshal(usage)
-	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: "finished", Result: []byte("{}"), Usage: u})
+	_, err := gen.New(tx).FinishCreationReceipt(ctx, gen.FinishCreationReceiptParams{ID: a.ReceiptID, SessionID: a.SessionID, WorkspaceID: a.WorkspaceID, Status: receiptFinished, Result: []byte("{}"), Usage: u})
 	return err
 }
 

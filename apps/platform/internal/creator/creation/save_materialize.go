@@ -3,7 +3,6 @@ package creation
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -29,11 +28,11 @@ func (s *Service) readCommand(ctx context.Context, ws identity.Workspace, old ge
 	var outcome commandOutcome
 	var err error
 	switch c.Kind {
-	case "select_references":
+	case commandSelectReferences:
 		outcome, err = s.selectReferences(ctx, ws, p, c)
-	case "confirm_references":
+	case commandConfirmReferences:
 		outcome, err = s.confirmReferences(ctx, ws, p)
-	case "attach_run":
+	case commandAttachRun:
 		outcome, err = s.attachRun(ctx, ws, p, c.RunID)
 	default:
 		return View{}, nil, ErrInvalidCommand
@@ -51,10 +50,7 @@ func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspa
 		return View{}, nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	row, err := gen.New(tx).LockCreationSession(ctx, gen.LockCreationSessionParams{ID: old.ID, WorkspaceID: ws.ID})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !live(row)) {
-		return View{}, nil, ErrNotFound
-	}
+	row, err := lockLiveSession(ctx, tx, ws, old.ID)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -69,7 +65,7 @@ func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspa
 
 func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
 	kind := c.Kind
-	if c.Kind == "confirm_duplicate" {
+	if c.Kind == commandConfirmDuplicate {
 		if p.PendingAction != PendingDuplicateAcknowledgement || p.PendingMaterialize == "" {
 			return commandOutcome{}, ErrInvalidCommand
 		}
@@ -112,7 +108,7 @@ func saveable(p Snapshot, contentHash string) bool {
 }
 
 func savedState(kind string) State {
-	if kind == "finalize" {
+	if kind == commandFinalize {
 		return StateSaved
 	}
 	return StateCandidateReady

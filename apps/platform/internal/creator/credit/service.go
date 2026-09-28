@@ -216,12 +216,18 @@ func (s *Service) startThreshold(ctx context.Context, kind CostKind) (threshold 
 	if stats.SampleCount < MinStatSamples || time.Since(stats.WindowEnd) > MaxStatisticsAge {
 		return s.Config.StartFallbackCredits, true, nil
 	}
-	billed, err := BilledMicros(stats.P95UsdMicros, s.Config.MarkupBps)
-	if err != nil {
-
-		return s.Config.StartFallbackCredits, true, nil
+	if credits, billable := s.billableCredits(stats.P95UsdMicros); billable {
+		return credits, false, nil
 	}
-	return CreditsForMicros(billed, s.Config.MicrosPerCredit), false, nil
+	return s.Config.StartFallbackCredits, true, nil
+}
+
+func (s *Service) billableCredits(usdMicros int64) (int64, bool) {
+	billed, err := BilledMicros(usdMicros, s.Config.MarkupBps)
+	if err != nil {
+		return 0, false
+	}
+	return CreditsForMicros(billed, s.Config.MicrosPerCredit), true
 }
 
 func (s *Service) Balance(ctx context.Context, userID pgtype.UUID) (int64, error) {
@@ -267,12 +273,14 @@ func (s *Service) Estimate(ctx context.Context, statKind CostKind) (Estimate, er
 	return est, nil
 }
 
+const floatNoiseMicros = 1e-6
+
 func (s *Service) CreditsForUSD(usd float64) (credits int64, ok bool) {
 	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd <= 0 {
 		return 0, false
 	}
 	// The epsilon absorbs float noise from usd*1e6; a real fraction of a micro still rounds up.
-	micros := int64(math.Ceil(usd*1_000_000 - 1e-6))
+	micros := int64(math.Ceil(usd*microsPerUSD - floatNoiseMicros))
 	if micros > MaxBillableMicros {
 
 		return 0, false
@@ -289,11 +297,11 @@ func (s *Service) CreditsWithinUSD(usd float64) (credits int64, ok bool) {
 	if math.IsNaN(usd) || math.IsInf(usd, 0) || usd < 0 || s.Config.MicrosPerCredit <= 0 {
 		return 0, false
 	}
-	micros := int64(math.Floor(usd * 1_000_000))
+	micros := int64(math.Floor(usd * microsPerUSD))
 	if micros > MaxBillableMicros {
 		return 0, false
 	}
-	return micros * s.Config.MarkupBps / 10000 / s.Config.MicrosPerCredit, true
+	return micros * s.Config.MarkupBps / basisPointsPerUnit / s.Config.MicrosPerCredit, true
 }
 
 // USDForCredits is what credits are worth to the platform, rounded down so a budget never exceeds its credits.
@@ -302,11 +310,11 @@ func (s *Service) USDForCredits(credits int64) (usd float64, ok bool) {
 		credits > MaxBillableMicros/s.Config.MicrosPerCredit {
 		return 0, false
 	}
-	micros := credits * s.Config.MicrosPerCredit * 10000 / s.Config.MarkupBps
+	micros := credits * s.Config.MicrosPerCredit * basisPointsPerUnit / s.Config.MarkupBps
 	if micros > MaxBillableMicros {
 		return 0, false
 	}
-	return float64(micros) / 1_000_000, true
+	return float64(micros) / microsPerUSD, true
 }
 
 func OperatorEntryKind(credits int64) EntryKind {
