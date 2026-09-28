@@ -21,7 +21,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
           {ledger.data.entries.length === 0 ? (
             <p>這個帳戶的分錄：0 筆。</p>
           ) : (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0}>
               <table>
                 <caption>最近 50 筆分錄，新的在上面</caption>
                 <thead>

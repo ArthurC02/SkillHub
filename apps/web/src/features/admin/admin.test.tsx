@@ -153,6 +153,37 @@ test("OPS-001: the account menu offers nothing to a member", async () => {
   expect(container.querySelector('a[href="/admin"]')).toBeNull();
 });
 
+test("OPS-001: the admin page stays loading while the operator check is pending", async () => {
+  vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
+  await mountAt("/admin");
+  expect(field<HTMLElement>("main [data-loading]").textContent).toBe("載入中…");
+  expect(container.querySelector("main h1")).toBeNull();
+});
+
+test("OPS-001: a failed operator check names the read failure instead of a missing page", async () => {
+  stub(true, (path) =>
+    path === "/me" ? { body: { error: "service unavailable" }, status: 503 } : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("暫時無法讀取後台。請重新整理，或稍後再試。"));
+  expect(field<HTMLElement>('main [role="alert"]').textContent).toBe(
+    "暫時無法讀取後台。請重新整理，或稍後再試。",
+  );
+  expect(has("service unavailable")()).toBe(false);
+  expect(has("這一頁現在不存在")()).toBe(false);
+});
+
+test("OPS-001: an unauthenticated operator check asks for sign-in", async () => {
+  stub(true, (path) =>
+    path === "/me" ? { body: { error: "not authenticated" }, status: 401 } : undefined,
+  );
+  await mountAt("/admin");
+  await waitFor(has("後台需要登入。"));
+  expect(container.querySelector('main [role="status"]')?.textContent).toContain("後台需要登入。");
+  expect(has("not authenticated")()).toBe(false);
+  expect(has("這一頁現在不存在")()).toBe(false);
+});
+
 test("OPS-001: a member who types an /admin address gets the missing page and no admin request", async () => {
   stub(false);
   await mountAt("/");
@@ -203,6 +234,7 @@ test("OPS-002: a lookup keeps the email out of the address and shows the account
     ["扣點（估計值）", "-30", "run"],
     ["授予", "+150", "不適用"],
   ]);
+  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
   expect(field("strong").textContent).toBe("120");
 });
 
@@ -447,6 +479,20 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(has("查詢帳號")()).toBe(true);
   expect(has("點數分錄")()).toBe(true);
   expect(has("credit_entry")()).toBe(false);
+  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
+  const table = field<HTMLTableElement>("table.responsive-table");
+  const labels = ["時間", "動作", "operator", "對象", "內容"];
+  expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
+    labels,
+  );
+  expect(
+    Array.from(table.tBodies[0].rows).map((row) =>
+      Array.from(row.children).map((cell) => cell.getAttribute("data-label")),
+    ),
+  ).toEqual([labels, labels]);
+  expect(
+    Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
+  ).toEqual(["授予點數", "查詢帳號"]);
   expect(field("td details summary").textContent).toBe("3 項");
   expect(field("td details").textContent).toContain("beta reward");
   expect(
@@ -512,6 +558,20 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   stub(true);
   await mountAt("/admin/cost-statistics");
   await waitFor(has("搜尋理由"));
+  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
+  const table = field<HTMLTableElement>("table.responsive-table");
+  const labels = ["種類", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
+  expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
+    labels,
+  );
+  expect(
+    Array.from(table.tBodies[0].rows).map((row) =>
+      Array.from(row.children).map((cell) => cell.getAttribute("data-label")),
+    ),
+  ).toEqual([labels, labels]);
+  expect(
+    Array.from(table.querySelectorAll('tbody th[scope="row"]')).map((th) => th.textContent),
+  ).toEqual(["搜尋理由", "評審"]);
   const rows = Array.from(container.querySelectorAll("tbody tr")).map((tr) => [
     tr.querySelector("th")?.textContent,
     ...Array.from(tr.querySelectorAll("td"))
@@ -574,6 +634,11 @@ test("OPS-008: the trends page asks each owner for 30 days by default and draws 
   await mountAt("/admin/trends");
   await waitFor(has("全平台目前餘額總和：1268 點。"));
   expect(new Set(trendCalls())).toEqual(trendsFor(30));
+  expect(
+    Array.from(container.querySelectorAll<HTMLElement>("figure .table-scroll")).map(
+      (scroll) => scroll.tabIndex,
+    ),
+  ).toEqual(Array(11).fill(0));
   expect(has("2026-09-06 到 2026-09-12（UTC），共 7 天。")()).toBe(true);
   expect(
     Array.from(container.querySelectorAll('canvas[role="img"]')).map((c) =>

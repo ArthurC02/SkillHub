@@ -548,7 +548,7 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
   expect(
     [...new Set(offenders)].sort(),
     "a read failure worded by hand. Use <ReadFailure error={…} what={…} /> so a 401 says " +
-      "「需要登入」 and every other status keeps the server's own message; if this failure " +
+      "「需要登入」 and every other status gets a local retry message; if this failure " +
       "is a mutation rather than a read, add a line to OWN_FAILURE_COPY saying which",
   ).toEqual([]);
   expect(Object.keys(OWN_FAILURE_COPY).length, "the list may only get shorter").toBeLessThanOrEqual(
@@ -612,4 +612,16 @@ test("§NFR-007: the nav says which item is current with more than one channel",
   expect(active, "當前頁沒有底線——顏色單獨承載了意義（NFR-007）").toContain(
     "text-decoration: underline",
   );
+
+  const activeChip = rules.find((r) => r.includes('.chip[aria-current="page"]'));
+  expect(activeChip, "Router Link 的 chip 沒有匹配 aria-current=page").toBeTruthy();
+  expect(activeChip, "當前 chip 沒有選中底色").toContain("background: var(--code-bg)");
+  expect(activeChip, "當前 chip 沒有用字重提供第二個選中訊號").toContain("font-weight: 600");
+});
+
+test("§3 第 16 條: a responsive table row header fills its mobile card", () => {
+  const rules = sheets.get("styles/patterns.css")!.split("}");
+  const rowHeader = rules.find((rule) => rule.includes('.responsive-table tbody th[scope="row"]'));
+  expect(rowHeader, "找不到 responsive table 的 row header 規則").toBeTruthy();
+  expect(rowHeader, "手機卡片的 row header 仍被 compare table 限成 140px").toContain("width: auto");
 });

@@ -17,8 +17,8 @@ export function AdminCostStatistics() {
         (rows.length === 0 ? (
           <p>統計窗：0 個。每日統計跑過之後才會有。</p>
         ) : (
-          <div className="table-scroll">
-            <table>
+          <div className="table-scroll" tabIndex={0}>
+            <table className="responsive-table">
               <caption>每一種呼叫最新的統計窗（美元）</caption>
               <thead>
                 <tr>
@@ -34,15 +34,17 @@ export function AdminCostStatistics() {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.kind}>
-                    <th scope="row">{COST_KIND[row.kind] ?? row.kind}</th>
-                    <td>
+                    <th scope="row" data-label="種類">
+                      {COST_KIND[row.kind] ?? row.kind}
+                    </th>
+                    <td data-label="統計窗結束">
                       <Timestamp at={row.window_end} />
                     </td>
-                    <td>{row.sample_count}</td>
-                    <td>{usd(row.p50_usd_micros)}</td>
-                    <td>{usd(row.p90_usd_micros)}</td>
-                    <td>{usd(row.p95_usd_micros)}</td>
-                    <td>{usd(row.max_usd_micros)}</td>
+                    <td data-label="樣本數">{row.sample_count}</td>
+                    <td data-label="p50">{usd(row.p50_usd_micros)}</td>
+                    <td data-label="p90">{usd(row.p90_usd_micros)}</td>
+                    <td data-label="p95">{usd(row.p95_usd_micros)}</td>
+                    <td data-label="最大">{usd(row.max_usd_micros)}</td>
                   </tr>
                 ))}
               </tbody>

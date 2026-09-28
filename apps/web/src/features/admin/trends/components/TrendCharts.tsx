@@ -33,7 +33,7 @@ export function TrendCharts<B extends DailyCount>({
                 <BarChart label={name} days={days} values={s.values} format={format} />
                 <details>
                   <summary>{name}的逐日數字</summary>
-                  <div className="table-scroll">
+                  <div className="table-scroll" tabIndex={0}>
                     <table>
                       <thead>
                         <tr>

@@ -666,7 +666,7 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
    gets (NFR-007, and the same shape as `.app-nav a[data-status="active"]`).
    The recess is what a chip presses INTO; §4.6.5 reserves `--code-bg` as a
    whole CARD's fill, and a chip is not a card. */
-.chip[aria-current="true"] {
+.chip[aria-current="page"] {
   background: var(--code-bg);
   border-color: var(--text-h);
   font-weight: 600;
@@ -872,5 +872,76 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   /* 220px of a 351px viewport is not a row header, it is the whole table. */
   .compare-table th[scope="row"] {
     width: 140px;
+  }
+
+  .table-scroll:has(> .responsive-table) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .responsive-table {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .responsive-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .responsive-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .responsive-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .responsive-table tbody :is(th, td) {
+    display: grid;
+    grid-template-columns: minmax(88px, 0.35fr) minmax(0, 1fr);
+    gap: 12px;
+    width: auto;
+    padding: 8px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .responsive-table tbody :is(th, td)::before {
+    content: attr(data-label);
+    color: var(--text-h);
+    font-weight: 600;
+  }
+
+  .responsive-table tbody th[scope="row"] {
+    order: -1;
+    width: auto;
+    background: var(--code-bg);
+  }
+
+  .responsive-table tbody tr > :last-child {
+    border-bottom: 0;
+  }
+
+  .responsive-table code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 }

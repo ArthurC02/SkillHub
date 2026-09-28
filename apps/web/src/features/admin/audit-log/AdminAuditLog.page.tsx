@@ -26,8 +26,8 @@ export function AdminAuditLog() {
         (rows.length === 0 ? (
           <p>operator 動作：0 筆。</p>
         ) : (
-          <div className="table-scroll">
-            <table>
+          <div className="table-scroll" tabIndex={0}>
+            <table className="responsive-table">
               <caption>operator 動作，新的在上面</caption>
               <thead>
                 <tr>
@@ -41,16 +41,20 @@ export function AdminAuditLog() {
               <tbody>
                 {rows.map((event, index) => (
                   <tr key={`${event.action}-${index}`}>
-                    <td>
+                    <td data-label="時間">
                       <Timestamp at={event.occurred_at} />
                     </td>
-                    <td>{ACTION_LABEL[event.action] ?? event.action}</td>
-                    <td>{event.actor_user_id ? <code>{event.actor_user_id}</code> : "平台自動"}</td>
-                    <td>
+                    <th scope="row" data-label="動作">
+                      {ACTION_LABEL[event.action] ?? event.action}
+                    </th>
+                    <td data-label="operator">
+                      {event.actor_user_id ? <code>{event.actor_user_id}</code> : "平台自動"}
+                    </td>
+                    <td data-label="對象">
                       {RESOURCE_LABEL[event.resource_type] ?? event.resource_type}{" "}
                       <code>{event.resource_id ?? "不適用"}</code>
                     </td>
-                    <td>
+                    <td data-label="內容">
                       <MetadataCell metadata={event.metadata} />
                     </td>
                   </tr>

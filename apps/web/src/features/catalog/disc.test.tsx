@@ -424,15 +424,65 @@ test("r3 提案 A: 精選 書架 states what the review is not, in visible text"
 
   const shelf = container.querySelector(".curated-shelf")!;
   const note = shelf.querySelector(".note")!.textContent!.replace(/\s+/g, "");
-  expect(note).toContain("由我們自己逐份讀過");
+  expect(note).toContain("這一版由我們逐份讀過");
   expect(note).toContain("九項人工檢視");
+  for (const item of [
+    "來源可追溯",
+    "License實查",
+    "規格驗證",
+    "Script逐行審閱",
+    "無疑似Secret",
+    "白話摘要",
+    "至少一次平台基準試跑符合",
+  ]) {
+    expect(note).toContain(item);
+  }
   expect(note).toContain("這不是安全保證，也不是推薦");
   expect(note).toContain("審查綁在這一版的位元組上");
-  expect(note).toContain("不是從沒被審過");
+  expect(note).toContain("平台未執行套件程式碼");
+  expect(note).toContain("更新後若未重審，就會掉回「已索引」");
+  const firstCard = shelf.querySelector(".search-result")!;
+  expect(precedes(noteElement(shelf, "九項人工檢視"), firstCard)).toBe(true);
+
+  const restHeading = container.querySelector("#rest-heading")!;
+  const restNote = noteElement(container, "不是從沒被審過");
+  const firstRestCard = container.querySelector(
+    'ul[aria-labelledby="rest-heading"] .search-result',
+  )!;
+  expect(precedes(restHeading, restNote)).toBe(true);
+  expect(precedes(restNote, firstRestCard)).toBe(true);
   expect(shelf.textContent).not.toMatch(/官方推薦|已認證|Verified/);
   for (const el of shelf.querySelectorAll("[title]")) {
     expect(el.getAttribute("title")).not.toContain("九項人工檢視");
   }
+});
+
+function precedes(first: Element, second: Element): boolean {
+  return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+function noteElement(scope: Element, text: string): Element {
+  const note = [...scope.querySelectorAll("p.note")].find((item) =>
+    item.textContent?.includes(text),
+  );
+  expect(note, `找不到可見但書「${text}」`).toBeDefined();
+  expect(note!.closest("details, [hidden]")).toBeNull();
+  return note!;
+}
+
+test("目錄：必要警語與 facet 說明先於首卡，詞彙說明在末卡之後", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  const cards = [...container.querySelectorAll(".search-result")];
+  expect(cards).toHaveLength(SHELF_ROWS.length);
+  expect(precedes(noteElement(container, "未經人工核對"), cards[0])).toBe(true);
+  expect(
+    precedes(noteElement(container, "你的 Agent 讀的是套件自己的 description"), cards[0]),
+  ).toBe(true);
+  expect(precedes(noteElement(container, "類別：由策展判定。"), cards[0])).toBe(true);
+  expect(precedes(cards.at(-1)!, noteElement(container, "標記說明："))).toBe(true);
+  expect(noteElement(container, "標記說明：").textContent).toContain("來源未標示");
 });
 
 test("設計 §0: the catalogue lands with the filter bar shut, at every width", async () => {
@@ -911,6 +961,25 @@ const TWO_HITS: PublicSearchResponse = {
     },
   ],
 };
+
+test("搜尋：標題、計數、必要警語與 facet 說明先於首卡，排序與詞彙說明在末卡之後", async () => {
+  stubSearch(TWO_HITS);
+  await render(<App />);
+  await submitSearch("pdf");
+
+  const cards = [...container.querySelectorAll(".search-result")];
+  expect(cards).toHaveLength(TWO_HITS.results.length);
+  expect(precedes(container.querySelector("#results-heading")!, cards[0])).toBe(true);
+  expect(precedes(noteElement(container, "找到 4 個 Skill。"), cards[0])).toBe(true);
+  expect(precedes(noteElement(container, "未經人工核對"), cards[0])).toBe(true);
+  expect(
+    precedes(noteElement(container, "你的 Agent 讀的是套件自己的 description"), cards[0]),
+  ).toBe(true);
+  expect(precedes(noteElement(container, "類別：由策展判定。"), cards[0])).toBe(true);
+  expect(precedes(cards.at(-1)!, container.querySelector("details.ranking-explainer")!)).toBe(true);
+  expect(precedes(cards.at(-1)!, noteElement(container, "標記說明："))).toBe(true);
+  expect(noteElement(container, "標記說明：").textContent).toContain("作者原文");
+});
 
 test("DISC-004: the ranking rule is explained on demand and matches the pipeline", async () => {
   stubSearch(TWO_HITS);

@@ -19,6 +19,8 @@ import {
 } from "../../testing/fixtures/platform";
 import { useForkSkill } from "../skill/skills.service";
 import { BundleSection } from "../publishing";
+import { AnalyticsEventsSection } from "./policy/components/AnalyticsEventsSection";
+import type { DataRetentionPolicy } from "../../core/api/types";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
@@ -137,6 +139,73 @@ test("WS-004 a run history row words `succeeded` as execution, never as a pass",
   expect(text()).toContain("任務判定：符合");
   expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));
   expect(text()).not.toContain("成功");
+});
+
+test("O11Y-004 the policy event table keeps its accessible columns in mobile cards", async () => {
+  const policy: DataRetentionPolicy = {
+    collecting: true,
+    retention_days: 180,
+    events: [
+      {
+        name: "search_performed",
+        when: "a search is submitted",
+        attributes: ["query_length", "query_language"],
+        not_recorded: "not one word of the query itself",
+      },
+      {
+        name: "session_started",
+        when: "a participant signs in",
+        attributes: ["participant_id"],
+        not_recorded: "the participant's password",
+      },
+    ],
+    note: "Event data is retained for this deployment.",
+    feedback: {
+      what: "Feedback data",
+      collected: [],
+      free_text: "Participant written feedback",
+      kind: [],
+      page_path: "The current route",
+      run_id: "The current Run",
+      on_account_deletion: "Feedback is retained",
+      retention_days: null,
+    },
+  };
+
+  await render(
+    <AnalyticsEventsSection isPending={false} error={null} data={policy} />,
+    () => container.querySelectorAll(".responsive-table tbody tr").length === 2,
+  );
+
+  const table = container.querySelector<HTMLTableElement>("table");
+  const wrapper = container.querySelector<HTMLDivElement>(".table-scroll");
+  expect(table?.classList.contains("responsive-table")).toBe(true);
+  expect(table?.querySelectorAll("caption")).toHaveLength(1);
+  expect(Array.from(table!.querySelectorAll("thead th"), (cell) => cell.textContent)).toEqual([
+    "事件",
+    "什麼時候產生",
+    "記了哪些欄位",
+    "沒有記什麼",
+  ]);
+  expect(wrapper?.tabIndex).toBe(0);
+
+  const rows = Array.from(table!.querySelectorAll("tbody tr"));
+  expect(rows.map((row) => row.querySelector('th[scope="row"] code')?.textContent)).toEqual([
+    "search_performed",
+    "session_started",
+  ]);
+  expect(
+    rows.map((row) =>
+      Array.from(
+        row.querySelectorAll<HTMLTableCellElement>("th, td"),
+        (cell) => cell.dataset.label,
+      ),
+    ),
+  ).toEqual([
+    ["事件", "什麼時候產生", "記了哪些欄位", "沒有記什麼"],
+    ["事件", "什麼時候產生", "記了哪些欄位", "沒有記什麼"],
+  ]);
+  expect(rows.every((row) => row.querySelectorAll("th[scope='row']").length === 1)).toBe(true);
 });
 
 test("WS-004 an unevaluated run says 未評估, which is not a blank and not a pass", async () => {

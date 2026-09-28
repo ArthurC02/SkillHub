@@ -1195,8 +1195,11 @@ export function platformResponse(input: string): { body: unknown; status: number
       deletion_requested_at: "2026-08-17T00:00:00Z",
       purge_after: "2026-09-16T00:00:00Z",
       deletion_scope:
-        "purging the account destroys its skills, versions, runs, traces, evaluations and packaged downloads; audit records of the deletion itself are retained",
+        "帳號、Skill、版本、Run、Trace、評估與打包下載會刪除；刪除動作本身的稽核紀錄會保留。",
     } satisfies Me);
+  if (path === "/me/credits") return ok({ balance_credits: 120 });
+  if (path === "/me/credits/entries") return ok({ entries: [], note: "目前沒有點數進出紀錄。" });
+  if (path === "/me/bundles") return ok({ bundles: [] });
   if (path === "/me/publisher") return ok(OWN_PUBLISHER);
   if (path === `/skills/${SKILL}/publication`) return ok(OWN_PUBLICATION);
   if (path === `/publications/${PUBLISHER}/${PUBLICATION}`) return ok(PUBLIC_PUBLICATION);

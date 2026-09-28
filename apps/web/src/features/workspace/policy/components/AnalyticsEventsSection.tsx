@@ -40,7 +40,7 @@ export function AnalyticsEventsSection({
           <p className="note">{data.note}</p>
 
           <div className="table-scroll" tabIndex={0}>
-            <table className="compare-table" data-role="evidence">
+            <table className="compare-table responsive-table" data-role="evidence">
               <caption>
                 全部只有這 {data.events.length} 個事件。要再加一個，得先說明既有的資料表
                 為什麼答不出那個問題。
@@ -56,11 +56,11 @@ export function AnalyticsEventsSection({
               <tbody>
                 {data.events.map((event) => (
                   <tr key={event.name}>
-                    <th scope="row">
+                    <th scope="row" data-label="事件">
                       <code>{event.name}</code>
                     </th>
-                    <td>{event.when}</td>
-                    <td>
+                    <td data-label="什麼時候產生">{event.when}</td>
+                    <td data-label="記了哪些欄位">
                       <ul className="risk-list">
                         {event.attributes.map((attribute) => (
                           <li key={attribute}>
@@ -69,7 +69,7 @@ export function AnalyticsEventsSection({
                         ))}
                       </ul>
                     </td>
-                    <td>{event.not_recorded}</td>
+                    <td data-label="沒有記什麼">{event.not_recorded}</td>
                   </tr>
                 ))}
               </tbody>

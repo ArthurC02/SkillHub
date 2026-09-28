@@ -131,12 +131,13 @@ test("IA-6 the 401 state says it in 繁體中文 and carries the login action", 
   expect(container.querySelector("[role=alert]")).toBeNull();
 });
 
-test("IA-6 ReadFailure does NOT swallow a non-401 — a 500 still says what failed", async () => {
+test("IA-6 ReadFailure keeps a 500 actionable without exposing its raw message", async () => {
   await render(
-    <ReadFailure error={new ApiError(500, "資料庫連線中斷")} what="下載紀錄" />,
+    <ReadFailure error={new ApiError(500, "database connection refused")} what="下載紀錄" />,
     () => text().length > 0,
   );
-  expect(text()).toContain("無法讀取下載紀錄：資料庫連線中斷");
+  expect(text()).toBe("暫時無法讀取下載紀錄。請重新整理，或稍後再試。");
+  expect(text()).not.toContain("database connection refused");
   expect(container.querySelector("[role=alert]")).not.toBeNull();
   expect(text()).not.toContain("需要登入");
 });
@@ -165,6 +166,7 @@ test("IA-6 a page's own non-401 wording survives; the 401 branch replaces it", a
     () => text().includes("需要登入"),
   );
   expect(text()).not.toContain("無法比較");
+  expect(text()).not.toContain("not authenticated");
   assertHonestArrival();
 });
 

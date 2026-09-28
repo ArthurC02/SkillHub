@@ -7,7 +7,7 @@ import type { PublicSearchResult } from "../../../../core/api/types";
 import { CompareBar } from "./CompareBar";
 import { SearchFacetNotes } from "./SearchFacetNotes";
 import { liftedNotes } from "./SearchFacetNotes.model";
-import { MarkerLegend } from "./MarkerLegend";
+import { MarkerLegend, MarkerWarning } from "./MarkerLegend";
 import { SearchResultRow } from "./SearchResultRow";
 import "./Catalog.css";
 
@@ -79,25 +79,24 @@ export function Catalog({
               ? `目錄共 ${total} 個 Skill，這裡列出 ${results.length} 個。目前沒有翻頁；用上面的搜尋或篩選縮小範圍。`
               : `目錄共 ${total} 個 Skill，全部列在下面。`}
           </p>
-          <MarkerLegend />
+          <MarkerWarning />
           <SearchFacetNotes hits={results} />
           {shelved ? (
             <>
               <section className="curated-shelf" aria-labelledby="curated-heading">
                 <h3 id="curated-heading">精選（{curated.length}）</h3>
                 <p className="note">
-                  這 {curated.length} 個 Skill 由我們自己逐份讀過：這一版通過九項人工檢視——來源
-                  可追溯、License 實查、規格驗證、Script 逐行審閱、無疑似 Secret、白話摘要，以及至少
-                  一次平台基準試跑符合。這不是安全保證，也不是推薦：平台不曾執行它們的程式碼來判斷
-                  行為。審查綁在這一版的位元組上——出了新版本而審查還沒跟上，它會自動掉到下面那一段，
-                  不需要任何人操作。下面 {rest.length} 個是「已索引」：目前這一版沒有帶著人工審查
-                  結論，不是從沒被審過。
+                  這一版由我們逐份讀過，通過九項人工檢視：來源可追溯、License 實查、規格驗證、
+                  Script 逐行審閱、無疑似 Secret、白話摘要、至少一次平台基準試跑符合。
+                  這不是安全保證，也不是推薦；平台未執行套件程式碼來判斷行為。審查綁在這一版的
+                  位元組上；更新後若未重審，就會掉回「已索引」。
                 </p>
                 <ul className="search-results" aria-labelledby="curated-heading">
                   {curated.map(row)}
                 </ul>
               </section>
               <h3 id="rest-heading">其餘目錄（{rest.length}）</h3>
+              <p className="note">「已索引」表示目前這一版沒有帶著人工審查結論，不是從沒被審過。</p>
               <ul className="search-results" aria-labelledby="rest-heading">
                 {rest.map(row)}
               </ul>
@@ -107,6 +106,7 @@ export function Catalog({
               {results.map(row)}
             </ul>
           )}
+          <MarkerLegend />
         </>
       )}
     </section>

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { RUN, SKILL, platformResponse } from "../src/testing/fixtures/platform";
+import { RUN, SKILL, SKILL_B, platformResponse } from "../src/testing/fixtures/platform";
 import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
@@ -34,6 +34,7 @@ test.describe("QA-008 composite pixels", () => {
   test("the focus ring is actually painted", async ({ page }) => {
     await stubPlatform(page);
     await page.goto("/");
+    await expect(page.locator(".app-nav a").first()).toBeVisible();
 
     let outline: { width: string; style: string } | null = null;
     for (let i = 0; i < 6 && outline === null; i++) {
@@ -229,10 +230,10 @@ test.describe("QA-008 real layout", () => {
     }
   });
 
-  test("a wide table scrolls inside its own container", async ({ page }) => {
+  test("a comparison table scrolls inside its own container", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/policy");
+    await page.goto(`/compare?ids=${SKILL},${SKILL_B}`);
     await expect(page.locator(".compare-table")).toBeVisible();
 
     const scroller = await page
@@ -243,6 +244,43 @@ test.describe("QA-008 real layout", () => {
       scroller.clientWidth,
     );
   });
+
+  for (const [name, url] of [
+    ["policy events", "/policy"],
+    ["admin audit log", "/admin/audit-log"],
+    ["admin cost statistics", "/admin/cost-statistics"],
+  ] as const) {
+    test(`${name} becomes labelled cards instead of a squeezed table`, async ({ page }) => {
+      await stubPlatform(page);
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.goto(url);
+
+      const table = page.locator("table.responsive-table");
+      await expect(table).toBeVisible();
+      const layout = await table.evaluate((element) => {
+        const row = element.querySelector("tbody tr");
+        const rowHeader = row?.querySelector('th[scope="row"]');
+        const cells = Array.from(element.querySelectorAll("tbody tr:first-child > *"));
+        const scroll = element.closest(".table-scroll");
+        return {
+          rowDisplay: row ? getComputedStyle(row).display : "missing",
+          rowWidth: row?.getBoundingClientRect().width ?? 0,
+          rowHeaderWidth: rowHeader?.getBoundingClientRect().width ?? 0,
+          labels: cells.map((cell) => cell.getAttribute("data-label")),
+          labelContent: cells.map((cell) => getComputedStyle(cell, "::before").content),
+          scrollWidth: scroll?.scrollWidth ?? 0,
+          clientWidth: scroll?.clientWidth ?? 0,
+        };
+      });
+
+      expect(layout.rowDisplay).toBe("flex");
+      expect(Math.abs(layout.rowHeaderWidth - layout.rowWidth)).toBeLessThanOrEqual(2);
+      expect(layout.labels.length).toBeGreaterThan(1);
+      expect(layout.labels.every(Boolean)).toBe(true);
+      expect(layout.labelContent.every((label) => label !== "none" && label !== '""')).toBe(true);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+    });
+  }
 
   test("no paragraph is wider than the §4.5 measure", async ({ page }) => {
     await stubPlatform(page);
@@ -288,6 +326,49 @@ test.describe("QA-008 real layout", () => {
       ).toBeGreaterThanOrEqual(32);
       expect(b.border, `「${b.text}」 has no box`).not.toBe("0px");
     }
+  });
+
+  for (const [name, url, label] of [
+    ["catalog category", "/?category=documents", "文件（"],
+    ["admin section", "/admin/accounts", "帳號與點數"],
+    ["trend range", "/admin/trends?days=7", "7 天"],
+  ] as const) {
+    test(`the current ${name} chip is visibly selected`, async ({ page }) => {
+      await stubPlatform(page);
+      await page.goto(url);
+
+      const chip = page.locator('.chip[aria-current="page"]', { hasText: label });
+      await expect(chip).toHaveCount(1);
+      await expect(chip).toBeVisible();
+      const selected = await chip.evaluate((el) => {
+        const style = getComputedStyle(el);
+        const probe = document.createElement("div");
+        probe.style.background = "var(--code-bg)";
+        document.body.appendChild(probe);
+        const selectedBackground = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return {
+          background: style.backgroundColor,
+          selectedBackground,
+          weight: Number(style.fontWeight),
+        };
+      });
+      expect(selected.background).toBe(selected.selectedBackground);
+      expect(selected.weight).toBeGreaterThanOrEqual(600);
+    });
+  }
+
+  test("the account visual fixture is a complete success state", async ({ page }) => {
+    await stubPlatform(page);
+    await page.goto("/workspace/account");
+
+    await expect(page.getByText("目前餘額 120 點")).toBeVisible();
+    await expect(page.getByText("還沒有任何點數進出。這裡是空的代表沒有發生過")).toBeVisible();
+    await expect(
+      page.getByText("帳號、Skill、版本、Run、Trace、評估與打包下載會刪除"),
+    ).toBeVisible();
+    await expect(page.locator('main [role="alert"]')).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("not found");
   });
 
   test("a disclaimer beside a badge is not fused to it", async ({ page }) => {

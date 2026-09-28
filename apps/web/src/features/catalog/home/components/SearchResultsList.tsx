@@ -1,7 +1,7 @@
 import type { PublicSearchResult } from "../../../../core/api/types";
 import { RankingExplainer } from "./RankingExplainer";
 import { CompareBar } from "./CompareBar";
-import { MarkerLegend } from "./MarkerLegend";
+import { MarkerLegend, MarkerWarning } from "./MarkerLegend";
 import { SearchFacetNotes } from "./SearchFacetNotes";
 import { liftedNotes } from "./SearchFacetNotes.model";
 import { SearchResultRow } from "./SearchResultRow";
@@ -21,13 +21,12 @@ export function SearchResultsList({
 }) {
   return (
     <>
-      <RankingExplainer />
       <CompareBar selected={selected} />
       <h2 id="results-heading">符合「{query}」的 Skill</h2>
       <p role="status" className="note">
         找到 {results.length} 個 Skill。
       </p>
-      <MarkerLegend />
+      <MarkerWarning />
       <SearchFacetNotes hits={results} />
       <ul className="search-results" aria-labelledby="results-heading">
         {results.map((hit) => (
@@ -41,6 +40,8 @@ export function SearchResultsList({
           />
         ))}
       </ul>
+      <RankingExplainer />
+      <MarkerLegend />
     </>
   );
 }
