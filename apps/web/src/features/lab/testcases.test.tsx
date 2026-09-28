@@ -13,6 +13,7 @@ let root: Root;
 beforeEach(() => {
   queryClient.clear();
   listSearch = {};
+  navigations.length = 0;
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -26,12 +27,17 @@ afterEach(async () => {
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
+const OTHER_SKILL = "44444444-4444-4444-4444-444444444444";
 
-let listSearch: { skill?: string } = {};
+let listSearch: { skill?: string; version?: string } = {};
+const navigations: unknown[] = [];
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ testCaseId: TEST_CASE }),
-  useNavigate: () => () => Promise.resolve(),
+  useNavigate: () => (options: unknown) => {
+    navigations.push(options);
+    return Promise.resolve();
+  },
   useSearch: () => listSearch,
   Link: ({ children }: { children?: unknown }) => children,
 }));
@@ -79,6 +85,7 @@ type Overrides = {
   testCases?: unknown[];
   testCase?: TestCase;
   create?: { status: number; error: string };
+  skills?: { skill_id: string; name: string; summary: string }[];
 };
 
 function json(body: unknown, status = 200) {
@@ -107,7 +114,9 @@ function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
     (req: PlatformRequest) => (req.path === "/runs" ? json({ runs: over.runs ?? [] }) : undefined),
     (req: PlatformRequest) =>
       req.path === "/skills"
-        ? json({ skills: [{ skill_id: SKILL, name: "去重複工具", summary: "" }] })
+        ? json({
+            skills: over.skills ?? [{ skill_id: SKILL, name: "去重複工具", summary: "" }],
+          })
         : undefined,
     (req: PlatformRequest) => {
       if (req.method !== "POST" || req.path !== "/test-cases") return undefined;
@@ -183,6 +192,18 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
     });
   }
   throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+}
+
+async function submitNewTestCase(skillId: string) {
+  await act(async () =>
+    selectValue(container.querySelector<HTMLSelectElement>("#tc-skill")!, skillId),
+  );
+  await act(async () => setValue(container.querySelector<HTMLInputElement>("#tc-name")!, "名稱"));
+  await act(async () =>
+    setValue(container.querySelector<HTMLTextAreaElement>("#tc-prompt")!, "prompt"),
+  );
+  await act(async () => button("建立").click());
+  await waitFor(() => navigations.length > 0);
 }
 
 test("a disabled prompt save exposes its visible reason to assistive technology", async () => {
@@ -549,6 +570,40 @@ test("列表 ?skill= 指名的 Skill 要預先填進建立表單，不要再問�
 
   expect(container.querySelector<HTMLSelectElement>("#tc-skill")!.value).toBe(SKILL);
   expect(container.textContent).not.toContain("還不能建立，因為：選一個 Skill");
+});
+
+test("creating a Test Case for the current Skill keeps the selected version", async () => {
+  listSearch = { skill: SKILL, version: VERSION };
+  stubPlatform();
+  await renderList();
+
+  await submitNewTestCase(SKILL);
+
+  expect(navigations).toContainEqual({
+    to: "/lab/test-cases/$testCaseId",
+    params: { testCaseId: TEST_CASE },
+    search: { version: VERSION },
+  });
+});
+
+test("creating a Test Case for another Skill drops the previous Skill's version", async () => {
+  listSearch = { skill: SKILL, version: VERSION };
+  const calls = stubPlatform({
+    skills: [
+      { skill_id: SKILL, name: "去重複工具", summary: "" },
+      { skill_id: OTHER_SKILL, name: "另一個工具", summary: "" },
+    ],
+  });
+  await renderList();
+
+  await submitNewTestCase(OTHER_SKILL);
+
+  expect(calls.find((call) => call.method === "POST")?.body).toContain(OTHER_SKILL);
+  expect(navigations).toContainEqual({
+    to: "/lab/test-cases/$testCaseId",
+    params: { testCaseId: TEST_CASE },
+    search: { version: undefined },
+  });
 });
 
 test("設計 §2.4 the Rubric save button says why it cannot be pressed", async () => {

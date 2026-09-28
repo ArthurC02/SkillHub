@@ -51,8 +51,11 @@ export function AppliedResult({
         </p>
       )}
       <p>
-        <Link to="/skills/$skillId" params={{ skillId: result.skill_id }}>
-          前往新版本所在的 Skill
+        <Link
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId: result.skill_id, versionId: result.version_id }}
+        >
+          開啟剛建立的版本
         </Link>
       </p>
     </div>

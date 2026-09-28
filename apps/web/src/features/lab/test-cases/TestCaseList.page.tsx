@@ -57,7 +57,7 @@ export function TestCaseList() {
           navigate({
             to: "/lab/test-cases/$testCaseId",
             params: { testCaseId },
-            search: { version },
+            search: { version: chosenSkill === filter ? version : undefined },
           })
         }
       />

@@ -18,7 +18,7 @@ export function SkillWorkspaceNav({ skillId, versionId }: { skillId: string; ver
       <Link to="/skills/$skillId/files" params={{ skillId }} className="chip">
         檔案
       </Link>
-      <Link to="/lab/test-cases" search={{ skill: skillId }} className="chip">
+      <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }} className="chip">
         驗證
       </Link>
       {versionId ? (

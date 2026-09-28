@@ -61,7 +61,7 @@ test("the workbench keeps every stable view on the same Skill and exact version"
   ).toEqual([
     ["總覽", "/skills/skill-1"],
     ["檔案", "/skills/skill-1/files"],
-    ["驗證", "/lab/test-cases?skill=skill-1"],
+    ["驗證", "/lab/test-cases?skill=skill-1&version=version-2"],
     ["版本與發佈", "/skills/skill-1/versions/version-2"],
   ]);
 });

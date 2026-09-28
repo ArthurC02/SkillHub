@@ -533,6 +533,9 @@ test("EVAL-011 the new version's id is handed to the preflight screen, not to th
   expect(params.get("skill")).toBe(SKILL);
   expect(params.get("version")).toBe(NEW_VERSION);
   expect(params.get("test_case")).toBe(TEST_CASE);
+  const versionLink = container.querySelector(`a[href="/skills/${SKILL}/versions/${NEW_VERSION}"]`);
+  expect(versionLink).not.toBeNull();
+  expect(versionLink?.textContent).toContain("開啟剛建立的版本");
 
   const text = container.textContent ?? "";
   expect(text).toContain("以新版本重跑這個 Test Case");
