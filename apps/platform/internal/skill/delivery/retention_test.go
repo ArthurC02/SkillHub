@@ -15,7 +15,7 @@ import (
 
 func TestCreateFailsClosedWithoutRetention(t *testing.T) {
 	service := &Service{}
-	_, err := service.Create(context.Background(), identity.Workspace{}, pgtype.UUID{}, pgtype.UUID{}, "standard", false)
+	_, err := service.Create(context.Background(), identity.Workspace{}, PackageRequest{SkillID: pgtype.UUID{}, VersionID: pgtype.UUID{}, Target: "standard", IncludeTestCases: false})
 	if !errors.Is(err, ErrRetentionNotConfigured) {
 		t.Fatalf("Create() error = %v, want ErrRetentionNotConfigured", err)
 	}

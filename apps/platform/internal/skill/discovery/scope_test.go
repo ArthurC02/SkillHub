@@ -16,7 +16,7 @@ func TestCatalogReadsRefuseWithoutKnowingTheCatalogWorkspaces(t *testing.T) {
 	if _, err := s.CatalogSkillRisks(ctx, []pgtype.UUID{{}}); err == nil {
 		t.Error("CatalogSkillRisks answered without knowing which workspaces are the catalog")
 	}
-	if _, _, _, err := s.CatalogReferenceFacts(ctx, "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"); err == nil {
+	if _, err := s.CatalogReferenceFacts(ctx, "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"); err == nil {
 		t.Error("CatalogReferenceFacts answered without knowing which workspaces are the catalog")
 	}
 }

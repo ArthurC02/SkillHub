@@ -19,7 +19,8 @@ import (
 
 func wireCreationReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
 	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
-		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+		check, err := versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+		return check.ContentHash, check.Report, check.Blocked, err
 	}
 
 	s.Mask = (&trace.Masker{}).MaskString
@@ -37,11 +38,11 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 
 func nearestReferences(s *creation.Service, search *catalog.Service, maxDistance float64) func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 	return func(ctx context.Context, ws identity.Workspace, query string) ([]creation.Reference, float64, error) {
-		ids, cost, degraded, err := search.CreationKnowledgeIDs(ctx, query, maxDistance)
-		if err != nil || degraded {
-			return nil, cost, err
+		knowledge, err := search.CreationKnowledgeIDs(ctx, query, maxDistance)
+		if err != nil || knowledge.Degraded {
+			return nil, knowledge.CostUSD, err
 		}
-		return firstResolvedReferences(ctx, s, ws, ids), cost, nil
+		return firstResolvedReferences(ctx, s, ws, knowledge.IDs), knowledge.CostUSD, nil
 	}
 }
 
@@ -85,13 +86,13 @@ func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, err
 }
 
 func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation.Reference) {
-	tier, scan, warnings, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
+	facts, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
 	if err != nil {
 		return
 	}
-	ref.Tier, ref.ScanStatus = tier, scan
-	if scan == "scanned" {
-		ref.Warnings = &warnings
+	ref.Tier, ref.ScanStatus = facts.Tier, facts.ScanStatus
+	if facts.ScanStatus == "scanned" {
+		ref.Warnings = &facts.Warnings
 	}
 }
 

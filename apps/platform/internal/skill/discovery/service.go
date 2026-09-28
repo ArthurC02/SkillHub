@@ -378,7 +378,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, req hy
 			hit.RankNote = rankNotePendingItem
 		}
 		resultFacets(&hit, facetColumns{
-			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
 			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
 			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
 		})
@@ -423,7 +423,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 			RankNote: rankNoteCatalog,
 		}
 		resultFacets(&hit, facetColumns{
-			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
 			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
 			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
 		})
@@ -468,7 +468,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			RankNote:      rankNoteDegraded,
 		}
 		resultFacets(&hit, facetColumns{
-			tier: tierOf(row.Curated), category: row.Category, categorySource: row.CategorySource,
+			curated: row.Curated, category: row.Category, categorySource: row.CategorySource,
 			tagsJSON: row.Tags, scanJSON: row.Scan, verifiedAt: row.VerifiedAt,
 			compat: measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt),
 		})

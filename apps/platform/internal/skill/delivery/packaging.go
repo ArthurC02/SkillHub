@@ -226,14 +226,11 @@ func referencedUnder(referenced map[string]bool, dirPath string) bool {
 	return false
 }
 
-func (s *Service) Plan(
-	ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID,
-	target string, includeTestCases bool,
-) (*Plan, error) {
-	if !isTargetID(target) {
+func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRequest) (*Plan, error) {
+	if !isTargetID(req.Target) {
 		return nil, ErrUnknownTarget
 	}
-	profile, ok := s.Profiles[target]
+	profile, ok := s.Profiles[req.Target]
 	if !ok {
 		return nil, ErrNoProfile
 	}
@@ -249,14 +246,14 @@ func (s *Service) Plan(
 		return nil, err
 	}
 
-	skill, found, err := s.ReadSkill(ctx, ws.ID, skillID)
+	skill, found, err := s.ReadSkill(ctx, ws.ID, req.SkillID)
 	if !found && err == nil {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	version, found, err := s.ReadVersion(ctx, ws.ID, versionID)
+	version, found, err := s.ReadVersion(ctx, ws.ID, req.VersionID)
 	if !found && err == nil {
 		return nil, ErrNotFound
 	}
@@ -277,7 +274,7 @@ func (s *Service) Plan(
 
 	p := &Plan{
 		Skill: skill, Version: version, Profile: profile,
-		IncludeTestCases: includeTestCases, Retention: retention,
+		IncludeTestCases: req.IncludeTestCases, Retention: retention,
 		LatestVersionNumber: summary.LatestVersionNumber,
 		Validation:          ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 		Included:            []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
@@ -586,32 +583,26 @@ func (a Artifact) withServeState(expiresAt, purgedAt time.Time) Artifact {
 	return a
 }
 
-func (s *Service) Create(
-	ctx context.Context, ws identity.Workspace, skillID, versionID pgtype.UUID,
-	target string, includeTestCases bool,
-) (Result, error) {
-	return s.create(ctx, ws, ws, packageRequest{
-		skillID: skillID, versionID: versionID, target: target, includeTestCases: includeTestCases,
-	})
+func (s *Service) Create(ctx context.Context, ws identity.Workspace, req PackageRequest) (Result, error) {
+	return s.create(ctx, ws, ws, req)
 }
 
 func (s *Service) CreateForRecipient(
 	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
 ) (Result, error) {
-	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, packageRequest{
-		skillID: skillID, versionID: versionID, target: StandardTargetID,
+	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, PackageRequest{
+		SkillID: skillID, VersionID: versionID, Target: StandardTargetID,
 	})
 }
 
-type packageRequest struct {
-	skillID          pgtype.UUID
-	versionID        pgtype.UUID
-	target           string
-	includeTestCases bool
+type PackageRequest struct {
+	SkillID          pgtype.UUID
+	VersionID        pgtype.UUID
+	Target           string
+	IncludeTestCases bool
 }
 
-func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req packageRequest) (Result, error) {
-	skillID, versionID, target, includeTestCases := req.skillID, req.versionID, req.target, req.includeTestCases
+func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req PackageRequest) (Result, error) {
 	retention, err := s.Retention.Period()
 	if err != nil {
 		return Result{}, err
@@ -620,7 +611,7 @@ func (s *Service) create(ctx context.Context, source, recipient identity.Workspa
 		return Result{}, err
 	}
 
-	skill, found, err := s.ReadSkill(ctx, source.ID, skillID)
+	skill, found, err := s.ReadSkill(ctx, source.ID, req.SkillID)
 	if !found && err == nil {
 		return Result{}, ErrNotFound
 	}
@@ -636,10 +627,10 @@ func (s *Service) create(ctx context.Context, source, recipient identity.Workspa
 		}}, nil
 	}
 
-	if !isTargetID(target) {
+	if !isTargetID(req.Target) {
 		return Result{}, ErrUnknownTarget
 	}
-	p, err := s.Plan(ctx, source, skillID, versionID, target, includeTestCases)
+	p, err := s.Plan(ctx, source, req)
 	if err != nil {
 		return Result{}, err
 	}

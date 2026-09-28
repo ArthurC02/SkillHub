@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-const gocognitComplexityCeiling = 30
+const gocognitComplexityCeiling = 20
 
 var complexityGateLintPaths = []string{
 	"apps/platform/.golangci.yml",

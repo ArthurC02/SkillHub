@@ -281,9 +281,9 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 	sweep := func(t *testing.T, wantUnavailable int) {
 		t.Helper()
 
-		if _, unavailable, _, err := svc.CheckSources(context.Background(), 200); err != nil {
+		if result, err := svc.CheckSources(context.Background(), 200); err != nil {
 			t.Fatal(err)
-		} else if unavailable < wantUnavailable {
+		} else if unavailable := result.Unavailable; unavailable < wantUnavailable {
 			t.Fatalf("sweep reported %d unavailable sources, want at least %d", unavailable, wantUnavailable)
 		}
 	}
@@ -377,7 +377,7 @@ func TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange(t *testing.T) {
 	}}
 	sweep := func(t *testing.T) {
 		t.Helper()
-		if _, _, _, err := svc.CheckSources(context.Background(), 200); err != nil {
+		if _, err := svc.CheckSources(context.Background(), 200); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -466,7 +466,7 @@ func TestASourceThatCannotBeRefetchedIsNotRecordedAsChanged(t *testing.T) {
 	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
 		Allowed: map[string]bool{host: true}, AllowInsecure: true,
 	}}
-	if _, _, _, err := svc.CheckSources(context.Background(), 200); err != nil {
+	if _, err := svc.CheckSources(context.Background(), 200); err != nil {
 		t.Fatal(err)
 	}
 	if n := countRow(t, pool,

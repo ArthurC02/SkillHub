@@ -23,7 +23,8 @@ func wireCreationReads(s *creation.Service, versions *ingest.Service, search *ca
 		return firstResolvedReferences(ctx, s, ws, catalog.FuseRanked(rankings)), cost, nil
 	}
 	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
-		return versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+		check, err := versions.ValidateCreationDraft(ctx, generatedSkillForIngest(draft))
+		return check.ContentHash, check.Report, check.Blocked, err
 	}
 	s.Mask = (&trace.Masker{}).MaskString
 	s.ResolveReference = referenceResolver(versions, search)
@@ -40,12 +41,12 @@ func knowledgeRankings(ctx context.Context, search *catalog.Service, queries []s
 	var rankings [][]string
 	var cost float64
 	for _, query := range queries {
-		ids, c, _, err := search.CreationKnowledgeIDs(ctx, query, catalog.CreationMaxDistance)
-		cost += c
+		knowledge, err := search.CreationKnowledgeIDs(ctx, query, catalog.CreationMaxDistance)
+		cost += knowledge.CostUSD
 		if err != nil {
 			return nil, cost, err
 		}
-		rankings = append(rankings, ids)
+		rankings = append(rankings, knowledge.IDs)
 	}
 	return rankings, cost, nil
 }
@@ -90,13 +91,13 @@ func parseReferenceIDs(skillID, versionID string) (pgtype.UUID, pgtype.UUID, err
 }
 
 func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation.Reference) {
-	tier, scan, warnings, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
+	facts, err := search.CatalogReferenceFacts(ctx, ref.SkillID, ref.VersionID)
 	if err != nil {
 		return
 	}
-	ref.Tier, ref.ScanStatus = tier, scan
-	if scan == "scanned" {
-		ref.Warnings = &warnings
+	ref.Tier, ref.ScanStatus = facts.Tier, facts.ScanStatus
+	if facts.ScanStatus == "scanned" {
+		ref.Warnings = &facts.Warnings
 	}
 }
 

@@ -38,8 +38,9 @@ func TestTheTierFilterAsksForCuratedOrNotAndNothingWhenAbsent(t *testing.T) {
 	if got := curatedFilter(&indexed); got == nil || *got {
 		t.Fatalf("tier=indexed filter = %v, want uncurated only", got)
 	}
-	if tierOf(true) != TierCurated || tierOf(false) != TierIndexed {
-		t.Fatalf("tierOf(true)=%q tierOf(false)=%q", tierOf(true), tierOf(false))
+	curatedRow, indexedRow := facetColumns{curated: true}, facetColumns{curated: false}
+	if curatedRow.tier() != TierCurated || indexedRow.tier() != TierIndexed {
+		t.Fatalf("curated row tier=%q uncurated row tier=%q", curatedRow.tier(), indexedRow.tier())
 	}
 }
 

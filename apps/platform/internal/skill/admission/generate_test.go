@@ -787,7 +787,8 @@ func TestReferencesAloneWithNoDescriptionOrDiagramIsRefused(t *testing.T) {
 func TestValidateCreationDraftReportsWhyThePackageCouldNotBeBuilt(t *testing.T) {
 	g := goodGeneratedSkill()
 	g.Files = []GeneratedFile{{Path: "SKILL.md", Content: "---\nlicense: MIT\n---\n"}}
-	hash, report, blocked, err := (&Service{}).ValidateCreationDraft(context.Background(), g)
+	check, err := (&Service{}).ValidateCreationDraft(context.Background(), g)
+	hash, report, blocked := check.ContentHash, check.Report, check.Blocked
 	if err != nil || !blocked || hash != "" {
 		t.Fatalf("a second SKILL.md must block without error: hash=%q blocked=%v err=%v", hash, blocked, err)
 	}

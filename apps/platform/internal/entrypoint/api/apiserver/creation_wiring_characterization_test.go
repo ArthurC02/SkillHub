@@ -247,8 +247,8 @@ func TestCreationCatalogChecksWithoutAnEmbeddingModelOfferNothing(t *testing.T) 
 		t.Fatal(err)
 	}
 	lexical := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	if ids, _, degraded, err := lexical.CreationKnowledgeIDs(ctx, word, catalog.CreationMaxDistance); err != nil || !degraded || !contains(ids, shelf.skills[0]) {
-		t.Fatalf("the lexical answer must find the skill for this test to mean anything: ids=%v degraded=%v err=%v", ids, degraded, err)
+	if knowledge, err := lexical.CreationKnowledgeIDs(ctx, word, catalog.CreationMaxDistance); err != nil || !knowledge.Degraded || !contains(knowledge.IDs, shelf.skills[0]) {
+		t.Fatalf("the lexical answer must find the skill for this test to mean anything: ids=%v degraded=%v err=%v", knowledge.IDs, knowledge.Degraded, err)
 	}
 
 	for name, check := range map[string]func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error){

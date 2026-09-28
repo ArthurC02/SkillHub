@@ -17,8 +17,8 @@ func curatedAt(tier string, curatedVersionID, latestVersionID pgtype.UUID) bool 
 		curatedVersionID.Bytes == latestVersionID.Bytes
 }
 
-func tierOf(curated bool) Tier {
-	if curated {
+func tierAt(tier string, curatedVersionID, latestVersionID pgtype.UUID) Tier {
+	if curatedAt(tier, curatedVersionID, latestVersionID) {
 		return TierCurated
 	}
 	return TierIndexed

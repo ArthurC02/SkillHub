@@ -109,7 +109,7 @@ const (
 )
 
 type facetColumns struct {
-	tier           Tier
+	curated        bool
 	category       *string
 	categorySource *string
 	tagsJSON       []byte
@@ -118,8 +118,15 @@ type facetColumns struct {
 	compat         compatibility
 }
 
+func (f facetColumns) tier() Tier {
+	if f.curated {
+		return TierCurated
+	}
+	return TierIndexed
+}
+
 func resultFacets(r *searchResult, f facetColumns) {
-	r.Tier = tierLabel(f.tier)
+	r.Tier = tierLabel(f.tier())
 	r.Category = categoryLabel(f.category, f.categorySource)
 	r.Dependencies = dependencyTags(f.tagsJSON)
 	r.Risk = riskHint(f.scanJSON)

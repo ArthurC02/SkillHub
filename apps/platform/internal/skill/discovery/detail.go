@@ -635,7 +635,7 @@ func tierLabel(t Tier) labelled {
 }
 
 func curationTier(skill SkillFacts, latestVersionID pgtype.UUID) Tier {
-	return tierOf(curatedAt(skill.CurationTier, skill.CuratedVersionID, latestVersionID))
+	return tierAt(skill.CurationTier, skill.CuratedVersionID, latestVersionID)
 }
 
 func statusLabel(s LicenseStatus) labelled {

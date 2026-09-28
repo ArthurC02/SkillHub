@@ -393,12 +393,12 @@ func TestBuildingTheSamePackageTwiceProducesTheSameContentHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := a.packaging.Plan(ctx, publishedWorkspace(ws), mustUUID(t, skillID), mustUUID(t, versionID), "claude-code", false)
+	first, err := a.packaging.Plan(ctx, publishedWorkspace(ws), packaging.PackageRequest{SkillID: mustUUID(t, skillID), VersionID: mustUUID(t, versionID), Target: "claude-code", IncludeTestCases: false})
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(1100 * time.Millisecond)
-	second, err := a.packaging.Plan(ctx, publishedWorkspace(ws), mustUUID(t, skillID), mustUUID(t, versionID), "claude-code", false)
+	second, err := a.packaging.Plan(ctx, publishedWorkspace(ws), packaging.PackageRequest{SkillID: mustUUID(t, skillID), VersionID: mustUUID(t, versionID), Target: "claude-code", IncludeTestCases: false})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -713,7 +713,7 @@ func TestConcurrentPackagingCreatesOneArtifact(t *testing.T) {
 		go func() {
 			<-start
 			result, err := a.packaging.Create(context.Background(), publishedWorkspace(ws),
-				skillUUID, versionUUID, "standard", false)
+				packaging.PackageRequest{SkillID: skillUUID, VersionID: versionUUID, Target: "standard", IncludeTestCases: false})
 			out <- outcome{result, err}
 		}()
 	}
@@ -803,8 +803,8 @@ func TestPackagingObjectFailuresAreFailClosedAndCompensated(t *testing.T) {
 		t.Fatal(err)
 	}
 	create := func() error {
-		_, err := a.packaging.Create(context.Background(), publishedWorkspace(ws), mustUUID(t, skillID),
-			mustUUID(t, versionID), "standard", false)
+		_, err := a.packaging.Create(context.Background(), publishedWorkspace(ws),
+			packaging.PackageRequest{SkillID: mustUUID(t, skillID), VersionID: mustUUID(t, versionID), Target: "standard", IncludeTestCases: false})
 		return err
 	}
 
@@ -1450,7 +1450,7 @@ func TestTheManifestAndTheAPIAgreeOnTheValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := a.packaging.Plan(ctx, publishedWorkspace(ws), mustUUID(t, skillID), mustUUID(t, versionID), "standard", false)
+	plan, err := a.packaging.Plan(ctx, publishedWorkspace(ws), packaging.PackageRequest{SkillID: mustUUID(t, skillID), VersionID: mustUUID(t, versionID), Target: "standard", IncludeTestCases: false})
 	if err != nil {
 		t.Fatal(err)
 	}

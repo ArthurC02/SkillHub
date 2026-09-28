@@ -146,16 +146,22 @@ func (s *Service) ReadCreationReference(ctx context.Context, ws identity.Workspa
 	return fixed, ReferenceSkill{Name: skill.Name, SkillMD: text}, nil
 }
 
-func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkill) (string, string, bool, error) {
+type CreationDraftCheck struct {
+	ContentHash string
+	Report      string
+	Blocked     bool
+}
+
+func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkill) (CreationDraftCheck, error) {
 	data, err := buildGeneratedPackage(draft)
 	if err != nil {
 
-		return "", fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), true, nil
+		return CreationDraftCheck{Report: fmt.Sprintf("套件結構無法通過驗證：%v。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。", err), Blocked: true}, nil
 	}
 	prepared, err := s.prepare(data)
 	if err != nil {
-		return "", "", true, err
+		return CreationDraftCheck{Blocked: true}, err
 	}
 	report, err := json.Marshal(prepared.report)
-	return prepared.contentHash, string(report), prepared.report.Blocked, err
+	return CreationDraftCheck{ContentHash: prepared.contentHash, Report: string(report), Blocked: prepared.report.Blocked}, err
 }

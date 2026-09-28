@@ -61,7 +61,8 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 	t.Cleanup(embed.Close)
 	svc := &catalog.Service{Pool: pool, LLM: catalog.ModelOrNone(&llmclient.Client{BaseURL: embed.URL}), CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
 
-	ids, cost, degraded, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資", catalog.CreationMaxDistance)
+	knowledge, err := svc.CreationKnowledgeIDs(ctx, "pii-flag 標記個資", catalog.CreationMaxDistance)
+	ids, cost, degraded := knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
 	if err != nil || degraded || cost != 0.00001 {
 		t.Fatalf("ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}
@@ -69,18 +70,21 @@ func TestCreationHybridRetrievalRunsThePublicRuleWithoutUnrankedRows(t *testing.
 		t.Fatalf("the covered lexical hit first, then the vector hit: got %v want [%s %s]", ids, far.skillID, near.skillID)
 	}
 
-	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "pii-flag 不存在的詞", catalog.CreationMaxDistance)
+	knowledge, err = svc.CreationKnowledgeIDs(ctx, "pii-flag 不存在的詞", catalog.CreationMaxDistance)
+	ids = knowledge.IDs
 	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
 		t.Fatalf("partial coverage must not admit: %v err=%v", ids, err)
 	}
 
-	ids, _, _, err = svc.CreationKnowledgeIDs(ctx, "remove duplicate rows", catalog.CreationDuplicateDistance)
+	knowledge, err = svc.CreationKnowledgeIDs(ctx, "remove duplicate rows", catalog.CreationDuplicateDistance)
+	ids = knowledge.IDs
 	if err != nil || len(ids) != 1 || ids[0] != near.skillID {
 		t.Fatalf("duplicate cut-off: %v err=%v", ids, err)
 	}
 
 	lexOnly := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	ids, cost, degraded, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
+	knowledge, err = lexOnly.CreationKnowledgeIDs(ctx, "pii-flag", catalog.CreationMaxDistance)
+	ids, cost, degraded = knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
 	if err != nil || !degraded || cost != 0 || len(ids) != 1 || ids[0] != far.skillID {
 		t.Fatalf("degraded answer: ids=%v cost=%v degraded=%v err=%v", ids, cost, degraded, err)
 	}
@@ -132,7 +136,8 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	tier, scan, warnings, err := svc.CatalogReferenceFacts(ctx, skill, version)
+	facts, err := svc.CatalogReferenceFacts(ctx, skill, version)
+	tier, scan, warnings := facts.Tier, facts.ScanStatus, facts.Warnings
 	if err != nil || tier != "indexed" || scan != "scanned" || warnings != 2 {
 		t.Fatalf("indexed: tier=%q scan=%q warnings=%d err=%v", tier, scan, warnings, err)
 	}
@@ -140,18 +145,18 @@ func TestCatalogReferenceFactsReadTheTierAndTheScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	refreshListing(t, pool, skill)
-	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, version); err != nil || tier != "curated" {
-		t.Fatalf("curated version: tier=%q err=%v", tier, err)
+	if facts, err = svc.CatalogReferenceFacts(ctx, skill, version); err != nil || facts.Tier != "curated" {
+		t.Fatalf("curated version: tier=%q err=%v", facts.Tier, err)
 	}
 
 	other := uuidText(creationID(t))
-	if tier, _, _, err = svc.CatalogReferenceFacts(ctx, skill, other); err != nil || tier != "indexed" {
-		t.Fatalf("other version: tier=%q err=%v", tier, err)
+	if facts, err = svc.CatalogReferenceFacts(ctx, skill, other); err != nil || facts.Tier != "indexed" {
+		t.Fatalf("other version: tier=%q err=%v", facts.Tier, err)
 	}
 
 	private := newFixture(t, newAPI(t, pool), pool, uniqueWorklistLabel("facts-private"))
-	if tier, scan, _, err = svc.CatalogReferenceFacts(ctx, private.skillID, private.versionID); err == nil || tier != "unknown" || scan != "unknown" {
-		t.Fatalf("private skill: tier=%q scan=%q err=%v", tier, scan, err)
+	if facts, err = svc.CatalogReferenceFacts(ctx, private.skillID, private.versionID); err == nil || facts.Tier != "unknown" || facts.ScanStatus != "unknown" {
+		t.Fatalf("private skill: tier=%q scan=%q err=%v", facts.Tier, facts.ScanStatus, err)
 	}
 }
 

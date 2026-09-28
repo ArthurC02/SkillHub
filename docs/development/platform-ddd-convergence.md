@@ -129,14 +129,7 @@ func CanTransition(from, to State) bool // 兩端都先 Parse；是否放行同�
 
 C1 至今成立：SQL 側沒有任何 constraint、trigger、unique 或外鍵被刪除或放寬。
 
-**認知複雜度上限是 30**（`apps/platform/.golangci.yml` 的 `gocognit`）。今天超標的生產函式逐一以「檔案路徑＋函式名」排除，清單只准刪不准加：新寫的函式超標，lint 紅；某一支拆小或刪掉之後排除還留著，golangci 印出 `Skipped 0 issues by rules`，CI 的 platform lint 步驟把那一行變成失敗。重跑名單：
-
-```
-golangci-lint run --enable-only=gocognit --max-same-issues 0 --max-issues-per-linter 0 ./... > gocognit.log
-awk '/\(gocognit\)$/ && !/_test\.go/' gocognit.log
-```
-
-先寫進檔案再篩：直接接管線時，部分開發機的外掛會把 golangci 的輸出改寫成一行摘要（§0.3），篩出來是空的。`_test.go` 整批排除——超標的測試函式有二十幾支，排除規則因此一直有命中。
+**認知複雜度上限是 20**（`apps/platform/.golangci.yml` 的 `gocognit`），沒有任何生產函式被逐一排除：超標就拆，不登記例外；`complexity-exemptions` 擋下任何以函式名排除的規則，也擋下調高上限。同一份設定另外啟用 `nestif`、`errorlint`、`gocritic`、`unparam`、`dupl` 與 `revive` 的三條規則：參數最多 5 個、回傳值最多 3 個、不收控制旗標。一起出現的值收成以領域詞彙命名的型別；布林開關拆成兩個名字說得出差別的函式，或改成有具名值的列舉。用查表或包一層型別把布林藏起來不算修好。`_test.go` 不受 `gocognit`、`dupl`、`revive`、`unparam` 約束。
 
 ### 4.1 識別碼的三道守衛
 

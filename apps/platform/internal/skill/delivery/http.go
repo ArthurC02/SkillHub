@@ -197,7 +197,7 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	include := r.URL.Query().Get("include_test_cases") == "true"
 
-	p, err := h.Svc.Plan(r.Context(), ws, skillID, versionID, target, include)
+	p, err := h.Svc.Plan(r.Context(), ws, PackageRequest{SkillID: skillID, VersionID: versionID, Target: target, IncludeTestCases: include})
 	if !h.writeServiceError(w, err) {
 		return
 	}
@@ -238,7 +238,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.Svc.Create(r.Context(), ws, skillID, versionID, body.Target, body.IncludeTestCases)
+	res, err := h.Svc.Create(r.Context(), ws, PackageRequest{SkillID: skillID, VersionID: versionID, Target: body.Target, IncludeTestCases: body.IncludeTestCases})
 	if !h.writeServiceError(w, err) {
 		return
 	}

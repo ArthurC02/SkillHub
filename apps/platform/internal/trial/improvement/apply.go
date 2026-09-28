@@ -538,7 +538,7 @@ func (s *Service) buildImprovedVersion(
 	if err != nil {
 		return out, err
 	}
-	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, evaluationID, plan.applied)
+	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, ingest.Improvement{EvaluationID: evaluationID, SuggestionIDs: plan.applied})
 	if err != nil {
 		return out, err
 	}

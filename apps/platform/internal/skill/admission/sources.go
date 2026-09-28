@@ -99,36 +99,43 @@ func (s *Service) OldestSourceCheck(ctx context.Context) (pgtype.Timestamptz, er
 	return gen.New(s.Pool).OldestSourceCheck(ctx, string(SourceGit))
 }
 
-func (s *Service) CheckSources(ctx context.Context, limit int32) (checked, unavailable, changed int, err error) {
+type SourceSweep struct {
+	Checked     int
+	Unavailable int
+	Changed     int
+}
+
+func (s *Service) CheckSources(ctx context.Context, limit int32) (SourceSweep, error) {
+	var sweep SourceSweep
 	if s.Fetcher == nil {
-		return 0, 0, 0, fmt.Errorf("%w: url import not configured", ErrFetch)
+		return sweep, fmt.Errorf("%w: url import not configured", ErrFetch)
 	}
 	q := gen.New(s.Pool)
 	rows, err := q.ListSourcesToCheck(ctx, limit)
 	if err != nil {
-		return 0, 0, 0, err
+		return sweep, err
 	}
 	for _, row := range rows {
 		probe := sourceUnchanged
 		if err := s.Fetcher.Probe(ctx, *row.SourceUrl); err != nil {
 			slog.Info("import source unavailable", "url", *row.SourceUrl, "error", err)
 			probe = sourceUnavailable
-			unavailable++
+			sweep.Unavailable++
 		} else if s.contentDiffers(ctx, row) {
 			probe = sourceContentChanged
-			changed++
+			sweep.Changed++
 		}
 		if err := s.markChecked(ctx, q, row, probe); err != nil {
-			return checked, unavailable, changed, err
+			return sweep, err
 		}
-		checked++
+		sweep.Checked++
 	}
 
-	if changed > 1 && changed == checked {
+	if sweep.Changed > 1 && sweep.Changed == sweep.Checked {
 		slog.Warn("every source in this sweep hashed differently; suspect the archive generator, not the content",
-			"checked", checked, "changed", changed)
+			"checked", sweep.Checked, "changed", sweep.Changed)
 	}
-	return checked, unavailable, changed, nil
+	return sweep, nil
 }
 
 func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheckRow) bool {

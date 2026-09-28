@@ -26,26 +26,32 @@ const CreationDuplicateDistance = 0.55
 
 const CreationMaxDistance = MaxCosineDistance
 
-func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDistance float64) (ids []string, costUSD float64, degraded bool, err error) {
+type CreationKnowledge struct {
+	IDs      []string
+	CostUSD  float64
+	Degraded bool
+}
+
+func (s *Service) CreationKnowledgeIDs(ctx context.Context, query string, maxDistance float64) (CreationKnowledge, error) {
 	scope, err := s.publicScope(ctx)
 	if err != nil {
-		return nil, 0, false, err
+		return CreationKnowledge{}, err
 	}
 	words := creationWordSearch{queries: gen.New(s.Pool), scope: scope, query: query}
 	if s.LLM == nil {
 		ids, err := words.degradedIDs(ctx)
-		return ids, 0, true, err
+		return CreationKnowledge{IDs: ids, Degraded: true}, err
 	}
 	embedding, costUSD, ok := s.embedCreationQuery(ctx, query)
 	if !ok {
 		ids, err := words.degradedIDs(ctx)
-		return ids, 0, true, err
+		return CreationKnowledge{IDs: ids, Degraded: true}, err
 	}
-	ids, err = s.rankedCreationIDs(ctx, words.queries, query, embedding, maxDistance)
+	ids, err := s.rankedCreationIDs(ctx, words.queries, query, embedding, maxDistance)
 	if err != nil {
-		return nil, costUSD, false, err
+		return CreationKnowledge{CostUSD: costUSD}, err
 	}
-	return ids, costUSD, false, nil
+	return CreationKnowledge{IDs: ids, CostUSD: costUSD}, nil
 }
 
 type creationWordSearch struct {
@@ -120,30 +126,38 @@ func (s *Service) rankedCreationIDs(ctx context.Context, queries *gen.Queries, q
 	return ids, nil
 }
 
-func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID string) (tier, scanStatus string, warnings int, err error) {
+type ReferenceFacts struct {
+	Tier       string
+	ScanStatus string
+	Warnings   int
+}
+
+var unknownReferenceFacts = ReferenceFacts{Tier: "unknown", ScanStatus: "unknown"}
+
+func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID string) (ReferenceFacts, error) {
 	var sid, vid pgtype.UUID
 	if err := sid.Scan(skillID); err != nil {
-		return "unknown", "unknown", 0, err
+		return unknownReferenceFacts, err
 	}
 	if err := vid.Scan(versionID); err != nil {
-		return "unknown", "unknown", 0, err
+		return unknownReferenceFacts, err
 	}
 	scope, err := s.publicScope(ctx)
 	if err != nil {
-		return "unknown", "unknown", 0, err
+		return unknownReferenceFacts, err
 	}
 	row, err := gen.New(s.Pool).GetCatalogReferenceFacts(ctx, gen.GetCatalogReferenceFactsParams{
 		SkillID: sid, CatalogWorkspaceIds: scope.catalogs, ExposedKeys: scope.exposedKeys,
 	})
 	if err != nil {
-		return "unknown", "unknown", 0, err
+		return unknownReferenceFacts, err
 	}
-	tier = "indexed"
+	tier := "indexed"
 	if row.CuratedVersionID.Valid && row.CuratedVersionID.Bytes == vid.Bytes {
 		tier = "curated"
 	}
 	risk := riskHint(row.Scan)
-	return tier, risk.ScanStatus, risk.Warnings, nil
+	return ReferenceFacts{Tier: tier, ScanStatus: risk.ScanStatus, Warnings: risk.Warnings}, nil
 }
 
 func containsID(ids []string, id string) bool {

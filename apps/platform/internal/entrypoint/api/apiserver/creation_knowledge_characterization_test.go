@@ -54,7 +54,8 @@ func TestCreationKnowledgeWithoutAModelFillsFromAnyWordMatchesUpToThree(t *testi
 	w1, w2 := uniqueReferenceWord("lexone"), uniqueReferenceWord("lextwo")
 	ids := lexicalCatalogSkills(t, pool, w1+" "+w2, w1+" only", w2+" only", w1+" again")
 
-	got, cost, degraded, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w1+" "+w2, catalog.CreationMaxDistance)
+	knowledge, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w1+" "+w2, catalog.CreationMaxDistance)
+	got, cost, degraded := knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
 	if err != nil || !degraded || cost != 0 {
 		t.Fatalf("degraded=%v cost=%v err=%v, want a free degraded answer", degraded, cost, err)
 	}
@@ -73,7 +74,8 @@ func TestCreationKnowledgeWithThreeAllWordMatchesLooksNoFurther(t *testing.T) {
 	w1, w2 := uniqueReferenceWord("lexthree"), uniqueReferenceWord("lexfull")
 	ids := lexicalCatalogSkills(t, pool, w1+" "+w2+" a", w1+" "+w2+" b", w1+" "+w2+" c", w1+" partial")
 
-	got, _, degraded, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w1+" "+w2, catalog.CreationMaxDistance)
+	knowledge, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w1+" "+w2, catalog.CreationMaxDistance)
+	got, degraded := knowledge.IDs, knowledge.Degraded
 	if err != nil || !degraded {
 		t.Fatalf("degraded=%v err=%v", degraded, err)
 	}
@@ -88,11 +90,12 @@ func TestCreationKnowledgeLeavesOutASkillWaitingForItsEmbedding(t *testing.T) {
 	w := uniqueReferenceWord("lexpending")
 	ids := lexicalCatalogSkills(t, pool, w+" embedded", w+" pending")
 	seedEmbedding(t, pool, ids[0], axis)
-	if got, _, _, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance); err != nil || !contains(got, ids[1]) {
-		t.Fatalf("the pending skill must be a word match for this test to mean anything: %v err=%v", got, err)
+	if words, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance); err != nil || !contains(words.IDs, ids[1]) {
+		t.Fatalf("the pending skill must be a word match for this test to mean anything: %v err=%v", words.IDs, err)
 	}
 
-	got, _, degraded, err := knowledgeSearch(pool, stubLLM(t, axis, "")).CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance)
+	knowledge, err := knowledgeSearch(pool, stubLLM(t, axis, "")).CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance)
+	got, degraded := knowledge.IDs, knowledge.Degraded
 	if err != nil || degraded || len(got) != 1 || got[0] != ids[0] {
 		t.Errorf("ids=%v degraded=%v err=%v, want only the embedded skill %s", got, degraded, err, ids[0])
 	}
@@ -111,7 +114,8 @@ func TestCreationKnowledgeFallsBackToWordsWhenTheEmbeddingFails(t *testing.T) {
 		"the embedding call errors":        stubLLM(t, -1, ""),
 		"the embedding comes back without": empty.URL,
 	} {
-		got, cost, degraded, err := knowledgeSearch(pool, llmURL).CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance)
+		knowledge, err := knowledgeSearch(pool, llmURL).CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance)
+		got, cost, degraded := knowledge.IDs, knowledge.CostUSD, knowledge.Degraded
 		if err != nil || !degraded || cost != 0 || len(got) != 1 || got[0] != ids[0] {
 			t.Errorf("%s: ids=%v cost=%v degraded=%v err=%v, want the word match as a free degraded answer", name, got, cost, degraded, err)
 		}
