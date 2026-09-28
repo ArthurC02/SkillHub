@@ -378,6 +378,7 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
 test("04 丙-14 the version comes from a picker, and a ?version= link is what it opens on", async () => {
   const platform = stubPlatform();
   await renderLab();
+  await waitFor(() => text().includes("v2（最新）"));
 
   expect(versionSelect().value).toBe(VERSION);
   expect(container.textContent).toContain("v2（最新）");
@@ -390,6 +391,25 @@ test("04 丙-14 the version comes from a picker, and a ?version= link is what it
     ),
   );
   expect(versionSelect().value).toBe(OLDER_VERSION);
+});
+
+test("changing the preflight version persists the complete run context in the URL", async () => {
+  stubPlatform();
+  await renderLab();
+  await waitFor(
+    () =>
+      versionSelect().value === VERSION &&
+      router.state.location.search.version === VERSION &&
+      text().includes("v2（最新）"),
+  );
+
+  await pickVersion(OLDER_VERSION);
+  await waitFor(() => router.state.location.search.version === OLDER_VERSION);
+  expect(router.state.location.search).toMatchObject({
+    skill: SKILL,
+    version: OLDER_VERSION,
+    test_case: TEST_CASE,
+  });
 });
 
 test("04 丙-14 with no version in the URL the page asks for one instead of demanding an id", async () => {

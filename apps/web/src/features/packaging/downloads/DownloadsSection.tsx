@@ -14,14 +14,15 @@ import {
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 
-export function Downloads() {
+export function Downloads({ embedded = false }: { embedded?: boolean }) {
   const downloads = useDownloads();
   const [message, setMessage] = useState("");
   const remove = useDeleteDownload();
+  const Heading = embedded ? "h2" : "h1";
 
   return (
     <section>
-      <h1>下載紀錄</h1>
+      <Heading>{embedded ? "交付紀錄" : "下載紀錄"}</Heading>
       <p className="note" data-role="teaching">
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
       </p>

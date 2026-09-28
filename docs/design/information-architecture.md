@@ -101,7 +101,7 @@
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 試跑與改善／Skill 試跑執行 |
-| `/workspace/downloads` | `Downloads` | 02:WS-002／WS-004 | Skill 生命週期／Skill 交付與安裝 |
+| `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、Bundle 與下載紀錄共用一個平台空間〕 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
 | `/policy` | `DataPolicy` | 02:O11Y-004 | 產品營運／創作者使用權益與資料生命週期 |
 | `/lab/test-cases` | `TestCaseList` | 03:TEST-012 | 試跑與改善／**試跑情境設計** |
@@ -163,7 +163,7 @@ SkillVersion ───► /skills/$id, /skills/$id/files, /skills/$id/package,
 ImportSkill ────► /skills/$id
 Packaging ──────► /skills/$id, /skills/$id/files, /skills/$id/versions/$id,
                   /lab/test-cases, /workspace/downloads
-Downloads ──────► /skills/$id, /workspace/skills
+PublishingWorkspace ► /p/$publisher/$name, /skills/$id, /workspace/skills
 WorkspaceSkills ► /skills/$id, /skills/$id/files, /skills/$id/package,
                   /lab/test-cases, /workspace/runs, /workspace/downloads,
                   /workspace/account, /workspace, /policy

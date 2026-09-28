@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { Downloads } from "../packaging/downloads/Downloads.page";
+import { Downloads } from "../packaging";
 import { RunTrace } from "../runs/trace/RunTrace.page";
 import { WorkspaceAccount } from "./account/WorkspaceAccount.page";
 import { WorkspaceRuns } from "../runs/list/WorkspaceRuns.page";
@@ -801,6 +801,14 @@ test("CRED-009 the account page lists what each credit went to and links only th
   expect(links, "only the entry that names a run may link to one").toEqual([`/runs/${RUN}`]);
   expect(text()).toContain(STATEMENT_NOTE);
   expect(button("載入更早的紀錄")).toBeUndefined();
+});
+
+test("the account page keeps publishing setup in the publishing workspace", async () => {
+  stubAccountFetch(() => json(ME));
+  await render(<WorkspaceAccount />, () => text().includes("目前餘額"));
+
+  expect(text()).not.toContain("發佈者名稱");
+  expect(text()).not.toContain("Bundle");
 });
 
 test("CRED-009 older entries load with the cursor the server returned, and the last page offers no more", async () => {

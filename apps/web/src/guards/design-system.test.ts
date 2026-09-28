@@ -501,7 +501,7 @@ const RAW_TIMESTAMP: Record<string, string> = {
   "features/catalog/compare/Compare.page.tsx: ${skill.version.created_at}":
     "a row's `signature`, which is the comparison key the 有差異 highlight is computed from. " +
     "Never rendered — the cell beside it uses <Timestamp>",
-  "features/packaging/downloads/Downloads.page.tsx: ${r.downloaded_at}":
+  "features/packaging/downloads/DownloadsSection.tsx: ${r.downloaded_at}":
     "a React `key`, not a child. The same row renders the instant with <Timestamp>",
 };
 

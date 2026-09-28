@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
-import { Downloads } from "./downloads/Downloads.page";
+import { Downloads } from "./downloads/DownloadsSection";
 import { PackagingBlockedReason as PackagingBlockedReasonEnum } from "@skillhub/api-client-ts";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./packaging.model";
 import { Packaging } from "./build/Packaging.page";

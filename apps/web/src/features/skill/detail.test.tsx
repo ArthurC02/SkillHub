@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
-import { CATEGORIES, SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
+import { CATEGORIES, SKILL_VERSIONS, VERSION, skillDetail } from "../../testing/fixtures/platform";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
@@ -27,21 +27,31 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params,
+    search,
     className,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string | undefined>;
     className?: string;
     children?: unknown;
-  }) => (
-    <a
-      className={className}
-      href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}
-    >
-      {children as never}
-    </a>
-  ),
+  }) => {
+    const path = Object.entries(params ?? {}).reduce(
+      (acc, [key, value]) => acc.replace(`$${key}`, value),
+      to,
+    );
+    const query = new URLSearchParams(
+      Object.entries(search ?? {}).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined,
+      ),
+    );
+    return (
+      <a className={className} href={`${path}${query.size > 0 ? `?${query}` : ""}`}>
+        {children as never}
+      </a>
+    );
+  },
   useParams: () => ({ skillId: SKILL }),
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
@@ -397,6 +407,15 @@ test("the overview sends version work to the exact immutable version context", a
     container.querySelector(
       `a[href="/skills/${SKILL}/versions/22222222-2222-2222-2222-222222222222"]`,
     ),
+  ).not.toBeNull();
+});
+
+test("the validation entry keeps the newest owned version in the handoff", async () => {
+  stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+
+  expect(
+    container.querySelector(`a[href="/lab/test-cases?skill=${SKILL}&version=${VERSION}"]`),
   ).not.toBeNull();
 });
 

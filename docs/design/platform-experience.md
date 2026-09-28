@@ -260,7 +260,7 @@ Operator 使用獨立的營運殼層處理帳號、成本、派送、稽核與�
 
 右側脈絡區只放當前分頁的下一步、限制或摘要；不能再堆成另一張完整管理表單。窄螢幕時它移到主內容之後，判斷與必要安全資訊的優先序仍遵守 system.md。
 
-現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把 Activity 或創作修訂搬進同一頁，也不把這組導覽當成階段二已完成。
+現行工作台以同一個 Skill 的穩定局部導覽串起總覽、檔案、驗證與「版本與發佈」，並在 Test Case、preflight、Run 證據、比較與打包畫面保留這組物件出口。不可變版本已有 `/skills/$skillId/versions/$versionId` 的可分享脈絡：它從版本歷史、Run 或 preflight 接住精確版本，再把同一個 `version_id` 帶到驗證、打包與 Release；Skill 詳情的驗證入口會帶入 owner-scoped 最新版本，preflight 改選版本也同步寫回包含 Skill、Version 與 Test Case 的網址。發佈送出時明確指名畫面上的版本，不讓伺服器另選最新版本。只有 owner-scoped 版本清單真正回傳的版本能顯示發佈、上傳與打包入口；未知或不屬於此 Skill 的版本不顯示操作。尚未把 Activity 或創作修訂搬進同一頁，也不把這組導覽當成階段二已完成。
 
 ### 5.4 Activity
 
@@ -343,7 +343,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；下一步是補齊背景工作與待決策事項的同一能力。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
-**階段四：發佈與交付。** 把 Release、Publication、Bundle、打包與下載收斂成同一條交付旅程，保留曝光審核與再散布限制。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
+**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、Bundle 與下載紀錄從帳號設定收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，並明示公開位址不等於 Catalog 曝光。下一步是補上跨 Skill 的 Publication／Release 清單與真實狀態投影，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 
 **階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 

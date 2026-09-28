@@ -103,8 +103,8 @@ const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workspace/downloads",
   component: lazyRouteComponent(
-    () => import("../features/packaging/downloads/Downloads.page"),
-    "Downloads",
+    () => import("../features/publishing/PublishingWorkspace.page"),
+    "PublishingWorkspace",
   ),
 });
 

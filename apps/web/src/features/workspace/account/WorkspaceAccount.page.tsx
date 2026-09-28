@@ -11,7 +11,6 @@ import {
 } from "../../../core/session/me.service";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { CreditStatement } from "./CreditStatement";
-import { BundleSection, PublisherSection } from "../../publishing";
 import "./WorkspaceAccount.page.css";
 
 function deletionFailureSentence(error: unknown): string {
@@ -61,9 +60,6 @@ export function WorkspaceAccount() {
               <h2>點數與花費</h2>
               <CreditStatement />
             </section>
-
-            <PublisherSection />
-            <BundleSection />
           </div>
 
           <section className="account-panel account-danger-zone">

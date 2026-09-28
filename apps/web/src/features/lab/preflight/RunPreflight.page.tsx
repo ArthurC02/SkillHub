@@ -2,8 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
-import { Link, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useConfirmAndStartRun, usePreflight } from "../lab.service";
 import { useOwnSkills } from "../../skill";
 import { useTestCase } from "../testcases.service";
@@ -39,8 +38,8 @@ function Preflight({
   linkedVersion: string;
   testCase: string;
 }) {
-  const [picked, setPicked] = useState("");
-  const version = picked || linkedVersion;
+  const navigate = useNavigate();
+  const version = linkedVersion;
   const ready = skill !== "" && testCase !== "";
   const me = useMe();
   const testCaseInfo = useTestCase(testCase);
@@ -86,8 +85,11 @@ function Preflight({
     testCaseInfo,
     criteria,
     onPick: (id: string) => {
-      setPicked(id);
       start.reset();
+      void navigate({
+        to: "/lab/run",
+        search: { skill, version: id, test_case: testCase },
+      });
     },
   };
 

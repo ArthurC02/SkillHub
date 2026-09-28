@@ -57,6 +57,7 @@ function useMemberChoices(): { choices: MemberChoice[]; isPending: boolean } {
 export function BundleSection() {
   const bundles = useOwnBundles();
   const { choices, isPending: choicesPending } = useMemberChoices();
+  const hasBundles = (bundles.data?.bundles.length ?? 0) > 0;
   const needsAttestationOf = useMemo(() => {
     const map = new Map(choices.map((c) => [c.skillId, c.needsAttestation]));
     return (bundle: BundleVersion) => bundle.members.some((m) => map.get(m.skill_id) === true);
@@ -86,7 +87,10 @@ export function BundleSection() {
           </ul>
         ))}
 
-      <CreateBundleForm choices={choices} choicesPending={choicesPending} />
+      <details className="bundle-create">
+        <summary>{hasBundles ? "建立另一個 Bundle" : "建立第一個 Bundle"}</summary>
+        <CreateBundleForm choices={choices} choicesPending={choicesPending} />
+      </details>
     </section>
   );
 }

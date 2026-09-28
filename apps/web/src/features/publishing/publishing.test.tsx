@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { PublicPublication } from "./PublicPublication.page";
 import { PublisherSection } from "./components/PublisherSection";
 import { PublishPanel } from "./components/PublishPanel";
+import { PublishingWorkspace } from "./PublishingWorkspace.page";
 import {
   PUBLISHING_REFUSAL_LABEL,
   type PublishingRefusalReason,
@@ -106,6 +107,45 @@ function stub(routes: Record<string, { body: unknown; status?: number }>) {
 }
 
 const PUB_ADDRESS = `/publications/${PUBLISHER}/${PUBLICATION}`;
+
+test("the publishing space brings identity, Bundles, and delivery records into one lifecycle", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("還沒有打包過任何套件"));
+
+  expect(container.querySelector("h1")?.textContent).toBe("發佈與交付");
+  const sections = Array.from(container.querySelectorAll("h2")).map(
+    (heading) => heading.textContent,
+  );
+  expect(sections).toEqual(
+    expect.arrayContaining(["Bundle", "交付紀錄", "發佈者名稱", "從單一版本發佈"]),
+  );
+  expect(text()).toContain("公開位址不等於 Catalog 曝光");
+  expect(container.querySelector('a[href="/workspace/skills"]')?.textContent).toContain(
+    "選擇要發佈的 Skill",
+  );
+});
+
+test("an empty Bundle collection keeps creation available without making the page a form", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+  await render(<PublishingWorkspace />, () => text().includes("交付紀錄"));
+
+  const createBundle = Array.from(container.querySelectorAll("details")).find(
+    (details) => details.querySelector("summary")?.textContent === "建立第一個 Bundle",
+  );
+  expect(createBundle?.open).toBe(false);
+  expect(createBundle?.querySelector("form.bundle-form")).not.toBeNull();
+});
 
 test("PACK-004 available 公開頁：每一個允收欄位都出現", async () => {
   stub({ [PUB_ADDRESS]: { body: PUBLIC_PUBLICATION } });

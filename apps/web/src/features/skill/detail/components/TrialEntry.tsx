@@ -35,15 +35,15 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       </section>
     );
 
-  const inMyWorkspace = (versions.data?.versions.length ?? 0) > 0;
+  const versionId = versions.data?.versions[0]?.version_id;
 
   return (
     <section>
       <h3>試跑</h3>
-      {inMyWorkspace ? (
+      {versionId ? (
         <>
           <p>
-            <Link to="/lab/test-cases" search={{ skill: skillId }}>
+            <Link to="/lab/test-cases" search={{ skill: skillId, version: versionId }}>
               此 Skill 的 Test Case
             </Link>
           </p>

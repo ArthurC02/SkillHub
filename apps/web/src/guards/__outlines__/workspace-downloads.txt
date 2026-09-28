@@ -1,1 +1,6 @@
-h1 下載紀錄
+h1 發佈與交付
+h2 Bundle
+h3 建立 Bundle Version
+h2 交付紀錄
+h2 發佈者名稱
+h2 從單一版本發佈
