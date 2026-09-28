@@ -126,7 +126,9 @@ def run(args) -> int:
         existing = {r["id"]: r for r in json.loads(OUT.read_text(encoding="utf-8"))["summaries"]}
 
     picked = args.only.split(",") if args.only else []
-    refetch = lambda sid: any(p and p in sid for p in picked)  # noqa: E731
+
+    def refetch(sid):
+        return any(p and p in sid for p in picked)
 
     todo = [
         s

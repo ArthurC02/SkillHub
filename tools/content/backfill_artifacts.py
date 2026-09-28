@@ -124,7 +124,9 @@ def main():
 
     stmts, orphan_archives, already, total_rows, per_run = scan_archives(args.tar_dir, runs)
 
-    say = lambda line: print(line, file=sys.stderr)  # noqa: E731
+    def say(line):
+        print(line, file=sys.stderr)
+
     say("archives read:       " + str(len(per_run) + already + len(orphan_archives)))
     say("runs to backfill:    " + str(len(per_run)))
     say("manifest rows:       " + str(total_rows))
