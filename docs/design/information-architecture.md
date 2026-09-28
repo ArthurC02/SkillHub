@@ -182,7 +182,7 @@ DataPolicy ─────► /workspace/{skills,runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）
 GeneratedNotice ► /lab/run                    （同上）
 CreateHub ──────► /, /workspace/import        （渲染在 /workspace/skills 之內）
-CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
+CreationSession ► /lab/run, /runs/$id, /skills/$id/versions/$versionId, /workspace/skills
                                               （渲染在 /workspace/creations 之內）
 ```
 
@@ -276,6 +276,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | `/` | `q`、`correction`、`script`、`validation`、`agent`、`tier`、`category`、`compare` | 搜尋條件即所看之物。`correction` 保存使用者確認的五欄意圖與關鍵詞 JSON，篩選仍由既有參數承載；重載與分享時直接使用修正版，不重新分析。修正版無效時明確報錯，不偷偷退回原句；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁。<br>**`compare` 是後來加入的**，逗號分隔，與 `/compare?ids=` 同一個形狀。**它不是一條新規則，是既有那條規則的另一半**：`/compare?ids=` 把選擇放在網址上，讓一次比較可以被連結、撐得過重新整理（DISC-009），而產生那份選擇的上一步把它放在 `useState` 裡——同一份東西，晚一步撐得過重新整理，早一步撐不過，於是 DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。<br>**原本提的是把 `q` 放到 `/compare` 上，那個修法被 R4 擋掉並且沒有做**：`q` 對 `/compare` 既不是「你在看哪一份東西」也不是偏好，是「你從哪來」，而 §0.2 只收「R 的推導前提在這裡不成立」。**而且它的前提本來就不成立**——`submitSearch` 是 `replace: true`，瀏覽器上一頁本來就回得到 `/?q=…`；遺失的一直是勾選。<br>**`category`**（PDM-001 的三個架位，自 migration 0053 起是平台欄位）。**進網址的理由是 R4 的「你在看哪一份東西」那一邊**：一個類別是目錄的一段——「文件類的 Skill 有哪些」是一個回答得完的問題，把網址貼給別人，他看到的就是那一段——而不是一種看法；反面同時成立，換一個類別換掉的是清單的內容，不是它的呈現方式。<br>**同一個參數由兩個控制項寫**：搜尋框下方那一列分類 chip（快捷，帶伺服器數出來的筆數）與篩選列裡的「類別」select（與其他五個維度並列）。**它們不是兩個狀態**——`?category=` 只有一份；兩個控制項對同一件事講不同的話，是這一頁已經出過事的形狀（「清除所有篩選」曾經漏掉 `agent`）。<br>**不收 `unassigned`**：那是一列在沒有人給它類別時的回答（畫面上是型別化的缺席詞，`02:DISC-004`），不是一個架位。`05` R-19 決定使用者自行匯入的 Skill 如何取得類別之前，那個狀態會一直在 |
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
+| `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`、`version`（皆須為 UUID） | 「此 Skill／Version 的 Test Case」那條連結要的東西；`version` 會跟著進單筆 Test Case 與 preflight，不改變清單本身的 owner scope |
@@ -286,7 +287,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | `/admin/exposure` | `publication` | 你在審哪一個發佈物（`02:DISC-007`）：`發佈者/名稱` 這一對就是那一筆；清單上「審這一筆」把它放進網址，所以審到一半的那一筆可以連結、撐得過重新整理；不是這個形狀的值丟掉、回到只有清單 |
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 
-**其餘十九條路由沒有 `validateSearch`**（31 條路由減去上表的 12 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、七條 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十八條路由沒有 `validateSearch`**（31 條路由減去上表的 13 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、六條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -493,7 +494,7 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。平台導覽與 Skill 工作台局部導覽各自有名稱，頁面新增 `<nav>` 時不能借用既有名稱 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
 | 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) 的棘輪 | **全部路由**，三引擎（32 個位址；31 條路由，其中 `/` 掃兩種狀態）。**棘輪**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
-| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **12** 條 |
+| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **13** 條 |
 | §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/guards/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |
@@ -535,8 +536,10 @@ CreationSession ► /lab/run, /runs/$id, /skills/$id, /workspace/skills
 
 **全綠不等於沒有問題**：§6 那張表上仍有好幾列寫著「沒有機器」，而 §2.2 的連結圖是其中最會無聲過期的一格。
 
-## 9. 互動創作會話（尚未實作）
+## 9. 互動創作會話
 
-互動創作不新增現況路由或旗標盤點。實作前需先依 §0 登記入口與連結；旅程應在私人 Workspace 內依序呈現澄清、流程圖理解／參考確認、brief、草稿、驗證或經授權試跑、最後保存。離開後恢復的是確認過的解析與草稿，不是原圖；公開散布須另行確認，不能成為保存的預設結果。
+互動創作位於 `/workspace/creations`，仍受 `generate_skill` 與 `creation_skill` 兩道旗標控制。清單與單一會話共用同一路由；`session` 指名目前正在看的會話，選擇歷程或建立成功都更新它，因此重載與分享可以向伺服器恢復同一場的最新 revision。無效值丟掉並停在會話清單，不向 API 查詢任意字串。
+
+旅程在私人 Workspace 內依序呈現澄清、流程圖理解／參考確認、brief、草稿、驗證或經授權試跑、最後保存。離開後恢復的是確認過的解析與草稿，不是原圖；保存完成後的入口指向候選的精確 `/skills/$skillId/versions/$versionId`，不把可變 session revision 與不可變 Skill Version 混成同一件事。公開散布須另行確認，不能成為保存的預設結果。
 
 依據：[互動創作](../adr/README.md#互動創作)、[GEN-007～012](../plans/02-specifications-and-acceptance-criteria.md)。本節是互動創作允收；目前接線與證據見 [開發手冊](../development/interactive-creation.md)，不變更現有曝光限制。

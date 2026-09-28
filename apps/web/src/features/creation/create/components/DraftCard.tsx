@@ -86,8 +86,11 @@ export function DraftCard({
         />
       )}
       {state === "saved" && p.candidate && (
-        <Link to="/skills/$skillId" params={{ skillId: p.candidate.skill_id }}>
-          開啟已保存的 Skill
+        <Link
+          to="/skills/$skillId/versions/$versionId"
+          params={{ skillId: p.candidate.skill_id, versionId: p.candidate.version_id }}
+        >
+          開啟已保存的版本
         </Link>
       )}
     </section>

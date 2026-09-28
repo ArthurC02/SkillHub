@@ -13,12 +13,20 @@ vi.mock("@tanstack/react-router", () => ({
     children,
     to,
     search,
+    params,
   }: {
     children: ReactNode;
     to: string;
     search?: Record<string, unknown>;
+    params?: Record<string, string>;
   }) => (
-    <a href={to} data-search={search ? JSON.stringify(search) : undefined}>
+    <a
+      href={Object.entries(params ?? {}).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to,
+      )}
+      data-search={search ? JSON.stringify(search) : undefined}
+    >
       {children}
     </a>
   ),
@@ -1694,6 +1702,28 @@ test("a candidate with a test_case_id renders the Test Case sentence and the run
   expect(JSON.parse(link?.getAttribute("data-search") ?? "{}")).toMatchObject({
     test_case: "tc-1",
   });
+});
+test("a saved session opens the exact immutable version instead of the Skill overview", async () => {
+  const v = sample({ state: "saved" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = {
+    skill_id: "22222222-2222-4222-8222-222222222222",
+    version_id: "33333333-3333-4333-8333-333333333333",
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+
+  await render();
+  await resume();
+
+  const link = [...box.querySelectorAll("a")].find(
+    (candidate) => candidate.textContent === "開啟已保存的版本",
+  );
+  expect(link?.getAttribute("href")).toBe(
+    "/skills/22222222-2222-4222-8222-222222222222/versions/33333333-3333-4333-8333-333333333333",
+  );
 });
 function draftCandidate(patch: Partial<NonNullable<CreationSnapshot["candidate"]>> = {}) {
   return {

@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useGenerateEntryPoint } from "../generate.service";
 import { useCreationEntryPoint } from "../creation.service";
 import { GenerateSkill } from "../generate/GenerateSkill";
@@ -7,6 +7,11 @@ import { CreationSession } from "./components/CreationSession";
 export function CreateSkill() {
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
+  const { session } = useSearch({ from: "/workspace/creations" });
+  const navigate = useNavigate({ from: "/workspace/creations" });
+  const selectSession = (id: string) => {
+    void navigate({ search: id ? { session: id } : {} });
+  };
 
   if (!generateExposed) {
     return (
@@ -26,7 +31,7 @@ export function CreateSkill() {
   return (
     <>
       {creationExposed ? (
-        <CreationSession />
+        <CreationSession sessionId={session} onSessionChange={selectSession} />
       ) : (
         <>
           <nav>

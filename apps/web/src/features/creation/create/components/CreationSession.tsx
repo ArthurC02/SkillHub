@@ -19,9 +19,21 @@ import { SessionFeed } from "./SessionFeed";
 import { Composer } from "./Composer";
 import "./CreationSession.css";
 
-export function CreationSession() {
-  const [id, setID] = useState(""),
-    [budget, setBudget] = useState(""),
+type CreationSessionProps = {
+  sessionId?: string;
+  onSessionChange?: (id: string) => void;
+};
+
+function useSessionSelection({ sessionId, onSessionChange }: CreationSessionProps) {
+  const [localID, setLocalID] = useState(""),
+    id = sessionId ?? localID,
+    setID = onSessionChange ?? setLocalID;
+  return [id, setID] as const;
+}
+
+export function CreationSession(props: CreationSessionProps) {
+  const [id, setID] = useSessionSelection(props);
+  const [budget, setBudget] = useState(""),
     [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({});
   const { error, setError, busy, lastAttempt, attempt } = useCreationAttempt();
   const composer = useComposer(budget, setError);

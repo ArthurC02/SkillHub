@@ -139,11 +139,12 @@ Catalog 是否進全域導覽是平台化後的新方向；落地時必須正式
 
 ### 3.3 網址與畫面狀態
 
-網址保存可分享、可重開的身分與工作脈絡：平台空間、Skill、Version、Run、Publication。顯示密度、展開狀態和個人排序不進網址。
+網址保存可分享、可重開的身分與工作脈絡：平台空間、Creation Session、Skill、Version、Run、Publication。顯示密度、展開狀態和個人排序不進網址。
 
 目標不是讓每個分頁都新增一條網址，而是讓網址回答一個耐久問題：
 
 - `/library`：我的小工具資產。
+- `/workspace/creations?session=$sessionId`：Studio 的會話清單，以及目前正在續作的單一可變會話。
 - `/skills/$skillId`：這個小工具的工作台或公開可見摘要，由權限決定能力。
 - `/skills/$skillId/versions/$versionId`：需要精確引用的不可變版本。
 - `/runs/$runId`：一次試跑的狀態、證據與成果判定。
@@ -299,6 +300,8 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 外部產品模式只作結構參考：GitHub Projects 的同一物件多視圖、VS Code 的穩定容器與脈絡操作、Linear 的保存檢視、Carbon 與 Atlassian 的全域殼層／產品內導覽分工。Skill Hub 不複製它們的視覺語言，也不因此引入它們的套件。
 
+長工作續作另參考 Backstage Software Templates：每次執行都有 task ID，工作清單以該 ID 連到單一 task，完成畫面再提供產物連結；恢復機制則從已完成 checkpoint 繼續，而不是把前端暫存當真相（[工作清單程式碼](https://github.com/backstage/backstage/blob/master/plugins/scaffolder/src/components/ListTasksPage/ListTasksPage.tsx)、[Task Recovery](https://backstage.io/docs/next/features/software-templates/configuration/#task-recovery)）。Skill Hub 對應採既有 session ID 與伺服器 revision 恢復可變工作，再以既有 version ID 交接不可變產物，不複製它的表單流程。
+
 ---
 
 ## 7. 不可因平台化而破壞的邊界
@@ -336,9 +339,9 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段一：平台殼層與續作。** 第一個切片建立全域殼層、平台空間名稱、Catalog 搜尋入口與首頁的真實續作來源；現有功能頁仍可在新殼層中開啟。有至少一個跨空間指令及其權限模型後，再補上命令入口。完成條件是所有現有路由都能從新導覽找到，而且沒有安全資訊或曝光入口被移動到錯誤層級。
 
-**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；精確版本頁也已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。下一步是把創作會話的可變 revision 與保存後的正式版本接回工作台，同時保留兩者不同的生命週期。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
+**階段二：Skill 工作台。** 詳情、檔案、Test Case、preflight、Run 證據與打包已共享同一個 Skill 導覽；精確版本頁也已把版本清單、差異、驗證、打包與 Release 收在同一個不可變版本脈絡。創作會話現在以 `session` 保存可變工作的精確身分，保存完成後直接交接到該候選的不可變 `version_id`；兩者仍是不同生命週期，沒有把 revision 當成 Version。下一步是讓正式版本能從領域擁有的關係回到來源會話，而不是用「從哪裡來」的臨時網址參數假裝關係。全程重用既有 hook、service 與元件，不建立第二套 API 或狀態。完成條件仍是從一個 Skill 開始可以走完一次「驗證 → 看證據 → 修訂或打包」，過程不用重新選 Skill 或版本。
 
-**階段三：Studio 與 Activity。** 讓創作會話、背景工作與待決策事項在離開頁面後仍可恢復。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
+**階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；下一步是補齊背景工作與待決策事項的同一能力。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
 **階段四：發佈與交付。** 把 Release、Publication、Bundle、打包與下載收斂成同一條交付旅程，保留曝光審核與再散布限制。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 

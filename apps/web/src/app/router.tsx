@@ -25,6 +25,8 @@ const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unver
 
 const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -83,7 +85,7 @@ const packagingRoute = createRoute({
     () => import("../features/packaging/build/Packaging.page"),
     "Packaging",
   ),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { version?: string } => ({
     version: typeof search.version === "string" ? search.version : undefined,
   }),
 });
@@ -140,6 +142,10 @@ const createSkillRoute = createRoute({
     () => import("../features/creation/create/CreateSkill.page"),
     "CreateSkill",
   ),
+  validateSearch: (search: Record<string, unknown>): { session?: string } => ({
+    session:
+      typeof search.session === "string" && UUID.test(search.session) ? search.session : undefined,
+  }),
 });
 
 const workspaceAccountRoute = createRoute({
@@ -233,8 +239,6 @@ const runCompareRoute = createRoute({
     against: typeof search.against === "string" ? search.against : "",
   }),
 });
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const testCaseListRoute = createRoute({
   getParentRoute: () => rootRoute,
