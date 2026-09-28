@@ -157,6 +157,39 @@ func TestThisPackageInventsNoRuleTheContractDoesNotState(t *testing.T) {
 	}
 }
 
+func assertPayloadRuleMatchesTheContract(t *testing.T, schema traceEventSchema, eventType, ref string, rule payloadRule) {
+	t.Helper()
+	object := schema.resolve(t, ref)
+
+	open := object.AdditionalProperties == nil || *object.AdditionalProperties
+	if rule.open != open {
+		t.Errorf("%s: this package treats the payload as open=%v, the contract says open=%v",
+			eventType, rule.open, open)
+	}
+
+	for name, declared := range object.Properties {
+		spec, checked := rule.fields[name]
+		if !checked {
+			t.Errorf("%s.%s is in the contract and in no rule here", eventType, name)
+			continue
+		}
+		if want := slices.Contains(object.Required, name); spec.required != want {
+			t.Errorf("%s.%s required here=%v, in the contract=%v", eventType, name, spec.required, want)
+		}
+		if want := schema.declaredKinds(t, declared); len(want) > 0 && !slices.Equal(spec.kinds, want) {
+			t.Errorf("%s.%s accepts %v here, %v in the contract", eventType, name, spec.kinds, want)
+		}
+		if want := schema.declaredEnum(t, declared); !slices.Equal(spec.enum, want) {
+			t.Errorf("%s.%s allows %v here, %v in the contract", eventType, name, spec.enum, want)
+		}
+	}
+	for name := range rule.fields {
+		if _, declared := object.Properties[name]; !declared {
+			t.Errorf("%s.%s is checked here and the contract does not declare it", eventType, name)
+		}
+	}
+}
+
 func TestEveryFieldRuleIsTheOneTheContractStates(t *testing.T) {
 	schema := loadTraceEventSchema(t)
 	for _, branch := range schema.AllOf {
@@ -169,35 +202,7 @@ func TestEveryFieldRuleIsTheOneTheContractStates(t *testing.T) {
 		if !enforced {
 			continue
 		}
-		object := schema.resolve(t, ref)
-
-		open := object.AdditionalProperties == nil || *object.AdditionalProperties
-		if rule.open != open {
-			t.Errorf("%s: this package treats the payload as open=%v, the contract says open=%v",
-				eventType, rule.open, open)
-		}
-
-		for name, declared := range object.Properties {
-			spec, checked := rule.fields[name]
-			if !checked {
-				t.Errorf("%s.%s is in the contract and in no rule here", eventType, name)
-				continue
-			}
-			if want := slices.Contains(object.Required, name); spec.required != want {
-				t.Errorf("%s.%s required here=%v, in the contract=%v", eventType, name, spec.required, want)
-			}
-			if want := schema.declaredKinds(t, declared); len(want) > 0 && !slices.Equal(spec.kinds, want) {
-				t.Errorf("%s.%s accepts %v here, %v in the contract", eventType, name, spec.kinds, want)
-			}
-			if want := schema.declaredEnum(t, declared); !slices.Equal(spec.enum, want) {
-				t.Errorf("%s.%s allows %v here, %v in the contract", eventType, name, spec.enum, want)
-			}
-		}
-		for name := range rule.fields {
-			if _, declared := object.Properties[name]; !declared {
-				t.Errorf("%s.%s is checked here and the contract does not declare it", eventType, name)
-			}
-		}
+		assertPayloadRuleMatchesTheContract(t, schema, eventType, ref, rule)
 	}
 }
 

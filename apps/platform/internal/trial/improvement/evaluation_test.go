@@ -42,78 +42,82 @@ func TestAStartedEvaluationAwaitsTheJudgeAndDeclaresWhatItWillBeJudgedWith(t *te
 	assertEvents(t, e, declared)
 }
 
+func assertDeclaredJudgeDataAndEventsKeepIndependentPointers(t *testing.T) {
+	model, prompt, rubric := "model", "prompt", "rubric"
+	declared := EvaluationStarted{JudgeModel: &model, JudgePromptVersion: &prompt, RubricVersion: &rubric}
+	e := startEvaluation(pgtype.UUID{}, pgtype.UUID{}, declared)
+
+	model, prompt, rubric = "changed", "changed", "changed"
+	if *e.row.JudgeModel != "model" || *e.row.JudgePromptVersion != "prompt" || *e.row.RubricVersion != "rubric" {
+		t.Fatalf("evaluation after input mutation = %+v, want original judge declaration", e.row)
+	}
+	first := e.Events()[0].(EvaluationStarted)
+	*first.JudgeModel, *first.JudgePromptVersion, *first.RubricVersion = "output", "output", "output"
+	second := e.Events()[0].(EvaluationStarted)
+	if *second.JudgeModel != "model" || *second.JudgePromptVersion != "prompt" || *second.RubricVersion != "rubric" {
+		t.Fatalf("started event after output mutation = %+v, want original judge declaration", second)
+	}
+}
+
+func assertCompletedAndFailedResultsKeepNestedEvidenceAndCostCopies(t *testing.T) {
+	byteRange, charRange := &Range{Start: 1, End: 2}, &Range{Start: 3, End: 4}
+	cost, usageCost := 1.5, 2.5
+	v := verdict{
+		results:  []CriterionResult{{CriterionID: "criterion-original", Evidence: []EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
+		findings: []Finding{{Message: "finding-original", Evidence: []EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
+		costUSD:  &cost, usage: &ModelUsage{CostUSD: &usageCost},
+	}
+	e := revisionIn(StatusPending, false)
+	e.Complete(v)
+	v.results[0].Evidence[0] = EvidenceRef{Kind: "result-evidence-changed"}
+	v.results[0] = CriterionResult{CriterionID: "criterion-changed"}
+	v.findings[0].Evidence[0] = EvidenceRef{Kind: "finding-evidence-changed"}
+	v.findings[0] = Finding{Message: "finding-changed"}
+	byteRange.Start, charRange.End, cost, usageCost = 9, 9, 9.5, 9.5
+	if e.verdict.results[0].CriterionID != "criterion-original" || e.verdict.results[0].Evidence[0].Kind != "result-evidence" ||
+		e.verdict.results[0].Evidence[0].ByteRange.Start != 1 || e.verdict.results[0].Evidence[0].CharRange.End != 4 ||
+		e.verdict.findings[0].Message != "finding-original" || e.verdict.findings[0].Evidence[0].Kind != "finding-evidence" ||
+		e.verdict.findings[0].Evidence[0].ByteRange.Start != 1 || *e.verdict.costUSD != 1.5 || *e.verdict.usage.CostUSD != 2.5 {
+		t.Fatalf("completed verdict after input mutation = %+v, want original nested data", e.verdict)
+	}
+
+	failureRange := &Range{Start: 5, End: 6}
+	f := failure{findings: []Finding{{Category: CategoryExecution, Message: "failure-finding-original", Evidence: []EvidenceRef{{Kind: "failure-evidence", ByteRange: failureRange}}}}}
+	failed := revisionIn(StatusPending, false)
+	failed.Fail(f)
+	f.findings[0].Evidence[0] = EvidenceRef{Kind: "failure-evidence-changed"}
+	f.findings[0] = Finding{Message: "failure-finding-changed"}
+	failureRange.Start = 9
+	if failed.failure.findings[0].Category != CategoryExecution || failed.failure.findings[0].Message != "failure-finding-original" ||
+		failed.failure.findings[0].Evidence[0].Kind != "failure-evidence" || failed.failure.findings[0].Evidence[0].ByteRange.Start != 5 {
+		t.Fatalf("failure after input mutation = %+v, want original nested evidence", failed.failure)
+	}
+}
+
+func assertAppliedSuggestionEventsKeepIndependentIDSlicesAndNilSlices(t *testing.T) {
+	firstID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	secondID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	versionID := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	e := revisionIn(StatusCompleted, false)
+	e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{firstID: {ID: firstID}}
+	e.RecordApplied(versionID, []pgtype.UUID{firstID})
+
+	first := e.Events()[0].(SuggestionsApplied)
+	first.SuggestionIDs[0] = secondID
+	second := e.Events()[0].(SuggestionsApplied)
+	if len(second.SuggestionIDs) != 1 || second.SuggestionIDs[0] != firstID {
+		t.Fatalf("applied event after output mutation = %+v, want first suggestion", second)
+	}
+
+	if got := cloneEvidenceRefs(nil); got != nil {
+		t.Fatalf("nil evidence refs = %#v, want nil", got)
+	}
+}
+
 func TestEvaluationSnapshotsDoNotAliasInputsOrOutputs(t *testing.T) {
-	t.Run("declared judge data and events keep independent pointers", func(t *testing.T) {
-		model, prompt, rubric := "model", "prompt", "rubric"
-		declared := EvaluationStarted{JudgeModel: &model, JudgePromptVersion: &prompt, RubricVersion: &rubric}
-		e := startEvaluation(pgtype.UUID{}, pgtype.UUID{}, declared)
-
-		model, prompt, rubric = "changed", "changed", "changed"
-		if *e.row.JudgeModel != "model" || *e.row.JudgePromptVersion != "prompt" || *e.row.RubricVersion != "rubric" {
-			t.Fatalf("evaluation after input mutation = %+v, want original judge declaration", e.row)
-		}
-		first := e.Events()[0].(EvaluationStarted)
-		*first.JudgeModel, *first.JudgePromptVersion, *first.RubricVersion = "output", "output", "output"
-		second := e.Events()[0].(EvaluationStarted)
-		if *second.JudgeModel != "model" || *second.JudgePromptVersion != "prompt" || *second.RubricVersion != "rubric" {
-			t.Fatalf("started event after output mutation = %+v, want original judge declaration", second)
-		}
-	})
-
-	t.Run("completed and failed results keep nested evidence and cost copies", func(t *testing.T) {
-		byteRange, charRange := &Range{Start: 1, End: 2}, &Range{Start: 3, End: 4}
-		cost, usageCost := 1.5, 2.5
-		v := verdict{
-			results:  []CriterionResult{{CriterionID: "criterion-original", Evidence: []EvidenceRef{{Kind: "result-evidence", ByteRange: byteRange, CharRange: charRange}}}},
-			findings: []Finding{{Message: "finding-original", Evidence: []EvidenceRef{{Kind: "finding-evidence", ByteRange: byteRange}}}},
-			costUSD:  &cost, usage: &ModelUsage{CostUSD: &usageCost},
-		}
-		e := revisionIn(StatusPending, false)
-		e.Complete(v)
-		v.results[0].Evidence[0] = EvidenceRef{Kind: "result-evidence-changed"}
-		v.results[0] = CriterionResult{CriterionID: "criterion-changed"}
-		v.findings[0].Evidence[0] = EvidenceRef{Kind: "finding-evidence-changed"}
-		v.findings[0] = Finding{Message: "finding-changed"}
-		byteRange.Start, charRange.End, cost, usageCost = 9, 9, 9.5, 9.5
-		if e.verdict.results[0].CriterionID != "criterion-original" || e.verdict.results[0].Evidence[0].Kind != "result-evidence" ||
-			e.verdict.results[0].Evidence[0].ByteRange.Start != 1 || e.verdict.results[0].Evidence[0].CharRange.End != 4 ||
-			e.verdict.findings[0].Message != "finding-original" || e.verdict.findings[0].Evidence[0].Kind != "finding-evidence" ||
-			e.verdict.findings[0].Evidence[0].ByteRange.Start != 1 || *e.verdict.costUSD != 1.5 || *e.verdict.usage.CostUSD != 2.5 {
-			t.Fatalf("completed verdict after input mutation = %+v, want original nested data", e.verdict)
-		}
-
-		failureRange := &Range{Start: 5, End: 6}
-		f := failure{findings: []Finding{{Category: CategoryExecution, Message: "failure-finding-original", Evidence: []EvidenceRef{{Kind: "failure-evidence", ByteRange: failureRange}}}}}
-		failed := revisionIn(StatusPending, false)
-		failed.Fail(f)
-		f.findings[0].Evidence[0] = EvidenceRef{Kind: "failure-evidence-changed"}
-		f.findings[0] = Finding{Message: "failure-finding-changed"}
-		failureRange.Start = 9
-		if failed.failure.findings[0].Category != CategoryExecution || failed.failure.findings[0].Message != "failure-finding-original" ||
-			failed.failure.findings[0].Evidence[0].Kind != "failure-evidence" || failed.failure.findings[0].Evidence[0].ByteRange.Start != 5 {
-			t.Fatalf("failure after input mutation = %+v, want original nested evidence", failed.failure)
-		}
-	})
-
-	t.Run("applied suggestion events keep independent ID slices and nil slices", func(t *testing.T) {
-		firstID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
-		secondID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
-		versionID := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
-		e := revisionIn(StatusCompleted, false)
-		e.suggestions = map[pgtype.UUID]gen.EvaluationSuggestion{firstID: {ID: firstID}}
-		e.RecordApplied(versionID, []pgtype.UUID{firstID})
-
-		first := e.Events()[0].(SuggestionsApplied)
-		first.SuggestionIDs[0] = secondID
-		second := e.Events()[0].(SuggestionsApplied)
-		if len(second.SuggestionIDs) != 1 || second.SuggestionIDs[0] != firstID {
-			t.Fatalf("applied event after output mutation = %+v, want first suggestion", second)
-		}
-
-		if got := cloneEvidenceRefs(nil); got != nil {
-			t.Fatalf("nil evidence refs = %#v, want nil", got)
-		}
-	})
+	t.Run("declared judge data and events keep independent pointers", assertDeclaredJudgeDataAndEventsKeepIndependentPointers)
+	t.Run("completed and failed results keep nested evidence and cost copies", assertCompletedAndFailedResultsKeepNestedEvidenceAndCostCopies)
+	t.Run("applied suggestion events keep independent ID slices and nil slices", assertAppliedSuggestionEventsKeepIndependentIDSlicesAndNilSlices)
 }
 
 func TestOnlyASettledCurrentRevisionCanBeSuperseded(t *testing.T) {

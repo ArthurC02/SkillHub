@@ -218,11 +218,44 @@ func TestProposalDiagramDescriptionStartsConfirmation(t *testing.T) {
 	}
 }
 
-func TestProposalDraftGuardClauses(t *testing.T) {
-	type guardCase struct {
-		name  string
-		build func() (Snapshot, *StepResult)
+type guardCase struct {
+	name  string
+	build func() (Snapshot, *StepResult)
+}
+
+func runDraftGuardCase(t *testing.T, tc guardCase, entry string) {
+	t.Helper()
+	calls := 0
+	var s *Service
+	if tc.name == "validator not wired" {
+		s = &Service{}
+	} else {
+		s = &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+			calls++
+			return "hash", "report", false, nil
+		}}
 	}
+	p, r := tc.build()
+	e := envelope{Snapshot: p, Limits: testLimitsForProposal()}
+	if entry == "draft" {
+		r.Outcome = "draft"
+	} else {
+		r.Outcome = "tool_intent"
+		r.ToolIntent = &ToolIntent{Kind: "validate_draft"}
+	}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
+	if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
+		t.Fatalf("state=%q next=%v err=%v", state, next, err)
+	}
+	if calls != 0 {
+		t.Fatalf("ValidateDraft must not run: %d calls", calls)
+	}
+	if entry == "validate_draft" && e.Snapshot.ToolCalls != 1 {
+		t.Fatalf("ToolCalls should still be charged despite the refusal: %d", e.Snapshot.ToolCalls)
+	}
+}
+
+func TestProposalDraftGuardClauses(t *testing.T) {
 	newDraft := func() *GeneratedSkill { return &GeneratedSkill{Name: "x", Body: "body"} }
 	cases := []guardCase{
 		{
@@ -283,34 +316,7 @@ func TestProposalDraftGuardClauses(t *testing.T) {
 	for _, tc := range cases {
 		for _, entry := range []string{"draft", "validate_draft"} {
 			t.Run(tc.name+"/"+entry, func(t *testing.T) {
-				calls := 0
-				var s *Service
-				if tc.name == "validator not wired" {
-					s = &Service{}
-				} else {
-					s = &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
-						calls++
-						return "hash", "report", false, nil
-					}}
-				}
-				p, r := tc.build()
-				e := envelope{Snapshot: p, Limits: testLimitsForProposal()}
-				if entry == "draft" {
-					r.Outcome = "draft"
-				} else {
-					r.Outcome = "tool_intent"
-					r.ToolIntent = &ToolIntent{Kind: "validate_draft"}
-				}
-				state, next, err := s.proposal(context.Background(), identity.Workspace{}, 5, &e, r)
-				if !errors.Is(err, ErrInvalidCommand) || next || state != "" {
-					t.Fatalf("state=%q next=%v err=%v", state, next, err)
-				}
-				if calls != 0 {
-					t.Fatalf("ValidateDraft must not run: %d calls", calls)
-				}
-				if entry == "validate_draft" && e.Snapshot.ToolCalls != 1 {
-					t.Fatalf("ToolCalls should still be charged despite the refusal: %d", e.Snapshot.ToolCalls)
-				}
+				runDraftGuardCase(t, tc, entry)
 			})
 		}
 	}
@@ -789,18 +795,8 @@ func TestProposalFetchToolRequiresAFetcher(t *testing.T) {
 	}
 }
 
-func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
-	prior := &Draft{Revision: 3, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old body", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
-		return "new-hash", "report text", false, nil
-	}}
-	candidate := &Candidate{SkillID: "s1"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
-	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
-	if err != nil || next || state != StateDraftReady {
-		t.Fatalf("state=%q next=%v err=%v", state, next, err)
-	}
+func assertHashChangeRecordsPreviousDraft(t *testing.T, e *envelope, prior *Draft) {
+	t.Helper()
 	if e.PreviousDraft != prior || e.Snapshot.PreviousDraft != prior {
 		t.Fatalf("the old draft was not preserved as the previous one: envelope=%+v snapshot=%+v", e.PreviousDraft, e.Snapshot.PreviousDraft)
 	}
@@ -817,6 +813,21 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	if e.Snapshot.RunUnmet {
 		t.Fatal("the untested revision must not inherit the previous run verdict")
 	}
+}
+
+func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
+	prior := &Draft{Revision: 3, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old body", AllowedTools: "Read"}}
+	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+		return "new-hash", "report text", false, nil
+	}}
+	candidate := &Candidate{SkillID: "s1"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
+	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
+	if err != nil || next || state != StateDraftReady {
+		t.Fatalf("state=%q next=%v err=%v", state, next, err)
+	}
+	assertHashChangeRecordsPreviousDraft(t, &e, prior)
 	r.Outcome, r.ToolIntent = "draft", nil
 	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
 	if err != nil || next || state != StateDraftReady || e.Snapshot.Nudges != 0 {

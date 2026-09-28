@@ -33,8 +33,26 @@ func TestPurgeServiceCarriesEveryContextsStep(t *testing.T) {
 	}
 }
 
-func TestEveryPartitionedTableIsRotated(t *testing.T) {
-	dir := filepath.Join("..", "..", "..", "..", "db", "migrations")
+func recordPartitionedTablesInMigration(body string, partitioned map[string]bool) {
+	var table string
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "--") {
+			continue
+		}
+
+		if fields := strings.Fields(line); len(fields) >= 3 &&
+			fields[0] == "CREATE" && fields[1] == "TABLE" && !strings.Contains(line, "PARTITION OF") {
+			table = fields[2]
+		}
+		if strings.Contains(line, "PARTITION BY RANGE") && table != "" {
+			partitioned[table] = true
+		}
+	}
+}
+
+func partitionedTablesDeclaredInMigrations(t *testing.T, dir string) map[string]bool {
+	t.Helper()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -48,22 +66,14 @@ func TestEveryPartitionedTableIsRotated(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var table string
-		for _, line := range strings.Split(string(body), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "--") {
-				continue
-			}
-
-			if fields := strings.Fields(line); len(fields) >= 3 &&
-				fields[0] == "CREATE" && fields[1] == "TABLE" && !strings.Contains(line, "PARTITION OF") {
-				table = fields[2]
-			}
-			if strings.Contains(line, "PARTITION BY RANGE") && table != "" {
-				partitioned[table] = true
-			}
-		}
+		recordPartitionedTablesInMigration(string(body), partitioned)
 	}
+	return partitioned
+}
+
+func TestEveryPartitionedTableIsRotated(t *testing.T) {
+	dir := filepath.Join("..", "..", "..", "..", "db", "migrations")
+	partitioned := partitionedTablesDeclaredInMigrations(t, dir)
 
 	rotated := map[string]bool{
 		trace.PartitionedTable:     true,

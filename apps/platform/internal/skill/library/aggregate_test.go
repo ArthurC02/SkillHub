@@ -434,6 +434,42 @@ func TestGovernanceCommandsOnASkillTheyCannotSeeAnswerNotFound(t *testing.T) {
 	}
 }
 
+func assertOutboxEventTypesForSkill(t *testing.T, ctx context.Context, pool *pgxpool.Pool, skill pgtype.UUID, want []string) {
+	t.Helper()
+	rows, err := pool.Query(ctx, `
+		SELECT event_type FROM outbox_events
+		WHERE aggregate_type = 'skill' AND aggregate_id = $1 AND correlation_id = $1
+		ORDER BY event_type`, skill)
+	if err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	got, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatalf("read outbox: %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("outbox events of %v:\n got  %v\n want %v", skill, got, want)
+	}
+}
+
+func assertVersionAddedEventCarriesTheNewestSummary(t *testing.T, ctx context.Context, pool *pgxpool.Pool, importedID, sourceID pgtype.UUID) {
+	t.Helper()
+	var summary, versionID, announced string
+	var versionSource pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		SELECT s.summary, v.id::text, v.source_id, o.payload->>'version_id'
+		FROM skills s
+		JOIN skill_versions v ON v.skill_id = s.id
+		JOIN outbox_events o ON o.aggregate_id = s.id AND o.event_type = 'skill.version_added'
+		WHERE s.id = $1`, importedID).Scan(&summary, &versionID, &versionSource, &announced); err != nil {
+		t.Fatal(err)
+	}
+	if summary != "a newer summary" || versionSource != sourceID || announced != versionID {
+		t.Errorf("summary %q, version source %v, announced version %q; want the newer summary, source %v and version %q",
+			summary, versionSource, announced, sourceID, versionID)
+	}
+}
+
 func TestEveryVersionPathLeavesItsEventsInTheOutbox(t *testing.T) {
 	pool := requireRegistryDB(t)
 	row, _ := seedSkill(t, pool, "lifecycle-events")
@@ -484,34 +520,8 @@ func TestEveryVersionPathLeavesItsEventsInTheOutbox(t *testing.T) {
 		imported.ID(): {"skill.created", "skill.described", "skill.version_added"},
 		fork.ID:       {"skill.created", "skill.version_added"},
 	} {
-		rows, err := pool.Query(ctx, `
-			SELECT event_type FROM outbox_events
-			WHERE aggregate_type = 'skill' AND aggregate_id = $1 AND correlation_id = $1
-			ORDER BY event_type`, skill)
-		if err != nil {
-			t.Fatalf("read outbox: %v", err)
-		}
-		got, err := pgx.CollectRows(rows, pgx.RowTo[string])
-		if err != nil {
-			t.Fatalf("read outbox: %v", err)
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("outbox events of %v:\n got  %v\n want %v", skill, got, want)
-		}
+		assertOutboxEventTypesForSkill(t, ctx, pool, skill, want)
 	}
 
-	var summary, versionID, announced string
-	var versionSource pgtype.UUID
-	if err := pool.QueryRow(ctx, `
-		SELECT s.summary, v.id::text, v.source_id, o.payload->>'version_id'
-		FROM skills s
-		JOIN skill_versions v ON v.skill_id = s.id
-		JOIN outbox_events o ON o.aggregate_id = s.id AND o.event_type = 'skill.version_added'
-		WHERE s.id = $1`, imported.ID()).Scan(&summary, &versionID, &versionSource, &announced); err != nil {
-		t.Fatal(err)
-	}
-	if summary != "a newer summary" || versionSource != sourceID || announced != versionID {
-		t.Errorf("summary %q, version source %v, announced version %q; want the newer summary, source %v and version %q",
-			summary, versionSource, announced, sourceID, versionID)
-	}
+	assertVersionAddedEventCarriesTheNewestSummary(t, ctx, pool, imported.ID(), sourceID)
 }

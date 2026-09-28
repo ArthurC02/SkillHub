@@ -85,6 +85,57 @@ func fetch(t *testing.T, method, raw string, body []byte) (int, []byte) {
 	return resp.StatusCode, got
 }
 
+func assertTamperedSignatureIsRefused(t *testing.T, valid string) {
+	u, err := url.Parse(valid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	signature := q.Get("X-Amz-Signature")
+	if len(signature) == 0 {
+		t.Fatalf("no X-Amz-Signature in the pre-signed URL")
+	}
+
+	flipped := "0"
+	if strings.HasPrefix(signature, "0") {
+		flipped = "1"
+	}
+	q.Set("X-Amz-Signature", flipped+signature[1:])
+	u.RawQuery = q.Encode()
+	if code, _ := fetch(t, http.MethodGet, u.String(), nil); code == http.StatusOK {
+		t.Errorf("a URL with one flipped signature digit returned 200; the signature is not being verified")
+	}
+}
+
+func assertGrantStopsWorkingWhenItExpires(t *testing.T, store *Client, ctx context.Context, key string) {
+	expiring, err := store.PresignGet(ctx, key, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := fetch(t, http.MethodGet, expiring, nil); code != http.StatusOK {
+		t.Fatalf("a one-second grant was already refused at status %d; the expiry assertion below would be vacuous", code)
+	}
+	time.Sleep(2 * time.Second)
+	if code, _ := fetch(t, http.MethodGet, expiring, nil); code == http.StatusOK {
+		t.Errorf("a grant one second long still returned 200 after two seconds; expiry is not enforced")
+	}
+}
+
+func assertGETGrantCannotPUT(t *testing.T, store *Client, ctx context.Context, key, valid string, want []byte) {
+	overwrite := []byte("written with a ticket that only authorizes reading")
+	code, _ := fetch(t, http.MethodPut, valid, overwrite)
+	if code == http.StatusOK {
+		t.Errorf("a GET grant accepted a PUT (status 200); the signature does not bind the method")
+	}
+	got, err := store.Get(ctx, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("the object was overwritten through a read-only grant: %q", got)
+	}
+}
+
 func TestPresignedGrantIsShortLivedUnforgeableAndSingleDirection(t *testing.T) {
 	store := requirePresignStore(t)
 	ctx := t.Context()
@@ -105,56 +156,15 @@ func TestPresignedGrantIsShortLivedUnforgeableAndSingleDirection(t *testing.T) {
 	}
 
 	t.Run("a tampered signature is refused", func(t *testing.T) {
-		u, err := url.Parse(valid)
-		if err != nil {
-			t.Fatal(err)
-		}
-		q := u.Query()
-		signature := q.Get("X-Amz-Signature")
-		if len(signature) == 0 {
-			t.Fatalf("no X-Amz-Signature in the pre-signed URL")
-		}
-
-		flipped := "0"
-		if strings.HasPrefix(signature, "0") {
-			flipped = "1"
-		}
-		q.Set("X-Amz-Signature", flipped+signature[1:])
-		u.RawQuery = q.Encode()
-		if code, _ := fetch(t, http.MethodGet, u.String(), nil); code == http.StatusOK {
-			t.Errorf("a URL with one flipped signature digit returned 200; the signature is not being verified")
-		}
+		assertTamperedSignatureIsRefused(t, valid)
 	})
 
 	t.Run("the grant stops working when it expires", func(t *testing.T) {
-
-		expiring, err := store.PresignGet(ctx, key, time.Second)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if code, _ := fetch(t, http.MethodGet, expiring, nil); code != http.StatusOK {
-			t.Fatalf("a one-second grant was already refused at status %d; the expiry assertion below would be vacuous", code)
-		}
-		time.Sleep(2 * time.Second)
-		if code, _ := fetch(t, http.MethodGet, expiring, nil); code == http.StatusOK {
-			t.Errorf("a grant one second long still returned 200 after two seconds; expiry is not enforced")
-		}
+		assertGrantStopsWorkingWhenItExpires(t, store, ctx, key)
 	})
 
 	t.Run("a GET grant cannot PUT", func(t *testing.T) {
-
-		overwrite := []byte("written with a ticket that only authorizes reading")
-		code, _ := fetch(t, http.MethodPut, valid, overwrite)
-		if code == http.StatusOK {
-			t.Errorf("a GET grant accepted a PUT (status 200); the signature does not bind the method")
-		}
-		got, err := store.Get(ctx, key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(got, want) {
-			t.Errorf("the object was overwritten through a read-only grant: %q", got)
-		}
+		assertGETGrantCannotPUT(t, store, ctx, key, valid, want)
 	})
 }
 

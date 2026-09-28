@@ -13,6 +13,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+func topSearchResultNames(hits []searchResult, limit int) []string {
+	out := []string{}
+	for i, h := range hits {
+		if i == limit {
+			break
+		}
+		out = append(out, h.Name)
+	}
+	return out
+}
+
+func countNameOverlap(l, m []string) int {
+	overlap := 0
+	for _, a := range l {
+		for _, b := range m {
+			if a == b {
+				overlap++
+			}
+		}
+	}
+	return overlap
+}
+
 func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 	dbURL := os.Getenv("SKILLHUB_COMPARE_DATABASE_URL")
 	base := os.Getenv("SKILLHUB_E2E_LLM_URL")
@@ -44,16 +67,6 @@ func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 		corpus.Reference = corpus.Reference[:10]
 	}
 	s := &Service{Pool: pool, LLM: ModelOrNone(&llmclient.Client{BaseURL: base, Token: os.Getenv("LLM_SERVICE_TOKEN")})}
-	names := func(hits []searchResult) []string {
-		out := []string{}
-		for i, h := range hits {
-			if i == 3 {
-				break
-			}
-			out = append(out, h.Name)
-		}
-		return out
-	}
 	overlapTotal, degraded := 0, 0
 	for _, task := range corpus.Reference {
 		lex, _, err := s.ftsOnlySearch(ctx, gen.New(s.Pool), task.Description, 3, searchFilters{})
@@ -63,22 +76,15 @@ func TestCreationKnowledgeAgainstLexicalOnTheDevCatalog(t *testing.T) {
 		embedding, err := s.embedQuery(ctx, task.Description)
 		if err != nil {
 			degraded++
-			t.Logf("%s: embedding failed (%v); lexical=%v", task.ID, err, names(lex))
+			t.Logf("%s: embedding failed (%v); lexical=%v", task.ID, err, topSearchResultNames(lex, 3))
 			continue
 		}
 		sem, _, err := s.hybridSearch(ctx, gen.New(s.Pool), hybridRequest{query: task.Description, keywords: task.Description, embedding: embedding, limit: 3, maxDistance: MaxCosineDistance})
 		if err != nil {
 			t.Fatal(err)
 		}
-		l, m := names(lex), names(sem)
-		overlap := 0
-		for _, a := range l {
-			for _, b := range m {
-				if a == b {
-					overlap++
-				}
-			}
-		}
+		l, m := topSearchResultNames(lex, 3), topSearchResultNames(sem, 3)
+		overlap := countNameOverlap(l, m)
 		overlapTotal += overlap
 		t.Logf("%s: lexical=%s | semantic=%s | overlap=%d", task.ID, strings.Join(l, ", "), strings.Join(m, ", "), overlap)
 	}

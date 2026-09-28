@@ -86,39 +86,48 @@ func testPackage() preparedPackage {
 	}
 }
 
-func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
-	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
-	s := &Service{LLM: stub.start(t)}
-
-	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
-
+func assertEnrichmentSucceededWithEmbedding(t *testing.T, e enrichment) {
+	t.Helper()
 	if e.status != enrichmentEnriched {
 		t.Fatalf("status = %q, want %q", e.status, enrichmentEnriched)
 	}
 	if e.embedding == nil {
 		t.Fatal("no embedding stored; the document would be invisible to the vector leg")
 	}
+}
+
+func assertEnrichmentSummaries(t *testing.T, e enrichment) {
+	t.Helper()
 	if e.enrichedSummary != testEnrichedSummary {
 		t.Fatalf("enriched_summary = %q, want the model's summary", e.enrichedSummary)
 	}
-
 	if e.summary != testDescription {
 		t.Fatalf("summary = %q, want the frontmatter description %q", e.summary, testDescription)
 	}
+}
 
+func assertEnrichmentProvenance(t *testing.T, e enrichment) {
+	t.Helper()
 	if e.model == nil || *e.model != "gpt-6-luna" {
 		t.Fatalf("model provenance = %v, want gpt-6-luna", e.model)
 	}
 	if e.promptVersion == nil || *e.promptVersion != "enrich-skill/v2" {
 		t.Fatalf("prompt_version provenance = %v", e.promptVersion)
 	}
+}
+
+func assertEnrichmentContent(t *testing.T, e enrichment) {
+	t.Helper()
 	if !strings.Contains(e.taskExamples, testExampleZh) || !strings.Contains(e.taskExamples, testExampleEn) {
 		t.Fatalf("task_examples dropped a language: %q", e.taskExamples)
 	}
 	if e.limitations != testLimitation {
 		t.Fatalf("limitations = %q, want the model's line (DISC-003 限制)", e.limitations)
 	}
+}
 
+func assertEnrichmentTagBuckets(t *testing.T, e enrichment) {
+	t.Helper()
 	var tags llmclient.SkillTags
 	if err := json.Unmarshal(e.tags, &tags); err != nil {
 		t.Fatalf("tags are not valid json: %v (%q)", err, e.tags)
@@ -127,6 +136,19 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 		len(tags.Dependencies) != 1 || tags.Dependencies[0] != "poppler" {
 		t.Fatalf("tag buckets = %+v, want them kept apart", tags)
 	}
+}
+
+func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
+	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
+	s := &Service{LLM: stub.start(t)}
+
+	e := s.enrichPackage(context.Background(), testPackage(), pgtype.UUID{})
+
+	assertEnrichmentSucceededWithEmbedding(t, e)
+	assertEnrichmentSummaries(t, e)
+	assertEnrichmentProvenance(t, e)
+	assertEnrichmentContent(t, e)
+	assertEnrichmentTagBuckets(t, e)
 }
 
 func TestScanFactsProjectedWithoutLLM(t *testing.T) {

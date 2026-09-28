@@ -133,26 +133,68 @@ func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
 	}
 }
 
+type verifyCase struct {
+	name    string
+	ref     Citation
+	wantErr bool
+	check   func(*testing.T, EvidenceRef)
+}
+
+func assertTraceEventCarriesIDAndOccurredAt(t *testing.T, got EvidenceRef) {
+	if got.TraceEventID != eventID || got.OccurredAt == "" {
+		t.Errorf("a trace ref must carry both id and occurred_at: %+v", got)
+	}
+}
+
+func assertArtifactHasNoByteRangeAndReportsManifestLine(t *testing.T, got EvidenceRef) {
+	if got.ByteRange != nil {
+		t.Error("no artifact bytes were sent, so there is no byte range to report")
+	}
+	if !strings.Contains(got.Excerpt, "4096") {
+		t.Errorf("the excerpt should be the platform's own manifest line, got %q", got.Excerpt)
+	}
+}
+
+func assertAgentOutputCharRangeSelectsTheQuote(t *testing.T, got EvidenceRef) {
+	if got.CharRange == nil {
+		t.Fatal("Go computes the char range itself; it must be present")
+	}
+	quote := "✅：Removed 17 duplicate rows"
+	if string([]rune(finalOutput)[got.CharRange.Start:got.CharRange.End]) != quote {
+		t.Errorf("char range %+v does not select the quote", got.CharRange)
+	}
+}
+
+func assertVerifyOutcome(t *testing.T, c verifyCase, m material, digest map[string]trace.EventView) {
+	t.Helper()
+	got, why := verify(c.ref, m, digest)
+	if c.wantErr {
+		if why == "" {
+			t.Fatalf("expected the reference to be refused, got %+v", got)
+		}
+		return
+	}
+	if why != "" {
+		t.Fatalf("expected the reference to resolve, got %q", why)
+	}
+	if !got.Available {
+		t.Error("a reference that just resolved is available")
+	}
+	if c.check != nil {
+		c.check(t, got)
+	}
+}
+
 func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	quote := "✅：Removed 17 duplicate rows"
 
-	cases := []struct {
-		name    string
-		ref     Citation
-		wantErr bool
-		check   func(*testing.T, EvidenceRef)
-	}{
+	cases := []verifyCase{
 		{
 			name: "a trace event in the digest, quoted correctly",
 			ref: Citation{
 				Kind: KindTraceEvent, TraceEventID: strp(eventID), Quote: `"tool_name":"bash"`,
 			},
-			check: func(t *testing.T, got EvidenceRef) {
-				if got.TraceEventID != eventID || got.OccurredAt == "" {
-					t.Errorf("a trace ref must carry both id and occurred_at: %+v", got)
-				}
-			},
+			check: assertTraceEventCarriesIDAndOccurredAt,
 		},
 		{
 			name: "an event id the model invented",
@@ -169,16 +211,9 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "an artifact that is in the manifest",
-			ref:  Citation{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
-			check: func(t *testing.T, got EvidenceRef) {
-				if got.ByteRange != nil {
-					t.Error("no artifact bytes were sent, so there is no byte range to report")
-				}
-				if !strings.Contains(got.Excerpt, "4096") {
-					t.Errorf("the excerpt should be the platform's own manifest line, got %q", got.Excerpt)
-				}
-			},
+			name:  "an artifact that is in the manifest",
+			ref:   Citation{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+			check: assertArtifactHasNoByteRangeAndReportsManifestLine,
 		},
 		{
 			name:    "an artifact nobody produced",
@@ -186,16 +221,9 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "a quote from the agent's final output",
-			ref:  Citation{Kind: KindAgentOutput, Quote: quote},
-			check: func(t *testing.T, got EvidenceRef) {
-				if got.CharRange == nil {
-					t.Fatal("Go computes the char range itself; it must be present")
-				}
-				if string([]rune(finalOutput)[got.CharRange.Start:got.CharRange.End]) != quote {
-					t.Errorf("char range %+v does not select the quote", got.CharRange)
-				}
-			},
+			name:  "a quote from the agent's final output",
+			ref:   Citation{Kind: KindAgentOutput, Quote: "✅：Removed 17 duplicate rows"},
+			check: assertAgentOutputCharRangeSelectsTheQuote,
 		},
 		{
 			name:    "a quote the final output does not contain",
@@ -211,22 +239,7 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, why := verify(c.ref, m, digest)
-			if c.wantErr {
-				if why == "" {
-					t.Fatalf("expected the reference to be refused, got %+v", got)
-				}
-				return
-			}
-			if why != "" {
-				t.Fatalf("expected the reference to resolve, got %q", why)
-			}
-			if !got.Available {
-				t.Error("a reference that just resolved is available")
-			}
-			if c.check != nil {
-				c.check(t, got)
-			}
+			assertVerifyOutcome(t, c, m, digest)
 		})
 	}
 }

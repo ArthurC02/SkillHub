@@ -26,7 +26,9 @@ linters:
     warn-unused: true
     rules:
       - path: _test\.go
-        linters: [gocognit, dupl, revive, unparam, funlen, cyclop, goconst, mnd]
+        linters: [dupl, revive, unparam, goconst, mnd]
+      - path: internal/entrypoint/api/apiserver/(creation_(batch_integration|measure_batch|python_integration|stream_measure)|e2e_gateway_integration|gen009_baseline|generate_(live_modes|modes_batch)|intent_(golden|live|python)_integration)_test\.go
+        linters: [gocognit, funlen, cyclop]
 
   settings:
     gocognit:

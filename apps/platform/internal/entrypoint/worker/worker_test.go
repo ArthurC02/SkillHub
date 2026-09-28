@@ -50,13 +50,8 @@ func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
 	}
 }
 
-func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
-	pool, deps := testDeps(t)
-	set, err := BuildWorkers(pool, deps)
-	if err != nil {
-		t.Fatalf("BuildWorkers: %v", err)
-	}
-
+func assertRunServiceDependenciesWired(t *testing.T, set *Set) {
+	t.Helper()
 	switch {
 	case set.Runs.Pool == nil:
 		t.Error("run service has no pool")
@@ -81,7 +76,10 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	case set.Runs.TraceSigner == nil || set.Runs.TraceIngestBaseURL == "":
 		t.Error("run service was wired with half a trace configuration")
 	}
+}
 
+func assertEvaluationServiceDependenciesWired(t *testing.T, set *Set) {
+	t.Helper()
 	switch {
 	case set.Evaluations.Pool == nil || set.Evaluations.Store == nil:
 		t.Error("evaluation service is missing its persistence")
@@ -92,6 +90,13 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	case set.Evaluations.Trace.ReadRunState == nil || set.Evaluations.Trace.ReadIngestRunState == nil ||
 		set.Evaluations.Trace.ReadRunTransitions == nil:
 		t.Error("trace service is missing a Run-owned fact reader")
+	}
+	assertEvaluationServiceReadersWired(t, set)
+}
+
+func assertEvaluationServiceReadersWired(t *testing.T, set *Set) {
+	t.Helper()
+	switch {
 	case set.Evaluations.ReadRunFacts == nil || set.Evaluations.ReadEvaluationInput == nil:
 		t.Error("evaluation service is missing Run-owned fact readers")
 	case set.Evaluations.ReadVersion == nil || set.Evaluations.ReadLatestVersion == nil ||
@@ -102,24 +107,48 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	case set.Evaluations.Judge == nil || set.Evaluations.Suggester == nil:
 		t.Error("LLM was configured but the judge or the suggester did not get it")
 	}
+}
+
+func assertPackagingSharesTheTestLabService(t *testing.T, set *Set) {
+	t.Helper()
 	if set.Packaging == nil || set.Packaging.TestLab == nil {
 		t.Error("packaging service is missing Test Lab owner reads")
 	} else if set.Runs.TestLab != set.Evaluations.TestLab || set.Runs.TestLab != set.Packaging.TestLab {
 		t.Error("run, evaluation and packaging were not wired to the shared Test Lab service")
 	}
+}
 
+func assertObjectReconcilerDependenciesWired(t *testing.T, set *Set) {
+	t.Helper()
 	if set.Objects.ListExpiredArtifacts == nil || set.Objects.ListClaimedArtifacts == nil ||
 		set.Objects.ListClaimedDatasets == nil || set.Objects.RecordArtifactPurged == nil ||
 		set.Objects.RecordDatasetLost == nil || set.Objects.GuardArtifactRemoval == nil {
 		t.Error("object reconciler is missing an owner read/write function")
 	}
+}
 
+func assertRunEventAndSkillVersionQueuesWired(t *testing.T, set *Set) {
+	t.Helper()
 	if set.RunEvents.HasCurrentEvaluation == nil || set.RunEvents.Enqueue == nil {
 		t.Error("run event consumer is missing HasCurrentEvaluation or enqueue")
 	}
 	if set.SkillVersions == nil || set.SkillVersions.Enqueue == nil {
 		t.Error("the evaluation's mailbox for skill versions is not wired to the queue")
 	}
+}
+
+func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
+	pool, deps := testDeps(t)
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+
+	assertRunServiceDependenciesWired(t, set)
+	assertEvaluationServiceDependenciesWired(t, set)
+	assertPackagingSharesTheTestLabService(t, set)
+	assertObjectReconcilerDependenciesWired(t, set)
+	assertRunEventAndSkillVersionQueuesWired(t, set)
 }
 
 func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {

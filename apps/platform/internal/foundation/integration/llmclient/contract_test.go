@@ -70,64 +70,79 @@ var collectionWireFields = map[string]string{
 	"SearchKeywords": "Keywords",
 }
 
+func assertCollectionFieldRoundTrips(t *testing.T, fieldName string, field reflect.StructField, property string, value any) {
+	t.Helper()
+	if value == nil && field.Type.Elem().Kind() != reflect.Pointer {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{strings.Split(field.Tag.Get("json"), ",")[0]: map[string]any{property: value}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded AnalyzeIntentResponse
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	mapped := reflect.ValueOf(decoded).FieldByName(fieldName).MapIndex(reflect.ValueOf(property))
+	if !mapped.IsValid() {
+		t.Fatalf("discarded field %s", property)
+	}
+	if value == nil {
+		if !mapped.IsNil() {
+			t.Fatalf("null %s changed", property)
+		}
+		return
+	}
+	if mapped.Kind() == reflect.Pointer {
+		mapped = mapped.Elem()
+	}
+	if mapped.String() != value {
+		t.Fatalf("changed field %s", property)
+	}
+}
+
+func assertCollectionSchemaFieldsPreserved(t *testing.T, fieldName string, field reflect.StructField, schema contractSchema) {
+	t.Helper()
+	if len(schema.Properties) == 0 {
+		t.Fatal("empty object schema")
+	}
+	for property := range schema.Properties {
+		for _, value := range []any{"stated value", nil} {
+			assertCollectionFieldRoundTrips(t, fieldName, field, property, value)
+		}
+	}
+}
+
+func assertCollectionWireField(t *testing.T, spec contractSpec, schemas map[string]any, responseType reflect.Type, schemaName, fieldName string) {
+	t.Helper()
+	schema, exists := spec.Components.Schemas[schemaName]
+	if !exists {
+		t.Fatalf("missing schema %s", schemaName)
+	}
+	field, exists := responseType.FieldByName(fieldName)
+	if !exists {
+		t.Fatalf("missing wire field %s", fieldName)
+	}
+	typ := schemas[schemaName].(map[string]any)["type"]
+	if typ == "array" {
+		if field.Type != reflect.TypeOf([]string{}) {
+			t.Fatalf("array wire type=%v", field.Type)
+		}
+		return
+	}
+	if typ != "object" || field.Type.Kind() != reflect.Map || field.Type.Key().Kind() != reflect.String {
+		t.Fatalf("object wire type=%v", field.Type)
+	}
+	assertCollectionSchemaFieldsPreserved(t, fieldName, field, schema)
+}
+
 func TestSearchCollectionsPreserveEveryContractFieldForDomainValidation(t *testing.T) {
 	spec, tree := readContract(t)
 	schemas := tree["components"].(map[string]any)["schemas"].(map[string]any)
 	responseType := reflect.TypeOf(AnalyzeIntentResponse{})
 	for schemaName, fieldName := range collectionWireFields {
 		t.Run(schemaName, func(t *testing.T) {
-			schema, exists := spec.Components.Schemas[schemaName]
-			if !exists {
-				t.Fatalf("missing schema %s", schemaName)
-			}
-			field, exists := responseType.FieldByName(fieldName)
-			if !exists {
-				t.Fatalf("missing wire field %s", fieldName)
-			}
-			typ := schemas[schemaName].(map[string]any)["type"]
-			if typ == "array" {
-				if field.Type != reflect.TypeOf([]string{}) {
-					t.Fatalf("array wire type=%v", field.Type)
-				}
-				return
-			}
-			if typ != "object" || field.Type.Kind() != reflect.Map || field.Type.Key().Kind() != reflect.String {
-				t.Fatalf("object wire type=%v", field.Type)
-			}
-			if len(schema.Properties) == 0 {
-				t.Fatal("empty object schema")
-			}
-			for property := range schema.Properties {
-				for _, value := range []any{"stated value", nil} {
-					if value == nil && field.Type.Elem().Kind() != reflect.Pointer {
-						continue
-					}
-					payload, err := json.Marshal(map[string]any{strings.Split(field.Tag.Get("json"), ",")[0]: map[string]any{property: value}})
-					if err != nil {
-						t.Fatal(err)
-					}
-					var decoded AnalyzeIntentResponse
-					if err := json.Unmarshal(payload, &decoded); err != nil {
-						t.Fatal(err)
-					}
-					mapped := reflect.ValueOf(decoded).FieldByName(fieldName).MapIndex(reflect.ValueOf(property))
-					if !mapped.IsValid() {
-						t.Fatalf("discarded field %s", property)
-					}
-					if value == nil {
-						if !mapped.IsNil() {
-							t.Fatalf("null %s changed", property)
-						}
-					} else {
-						if mapped.Kind() == reflect.Pointer {
-							mapped = mapped.Elem()
-						}
-						if mapped.String() != value {
-							t.Fatalf("changed field %s", property)
-						}
-					}
-				}
-			}
+			assertCollectionWireField(t, spec, schemas, responseType, schemaName, fieldName)
 		})
 	}
 }

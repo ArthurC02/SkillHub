@@ -125,6 +125,57 @@ func TestEveryStepModelAnswersInTheDomainsOwnWords(t *testing.T) {
 	}
 }
 
+func assertSessionAndConfirmationsOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if sent.SessionID != "session-1" || sent.Revision != 3 || sent.Brief != "整理輸入資料" ||
+		sent.SampleInput != "會議紀錄" || !sent.BriefConfirmed || !sent.DiagramConfirmed {
+		t.Errorf("request on the wire = %+v, want the session, revision and what the creator confirmed", sent)
+	}
+}
+
+func assertMessagesOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if len(sent.Messages) != 1 || sent.Messages[0].Role != "user" {
+		t.Errorf("messages on the wire = %+v, want the one the creator wrote", sent.Messages)
+	}
+}
+
+func assertDiagramOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if sent.Diagram == nil || sent.Diagram.Data != "AQI=" {
+		t.Errorf("diagram on the wire = %+v, want the image the creator attached", sent.Diagram)
+	}
+}
+
+func assertReferencesOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if len(sent.References) != 1 || sent.References[0].SkillMD != "# prior" {
+		t.Errorf("references on the wire = %+v, want the reference skill's own text", sent.References)
+	}
+}
+
+func assertDraftOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if sent.Draft == nil || sent.Draft.Name != "summary" || len(sent.Draft.Files) != 1 {
+		t.Errorf("draft on the wire = %+v, want the draft under revision", sent.Draft)
+	}
+}
+
+func assertDraftValidationOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if sent.DraftValidation == nil || !sent.DraftValidation.Blocked ||
+		sent.DraftValidation.ContentHash != "hash" {
+		t.Errorf("validation on the wire = %+v, want what the platform found wrong", sent.DraftValidation)
+	}
+}
+
+func assertLimitsOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	if len(sent.AllowedTools) != 1 || sent.TimeoutSeconds != 60 || sent.MaxOutputTokens != 2048 {
+		t.Errorf("limits on the wire = %+v, want the tools, timeout and token ceiling", sent)
+	}
+}
+
 func TestTheStepAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 	var sent llmclient.CreationStepRequest
 	model := stepOverAWire(t, &sent, llmclient.CreationStepResponse{})
@@ -133,29 +184,13 @@ func TestTheStepAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 		t.Fatalf("taking a creation step: %v", err)
 	}
 
-	if sent.SessionID != "session-1" || sent.Revision != 3 || sent.Brief != "整理輸入資料" ||
-		sent.SampleInput != "會議紀錄" || !sent.BriefConfirmed || !sent.DiagramConfirmed {
-		t.Errorf("request on the wire = %+v, want the session, revision and what the creator confirmed", sent)
-	}
-	if len(sent.Messages) != 1 || sent.Messages[0].Role != "user" {
-		t.Errorf("messages on the wire = %+v, want the one the creator wrote", sent.Messages)
-	}
-	if sent.Diagram == nil || sent.Diagram.Data != "AQI=" {
-		t.Errorf("diagram on the wire = %+v, want the image the creator attached", sent.Diagram)
-	}
-	if len(sent.References) != 1 || sent.References[0].SkillMD != "# prior" {
-		t.Errorf("references on the wire = %+v, want the reference skill's own text", sent.References)
-	}
-	if sent.Draft == nil || sent.Draft.Name != "summary" || len(sent.Draft.Files) != 1 {
-		t.Errorf("draft on the wire = %+v, want the draft under revision", sent.Draft)
-	}
-	if sent.DraftValidation == nil || !sent.DraftValidation.Blocked ||
-		sent.DraftValidation.ContentHash != "hash" {
-		t.Errorf("validation on the wire = %+v, want what the platform found wrong", sent.DraftValidation)
-	}
-	if len(sent.AllowedTools) != 1 || sent.TimeoutSeconds != 60 || sent.MaxOutputTokens != 2048 {
-		t.Errorf("limits on the wire = %+v, want the tools, timeout and token ceiling", sent)
-	}
+	assertSessionAndConfirmationsOnTheWire(t, sent)
+	assertMessagesOnTheWire(t, sent)
+	assertDiagramOnTheWire(t, sent)
+	assertReferencesOnTheWire(t, sent)
+	assertDraftOnTheWire(t, sent)
+	assertDraftValidationOnTheWire(t, sent)
+	assertLimitsOnTheWire(t, sent)
 }
 
 func TestTheGatewayKeyNeverReachesTheRequestBody(t *testing.T) {

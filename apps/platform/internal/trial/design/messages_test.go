@@ -8,27 +8,14 @@ import (
 	"testing"
 )
 
-func TestWireMessagesAreTraditionalChinese(t *testing.T) {
-	han := regexp.MustCompile(`\p{Han}`)
+type wireMessageCase struct {
+	label string
+	msg   string
+}
 
-	englishSentence := regexp.MustCompile(`(?i)\b(must|failed|not found|required|invalid|cannot|could not)\b`)
-
-	check := func(t *testing.T, label, msg string) {
-		t.Helper()
-		if !han.MatchString(msg) {
-			t.Errorf("%s: %q has no Han characters", label, msg)
-		}
-		if englishSentence.MatchString(msg) {
-			t.Errorf("%s: %q still reads as an English sentence", label, msg)
-		}
-	}
-
-	criteria := []Criterion{{ID: "c1", Text: "existing criterion"}}
-
-	cases := []struct {
-		label string
-		msg   string
-	}{
+func wireMessageCases(t *testing.T, criteria []Criterion) []wireMessageCase {
+	t.Helper()
+	cases := []wireMessageCase{
 		{"validateDraft blank name", mustErr(t, func() (string, string, error) {
 			return validateDraft("", "prompt")
 		})},
@@ -76,19 +63,30 @@ func TestWireMessagesAreTraditionalChinese(t *testing.T) {
 		{"limitsNote", limitsNote},
 	}
 	for _, kind := range allowedKindsWire {
-		cases = append(cases, struct {
-			label string
-			msg   string
-		}{"allowedKindsWire", kind})
+		cases = append(cases, wireMessageCase{"allowedKindsWire", kind})
 	}
 
 	inspectZipErr := zipTooManyFilesErr(t)
-	cases = append(cases, struct {
-		label string
-		msg   string
-	}{"inspectZip too many files", stripSentinelPrefix(inspectZipErr, ErrLimitExceeded)})
+	cases = append(cases, wireMessageCase{"inspectZip too many files", stripSentinelPrefix(inspectZipErr, ErrLimitExceeded)})
+	return cases
+}
 
-	for _, c := range cases {
+func TestWireMessagesAreTraditionalChinese(t *testing.T) {
+	han := regexp.MustCompile(`\p{Han}`)
+	englishSentence := regexp.MustCompile(`(?i)\b(must|failed|not found|required|invalid|cannot|could not)\b`)
+
+	check := func(t *testing.T, label, msg string) {
+		t.Helper()
+		if !han.MatchString(msg) {
+			t.Errorf("%s: %q has no Han characters", label, msg)
+		}
+		if englishSentence.MatchString(msg) {
+			t.Errorf("%s: %q still reads as an English sentence", label, msg)
+		}
+	}
+
+	criteria := []Criterion{{ID: "c1", Text: "existing criterion"}}
+	for _, c := range wireMessageCases(t, criteria) {
 		c := c
 		t.Run(c.label, func(t *testing.T) {
 			check(t, c.label, c.msg)

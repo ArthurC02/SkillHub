@@ -604,16 +604,55 @@ func contains(ss []string, want string) bool {
 	return false
 }
 
+type dependencyExtractionCase struct {
+	name        string
+	files       map[string]string
+	md          string
+	wantListed  []string
+	wantNot     []string
+	wantWarning []string
+	noWarning   bool
+}
+
+func assertDependencyExtractionCase(t *testing.T, tc dependencyExtractionCase) {
+	t.Helper()
+	md := tc.md
+	if md == "" {
+		md = goodMD
+	}
+	r := Validate(pkg(md, tc.files))
+	info, hasInfo := details(r, "package-dependencies")
+	warn, hasWarn := details(r, "undeclared-dependency")
+
+	if len(tc.wantListed) == 0 && hasInfo {
+		t.Fatalf("want no dependency finding, got %v", info)
+	}
+	for _, want := range tc.wantListed {
+		if !contains(info, want) {
+			t.Errorf("package-dependencies missing %q: %v", want, info)
+		}
+	}
+	for _, bad := range tc.wantNot {
+		if contains(info, bad) || contains(warn, bad) {
+			t.Errorf("%q must not be reported as a dependency: %v / %v", bad, info, warn)
+		}
+	}
+	if tc.noWarning && hasWarn {
+		t.Fatalf("want no undeclared-dependency warning, got %v", warn)
+	}
+	for _, want := range tc.wantWarning {
+		if !contains(warn, want) {
+			t.Errorf("undeclared-dependency missing %q: %v", want, warn)
+		}
+	}
+
+	if r.Blocked {
+		t.Errorf("dependency findings must never block: %+v", r.Findings)
+	}
+}
+
 func TestDependencyExtraction(t *testing.T) {
-	tests := []struct {
-		name        string
-		files       map[string]string
-		md          string
-		wantListed  []string
-		wantNot     []string
-		wantWarning []string
-		noWarning   bool
-	}{{
+	tests := []dependencyExtractionCase{{
 
 		name:       "install line in SKILL.md",
 		md:         goodMD + "\n## Dependencies\n\n```bash\npip install pandas pycountry openpyxl\n```\n",
@@ -676,39 +715,7 @@ import { x } from "@scope/pkg/sub";
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			md := tc.md
-			if md == "" {
-				md = goodMD
-			}
-			r := Validate(pkg(md, tc.files))
-			info, hasInfo := details(r, "package-dependencies")
-			warn, hasWarn := details(r, "undeclared-dependency")
-
-			if len(tc.wantListed) == 0 && hasInfo {
-				t.Fatalf("want no dependency finding, got %v", info)
-			}
-			for _, want := range tc.wantListed {
-				if !contains(info, want) {
-					t.Errorf("package-dependencies missing %q: %v", want, info)
-				}
-			}
-			for _, bad := range tc.wantNot {
-				if contains(info, bad) || contains(warn, bad) {
-					t.Errorf("%q must not be reported as a dependency: %v / %v", bad, info, warn)
-				}
-			}
-			if tc.noWarning && hasWarn {
-				t.Fatalf("want no undeclared-dependency warning, got %v", warn)
-			}
-			for _, want := range tc.wantWarning {
-				if !contains(warn, want) {
-					t.Errorf("undeclared-dependency missing %q: %v", want, warn)
-				}
-			}
-
-			if r.Blocked {
-				t.Errorf("dependency findings must never block: %+v", r.Findings)
-			}
+			assertDependencyExtractionCase(t, tc)
 		})
 	}
 }

@@ -176,12 +176,15 @@ func TestConfirmingTheBriefNeedsTheQuestionAndABrief(t *testing.T) {
 	}
 }
 
-func TestDiagramCheckpointsRequireDescriptionAnswersAndFinalConfirmation(t *testing.T) {
+func TestDiagramDescriptionConfirmationRejectsWrongState(t *testing.T) {
 	for name, p := range map[string]Snapshot{"nobody asked": {DiagramDescription: "start"}, "already decomposed": {PendingAction: PendingDiagramDescription, DiagramDescription: "start", DiagramInterpretation: &DiagramInterpretation{}}} {
 		if _, err := confirmDiagramDescription(&p); !errors.Is(err, ErrInvalidCommand) {
 			t.Errorf("%s: err = %v, want ErrInvalidCommand", name, err)
 		}
 	}
+}
+
+func TestDiagramCheckpointsRequireDescriptionAnswersAndFinalConfirmation(t *testing.T) {
 	p := Snapshot{DiagramFingerprint: "digest", PendingAction: PendingDiagramDescription, DiagramDescription: "開始處理資料"}
 	got, err := confirmDiagramDescription(&p)
 	if err != nil || !got.queueStep || !p.DiagramDescriptionConfirmed || p.DiagramConfirmed || p.PendingAction != "" {

@@ -119,6 +119,13 @@ func TestTheJudgeAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 		t.Fatalf("judging the run: %v", err)
 	}
 
+	assertJudgeRequestCoreFieldsOnTheWire(t, sent)
+	assertJudgeRequestCriteriaAndRubricOnTheWire(t, sent)
+	assertJudgeRequestArtifactsAndTraceOnTheWire(t, sent)
+}
+
+func assertJudgeRequestCoreFieldsOnTheWire(t *testing.T, sent llmclient.JudgeRunRequest) {
+	t.Helper()
 	if sent.RunID != "run-1" || sent.EvaluationID != "eval-1" || sent.UserPrompt != "extract the totals" ||
 		sent.FinalOutput != "total: 42" {
 		t.Errorf("request on the wire = %+v, want the run, the evaluation, the prompt and the output", sent)
@@ -126,12 +133,20 @@ func TestTheJudgeAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 	if sent.Skill == nil || sent.Skill.Name != "invoice reader" {
 		t.Errorf("skill on the wire = %+v, want the one the domain named", sent.Skill)
 	}
+}
+
+func assertJudgeRequestCriteriaAndRubricOnTheWire(t *testing.T, sent llmclient.JudgeRunRequest) {
+	t.Helper()
 	if len(sent.Criteria) != 1 || sent.Criteria[0].ID != "c1" {
 		t.Errorf("criteria on the wire = %+v, want the one criterion", sent.Criteria)
 	}
 	if sent.Rubric == nil || len(sent.Rubric.Items) != 1 || !sent.Rubric.Items[0].EvidenceRequired {
 		t.Errorf("rubric on the wire = %+v, want the item that demands evidence", sent.Rubric)
 	}
+}
+
+func assertJudgeRequestArtifactsAndTraceOnTheWire(t *testing.T, sent llmclient.JudgeRunRequest) {
+	t.Helper()
 	if len(sent.Artifacts) != 1 || sent.Artifacts[0].SizeBytes != 12 {
 		t.Errorf("artifacts on the wire = %+v, want the one artifact with its size", sent.Artifacts)
 	}

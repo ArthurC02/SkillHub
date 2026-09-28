@@ -599,6 +599,65 @@ func TestAnUnresolvableReferenceIsRefusedBeforeTheGateway(t *testing.T) {
 	}
 }
 
+func assertResolvedReferenceCarriesSkillMD(t *testing.T, ref ReferenceSkill, prov referenceProvenance, skillID, versionID pgtype.UUID, skillMDContent string) {
+	t.Helper()
+	if ref.Name != "reference-skill" || ref.SkillMD != skillMDContent {
+		t.Errorf("resolved reference = %+v, want the stored SKILL.md verbatim", ref)
+	}
+	if prov.SkillID != skillID || prov.VersionID != versionID || prov.Name != "reference-skill" {
+		t.Errorf("provenance = %+v, want skill/version ids and the name", prov)
+	}
+}
+
+func assertReferenceSkillMDReachesGatewayRequest(t *testing.T, ref ReferenceSkill, skillMDContent string) {
+	t.Helper()
+	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
+	fakeSvc, captured := requestCapturingStub(t, skillResp)
+	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
+		[]ReferenceSkill{ref}); err != nil {
+		t.Fatalf("generateOnce: %v", err)
+	}
+	var sent struct {
+		References []struct {
+			Name    string `json:"name"`
+			SkillMD string `json:"skill_md"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(*captured, &sent); err != nil {
+		t.Fatal(err)
+	}
+	if len(sent.References) != 1 || sent.References[0].SkillMD != skillMDContent {
+		t.Errorf("references[0].skill_md = %+v, want the reference's SKILL.md verbatim", sent.References)
+	}
+}
+
+func assertGenerationInputsCarryIDsNotContent(t *testing.T, prov referenceProvenance, skillMDContent string, skillID, versionID pgtype.UUID) {
+	t.Helper()
+	raw, err := marshalGenerationInputs(nil, []referenceProvenance{prov})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), skillMDContent) {
+		t.Fatal("the reference's SKILL.md content leaked into generation_inputs")
+	}
+	var got struct {
+		References []struct {
+			SkillID   string `json:"skill_id"`
+			VersionID string `json:"version_id"`
+			Name      string `json:"name"`
+		} `json:"references"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.References) != 1 ||
+		got.References[0].SkillID != pgconv.UUIDString(skillID) ||
+		got.References[0].VersionID != pgconv.UUIDString(versionID) ||
+		got.References[0].Name != "reference-skill" {
+		t.Errorf("generation_inputs.references = %+v, want one entry naming the resolved skill/version", got.References)
+	}
+}
+
 func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	const skillMDContent = "---\nname: reference-skill\ndescription: A worked example.\n---\n\nDo the thing.\n"
 	ws := identity.Workspace{ID: mustUUIDForTest(t, "10000000-0000-0000-0000-000000000001")}
@@ -623,55 +682,9 @@ func TestAReadableReferencesSkillMDReachesTheGateway(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveReference: %v", err)
 	}
-	if ref.Name != "reference-skill" || ref.SkillMD != skillMDContent {
-		t.Errorf("resolved reference = %+v, want the stored SKILL.md verbatim", ref)
-	}
-	if prov.SkillID != skillID || prov.VersionID != versionID || prov.Name != "reference-skill" {
-		t.Errorf("provenance = %+v, want skill/version ids and the name", prov)
-	}
-
-	const skillResp = `{"skill":{"name":"a","description":"b","body":"c"},"model":"m","prompt_version":"v"}`
-	fakeSvc, captured := requestCapturingStub(t, skillResp)
-	if _, err := fakeSvc.generateOnce(context.Background(), pgtype.UUID{}, "抽出重點。", nil,
-		[]ReferenceSkill{ref}); err != nil {
-		t.Fatalf("generateOnce: %v", err)
-	}
-	var sent struct {
-		References []struct {
-			Name    string `json:"name"`
-			SkillMD string `json:"skill_md"`
-		} `json:"references"`
-	}
-	if err := json.Unmarshal(*captured, &sent); err != nil {
-		t.Fatal(err)
-	}
-	if len(sent.References) != 1 || sent.References[0].SkillMD != skillMDContent {
-		t.Errorf("references[0].skill_md = %+v, want the reference's SKILL.md verbatim", sent.References)
-	}
-
-	raw, err := marshalGenerationInputs(nil, []referenceProvenance{prov})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(raw), skillMDContent) {
-		t.Fatal("the reference's SKILL.md content leaked into generation_inputs")
-	}
-	var got struct {
-		References []struct {
-			SkillID   string `json:"skill_id"`
-			VersionID string `json:"version_id"`
-			Name      string `json:"name"`
-		} `json:"references"`
-	}
-	if err := json.Unmarshal(raw, &got); err != nil {
-		t.Fatal(err)
-	}
-	if len(got.References) != 1 ||
-		got.References[0].SkillID != pgconv.UUIDString(skillID) ||
-		got.References[0].VersionID != pgconv.UUIDString(versionID) ||
-		got.References[0].Name != "reference-skill" {
-		t.Errorf("generation_inputs.references = %+v, want one entry naming the resolved skill/version", got.References)
-	}
+	assertResolvedReferenceCarriesSkillMD(t, ref, prov, skillID, versionID, skillMDContent)
+	assertReferenceSkillMDReachesGatewayRequest(t, ref, skillMDContent)
+	assertGenerationInputsCarryIDsNotContent(t, prov, skillMDContent, skillID, versionID)
 }
 
 func TestACreationReferenceIsRefusedOnlyWhenItsRedistributionIsBlocked(t *testing.T) {

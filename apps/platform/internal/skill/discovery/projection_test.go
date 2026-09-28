@@ -59,6 +59,27 @@ func TestAnUnmeasuredListingIsWrittenUnverifiedAndOnlyTheReviewedNewestVersionIs
 	}
 }
 
+func assertListingBaseFacts(t *testing.T, got gen.SetSearchDocumentListingParams, skillID, latestVersionID pgtype.UUID, category, source *string, verifiedAt pgtype.Timestamptz) {
+	t.Helper()
+	if got.SkillID != skillID || !got.Generated || got.Category != category || got.CategorySource != source || got.LatestVersionID != latestVersionID || got.VerifiedAt != verifiedAt {
+		t.Fatalf("listing omitted base facts: %+v", got)
+	}
+}
+
+func assertListingVersionFacts(t *testing.T, got gen.SetSearchDocumentListingParams, curatedVersionID pgtype.UUID) {
+	t.Helper()
+	if got.LatestPackageObjectKey == nil || *got.LatestPackageObjectKey != "packages/latest.tar" || got.CuratedVersionID != curatedVersionID {
+		t.Fatalf("listing omitted version facts: %+v", got)
+	}
+}
+
+func assertListingCompatibilityFacts(t *testing.T, got gen.SetSearchDocumentListingParams, measuredAt pgtype.Timestamptz) {
+	t.Helper()
+	if got.AgentMeasuredAt != measuredAt || got.AgentCapability == nil || *got.AgentCapability != "supported" || got.AgentRuntime == nil || *got.AgentRuntime != "python" || got.AgentRuntimeImage == nil || *got.AgentRuntimeImage != "runtime@sha256:test" {
+		t.Fatalf("listing omitted compatibility facts: %+v", got)
+	}
+}
+
 func TestListingOfCarriesLiveListingFacts(t *testing.T) {
 	skillID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
 	latestVersionID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
@@ -82,15 +103,9 @@ func TestListingOfCarriesLiveListingFacts(t *testing.T) {
 		AgentMeasuredAt:        measuredAt,
 	})
 
-	if got.SkillID != skillID || !got.Generated || got.Category != &category || got.CategorySource != &source || got.LatestVersionID != latestVersionID || got.VerifiedAt != verifiedAt {
-		t.Fatalf("listing omitted base facts: %+v", got)
-	}
-	if got.LatestPackageObjectKey == nil || *got.LatestPackageObjectKey != "packages/latest.tar" || got.CuratedVersionID != curatedVersionID {
-		t.Fatalf("listing omitted version facts: %+v", got)
-	}
-	if got.AgentMeasuredAt != measuredAt || got.AgentCapability == nil || *got.AgentCapability != "supported" || got.AgentRuntime == nil || *got.AgentRuntime != "python" || got.AgentRuntimeImage == nil || *got.AgentRuntimeImage != "runtime@sha256:test" {
-		t.Fatalf("listing omitted compatibility facts: %+v", got)
-	}
+	assertListingBaseFacts(t, got, skillID, latestVersionID, &category, &source, verifiedAt)
+	assertListingVersionFacts(t, got, curatedVersionID)
+	assertListingCompatibilityFacts(t, got, measuredAt)
 }
 
 func TestIndexSkillRejectsMissingListingReaderBeforeWrite(t *testing.T) {

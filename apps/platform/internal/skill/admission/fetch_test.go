@@ -151,49 +151,75 @@ func TestFetchDrainsOrdinaryHTTPErrorForConnectionReuse(t *testing.T) {
 	}
 }
 
-func TestGitHubURLNormalization(t *testing.T) {
-	f := &URLFetcher{Allowed: DefaultAllowedHosts()}
-	parse := func(s string) *url.URL {
+func githubURLParser(t *testing.T) func(string) *url.URL {
+	t.Helper()
+	return func(s string) *url.URL {
 		u, err := url.Parse(s)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return u
 	}
+}
 
+func assertRepoRootYieldsMainAndMasterCandidates(t *testing.T, f *URLFetcher, parse func(string) *url.URL) {
+	t.Helper()
 	cands := f.candidates(parse("https://github.com/anthropics/skills"))
 	if len(cands) != 2 ||
 		cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/main" ||
 		cands[0].ref != "main" || cands[1].ref != "master" {
 		t.Fatalf("repo URL candidates wrong: %+v", cands)
 	}
+}
 
-	cands = f.candidates(parse("https://github.com/anthropics/skills/tree/dev"))
+func assertTreeBranchYieldsOneCandidate(t *testing.T, f *URLFetcher, parse func(string) *url.URL) {
+	t.Helper()
+	cands := f.candidates(parse("https://github.com/anthropics/skills/tree/dev"))
 	if len(cands) != 1 ||
 		cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/dev" ||
 		cands[0].ref != "dev" {
 		t.Fatalf("tree URL candidate wrong: %+v", cands)
 	}
+}
 
+func assertTreeOrCommitSHAYieldsOneCandidate(t *testing.T, f *URLFetcher, parse func(string) *url.URL) {
+	t.Helper()
 	sha := "0123456789abcdef0123456789abcdef01234567"
 	for _, path := range []string{"tree", "commit"} {
-		cands = f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
+		cands := f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
 		if len(cands) != 1 ||
 			cands[0].url != "https://codeload.github.com/anthropics/skills/zip/"+sha ||
 			cands[0].ref != sha {
 			t.Fatalf("%s/<sha> must fetch and record the commit: %+v", path, cands)
 		}
 	}
+}
 
-	cands = f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
+func assertAbbreviatedSHAStaysOnBranchPath(t *testing.T, f *URLFetcher, parse func(string) *url.URL) {
+	t.Helper()
+	cands := f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/0123456" {
 		t.Fatalf("abbreviated sha must stay on the branch path: %+v", cands)
 	}
+}
 
-	cands = f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
+func assertNonRepoURLPassesThrough(t *testing.T, f *URLFetcher, parse func(string) *url.URL) {
+	t.Helper()
+	cands := f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/o/r/zip/refs/heads/main" {
 		t.Fatalf("non-repo URL must pass through: %+v", cands)
 	}
+}
+
+func TestGitHubURLNormalization(t *testing.T) {
+	f := &URLFetcher{Allowed: DefaultAllowedHosts()}
+	parse := githubURLParser(t)
+
+	assertRepoRootYieldsMainAndMasterCandidates(t, f, parse)
+	assertTreeBranchYieldsOneCandidate(t, f, parse)
+	assertTreeOrCommitSHAYieldsOneCandidate(t, f, parse)
+	assertAbbreviatedSHAStaysOnBranchPath(t, f, parse)
+	assertNonRepoURLPassesThrough(t, f, parse)
 }
 
 func TestBlockedAddrByFamily(t *testing.T) {

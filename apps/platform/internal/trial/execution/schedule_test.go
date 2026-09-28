@@ -658,13 +658,42 @@ func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
 	}
 }
 
+type curatedContentCase struct {
+	what     string
+	read     func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+	wantPass bool
+	wantSaid []string
+}
+
+func assertCuratedContentCase(t *testing.T, tc curatedContentCase) {
+	t.Helper()
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	svc := &Service{Deployment: deploymentFromTestEnv()}
+	if tc.read != nil {
+		svc.Registry = registryReaderFuncs{contentSource: tc.read}
+	}
+	err := svc.requireCuratedContent(t.Context(), contentSourceRun())
+	if tc.wantPass {
+		if err != nil {
+			t.Fatalf("curated material was refused: %v", err)
+		}
+		return
+	}
+	if err == nil {
+		t.Fatal("uncurated material was handed to a driver with no isolation boundary")
+	}
+	if !errors.Is(err, ErrContentNotCurated) {
+		t.Errorf("error = %v, want it to wrap ErrContentNotCurated so the caller can classify it", err)
+	}
+	for _, want := range tc.wantSaid {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("reason = %q, want it to mention %q", err, want)
+		}
+	}
+}
+
 func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
-	for _, tc := range []struct {
-		what     string
-		read     func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
-		wantPass bool
-		wantSaid []string
-	}{
+	for _, tc := range []curatedContentCase{
 		{
 			what:     "a skill in the public catalogue",
 			read:     stubContentSource(ContentSource{WorkspaceIsCatalog: true, CurationTier: "indexed"}, true, nil),
@@ -703,29 +732,7 @@ func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
 		},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
-			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-			svc := &Service{Deployment: deploymentFromTestEnv()}
-			if tc.read != nil {
-				svc.Registry = registryReaderFuncs{contentSource: tc.read}
-			}
-			err := svc.requireCuratedContent(t.Context(), contentSourceRun())
-			if tc.wantPass {
-				if err != nil {
-					t.Fatalf("curated material was refused: %v", err)
-				}
-				return
-			}
-			if err == nil {
-				t.Fatal("uncurated material was handed to a driver with no isolation boundary")
-			}
-			if !errors.Is(err, ErrContentNotCurated) {
-				t.Errorf("error = %v, want it to wrap ErrContentNotCurated so the caller can classify it", err)
-			}
-			for _, want := range tc.wantSaid {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("reason = %q, want it to mention %q", err, want)
-				}
-			}
+			assertCuratedContentCase(t, tc)
 		})
 	}
 }

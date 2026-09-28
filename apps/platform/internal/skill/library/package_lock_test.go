@@ -7,7 +7,34 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func assertLockCurrentPackage(t *testing.T, ctx context.Context, tx pgx.Tx, v Version, want bool, label string) {
+	t.Helper()
+	current, err := LockCurrentPackage(ctx, tx, v)
+	if err != nil || current != want {
+		t.Fatalf("%s: current=%v err=%v, want %v/nil", label, current, err, want)
+	}
+}
+
+func assertCompetingWriteIsBlockedByTheLock(t *testing.T, ctx context.Context, pool *pgxpool.Pool, skillID pgtype.UUID) {
+	t.Helper()
+	competing, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = competing.Rollback(ctx) }()
+	_, err = competing.Exec(ctx, "SELECT id FROM skills WHERE id = $1 FOR UPDATE NOWAIT", skillID)
+	var locked *pgconn.PgError
+	if !errors.As(err, &locked) || locked.Code != "55P03" {
+		t.Fatalf("competing write lock: %v, want lock_not_available", err)
+	}
+	if err := competing.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestCurrentPackageRemainsLockedUntilProjectionTransactionEnds(t *testing.T) {
 	pool := requireRegistryDB(t)
@@ -24,23 +51,10 @@ func TestCurrentPackageRemainsLockedUntilProjectionTransactionEnds(t *testing.T)
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	current, err := LockCurrentPackage(ctx, tx, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"})
-	if err != nil || !current {
-		t.Fatalf("current=%v err=%v, want true/nil", current, err)
-	}
-	competing, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = competing.Rollback(ctx) }()
-	_, err = competing.Exec(ctx, "SELECT id FROM skills WHERE id = $1 FOR UPDATE NOWAIT", skillID)
-	var locked *pgconn.PgError
-	if !errors.As(err, &locked) || locked.Code != "55P03" {
-		t.Fatalf("competing write lock: %v, want lock_not_available", err)
-	}
-	if err := competing.Rollback(ctx); err != nil {
-		t.Fatal(err)
-	}
+	assertLockCurrentPackage(t, ctx, tx, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"}, true, "current package")
+
+	assertCompetingWriteIsBlockedByTheLock(t, ctx, pool, skillID)
+
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -55,14 +69,8 @@ func TestCurrentPackageRemainsLockedUntilProjectionTransactionEnds(t *testing.T)
 		t.Fatal(err)
 	}
 	defer func() { _ = check.Rollback(ctx) }()
-	current, err = LockCurrentPackage(ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"})
-	if err != nil || current {
-		t.Fatalf("superseded package: current=%v err=%v, want false/nil", current, err)
-	}
-	current, err = LockCurrentPackage(ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: second.ID, PackageObjectKey: "packages/second"})
-	if err != nil || !current {
-		t.Fatalf("replacement package: current=%v err=%v, want true/nil", current, err)
-	}
+	assertLockCurrentPackage(t, ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: first.ID, PackageObjectKey: "packages/first"}, false, "superseded package")
+	assertLockCurrentPackage(t, ctx, check, Version{WorkspaceID: ws.ID, SkillID: skillID, ID: second.ID, PackageObjectKey: "packages/second"}, true, "replacement package")
 }
 
 func TestCurrentPackageReadFailureIsNotAContentDecision(t *testing.T) {

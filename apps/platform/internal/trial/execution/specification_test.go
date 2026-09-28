@@ -105,6 +105,26 @@ func TestAnAccessRestrictedSkillIsRefusedAndSaysWhichRestriction(t *testing.T) {
 	}
 }
 
+func assertReasonConstIsInRoster(t *testing.T, roster []string, spec ast.Spec) bool {
+	value, ok := spec.(*ast.ValueSpec)
+	if !ok || len(value.Names) != 1 || !strings.HasPrefix(value.Names[0].Name, "Reason") {
+		return false
+	}
+	literal, ok := value.Values[0].(*ast.BasicLit)
+	if !ok {
+		t.Fatalf("%s is not a plain string constant", value.Names[0].Name)
+	}
+	reason, err := strconv.Unquote(literal.Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(roster, reason) {
+		t.Errorf("%s refuses with %q, which RefusalReasons does not list; "+
+			"a reason nobody lists is one nobody can chart", value.Names[0].Name, reason)
+	}
+	return true
+}
+
 func TestEveryDeclaredReasonIsInTheRoster(t *testing.T) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "specification.go", nil, 0)
@@ -119,22 +139,8 @@ func TestEveryDeclaredReasonIsInTheRoster(t *testing.T) {
 			continue
 		}
 		for _, spec := range gen.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok || len(value.Names) != 1 || !strings.HasPrefix(value.Names[0].Name, "Reason") {
-				continue
-			}
-			literal, ok := value.Values[0].(*ast.BasicLit)
-			if !ok {
-				t.Fatalf("%s is not a plain string constant", value.Names[0].Name)
-			}
-			reason, err := strconv.Unquote(literal.Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			declared++
-			if !slices.Contains(roster, reason) {
-				t.Errorf("%s refuses with %q, which RefusalReasons does not list; "+
-					"a reason nobody lists is one nobody can chart", value.Names[0].Name, reason)
+			if assertReasonConstIsInRoster(t, roster, spec) {
+				declared++
 			}
 		}
 	}

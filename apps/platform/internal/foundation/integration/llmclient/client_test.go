@@ -153,6 +153,39 @@ func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 	}
 }
 
+func assertEmbedTimeoutSent(t *testing.T, seconds float64, want any) {
+	t.Helper()
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		_ = json.NewEncoder(w).Encode(EmbedResponse{Embeddings: [][]float32{{1}}, Dimensions: 1})
+	}))
+	defer srv.Close()
+
+	c := &Client{BaseURL: srv.URL, Token: "t"}
+	var err error
+	if seconds == 0 {
+		_, err = c.Embed(context.Background(), []string{"q"})
+	} else {
+		_, err = c.EmbedWithin(context.Background(), []string{"q"}, seconds)
+	}
+	if err != nil {
+		t.Fatalf("embed: %v", err)
+	}
+	got, present := body["timeout_seconds"]
+	if want == nil {
+		if present {
+			t.Errorf("timeout_seconds = %v was sent; omitting it is what leaves the service on its own ceiling", got)
+		}
+		return
+	}
+	if !present || got != want {
+		t.Errorf("timeout_seconds = %v (present=%v), want %v", got, present, want)
+	}
+}
+
 func TestEmbedSendsATimeoutOnlyWhenOneIsAskedFor(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -164,35 +197,7 @@ func TestEmbedSendsATimeoutOnlyWhenOneIsAskedFor(t *testing.T) {
 		{name: "a nonsense value is not sent", seconds: -1, want: nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var body map[string]any
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("decode request: %v", err)
-				}
-				_ = json.NewEncoder(w).Encode(EmbedResponse{Embeddings: [][]float32{{1}}, Dimensions: 1})
-			}))
-			defer srv.Close()
-
-			c := &Client{BaseURL: srv.URL, Token: "t"}
-			var err error
-			if tc.seconds == 0 {
-				_, err = c.Embed(context.Background(), []string{"q"})
-			} else {
-				_, err = c.EmbedWithin(context.Background(), []string{"q"}, tc.seconds)
-			}
-			if err != nil {
-				t.Fatalf("embed: %v", err)
-			}
-			got, present := body["timeout_seconds"]
-			if tc.want == nil {
-				if present {
-					t.Errorf("timeout_seconds = %v was sent; omitting it is what leaves the service on its own ceiling", got)
-				}
-				return
-			}
-			if !present || got != tc.want {
-				t.Errorf("timeout_seconds = %v (present=%v), want %v", got, present, tc.want)
-			}
+			assertEmbedTimeoutSent(t, tc.seconds, tc.want)
 		})
 	}
 }

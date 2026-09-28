@@ -299,16 +299,8 @@ func TestDeleteDatasetRefusesAnUnrelatedParentInTheURL(t *testing.T) {
 	}
 }
 
-func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
-	pool := requireTestLabDB(t)
-	ws, _, caseB, datasetID := seedTwoCases(t, pool)
-	store := &retryRemovalStore{err: errors.New("object store unavailable")}
-	svc := datasetService(pool, store)
-
-	ds, err := svc.DeleteDataset(t.Context(), ws, caseB, datasetID)
-	if err != nil {
-		t.Fatal(err)
-	}
+func assertDatasetHiddenButRetryableAfterFailedRemoval(t *testing.T, pool *pgxpool.Pool, datasetID pgtype.UUID) {
+	t.Helper()
 	var deleted, purged bool
 	if err := pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL, purged_at IS NOT NULL
 		FROM datasets WHERE id = $1`, datasetID).Scan(&deleted, &purged); err != nil {
@@ -325,20 +317,34 @@ func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
 	if !retryable {
 		t.Fatal("soft-deleted dataset disappeared from the durable cleanup predicate")
 	}
+}
+
+func assertDatasetIsInRetentionWorklist(t *testing.T, pool *pgxpool.Pool, datasetID pgtype.UUID) {
+	t.Helper()
 	work, err := gen.New(pool).ListDatasetsPastRetention(t.Context(), gen.ListDatasetsPastRetentionParams{ClaimLease: pgconv.Interval(queue.SweepClaimLease), BatchSize: 10000})
 	if err != nil {
 		t.Fatal(err)
 	}
-	listed := false
 	for _, item := range work {
 		if item.ID == datasetID {
-			listed = true
-			break
+			return
 		}
 	}
-	if !listed {
-		t.Fatal("soft-deleted dataset was not returned by the retention worklist")
+	t.Fatal("soft-deleted dataset was not returned by the retention worklist")
+}
+
+func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, _, caseB, datasetID := seedTwoCases(t, pool)
+	store := &retryRemovalStore{err: errors.New("object store unavailable")}
+	svc := datasetService(pool, store)
+
+	ds, err := svc.DeleteDataset(t.Context(), ws, caseB, datasetID)
+	if err != nil {
+		t.Fatal(err)
 	}
+	assertDatasetHiddenButRetryableAfterFailedRemoval(t, pool, datasetID)
+	assertDatasetIsInRetentionWorklist(t, pool, datasetID)
 
 	store.err = nil
 	candidate := objreconcile.Candidate{ID: ds.ID, WorkspaceID: ds.WorkspaceID, ObjectKey: ds.ObjectKey}
@@ -352,6 +358,7 @@ func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
 	if err != nil || n != 1 {
 		t.Fatalf("retry purge = %d, %v; want one completed row", n, err)
 	}
+	var purged bool
 	if err := pool.QueryRow(t.Context(), `SELECT purged_at IS NOT NULL FROM datasets WHERE id = $1`, datasetID).Scan(&purged); err != nil {
 		t.Fatal(err)
 	}

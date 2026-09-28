@@ -96,6 +96,33 @@ func mustHost(t *testing.T, rawURL string) string {
 	return u.Host
 }
 
+func assertFetcherRefusesSource(t *testing.T, fetcher SourceFetcher, rawURL string) {
+	t.Helper()
+	refusal := errorText(fetcher.Normalize(rawURL))
+	if refusal == "" {
+		t.Fatalf("Normalize(%q) allowed a source the policy forbids", rawURL)
+	}
+	data, _, err := fetcher.Fetch(context.Background(), rawURL)
+	if !errors.Is(err, ErrFetch) {
+		t.Errorf("Fetch(%q) = %v, want a refusal the domain can recognise", rawURL, err)
+	}
+	if got := errText(err); got != refusal {
+		t.Errorf("Fetch(%q) refused with %q but Normalize refused with %q; the fetch "+
+			"reached past the policy and failed for some other reason", rawURL, got, refusal)
+	}
+	if len(data) != 0 {
+		t.Errorf("Fetch(%q) returned %d bytes from a refused source", rawURL, len(data))
+	}
+	probeErr := fetcher.Probe(context.Background(), rawURL)
+	if !errors.Is(probeErr, ErrFetch) {
+		t.Errorf("Probe(%q) = %v, want a refusal the domain can recognise", rawURL, probeErr)
+	}
+	if got := errText(probeErr); got != refusal {
+		t.Errorf("Probe(%q) refused with %q but Normalize refused with %q; the probe "+
+			"reached past the policy", rawURL, got, refusal)
+	}
+}
+
 func TestEveryFetcherRefusesTheSameSources(t *testing.T) {
 	for name, fetcher := range fetchersRefusingInsecure(t) {
 		t.Run(name, func(t *testing.T) {
@@ -110,29 +137,7 @@ func TestEveryFetcherRefusesTheSameSources(t *testing.T) {
 				{"text that is not a URL", "://"},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
-					refusal := errorText(fetcher.Normalize(tc.rawURL))
-					if refusal == "" {
-						t.Fatalf("Normalize(%q) allowed a source the policy forbids", tc.rawURL)
-					}
-					data, _, err := fetcher.Fetch(context.Background(), tc.rawURL)
-					if !errors.Is(err, ErrFetch) {
-						t.Errorf("Fetch(%q) = %v, want a refusal the domain can recognise", tc.rawURL, err)
-					}
-					if got := errText(err); got != refusal {
-						t.Errorf("Fetch(%q) refused with %q but Normalize refused with %q; the fetch "+
-							"reached past the policy and failed for some other reason", tc.rawURL, got, refusal)
-					}
-					if len(data) != 0 {
-						t.Errorf("Fetch(%q) returned %d bytes from a refused source", tc.rawURL, len(data))
-					}
-					probeErr := fetcher.Probe(context.Background(), tc.rawURL)
-					if !errors.Is(probeErr, ErrFetch) {
-						t.Errorf("Probe(%q) = %v, want a refusal the domain can recognise", tc.rawURL, probeErr)
-					}
-					if got := errText(probeErr); got != refusal {
-						t.Errorf("Probe(%q) refused with %q but Normalize refused with %q; the probe "+
-							"reached past the policy", tc.rawURL, got, refusal)
-					}
+					assertFetcherRefusesSource(t, fetcher, tc.rawURL)
 				})
 			}
 		})

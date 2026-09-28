@@ -481,50 +481,69 @@ func TestStartupTasksAuditTheRosters(t *testing.T) {
 	}
 }
 
+func cleanModeFallbackStubMe(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"api":true}`))
+}
+
+func cleanModeFallbackStubOAuthCallback(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Location", "/")
+	w.WriteHeader(http.StatusFound)
+}
+
+func cleanModeFallbackStubOAuthFailure(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_, _ = w.Write([]byte(`{"error":"oauth state mismatch"}`))
+}
+
+func cleanModeFallbackStubRun(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"run":"real-id"}`))
+}
+
+func cleanModeFallbackStubDownload(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/zip")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("PK\x03\x04zipbytes"))
+}
+
+func cleanModeFallbackStubNotFound(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{"error":"not found"}`))
+}
+
+func cleanModeFallbackStubSkillDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		w.Header().Set("Allow", "DELETE")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, _ = w.Write([]byte("Method Not Allowed\n"))
+		return
+	}
+	cleanModeFallbackStubNotFound(w, r)
+}
+
+func newCleanModeFallbackStubAPI() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/me", cleanModeFallbackStubMe)
+	mux.HandleFunc("/auth/github/callback", cleanModeFallbackStubOAuthCallback)
+	mux.HandleFunc("/auth/github/callback/fail", cleanModeFallbackStubOAuthFailure)
+	mux.HandleFunc("/runs/real-id", cleanModeFallbackStubRun)
+	mux.HandleFunc("/downloads/pkg", cleanModeFallbackStubDownload)
+	mux.HandleFunc("/skills/abc-123", cleanModeFallbackStubSkillDetail)
+	mux.HandleFunc("/", cleanModeFallbackStubNotFound)
+	return mux
+}
+
 func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
-
-	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/me":
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"api":true}`))
-		case r.URL.Path == "/auth/github/callback":
-
-			w.Header().Set("Location", "/")
-			w.WriteHeader(http.StatusFound)
-		case r.URL.Path == "/auth/github/callback/fail":
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(`{"error":"oauth state mismatch"}`))
-		case r.URL.Path == "/runs/real-id":
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"run":"real-id"}`))
-		case r.URL.Path == "/downloads/pkg":
-
-			w.Header().Set("Content-Type", "application/zip")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("PK\x03\x04zipbytes"))
-		case r.URL.Path == "/skills/abc-123" && r.Method == http.MethodGet:
-
-			w.Header().Set("Allow", "DELETE")
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			_, _ = w.Write([]byte("Method Not Allowed\n"))
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"not found"}`))
-		}
-	})
 	static := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write([]byte("<html>index for " + r.URL.Path + "</html>"))
 	})
-	handler := cleanModeHandler(api, cleanModeDeployment, static)
+	handler := cleanModeHandler(newCleanModeFallbackStubAPI(), cleanModeDeployment, static)
 
 	for _, tc := range []struct {
 		name, method, path, accept string
@@ -532,37 +551,31 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 		wantHTML                   bool
 	}{
 		{
-
 			name: "a pasted deep link loads the app", method: http.MethodGet,
 			path: "/skills/abc-123", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
 		},
 		{
-
 			name: "refreshing a page whose address is also an API resource", method: http.MethodGet,
 			path: "/runs/real-id", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
 		},
 		{
-
 			name: "the OAuth callback still reaches the API", method: http.MethodGet,
 			path: "/auth/github/callback", accept: "text/html",
 			wantCode: http.StatusFound,
 		},
 		{
-
 			name: "a failed OAuth callback still says why", method: http.MethodGet,
 			path: "/auth/github/callback/fail", accept: "text/html",
 			wantCode: http.StatusUnauthorized,
 		},
 		{
-
 			name: "a download's bytes still reach the browser", method: http.MethodGet,
 			path: "/downloads/pkg", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK,
 		},
 		{
-
 			name: "a fetch for a missing resource still gets 404", method: http.MethodGet,
 			path: "/skills/no-such-skill", accept: "application/json",
 			wantCode: http.StatusNotFound,
@@ -593,7 +606,6 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 					tc.method, tc.path, rec.Header().Get("Content-Type"), tc.wantHTML)
 			}
 			if tc.wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
-
 				t.Errorf("the fallback served %q, want index.html", rec.Body.String())
 			}
 			if !tc.wantHTML && strings.Contains(rec.Body.String(), "<html>") {
@@ -782,24 +794,33 @@ func TestWebStaticHandlerUnderHashesEveryScriptItInjected(t *testing.T) {
 			if len(bodies) != tc.wantCount {
 				t.Fatalf("served %d inline scripts, want %d; this test is not measuring what it names", len(bodies), tc.wantCount)
 			}
-			for _, m := range bodies {
-				sum := sha256.Sum256([]byte(m[1]))
-				want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
-				if !strings.Contains(policy, want) {
-					t.Errorf("the policy would block the injected script %q (no %s in %q)", m[1], want, policy)
-				}
-			}
-
-			if strings.Contains(policy, "unsafe-inline") || strings.Contains(policy, "unsafe-eval") {
-				t.Errorf("the policy waves inline script through instead of naming it; policy = %q", policy)
-			}
-
-			sum := sha256.Sum256([]byte(devLoginFlagJS))
-			named := strings.Contains(policy, base64.StdEncoding.EncodeToString(sum[:]))
-			if named != tc.devLogin {
-				t.Errorf("dev-login hash present = %v, want %v; policy = %q", named, tc.devLogin, policy)
-			}
+			assertEveryInlineScriptIsHashedIntoThePolicy(t, policy, bodies)
+			assertPolicyNamesScriptsExplicitly(t, policy, tc.devLogin)
 		})
+	}
+}
+
+func assertEveryInlineScriptIsHashedIntoThePolicy(t *testing.T, policy string, bodies [][]string) {
+	t.Helper()
+	for _, m := range bodies {
+		sum := sha256.Sum256([]byte(m[1]))
+		want := "'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+		if !strings.Contains(policy, want) {
+			t.Errorf("the policy would block the injected script %q (no %s in %q)", m[1], want, policy)
+		}
+	}
+}
+
+func assertPolicyNamesScriptsExplicitly(t *testing.T, policy string, wantDevLogin bool) {
+	t.Helper()
+	if strings.Contains(policy, "unsafe-inline") || strings.Contains(policy, "unsafe-eval") {
+		t.Errorf("the policy waves inline script through instead of naming it; policy = %q", policy)
+	}
+
+	sum := sha256.Sum256([]byte(devLoginFlagJS))
+	named := strings.Contains(policy, base64.StdEncoding.EncodeToString(sum[:]))
+	if named != wantDevLogin {
+		t.Errorf("dev-login hash present = %v, want %v; policy = %q", named, wantDevLogin, policy)
 	}
 }
 

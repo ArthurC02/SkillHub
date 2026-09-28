@@ -308,46 +308,54 @@ func TestATestCaseSlugIsStableAndSafeAsADirectoryName(t *testing.T) {
 	}
 }
 
+func assertSupportStatusIsStated(t *testing.T, p Profile, out string) {
+	t.Helper()
+	switch p.SupportStatus {
+	case "unverified":
+		if !strings.Contains(out, "Support status: unverified") {
+			t.Errorf("%s: an unverified target does not say so", p.ID)
+		}
+		if !strings.Contains(out, "nothing here promises it will work") {
+			t.Errorf("%s: unverified is stated without disclaiming that it works:\n%s", p.ID, out)
+		}
+	case "verified":
+		if !strings.Contains(out, "Support status: verified") {
+			t.Errorf("%s: support status missing", p.ID)
+		}
+
+		if !strings.Contains(out, "That is not a promise about this Skill") {
+			t.Errorf("%s: verified is stated without disclaiming what it covers:\n%s", p.ID, out)
+		}
+	default:
+		t.Errorf("%s: unknown support status %q", p.ID, p.SupportStatus)
+	}
+}
+
+func assertInstallInstructionsHaveAtLeastOneCheck(t *testing.T, p Profile, out string) {
+	t.Helper()
+	status := strings.Index(out, "**Support status:")
+	firstSection := strings.Index(out, "\n## ")
+	if status < 0 || firstSection < 0 || status > firstSection {
+		t.Errorf("%s: the support status is not before the first section (status at %d, "+
+			"first section at %d):\n%s", p.ID, status, firstSection, out)
+	}
+	if !strings.Contains(out, "Check that it worked") {
+		t.Errorf("%s: PACK-007 wants a post-install check", p.ID)
+	}
+	if !strings.Contains(out, "requirements.txt") {
+		t.Errorf("%s: declared dependencies are not listed", p.ID)
+	}
+	if strings.Contains(out, "<name>") {
+		t.Errorf("%s: an unsubstituted <name> reached the instructions:\n%s", p.ID, out)
+	}
+}
+
 func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T) {
 	profiles := loadRealProfiles(t)
 	for _, p := range profiles.Ordered() {
 		out := renderInstall(p, "demo-skill", []string{"requirements.txt: package declares external dependencies"})
-
-		switch p.SupportStatus {
-		case "unverified":
-			if !strings.Contains(out, "Support status: unverified") {
-				t.Errorf("%s: an unverified target does not say so", p.ID)
-			}
-			if !strings.Contains(out, "nothing here promises it will work") {
-				t.Errorf("%s: unverified is stated without disclaiming that it works:\n%s", p.ID, out)
-			}
-		case "verified":
-			if !strings.Contains(out, "Support status: verified") {
-				t.Errorf("%s: support status missing", p.ID)
-			}
-
-			if !strings.Contains(out, "That is not a promise about this Skill") {
-				t.Errorf("%s: verified is stated without disclaiming what it covers:\n%s", p.ID, out)
-			}
-		default:
-			t.Errorf("%s: unknown support status %q", p.ID, p.SupportStatus)
-		}
-
-		status := strings.Index(out, "**Support status:")
-		firstSection := strings.Index(out, "\n## ")
-		if status < 0 || firstSection < 0 || status > firstSection {
-			t.Errorf("%s: the support status is not before the first section (status at %d, "+
-				"first section at %d):\n%s", p.ID, status, firstSection, out)
-		}
-		if !strings.Contains(out, "Check that it worked") {
-			t.Errorf("%s: PACK-007 wants a post-install check", p.ID)
-		}
-		if !strings.Contains(out, "requirements.txt") {
-			t.Errorf("%s: declared dependencies are not listed", p.ID)
-		}
-		if strings.Contains(out, "<name>") {
-			t.Errorf("%s: an unsubstituted <name> reached the instructions:\n%s", p.ID, out)
-		}
+		assertSupportStatusIsStated(t, p, out)
+		assertInstallInstructionsHaveAtLeastOneCheck(t, p, out)
 	}
 }
 
@@ -635,43 +643,48 @@ func TestExcludedTestCaseServesLabelAndNoteForNotCurated(t *testing.T) {
 	}
 }
 
-func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *testing.T) {
+func containsHan(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
+}
+
+func assertProfileProseIsChineseAndKeepsTheReviewedOriginal(t *testing.T, p Profile) {
+	t.Helper()
 	const original = "（原文："
 
-	hasHan := func(s string) bool {
-		for _, r := range s {
-			if unicode.Is(unicode.Han, r) {
-				return true
-			}
-		}
-		return false
+	prose := map[string][]string{
+		"verification_steps": p.VerificationSteps,
+		"known_limitations":  p.KnownLimitations,
+		"notes":              p.Notes,
+	}
+	for _, v := range p.EnvVars {
+		prose["env_vars["+v.Name+"].description"] = []string{v.Description}
+	}
+	for _, loc := range p.Install.Locations {
+		prose["install.locations["+loc.Scope+"].description"] = []string{loc.Description}
 	}
 
-	for _, p := range loadRealProfiles(t).Ordered() {
-		prose := map[string][]string{
-			"verification_steps": p.VerificationSteps,
-			"known_limitations":  p.KnownLimitations,
-			"notes":              p.Notes,
-		}
-		for _, v := range p.EnvVars {
-			prose["env_vars["+v.Name+"].description"] = []string{v.Description}
-		}
-		for _, loc := range p.Install.Locations {
-			prose["install.locations["+loc.Scope+"].description"] = []string{loc.Description}
-		}
-
-		for field, items := range prose {
-			for i, s := range items {
-				if !hasHan(s) {
-					t.Errorf("%s %s[%d] has no Chinese, so the packaging screen and the\n"+
-						"downloaded INSTALL.md show a reader English on a zh-Hant page:\n%s", p.ID, field, i, s)
-				}
-				if !strings.Contains(s, original) {
-					t.Errorf("%s %s[%d] dropped the reviewed original. The English wording is what\n"+
-						"was reviewed; a translation that replaces it deletes that review:\n%s", p.ID, field, i, s)
-				}
+	for field, items := range prose {
+		for i, s := range items {
+			if !containsHan(s) {
+				t.Errorf("%s %s[%d] has no Chinese, so the packaging screen and the\n"+
+					"downloaded INSTALL.md show a reader English on a zh-Hant page:\n%s", p.ID, field, i, s)
+			}
+			if !strings.Contains(s, original) {
+				t.Errorf("%s %s[%d] dropped the reviewed original. The English wording is what\n"+
+					"was reviewed; a translation that replaces it deletes that review:\n%s", p.ID, field, i, s)
 			}
 		}
+	}
+}
+
+func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *testing.T) {
+	for _, p := range loadRealProfiles(t).Ordered() {
+		assertProfileProseIsChineseAndKeepsTheReviewedOriginal(t, p)
 	}
 }
 

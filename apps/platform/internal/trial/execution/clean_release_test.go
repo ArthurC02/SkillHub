@@ -21,16 +21,51 @@ func writeReleases(t *testing.T, body string) string {
 	return path
 }
 
+type releaseCase struct {
+	what     string
+	file     string
+	unset    bool
+	wantPass bool
+	wantSaid []string
+}
+
+func assertOperatorReleaseCase(t *testing.T, tc releaseCase) {
+	t.Helper()
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	switch {
+	case tc.unset:
+		t.Setenv(cleanModeReleaseFile, "")
+	case tc.file == "":
+		t.Setenv(cleanModeReleaseFile, filepath.Join(t.TempDir(), "absent.txt"))
+	default:
+		t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.file))
+	}
+
+	svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
+	err := svc.requireCuratedContent(t.Context(), contentSourceRun())
+	if tc.wantPass {
+		if err != nil {
+			t.Fatalf("a released version was refused: %v", err)
+		}
+		return
+	}
+	if err == nil {
+		t.Fatal("content nobody released ran on a driver with no isolation boundary")
+	}
+	if !errors.Is(err, ErrContentNotCurated) {
+		t.Errorf("error = %v, want it to wrap ErrContentNotCurated", err)
+	}
+	for _, want := range tc.wantSaid {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("reason = %q, want it to mention %q", err, want)
+		}
+	}
+}
+
 func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 	other := "33333333-3333-3333-3333-333333333333"
 
-	for _, tc := range []struct {
-		what     string
-		file     string
-		unset    bool
-		wantPass bool
-		wantSaid []string
-	}{
+	for _, tc := range []releaseCase{
 		{
 			what:     "an id and a reason",
 			file:     "# 台上要跑觀眾帶來的 skill\n" + releasedVersion + " demo 2026-09-02, content reviewed by me\n",
@@ -81,35 +116,7 @@ func TestAnOperatorReleaseRunsExactlyTheVersionItNames(t *testing.T) {
 		},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
-			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
-			switch {
-			case tc.unset:
-				t.Setenv(cleanModeReleaseFile, "")
-			case tc.file == "":
-				t.Setenv(cleanModeReleaseFile, filepath.Join(t.TempDir(), "absent.txt"))
-			default:
-				t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.file))
-			}
-
-			svc := &Service{Deployment: deploymentFromTestEnv(), Registry: registryReaderFuncs{contentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}}
-			err := svc.requireCuratedContent(t.Context(), contentSourceRun())
-			if tc.wantPass {
-				if err != nil {
-					t.Fatalf("a released version was refused: %v", err)
-				}
-				return
-			}
-			if err == nil {
-				t.Fatal("content nobody released ran on a driver with no isolation boundary")
-			}
-			if !errors.Is(err, ErrContentNotCurated) {
-				t.Errorf("error = %v, want it to wrap ErrContentNotCurated", err)
-			}
-			for _, want := range tc.wantSaid {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("reason = %q, want it to mention %q", err, want)
-				}
-			}
+			assertOperatorReleaseCase(t, tc)
 		})
 	}
 }

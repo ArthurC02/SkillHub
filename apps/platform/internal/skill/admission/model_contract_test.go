@@ -148,29 +148,34 @@ func TestEveryModelEnrichesInTheDomainsOwnWords(t *testing.T) {
 
 	for name, model := range map[string]Model{"fake": &fakeModel{enrichment: want}, "http adapter": overTheWire} {
 		t.Run(name, func(t *testing.T) {
-			got, err := model.EnrichSkill(context.Background(), EnrichRequest{
-				SkillName: "invoice-reader", SkillMD: "# skill", FileTree: []string{"SKILL.md"},
-			})
-			if err != nil {
-				t.Fatalf("enriching the skill: %v", err)
-			}
-			if got.Summary != want.Summary || got.Model != want.Model || got.PromptVersion != want.PromptVersion {
-				t.Errorf("enrichment = %+v, want %+v", got, want)
-			}
-			if len(got.TaskExamples) != 1 || got.TaskExamples[0] != want.TaskExamples[0] {
-				t.Errorf("task examples = %+v, want %+v", got.TaskExamples, want.TaskExamples)
-			}
-			if len(got.Tags.Inputs) != 1 || got.Tags.Inputs[0] != "pdf" {
-				t.Errorf("tags = %+v, want the inputs the model named", got.Tags)
-			}
-			if len(got.Checks) != 1 || got.Checks[0] != want.Checks[0] {
-				t.Errorf("checks = %+v, want %+v", got.Checks, want.Checks)
-			}
+			assertEnrichmentMatchesTheModelsWords(t, model, want)
 		})
 	}
 
 	if sent.SkillName != "invoice-reader" || sent.SkillMD != "# skill" || len(sent.FileTree) != 1 {
 		t.Errorf("request on the wire = %+v, want the name, the markdown and the file tree", sent)
+	}
+}
+
+func assertEnrichmentMatchesTheModelsWords(t *testing.T, model Model, want *SkillEnrichment) {
+	t.Helper()
+	got, err := model.EnrichSkill(context.Background(), EnrichRequest{
+		SkillName: "invoice-reader", SkillMD: "# skill", FileTree: []string{"SKILL.md"},
+	})
+	if err != nil {
+		t.Fatalf("enriching the skill: %v", err)
+	}
+	if got.Summary != want.Summary || got.Model != want.Model || got.PromptVersion != want.PromptVersion {
+		t.Errorf("enrichment = %+v, want %+v", got, want)
+	}
+	if len(got.TaskExamples) != 1 || got.TaskExamples[0] != want.TaskExamples[0] {
+		t.Errorf("task examples = %+v, want %+v", got.TaskExamples, want.TaskExamples)
+	}
+	if len(got.Tags.Inputs) != 1 || got.Tags.Inputs[0] != "pdf" {
+		t.Errorf("tags = %+v, want the inputs the model named", got.Tags)
+	}
+	if len(got.Checks) != 1 || got.Checks[0] != want.Checks[0] {
+		t.Errorf("checks = %+v, want %+v", got.Checks, want.Checks)
 	}
 }
 

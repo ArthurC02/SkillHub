@@ -21,9 +21,8 @@ func TestValidateFetchURLRefusesWhatMustNeverBeAsked(t *testing.T) {
 	}
 }
 
-func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
-	hits := map[string]int{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func fetcherTestServerHandler(hits map[string]int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		hits[r.URL.Path]++
 		switch r.URL.Path {
 		case "/page":
@@ -41,7 +40,12 @@ func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
-	}))
+	}
+}
+
+func TestFetcherReadsTextAndReportsBlocksWithoutRetry(t *testing.T) {
+	hits := map[string]int{}
+	srv := httptest.NewServer(fetcherTestServerHandler(hits))
 	defer srv.Close()
 	f := newLoopbackFetcher()
 	ctx := context.Background()

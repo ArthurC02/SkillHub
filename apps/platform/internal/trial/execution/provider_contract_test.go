@@ -92,149 +92,185 @@ func (tg target) dispatch(t *testing.T, req run.RunRequest) run.ProviderRun {
 	return pr
 }
 
+func assertCapabilityIsReadableAndNamesItsRuntimes(t *testing.T, tg target, ctx context.Context) {
+	capability, err := tg.provider.Capability(ctx)
+	if err != nil {
+		t.Fatalf("GET /capability: %v", err)
+	}
+	if capability.Provider == "" {
+		t.Error("capability does not name the provider")
+	}
+	if len(capability.Runtimes) == 0 {
+		t.Error("capability declares no runtime, so nothing could ever be dispatched to it")
+	}
+	if capability.Isolation.Strength == "" {
+		t.Error("capability declares no isolation strength")
+	}
+}
+
+func assertResendingSameRunIDAndAttemptReturnsTheSameRun(t *testing.T, tg target, ctx context.Context) {
+	req := tg.request("idempotent dispatch")
+	first := tg.dispatch(t, req)
+	if first.ProviderRunID == "" {
+		t.Fatal("the provider created a run without naming a handle for it")
+	}
+	if first.RunID != req.RunID || first.RunAttemptID != req.RunAttemptID {
+		t.Error("the provider did not echo the platform identifiers back")
+	}
+
+	second, err := tg.provider.Start(ctx, req)
+	if err != nil {
+		t.Fatalf("re-sending the same request: %v", err)
+	}
+	if second.ProviderRunID != first.ProviderRunID {
+		t.Errorf("a re-send started a second sandbox: %q then %q",
+			first.ProviderRunID, second.ProviderRunID)
+	}
+}
+
+func assertResendingWithDifferentContentIsAConflict(t *testing.T, tg target, ctx context.Context) {
+	req := tg.request("original prompt")
+	tg.dispatch(t, req)
+
+	changed := req
+	changed.TestCaseSnapshot.UserPrompt = "a different prompt entirely"
+	_, err := tg.provider.Start(ctx, changed)
+	if err == nil {
+		t.Fatal("a superseded attempt was served the first body's run instead of a conflict")
+	}
+	if !strings.Contains(err.Error(), "409") {
+		t.Errorf("error = %v, want a 409", err)
+	}
+}
+
+func assertCancelIsAcceptedAndStaysAcceptedWhenTheRunIsTerminal(t *testing.T, tg target, ctx context.Context) {
+	pr := tg.dispatch(t, tg.request("cancel me"))
+	if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
+		t.Fatalf("first cancel: %v", err)
+	}
+
+	waitForTerminal(t, tg.provider, pr.ProviderRunID)
+	if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
+		t.Errorf("cancelling an already-terminal run: %v, want it accepted", err)
+	}
+}
+
+func assertDestroyIsRepeatableAndNeverA404(t *testing.T, tg target, ctx context.Context) {
+	pr := tg.dispatch(t, tg.request("destroy me"))
+	for i := range 3 {
+		if err := tg.provider.Destroy(ctx, pr.ProviderRunID); err != nil {
+			t.Fatalf("destroy #%d: %v", i+1, err)
+		}
+	}
+
+	if err := tg.provider.Destroy(ctx, "handle-that-never-existed"); err != nil {
+		t.Errorf("destroying an unknown handle: %v, want it accepted", err)
+	}
+}
+
+func assertTerminalRunsCarryAResultAndRunningOnesDoNot(t *testing.T, tg target, ctx context.Context) {
+	pr := tg.dispatch(t, tg.request("run to completion"))
+	final := waitForTerminal(t, tg.provider, pr.ProviderRunID)
+	if final.Result == nil {
+		t.Fatal("a terminal run carries no result, so the platform cannot classify it")
+	}
+	switch final.Result.Status {
+	case "succeeded", "failed", "cancelled", "timed_out":
+	default:
+		t.Errorf("result status = %q, which is not one of the four terminal outcomes", final.Result.Status)
+	}
+	if final.ObservedAt.IsZero() {
+		t.Error("no observed_at, so two answers cannot be ordered")
+	}
+}
+
+func assertActiveListingIsServedAndDated(t *testing.T, tg target, ctx context.Context) {
+	pr := tg.dispatch(t, tg.request("stay listed"))
+	list, err := tg.provider.ListActive(ctx)
+	if err != nil {
+		t.Fatalf("GET /runs?active=true: %v", err)
+	}
+	if list.ObservedAt.IsZero() {
+		t.Fatal("the listing has no observed_at, so a fresh sandbox could be judged leaked")
+	}
+	var found bool
+	for _, entry := range list.Runs {
+		if entry.ProviderRunID == pr.ProviderRunID {
+			found = true
+			if entry.Result != nil {
+				t.Error("listings must omit the result; read the single run for it")
+			}
+		}
+	}
+	if !found {
+		t.Error("a live run is missing from the active listing")
+	}
+}
+
+func assertActiveFalseIsRefusedRatherThanAnsweredEmpty(t *testing.T, tg target) {
+	resp := tg.raw(t, http.MethodGet, "/runs?active=false")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("GET /runs?active=false: got %d, want 400", resp.StatusCode)
+	}
+}
+
+func assertRequestsWithoutTheProviderTokenAreRefused(t *testing.T, tg target, ctx context.Context) {
+	if tg.token == "" {
+		t.Skip("target requires no token")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(tg.baseURL, "/")+"/capability", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("unauthenticated GET /capability: got %d, want 401", resp.StatusCode)
+	}
+}
+
 func TestProviderContract(t *testing.T) {
 	tg := newTarget(t)
 	ctx := context.Background()
 
 	t.Run("capability is readable and names its runtimes", func(t *testing.T) {
-		capability, err := tg.provider.Capability(ctx)
-		if err != nil {
-			t.Fatalf("GET /capability: %v", err)
-		}
-		if capability.Provider == "" {
-			t.Error("capability does not name the provider")
-		}
-		if len(capability.Runtimes) == 0 {
-			t.Error("capability declares no runtime, so nothing could ever be dispatched to it")
-		}
-		if capability.Isolation.Strength == "" {
-			t.Error("capability declares no isolation strength")
-		}
+		assertCapabilityIsReadableAndNamesItsRuntimes(t, tg, ctx)
 	})
 
 	t.Run("re-sending one run_id and attempt returns the same run", func(t *testing.T) {
-		req := tg.request("idempotent dispatch")
-		first := tg.dispatch(t, req)
-		if first.ProviderRunID == "" {
-			t.Fatal("the provider created a run without naming a handle for it")
-		}
-		if first.RunID != req.RunID || first.RunAttemptID != req.RunAttemptID {
-			t.Error("the provider did not echo the platform identifiers back")
-		}
-
-		second, err := tg.provider.Start(ctx, req)
-		if err != nil {
-			t.Fatalf("re-sending the same request: %v", err)
-		}
-		if second.ProviderRunID != first.ProviderRunID {
-			t.Errorf("a re-send started a second sandbox: %q then %q",
-				first.ProviderRunID, second.ProviderRunID)
-		}
+		assertResendingSameRunIDAndAttemptReturnsTheSameRun(t, tg, ctx)
 	})
 
 	t.Run("re-sending with different content is a conflict", func(t *testing.T) {
-		req := tg.request("original prompt")
-		tg.dispatch(t, req)
-
-		changed := req
-		changed.TestCaseSnapshot.UserPrompt = "a different prompt entirely"
-		_, err := tg.provider.Start(ctx, changed)
-		if err == nil {
-			t.Fatal("a superseded attempt was served the first body's run instead of a conflict")
-		}
-		if !strings.Contains(err.Error(), "409") {
-			t.Errorf("error = %v, want a 409", err)
-		}
+		assertResendingWithDifferentContentIsAConflict(t, tg, ctx)
 	})
 
 	t.Run("cancel is accepted and stays accepted when the run is terminal", func(t *testing.T) {
-		pr := tg.dispatch(t, tg.request("cancel me"))
-		if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
-			t.Fatalf("first cancel: %v", err)
-		}
-
-		waitForTerminal(t, tg.provider, pr.ProviderRunID)
-		if _, err := tg.provider.Cancel(ctx, pr.ProviderRunID); err != nil {
-			t.Errorf("cancelling an already-terminal run: %v, want it accepted", err)
-		}
+		assertCancelIsAcceptedAndStaysAcceptedWhenTheRunIsTerminal(t, tg, ctx)
 	})
 
 	t.Run("destroy is repeatable and never a 404", func(t *testing.T) {
-		pr := tg.dispatch(t, tg.request("destroy me"))
-		for i := range 3 {
-			if err := tg.provider.Destroy(ctx, pr.ProviderRunID); err != nil {
-				t.Fatalf("destroy #%d: %v", i+1, err)
-			}
-		}
-
-		if err := tg.provider.Destroy(ctx, "handle-that-never-existed"); err != nil {
-			t.Errorf("destroying an unknown handle: %v, want it accepted", err)
-		}
+		assertDestroyIsRepeatableAndNeverA404(t, tg, ctx)
 	})
 
 	t.Run("terminal runs carry a result and running ones do not", func(t *testing.T) {
-		pr := tg.dispatch(t, tg.request("run to completion"))
-		final := waitForTerminal(t, tg.provider, pr.ProviderRunID)
-		if final.Result == nil {
-			t.Fatal("a terminal run carries no result, so the platform cannot classify it")
-		}
-		switch final.Result.Status {
-		case "succeeded", "failed", "cancelled", "timed_out":
-		default:
-			t.Errorf("result status = %q, which is not one of the four terminal outcomes", final.Result.Status)
-		}
-		if final.ObservedAt.IsZero() {
-			t.Error("no observed_at, so two answers cannot be ordered")
-		}
+		assertTerminalRunsCarryAResultAndRunningOnesDoNot(t, tg, ctx)
 	})
 
 	t.Run("active listing is served and dated", func(t *testing.T) {
-		pr := tg.dispatch(t, tg.request("stay listed"))
-		list, err := tg.provider.ListActive(ctx)
-		if err != nil {
-			t.Fatalf("GET /runs?active=true: %v", err)
-		}
-		if list.ObservedAt.IsZero() {
-			t.Fatal("the listing has no observed_at, so a fresh sandbox could be judged leaked")
-		}
-		var found bool
-		for _, entry := range list.Runs {
-			if entry.ProviderRunID == pr.ProviderRunID {
-				found = true
-				if entry.Result != nil {
-					t.Error("listings must omit the result; read the single run for it")
-				}
-			}
-		}
-		if !found {
-			t.Error("a live run is missing from the active listing")
-		}
+		assertActiveListingIsServedAndDated(t, tg, ctx)
 	})
 
 	t.Run("active=false is refused rather than answered empty", func(t *testing.T) {
-		resp := tg.raw(t, http.MethodGet, "/runs?active=false")
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("GET /runs?active=false: got %d, want 400", resp.StatusCode)
-		}
+		assertActiveFalseIsRefusedRatherThanAnsweredEmpty(t, tg)
 	})
 
 	t.Run("requests without the provider token are refused", func(t *testing.T) {
-		if tg.token == "" {
-			t.Skip("target requires no token")
-		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimSuffix(tg.baseURL, "/")+"/capability", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusUnauthorized {
-			t.Errorf("unauthenticated GET /capability: got %d, want 401", resp.StatusCode)
-		}
+		assertRequestsWithoutTheProviderTokenAreRefused(t, tg, ctx)
 	})
 }
 

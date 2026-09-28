@@ -270,6 +270,72 @@ func appliedTargetPaths(t *testing.T, s *Service, workspaceID, versionID pgtype.
 	return paths
 }
 
+func assertSuggestionApplicationWitnesses(t *testing.T, s *Service, m material, x, y gen.EvaluationSuggestion, evaluation gen.Evaluation, versionA, versionB pgtype.UUID, firstVersionA bool) {
+	t.Helper()
+	var pairs, appliedEvents int
+	var xWitness, yWitness pgtype.UUID
+	if err := s.Pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM evaluation_suggestion_applications
+		WHERE workspace_id = $1 AND suggestion_id = ANY($2)`, m.run.WorkspaceID, []pgtype.UUID{x.ID, y.ID}).Scan(&pairs); err != nil {
+		t.Fatalf("count application pairs: %v", err)
+	}
+	if err := s.Pool.QueryRow(context.Background(), `
+		SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1`, x.ID).Scan(&xWitness); err != nil {
+		t.Fatalf("read X scalar witness: %v", err)
+	}
+	if err := s.Pool.QueryRow(context.Background(), `
+		SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1`, y.ID).Scan(&yWitness); err != nil {
+		t.Fatalf("read Y scalar witness: %v", err)
+	}
+	if err := s.Pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM outbox_events
+		WHERE aggregate_id = $1 AND event_type = 'evaluation.suggestions_applied'`, evaluation.ID).Scan(&appliedEvents); err != nil {
+		t.Fatalf("count applied outbox events: %v", err)
+	}
+	wantX := versionB
+	if firstVersionA {
+		wantX = versionA
+	}
+	if pairs != 3 || xWitness != wantX || yWitness != versionB || appliedEvents != 2 {
+		t.Fatalf("pairs=%d, scalar X=%v, scalar Y=%v, outbox=%d; want 3, %v, %v, 2", pairs, xWitness, yWitness, appliedEvents, wantX, versionB)
+	}
+}
+
+func runSuggestionApplicationScenario(t *testing.T, firstVersionA bool) {
+	s := &Service{Pool: requireEvalDB(t)}
+	m := seedRun(t, s.Pool)
+	evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
+	x := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
+	y := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
+	versionA := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-a")
+	versionB := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-b")
+
+	apply := func(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
+		t.Helper()
+		if err := s.RecordSuggestionsApplied(context.Background(), m.run.WorkspaceID, evaluation.ID, versionID, suggestionIDs); err != nil {
+			t.Fatalf("record suggestions applied: %v", err)
+		}
+	}
+	if firstVersionA {
+		apply(versionA, []pgtype.UUID{x.ID})
+		apply(versionB, []pgtype.UUID{x.ID, y.ID})
+	} else {
+		apply(versionB, []pgtype.UUID{x.ID, y.ID})
+		apply(versionA, []pgtype.UUID{x.ID})
+	}
+	apply(versionA, []pgtype.UUID{x.ID})
+	apply(versionB, []pgtype.UUID{x.ID, y.ID})
+
+	if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionA), []string{"X"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("suggestions applied to A = %v, want %v", got, want)
+	}
+	if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionB), []string{"X", "Y"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("suggestions applied to B = %v, want %v", got, want)
+	}
+
+	assertSuggestionApplicationWitnesses(t, s, m, x, y, evaluation, versionA, versionB, firstVersionA)
+}
+
 func TestSuggestionApplicationsRetainEveryVersionAndRejectReplays(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
@@ -279,64 +345,7 @@ func TestSuggestionApplicationsRetainEveryVersionAndRejectReplays(t *testing.T) 
 		{name: "B then A", firstVersionA: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &Service{Pool: requireEvalDB(t)}
-			m := seedRun(t, s.Pool)
-			evaluation := beginAndComplete(t, s, m, aVerdict("complete", OverallMet))
-			x := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "X")
-			y := seedSuggestion(t, s, m.run.WorkspaceID, evaluation.ID, "Y")
-			versionA := seedImprovedVersion(t, s.Pool, m.run.ID, 2, t.Name()+"-a")
-			versionB := seedImprovedVersion(t, s.Pool, m.run.ID, 3, t.Name()+"-b")
-
-			apply := func(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
-				t.Helper()
-				if err := s.RecordSuggestionsApplied(context.Background(), m.run.WorkspaceID, evaluation.ID, versionID, suggestionIDs); err != nil {
-					t.Fatalf("record suggestions applied: %v", err)
-				}
-			}
-			if tc.firstVersionA {
-				apply(versionA, []pgtype.UUID{x.ID})
-				apply(versionB, []pgtype.UUID{x.ID, y.ID})
-			} else {
-				apply(versionB, []pgtype.UUID{x.ID, y.ID})
-				apply(versionA, []pgtype.UUID{x.ID})
-			}
-			apply(versionA, []pgtype.UUID{x.ID})
-			apply(versionB, []pgtype.UUID{x.ID, y.ID})
-
-			if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionA), []string{"X"}; !reflect.DeepEqual(got, want) {
-				t.Fatalf("suggestions applied to A = %v, want %v", got, want)
-			}
-			if got, want := appliedTargetPaths(t, s, m.run.WorkspaceID, versionB), []string{"X", "Y"}; !reflect.DeepEqual(got, want) {
-				t.Fatalf("suggestions applied to B = %v, want %v", got, want)
-			}
-
-			var pairs, appliedEvents int
-			var xWitness, yWitness pgtype.UUID
-			if err := s.Pool.QueryRow(context.Background(), `
-				SELECT count(*) FROM evaluation_suggestion_applications
-				WHERE workspace_id = $1 AND suggestion_id = ANY($2)`, m.run.WorkspaceID, []pgtype.UUID{x.ID, y.ID}).Scan(&pairs); err != nil {
-				t.Fatalf("count application pairs: %v", err)
-			}
-			if err := s.Pool.QueryRow(context.Background(), `
-				SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1`, x.ID).Scan(&xWitness); err != nil {
-				t.Fatalf("read X scalar witness: %v", err)
-			}
-			if err := s.Pool.QueryRow(context.Background(), `
-				SELECT applied_skill_version_id FROM evaluation_suggestions WHERE id = $1`, y.ID).Scan(&yWitness); err != nil {
-				t.Fatalf("read Y scalar witness: %v", err)
-			}
-			if err := s.Pool.QueryRow(context.Background(), `
-				SELECT count(*) FROM outbox_events
-				WHERE aggregate_id = $1 AND event_type = 'evaluation.suggestions_applied'`, evaluation.ID).Scan(&appliedEvents); err != nil {
-				t.Fatalf("count applied outbox events: %v", err)
-			}
-			wantX := versionB
-			if tc.firstVersionA {
-				wantX = versionA
-			}
-			if pairs != 3 || xWitness != wantX || yWitness != versionB || appliedEvents != 2 {
-				t.Fatalf("pairs=%d, scalar X=%v, scalar Y=%v, outbox=%d; want 3, %v, %v, 2", pairs, xWitness, yWitness, appliedEvents, wantX, versionB)
-			}
+			runSuggestionApplicationScenario(t, tc.firstVersionA)
 		})
 	}
 }
@@ -775,92 +784,105 @@ func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 	}
 }
 
+func recordFailedRevision(t *testing.T, s *Service, m material) gen.Evaluation {
+	t.Helper()
+	ctx := context.Background()
+	ev, err := s.begin(ctx, m)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+	got := reload(t, s, m, ev.ID)
+	if got.Status != string(StatusFailed) {
+		t.Fatalf("status = %q, want failed", got.Status)
+	}
+	return got
+}
+
+func assertDeclaredConditionsSurviveTheFailure(t *testing.T, pool *pgxpool.Pool) {
+	s := &Service{
+		Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
+		JudgeModel: "gpt-6-sol", JudgePromptVersion: "judge-run@v1",
+	}
+	m := seedRun(t, s.Pool)
+	m.rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
+
+	got := recordFailedRevision(t, s, m)
+	if derefString(got.JudgeModel) != "gpt-6-sol" ||
+		derefString(got.JudgePromptVersion) != "judge-run@v1" {
+		t.Errorf("a failed revision must still say which judge could not answer, got %q / %q",
+			derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
+	}
+	if derefString(got.RubricVersion) != "content-007/writing/v1" {
+		t.Errorf("the rubric it would have been judged under is frozen in the snapshot and knowable, got %q",
+			derefString(got.RubricVersion))
+	}
+}
+
+func assertNoJudgeRecordsNullNotAModelName(t *testing.T, pool *pgxpool.Pool) {
+	s := &Service{Pool: pool}
+	m := seedRun(t, s.Pool)
+
+	got := recordFailedRevision(t, s, m)
+	if got.JudgeModel != nil || got.JudgePromptVersion != nil {
+		t.Errorf("naming a judge here describes a call this deployment cannot make, got %q / %q",
+			derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
+	}
+	if got.RubricVersion != nil {
+		t.Errorf("this snapshot froze no rubric; '' would claim one, got %q", derefString(got.RubricVersion))
+	}
+}
+
+func assertUndeclaredPromptVersionStaysNullWhileModelIsRecorded(t *testing.T, pool *pgxpool.Pool) {
+	s := &Service{Pool: pool, Judge: JudgeOrNone(&llmclient.Client{})}
+	m := seedRun(t, s.Pool)
+
+	got := recordFailedRevision(t, s, m)
+	if derefString(got.JudgeModel) != "skillhub-judge" {
+		t.Errorf("the judge role is a real declaration even when unconfigured, got %q",
+			derefString(got.JudgeModel))
+	}
+	if got.JudgePromptVersion != nil {
+		t.Errorf("the prompt version is learned from a response this attempt never got, "+
+			"so %q is a placeholder standing where a fact belongs", derefString(got.JudgePromptVersion))
+	}
+}
+
+func assertCompletedRowReportsWhatRanNotWhatWasDeclared(t *testing.T, pool *pgxpool.Pool) {
+	s := &Service{
+		Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
+		JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
+	}
+	m := seedRun(t, s.Pool)
+	m.rubric = &testlab.Rubric{Version: "declared-rubric"}
+
+	ev := beginAndComplete(t, s, m, aVerdict("what actually ran", OverallMet))
+	got := reload(t, s, m, ev.ID)
+	if derefString(got.JudgeModel) != "gpt-6-sol" ||
+		derefString(got.JudgePromptVersion) != "judge-v1" ||
+		derefString(got.RubricVersion) != "rubric-v1" {
+		t.Errorf("the declaration outranked the response: got %q / %q / %q",
+			derefString(got.JudgeModel), derefString(got.JudgePromptVersion),
+			derefString(got.RubricVersion))
+	}
+}
+
 func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
 	pool := requireEvalDB(t)
-	ctx := context.Background()
-
-	failed := func(t *testing.T, s *Service, m material) gen.Evaluation {
-		t.Helper()
-		ev, err := s.begin(ctx, m)
-		if err != nil {
-			t.Fatalf("begin: %v", err)
-		}
-		if err := s.fail(ctx, m, ev, gatheredEvidence{findings: nil, complete: false}, errors.New("the judge was unreachable")); err != nil {
-			t.Fatalf("fail: %v", err)
-		}
-		got := reload(t, s, m, ev.ID)
-		if got.Status != string(StatusFailed) {
-			t.Fatalf("status = %q, want failed", got.Status)
-		}
-		return got
-	}
 
 	t.Run("the declared conditions survive the failure", func(t *testing.T) {
-		s := &Service{
-			Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
-			JudgeModel: "gpt-6-sol", JudgePromptVersion: "judge-run@v1",
-		}
-		m := seedRun(t, s.Pool)
-		m.rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
-
-		got := failed(t, s, m)
-		if derefString(got.JudgeModel) != "gpt-6-sol" ||
-			derefString(got.JudgePromptVersion) != "judge-run@v1" {
-			t.Errorf("a failed revision must still say which judge could not answer, got %q / %q",
-				derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
-		}
-		if derefString(got.RubricVersion) != "content-007/writing/v1" {
-			t.Errorf("the rubric it would have been judged under is frozen in the snapshot and knowable, got %q",
-				derefString(got.RubricVersion))
-		}
+		assertDeclaredConditionsSurviveTheFailure(t, pool)
 	})
-
 	t.Run("a deployment with no judge records NULL, not a model name", func(t *testing.T) {
-		s := &Service{Pool: pool}
-		m := seedRun(t, s.Pool)
-
-		got := failed(t, s, m)
-		if got.JudgeModel != nil || got.JudgePromptVersion != nil {
-			t.Errorf("naming a judge here describes a call this deployment cannot make, got %q / %q",
-				derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
-		}
-		if got.RubricVersion != nil {
-			t.Errorf("this snapshot froze no rubric; '' would claim one, got %q", derefString(got.RubricVersion))
-		}
+		assertNoJudgeRecordsNullNotAModelName(t, pool)
 	})
-
 	t.Run("an undeclared prompt version stays NULL while the model is recorded", func(t *testing.T) {
-		s := &Service{Pool: pool, Judge: JudgeOrNone(&llmclient.Client{})}
-		m := seedRun(t, s.Pool)
-
-		got := failed(t, s, m)
-		if derefString(got.JudgeModel) != "skillhub-judge" {
-			t.Errorf("the judge role is a real declaration even when unconfigured, got %q",
-				derefString(got.JudgeModel))
-		}
-		if got.JudgePromptVersion != nil {
-			t.Errorf("the prompt version is learned from a response this attempt never got, "+
-				"so %q is a placeholder standing where a fact belongs", derefString(got.JudgePromptVersion))
-		}
+		assertUndeclaredPromptVersionStaysNullWhileModelIsRecorded(t, pool)
 	})
-
 	t.Run("a completed row reports what ran, not what was declared", func(t *testing.T) {
-		s := &Service{
-			Pool: pool, Judge: JudgeOrNone(&llmclient.Client{}),
-			JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
-		}
-		m := seedRun(t, s.Pool)
-		m.rubric = &testlab.Rubric{Version: "declared-rubric"}
-
-		ev := beginAndComplete(t, s, m, aVerdict("what actually ran", OverallMet))
-		got := reload(t, s, m, ev.ID)
-		if derefString(got.JudgeModel) != "gpt-6-sol" ||
-			derefString(got.JudgePromptVersion) != "judge-v1" ||
-			derefString(got.RubricVersion) != "rubric-v1" {
-			t.Errorf("the declaration outranked the response: got %q / %q / %q",
-				derefString(got.JudgeModel), derefString(got.JudgePromptVersion),
-				derefString(got.RubricVersion))
-		}
+		assertCompletedRowReportsWhatRanNotWhatWasDeclared(t, pool)
 	})
 }
 

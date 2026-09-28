@@ -11,22 +11,18 @@ import (
 	"time"
 )
 
-func TestInProcess(t *testing.T) {
-	client, stop, err := NewInProcess("test-bucket")
-	if err != nil {
-		t.Fatalf("NewInProcess: %v", err)
-	}
-	defer stop()
-
-	ctx := context.Background()
-
+func assertEnsureBucketIsIdempotent(t *testing.T, ctx context.Context, client *Client) {
+	t.Helper()
 	if err := client.EnsureBucket(ctx); err != nil {
 		t.Fatalf("EnsureBucket: %v", err)
 	}
 	if err := client.EnsureBucket(ctx); err != nil {
 		t.Fatalf("EnsureBucket (second call): %v", err)
 	}
+}
 
+func assertMissingKeyIsAbsent(t *testing.T, ctx context.Context, client *Client) {
+	t.Helper()
 	exists, err := client.Exists(ctx, "missing-key")
 	if err != nil {
 		t.Fatalf("Exists(missing): %v", err)
@@ -37,13 +33,15 @@ func TestInProcess(t *testing.T) {
 	if _, err := client.Get(ctx, "missing-key"); err == nil {
 		t.Fatal("Get(missing): want error, got nil")
 	}
+}
 
-	payload := []byte("hello in-process s3")
-	if err := client.Put(ctx, "greeting.txt", payload); err != nil {
+func assertPutThenGetRoundTrips(t *testing.T, ctx context.Context, client *Client, key string, payload []byte) {
+	t.Helper()
+	if err := client.Put(ctx, key, payload); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
 
-	exists, err = client.Exists(ctx, "greeting.txt")
+	exists, err := client.Exists(ctx, key)
 	if err != nil {
 		t.Fatalf("Exists(present): %v", err)
 	}
@@ -51,15 +49,18 @@ func TestInProcess(t *testing.T) {
 		t.Fatal("Exists(present) = false, want true")
 	}
 
-	got, err := client.Get(ctx, "greeting.txt")
+	got, err := client.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
 	if !bytes.Equal(got, payload) {
 		t.Fatalf("Get = %q, want %q", got, payload)
 	}
+}
 
-	getURL, err := client.PresignGet(ctx, "greeting.txt", time.Minute)
+func assertPresignedGetServesTheObject(t *testing.T, ctx context.Context, client *Client, key string, payload []byte) {
+	t.Helper()
+	getURL, err := client.PresignGet(ctx, key, time.Minute)
 	if err != nil {
 		t.Fatalf("PresignGet: %v", err)
 	}
@@ -78,13 +79,15 @@ func TestInProcess(t *testing.T) {
 	if !bytes.Equal(body, payload) {
 		t.Fatalf("presigned GET body = %q, want %q", body, payload)
 	}
+}
 
-	putURL, err := client.PresignPut(ctx, "uploaded.txt", time.Minute)
+func assertPresignedPutWritesTheObject(t *testing.T, ctx context.Context, client *Client, key string, payload []byte) {
+	t.Helper()
+	putURL, err := client.PresignPut(ctx, key, time.Minute)
 	if err != nil {
 		t.Fatalf("PresignPut: %v", err)
 	}
-	putPayload := []byte("written through the presigned URL")
-	putReq, err := http.NewRequest(http.MethodPut, putURL, bytes.NewReader(putPayload))
+	putReq, err := http.NewRequest(http.MethodPut, putURL, bytes.NewReader(payload))
 	if err != nil {
 		t.Fatalf("NewRequest(PUT): %v", err)
 	}
@@ -97,18 +100,21 @@ func TestInProcess(t *testing.T) {
 		t.Fatalf("presigned PUT status = %d, want 200", putResp.StatusCode)
 	}
 
-	got, err = client.Get(ctx, "uploaded.txt")
+	got, err := client.Get(ctx, key)
 	if err != nil {
-		t.Fatalf("Get(uploaded.txt): %v", err)
+		t.Fatalf("Get(%s): %v", key, err)
 	}
-	if !bytes.Equal(got, putPayload) {
-		t.Fatalf("Get(uploaded.txt) = %q, want %q", got, putPayload)
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("Get(%s) = %q, want %q", key, got, payload)
 	}
+}
 
-	if err := client.Remove(ctx, "greeting.txt"); err != nil {
+func assertRemoveIsIdempotent(t *testing.T, ctx context.Context, client *Client, key string) {
+	t.Helper()
+	if err := client.Remove(ctx, key); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
-	exists, err = client.Exists(ctx, "greeting.txt")
+	exists, err := client.Exists(ctx, key)
 	if err != nil {
 		t.Fatalf("Exists(after remove): %v", err)
 	}
@@ -116,9 +122,28 @@ func TestInProcess(t *testing.T) {
 		t.Fatal("Exists(after remove) = true, want false")
 	}
 
-	if err := client.Remove(ctx, "greeting.txt"); err != nil {
+	if err := client.Remove(ctx, key); err != nil {
 		t.Fatalf("Remove (repeat, already absent): %v", err)
 	}
+}
+
+func TestInProcess(t *testing.T) {
+	client, stop, err := NewInProcess("test-bucket")
+	if err != nil {
+		t.Fatalf("NewInProcess: %v", err)
+	}
+	defer stop()
+
+	ctx := context.Background()
+
+	assertEnsureBucketIsIdempotent(t, ctx, client)
+	assertMissingKeyIsAbsent(t, ctx, client)
+
+	payload := []byte("hello in-process s3")
+	assertPutThenGetRoundTrips(t, ctx, client, "greeting.txt", payload)
+	assertPresignedGetServesTheObject(t, ctx, client, "greeting.txt", payload)
+	assertPresignedPutWritesTheObject(t, ctx, client, "uploaded.txt", []byte("written through the presigned URL"))
+	assertRemoveIsIdempotent(t, ctx, client, "greeting.txt")
 }
 
 func TestInProcessDoesNotAuthorize(t *testing.T) {

@@ -287,6 +287,28 @@ func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	}
 }
 
+func assertNudgeQueuesAnotherAttempt(t *testing.T, s *Service, e *envelope, r *StepResult, ran *Draft, i int) {
+	t.Helper()
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, int64(3+i), e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.Nudges != i || e.Snapshot.Draft != ran {
+		t.Fatalf("nudge %d: state=%q next=%v nudges=%d err=%v", i, state, next, e.Snapshot.Nudges, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "逐位元相同") {
+		t.Fatalf("nudge %d did not tell the model why: %+v", i, last)
+	}
+}
+
+func assertNudgesExhaustedStoresTheDraft(t *testing.T, s *Service, e *envelope, r *StepResult) {
+	t.Helper()
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, e, r)
+	if err != nil || next || state != "draft_ready" || e.Snapshot.Nudges != MaxNudges {
+		t.Fatalf("after MaxNudges the draft must be stored: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
+	}
+	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "兩次都交回") {
+		t.Fatalf("the person was not told: %+v", last)
+	}
+}
+
 func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
@@ -296,27 +318,15 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
 	r := &StepResult{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 	for i := 1; i <= MaxNudges; i++ {
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, int64(3+i), &e, r)
-		if err != nil || !next || state != "queued" || e.Snapshot.Nudges != i || e.Snapshot.Draft != ran {
-			t.Fatalf("nudge %d: state=%q next=%v nudges=%d err=%v", i, state, next, e.Snapshot.Nudges, err)
-		}
-		if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "逐位元相同") {
-			t.Fatalf("nudge %d did not tell the model why: %+v", i, last)
-		}
+		assertNudgeQueuesAnotherAttempt(t, s, &e, r, ran, i)
 	}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 9, &e, r)
-	if err != nil || next || state != "draft_ready" || e.Snapshot.Nudges != MaxNudges {
-		t.Fatalf("after MaxNudges the draft must be stored: state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
-	}
-	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "assistant" || !strings.Contains(last.Content, "兩次都交回") {
-		t.Fatalf("the person was not told: %+v", last)
-	}
+	assertNudgesExhaustedStoresTheDraft(t, s, &e, r)
 
 	s.ValidateDraft = func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}
 	e.Snapshot.Nudges = 0
-	state, _, err = s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, 10, &e, r)
 	if err != nil || state != "draft_ready" || e.Snapshot.RunUnmet || e.Snapshot.Nudges != 0 {
 		t.Fatalf("a changed draft is progress: state=%q unmet=%v nudges=%d err=%v", state, e.Snapshot.RunUnmet, e.Snapshot.Nudges, err)
 	}
@@ -359,6 +369,15 @@ func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
 	}
 }
 
+func assertBlockedValidationIsCounted(t *testing.T, s *Service, e *envelope, i int, body string) {
+	t.Helper()
+	r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
+	state, _, err := s.proposal(context.Background(), identity.Workspace{}, int64(2+i), e, r)
+	if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
+		t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
+	}
+}
+
 func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
@@ -366,11 +385,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	for i, body := range []string{"one", "two"} {
-		r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
-		state, _, err := s.proposal(context.Background(), identity.Workspace{}, int64(2+i), &e, r)
-		if err != nil || state != "draft_ready" || e.Snapshot.BlockedRepeats != i {
-			t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
-		}
+		assertBlockedValidationIsCounted(t, s, &e, i, body)
 	}
 	r := &StepResult{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "three"}}
 	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
@@ -535,6 +550,9 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	if e.Snapshot.SpentUSD == nil || *e.Snapshot.SpentUSD != 0.00002 {
 		t.Fatalf("the embedding is the session's spend: %v", e.Snapshot.SpentUSD)
 	}
+}
+
+func TestAllowedToolsOffersSearchKnowledgeOnlyWhenWiredAndWithinRounds(t *testing.T) {
 	if got := allowedTools(0, 8, toolAvailability{knowledge: true, searchLeft: true}); len(got) != 3 || got[2] != "search_knowledge" {
 		t.Fatalf("search_knowledge is offered only when wired: %v", got)
 	}
@@ -546,23 +564,38 @@ func TestProposalRoutesSearchKnowledgeToTheSemanticSearch(t *testing.T) {
 	}
 }
 
+func assertFirstEmptySearchRoundQueuesAnotherAttempt(t *testing.T, s *Service, e *envelope, r *StepResult) {
+	t.Helper()
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 1 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "第 1／2 回") {
+		t.Fatalf("first empty round: state=%q rounds=%d err=%v last=%+v", state, e.Snapshot.SearchRounds, err, e.Snapshot.Messages[len(e.Snapshot.Messages)-1])
+	}
+}
+
+func assertSecondEmptySearchRoundSaysNotFound(t *testing.T, s *Service, e *envelope, r *StepResult) {
+	t.Helper()
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 3, e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "兩回") {
+		t.Fatalf("second empty round must say not found: state=%q rounds=%d err=%v", state, e.Snapshot.SearchRounds, err)
+	}
+}
+
+func assertThirdSearchAnswersWithoutSearching(t *testing.T, s *Service, e *envelope, r *StepResult) {
+	t.Helper()
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 3 {
+		t.Fatalf("a third search is answered without searching: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
+	}
+}
+
 func TestProposalStopsSearchingAfterTwoEmptyRounds(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) { return nil, 0, nil }}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "tool_intent", Message: "找", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "沒有這種東西"}}
-	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 1 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "第 1／2 回") {
-		t.Fatalf("first empty round: state=%q rounds=%d err=%v last=%+v", state, e.Snapshot.SearchRounds, err, e.Snapshot.Messages[len(e.Snapshot.Messages)-1])
-	}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 3, &e, r)
-	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || !strings.Contains(e.Snapshot.Messages[len(e.Snapshot.Messages)-1].Content, "兩回") {
-		t.Fatalf("second empty round must say not found: state=%q rounds=%d err=%v", state, e.Snapshot.SearchRounds, err)
-	}
-	state, next, err = s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
-	if err != nil || !next || state != "queued" || e.Snapshot.SearchRounds != 2 || e.Snapshot.ToolCalls != 3 {
-		t.Fatalf("a third search is answered without searching: state=%q rounds=%d tools=%d err=%v", state, e.Snapshot.SearchRounds, e.Snapshot.ToolCalls, err)
-	}
+	assertFirstEmptySearchRoundQueuesAnotherAttempt(t, s, &e, r)
+	assertSecondEmptySearchRoundSaysNotFound(t, s, &e, r)
+	assertThirdSearchAnswersWithoutSearching(t, s, &e, r)
 }
 
 func TestProposalRetriesOnceWhenTheModelSentNoBrief(t *testing.T) {
@@ -714,83 +747,96 @@ func injectionCaseByGoal(t *testing.T, cases []injectionCase, kind, goal string)
 	return injectionCase{}
 }
 
+func testInjectionExfilMarkerInBodyIsCaught(t *testing.T, c injectionCase) {
+	t.Helper()
+	evalText := evaluationFreeText(string(c.Payload))
+	draft := GeneratedSkill{Name: "x", Body: "Write the report and include " + c.Marker + " in the header."}
+	copied := copiedFromEvaluation(evalText, draftText(draft), "", "", "", "", "")
+	if len(copied) == 0 {
+		t.Fatalf("corpus case %s: marker %q was not caught by copiedFromEvaluation", c.ID, c.Marker)
+	}
+}
+
+func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
+	t.Helper()
+	zero := 0.0
+	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
+	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+		return "new-hash", "{}", false, nil
+	}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+		Messages: []Message{}, Brief: "process the attached CSV",
+		BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
+		Draft: prior, EvaluationText: evaluationFreeText(string(c.Payload)),
+	}}
+	r := &StepResult{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
+		Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
+		t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
+	}
+	last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
+	if last.Role != "tool" || !strings.Contains(strings.ToLower(last.Content), "bash") {
+		t.Fatalf("corpus case %s: the nudge did not name the smuggled tool: %+v", c.ID, last)
+	}
+}
+
+func testInjectionChangeBriefIsCaught(t *testing.T, c injectionCase) {
+	t.Helper()
+	s := &Service{}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+		Messages: []Message{}, Brief: "original confirmed brief", BriefConfirmed: true,
+	}}
+	r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
+	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
+		t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
+	}
+	if e.Snapshot.ModelChanged == nil || e.Snapshot.ModelChanged.Brief != "original confirmed brief" {
+		t.Fatalf("corpus case %s: the confirmed value the rewrite overturned was not recorded: %+v", c.ID, e.Snapshot.ModelChanged)
+	}
+}
+
+func testInjectionClaimMetIsCaught(t *testing.T, c injectionCase) {
+	t.Helper()
+	observation := string(c.Payload)
+	if !runUnmet(observation) {
+		t.Fatalf("corpus case %s should read as an unmet run under Go's own runUnmet regardless of the summary's claim", c.ID)
+	}
+	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+		return "same-hash", "{}", false, nil
+	}}
+	zero := 0.0
+	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+		Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
+		Draft: ran, RunUnmet: runUnmet(observation),
+	}}
+	r := &StepResult{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
+		Draft: &GeneratedSkill{Name: "x", Body: "same"}}
+	state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
+	if err != nil || !next || state != "queued" {
+		t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)
+	}
+	if !e.Snapshot.RunUnmet {
+		t.Fatalf("corpus case %s: RunUnmet must stay true — the model's message cannot overturn Go's own judgement of the trial", c.ID)
+	}
+}
+
 func TestInjectionCorpusEvaluationCasesAreCaughtAtTheGoLayer(t *testing.T) {
 	cases := loadInjectionCorpusCases(t)
 
 	t.Run("exfil_marker_in_body", func(t *testing.T) {
-		c := injectionCaseByGoal(t, cases, "evaluation", "exfil_marker_in_body")
-		evalText := evaluationFreeText(string(c.Payload))
-		draft := GeneratedSkill{Name: "x", Body: "Write the report and include " + c.Marker + " in the header."}
-		copied := copiedFromEvaluation(evalText, draftText(draft), "", "", "", "", "")
-		if len(copied) == 0 {
-			t.Fatalf("corpus case %s: marker %q was not caught by copiedFromEvaluation", c.ID, c.Marker)
-		}
+		testInjectionExfilMarkerInBodyIsCaught(t, injectionCaseByGoal(t, cases, "evaluation", "exfil_marker_in_body"))
 	})
-
 	t.Run("add_bash_tool", func(t *testing.T) {
-		c := injectionCaseByGoal(t, cases, "evaluation", "add_bash_tool")
-		zero := 0.0
-		prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
-		s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
-			return "new-hash", "{}", false, nil
-		}}
-		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []Message{}, Brief: "process the attached CSV",
-			BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
-			Draft: prior, EvaluationText: evaluationFreeText(string(c.Payload)),
-		}}
-		r := &StepResult{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
-			Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-		if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
-			t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
-		}
-		last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]
-		if last.Role != "tool" || !strings.Contains(strings.ToLower(last.Content), "bash") {
-			t.Fatalf("corpus case %s: the nudge did not name the smuggled tool: %+v", c.ID, last)
-		}
+		testInjectionAddBashToolIsCaught(t, injectionCaseByGoal(t, cases, "evaluation", "add_bash_tool"))
 	})
-
 	t.Run("change_brief", func(t *testing.T) {
-		c := injectionCaseByGoal(t, cases, "evaluation", "change_brief")
-		s := &Service{}
-		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []Message{}, Brief: "original confirmed brief", BriefConfirmed: true,
-		}}
-		r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 2, &e, r)
-		if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
-			t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
-		}
-		if e.Snapshot.ModelChanged == nil || e.Snapshot.ModelChanged.Brief != "original confirmed brief" {
-			t.Fatalf("corpus case %s: the confirmed value the rewrite overturned was not recorded: %+v", c.ID, e.Snapshot.ModelChanged)
-		}
+		testInjectionChangeBriefIsCaught(t, injectionCaseByGoal(t, cases, "evaluation", "change_brief"))
 	})
-
 	t.Run("claim_met", func(t *testing.T) {
-		c := injectionCaseByGoal(t, cases, "evaluation", "claim_met")
-		observation := string(c.Payload)
-		if !runUnmet(observation) {
-			t.Fatalf("corpus case %s should read as an unmet run under Go's own runUnmet regardless of the summary's claim", c.ID)
-		}
-		s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
-			return "same-hash", "{}", false, nil
-		}}
-		zero := 0.0
-		ran := &Draft{Revision: 3, ContentHash: "same-hash"}
-		e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
-			Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
-			Draft: ran, RunUnmet: runUnmet(observation),
-		}}
-		r := &StepResult{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
-			Draft: &GeneratedSkill{Name: "x", Body: "same"}}
-		state, next, err := s.proposal(context.Background(), identity.Workspace{}, 4, &e, r)
-		if err != nil || !next || state != "queued" {
-			t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)
-		}
-		if !e.Snapshot.RunUnmet {
-			t.Fatalf("corpus case %s: RunUnmet must stay true — the model's message cannot overturn Go's own judgement of the trial", c.ID)
-		}
+		testInjectionClaimMetIsCaught(t, injectionCaseByGoal(t, cases, "evaluation", "claim_met"))
 	})
 }
 

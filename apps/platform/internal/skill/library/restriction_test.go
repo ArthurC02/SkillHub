@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -45,30 +46,53 @@ func TestABlankRestrictionReasonIsRefusedByTheSkillAndLeavesItAsItWas(t *testing
 	}
 }
 
-func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
-	pool := requireRegistryDB(t)
-	_, skillID := seedSkill(t, pool, "restriction-race")
-	ctx := context.Background()
+type restrictionOutcome struct {
+	before RestrictionBefore
+	err    error
+}
 
-	conns := make([]*pgxpool.Conn, 2)
+func acquireTwoConcurrentTx(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (tx1, tx2 pgx.Tx, conns []*pgxpool.Conn) {
+	t.Helper()
+	conns = make([]*pgxpool.Conn, 2)
 	for i := range conns {
 		conn, err := pool.Acquire(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer conn.Release()
+		t.Cleanup(conn.Release)
 		conns[i] = conn
 	}
-	tx1, err := conns[0].Begin(ctx)
+	var err error
+	tx1, err = conns[0].Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx1.Rollback(ctx) //nolint:errcheck // no-op after commit
-	tx2, err := conns[1].Begin(ctx)
+	t.Cleanup(func() { _ = tx1.Rollback(ctx) })
+	tx2, err = conns[1].Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx2.Rollback(ctx) //nolint:errcheck // no-op after commit
+	t.Cleanup(func() { _ = tx2.Rollback(ctx) })
+	return tx1, tx2, conns
+}
+
+func assertSecondOperatorSawFirstsHold(t *testing.T, second restrictionOutcome, first string) {
+	t.Helper()
+	if second.err != nil {
+		t.Fatal(second.err)
+	}
+	if second.before.AccessRestriction == nil || *second.before.AccessRestriction != first {
+		t.Errorf("second operator's before-state = %v, want %q - it recorded a hold that was already lifted or never seen",
+			second.before.AccessRestriction, first)
+	}
+}
+
+func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
+	pool := requireRegistryDB(t)
+	_, skillID := seedSkill(t, pool, "restriction-race")
+	ctx := context.Background()
+
+	tx1, tx2, conns := acquireTwoConcurrentTx(t, ctx, pool)
 
 	first := "license-review"
 	firstBefore, err := SetAccessRestriction(ctx, tx1, skillID, &first)
@@ -83,15 +107,11 @@ func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 		t.Error("before-state carries no workspace id")
 	}
 
-	type outcome struct {
-		before RestrictionBefore
-		err    error
-	}
-	out := make(chan outcome, 1)
+	out := make(chan restrictionOutcome, 1)
 	go func() {
 		second := "takedown-review"
 		before, err := SetAccessRestriction(ctx, tx2, skillID, &second)
-		out <- outcome{before, err}
+		out <- restrictionOutcome{before, err}
 	}()
 
 	if !waitsOnLock(t, pool, conns[1].Conn().PgConn().PID()) {
@@ -101,14 +121,7 @@ func TestSetAccessRestrictionSerializesConcurrentOperators(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := <-out
-	if second.err != nil {
-		t.Fatal(second.err)
-	}
-
-	if second.before.AccessRestriction == nil || *second.before.AccessRestriction != first {
-		t.Errorf("second operator's before-state = %v, want %q - it recorded a hold that was already lifted or never seen",
-			second.before.AccessRestriction, first)
-	}
+	assertSecondOperatorSawFirstsHold(t, second, first)
 	if err := tx2.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
