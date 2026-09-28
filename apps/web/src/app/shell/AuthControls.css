@@ -1,0 +1,12 @@
+.auth-name {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .auth-name {
+    max-width: 24vw;
+  }
+}

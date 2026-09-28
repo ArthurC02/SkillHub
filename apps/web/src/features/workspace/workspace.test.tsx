@@ -187,7 +187,7 @@ test("O11Y-004 the policy event table keeps its accessible columns in mobile car
     "記了哪些欄位",
     "沒有記什麼",
   ]);
-  expect(wrapper?.tabIndex).toBe(0);
+  expect(wrapper?.tabIndex).toBe(-1);
 
   const rows = Array.from(table!.querySelectorAll("tbody tr"));
   expect(rows.map((row) => row.querySelector('th[scope="row"] code')?.textContent)).toEqual([

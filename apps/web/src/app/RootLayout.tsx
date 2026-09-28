@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { FeedbackEntry } from "./shell/FeedbackEntry";
 import { AuthControls } from "./shell/AuthControls";
 import { CleanModeNotice } from "./shell/CleanModeNotice";
+import { NavScrollCue } from "../shared/ui/NavScrollCue";
 
 export function RootLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -12,14 +13,15 @@ export function RootLayout() {
         <Link to="/" className="app-title">
           Skill Hub
         </Link>
+        <AuthControls />
         <nav className="app-nav" aria-label="主要導覽">
           <Link to="/workspace/skills">我的 Skill</Link>
           <Link to="/workspace/runs">Run 歷史</Link>
           <Link to="/workspace/import">匯入 Skill</Link>
           <Link to="/lab/test-cases">Test Case</Link>
           <Link to="/workspace/downloads">下載紀錄</Link>
+          <NavScrollCue />
         </nav>
-        <AuthControls />
       </header>
       <main>
         <CleanModeNotice admin={pathname === "/admin" || pathname.startsWith("/admin/")} />

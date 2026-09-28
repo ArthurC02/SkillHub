@@ -40,6 +40,8 @@ function useGenerateDiagram() {
     const file = event.target.files?.[0];
     setDiagramError("");
     if (!file) return;
+    setDiagram(undefined);
+    setDiagramName("");
     const problem = generateDiagramProblem(file);
     if (problem) {
       setDiagramError(problem);
@@ -59,6 +61,7 @@ function useGenerateDiagram() {
       () => {
         setDiagramError("讀取圖片失敗，請重新選擇。");
         setReading(false);
+        if (diagramFileRef.current) diagramFileRef.current.value = "";
       },
     );
   }
@@ -152,7 +155,9 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
             ref={diagramFileRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            aria-describedby="generate-diagram-note"
+            aria-describedby={
+              reading ? "generate-diagram-note generate-diagram-reading" : "generate-diagram-note"
+            }
             disabled={mutation.isPending || reading}
             onChange={handleDiagramChange}
           />
@@ -161,6 +166,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
           PNG、JPEG 或 WebP，{GENERATE_MAX_DIAGRAM_BYTES / 1_000_000} MB 以內。
           圖片會傳給模型參考，平台不會保留圖片本身，只留下一串無法還原成圖片的指紋。
         </p>
+        {reading && (
+          <p role="status" id="generate-diagram-reading">
+            正在讀取流程圖…
+          </p>
+        )}
         {diagramError && <p role="alert">{diagramError}</p>}
         {diagram && (
           <p>
@@ -188,26 +198,41 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       <button
         type="button"
         onClick={submit}
-        aria-describedby={nothingToSend ? "generate-why-disabled" : undefined}
+        aria-describedby={
+          reading ? "generate-diagram-reading" : nothingToSend ? "generate-why-disabled" : undefined
+        }
         disabled={mutation.isPending || reading || nothingToSend}
       >
         {mutation.isPending ? "生成中…" : "生成一個 Skill"}
       </button>
 
-      {mutation.isPending && <GenerateInFlight />}
+      <GenerateOutcome mutation={mutation} rejected={rejected} onRetry={submit} />
 
+      <GenerateHistory />
+    </section>
+  );
+}
+
+function GenerateOutcome({
+  mutation,
+  rejected,
+  onRetry,
+}: {
+  mutation: ReturnType<typeof useGenerateSkill>;
+  rejected?: GenerateRejected;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      {mutation.isPending && <GenerateInFlight />}
       {mutation.error && !rejected && (
         <ReadFailure error={mutation.error} what="生成 Skill">
           <p role="alert">生成失敗：{mutation.error.message}</p>
         </ReadFailure>
       )}
-
-      {rejected && <GenerateFailed rejected={rejected} onRetry={submit} />}
-
+      {rejected && <GenerateFailed rejected={rejected} onRetry={onRetry} />}
       {mutation.data && <GenerateSucceeded result={mutation.data} />}
-
-      <GenerateHistory />
-    </section>
+    </>
   );
 }
 
@@ -314,7 +339,11 @@ export function ReferencePicker({
       {searching && (
         <>
           <h3>搜尋結果</h3>
-          {search.isFetching && <p className="note">搜尋中…</p>}
+          {search.isFetching && <p role="status">搜尋中…</p>}
+          <ReadFailure error={search.error} what="參考 Skill 的搜尋結果" />
+          {!search.isFetching && !search.error && search.data?.results.length === 0 && (
+            <p role="status">目錄裡沒有符合的 Skill。</p>
+          )}
           <ul className="search-results">
             {(search.data?.results ?? []).map((hit) => (
               <ReferenceRow
@@ -330,6 +359,12 @@ export function ReferencePicker({
             ))}
           </ul>
           <h3>我的 Skill</h3>
+          {ownSkills.isPending && <p role="status">載入你的 Skill 中…</p>}
+          <ReadFailure error={ownSkills.error} what="你的 Skill" />
+          {!ownSkills.isPending &&
+            !ownSkills.error &&
+            ownSkills.data &&
+            ownMatches.length === 0 && <p role="status">你的 Skill 裡沒有符合項目。</p>}
           <ul className="search-results">
             {ownMatches.map((s) => (
               <ReferenceRow

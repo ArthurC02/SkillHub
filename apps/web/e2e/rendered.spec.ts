@@ -128,55 +128,117 @@ test.describe("QA-008 real layout", () => {
       `a wider file widget (${doc.file}px) pushed the page to ${doc.scrollWidth}px`,
     ).toBeLessThanOrEqual(doc.clientWidth);
   });
+});
 
-  test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5）", async ({ page }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 900 });
-    await page.goto("/workspace/skills");
-    await expect(page.locator(".app-nav a").first()).toBeVisible();
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          let frames = 0;
-          function tick() {
-            frames++;
-            if (frames < 2) requestAnimationFrame(tick);
-            else resolve();
-          }
-          requestAnimationFrame(tick);
-        }),
-    );
-
-    const header = await page.evaluate(() => {
-      const el = document.querySelector(".app-header")!;
-      const box = (node: Element) => {
-        const r = node.getBoundingClientRect();
-        return { top: r.top, bottom: r.bottom };
-      };
-      return {
-        height: Math.round(el.getBoundingClientRect().height),
-        title: box(el.querySelector(".app-title")!),
-        auth: box(el.lastElementChild!),
-        navHeights: Array.from(el.querySelectorAll(".app-nav a"), (link) =>
-          Math.round(link.getBoundingClientRect().height),
-        ),
-      };
+test("手機頁首收在兩列以內，標題與身分同一列（設計 §4.5）", async ({ page }) => {
+  await stubPlatform(page);
+  await page.route("**/me", async (route) => {
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status,
+      json: {
+        ...(body as object),
+        display_name: "名稱很長的封測使用者".repeat(8),
+        operator: true,
+      },
     });
-
-    expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
-      130,
-    );
-    expect(
-      header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
-      `標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了：` +
-        `標題 ${Math.round(header.title.top)}–${Math.round(header.title.bottom)}、` +
-        `身分 ${Math.round(header.auth.top)}–${Math.round(header.auth.bottom)}（頁首高 ${header.height}px）`,
-    ).toBe(true);
-    expect(
-      Math.min(...header.navHeights),
-      `手機導覽的最小點按高度只有 ${Math.min(...header.navHeights)}px`,
-    ).toBeGreaterThanOrEqual(40);
   });
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/workspace/skills");
+  await expect(page.locator(".app-nav a").first()).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        let frames = 0;
+        function tick() {
+          frames++;
+          if (frames < 2) requestAnimationFrame(tick);
+          else resolve();
+        }
+        requestAnimationFrame(tick);
+      }),
+  );
+
+  const header = await page.evaluate(() => {
+    const el = document.querySelector(".app-header")!;
+    const box = (node: Element) => {
+      const r = node.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    };
+    return {
+      height: Math.round(el.getBoundingClientRect().height),
+      title: box(el.querySelector(".app-title")!),
+      auth: box(el.querySelector("[data-auth-controls]")!),
+      navWidth: Math.round(el.querySelector(".app-nav")!.getBoundingClientRect().width),
+      viewportWidth: document.documentElement.clientWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      navHeights: Array.from(el.querySelectorAll(".app-nav a"), (link) =>
+        Math.round(link.getBoundingClientRect().height),
+      ),
+    };
+  });
+
+  expect(header.height, `375px 下頁首高 ${header.height}px：它又長回三列了`).toBeLessThanOrEqual(
+    130,
+  );
+  expect(
+    header.title.bottom > header.auth.top && header.auth.bottom > header.title.top,
+    `標題與身分沒有在同一列上——頁首的第一列又被一個 auto 留白推開了：` +
+      `標題 ${Math.round(header.title.top)}–${Math.round(header.title.bottom)}、` +
+      `身分 ${Math.round(header.auth.top)}–${Math.round(header.auth.bottom)}（頁首高 ${header.height}px）`,
+  ).toBe(true);
+  expect(
+    header.navWidth,
+    `長帳號名稱把主要導覽壓到只剩 ${header.navWidth}px`,
+  ).toBeGreaterThanOrEqual(350);
+  expect(header.documentWidth, "長帳號名稱把頁面撐出視窗").toBeLessThanOrEqual(
+    header.viewportWidth,
+  );
+  expect(
+    Math.min(...header.navHeights),
+    `手機導覽的最小點按高度只有 ${Math.min(...header.navHeights)}px`,
+  ).toBeGreaterThanOrEqual(40);
+});
+
+test("手機橫向導覽只在真的溢位時顯示提示", async ({ page }) => {
+  test.slow();
+  await stubPlatform(page);
+
+  for (const width of [375, 383, 391, 400, 503, 640]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/workspace/skills");
+    const nav = page.locator(".app-nav");
+    const cue = nav.locator(":scope > .nav-scroll-cue");
+    const overflows = await nav.evaluate((element) => element.scrollWidth > element.clientWidth);
+    if (overflows) {
+      await expect(cue, `${width}px 有溢位卻沒提示`).toBeVisible();
+      if (width === 375) {
+        await nav.evaluate((element) => {
+          element.scrollLeft = element.scrollWidth;
+          element.dispatchEvent(new Event("scroll"));
+        });
+        await expect(cue, "捲到最右邊後提示沒有消失").toBeHidden();
+      }
+    } else {
+      await expect(cue, `${width}px 沒有溢位卻仍顯示提示`).toBeHidden();
+    }
+  }
+
+  await page.setViewportSize({ width: 375, height: 900 });
+  await page.goto("/admin");
+  const adminNav = page.locator(".category-nav");
+  const adminCue = adminNav.locator(":scope > .nav-scroll-cue");
+  await expect(adminCue).toBeVisible();
+  const edges = await adminNav.evaluate((element) => {
+    const hint = element.querySelector(".nav-scroll-cue")!;
+    return {
+      overflows: element.scrollWidth > element.clientWidth,
+      hintRight: Math.round(hint.getBoundingClientRect().right),
+      navRight: Math.round(element.getBoundingClientRect().right),
+    };
+  });
+  expect(edges.overflows, "後台導覽沒有溢位，提示沒有用途").toBe(true);
+  expect(Math.abs(edges.hintRight - edges.navRight), "後台提示沒有黏在右緣").toBeLessThanOrEqual(2);
 });
 
 test.describe("QA-008 real layout: 桌面版頁首與導覽對齊", () => {
@@ -554,6 +616,46 @@ test.describe("QA-008 the real Tab key", () => {
     expect(seen.length, "Tab reached nothing in the page at all").toBeGreaterThan(2);
     const sorted = [...seen].sort((x, y) => x - y);
     expect(seen, `focus jumped backwards: ${seen.join(" → ")}`).toEqual(sorted);
+  });
+
+  test("mobile header focus follows its visual rows", async ({ page, browserName }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/");
+    await expect(page.locator(".app-nav a").first()).toBeVisible();
+
+    const title = page.locator(".app-title");
+    await title.focus();
+    const tops = [Math.round((await title.boundingBox())!.y)];
+    for (let i = 0; i < 7; i++) {
+      await page.keyboard.press("Tab");
+      const top = await page.evaluate(() => {
+        const active = document.activeElement;
+        if (!(active instanceof HTMLElement) || !active.closest(".app-header")) return null;
+        return active.getBoundingClientRect().top;
+      });
+      if (top === null) break;
+      tops.push(top);
+    }
+
+    const domTops = await page
+      .locator(".app-header a, .app-header button")
+      .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
+    expect(domTops.length, "the header DOM has too few focus stops").toBeGreaterThan(3);
+    expect(domTops, `DOM focus order jumps rows: ${domTops.join(" → ")}`).toEqual(
+      [...domTops].sort((a, b) => a - b),
+    );
+    if (browserName === "webkit") {
+      expect(tops.length, "WebKit did not move focus inside the header at all").toBeGreaterThan(1);
+      return;
+    }
+    expect(
+      tops.length,
+      "the header exposed too few focus stops to prove row order",
+    ).toBeGreaterThan(3);
+    expect(tops, `focus jumped to an earlier visual row: ${tops.join(" → ")}`).toEqual(
+      [...tops].sort((a, b) => a - b),
+    );
   });
 });
 

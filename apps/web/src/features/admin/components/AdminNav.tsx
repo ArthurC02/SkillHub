@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { NavScrollCue } from "../../../shared/ui/NavScrollCue";
 
 export function AdminNav() {
   return (
@@ -33,6 +34,7 @@ export function AdminNav() {
       <Link to="/admin/exposure" search={{}} className="chip">
         曝光審核
       </Link>
+      <NavScrollCue />
     </nav>
   );
 }

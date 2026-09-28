@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { COMPARISON, comparisonSide } from "../../../../testing/fixtures/platform";
 import type { ComparisonSide, RunComparison } from "../../evaluation.service";
 import { CriterionMatrixTable } from "./CriterionMatrixTable";
+import { ComparisonTables } from "./ComparisonTables";
 import { RunStatusTable } from "./RunStatusTable";
 
 const COMPARISON_SIDES = COMPARISON.runs as unknown as ComparisonSide[];
@@ -76,4 +77,22 @@ test("CriterionMatrixTable lists each criterion row with its per-side result", a
 
   expect(text()).toContain("輸出的 CSV 含有 email 欄位");
   expect(text()).toContain("未評估");
+});
+
+test("comparison tables name each scroll region and expose a mobile scroll hint", async () => {
+  const runs = [sideWithoutRerunLink("run-a", true), sideWithoutRerunLink("run-b", false)];
+  await mount(
+    <ComparisonTables
+      data={{ ...(COMPARISON as unknown as RunComparison), runs, version_diff_url: undefined }}
+    />,
+  );
+
+  const regions = Array.from(
+    container.querySelectorAll<HTMLElement>('.table-scroll[role="region"]'),
+  );
+  expect(regions).toHaveLength(2);
+  expect(regions.every((region) => region.getAttribute("aria-label")?.includes("左右捲動"))).toBe(
+    true,
+  );
+  expect(container.querySelectorAll(".table-scroll-hint")).toHaveLength(1);
 });

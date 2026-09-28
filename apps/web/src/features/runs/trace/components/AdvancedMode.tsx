@@ -6,6 +6,20 @@ import type { TraceAdvanced } from "../../trace.service";
 import { IncompleteNotice } from "./IncompleteNotice";
 import { TraceEventRow } from "./TraceEventRow";
 
+function TraceStreamHeader() {
+  return (
+    <thead>
+      <tr>
+        <th scope="col">Attempt</th>
+        <th scope="col">來源</th>
+        <th scope="col">收到</th>
+        <th scope="col">缺號</th>
+        <th scope="col">遲到</th>
+      </tr>
+    </thead>
+  );
+}
+
 export function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
   const { events } = useSearch({ strict: false }) as { events?: string };
   const navigate = useNavigate();
@@ -75,17 +89,16 @@ export function AdvancedMode({ runId, active }: { runId: string; active: boolean
       </nav>
 
       <h3>事件串流</h3>
-      <div className="table-scroll" tabIndex={0}>
+      <p className="note table-scroll-hint">左右捲動查看全部欄位。</p>
+      <div
+        className="table-scroll"
+        role="region"
+        aria-label="Trace 事件串流統計，可左右捲動"
+        tabIndex={0}
+      >
         <table className="compare-table">
-          <thead>
-            <tr>
-              <th scope="col">Attempt</th>
-              <th scope="col">來源</th>
-              <th scope="col">收到</th>
-              <th scope="col">缺號</th>
-              <th scope="col">遲到</th>
-            </tr>
-          </thead>
+          <caption>Trace 事件串流統計</caption>
+          <TraceStreamHeader />
           <tbody>
             {trace.streams.map((stream) => (
               <tr key={`${stream.attempt}-${stream.emitted_by}`}>

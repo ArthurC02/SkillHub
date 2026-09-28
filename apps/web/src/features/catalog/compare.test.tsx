@@ -440,3 +440,14 @@ test("DISC-009 帶不到 2 個 id 到站是正常狀態，不是失敗", async (
     ),
   ).toBe(false);
 });
+
+test("comparison names its horizontal scroll region and shows how to reveal hidden columns", async () => {
+  search = { ids: "skill-a,skill-b" };
+  stubPlatform();
+  await render(<Compare />);
+  await waitFor(() => container.querySelector(".compare-table") !== null);
+
+  const region = container.querySelector<HTMLElement>('.table-scroll[role="region"]');
+  expect(region?.getAttribute("aria-label")).toContain("左右捲動");
+  expect(container.querySelector(".table-scroll-hint")?.textContent).toContain("左右捲動");
+});

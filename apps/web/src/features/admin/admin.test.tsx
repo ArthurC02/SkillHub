@@ -479,7 +479,7 @@ test("OPS-006: the audit log names actions in words and folds the metadata", asy
   expect(has("查詢帳號")()).toBe(true);
   expect(has("點數分錄")()).toBe(true);
   expect(has("credit_entry")()).toBe(false);
-  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
+  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
   const labels = ["時間", "動作", "operator", "對象", "內容"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(
@@ -558,7 +558,7 @@ test("OPS-007: cost statistics show dollars and name a window with no samples", 
   stub(true);
   await mountAt("/admin/cost-statistics");
   await waitFor(has("搜尋理由"));
-  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(0);
+  expect(field<HTMLElement>(".table-scroll").tabIndex).toBe(-1);
   const table = field<HTMLTableElement>("table.responsive-table");
   const labels = ["種類", "統計窗結束", "樣本數", "p50", "p90", "p95", "最大"];
   expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(

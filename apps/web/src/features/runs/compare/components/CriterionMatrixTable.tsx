@@ -12,7 +12,12 @@ export function CriterionMatrixTable({
   if (criterionMatrix.length === 0) return <p>沒有可對照的驗收條件。</p>;
 
   return (
-    <div className="table-scroll" tabIndex={0}>
+    <div
+      className="table-scroll"
+      role="region"
+      aria-label="驗收條件比較表，可左右捲動"
+      tabIndex={0}
+    >
       <table className="compare-table">
         <caption>驗收條件判定矩陣對比</caption>
         <thead>

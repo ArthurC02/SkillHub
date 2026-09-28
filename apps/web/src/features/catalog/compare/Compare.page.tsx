@@ -212,7 +212,13 @@ export function CompareTable({ skills }: { skills: SkillDetail[] }) {
   return (
     <>
       <h2>逐項比較</h2>
-      <div className="table-scroll" tabIndex={0}>
+      <p className="note table-scroll-hint">左右捲動查看全部欄位。</p>
+      <div
+        className="table-scroll"
+        role="region"
+        aria-label="Skill 比較表，可左右捲動"
+        tabIndex={0}
+      >
         <table className="compare-table">
           <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
           <thead>

@@ -17,7 +17,7 @@ export function AdminCostStatistics() {
         (rows.length === 0 ? (
           <p>統計窗：0 個。每日統計跑過之後才會有。</p>
         ) : (
-          <div className="table-scroll" tabIndex={0}>
+          <div className="table-scroll">
             <table className="responsive-table">
               <caption>每一種呼叫最新的統計窗（美元）</caption>
               <thead>

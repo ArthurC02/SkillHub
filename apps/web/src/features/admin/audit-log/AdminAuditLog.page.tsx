@@ -26,7 +26,7 @@ export function AdminAuditLog() {
         (rows.length === 0 ? (
           <p>operator 動作：0 筆。</p>
         ) : (
-          <div className="table-scroll" tabIndex={0}>
+          <div className="table-scroll">
             <table className="responsive-table">
               <caption>operator 動作，新的在上面</caption>
               <thead>

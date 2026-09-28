@@ -39,7 +39,7 @@ export function AnalyticsEventsSection({
 
           <p className="note">{data.note}</p>
 
-          <div className="table-scroll" tabIndex={0}>
+          <div className="table-scroll">
             <table className="compare-table responsive-table" data-role="evidence">
               <caption>
                 全部只有這 {data.events.length} 個事件。要再加一個，得先說明既有的資料表

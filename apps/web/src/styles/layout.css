@@ -59,12 +59,15 @@ main {
   gap: 8px;
 }
 
-/* margin-right on the nav, not margin-left on the last child: AuthControls
-   renders `null` while the session is still unknown, and an `auto` hung off
-   :last-child would then land on the nav itself and shove the whole menu to the
-   far edge for as long as the request is in flight. */
 .app-header > .app-nav {
-  margin-right: auto;
+  margin-left: auto;
+}
+
+.app-header > [data-auth-controls] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .app-nav {
@@ -199,11 +202,13 @@ main {
   .app-header > [data-auth-controls] {
     grid-area: auth;
     justify-self: end;
+    max-width: 60vw;
   }
 
   .app-header > .app-nav {
     grid-area: nav;
-    margin-right: 0;
+    min-width: 0;
+    margin-left: 0;
     flex-wrap: nowrap;
     gap: 4px;
     overflow-x: auto;

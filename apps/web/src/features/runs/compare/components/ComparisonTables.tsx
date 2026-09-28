@@ -11,6 +11,7 @@ export function ComparisonTables({ data }: { data: RunComparison }) {
   return (
     <>
       <h2>任務判定與執行狀態</h2>
+      <p className="note table-scroll-hint">左右捲動查看全部欄位。</p>
       <RunStatusTable sides={sides} />
 
       <h2>逐條驗收條件</h2>

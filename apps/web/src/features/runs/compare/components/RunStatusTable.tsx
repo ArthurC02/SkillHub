@@ -4,23 +4,34 @@ import { verdictCell } from "./ComparisonLead.model";
 import { RerunCell } from "./RerunCell";
 import { SIDE_LABEL, costNote, credits } from "./ComparisonTables.model";
 
+function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {
+  return (
+    <thead>
+      <tr>
+        <th scope="col">項目</th>
+        {sides.map((side, index) => (
+          <th key={side.run_id} scope="col">
+            {SIDE_LABEL[index]}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
 export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
   const sharedCostNote = costNote(sides[0]) === costNote(sides[1]) ? costNote(sides[0]) : null;
 
   return (
-    <div className="table-scroll" tabIndex={0}>
+    <div
+      className="table-scroll"
+      role="region"
+      aria-label="Run 狀態比較表，可左右捲動"
+      tabIndex={0}
+    >
       <table className="compare-table">
         <caption>Run 任務判定與執行狀態對比</caption>
-        <thead>
-          <tr>
-            <th scope="col">項目</th>
-            {sides.map((s, i) => (
-              <th key={s.run_id} scope="col">
-                {SIDE_LABEL[i]}
-              </th>
-            ))}
-          </tr>
-        </thead>
+        <RunStatusHeader sides={sides} />
         <tbody>
           <tr>
             <th scope="row">任務判定</th>

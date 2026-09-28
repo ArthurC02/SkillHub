@@ -211,6 +211,11 @@ test("the advanced mode names the missing sequence numbers and renders payloads 
   const text = container.textContent ?? "";
   expect(text).toContain("遲到");
   expect(container.querySelector("table")?.textContent).toContain("2");
+  expect(container.querySelector("table caption")?.textContent).toBe("Trace 事件串流統計");
+  expect(container.querySelector(".table-scroll-hint")?.textContent).toContain("左右捲動");
+  expect(
+    container.querySelector('.table-scroll[role="region"]')?.getAttribute("aria-label"),
+  ).toContain("左右捲動");
 
   expect(container.querySelector("img")).toBeNull();
   expect(container.querySelector("pre")?.textContent).toContain("<img src=x onerror=alert(1)>");

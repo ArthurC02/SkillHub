@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { SignInAction } from "../../shared/ui/SignIn";
 import { useMe, useSignOut } from "../../core/session/me.service";
+import "./AuthControls.css";
 
 export function AuthControls() {
   const me = useMe();
@@ -18,12 +19,8 @@ export function AuthControls() {
 
   return (
     <div data-auth-controls>
-      {me.data.display_name}{" "}
-      {me.data.operator && (
-        <>
-          <Link to="/admin">後台</Link>{" "}
-        </>
-      )}
+      <span className="auth-name">{me.data.display_name}</span>
+      {me.data.operator && <Link to="/admin">後台</Link>}
       <button type="button" disabled={signOut.isPending} onClick={() => signOut.mutate()}>
         登出
       </button>

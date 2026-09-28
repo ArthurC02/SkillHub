@@ -59,6 +59,8 @@ interface StubSessionOptions {
   referenceSearch?: { query: string; result: unknown; ownSkills?: unknown };
   generateError?: { status: number; error: string };
   historyError?: { status: number; error: string };
+  referenceSearchError?: { status: number; error: string };
+  ownSkillsError?: { status: number; error: string };
 }
 
 function postResult(path: string, options: StubSessionOptions): Response {
@@ -77,8 +79,22 @@ function postResult(path: string, options: StubSessionOptions): Response {
   return new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 });
 }
 
+function referenceSearchResult(url: URL, options: StubSessionOptions): Response {
+  const { referenceSearch, referenceSearchError } = options;
+  const query = url.searchParams.get("q") ?? "";
+  if (referenceSearchError && query === referenceSearch?.query) {
+    return new Response(JSON.stringify({ error: referenceSearchError.error }), {
+      status: referenceSearchError.status,
+    });
+  }
+  if (referenceSearch && query === referenceSearch.query) {
+    return new Response(JSON.stringify(referenceSearch.result), { status: 200 });
+  }
+  return new Response(JSON.stringify(NO_RESULTS), { status: 200 });
+}
+
 function stubSession(options: StubSessionOptions = {}) {
-  const { features, failures, referenceSearch, historyError } = options;
+  const { features, failures, referenceSearch, historyError, ownSkillsError } = options;
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
@@ -109,13 +125,14 @@ function stubSession(options: StubSessionOptions = {}) {
     }
     if (path.startsWith("/api/skills/search")) {
       searchGets.push(path + url.search);
-      const q = url.searchParams.get("q") ?? "";
-      if (referenceSearch && q === referenceSearch.query) {
-        return Promise.resolve(
-          new Response(JSON.stringify(referenceSearch.result), { status: 200 }),
-        );
-      }
-      return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));
+      return Promise.resolve(referenceSearchResult(url, options));
+    }
+    if (path === "/skills" && ownSkillsError) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: ownSkillsError.error }), {
+          status: ownSkillsError.status,
+        }),
+      );
     }
     if (path === "/skills" && referenceSearch?.ownSkills) {
       return Promise.resolve(
@@ -436,6 +453,11 @@ test("GEN-005: a diagram file with no text enables submit and posts the diagram,
   const file = new File([new Uint8Array([137, 80, 78, 71])], "flow.png", { type: "image/png" });
   await act(async () => {
     Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+    Object.defineProperty(fileInput, "value", {
+      value: "C:\\fakepath\\flow.png",
+      writable: true,
+      configurable: true,
+    });
     fileInput.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await waitFor(() => (container.textContent ?? "").includes("flow.png"));
@@ -677,15 +699,109 @@ test("GEN-005: a FileReader error is shown as an alert and nothing is posted whi
   )!;
   expect(submitBtn.disabled).toBe(true);
   expect(fileInput.disabled).toBe(true);
+  expect(container.querySelector('[role="status"]')?.textContent).toContain("正在讀取流程圖");
+  expect(submitBtn.getAttribute("aria-describedby")).toBe("generate-diagram-reading");
 
   await act(async () => {
     readers.at(-1)!.onerror?.();
   });
 
   expect(fileInput.disabled).toBe(false);
+  expect(fileInput.value).toBe("");
   const alert = container.querySelector('[role="alert"]');
   expect(alert?.textContent).toContain("讀取圖片失敗，請重新選擇。");
   expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
+});
+
+test("GEN-005: replacing a diagram clears the old diagram before the new file finishes reading", async () => {
+  stubSession({ features: { generate_skill: true } });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const readers: FakeFileReader[] = [];
+  class FakeFileReader {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    result: string | ArrayBuffer | null = null;
+    readAsDataURL() {
+      readers.push(this);
+    }
+  }
+  vi.stubGlobal("FileReader", FakeFileReader as unknown as typeof FileReader);
+
+  const fileInput = container.querySelector<HTMLInputElement>("#generate-diagram-file")!;
+  const oldFile = new File([new Uint8Array([137, 80, 78, 71])], "old.png", {
+    type: "image/png",
+  });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [oldFile], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    readers[0].result = "data:image/png;base64,iVBORw==";
+    readers[0].onload?.();
+  });
+  expect(container.textContent).toContain("old.png");
+
+  const replacement = new File([new Uint8Array([137, 80, 78, 71])], "replacement.png", {
+    type: "image/png",
+  });
+  await act(async () => {
+    Object.defineProperty(fileInput, "files", { value: [replacement], configurable: true });
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  expect(container.textContent).not.toContain("old.png");
+  await act(async () => {
+    readers[1].onerror?.();
+  });
+  expect(container.textContent).not.toContain("old.png");
+});
+
+test("GEN-006: an empty reference search is stated instead of rendering unexplained blank lists", async () => {
+  stubSession({
+    features: { generate_skill: true },
+    referenceSearch: {
+      query: "沒有這個項目",
+      result: { ...NO_RESULTS, query: "沒有這個項目" },
+      ownSkills: { skills: [], total: 0, limit: 100, truncated: false },
+    },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const input = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(input, "沒有這個項目");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("目錄裡沒有符合的 Skill"));
+
+  expect(container.textContent).toContain("你的 Skill 裡沒有符合項目");
+});
+
+test("GEN-006: reference search and owned-skill failures are not presented as empty results", async () => {
+  stubSession({
+    features: { generate_skill: true },
+    referenceSearch: { query: "分析報表", result: NO_RESULTS },
+    referenceSearchError: { status: 503, error: "search backend unavailable" },
+    ownSkillsError: { status: 503, error: "workspace backend unavailable" },
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const input = container.querySelector<HTMLInputElement>("#generate-reference-query")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(input, "分析報表");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取參考 Skill 的搜尋結果"));
+
+  expect(container.textContent).toContain("暫時無法讀取你的 Skill");
+  expect(container.textContent).not.toContain("search backend unavailable");
+  expect(container.textContent).not.toContain("workspace backend unavailable");
 });
 
 test("GEN-005: removing a diagram then re-selecting the same file shows it again", async () => {

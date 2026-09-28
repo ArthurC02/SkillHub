@@ -498,6 +498,10 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   margin: 12px 0;
 }
 
+.table-scroll-hint {
+  display: none;
+}
+
 .compare-table {
   width: 100%;
   min-width: 480px;
@@ -660,6 +664,12 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
   flex-wrap: wrap;
   gap: 8px;
   margin: 12px 0;
+}
+
+@media (max-width: 503px) {
+  .table-scroll-hint {
+    display: block;
+  }
 }
 
 @media (max-width: 640px) {
