@@ -1,0 +1,21 @@
+.admin-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.admin-home-grid .download-item {
+  min-height: 120px;
+}
+
+.admin-home-grid a {
+  color: var(--text-h);
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.admin-home-grid a:hover {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

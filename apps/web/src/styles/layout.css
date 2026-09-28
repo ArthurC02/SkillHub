@@ -10,6 +10,10 @@ main,
   box-sizing: border-box;
 }
 
+main {
+  flex: 1 0 auto;
+}
+
 /* 頁尾那一列是**純連結**（「資料保存政策 ｜ 帳號與刪除」），不是夾在句子裡的連結，
    所以 1.4.1 的「不得只靠顏色」在這裡沒有可混淆的對象：整行就只有連結。底線改成
    hover 才出現，那一列因此從「兩條紫色底線」變回一列文字。 */
@@ -25,6 +29,9 @@ main,
    thing that is on every route, so it is also where the ground/surface split is
    readable at a glance — which is what replaced #root's two hairlines. */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -36,6 +43,7 @@ main,
   padding: 16px max(24px, calc((100% - var(--measure)) / 2 + 24px));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-rest);
   text-align: left;
 }
 
@@ -80,8 +88,16 @@ main,
    **當前頁仍然有三個訊號**（NFR-007 不以顏色單獨承載意義）：`--text-h` 的顏色、
    2px 底線、以及 router 自己加的 `aria-current="page"`。這次只動了非當前頁那一半。 */
 .app-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
   color: var(--text);
   text-decoration: none;
+  border-radius: 999px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 /* TanStack Router puts data-status="active" and aria-current="page" on the
@@ -93,13 +109,16 @@ main,
    home link — which is the .app-title — would otherwise wear the active
    underline permanently. It is not in the nav, so nothing needs activeOptions. */
 .app-nav a[data-status="active"] {
-  color: var(--text-h);
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 5px;
+  color: var(--link);
+  background: var(--accent-bg);
+  font-weight: 600;
 }
 
 .app-title {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: 20px;
   color: var(--text-h);
   text-decoration: none;
   font-weight: 700;
@@ -186,6 +205,11 @@ main,
     grid-area: nav;
     margin-right: 0;
     gap: 4px 12px;
+  }
+
+  .app-nav a {
+    min-height: 0;
+    padding: 0 8px;
   }
 }
 

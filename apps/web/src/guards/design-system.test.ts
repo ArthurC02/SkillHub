@@ -608,10 +608,9 @@ test("§NFR-007: the nav says which item is current with more than one channel",
 
   const active = rules.find((r) => r.includes('.app-nav a[data-status="active"]'));
   expect(active, "找不到當前頁那條規則").toBeTruthy();
-  expect(active, "當前頁沒有換色——與非當前頁只差一條底線").toContain("color: var(--text-h)");
-  expect(active, "當前頁沒有底線——顏色單獨承載了意義（NFR-007）").toContain(
-    "text-decoration: underline",
-  );
+  expect(active, "當前頁沒有換成互動色").toContain("color: var(--link)");
+  expect(active, "當前頁沒有選中底色").toContain("background: var(--accent-bg)");
+  expect(active, "當前頁沒有用字重提供第三個選中訊號").toContain("font-weight: 600");
 
   const activeChip = rules.find((r) => r.includes('.chip[aria-current="page"]'));
   expect(activeChip, "Router Link 的 chip 沒有匹配 aria-current=page").toBeTruthy();

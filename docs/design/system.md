@@ -363,10 +363,10 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 | 表面 | 樣式 | 什麼時候用 | 不要用在 |
 | --- | --- | --- | --- |
-| **卡片** | `border: 1px solid var(--border)` ＋ `border-radius: 8px` ＋ `padding: 10px 12px` ＋ **`background: var(--surface)`**（§4.6.2：卡片是「面」，頁是「地」） | 見下方判準 | 導覽清單。整份確認裡的條目（判斷單位是整份摘要，不是它的一行） |
-| **notice** | `border-left: 3px solid var(--accent)` ＋ `background: var(--accent-bg)` ＋ `padding: 8px 12px`；**阻斷版 `.notice-danger`** 換 `--danger`／`--danger-bg`，`[role="alert"]` 的區塊同款 | **平台對這一頁講的一個持續狀態**：降級、部分索引、未評估、已被取代；**不能打包的理由、授權審查中功能關閉、無法套用建議**三處是阻斷版 | 使用者自己動作的**當下結果**（那是 `role="status"` 的一句話）；**內含按鈕的確認對話**；單純的補充說明（那是 `.note`）。不是「非阻斷」的同義詞 |
+| **卡片** | `border: 1px solid var(--border)` ＋ `border-radius: 12px` ＋ `padding: 16px` ＋ **`background: var(--surface)`** ＋ `--shadow-rest`（§4.6.2：卡片是「面」，頁是「地」） | 見下方判準 | 導覽清單。整份確認裡的條目（判斷單位是整份摘要，不是它的一行） |
+| **notice** | `1px solid var(--accent-border)` ＋ `border-left: 3px solid var(--accent)` ＋ `border-radius: 12px` ＋ `background: var(--accent-bg)` ＋ `padding: 8px 12px`；**阻斷版 `.notice-danger`** 換 `--danger`／`--danger-bg`，`[role="alert"]` 的區塊同款 | **平台對這一頁講的一個持續狀態**：降級、部分索引、未評估、已被取代；**不能打包的理由、授權審查中功能關閉、無法套用建議**三處是阻斷版 | 使用者自己動作的**當下結果**（那是 `role="status"` 的一句話）；**內含按鈕的確認對話**；單純的補充說明（那是 `.note`）。不是「非阻斷」的同義詞 |
 | **裸區塊** | 無 | 敘述文字、說明段落 | — |
-| **右欄**（`aside.detail-rail`） | 與卡片**同一份配方**（`--surface`、`1px solid var(--border)`、`8px`、padding 12px）＋ ≥1024 `sticky` | **一頁的操作與各自的理由**：試跑、以此為起點、檔案樹、上傳新版本。判定不進去（§2.10 的東西留在主欄），主要動作也不進去 | 任何不是操作的東西；第二種卡片樣式（它不是第五種樣式，是卡片配方的另一個用法） |
+| **右欄**（`aside.detail-rail`） | 與卡片同一個面、邊與靜止陰影；操作密度較低，所以用 `16px` 圓角與 `20px` padding；≥1024 `sticky` | **一頁的操作與各自的理由**：試跑、以此為起點、檔案樹、上傳新版本。判定不進去（§2.10 的東西留在主欄），主要動作也不進去 | 任何不是操作的東西；第二種卡片樣式（它不是第五種樣式，是卡片配方的另一個用法） |
 | **chip**（`a.chip`） | 次要按鈕的盒（描邊、藥丸）；選中＝凹面＋字重 | **導覽用的分類列**：它是控制項 | 任何主張（那是 badge）；填色（那是 `.action`） |
 | **對話訊息**（`.creation-log > li`；**具名例外**：聊天介面版型，負責人明示） | `--surface` 無框的泡泡，圓角 16px、貼著說話者那一角收成 4px。**誰在說話由位置說**：Agent 靠左並掛一顆 36px 的圓形頭像（`--accent`→`--cta` 漸層，`aria-hidden`），頭像與泡泡間隔 12px；**你說的話填 `--cta`、字 `--on-cta` 並靠右**（本表唯一一個不是動作卻填色的東西——填的是「這是你」，不是「按這裡」）；`工具結果` 置中成一塊 `--surface-active` 的系統訊息。三個名字只留給螢幕閱讀器。**Agent 遞給你的東西**（回合時間線、需求摘要、流程圖理解、連網確認、參考 Skill、相近 Skill、草稿）是它那一側的卡片：無框 `--surface`、圓角 16px、與泡泡同一條左緣；頭一列是標題＋狀態標籤（描邊藥丸，已確認換 `--accent-bg`），尾一列是等寬的按鈕列，**卡片的確認鍵是 `--accent-bg` 的淡填色**，保存仍是這一頁唯一的 `.action`。卡片排在對話之後、`role="log"` 之外（草稿全文不會被當成新訊息念出來） | **互動創作**（見[互動創作](../adr/README.md#互動創作)）**的多輪對話**，`features/creation/create/components/CreationSession.tsx` 一處 | 任何不是對話的清單 |
 | **輸入區**（`.composer`，同上例外） | `--surface` ＋ `1px solid var(--border)`、圓角 24px、`padding: 12px 16px`，坐在地上；文字框沒有自己的框。附加動作（＋ 流程圖、＋ 參考 Skill）是 `--code-bg` 的藥丸；**送出鍵是填 `--cta` 的藥丸**，還沒有東西可送（只有空白、也沒有附件）或停用時退成 `--surface-active` 的灰。預算檔位在輸入區上方排成一列可橫捲的藥丸（原生 radio，選中換 `--accent-bg`），**沒有預設值** | **同一段對話裡的所有素材入口**：文字、流程圖、參考 Skill。曾經它們是三個 radio 切換的互斥欄位，負責人的原話是「不應該是拆開來多個 UI 項目」 | 一般表單（那是 `.field`）。送出鍵不是 `.action`（見 §4.6.3 表的 `/workspace/creations` 列） |
@@ -464,13 +464,13 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 〔**色相重調時全部改值、一個都沒有改名**：`--accent`（`#aa3bff`→`#6d4aeb`／`#c084fc`→`#a78bfa`）、`--accent-bg`、`--accent-border`、`--danger`（`#b91c1c`→`#b42318`／`#f87171`→`#f97066`）、`--link`（`#9b2ae6`→`#5b3bc4`／`#c084fc`→`#b3a0ff`）、`--text`（`#6b6375`→`#565f6e`／`#9ca3af`→`#9aa4b4`）、`--text-h`（`#08060d`→`#101623`／`#f3f4f6`→`#f1f3f7`）。〕
 
-> **色相重調：改的是色相，不是結構。** 三層平面、填色屬動作、描邊屬主張、一頁一個主要動作、不用陰影、不用漸層——[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的每一條規則都一個字沒動。改的是①三階灰從**朝 `--accent` 染色的藕紫**改成**近中性的冷灰**，②accent 從螢光洋紅 `#aa3bff` 改成深紫 `#6d4aeb`，`--link` 從 `#9b2ae6` 改成更沉的 `#5b3bc4`。<br>**這件事沒有任何規則擋**，而那正是它拖到第六輪外部審查才發生的原因：`contrast.test.ts` 量的是達不達標、不是釘住色相；`design-system.test.ts` 解析的是字級與間距；§2.7 禁的是散落的色彩字面值、不是改 token 的值。唯一的成本是**每一對都要重算**，兩個主題各一份，全部先算過才落地，結果由 `contrast.test.ts` 驗證。<br>**亮色最緊的一對從 `--link` 在 active 上 4.62 變成 `--text` 在 active 上 5.25——地板升高了，同時色相變安靜。** `--link` 與 `--accent` 分成兩個值的**理由也跟著換了**：舊理由是「accent 4.39:1 在 `--bg` 上不到 AA，所以不能當連結文字」，而新的 accent 是 5.12:1、過得了 AA；今天分兩個值是因為**兩份工作要的彩度不同**（focus ring 與 notice 邊是一眼掃過的，連結文字是讀幾分鐘的），這一句逐字寫在 `styles/tokens.css` 的 token 註解裡。
+> **色相重調：改的是色相，不是語意結構。** 三層平面、填色屬動作、描邊屬主張、一頁一個主要動作都保留。改的是①三階灰從**朝 `--accent` 染色的藕紫**改成**近中性的冷灰**，②accent 從螢光洋紅 `#aa3bff` 改成深紫 `#6d4aeb`，`--link` 從 `#9b2ae6` 改成更沉的 `#5b3bc4`。<br>**這件事沒有任何規則擋**，而那正是它拖到第六輪外部審查才發生的原因：`contrast.test.ts` 量的是達不達標、不是釘住色相；`design-system.test.ts` 解析的是字級與間距；§2.7 禁的是散落的色彩字面值、不是改 token 的值。唯一的成本是**每一對都要重算**，兩個主題各一份，全部先算過才落地，結果由 `contrast.test.ts` 驗證。<br>**亮色最緊的一對從 `--link` 在 active 上 4.62 變成 `--text` 在 active 上 5.25——地板升高了，同時色相變安靜。** `--link` 與 `--accent` 分成兩個值的**理由也跟著換了**：舊理由是「accent 4.39:1 在 `--bg` 上不到 AA，所以不能當連結文字」，而新的 accent 是 5.12:1、過得了 AA；今天分兩個值是因為**兩份工作要的彩度不同**（focus ring 與 notice 邊是一眼掃過的，連結文字是讀幾分鐘的），這一句逐字寫在 `styles/tokens.css` 的 token 註解裡。
 
 > **三層平面在亮色模式下曾經量不出來。** 同一份外部審查在色相修好之後仍然讀到「純白畫布上的白色線框」。查證的結果是**結構在、幅度不在**：亮色的地與面差 **1.07:1**，卡片邊 `--border` 對面只有 **1.27:1**——兩個通道都存在，兩個都低於看得見的門檻，所以那句描述在色碼上不成立、在眼睛裡成立。地走到 **1.13:1**（`#f6f7f9`→`#eef1f6`），`--border` 走到 **1.46:1**（`#e1e4ea`→`#d0d6e0`）。**暗色量出來有同一個毛病**：地與面只差 **1.085:1**，而那不是誰用眼睛看出來的，是新加的棘輪測試自己抓到的——地走到 `#0a0c10`（**1.12:1**），`--border` 走到 1.50:1（`#2b303a`→`#333945`），兩個主題等強。<br>**`--border` 不在 `PAIRS` 裡是刻意的**：卡片的邊不承載資訊（NFR-007 把那件事留給文字），它要的是看得見不是 3:1；承載資訊的那條邊是 `--border-strong`，一個像素都沒動。地在 `PAIRS` 裡，25 對重算過，`--text` 在地上 5.69、`--link` 6.47、`--accent` 4.84，最緊的一對仍是 `--text` 在 active 上的 5.25，沒有被這次挪動碰到。
 
-#### 4.6.2 深度：三層表面，不用陰影
+#### 4.6.2 深度：三層表面，陰影只標記獨立物件
 
-地／面／凹。亮色模式面比地白，暗色模式面比地亮——與 Material 3 的 `surface-container-*` 同向，而且是**深色模式唯一成立的做法**（陰影在深底上會消失）。陰影只給「真的浮在別的東西上面」的物件，**本 app 今天一個都沒有**，所以沒有陰影 token；第一個浮起物出現時再加兩個（key ＋ ambient），alpha 只能住在 token 裡。〔例外：`/workspace/skills` 的卡片（§4.3「Skill 卡片」）用 `--shadow-rest`／`--shadow-lift` 兩個 token，alpha 住在 token 裡、暗色模式換更深的黑；hover 時卡片上移 4px，那一刻它真的浮在地上。〕`#root` 的兩條直線隨之退場——地與面的色差就是框。`.app-header` 是面。
+地／面／凹。亮色模式面比地白，暗色模式面比地亮——與 Material 的 surface container 同向。`--shadow-rest` 是卡片、資料表面與 sticky 頁首的靜止陰影，只用來分開獨立物件和頁面底；深色模式同一 token 換成更深的黑，不能單靠陰影分層，邊與表面色差仍然保留。`--shadow-lift` 只給真的會抬起的 `/workspace/skills` 卡片，hover 時上移 4px。兩個陰影的 alpha 只住在 token 裡。
 
 #### 4.6.3 主張用描邊，動作用填色；一頁一個主要動作
 
@@ -514,7 +514,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 - **不引入 webfont**：外部請求要進同意書的第三方清單、字型載入會跳版、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)否決的是依賴面。槓桿是**字重**：`h1`／`h2` 600、`.app-title` 700（今天全部 500／600），GOV.UK 與 USWDS 的視覺品質就是這樣來的。
 - favicon 以 inline SVG data URI 寫在 `index.html`（不開 `public/`）；`.app-title` 前一個 `--accent` 方塊記號（`::before`，全 app 第一個 pseudo-element）。<br>今天全域樣式表（`styles/`）有**三個** pseudo-element 站點：`.app-title::before`（方塊記號）、`summary::before`（展開記號，展開時 `rotate(90deg)`）、`details[open] > summary::before`。**pseudo-element 是被配給的，不是自由的**：外部審查提議過在每一顆次要按鈕後面加一個 `›`，那會是第四個站點，而且會讓同一個字形在這個 app 裡同時表示「這裡可以展開」與「這裡會換頁」。不採用。
-- **不做**：漸層〔例外兩處，都記在 §4.3：互動創作頁的 Agent 頭像、`/workspace/skills` 的字首方塊與游標光〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、圖示集〔已由[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
+- **不做**：裝飾性滿版漸層〔例外：互動創作頁的 Agent 頭像、`/workspace/skills` 的字首方塊與游標光〕、主題切換按鈕（`prefers-color-scheme` 就是偏好；IA R4）、圖示集〔已由[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)回答：允許至多六個形狀的 inline SVG、一列一個、永遠伴隨文字，規則在 §4.7；「不做圖示**集**」仍成立〕、成功綠、任何「Verified」填色、視覺回歸截圖基準線（§6 已證偽兩次）。
 
 #### 4.6.7 視覺層的修改不需要任何放行
 
@@ -540,6 +540,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 負責人：「將 https://freefrontend.com/javascript-code-examples/ 列在 Repo 的文件中，之後前端開發都應該參考這些範例來實現（仍是維持不安裝額外套件）」。
 
 - **範例庫**：<https://freefrontend.com/javascript-code-examples/>（分類頁如 `javascript-cards/`、`javascript-menus/`）。要做新的互動或視覺效果（卡片、選單、導覽、轉場、游標光）之前，先在這裡找同類範例。
+- **設計系統參考**：Bootstrap 的 component-local CSS variables 與狀態配方、Material UI 的 theme／typography／三階按鈕、Primer Primitives 的語意 token 與亮暗模式、Radix Themes 的 accent／gray／radius／scaling 組合。實作前讀官方文件與原始碼；它們是取法來源，不是依賴清單，套件與 CDN 都不進產品。
 - **讀原始碼，不是讀簡介**：列表頁只有縮圖與一段描述，每一則的來源是一支 CodePen（列表頁 `data-stash-source` 屬性）。CSS 取 `https://codepen.io/<user>/pen/<id>.scss`（`.css` 會被擋），JS 取同一路徑的 `.js`，HTML 取 `https://cdpn.io/<user>/debug/<id>`。CodePen 對密集請求會回 403 或人機驗證：一次抓少量、間隔數秒；抓不到的只能看縮圖，回報時要說清楚哪些讀了原始碼、哪些只看了縮圖。
 - **不裝套件**：範例常用 GSAP、Swiper、Three.js、Tailwind、open-props，或從 esm.sh／unpkg 匯入；**這些一個都不進 `package.json`，也不從 CDN 載入**。只取技法，用原生 CSS（漸層、`color-mix()`、`@starting-style`、`transform`、`mask`）與幾行 TypeScript 重寫（例：`shared/ui/spotlight.ts` 的游標座標）；重寫不了的效果就不做。
 - **一個有名字的例外：圖表**（負責人明示，但要注意授權問題）。`chart.js` 進 `package.json`，只用在營運後台；選型與逐層授權查詢見[營運後台](../adr/README.md#營運後台)。它不打開這一條的其他部分，視覺效果仍然不裝套件。圖表本身照樣服從本文件：顏色只從 token 讀、一個色相、不動畫、每張圖旁有同一組數字的表。
@@ -558,14 +559,13 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 
 這條直接裁掉了兩個懸而未決的案子：`6px` 有八個 call site（過第一關），但 `8px` 蓋得住（第二關不過）→ **收掉**；`2px` 只有三處視覺微調且無推導 → **收掉**。
 
-### 5.2 現存偏離（2 條，均為保留）
+### 5.2 現存偏離（1 條，保留）
 
 | 值 | 出現在 | 判定 |
 | --- | --- | --- |
-| **5px** | `button/select/textarea/input` 的 `padding: 5px 10px` | **保留，有推導**：`20px` line-height ＋ 上下 5px ＋ 上下各 1px 邊框 = `min-height: 32px`（WCAG 2.2 2.5.8 的 24px 下限之上）。不是隨手挑的值 |
-| **10px** | 同上的水平 padding，以及卡片的 `padding: 10px 12px` | **保留，單一來源**：一組值服務四個卡片族，改它就是改全部卡片 |
+| **5px** | `.chip` 的垂直 padding | **保留，有推導**：`20px` line-height ＋ 上下 5px ＋ 上下各 1px 邊框 = `min-height: 32px`（WCAG 2.2 2.5.8 的 24px 下限之上）。不是隨手挑的值 |
 
-已收：`13px`（`.badge` → meta 14px）、`12px 非等寬`（`.filter-unavailable .note`，規則整條移除）、`2px`（三處）、`6px`（八處）。**五條縮到兩條。**
+已收：`13px`（`.badge` → meta 14px）、`12px 非等寬`（`.filter-unavailable .note`，規則整條移除）、`10px`（控制項與卡片回到 4px 網格）、`2px`（三處）、`6px`（八處）。偏離只剩一條。
 
 ### 5.3 開放缺口（不是偏離）
 

@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { AdminPage } from "../components/AdminPage";
+import "./AdminHome.page.css";
 
 export function AdminHome() {
   return (
     <AdminPage heading="營運後台">
-      <ul className="download-list">
+      <ul className="download-list admin-home-grid">
         <li className="download-item">
           <p>
             <Link to="/admin/accounts">

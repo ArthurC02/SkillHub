@@ -52,9 +52,9 @@ code,
   color: var(--on-cta);
   background: var(--cta);
   border: 1px solid var(--cta);
-  border-radius: 6px;
-  padding: 5px 10px;
-  min-height: 32px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  min-height: 40px;
   box-sizing: border-box;
   text-decoration: none;
   transition:
@@ -247,7 +247,7 @@ code,
 }
 
 .search-results {
-  gap: 12px;
+  gap: 16px;
 }
 
 /* QA-009 removed an `opacity: 0.65` here, which multiplied with the 0.8 on
@@ -338,7 +338,8 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 .table-scroll {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-rest);
 }
 
 /* A character counter under its own control. `align-self` rather than
@@ -378,8 +379,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 .search-result {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-rest);
   transition:
     background-color var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease),
@@ -411,7 +413,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 }
 
 .notice {
+  border: 1px solid var(--accent-border);
   border-left: 3px solid var(--accent);
+  border-radius: 12px;
   background: var(--accent-bg);
   padding: 8px 12px;
   margin: 8px 0;
@@ -443,7 +447,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
        lines above and below it instead of growing the row. Those three keep the
        words only; giving them the box is a layout change, and 第一階段不動版面. */
 [role="alert"]:not(.notice, .notice *, span) {
+  border: 1px solid var(--danger);
   border-left: 3px solid var(--danger);
+  border-radius: 12px;
   background: var(--danger-bg);
   padding: 8px 12px;
 }
@@ -529,8 +535,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 .suggestion {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-rest);
   transition:
     background-color var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease),
@@ -599,8 +606,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
 .download-item {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-rest);
   transition:
     background-color var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease),
@@ -752,12 +760,6 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
    文字是兩行、四行、兩行，格軌等高之後如果內容也照樣頂著上緣長，三顆按鈕就停在
    三個高度上。把上緣留白設成 `auto` 是 flex 對這件事的既有寫法，不必新增任何 class：
    每一張卡的動作本來就是它的最後一個 `<p>`。 */
-/* ── 2026-09-08：卡片的內部留白第一次是設計出來的 ─────────────────────────────
-   在這之前 `.download-item` 給的是 `padding: 10px 12px`，而畫面上看到的那一圈寬留白
-   **不是它**——是 `h3` 的瀏覽器預設 `margin`。也就是說這三張卡的內部節奏一直由 UA
-   樣式表決定：標題上緣一個 em、下緣一個 em、段落各自再一份，於是同一張卡裡有三種
-   不同的間距，而沒有一種是這份設計選的。那正是「像未經排版的文件」最直接的來源。
-   卡自己出 20px 的內距，標題與段落的預設 margin 歸零，剩下的間距由 `gap` 一個值管。 */
 .create-cards > li {
   display: flex;
   flex-direction: column;
@@ -908,8 +910,9 @@ main :is(h1, h2, h3) + :is(p, ul, ol, dl, table, .note) {
     flex-direction: column;
     overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--surface);
+    box-shadow: var(--shadow-rest);
   }
 
   .responsive-table tbody :is(th, td) {

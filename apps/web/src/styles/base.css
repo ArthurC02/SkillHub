@@ -25,6 +25,7 @@
 
 body {
   margin: 0;
+  background: var(--bg);
 }
 
 h1,
@@ -60,6 +61,7 @@ h2 {
 h1 {
   font-weight: 600;
   font-size: 40px;
+  line-height: 118%;
   letter-spacing: -1.2px;
   margin: 32px 0;
   @media (max-width: 1024px) {
@@ -163,7 +165,7 @@ input:not([type="checkbox"], [type="radio"]) {
      one border in this file that IS information — it says "you can type here" —
      so it takes --border-strong and WCAG 1.4.11's 3:1 (see the token). */
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   /* ── 2026-09-08：控制項從 32px 走到 40px，而這是第一次真的看畫面之後改的 ──────
      32px＋`5px 10px` 是「比瀏覽器預設好，但仍然是最小可用」的尺寸，它 2026-08 落地
      時解決的問題是「按鈕看起來像壞掉的 chrome」。截圖來看，它現在製造的問題是**按鈕

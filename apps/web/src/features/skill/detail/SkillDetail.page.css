@@ -6,24 +6,21 @@
   min-width: 0;
 }
 
-/* A surface holding controls, and the recipe is `.filter-bar`'s exactly:
-   `--surface` on a 1px `--border`, 8px radius, 12px padding. §4.3 是
-   「不發明第五種卡片樣式」 and this invents none — `.filter-bar` is the app's
-   existing panel-that-holds-controls, and this is a second one. */
 .detail-rail {
   display: grid;
   gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-rest);
 }
 
 @media (min-width: 1024px) {
   .detail-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 24px;
+    gap: 32px;
     align-items: start;
   }
 
@@ -36,7 +33,7 @@
      grid item is as tall as its row and never has anywhere to stick to. */
   .detail-rail {
     position: sticky;
-    top: 16px;
+    top: 88px;
   }
 
   /* r2 §5.2 B1: the four verdicts (風險／可散布性／相容性／License) as 2×2
@@ -51,6 +48,11 @@
 
   .verdict-grid > section {
     min-width: 0;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-rest);
   }
 
   /* `h2` carries `24px 0 8px`, so the top margin of a cell's first heading is
@@ -62,9 +64,16 @@
   }
 }
 
-/* The header block: name, summary, tier and category. No box — §4.3's card
-   criterion is 「自己的控制項或連結，或自己的巢狀子清單」 and a page's own
-   headline has neither; it is the page. */
 .detail-answer {
-  margin-bottom: 16px;
+  margin: 24px 0;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--accent-border);
+  border-top: 3px solid var(--accent);
+  border-radius: 16px;
+  box-shadow: var(--shadow-rest);
+}
+
+.detail-answer h1 {
+  margin-top: 0;
 }
