@@ -14,6 +14,8 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { test } from "node:test";
 import { crc32, deflateRawSync } from "node:zlib";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   agentOptions,
   declaredSkillRoot,
@@ -972,4 +974,543 @@ test("the declared directory is read as a relative path inside the package and n
   for (const rejected of ["/etc", "..", "../x", "a/../../b", ".", "./", "a" + String.fromCharCode(92) + "b"]) {
     assert.equal(declaredSkillRoot(rejected), null, rejected);
   }
+});
+
+function withEocdField(zip, offset, write) {
+  const copy = Buffer.from(zip);
+  write(copy, copy.length - 22 + offset);
+  return copy;
+}
+
+function centralDirectoryOffset(zip) {
+  return zip.readUInt32LE(zip.length - 22 + 16);
+}
+
+function spliceBeforeEocd(zip, bytes) {
+  return Buffer.concat([zip.subarray(0, -22), bytes, zip.subarray(-22)]);
+}
+
+function extractBytes(bytes) {
+  const root = mkdtempSync(join(tmpdir(), "run-test-"));
+  const archivePath = join(root, "skill.zip");
+  const destDir = join(root, "dest");
+  writeFileSync(archivePath, bytes);
+  mkdirSync(destDir);
+  try {
+    return { root: extractPackage(archivePath, destDir), files: readdirSync(destDir).sort() };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function oneEntryZip() {
+  return buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]);
+}
+
+assertRejectedZip(
+  "an EOCD whose entry count on this disk disagrees with its total",
+  withEocdField(oneEntryZip(), 8, (b, at) => b.writeUInt16LE(0, at)),
+  /unsupported zip feature: zip64 archive/,
+);
+assertRejectedZip(
+  "an EOCD whose entry count is the zip64 sentinel",
+  withEocdField(
+    withEocdField(oneEntryZip(), 8, (b, at) => b.writeUInt16LE(0xffff, at)),
+    10,
+    (b, at) => b.writeUInt16LE(0xffff, at),
+  ),
+  /unsupported zip feature: zip64 archive/,
+);
+assertRejectedZip(
+  "an EOCD whose central directory size is the zip64 sentinel",
+  withEocdField(oneEntryZip(), 12, (b, at) => b.writeUInt32LE(0xffffffff, at)),
+  /unsupported zip feature: zip64 archive/,
+);
+assertRejectedZip(
+  "an EOCD whose central directory offset is the zip64 sentinel",
+  withEocdField(oneEntryZip(), 16, (b, at) => b.writeUInt32LE(0xffffffff, at)),
+  /unsupported zip feature: zip64 archive/,
+);
+
+test("accepts an empty archive that holds only its end record", () => {
+  assert.deepEqual(extractBytes(buildZip([])), { root: "", files: [] });
+});
+
+{
+  const zip = withEocdField(
+    withEocdField(oneEntryZip(), 8, (b, at) => b.writeUInt16LE(2, at)),
+    10,
+    (b, at) => b.writeUInt16LE(2, at),
+  );
+  assertRejectedZip(
+    "a declared entry count larger than the records present",
+    zip,
+    /malformed zip: truncated central directory entry$/,
+  );
+}
+
+{
+  let zip = spliceBeforeEocd(oneEntryZip(), Buffer.alloc(46));
+  zip = withEocdField(zip, 8, (b, at) => b.writeUInt16LE(2, at));
+  zip = withEocdField(zip, 10, (b, at) => b.writeUInt16LE(2, at));
+  zip = withEocdField(zip, 12, (b, at) => b.writeUInt32LE(b.readUInt32LE(at) + 46, at));
+  assertRejectedZip(
+    "a second record of exactly 46 bytes as a bad signature rather than as truncated",
+    zip,
+    /central directory entry signature mismatch/,
+  );
+}
+
+{
+  const zip = oneEntryZip();
+  const cd = centralDirectoryOffset(zip);
+  zip.writeUInt16LE(zip.readUInt16LE(cd + 28) + 1, cd + 28);
+  assertRejectedZip(
+    "a central directory entry whose name runs one byte past the directory",
+    zip,
+    /malformed zip: central directory entry exceeds its bounds/,
+  );
+}
+
+assertRejected(
+  "an entry whose uncompressed size is the zip64 sentinel",
+  [{ name: "big.bin", data: Buffer.from("x"), uncompressedSizeLie: 0xffffffff }],
+  /unsupported zip feature: zip64 entry \(big\.bin\)/,
+);
+
+{
+  const zip = oneEntryZip();
+  zip.writeUInt32LE(0xffffffff, centralDirectoryOffset(zip) + 42);
+  assertRejectedZip(
+    "an entry whose local header offset is the zip64 sentinel",
+    zip,
+    /unsupported zip feature: zip64 entry \(SKILL\.md\)/,
+  );
+}
+
+assertRejected(
+  "an entry with a NUL in its name and a zip64 extra by reporting the name",
+  [{ name: "a\0b", data: Buffer.from("x"), extra: zip64Extra }],
+  /invalid name$/,
+);
+assertRejected(
+  "an entry with a zip64 extra and a zip64 size by reporting the extra",
+  [{ name: "z.bin", data: Buffer.from("x"), extra: Buffer.from([0x01, 0x00, 0x00, 0x00]), compressedSizeLie: 0xffffffff }],
+  /zip64 entry \(z\.bin\)/,
+);
+assertRejected(
+  "an entry that is both encrypted and of an unknown method by reporting the encryption",
+  [{ name: "s.bin", data: Buffer.from("x"), generalFlag: 0x1, method: 12 }],
+  /encrypted entry \(s\.bin\)/,
+);
+assertRejected(
+  "an entry with an unknown method and an unsafe path by reporting the method",
+  [{ name: "../m.bin", data: Buffer.from("x"), method: 12 }],
+  /compression method 12 \(\.\.\/m\.bin\)/,
+);
+assertRejected(
+  "an unsafe path that is also a symlink by reporting the path",
+  [{ name: "../link", data: Buffer.alloc(0), externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0, creatorSystem: 3 }],
+  /unsafe zip entry path: \.\.\/link/,
+);
+assertRejected(
+  "a duplicate name that is also a symlink by reporting the duplicate",
+  [
+    { name: "a.txt", data: Buffer.from("x") },
+    { name: "A.TXT", data: Buffer.alloc(0), externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0, creatorSystem: 3 },
+  ],
+  /duplicate portable zip entry name: A\.TXT/,
+);
+assertRejected(
+  "an oversized symlink by reporting it as non-regular",
+  [{ name: "big-link", data: Buffer.alloc(10 * 1024 * 1024 + 1), externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0, creatorSystem: 3 }],
+  /non-regular zip entry: big-link/,
+);
+assertRejected(
+  "an oversized directory-moded file by reporting the type disagreement",
+  [{ name: "big", data: Buffer.alloc(10 * 1024 * 1024 + 1), externalAttr: ((0x4000 | 0o755) << 16) >>> 0, creatorSystem: 3 }],
+  /type disagrees with its name: big/,
+);
+assertRejected(
+  "an oversized entry nested too deep by reporting the size",
+  [{ name: `${"d/".repeat(11)}big.bin`, data: Buffer.alloc(10 * 1024 * 1024 + 1) }],
+  /oversized zip entry/,
+);
+assertRejected(
+  "a file that an earlier file makes an ancestor of it",
+  [
+    { name: "a", data: Buffer.from("file") },
+    { name: "a/b", data: Buffer.from("child") },
+  ],
+  /refusing zip file ancestor conflict: a\/b$/,
+);
+assertRejected(
+  "a file added after an entry that needs it as a directory",
+  [
+    { name: "a/b", data: Buffer.from("child") },
+    { name: "a", data: Buffer.from("file") },
+  ],
+  /refusing zip file that conflicts with a descendant: a$/,
+);
+assertRejected(
+  "a symlink from a macOS-created archive",
+  [{ name: "link", data: Buffer.from("/etc/passwd"), externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0, creatorSystem: 19 }],
+  /non-regular zip entry: link/,
+);
+assertRejected(
+  "a regular-file mode on a directory-shaped name",
+  [{ name: "dir/", externalAttr: ((0x8000 | 0o644) << 16) >>> 0, creatorSystem: 3 }],
+  /type disagrees with its name: dir\//,
+);
+
+test("accepts a directory entry listed after a file inside it", () => {
+  const { archivePath, destDir, root } = stageZip([
+    { name: "a/b", data: Buffer.from("child") },
+    { name: "a/", data: Buffer.alloc(0) },
+  ]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readFileSync(join(destDir, "a", "b"), "utf8"), "child");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a directory entry whose mode says directory", () => {
+  const { archivePath, destDir, root } = stageZip([
+    { name: "d/", externalAttr: ((0x4000 | 0o755) << 16) >>> 0, creatorSystem: 3 },
+  ]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(statSync(join(destDir, "d")).isDirectory(), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a file entry whose mode says regular file", () => {
+  const { archivePath, destDir, root } = stageZip([
+    { name: "f.txt", data: Buffer.from("ok"), externalAttr: ((0x8000 | 0o644) << 16) >>> 0, creatorSystem: 3 },
+  ]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readFileSync(join(destDir, "f.txt"), "utf8"), "ok");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a directory entry exactly at the depth ceiling despite its trailing slash", () => {
+  const segments = Array.from({ length: 11 }, (_, i) => `d${i}`);
+  const { archivePath, destDir, root } = stageZip([{ name: `${segments.join("/")}/` }]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(statSync(join(destDir, ...segments)).isDirectory(), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("skips a central directory entry comment to reach the next record", () => {
+  const zip = buildZip([
+    { name: "a.txt", data: Buffer.from("one") },
+    { name: "b.txt", data: Buffer.from("two") },
+  ]);
+  const cd = centralDirectoryOffset(zip);
+  const firstRecordEnd = cd + 46 + zip.readUInt16LE(cd + 28);
+  const comment = Buffer.from("note");
+  const bytes = Buffer.concat([zip.subarray(0, firstRecordEnd), comment, zip.subarray(firstRecordEnd)]);
+  bytes.writeUInt16LE(comment.length, cd + 32);
+  const eocd = bytes.length - 22;
+  bytes.writeUInt32LE(bytes.readUInt32LE(eocd + 12) + comment.length, eocd + 12);
+  assert.deepEqual(extractBytes(bytes).files, ["a.txt", "b.txt"]);
+});
+
+assertRejectedZip(
+  "bytes between the central directory and its end record",
+  spliceBeforeEocd(oneEntryZip(), Buffer.from("junk!")),
+  /unsupported prefixed or malformed zip archive/,
+);
+
+async function withSpendServer(replies, handler) {
+  const seen = [];
+  const server = createServer((req, res) => {
+    seen.push({ url: req.url, authorization: req.headers.authorization });
+    const reply = replies[Math.min(seen.length, replies.length) - 1];
+    res.writeHead(reply.status ?? 200, { "content-type": "application/json" });
+    res.end(reply.raw ?? JSON.stringify(reply.body));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    return await handler(`http://127.0.0.1:${port}`, seen);
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+const spend = (value) => ({ body: { info: { spend: value } } });
+const quickPolls = { initialDelayMs: 0, retryDelayMs: 5, requestTimeoutMs: 500 };
+
+for (const [label, config] of [
+  ["the key", { base: "http://127.0.0.1:9", key: "" }],
+  ["the base", { base: "", key: "test" }],
+]) {
+  test(`gateway spend lookup returns null immediately when only ${label} is missing`, async () => {
+    const started = Date.now();
+    const value = await gatewaySpend({ ...config, initialDelayMs: 5000, retryDelayMs: 5000, attempts: 2 });
+    assert.equal(value, null);
+    assert.ok(Date.now() - started < 500, "missing config should skip the wait");
+  });
+}
+
+test("gateway spend lookup asks the key-info path once per attempt with the bearer key, dropping a trailing slash", async () => {
+  await withSpendServer([spend(3), spend(4), spend(5)], async (base, seen) => {
+    assert.equal(await gatewaySpend({ base: `${base}/`, key: "k1", ...quickPolls, attempts: 3 }), 5);
+    assert.deepEqual(seen, Array(3).fill({ url: "/key/info", authorization: "Bearer k1" }));
+  });
+});
+
+test("gateway spend lookup stops polling as soon as two readings agree", async () => {
+  await withSpendServer([spend(7), spend(7), spend(9)], async (base, seen) => {
+    assert.equal(await gatewaySpend({ base, key: "k", ...quickPolls, attempts: 6 }), 7);
+    assert.equal(seen.length, 2);
+  });
+});
+
+test("gateway spend lookup does not treat two zero readings as converged", async () => {
+  await withSpendServer([spend(0)], async (base, seen) => {
+    assert.equal(await gatewaySpend({ base, key: "k", ...quickPolls, attempts: 3 }), null);
+    assert.equal(seen.length, 3);
+  });
+});
+
+test("gateway spend lookup keeps the last positive reading when later polls fail", async () => {
+  await withSpendServer([spend(42), { status: 500, body: {} }], async (base) => {
+    assert.equal(await gatewaySpend({ base, key: "k", ...quickPolls, attempts: 3 }), 42);
+  });
+});
+
+test("gateway spend lookup treats an unparseable body as no reading", async () => {
+  await withSpendServer([{ raw: "not json" }], async (base) => {
+    assert.equal(await gatewaySpend({ base, key: "k", ...quickPolls, attempts: 2 }), null);
+  });
+});
+
+test("gateway spend lookup does not wait after its last attempt", async () => {
+  await withSpendServer([spend(1)], async (base) => {
+    const started = Date.now();
+    assert.equal(await gatewaySpend({ base, key: "k", initialDelayMs: 0, retryDelayMs: 5000, requestTimeoutMs: 500, attempts: 1 }), 1);
+    assert.ok(Date.now() - started < 2000, "waited a retry delay after the final attempt");
+  });
+});
+
+const RUN_SCRIPT = fileURLToPath(new URL("./run.mjs", import.meta.url));
+
+function runWorkload(script, extraEnv = {}) {
+  const root = mkdtempSync(join(tmpdir(), "run-main-"));
+  try {
+    const sdk = join(root, "fake-sdk.mjs");
+    writeFileSync(
+      sdk,
+      "export async function* query() {\n" +
+        `  for (const step of ${JSON.stringify(script)}) {\n` +
+        "    if (step.throw) throw new Error(step.throw);\n" +
+        "    yield step;\n" +
+        "  }\n" +
+        "}\n",
+    );
+    const hooks = join(root, "hooks.mjs");
+    writeFileSync(
+      hooks,
+      "export async function resolve(specifier, context, next) {\n" +
+        `  if (specifier === "@anthropic-ai/claude-agent-sdk") return { url: ${JSON.stringify(pathToFileURL(sdk).href)}, shortCircuit: true };\n` +
+        "  return next(specifier, context);\n" +
+        "}\n",
+    );
+    const register = join(root, "register.mjs");
+    writeFileSync(
+      register,
+      `import { register } from "node:module";\nregister(${JSON.stringify(pathToFileURL(hooks).href)});\n`,
+    );
+    const outDir = join(root, "out");
+    const inputDir = join(root, "input");
+    const skillDir = join(root, "skills");
+    mkdirSync(outDir);
+    mkdirSync(inputDir);
+    writeFileSync(join(inputDir, "ready"), "");
+    writeFileSync(join(outDir, ".collected"), "");
+    const env = { ...process.env };
+    delete env.ANTHROPIC_BASE_URL;
+    delete env.ANTHROPIC_AUTH_TOKEN;
+    delete env.SKILLHUB_MAX_INPUT_TOKENS;
+    delete env.SKILLHUB_MAX_OUTPUT_TOKENS;
+    Object.assign(env, {
+      SKILLHUB_WORKDIR: join(root, "work"),
+      SKILLHUB_OUTDIR: outDir,
+      SKILLHUB_SKILL_DIR: skillDir,
+      SKILLHUB_INPUT_DIR: inputDir,
+      SKILLHUB_USER_PROMPT: "do the task",
+      SKILLHUB_RUN_ID: "run-1",
+      SKILLHUB_MODEL: "test-model",
+      SKILLHUB_SKILL_VERSION_ID: "sv-1",
+      ...extraEnv,
+    });
+    const child = spawnSync(process.execPath, ["--import", pathToFileURL(register).href, RUN_SCRIPT], {
+      env,
+      encoding: "utf8",
+      timeout: 30_000,
+    });
+    const tracePath = join(outDir, "trace", "events.jsonl");
+    const events = existsSync(tracePath)
+      ? readFileSync(tracePath, "utf8").trim().split("\n").map((line) => JSON.parse(line))
+      : [];
+    return {
+      status: child.status,
+      stderr: child.stderr,
+      events,
+      result: JSON.parse(readFileSync(join(outDir, "result.json"), "utf8")),
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const startEvent = (usage) => ({ type: "stream_event", event: { type: "message_start", message: { usage } } });
+const deltaEvent = (usage) => ({ type: "stream_event", event: { type: "message_delta", usage } });
+
+test("a completed agent turn emits each block's event in order and reports usage from the result", () => {
+  const skillFile = "/skills-root-placeholder/tidy/SKILL.md";
+  const script = [
+    startEvent({ input_tokens: 100, output_tokens: 1, cache_read_input_tokens: 7 }),
+    deltaEvent({ output_tokens: 20 }),
+    {
+      type: "assistant",
+      message: {
+        content: [
+          { type: "text", text: "thinking out loud" },
+          { type: "text", text: "   " },
+          { type: "tool_use", id: "t1", name: "Skill", input: { command: "tidy-notes", description: "why" } },
+          { type: "tool_use", id: "t2", name: "Bash", input: { command: "echo hi" } },
+          { type: "tool_use", id: "t3", name: "Read", input: { file_path: skillFile } },
+        ],
+      },
+    },
+    {
+      type: "user",
+      message: {
+        content: [
+          { type: "text", text: "a user's text is not agent output" },
+          { type: "tool_result", tool_use_id: "t2", content: "hi", is_error: false },
+          { type: "tool_result", tool_use_id: "t3", content: "gone", is_error: true },
+          { type: "tool_result", tool_use_id: "never-opened", content: "x" },
+        ],
+      },
+    },
+    startEvent({ input_tokens: 50 }),
+    { type: "result", result: "final answer", is_error: false, usage: { input_tokens: 150, output_tokens: 20, cache_read_input_tokens: 7 } },
+  ];
+  const run = runWorkload(script, { SKILLHUB_SKILL_DIR: "/skills-root-placeholder" });
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(
+    run.events.map((e) => [e.seq, e.type, e.status]),
+    [
+      [1, "agent_output", "ok"],
+      [2, "skill_activation", "ok"],
+      [3, "script_log", "ok"],
+      [4, "tool_call", "ok"],
+      [5, "resource_read", "error"],
+      [6, "tool_call", "error"],
+      [7, "agent_output", "ok"],
+      [8, "usage", "ok"],
+    ],
+  );
+  const [intermediate, activation, log, bash, resource, read, final, usage] = run.events.map((e) => e.payload);
+  assert.deepEqual(intermediate, { kind: "intermediate", text: "thinking out loud", truncated: false });
+  assert.deepEqual(activation, { skill_name: "tidy-notes", skill_version_id: "sv-1", decision: "activated", reason: "why" });
+  assert.deepEqual(log, { script_path: null, stream: "stdout", message: "hi", truncated: false, dropped_bytes: null });
+  assert.deepEqual(Object.keys(bash), ["tool_name", "invocation_id", "arguments", "result_summary", "outcome", "duration_ms", "truncated"]);
+  assert.equal(bash.outcome, "succeeded");
+  assert.deepEqual(resource, { resource_path: "tidy/SKILL.md", outcome: "not_found", bytes_read: null, truncated: false });
+  assert.equal(read.outcome, "failed");
+  assert.deepEqual(final, { kind: "final", text: "final answer", truncated: false });
+  assert.deepEqual(Object.keys(usage), [
+    "scope", "model", "input_tokens", "output_tokens", "cache_read_input_tokens", "cache_write_input_tokens",
+    "cost_usd", "cost_source", "token_source", "duration_ms",
+  ]);
+  assert.deepEqual(
+    { ...usage, duration_ms: 0 },
+    {
+      scope: "run_total", model: "test-model", input_tokens: 150, output_tokens: 20,
+      cache_read_input_tokens: 7, cache_write_input_tokens: null, cost_usd: null, cost_source: null,
+      token_source: "result", duration_ms: 0,
+    },
+  );
+  assert.deepEqual(run.result, { status: "succeeded", agent_output: "final answer", message_types: ["assistant", "user", "result"] });
+});
+
+test("a turn that crosses its output ceiling across two responses stops there and exits with the budget code", () => {
+  const script = [
+    startEvent({ input_tokens: 5, output_tokens: 1 }),
+    deltaEvent({ output_tokens: 6 }),
+    startEvent({ output_tokens: 5 }),
+    { type: "assistant", message: { content: [{ type: "text", text: "never seen" }] } },
+    { type: "result", result: "never seen", usage: {} },
+  ];
+  const run = runWorkload(script, { SKILLHUB_MAX_OUTPUT_TOKENS: "10" });
+  assert.equal(run.status, 9, run.stderr);
+  const message =
+    "run stopped at its output token ceiling: 11 of 10 tokens (PDM-005 5.2a; the limit shown in the pre-run permission summary)";
+  assert.deepEqual(run.events.map((e) => e.type), ["error", "usage"]);
+  assert.deepEqual(run.events[0].payload, { category: "execution", code: "token_budget_exceeded", message, retryable: false });
+  assert.equal(run.events[1].payload.token_source, "accumulated");
+  assert.equal(run.events[1].payload.input_tokens, 5);
+  assert.equal(run.events[1].payload.output_tokens, 11);
+  assert.deepEqual(run.result, { status: "failed", error: message, agent_output: "", message_types: [] });
+});
+
+test("a turn exactly at its output ceiling is not stopped", () => {
+  const script = [
+    startEvent({ output_tokens: 1 }),
+    deltaEvent({ output_tokens: 10 }),
+    { type: "result", result: "done", usage: { output_tokens: 10 } },
+  ];
+  const run = runWorkload(script, { SKILLHUB_MAX_OUTPUT_TOKENS: "10" });
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(run.result.status, "succeeded");
+});
+
+test("a result the agent marks as an error is reported with error status and the run still completes", () => {
+  const run = runWorkload([{ type: "result", result: "gave up", is_error: true, usage: { input_tokens: 1, output_tokens: 2 } }]);
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(
+    run.events.map((e) => [e.type, e.status]),
+    [["agent_output", "error"], ["usage", "ok"]],
+  );
+  assert.equal(run.result.status, "succeeded");
+});
+
+test("cached input counts toward the input ceiling", () => {
+  const run = runWorkload(
+    [startEvent({ input_tokens: 60, cache_read_input_tokens: 41 }), { type: "result", result: "never", usage: {} }],
+    { SKILLHUB_MAX_INPUT_TOKENS: "100" },
+  );
+  assert.equal(run.status, 9, run.stderr);
+  assert.match(run.result.error, /its input token ceiling: 101 of 100 tokens/);
+});
+
+test("a turn whose stream fails reports accumulated usage, then the failure", () => {
+  const run = runWorkload([
+    startEvent({ input_tokens: 3 }),
+    deltaEvent({ output_tokens: 4 }),
+    { throw: "stream broke" },
+  ]);
+  assert.equal(run.status, 1, run.stderr);
+  assert.deepEqual(run.events.map((e) => e.type), ["usage", "error"]);
+  assert.equal(run.events[0].payload.token_source, "accumulated");
+  assert.equal(run.events[0].payload.input_tokens, 3);
+  assert.equal(run.events[0].payload.output_tokens, 4);
+  assert.deepEqual(run.events[1].payload, { category: "execution", code: "agent_turn_failed", message: "stream broke", retryable: false });
+  assert.deepEqual(run.result, { status: "failed", error: "stream broke" });
 });

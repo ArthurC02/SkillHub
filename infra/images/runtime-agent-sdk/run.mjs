@@ -168,6 +168,20 @@ function portableEntryKey(name) {
   return parts.map((part) => part.toLowerCase()).join("/");
 }
 
+async function readGatewaySpend(base, key, requestTimeoutMs) {
+  try {
+    const res = await fetch(`${base.replace(/\/$/, "")}/key/info`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return typeof body?.info?.spend === "number" ? body.info.spend : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function gatewaySpend({
   base = process.env.ANTHROPIC_BASE_URL,
   key = process.env.ANTHROPIC_AUTH_TOKEN,
@@ -182,18 +196,7 @@ export async function gatewaySpend({
   let last = null;
   await new Promise((resolve) => setTimeout(resolve, initialDelayMs));
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    let spend = null;
-    try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/key/info`, {
-        headers: { Authorization: `Bearer ${key}` },
-        signal: AbortSignal.timeout(requestTimeoutMs),
-      });
-      if (res.ok) {
-        const body = await res.json();
-        if (typeof body?.info?.spend === "number") spend = body.info.spend;
-      }
-    } catch {
-    }
+    const spend = await readGatewaySpend(base, key, requestTimeoutMs);
     if (spend !== null && spend > 0 && spend === last) return spend;
     if (spend !== null) last = spend;
     if (attempt + 1 < attempts) {
@@ -231,7 +234,7 @@ function isUnsafeFileType(unixMode) {
   return fileType !== 0 && fileType !== S_IFREG && fileType !== S_IFDIR;
 }
 
-function readCentralDirectory(buf) {
+function readEndOfCentralDirectory(buf) {
   const eocdOffset = findEndOfCentralDirectory(buf);
   const diskNumber = buf.readUInt16LE(eocdOffset + 4);
   const centralDisk = buf.readUInt16LE(eocdOffset + 6);
@@ -264,131 +267,169 @@ function readCentralDirectory(buf) {
   ) {
     throw new Error("unsupported zip feature: zip64 archive");
   }
+  return { eocdOffset, totalEntries, cdSize, cdOffset };
+}
 
+function readCentralDirectoryRecord(buf, pos, eocdOffset) {
+  if (pos + 46 > eocdOffset) {
+    throw new Error("malformed zip: truncated central directory entry");
+  }
+  if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
+    throw new Error(
+      "malformed zip: central directory entry signature mismatch",
+    );
+  }
+  const creatorSystem = buf.readUInt16LE(pos + 4) >>> 8;
+  const generalFlag = buf.readUInt16LE(pos + 8);
+  const method = buf.readUInt16LE(pos + 10);
+  const crc = buf.readUInt32LE(pos + 16);
+  const compressedSize = buf.readUInt32LE(pos + 20);
+  const uncompressedSize = buf.readUInt32LE(pos + 24);
+  const nameLen = buf.readUInt16LE(pos + 28);
+  const extraLen = buf.readUInt16LE(pos + 30);
+  const commentLen = buf.readUInt16LE(pos + 32);
+  const externalAttr = buf.readUInt32LE(pos + 38);
+  // Only a Unix or macOS creator system uses this word as a mode; other
+  // tools put unrelated data there, which would otherwise look like a mode.
+  const unixMode = creatorSystem === 3 || creatorSystem === 19
+    ? externalAttr >>> 16
+    : 0;
+  const localHeaderOffset = buf.readUInt32LE(pos + 42);
+  const nameBytes = buf.subarray(pos + 46, pos + 46 + nameLen);
+  const extraStart = pos + 46 + nameLen;
+  const extraEnd = extraStart + extraLen;
+  if (extraEnd + commentLen > eocdOffset) {
+    throw new Error("malformed zip: central directory entry exceeds its bounds");
+  }
+  const extra = buf.subarray(extraStart, extraEnd);
+  let name;
+  try {
+    name = new TextDecoder("utf-8", { fatal: true }).decode(nameBytes);
+  } catch {
+    throw new Error("refusing zip entry with an invalid UTF-8 name");
+  }
+  if (name.length === 0 || name.includes("\0")) {
+    throw new Error("refusing zip entry with an invalid name");
+  }
+  return {
+    name,
+    generalFlag,
+    method,
+    crc,
+    compressedSize,
+    uncompressedSize,
+    localHeaderOffset,
+    unixMode,
+    extra,
+    recordLength: 46 + nameLen + extraLen + commentLen,
+  };
+}
+
+function refuseUnsupportedEntryFeatures(record) {
+  const { name } = record;
+  if (hasZip64Extra(record.extra)) {
+    throw new Error(`unsupported zip feature: zip64 entry (${name})`);
+  }
+
+  if (
+    record.compressedSize === 0xffffffff ||
+    record.uncompressedSize === 0xffffffff ||
+    record.localHeaderOffset === 0xffffffff
+  ) {
+    throw new Error(`unsupported zip feature: zip64 entry (${name})`);
+  }
+  // Bit 0 of the general-purpose flag marks encryption; this parser holds
+  // no keys, so it must refuse ciphertext rather than read it as plaintext.
+  if (record.generalFlag & 0x1) {
+    throw new Error(`unsupported zip feature: encrypted entry (${name})`);
+  }
+  if (record.method !== 0 && record.method !== 8) {
+    throw new Error(
+      `unsupported zip feature: compression method ${record.method} (${name})`,
+    );
+  }
+}
+
+function claimPortableName(name, seenNames, requiredDirs) {
+  if (isUnsafeEntryName(name)) {
+    throw new Error(`refusing unsafe zip entry path: ${name}`);
+  }
+  const nameKey = portableEntryKey(name);
+  if (seenNames.has(nameKey)) {
+    throw new Error(`refusing duplicate portable zip entry name: ${name}`);
+  }
+  const nameIsDir = name.endsWith("/");
+  const parts = nameKey.split("/");
+  for (let part = 1; part < parts.length; part += 1) {
+    const ancestor = parts.slice(0, part).join("/");
+    if (seenNames.has(ancestor) && !seenNames.get(ancestor)) {
+      throw new Error(`refusing zip file ancestor conflict: ${name}`);
+    }
+    requiredDirs.add(ancestor);
+  }
+  if (!nameIsDir && requiredDirs.has(nameKey)) {
+    throw new Error(`refusing zip file that conflicts with a descendant: ${name}`);
+  }
+  seenNames.set(nameKey, nameIsDir);
+}
+
+function refuseNonRegularEntry(name, unixMode) {
+  if (isUnsafeFileType(unixMode)) {
+    throw new Error(`refusing non-regular zip entry: ${name}`);
+  }
+  const fileType = unixMode & S_IFMT;
+  if ((fileType === S_IFDIR) !== name.endsWith("/") && fileType !== 0) {
+    throw new Error(
+      `refusing zip entry whose type disagrees with its name: ${name}`,
+    );
+  }
+}
+
+function refuseEntryBeyondLimits(name, uncompressedSize) {
+  if (uncompressedSize > MAX_PACKAGE_ENTRY_BYTES) {
+    throw new Error(
+      `refusing oversized zip entry: ${name} declares ${uncompressedSize} bytes`,
+    );
+  }
+  const depth = name.replace(/\/+$/, "").split("/").length - 1;
+  if (depth > MAX_PACKAGE_DEPTH) {
+    throw new Error(
+      `refusing zip entry nested ${depth} directories deep: ${name}`,
+    );
+  }
+}
+
+function readCentralDirectory(buf) {
+  const { eocdOffset, totalEntries, cdSize, cdOffset } =
+    readEndOfCentralDirectory(buf);
   const entries = [];
   const seenNames = new Map();
   const requiredDirs = new Set();
   let declaredBytes = 0;
   let pos = cdOffset;
   for (let i = 0; i < totalEntries; i += 1) {
-    if (pos + 46 > eocdOffset) {
-      throw new Error("malformed zip: truncated central directory entry");
-    }
-    if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
-      throw new Error(
-        "malformed zip: central directory entry signature mismatch",
-      );
-    }
-    const creatorSystem = buf.readUInt16LE(pos + 4) >>> 8;
-    const generalFlag = buf.readUInt16LE(pos + 8);
-    const method = buf.readUInt16LE(pos + 10);
-    const crc = buf.readUInt32LE(pos + 16);
-    const compressedSize = buf.readUInt32LE(pos + 20);
-    const uncompressedSize = buf.readUInt32LE(pos + 24);
-    const nameLen = buf.readUInt16LE(pos + 28);
-    const extraLen = buf.readUInt16LE(pos + 30);
-    const commentLen = buf.readUInt16LE(pos + 32);
-    const externalAttr = buf.readUInt32LE(pos + 38);
-    // Only a Unix or macOS creator system uses this word as a mode; other
-    // tools put unrelated data there, which would otherwise look like a mode.
-    const unixMode = creatorSystem === 3 || creatorSystem === 19
-      ? externalAttr >>> 16
-      : 0;
-    const localHeaderOffset = buf.readUInt32LE(pos + 42);
-    const nameBytes = buf.subarray(pos + 46, pos + 46 + nameLen);
-    const extraStart = pos + 46 + nameLen;
-    const extraEnd = extraStart + extraLen;
-    if (extraEnd + commentLen > eocdOffset) {
-      throw new Error("malformed zip: central directory entry exceeds its bounds");
-    }
-    const extra = buf.subarray(extraStart, extraEnd);
-    let name;
-    try {
-      name = new TextDecoder("utf-8", { fatal: true }).decode(nameBytes);
-    } catch {
-      throw new Error("refusing zip entry with an invalid UTF-8 name");
-    }
-    if (name.length === 0 || name.includes("\0")) {
-      throw new Error("refusing zip entry with an invalid name");
-    }
-    if (hasZip64Extra(extra)) {
-      throw new Error(`unsupported zip feature: zip64 entry (${name})`);
-    }
-
-    if (
-      compressedSize === 0xffffffff ||
-      uncompressedSize === 0xffffffff ||
-      localHeaderOffset === 0xffffffff
-    ) {
-      throw new Error(`unsupported zip feature: zip64 entry (${name})`);
-    }
-    // Bit 0 of the general-purpose flag marks encryption; this parser holds
-    // no keys, so it must refuse ciphertext rather than read it as plaintext.
-    if (generalFlag & 0x1) {
-      throw new Error(`unsupported zip feature: encrypted entry (${name})`);
-    }
-    if (method !== 0 && method !== 8) {
-      throw new Error(
-        `unsupported zip feature: compression method ${method} (${name})`,
-      );
-    }
-    if (isUnsafeEntryName(name)) {
-      throw new Error(`refusing unsafe zip entry path: ${name}`);
-    }
-    const nameKey = portableEntryKey(name);
-    if (seenNames.has(nameKey)) {
-      throw new Error(`refusing duplicate portable zip entry name: ${name}`);
-    }
-    const nameIsDir = name.endsWith("/");
-    const parts = nameKey.split("/");
-    for (let part = 1; part < parts.length; part += 1) {
-      const ancestor = parts.slice(0, part).join("/");
-      if (seenNames.has(ancestor) && !seenNames.get(ancestor)) {
-        throw new Error(`refusing zip file ancestor conflict: ${name}`);
-      }
-      requiredDirs.add(ancestor);
-    }
-    if (!nameIsDir && requiredDirs.has(nameKey)) {
-      throw new Error(`refusing zip file that conflicts with a descendant: ${name}`);
-    }
-    seenNames.set(nameKey, nameIsDir);
-    if (isUnsafeFileType(unixMode)) {
-      throw new Error(`refusing non-regular zip entry: ${name}`);
-    }
-    const fileType = unixMode & S_IFMT;
-    if ((fileType === S_IFDIR) !== nameIsDir && fileType !== 0) {
-      throw new Error(
-        `refusing zip entry whose type disagrees with its name: ${name}`,
-      );
-    }
-    if (uncompressedSize > MAX_PACKAGE_ENTRY_BYTES) {
-      throw new Error(
-        `refusing oversized zip entry: ${name} declares ${uncompressedSize} bytes`,
-      );
-    }
-    const depth = name.replace(/\/+$/, "").split("/").length - 1;
-    if (depth > MAX_PACKAGE_DEPTH) {
-      throw new Error(
-        `refusing zip entry nested ${depth} directories deep: ${name}`,
-      );
-    }
+    const record = readCentralDirectoryRecord(buf, pos, eocdOffset);
+    refuseUnsupportedEntryFeatures(record);
+    claimPortableName(record.name, seenNames, requiredDirs);
+    refuseNonRegularEntry(record.name, record.unixMode);
+    refuseEntryBeyondLimits(record.name, record.uncompressedSize);
 
     entries.push({
-      name,
-      method,
-      crc,
-      compressedSize,
-      uncompressedSize,
-      localHeaderOffset,
-      mode: unixMode & 0o777,
+      name: record.name,
+      method: record.method,
+      crc: record.crc,
+      compressedSize: record.compressedSize,
+      uncompressedSize: record.uncompressedSize,
+      localHeaderOffset: record.localHeaderOffset,
+      mode: record.unixMode & 0o777,
     });
-    declaredBytes += uncompressedSize;
+    declaredBytes += record.uncompressedSize;
     if (declaredBytes > MAX_PACKAGE_TOTAL_BYTES) {
       throw new Error(
         `refusing oversized skill package: declared ${declaredBytes} bytes exceeds the ${MAX_PACKAGE_TOTAL_BYTES} byte limit`,
       );
     }
-    pos += 46 + nameLen + extraLen + commentLen;
+    pos += record.recordLength;
   }
   if (cdOffset + cdSize !== eocdOffset) {
     throw new Error("unsupported prefixed or malformed zip archive");
@@ -767,64 +808,82 @@ if (isMain) {
   let output = "";
   let breach = null;
   const startedAt = Date.now();
-  try {
+
+  function observeStreamEvent(event) {
+    if (event?.type === "message_start") {
+      beginResponse();
+      observeUsage(event.message?.usage);
+    } else if (event?.type === "message_delta") {
+      observeUsage(event.usage);
+    }
+    return ceilingBreach();
+  }
+
+  function emitIntermediateText(block) {
+    const text = clip(block.text ?? "", LIMITS.text);
+    if (text.value.trim() !== "") {
+      emit("agent_output", {
+        kind: "intermediate",
+        text: text.value,
+        truncated: text.truncated,
+      });
+    }
+  }
+
+  function recordContentBlocks(msg) {
+    const blocks = Array.isArray(msg.message?.content)
+      ? msg.message.content
+      : [];
+    for (const block of blocks) {
+      if (block.type === "tool_use") openToolUse(block);
+      else if (block.type === "tool_result") closeToolUse(block);
+      else if (block.type === "text" && msg.type === "assistant") {
+        emitIntermediateText(block);
+      }
+    }
+  }
+
+  async function recordResult(msg) {
+    output = msg.result ?? "";
+    const text = clip(output, LIMITS.text);
+    emit(
+      "agent_output",
+      { kind: "final", text: text.value, truncated: text.truncated },
+      msg.is_error ? "error" : "ok",
+    );
+
+    const usage = msg.usage ?? {};
+    await emitUsage(
+      {
+        input: usage.input_tokens ?? 0,
+        output: usage.output_tokens ?? 0,
+        cacheRead: usage.cache_read_input_tokens ?? null,
+        cacheWrite: usage.cache_creation_input_tokens ?? null,
+      },
+      "result",
+    );
+  }
+
+  async function streamAgentTurn() {
     const { query } = await import("@anthropic-ai/claude-agent-sdk");
     for await (const msg of query({
       prompt,
       options: agentOptions(artifactDir),
     })) {
       if (msg.type === "stream_event") {
-        if (msg.event?.type === "message_start") {
-          beginResponse();
-          observeUsage(msg.event.message?.usage);
-        } else if (msg.event?.type === "message_delta") {
-          observeUsage(msg.event.usage);
-        }
-        breach = ceilingBreach();
+        breach = observeStreamEvent(msg.event);
         if (breach) break;
         continue;
       }
 
       messages.push(msg.type);
-      const blocks = Array.isArray(msg.message?.content)
-        ? msg.message.content
-        : [];
-      for (const block of blocks) {
-        if (block.type === "tool_use") openToolUse(block);
-        else if (block.type === "tool_result") closeToolUse(block);
-        else if (block.type === "text" && msg.type === "assistant") {
-          const text = clip(block.text ?? "", LIMITS.text);
-          if (text.value.trim() !== "") {
-            emit("agent_output", {
-              kind: "intermediate",
-              text: text.value,
-              truncated: text.truncated,
-            });
-          }
-        }
-      }
-
-      if (msg.type === "result") {
-        output = msg.result ?? "";
-        const text = clip(output, LIMITS.text);
-        emit(
-          "agent_output",
-          { kind: "final", text: text.value, truncated: text.truncated },
-          msg.is_error ? "error" : "ok",
-        );
-
-        const usage = msg.usage ?? {};
-        await emitUsage(
-          {
-            input: usage.input_tokens ?? 0,
-            output: usage.output_tokens ?? 0,
-            cacheRead: usage.cache_read_input_tokens ?? null,
-            cacheWrite: usage.cache_creation_input_tokens ?? null,
-          },
-          "result",
-        );
-      }
+      recordContentBlocks(msg);
+      if (msg.type === "result") await recordResult(msg);
     }
+  }
+
+  try {
+    await streamAgentTurn();
   } catch (err) {
     await emitUsage(totals(), "accumulated");
     fail("execution", "agent_turn_failed", String(err?.message ?? err));

@@ -700,3 +700,38 @@ PROBE_PATH=skills/nope       → 拒絕 provision/invalid_package "…that direc
 **供應鏈掃描（不在四項清單上）**：`anchore/syft:v1.51.0@sha256:678bfa56…` 產 SPDX SBOM（249 個套件）、`anchore/grype:v0.117.0@sha256:ddf9e9f2…` 以 `--only-fixed --fail-on high` 掃 → `No vulnerabilities found`（exit 0）。**這一跑的對象是本機建置的 `skillhub/runtime-agent-sdk:2026.08-13`（經 `docker save` 轉 tar），不是發佈的 digest**——Windows 主機上 syft 無法透過 docker.sock 讀那個 digest；發佈 digest 的掃描由 CI 跑完並見証（上表的見証欄）。
 
 **預設映像同批從 `-12` 移到 `-13`**：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例。
+
+## `2026.08-13` → `2026.08-14`（2026-09-28）— **只有 `run.mjs` 的結構變動；四項實測尚未跑，預設映像仍留在 `-13`**
+
+> 這一節是可讀性整理，不是行為變更。`run.mjs` 有三處超過長度與複雜度上限：
+> 解壓前讀 zip 中央目錄的檢查、查詢閘道花費的輪詢、處理模型回應的主迴圈。
+> 三處各拆成具名的步驟。映像裡的 `run.mjs` 位元組變了，版本就要跟著走。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | 只有 `run.mjs` 與 `ARG IMAGE_VERSION`（`run.test.mjs` 同批新增測試，不進映像）。`Dockerfile` 的其餘內容、`constraints.txt`、`package.json`、`package-lock.json` 一字未動 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 讀 zip 中央目錄 | `readCentralDirectory` 拆成：讀結尾紀錄、讀單筆紀錄、拒絕不支援的格式、登記可攜名稱、拒絕非一般檔案、拒絕超過大小與深度。每一項拒絕的訊息文字與先後順序不變 |
+| 閘道花費輪詢 | 單次讀取抽成一個函式。輪詢次數、間隔、收斂條件不變；`-13` 那節第 3 項記下的「在最後一次 spend flush 之前收斂」**仍然存在，這一版沒有修它** |
+| 主迴圈 | 串流事件、內容區塊、最終結果的處理各抽成具名函式。事件的型別、欄位、順序、exit code、讀取的環境變數不變 |
+| 預設映像 | **仍是 `-13`**：四處預設都沒有動 |
+| 四項實測 | **一項都沒跑**，本節不主張任何一項通過；`-14` 在補跑之前不該成為預設 |
+
+### 本機驗證（2026-09-28，沒有任何模型呼叫，沒有建置映像）
+
+`node --test infra/images/runtime-agent-sdk/run.test.mjs` → 115 tests、114 pass、0 fail、1 skipped。
+跳過的那條是檔案權限位元的測試，只在非 Windows 主機上跑；CI 會跑到它。
+
+修改前是 72 tests、71 pass、1 skipped，原有的 72 個測試名稱全部都在。新增的 43 條先在
+**未修改的 `run.mjs`** 上跑過、全數通過，之後才動 `run.mjs`。其中 6 條把 SDK 換成暫存檔裡的
+假模組、再啟動真的 `run.mjs`，主迴圈因此第一次有不需要模型的整段測試。
+
+`run.mjs` 修改前後的字串與數字常值逐一比對：377 個對 378 個，差異是錯誤訊息樣板裡的一個
+變數名稱（`method` → `record.method`，印出的文字相同）與多出現一次的 `"/"`。
+
+突變稽核在暫存副本上做了 83 項，82 項有測試由斷言變紅。存活的一項是把解出檔案的權限位元
+改成 0，能抓到它的就是上面那條在 Windows 跳過的測試。
+
+**沒有做的事**：沒有建置映像、沒有以新 digest 跑 import 檢查、沒有跑供應鏈掃描、沒有任何一次
+真實 Run。這些都要等 CI 發佈 `-14` 的 digest 之後，在那個 digest 上做。
