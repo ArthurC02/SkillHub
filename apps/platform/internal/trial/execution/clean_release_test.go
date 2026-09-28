@@ -225,3 +225,19 @@ func TestALineThatLooksLikeAReleaseAndIsNotSaysSo(t *testing.T) {
 		t.Errorf("log = %q, want it to say the line was seen and did not count", logged.String())
 	}
 }
+
+func TestACommentedOutLineIsSkippedSilentlyNotEvaluatedAsANearMiss(t *testing.T) {
+	path := writeReleases(t, "#"+releasedVersion+" I changed my mind\n")
+
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	if _, released := operatorReleased(releasedVersion, path); released {
+		t.Fatal("a line starting with # released a version")
+	}
+	if logged.Len() != 0 {
+		t.Errorf("a commented-out line was parsed as a near-miss release and warned about it: %q", logged.String())
+	}
+}

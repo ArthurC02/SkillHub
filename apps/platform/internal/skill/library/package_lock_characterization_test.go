@@ -87,6 +87,7 @@ func TestAPackageIsCurrentOnlyForTheVersionThatWasSeen(t *testing.T) {
 		{"the same key under another version", Version{WorkspaceID: ws.ID, SkillID: skillID, ID: skillID, PackageObjectKey: "packages/only"}, true},
 		{"the same key with no version", Version{WorkspaceID: ws.ID, SkillID: skillID, ID: pgtype.UUID{}, PackageObjectKey: "packages/only"}, false},
 		{"the version with no key", Version{WorkspaceID: ws.ID, SkillID: skillID, ID: current.ID}, false},
+		{"the current version under a different key", Version{WorkspaceID: ws.ID, SkillID: skillID, ID: current.ID, PackageObjectKey: "packages/not-what-was-committed"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assertUnseenVersionDoesNotLockThePackage(t, ctx, pool, skillID, tc.seen, tc.locksSkill)
