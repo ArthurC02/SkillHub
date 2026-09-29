@@ -70,7 +70,7 @@
   flex-direction: column;
 }
 
-.creation-bar h3 {
+.creation-bar h1 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
@@ -353,6 +353,174 @@
 
 .creation-feed > section > :last-child {
   margin-bottom: 0;
+}
+
+.creation-shell > .creation-workbench {
+  position: relative;
+  flex: none;
+  z-index: 12;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 768px;
+  margin: 12px auto 0;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-rest);
+}
+
+.creation-journey-heading,
+.creation-focus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.creation-journey-heading h2,
+.creation-focus h3,
+.creation-focus p {
+  margin: 0;
+}
+
+.creation-journey-heading h2 {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.creation-eyebrow {
+  display: block;
+  color: var(--link);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.creation-journey-count {
+  flex: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.creation-journey {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.creation-journey > li {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--code-bg);
+  color: var(--text);
+}
+
+.creation-journey > li[data-status="complete"] {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.creation-journey > li[aria-current="step"] {
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--text-h);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.creation-journey-index {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-active);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.creation-journey > li[data-status="complete"] .creation-journey-index,
+.creation-journey > li[aria-current="step"] .creation-journey-index {
+  background: var(--accent);
+  color: var(--on-cta);
+}
+
+.creation-journey strong,
+.creation-journey small,
+.creation-journey-status {
+  display: block;
+}
+
+.creation-journey strong {
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.creation-journey small,
+.creation-journey-status {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.creation-journey-status {
+  font-weight: 600;
+}
+
+.creation-focus {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.creation-focus > div {
+  min-width: 0;
+}
+
+.creation-focus h3 {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.creation-focus p {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.creation-focus-link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--link);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.creation-focus-link:hover {
+  border-color: var(--accent);
+}
+
+.creation-feed > section[id$="-decision"],
+.creation-shell #creation-message {
+  scroll-margin-top: 8px;
 }
 
 .creation-feed > section h4 {
@@ -759,13 +927,76 @@
     flex-basis: 100%;
   }
 
-  .creation-bar h3 {
+  .creation-bar h1 {
     font-size: 16px;
+  }
+
+  .creation-shell > .creation-workbench {
+    margin-top: 8px;
+    padding: 8px;
+  }
+
+  .creation-journey-heading h2,
+  .creation-journey small,
+  .creation-journey-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .creation-journey {
+    display: none;
+  }
+
+  .creation-focus {
+    align-items: flex-end;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .creation-focus h3 {
+    font-size: 15px;
+  }
+
+  .creation-focus p {
+    display: none;
+  }
+
+  .creation-focus-link {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+
+  .composer-dock {
+    padding-block: 4px;
+  }
+
+  .composer {
+    padding: 8px 12px;
+    border-radius: 18px;
+  }
+
+  .composer textarea {
+    min-height: 32px;
+    max-height: 120px;
+    line-height: 20px;
+  }
+
+  .composer-tools {
+    margin-top: 4px;
   }
 
   .creation-details > summary,
   .creation-history > summary {
     padding: 8px 12px;
+  }
+
+  .creation-next-step {
+    display: none;
   }
 
   .creation-log > li {

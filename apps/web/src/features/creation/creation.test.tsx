@@ -2190,3 +2190,41 @@ test("the poll stands down while the stream delivers, and comes back when it dro
   });
   expect(fetched(), "串流斷了，輪詢沒有接回去——畫面會就這樣停住").toBeGreaterThan(whileStreaming);
 });
+
+test("a resumed session leads with one current decision linked to its evidence", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.brief = "把每週客服紀錄整理成可追蹤摘要";
+  v.snapshot.acceptance_criteria = ["每個問題都有負責人"];
+  v.snapshot.pending_action = "confirm_brief";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+
+  await render();
+  await resume();
+
+  const focus = box.querySelector(".creation-focus");
+  const link = focus?.querySelector<HTMLAnchorElement>('a[href="#creation-brief-decision"]');
+  expect(focus?.textContent).toContain("目前待決定");
+  expect(focus?.textContent).toContain("確認任務與成功條件");
+  expect(link).not.toBeNull();
+  expect(box.querySelectorAll("#creation-brief-decision")).toHaveLength(1);
+  expect(box.querySelectorAll('.creation-journey [aria-current="step"]')).toHaveLength(1);
+});
+
+test("an unknown pending action stays visible in state without inventing a decision", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.pending_action = "future_action";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+
+  await render();
+  await resume();
+
+  expect(box.querySelector(".creation-workbench")).not.toBeNull();
+  expect(box.querySelector(".creation-focus")).toBeNull();
+  expect(box.querySelector('.creation-state [role="status"]')?.textContent).toBeTruthy();
+});

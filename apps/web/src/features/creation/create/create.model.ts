@@ -96,6 +96,107 @@ export function stepDescription(p: CreationSnapshot): string {
   return "正在修訂草稿。";
 }
 
+export type CreationFocus = {
+  title: string;
+  description: string;
+  target: string;
+};
+
+const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
+  confirm_brief: {
+    title: "確認任務與成功條件",
+    description: "核對 Skill 要完成的任務、驗收條件與範例輸入，再讓 Agent 繼續建構。",
+    target: "creation-brief-decision",
+  },
+  confirm_diagram: {
+    title: "確認流程理解",
+    description: "檢查 Agent 對圖片流程的理解是否正確，再決定是否繼續。",
+    target: "creation-diagram-decision",
+  },
+  answer_diagram_uncertainties: {
+    title: "釐清流程中的不確定處",
+    description: "回答圖片裡仍不明確的條件，讓 Agent 能依真實流程建構 Skill。",
+    target: "creation-diagram-decision",
+  },
+  confirm_diagram_interpretation: {
+    title: "確認圖片的流程解讀",
+    description: "核對節點、條件與分支，避免錯誤理解進入草稿。",
+    target: "creation-diagram-decision",
+  },
+  confirm_fetch: {
+    title: "決定是否讀取外部資料",
+    description: "先確認 Agent 想讀取的網址；只有你同意後，平台才會擷取內容。",
+    target: "creation-fetch-decision",
+  },
+  confirm_references: {
+    title: "確認參考 Skill",
+    description: "檢查 Agent 找到的參考內容，決定哪些可以作為這次創作的依據。",
+    target: "creation-references-decision",
+  },
+  confirm_duplicate: {
+    title: "處理可能重複的 Skill",
+    description: "比較現有 Skill 與目前草稿，再決定沿用、調整或繼續建立。",
+    target: "creation-duplicate-decision",
+  },
+};
+
+export function creationFocus(session: CreationSession | undefined): CreationFocus | undefined {
+  if (!session || ["saved", "cancelled", "failed"].includes(session.state)) return undefined;
+  const pendingAction = session.snapshot.pending_action;
+  if (pendingAction) return CREATION_FOCUS_BY_ACTION[pendingAction];
+  if (session.state === "needs_reupload") {
+    return {
+      title: "重新上傳圖片",
+      description: "先前的圖片無法沿用；請重新附上圖片，才能繼續這次創作。",
+      target: "creation-message",
+    };
+  }
+  if (session.state === "waiting_input") {
+    return {
+      title: "補充創作方向",
+      description: "回覆 Agent 的問題或補上限制，讓這次創作繼續往前。",
+      target: "creation-message",
+    };
+  }
+  if (session.snapshot.draft) {
+    return {
+      title: "審閱草稿與檢查結果",
+      description: "先看驗證與試跑狀態，再決定要修訂或保存成不可變版本。",
+      target: "creation-draft-decision",
+    };
+  }
+  return undefined;
+}
+
+export type CreationJourneyStatus = "complete" | "current" | "upcoming";
+
+export type CreationJourneyItem = {
+  id: "explore" | "define" | "build" | "version";
+  title: string;
+  description: string;
+  status: CreationJourneyStatus;
+};
+
+const CREATION_JOURNEY = [
+  { id: "explore", title: "探索", description: "描述任務與參考" },
+  { id: "define", title: "定義", description: "確認目標與驗收" },
+  { id: "build", title: "建構", description: "產生並修訂草稿" },
+  { id: "version", title: "版本", description: "檢查後保存版本" },
+] as const;
+
+export function creationJourney(session: CreationSession | undefined): CreationJourneyItem[] {
+  const snapshot = session?.snapshot;
+  let current = 0;
+  if (snapshot?.brief) current = 1;
+  if (snapshot?.brief_confirmed) current = 2;
+  if (snapshot?.draft) current = 3;
+  const complete = session?.state === "saved" ? CREATION_JOURNEY.length : current;
+  return CREATION_JOURNEY.map((item, index) => ({
+    ...item,
+    status: index < complete ? "complete" : index === current ? "current" : "upcoming",
+  }));
+}
+
 export const FETCH_STATUS_LABEL: Record<string, string> = {
   ok: "已讀取",
   blocked: "被拒絕或被網路環境擋住（不重試）",

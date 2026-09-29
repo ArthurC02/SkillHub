@@ -18,6 +18,7 @@ import { SessionHeader } from "./SessionHeader";
 import { SessionEmptyState } from "./SessionEmptyState";
 import { SessionFeed } from "./SessionFeed";
 import { Composer } from "./Composer";
+import { CreationFocusPanel } from "./CreationFocus";
 import "./CreationSession.css";
 
 type CreationSessionProps = {
@@ -127,6 +128,7 @@ export function CreationSession(props: CreationSessionProps) {
         onPickSession={pickSession}
         historyMenu={historyMenu}
       />
+      <CreationFocusPanel session={session} />
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />

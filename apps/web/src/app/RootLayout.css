@@ -82,6 +82,11 @@
   min-height: 0;
 }
 
+.platform-shell[data-chat] .app-frame {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .platform-shell[data-chat] .app-content {
   overflow: hidden;
 }
@@ -132,6 +137,10 @@
 
   .platform-shell .app-frame {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .platform-shell[data-chat] .app-frame {
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .platform-shell .app-sidebar {

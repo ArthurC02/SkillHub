@@ -18,21 +18,21 @@ function NextStep({
 }) {
   if (roomForAnother) {
     return (
-      <>
+      <span className="creation-next-step">
         {" "}
         · 下一步最多 {points(costCredits)}，預算還有 {points(remainingCredits)}
-      </>
+      </span>
     );
   }
   return (
-    <>
+    <span className="creation-next-step">
       {" "}
       ·{" "}
       <strong>
         預算只剩 {points(remainingCredits)}，不夠再走一步的 {points(costCredits)}
       </strong>
       ，展開可以提高預算
-    </>
+    </span>
   );
 }
 
@@ -82,7 +82,7 @@ export function SessionHeader({
       </nav>
       <AgentAvatar />
       <div className="bar-title">
-        <h3>和 Agent 一起創作 Skill</h3>
+        <h1>和 Agent 一起創作 Skill</h1>
         <span className="creation-state">
           {session ? (
             <>

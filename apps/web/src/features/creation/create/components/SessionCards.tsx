@@ -32,8 +32,12 @@ export function BriefCard({
   locked: boolean;
   perform: Perform;
 }) {
+  const decisionTarget = p.pending_action === "confirm_brief";
   return (
-    <section>
+    <section
+      id={decisionTarget ? "creation-brief-decision" : undefined}
+      tabIndex={decisionTarget ? -1 : undefined}
+    >
       <header className="card-header">
         <h4>需求摘要</h4>
         <span className="card-tag" data-tone={p.brief_confirmed ? "done" : undefined}>
@@ -99,17 +103,22 @@ export function DiagramUnderstandingCard({
   understanding,
   confirmed,
   pendingAction,
+  decisionTarget,
   locked,
   perform,
 }: {
   understanding: string;
   confirmed: boolean;
   pendingAction: string;
+  decisionTarget?: boolean;
   locked: boolean;
   perform: Perform;
 }) {
   return (
-    <section>
+    <section
+      id={decisionTarget ? "creation-diagram-decision" : undefined}
+      tabIndex={decisionTarget ? -1 : undefined}
+    >
       <header className="card-header">
         <h4>流程圖理解</h4>
         <span className="card-tag" data-tone={confirmed ? "done" : undefined}>
@@ -136,17 +145,22 @@ export function DiagramDescriptionCard({
   description,
   confirmed,
   pendingAction,
+  decisionTarget,
   locked,
   perform,
 }: {
   description: string;
   confirmed: boolean | undefined;
   pendingAction: string;
+  decisionTarget?: boolean;
   locked: boolean;
   perform: Perform;
 }) {
   return (
-    <section>
+    <section
+      id={decisionTarget ? "creation-diagram-decision" : undefined}
+      tabIndex={decisionTarget ? -1 : undefined}
+    >
       <header className="card-header">
         <h4>流程圖描述</h4>
         <span className="card-tag" data-tone={confirmed ? "done" : undefined}>
@@ -173,6 +187,7 @@ export function DiagramInterpretationCard({
   interpretation,
   confirmed,
   pendingAction,
+  decisionTarget,
   answers,
   onAnswer,
   locked,
@@ -181,13 +196,17 @@ export function DiagramInterpretationCard({
   interpretation: CreationDiagramInterpretation;
   confirmed: boolean;
   pendingAction: string;
+  decisionTarget?: boolean;
   answers: Record<string, string>;
   onAnswer: (uncertaintyID: string, answer: string) => void;
   locked: boolean;
   perform: Perform;
 }) {
   return (
-    <section>
+    <section
+      id={decisionTarget ? "creation-diagram-decision" : undefined}
+      tabIndex={decisionTarget ? -1 : undefined}
+    >
       <header className="card-header">
         <h4>流程圖拆解</h4>
         <span className="card-tag" data-tone={confirmed ? "done" : undefined}>
@@ -259,7 +278,7 @@ export function FetchConsentCard({
   perform: Perform;
 }) {
   return (
-    <section>
+    <section id="creation-fetch-decision" tabIndex={-1}>
       <h4>連網讀取確認</h4>
       <p>
         模型想連到 <code>{url}</code>{" "}
@@ -311,7 +330,10 @@ export function ReferencesCard({
   perform: Perform;
 }) {
   return (
-    <section>
+    <section
+      id={pendingAction === "confirm_references" ? "creation-references-decision" : undefined}
+      tabIndex={pendingAction === "confirm_references" ? -1 : undefined}
+    >
       <h4>參考 Skill</h4>
       {pendingAction === "confirm_references" && catalogChecked && (
         <p>目錄裡已有相近的 Skill；你可以直接採用其中一個、以它們為參考，或從頭寫。</p>
@@ -353,7 +375,7 @@ export function DuplicatesCard({
   perform: Perform;
 }) {
   return (
-    <section>
+    <section id="creation-duplicate-decision" tabIndex={-1}>
       <h4>目錄已有相近的 Skill</h4>
       <p>
         保存前 Go

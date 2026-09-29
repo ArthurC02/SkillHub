@@ -151,8 +151,8 @@ export function Composer({
         {failureBox}
       </div>
       <span id="composer-limits">
-        流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000 位元組（約 3.8 MB）；參考 Skill
-        最多三個。
+        Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000
+        位元組（約 3.8 MB）；參考 Skill 最多三個。
       </span>
     </div>
   );
@@ -331,6 +331,7 @@ function MessageInput({
   return (
     <label>
       <textarea
+        id="creation-message"
         ref={textarea}
         aria-label="想完成的任務"
         aria-describedby="composer-count composer-limits"
@@ -353,7 +354,7 @@ function MessageInput({
         placeholder={
           frozen && !creditsBlocked && hasChoices
             ? "先在上方選這次的預算上限"
-            : "描述想完成的任務（Enter 送出，Shift＋Enter 換行）"
+            : "描述任務或回覆 Agent"
         }
       />
     </label>

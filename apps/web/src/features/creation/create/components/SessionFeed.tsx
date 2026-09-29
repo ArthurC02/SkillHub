@@ -114,6 +114,16 @@ function DiagramCards({
   locked: boolean;
   perform: Perform;
 }) {
+  const confirmDescription =
+    p.pending_action === "confirm_diagram" && Boolean(p.diagram_description);
+  const confirmUnderstanding =
+    p.pending_action === "confirm_diagram" &&
+    !confirmDescription &&
+    Boolean(p.diagram_understanding);
+  const confirmInterpretation = [
+    "answer_diagram_uncertainties",
+    "confirm_diagram_interpretation",
+  ].includes(p.pending_action);
   return (
     <>
       {p.diagram_understanding && (
@@ -121,6 +131,7 @@ function DiagramCards({
           understanding={p.diagram_understanding}
           confirmed={p.diagram_confirmed}
           pendingAction={p.pending_action}
+          decisionTarget={confirmUnderstanding}
           locked={locked}
           perform={perform}
         />
@@ -130,6 +141,7 @@ function DiagramCards({
           description={p.diagram_description}
           confirmed={p.diagram_description_confirmed}
           pendingAction={p.pending_action}
+          decisionTarget={confirmDescription}
           locked={locked}
           perform={perform}
         />
@@ -139,6 +151,7 @@ function DiagramCards({
           interpretation={p.diagram_interpretation}
           confirmed={p.diagram_confirmed}
           pendingAction={p.pending_action}
+          decisionTarget={confirmInterpretation}
           answers={diagramAnswers}
           onAnswer={(uncertaintyID, answer) =>
             onDiagramAnswers((old) => ({ ...old, [uncertaintyID]: answer }))

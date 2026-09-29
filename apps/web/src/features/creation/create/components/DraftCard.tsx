@@ -27,7 +27,7 @@ export function DraftCard({
   const runNotPassing =
     !!run && (run.execution_status !== "succeeded" || run.evaluation?.overall !== "met");
   return (
-    <section>
+    <section id="creation-draft-decision" tabIndex={-1}>
       <header className="card-header">
         <h4>Skill 草稿：{draft.skill.name}</h4>
         <span className="card-tag" data-tone={draft.blocked ? "danger" : "done"}>

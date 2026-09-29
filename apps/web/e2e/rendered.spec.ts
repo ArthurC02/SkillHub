@@ -305,6 +305,106 @@ async function verifyPublishingWorkspaceMapOnPhone(page: Page, testInfo: TestInf
   });
 }
 
+async function verifyCreationDecisionOnPhone(page: Page, testInfo: TestInfo) {
+  const sessionID = "44444444-4444-4444-8444-444444444444";
+  const session = {
+    id: sessionID,
+    revision: 7,
+    state: "waiting_confirmation",
+    snapshot: {
+      messages: Array.from({ length: 12 }, (_, index) => ({
+        role: index % 2 === 0 ? "user" : "assistant",
+        content: `第 ${index + 1} 則創作訊息，用來保留完整會話脈絡。`,
+        created_at: "2026-09-29T08:00:00Z",
+      })),
+      brief: "把每週客服紀錄整理成可追蹤摘要",
+      brief_confirmed: false,
+      acceptance_criteria: ["每個問題都有負責人", "列出下一步與期限"],
+      diagram_understanding: "",
+      diagram_confirmed: false,
+      references: [],
+      pending_action: "confirm_brief",
+      budget_credits: 500,
+      reserved_credits: 0,
+      spent_credits: 130,
+      usage_unknown: false,
+      steps: 3,
+      tool_calls: 0,
+    },
+    created_at: "2026-09-29T07:00:00Z",
+    updated_at: "2026-09-29T08:00:00Z",
+    expires_at: "2099-09-30T08:00:00Z",
+    deadline: "2099-09-29T09:00:00Z",
+  };
+  await stubPlatform(page);
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "EventSource", { value: undefined, configurable: true }),
+  );
+  await page.route("**/me", async (route) => {
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status,
+      json: { ...(body as object), features: { generate_skill: true, creation_skill: true } },
+    });
+  });
+  await page.route("**/creation-sessions**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/limits")) {
+      await route.fulfill({
+        json: {
+          min_budget_credits: 130,
+          max_budget_credits: 6500,
+          max_steps: 20,
+          max_tool_calls: 10,
+          call_timeout_seconds: 120,
+          session_timeout_seconds: 3600,
+          retention_seconds: 604800,
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: path.endsWith(sessionID) ? session : [session] });
+  });
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/workspace/creations?session=${sessionID}`);
+
+  await expect(page.getByRole("heading", { name: "和 Agent 一起創作 Skill" })).toBeVisible();
+  const workbench = page.locator(".creation-workbench");
+  await expect(workbench).toBeInViewport();
+  await expect(workbench.getByText("目前待決定")).toBeVisible();
+  await expect(workbench.getByText("確認任務與成功條件")).toBeVisible();
+  await expect(workbench.locator('[aria-current="step"]')).toHaveCount(1);
+  await expect(page.locator("#creation-message")).toBeInViewport();
+
+  const target = page.locator("#creation-brief-decision");
+  await workbench.getByRole("link", { name: "前往這一步" }).click();
+  await expect(target).toBeInViewport();
+  await target.focus();
+  await expect(target).toBeFocused();
+
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({
+    path: testInfo.outputPath("creation-decision-phone.png"),
+    fullPage: true,
+  });
+
+  const accessibility = await new AxeBuilder({ page }).include(".creation-workbench").analyze();
+  expect(accessibility.violations).toEqual([]);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/workspace/creations?session=${sessionID}`);
+  await expect(page.locator(".creation-workbench")).toBeInViewport();
+  await expect(page.locator(".creation-journey > li")).toHaveCount(4);
+  await page.screenshot({
+    path: testInfo.outputPath("creation-decision-desktop.png"),
+    fullPage: true,
+  });
+}
+
 test.describe("QA-008 real layout", () => {
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
@@ -345,6 +445,12 @@ test.describe("QA-008 real layout", () => {
     page,
   }, testInfo) => {
     await verifyPublishingWorkspaceMapOnPhone(page, testInfo);
+  });
+
+  test("Studio keeps the current decision and its evidence reachable on a phone", async ({
+    page,
+  }, testInfo) => {
+    await verifyCreationDecisionOnPhone(page, testInfo);
   });
 
   for (const [name, url] of PHONE_ROUTES) {
