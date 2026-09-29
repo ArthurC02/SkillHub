@@ -9,6 +9,7 @@ import {
   RunVerdict,
   RunSourceLinks,
   runActivityGroup,
+  runAttentionAction,
   runStatusLabel,
   useRuns,
   type RunListItem,
@@ -31,7 +32,7 @@ function WorkspaceHomeContent({ name }: { name: string }) {
   const runs = useRuns();
   const runRows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
   const attention = runRows.filter(
-    (run) => runActivityGroup(run.status, run.evaluation.value) === "needs_decision",
+    (run) => runActivityGroup(run.status, run.evaluation.value) === "needs_attention",
   );
   const active = runRows.filter(
     (run) => runActivityGroup(run.status, run.evaluation.value) === "in_flight",
@@ -43,24 +44,28 @@ function WorkspaceHomeContent({ name }: { name: string }) {
       <header className="workspace-home-hero">
         <p className="note">{name} 的 Workspace</p>
         <h1>繼續推進你的工作</h1>
-        <p>先處理需要判斷的結果，再回到正在演進的小工具；不必先找回上次在哪一頁。</p>
+        <p>先查看需要留意的結果，再回到正在演進的小工具；不必先找回上次在哪一頁。</p>
       </header>
 
       <div className="workspace-home-grid">
         <section className="workspace-home-section workspace-home-attention">
           <header>
-            <h2>需要你的決定</h2>
-            <p className="note">試跑完成了，但成果還不能由平台替你決定。</p>
+            <h2>需要留意</h2>
+            <p className="note">執行失敗、逾時或仍待判斷的結果會集中在這裡。</p>
           </header>
           {runs.isPending && <Loading what="需要處理的試跑" />}
           <ReadFailure error={runs.error} what="需要處理的試跑" />
           {runs.data &&
             (attention.length === 0 ? (
-              <p>目前沒有等待你判斷的試跑結果。</p>
+              <p>目前沒有需要你留意的試跑。</p>
             ) : (
               <ul className="workspace-home-list" data-role="evidence">
                 {attention.slice(0, 3).map((run) => (
-                  <RunItem key={run.run_id} run={run} action="檢視證據" />
+                  <RunItem
+                    key={run.run_id}
+                    run={run}
+                    action={runAttentionAction(run.status, run.evaluation.value)}
+                  />
                 ))}
               </ul>
             ))}

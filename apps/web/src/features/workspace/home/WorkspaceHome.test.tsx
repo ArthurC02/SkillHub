@@ -97,7 +97,9 @@ test("workspace home separates decisions, active work, and owned assets from ser
       return json({
         runs: [
           run("run-review", "Needs review", "succeeded", "not_met"),
+          run("run-failed", "Needs failure review", "failed", "not_evaluated"),
           run("run-active", "Still running", "running", "undetermined"),
+          run("run-cancelled", "Cancelled", "cancelled", "not_evaluated"),
           run("run-done", "Already good", "succeeded", "met"),
         ],
       });
@@ -125,8 +127,12 @@ test("workspace home separates decisions, active work, and owned assets from ser
 
   await render(<WorkspaceHome />, () => (container.textContent ?? "").includes("PDF Summariser"));
 
-  expect(section("需要你的決定").textContent).toContain("Needs review");
-  expect(section("需要你的決定").textContent).not.toContain("Still running");
+  expect(section("需要留意").textContent).toContain("Needs review");
+  expect(section("需要留意").textContent).toContain("Needs failure review");
+  expect(section("需要留意").textContent).toContain("檢視證據");
+  expect(section("需要留意").textContent).toContain("查看原因");
+  expect(section("需要留意").textContent).not.toContain("Still running");
+  expect(section("需要留意").textContent).not.toContain("Cancelled");
   expect(section("執行中").textContent).toContain("Still running");
   expect(section("執行中").textContent).not.toContain("Needs review");
   expect(container.textContent).not.toContain("Already good");

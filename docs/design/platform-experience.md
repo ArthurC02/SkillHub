@@ -241,7 +241,7 @@ Operator 使用獨立的營運殼層處理帳號、成本、派送、稽核與�
 
 首頁由優先序排列的四種內容組成：
 
-1. 需要你的決定：失敗證據、權限確認、曝光或發佈決定。
+1. 需要留意：執行失敗、逾時、無法產生判定，以及仍需人判斷的證據；只有契約已提供真實動作時才顯示處理按鈕。
 2. 繼續進行：最近正在編輯、驗證或準備發佈的物件。
 3. 執行中：可離開的背景工作與最後更新。
 4. 建議探索：只有在沒有更高優先工作時，才放與目前目標相關的 Catalog 入口。
@@ -268,13 +268,13 @@ Operator 使用獨立的營運殼層處理帳號、成本、派送、稽核與�
 
 Activity 先依使用者能否採取行動分組，再依時間排序：
 
-- 需要你：必須判斷、重新授權、處理失敗或確認結果。
+- 需要留意：必須判斷、重新授權、查看失敗原因或確認結果；不把「值得查看」誇大成使用者一定能修復。
 - 執行中：平台正在處理，可以離開。
-- 最近完成：可回到來源物件的結果。
+- 最近結束：可回到來源物件的結果，也包含已取消但沒有其他待判事實的執行。
 
 每列至少顯示物件、工作種類、狀態、最後更新與一個明確下一步。Activity 不複製 Trace、完整評估或套件內容；點開後回到來源物件的精確脈絡。
 
-現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要你的決定／執行中／最近完成」分組，保留建立與結束時間的原始語意。每列除了回到單一 Run 查看證據，也使用同一筆 owner facts 直接回到 Skill、該次不可變 Version，以及存在 `test_case_id` 時的精確 Test Case；歷史列沒有 Test Case 識別時就不發明連結。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
+現行 `/workspace/runs` 是 Activity 的第一個可信切片：只用 Run owner 的 Workspace 清單，依「需要留意／執行中／最近結束」分組，保留建立與結束時間的原始語意。執行失敗與逾時提供「查看原因」，評估故障明示沒有產生判定，成果不符合、部分符合或無法判定則提供「檢視證據」；取消與未知狀態不被前端推測成失敗。這只是檢視優先序，不是真正的待辦指派，因清單尚未提供責任人、可重試權限或處理完成狀態。每列除了回到單一 Run，也使用同一筆 owner facts 直接回到 Skill、該次不可變 Version，以及存在 `test_case_id` 時的精確 Test Case；歷史列沒有 Test Case 識別時就不發明連結。畫面明示目前只收錄試跑；Publication 已有擁有者的 Workspace 跨 Skill 清單，但在 Run 尚無列級最後更新、各來源尚無 Activity 專用分類、權威時間與全域續讀契約以前，不把前端扇出結果稱為完整 Activity。
 
 ### 5.5 微觀互動契約
 
@@ -305,6 +305,8 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 外部產品模式只作結構參考：GitHub Projects 的同一物件多視圖、VS Code 的穩定容器與脈絡操作、Linear 的保存檢視，以及設計系統對全域殼層與物件內導覽的分工。Primer 的導覽模式把 parent-detail 導覽留在受影響內容旁，分頁緊貼同層內容；Carbon 的 UI shell 在次級項目多且需要頻繁切換時採左側區域，但避免三層導覽；PatternFly 的 Page 也把 masthead、sidebar 與 main 定義成一個可聚焦的頁面骨架（[Primer Navigation](https://primer.style/product/ui-patterns/navigation/)、[Carbon UI shell left panel](https://carbondesignsystem.com/components/UI-shell-left-panel/usage/)、[PatternFly Page](https://www.patternfly.org/components/page/)）。這些原則落在 Skill 工作台、Test Case 內的 Dataset 與 Activity 來源連結；Skill Hub 不複製它們的視覺語言，也不因此引入套件。
 
 空狀態則遵守 Carbon 的結構原則：答案留在資料原本會出現的位置，說明原因與下一步，並避免同一個空狀態堆多個主要行動；同層切換參考 Material UI Tabs 對相關、同階檢視與鍵盤焦點的要求（[Carbon Empty states](https://carbondesignsystem.com/patterns/empty-states-pattern/)、[Material UI Tabs](https://mui.com/material-ui/react-tabs/)）。這裡採用的是資訊層級與互動契約，不是元件實作。
+
+異常狀態參考 Primer 的通知與降級體驗原則：失敗必須維持可見，訊息說明結果與脈絡，且不能淡化平台確實發生的問題；對應到 Activity，就是把失敗與逾時提升到「需要留意」，但只提供契約能保證的查看入口（[Notification messaging](https://www.primer.style/product/ui-patterns/notification-messaging/)、[Degraded experiences](https://primer.style/product/ui-patterns/degraded-experiences/)）。
 
 不可變證據的續接另參考 GitHub Actions：workflow run 以自己的識別與 ref／SHA 保留執行脈絡，artifact 也明確連到產生它的 workflow run，而不是只顯示檔名後讓人猜來源（[Workflow runs API](https://docs.github.com/en/rest/actions/workflow-runs)、[Workflow artifacts](https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts)）。Skill Hub 對應只使用各 owner 已回傳的 Run、Skill、Version、Test Case 與 Bundle member 識別來建立導覽，不由前端推測缺席關係。
 

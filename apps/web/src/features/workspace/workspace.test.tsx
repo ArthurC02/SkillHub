@@ -188,6 +188,30 @@ test("WS-004 activity groups every run by the decision its server facts support"
           finished_at: undefined,
           evaluation: { value: "not_evaluated", label: "未評估", note: "還在跑。" },
         },
+        {
+          ...RUN_ROW,
+          run_id: "run-failed",
+          skill_name: "執行失敗的 Skill",
+          status: "failed",
+          evaluation: { value: "not_evaluated", label: "未評估", note: "沒有判定。" },
+        },
+        {
+          ...RUN_ROW,
+          run_id: "run-evaluation-failed",
+          skill_name: "評估失敗的 Skill",
+          evaluation: {
+            value: "evaluation_failed",
+            label: "評估失敗",
+            note: "沒有產生判定。",
+          },
+        },
+        {
+          ...RUN_ROW,
+          run_id: "run-cancelled",
+          skill_name: "已取消的 Skill",
+          status: "cancelled",
+          evaluation: { value: "not_evaluated", label: "未評估", note: "沒有判定。" },
+        },
         { ...RUN_ROW, run_id: "run-recent", skill_name: "最近完成的 Skill" },
       ],
     }),
@@ -199,13 +223,18 @@ test("WS-004 activity groups every run by the decision its server facts support"
       .find((node) => node.textContent === heading)
       ?.closest("section")?.textContent ?? "";
 
-  expect(sectionText("需要你的決定")).toContain("需要判斷的 Skill");
-  expect(sectionText("需要你的決定")).toContain("檢視證據");
+  expect(sectionText("需要留意")).toContain("需要判斷的 Skill");
+  expect(sectionText("需要留意")).toContain("執行失敗的 Skill");
+  expect(sectionText("需要留意")).toContain("評估失敗的 Skill");
+  expect(sectionText("需要留意")).toContain("檢視證據");
+  expect(sectionText("需要留意")).toContain("查看原因");
+  expect(sectionText("需要留意")).toContain("查看評估狀態");
   expect(sectionText("執行中")).toContain("執行中的 Skill");
   expect(sectionText("執行中")).toContain("查看進度");
-  expect(sectionText("最近完成")).toContain("最近完成的 Skill");
-  expect(sectionText("最近完成")).toContain("查看結果");
-  expect(container.querySelectorAll(".download-item")).toHaveLength(3);
+  expect(sectionText("最近結束")).toContain("最近完成的 Skill");
+  expect(sectionText("最近結束")).toContain("已取消的 Skill");
+  expect(sectionText("最近結束")).toContain("查看結果");
+  expect(container.querySelectorAll(".download-item")).toHaveLength(6);
 });
 
 test("O11Y-004 the policy event table keeps its accessible columns in mobile cards", async () => {

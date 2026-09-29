@@ -6,6 +6,7 @@ import { useRuns, type RunListItem } from "../runs.service";
 import {
   CLEANUP_BADGE,
   runActivityGroup,
+  runAttentionAction,
   runStatusLabel,
   type RunActivityGroup,
 } from "../runs.model";
@@ -57,7 +58,7 @@ export function WorkspaceRuns() {
                   ) : (
                     <ul className="download-list" data-role="evidence">
                       {groupRows.map((run) => (
-                        <RunRow key={run.run_id} run={run} action={group.action} />
+                        <RunRow key={run.run_id} run={run} action={group.action(run)} />
                       ))}
                     </ul>
                   )}
@@ -89,28 +90,28 @@ const ACTIVITY_GROUPS: Array<{
   title: string;
   note: string;
   empty: string;
-  action: string;
+  action: (run: RunListItem) => string;
 }> = [
   {
-    key: "needs_decision",
-    title: "需要你的決定",
-    note: "試跑已結束，但成果是不符合或部分符合。",
-    empty: "目前沒有等待你判斷的試跑結果。",
-    action: "檢視證據",
+    key: "needs_attention",
+    title: "需要留意",
+    note: "這些試跑有執行失敗、逾時，或結果尚需判斷；先查看事實，再決定下一步。",
+    empty: "目前沒有需要你留意的試跑。",
+    action: (run) => runAttentionAction(run.status, run.evaluation.value),
   },
   {
     key: "in_flight",
     title: "執行中",
     note: "平台仍在處理；離開後可以從這裡回來。",
     empty: "目前沒有正在執行的試跑。",
-    action: "查看進度",
+    action: () => "查看進度",
   },
   {
     key: "recent",
-    title: "最近完成",
+    title: "最近結束",
     note: "其他已結束的試跑，新的在上面。",
     empty: "目前沒有其他已結束的試跑。",
-    action: "查看結果",
+    action: () => "查看結果",
   },
 ];
 

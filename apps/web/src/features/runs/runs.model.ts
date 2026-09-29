@@ -1,8 +1,14 @@
 import { IN_FLIGHT_RUN_STATUSES, type RunStatus } from "./trace.service";
 
-export type RunActivityGroup = "needs_decision" | "in_flight" | "recent";
+export type RunActivityGroup = "needs_attention" | "in_flight" | "recent";
 
-const RUN_VERDICTS_NEEDING_DECISION = new Set(["not_met", "partially_met"]);
+const RUN_STATUSES_NEEDING_ATTENTION = new Set(["failed", "timed_out"]);
+const RUN_VERDICTS_NEEDING_ATTENTION = new Set([
+  "not_met",
+  "partially_met",
+  "undetermined",
+  "evaluation_failed",
+]);
 
 export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   queued: "排隊中",
@@ -22,8 +28,15 @@ export function runStatusLabel(status: string): string {
 
 export function runActivityGroup(status: string, verdict: string): RunActivityGroup {
   if (IN_FLIGHT_RUN_STATUSES.has(status)) return "in_flight";
-  if (RUN_VERDICTS_NEEDING_DECISION.has(verdict)) return "needs_decision";
+  if (RUN_STATUSES_NEEDING_ATTENTION.has(status)) return "needs_attention";
+  if (RUN_VERDICTS_NEEDING_ATTENTION.has(verdict)) return "needs_attention";
   return "recent";
+}
+
+export function runAttentionAction(status: string, verdict: string): string {
+  if (RUN_STATUSES_NEEDING_ATTENTION.has(status)) return "查看原因";
+  if (verdict === "evaluation_failed") return "查看評估狀態";
+  return "檢視證據";
 }
 
 export const CLEANUP_BADGE: Record<string, string> = {
