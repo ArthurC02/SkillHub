@@ -1,12 +1,14 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { Tip } from "../../../shared/ui/Tip";
+import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
 import { API_BASE_URL, ApiError } from "../../../core/api/client";
-import { useEmbeddedSkillDetails, useOwnSkills } from "../../skill";
+import type { SkillVersionSummary } from "../../../core/api/types";
+import { useEmbeddedSkillDetails, useEmbeddedSkillVersions, useOwnSkills } from "../../skill";
 import {
   useCreateBundleVersion,
   useDelistBundle,
@@ -24,44 +26,68 @@ const PLUGIN_SCOPE_NOTE = "Plugin 只含 Agent Skill，不含 MCP 設定或宿�
 interface MemberChoice {
   skillId: string;
   name: string;
-  versionId: string;
-  versionNumber: number;
+  versions: SkillVersionSummary[];
   needsAttestation: boolean;
 }
 
-function useMemberChoices(): { choices: MemberChoice[]; isPending: boolean } {
+interface ContinuationChoice {
+  choice: MemberChoice;
+  memberVersion: SkillVersionSummary;
+}
+
+function useMemberChoices(): {
+  choices: MemberChoice[];
+  isPending: boolean;
+  error: Error | null;
+} {
   const ownSkills = useOwnSkills();
   const skillIds = useMemo(
     () => ownSkills.data?.skills.map((s) => s.skill_id) ?? [],
     [ownSkills.data],
   );
   const details = useEmbeddedSkillDetails(skillIds);
+  const versions = useEmbeddedSkillVersions(skillIds);
 
   const choices: MemberChoice[] = [];
   skillIds.forEach((skillId, i) => {
     const detail = details[i]?.data;
-    if (!detail?.version) return;
+    if (!detail) return;
     const value = detail.redistribution?.value;
     choices.push({
       skillId,
       name: detail.name,
-      versionId: detail.version.version_id,
-      versionNumber: detail.version.version_number,
+      versions: versions[i]?.data?.versions ?? [],
       needsAttestation: value === "self_supplied" || value === "generated",
     });
   });
 
-  return { choices, isPending: ownSkills.isPending || details.some((d) => d.isPending) };
+  return {
+    choices,
+    isPending:
+      ownSkills.isPending ||
+      details.some((detail) => detail.isPending) ||
+      versions.some((versionList) => versionList.isPending),
+    error:
+      ownSkills.error ??
+      details.find((detail) => detail.error)?.error ??
+      versions.find((versionList) => versionList.error)?.error ??
+      null,
+  };
 }
 
-export function BundleSection() {
+export function BundleSection({ selectedVersion }: { selectedVersion?: string }) {
   const bundles = useOwnBundles();
-  const { choices, isPending: choicesPending } = useMemberChoices();
+  const { choices, isPending: choicesPending, error: choicesError } = useMemberChoices();
+  const createDetails = useRef<HTMLDetailsElement>(null);
   const hasBundles = (bundles.data?.bundles.length ?? 0) > 0;
   const needsAttestationOf = useMemo(() => {
     const map = new Map(choices.map((c) => [c.skillId, c.needsAttestation]));
     return (bundle: BundleVersion) => bundle.members.some((m) => map.get(m.skill_id) === true);
   }, [choices]);
+
+  useEffect(() => {
+    if (selectedVersion && createDetails.current) createDetails.current.open = true;
+  }, [selectedVersion]);
 
   return (
     <section>
@@ -87,9 +113,14 @@ export function BundleSection() {
           </ul>
         ))}
 
-      <details className="bundle-create">
+      <details className="bundle-create" ref={createDetails}>
         <summary>{hasBundles ? "建立另一個 Bundle" : "建立第一個 Bundle"}</summary>
-        <CreateBundleForm choices={choices} choicesPending={choicesPending} />
+        <CreateBundleForm
+          choices={choices}
+          choicesPending={choicesPending}
+          choicesError={choicesError}
+          selectedVersion={selectedVersion}
+        />
       </details>
     </section>
   );
@@ -343,25 +374,54 @@ function PublishedBundleView({
 function CreateBundleForm({
   choices,
   choicesPending,
+  choicesError,
+  selectedVersion,
 }: {
   choices: MemberChoice[];
   choicesPending: boolean;
+  choicesError: Error | null;
+  selectedVersion?: string;
 }) {
   const create = useCreateBundleVersion();
   const [name, setName] = useState("");
   const [version, setVersion] = useState("");
   const [description, setDescription] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Map<string, string>>(new Map());
+  const appliedVersion = useRef<string | undefined>(undefined);
+  const continuationSelect = useRef<HTMLSelectElement>(null);
   const nameId = useId();
   const versionId = useId();
   const descriptionId = useId();
   const noMembersId = useId();
+  const continuation = useMemo(
+    () =>
+      choices
+        .flatMap((choice) => choice.versions.map((memberVersion) => ({ choice, memberVersion })))
+        .find(({ memberVersion }) => memberVersion.version_id === selectedVersion) as
+        ContinuationChoice | undefined,
+    [choices, selectedVersion],
+  );
+  const choicesReady = !choicesPending && !choicesError;
 
-  function toggle(skillId: string) {
+  useEffect(() => {
+    if (
+      !selectedVersion ||
+      !continuation ||
+      !choicesReady ||
+      appliedVersion.current === selectedVersion
+    )
+      return;
+    appliedVersion.current = selectedVersion;
+    setSelected(new Map([[continuation.choice.skillId, selectedVersion]]));
+  }, [choicesReady, continuation, selectedVersion]);
+
+  useContinuationFocus(selectedVersion, Boolean(continuation && choicesReady), continuationSelect);
+
+  function selectVersion(skillId: string, memberVersionId: string) {
     setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(skillId)) next.delete(skillId);
-      else next.add(skillId);
+      const next = new Map(current);
+      if (memberVersionId) next.set(skillId, memberVersionId);
+      else next.delete(skillId);
       return next;
     });
   }
@@ -371,9 +431,7 @@ function CreateBundleForm({
       className="bundle-form"
       onSubmit={(event) => {
         event.preventDefault();
-        const memberVersionIds = choices
-          .filter((c) => selected.has(c.skillId))
-          .map((c) => c.versionId);
+        const memberVersionIds = Array.from(selected.values());
         create.mutate(
           {
             name: name.trim(),
@@ -386,23 +444,89 @@ function CreateBundleForm({
               setName("");
               setVersion("");
               setDescription("");
-              setSelected(new Set());
+              setSelected(new Map());
             },
           },
         );
       }}
     >
       <h3>建立 Bundle Version</h3>
+      <BundleIdentityFields
+        nameId={nameId}
+        name={name}
+        onName={setName}
+        versionId={versionId}
+        version={version}
+        onVersion={setVersion}
+        descriptionId={descriptionId}
+        description={description}
+        onDescription={setDescription}
+      />
+      <BundleMemberChoices
+        choices={choices}
+        choicesPending={choicesPending}
+        choicesError={choicesError}
+        choicesReady={choicesReady}
+        selectedVersion={selectedVersion}
+        continuation={continuation}
+        continuationSelect={continuationSelect}
+        selected={selected}
+        onSelect={selectVersion}
+      />
+      <p>
+        <button
+          type="submit"
+          disabled={create.isPending || !choicesReady || selected.size === 0}
+          aria-describedby={selected.size === 0 ? noMembersId : undefined}
+        >
+          {create.isPending ? "建立中…" : "建立"}
+        </button>
+      </p>
+      {selected.size === 0 && (
+        <p className="note" id={noMembersId}>
+          先選擇至少一個要放入 Bundle 的 Skill 版本。
+        </p>
+      )}
+      {create.isError && (
+        <p role="alert">{actionFailureSentence(create.error, "建立沒有成功，可以再試一次。")}</p>
+      )}
+    </form>
+  );
+}
+
+function BundleIdentityFields({
+  nameId,
+  name,
+  onName,
+  versionId,
+  version,
+  onVersion,
+  descriptionId,
+  description,
+  onDescription,
+}: {
+  nameId: string;
+  name: string;
+  onName: (value: string) => void;
+  versionId: string;
+  version: string;
+  onVersion: (value: string) => void;
+  descriptionId: string;
+  description: string;
+  onDescription: (value: string) => void;
+}) {
+  return (
+    <>
       <div className="field">
         <label htmlFor={nameId}>名稱</label>
-        <input id={nameId} value={name} onChange={(e) => setName(e.target.value)} required />
+        <input id={nameId} value={name} onChange={(event) => onName(event.target.value)} required />
       </div>
       <div className="field">
         <label htmlFor={versionId}>版本（semver，例如 1.0.0）</label>
         <input
           id={versionId}
           value={version}
-          onChange={(e) => setVersion(e.target.value)}
+          onChange={(event) => onVersion(event.target.value)}
           required
         />
       </div>
@@ -411,46 +535,78 @@ function CreateBundleForm({
         <textarea
           id={descriptionId}
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(event) => onDescription(event.target.value)}
           required
         />
       </div>
-      <fieldset>
-        <legend>成員（各取最新版本）</legend>
-        {choicesPending && <Loading what="你的 Skill 清單" />}
-        {!choicesPending && choices.length === 0 && (
-          <p className="note">還沒有可以選的 Skill——先建立至少一個有版本的 Skill。</p>
-        )}
-        {choices.map((choice) => (
-          <p key={choice.skillId}>
-            <label>
-              <input
-                type="checkbox"
-                checked={selected.has(choice.skillId)}
-                onChange={() => toggle(choice.skillId)}
-              />{" "}
-              {choice.name}（v{choice.versionNumber}）
-            </label>
-          </p>
-        ))}
-      </fieldset>
-      <p>
-        <button
-          type="submit"
-          disabled={create.isPending || selected.size === 0}
-          aria-describedby={selected.size === 0 ? noMembersId : undefined}
-        >
-          {create.isPending ? "建立中…" : "建立"}
-        </button>
-      </p>
-      {selected.size === 0 && (
-        <p className="note" id={noMembersId}>
-          先勾選至少一個要放入的成員 Skill。
+    </>
+  );
+}
+
+function BundleMemberChoices({
+  choices,
+  choicesPending,
+  choicesError,
+  choicesReady,
+  selectedVersion,
+  continuation,
+  continuationSelect,
+  selected,
+  onSelect,
+}: {
+  choices: MemberChoice[];
+  choicesPending: boolean;
+  choicesError: Error | null;
+  choicesReady: boolean;
+  selectedVersion?: string;
+  continuation?: ContinuationChoice;
+  continuationSelect: RefObject<HTMLSelectElement | null>;
+  selected: Map<string, string>;
+  onSelect: (skillId: string, versionId: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend>成員版本</legend>
+      <p className="note">每個 Skill 明確選一個不可變版本；平台不會替你改成最新版本。</p>
+      {choicesPending && <Loading what="可加入 Bundle 的版本" />}
+      <ReadFailure error={choicesError} what="可加入 Bundle 的版本">
+        <p role="alert">暫時無法讀取可加入 Bundle 的版本。</p>
+      </ReadFailure>
+      {choicesReady && selectedVersion && !continuation && (
+        <p role="status" className="note">
+          無法確認要接續的 Version，因此沒有自動選擇其他版本。
         </p>
       )}
-      {create.isError && (
-        <p role="alert">{actionFailureSentence(create.error, "建立沒有成功，可以再試一次。")}</p>
+      {choicesReady && continuation && (
+        <p role="status" className="note">
+          從 v{continuation.memberVersion.version_number} 接續建立 Bundle。
+        </p>
       )}
-    </form>
+      {choicesReady && choices.length === 0 && (
+        <p className="note">還沒有可以選的 Skill——先建立至少一個有版本的 Skill。</p>
+      )}
+      {choices.map((choice) => (
+        <div className="field bundle-member" key={choice.skillId}>
+          <label htmlFor={`bundle-member-${choice.skillId}`}>{choice.name}</label>
+          <select
+            id={`bundle-member-${choice.skillId}`}
+            ref={continuation?.choice.skillId === choice.skillId ? continuationSelect : undefined}
+            value={selected.get(choice.skillId) ?? ""}
+            onChange={(event) => onSelect(choice.skillId, event.target.value)}
+            disabled={!choicesReady}
+            data-bundle-version={
+              continuation?.choice.skillId === choice.skillId ? selectedVersion : undefined
+            }
+          >
+            <option value="">不加入</option>
+            {choice.versions.map((memberVersion) => (
+              <option key={memberVersion.version_id} value={memberVersion.version_id}>
+                v{memberVersion.version_number} · {memberVersion.content_hash}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </fieldset>
   );
 }

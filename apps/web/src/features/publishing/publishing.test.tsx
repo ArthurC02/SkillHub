@@ -32,7 +32,7 @@ import type { SkillDetail } from "../../core/api/types";
 
 let container: HTMLDivElement;
 let root: Root;
-let publishingSearch: { artifact?: string; publication?: string } = {};
+let publishingSearch: { artifact?: string; publication?: string; bundleVersion?: string } = {};
 
 beforeEach(() => {
   queryClient.clear();
@@ -161,6 +161,95 @@ test("an empty Bundle collection keeps creation available without making the pag
   );
   expect(createBundle?.open).toBe(false);
   expect(createBundle?.querySelector("form.bundle-form")).not.toBeNull();
+});
+
+test("an exact Version continuation preselects that immutable Bundle member instead of latest", async () => {
+  const olderVersion = SKILL_VERSIONS.versions[1];
+  publishingSearch = { bundleVersion: olderVersion.version_id };
+  let created: Record<string, unknown> | undefined;
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/bundles" && init?.method === "POST") {
+      created = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return json(OWN_BUNDLE, 201);
+    }
+    const routes: Record<string, { body: unknown; status?: number }> = {
+      "/me/publisher": { body: OWN_PUBLISHER },
+      "/me/publications": { body: { publications: [] } },
+      "/me/bundles": { body: { bundles: [] } },
+      "/skills": {
+        body: {
+          skills: [{ skill_id: SKILL }],
+          total: 1,
+          limit: 100,
+          truncated: false,
+        },
+      },
+      [`/api/skills/${SKILL}`]: { body: skillDetail(SKILL, "PDF Summariser") },
+      [`/skills/${SKILL}/versions`]: { body: SKILL_VERSIONS },
+      "/downloads": { body: { downloads: [] } },
+    };
+    const hit = routes[path];
+    return json(hit?.body ?? { error: "not found" }, hit?.status ?? (hit ? 200 : 404));
+  });
+
+  await render(
+    <PublishingWorkspace />,
+    () => document.activeElement?.getAttribute("data-bundle-version") === olderVersion.version_id,
+  );
+
+  const member = container.querySelector<HTMLSelectElement>(
+    `select[data-bundle-version="${olderVersion.version_id}"]`,
+  );
+  expect(member?.value).toBe(olderVersion.version_id);
+  expect(member?.selectedOptions[0]?.textContent).toContain("v1");
+  expect(text()).toContain("從 v1 接續建立 Bundle");
+
+  const fields = container.querySelectorAll<HTMLInputElement>("form.bundle-form input");
+  const setInput = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setInput.call(fields[0], "pdf-toolkit");
+    fields[0].dispatchEvent(new Event("input", { bubbles: true }));
+    setInput.call(fields[1], "1.0.0");
+    fields[1].dispatchEvent(new Event("input", { bubbles: true }));
+    const description = container.querySelector<HTMLTextAreaElement>("form.bundle-form textarea")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      description,
+      "Exact versions",
+    );
+    description.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => button("建立")?.click());
+  await waitFor(() => created !== undefined);
+
+  expect(created).toMatchObject({ member_version_ids: [olderVersion.version_id] });
+});
+
+test("a Bundle member version read failure stays unknown and blocks creation", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": {
+      body: {
+        skills: [{ skill_id: SKILL }],
+        total: 1,
+        limit: 100,
+        truncated: false,
+      },
+    },
+    [`/api/skills/${SKILL}`]: { body: skillDetail(SKILL, "PDF Summariser") },
+    [`/skills/${SKILL}/versions`]: { body: { error: "version backend unavailable" }, status: 503 },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("暫時無法讀取可加入 Bundle 的版本"));
+
+  expect(text()).not.toContain("還沒有可加入的 Skill");
+  expect(text()).not.toContain("version backend unavailable");
+  expect(button("建立")?.disabled).toBe(true);
 });
 
 test("an older Bundle row exports and first publishes the immutable version shown on that row", async () => {

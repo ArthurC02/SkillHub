@@ -37,7 +37,7 @@ export function SessionFeed({
   busy: boolean;
   terminal: boolean;
   locked: boolean;
-  latest: RunListItem | undefined;
+  latest: RunListItem | null | undefined;
   perform: Perform;
   diagramAnswers: DiagramAnswers;
   onDiagramAnswers: Dispatch<SetStateAction<DiagramAnswers>>;

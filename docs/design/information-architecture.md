@@ -101,7 +101,7 @@
 | `/workspace/skills` | `WorkspaceSkills` | 02:WS-002 第 1 條／WS-004 | 創作者空間／創作者帳戶與工作區 |
 | `/workspace/creations` | `CreateSkill` | 02:GEN-001（旗標 `generate_skill`）／[互動創作](../adr/README.md#互動創作)（旗標 `creation_skill`） | 創作者空間／**Skill 創作**〔負責人指示；旗標關著時這一頁只回一句「這一頁現在不存在」，⛔ `01` §10 邊界 1〕 |
 | `/workspace/runs` | `WorkspaceRuns` | 02:WS-002 第 1 條／WS-004 | 創作者空間／**活動**〔目前只投影 Run owner 清單；不冒充跨物件 Activity〕 |
-| `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、跨 Skill Publication／最新 Release、Bundle 與下載紀錄共用一個平台空間〕 |
+| `/workspace/downloads` | `PublishingWorkspace` | 02:WS-002／WS-004、PACK-003～006 | Skill 生命週期／**發佈與交付**〔沿用舊網址；發佈者身分、跨 Skill Publication／最新 Release、精確版本 Bundle 與下載紀錄共用一個平台空間〕 |
 | `/workspace/account` | `WorkspaceAccount` | CORE-007／02:SEC-006 | 創作者空間／創作者帳戶與工作區 |
 | `/policy` | `DataPolicy` | 02:O11Y-004 | 產品營運／創作者使用權益與資料生命週期 |
 | `/lab/test-cases` | `TestCaseList` | 03:TEST-012 | 試跑與改善／**試跑情境設計** |
@@ -162,7 +162,7 @@ Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/versions/$id, /lab/test-cases
 SkillFiles ─────► /skills/$id, /skills/$id/versions/$id, /lab/test-cases
 SkillVersion ───► /skills/$id, /skills/$id/files, /skills/$id/package,
-                  /skills/$id/versions/$id, /lab/test-cases
+                  /skills/$id/versions/$id, /lab/test-cases, /workspace/downloads
 ImportSkill ────► /skills/$id
 Packaging ──────► /skills/$id, /skills/$id/files, /skills/$id/versions/$id,
                   /lab/test-cases, /workspace/downloads
@@ -232,7 +232,8 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
 | 5 | `/lab/test-cases/$testCaseId` | ✅ |
 | 7 | `/`、`/workspace/skills` | ✅ |
-| 8 | `/workspace/downloads`、`/runs/$runId` | ✅ |
+| 8 | `/runs/$runId` | ✅ |
+| 9 | `/workspace/downloads` | ✅ |
 | 9 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId/versions/$versionId` | ✅ |
 | 16 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
@@ -286,7 +287,7 @@ CreationSession ► /lab/test-cases, /skills/$id/test-cases/$id/runs/new, /runs/
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
-| `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`） | 發佈與交付空間裡正在續接哪一筆保存紀錄。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication；兩者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`，不得只把人送到泛用清單重新尋找。清單成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
+| `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`）、`bundleVersion`（須為 UUID） | 發佈與交付空間裡正在續接哪一筆保存紀錄或哪一個 Bundle 成員版本。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication，`bundleVersion` 指向使用者剛選定且 owner 版本清單確實包含的不可變 Skill Version；三者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`；「加入 Bundle」則保留當下的精確 Version，不得只把人送到泛用清單，也不得改選最新版本。資料成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個以上參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
 | `/skills/$skillId/test-cases/$testCaseId/runs/new` | `version` | TEST-008／009：Skill 與 Test Case 是建立 Run 的固定工作脈絡；只有可替換的 Version 留在網址狀態並由頁面選擇 |
 | `/lab/run` | `skill`、`version`、`test_case` | 舊深連結的相容輸入；帶齊 Skill 與 Test Case 後改寫成上列 canonical URL，沒有足夠脈絡時回到 Test Case 清單或單筆，不渲染第二份 preflight |
 | `/lab/test-cases/$testCaseId/datasets` | `version`（須為 UUID） | Test Case 已固定在路徑；精確 Version 留在網址，讓 Dataset、Test Case 與後續 preflight 共用同一個不可變版本脈絡 |

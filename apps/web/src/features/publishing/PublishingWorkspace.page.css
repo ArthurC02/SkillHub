@@ -56,6 +56,18 @@
   max-width: 560px;
 }
 
+.publishing-workspace .bundle-member {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(14rem, 1.2fr);
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.publishing-workspace .bundle-member select {
+  min-width: 0;
+  width: 100%;
+}
+
 .publishing-workspace .bundle-create {
   margin-top: 16px;
 }
@@ -74,5 +86,9 @@
   .publishing-workspace-main > section,
   .publishing-workspace-rail > section {
     padding: 16px;
+  }
+
+  .publishing-workspace .bundle-member {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -29,7 +29,11 @@ const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PUBLICATION_REFERENCE = /^[^/]+\/[^/]+$/;
 
-export type PublishingWorkspaceSearch = { artifact?: string; publication?: string };
+export type PublishingWorkspaceSearch = {
+  artifact?: string;
+  publication?: string;
+  bundleVersion?: string;
+};
 
 function publishingArtifact(search: Record<string, unknown>) {
   return typeof search.artifact === "string" && UUID.test(search.artifact)
@@ -43,12 +47,19 @@ function publishingPublication(search: Record<string, unknown>) {
     : undefined;
 }
 
+function publishingBundleVersion(search: Record<string, unknown>) {
+  return typeof search.bundleVersion === "string" && UUID.test(search.bundleVersion)
+    ? search.bundleVersion
+    : undefined;
+}
+
 export function validatePublishingWorkspaceSearch(
   search: Record<string, unknown>,
 ): PublishingWorkspaceSearch {
   return {
     artifact: publishingArtifact(search),
     publication: publishingPublication(search),
+    bundleVersion: publishingBundleVersion(search),
   };
 }
 
@@ -134,6 +145,7 @@ const downloadsRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): PublishingWorkspaceSearch => ({
     artifact: publishingArtifact(search),
     publication: publishingPublication(search),
+    bundleVersion: publishingBundleVersion(search),
   }),
 });
 

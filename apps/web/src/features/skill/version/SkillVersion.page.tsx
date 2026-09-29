@@ -256,6 +256,13 @@ function VersionActions({
         >
           驗證 v{versionNumber}
         </Link>
+        <Link
+          className="action-secondary"
+          to="/workspace/downloads"
+          search={{ bundleVersion: versionId }}
+        >
+          加入 Bundle
+        </Link>
         {gate ? (
           <div>
             <button type="button" disabled aria-describedby="version-package-reason">

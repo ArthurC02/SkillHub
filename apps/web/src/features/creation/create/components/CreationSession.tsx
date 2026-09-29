@@ -9,6 +9,7 @@ import { useCredits } from "../../../../core/session/credits.service";
 import { useRuns } from "../../../runs";
 import { TERMINAL_RUN_STATUSES } from "../../../runs";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { Loading } from "../../../../shared/ui/Loading";
 import { sessionPhase, startGate } from "../create.model";
 import { useCreationAttempt, useCreationCommands, type Perform } from "../create.commands";
 import { useComposer } from "../create.composer";
@@ -31,6 +32,29 @@ function useSessionSelection({ sessionId, onSessionChange }: CreationSessionProp
   return [id, setID] as const;
 }
 
+function useCandidateRun(testCaseID?: string, versionID?: string) {
+  const runs = useRuns({
+    testCaseId: testCaseID,
+    skillVersionId: versionID,
+    enabled: Boolean(testCaseID && versionID),
+  });
+  const latest = runs.data?.pages[0]?.runs.find((run) => TERMINAL_RUN_STATUSES.has(run.status));
+  return {
+    latest: testCaseID && versionID && (runs.isPending || runs.error) ? null : latest,
+    pending: Boolean(testCaseID && versionID && runs.isPending),
+    error: runs.error,
+  };
+}
+
+function CandidateRunStatus({ pending, error }: { pending: boolean; error: unknown }) {
+  return (
+    <>
+      {pending && <Loading what="候選版本的試跑結果" />}
+      <ReadFailure error={error} what="候選版本的試跑結果" />
+    </>
+  );
+}
+
 export function CreationSession(props: CreationSessionProps) {
   const [id, setID] = useSessionSelection(props);
   const [budget, setBudget] = useState(""),
@@ -45,8 +69,8 @@ export function CreationSession(props: CreationSessionProps) {
     p = session?.snapshot;
   const credits = useCredits();
   const testCaseID = p?.candidate?.test_case_id;
-  const runs = useRuns({ testCaseId: testCaseID, enabled: Boolean(testCaseID) });
-  const latest = runs.data?.pages[0]?.runs.find((r) => TERMINAL_RUN_STATUSES.has(r.status));
+  const versionID = p?.candidate?.version_id;
+  const candidateRun = useCandidateRun(testCaseID, versionID);
   const { terminal, working } = sessionPhase(session);
   const locked = busy || working || terminal;
   const gate = startGate(!!session, credits.data, limits.data, budget);
@@ -106,6 +130,7 @@ export function CreationSession(props: CreationSessionProps) {
       <div className="creation-stream" ref={stream}>
         <div className="creation-feed">
           <ReadFailure error={sessions.error ?? current.error} what="創作紀錄" />
+          <CandidateRunStatus pending={candidateRun.pending} error={candidateRun.error} />
           {!p && <SessionEmptyState busy={busy} onPick={composer.startFrom} />}
           {session && p && (
             <SessionFeed
@@ -115,7 +140,7 @@ export function CreationSession(props: CreationSessionProps) {
               busy={busy}
               terminal={terminal}
               locked={locked}
-              latest={latest}
+              latest={candidateRun.latest}
               perform={perform}
               diagramAnswers={diagramAnswers}
               onDiagramAnswers={setDiagramAnswers}

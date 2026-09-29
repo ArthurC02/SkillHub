@@ -13,32 +13,53 @@ describe("publishing workspace search", () => {
       {
         artifact: "44444444-4444-4444-4444-444444444444",
         publication: undefined,
+        bundleVersion: undefined,
       },
     ],
     [
       "invalid artifact",
       { artifact: "artifact-1" },
-      { artifact: undefined, publication: undefined },
+      { artifact: undefined, publication: undefined, bundleVersion: undefined },
     ],
     [
       "valid publication",
       { publication: "skillhub/pdf-summariser" },
-      { artifact: undefined, publication: "skillhub/pdf-summariser" },
+      {
+        artifact: undefined,
+        publication: "skillhub/pdf-summariser",
+        bundleVersion: undefined,
+      },
     ],
     [
       "invalid publication",
       { publication: "skillhub/pdf/summariser" },
-      { artifact: undefined, publication: undefined },
+      { artifact: undefined, publication: undefined, bundleVersion: undefined },
+    ],
+    [
+      "valid Bundle member Version",
+      { bundleVersion: "22222222-2222-2222-2222-111111111111" },
+      {
+        artifact: undefined,
+        publication: undefined,
+        bundleVersion: "22222222-2222-2222-2222-111111111111",
+      },
+    ],
+    [
+      "invalid Bundle member Version",
+      { bundleVersion: "version-1" },
+      { artifact: undefined, publication: undefined, bundleVersion: undefined },
     ],
     [
       "two valid targets remain visible as a conflict",
       {
         artifact: "44444444-4444-4444-4444-444444444444",
         publication: "skillhub/pdf-summariser",
+        bundleVersion: "22222222-2222-2222-2222-111111111111",
       },
       {
         artifact: "44444444-4444-4444-4444-444444444444",
         publication: "skillhub/pdf-summariser",
+        bundleVersion: "22222222-2222-2222-2222-111111111111",
       },
     ],
   ])("keeps %s according to its identity shape", (_name, search, expected) => {

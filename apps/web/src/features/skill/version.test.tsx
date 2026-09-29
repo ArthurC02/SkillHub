@@ -153,6 +153,9 @@ test("an owned immutable version becomes one shareable context for validation, p
     container.querySelector(`a[href="/skills/${SKILL}/package?version=${VERSION}"]`),
   ).not.toBeNull();
   expect(
+    container.querySelector(`a[href="/workspace/downloads?bundleVersion=${VERSION}"]`),
+  ).not.toBeNull();
+  expect(
     container.querySelector(`a[href="/skills/${SKILL}/versions/${VERSION}"][aria-current="page"]`),
   ).not.toBeNull();
   expect(text()).not.toContain("Activity");

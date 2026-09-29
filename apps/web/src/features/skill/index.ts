@@ -8,6 +8,7 @@ export {
   useDeleteSkill,
   useEmbeddedSkillDetail,
   useEmbeddedSkillDetails,
+  useEmbeddedSkillVersions,
   useOwnSkills,
   useSkillSearch,
   useSkillVersions,

@@ -1458,7 +1458,7 @@ test("§2.12 第 6 條 activity with nothing running carries no refresh control"
 });
 
 type BundleRouteOpts = {
-  ownSkills?: Array<{ skill_id: string; embedded: unknown }>;
+  ownSkills?: Array<{ skill_id: string; embedded: unknown; versions?: unknown }>;
   bundles?: unknown[];
   onCreate?: (body: Record<string, unknown>) => { body: unknown; status?: number };
   publication?: (name: string) => { body: unknown; status?: number };
@@ -1491,6 +1491,12 @@ function bundleRouteHandlers(opts: BundleRouteOpts) {
       if (!match || req.method !== "GET") return undefined;
       const found = (opts.ownSkills ?? []).find((s) => s.skill_id === match[1]);
       return found ? json(found.embedded) : json({ error: "not found" }, 404);
+    },
+    (req: BundleRequest) => {
+      const match = req.path.match(/^\/skills\/([^/]+)\/versions$/);
+      if (!match || req.method !== "GET") return undefined;
+      const found = (opts.ownSkills ?? []).find((skill) => skill.skill_id === match[1]);
+      return found?.versions ? json(found.versions) : json({ error: "not found" }, 404);
     },
     (req: BundleRequest) =>
       req.path === "/me/bundles" && req.method === "GET"
@@ -1671,10 +1677,17 @@ test("PACK-018 已發佈時顯示公開位址、狀態與撤回按鈕", async ()
   expect(button("撤回")).toBeDefined();
 });
 
-test("PACK-018 建立 Bundle Version 時，成員送出的是各自最新版本的 version_id", async () => {
+test("PACK-018 建立 Bundle Version 時，成員送出的是使用者明確選定的 version_id", async () => {
+  const olderVersion = SKILL_VERSIONS.versions[1];
   const calls = stubBundleRoutes({
     bundles: [],
-    ownSkills: [{ skill_id: SKILL, embedded: skillDetail(SKILL, "Summariser") }],
+    ownSkills: [
+      {
+        skill_id: SKILL,
+        embedded: skillDetail(SKILL, "Summariser"),
+        versions: SKILL_VERSIONS,
+      },
+    ],
     onCreate: (body) => ({
       body: {
         bundle: body.name,
@@ -1708,14 +1721,20 @@ test("PACK-018 建立 Bundle Version 時，成員送出的是各自最新版本�
     setValue(versionInput, "1.0.0");
     setValue(textarea, "一組 PDF 工具");
   });
-  const checkbox = form.querySelector('input[type="checkbox"]') as HTMLInputElement;
-  await act(async () => checkbox.click());
+  const member = form.querySelector("select") as HTMLSelectElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+      member,
+      olderVersion.version_id,
+    );
+    member.dispatchEvent(new Event("change", { bubbles: true }));
+  });
   await act(async () => {
     form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
   await waitFor(() => calls.some((c) => c.path === "/me/bundles" && c.method === "POST"));
 
   const created = calls.find((c) => c.path === "/me/bundles" && c.method === "POST")!;
-  expect(created.body?.member_version_ids).toEqual([VERSION]);
+  expect(created.body?.member_version_ids).toEqual([olderVersion.version_id]);
   expect(created.body?.name).toBe("pdf-toolkit");
 });

@@ -19,7 +19,7 @@ export function DraftCard({
   draft: NonNullable<CreationSnapshot["draft"]>;
   state: CreationState;
   terminal: boolean;
-  latest: RunListItem | undefined;
+  latest: RunListItem | null | undefined;
   locked: boolean;
   perform: Perform;
 }) {
@@ -105,7 +105,7 @@ function DraftCandidate({
   saved: boolean;
   run: ReturnType<typeof findRunObservation>;
   terminal: boolean;
-  latest: RunListItem | undefined;
+  latest: RunListItem | null | undefined;
   locked: boolean;
   perform: Perform;
 }) {
@@ -172,11 +172,12 @@ function LatestRunOffer({
   locked,
   perform,
 }: {
-  latest: RunListItem | undefined;
+  latest: RunListItem | null | undefined;
   linkedRunID: string | undefined;
   locked: boolean;
   perform: Perform;
 }) {
+  if (latest === null) return null;
   if (!latest) return <p>試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。</p>;
   if (latest.run_id === linkedRunID) return <p>最新試跑結果已帶回會話；模型的建議在對話裡。</p>;
   return (

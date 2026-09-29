@@ -12,8 +12,9 @@ import { useOwnPublications } from "./publishing.service";
 import "./PublishingWorkspace.page.css";
 
 export function PublishingWorkspace() {
-  const { artifact, publication } = useSearch({ from: "/workspace/downloads" });
-  const conflictingTargets = Boolean(artifact && publication);
+  const { artifact, publication, bundleVersion } = useSearch({ from: "/workspace/downloads" });
+  const targetCount = [artifact, publication, bundleVersion].filter(Boolean).length;
+  const conflictingTargets = targetCount > 1;
 
   return (
     <section className="publishing-workspace">
@@ -26,7 +27,7 @@ export function PublishingWorkspace() {
         </p>
         {conflictingTargets && (
           <p role="alert">
-            這個連結同時指定了兩個續接位置，因此無法判斷要打開哪一筆。一次只能續接一筆。{" "}
+            這個連結同時指定了多個續接位置，因此無法判斷要打開哪一筆。一次只能續接一筆。{" "}
             <Link to="/workspace/downloads" search={{}}>
               顯示完整清單
             </Link>
@@ -40,7 +41,7 @@ export function PublishingWorkspace() {
       <div className="publishing-workspace-grid">
         <div className="publishing-workspace-main">
           <PublicationOverview selectedPublication={conflictingTargets ? undefined : publication} />
-          <BundleSection />
+          <BundleSection selectedVersion={conflictingTargets ? undefined : bundleVersion} />
           <Downloads embedded selectedArtifact={conflictingTargets ? undefined : artifact} />
         </div>
         <aside className="publishing-workspace-rail" aria-label="發佈身分與開始方式">

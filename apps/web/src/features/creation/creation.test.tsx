@@ -1739,6 +1739,7 @@ test("a differing latest run offers to bring it into the session, and posts atta
   v.snapshot.draft = DRAFT;
   v.snapshot.candidate = draftCandidate({ run_id: "run-old" });
   const posts: Record<string, unknown>[] = [];
+  const runRequests: string[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
@@ -1747,6 +1748,7 @@ test("a differing latest run offers to bring it into the session, and posts atta
         return response(v);
       }
       if (url.startsWith("/runs?")) {
+        runRequests.push(url);
         return response({
           runs: [
             {
@@ -1763,12 +1765,37 @@ test("a differing latest run offers to bring it into the session, and posts atta
   await render();
   await resume();
   await waitFor(() => box.textContent!.includes("最新試跑：執行完成；評估：符合"));
+  const runQuery = new URL(runRequests[0], "http://skillhub.test").searchParams;
+  expect(runQuery.get("test_case_id")).toBe("tc-1");
+  expect(runQuery.get("skill_version_id")).toBe("v1");
   expect(box.textContent, "跟候選版本一致的試跑不該還在提示改善").not.toContain(
     "最新試跑結果已帶回會話",
   );
   await click("把最新試跑結果帶回來改善");
   await waitFor(() => posts.length > 0);
   expect(posts[0]).toMatchObject({ kind: "attach_run", run_id: "run-new" });
+});
+test("a failed exact-version Run lookup stays unknown instead of claiming no Run came back", async () => {
+  const v = sample({ state: "candidate_ready" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.candidate = draftCandidate();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.startsWith("/runs?")) {
+        return response({ error: "run backend unavailable" }, 503);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes("暫時無法讀取候選版本的試跑結果"));
+
+  expect(box.textContent).not.toContain("試跑完成後，這裡會出現「把最新試跑結果帶回來改善」。");
+  expect(box.textContent).not.toContain("run backend unavailable");
+  expect(() => button("把最新試跑結果帶回來改善")).toThrow();
 });
 test("a candidate whose run matches the latest says so, with no button to attach it again", async () => {
   const v = sample({ state: "candidate_ready" });

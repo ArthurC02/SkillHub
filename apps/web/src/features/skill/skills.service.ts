@@ -162,6 +162,15 @@ export function useSkillVersions(skillId: string) {
   });
 }
 
+export function useEmbeddedSkillVersions(skillIds: string[]) {
+  return useQueries({
+    queries: skillIds.map((id) => ({
+      queryKey: queryKeys.skills.versions(id),
+      queryFn: () => getSkillVersions(id),
+    })),
+  });
+}
+
 export function useOwnSkills() {
   return useQuery({
     queryKey: queryKeys.skills.own,

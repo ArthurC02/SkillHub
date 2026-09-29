@@ -9,6 +9,7 @@ import {
   RUNS,
   SKILL,
   SKILL_B,
+  SKILL_VERSIONS,
   TEST_CASE,
   VERSION,
   platformResponse,
@@ -196,6 +197,47 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   });
 }
 
+async function verifyBundleContinuationOnPhone(page: Page, testInfo: TestInfo) {
+  const olderVersion = SKILL_VERSIONS.versions[1];
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/skills/${SKILL}/versions/${olderVersion.version_id}`);
+
+  const continuation = page.getByRole("link", { name: "加入 Bundle" });
+  await expect(continuation).toHaveAttribute(
+    "href",
+    `/workspace/downloads?bundleVersion=${olderVersion.version_id}`,
+  );
+  await continuation.click();
+
+  const member = page.getByRole("combobox", { name: "PDF Summariser" });
+  await expect(member).toBeFocused();
+  await expect(member).toHaveValue(olderVersion.version_id);
+  await expect(page.getByText("從 v1 接續建立 Bundle。")).toBeVisible();
+
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.screenshot({
+    path: testInfo.outputPath("version-bundle-continuation-phone.png"),
+    fullPage: true,
+  });
+}
+
+async function verifyArtifactContinuationOnPhone(page: Page) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/workspace/downloads?artifact=${ARTIFACT}`);
+
+  const target = page.locator('[aria-current="location"]');
+  await expect(target).toBeFocused();
+  await expect(target).toBeInViewport();
+  await expect(target).toContainText("pdf-summariser-v2.zip");
+  await expect(target).toContainText("續接位置");
+}
+
 test.describe("QA-008 real layout", () => {
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
@@ -217,15 +259,7 @@ test.describe("QA-008 real layout", () => {
   });
 
   test("a publishing continuation brings the exact artifact into view", async ({ page }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(`/workspace/downloads?artifact=${ARTIFACT}`);
-
-    const target = page.locator('[aria-current="location"]');
-    await expect(target).toBeFocused();
-    await expect(target).toBeInViewport();
-    await expect(target).toContainText("pdf-summariser-v2.zip");
-    await expect(target).toContainText("續接位置");
+    await verifyArtifactContinuationOnPhone(page);
   });
 
   test("a version hands its exact Publication to the publishing workspace", async ({
@@ -257,6 +291,12 @@ test.describe("QA-008 real layout", () => {
     await expect(target).toBeInViewport();
     await expect(target).toContainText(PUBLICATION);
     await expect(target).toContainText("續接位置");
+  });
+
+  test("a version keeps its exact Bundle member selection usable on a phone", async ({
+    page,
+  }, testInfo) => {
+    await verifyBundleContinuationOnPhone(page, testInfo);
   });
 
   for (const [name, url] of PHONE_ROUTES) {
