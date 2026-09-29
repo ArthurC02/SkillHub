@@ -248,6 +248,10 @@ func publishTheFirstBundleRelease(t *testing.T, a *api, author *client, bundle, 
 	if code != http.StatusOK || own["kind"] != "bundle" {
 		t.Fatalf("publishing %s: %d %v", bundle, code, own)
 	}
+	assertOwnerDeliveryProjection(t, own, "available", true)
+	if acquisition, _ := own["acquisition"].(map[string]any); !strings.Contains(fmt.Sprint(acquisition["note"]), "不含 MCP 設定或宿主專屬元件") {
+		t.Errorf("the owner view offers the plugin without saying it carries only Agent Skills: %v", acquisition)
+	}
 	address, _ = own["address"].(string)
 	_, public := publicRead(t, a, address)
 	if acquisition, _ := public["acquisition"].(map[string]any); !strings.Contains(fmt.Sprint(acquisition["note"]), "不含 MCP 設定或宿主專屬元件") {

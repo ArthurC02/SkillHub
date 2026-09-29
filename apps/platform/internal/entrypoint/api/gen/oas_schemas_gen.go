@@ -15495,6 +15495,52 @@ func (o OptPublicSearchSkillsValidation) Or(d PublicSearchSkillsValidation) Publ
 	return d
 }
 
+// NewOptPublicationNote returns new OptPublicationNote with value set to v.
+func NewOptPublicationNote(v PublicationNote) OptPublicationNote {
+	return OptPublicationNote{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicationNote is optional PublicationNote.
+type OptPublicationNote struct {
+	Value PublicationNote
+	Set   bool
+}
+
+// IsSet returns true if OptPublicationNote was set.
+func (o OptPublicationNote) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicationNote) Reset() {
+	var v PublicationNote
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicationNote) SetTo(v PublicationNote) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicationNote) Get() (v PublicationNote, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicationNote) Or(d PublicationNote) PublicationNote {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptRubric returns new OptRubric with value set to v.
 func NewOptRubric(v Rubric) OptRubric {
 	return OptRubric{
@@ -17070,6 +17116,11 @@ type OwnerPublicationSummary struct {
 	StatusChangedAt time.Time                     `json:"status_changed_at"`
 	LatestRelease   OptOwnerPublicationRelease    `json:"latest_release"`
 	CatalogExposure OwnerCatalogExposure          `json:"catalog_exposure"`
+	// The current server-owned offer state. Absent only when an older server cannot project it.
+	Availability OptLabelled `json:"availability"`
+	// Whether a package is currently offered and the complete sign-in or invitation condition. Absent only
+	// when an older server cannot project it.
+	Acquisition OptPublicationNote `json:"acquisition"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -17112,6 +17163,16 @@ func (s *OwnerPublicationSummary) GetCatalogExposure() OwnerCatalogExposure {
 	return s.CatalogExposure
 }
 
+// GetAvailability returns the value of Availability.
+func (s *OwnerPublicationSummary) GetAvailability() OptLabelled {
+	return s.Availability
+}
+
+// GetAcquisition returns the value of Acquisition.
+func (s *OwnerPublicationSummary) GetAcquisition() OptPublicationNote {
+	return s.Acquisition
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *OwnerPublicationSummary) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -17150,6 +17211,16 @@ func (s *OwnerPublicationSummary) SetLatestRelease(val OptOwnerPublicationReleas
 // SetCatalogExposure sets the value of CatalogExposure.
 func (s *OwnerPublicationSummary) SetCatalogExposure(val OwnerCatalogExposure) {
 	s.CatalogExposure = val
+}
+
+// SetAvailability sets the value of Availability.
+func (s *OwnerPublicationSummary) SetAvailability(val OptLabelled) {
+	s.Availability = val
+}
+
+// SetAcquisition sets the value of Acquisition.
+func (s *OwnerPublicationSummary) SetAcquisition(val OptPublicationNote) {
+	s.Acquisition = val
 }
 
 type OwnerPublicationSummaryStatus string
@@ -19500,6 +19571,11 @@ type Publication struct {
 	Status          PublicationStatus    `json:"status"`
 	StatusChangedAt time.Time            `json:"status_changed_at"`
 	Releases        []PublicationRelease `json:"releases"`
+	// The current server-owned offer state. Absent only when an older server cannot project it.
+	Availability OptLabelled `json:"availability"`
+	// Whether a package is currently offered and the complete sign-in or invitation condition. Absent only
+	// when an older server cannot project it.
+	Acquisition OptPublicationNote `json:"acquisition"`
 }
 
 // GetKind returns the value of Kind.
@@ -19537,6 +19613,16 @@ func (s *Publication) GetReleases() []PublicationRelease {
 	return s.Releases
 }
 
+// GetAvailability returns the value of Availability.
+func (s *Publication) GetAvailability() OptLabelled {
+	return s.Availability
+}
+
+// GetAcquisition returns the value of Acquisition.
+func (s *Publication) GetAcquisition() OptPublicationNote {
+	return s.Acquisition
+}
+
 // SetKind sets the value of Kind.
 func (s *Publication) SetKind(val PublicationKind) {
 	s.Kind = val
@@ -19570,6 +19656,16 @@ func (s *Publication) SetStatusChangedAt(val time.Time) {
 // SetReleases sets the value of Releases.
 func (s *Publication) SetReleases(val []PublicationRelease) {
 	s.Releases = val
+}
+
+// SetAvailability sets the value of Availability.
+func (s *Publication) SetAvailability(val OptLabelled) {
+	s.Availability = val
+}
+
+// SetAcquisition sets the value of Acquisition.
+func (s *Publication) SetAcquisition(val OptPublicationNote) {
+	s.Acquisition = val
 }
 
 func (*Publication) delistBundleRes()            {}

@@ -88,23 +88,27 @@ type Release struct {
 }
 
 type Publication struct {
-	Publisher       string
-	Name            string
-	SkillID         pgtype.UUID
-	BundleID        pgtype.UUID
-	Status          Status
-	StatusChangedAt time.Time
-	Releases        []Release
+	Publisher         string
+	Name              string
+	SkillID           pgtype.UUID
+	BundleID          pgtype.UUID
+	Status            Status
+	StatusChangedAt   time.Time
+	Releases          []Release
+	Availability      Availability
+	UnavailableMember string
 }
 
 type PublicationSummary struct {
-	SkillID         pgtype.UUID
-	Publisher       string
-	Name            string
-	Status          Status
-	StatusChangedAt time.Time
-	LatestRelease   *ReleaseSummary
-	CatalogExposure CatalogExposure
+	SkillID           pgtype.UUID
+	Publisher         string
+	Name              string
+	Status            Status
+	StatusChangedAt   time.Time
+	LatestRelease     *ReleaseSummary
+	CatalogExposure   CatalogExposure
+	Availability      Availability
+	UnavailableMember string
 }
 
 type ReleaseSummary struct {
@@ -115,10 +119,15 @@ type ReleaseSummary struct {
 
 type PublicPublication struct {
 	Publication
-	OwnerWorkspaceID  pgtype.UUID
+	OwnerWorkspaceID pgtype.UUID
+	Exposed          bool
+	Skill            SkillFacts
+	Version          VersionFacts
+}
+
+type publicationDelivery struct {
 	Availability      Availability
 	UnavailableMember string
-	Exposed           bool
 	Skill             SkillFacts
 	Version           VersionFacts
 }
@@ -400,10 +409,12 @@ func (s *Service) OwnPublication(ctx context.Context, ws identity.Workspace, ski
 	if err != nil {
 		return Publication{}, false, err
 	}
-	return Publication{
+	publication := Publication{
 		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
-	}, true, nil
+	}
+	publication, err = s.withAvailability(ctx, ws.ID, publication)
+	return publication, err == nil, err
 }
 
 func (s *Service) OwnPublications(ctx context.Context, ws identity.Workspace) ([]PublicationSummary, error) {
@@ -430,9 +441,66 @@ func (s *Service) OwnPublications(ctx context.Context, ws identity.Workspace) ([
 				return nil, err
 			}
 		}
+		var releases []Release
+		if publication.LatestRelease != nil {
+			releases = []Release{{VersionID: publication.LatestRelease.VersionID}}
+		}
+		delivery, err := s.publicationAvailability(ctx, ws.ID, Publication{
+			SkillID: publication.SkillID, Status: publication.Status, Releases: releases,
+		})
+		if err != nil {
+			return nil, err
+		}
+		publication.Availability = delivery.Availability
+		publication.UnavailableMember = delivery.UnavailableMember
 		publications = append(publications, publication)
 	}
 	return publications, nil
+}
+
+func (s *Service) withAvailability(ctx context.Context, owner pgtype.UUID, publication Publication) (Publication, error) {
+	delivery, err := s.publicationAvailability(ctx, owner, publication)
+	if err != nil {
+		return Publication{}, err
+	}
+	publication.Availability = delivery.Availability
+	publication.UnavailableMember = delivery.UnavailableMember
+	return publication, nil
+}
+
+func (s *Service) publicationAvailability(
+	ctx context.Context, owner pgtype.UUID, publication Publication,
+) (publicationDelivery, error) {
+	if publication.BundleID.Valid {
+		var current *BundleVersion
+		if len(publication.Releases) > 0 {
+			current = publication.Releases[0].Bundle
+		}
+		availability, member, err := s.bundleAvailability(ctx, owner, publication.Status, current)
+		return publicationDelivery{Availability: availability, UnavailableMember: member}, err
+	}
+	if publication.Status == StatusDelisted {
+		return publicationDelivery{Availability: AvailabilityDelisted}, nil
+	}
+	skill, found, err := s.ReadSkill(ctx, owner, publication.SkillID)
+	if err != nil {
+		return publicationDelivery{}, err
+	}
+	availability := availabilityOf(publication.Status, skill, found)
+	if availability != AvailabilityAvailable || len(publication.Releases) == 0 {
+		if availability == AvailabilityAvailable {
+			availability = AvailabilityWithdrawn
+		}
+		return publicationDelivery{Availability: availability, Skill: skill}, nil
+	}
+	version, found, err := s.ReadVersion(ctx, owner, publication.Releases[0].VersionID)
+	if err != nil {
+		return publicationDelivery{}, err
+	}
+	if !found {
+		return publicationDelivery{Availability: AvailabilityWithdrawn, Skill: skill}, nil
+	}
+	return publicationDelivery{Availability: AvailabilityAvailable, Skill: skill, Version: version}, nil
 }
 
 func (s *Service) PublicPublication(ctx context.Context, publisherName, name string) (PublicPublication, bool, error) {
@@ -452,31 +520,20 @@ func (s *Service) PublicPublication(ctx context.Context, publisherName, name str
 		Publisher: row.PublisherName, Name: row.Name, SkillID: row.SkillID, BundleID: row.BundleID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
 	}}
+	delivery, err := s.publicationAvailability(ctx, row.PublisherWorkspaceID, out.Publication)
+	if err != nil {
+		return PublicPublication{}, false, err
+	}
+	out.Availability = delivery.Availability
+	out.UnavailableMember = delivery.UnavailableMember
+	out.Skill = delivery.Skill
+	out.Version = delivery.Version
 	if row.BundleID.Valid {
-		var current *BundleVersion
-		if len(releases) > 0 {
-			current = releases[0].Bundle
-		}
-		out.Availability, out.UnavailableMember, err = s.bundleAvailability(ctx, row.PublisherWorkspaceID, out.Status, current)
-		return out, err == nil, err
-	}
-	skill, skillFound, err := s.ReadSkill(ctx, row.PublisherWorkspaceID, row.SkillID)
-	if err != nil {
-		return PublicPublication{}, false, err
-	}
-	out.Availability = availabilityOf(out.Status, skill, skillFound)
-	if out.Availability != AvailabilityAvailable || len(releases) == 0 {
 		return out, true, nil
 	}
-	version, versionFound, err := s.ReadVersion(ctx, row.PublisherWorkspaceID, releases[0].VersionID)
-	if err != nil {
-		return PublicPublication{}, false, err
-	}
-	if !versionFound {
-		out.Availability = AvailabilityWithdrawn
+	if out.Availability != AvailabilityAvailable {
 		return out, true, nil
 	}
-	out.Skill, out.Version = skill, version
 	states, err := exposureStates(ctx, q, row.ID)
 	if err != nil || len(states) == 0 {
 		return out, err == nil, err

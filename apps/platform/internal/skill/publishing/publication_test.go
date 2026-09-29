@@ -1,8 +1,12 @@
 package publishing
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func TestAPublisherNameFollowsTheSkillNameRuleAndRefusesReservedWords(t *testing.T) {
@@ -101,5 +105,75 @@ func TestAPublicAddressReportsWhyItNoLongerOffersItsContent(t *testing.T) {
 				t.Errorf("availabilityOf = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestOwnerAvailabilityUsesTheSameSkillFactsAsThePublicAddress(t *testing.T) {
+	readFailed := errors.New("skill facts unavailable")
+	versionReadFailed := errors.New("version facts unavailable")
+	cases := []struct {
+		name         string
+		status       Status
+		skill        SkillFacts
+		skillFound   bool
+		skillErr     error
+		hasRelease   bool
+		versionFound bool
+		versionErr   error
+		want         Availability
+		wantErr      bool
+	}{
+		{"published and releasable", StatusPublished, SkillFacts{Redistribution: "allowed"}, true, nil, true, true, nil, AvailabilityAvailable, false},
+		{"delisted does not need another read", StatusDelisted, SkillFacts{}, false, readFailed, false, false, versionReadFailed, AvailabilityDelisted, false},
+		{"deleted", StatusPublished, SkillFacts{}, false, nil, true, false, nil, AvailabilityWithdrawn, false},
+		{"taken down", StatusPublished, SkillFacts{TakenDown: true, Redistribution: "allowed"}, true, nil, true, false, nil, AvailabilityTakenDown, false},
+		{"held", StatusPublished, SkillFacts{AccessRestricted: true, Redistribution: "allowed"}, true, nil, true, false, nil, AvailabilityHeld, false},
+		{"not redistributable", StatusPublished, SkillFacts{Redistribution: "blocked"}, true, nil, true, false, nil, AvailabilityNotRedistributed, false},
+		{"no release", StatusPublished, SkillFacts{Redistribution: "allowed"}, true, nil, false, false, nil, AvailabilityWithdrawn, false},
+		{"latest version was deleted", StatusPublished, SkillFacts{Redistribution: "allowed"}, true, nil, true, false, nil, AvailabilityWithdrawn, false},
+		{"owner facts failed", StatusPublished, SkillFacts{}, false, readFailed, true, false, nil, "", true},
+		{"version facts failed", StatusPublished, SkillFacts{Redistribution: "allowed"}, true, nil, true, false, versionReadFailed, "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := Service{ReadSkill: func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error) {
+				return tc.skill, tc.skillFound, tc.skillErr
+			}, ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
+				return VersionFacts{}, tc.versionFound, tc.versionErr
+			}}
+			var releases []Release
+			if tc.hasRelease {
+				releases = []Release{{VersionID: pgtype.UUID{Valid: true}}}
+			}
+			delivery, err := svc.publicationAvailability(
+				context.Background(), pgtype.UUID{}, Publication{Status: tc.status, Releases: releases},
+			)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("publicationAvailability error = %v, want error %v", err, tc.wantErr)
+			}
+			if delivery.Availability != tc.want {
+				t.Errorf("publicationAvailability = %q, want %q", delivery.Availability, tc.want)
+			}
+		})
+	}
+}
+
+func TestOwnerAcquisitionKeepsPackageAvailabilityAndInvitationEligibilitySeparate(t *testing.T) {
+	handler := Handler{
+		DownloadsOpenToUninvited: false,
+		InviteRosterConfigured:   func() bool { return true },
+	}
+	view := handler.ownView(Publication{
+		Status: StatusPublished, Availability: AvailabilityAvailable, Releases: []Release{{VersionID: pgtype.UUID{Valid: true}}},
+	})
+
+	if !view.Acquisition.Available {
+		t.Fatal("acquisition.available = false, want the package offer to remain available")
+	}
+	if !strings.Contains(view.Acquisition.Note, invitedOnlyNote) {
+		t.Errorf("acquisition.note = %q, want the invitation condition", view.Acquisition.Note)
+	}
+	if view.Availability.Value != string(AvailabilityAvailable) || view.Availability.Label != "提供中" {
+		t.Errorf("availability = %#v, want the server-owned available state", view.Availability)
 	}
 }

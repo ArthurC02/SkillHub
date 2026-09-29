@@ -747,6 +747,12 @@ export const OWN_PUBLISHER = {
   created_at: "2026-08-01T00:00:00Z",
 } satisfies Publisher;
 
+const DOWNLOAD_NOTE =
+  "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+
+const BUNDLE_DOWNLOAD_NOTE =
+  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+
 export const OWN_PUBLICATION = {
   kind: "skill",
   publisher: PUBLISHER,
@@ -754,6 +760,8 @@ export const OWN_PUBLICATION = {
   address: `/p/${PUBLISHER}/${PUBLICATION}`,
   status: "published",
   status_changed_at: "2026-08-10T00:00:00Z",
+  availability: { value: "available", label: "提供中", note: "" },
+  acquisition: { available: true, note: DOWNLOAD_NOTE },
   releases: [
     {
       version_id: VERSION,
@@ -775,6 +783,8 @@ export const OWN_PUBLICATIONS = {
       address: `/p/${PUBLISHER}/${PUBLICATION}`,
       status: "published",
       status_changed_at: "2026-08-10T00:00:00Z",
+      availability: { value: "available", label: "提供中", note: "" },
+      acquisition: { available: true, note: DOWNLOAD_NOTE },
       catalog_exposure: { state: "listed" },
       latest_release: {
         version_id: VERSION,
@@ -784,12 +794,6 @@ export const OWN_PUBLICATIONS = {
     },
   ],
 } satisfies { publications: OwnerPublicationSummary[] };
-
-const DOWNLOAD_NOTE =
-  "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
-
-const BUNDLE_DOWNLOAD_NOTE =
-  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
 export const PUBLIC_PUBLICATION = {
   kind: "skill",

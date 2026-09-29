@@ -13,6 +13,20 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { PublicationNote } from './PublicationNote';
+import {
+    PublicationNoteFromJSON,
+    PublicationNoteFromJSONTyped,
+    PublicationNoteToJSON,
+    PublicationNoteToJSONTyped,
+} from './PublicationNote';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
 import type { OwnerCatalogExposure } from './OwnerCatalogExposure';
 import {
     OwnerCatalogExposureFromJSON,
@@ -66,6 +80,14 @@ export interface OwnerPublicationSummary {
      * 
      */
     catalogExposure: OwnerCatalogExposure;
+    /**
+     * The current server-owned offer state. Absent only when an older server cannot project it.
+     */
+    availability?: Labelled;
+    /**
+     * Whether a package is currently offered and the complete sign-in or invitation condition. Absent only when an older server cannot project it.
+     */
+    acquisition?: PublicationNote;
 }
 
 
@@ -111,6 +133,8 @@ export function OwnerPublicationSummaryFromJSONTyped(json: any, ignoreDiscrimina
         'statusChangedAt': (json['status_changed_at'] == null ? json['status_changed_at'] : parseDateTime(json['status_changed_at'])),
         'latestRelease': json['latest_release'] == null ? undefined : OwnerPublicationReleaseFromJSON(json['latest_release']),
         'catalogExposure': OwnerCatalogExposureFromJSON(json['catalog_exposure']),
+        'availability': json['availability'] == null ? undefined : LabelledFromJSON(json['availability']),
+        'acquisition': json['acquisition'] == null ? undefined : PublicationNoteFromJSON(json['acquisition']),
     };
 }
 
@@ -133,6 +157,8 @@ export function OwnerPublicationSummaryToJSONTyped(value?: OwnerPublicationSumma
         'status_changed_at': value['statusChangedAt'] == null ? value['statusChangedAt'] : serializeDateTime(value['statusChangedAt']),
         'latest_release': OwnerPublicationReleaseToJSON(value['latestRelease']),
         'catalog_exposure': OwnerCatalogExposureToJSON(value['catalogExposure']),
+        'availability': LabelledToJSON(value['availability']),
+        'acquisition': PublicationNoteToJSON(value['acquisition']),
     };
 }
 

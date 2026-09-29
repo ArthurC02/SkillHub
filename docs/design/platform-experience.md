@@ -10,7 +10,7 @@
 
 ## 0. 設計方法：從產品策略走到畫面
 
-本次重構採用 Jesse James Garrett 的 [The Elements of User Experience](https://jessejamesgarrett.com/) 五層模型。五層由抽象走向具體：**Strategy → Scope → Structure → Skeleton → Surface**。下層決策限制上層能成立的形狀；上層驗證失敗也可以反推下層需要重想。它不是把設計拆成五個互不往來的階段，更不是先畫完所有文件才寫程式。
+本次重構採用 Jesse James Garrett 的 [The Elements of User Experience](https://www.pearson.com/en-us/subject-catalog/p/Garrett-Elements-of-User-Experience-The-User-Centered-Design-for-the-Web-and-Beyond-2nd-Edition/P200000000272) 五層模型。五層由抽象走向具體：**Strategy → Scope → Structure → Skeleton → Surface**。下層決策限制上層能成立的形狀；上層驗證失敗也可以反推下層需要重想。它不是把設計拆成五個互不往來的階段，更不是先畫完所有文件才寫程式。
 
 Garrett 的五層與 [system.md](./system.md) 開頭的「優先序、義務、原則、系統、強制對照表」不是同一件事：前者管理產品從目的到介面的推導，後者管理已經進入單頁設計後的品質與強制方式。
 
@@ -199,6 +199,7 @@ Catalog 是否進全域導覽是平台化後的新方向；落地時必須正式
 - 打包目標、測試題是否隨附與相容性都留在同一個版本脈絡。
 - Bundle 的每個成員都保留 owner 回傳的精確 Skill 與 Version 身分；成員名稱不是不可變來源的替代品。
 - 建立公開網址不等於進 Catalog；曝光審核仍針對精確 Release。
+- 擁有者判斷交付範圍時，畫面分開回答三件事：公開頁誰能讀、套件目前是否提供與取得條件、精確 Release 能否從搜尋與 Catalog 找到。可用性與取得說明由 Publishing 回傳；前端不以 `available` 推成「任何人可下載」，缺少投影時也不推成不可取得。
 - 下載紀錄是發佈與交付活動的結果，不是一個主要產品空間。
 
 ### 4.5 返回與續作
@@ -353,7 +354,7 @@ Surface 不另建一套 token、元件庫或圖示系統；沿用 system.md 與�
 
 **階段三：Studio 與 Activity。** 創作會話已能用網址恢復伺服器上的 session 與 revision；Activity 已先以 Run owner 清單落地可信子集，能依真實狀態分出待決策、執行中與最近完成。每列現在可沿 owner facts 回到來源 Run、Skill、不可變 Version 與可用時的 Test Case，不再只有結果入口。下一步是先設計受審查的 Workspace Activity 投影與契約，再補齊 Run 列級最後更新、Creation、Packaging 與 Publication 等來源；不能以瀏覽器扇出和互不相等的時間欄位冒充完整活動。完成條件是每一種長工作都有來源物件、真實狀態、最後更新和可續作入口。
 
-**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，首次使用也在該版本脈絡內完成 Publisher 註冊，不再離開工作回到無關的帳號設定。管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；Bundle 成員可由 owner facts 回到各自被釘選的 Skill Version，而不是只留下名稱與版本號。建立 Bundle 也已改成逐一選擇不可變成員版本，精確 Version 可直接續接並取得焦點，找不到或讀取失敗時不會偷偷改選最新版本。打包、公開取得與 Bundle 匯出都把 owner API 回傳的 Artifact UUID 帶到保存列，版本內的 Publication 操作也用 `publisher/name` 續接到精確項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。保存列能以既有 owner facts 回到精確 Skill Version；這些都是導覽脈絡，不宣稱 Artifact、Release 與 Bundle 成員之間已新增跨 Context 的領域關係。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 也還沒有同等的 owner 摘要可供定位。下一步是補上交付對象，再評估把相容網址導向 `/releases`。完成條件是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
+**階段四：發佈與交付。** 舊 `/workspace/downloads` 已先成為「發佈與交付」平台空間，把發佈者身分、跨 Skill 的 Publication／最新 Release、Bundle 與下載紀錄收回同一條旅程；單一 Skill 的 Publication 仍從精確版本工作台建立，首次使用也在該版本脈絡內完成 Publisher 註冊，不再離開工作回到無關的帳號設定。管理清單保留已撤下項目，並明示公開位址不等於 Catalog 曝光。擁有者清單現在也顯示最新 Release 的有效 Catalog 曝光狀態；Bundle 成員可由 owner facts 回到各自被釘選的 Skill Version，而不是只留下名稱與版本號。建立 Bundle 也已改成逐一選擇不可變成員版本，精確 Version 可直接續接並取得焦點，找不到或讀取失敗時不會偷偷改選最新版本。打包、公開取得與 Bundle 匯出都把 owner API 回傳的 Artifact UUID 帶到保存列，版本內的 Publication 操作也用 `publisher/name` 續接到精確項目，成功命中才標示並移動焦點，找不到、讀取失敗與含糊連結維持三種不同答案。Skill 與 Bundle 的 owner 畫面已使用 Publishing 的同一份 availability 與 acquisition 投影，把「任何人可讀公開頁」「目前是否提供套件及登入／邀請條件」「是否能從 Catalog 找到」分成三個判斷；舊服務未提供投影時顯示無法確認，不把未知畫成不可取得。保存列能以既有 owner facts 回到精確 Skill Version；這些都是導覽脈絡，不宣稱 Artifact、Release 與 Bundle 成員之間已新增跨 Context 的領域關係。這先補齊 Activity 未來要回到來源物件的骨架，不宣稱跨物件 Activity 投影已存在；Bundle Publication 仍沒有同等的跨 Bundle owner 摘要，平台也尚未提供作者可見的實際取得者身分或下載總數。下一步是評估這兩個契約缺口，再評估把相容網址導向 `/releases`。完成條件仍是擁有者能清楚回答「哪個版本、交付給誰、現在公開到哪裡」。
 
 **階段五：移除舊殼。** 依使用者驗證與路由證據移除重複導覽、孤立表單入口與已無主體的舊頁；保留必要深連結或導向。完成條件是 information-architecture.md 的偏離帳沒有因遷移變長，e2e 涵蓋所有保留路由，舊入口不再是完成關鍵旅程的唯一方法。
 

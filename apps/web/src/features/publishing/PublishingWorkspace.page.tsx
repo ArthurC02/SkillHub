@@ -7,6 +7,7 @@ import { Timestamp } from "../../shared/ui/Timestamp";
 import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
 import { BundleSection } from "./components/BundleSection";
 import { CatalogExposure } from "./components/CatalogExposure";
+import { DeliveryAudience } from "./components/DeliveryAudience";
 import { PublisherSection } from "./components/PublisherSection";
 import { useOwnPublications } from "./publishing.service";
 import "./PublishingWorkspace.page.css";
@@ -140,6 +141,8 @@ function PublicationOverview({ selectedPublication }: { selectedPublication?: st
                   ) : (
                     <p className="note">這筆 Publication 尚未建立 Release。</p>
                   )}
+                  <DeliveryAudience publication={publication} />
+                  <h3>Catalog 探索</h3>
                   <CatalogExposure publication={publication} />
                   <p className="note">
                     發佈狀態更新於 <Timestamp at={publication.status_changed_at} />

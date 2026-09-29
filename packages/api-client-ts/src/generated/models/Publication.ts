@@ -13,6 +13,13 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { PublicationNote } from './PublicationNote';
+import {
+    PublicationNoteFromJSON,
+    PublicationNoteFromJSONTyped,
+    PublicationNoteToJSON,
+    PublicationNoteToJSONTyped,
+} from './PublicationNote';
 import type { PublicationRelease } from './PublicationRelease';
 import {
     PublicationReleaseFromJSON,
@@ -20,6 +27,13 @@ import {
     PublicationReleaseToJSON,
     PublicationReleaseToJSONTyped,
 } from './PublicationRelease';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
 import type { PublicationKind } from './PublicationKind';
 import {
     PublicationKindFromJSON,
@@ -62,6 +76,14 @@ export interface Publication {
      * 
      */
     releases: Array<PublicationRelease>;
+    /**
+     * The current server-owned offer state. Absent only when an older server cannot project it.
+     */
+    availability?: Labelled;
+    /**
+     * Whether a package is currently offered and the complete sign-in or invitation condition. Absent only when an older server cannot project it.
+     */
+    acquisition?: PublicationNote;
 }
 
 
@@ -106,6 +128,8 @@ export function PublicationFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'status': json['status'],
         'statusChangedAt': (json['status_changed_at'] == null ? json['status_changed_at'] : parseDateTime(json['status_changed_at'])),
         'releases': ((json['releases'] as Array<any>).map(PublicationReleaseFromJSON)),
+        'availability': json['availability'] == null ? undefined : LabelledFromJSON(json['availability']),
+        'acquisition': json['acquisition'] == null ? undefined : PublicationNoteFromJSON(json['acquisition']),
     };
 }
 
@@ -127,6 +151,8 @@ export function PublicationToJSONTyped(value?: Publication | null, ignoreDiscrim
         'status': value['status'],
         'status_changed_at': value['statusChangedAt'] == null ? value['statusChangedAt'] : serializeDateTime(value['statusChangedAt']),
         'releases': ((value['releases'] as Array<any>).map(PublicationReleaseToJSON)),
+        'availability': LabelledToJSON(value['availability']),
+        'acquisition': PublicationNoteToJSON(value['acquisition']),
     };
 }
 

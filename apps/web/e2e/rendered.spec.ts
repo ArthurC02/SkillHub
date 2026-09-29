@@ -238,6 +238,45 @@ async function verifyArtifactContinuationOnPhone(page: Page) {
   await expect(target).toContainText("續接位置");
 }
 
+async function verifyPublicationAudienceOnPhone(page: Page, testInfo: TestInfo) {
+  await stubPlatform(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+
+  await expect(page.getByRole("heading", { name: "Catalog 曝光" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "交付對象" })).toBeVisible();
+  await expect(page.getByText("任何人都能閱讀", { exact: true })).toBeVisible();
+  await expect(page.getByText("目前提供套件", { exact: true })).toBeVisible();
+  await expect(page.getByText("已列入 Catalog", { exact: true })).toBeVisible();
+  await expect(page.getByText("任何人都能從搜尋與 Catalog 找到這個 Release。")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("version-catalog-exposure-phone.png"),
+    fullPage: true,
+  });
+
+  const continuation = page.getByRole("link", { name: "在發佈與交付中查看這一筆" });
+  await expect(continuation).toHaveAttribute(
+    "href",
+    `/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`,
+  );
+  await continuation.click();
+
+  const target = page.locator('[aria-current="location"]');
+  await expect(target).toBeFocused();
+  await expect(target).toBeInViewport();
+  await expect(target).toContainText(PUBLICATION);
+  await expect(target).toContainText("續接位置");
+  await expect(target.getByRole("heading", { name: "交付對象" })).toBeVisible();
+  await expect(target).toContainText("任何人都能閱讀");
+  await expect(target).toContainText("目前提供套件");
+
+  const width = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+}
+
 test.describe("QA-008 real layout", () => {
   test("test case history keeps each Run's immutable Version in reach on a phone", async ({
     page,
@@ -265,32 +304,7 @@ test.describe("QA-008 real layout", () => {
   test("a version hands its exact Publication to the publishing workspace", async ({
     page,
   }, testInfo) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-
-    await expect(page.getByRole("heading", { name: "Catalog 曝光" })).toBeVisible();
-    await expect(page.getByText("已列入 Catalog", { exact: true })).toBeVisible();
-    await expect(page.getByText("任何人都能從搜尋與 Catalog 找到這個 Release。")).toBeVisible();
-    await page.screenshot({
-      path: testInfo.outputPath("version-catalog-exposure-phone.png"),
-      fullPage: true,
-    });
-
-    const continuation = page.getByRole("link", {
-      name: "在發佈與交付中查看這一筆",
-    });
-    await expect(continuation).toHaveAttribute(
-      "href",
-      `/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`,
-    );
-    await continuation.click();
-
-    const target = page.locator('[aria-current="location"]');
-    await expect(target).toBeFocused();
-    await expect(target).toBeInViewport();
-    await expect(target).toContainText(PUBLICATION);
-    await expect(target).toContainText("續接位置");
+    await verifyPublicationAudienceOnPhone(page, testInfo);
   });
 
   test("a version keeps its exact Bundle member selection usable on a phone", async ({

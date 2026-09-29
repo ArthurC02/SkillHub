@@ -224,8 +224,23 @@ func assertOwnPublicationOverview(
 	if release == nil || release["version_id"] != wantRelease["version_id"] || release["version_number"] != float64(2) {
 		t.Errorf("latest release = %v, want exact version %v", release, wantRelease)
 	}
+	assertOwnerDeliveryProjection(t, publications[0], "available", true)
 	if publications[1]["skill_id"] != secondID || publications[1]["name"] != secondName || publications[1]["status"] != "delisted" {
 		t.Errorf("second publication = %v, want alice's delisted %s", publications[1], secondName)
+	}
+	assertOwnerDeliveryProjection(t, publications[1], "delisted", false)
+}
+
+func assertOwnerDeliveryProjection(t *testing.T, publication map[string]any, wantAvailability string, wantAcquirable bool) {
+	t.Helper()
+	availability, _ := publication["availability"].(map[string]any)
+	acquisition, _ := publication["acquisition"].(map[string]any)
+	if availability["value"] != wantAvailability || acquisition["available"] != wantAcquirable {
+		t.Errorf("owner delivery projection = availability %v, acquisition %v; want %s, available %v",
+			availability, acquisition, wantAvailability, wantAcquirable)
+	}
+	if note, _ := acquisition["note"].(string); note == "" {
+		t.Errorf("owner delivery projection has no acquisition explanation: %v", acquisition)
 	}
 }
 

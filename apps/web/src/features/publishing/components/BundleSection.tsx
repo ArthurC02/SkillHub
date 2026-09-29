@@ -20,6 +20,7 @@ import {
   type Publication,
 } from "../publishing.service";
 import { actionFailureSentence } from "../publishing.model";
+import { DeliveryAudience } from "./DeliveryAudience";
 
 const PLUGIN_SCOPE_NOTE = "Plugin 只含 Agent Skill，不含 MCP 設定或宿主專屬元件。";
 
@@ -323,6 +324,7 @@ function PublishedBundleView({
           最新 Release：v{latest.bundle_version}，發佈於 <Timestamp at={latest.released_at} />
         </p>
       )}
+      <DeliveryAudience publication={publication} />
 
       {needsAttestation && (
         <p>

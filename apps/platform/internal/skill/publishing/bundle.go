@@ -516,10 +516,12 @@ func (s *Service) OwnBundlePublication(ctx context.Context, ws identity.Workspac
 	if err != nil {
 		return Publication{}, false, err
 	}
-	return Publication{
+	publication := Publication{
 		Publisher: row.PublisherName, Name: row.Name, BundleID: row.BundleID,
 		Status: Status(row.Status), StatusChangedAt: row.StatusChangedAt.Time, Releases: releases,
-	}, true, nil
+	}
+	publication, err = s.withAvailability(ctx, ws.ID, publication)
+	return publication, err == nil, err
 }
 
 func (s *Service) ExportBundle(ctx context.Context, ws identity.Workspace, bundleName, version string) (Acquisition, error) {

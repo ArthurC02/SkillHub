@@ -417,6 +417,130 @@ test("the publishing overview keeps public identity and the exact latest release
   expect(text()).toContain("已發佈");
 });
 
+test("the publishing overview separates public reach, package eligibility, and Catalog discovery", async () => {
+  const acquisitionNote =
+    "登入後可以下載這一版的標準 Agent Skill 套件；這個部署目前只開放受邀者下載。";
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": {
+      body: {
+        publications: OWN_PUBLICATIONS.publications.map((publication) => ({
+          ...publication,
+          availability: { value: "available", label: "提供中", note: "" },
+          acquisition: { available: true, note: acquisitionNote },
+        })),
+      },
+    },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("已列入 Catalog"));
+
+  expect(text()).toContain("公開頁面");
+  expect(text()).toContain("任何人都能閱讀");
+  expect(text()).toContain("套件取得");
+  expect(text()).toContain("目前提供套件");
+  expect(text()).toContain(acquisitionNote);
+  expect(text()).toContain("Catalog 探索");
+  expect(text()).not.toContain("任何人都能下載");
+});
+
+test("a published Bundle shows the server-owned package eligibility beside its exact release", async () => {
+  const acquisitionNote = "登入後可以下載這一版的 Agent Plugin；這個部署目前只開放受邀者下載。";
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": { body: { publications: [] } },
+    "/me/bundles": { body: { bundles: [OWN_BUNDLE] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+    "/me/bundles/pdf-toolkit/publication": {
+      body: {
+        kind: "bundle",
+        publisher: PUBLISHER,
+        name: "pdf-toolkit",
+        address: `/p/${PUBLISHER}/pdf-toolkit`,
+        status: "published",
+        status_changed_at: "2026-09-20T00:00:00Z",
+        releases: [
+          {
+            bundle_version: OWN_BUNDLE.version,
+            content_hash: OWN_BUNDLE.content_hash,
+            released_at: "2026-09-20T00:00:00Z",
+            rights_attested: false,
+            findings: { errors: [], warnings: [], infos: [] },
+          },
+        ],
+        availability: { value: "available", label: "提供中", note: "" },
+        acquisition: { available: true, note: acquisitionNote },
+      },
+    },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("最新 Release：v1.1.0"));
+
+  expect(text()).toContain("交付對象");
+  expect(text()).toContain("任何人都能閱讀");
+  expect(text()).toContain("目前提供套件");
+  expect(text()).toContain(acquisitionNote);
+  expect(text()).not.toContain("任何人都能下載");
+});
+
+test("the owner view preserves an unavailable reason instead of calling it an empty audience", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": {
+      body: {
+        publications: OWN_PUBLICATIONS.publications.map((publication) => ({
+          ...publication,
+          availability: {
+            value: "held",
+            label: "已不提供",
+            note: "這個 Skill 的內容因授權問題被保留，釐清之前不提供。",
+          },
+          acquisition: {
+            available: false,
+            note: "這個發佈物目前不提供下載，原因見上方。",
+          },
+        })),
+      },
+    },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("目前不提供套件"));
+
+  expect(text()).toContain("已不提供");
+  expect(text()).toContain("因授權問題被保留");
+  expect(text()).not.toContain("0 人");
+});
+
+test("an older owner payload leaves delivery eligibility unknown rather than unavailable", async () => {
+  stub({
+    "/me/publisher": { body: OWN_PUBLISHER },
+    "/me/publications": {
+      body: {
+        publications: OWN_PUBLICATIONS.publications.map((publication) => ({
+          ...publication,
+          availability: undefined,
+          acquisition: undefined,
+        })),
+      },
+    },
+    "/me/bundles": { body: { bundles: [] } },
+    "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
+    "/downloads": { body: { downloads: [] } },
+  });
+
+  await render(<PublishingWorkspace />, () => text().includes("交付對象暫時無法確認"));
+
+  expect(text()).not.toContain("目前不提供套件");
+  expect(text()).not.toContain("已不提供");
+});
+
 test("a publication continuation link focuses only the exact owner row after it loads", async () => {
   publishingSearch = { publication: `${PUBLISHER}/${PUBLICATION}` };
   stub({

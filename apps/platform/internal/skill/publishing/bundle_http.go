@@ -154,7 +154,7 @@ func (h *Handler) OwnBundlePublication(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "this Bundle has not been published")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }
 
 func (h *Handler) PublishBundle(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +178,7 @@ func (h *Handler) PublishBundle(w http.ResponseWriter, r *http.Request) {
 		writePublishingError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }
 
 func (h *Handler) DelistBundle(w http.ResponseWriter, r *http.Request) {
@@ -191,5 +191,5 @@ func (h *Handler) DelistBundle(w http.ResponseWriter, r *http.Request) {
 		writePublishingError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }

@@ -7251,6 +7251,14 @@ components:
         releases:
           type: array
           items: { $ref: "#/components/schemas/PublicationRelease" }
+        availability:
+          description: The current server-owned offer state. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+        acquisition:
+          description: Whether a package is currently offered and the complete sign-in or invitation condition. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/PublicationNote"
     OwnerPublicationRelease:
       type: object
       description: The newest immutable Skill release in an owner's publication overview.
@@ -7275,6 +7283,14 @@ components:
         status_changed_at: { type: string, format: date-time }
         latest_release: { $ref: "#/components/schemas/OwnerPublicationRelease" }
         catalog_exposure: { $ref: "#/components/schemas/OwnerCatalogExposure" }
+        availability:
+          description: The current server-owned offer state. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+        acquisition:
+          description: Whether a package is currently offered and the complete sign-in or invitation condition. Absent only when an older server cannot project it.
+          allOf:
+            - $ref: "#/components/schemas/PublicationNote"
     OwnerCatalogExposure:
       type: object
       description: The effective Catalog state of the latest immutable Release, not merely its review decision.

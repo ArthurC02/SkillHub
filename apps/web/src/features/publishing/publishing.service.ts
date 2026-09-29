@@ -28,6 +28,8 @@ export interface Publication {
   status: "published" | "delisted";
   status_changed_at: string;
   releases: PublicationRelease[];
+  availability?: Labelled;
+  acquisition?: PublicationNote;
 }
 
 export interface OwnerPublicationSummary {
@@ -52,6 +54,8 @@ export interface OwnerPublicationSummary {
     version_number: number;
     released_at: string;
   };
+  availability?: Labelled;
+  acquisition?: PublicationNote;
 }
 
 export interface BundleMemberChange {

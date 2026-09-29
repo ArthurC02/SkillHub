@@ -53,6 +53,8 @@ type publicationView struct {
 	Status          string        `json:"status"`
 	StatusChangedAt string        `json:"status_changed_at"`
 	Releases        []releaseView `json:"releases"`
+	Availability    labelled      `json:"availability"`
+	Acquisition     noteView      `json:"acquisition"`
 }
 
 type ownerPublicationReleaseView struct {
@@ -70,6 +72,8 @@ type ownerPublicationSummaryView struct {
 	StatusChangedAt string                       `json:"status_changed_at"`
 	LatestRelease   *ownerPublicationReleaseView `json:"latest_release,omitempty"`
 	CatalogExposure ownerCatalogExposureView     `json:"catalog_exposure"`
+	Availability    labelled                     `json:"availability"`
+	Acquisition     noteView                     `json:"acquisition"`
 }
 
 type ownerCatalogExposureView struct {
@@ -297,7 +301,7 @@ func (h *Handler) OwnPublication(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "this Skill has not been published")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }
 
 func (h *Handler) OwnPublications(w http.ResponseWriter, r *http.Request) {
@@ -312,7 +316,7 @@ func (h *Handler) OwnPublications(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]ownerPublicationSummaryView, 0, len(publications))
 	for _, publication := range publications {
-		items = append(items, ownerSummaryView(publication))
+		items = append(items, h.ownerSummaryView(publication))
 	}
 	httpx.WriteJSON(w, http.StatusOK, ownerPublicationsView{Publications: items})
 }
@@ -347,7 +351,7 @@ func (h *Handler) Publish(w http.ResponseWriter, r *http.Request) {
 		writePublishingError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }
 
 func (h *Handler) Delist(w http.ResponseWriter, r *http.Request) {
@@ -364,7 +368,7 @@ func (h *Handler) Delist(w http.ResponseWriter, r *http.Request) {
 		writePublishingError(w, err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, ownView(publication))
+	httpx.WriteJSON(w, http.StatusOK, h.ownView(publication))
 }
 
 func (h *Handler) PublicPublication(w http.ResponseWriter, r *http.Request) {
@@ -407,6 +411,13 @@ func unavailableNote(availability Availability, member string) string {
 		return note
 	}
 	return "成員 " + member + "：" + note
+}
+
+func availabilityView(availability Availability, member string) labelled {
+	words := availabilityWords[availability]
+	return labelled{
+		Value: string(availability), Label: words[0], Note: unavailableNote(availability, member),
+	}
 }
 
 func exposureNote(p PublicPublication) noteView {
@@ -454,15 +465,24 @@ func ownView(p Publication) publicationView {
 	return publicationView{
 		Kind: kindOf(p), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
 		Status: string(p.Status), StatusChangedAt: timestamp(p.StatusChangedAt), Releases: releases,
+		Availability: availabilityView(p.Availability, p.UnavailableMember),
 	}
 }
 
-func ownerSummaryView(publication PublicationSummary) ownerPublicationSummaryView {
+func (h *Handler) ownView(publication Publication) publicationView {
+	view := ownView(publication)
+	view.Acquisition = h.acquisitionNote(publication.Availability, kindOf(publication))
+	return view
+}
+
+func (h *Handler) ownerSummaryView(publication PublicationSummary) ownerPublicationSummaryView {
 	view := ownerPublicationSummaryView{
 		SkillID: pgconv.UUIDString(publication.SkillID), Publisher: publication.Publisher,
 		Name: publication.Name, Address: address(publication.Publisher, publication.Name),
 		Status: string(publication.Status), StatusChangedAt: timestamp(publication.StatusChangedAt),
 		CatalogExposure: ownerCatalogExposureView{State: string(publication.CatalogExposure.State)},
+		Availability:    availabilityView(publication.Availability, publication.UnavailableMember),
+		Acquisition:     h.acquisitionNote(publication.Availability, kindSkill),
 	}
 	if publication.LatestRelease != nil {
 		view.LatestRelease = &ownerPublicationReleaseView{
@@ -475,10 +495,9 @@ func ownerSummaryView(publication PublicationSummary) ownerPublicationSummaryVie
 }
 
 func (h *Handler) publicView(p PublicPublication) publicPublicationView {
-	words := availabilityWords[p.Availability]
 	view := publicPublicationView{
 		Kind: kindOf(p.Publication), Publisher: p.Publisher, Name: p.Name, Address: address(p.Publisher, p.Name),
-		Availability: labelled{Value: string(p.Availability), Label: words[0], Note: unavailableNote(p.Availability, p.UnavailableMember)},
+		Availability: availabilityView(p.Availability, p.UnavailableMember),
 		Releases:     make([]publicReleaseView, 0, len(p.Releases)),
 		Exposure:     exposureNote(p),
 		Acquisition:  h.acquisitionNote(p.Availability, kindOf(p.Publication)),

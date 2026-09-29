@@ -34032,6 +34032,39 @@ func (s *OptPublicSearchResultMatchReasonSource) UnmarshalJSON(data []byte) erro
 	return s.Decode(d)
 }
 
+// Encode encodes PublicationNote as json.
+func (o OptPublicationNote) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes PublicationNote from json.
+func (o *OptPublicationNote) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptPublicationNote to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptPublicationNote) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptPublicationNote) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes Rubric as json.
 func (o OptRubric) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -35517,9 +35550,21 @@ func (s *OwnerPublicationSummary) encodeFields(e *jx.Encoder) {
 		e.FieldStart("catalog_exposure")
 		s.CatalogExposure.Encode(e)
 	}
+	{
+		if s.Availability.Set {
+			e.FieldStart("availability")
+			s.Availability.Encode(e)
+		}
+	}
+	{
+		if s.Acquisition.Set {
+			e.FieldStart("acquisition")
+			s.Acquisition.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfOwnerPublicationSummary = [8]string{
+var jsonFieldsNameOfOwnerPublicationSummary = [10]string{
 	0: "skill_id",
 	1: "publisher",
 	2: "name",
@@ -35528,6 +35573,8 @@ var jsonFieldsNameOfOwnerPublicationSummary = [8]string{
 	5: "status_changed_at",
 	6: "latest_release",
 	7: "catalog_exposure",
+	8: "availability",
+	9: "acquisition",
 }
 
 // Decode decodes OwnerPublicationSummary from json.
@@ -35535,7 +35582,7 @@ func (s *OwnerPublicationSummary) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode OwnerPublicationSummary to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -35629,6 +35676,26 @@ func (s *OwnerPublicationSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"catalog_exposure\"")
 			}
+		case "availability":
+			if err := func() error {
+				s.Availability.Reset()
+				if err := s.Availability.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"availability\"")
+			}
+		case "acquisition":
+			if err := func() error {
+				s.Acquisition.Reset()
+				if err := s.Acquisition.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"acquisition\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -35638,8 +35705,9 @@ func (s *OwnerPublicationSummary) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b10111111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -39882,9 +39950,21 @@ func (s *Publication) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.Availability.Set {
+			e.FieldStart("availability")
+			s.Availability.Encode(e)
+		}
+	}
+	{
+		if s.Acquisition.Set {
+			e.FieldStart("acquisition")
+			s.Acquisition.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfPublication = [7]string{
+var jsonFieldsNameOfPublication = [9]string{
 	0: "kind",
 	1: "publisher",
 	2: "name",
@@ -39892,6 +39972,8 @@ var jsonFieldsNameOfPublication = [7]string{
 	4: "status",
 	5: "status_changed_at",
 	6: "releases",
+	7: "availability",
+	8: "acquisition",
 }
 
 // Decode decodes Publication from json.
@@ -39899,7 +39981,7 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode Publication to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -39989,6 +40071,26 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"releases\"")
 			}
+		case "availability":
+			if err := func() error {
+				s.Availability.Reset()
+				if err := s.Availability.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"availability\"")
+			}
+		case "acquisition":
+			if err := func() error {
+				s.Acquisition.Reset()
+				if err := s.Acquisition.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"acquisition\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -39998,8 +40100,9 @@ func (s *Publication) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b01111111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

@@ -18,6 +18,7 @@ import { publishGateState, refusalSentence } from "../publishing.model";
 import { PublishForm } from "./PublishForm";
 import { PublisherRegistration } from "./PublisherSection";
 import { VersionCatalogExposure } from "./CatalogExposure";
+import { DeliveryAudience } from "./DeliveryAudience";
 
 export function PublishPanel({
   skill,
@@ -180,6 +181,7 @@ function PublishedView({
           " 還沒有 Release。"
         )}
       </p>
+      <DeliveryAudience publication={publication} />
       <VersionCatalogExposure skillId={skillId} publication={publication} version={version} />
 
       {needsAttestation && (
