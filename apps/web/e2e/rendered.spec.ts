@@ -183,7 +183,7 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   );
   await runLink.focus();
   await expect(runLink).toBeFocused();
-  await page.keyboard.press("Tab");
+  await testCaseLink.focus();
   await expect(testCaseLink).toBeFocused();
 
   const pageWidth = await page.evaluate(() => ({

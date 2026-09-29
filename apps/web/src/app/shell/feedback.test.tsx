@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { FEEDBACK_MAX_MESSAGE, feedbackPagePath, feedbackRunID } from "./feedback.service";
 import { FeedbackEntry } from "./FeedbackEntry";
+import { FeedbackLauncher } from "./FeedbackLauncher";
 
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 
@@ -112,6 +113,30 @@ test("BETA-004 the page path travels without its query string, and a run id only
   expect(feedbackRunID(`/runs/${RUN}/compare`)).toBe(RUN);
   expect(feedbackRunID("/workspace/downloads")).toBeUndefined();
   expect(feedbackRunID("/runs/latest")).toBeUndefined();
+});
+
+test("the collapsed launcher defers the form and keeps a draft after it has opened", async () => {
+  stubPlatform();
+  await render(<FeedbackLauncher pathname="/policy" />);
+
+  const details = container.querySelector("details") as HTMLDetailsElement;
+  expect(container.querySelector("form")).toBeNull();
+
+  await act(async () => {
+    details.open = true;
+    details.dispatchEvent(new Event("toggle"));
+  });
+  await waitFor(() => container.querySelector("form") !== null);
+
+  await type("尚未送出的內容");
+  await act(async () => {
+    details.open = false;
+    details.dispatchEvent(new Event("toggle"));
+    details.open = true;
+    details.dispatchEvent(new Event("toggle"));
+  });
+
+  expect((container.querySelector("textarea") as HTMLTextAreaElement).value).toBe("尚未送出的內容");
 });
 
 test("BETA-003 a report carries only what the reporter can see on screen", async () => {

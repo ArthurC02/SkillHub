@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { FeedbackEntry } from "./shell/FeedbackEntry";
+import { FeedbackLauncher } from "./shell/FeedbackLauncher";
 import { AuthControls } from "./shell/AuthControls";
 import { CleanModeNotice } from "./shell/CleanModeNotice";
 import { NavScrollCue } from "../shared/ui/NavScrollCue";
@@ -67,7 +67,7 @@ export function RootLayout() {
             <Outlet />
           </main>
           <footer className="app-footer">
-            <FeedbackEntry pathname={pathname} />
+            <FeedbackLauncher pathname={pathname} />
             <p className="note">
               <Link to="/policy">資料保存政策</Link>
               {" ｜ "}

@@ -714,6 +714,7 @@ test("NFR-007: 全站回報入口是一個 <details>，用鍵盤打得開也送�
   expect(tabbables().some((el) => el.id === "feedback-message")).toBe(false);
 
   await act(async () => (summary as HTMLElement).click());
+  await waitFor(() => container.querySelector("#feedback-message") !== null);
   const opened = tabbables();
   expect(opened.some((el) => el.id === "feedback-message")).toBe(true);
   expect(opened.some((el) => el.getAttribute("type") === "submit")).toBe(true);
@@ -729,6 +730,7 @@ test("NFR-007: 空白的回報被擋下來時說得出要補什麼", async () =>
 
   const summary = tabbables().find(byText("回報問題"))!;
   await act(async () => summary.click());
+  await waitFor(() => container.querySelector(".feedback-entry form") !== null);
   await act(async () => {
     container
       .querySelector(".feedback-entry form")!

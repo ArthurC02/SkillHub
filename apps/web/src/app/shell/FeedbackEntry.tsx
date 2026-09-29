@@ -74,7 +74,13 @@ function FeedbackMessageField({
   );
 }
 
-export function FeedbackEntry({ pathname }: { pathname: string }) {
+export function FeedbackEntry({
+  pathname,
+  embedded = false,
+}: {
+  pathname: string;
+  embedded?: boolean;
+}) {
   const me = useMe();
   const [kind, setKind] = useState<FeedbackKind>("blocking_issue");
   const [message, setMessage] = useState("");
@@ -108,9 +114,8 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
     );
   }
 
-  return (
-    <details className="feedback-entry">
-      <summary>回報問題</summary>
+  const content = (
+    <>
       {unauthenticated(me.error) ? (
         <LoginRequired what="回報問題" />
       ) : (
@@ -176,6 +181,15 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
           已收到，謝謝。這裡沒有回覆機制，也沒有查詢頁面——需要回覆的話，請在內容裡留下聯絡方式。
         </p>
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <details className="feedback-entry">
+      <summary>回報問題</summary>
+      {content}
     </details>
   );
 }

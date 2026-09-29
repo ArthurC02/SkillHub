@@ -31,8 +31,8 @@ vi.mock("./shell/CleanModeNotice", () => ({
   CleanModeNotice: () => null,
 }));
 
-vi.mock("./shell/FeedbackEntry", () => ({
-  FeedbackEntry: () => null,
+vi.mock("./shell/FeedbackLauncher", () => ({
+  FeedbackLauncher: () => null,
 }));
 
 vi.mock("../shared/ui/NavScrollCue", () => ({
