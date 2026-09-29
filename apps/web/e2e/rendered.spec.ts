@@ -60,8 +60,20 @@ async function verifyCreationContinuationLayout(page: Page, testInfo: TestInfo) 
       "需要留意",
       "繼續進行",
       "執行中",
+      "發佈成果",
       "你的資產",
     ]);
+    const publication = page.locator(".workspace-home-section").filter({
+      has: page.getByRole("heading", { name: "發佈成果" }),
+    });
+    await expect(publication.getByRole("link", { name: "v2" })).toHaveAttribute(
+      "href",
+      `/skills/${SKILL}/versions/${VERSION}`,
+    );
+    await expect(publication.getByRole("link", { name: "管理發佈" })).toHaveAttribute(
+      "href",
+      `/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`,
+    );
     await expect(page.locator(".workspace-home-grid .workspace-home-list > li")).toHaveCount(3);
     await expect(page.getByRole("link", { name: "開啟會話" })).toHaveAttribute(
       "href",

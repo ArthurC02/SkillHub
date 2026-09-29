@@ -14,6 +14,7 @@ import {
   type CreationSession,
   type CreationState,
 } from "../../creation";
+import { useOwnPublications, type OwnerPublicationSummary } from "../../publishing";
 import { useOwnSkills } from "../../skill";
 import {
   RunVerdict,
@@ -64,11 +65,7 @@ function WorkspaceHomeContent({
 
   return (
     <section className="workspace-home">
-      <header className="workspace-home-hero">
-        <p className="note">{name} 的 Workspace</p>
-        <h1>繼續推進你的工作</h1>
-        <p>先處理需要留意的結果，再續接創作與正在演進的小工具；不必先找回上次在哪一頁。</p>
-      </header>
+      <WorkspaceHomeHero name={name} />
 
       <section className="workspace-home-section workspace-home-attention">
         <header>
@@ -122,6 +119,8 @@ function WorkspaceHomeContent({
         </section>
       </div>
 
+      <PublicationContinuations />
+
       <section className="workspace-home-section">
         <header className="workspace-home-section-heading">
           <div>
@@ -167,6 +166,84 @@ function WorkspaceHomeContent({
       </section>
     </section>
   );
+}
+
+function WorkspaceHomeHero({ name }: { name: string }) {
+  return (
+    <header className="workspace-home-hero">
+      <p className="note">{name} 的 Workspace</p>
+      <h1>繼續推進你的工作</h1>
+      <p>先處理需要留意的結果，再續接創作與正在演進的小工具；不必先找回上次在哪一頁。</p>
+    </header>
+  );
+}
+
+function PublicationContinuations() {
+  const publications = useOwnPublications();
+  const rows = publications.data?.publications.slice(0, 3) ?? [];
+
+  return (
+    <section className="workspace-home-section">
+      <header>
+        <h2>發佈成果</h2>
+        <p className="note">延續已建立的 Publication，或回到它目前最新的 Release。</p>
+      </header>
+      {publications.isPending && <Loading what="發佈成果" />}
+      <ReadFailure error={publications.error} what="發佈成果" />
+      {publications.data &&
+        (rows.length === 0 ? (
+          <p>目前沒有發佈成果。</p>
+        ) : (
+          <ul className="workspace-home-list">
+            {rows.map((publication) => (
+              <PublicationItem
+                key={`${publication.publisher}/${publication.name}`}
+                publication={publication}
+              />
+            ))}
+          </ul>
+        ))}
+    </section>
+  );
+}
+
+function PublicationItem({ publication }: { publication: OwnerPublicationSummary }) {
+  const release = publication.latest_release;
+  return (
+    <li>
+      <div>
+        <strong>
+          {publication.publisher}/{publication.name}
+        </strong>
+        <p className="note">Publication 狀態：{publicationStatusLabel(publication.status)}</p>
+        {release ? (
+          <p className="note">
+            最新 Release：
+            <Link
+              to="/skills/$skillId/versions/$versionId"
+              params={{ skillId: publication.skill_id, versionId: release.version_id }}
+            >
+              v{release.version_number}
+            </Link>
+            ・<Timestamp at={release.released_at} relative />
+          </p>
+        ) : (
+          <p className="note">尚未建立 Release</p>
+        )}
+      </div>
+      <Link
+        className="action-secondary"
+        to="/workspace/downloads"
+        search={{ publication: `${publication.publisher}/${publication.name}` }}
+      >
+        管理發佈
+      </Link>
+    </li>
+  );
+}
+
+function publicationStatusLabel(status: OwnerPublicationSummary["status"]): string {
+  return status === "published" ? "已發佈" : "已下架";
 }
 
 function CreationContinuations() {

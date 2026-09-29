@@ -125,6 +125,7 @@ test("workspace home separates decisions, active work, and owned assets from ser
         truncated: false,
       });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
   vi.stubGlobal("fetch", fetchSpy);
@@ -144,6 +145,7 @@ test("workspace home separates decisions, active work, and owned assets from ser
   );
   expect(allTrials?.getAttribute("href")).toBe("/workspace/runs");
   expect(container.textContent).not.toContain("Already good");
+  expect(section("發佈成果").textContent).toContain("目前沒有發佈成果。");
   expect(section("你的資產").textContent).toContain("PDF Summariser");
   expect(section("繼續進行")).toBeUndefined();
   expect(fetchSpy.mock.calls.some(([input]) => String(input).endsWith("/creation-sessions"))).toBe(
@@ -185,6 +187,7 @@ test.each([
       if (url.endsWith("/skills")) {
         return json({ skills: [], total: 0, limit: 100, truncated: false });
       }
+      if (url.endsWith("/me/publications")) return json({ publications: [] });
       return json({ error: "not found" }, 404);
     });
     vi.stubGlobal("fetch", fetchSpy);
@@ -199,6 +202,108 @@ test.each([
     ).toBe(false);
   },
 );
+
+test("workspace home resumes exact publication and release contexts without inferring exposure", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/me")) {
+      return json({
+        user_id: "u-1",
+        email: "tester@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        operator: false,
+      });
+    }
+    if (url.includes("/runs?")) return json({ runs: [] });
+    if (url.endsWith("/skills")) {
+      return json({ skills: [], total: 0, limit: 100, truncated: false });
+    }
+    if (url.endsWith("/me/publications")) {
+      return json({
+        publications: [
+          {
+            skill_id: "skill-1",
+            publisher: "skillhub",
+            name: "pdf-summariser",
+            address: "skillhub/pdf-summariser",
+            status: "published",
+            status_changed_at: "2026-09-28T12:00:00Z",
+            catalog_exposure: { state: "awaiting_review" },
+            latest_release: {
+              version_id: "version-7",
+              version_number: 7,
+              released_at: "2026-09-29T12:00:00Z",
+            },
+          },
+          {
+            skill_id: "skill-2",
+            publisher: "skillhub",
+            name: "archived-helper",
+            address: "skillhub/archived-helper",
+            status: "delisted",
+            status_changed_at: "2026-09-27T12:00:00Z",
+            catalog_exposure: { state: "revoked" },
+          },
+        ],
+      });
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await render(<WorkspaceHome />, () =>
+    (container.textContent ?? "").includes("skillhub/pdf-summariser"),
+  );
+
+  const publications = section("發佈成果");
+  expect(publications.textContent).toContain("Publication 狀態：已發佈");
+  expect(publications.textContent).toContain("最新 Release：v7");
+  expect(publications.textContent).toContain("Publication 狀態：已下架");
+  expect(publications.textContent).toContain("尚未建立 Release");
+  expect(
+    publications.querySelector('a[href="/skills/skill-1/versions/version-7"]')?.textContent,
+  ).toBe("v7");
+  expect(
+    publications.querySelector(
+      'a[href="/workspace/downloads?publication=skillhub%2Fpdf-summariser"]',
+    )?.textContent,
+  ).toBe("管理發佈");
+  expect(publications.textContent).not.toContain("awaiting_review");
+  expect(publications.textContent).not.toContain("等待審查");
+  expect(publications.textContent).not.toContain("revoked");
+});
+
+test("workspace home keeps a publication read failure distinct from an empty result", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/me")) {
+      return json({
+        user_id: "u-1",
+        email: "tester@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        operator: false,
+      });
+    }
+    if (url.includes("/runs?")) return json({ runs: [] });
+    if (url.endsWith("/skills")) {
+      return json({ skills: [], total: 0, limit: 100, truncated: false });
+    }
+    if (url.endsWith("/me/publications")) {
+      return json({ error: "publication backend unavailable" }, 503);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await render(<WorkspaceHome />, () =>
+    (container.textContent ?? "").includes("暫時無法讀取發佈成果"),
+  );
+
+  expect(section("發佈成果").textContent).not.toContain("目前沒有發佈成果。");
+  expect(section("發佈成果").textContent).not.toContain("publication backend unavailable");
+  expect(section("執行中").textContent).toContain("目前沒有正在執行的試跑。");
+  expect(section("你的資產").textContent).toContain("資產庫目前是空的");
+});
 
 test("workspace home resumes the three most recent actionable creation sessions", async () => {
   const future = "2099-09-28T14:00:00Z";
@@ -272,6 +377,7 @@ test("workspace home resumes the three most recent actionable creation sessions"
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
   vi.stubGlobal("fetch", fetchSpy);
@@ -308,6 +414,7 @@ test("workspace home resumes the three most recent actionable creation sessions"
     "需要留意",
     "繼續進行",
     "執行中",
+    "發佈成果",
     "你的資產",
   ]);
 });
@@ -330,6 +437,7 @@ test("workspace home keeps a creation read failure distinct from an empty contin
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
 
@@ -359,6 +467,7 @@ test("workspace home omits the continuation section when the recent session slic
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
 
@@ -391,6 +500,7 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
 
@@ -439,6 +549,7 @@ test("workspace home removes a creation continuation when its action deadline pa
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
 
@@ -466,6 +577,7 @@ test("workspace home without active work does not show a stale refresh control",
     if (url.endsWith("/skills")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
+    if (url.endsWith("/me/publications")) return json({ publications: [] });
     return json({ error: "not found" }, 404);
   });
 
