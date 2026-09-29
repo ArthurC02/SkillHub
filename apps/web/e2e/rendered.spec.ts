@@ -163,6 +163,30 @@ async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
 async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   await stubPlatform(page);
   let requestedVersion = "";
+  const creationSession = "44444444-4444-4444-8444-444444444444";
+  await page.route("**/me", async (route) => {
+    const { body, status } = platformResponse(route.request().url());
+    await route.fulfill({
+      status,
+      json: { ...(body as object), features: { creation_skill: true } },
+    });
+  });
+  await page.route("**/creation-sessions?*", async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          id: creationSession,
+          revision: 7,
+          state: "saved",
+          snapshot: { brief: "整理採購文件並產生摘要" },
+          created_at: "2026-09-27T09:00:00Z",
+          updated_at: "2026-09-28T09:30:00Z",
+          expires_at: "2099-09-27T09:00:00Z",
+          deadline: "2026-09-27T10:00:00Z",
+        },
+      ],
+    });
+  });
   await page.route("**/runs?*", async (route) => {
     requestedVersion = new URL(route.request().url()).searchParams.get("skill_version_id") ?? "";
     await route.fulfill({ json: RUNS });
@@ -173,6 +197,16 @@ async function verifyVersionEvidenceOnPhone(page: Page, testInfo: TestInfo) {
   const evidence = page.getByRole("heading", { name: "驗證證據" }).locator("..");
   await expect(evidence.locator(".download-item")).toHaveCount(2);
   expect(requestedVersion).toBe(VERSION);
+
+  const creation = page.getByRole("heading", { name: "Studio 歷程" }).locator("..");
+  const creationLink = creation.getByRole("link", { name: /整理採購文件並產生摘要/ });
+  await expect(creationLink).toHaveAttribute(
+    "href",
+    `/workspace/creations?session=${creationSession}`,
+  );
+  await creationLink.focus();
+  await expect(creationLink).toBeFocused();
+  await expect(creationLink).toBeInViewport();
 
   const runLink = evidence.getByRole("link", { name: "查看 Run 結果" }).first();
   const testCaseLink = evidence.getByRole("link", { name: "開啟這次的 Test Case" }).first();

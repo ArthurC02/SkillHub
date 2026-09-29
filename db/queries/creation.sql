@@ -12,6 +12,14 @@ SELECT * FROM creation_sessions WHERE id=$1 AND workspace_id=$2 FOR UPDATE;
 SELECT * FROM creation_sessions WHERE workspace_id = @workspace_id AND expires_at > now()
 ORDER BY updated_at DESC LIMIT @page_size;
 
+-- name: ListCreationSessionsForVersion :many
+SELECT * FROM creation_sessions
+WHERE workspace_id = @workspace_id
+  AND expires_at > now()
+  AND snapshot #>> '{snapshot,candidate,version_id}' = @version_id::text
+ORDER BY updated_at DESC, id DESC
+LIMIT @page_size;
+
 -- name: AdvanceCreationSession :one
 UPDATE creation_sessions SET state=sqlc.arg(state),snapshot=sqlc.arg(snapshot),
  revision=revision+1,updated_at=now()

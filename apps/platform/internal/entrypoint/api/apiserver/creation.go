@@ -196,7 +196,18 @@ func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	v, err := h.Svc.List(r.Context(), ws)
+	var v []creation.View
+	var err error
+	if rawVersionID := r.URL.Query().Get("version_id"); rawVersionID != "" {
+		versionID, parseErr := creation.ParseID(rawVersionID)
+		if parseErr != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "version_id 必須是有效的 UUID。")
+			return
+		}
+		v, err = h.Svc.ListForVersion(r.Context(), ws, versionID)
+	} else {
+		v, err = h.Svc.List(r.Context(), ws)
+	}
 	if err != nil {
 		h.creationError(w, err)
 		return

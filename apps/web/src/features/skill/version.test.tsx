@@ -93,12 +93,19 @@ function runItem(overrides: Record<string, unknown> = {}) {
 function stubVersions(
   versions = SKILL_VERSIONS,
   runs: { body?: unknown; status?: number } = { body: { runs: [] } },
+  creation?: { enabled?: boolean; body?: unknown; status?: number },
 ) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     calls.push(url);
     const path = url.split("?")[0];
+    if (path === "/me") {
+      return json({ features: { creation_skill: creation?.enabled === true } });
+    }
+    if (path === "/creation-sessions") {
+      return json(creation?.body ?? [], creation?.status ?? 200);
+    }
     if (path === `/api/skills/${SKILL}`) return json(skillDetail(SKILL, "PDF Summariser"));
     if (path === `/skills/${SKILL}/versions`) return json(versions);
     if (path === "/me/publisher") return json(OWN_PUBLISHER);
@@ -109,6 +116,34 @@ function stubVersions(
     return json({ error: "not found" }, 404);
   });
   return calls;
+}
+
+function creationSession() {
+  return {
+    id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    revision: 7,
+    state: "saved",
+    snapshot: {
+      messages: [],
+      brief: "整理採購文件並產生摘要",
+      brief_confirmed: true,
+      acceptance_criteria: [],
+      diagram_understanding: "",
+      diagram_confirmed: false,
+      references: [],
+      pending_action: "",
+      budget_credits: 650,
+      reserved_credits: 0,
+      usage_unknown: false,
+      steps: 4,
+      tool_calls: 1,
+      candidate: { skill_id: SKILL, version_id: VERSION },
+    },
+    created_at: "2026-09-27T09:00:00Z",
+    updated_at: "2026-09-28T09:30:00Z",
+    expires_at: "2026-12-27T09:00:00Z",
+    deadline: "2026-09-27T10:00:00Z",
+  };
 }
 
 async function render(settled: () => boolean) {
@@ -159,6 +194,7 @@ test("an owned immutable version becomes one shareable context for validation, p
     container.querySelector(`a[href="/skills/${SKILL}/versions/${VERSION}"][aria-current="page"]`),
   ).not.toBeNull();
   expect(text()).not.toContain("Activity");
+  expect(text()).not.toContain("Studio 歷程");
 });
 
 test("a version from another Skill cannot expose publish, upload or package actions", async () => {
@@ -236,4 +272,50 @@ test("an empty owner-scoped version list is absence of access, not absence of hi
 
   expect(text()).toContain("無權檢視");
   expect(text()).toContain("這不代表它沒有版本");
+});
+
+test("a retained creation session gives the immutable version a Studio continuation", async () => {
+  const session = creationSession();
+  const calls = stubVersions(
+    SKILL_VERSIONS,
+    { body: { runs: [] } },
+    {
+      enabled: true,
+      body: [session],
+    },
+  );
+  await render(() => text().includes("整理採購文件並產生摘要"));
+
+  expect(calls).toContain(`/creation-sessions?version_id=${VERSION}`);
+  expect(text()).toContain("Studio 歷程");
+  expect(
+    container.querySelector(`a[href="/workspace/creations?session=${session.id}"]`),
+  ).not.toBeNull();
+  expect(container.querySelector(".version-creation-list time")?.getAttribute("datetime")).toBe(
+    session.updated_at,
+  );
+});
+
+test("the immutable version exposes no Studio context while creation is disabled", async () => {
+  const calls = stubVersions();
+  await render(() => text().includes("PDF Summariser v2"));
+
+  expect(text()).not.toContain("Studio 歷程");
+  expect(calls.some((call) => call.startsWith("/creation-sessions"))).toBe(false);
+});
+
+test("a version without a retained creation session explains the bounded absence", async () => {
+  stubVersions(SKILL_VERSIONS, { body: { runs: [] } }, { enabled: true, body: [] });
+  await render(() => text().includes("沒有仍可開啟的 Studio 會話"));
+
+  expect(text()).toContain("其他方式建立");
+  expect(text()).toContain("超過保存期限");
+});
+
+test("a creation-context read failure is not presented as no retained session", async () => {
+  stubVersions(SKILL_VERSIONS, { body: { runs: [] } }, { enabled: true, status: 503 });
+  await render(() => Boolean(container.querySelector('[role="alert"]')));
+
+  expect(text()).toContain("這個版本的 Studio 歷程");
+  expect(text()).not.toContain("沒有仍可開啟的 Studio 會話");
 });

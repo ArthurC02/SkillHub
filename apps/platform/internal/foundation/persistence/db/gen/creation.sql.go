@@ -316,6 +316,50 @@ func (q *Queries) ListCreationSessions(ctx context.Context, arg ListCreationSess
 	return items, nil
 }
 
+const listCreationSessionsForVersion = `-- name: ListCreationSessionsForVersion :many
+SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions
+WHERE workspace_id = $1
+  AND expires_at > now()
+  AND snapshot #>> '{snapshot,candidate,version_id}' = $2::text
+ORDER BY updated_at DESC, id DESC
+LIMIT $3
+`
+
+type ListCreationSessionsForVersionParams struct {
+	WorkspaceID pgtype.UUID
+	VersionID   string
+	PageSize    int32
+}
+
+func (q *Queries) ListCreationSessionsForVersion(ctx context.Context, arg ListCreationSessionsForVersionParams) ([]CreationSession, error) {
+	rows, err := q.db.Query(ctx, listCreationSessionsForVersion, arg.WorkspaceID, arg.VersionID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CreationSession
+	for rows.Next() {
+		var i CreationSession
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.State,
+			&i.Revision,
+			&i.Snapshot,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStalledCreationSessions = `-- name: ListStalledCreationSessions :many
 SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions
 WHERE state = ANY($1::text[]) AND updated_at < $2

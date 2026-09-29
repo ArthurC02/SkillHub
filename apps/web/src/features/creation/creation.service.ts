@@ -174,6 +174,8 @@ export interface CreationAction {
   budget_credits?: number;
 }
 export const listCreationSessions = () => apiFetch<CreationSession[]>("/creation-sessions");
+export const listCreationSessionsForVersion = (versionId: string) =>
+  apiFetch<CreationSession[]>(`/creation-sessions?version_id=${encodeURIComponent(versionId)}`);
 export const getCreationLimits = () => apiFetch<CreationLimits>("/creation-sessions/limits");
 export const getCreationSession = (id: string) =>
   apiFetch<CreationSession>("/creation-sessions/" + id);
@@ -196,6 +198,16 @@ export const actOnCreationSession = (id: string, body: CreationAction) =>
 
 export function useCreationSessions() {
   return useQuery({ queryKey: queryKeys.creation.sessions, queryFn: listCreationSessions });
+}
+
+export function useCreationSessionsForVersion(versionId: string) {
+  const enabled = useCreationEntryPoint();
+  const sessions = useQuery({
+    queryKey: queryKeys.creation.sessionsForVersion(versionId),
+    queryFn: () => listCreationSessionsForVersion(versionId),
+    enabled: enabled && versionId.length > 0,
+  });
+  return { enabled, sessions };
 }
 
 export function useCreationLimits() {

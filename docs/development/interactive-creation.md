@@ -4,7 +4,7 @@
 
 ## 已接通的路徑
 
-`/workspace/skills#create` 的自然語言、流程圖、目錄參考共用私人會話。Web 僅呼叫 Go API；Go Worker 每個工作以內部 HTTP 呼叫 Python `POST /v1/creation/step`。LangGraph 重建有界 workflow，回傳澄清、確認、草稿或工具意圖；Go 執行授權後的混合目錄檢索、套件驗證與後續排程。檢索的 embedding 費用計入該會話的 `SpentUSD`；套件靜態驗證不呼叫模型。檢索與降級規則見〈工具：連網、檢索與 Re-Use〉。
+`/workspace/creations` 的自然語言、流程圖、目錄參考共用私人會話；`session` query 保存目前要續作的精確會話。Web 僅呼叫 Go API；Go Worker 每個工作以內部 HTTP 呼叫 Python `POST /v1/creation/step`。LangGraph 重建有界 workflow，回傳澄清、確認、草稿或工具意圖；Go 執行授權後的混合目錄檢索、套件驗證與後續排程。檢索的 embedding 費用計入該會話的 `SpentUSD`；套件靜態驗證不呼叫模型。檢索與降級規則見〈工具：連網、檢索與 Re-Use〉。
 
 Go 擁有 `creation_sessions`、不可更新的 `creation_session_events` 與 `creation_receipts`，使用 Workspace scope、revision CAS 和命令識別碼。事件、receipt、快照及後續 River 工作在同一交易寫入。會話 UI 透過具登入憑證的 SSE 接收快照；串流不可用時，`queued`／`working` 狀態退回 scoped polling。既有 Run 仍走原本 Outbox。
 

@@ -44,6 +44,7 @@ export const queryKeys = {
   generate: { failures: ["generate", "failures"] },
   creation: {
     sessions: ["creation-sessions"],
+    sessionsForVersion: (versionId: string) => ["creation-sessions", "version", versionId],
     limits: ["creation-limits"],
     session: (id: string) => ["creation-session", id],
   },

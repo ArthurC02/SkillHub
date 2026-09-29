@@ -5744,6 +5744,15 @@ paths:
     get:
       operationId: "listCreationSessions"
       summary: "listCreationSessions"
+      description: "Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention."
+      parameters:
+        - name: "version_id"
+          in: "query"
+          required: false
+          description: "Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation."
+          schema:
+            type: "string"
+            format: "uuid"
       responses:
         200:
           description: "Workspace-scoped creation snapshot"

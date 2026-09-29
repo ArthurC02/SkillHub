@@ -20,12 +20,52 @@
 }
 
 .version-facts,
+.version-creation-context,
 .version-workspace-rail {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--surface);
   box-shadow: var(--shadow-rest);
   padding: 20px;
+}
+
+.version-creation-context {
+  display: grid;
+  gap: 8px;
+}
+
+.version-creation-context > * {
+  margin-block: 0;
+}
+
+.version-creation-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.version-creation-list a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: baseline;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.version-creation-list strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .version-creation-list a {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 
 .version-facts dl {

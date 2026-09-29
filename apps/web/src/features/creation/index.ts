@@ -5,6 +5,7 @@ export {
   creationStateLabel,
   useCreationEntryPoint,
   useCreationSessions,
+  useCreationSessionsForVersion,
   type CreationSession,
   type CreationState,
 } from "./creation.service";

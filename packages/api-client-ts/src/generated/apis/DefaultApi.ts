@@ -1198,6 +1198,13 @@ export interface LiftDispatchHaltOperationRequest {
     liftDispatchHaltRequest: LiftDispatchHaltRequest;
 }
 
+export interface ListCreationSessionsRequest {
+    /**
+     * Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation.
+     */
+    versionId?: string;
+}
+
 export interface ListDatasetsRequest {
     /**
      * 
@@ -3401,24 +3408,27 @@ export interface DefaultApiInterface {
 
     /**
      * Creates request options for listCreationSessions without sending the request
+     * @param {string} [versionId] Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listCreationSessionsRequestOpts(): Promise<runtime.RequestOpts>;
+    listCreationSessionsRequestOpts(requestParameters: ListCreationSessionsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * 
+     * Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention.
      * @summary listCreationSessions
+     * @param {string} [versionId] Optional immutable Skill Version whose still-retained Studio context should be returned. This is a Creation-owned lookup and does not make Skill Registry depend on Creation.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>>;
+    listCreationSessionsRaw(requestParameters: ListCreationSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>>;
 
     /**
+     * Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention.
      * listCreationSessions
      */
-    listCreationSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>>;
+    listCreationSessions(requestParameters: ListCreationSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>>;
 
     /**
      * Creates request options for listDatasets without sending the request
@@ -8036,8 +8046,12 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * Creates request options for listCreationSessions without sending the request
      */
-    async listCreationSessionsRequestOpts(): Promise<runtime.RequestOpts> {
+    async listCreationSessionsRequestOpts(requestParameters: ListCreationSessionsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['versionId'] != null) {
+            queryParameters['version_id'] = requestParameters['versionId'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -8053,20 +8067,22 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention.
      * listCreationSessions
      */
-    async listCreationSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>> {
-        const requestOptions = await this.listCreationSessionsRequestOpts();
+    async listCreationSessionsRaw(requestParameters: ListCreationSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CreationSession>>> {
+        const requestOptions = await this.listCreationSessionsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CreationSessionFromJSON));
     }
 
     /**
+     * Lists live sessions in the authenticated Workspace. When version_id is present, Creation returns only sessions whose current candidate is that immutable Skill Version; an empty array means no matching session remains inside Creation retention.
      * listCreationSessions
      */
-    async listCreationSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>> {
-        const response = await this.listCreationSessionsRaw(initOverrides);
+    async listCreationSessions(requestParameters: ListCreationSessionsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CreationSession>> {
+        const response = await this.listCreationSessionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -38,7 +38,8 @@ var (
 )
 
 const (
-	sessionPageSize = 50
+	sessionPageSize        = 50
+	versionSessionPageSize = 10
 
 	stalledSessionBatch = 100
 )
@@ -328,6 +329,26 @@ func (s *Service) List(ctx context.Context, ws identity.Workspace) ([]View, erro
 	out := make([]View, 0, len(rows))
 	for _, r := range rows {
 		v, err := view(r)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+func (s *Service) ListForVersion(ctx context.Context, ws identity.Workspace, versionID pgtype.UUID) ([]View, error) {
+	rows, err := gen.New(s.Pool).ListCreationSessionsForVersion(ctx, gen.ListCreationSessionsForVersionParams{
+		WorkspaceID: ws.ID,
+		VersionID:   UUID(versionID),
+		PageSize:    versionSessionPageSize,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]View, 0, len(rows))
+	for _, row := range rows {
+		v, err := view(row)
 		if err != nil {
 			return nil, err
 		}

@@ -255,6 +255,53 @@ func TestTheSessionListStopsAtTheFiftyMostRecentlyUpdated(t *testing.T) {
 		t.Fatalf("listed %d sessions starting with %v, want the 50 most recently updated starting with %s", len(views), views, newest.ID)
 	}
 }
+
+func TestCreationSessionsCanBeFoundFromTheirCandidateVersion(t *testing.T) {
+	a, _, _ := creationFixture(t)
+	alice := a.login(t, "creation-version-alice")
+	bob := a.login(t, "creation-version-bob")
+	session := creationPost(t, alice, "/creation-sessions", map[string]any{
+		"id": creationID(t), "message": "建立一個摘要 Skill", "budget_credits": 650,
+	}, 200)
+	versionID := creation.UUID(creationID(t))
+	if _, err := testPool.Exec(context.Background(), `UPDATE creation_sessions
+		SET snapshot = jsonb_set(snapshot, '{snapshot,candidate}', jsonb_build_object(
+			'skill_id', gen_random_uuid()::text, 'version_id', $2::text))
+		WHERE id = $1`, mustUUID(t, session.ID), versionID); err != nil {
+		t.Fatal(err)
+	}
+
+	read := func(t *testing.T, c *client, version string) ([]creation.View, int) {
+		t.Helper()
+		var out []creation.View
+		status := getJSON(t, c.Client, c.base+"/creation-sessions?version_id="+version, &out)
+		return out, status
+	}
+
+	matches, status := read(t, alice, versionID)
+	if status != http.StatusOK || len(matches) != 1 || matches[0].ID != session.ID {
+		t.Fatalf("owner lookup = status %d sessions %+v, want the matching session", status, matches)
+	}
+	foreign, status := read(t, bob, versionID)
+	if status != http.StatusOK || len(foreign) != 0 {
+		t.Fatalf("foreign lookup = status %d sessions %+v, want a scoped empty list", status, foreign)
+	}
+	missing, status := read(t, alice, creation.UUID(creationID(t)))
+	if status != http.StatusOK || len(missing) != 0 {
+		t.Fatalf("unknown version lookup = status %d sessions %+v, want an empty list", status, missing)
+	}
+
+	if _, err := testPool.Exec(context.Background(), "UPDATE creation_sessions SET expires_at = now() - interval '1 second' WHERE id = $1", mustUUID(t, session.ID)); err != nil {
+		t.Fatal(err)
+	}
+	expired, status := read(t, alice, versionID)
+	if status != http.StatusOK || len(expired) != 0 {
+		t.Fatalf("expired lookup = status %d sessions %+v, want an empty list", status, expired)
+	}
+	if _, status := read(t, alice, "not-a-uuid"); status != http.StatusBadRequest {
+		t.Fatalf("invalid version lookup answered %d, want 400", status)
+	}
+}
 func TestCreationDiagramUsesTransientWorkerAndStoresNoImage(t *testing.T) {
 	a, _, calls := creationFixture(t)
 	c := a.login(t, "creation-diagram")

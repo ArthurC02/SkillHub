@@ -7,6 +7,7 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "../../packaging";
 import { PublishPanel } from "../../publishing";
+import { creationStateLabel, useCreationSessionsForVersion } from "../../creation";
 import {
   IN_FLIGHT_RUN_STATUSES,
   RunVerdict,
@@ -74,6 +75,7 @@ export function SkillVersion() {
       <div className="version-workspace-layout">
         <div className="version-workspace-main">
           <VersionFacts version={selected} isLatest={selectedIndex === 0} />
+          <VersionCreationContext versionId={versionId} />
           <VersionEvidence
             skillId={skillId}
             versionId={versionId}
@@ -99,6 +101,37 @@ export function SkillVersion() {
         <VersionRail skillId={skillId} versionId={versionId} versions={list} />
       </div>
     </article>
+  );
+}
+
+function VersionCreationContext({ versionId }: { versionId: string }) {
+  const { enabled: creationEnabled, sessions } = useCreationSessionsForVersion(versionId);
+
+  if (!creationEnabled) return null;
+
+  return (
+    <section aria-labelledby="version-creation-title" className="version-creation-context">
+      <p className="note">建立脈絡</p>
+      <h2 id="version-creation-title">Studio 歷程</h2>
+      {sessions.isPending && <Loading what="這個版本的 Studio 歷程" />}
+      <ReadFailure error={sessions.error} what="這個版本的 Studio 歷程" />
+      {sessions.data?.length === 0 && (
+        <p>沒有仍可開啟的 Studio 會話；這個版本可能由其他方式建立，或原會話已超過保存期限。</p>
+      )}
+      {sessions.data && sessions.data.length > 0 && (
+        <ul className="version-creation-list">
+          {sessions.data.map((session) => (
+            <li key={session.id}>
+              <Link to="/workspace/creations" search={{ session: session.id }}>
+                <strong>{session.snapshot.brief || "未命名的創作會話"}</strong>
+                <span>{creationStateLabel(session.state)}</span>
+                <Timestamp at={session.updated_at} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

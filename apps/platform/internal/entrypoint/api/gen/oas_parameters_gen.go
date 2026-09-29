@@ -298,6 +298,13 @@ type IngestTraceEventsParams struct {
 	Token string
 }
 
+// ListCreationSessionsParams is parameters of listCreationSessions operation.
+type ListCreationSessionsParams struct {
+	// Optional immutable Skill Version whose still-retained Studio context should be returned. This is a
+	// Creation-owned lookup and does not make Skill Registry depend on Creation.
+	VersionID OptUUID `json:",omitempty,omitzero"`
+}
+
 // ListDatasetsParams is parameters of listDatasets operation.
 type ListDatasetsParams struct {
 	ID uuid.UUID
